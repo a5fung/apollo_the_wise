@@ -1,0 +1,369 @@
+# #705 CONTEXT RULES 01 — DRY RUN: every input loaded; the populations re-asserted against the rule-mix tag files by eid (labels, offsets, clocks, fills only — never a bucket column); every context from decision-time views; the cuts, the medians, the splits, the trees; every count of the doc asserted; the constants and the pins. NO outcome: no rule fired, no bucket read, no map scored.
+# registration: docs/analysis/cb_context_rules_prereg_2026-10-26.md
+- pins re-checked: the previous read's (exports, candidates, labels, guards, the frozen modules and tests) through the frozen module; this read's (the fetch list, 00_pop_fetch.py and its printout, the frozen previous module): no drift
+- this read's inputs: the frozen intraday module ac598fc58aae, the intraday doc body 6c3741e48788, the six intraday TSVs and the printouts on disk (their sha256 pinned under the marker)
+- this read's inputs: the frozen rule-mix module 75c832541cef, the rule-mix doc body 6a2512024c5f, the rule-mix ledger re-verified (the three tag files, control_windows.tsv.gz and 01_mix_tag.txt unchanged since the tag), the recount on disk
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- populations re-asserted against §2 / §2a-d of this doc and the previous 63 counts: 25 claims, every one equals the registration (guard 3)
+- daily exports loaded in 6s: era A 692,401 of 12,005,007 rows (563 tickers, 2016-01-04..2022-06-30); era B 63,175 of 13,830,569 rows (81 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- minute trees: A 149,587 log rows, B 80,858 log rows, EP 196 log rows, EP2 39 log rows, REV 1,322 log rows, INTRA 19,470 log rows; era B export calendar 2021-09-27..2024-12-31 (821 sessions) — every era-B record's offsets are bisected on it (one calendar per record)
+- records (no chain): ENTER 405 (dropped {'no_bar_on_E': 5, 'bars_before_E_lt_20': 7, 'ticker_not_in_export': 2}), STOP / EXIT 837 (dropped {'no_bar_on_E': 11, 'bars_before_E_lt_50': 27, 'ticker_not_in_export': 4}); the buy-day minute files read 505
+- populations re-asserted against the tag files by eid (labels, offsets, clocks only): ENTER 404 rows / STOP 837 / EXIT 837; records ENTER 405, STOP / EXIT 837; differences 0
+- the by-date assertion on every trade's decision-time view (every daily bar < E, the D bar dated the record calendar's predecessor of E, every minute < the bound, SPY <= D): 0 violations
+
+## ENTER — the contexts (decision-time views), their MISSING counts, the cuts, the splits, the trees
+- C-E1 opening volume: the per-minute volume before min(09:35, flat_clock) / (ADV20 / 390) | read at min(09:35, flat_clock) | l.1712-1713 (his EP words, TRANSFERRED to all trades: our reading); l.1735-1736 the notes' summary
+    2020: n 88, defined 88, MISSING 0 ; quartiles 1.983 / 3.35 / 7.911
+    2021-22: n 60, defined 53, MISSING 7 ({'no_minute_before_bound': 7}); quartiles 2.228 / 3.667 / 8.131
+    untouched: n 9, defined 9, MISSING 0 ; quartiles 2.496 / 3.065 / 11.64
+- C-E2 the daily breakout still ahead at the open (open <= the prior session's high = 1) | read at the open | l.2091-2092; l.1942
+    2020: n 88, defined 88, MISSING 0 ; value 1 on 51
+    2021-22: n 60, defined 60, MISSING 0 ; value 1 on 40
+    untouched: n 9, defined 9, MISSING 0 ; value 1 on 8
+- C-E3 the market's trend (SPY's 50-day above 10 sessions earlier = 1) — OUR READING | read at D's close | l.2606 (the method line); l.2481 a phrasing ruling; 03_market_trend_split.py l.1-3
+    2020: n 88, defined 88, MISSING 0 ; value 1 on 56
+    2021-22: n 60, defined 60, MISSING 0 ; value 1 on 48
+    untouched: n 9, defined 9, MISSING 0 ; value 1 on 5
+- the cuts on the 2020 DEFINED values (T1 = the ceil(n/3)-th, T2 = the ceil(2n/3)-th smallest; ≤ goes left): C-E1 T1 = 2.5264337536805637; C-E1 T2 = 5.458695114961153
+- the HW medians (the ceil(n/2)-th 2020 defined value): C-E1 = 3.3445208190090354
+- the candidate splits in §5c's order and their child sizes (left / right, missing included; missing -> the larger defined side):
+    1. C-E1 <= T1 (cut 2.5264337536805637; missing -> right): 2020 30 / 58 | 2021-22 19 / 41 | untouched 3 / 6; 2020 floor 15: both children pass
+    2. C-E1 <= T2 (cut 5.458695114961153; missing -> left): 2020 59 / 29 | 2021-22 40 / 20 | untouched 6 / 3; 2020 floor 15: both children pass
+    3. C-E2 = 0 (cut 0.0; missing -> right): 2020 37 / 51 | 2021-22 20 / 40 | untouched 1 / 8; 2020 floor 15: both children pass
+    4. C-E3 = 0 (cut 0.0; missing -> right): 2020 32 / 56 | 2021-22 12 / 48 | untouched 4 / 5; 2020 floor 15: both children pass
+- trees: 101 before the dedupe and the floor (s = 4); after the dedupe (s = 4) 101; after the floor m = 15: 21
+- the first ten trees in the canonical order (groups, root, left option, right option):
+    0: (1, -1, 0, 0) [one group -> group]
+    1: (2, 0, 0, 0) C-E1 <= T1 ? group : group
+    2: (2, 1, 0, 0) C-E1 <= T2 ? group : group
+    3: (2, 2, 0, 0) C-E2 = 0 ? group : group
+    4: (2, 3, 0, 0) C-E3 = 0 ? group : group
+    5: (3, 0, 0, 2) C-E1 <= T1 ? group : (C-E1 <= T2 ? group : group)
+    6: (3, 0, 0, 3) C-E1 <= T1 ? group : (C-E2 = 0 ? group : group)
+    7: (3, 0, 0, 4) C-E1 <= T1 ? group : (C-E3 = 0 ? group : group)
+    8: (3, 1, 1, 0) C-E1 <= T2 ? (C-E1 <= T1 ? group : group) : group
+    9: (3, 1, 3, 0) C-E1 <= T2 ? (C-E2 = 0 ? group : group) : group
+- HW-E (fixed, no search): C-E1 above the 2020 median -> L1, else L8 (l.1712-1713); cut 3.3445208190090354; 2020 sides 44 ≤ / 44 >; missing -> ≤
+
+## STOP — the contexts (decision-time views), their MISSING counts, the cuts, the splits, the trees
+- C-S1 the stop's width against his cap: (fill - the low before the fill minute) / (ADR20 x fill) | read at the fill | l.1943 (his cap); coupled to S1-T (§1 4c)
+    2020: n 139, defined 48, MISSING 91 ({'open_fill': 91}); quartiles 0.3552 / 0.5272 / 0.8393
+    2021-22: n 116, defined 40, MISSING 76 ({'open_fill': 76}); quartiles 0.4284 / 0.6355 / 0.8921
+    untouched: n 12, defined 4, MISSING 8 ({'open_fill': 8}); quartiles 0.5566 / 0.8321 / 1.087
+- C-S2 speed: ADR20 | read at D | l.2046-2047, l.2095-2096 (his trail words; transferred to the stop: our reading)
+    2020: n 139, defined 139, MISSING 0 ; quartiles 0.05376 / 0.07293 / 0.09992
+    2021-22: n 116, defined 116, MISSING 0 ; quartiles 0.04464 / 0.05851 / 0.09701
+    untouched: n 12, defined 12, MISSING 0 ; quartiles 0.05286 / 0.0577 / 0.06564
+- C-S3 the market's trend — OUR READING | read at D's close | l.2606; l.2481 a phrasing ruling
+    2020: n 139, defined 139, MISSING 0 ; value 1 on 103
+    2021-22: n 116, defined 116, MISSING 0 ; value 1 on 107
+    untouched: n 12, defined 12, MISSING 0 ; value 1 on 8
+- the cuts on the 2020 DEFINED values (T1 = the ceil(n/3)-th, T2 = the ceil(2n/3)-th smallest; ≤ goes left): C-S1 1.0 = 1.0; C-S1 T1 = 0.3739910630804703; C-S1 T2 = 0.6430914770465083; C-S2 T1 = 0.060157537030730214; C-S2 T2 = 0.08659232105720746
+- the candidate splits in §5c's order and their child sizes (left / right, missing included; missing -> the larger defined side):
+    1. C-S1 <= 1.0 (cut 1.0; missing -> left): 2020 130 / 9 | 2021-22 108 / 8 | untouched 10 / 2; 2020 floor 15: a child UNDER the floor
+    2. C-S1 <= T1 (cut 0.3739910630804703; missing -> right): 2020 16 / 123 | 2021-22 8 / 108 | untouched 0 / 12; 2020 floor 15: both children pass
+    3. C-S1 <= T2 (cut 0.6430914770465083; missing -> left): 2020 123 / 16 | 2021-22 97 / 19 | untouched 10 / 2; 2020 floor 15: both children pass
+    4. C-S2 <= T1 (cut 0.060157537030730214; missing -> right): 2020 47 / 92 | 2021-22 62 / 54 | untouched 7 / 5; 2020 floor 15: both children pass
+    5. C-S2 <= T2 (cut 0.08659232105720746; missing -> left): 2020 93 / 46 | 2021-22 82 / 34 | untouched 10 / 2; 2020 floor 15: both children pass
+    6. C-S3 = 0 (cut 0.0; missing -> right): 2020 36 / 103 | 2021-22 9 / 107 | untouched 4 / 8; 2020 floor 15: both children pass
+- trees: 295 before the dedupe and the floor (s = 6); after the dedupe (s = 6) 295; after the floor m = 15: 26
+- the first ten trees in the canonical order (groups, root, left option, right option):
+    0: (1, -1, 0, 0) [one group -> group]
+    1: (2, 1, 0, 0) C-S1 <= T1 ? group : group
+    2: (2, 2, 0, 0) C-S1 <= T2 ? group : group
+    3: (2, 3, 0, 0) C-S2 <= T1 ? group : group
+    4: (2, 4, 0, 0) C-S2 <= T2 ? group : group
+    5: (2, 5, 0, 0) C-S3 = 0 ? group : group
+    6: (3, 1, 0, 3) C-S1 <= T1 ? group : (C-S1 <= T2 ? group : group)
+    7: (3, 1, 0, 4) C-S1 <= T1 ? group : (C-S2 <= T1 ? group : group)
+    8: (3, 1, 0, 5) C-S1 <= T1 ? group : (C-S2 <= T2 ? group : group)
+    9: (3, 1, 0, 6) C-S1 <= T1 ? group : (C-S3 = 0 ? group : group)
+- HW-S (fixed, no search): C-S1 <= 1.0 -> S1-T, else S4-T (l.1943); cut 1.0; 2020 sides 130 ≤ / 9 >; missing -> ≤
+
+## EXIT — the contexts (decision-time views), their MISSING counts, the cuts, the splits, the trees
+- C-X1 speed: ADR20 | read at D | l.2046-2047, l.2095-2096, l.2054-2055; a prior read at 4.79% (§1 4e)
+    2020: n 333, defined 333, MISSING 0 ; quartiles 0.05274 / 0.07156 / 0.1016
+    2021-22: n 229, defined 229, MISSING 0 ; quartiles 0.04673 / 0.06185 / 0.1024
+    untouched: n 44, defined 44, MISSING 0 ; quartiles 0.0323 / 0.04866 / 0.06564
+- C-X2 how far from the 10-day: (close_D - SMA10_D) / (ADR20 x close_D) | read at D's close | l.2047
+    2020: n 333, defined 333, MISSING 0 ; quartiles -0.1858 / 0.2436 / 0.792
+    2021-22: n 229, defined 229, MISSING 0 ; quartiles -0.3624 / 0.04709 / 0.6161
+    untouched: n 44, defined 44, MISSING 0 ; quartiles -0.006037 / 0.4564 / 1.026
+- C-X3 how far from the 20-day: (close_D - SMA20_D) / (ADR20 x close_D) | read at D's close | l.2047
+    2020: n 333, defined 333, MISSING 0 ; quartiles -0.1132 / 0.4657 / 1.456
+    2021-22: n 229, defined 229, MISSING 0 ; quartiles -0.3503 / 0.3041 / 0.9964
+    untouched: n 44, defined 44, MISSING 0 ; quartiles 0.01809 / 0.813 / 1.844
+- C-X4 the market's trend — OUR READING | read at D's close | l.2606; l.2481 a phrasing ruling; l.1948 move size
+    2020: n 333, defined 333, MISSING 0 ; value 1 on 241
+    2021-22: n 229, defined 229, MISSING 0 ; value 1 on 206
+    untouched: n 44, defined 44, MISSING 0 ; value 1 on 32
+- the cuts on the 2020 DEFINED values (T1 = the ceil(n/3)-th, T2 = the ceil(2n/3)-th smallest; ≤ goes left): C-X1 T1 = 0.05785964566155742; C-X1 T2 = 0.08828130177295632; C-X2 T1 = -0.03726713441921909; C-X2 T2 = 0.552162789172376; C-X3 T1 = 0.049024194657442635; C-X3 T2 = 0.9961028770629429
+- the HW medians (the ceil(n/2)-th 2020 defined value): C-X1 = 0.07156011787100518
+- the SW cut (T2 of C-X3) = 0.9961028770629429
+- the candidate splits in §5c's order and their child sizes (left / right, missing included; missing -> the larger defined side):
+    1. C-X1 <= T1 (cut 0.05785964566155742; missing -> right): 2020 111 / 222 | 2021-22 99 / 130 | untouched 30 / 14; 2020 floor 34: both children pass
+    2. C-X1 <= T2 (cut 0.08828130177295632; missing -> left): 2020 222 / 111 | 2021-22 159 / 70 | untouched 37 / 7; 2020 floor 34: both children pass
+    3. C-X2 <= T1 (cut -0.03726713441921909; missing -> right): 2020 111 / 222 | 2021-22 99 / 130 | untouched 10 / 34; 2020 floor 34: both children pass
+    4. C-X2 <= T2 (cut 0.552162789172376; missing -> left): 2020 222 / 111 | 2021-22 163 / 66 | untouched 23 / 21; 2020 floor 34: both children pass
+    5. C-X3 <= T1 (cut 0.049024194657442635; missing -> right): 2020 111 / 222 | 2021-22 95 / 134 | untouched 11 / 33; 2020 floor 34: both children pass
+    6. C-X3 <= T2 (cut 0.9961028770629429; missing -> left): 2020 222 / 111 | 2021-22 171 / 58 | untouched 23 / 21; 2020 floor 34: both children pass
+    7. C-X4 = 0 (cut 0.0; missing -> right): 2020 92 / 241 | 2021-22 23 / 206 | untouched 12 / 32; 2020 floor 34: both children pass
+- trees: 449 before the dedupe and the floor (s = 7); after the dedupe (s = 7) 449; after the floor m = 34: 151
+- the first ten trees in the canonical order (groups, root, left option, right option):
+    0: (1, -1, 0, 0) [one group -> group]
+    1: (2, 0, 0, 0) C-X1 <= T1 ? group : group
+    2: (2, 1, 0, 0) C-X1 <= T2 ? group : group
+    3: (2, 2, 0, 0) C-X2 <= T1 ? group : group
+    4: (2, 3, 0, 0) C-X2 <= T2 ? group : group
+    5: (2, 4, 0, 0) C-X3 <= T1 ? group : group
+    6: (2, 5, 0, 0) C-X3 <= T2 ? group : group
+    7: (2, 6, 0, 0) C-X4 = 0 ? group : group
+    8: (3, 0, 0, 2) C-X1 <= T1 ? group : (C-X1 <= T2 ? group : group)
+    9: (3, 0, 0, 3) C-X1 <= T1 ? group : (C-X2 <= T1 ? group : group)
+- HW-X (fixed, no search): C-X1 above the 2020 median -> M-3 (the 10-day), else M-4 (l.2046-2047); cut 0.07156011787100518; 2020 sides 167 ≤ / 166 >; missing -> ≤
+- HW-X' (fixed, no search): C-X1 > 0.0479 (TRAIL_SPEED_ADR_CUT) -> M-3, else M-4; cut 0.0479; 2020 sides 56 ≤ / 277 >; missing -> >
+
+## §10 — C-E1 and the buy-day volume ratio per minute tree (the convention check; outcome-free)
+- tree A: n 51; C-E1 quartiles 2.35 / 4.02 / 8.18 (defined 50); minute / export volume quartiles 0.891 / 0.921 / 0.953
+- tree B: n 5; C-E1 quartiles 4.1 / 6.09 / 7.7 (defined 4); minute / export volume quartiles 0.844 / 0.869 / 0.956
+- tree EP: n 1; C-E1 quartiles 52.9 / 52.9 / 52.9 (defined 1); minute / export volume quartiles 0.962 / 0.962 / 0.962
+- tree EP2: n 6; C-E1 quartiles 23.8 / 37 / 52 (defined 6); minute / export volume quartiles 0.871 / 0.907 / 0.932
+- tree REV: n 94; C-E1 quartiles 1.85 / 2.99 / 6.09 (defined 89); minute / export volume quartiles 0.897 / 0.939 / 0.961
+
+## SPY's presence (the market contexts read the SAME pinned era exports; the calendar is built from SPY's rows)
+- era A: SPY 1635 bars 2016-01-04..2022-06-30 on a calendar of 1635 sessions; gaps 0; last date <= 2024-12-31: True
+- era B: SPY 821 bars 2021-09-27..2024-12-31 on a calendar of 821 sessions; gaps 0; last date <= 2024-12-31: True
+
+## Coverage from the fetch logs (the buy-day minute pair of every scorable trade)
+- ENTER 2020: ok 88
+- ENTER 2021-22: ok 60
+- ENTER untouched: ok 9
+- STOP 2020: ok 139
+- STOP 2021-22: ok 116
+- STOP untouched: ok 12
+- EXIT 2020: ok 333
+- EXIT 2021-22: ok 229
+- EXIT untouched: ok 44
+
+## The doc's counts (every claim; a mismatch STOPS the dry run at the end)
+  [L120] enter_2020: ENTER 2020: n (dated + undated); breakout / EP / both within dated | doc 88 (31 + 57); 26 / 3 / 2 | mine 88 (31 + 57); 26 / 3 / 2 | OK
+  [L121] enter_2122: ENTER 2021-22: n (dated + undated); setup within dated | doc 60 (20 + 40); 15 / 4 / 1 | mine 60 (20 + 40); 15 / 4 / 1 | OK
+  [L122] enter_untouched: ENTER untouched: n (dated + undated) | doc 9 (0 + 9) | mine 9 (0 + 9) | OK
+  [L123] enter_beside: ENTER beside: the undated flickers by block | doc 30 / 19 / 7 | mine 30 / 19 / 7 | OK
+  [L124] stop_2020: STOP 2020 losers with room: n; setup within dated | doc 139 (48 + 91); 39 / 6 / 3 | mine 139 (48 + 91); 39 / 6 / 3 | OK
+  [L125] stop_2122: STOP 2021-22: n; setup within dated | doc 116 (40 + 76); 32 / 8 / 0 | mine 116 (40 + 76); 32 / 8 / 0 | OK
+  [L126] stop_untouched: STOP untouched: n; setup within dated | doc 12 (4 + 8); 3 / 1 / 0 | mine 12 (4 + 8); 3 / 1 / 0 | OK
+  [L127] exit_2020: EXIT 2020 with room: n; setup within dated | doc 333 (122 + 211); 103 / 13 / 6 | mine 333 (122 + 211); 103 / 13 / 6 | OK
+  [L128] exit_2122: EXIT 2021-22: n; setup within dated | doc 229 (79 + 150); 62 / 16 / 1 | mine 229 (79 + 150); 62 / 16 / 1 | OK
+  [L129] exit_untouched: EXIT untouched: n; setup within dated | doc 44 (16 + 28); 9 / 7 / 0 | mine 44 (16 + 28); 9 / 7 / 0 | OK
+  [L134] noroom_exit: EXIT scorable trades without room in control (a), by block | doc 97 / 92 / 28 | mine 97 / 92 / 28 | OK
+  [L135] noroom_stop: STOP losers without room in control (a), by block | doc 56 / 57 / 14 | mine 56 / 57 / 14 | OK
+  [L136] ep_small: EP (EP + both) among the 2020 dated ENTER windows / EXIT trades | doc 5 of 31 / 19 of 122 | mine 5 of 31 / 19 of 122 | OK
+  [L144] flat_before_0935: ENTER scorable brackets with flat_clock before 09:35, by block | doc 17 of 88 / 20 of 60 / 1 of 9 | mine 17 of 88 / 20 of 60 / 1 of 9 | OK
+  [L168] flat_0930: ENTER scorable brackets flat at 09:30 (C-E1 MISSING by construction) | doc 0 / 7 / 0 | mine 0 / 7 / 0 | OK
+  [L210] e1_missing: C-E1 MISSING by block (computed from the decision-time views) | doc 0 / 7 / 0 | mine 0 / 7 / 0 | OK
+  [L184] open_fills: EXIT trades with room filled at the open (fill_src open = every undated row), by block | doc 211 of 333 / 150 of 229 / 28 of 44 | mine 211 of 333 / 150 of 229 / 28 of 44 | OK
+  [L185] stop_undated_91: STOP 2020 losers filled at the open (undated) | doc 91 of 139 | mine 91 of 139 | OK
+  [L209] s1_missing: C-S1 MISSING by block (computed) | doc 91 of 139 / 76 of 116 / 8 of 12 | mine 91 of 139 / 76 of 116 / 8 of 12 | OK
+  [L186] s1_tertile_ranks: C-S1's tertile ranks on the 2020 defined rows | doc 16th / 32nd of 48 | mine 16th / 32nd of 48 | OK
+  [L188] orh5_too_wide: fill_src orh5_too_wide over every STOP / EXIT record; among the 333 2020 EXIT trades with room | doc 43; 18 of 333 | mine 43; 18 of 333 | OK
+  [L240] one_session_exit: one-session sell windows, EXIT 2020 / 2021-22 | doc 231 of 333 / 165 of 229 | mine 231 of 333 / 165 of 229 | OK
+  [L241] one_session_stop: one-session sell windows, STOP 2020 / 2021-22 | doc 108 of 139 / 80 of 116 | mine 108 of 139 / 80 of 116 | OK
+  [L103] exit_lo_quartiles: exit_lo_j median / quartiles (EXIT 2020) | doc 3 / 1-9 | mine 3 / 1-9 | OK
+  [L253] exit_lo_one: EXIT 2020 trades with exit_lo_j = 1 | doc 102 of 333 | mine 102 of 333 | OK
+  [L263] bracket_median: the median in-session bracket width (minutes), non-flicker scorable windows, 2020 / 2021-22 | doc 27 / 46 | mine 27 / 46 | OK
+  [L279] floor_m: the floor m = max(15, ceil(0.10 x n_2020)) per decision | doc 15 / 15 / 34 | mine 15 / 15 / 34 | OK
+  [L282] n_splits: candidate splits per decision (before the dedupe) | doc 4 / 6 / 7 | mine 4 / 6 / 7 | OK
+  [L283] n_trees: trees before the dedupe and the floor (enumerated) | doc 101 / 295 / 449 | mine 101 / 295 / 449 | OK
+  [L440] feb_may: ENTER 2020 scorable buys dated February-May | doc 30 of 88 | mine 30 of 88 | OK
+  [L105] margin_6: ENTER 2021-22 n; a 10-point margin in trades | doc 60; 6 | mine 60; 6 | OK
+  [L456] fetch_pairs: the intraday fetch list's pairs | doc 19470 | mine 19470 | OK
+  [L342] k_levels: the k-level draws: k = the library size, STOP / EXIT | doc 15 / 12 | mine 15 / 12 | OK
+  [L99] speed_cut: Apollo's TRAIL_SPEED_ADR_CUT in consolidation_breakout.py | doc 0.0479 | mine 0.0479 | OK
+  [L189] s1_wide: C-S1 > 1.0 among the 2020 STOP losers | doc <= 18 (expected under the floor of 15) | mine 9 | NOTE
+  [L210] others_missing: every other context's MISSING count | doc near zero | mine C-E2 0/0/0; C-E3 0/0/0; C-S2 0/0/0; C-S3 0/0/0; C-X1 0/0/0; C-X2 0/0/0; C-X3 0/0/0; C-X4 0/0/0 | NOTE
+
+## The readings this module fixes where the registration is silent (the stricter each time; the module docstring C1-C21)
+  C1  C-E1's per-minute rate = the mean volume of the minute BARS present in [09:30, bound) (bound = min(09:35, flat_clock)); no bar before the bound -> MISSING. ADV20 = the mean of the stock's 20 daily volumes ending at D, on the 20 consecutive record-calendar sessions ending at D (a hole inside them -> MISSING; a zero mean -> MISSING).
+  C2  The market's trend: SPY's 50-day mean on the record's calendar needs a SPY bar on every one of the 50 sessions ending at D and at D-10 (a gap -> MISSING); uptrend = the mean at D strictly above the mean 10 sessions earlier.
+  C3  No stock bar dated D on the record's calendar -> EVERY context of the trade MISSING (ADR20 is a D read, so C-S1 and the market too).
+  C4  A missing value follows the larger child by the 2020 count of DEFINED values; a tie -> the left (<= cut) child. Fixed per split, applied to every block.
+  C5  A binary context's left child = the value 0 (C-E2: the open above the prior high; C-E3 / C-S3 / C-X4: not an uptrend).
+  C6  The dedupe compares UNORDERED 2020 partitions (a split and its mirror are one partition); the earlier split in §5c's order is kept; a degenerate split (an empty side) stays a candidate and dies under the floor.
+  C7  The canonical tree order = (groups, root split, left option, right option), option 0 = a group, option k = the k-th split (after the dedupe); the first maximum in that order IS the tie rule of §5c; a group's rule = the first maximum in library order.
+  C8  B1 re-cross: a minute t in (flat, first] whose high >= the level in force at t (the doc's ">=", where a first crossing is ">"), the level existing at t, preceded by a minute u in [flat, t) whose close < that level. B2 = EXPLAINS or the frozen range_verdict HIT / BALLPARK (the instruction's union, exactly).
+  C9  A rule that never fires or abstains reads its unwidened window at every tolerance (it is never CLOSE either way); every widened window is clipped at offset 0 and at J_tail; a random-level touch is a same-session firing ((a_f, b_f) = (1, 0) at ±1c).
+  C10 (c-1) denominators = the rule-mix's own: the k-price arm over every window; the shared window and the random level over the trades with room; control (a) over every trade (each has >= 2 placements). (c-2): a trade without room on an arm contributes a row of False to every draw (it stays in the denominator for MAP and BEST alike).
+  C11 Each mode of control (a) — frames and no frames (R15) — is its OWN arm for `beats chance` (stricter than the rule-mix's larger of two).
+  C12 SHUF and (c-2) of a FIXED map (HW, HW-X', SW) = the fixed map scored on the permuted rows / on the control draws; SW has no context, so its SHUF equals its own share; SW is no library rule, so on the random-level arm its (c-2) column is the single-level draw (= its (c-1)).
+  C13 SW's distance on held session j = (close_{j-1} - SMA20_{j-1}) / (ADR20_D x close_{j-1}), close_{-1} = close_D; an undefined distance (no bar at j-1, the 20-day not yet defined) reads -inf (not far) — so the cut -inf / +inf reproduce M-3 / M-4 Fire for Fire.
+  C14 The real map's percentile among the 200 SHUF scores = the mid-rank (below + half the ties) / 200; p95 = numpy's linear percentile.
+  C15 The paired bootstrap: the 2.5 / 97.5 percentiles of the 2,000 resampled mean differences; MAP - SHUF's per-trade term = the trade's mean CLOSE under the 200 permutations' maps. McNemar: the two discordant counts and the exact two-sided binomial p.
+  C16 MAP-T1, HW, HW-X' and SW print (with their labels) at the primary tolerance; the MAP at every tolerance; the undated ENTER flickers are scored by the 2020-chosen map beside, never summed.
+  C17 The panel-artefact flag (§1 4h): a group whose median bracket width (ENTER) is >= 2x or <= 0.5x the median of the rest of its block.
+  C18 G1 parses the tag files as they serialize: offsets / minutes through `fnum` (never float()), a blank cell -> None, 'True' / 'False' -> bool (any other boolean cell refuses), floats equal within 1e-9 relative; every column the rule-mix wrote for a row is compared.
+  C19 C-S1's candidate cuts in the table's order: his 1.0 first, then T1, T2.
+  C20 The tests' fixture copy of the registered doc lives under this read's folder (`fixtures/`), not `tests/fixtures/` (the task's write scope).
+  C21 MAP-T1 is labelled against ITS OWN no-split tree (the best tier-1 rule, BEST-T1); HW, HW-X' and SW against the full-library BEST.
+
+## CONSTANTS (pinned under the marker by name; --run re-derives each and STOPS on a difference)
+- ctx_const_ENTER_C-E1_T1: 2.5264337536805637
+- ctx_const_ENTER_C-E1_T2: 5.458695114961153
+- ctx_const_ENTER_C-E1_median: 3.3445208190090354
+- ctx_const_ENTER_C-E1_T1_missing_left: False
+- ctx_const_ENTER_C-E1_T2_missing_left: True
+- ctx_const_ENTER_C-E2_bin_missing_left: False
+- ctx_const_ENTER_C-E3_bin_missing_left: False
+- ctx_const_ENTER_floor_m: 15
+- ctx_const_ENTER_tree_order: f1ababbb5ac2c07c1618c75d080d7063c28a8e573f1577e7d0e6f0bcbccf9c75
+- ctx_const_STOP_C-S1_T1: 0.3739910630804703
+- ctx_const_STOP_C-S1_T2: 0.6430914770465083
+- ctx_const_STOP_C-S2_T1: 0.060157537030730214
+- ctx_const_STOP_C-S2_T2: 0.08659232105720746
+- ctx_const_STOP_C-S1_1.0_missing_left: True
+- ctx_const_STOP_C-S1_T1_missing_left: False
+- ctx_const_STOP_C-S1_T2_missing_left: True
+- ctx_const_STOP_C-S2_T1_missing_left: False
+- ctx_const_STOP_C-S2_T2_missing_left: True
+- ctx_const_STOP_C-S3_bin_missing_left: False
+- ctx_const_STOP_floor_m: 15
+- ctx_const_STOP_tree_order: 5f2178f216cf8cde7749a4dc25f2e102ded5fb14b4222115d929ba727e4d3aef
+- ctx_const_EXIT_C-X1_T1: 0.05785964566155742
+- ctx_const_EXIT_C-X1_T2: 0.08828130177295632
+- ctx_const_EXIT_C-X2_T1: -0.03726713441921909
+- ctx_const_EXIT_C-X2_T2: 0.552162789172376
+- ctx_const_EXIT_C-X3_T1: 0.049024194657442635
+- ctx_const_EXIT_C-X3_T2: 0.9961028770629429
+- ctx_const_EXIT_C-X1_median: 0.07156011787100518
+- ctx_const_EXIT_C-X1_T1_missing_left: False
+- ctx_const_EXIT_C-X1_T2_missing_left: True
+- ctx_const_EXIT_C-X2_T1_missing_left: False
+- ctx_const_EXIT_C-X2_T2_missing_left: True
+- ctx_const_EXIT_C-X3_T1_missing_left: False
+- ctx_const_EXIT_C-X3_T2_missing_left: True
+- ctx_const_EXIT_C-X4_bin_missing_left: False
+- ctx_const_EXIT_floor_m: 34
+- ctx_const_EXIT_tree_order: b6ca203fb3225ca0ae666e182eae310b0994e15c9d4a37f70151a2114110b553
+
+- the body above the marker stored under freeze_bodies/ (8d2df4bef3be...): the freeze pin `doc_body_freeze` will name it
+
+## Pins (sha256) — the inputs; --print-pins adds the dry run, the ledger and the constants; every value goes under the doc's freeze marker line
+  labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b
+  matched_events: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc
+  moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0
+  cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a
+  cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7
+  export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+  export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+  sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+  guard_A: 876a75ec6d51744579c1ea2744c1b529cbd941355ef12eb8f0451bbe7ba1af08
+  guard_A_audit: 729741b4cfc5759b6ea5d81da6afdd36c11d806bbcad845964b2b37c72d94057
+  guard_B: b6cb81b6c4a1f415defc5adcf236402d93cd654c33736aa0b120b78c357b5650
+  flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d
+  flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5
+  verdict_A: 02cbb1c0106101cb12e8d5deb9448051ae3ced67966ac11d2475d06f26538de3
+  done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6
+  done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178
+  panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012
+  calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610
+  lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f
+  dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+  ep_A: 59f196e5aa45a35eb7d98e1a1147ac4925e9f4967a17863e039659eed6c9dc46
+  ep_B: 160401c752ff0b8d3d3f2ad7a1eff63d6c36d285aaa34c6e5ca00b737b68ee3c
+  entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf
+  exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f
+  snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff
+  control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc
+  timeline_printout: cbc08080f82705b6fb4e2fd2970166113b5c0f35ab646ca2226d2344cea6a6ac
+  panel_read_printout: cee0fca158007117fa4370511cbbce4a3d1da6ca6760f8792885988ecd1b9ad3
+  done_EP: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735
+  done_EP2: f8255199e52f0fa14aebcec5d50a407a1a52ac7c8b6cd4129bf41aa2f8cc591a
+  small_pulls: b8d37aae5ef85c25bc52479eef7f6b04a8a4e67557caaef7a426d8ae20194643
+  sic: 0e476c4422d56648d615c48d941edb971a348dfb99821023116d0fd98e617346
+  raw_close_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444
+  stream_moments: 7cd53c671f425f71e44ecd70472564df125780bf2e1a55c92b51f5caecea7104
+  video_status: 9f7a7e4cb1fd8ae5eb69a4daa4eb9eec7f9e969341249d41ffa469cb1bf9c692
+  fetch_list: 4191485f2abddc25c042132729742491c191dfbe85d0dc2099fa023d34e3770f
+  done_REV: 945c41fb3618ed6b85a000232f6becc82c9d8e201b9bde99bd8673f9f7036d5e
+  runner: a4f016720f8226933367ae3d776a7067d9d94dea634b28e5e5685e186bc3ad69
+  registered_read: 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449
+  cb_module: e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b
+  constants: 72dadd72503a842f593621b0868f908ab99e1d77851330c2842be7797aa99400
+  fit_module: 3fca7bf4f26ffcdf7152ddc9d4180c295aafe29067591def812fcc6884f38d27
+  join_script: 6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c
+  aplus_read: e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee
+  trade_impact: 9b7cce415479c1abfda422c432c6de1f3a6d591f298a1167fa637a578051e146
+  replay_module: c44785889670b31f3e9baf1ac0e1563aeacfefacc5de5ef426ee7b15724e7bfa
+  replay_tests: 37c918a08329b138f6c37c5787af3c95e0ea2abeceb100209cd0f5f0dd0a96ad
+  exec_module: 346516fb4c236cc552103032163b790d030b10a536e83c70d4cf2390c3f9f485
+  exec_tests: 6ce013bb1d7f1521e8083d014e4221fc837f30c59f9c5e00fbc023344d1a1949
+  timeline_module: e91e3f4dd8d7bc29664cfeccd2fe6b8ec7a5f906a25281bd338f3fe62d2bfee7
+  timeline_tests: 920085c4fecd2b2ea4799b939f16a30a2f1b271fc199149419c2ed0f0df029af
+  holdings_module: 4275d72f82aaf66c7c24372afe48e0b503dedb51e2c7715d8fbd26c4372e9ce9
+  holdings_tests: eee66bf08ef8f70c5da66b4aeec0f626f592ca327dcfc7c6c0c6fd1943a0b75f
+  panel_reader: 14a9764f883aa5516a85da47346871247eabfbcb514ce03c8e602175cbf2a230
+  qmlib: 0f281f05338f5b40d4b1d8be4b9ada427ebcb919c012cd3af9300f6d70f8640b
+  security_type_check: e634362271876028736100249f21bfa410b4c99a3cd2106af89f3af41972bc40
+  rev_module: e908253f7405f814351ced03bd61a80b7886268bcee366f70f66c4a5f74aaeff
+  rev_tests: c74babedfc1923d65e79698284c3783b0e405fe0f337eab26791fb6a1c6fc749
+  subs_list: 99929453752cb3590b261e6928d99317312f35d9a50c0c147e33393b101a64a9
+  first_doc_body: aaaadd295aba5a9de534a738410ebe391ac4993637faa7ead0cab78e2b7a9dab
+  second_doc_body: 329ac865f814de0909332ff516ea5d52dea525fbef7b5fdcf1c9208a521143fe
+  holdings_doc_body: 69510e1a3092e1c74b9869342a24b624500ca65c814410ae7cf2348f71384b58
+  rev_dryrun_printout: 935ce2981efec7b314f6f9ffa9746f6602982ccc195a2456d0b161d79e7e2e4a
+  rev_select_fit_printout: 0893e38a7d2afbf9abfc0c350db2d43f4cf461b0a26f86ce4b46b9b96297208e
+  rev_enter_fit_printout: 743e0c124bc5992b3d7adc1ff55545540f267f4def4f5788f9aae5f93d326724
+  rev_stop_fit_printout: 95b97b95b44099b41c52acbff0623ff48c8b6c918286a6d162e4011c8abe80f0
+  rev_exit_fit_printout: eac07e9a42fce45397b6951e14594fe0bddca59b8dcabedc7635812fbaf29305
+  rev_ledger: 45dc2c7cd2870e017cf0906dadaed53b425521e1452e2b0828f076319976045f
+  rev_doc_body: 16a3057d99b55f4588ffa3cf3fea34da97d5d1e7dee7c0da76d8bfaffe7fe287
+  fetch_list_intra: e66f33d690f7d0d2ac9c797bedc16ff5bc79b9fffda268859016ed0d1d3f6254
+  pop_fetch_script: b7b75d56adb80aeb0a6833a3cf4b9f274e7038e7f4e85de6f96db89a6db4cd67
+  pop_fetch_printout: d6bd0f6743773f562ce92f28fcfc6cb9fc872227dfe5bf8fe04afd954245c7d5
+  rev_frozen_module: e908253f7405f814351ced03bd61a80b7886268bcee366f70f66c4a5f74aaeff
+  rev_enter_fit_trades: ae8efb34baa439295f911b1e4495c601568f4187f5f61a61ec5c722804a318d8
+  rev_stop_fit_trades: 78f890fcc5011a90c82d2ee429b24b1f92c445eac095e6d0d00b2e7fa384464c
+  rev_exit_fit_chosen: d62e7410ae7c7d0cba825f3763d68a65e860c3244470d6f043a2714085f2074f
+  rev_check_printout: 43e3de92c29f6e955e48176b134ae1f5aca7b8aea0d39c8a2ee8da8b6b56a43a
+  done_INTRA: a9dc793c33af220a2c030ae3d36f83af5d80ab91890b0e80c0deea3868d3f243
+  intra_module: ac598fc58aae62dc03c93f5d274aa26af37594821f98d1e1c162c2bb8d20f7ee
+  intra_tests: b9669a31d32c36cd5771b69ec8173013e8a774e319d3ca62fafe4664e7725d15
+  intra_doc: f816434f3f666de220d74b8961acfff83680f58c5c9419fc822b327734eff918
+  intra_frozen_module: ac598fc58aae62dc03c93f5d274aa26af37594821f98d1e1c162c2bb8d20f7ee
+  intra_dryrun_printout: 62eae23a68e2405a5920f9b8df6aad778462495a890b8941fd38ebb7ee0c21f6
+  intra_enter_fit_printout: c34caf77d12e09aabb95afd33278bd0b0f6111ccd89204eb91a64f93ab9281b6
+  intra_stop_fit_printout: 4b6af1c4b039c477358f793067b72daae40af43e5cd05ba6fec0024b86e9433b
+  intra_exit_fit_printout: 64d9089a1fd95f7e428f8d97ef57bf0d42a1cca358286dfe9753005b69cca9cd
+  intra_check_printout: a6db5a635fafbe02f78140cf41dcac4ff7f2d2ad32fdb0c54181e314b93b034f
+  intra_ledger: 542d7ab449f25342bfb37e02eb02bc0e20caec4b32bfacbd1cad7f05bf9360cc
+  intra_enter_fit_trades: 85c04f260b20321450694bccd36dd5052b9dc0e1c6322e76cb148eef14986d59
+  intra_check_enter_trades: 36e0f05ce74cf1e3cbcbe04022d1b3d276b43c7656d7347427fa359f5d032865
+  intra_stop_fit_trades: f3a282aa864c36f0a7c383529aca0499c4615aa7d43645a89b726383daffcb55
+  intra_check_stop_trades: 3ce21d8fd072e2d010f09fe8da31bee1552a1b5addbd66ff7d30c98ae57e0211
+  intra_exit_fit_trades: 238cfdbdcdba7d4df5eb9cf406a9d9c8a7ad2c57b1ee5d82cd66e3c82bc95a2b
+  intra_check_exit_trades: ed1e617b1046e46cd75776c1b505a1946342f1e73a07f6f2d71bb55f8286e200
+  exits_study: a95d323b106e81cfd6c7ddd5dc112773951fa119754dbc62ece88bb1852eb783
+  intra_doc_body: 6c3741e48788c1fab6664a366e86980c9e10b74a07aa63c6190577b773668bc3
+  mix_module: 75c832541cef5e0abf2476a6484f37b857ab191284672914666996669d7bf300
+  mix_tests: 1af37fcb01c7b6003f94da39f1214e1fed17accdf2b1106f71339b12008a7a8f
+  mix_dryrun_printout: 3e3d27736dd788c1df75684ea45089564e19b3b13d353fecc3df57e0661bd2e0
+  mix_ledger: 7a1984fb81194fd606b5b70256ccf273b6bb689bdda7b0b954b90802819b73ec
+  mix_doc_body_freeze: 6a2512024c5f2ed562469919d5e733dd48ba36a4d6bde0045f2d9e7f071985fd
+  mix_doc_body: 6a2512024c5f2ed562469919d5e733dd48ba36a4d6bde0045f2d9e7f071985fd
+  mix_doc: 1940439e99fb84261657db519ce07379d766dac2919a3a3bc652e9e0b57bfd45
+  mix_frozen_module: 75c832541cef5e0abf2476a6484f37b857ab191284672914666996669d7bf300
+  mix_tag_printout: b83cc6fb6b1c29224ef44fdd499c0992d59069c8bf9a4ece41a34031eec82129
+  mix_recount_tag: aa8957943bf3401f38001f2250bb93100d9be25e412e11988712b0fa20e646bf
+  mix_tags_enter: 877affc1164ac1d8ce0cd6942f4066dda33c462ed616ca4a037889dcc301a735
+  mix_tags_stop: 308749c7448e75738dde59d07a4930347c8502673894382e2ad4ea8f51de70ce
+  mix_tags_exit: 2d6db0b5d355e1ba89978a9b694e9e0d9e44d82a9ce2efd15fe42daca34a0a21
+  mix_control_windows: e6900a2efa4dddae39b4049e856c3ac7a26aa2ddb7c5357bfe4a5d0039835643
+  ctx_module: be361a83988a8e8b9cc8a08b15187bd52cc336d2c8a26b3774afc9843eb89772
+  ctx_tests: bff96c0b3226a0e3c1e057b64a294c73f319b401d312d798ecce2ad054c2484e
+  doc_body_freeze: 8d2df4bef3bebdbea5354128f0ca56a4ab4c66fc2e09b3f67467e591cd4e945a
+  doc_body: 8d2df4bef3bebdbea5354128f0ca56a4ab4c66fc2e09b3f67467e591cd4e945a
+- freeze record: NOT YET under the freeze marker line: 114 pins
+
+## RESULT: 34 claims, 34 OK, 0 MISMATCH; 2 notes
+
+DRY RUN COMPLETE: every count reproduced; contexts from decision-time views only; no rule fired, no bucket read, no map scored.

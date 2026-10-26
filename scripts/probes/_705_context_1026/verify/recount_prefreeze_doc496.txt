@@ -1,0 +1,314 @@
+# #705 CONTEXT-RULES registration: independent pre-freeze recount (OUTCOME-FREE: timeline TSV, tag-file labels / offsets / bucket tallies, printout lines)
+# registration: docs/analysis/cb_context_rules_prereg_2026-10-26.md (not edited); no frozen module imported or run (read as text + sha only)
+
+- inputs: doc 496 lines; tag printout 889 lines; entries 1,874 rows; tags_enter 404 / tags_stop 837 / tags_exit 837 rows; notes 2606 lines
+- every buy day in the three tag files <= 2024-12-31: asserted (max 2023-12-14)
+
+## 0. The labels the doc's populations rest on (dated = the timeline's setup in breakout / EP / both; era by buy day)
+[L91] tags_enter: rows where `dated` disagrees with setup in {breakout, EP, both} | doc 0 | mine 0 | OK
+[L91] tags_stop: rows where `dated` disagrees with setup in {breakout, EP, both} | doc 0 | mine 0 | OK
+[L91] tags_exit: rows where `dated` disagrees with setup in {breakout, EP, both} | doc 0 | mine 0 | OK
+[L352] tags_stop: rows where era A != (buy day <= 2022-03-31) | doc 0 | mine 0 | OK | era A 804 / B 33
+[L352] tags_exit: rows where era A != (buy day <= 2022-03-31) | doc 0 | mine 0 | OK | era A 804 / B 33
+[L91] tag files' `setup` ∈ {breakout, EP, both} <=> dated: values seen among dated rows | doc breakout / EP / both | mine breakout / EP / both | OK
+
+## 1. §2 table: the scorable sets recounted from the tag files; the cited printout line's `n scorable` re-read
+[L94] §2 table: data rows parsed from the doc | doc 10 | mine 10 | OK
+[L96] ENTER 2020: n scorable (dated + undated) | doc 88 (31 + 57) | mine 88 (31 + 57) | OK
+[L96] ENTER 2020: setup within dated (breakout / EP / both) | doc 26 / 3 / 2 | mine 26 / 3 / 2 | OK
+[L96] ENTER 2020: printout l.47 header `n scorable` | doc 88 | mine 88 | OK | decision ENTER — block 2020 (n scorable 88; no record or no_minutes among the ta
+[L97] ENTER 2021-22: n scorable (dated + undated) | doc 60 (20 + 40) | mine 60 (20 + 40) | OK
+[L97] ENTER 2021-22: setup within dated (breakout / EP / both) | doc 15 / 4 / 1 | mine 15 / 4 / 1 | OK
+[L97] ENTER 2021-22: printout l.143 header `n scorable` | doc 60 | mine 60 | OK | decision ENTER — block 2021-22 (n scorable 60; no record or no_minutes among the
+[L98] ENTER untouched: n scorable (dated + undated) | doc 9 (0 + 9) | mine 9 (0 + 9) | OK
+[L98] ENTER untouched: printout l.239 header `n scorable` | doc 9 | mine 9 | OK | decision ENTER — block untouched (n scorable 9; no record or no_minutes among th
+[L99] ENTER beside: undated flickers 2020 / 2021-22 / untouched (flicker & not dated) | doc [30, 19, 7] | mine [30, 19, 7] | OK
+[L99] ENTER beside 2020: printout line 95 header 'n scorable' | doc 30 | mine 30 | OK | decision ENTER — block 2020 / flickers (beside) (n scorable 30; beside
+[L99] ENTER beside 2021-22: printout line 191 header 'n scorable' | doc 19 | mine 19 | OK | decision ENTER — block 2021-22 / flickers (beside) (n scorable 19; bes
+[L99] ENTER beside untouched: printout line 255 header 'n scorable' | doc 7 | mine 7 | OK | decision ENTER — block untouched / flickers (beside) (n scorable 7; be
+[L100] STOP 2020: n scorable (dated + undated) | doc 139 (48 + 91) | mine 139 (48 + 91) | OK
+[L100] STOP 2020: setup within dated (breakout / EP / both) | doc 39 / 6 / 3 | mine 39 / 6 / 3 | OK
+[L100] STOP 2020: printout l.285 header `n scorable` | doc 139 | mine 139 | OK | decision STOP — block 2020 (n scorable 139; composition: cut_before_window 1, no
+[L101] STOP 2021-22: n scorable (dated + undated) | doc 116 (40 + 76) | mine 116 (40 + 76) | OK
+[L101] STOP 2021-22: setup within dated (breakout / EP / both) | doc 32 / 8 / 0 | mine 32 / 8 / 0 | OK
+[L101] STOP 2021-22: printout l.362 header `n scorable` | doc 116 | mine 116 | OK | decision STOP — block 2021-22 (n scorable 116; composition: cut_before_window 1,
+[L102] STOP untouched: n scorable (dated + undated) | doc 12 (4 + 8) | mine 12 (4 + 8) | OK
+[L102] STOP untouched: setup within dated (breakout / EP / both) | doc 3 / 1 / 0 | mine 3 / 1 / 0 | OK
+[L102] STOP untouched: printout l.439 header `n scorable` | doc 12 | mine 12 | OK | decision STOP — block untouched (n scorable 12; composition: no_room in (a) 28, 
+[L103] EXIT 2020: n scorable (dated + undated) | doc 333 (122 + 211) | mine 333 (122 + 211) | OK
+[L103] EXIT 2020: setup within dated (breakout / EP / both) | doc 103 / 13 / 6 | mine 103 / 13 / 6 | OK
+[L103] EXIT 2020: printout l.540 header `n scorable` | doc 333 | mine 333 | OK | decision EXIT — block 2020 (n scorable 333; composition: cut_before_window 1, no
+[L104] EXIT 2021-22: n scorable (dated + undated) | doc 229 (79 + 150) | mine 229 (79 + 150) | OK
+[L104] EXIT 2021-22: setup within dated (breakout / EP / both) | doc 62 / 16 / 1 | mine 62 / 16 / 1 | OK
+[L104] EXIT 2021-22: printout l.650 header `n scorable` | doc 229 | mine 229 | OK | decision EXIT — block 2021-22 (n scorable 229; composition: cut_before_window 1,
+[L105] EXIT untouched: n scorable (dated + undated) | doc 44 (16 + 28) | mine 44 (16 + 28) | OK
+[L105] EXIT untouched: setup within dated (breakout / EP / both) | doc 9 / 7 / 0 | mine 9 / 7 / 0 | OK
+[L105] EXIT untouched: printout l.760 header `n scorable` | doc 44 | mine 44 | OK | decision EXIT — block untouched (n scorable 44; composition: no_room in (a) 28, 
+[L--] ENTER 2020 dated: printout sub-block header (l.63) `n scorable` vs tag-file count | doc 31 | mine 31 | OK
+[L--] ENTER 2020 undated: printout sub-block header (l.79) `n scorable` vs tag-file count | doc 57 | mine 57 | OK
+[L--] ENTER 2021-22 dated: printout sub-block header (l.175) `n scorable` vs tag-file count | doc 20 | mine 20 | OK
+[L--] ENTER 2021-22 undated: printout sub-block header (l.159) `n scorable` vs tag-file count | doc 40 | mine 40 | OK
+[L--] ENTER untouched dated: no sub-block header printed; tag-file count | doc n/a | mine 0 | NOTE
+[L--] ENTER untouched undated: no sub-block header printed; tag-file count | doc n/a | mine 9 | NOTE
+[L--] STOP 2020 dated: printout sub-block header (l.312) `n scorable` vs tag-file count | doc 48 | mine 48 | OK
+[L--] STOP 2020 undated: printout sub-block header (l.337) `n scorable` vs tag-file count | doc 91 | mine 91 | OK
+[L--] STOP 2021-22 dated: printout sub-block header (l.389) `n scorable` vs tag-file count | doc 40 | mine 40 | OK
+[L--] STOP 2021-22 undated: printout sub-block header (l.414) `n scorable` vs tag-file count | doc 76 | mine 76 | OK
+[L--] STOP untouched dated: printout sub-block header (l.466) `n scorable` vs tag-file count | doc 4 | mine 4 | OK
+[L--] STOP untouched undated: printout sub-block header (l.491) `n scorable` vs tag-file count | doc 8 | mine 8 | OK
+[L--] EXIT 2020 dated: printout sub-block header (l.563) `n scorable` vs tag-file count | doc 122 | mine 122 | OK
+[L--] EXIT 2020 undated: printout sub-block header (l.584) `n scorable` vs tag-file count | doc 211 | mine 211 | OK
+[L--] EXIT 2021-22 dated: printout sub-block header (l.673) `n scorable` vs tag-file count | doc 79 | mine 79 | OK
+[L--] EXIT 2021-22 undated: printout sub-block header (l.694) `n scorable` vs tag-file count | doc 150 | mine 150 | OK
+[L--] EXIT untouched dated: printout sub-block header (l.783) `n scorable` vs tag-file count | doc 16 | mine 16 | OK
+[L--] EXIT untouched undated: printout sub-block header (l.804) `n scorable` vs tag-file count | doc 28 | mine 28 | OK
+[L16] header: printout l.312 is the STOP sub-block named | doc STOP — block 2020 / dated | mine STOP — block 2020 / dated | OK
+[L16] header: printout l.337 is the STOP sub-block named | doc STOP — block 2020 / undated | mine STOP — block 2020 / undated | OK
+[L16] header: printout l.389 is the STOP sub-block named | doc STOP — block 2021-22 / dated | mine STOP — block 2021-22 / dated | OK
+[L16] header: printout l.414 is the STOP sub-block named | doc STOP — block 2021-22 / undated | mine STOP — block 2021-22 / undated | OK
+
+## 1b. §2 notes: no_room counts, the EP-too-small line, the floors
+[L109] no_room trades in control (a): EXIT 2020 / 2021-22 / untouched | doc 97 / 92 / 28 | mine 97 / 92 / 28 | OK
+[L109] no_room trades in control (a): STOP losers 2020 / 2021-22 / untouched | doc 56 / 57 / 14 | mine 56 / 57 / 14 | OK
+[L109] printout l.285 2020: 'no_room in (a)' / 'no_room trades beside' (STOP header) | doc 97 / 56 | mine 97 / 56 | OK
+[L109] printout l.362 2021-22: 'no_room in (a)' / 'no_room trades beside' (STOP header) | doc 92 / 57 | mine 92 / 57 | OK
+[L109] printout l.439 untouched: 'no_room in (a)' / 'no_room trades beside' (STOP header) | doc 28 / 14 | mine 28 / 14 | OK
+[L109] printout l.540 2020: EXIT header 'no_room in (a)' | doc 97 | mine 97 | OK
+[L109] printout l.650 2021-22: EXIT header 'no_room in (a)' | doc 92 | mine 92 | OK
+[L109] printout l.760 untouched: EXIT header 'no_room in (a)' | doc 28 | mine 28 | OK
+[L111] EP (EP + both) among 2020 dated ENTER windows / dated exits | doc 5 of 31 / 19 of 122 | mine 5 of 31 / 19 of 122 | OK
+[L219] m = max(15, ceil(0.10 × n_2020)) with n_2020 from the tag files | doc ENTER 15, STOP 15, EXIT 34 | mine ENTER 15, STOP 15, EXIT 34 | OK
+[L111] both EP counts are under the leaf floors (5 < 15 ENTER; 19 < 34 EXIT) | doc yes | mine yes | OK
+
+## 2. §5c: candidate splits, tree counts (derived by enumerating the §5b tree grammar, not the formula), libraries, tiers
+[L222] candidate splits ENTER / STOP / EXIT (cut candidates summed per context, from the §3 tables) | doc 5 / 7 / 8 | mine 5 / 7 / 8 | OK
+[L223] trees before the floor (enumerated): ENTER / STOP / EXIT | doc 181 / 449 / 649 | mine 181 / 449 / 649 | OK
+[L223] closed form 1 + s + s·((s+1)² − 1) at s = 5 / 7 / 8 | doc 181 / 449 / 649 | mine 181 / 449 / 649 | OK
+[L222] cut candidates per context, parsed from the doc's own §3 tables (the 'cut candidates' column) | doc {'C-E1': 2, 'C-E2': 1, 'C-E3': 1, 'C-E4': 1, 'C-S1': 3, 'C-S2': 2, 'C-S3': 1, 'C-S4': 1, 'C-X1': 2, 'C-X2': 2, 'C-X3': 2, 'C-X4': 1, 'C-X5': 1} | mine {'C-E1': 2, 'C-E2': 1, 'C-E3': 1, 'C-E4': 1, 'C-S1': 3, 'C-S2': 2, 'C-S3': 1, 'C-S4': 1, 'C-X1': 2, 'C-X2': 2, 'C-X3': 2, 'C-X4': 1, 'C-X5': 1} | OK
+[L214] library sizes ENTER / STOP / EXIT (frozen module text) | doc 7 / 15 / 12 | mine 7 / 15 / 12 | OK
+[L214] ENTER library order | doc L1, L8, L2, L7, L3, L9, L4 | mine L1, L8, L2, L7, L3, L9, L4 | OK
+[L214] STOP library order (doc: 'S1-T … S4-C') | doc S1-T … S4-C | mine S1-T … S4-C | OK
+[L214] EXIT library order | doc M-1, M-2, M-3, M-4, M-5, M-9, M-6, M-2s, M-11, M-7, M-8, M-10 | mine M-1, M-2, M-3, M-4, M-5, M-9, M-6, M-2s, M-11, M-7, M-8, M-10 | OK
+[L270] k-level draws: k = 15 STOP / 12 EXIT = the library sizes | doc 15 / 12 | mine 15 / 12 | OK
+[L235] tier-1 ENTER rules (MAP-T1) | doc L1, L8, L2, L7, L3 | mine L1, L8, L2, L7, L3 | OK
+[L235] tier-1 EXIT rules (MAP-T1) | doc M-1, M-2, M-3, M-4, M-5, M-9, M-6, M-2s, M-11 | mine M-1, M-2, M-3, M-4, M-5, M-9, M-6, M-2s, M-11 | OK
+[L236] tier-1 STOP cells | doc S1-T (1) | mine S1-T (1) | OK
+[L253] frozen rule-mix module defines `SEED = fz.SEED` | doc present | mine present | OK
+[L253] frozen rule-mix module defines `DRAWS = 200` | doc present | mine present | OK
+[L253] frozen rule-mix module defines `K_KEY = "mix|rprice|{eid}|{d}|{i}"` | doc present | mine present | OK
+[L253] frozen rule-mix module defines `SHARED_KEY = "mix|bracket|{eid}|{d}"` | doc present | mine present | OK
+[L253] frozen rule-mix module defines `RLEVEL_KEY = "mix|rlevel|{eid}|{d}"` | doc present | mine present | OK
+[L253] frozen rule-mix module defines `RLEVEL_K_KEY = "mix|rlevel|{eid}|{d}|{i}"` | doc present | mine present | OK
+[L253] frozen intraday module: SEED = 702 and rng_for(key, seed=SEED) | doc 702 | mine 702 | OK
+[L374] frozen rule-mix module defines `bucket` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `bucket_vec` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `random_windows` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `random_level_draws` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `touch_path` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `touch_buckets_vec` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `enter_one` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `exit_fires` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `stop_fire` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `mix_pins` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `tag_lock` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `mix_stage_outputs` | doc present | mine present | OK
+[L374] frozen rule-mix module defines `mix_dry_run_complete` | doc present | mine present | OK
+[L374] frozen rule-mix module defines the path default `DOC` | doc present | mine present | OK
+[L374] frozen rule-mix module defines the path default `P_DRY` | doc present | mine present | OK
+[L374] frozen rule-mix module defines the path default `LEDGER` | doc present | mine present | OK
+[L374] frozen rule-mix module defines the path default `OUT_DIR` | doc present | mine present | OK
+[L381] frozen intraday module defines `rng_for` | doc present | mine present | OK
+[L381] frozen intraday module defines `fnum` | doc present | mine present | OK
+[L381] frozen intraday module defines `smas_for` | doc present | mine present | OK
+[L381] frozen intraday module defines `range_verdict` | doc present | mine present | OK
+[L381] frozen intraday module defines `IdCache` | doc present | mine present | OK
+[L380] frozen rule-mix module defines `class Fire` | doc present | mine present | OK
+[L122] frozen reverse module defines `adr20_at(bars, p, b)` (the doc: rev.adr20_at(bars, e − 1, b)) | doc present | mine present | OK
+
+## 3. §0 / §9 / §11 G2: standalone shares, BEST, UNION recounted from the tag files' bucket columns and the printout lines
+[L334] ENTER 2020: L1 standalone share (tag file EXPLAINS ÷ n) | doc 36.4% | mine 36.4% | OK | 32 / 88
+[L334] ENTER 2021-22: L1 standalone share (tag file EXPLAINS ÷ n) | doc 43.3% | mine 43.3% | OK | 26 / 60
+[L334] STOP 2020: S1-T standalone share (tag file EXPLAINS ÷ n) | doc 45.3% | mine 45.3% | OK | 63 / 139
+[L334] STOP 2021-22: S1-T standalone share (tag file EXPLAINS ÷ n) | doc 44.8% | mine 44.8% | OK | 52 / 116
+[L334] EXIT 2020: M-8 standalone share (tag file EXPLAINS ÷ n) | doc 30.9% | mine 30.9% | OK | 103 / 333
+[L334] EXIT 2021-22: M-8 standalone share (tag file EXPLAINS ÷ n) | doc 27.9% | mine 27.9% | OK | 64 / 229
+[L334] ENTER 2020: BEST single rule = argmax of standalone EXPLAINS (ties -> library order) | doc L1 | mine L1 | OK
+[L334] STOP 2020: BEST single rule = argmax of standalone EXPLAINS (ties -> library order) | doc S1-T | mine S1-T | OK
+[L334] EXIT 2020: BEST single rule = argmax of standalone EXPLAINS (ties -> library order) | doc M-8 | mine M-8 | OK
+[L334] ENTER 2021-22: the 2020-chosen L1 is also the block's own best (argmax) | doc L1 | mine L1 | OK
+[L334] STOP 2021-22: the 2020-chosen S1-T is also the block's own best (argmax) | doc S1-T | mine S1-T | OK
+[L335] EXIT 2021-22: ORACLE-1 (the block's own argmax) = M-2 at 28.4%; the 2020-chosen M-8 sits at 27.9% | doc M-2 28.4% / M-8 27.9% | mine M-2 28.4% / M-8 27.9% | OK
+[L334] printout l.50 is the L1 row; its standalone cell = tag-file share | doc 36.4% | mine 36.4% | OK | row 'L1', cell '36.4% (32)'
+[L334] printout l.146 is the L1 row; its standalone cell = tag-file share | doc 43.3% | mine 43.3% | OK | row 'L1', cell '43.3% (26)'
+[L334] printout l.289 is the S1-T row; its standalone cell = tag-file share | doc 45.3% | mine 45.3% | OK | row 'S1-T', cell '45.3% (63)'
+[L334] printout l.366 is the S1-T row; its standalone cell = tag-file share | doc 44.8% | mine 44.8% | OK | row 'S1-T', cell '44.8% (52)'
+[L334] printout l.554 is the M-8 row; its standalone cell = tag-file share | doc 30.9% | mine 30.9% | OK | row 'M-8', cell '30.9% (103)'
+[L334] printout l.664 is the M-8 row; its standalone cell = tag-file share | doc 27.9% | mine 27.9% | OK | row 'M-8', cell '27.9% (64)'
+[L334] printout l.655 is the M-2 row; its standalone cell = tag-file share | doc 28.4% | mine 28.4% | OK | row 'M-2', cell '28.4% (65)'
+[L334] ENTER 2020: UNION (1 - discretion) from the tag file vs printout l.58 | doc 56.8% | mine 56.8% | OK | printout: 56.8%
+[L334] printout l.58 UNION value | doc 56.8% | mine 56.8% | OK
+[L334] ENTER 2021-22: UNION (1 - discretion) from the tag file vs printout l.154 | doc 66.7% | mine 66.7% | OK | printout: 66.7%
+[L334] printout l.154 UNION value | doc 66.7% | mine 66.7% | OK
+[L334] STOP 2020: UNION (1 - discretion) from the tag file vs printout l.305 | doc 54.0% | mine 54.0% | OK | printout: 54.0%
+[L334] printout l.305 UNION value | doc 54.0% | mine 54.0% | OK
+[L334] STOP 2021-22: UNION (1 - discretion) from the tag file vs printout l.382 | doc 57.8% | mine 57.8% | OK | printout: 57.8%
+[L334] printout l.382 UNION value | doc 57.8% | mine 57.8% | OK
+[L334] EXIT 2020: UNION (1 - discretion) from the tag file vs printout l.557 | doc 71.5% | mine 71.5% | OK | printout: 71.5%
+[L334] printout l.557 UNION value | doc 71.5% | mine 71.5% | OK
+[L334] EXIT 2021-22: UNION (1 - discretion) from the tag file vs printout l.667 | doc 72.9% | mine 72.9% | OK | printout: 72.9%
+[L334] printout l.667 UNION value | doc 72.9% | mine 72.9% | OK
+[L40] §0 ENTER: union vs random prices (printout l.281) | doc 56.8 / 66.7 vs 49.9 / 52.0 | mine 56.8 / 66.7 vs 49.9 / 52.0 | OK
+[L40] §0 STOP: union vs random-level line (printout l.534) | doc 54.0 / 57.8 vs 61.9 / 64.7 | mine 54.0 / 57.8 vs 61.9 / 64.7 | OK
+[L40] §0 EXIT: union vs random sell windows (printout l.885) | doc 71.5 / 72.9 vs 69.8 / 70.9 | mine 71.5 / 72.9 vs 69.8 / 70.9 | OK
+[L42] §0 header: the lines are 'under' for STOP on both blocks | doc 54.0 < 61.9 and 57.8 < 64.7 | mine 54.0 < 61.9 and 57.8 < 64.7 | OK
+[L334] §9 room over BEST at ±0 on 2020: UNION − BEST for ENTER / STOP / EXIT (doc: about 20 / 9 / 41 points) | doc 20 / 9 / 41 | mine 20 / 9 / 41 | OK | 20.4 / 8.7 / 40.6
+[L345] §9 EXIT union over control (a) 'without frames' at ±0: 2020 / 2021-22 (printout l.557 / l.667) | doc 1.7 / 2.0 | mine 1.7 / 2.0 | OK | UNION minus control (a) 'without frames' (the larger arm), printout l.557 / l.667
+[L71] §1c: ENTER 2020 k-price union chance, dated l.74 / undated l.90 | doc 59.9% / 44.5% | mine 59.9% / 44.5% | OK
+[L71] §1c: STOP 2020 random-level union chance, dated l.332 / undated l.357 | doc 75.1% / 55.0% | mine 75.1% / 55.0% | OK
+[L274] §6c: per-rule k-price floor (L1) 2020 dated l.75 / undated l.91 | doc 23.6% / 19.5% | mine 23.6% / 19.5% | OK
+[L338] §9: L1 random-price chance 2020 l.50 / 2021-22 l.146 | doc 20.8% / 30.9% | mine 20.8% / 30.9% | OK
+[L402] §11 G5: L1 k-price standalone (l.59) / shared-window chance (l.50, 'shifted per level / shared window' second value) | doc 21.0% / 3.1% | mine 21.0% / 3.1% | OK
+[L402] §11 G5: S1-T control (a) frames / no frames, and the random-level floor (l.289) | doc 30.0% / 31.5% and 40.4% | mine 30.0% / 31.5% and 40.4% | OK
+[L403] §11 G5: M-8 control (a) frames / no frames, and the random-level floor (l.554) | doc 28.7% / 28.7% and 23.6% | mine 28.7% / 28.7% and 23.6% | OK
+[L402] §11 G5: 'and the same rows on 2021-22' - the 2021-22 S1-T / M-8 / L1 rows exist at l.366 / l.664 / l.146 | doc present | mine present | OK
+[L99] §2: pre-market-flat windows: UNION at printout l.122 / l.138 (doc: 100%) | doc 100% / 100% | mine 100% / 100% | OK
+[L152] §3b: fill_orh5_too_wide at printout l.9 | doc 43 | mine 43 | OK
+[L152] §3b: tag file `fill_src` = orh5_too_wide over all STOP records (the printout's fill_orh5_too_wide) / all of them on dated rows | doc 43 / all dated | mine 43 / all dated | OK
+[L152] §3b: fill sources add to the 837 records (orh5 + too_wide + close_proxy + open) and match printout l.9 (219 / 43 / 23 / 552) | doc 219 / 43 / 23 / 552 = 837 | mine 219 / 43 / 23 / 552 = 837 | OK
+[L72] §1c / §3b: fill source by dated: dated rows -> orh5 / orh5_too_wide / close_proxy only; undated rows -> open only | doc dated {close_proxy, orh5, orh5_too_wide}; undated {open} | mine dated {close_proxy, orh5, orh5_too_wide}; undated {open} | OK
+[L11] tags_enter columns the header paragraph names (block, dated, flicker, tagged, buy-day clocks) | doc all present | mine all present | OK
+[L11] tags_stop / tags_exit columns the header paragraph names (block, dated, status, room, loser, exit_lo_j, exit_hi_j) | doc all present | mine all present | OK
+[L354] §10: INTRA log rows at printout l.8 | doc 19,470 | mine 19,470 | OK
+[L201] §4b / §13 Q1: random price hit-or-ballpark on the 41 undated 2021-22 windows (printout l.24) | doc 85.9% on 41 | mine 85.9% on 41 | OK
+[L201] §4b: 01_rev_check.txt carries the control hit-or-ballpark 85.9% | doc 85.9% | mine 85.9% | OK
+
+## 4. §1f / §4a / §1h / §9: sell-window widths, exit_lo_j, bracket widths, buy dates (labels and offsets only)
+[L185] one-session sell windows, EXIT 2020 / 2021-22 | doc 231 of 333 / 165 of 229 | mine 231 of 333 / 165 of 229 | OK
+[L185] one-session sell windows, STOP 2020 / 2021-22 | doc 108 of 139 / 80 of 116 | mine 108 of 139 / 80 of 116 | OK
+[L79] §1f: exit_lo_j median / quartiles (EXIT 2020 scorable) | doc 3 / 1-9 | mine 3 / 1-9 | OK
+[L79] §1f: exit_lo_j median / quartiles (EXIT, all three blocks - the doc does not name the base) | doc 3 / 1-9 | mine 3 / 1-9 | NOTE | same on both bases; EXIT 2021-22 alone is 3 / 1-8
+[L191] §4a: 'median window start at session 4' = exit_lo_j 3 with the buy day = session 1 (offset 0) | doc session 4 | mine session 4 | OK
+[L203] §4b: in-session NON-FLICKER bracket median minutes, 2020 / 2021-22 | doc 27 / 46 | mine 27 / 46 | OK | n 81 / 53
+[L84] §1h: same sentence read on the ENTER SCORABLE set (the map's set; includes the dated flickers), 2020 / 2021-22 | doc 27 / 46 | mine 26.5 / 42 | NOTE | §1h gives no base; §4b says non-flicker windows and that base matches; on the scorable set the medians are as shown (n 88 / 60)
+[L341] §9: 2020 scorable ENTER buys dated Feb-May | doc 30 of 88 | mine 30 of 88 | OK
+[L341] §9: first / last 2020 scorable ENTER buy dates (for the Feb-May proxy) | doc info | mine 2020-02-04 / 2020-12-30 | NOTE
+[L82] §1g: a 10-point margin on n = 60 | doc 6 trades | mine 6 trades | OK
+[L82] §1g: 'about one standard error' - the printed L1 2021-22 interval [30.8%, 55.9%] (n 60) gives SE (points) / SE (trades) / margin in SEs | doc ~1 SE | mine 6.4 pts / 3.8 trades / 1.56 SE | NOTE | one proportion's SE; a paired MAP-vs-BEST difference has its own SE that depends on how many trades the two disagree on (not countable before the run)
+
+## 5. his words: each quoted string at the cited notes lines
+[L4] notes l.2604 holds, and the doc quotes verbatim: we're not looking for 100% coverage, trading is an art, so some … | doc present | mine present | OK
+[L4] notes l.2606 holds, and the doc quotes verbatim: a small set of rules, each applied in a CONTEXT | doc present | mine present | OK
+[L4] notes l.2606 holds, and the doc quotes verbatim: matched closely rather than exactly | doc present | mine present | OK
+[L4] notes l.2606 holds, and the doc quotes verbatim: how much closer to his trades that gets than one rule for all; t… | doc present | mine present | OK
+[L22] notes l.2046-2047 holds, and the doc quotes verbatim: trail rest at break of 10 or 20d, I recall he mentioned 10d for … | doc present | mine present | OK
+[L23] notes l.2095-2096 holds, and the doc quotes verbatim: trailed with the 10- or the 20-day moving average. Depends on ho… | doc present | mine present | OK
+[L24] notes l.2054-2055 holds, and the doc quotes verbatim: what makes a stock "faster" (e.g. its ADR), and how "how far the… | doc present | mine present | OK
+[L26] notes l.1699-1700 holds, and the doc quotes verbatim: Paraphrased with short quotes | doc present | mine present | OK
+[L27] notes l.1712-1713 holds, and the doc quotes verbatim: if opening volume is large enough, buy a move above the high of … | doc present | mine present | OK
+[L28] notes l.1735-1736 holds, and the doc quotes verbatim: the first 1-hour bar when volume needs confirming | doc present | mine present | OK
+[L28] notes l.1941-1942 holds, and the doc quotes verbatim: The opening range highs can be the highs of the first 1-minute c… | doc present | mine present | OK
+[L30] notes l.2091-2092 holds, and the doc quotes verbatim: just look at the daily chart and enter when the stock is startin… | doc present | mine present | OK
+[L31] notes l.1943 holds, and the doc quotes verbatim: Stop is always lows of the day and stop should not be wider than… | doc present | mine present | OK
+[L32] notes l.2481 holds, and the doc quotes verbatim: Better phrasing should be uptrend vs downtrend instead of bull/b… | doc present | mine present | OK
+[L33] notes l.1948 holds, and the doc quotes verbatim: In a bullish market it is very common to get moves that are 10-2… | doc present | mine present | OK
+[L34] notes l.1714 holds, and the doc quotes verbatim: Hold for weeks or months | doc present | mine present | OK
+[L149] notes l.1713 holds, and the doc quotes verbatim: Stop: the low of the day | doc present | mine present | OK
+[L35] notes l.1732 holds, and the doc quotes verbatim: hold three to five days | doc present | mine present | OK
+[L160] notes l.2046-2047 holds, and the doc quotes verbatim: 10d for faster stocks and 20d for slower stocks | doc present | mine present | OK
+[L240] notes l.2090 holds, and the doc quotes verbatim: the first candle is always only 30 minutes, 9.30-10 AM | doc present | mine present | OK | the doc paraphrases here (no verbatim check on the doc side)
+[L32] notes: the l.2481 ruling sits under a heading dated 2026-10-22 (the doc: 'his 10-22 ruling') | doc 2026-10-22 | mine 2026-10-22 | OK
+[L36] notes: the 'defect in OUR implementation' rule is dated 2026-10-23 | doc 2026-10-23 | mine 2026-10-23 | OK
+[L28] notes: the section holding l.1941-1942 says its quotes are the article's words | doc article | mine article | OK
+[L35] notes: l.1727-1732 is the Momentum burst bullet block | doc Momentum burst | mine Momentum burst | OK
+[L3] notes: the quoted words are at l.2604 and the Method line at l.2606 (found by search) | doc 2604 / 2606 | mine 2604 / 2606 | OK
+[L136] 03_market_trend_split.py l.1-3: SPY 50-day vs 10 sessions earlier; era-A data file is cb702_pre/ (not cb702_pre_v2/) | doc present | mine present | OK
+
+## 6. §10 / §11: pins, files, data gate, repo references
+[L372] frozen rule-mix module sha256 prefix | doc 75c832541cef | mine 75c832541cef | OK
+[L376] frozen intraday module sha256 prefix | doc ac598fc58aae | mine ac598fc58aae | OK
+[L373] rule-mix pins: doc_body prefix | doc 6a2512024c5f | mine 6a2512024c5f | OK
+[L373] rule-mix freeze_bodies holds a body whose sha256 starts 6a2512024c5f | doc yes | mine yes | OK | ['doc_body_6a2512024c5f2ed562469919d5e733dd48ba36a4d6bde0045f2d9e7f071985fd.md']
+[L354] fetch list rows (pairs) | doc 19470 | mine 19470 | OK
+[L358] export_A / export_B files exist | doc yes / yes | mine yes / yes | OK
+[L360] 01_replay.py: `def load_daily_subset` and `spy = tid["SPY"]` (the calendar is built from SPY's rows) | doc present | mine present | OK
+[L406] rule-mix §9 guard paragraph: numbered guards | doc 12 (1..12) | mine 12 (1..12) | OK
+[L195] frozen rule-mix module R15 = 'window controls in two modes, chance line the LARGER' | doc present | mine present | OK
+[L--] frozen rule-mix module R17 / R9 / R12 exist (R9 / R12 / R17 are cited by the module only) | doc present | mine present | OK
+[L200] reverse registration §6c: BALLPARK = within 0.25 ADR20 of the nearer edge | doc 0.25 ADR20 | mine 0.25 ADR20 | OK
+[L201] intraday registration §5b exists and names HIT / BALLPARK | doc present | mine present | OK
+[L66] rule-mix doc: 'one to two sessions before the last share left on 07-13 / 07-14' | doc present | mine present | OK
+[L66] tags_exit eid 693 (FSLY): E / exit_lo_j / exit_hi_j | doc 2020-06-29 / 9 / 10 | mine 2020-06-29 / 9 / 10 | OK
+[L66] sessions from 07-10 to 07-13 / 07-14 on the era-A calendar | doc 1 / 2 | mine 1 / 2 | OK
+[L189] §4a: 'FSLY's last share left two sessions after M-1's half' and ±1 'does not absorb' it - offsets: the half (07-10) vs the registered window [exit_lo_j, exit_hi_j] | doc two sessions; not absorbed at ±1 | mine 07-10 = +8; window [+9, +10]; half is 1 session before exit_lo_j and 2 before exit_hi_j; ±1 reaches exit_lo_j − 1 = +8 | MISMATCH | the tolerance is measured against the WINDOW's edges (§4a: booked on exit_lo − 1 reads CLOSE), so a half on 07-10 sits inside ±1 of the 07-13..07-14 window; 'two sessions' holds only to the window's END (07-14). The rule-mix doc says 'one to two sessions'
+[L456] §12 repeats 'FSLY's two-session lag' as the case ±1 misses | doc two-session lag, a miss beyond ±1 | mine one session to exit_lo_j, two to exit_hi_j (as above) | MISMATCH | same finding as §4a; one fix covers both lines
+[L107] §2 bullet: 'Losing' reused 'as it stands' (its §4b / §11 Q5) - where the rule-mix doc defines 'losing' | doc §4b / §11 Q5 | mine §11 Q5: yes; §4d ('the losing test'): yes; §4b mentions losing: no | NOTE | §4b is the scorable denominator and greedy tag; the 'losing' test is defined at §4d and decided at §11 Q5. A cite slip, not a count
+[L358] §10: `MinuteBars.v` and the loaded daily bars carry volume (consolidation_breakout.py dataclasses) | doc both | mine MinuteBars.v yes; DailyBars.v yes | OK
+[L322] agents/market_intelligence/consolidation_breakout.py defines `ARMS` / `consolidation_breakout_pp.py` exists | doc present / present | mine present / present | OK
+[L326] book_geometry_arms.py defines `_HOUR_ENTRY_ARMS` | doc present | mine present | OK
+[L327] data_gated_reviews.yaml: consolidation_breakout_forward_read threshold | doc 30 | mine 30 | OK
+
+## 7. §11 G1 / G3: the tag files' columns and the (bucket, booked_j) premise of the ±k mapping
+[L395] tags_stop: columns the G1 sentence names exist | doc all present | mine all present | OK
+[L395] tags_exit: columns the G1 sentence names exist | doc all present | mine all present | OK
+[L395] tags_enter: columns the G1 sentence names exist | doc all present | mine all present | OK
+[L395] tags_enter carries `first_j` / `booked_j` (G1 lists '(bucket, first_j, booked_j, tag, earliest_tag)' for `tags_{enter,stop,exit}.tsv`) | doc present in all three | mine ENTER has `<rule>_cross` and `<rule>_bucket`, no first_j / booked_j | NOTE | STOP / EXIT have bucket, first_j, booked_j, first_minute; ENTER has bucket and cross
+[L378] tag files' columns containing 'flag' / 'frame' / 'missing' / 'no_bar' | doc none | mine none | OK
+[L398] G3 premise on the tag files: EXPLAINS booked outside the window / MISS-EARLY booked not before it / NEITHER booked before or inside it (cells of STOP + EXIT, all blocks) | doc 0 / 0 / 0 | mine 0 / 0 / 0 | OK | UNRESOLVED booked: 737 before, 12 inside (the buy-day-frame / missing-session cases)
+
+## 8. §10: the minute fetch holds every buy day (fetch logs / lists only; NO bar file opened)
+[L355] ENTER 2020: scorable buy days with a minute file / empty at source / absent from every tree and the fetch | doc all present (absent 0) | mine ok 88 / empty 0 / absent 0 | OK
+[L355] ENTER 2021-22: scorable buy days with a minute file / empty at source / absent from every tree and the fetch | doc all present (absent 0) | mine ok 60 / empty 0 / absent 0 | OK
+[L355] ENTER untouched: scorable buy days with a minute file / empty at source / absent from every tree and the fetch | doc all present (absent 0) | mine ok 9 / empty 0 / absent 0 | OK
+[L355] STOP 2020: scorable buy days with a minute file / empty at source / absent from every tree and the fetch | doc all present (absent 0) | mine ok 139 / empty 0 / absent 0 | OK
+[L355] STOP 2021-22: scorable buy days with a minute file / empty at source / absent from every tree and the fetch | doc all present (absent 0) | mine ok 116 / empty 0 / absent 0 | OK
+[L355] STOP untouched: scorable buy days with a minute file / empty at source / absent from every tree and the fetch | doc all present (absent 0) | mine ok 12 / empty 0 / absent 0 | OK
+[L355] EXIT 2020: scorable buy days with a minute file / empty at source / absent from every tree and the fetch | doc all present (absent 0) | mine ok 333 / empty 0 / absent 0 | OK
+[L355] EXIT 2021-22: scorable buy days with a minute file / empty at source / absent from every tree and the fetch | doc all present (absent 0) | mine ok 229 / empty 0 / absent 0 | OK
+[L355] EXIT untouched: scorable buy days with a minute file / empty at source / absent from every tree and the fetch | doc all present (absent 0) | mine ok 44 / empty 0 / absent 0 | OK
+
+## 9. The doc's own cross-references (a section / gate / guard named in the text exists in the text)
+[L--] cross-reference target exists: §5c | doc present | mine present | OK
+[L--] cross-reference target exists: §5e | doc present | mine present | OK
+[L--] cross-reference target exists: §6b | doc present | mine present | OK
+[L--] cross-reference target exists: §6c-1 | doc present | mine present | OK
+[L--] cross-reference target exists: §7c | doc present | mine present | OK
+[L--] cross-reference target exists: §3d | doc present | mine present | OK
+[L--] cross-reference target exists: §4b | doc present | mine present | OK
+[L--] cross-reference target exists: §1 4h | doc present | mine present | OK
+[L--] cross-reference target exists: §11 G1 | doc present | mine present | OK
+[L--] cross-reference target exists: §11 G2 | doc present | mine present | OK
+[L--] cross-reference target exists: §11 G3 | doc present | mine present | OK
+[L--] cross-reference target exists: §11 G4 | doc present | mine present | OK
+[L--] cross-reference target exists: §11 G5 | doc present | mine present | OK
+[L--] cross-reference target exists: §11 G6 | doc present | mine present | OK
+[L--] cross-reference target exists: guard D1 | doc present | mine present | OK
+[L--] cross-reference target exists: guard D2 | doc present | mine present | OK
+[L--] cross-reference target exists: guard D3 | doc present | mine present | OK
+[L--] cross-reference target exists: guard D4 | doc present | mine present | OK
+[L--] cross-reference target exists: §13 Q1 | doc present | mine present | OK
+[L--] cross-reference target exists: §13 Q2 | doc present | mine present | OK
+[L--] cross-reference target exists: §13 Q3 | doc present | mine present | OK
+[L--] cross-reference target exists: §13 Q4 | doc present | mine present | OK
+[L53] §0 says 'Four design forks'; §13 has Q1..Q4 | doc 4 | mine 4 | OK
+[L374] the module folder named in §11 vs the folder this recount lives in | doc scripts/probes/_705_context_rules_1026/ | mine scripts/probes/_705_context_1026/ | MISMATCH | §11 'Code' (and the §11 Outputs 'in the module's folder') name _705_context_rules_1026; the probes folder in use is _705_context_1026. Pick one before the freeze - the pins, ledger, dry-run path and the module scan key on the folder
+
+## Summary
+- claims: 266; OK 255; MISMATCH 3; NOTE 8; unresolved doc anchors 0
+
+## DOC-TOKEN CHECK (every number in the 'doc' column must occur within the 4 lines before / 1 after its anchor in the registration; a failure here is MY transcription, not a doc finding)
+(none)
+
+## MISMATCH lines
+[L189] §4a: 'FSLY's last share left two sessions after M-1's half' and ±1 'does not absorb' it - offsets: the half (07-10) vs the registered window [exit_lo_j, exit_hi_j] | doc two sessions; not absorbed at ±1 | mine 07-10 = +8; window [+9, +10]; half is 1 session before exit_lo_j and 2 before exit_hi_j; ±1 reaches exit_lo_j − 1 = +8 | the tolerance is measured against the WINDOW's edges (§4a: booked on exit_lo − 1 reads CLOSE), so a half on 07-10 sits inside ±1 of the 07-13..07-14 window; 'two sessions' holds only to the window's END (07-14). The rule-mix doc says 'one to two sessions'
+[L456] §12 repeats 'FSLY's two-session lag' as the case ±1 misses | doc two-session lag, a miss beyond ±1 | mine one session to exit_lo_j, two to exit_hi_j (as above) | same finding as §4a; one fix covers both lines
+[L374] the module folder named in §11 vs the folder this recount lives in | doc scripts/probes/_705_context_rules_1026/ | mine scripts/probes/_705_context_1026/ | §11 'Code' (and the §11 Outputs 'in the module's folder') name _705_context_rules_1026; the probes folder in use is _705_context_1026. Pick one before the freeze - the pins, ledger, dry-run path and the module scan key on the folder
+
+## NOTE lines
+[L--] ENTER untouched dated: no sub-block header printed; tag-file count | doc n/a | mine 0
+[L--] ENTER untouched undated: no sub-block header printed; tag-file count | doc n/a | mine 9
+[L79] §1f: exit_lo_j median / quartiles (EXIT, all three blocks - the doc does not name the base) | doc 3 / 1-9 | mine 3 / 1-9 | same on both bases; EXIT 2021-22 alone is 3 / 1-8
+[L84] §1h: same sentence read on the ENTER SCORABLE set (the map's set; includes the dated flickers), 2020 / 2021-22 | doc 27 / 46 | mine 26.5 / 42 | §1h gives no base; §4b says non-flicker windows and that base matches; on the scorable set the medians are as shown (n 88 / 60)
+[L341] §9: first / last 2020 scorable ENTER buy dates (for the Feb-May proxy) | doc info | mine 2020-02-04 / 2020-12-30
+[L82] §1g: 'about one standard error' - the printed L1 2021-22 interval [30.8%, 55.9%] (n 60) gives SE (points) / SE (trades) / margin in SEs | doc ~1 SE | mine 6.4 pts / 3.8 trades / 1.56 SE | one proportion's SE; a paired MAP-vs-BEST difference has its own SE that depends on how many trades the two disagree on (not countable before the run)
+[L107] §2 bullet: 'Losing' reused 'as it stands' (its §4b / §11 Q5) - where the rule-mix doc defines 'losing' | doc §4b / §11 Q5 | mine §11 Q5: yes; §4d ('the losing test'): yes; §4b mentions losing: no | §4b is the scorable denominator and greedy tag; the 'losing' test is defined at §4d and decided at §11 Q5. A cite slip, not a count
+[L395] tags_enter carries `first_j` / `booked_j` (G1 lists '(bucket, first_j, booked_j, tag, earliest_tag)' for `tags_{enter,stop,exit}.tsv`) | doc present in all three | mine ENTER has `<rule>_cross` and `<rule>_bucket`, no first_j / booked_j | STOP / EXIT have bucket, first_j, booked_j, first_minute; ENTER has bucket and cross
