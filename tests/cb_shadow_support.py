@@ -211,7 +211,7 @@ class FakeStore:
 
     def _open_entries(self, n_arms):
         mature = defaultdict(list)
-        for (eid, arm), x in self.exit.items():
+        for (eid, arm), x in self.exit_registered().items():       # the SQL joins `x.arm NOT IN ('A', 'pp')` (#705 (c))
             if x["mature"]:
                 mature[eid].append(arm)
         return [dict(v, mature_arms=sorted(mature[v["id"]]))
@@ -224,6 +224,27 @@ class FakeStore:
 
     async def cb_count_stale_open_entries(self, n_arms, stale_before):
         return sum(1 for v in self._open_entries(n_arms) if v["break_date"] < stale_before)
+
+    def exit_registered(self) -> dict:
+        """The exit rows of the fifteen registered `cb.ARMS` only - what the table held before #705 (c) added `pp` / `A`."""
+        from agents.market_intelligence import consolidation_breakout as cb
+        return {k: v for k, v in self.exit.items() if k[1] in cb.ARMS}
+
+    def _pp_open_entries(self, arms):
+        mature = defaultdict(list)
+        for (eid, arm), x in self.exit.items():
+            if x["mature"] and arm in arms:
+                mature[eid].append(arm)
+        return [dict(v, mature_arms=sorted(mature[v["id"]]))
+                for v in sorted(self.entry.values(), key=lambda v: (v["break_date"], v["ticker"], v["k"],
+                                                                    v["entry_variant"]))
+                if v["status"] == "filled" and v.get("day0_pp") is not None and len(mature[v["id"]]) < len(arms)]
+
+    async def cb_get_pp_open_entries(self, arms, stale_before):
+        return [v for v in self._pp_open_entries(list(arms)) if v["break_date"] >= stale_before]
+
+    async def cb_count_stale_pp_open_entries(self, arms, stale_before):
+        return sum(1 for v in self._pp_open_entries(list(arms)) if v["break_date"] < stale_before)
 
     async def cb_upsert_exit_rows(self, rows):
         for r in rows:
@@ -247,7 +268,8 @@ class FakeStore:
     NAMES = ("cb_get_calendar", "cb_get_universe_bars", "cb_get_ticker_bars", "cb_get_security_types",
              "get_unapplied_splits", "cb_get_splits_after", "cb_upsert_watch_rows", "cb_get_watch_rows",
              "cb_get_watch_poles", "cb_upsert_entry_rows", "cb_get_entry_state", "cb_get_candidate_history",
-             "cb_get_open_entries", "cb_count_stale_open_entries", "cb_upsert_exit_rows", "cb_get_sic", "cb_upsert_sic_rows", "log_audit_event")
+             "cb_get_open_entries", "cb_count_stale_open_entries", "cb_get_pp_open_entries",
+             "cb_count_stale_pp_open_entries", "cb_upsert_exit_rows", "cb_get_sic", "cb_upsert_sic_rows", "log_audit_event")
 
     def install(self, monkeypatch, shadow_module) -> None:
         for name in self.NAMES:

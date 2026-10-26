@@ -42,6 +42,12 @@ must not be able to starve it):
      (full recompute each night: restart-safe), day-0 stop-outs booked once by `cb.day0_result_to_outcome`.
      A split after the break day that moved a stored bar makes the walk `unbookable` (the #667 HTF precedent: stored
      fills are raw, stored bars are retro-adjusted); a recorded phantom does not, and one not yet applied defers it.
+  c2. EXITS, `pp` and `A` (#705 (c); `walk_pp_exits`). A separate step BESIDE the fifteen: the same exit table, its own work
+     list and `pp_*` counters, so the registered arms' rows are untouched. `pp` is his carried exit (the day-3 third only in
+     profit, the stop to cost after any third), `A` the control it replaced; the walk is `consolidation_breakout_pp` (a port
+     of the runner's registered `pp`). The breakout day's facts (the +2R touch before the stop, the day's highest minute high)
+     come from the ENTRY step, which stores them on the fill (`day0_pp`) from the minutes it already holds - this step
+     fetches none. A fill recorded before the column existed carries none and is not walked.
   d. ONE audit row, `consolidation_breakout_shadow_run`.
 
 The whole job runs under `BUDGET_S` and FAILS OPEN on timeout (an `..._error` audit row, no raise): every step is
@@ -65,6 +71,7 @@ from typing import Optional
 import numpy as np
 
 from agents.market_intelligence import consolidation_breakout as cb
+from agents.market_intelligence import consolidation_breakout_pp as ppx
 from agents.market_intelligence.consolidation_breakout import (
     CELL_NAMES, KS, breaks_out, chain_bases, contiguous_tail, cross_section_one_date, forward_window, gap_fields,
     is_mature, is_test_symbol, resolve_sectype, stamp_base_chain, stamp_retrigger,
@@ -74,7 +81,9 @@ from agents.market_intelligence.db import (
     cb_count_stale_open_entries,
     cb_get_candidate_history,
     cb_get_entry_state,
+    cb_count_stale_pp_open_entries,
     cb_get_open_entries,
+    cb_get_pp_open_entries,
     cb_get_security_types,
     cb_get_sic,
     cb_get_splits_after,
@@ -568,6 +577,7 @@ def _entry_row(c: dict, variant: str, ent: dict, minutes_state: str, feed: Optio
         "first_cells": {n: int(c["first_" + n]) for n in CELL_NAMES},
         "first_chain_cells": {n: int(c["first_chain_" + n]) for n in CELL_NAMES},
         "minutes_state": minutes_state, "feed": feed,
+        "day0_pp": None,                  # #705 (c): set by `_with_pp_facts` for a filled row, never by this builder
     }
 
 
@@ -587,7 +597,27 @@ def entry_rows_for(c: dict, minutes: Optional["cb.MinuteBars"], minutes_state: s
     rows = [_entry_row(c, v, ev[v], minutes_state, feed) for v in cb.ENTRY_VARIANTS]
     ce = cb.close_entry(c["close_E"], c["low_E"], c["pivot"], c["adr20"])
     rows.append(_entry_row(c, "close", ce, "n/a", None))
+    for r in rows:
+        _with_pp_facts(r, minutes)
     return rows
+
+
+def _with_pp_facts(row: dict, minutes: Optional["cb.MinuteBars"]) -> None:
+    """#705 (c): a FILLED row carries the breakout day's facts for the `pp` / `A` arms (`ppx.day0_facts`), computed once from the
+    minutes the entry step already holds - the exit step has none. The `close` variant has no minute after its fill:
+    `ppx.no_day0_facts`. Fail-soft: a failure leaves the column NULL (the pp step does not walk that fill; counted as
+    `pp_day0_missing`), never a lost entry row. Every other column of the row is untouched."""
+    if row["status"] != "filled":
+        return
+    try:
+        if row["fill_minute"] is None:
+            row["day0_pp"] = ppx.no_day0_facts()
+        else:
+            row["day0_pp"] = ppx.day0_facts(minutes, fill=row["fill"], stop=row["stop"], fill_minute=row["fill_minute"])
+    except Exception as ex:  # loud-ok: logged here, counted by record_entries_for (pp_day0_missing) - the entry row still lands
+        logger.error(f"consolidation_breakout_shadow: day0_pp facts failed for {row['ticker']} {row['break_date']} "
+                     f"{row['k']}/{row['entry_variant']}: {type(ex).__name__}: {ex}")
+        row["day0_pp"] = None
 
 
 def _group_complete(rows: list) -> bool:
@@ -694,6 +724,8 @@ async def record_entries_for(e: date, d: date, cal: list, cal_index: dict, out: 
     for r in rows:
         out["entry_rows"] += 1
         out["entry_status"][r["status"]] += 1
+        if r["status"] == "filled":
+            out["pp_day0_recorded" if r["day0_pp"] is not None else "pp_day0_missing"] += 1
         if r["status"] != "filled" and r["reason"]:
             out["entry_reasons"][r["reason"]] += 1
     await cb_upsert_entry_rows(rows)
@@ -828,6 +860,104 @@ async def walk_exits(today: date, cal: list, cal_index: dict, out: dict) -> None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 5b. Exits, the `pp` and `A` arms (#705 (c)) - a SEPARATE step beside the 15 `cb.ARMS`, so those rows, their work list and
+#     their counters are not touched by it: its own work list, its own counters (`pp_*`), written to the same exit table
+#     (`arm` is free text). The walk is `consolidation_breakout_pp` (a port of the runner's registered `pp`), fed the breakout
+#     day's facts the ENTRY step stored on the fill (`day0_pp`) - this step never fetches a minute.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _day0_pp_of(entry: dict) -> dict:
+    facts = entry.get("day0_pp")
+    return json.loads(facts) if isinstance(facts, str) else facts
+
+
+def walk_pp_entry_rows(entry: dict, bars: "cb.DailyBars", cidx, ticker_splits: list, cache: Optional[dict] = None) -> list:
+    """Exit rows for ONE filled entry over the `pp` / `A` arms that are NOT already final (`entry["mature_arms"]`). Everything
+    around the walk is `walk_entry_rows`' (the break-day bar, the forward window cut at a hole, the row format, the #704 split
+    reading: a later split that MOVED a stored bar makes the open arms `unbookable`, a recorded phantom is ignored, one not yet
+    applied returns NO rows); only the walk differs (`ppx.walk_pp_arms` from the stored day-0 facts)."""
+    eid, e_date, adr20 = entry["id"], entry["break_date"], entry["adr20"]
+    facts = _day0_pp_of(entry)
+    final = set(entry.get("mature_arms") or ())
+    names = [n for n in ppx.PP_ARMS if n not in final]
+    later = [s for s in ticker_splits if s["execution_date"] > e_date]
+    if later:
+        scale = scale_from_split_rows(later)
+        if scale is None:
+            return []
+        if not scale_unmoved(scale):
+            s = moved_splits(later)[0]
+            reason = f"split_{s['split_from']}:{s['split_to']}_on_{s['execution_date']}_after_entry"
+            return [{"entry_id": eid, "arm": name, "status": "unbookable", "realized_r": None, "pnl_adr": None,
+                     "sessions_held": None, "events": [], "n_fwd": 0, "mature": True, "reason": reason,
+                     "last_bar_date": None} for name in names]
+    e = bisect.bisect_left(bars.dates, e_date)
+    if e >= len(bars) or bars.dates[e] != e_date:
+        raise LookupError(f"break-day bar {e_date} missing for {entry['ticker']}")
+    fwd, cut = forward_window(bars, cidx, e, cb.EXIT_HORIZON)
+    n_fwd = len(fwd)
+    last_bar = fwd.dates[-1] if n_fwd else e_date
+    note = "day0_stop" if facts.get("stopped") else ("fwd_hole" if cut else "")
+    key = (entry["ticker"], e_date, entry["fill"], entry["stop"], adr20, json.dumps(facts, sort_keys=True))
+    cache = {} if cache is None else cache
+    todo = [n for n in names if (key, n) not in cache]
+    if todo:
+        for name, res in ppx.walk_pp_arms({"fill": entry["fill"], "stop": entry["stop"]}, facts,
+                                          closes_before=bars.c[:e + 1], fwd=fwd, adr20=adr20, arms=todo).items():
+            cache[(key, name)] = res
+    return [_exit_row(eid, name, cache[(key, name)], n_fwd, last_bar, note) for name in names]
+
+
+def _walk_pp_chunk(entries: list, series: dict, splits: dict) -> tuple:
+    rows, errors = [], []
+    cache: dict = {}
+    for ent in entries:
+        s = series.get(ent["ticker"])
+        try:
+            if s is None:
+                raise LookupError(f"no bars for {ent['ticker']}")
+            rows.extend(walk_pp_entry_rows(ent, s[0], s[1], splits.get(ent["ticker"], []), cache))
+        except Exception as ex:  # loud-ok: in-band reporting - the error is RETURNED and logger.error'd + counted by walk_pp_exits
+            errors.append((ent["id"], ent["ticker"], f"{type(ex).__name__}: {ex}"))
+    return rows, errors
+
+
+async def walk_pp_exits(today: date, cal: list, cal_index: dict, out: dict) -> None:
+    """Step c2: every filled entry that carries `day0_pp` and has a non-final `pp` / `A` arm; each non-final arm is recomputed
+    in full from stored bars (restart-safe; a final arm is not touched). Same staleness bound as `walk_exits`."""
+    stale_before = cal[max(0, len(cal) - (cb.EXIT_HORIZON + EXIT_STALE_MARGIN_SESSIONS))]
+    arms = list(ppx.PP_ARMS)
+    entries = await cb_get_pp_open_entries(arms, stale_before)
+    out["pp_entries_stale"] = await cb_count_stale_pp_open_entries(arms, stale_before)
+    out["pp_entries_open"] = len(entries)
+    if not entries:
+        return
+    by_ticker: dict = defaultdict(list)
+    for e in entries:
+        by_ticker[e["ticker"]].append(e)
+    tickers = sorted(by_ticker)
+    for lo in range(0, len(tickers), WALK_TICKER_CHUNK):
+        chunk_t = tickers[lo:lo + WALK_TICKER_CHUNK]
+        chunk_e = [e for t in chunk_t for e in by_ticker[t]]
+        first_break = min(e["break_date"] for e in chunk_e)
+        rows = await cb_get_ticker_bars(chunk_t, first_break - timedelta(days=EXIT_CLOSES_BACK_DAYS), today)
+        series, _ = await asyncio.to_thread(build_series, rows, cal_index)
+        del rows
+        splits = await cb_get_splits_after(chunk_t, first_break, today)
+        rws, errs = await asyncio.to_thread(_walk_pp_chunk, chunk_e, series, splits)
+        for eid, tk, msg in errs:
+            out["pp_exit_errors"] += 1
+            logger.error(f"consolidation_breakout_shadow: pp exit walk {tk} entry {eid} failed: {msg}")
+        out["pp_split_deferred"] += len({e["id"] for e in chunk_e} - {r["entry_id"] for r in rws}
+                                        - {eid for eid, _tk, _m in errs})
+        for r in rws:
+            out["pp_exit_status"][r["status"]] += 1
+            out["pp_exit_mature"] += int(r["mature"])
+        if rws:
+            await cb_upsert_exit_rows(rws)
+            out["pp_exit_rows"] += len(rws)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
 # 6. The job
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 def _new_out(today: date) -> dict:
@@ -840,11 +970,14 @@ def _new_out(today: date) -> dict:
             "sic_known": 0, "gate_funnel": {}, "cells_per_k": {}, "groups_ge10": 0, "members_with_group": 0,
             "phase_data_gap": None, "phases": {}, "bad_bars": 0, "exit_entries_open": 0,
             "exit_entries_stale": 0, "exit_split_deferred": 0, "exit_rows": 0,
-            "exit_mature": 0, "exit_status": Counter(), "exit_errors": 0, "wall_s": 0.0}
+            "exit_mature": 0, "exit_status": Counter(), "exit_errors": 0,
+            "pp_day0_recorded": 0, "pp_day0_missing": 0, "pp_entries_open": 0, "pp_entries_stale": 0,
+            "pp_split_deferred": 0, "pp_exit_rows": 0, "pp_exit_mature": 0, "pp_exit_status": Counter(),
+            "pp_exit_errors": 0, "wall_s": 0.0}
 
 
 async def _run_steps(today: date, out: dict) -> Optional[BaseException]:
-    """The three steps, each isolated: a step that crashes is recorded and the others still run. The FIRST
+    """The four steps (watch, entries, exits, exits_pp), each isolated: a step that crashes is recorded and the others still run. The FIRST
     failure is returned so the caller re-raises it AFTER the audit row - a crash still propagates to `audit_wrap`.
 
     ORDER: watch -> entries -> exits. Tonight's watch list is the ONE output with no catch-up (`build_watch`
@@ -859,7 +992,8 @@ async def _run_steps(today: date, out: dict) -> Optional[BaseException]:
         return None
     cal_index = {d: i for i, d in enumerate(cal)}
     first_exc: Optional[BaseException] = None
-    for name, step in (("watch", build_watch), ("entries", record_entries), ("exits", walk_exits)):
+    for name, step in (("watch", build_watch), ("entries", record_entries), ("exits", walk_exits),
+                       ("exits_pp", walk_pp_exits)):
         try:
             await step(today, cal, cal_index, out)
         except Exception as e:
@@ -899,7 +1033,8 @@ async def run_consolidation_breakout_shadow(today: Optional[date] = None) -> dic
         summary = (f"{today}: {out['watch_n']} watch row(s) of {out['universe_n']} universe name(s); "
                    f"{out['entry_candidates']} breakout candidate(s) -> {out['entry_rows']} entry row(s) "
                    f"{dict(out['entry_status'])}; {out['exit_rows']} exit row(s) over {out['exit_entries_open']} "
-                   f"open entr(ies), {out['exit_mature']} mature; SIC +{out['sic_fetched']} "
+                   f"open entr(ies), {out['exit_mature']} mature; pp/A {out['pp_exit_rows']} exit row(s) over "
+                   f"{out['pp_entries_open']} open entr(ies); SIC +{out['sic_fetched']} "
                    f"({out['sic_known']} of {out['universe_n']} known); {out['wall_s']}s"
                    + (f"; STEP ERRORS: {out['step_errors']}" if out["step_errors"] else ""))
     try:

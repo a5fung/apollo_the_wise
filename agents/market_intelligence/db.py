@@ -19165,12 +19165,18 @@ _CB_SHADOW_DDL = """
         first_chain_cells  JSONB,
         minutes_state      TEXT,                        -- ok | no_minutes | invalid | n/a (close variant, split abstain)
         feed               TEXT,                        -- the Alpaca data feed the minutes came from (iex | sip)
+        day0_pp            JSONB,                       -- #705 (c): breakout-day facts for the pp / A exit arms (ALTER below adds it to an existing table)
         created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         UNIQUE (ticker, pole_date, k, entry_variant, break_date)
     );
     CREATE INDEX IF NOT EXISTS idx_cb_entry_break_date ON mi_consolidation_breakout_entry (break_date DESC);
     CREATE INDEX IF NOT EXISTS idx_cb_entry_ticker_base ON mi_consolidation_breakout_entry (ticker, pole_date, k);
+
+    -- #705 (c): the breakout day for the `pp` / `A` exit arms (consolidation_breakout_pp.day0_facts) - the +2R-target
+    -- day-0 walk and the day's highest minute high, computed ONCE from the minutes the entry step already holds. NULL =
+    -- a fill recorded before this column existed (or whose facts failed to compute): the pp step does not walk it.
+    ALTER TABLE mi_consolidation_breakout_entry ADD COLUMN IF NOT EXISTS day0_pp JSONB;
 
     -- One row per (entry, exit arm), recomputed nightly from stored daily bars until MATURE, so a restart
     -- can never corrupt it.
@@ -19222,9 +19228,9 @@ CB_ENTRY_COLS = (
     "ticker", "watch_date", "break_date", "k", "pole_date", "entry_variant", "status", "reason", "pivot",
     "level", "fill", "stop", "width_pct", "adr20", "gap_pct", "gap_over_1adr", "fill_minute",
     "day0_stopped", "day0_exit_price", "day0_exit_minute", "retrigger", "retrigger_chain", "base_id",
-    "cells", "first_cells", "first_chain_cells", "minutes_state", "feed",
+    "cells", "first_cells", "first_chain_cells", "minutes_state", "feed", "day0_pp",
 )
-_CB_ENTRY_JSONB_DICT = frozenset({"cells", "first_cells", "first_chain_cells"})
+_CB_ENTRY_JSONB_DICT = frozenset({"cells", "first_cells", "first_chain_cells", "day0_pp"})
 _CB_ENTRY_KEY_COLS = ("ticker", "pole_date", "k", "entry_variant", "break_date")
 # The ONLY row a re-run may overwrite is a `no_minutes` abstain (the minute fetch is retried for 3
 # sessions). A filled / no_trigger / mismatch row is never touched again - a later run must not move a
@@ -19442,13 +19448,17 @@ async def cb_get_candidate_history(tickers: list[str], before: date) -> list[dic
     return [dict(r) for r in rows]
 
 
+# #705 (c): the `pp` / `A` rows share the exit table, but the fifteen registered arms' work list and maturity count must
+# not see them - `HAVING count(mature) < 15` would otherwise be satisfied by 13 registered arms + the 2 early-maturing pp
+# arms, dropping the entry (and its still-open `stop_only` control) from the walk for good. The two names are
+# consolidation_breakout_pp.PP_ARMS (a test pins the equality; db.py does not import the module).
 CB_OPEN_ENTRIES_SQL = """
     SELECT e.id, e.ticker, e.watch_date, e.break_date, e.k, e.pole_date, e.entry_variant, e.fill,
            e.stop, e.width_pct, e.adr20, e.fill_minute, e.day0_stopped, e.day0_exit_price,
            e.day0_exit_minute,
            COALESCE(array_agg(x.arm) FILTER (WHERE x.mature), ARRAY[]::text[]) AS mature_arms
       FROM mi_consolidation_breakout_entry e
-      LEFT JOIN mi_consolidation_breakout_exit x ON x.entry_id = e.id
+      LEFT JOIN mi_consolidation_breakout_exit x ON x.entry_id = e.id AND x.arm NOT IN ('A', 'pp')
      WHERE e.status = 'filled' AND e.break_date >= $2
      GROUP BY e.id
     HAVING count(x.arm) FILTER (WHERE x.mature) < $1
@@ -19458,12 +19468,58 @@ CB_STALE_OPEN_COUNT_SQL = """
     SELECT count(*) FROM (
         SELECT e.id
           FROM mi_consolidation_breakout_entry e
-          LEFT JOIN mi_consolidation_breakout_exit x ON x.entry_id = e.id
+          LEFT JOIN mi_consolidation_breakout_exit x ON x.entry_id = e.id AND x.arm NOT IN ('A', 'pp')
          WHERE e.status = 'filled' AND e.break_date < $2
          GROUP BY e.id
         HAVING count(x.arm) FILTER (WHERE x.mature) < $1
     ) stale
 """
+
+
+# #705 (c): the pp / A step's own work list - filled entries that CARRY day-0 facts (a pre-change fill has none and is not
+# walked) with fewer than $1 MATURE rows among the arms named in $3. The join is restricted to those arms, so the other
+# fifteen arms' rows neither count nor appear here.
+CB_PP_OPEN_ENTRIES_SQL = """
+    SELECT e.id, e.ticker, e.watch_date, e.break_date, e.k, e.pole_date, e.entry_variant, e.fill,
+           e.stop, e.width_pct, e.adr20, e.fill_minute, e.day0_stopped, e.day0_exit_price,
+           e.day0_exit_minute, e.day0_pp,
+           COALESCE(array_agg(x.arm) FILTER (WHERE x.mature), ARRAY[]::text[]) AS mature_arms
+      FROM mi_consolidation_breakout_entry e
+      LEFT JOIN mi_consolidation_breakout_exit x ON x.entry_id = e.id AND x.arm = ANY($3::text[])
+     WHERE e.status = 'filled' AND e.day0_pp IS NOT NULL AND e.break_date >= $2
+     GROUP BY e.id
+    HAVING count(x.arm) FILTER (WHERE x.mature) < $1
+     ORDER BY e.break_date, e.ticker, e.k, e.entry_variant
+"""
+CB_PP_STALE_OPEN_COUNT_SQL = """
+    SELECT count(*) FROM (
+        SELECT e.id
+          FROM mi_consolidation_breakout_entry e
+          LEFT JOIN mi_consolidation_breakout_exit x ON x.entry_id = e.id AND x.arm = ANY($3::text[])
+         WHERE e.status = 'filled' AND e.day0_pp IS NOT NULL AND e.break_date < $2
+         GROUP BY e.id
+        HAVING count(x.arm) FILTER (WHERE x.mature) < $1
+    ) stale
+"""
+
+
+async def cb_get_pp_open_entries(arms: list, stale_before: date) -> list[dict]:
+    """The pp / A step's work list: FILLED entries broken out on or after `stale_before` that carry `day0_pp` and have a
+    non-mature row (or none) on some arm of `arms`, each with `mature_arms` (the named arms already final). Ordered by
+    break_date so the oldest are walked first."""
+    arms = list(arms)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(CB_PP_OPEN_ENTRIES_SQL, len(arms), stale_before, arms)
+    return [dict(r) for r in rows]
+
+
+async def cb_count_stale_pp_open_entries(arms: list, stale_before: date) -> int:
+    """Like `cb_get_open_entries`' stale count, for the pp / A step: entries older than `stale_before` still not final."""
+    arms = list(arms)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return int(await conn.fetchval(CB_PP_STALE_OPEN_COUNT_SQL, len(arms), stale_before, arms))
 
 
 async def cb_get_open_entries(n_arms: int, stale_before: date) -> list[dict]:

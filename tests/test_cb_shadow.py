@@ -354,8 +354,8 @@ class TestBreakoutDay:
     def test_exit_rows_appear_the_first_night_for_every_filled_entry_and_arm(self, world):
         _, store, _, out = self._two_nights(world)
         filled = [r for r in store.entry.values() if r["status"] == "filled"]
-        assert len(filled) == 19 and len(store.exit) == 19 * len(cb.ARMS) == 285 == out["exit_rows"]
-        for r in store.exit.values():
+        assert len(filled) == 19 and len(store.exit_registered()) == 19 * len(cb.ARMS) == 285 == out["exit_rows"]
+        for r in store.exit_registered().values():
             assert r["status"] in ("degraded", "stopped_day0") and r["last_bar_date"] == BREAK_DAY
 
 
@@ -367,7 +367,7 @@ class TestExitsAgainstTheOracle:
         bars = _mrna_bars(m)
         by_id = {r["id"]: r for r in store.entry.values()}
         n_checked = 0
-        for (eid, arm), x in store.exit.items():
+        for (eid, arm), x in store.exit_registered().items():
             ent = by_id[eid]
             e = bars.dates.index(ent["break_date"])                 # later nights' breakouts are entries too
             if ent["day0_stopped"]:
@@ -385,7 +385,7 @@ class TestExitsAgainstTheOracle:
             assert x["mature"] == rn.is_mature(want["status"], len(bars.slice(e + 1, e + 2 + cb.EXIT_HORIZON)))
             n_checked += 1
         filled = [r for r in store.entry.values() if r["status"] == "filled"]
-        assert n_checked == len(filled) * len(cb.ARMS) == len(store.exit)
+        assert n_checked == len(filled) * len(cb.ARMS) == len(store.exit_registered())
         assert len({r["break_date"] for r in filled}) > 1 and n_checked >= 19 * 15      # not only the first break day
 
     def test_a_day_zero_stop_out_is_minus_one_r_or_worse_on_every_arm_and_never_reaches_the_daily_walk(self, world):
@@ -395,7 +395,7 @@ class TestExitsAgainstTheOracle:
         stopped = [r for r in store.entry.values() if r["day0_stopped"]]
         assert stopped, "the synthetic path breaks the pivot-variant stop on day 0"
         for ent in stopped:
-            rows = [x for (eid, _a), x in store.exit.items() if eid == ent["id"]]
+            rows = [x for (eid, _a), x in store.exit_registered().items() if eid == ent["id"]]
             assert len(rows) == 15 and {x["status"] for x in rows} == {"stopped_day0"}
             want_r = (ent["day0_exit_price"] - ent["fill"]) / (ent["fill"] - ent["stop"])   # -1R at the stop, worse on a gap
             assert want_r <= -1.0 + 1e-12
@@ -417,14 +417,14 @@ class TestExitsAgainstTheOracle:
         assert by[("k5", "orh5")]["fill_minute"] < 45
         assert by[("k5", "orh60")]["status"] == "filled" and by[("k5", "orh60")]["day0_stopped"] is False
         eid = by[("k5", "orh5")]["id"]
-        assert {x["status"] for (e, _a), x in store.exit.items() if e == eid} == {"stopped_day0"}
+        assert {x["status"] for (e, _a), x in store.exit_registered().items() if e == eid} == {"stopped_day0"}
 
     def test_a_mature_arm_is_not_walked_again_and_an_open_one_is(self, world):
         m, store, _ = world
         for d in m.cal[m.cal.index(WATCH_NIGHT):m.cal.index(BREAK_DAY) + 8]:
             run(d)
-        frozen = {k: dict(v) for k, v in store.exit.items() if v["mature"]}
-        assert frozen and any(not v["mature"] for v in store.exit.values())
+        frozen = {k: dict(v) for k, v in store.exit_registered().items() if v["mature"]}
+        assert frozen and any(not v["mature"] for v in store.exit_registered().values())
         out = run(m.cal[m.cal.index(BREAK_DAY) + 8])
         for k, v in frozen.items():
             assert store.exit[k] == v                                   # untouched
@@ -436,7 +436,7 @@ class TestExitsAgainstTheOracle:
             run(d)
         n_arms = len(cb.ARMS)
         mature_before = defaultdict(set)                                    # entry id -> arms already final
-        for (eid, arm), x in store.exit.items():
+        for (eid, arm), x in store.exit_registered().items():
             if x["mature"]:
                 mature_before[eid].add(arm)
         open_ids = [v["id"] for v in store.entry.values()
@@ -446,7 +446,7 @@ class TestExitsAgainstTheOracle:
         real_upsert, real = sh.cb_upsert_exit_rows, cb.walk_exit
 
         async def spy(rows):
-            written.extend((r["entry_id"], r["arm"]) for r in rows)
+            written.extend((r["entry_id"], r["arm"]) for r in rows if r["arm"] in cb.ARMS)   # the pp / A rows are #705 (c)'s
             return await real_upsert(rows)
         monkeypatch.setattr(sh, "cb_upsert_exit_rows", spy)
         monkeypatch.setattr(cb, "walk_exit", lambda **kw: calls.append(kw["arm"].name) or real(**kw))
@@ -468,14 +468,14 @@ class TestExitsAgainstTheOracle:
         run(BREAK_DAY)
         store.splits.append(_real_split(style, D(2026, 9, 21), split_from, split_to))
         out = run(D(2026, 9, 21))
-        rows = list(store.exit.values())
+        rows = list(store.exit_registered().values())
         un = [x for x in rows if x["status"] == "unbookable"]
         assert un and all(x["mature"] and x["realized_r"] is None
                           and f"split_{split_from}:{split_to}_on_2026-09-21_after_entry" in x["reason"] for x in un)
         # a day-0 stop-out was booked on the break day itself (raw fill, raw stop, same session) and is already
         # final - the split cannot touch it; every entry still OPEN when the split executed becomes unbookable
         by_id = {r["id"]: r for r in store.entry.values()}
-        for (eid, _arm), x in store.exit.items():
+        for (eid, _arm), x in store.exit_registered().items():
             assert x["status"] == ("stopped_day0" if by_id[eid]["day0_stopped"] else "unbookable")
         assert out["exit_status"]["unbookable"] == len(un) == 17 * 15
 
@@ -488,9 +488,9 @@ class TestExitsAgainstTheOracle:
         store.splits.append(_phantom_split(D(2026, 9, 21)))
         out = run(D(2026, 9, 21))
         assert out["exit_status"].get("unbookable", 0) == 0 and out["exit_rows"] > 0 and out["exit_split_deferred"] == 0
-        assert not [x for x in store.exit.values() if x["status"] == "unbookable"]
+        assert not [x for x in store.exit_registered().values() if x["status"] == "unbookable"]
         by_id = {r["id"]: r for r in store.entry.values()}
-        live = [x for (eid, _a), x in store.exit.items() if not by_id[eid]["day0_stopped"]]
+        live = [x for (eid, _a), x in store.exit_registered().items() if not by_id[eid]["day0_stopped"]]
         assert live and all(x["n_fwd"] >= 1 for x in live)                 # walked forward over the 09-18 / 09-21 bars
 
     def test_a_no_data_split_after_the_break_day_still_voids_the_walk(self, world):
@@ -502,7 +502,7 @@ class TestExitsAgainstTheOracle:
         run(BREAK_DAY)
         store.splits.append(_nodata_split(D(2026, 9, 21)))
         out = run(D(2026, 9, 21))
-        un = [x for x in store.exit.values() if x["status"] == "unbookable"]
+        un = [x for x in store.exit_registered().values() if x["status"] == "unbookable"]
         assert un and all(x["mature"] and "split_1:4_on_2026-09-21_after_entry" in x["reason"] for x in un)
         assert out["exit_split_deferred"] == 0 and out["exit_status"]["unbookable"] == len(un)
 
@@ -532,7 +532,7 @@ class TestExitsAgainstTheOracle:
                       polygon=_polygon).install(monkeypatch)
         for d in m.cal[m.cal.index(WATCH_NIGHT):]:
             run(d)
-        live = [x for x in store.exit.values() if x["status"] not in ("stopped_day0",)]
+        live = [x for x in store.exit_registered().values() if x["status"] not in ("stopped_day0",)]
         assert live and all(x["last_bar_date"] < m.cal[hole] for x in live if x["status"] == "degraded")
         assert any(x["reason"] == "fwd_hole" for x in live)
 
@@ -1266,9 +1266,10 @@ class TestCensus:
         """Importing the scheduler (which the execution image does) must not import the shadow: the job imports it
         inside the function, and the execution image's module list does not carry it."""
         listed = (REPO / "scripts" / "exec_loaded_modules.txt").read_text()          # a DATA list, not source
-        assert "consolidation_breakout_shadow" not in listed
+        assert "consolidation_breakout_shadow" not in listed and "consolidation_breakout_pp" not in listed     # #705 (c)
         r = self._fresh("import sys; import agents.market_intelligence.scheduler; "
-                        "sys.exit(int('agents.market_intelligence.consolidation_breakout_shadow' in sys.modules))")
+                        "sys.exit(int('agents.market_intelligence.consolidation_breakout_shadow' in sys.modules "
+                        "or 'agents.market_intelligence.consolidation_breakout_pp' in sys.modules))")
         assert r.returncode == 0, r.stdout + r.stderr
 
     def test_the_module_loads_no_broker_code_beyond_the_pure_exit_math_and_the_boundary_gate_passes(self):

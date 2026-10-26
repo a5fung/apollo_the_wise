@@ -145,6 +145,81 @@ class TestDdlAndStatements:
         assert arun(env, go()) == []
 
 
+class TestPpRecorderOnRealSql:
+    """#705 (c): the new column, the pp / A work list and the registered work list's exclusion, on a real Postgres."""
+
+    def test_the_column_is_added_to_a_table_that_already_exists_and_the_ddl_stays_idempotent(self, env):
+        async def go():
+            async with env.pool.acquire() as c:
+                await c.execute("ALTER TABLE mi_consolidation_breakout_entry DROP COLUMN day0_pp")      # the pre-change table
+                await c.execute("INSERT INTO mi_consolidation_breakout_entry (ticker, watch_date, break_date, k, pole_date, "
+                                "entry_variant, status, cells) VALUES ('OLD', '2026-09-16', '2026-09-17', 'k5', '2026-08-19', "
+                                "'orh5', 'filled', '{}'::jsonb)")
+                for _ in range(2):
+                    await c.execute(db._CB_SHADOW_DDL)
+                col = await c.fetchrow("SELECT data_type FROM information_schema.columns WHERE table_schema = $1 AND "
+                                       "table_name = 'mi_consolidation_breakout_entry' AND column_name = 'day0_pp'", env.schema)
+                old = await c.fetchrow("SELECT day0_pp FROM mi_consolidation_breakout_entry WHERE ticker = 'OLD'")
+            return col, old
+        col, old = arun(env, go())
+        assert col["data_type"] == "jsonb" and old["day0_pp"] is None
+
+    def test_the_pp_statements_prepare_and_the_registered_work_list_ignores_pp_rows(self, env):
+        facts = {"v": 1, "stopped": False, "exit_price": None, "exit_minute": None, "partial_price": None,
+                 "partial_minute": None, "stop_in_force": None, "peak": 10.6}
+        base = {"ticker": "AAA", "watch_date": D(2026, 9, 16), "break_date": BREAK_DAY, "k": "k5", "pole_date": D(2026, 8, 19),
+                "entry_variant": "orh5", "status": "filled", "reason": None, "pivot": 10.0, "level": 10.0, "fill": 10.5,
+                "stop": 10.0, "width_pct": 0.047, "adr20": 0.05, "gap_pct": 0.01, "gap_over_1adr": False, "fill_minute": 7,
+                "day0_stopped": False, "day0_exit_price": None, "day0_exit_minute": None, "retrigger": 0,
+                "retrigger_chain": 0, "base_id": "AAA|2026-08-19", "cells": {"C0": True}, "first_cells": {"C0": 1},
+                "first_chain_cells": {"C0": 1}, "minutes_state": "ok", "feed": "sip", "day0_pp": facts}
+
+        async def go():
+            async with env.pool.acquire() as c:
+                for sql in (db.CB_PP_OPEN_ENTRIES_SQL, db.CB_PP_STALE_OPEN_COUNT_SQL):
+                    assert len((await c.prepare(sql)).get_parameters()) == 3
+            # AAA: facts, pp not final | BBB: a pre-change fill, NO facts | CCC: facts, both pp arms final
+            await db.cb_upsert_entry_rows([base, dict(base, ticker="BBB", day0_pp=None, base_id="BBB|x"),
+                                           dict(base, ticker="CCC", base_id="CCC|x")])
+            async with env.pool.acquire() as c:
+                ids = {r["ticker"]: r["id"] for r in await c.fetch("SELECT id, ticker FROM mi_consolidation_breakout_entry")}
+            ex = lambda eid, arm, mature: {"entry_id": eid, "arm": arm, "status": "stopped" if mature else "degraded",
+                                           "realized_r": 0.5, "pnl_adr": 0.1, "sessions_held": 3, "events": [], "n_fwd": 3,
+                                           "mature": mature, "reason": None, "last_bar_date": D(2026, 9, 21)}
+            rows = []
+            for t, pp_mature in (("AAA", {"A": True, "pp": False}), ("CCC", {"A": True, "pp": True})):
+                rows += [ex(ids[t], a, True) for a in sorted(cb.ARMS)[:13]]           # 13 of the 15 registered arms final
+                rows += [ex(ids[t], a, False) for a in sorted(cb.ARMS)[13:]]
+                rows += [ex(ids[t], a, m) for a, m in pp_mature.items()]
+            rows += [ex(ids["BBB"], a, True) for a in cb.ARMS]                        # a pre-change fill: all fifteen final
+            await db.cb_upsert_exit_rows(rows)
+            reg = await db.cb_get_open_entries(len(cb.ARMS), D(2000, 1, 1))
+            pp = await db.cb_get_pp_open_entries(["A", "pp"], D(2000, 1, 1))
+            stale_pp = await db.cb_count_stale_pp_open_entries(["A", "pp"], D(2030, 1, 1))
+            return ids, reg, pp, stale_pp
+        ids, reg, pp, stale_pp = arun(env, go())
+        assert {r["ticker"] for r in reg} == {"AAA", "CCC"}               # 13 of 15 registered final (+ pp final on CCC): still open
+        assert {r["ticker"] for r in pp} == {"AAA"}                       # BBB has no facts, CCC's two pp arms are final
+        assert pp[0]["mature_arms"] == ["A"] and pp[0]["day0_pp"]["peak"] == 10.6        # jsonb comes back as a dict
+        assert all("A" not in r["mature_arms"] and "pp" not in r["mature_arms"] for r in reg)
+        assert stale_pp == 1                                              # (before a far-future cut-off, only AAA is open)
+
+    def test_the_registered_count_is_what_it_was_with_no_pp_rows(self, env):
+        """The same entry, fifteen registered arms final and no pp rows: closed to the fifteen, absent from the pp list."""
+        async def go():
+            base = TestWriteGuards()._entry(status="filled", reason=None, fill=10.5, stop=10.0, minutes_state="ok")
+            await db.cb_upsert_entry_rows([dict(base, day0_pp={"v": 1, "stopped": False, "peak": None})])
+            async with env.pool.acquire() as c:
+                eid = await c.fetchval("SELECT id FROM mi_consolidation_breakout_entry")
+            await db.cb_upsert_exit_rows([{"entry_id": eid, "arm": a, "status": "trailed", "realized_r": 0.1, "pnl_adr": 0.1,
+                                           "sessions_held": 3, "events": [], "n_fwd": 3, "mature": True, "reason": None,
+                                           "last_bar_date": D(2026, 9, 21)} for a in cb.ARMS])
+            return (await db.cb_get_open_entries(len(cb.ARMS), D(2000, 1, 1)),
+                    await db.cb_get_pp_open_entries(["A", "pp"], D(2000, 1, 1)))
+        reg, pp = arun(env, go())
+        assert reg == [] and len(pp) == 1 and pp[0]["mature_arms"] == []
+
+
 class TestWriteGuards:
     def _entry(self, **kw):
         row = {"ticker": "AAA", "watch_date": D(2026, 9, 16), "break_date": BREAK_DAY, "k": "k5",
@@ -387,7 +462,8 @@ def _norm_entries(rows):
         out[key] = (r["status"], r["reason"], r["fill"], r["stop"], r["fill_minute"], r["width_pct"], r["level"],
                     r["day0_stopped"], r["day0_exit_price"], r["day0_exit_minute"], r["retrigger"],
                     r["retrigger_chain"], r["base_id"], dict(r["cells"]), dict(r["first_cells"]),
-                    dict(r["first_chain_cells"]), r["minutes_state"], r["feed"], r["gap_pct"])
+                    dict(r["first_chain_cells"]), r["minutes_state"], r["feed"], r["gap_pct"],
+                    None if r["day0_pp"] is None else dict(r["day0_pp"]))
     return out
 
 
@@ -450,6 +526,7 @@ class TestTheJobOnRealSql:
         want_x = {(by_id[eid], arm): x for (eid, arm), x in fake["exit"].items()}
         got_x = {((x["ticker"], x["pole_date"], x["k"], x["entry_variant"], x["break_date"]), x["arm"]): x for x in exits}
         assert got_x.keys() == want_x.keys() and len(got_x) >= 15 * 30
+        assert {a for (_k, a) in got_x} >= {"A", "pp"} and sum(1 for (_k, a) in got_x if a == "pp") > 10      # #705 (c)
         for key, x in got_x.items():
             w = want_x[key]
             assert (x["status"], x["mature"], x["sessions_held"], x["n_fwd"], x["last_bar_date"]) == \

@@ -11,7 +11,8 @@ the backtest chooses; a constant with no source is telemetry or a parameter, nev
 **Code**: the pure core `agents/market_intelligence/consolidation_breakout.py` (`cb`, no I/O, shared by both callers) ·
 the offline runner `scripts/probes/_cb_backtest/` · the forward recorder
 `agents/market_intelligence/consolidation_breakout_shadow.py` (job `consolidation_breakout_shadow`, **17:48 ET mon–fri**,
-tables `mi_consolidation_breakout_{watch,entry,exit,sic}`).
+tables `mi_consolidation_breakout_{watch,entry,exit,sic}`) · the recorder's `pp` / `A` exit walk
+`agents/market_intelligence/consolidation_breakout_pp.py` (pure, no I/O; #705 (c)).
 
 > **It is a SETUP, not Confirm, and not Family A's coil.** A setup has a defined buy and a defined stop (CLAUDE.md "SETUP vs
 > FAMILY"). This one **buys the opening-range high on the breakout day and stops at the low of that day** (no wider than one
@@ -28,7 +29,8 @@ tables `mi_consolidation_breakout_{watch,entry,exit,sic}`).
   variants `orh1 / orh5 / orh60 / pivot` + the daily `close` variant): a simulated fill and stop, or the NAMED reason there was
   none. An abstain is a row, never a gap.
 - **Exit rows** — every filled entry is walked over all **15** exit arms (`cb.ARMS`) from stored daily bars, recomputed every
-  night until each arm is mature.
+  night until each arm is mature. **Since #705 (c) every fill recorded after the change is ALSO walked on two more arms,
+  `pp` (his carried exit) and `A` (the control it replaced), by a separate step beside the fifteen** (17 rows per fill).
 
 ## Definitions (computable; sessions, not calendar days; all on bars ≤ the watch night D unless stated)
 
@@ -48,6 +50,7 @@ approved plan, not by the article · **T** = telemetry only, never gates.
 | His exit (runner-only arms) | `HIS_EXIT_ARMS`, 25 arms `<trigger>_p33_<trail>`, walked by the runner's `exits` stage BESIDE the 15 registered arms, never by the shadow: partial trigger `r2` = sell 1/3 at fill + 2 × (fill − stop) (a session whose high reaches it sells AT it, one that OPENS above it sells at the open; on the breakout day the minutes after the fill are walked, `day0_walk_target`), `d3` / `d5` = the close of session 3 / 5 (the registered timing), `c3` / `c5` = whichever comes first; then the stop moves to breakeven (resting from the next bar) and the trail arms (first close under the average, filled at the next open): `t10` / `t20` fixed, `tspd` = the 10-day when ADR20(D) > 0.0479 (his "faster stocks"; the top tercile of the discovery C0 ADR distribution) else the 20-day, `td1` / `td2` = at the partial, the 10-day when the close stands more than 1 / 2 ADR20 above its own 10-day, else the 20-day. A daily bar touching both the stop and the target books the STOP (pessimistic) unless it OPENED above the target. `d3_p33_t10` IS `p33_s3_t10` (tested equal) | **S** his 2026-10-18 correction *"sell 1/3 at 2R then move to break even stop then trail rest at break of 10 or 20d ... 10d for faster stocks and 20d for slower stocks, also depend how far the are from 10/20"* and *"The day thing is also correct, it may be a combo and depends"*; the +2R (`PARTIAL_TARGET_R`) is S; WHICH reading of "faster" (`TRAIL_SPEED_ADR_CUT`) and of "how far" (`TRAIL_DISTANCE_X`) is **B** — two readings of one sentence, both reported, neither chosen; exit parameters are not cohort-shaping and are not in the provenance registry (as `FIXED_TARGET_R`) | `HIS_EXIT_ARMS`, `walk_exit`, `day0_walk_target`, `walk_his_arms`, `PARTIAL_TARGET_R`, `TRAIL_SPEED_ADR_CUT`, `TRAIL_DISTANCE_X` |
 | Stop variants (runner-only) | five readings of the stop, every arm walked under each, REPORTED alternatives: `lod` = the registered low of the day at the fill; `lod_cap05` = max(lod, fill − ½ ADR); `lod_floor05` = min(lod, fill − ½ ADR) (the brief's "floored at 0.5 ADR below the fill" read as a price floor and as a width floor — both run, neither chosen); `level_m05` = the breakout level (the pivot K(D)) − ½ ADR; `base_low` = the base's low. ½ ADR = 0.5 × ADR20 × the fill; each skipped as `too_wide` beyond one ADR20 (the registered rule); R = fill − that stop, so R is not comparable across variants (the read ranks on P&L in ADR units, and a variant that abstains on most trades is compared on its own trades) | the stop is **his** (the article's: *"Stop is always lows of the day"*); the variants are the 2026-10-18 brief's and `STOP_HALF_ADR` is **B** | `stop_variants`, `STOP_VARIANTS`, `STOP_HALF_ADR` |
 | P5 primary exit — the stall cut (runner-only; the HOLDOUT read's deciding exit) | `CUT_EXIT_ARMS` = one arm, `c3_p33_t20_cut3` (`P5_PRIMARY_ARM`): the `c3_p33_t20` arm (sell 1/3 at +2R or at the close of session 3, whichever first; breakeven; trail the 20-day, filled at the next open) **plus** the stall cut — if no high has reached fill + `STALL_CUT_R` (1) × (fill − stop) by the close of session `STALL_CUT_SESSION` (3; E = session 0) and the trade was not stopped, everything is sold at that close (event `cut`, status `time_exit`, terminal so mature, no day-3 partial). "Reached" = the highest minute high after the fill minute on the breakout day (`day0_peak_high`, passed to `walk_exit(day0_peak=)`; a day-0 +R partial implies it) or any session's high on sessions 1..3 including session 3's own; the stop is checked first. A trade that reached it walks the `c3_p33_t20` path unchanged (tested). Walked by the runner's `p5` stage (discovery) and by `holdout`'s second pass, on the `lod` stop, with `p33_s3_t10` / `c3_p33_t20` / `r2_p33_t20` beside it, on `tl` / `com` / `comb`. NOT in `cb.ARMS` (the shadow) and NOT `cb.PRIMARY_ARM` (the pinned discovery report's headline arm, unchanged): only the holdout read's primary moves | **S** his stalled-breakout lines (2026-10-18) *"if breakouts have no follow through in next few days then it may be better to get out as momentum didn't continue regardless if it isn't stopped"* / *"Cut stallers is important because funds are limited, turnover for swing trades is important, holding breakeven for a long time has opportunity cost"*; the **numbers** `+1R` and `session 3`, the 20-day trail and the day-3 combo are the operator's 2026-10-18 ruling as relayed in the P5 brief (his verbatim lines say "next few days"), not fitted; exit parameters are not cohort-shaping and are not in the provenance registry (as `FIXED_TARGET_R`) | `CUT_EXIT_ARMS`, `P5_PRIMARY_ARM`, `STALL_CUT_SESSION`, `STALL_CUT_R`, `Arm.stall_cut_*`, `walk_exit`, `day0_peak_high`, `walk_his_arms` |
+| `pp` and `A` in the shadow (#705 (c); recorded, NOT in `cb.ARMS`; `A` IS the P5 primary `c3_p33_t20_cut3`, recorded through `consolidation_breakout_pp`) | `pp` = `c3_p33_t20_cut3` with the session-3 third sold ONLY WHEN THAT CLOSE IS ABOVE THE FILL: sell 1/3 at +2R (a high reaching it sells AT it, an open above it at the open; on the breakout day the minutes after the fill are walked) or at the close of session 3 when that close is above the fill; after ANY third the stop rests at the fill (cost) from the next session; the rest trails the first close under the 20-day, filled at the next open, **live from session 3 whether or not the third sold** (a session-3 close under the 20-day sells everything at the next open); the stall cut stays (no high at fill + 1R by the close of session 3, not stopped → everything sold at that close). `A` = the same walk with the session-3 third sold whatever the close; it IS `cb.CUT_EXIT_ARMS["c3_p33_t20_cut3"]` (proved equal event for event, the added `stop_to` events aside). Stored as exit rows with `arm` = `pp` and `A`; events carry `stop_to` (the level the stop rests at from the next session) and `be_above_close` beside the module's. A `close`-variant fill has no minute after it: day 0 is "nothing happened". Pre-change fills (no stored facts) are not walked | **S** his ruling 2026-10-19 (*"Yes"*: the day-based third sells only in profit; change log below); the +2R, the third, the 20-day trail and the +1R-by-session-3 cut are the registered `c3_p33_t20_cut3` | `consolidation_breakout_pp.py`: `walk_pp`, `walk_pp_arms`, `day0_facts`, `no_day0_facts`; the registered definition it ports and is tested equal to: `runner.exitpb_walk` / `exitpb_walk_arms` |
 | MA surfing | close ≥ SMA50; close ≥ 0.98 × SMA20; SMA50 rising over 10 sessions | **S** *"surfs the rising 10- and 20-day and sometimes the 50-day"* · **R** `anticipation._MA_NEAR_PCT` · 10-session slope **P** | `explain_watch`, `sma20_ok`, `sma50_rising` |
 | Higher lows | lowest low of the last 5 sessions > the base low | **S** *"higher lows"*; the 5-session window is **B** | `higher_lows`, `RECENT_WINDOW` |
 | Tightening | mean daily range of the last 5 sessions ÷ the first 5 base sessions ≤ 0.75 | **S** *"tightening range"* · **R** `flag_detector._RANGE_CONTRACTION_MAX` | `tightening_ok` |
@@ -93,7 +96,7 @@ C6 (C1 + group ≥ 80) · C7 (SPY + QQQ above their 50-day instead of the 10/20 
   recorded and never in a decisive number.
 - **His exit (runner-only; 2026-10-18):** the 25 `HIS_EXIT_ARMS` × the five `STOP_VARIANTS` (definition rows above), walked by
   `runner.py exits` on the DISCOVERY first breaks at ORH5 into `trades_discovery_exits_<levels>.tsv.gz` and read by `exits-report`
-  into `exits_report_<levels>.{tsv,txt}` — new files beside the pinned ones; the shadow walks `cb.ARMS` only. The read:
+  into `exits_report_<levels>.{tsv,txt}` — new files beside the pinned ones; the shadow walks `cb.ARMS` plus, since #705 (c), `pp` and `A` (definition row above). The read:
   `docs/analysis/cb_his_exit_2026-10-18.md`.
 - **P5 primary (runner-only; operator 2026-10-18):** the HOLDOUT read's deciding exit is `c3_p33_t20_cut3` (definition row above) on
   the registered `tl` level, ORH5, the low-of-day stop and the spec key; `p33_s3_t10` (the article's arm), `c3_p33_t20`,
@@ -142,14 +145,23 @@ the entries a night, never the watch list.
    not break out writes nothing, in either split direction. A name whose split is executed but not yet applied, or whose scale is
    unexplained, sits the entry step out for the night (counted in `entry_split_unresolved`, named in
    `entry_split_unresolved_tickers`); the look-back retries it once the split is applied.
-3. **Exits.** Every filled entry with a non-mature arm has each of its NON-FINAL arms (of the 15) recomputed in full from stored
+3. **Exits.** Every filled entry with a non-mature arm has each of its NON-FINAL arms (of the 15; the `pp` / `A` rows are never counted here — the work-list SQL joins `x.arm NOT IN ('A', 'pp')`, else two early-maturing pp arms plus thirteen registered ones would close an entry whose `stop_only` control is still open) recomputed in full from stored
    bars; a mature arm is final and is neither recomputed nor overwritten. A split executing after E that MOVED a stored bar
    makes every still-open arm `unbookable` (stored fills are raw, stored bars retro-adjusted — the #667 HTF precedent); one the
    ingest recorded as a phantom is ignored, and one not yet applied defers the entry's walk to the next night
    (`exit_split_deferred`, no row written); an arm that settled before the split keeps its valid pre-split outcome. A forward window cut at a data hole ends `degraded`, and an entry still open past the
    horizon + 10 sessions is no longer re-walked. Bars are loaded 200 tickers at a time.
+3b. **Exits, `pp` and `A` (#705 (c)).** A separate step after the fifteen (`walk_pp_exits`), its own work list (filled entries that
+   CARRY `day0_pp` with a non-final `pp` / `A` row), its own counters (`pp_*`), written to the same exit table. The walk needs the
+   breakout day on the MINUTES (a +2R touch before the stop, the day's highest minute high for the stall cut), and the exit step
+   fetches no minute: the ENTRY step computes the facts ONCE, from the minutes it already holds for the fill, and stores them on
+   the entry row (`day0_pp` JSONB, `consolidation_breakout_pp.day0_facts`; the `close` variant stores "nothing on day 0"). A
+   fill recorded before the column existed has NULL there and is not walked (named in `pp_day0_missing` only for fills that
+   failed to compute; a pre-change fill is simply outside the step). Split handling is the registered arms' (a moved bar →
+   `unbookable`, a phantom ignored, an unapplied split defers — `pp_split_deferred`).
 4. **Audit row** with watch count, universe size, the gate funnel, cells per K, new entries by status and reason, exits settled,
-   SIC fetched/known, wall time, and the entry-step diagnostics: `entry_days_without_watch` (look-back sessions with no watch
+   SIC fetched/known, wall time, the pp / A counters (`pp_day0_recorded`, `pp_day0_missing`, `pp_entries_open`, `pp_entries_stale`,
+   `pp_exit_rows`, `pp_exit_mature`, `pp_exit_status`, `pp_exit_errors`, `pp_split_deferred`), and the entry-step diagnostics: `entry_days_without_watch` (look-back sessions with no watch
    rows), `entry_split_rescaled` / `entry_split_unresolved` (+ `_tickers`), `exit_split_deferred`, `minutes_deferred` /
    `minutes_deferred_oldest` / `minutes_outage_days`, and `minutes_feed_down` (now evidence: 3 batches in a row RAISED).
 
@@ -172,6 +184,43 @@ until it fills. The SIC is the CURRENT one, not the point-in-time one the backte
   rows · a filled entry has fewer than 15 exit rows after the run that wrote it · the run row is `success` while the audit row
   lists `STEP ERRORS` · on `feed = 'sip'` rows, a `minute_daily_mismatch` or `minute_high_below_pivot` share well above the
   backtest's (it was SIP too) — on SIP that is a broken minute path, not an expected thin-feed artifact.
+
+### Verify-live for #705 (c) — `pp` and `A` recorded (declared before the deploy)
+
+- **EXPECT** (baseline, 2026-10-25: zero exit rows with `arm IN ('A','pp')`; the entry table has no `day0_pp` column): (1) the first
+  market night after the deploy that records a FILLED entry: that fill carries `day0_pp` (a JSON object, `v` = 1) and the same
+  run writes exactly 2 more exit rows for it, `A` and `pp`, beside its 15; the audit row shows `pp_day0_recorded` = the fills
+  recorded that night and `pp_exit_rows` ≥ 2 per fill. (2) A fill whose day 0 stopped it out has both rows `stopped_day0`,
+  mature, session 0 (a day-0 +2R touch before the stop shows a `partial_r` event at session 0 and a `stop_to` at the fill).
+  (3) A fill that ran: `pp` and `A` rows are non-mature (`degraded`) night after night, `n_fwd` growing, until a trail / stop /
+  cut. (4) The fifteen are unchanged: a filled entry still has 15 registered rows, `exit_rows` counts only those, and no
+  registered row's values moved. (5) Fills before the deploy have NO `pp` / `A` rows and are never written one. (6) No minute
+  fetch on any night is for a session older than the 3-session look-back (the exit step fetches none). (7) Wall time
+  `wall_s` stays far under the 900 s budget (the pp step's work list is small: its arms mature in weeks, `stop_only` does not).
+- **DONE-WHEN:** (a) the same night the first post-change fill is recorded, that fill has a `pp` and an `A` row (his DoD); AND
+  (b) the daily walk has run in prod, not only the day-0 booking: at least one `pp` row with `status` ≠ `stopped_day0` and
+  `n_fwd` ≥ 1 exists (a fill that survived day 0 and was walked on stored bars); AND (c) at least one post-change entry has BOTH
+  arms mature by a DAILY-WALK exit (status stopped / trailed / time_exit, `sessions_held` ≥ 1 — a day-0 stop-out does not count),
+  with the invariants below holding on every mature `pp` row; AND (d) the cross-check below agrees on the first 3 or more minute fills. Then comparing `pp` with `A` (and the fifteen) on the
+  forward record is a read for the forward-read review, not a build item.
+- **VERIFY-LIVE:** on the first market night after the deploy (the 17:48 ET job; verify date = that night, a Monday if it ships this
+  weekend), read-only, by SQL (not the counter ratio: a retried candidate group re-counts already-filled rows): every `status = 'filled' AND
+  break_date >= <deploy date>` entry has `day0_pp IS NOT NULL` and exactly 2 exit rows with `arm IN ('A','pp')` beside 15 others; the
+  audit row has `pp_day0_missing` = 0 and `pp_exit_errors` ≤ `exit_errors` on the same entries; `SELECT count(*) FROM mi_consolidation_breakout_entry WHERE status = 'filled' AND
+  break_date >= <deploy date> AND day0_pp IS NULL` = 0; `SELECT count(*) FROM mi_consolidation_breakout_exit WHERE arm IN ('A','pp')`
+  > 0 (baseline 0). If no watch name breaks that night there is nothing to see: the check waits for the first night that
+  records a fill (DONE-WHEN a), it does not pass on an empty night. **Cross-check (free, read-only):** for the first 3 or more
+  post-deploy MINUTE fills, re-fetch that break day's Alpaca minutes and run `runner.exitpb_walk_arms` (the registered definition) on the
+  stored fill, stop and fill minute plus the prod daily bars. Note: `pp` / `A` day-0 stop-outs use the +2R / breakeven minute walk and
+  need not match the entry's registered `day0_stopped` — a +2R touch that falls back to the fill stops `pp` / `A` while the fifteen walk on.
+- **WOULD-FAIL-IF** (each is a positive observation): a post-change filled entry with 15 rows and no `pp` / `A` row after the
+  run that wrote it · a `pp` row carrying a session-3 `partial` event whose price is at or below the entry `fill` · a `partial` /
+  `partial_r` event with no `stop_to` at the fill in the same session, unless that same bar's stop took the remainder (a gap-open
+  +2R third followed by the stop in one bar ends the walk with no `stop_to`) · a `pp` row that differs from the `A` row of the same entry
+  although `A`'s third sold above the fill (they must agree there) · `pp_day0_missing` > 0 on a night with fills (the facts failed
+  to compute) · `pp_exit_errors` > 0 on an entry whose fifteen registered arms walked clean that night · any recorded `day0_pp` field
+  or `pp` / `A` event that differs from the cross-check's re-walk · a registered arm's row count per entry ≠ 15 · `unbookable` on a `pp` row with no split
+  recorded for the name.
 
 ## Deviation list — where the forward recorder differs from the backtest
 
@@ -196,7 +245,8 @@ until it fills. The SIC is the CURRENT one, not the point-in-time one the backte
    gap is worth that is the main loop's call.
 5. **Runner-only analyses are not recorded:** the two controls (Family A `SETTLE_RULE`, `walk_arm` "Apollo as it runs today"),
    the cap-not-skip and ATR14-width sensitivities, the 60-session re-walk, the stop-floor sweep (derivable from `width_pct` and
-   `adr20`). The 15 `cb.ARMS` are the shadow's arms.
+   `adr20`), the `HIS_EXIT_ARMS` grid and the other `exitpb` arms (`pp_wbe`, `wbe`, `pp_s0`, `pp5_wbe` — his proposal LOST).
+   The shadow's arms are the 15 `cb.ARMS` plus `pp` and `A` (#705 (c)).
 6. **Stored features omit** `i` and every `*_idx` (positions inside one night's 150-bar slice; the matching dates are kept).
    Features agree with a whole-history evaluation (tested).
 7. **One trade per base, night by night.** The chain key is stamped with the poles known at the candidate's night; a pole that
@@ -223,6 +273,14 @@ until it fills. The SIC is the CURRENT one, not the point-in-time one the backte
 12. **Open parameter question — `RECENT_WINDOW = 5` is B-class but feeds a C0 gate** (`deal_pin_median`, the median range of
    the last 5 sessions). It is deliberately NOT in the provenance registry (no source exists to cite); it stays a parameter until
    the P4 read cites or replaces it. Same for `PRIOR_MOVE_STRICT`, `GROUP_PCT_MIN`, `RS_BEST_STRICT/LOOSE`, `PHASE_SLOPE_PRIMARY`.
+13. **`pp` / `A` coverage (#705 (c)).** (a) Only fills recorded AFTER the change carry the day-0 facts; fills before it (the
+    shadow's first sessions) have no `pp` / `A` rows and none are back-filled (the minutes of an old break day would have to be
+    re-fetched; not built, not needed for the forward read, which counts mature entries from the change on). (b) The `close`
+    variant has no minute after its fill, so its `pp` / `A` day 0 is empty — the registered `exitpb` read only ever walked ORH5 /
+    hourly-close fills, so there is no registered number for it; it is walked like the fifteen walk it. (c) The walk is a PORT
+    (`consolidation_breakout_pp.py`), not a call into `cb`, because `consolidation_breakout.py` is hard-pinned by sha256 for the
+    registered exit read (`runner.EXITPB_MODULE_SHA`); `tests/test_cb_pp_recorder.py` keeps it equal to the runner's registered
+    walk event for event.
 
 ## Paper path (MAPPED only, nothing built — every item is money-path work)
 
@@ -249,6 +307,40 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 - The minute feed (the row's `feed` column) and thin-SIC effects above bias the first weeks; the read states them.
 
 ## Change log
+
+### 2026-10-25 — #705 (c) the forward shadow also records `pp` (his carried exit) beside `A` — a recorder change, no order path, no registered number moved
+
+**Trigger**: the 2026-10-19 registration carried `pp` (the day-3 third only in profit, the stop to cost after any third) as the
+exit of every next registration, and the shadow still recorded only the 15 `cb.ARMS` ("until a recorder build"). Without `pp` rows
+the forward read could never judge the exit he actually carries; the plan line (#705 (c)) asked for it beside `A`.
+
+**Evidence**: not a threshold or gate change (no detection, entry, stop, size or live rule moves), so no backtest is owed; the
+walk is the registered one. `tests/test_cb_pp_recorder.py`: the new walk equals the runner's registered `exitpb_walk_arms` event
+for event on scenario tails and on a fuzz of 400 random daily + minute days (the facts round-tripped through JSON), and `A` equals
+the module's own `cb.walk_his_arms` on `c3_p33_t20_cut3`. The fifteen registered arms and the entry rows' existing columns are
+byte-identical to the pre-change code on the same fixtures (250 entry rows, 960 registered exit rows, MRNA + MRNB over 24 sessions;
+digest frozen in the test, taken from git `d3e8ed20`); the new SQL ran on a real Postgres (`tests/test_cb_shadow_pg.py`, 20 passed).
+A faithful-fake test caught the one real trap: the work list counted mature rows over ALL arms, so two early-maturing `pp`/`A` rows
+plus thirteen registered ones would have closed an entry before its `stop_only` control finished — the SQL now joins
+`x.arm NOT IN ('A', 'pp')` (tested on both stores).
+
+**What changed**: (1) `consolidation_breakout_pp.py` (new, pure): `walk_pp` / `walk_pp_arms` (a port of the runner's registered
+`pp`), `day0_facts`. `consolidation_breakout.py` is UNTOUCHED (it is hard-pinned by sha256 for the registered exit read, so editing
+it would have closed that read; a `pp` is not expressible with the `cb.Arm` flags). (2) the entry step stores the breakout day's
+facts on a FILLED row (`day0_pp` JSONB, new nullable column added by `ADD COLUMN IF NOT EXISTS` in the shadow DDL) from the minutes
+it already holds; every other column of the entry row is as before. (3) `walk_pp_exits`, a new step after the exits: filled entries
+that carry facts, `pp` and `A` rows into the same exit table (`arm` is free text; no new table), recomputed in full each night,
+mature rows final, the registered arms' split reading. (4) the registered work-list SQL excludes the two names. (5) audit-row
+counters `pp_*`.
+
+**Anticipated effect**: from the first market night after the deploy that records a filled entry, 2 more exit rows per fill (17,
+not 15) and one more JSON value on the entry row; the audit summary gains `pp/A N exit row(s)`. No Telegram, no order, no change to
+any registered row or to the 17:48 job's schedule. Cost: one extra bar read per night for the (small) set of fills whose `pp` / `A`
+arms are not final. Not covered: fills recorded before the deploy (no facts, no rows — deviation 13).
+
+**Reversion-flag**: NEW (additive: no existing level, cell, entry, stop or exit moved). Reverting = drop the `walk_pp_exits` step
+(the column and the rows can stay; nothing reads them but the forward read). **Status**: built and tested (the SQL on a real
+Postgres); the live check is the verify-live block above.
 
 ### 2026-10-22 — #705 his A+ rating read (a fixed score, the best 3 a week): CAN'T TELL in both 2017–21 and 2022–24, so it is not recorded; RS leadership alone is named as the next test
 
