@@ -294,6 +294,24 @@ the entry stamp). Twelve arms, each one plain sentence, each varying ONE thing:
 | `trail_pivot_swing` | trail | the confirmed-swing-low trail (was `mi_pivot_stop_shadow` P1, ADR 0031) (new) |
 | `trail_character_ma` | trail | the stock's own respected MA × (1 − its undercut) (was P2); no profile → `unscoreable`, counted (new) |
 
+**Three BOOK arms and one fill-facts row beside them (2026-10-26, #482 — his 10-06 book comparison; RECORD
+ONLY).** Written to the SAME table by a sibling module, `agents/market_intelligence/book_geometry_arms.py` (rides
+the same 18:04 ET job, after the twelve), NOT added to `ARMS`: `live_fill_counterfactuals.py` is hash-pinned by the
+#705 v2 freeze, and `db.BOOK_MODULE_ARMS` keeps all four out of that recorder's own `n_arms` count. Full entry,
+the selection effect and the day-0 gap rule: `docs/setups/magna53_ep.md` change log 2026-10-26.
+
+| arm | kind | what it varies |
+|---|---|---|
+| `stop_low_of_day` | stop | the live entry; the stop at the lowest 1-min low of the session strictly BEFORE the fill bar (regular session only; equals `stop_orb_low` on a 09:31 fill) |
+| `entry_first_hour_bar` | entry | the ENTRY moves to a stop-limit buy at the first 60-minute bar's high (09:30-10:29, submitted 10:30, day order to the close); the live 2R bracket rule restated on that bar; never retaken = `unscoreable` / `no_entry:…`, not a loss |
+| `book_first_hour_low_of_day` | book | the book as a unit: the first-hour entry WITH the low-of-day stop before its own fill bar; target/breakeven on the hour bar's R (vs `entry_first_hour_bar` only the stop moves) |
+| `fill_facts` | fill_facts | NOT walked: one row per fill on its first night with the LIVE fill's fill-vs-trigger facts (`fill_vs_trigger_pct`, `real_risk_vs_budget`, …) |
+
+The three walked arms carry capped-dollar columns (`risk_frac_capped`, `realized_r_capped` — H10's definition,
+sized off the trigger, result off the fill, the fill day's risk %); NULL on every row of the twelve above, by
+construction. None of the four is in the nightly digest or in the ONE read's control-pair predicate. These
+arms see ONLY the fills we took (the 1-minute ORB filled), never the full alert population.
+
 **Deliberately NOT an arm: the +6%/60% peak-lock giveback.** Ruled out 2026-08-11 — *"no, we let
 winners run"*, *"do not re-propose it"* (§ below). An arm would put a ruled-out rule in front of
 him on every read. `live_fill_counterfactuals.RULED_OUT_ARMS` records the omission; adding one is

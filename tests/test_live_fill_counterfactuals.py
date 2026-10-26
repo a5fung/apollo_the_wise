@@ -591,6 +591,39 @@ _NOW = datetime(2026, 9, 4, 18, 4, tzinfo=_ET)
 _TODAY = _NOW.date()
 
 
+async def _captured_schema_sql(monkeypatch) -> str:
+    """Every statement db.initialize_schema() EXECUTES at boot, run against a capturing fake pool — the
+    schema as the boot path actually applies it (behaviour), not as db.py's text happens to read."""
+    executed: list[str] = []
+
+    async def execute(sql, *args):
+        executed.append(sql)
+        return "OK"
+
+    conn = MagicMock()
+    conn.execute = execute
+    conn.executemany = AsyncMock(return_value=None)
+    conn.fetch = AsyncMock(return_value=[])
+    conn.fetchval = AsyncMock(return_value=None)
+    conn.fetchrow = AsyncMock(return_value=None)
+    tx = MagicMock()
+    tx.__aenter__ = AsyncMock(return_value=None)
+    tx.__aexit__ = AsyncMock(return_value=None)
+    conn.transaction = MagicMock(return_value=tx)
+    cm = MagicMock()
+    cm.__aenter__ = AsyncMock(return_value=conn)
+    cm.__aexit__ = AsyncMock(return_value=None)
+    pool = MagicMock()
+    pool.acquire = MagicMock(return_value=cm)
+
+    async def get_pool():
+        return pool
+
+    monkeypatch.setattr(db, "get_pool", get_pool)
+    await db.initialize_schema()
+    return "\n".join(executed)
+
+
 @pytest.mark.asyncio
 async def test_run_writes_one_row_per_arm_and_only_to_its_own_table(monkeypatch):
     """THE BYTE-IDENTITY ACCEPTANCE TEST. Every statement the run executes is captured:
@@ -913,20 +946,36 @@ def test_nothing_live_imports_the_recorder():
     near-miss replay, both of which reuse walk_arm/pinned_target rather than writing a
     fourth/fifth walker (see each module's own docstring: WHAT IT MIRRORS) — may import
     the recorder. None of these consumers is on a decision path; all are telemetry."""
+    # source-pin-ok: an import boundary is a property of the import graph, not of any call's output — a lazy import inside a live function only runs under live conditions, so no behaviour can show it is absent; only the source enumerates every importer
     importers = []
     for py in sorted((_REPO / "agents").rglob("*.py")):
         if py == _MODULE:
             continue
         if re.search(r"^\s*(from|import)\s+[\w.]*live_fill_counterfactuals\b", py.read_text(), re.M):
             importers.append(str(py.relative_to(_REPO)))
-    assert importers == ["agents/market_intelligence/gap_near_miss_replay.py",
+    assert importers == ["agents/market_intelligence/book_geometry_arms.py",   # #482 book arms, 2026-10-26
+                        "agents/market_intelligence/gap_near_miss_replay.py",
                         "agents/market_intelligence/lowcap_lane_replay.py",   # #624, 2026-09-04
                         "agents/market_intelligence/scheduler.py",
                         "agents/market_intelligence/sustain_reject_replay.py"], importers
+    # #482 review F9 (2026-10-26): the sibling book module may itself be imported by the job registration
+    # ONLY — a grading / entry / sizing / ordering import of it would otherwise pass every boundary test.
+    # Scope: the runtime packages (offline scripts/probes may read it; tests are not scanned).
+    book_importers = []
+    for pkg in ("agents", "channels", "core", "shared"):
+        for py in sorted((_REPO / pkg).rglob("*.py")):
+            text = py.read_text(errors="replace")
+            if (re.search(r"^\s*(from|import)\s+[\w.]*book_geometry_arms\b", text, re.M)
+                    or re.search(r"^\s*from\s+[\w.]+\s+import\s+[^\n]*\bbook_geometry_arms\b", text, re.M)):
+                book_importers.append(str(py.relative_to(_REPO)))
+    assert book_importers == ["agents/market_intelligence/scheduler.py"], book_importers
     # and the TABLE is named nowhere on the execution side or in the detector/judge/sizing paths
     for py in (_REPO / "agents" / "market_intelligence").rglob("*.py"):
         if py.name in ("db.py", "health_checks.py", "live_fill_counterfactuals.py",
                       "sustain_reject_replay.py",
+                      # #482 book arms (2026-10-26): the sibling module that writes the book rows
+                      # into this table; all its SQL is in db.py, so it names the table only in prose.
+                      "book_geometry_arms.py",
                       # #631 (2026-09-09): the nightly sell-discipline digest READS the table
                       # (the running per-arm read that replaced mi_pivot_stop_shadow's block).
                       # Display only — SELECTs, never the module, no decision path.
@@ -935,15 +984,17 @@ def test_nothing_live_imports_the_recorder():
         assert "mi_live_fill_counterfactuals" not in py.read_text(), py.relative_to(_REPO)
 
 
-def test_registrations_job_liveness_preflight_schema():
+@pytest.mark.asyncio
+async def test_registrations_job_liveness_preflight_schema(monkeypatch):
     from agents.market_intelligence import scheduler as sched, health_checks as hc
     import scripts.preflight_db_updates as pf
     assert "live_fill_counterfactuals" in sched.INTELLIGENCE_OWNED_JOB_IDS
     assert "live_fill_counterfactuals" not in sched.EXECUTION_OWNED_JOB_IDS
     assert any(t[0] == "mi_live_fill_counterfactuals" and t[2] == "settled_session" for t in hc._DETECTOR_LIVENESS_TABLES)
     assert any(sql is db.LIVE_FILL_CF_INSERT_SQL for _, sql in pf.SHADOW_WRITER_STATEMENTS)
-    src = (_REPO / "agents" / "market_intelligence" / "db.py").read_text()
-    block = re.search(r"CREATE TABLE IF NOT EXISTS mi_live_fill_counterfactuals \((.*?)\n\s*\);", src, re.S).group(1)
+    # the CREATE as initialize_schema() executes it at boot (2026-10-26: was a regex over db.py's text)
+    ddl = await _captured_schema_sql(monkeypatch)
+    block = re.search(r"CREATE TABLE IF NOT EXISTS mi_live_fill_counterfactuals \((.*?)\n\s*\);", ddl, re.S).group(1)
     assert "UNIQUE (trade_id, arm)" in block
     for col in db.LIVE_FILL_CF_COLS:
         assert re.search(rf"^\s*{col}\s+", block, re.M), f"column {col} missing from CREATE"

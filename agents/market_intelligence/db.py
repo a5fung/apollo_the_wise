@@ -3709,15 +3709,15 @@ async def initialize_schema() -> None:
                 entry_attempt       INT,                 -- 1 = day-1 first attempt; 2 = re-entry after a stop
                 alert_date          DATE NOT NULL,
                 fill_day            DATE NOT NULL,       -- ET date of filled_at (day 0 of the walk)
-                arm                 TEXT NOT NULL,       -- live_actual | live_replay | stop_orb_low | stop_adr_050 | stop_adr_075 | stop_orb_3r | harvest_no_breakeven | harvest_trail_only | harvest_t3 | harvest_legacy_2r | trail_pivot_swing | trail_character_ma (live_fill_counterfactuals.ARMS is the SoT)
-                arm_kind            TEXT NOT NULL,       -- control | stop | harvest | trail
-                stop_rule           TEXT NOT NULL,       -- live | orb_low | adr_050 | adr_075 | orb_3r
-                harvest_rule        TEXT NOT NULL,       -- live_ladder | no_breakeven | trail_only | t3
+                arm                 TEXT NOT NULL,       -- live_actual | live_replay | stop_orb_low | stop_adr_050 | stop_adr_075 | stop_orb_3r | harvest_no_breakeven | harvest_trail_only | harvest_t3 | harvest_legacy_2r | trail_pivot_swing | trail_character_ma (live_fill_counterfactuals.ARMS is the SoT) | entry_first_hour_bar | stop_low_of_day | book_first_hour_low_of_day | fill_facts (#482 book rows, 2026-10-26 — book_geometry_arms.BOOK_ARMS is the SoT for the three walked arms; fill_facts is one per-fill facts row, never walked)
+                arm_kind            TEXT NOT NULL,       -- control | stop | harvest | trail | entry | book | fill_facts (#482 book rows)
+                stop_rule           TEXT NOT NULL,       -- live | orb_low | adr_050 | adr_075 | orb_3r | low_of_day (stop_low_of_day, book_first_hour_low_of_day) | first_hour_2r (entry_first_hour_bar: 2 × hour-bar low − hour-bar high)
+                harvest_rule        TEXT NOT NULL,       -- live_ladder | no_breakeven | trail_only | t3 | none (fill_facts: not walked)
                 trail_rule          TEXT,                -- #631 (2026-09-09): sma | pivot_swing | character_ma — the trail line this arm walked; NULL on rows written before #631 (cf_v1) = 'sma', the only trail that existed then
                 -- inputs, read ONCE at record time (hard_stop can move on the trade row — a
                 -- re-run must never re-frame R against a moved stop)
                 entry_price         DOUBLE PRECISION,
-                orb_high            DOUBLE PRECISION,
+                orb_high            DOUBLE PRECISION,    -- ⚠ on a first-hour row (entry_rule 'first_hour_bar_high') orb_high / orb_low hold the HOUR BAR's high / low (the arm's own frame; NULL when the hour bar is not trusted), not the 1-min ORB. On every book row orb_high IS the trigger the capped-dollar sizing used. fill_vs_trigger_pct is always computed from the trade row's TRUE ORB high
                 orb_low             DOUBLE PRECISION,
                 live_stop           DOUBLE PRECISION,    -- mi_live_trades.hard_stop as read
                 target_price        DOUBLE PRECISION,    -- entry + target_r × (entry − orb_low): the ORB-R frame, THIS ARM'S OWN target_r (was the module's fixed TARGET_R for every arm until #545, 2026-09-06 — old rows and new rows can differ here on purpose, never pool without checking)
@@ -3758,6 +3758,24 @@ async def initialize_schema() -> None:
                 setup_class         TEXT,
                 baseline_floor_tier TEXT,
                 alert_source        TEXT,
+                -- #482 BOOK ARMS (2026-10-26, book_geometry_arms.py) — NULL on every row written by
+                -- live_fill_counterfactuals.py (cf_v1/cf_v2), by construction: that recorder is frozen
+                -- (the #705 v2 freeze hashes it) and never writes these. entry_rule NULL = 'live_fill'.
+                entry_rule          TEXT,                -- live_fill | first_hour_bar_high — which ENTRY this arm walked; entry_price is THAT entry's fill (the live fill for every arm but the two first-hour arms; NULL on a first-hour row that never entered)
+                entry_minute        TEXT,                -- first_hour_bar_high only: ET 'HH:MM' of the arm's own fill
+                -- the next six ride ONLY the fill_facts row (one per fill, written on its first night)
+                fill_vs_trigger_pct DOUBLE PRECISION,    -- THE LIVE FILL's slippage: (entry_price_live − orb_high) / orb_high × 100 (PENG 2026-10-07: +4.35)
+                fill_slippage_dollars DOUBLE PRECISION,  -- entry_shares × (live fill − orb_high)
+                real_risk_dollars   DOUBLE PRECISION,    -- entry_shares × (live fill − live_stop): the risk the position actually carried
+                risk_budget_dollars DOUBLE PRECISION,    -- mi_live_trades.risk_dollars (the pre-cap sizing budget; NULL on rows that never stored it)
+                real_risk_vs_budget DOUBLE PRECISION,    -- real_risk_dollars / risk_budget_dollars (PENG: 1.31 = 31% over budget)
+                real_risk_vs_trigger_risk DOUBLE PRECISION, -- (live fill − live_stop) / (orb_high − live_stop): how much the fill widened the PER-SHARE risk the sizing assumed (PENG: 1.43)
+                -- capped dollars (H10), walked book arms only: SIZED OFF THE TRIGGER (this row's orb_high), RESULT OFF THE FILL (entry_price)
+                sizing_risk_pct     DOUBLE PRECISION,    -- the FILL DAY's base risk: 0.01 before the 2026-10-03 go to 2%, constants.RISK_PCT from then — stored so a row is never re-framed
+                sizing_regime_mult  DOUBLE PRECISION,    -- regime_risk_multiplier(row.regime) at write time (regime sizing is ACTING since 2026-07-26)
+                risk_frac_capped    DOUBLE PRECISION,    -- min(mult × (fill − stop)/(trigger − stop), MAX_POSITION_PCT × (fill − stop)/(trigger × sizing_risk_pct)): dollar risk placed in units of one full R, after the 20% notional cap at the trigger
+                cap_binding         BOOLEAN,             -- the 20% notional cap (at the trigger), not the risk budget, set the size
+                realized_r_capped   DOUBLE PRECISION,    -- settled only: realized_r × risk_frac_capped = the arm's result in capped dollar-R (H10 'R-eq')
                 settle_version      TEXT NOT NULL,
                 settled_session     DATE NOT NULL,       -- the last SETTLED trading session the recorder had walked when it wrote this row (a plain business date: the detector-liveness registry keys on it — its rule is name-based and a timestamptz under any name but created_at is silently mis-keyed)
                 recorded_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -3774,6 +3792,20 @@ async def initialize_schema() -> None:
             -- #631 (2026-09-09): same additive-schema defence for the trail_rule column (the
             -- pivot-stop arms folded in from mi_pivot_stop_shadow). Old rows read NULL = 'sma'.
             ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS trail_rule TEXT;
+            -- #482 book arms (2026-10-26): thirteen additive nullable columns (see the CREATE above).
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS entry_rule TEXT;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS entry_minute TEXT;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS fill_vs_trigger_pct DOUBLE PRECISION;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS fill_slippage_dollars DOUBLE PRECISION;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS real_risk_dollars DOUBLE PRECISION;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS risk_budget_dollars DOUBLE PRECISION;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS real_risk_vs_budget DOUBLE PRECISION;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS real_risk_vs_trigger_risk DOUBLE PRECISION;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS sizing_risk_pct DOUBLE PRECISION;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS sizing_regime_mult DOUBLE PRECISION;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS risk_frac_capped DOUBLE PRECISION;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS cap_binding BOOLEAN;
+            ALTER TABLE mi_live_fill_counterfactuals ADD COLUMN IF NOT EXISTS realized_r_capped DOUBLE PRECISION;
 
             -- 2026-09-03 — #593 SUSTAIN-REJECT BRACKET REPLAY (sustain_reject_replay.py).
             -- The operator's own framing: a price move is not a trade outcome. For every
@@ -17973,6 +18005,11 @@ LIVE_FILL_CF_COLS: tuple[str, ...] = (
     "exit_era", "exit_rules", "admission_era", "rubric_version", "score_tier", "ep_score",
     "judge_grade", "judge_tier", "grade_engine_authority", "setup_class",
     "baseline_floor_tier", "alert_source", "settle_version", "settled_session",
+    # #482 book arms (2026-10-26) — appended so the first 54 keep their order; live_fill_counterfactuals.py
+    # never sets these (insert_live_fill_counterfactual writes NULL for a missing key).
+    "entry_rule", "entry_minute", "fill_vs_trigger_pct", "fill_slippage_dollars", "real_risk_dollars",
+    "risk_budget_dollars", "real_risk_vs_budget", "real_risk_vs_trigger_risk", "sizing_risk_pct",
+    "sizing_regime_mult", "risk_frac_capped", "cap_binding", "realized_r_capped",
 )
 def _jsonb_value_list(cols, jsonb_cols) -> str:
     """The `$1, $2::jsonb, $3, ...` VALUES list for a recorder's INSERT (#600 cleanup
@@ -18022,6 +18059,16 @@ async def insert_live_fill_counterfactual(fields: dict) -> bool:
     return res.endswith(" 1")
 
 
+# #482 BOOK ARMS (2026-10-26): the rows book_geometry_arms.py writes into this SAME table — three
+# walked arms (BOOK_ARM_NAMES; book_geometry_arms.BOOK_ARMS is their SoT) and one per-fill facts row
+# (BOOK_FILL_FACTS_ARM: the live fill's fill-vs-trigger facts, written on the fill's first night, never
+# walked). None of them is live_fill_counterfactuals.ARMS (that module is hash-frozen by the #705 v2
+# freeze), so the original recorder must neither count them toward its own `n_arms` (a fill with 10 of
+# its 12 arms plus these would read 12 and strand its still-pending arms for ever) nor ever write them.
+BOOK_ARM_NAMES: tuple[str, ...] = ("entry_first_hour_bar", "stop_low_of_day", "book_first_hour_low_of_day")
+BOOK_FILL_FACTS_ARM = "fill_facts"
+BOOK_MODULE_ARMS: tuple[str, ...] = BOOK_ARM_NAMES + (BOOK_FILL_FACTS_ARM,)
+
 _COUNTERFACTUAL_FILLS_SQL = """
     SELECT t.id, t.ticker, t.alert_date, t.account_mode, t.signal_type, t.entry_attempt,
            t.status, t.entry_price, t.entry_shares, t.orb_high, t.orb_low, t.hard_stop,
@@ -18032,7 +18079,9 @@ _COUNTERFACTUAL_FILLS_SQL = """
     WHERE t.signal_type = 'magna53'
       AND t.filled_at IS NOT NULL
       AND (t.filled_at AT TIME ZONE 'America/New_York')::date >= $1::date
-      AND (SELECT COUNT(*) FROM mi_live_fill_counterfactuals c WHERE c.trade_id = t.id) < $2::int
+      AND (SELECT COUNT(*) FROM mi_live_fill_counterfactuals c
+           WHERE c.trade_id = t.id
+             AND NOT (c.arm = ANY($3::text[]))) < $2::int   -- #482 book arms are not this recorder's arms
     ORDER BY t.filled_at, t.id
 """
 
@@ -18041,10 +18090,41 @@ async def get_counterfactual_fills(filled_from: "date", n_arms: int) -> list[dic
     """READ-ONLY. MAGNA53 fills (both account modes — stamped, never pooled) filled on or
     after `filled_from` (ET day) that still have fewer than `n_arms` recorder rows. 9m_day2
     and the other retired strategies are excluded by construction (operator 2026-08-29:
-    never cite them); the ORB-R target frame is MAGNA53's."""
+    never cite them); the ORB-R target frame is MAGNA53's. Rows of the #482 BOOK ARMS
+    (BOOK_MODULE_ARMS — the walked book arms and the fill-facts row) do not count toward `n_arms`."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch(_COUNTERFACTUAL_FILLS_SQL, _coerce_date(filled_from), int(n_arms))
+        rows = await conn.fetch(_COUNTERFACTUAL_FILLS_SQL, _coerce_date(filled_from), int(n_arms),
+                                list(BOOK_MODULE_ARMS))
+    return [dict(r) for r in rows]
+
+
+# Same population as above, keyed on WHICH of the book rows are missing (names, not a count), with
+# the column the fill-vs-trigger facts need (`risk_dollars` = the pre-cap sizing budget). Hoisted:
+# scripts/preflight_db_updates.py PREPARES it (and the original recorder's query above) at deploy.
+_BOOK_ARM_FILLS_SQL = """
+    SELECT t.id, t.ticker, t.alert_date, t.account_mode, t.signal_type, t.entry_attempt,
+           t.status, t.entry_price, t.entry_shares, t.orb_high, t.orb_low, t.hard_stop,
+           t.regime, t.exits, t.partial_taken, t.total_pnl, t.pnl_attribution,
+           t.filled_at, t.closed_at, t.exit_rule, t.risk_dollars
+    FROM mi_live_trades t
+    WHERE t.signal_type = 'magna53'
+      AND t.filled_at IS NOT NULL
+      AND (t.filled_at AT TIME ZONE 'America/New_York')::date >= $1::date
+      AND (SELECT COUNT(DISTINCT c.arm) FROM mi_live_fill_counterfactuals c
+           WHERE c.trade_id = t.id AND c.arm = ANY($2::text[])) < cardinality($2::text[])
+    ORDER BY t.filled_at, t.id
+"""
+
+
+async def get_book_arm_fills(filled_from: "date", arm_names: "tuple[str, ...] | list[str]") -> list[dict]:
+    """READ-ONLY. The same MAGNA53 fills as `get_counterfactual_fills` that are still missing at
+    least one of `arm_names` (#482 book rows, BOOK_MODULE_ARMS) — keyed on which arms exist, not on
+    a row count, so it can never be satisfied by a different arm's rows. Carries `risk_dollars` for
+    the fill-vs-trigger facts."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_BOOK_ARM_FILLS_SQL, _coerce_date(filled_from), list(arm_names))
     return [dict(r) for r in rows]
 
 

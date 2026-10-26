@@ -23,7 +23,8 @@ import sys
 from agents.market_intelligence.catalyst_metrics_extractor import YOY_RECOVERY_WRITEBACK_SQL
 from agents.market_intelligence.ep_theme_belonging import EP_THEME_BELONGING_SHADOW_UPSERT_SQL
 from agents.market_intelligence.db import (
-    _ANALYST_EST_DIVERGENCE_UPSERT_SQL, _ANALYST_EST_UPSERT_SQL, _DELAYED_DAY0_SQL,
+    _ANALYST_EST_DIVERGENCE_UPSERT_SQL, _ANALYST_EST_UPSERT_SQL, _BOOK_ARM_FILLS_SQL,
+    _COUNTERFACTUAL_FILLS_SQL, _DELAYED_DAY0_SQL,
     _DELAYED_SETTLE_SQL,
     _DELAYED_VARIANT_SETTLE_SQL, EOD_UNSCORED_THEME_AXIS_INSERT_SQL,
     EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
@@ -311,6 +312,18 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # evidence lane empty through its first fills with no downstream error.
         "db.insert_live_fill_counterfactual: #482 stop/harvest counterfactuals beside every MAGNA53 fill",
         LIVE_FILL_CF_INSERT_SQL,
+    ),
+    (
+        # #482 book arms (2026-10-26): the ORIGINAL recorder's fill query gained a `$3::text[]`
+        # exclusion (the book rows do not count toward its 12 arms) — the one change that reaches the
+        # frozen recorder in prod, and only as SQL; every test mocks the DB. A type or syntax error
+        # here would first show at 18:04 that night as a failed run; prepared at deploy instead.
+        "db.get_counterfactual_fills: #482 original recorder's fill query (book rows excluded from its count)",
+        _COUNTERFACTUAL_FILLS_SQL,
+    ),
+    (
+        "db.get_book_arm_fills: #482 book arms' fill query (fills missing any book row, by name)",
+        _BOOK_ARM_FILLS_SQL,
     ),
     (
         # #593: the sustain-reject bracket replay's single writer. An UPSERT (ON CONFLICT

@@ -5574,6 +5574,23 @@ async def _live_fill_counterfactuals_job():
     except Exception as e:
         logger.error(f"live-fill counterfactual job failed: {e}", exc_info=True)
         await notify_job_failure("live_fill_counterfactuals", str(e))
+    # #482 BOOK ARMS (2026-10-26) — the book's entry (first 1-hour bar), stop (low of the day) and
+    # both together, plus one fill-facts row per fill, beside the same fills, written to the SAME
+    # table by a sibling module because live_fill_counterfactuals.py is hash-pinned by the #705 v2
+    # freeze. Own try/except: a failure here can never blot out the original recorder above, and vice
+    # versa. RECORD ONLY — no rule, no broker, no live-trade mutation, no Telegram beyond the
+    # failure-rate guard (THE LINE; see book_geometry_arms.py docstring). It never raises.
+    try:
+        from agents.market_intelligence.book_geometry_arms import audit_summary, run_book_geometry_arms
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.health_checks import check_recorder_failure_rate
+        book = await run_book_geometry_arms(et_today())
+        logger.info(f"book geometry arms: {audit_summary(book)}")
+        await check_recorder_failure_rate(
+            "book_geometry_arms", book, attempted_key="arms_considered")
+    except Exception as e:
+        logger.error(f"book geometry arms job failed: {e}", exc_info=True)
+        await notify_job_failure("book_geometry_arms", str(e))
 
 
 async def _sustain_reject_replay_job():

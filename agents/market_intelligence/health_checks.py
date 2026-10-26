@@ -4008,6 +4008,12 @@ _DEAD_COL_EVENT_GATED: dict[str, tuple[str, str]] = {
     "mi_live_fill_counterfactuals.mark_r": (
         "outcome = 'horizon'",
         "filled only when an arm is still open after 40 forward sessions"),
+    # #482 book arms (2026-10-26): the capped-dollar RESULT exists only on a walked book arm that has
+    # SETTLED (a horizon, abstain or no-entry row has none, and the twelve original arms never carry
+    # it). The arm names are db.BOOK_ARM_NAMES, inlined because this is raw SQL; a test pins them equal.
+    "mi_live_fill_counterfactuals.realized_r_capped": (
+        "outcome = 'settled' AND arm IN ('entry_first_hour_bar', 'stop_low_of_day', 'book_first_hour_low_of_day')",
+        "filled only on a walked #482 book arm that settled"),
     "mi_gap_near_miss_replays.mark_r": _WALK_OPEN,
     "mi_sustain_reject_replays.mark_r": _WALK_OPEN,
     "mi_lowcap_lane_replays.mark_r": _WALK_OPEN,
