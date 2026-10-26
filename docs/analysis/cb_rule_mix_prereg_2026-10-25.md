@@ -745,3 +745,23 @@ the marker after that changes `doc_body`, and `--tag` refuses.
 - mix_ledger: ABSENT
 - doc_body_freeze: 6a2512024c5f2ed562469919d5e733dd48ba36a4d6bde0045f2d9e7f071985fd
 - doc_body: 6a2512024c5f2ed562469919d5e733dd48ba36a4d6bde0045f2d9e7f071985fd
+
+## RESULT — the one tag run, 2026-10-26 (freeze `7dfa483e`; printout `scripts/probes/_705_rule_mix_1025/01_mix_tag.txt`; written BELOW the marker)
+
+**No decision shows a rule mix by the registered bar (the union must beat the same union by chance by ≥ 15 points on BOTH 2020 and
+2021-22).** Independent recount (Sonnet, own stdlib script, `verify/recount_tag.py` + `.txt`): all nine union / chance / verdict cells and all
+102 deciding labels (0 of 413 printed labels differ) reproduce from the per-trade files; caveats in the recount (the STOP / EXIT random-level
+union taken as printed — a 1−(1−p)^k check lands within 0.2 point; 42 secondary ENTER cells checked by bound only).
+
+| Decision | 2020: union vs chance (n) | 2021-22: union vs chance (n) | untouched (sign check) | Verdict |
+|---|---|---|---|---|
+| ENTER (his in-session buy windows; 7 levels) | 56.8% vs 49.9% (88) | 66.7% vs 52.0% (60) | 44.4% vs 20.7% (9) | no mix: +6.9 / +14.7 points (the bar is +15 on both) |
+| STOP (his losing exits) | 54.0% vs 61.9% (139) | 57.8% vs 64.7% (116) | 75.0% vs 74.6% (12) | no mix: below chance |
+| EXIT (all exits; 12 rules) | 71.5% vs 69.8% (333) | 72.9% vs 70.9% (229) | 61.4% vs 67.7% (44) | no mix: at chance |
+
+- **Reading (no money, no rule changed):** his buys lean on his own opening-range highs (the union beats random prices by 7-15 points, and the
+  1-, 5- and 30-minute highs carry most of it); as ONE rule set for all trades, no stop level and no exit rule in the library explains his
+  trades better than the same rules fired at random. Fragile: ENTER 2021-22 sits 0.3 point under the bar.
+- **His reading, 2026-10-26 (verbatim):** *"we're not looking for 100% coverage, trading is an art, so some variations that are close to a set
+  of rules applied based on context is what I hope we get out of it, then the challenge is to recreate those rules for apollo"* → the next read
+  asks which CONTEXT picks which rule (`docs/analysis/cb_context_rules_prereg_2026-10-26.md`, registered separately).

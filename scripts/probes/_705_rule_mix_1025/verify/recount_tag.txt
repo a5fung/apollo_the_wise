@@ -1,0 +1,244 @@
+# #705 RULE MIX — INDEPENDENT RECOUNT of the tagging printout (01_mix_tag.txt)
+# own code (stdlib only; no import of 01_mix.py or the frozen modules). Inputs: rule_mix/tags_{enter,stop,exit}.tsv, control_windows.tsv.gz, the intraday ENTER TSVs
+# (per-level shifted chance only) and the printout text. Registration cb_rule_mix_prereg_2026-10-25.md §3-§6. Run: python3 .../verify/recount_tag.py
+
+## HEADLINE — decision x block: UNION, chance union, mix verdict (printout vs mine; the verdict per block is the +15.0-point test, the overall verdict needs 2020 AND 2021-22)
+decision block         n | UNION print   mine | chance print   mine |  margin | verdict print    mine
+-----------------------------------------------------------------------------------------------------
+ENTER    2020         88 |       56.8%  56.8% |        49.9%  49.9% |   +6.9p |        no mix  no mix
+ENTER    2021-22      60 |       66.7%  66.7% |        52.0%  52.0% |  +14.7p |        no mix  no mix
+ENTER    untouched     9 |       44.4%  44.4% |        20.7%  20.7% |  +23.7p |           mix     mix
+ENTER    OVERALL         |                    |                     |         | printout: no mix  mine: no mix
+
+STOP     2020        139 |       54.0%  54.0% |        61.9%  61.9% |   -7.9p |        no mix  no mix
+STOP     2021-22     116 |       57.8%  57.8% |        64.7%  64.7% |   -6.9p |        no mix  no mix
+STOP     untouched    12 |       75.0%  75.0% |        74.6%  74.6% |   +0.4p |        no mix  no mix
+STOP     OVERALL         |                    |                     |         | printout: no mix  mine: no mix
+
+EXIT     2020        333 |       71.5%  71.5% |        69.8%  69.8% |   +1.7p |        no mix  no mix
+EXIT     2021-22     229 |       72.9%  72.9% |        70.9%  70.9% |   +2.0p |        no mix  no mix
+EXIT     untouched    44 |       61.4%  61.4% |        67.7%  67.7% |   -6.3p |        no mix  no mix
+EXIT     OVERALL         |                    |                     |         | printout: no mix  mine: no mix
+
+## rule labels that differ: 0 of 413 (every rule x every printed table incl. the sub-blocks beside); summary-table labels / verdicts that differ: 0
+## cells compared: 4776 printed numbers / labels; equal 4775; exact-half rounding ties 1; real differences 0; per-level-shifted cells compared by bound only (source rows incomplete) 42
+
+####################################################################################################
+
+## cells that are not an exact string match
+- real differences: none
+  TIE  ENTER 2021-22 / dated (beside) | L3 chance shared window | printout 4.2% | mine 4.1% | exact value 4.150000% sits on a rounding half point (float summation order decides the printed digit); not a count difference
+
+## ENTER per-level shifted chance (printed column 'shifted per level'): 42 cells are compared by bound only
+   control_windows holds only the SHARED-window ENTER draws; the per-level shifted share per rule is in the intraday TSVs (enter_fit_trades.tsv, check_enter_trades.tsv),
+   which have no row for some windows the mix read scored. Absent windows per printed table (derived from the rows; a cell with some rows absent is bound-checked, a cell with
+   none present is unverifiable from the files):
+   ENTER 2020: 1 window(s) absent from the intraday TSVs (eid 408)
+   ENTER 2020 / dated (beside): 1 window(s) absent from the intraday TSVs (eid 408)
+   ENTER 2020 / flickers (beside): 2 window(s) absent from the intraday TSVs (eid 421, 462)
+   ENTER 2020 / pre-market-flat, undated (beside): 1 window(s) absent from the intraday TSVs (eid 380)
+   ENTER 2021-22 / pre-market-flat, dated (beside): 41 window(s) absent from the intraday TSVs; ALL absent: no source rows
+   ENTER 2021-22 / pre-market-flat, undated (beside): 52 window(s) absent from the intraday TSVs; ALL absent: no source rows
+   outcome over 42 cells: {'bound pass': 28, 'no source rows': 14}
+   deciding block ENTER 2020 L1: printed 2.4%; mine 2.4% on 87 of 88 windows; the 1 absent can put it in [2.4%, 3.5%]; inside bound
+   deciding block ENTER 2020 L8: printed 2.7%; mine 2.7% on 87 of 88 windows; the 1 absent can put it in [2.7%, 3.8%]; inside bound
+   deciding block ENTER 2020 L2: printed 1.9%; mine 2.0% on 87 of 88 windows; the 1 absent can put it in [1.9%, 3.1%]; inside bound
+   deciding block ENTER 2020 L7: printed 1.7%; mine 1.7% on 87 of 88 windows; the 1 absent can put it in [1.7%, 2.8%]; inside bound
+   deciding block ENTER 2020 L3: printed 1.7%; mine 1.7% on 87 of 88 windows; the 1 absent can put it in [1.7%, 2.8%]; inside bound
+   deciding block ENTER 2020 L9: printed 4.9%; mine 4.9% on 87 of 88 windows; the 1 absent can put it in [4.9%, 6.0%]; inside bound
+   deciding block ENTER 2020 L4: printed 0.2%; mine 0.2% on 87 of 88 windows; the 1 absent can put it in [0.2%, 1.3%]; inside bound
+   ENTER 2020 L2: my mean over the 87 present windows is 1.954% -> 2.0%; the printout averages 88 (eid 408 has no TSV row): 1.7000/88 = 1.932% (the absent window's own value 0) -> 1.9% = the printed 1.9%
+   Proof the per-level shifted column cannot matter to any label: every ENTER label recomputed WITHOUT the per-level shifted line (chance = max(random-price floor, shared window))
+   equals the printed label on 98 of 98 rule x table cells (0 differ); recomputed WITH the printed per-level value, 98 of 98 equal (0 differ).
+   (the per-level shifted value is the LARGEST of the three ENTER chance lines in 0 of 21 deciding-block rule cells and 0 of 98 cells over all printed tables; so the column cannot move any label)
+
+####################################################################################################
+
+## PER-RULE RECOUNT of the nine deciding tables (mine; every number below equals the printout unless listed in the diff section above)
+   greedy / standalone / precision are shares of the block's n; chance = the line the label is held against (ENTER: max(random-price, per-level shifted, shared window);
+   STOP/EXIT: max(control (a) frames, control (a) no frames, random-level floor)); label = §6 on the printed one-decimal numbers; 'pr' = the printed label
+
+ENTER 2020 (n 88): UNION 56.8% = 1 - discretion 43.2%; chance union 49.9%
+  rule    greedy  stand.   prec.  chance  label (mine)            pr   ok
+  L1       36.4%   36.4%   46.4%   20.8%          weak          weak   ok
+  L8       19.3%   35.2%   77.5%   20.8%          weak          weak   ok
+  L2        1.1%   18.2%   21.1%   20.8%        chance        chance   ok
+  L7        0.0%   15.9%   17.9%   20.8%        chance        chance   ok
+  L3        0.0%   13.6%   30.8%   20.8%  below chance  below chance   ok
+  L9        0.0%   35.2%   77.5%   20.8%          weak          weak   ok
+  L4        0.0%    1.1%    1.1%   20.8%  below chance  below chance   ok
+
+ENTER 2021-22 (n 60): UNION 66.7% = 1 - discretion 33.3%; chance union 52.0%
+  rule    greedy  stand.   prec.  chance  label (mine)            pr   ok
+  L1       43.3%   43.3%   55.3%   30.9%          weak          weak   ok
+  L8       18.3%   40.0%   85.7%   30.9%          weak          weak   ok
+  L2        3.3%   26.7%   31.4%   30.9%        chance        chance   ok
+  L7        1.7%   33.3%   35.7%   30.9%        chance        chance   ok
+  L3        0.0%   16.7%   37.0%   30.9%  below chance  below chance   ok
+  L9        0.0%   40.0%   85.7%   30.9%          weak          weak   ok
+  L4        0.0%    0.0%    0.0%   30.9%  below chance  below chance   ok
+
+ENTER untouched (n 9): UNION 44.4% = 1 - discretion 55.6%; chance union 20.7%
+  rule    greedy  stand.   prec.  chance  label (mine)            pr   ok
+  L1       22.2%   22.2%   28.6%    3.3%          weak          weak   ok
+  L8       11.1%   33.3%  100.0%    3.3%       carries       carries   ok
+  L2        0.0%    0.0%    0.0%    3.3%        chance        chance   ok
+  L7        0.0%   22.2%   25.0%    3.3%          weak          weak   ok
+  L3       11.1%   22.2%   50.0%    3.3%       carries       carries   ok
+  L9        0.0%   33.3%  100.0%    5.4%       carries       carries   ok
+  L4        0.0%    0.0%    0.0%    3.3%        chance        chance   ok
+
+STOP 2020 (n 139): UNION 54.0% = 1 - discretion 46.0%; chance union 61.9%
+  rule    greedy  stand.   prec.  chance  label (mine)            pr   ok
+  S1-T     45.3%   45.3%   57.3%   40.4%        chance        chance   ok
+  S10-T     0.0%   39.6%   64.0%   40.4%        chance        chance   ok
+  S10-H     1.4%   38.1%   49.5%   40.4%        chance        chance   ok
+  S10-C     2.2%   33.1%   47.9%   40.4%  below chance  below chance   ok
+  S9-T      0.0%   41.0%   64.0%   40.4%        chance        chance   ok
+  S9-H      0.0%   38.1%   50.5%   40.4%        chance        chance   ok
+  S9-C      0.0%   30.9%   46.2%   40.4%  below chance  below chance   ok
+  S1-H      0.0%   38.1%   54.1%   40.4%        chance        chance   ok
+  S1-C      0.7%   30.9%   51.2%   40.4%  below chance  below chance   ok
+  S3-T      1.4%   22.3%   49.2%   40.4%  below chance  below chance   ok
+  S3-H      0.7%   18.7%   44.1%   40.4%  below chance  below chance   ok
+  S3-C      0.7%   15.8%   37.9%   40.4%  below chance  below chance   ok
+  S4-T      1.4%   19.4%   37.0%   40.4%  below chance  below chance   ok
+  S4-H      0.0%   17.3%   35.8%   40.4%  below chance  below chance   ok
+  S4-C      0.0%   13.7%   33.3%   40.4%  below chance  below chance   ok
+
+STOP 2021-22 (n 116): UNION 57.8% = 1 - discretion 42.2%; chance union 64.7%
+  rule    greedy  stand.   prec.  chance  label (mine)            pr   ok
+  S1-T     44.8%   44.8%   59.1%   41.7%        chance        chance   ok
+  S10-T     1.7%   37.1%   59.7%   41.7%        chance        chance   ok
+  S10-H     2.6%   40.5%   50.0%   41.7%        chance        chance   ok
+  S10-C     3.4%   37.9%   53.7%   41.7%        chance        chance   ok
+  S9-T      0.0%   37.1%   60.6%   41.7%        chance        chance   ok
+  S9-H      0.0%   39.7%   50.5%   41.7%        chance        chance   ok
+  S9-C      0.0%   37.1%   53.8%   41.7%        chance        chance   ok
+  S1-H      0.0%   42.2%   58.3%   41.7%        chance        chance   ok
+  S1-C      0.0%   38.8%   60.8%   41.7%        chance        chance   ok
+  S3-T      2.6%   20.7%   54.5%   41.7%  below chance  below chance   ok
+  S3-H      0.0%   19.0%   51.2%   41.7%  below chance  below chance   ok
+  S3-C      0.9%   15.5%   43.9%   41.7%  below chance  below chance   ok
+  S4-T      0.9%   25.9%   47.6%   41.7%  below chance  below chance   ok
+  S4-H      0.0%   19.8%   44.2%   41.7%  below chance  below chance   ok
+  S4-C      0.9%   13.8%   41.0%   41.7%  below chance  below chance   ok
+
+STOP untouched (n 12): UNION 75.0% = 1 - discretion 25.0%; chance union 74.6%
+  rule    greedy  stand.   prec.  chance  label (mine)            pr   ok
+  S1-T     66.7%   66.7%   72.7%   54.2%          weak          weak   ok
+  S10-T     0.0%   66.7%   80.0%   54.2%          weak          weak   ok
+  S10-H     8.3%   66.7%   72.7%   54.2%          weak          weak   ok
+  S10-C     0.0%   58.3%   70.0%   54.2%        chance        chance   ok
+  S9-T      0.0%   66.7%   80.0%   54.2%          weak          weak   ok
+  S9-H      0.0%   66.7%   72.7%   54.2%          weak          weak   ok
+  S9-C      0.0%   58.3%   70.0%   54.2%        chance        chance   ok
+  S1-H      0.0%   66.7%   88.9%   54.2%          weak          weak   ok
+  S1-C      0.0%   58.3%   77.8%   54.2%        chance        chance   ok
+  S3-T      0.0%   50.0%   75.0%   54.2%        chance        chance   ok
+  S3-H      0.0%   50.0%   75.0%   54.2%        chance        chance   ok
+  S3-C      0.0%   33.3%   80.0%   54.2%  below chance  below chance   ok
+  S4-T      0.0%   41.7%   62.5%   54.2%  below chance  below chance   ok
+  S4-H      0.0%   33.3%   66.7%   54.2%  below chance  below chance   ok
+  S4-C      0.0%   25.0%   50.0%   54.2%  below chance  below chance   ok
+
+EXIT 2020 (n 333): UNION 71.5% = 1 - discretion 28.5%; chance union 69.8%
+  rule    greedy  stand.   prec.  chance  label (mine)            pr   ok
+  M-1      28.5%   28.5%   38.8%   27.2%        chance        chance   ok
+  M-2       5.7%   30.3%   38.4%   28.4%        chance        chance   ok
+  M-3      12.6%   26.4%   46.1%   23.6%        chance        chance   ok
+  M-4       7.8%   20.1%   56.3%   23.6%        chance        chance   ok
+  M-5       4.5%    7.2%   30.8%   23.6%  below chance  below chance   ok
+  M-9       2.4%   19.2%   25.6%   23.6%        chance        chance   ok
+  M-6       2.4%    5.4%   12.6%   23.6%  below chance  below chance   ok
+  M-2s      0.3%   30.0%   39.5%   25.7%        chance        chance   ok
+  M-11      3.0%   11.7%   22.9%   23.6%  below chance  below chance   ok
+  M-7       2.1%   14.1%   28.0%   23.6%  below chance  below chance   ok
+  M-8       1.5%   30.9%   35.0%   28.7%        chance        chance   ok
+  M-10      0.6%    3.3%    8.8%   23.6%  below chance  below chance   ok
+
+EXIT 2021-22 (n 229): UNION 72.9% = 1 - discretion 27.1%; chance union 70.9%
+  rule    greedy  stand.   prec.  chance  label (mine)            pr   ok
+  M-1      26.6%   26.6%   38.1%   28.1%        chance        chance   ok
+  M-2       7.0%   28.4%   35.7%   28.4%        chance        chance   ok
+  M-3      13.5%   27.5%   49.2%   28.1%        chance        chance   ok
+  M-4       9.2%   24.0%   59.8%   28.1%        chance        chance   ok
+  M-5       3.9%    7.4%   29.8%   28.1%  below chance  below chance   ok
+  M-9       0.4%   21.0%   26.7%   28.1%  below chance  below chance   ok
+  M-6       1.3%    3.5%    9.2%   28.1%  below chance  below chance   ok
+  M-2s      0.9%   27.1%   38.8%   28.1%        chance        chance   ok
+  M-11      3.5%   13.1%   23.4%   28.1%  below chance  below chance   ok
+  M-7       4.4%   16.6%   34.2%   28.1%  below chance  below chance   ok
+  M-8       1.3%   27.9%   30.6%   30.7%        chance        chance   ok
+  M-10      0.9%    1.7%    4.9%   28.1%  below chance  below chance   ok
+
+EXIT untouched (n 44): UNION 61.4% = 1 - discretion 38.6%; chance union 67.7%
+  rule    greedy  stand.   prec.  chance  label (mine)            pr   ok
+  M-1      18.2%   18.2%   22.9%   29.3%  below chance  below chance   ok
+  M-2       6.8%   20.5%   23.7%   29.3%  below chance  below chance   ok
+  M-3      11.4%   13.6%   24.0%   29.3%  below chance  below chance   ok
+  M-4      11.4%   22.7%   43.5%   29.3%  below chance  below chance   ok
+  M-5       2.3%    9.1%   40.0%   29.3%  below chance  below chance   ok
+  M-9       6.8%   25.0%   28.2%   29.3%        chance        chance   ok
+  M-6       2.3%    2.3%    4.8%   29.3%  below chance  below chance   ok
+  M-2s      0.0%   22.7%   27.8%   29.3%  below chance  below chance   ok
+  M-11      2.3%   13.6%   20.0%   29.3%  below chance  below chance   ok
+  M-7       0.0%   18.2%   26.7%   29.3%  below chance  below chance   ok
+  M-8       0.0%   18.2%   20.0%   29.3%  below chance  below chance   ok
+  M-10      0.0%    4.5%    9.5%   29.3%  below chance  below chance   ok
+
+####################################################################################################
+
+## chance-union detail: the three ENTER lines the printout quotes (k-price / shared-window / per-level shifted) and the STOP/EXIT control (a) modes + random-level union
+  ENTER 2020      union 56.8%  k-price 49.9%  shared-window 9.9%  per-level shifted 13.9%  -> largest 49.9%; margin +6.9 pts; random-price floor 20.8%
+  ENTER 2021-22   union 66.7%  k-price 52.0%  shared-window 13.0%  per-level shifted 18.8%  -> largest 52.0%; margin +14.7 pts; random-price floor 30.9%
+  ENTER untouched union 44.4%  k-price 20.7%  shared-window 7.3%  per-level shifted 9.6%  -> largest 20.7%; margin +23.7 pts; random-price floor 3.3%
+  STOP 2020      union 54.0%  (a) frames 44.0% / no frames 49.5%  random-level union: printed 61.9%, analytic estimate 61.7% (diff 0.2 pt)  -> chance 61.9%; margin -7.9 pts; vs (a) alone +4.5 pts
+  STOP 2021-22   union 57.8%  (a) frames 41.1% / no frames 47.9%  random-level union: printed 64.7%, analytic estimate 64.5% (diff 0.2 pt)  -> chance 64.7%; margin -6.9 pts; vs (a) alone +9.9 pts
+  STOP untouched union 75.0%  (a) frames 56.0% / no frames 56.0%  random-level union: printed 74.6%, analytic estimate 74.8% (diff 0.2 pt)  -> chance 74.6%; margin +0.4 pts; vs (a) alone +19.0 pts
+  EXIT 2020      union 71.5%  (a) frames 62.6% / no frames 69.8%  random-level union: printed 35.8%, analytic estimate 35.6% (diff 0.2 pt)  -> chance 69.8%; margin +1.7 pts; vs (a) alone +1.7 pts
+  EXIT 2021-22   union 72.9%  (a) frames 64.9% / no frames 70.9%  random-level union: printed 42.2%, analytic estimate 42.2% (diff 0.0 pt)  -> chance 70.9%; margin +2.0 pts; vs (a) alone +2.0 pts
+  EXIT untouched union 61.4%  (a) frames 61.3% / no frames 67.7%  random-level union: printed 42.6%, analytic estimate 42.7% (diff 0.1 pt)  -> chance 67.7%; margin -6.3 pts; vs (a) alone -6.3 pts
+  CAVEAT (the one circular cell): the STOP/EXIT random-level UNION is a union of k independent levels per draw; no per-trade file stores it (only the single-level rlevel_ex),
+  so 'chance mine' for STOP/EXIT takes it AS PRINTED. The analytic estimate 1-(1-p_t)^k from each trade's rlevel_ex reproduces it to <= 0.2 pt on all six cells. The verdict does
+  not turn on it: the random level can only RAISE the chance line, and the union already fails the +15.0 bar against control (a) alone on both deciding blocks.
+
+## fragile readings (within 0.3 pt of a §6 threshold, on the printed one-decimal numbers); deciding blocks only
+  ENTER 2020 L7: label chance; standalone - chance = -4.9 pt vs the chance band -5.0 bar
+  ENTER untouched L3: label carries; precision 50.0% vs the 50.0% bar
+  STOP 2020 S1-T: label chance; standalone - chance = +4.9 pt vs the chance band +5.0 bar
+  ENTER 2021-22 UNION margin +14.7 pt vs the +15.0 bar (66.7% vs 52.0%)
+
+## the 2020 margin against every chance line separately (the overall verdict needs +15.0 on BOTH deciding blocks, so 2020 alone settles 'no mix' when no registered line reaches it)
+  ENTER 2020: union 56.8% - k-price 49.9% = +6.9; - shared-window 9.9% = +47.0; - per-level shifted 13.9% = +42.9   (§6 registers the LARGEST of the three, i.e. k-price: +6.9, short of +15.0)
+  STOP 2020: union 54.0% - (a) frames 44.0% = +10.0; - (a) no frames 49.5% = +4.5; - random level 61.9% (printed) = -7.9   (§6: the larger of (a) and the random level)
+  EXIT 2020: union 71.5% - (a) frames 62.6% = +8.9; - (a) no frames 69.8% = +1.7; - random level 35.8% (printed) = +35.7   (§6: the larger of (a) and the random level)
+
+## sensitivity of the STOP/EXIT labels and verdict to the control-(a) mode (the registration says control (a) 'has no frames'; the module takes the LARGER of the two modes)
+  STOP: labels that change if control (a) is frame-free only: 0 of 45 ; frames only: 0 of 45 ; overall verdict under frame-free-only (a) with the printed random level: no mix on both deciding blocks = True; against (a) alone (random level dropped): mix on 2020 False, on 2021-22 False
+  EXIT: labels that change if control (a) is frame-free only: 0 of 36 ; frames only: 2 of 36 ['2020 M-2: chance -> weak', '2020 M-2s: chance -> weak']; overall verdict under frame-free-only (a) with the printed random level: no mix on both deciding blocks = True; against (a) alone (random level dropped): mix on 2020 False, on 2021-22 False
+
+####################################################################################################
+
+# ROW-LEVEL RE-DERIVATIONS (the part that does not rest on the printout)
+
+## ENTER row-level re-derivation (the independent part: bucket, greedy tag, earliest tag, and the control columns, from the rows)
+- bucket re-derived from the cross minute and the flat / first clocks (§4a: EXPLAINS = first crossing in (flat_clock, first_clock]; at or before flat = MISS-EARLY; none by first_clock = NEITHER) vs the file's bucket: 2828 of 2828 cells equal; 0 differ
+- greedy tag (first EXPLAINS rule in the registered order, else discretion) vs the file's tag: 404 of 404 rows equal; 0 differ
+- earliest-firing tag (the EXPLAINS rule with the earliest cross minute, ties -> library order) vs the file: 404 of 404 rows equal; 0 differ
+- ENTER controls: 405 eids in control_windows, 404 rows in tags_enter. In controls but not in the TSV: ['1719'] (eid 1719 = DWAC 2022-01-31: dropped by §2c flat_before_open, intraday dry run l.30; it stays in the replayed random-draw population, in no block, in no printed n). In the TSV but not in controls: []
+- the file's per-record shared_union vs the union re-counted from control_windows' 200 draws per record: 404 of 404 equal
+
+## STOP row-level re-derivation (823 scorable of 837 rows)
+- greedy tag (first EXPLAINS rule in the registered order, else discretion) vs the file's tag: 823 of 823 equal; 0 differ
+- bucket vs booked session against the window [exit_lo_j, exit_hi_j] (structural; UNRESOLVED unconstrained): violations none
+- earliest-firing tag (EXPLAINS rule with the earliest (event session, minute), ties -> library order) vs the file: 822 of 823 equal; differ: [('1335', 'AMAT', '2021-03-24', '2021-22', 'room=False', 'S10-C', 'S10-T')]  [every differing trade has room=False, i.e. sits outside every printed denominator; the tie is a buy-day touch row with no minute, which my default orders first]
+  (the printed earliest-order column is compared file->printout in the cell comparison; the row-level line above is the independent derivation)
+- the file's per-trade ctl_a_union / ctl_b_union vs the union re-counted from the per-draw control rows (frames mode): 823 of 823 equal (a), 823 of 823 equal (b); placements in (a) = exit_lo_j + 1 on 823 of 823 trades
+
+## EXIT row-level re-derivation (823 scorable of 837 rows)
+- greedy tag (first EXPLAINS rule in the registered order, else discretion) vs the file's tag: 823 of 823 equal; 0 differ
+- bucket vs booked session against the window [exit_lo_j, exit_hi_j] (structural; UNRESOLVED unconstrained): violations none
+- earliest-firing tag (EXPLAINS rule with the earliest (event session, minute), ties -> library order) vs the file: 823 of 823 equal; differ: none
+  (the printed earliest-order column is compared file->printout in the cell comparison; the row-level line above is the independent derivation)
+- the file's per-trade ctl_a_union / ctl_b_union vs the union re-counted from the per-draw control rows (frames mode): 823 of 823 equal (a), 823 of 823 equal (b); placements in (a) = exit_lo_j + 1 on 823 of 823 trades
