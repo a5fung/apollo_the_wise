@@ -1,0 +1,25 @@
+#705 v2 B3 checks - 2026-10-25 22:38; 02_build_paths.py sha256 cb090e4d213a2b15d9944d1608421f27f440e6da71ed3493a5bfd93649de00d9, v2_chain.py sha256 381d9c80d38f3024383639e34ab60792825ae33186b76696fc2037e39fdbc7cb; the parity run in TEST MODE (V2_CHAIN_TEST=1, freeze re-check = `true`)
+PASS  default: ERAS 2017-21 = cb702_pre, its trades / watch tables
+PASS  default: ERAS 2022-24 unchanged
+PASS  default: log dir = the probe dir (HERE literal)
+PASS  default: switch off, chain module not imported
+PASS  default: the checks file is written under LOG_DIR, the tables under {data}/out (source)
+PASS  default: every chain check sits under `if V2_SWITCH` (7 guarded blocks; no top-level use of the chain module)  7 blocks
+PASS  B3 guard: CB_PRE_DIR alone (CB_PRE_LOG unset) -> exit 2 before anything is read, the committed checks file untouched  exit 2
+PASS  B3 guard: CB_PRE_LOG = the probe dir -> exit 2 before anything is read, the committed checks file untouched  exit 2
+PASS  B3 guard: CB_PRE_LOG alone (CB_PRE_DIR unset) -> exit 2 before anything is read, the committed checks file untouched  exit 2
+PASS  round-2 guard: REAL run (no test mode) with a scratch CB_PRE_DIR -> exit 2 before anything is read  exit 2: 702_pre_v2 is not /Users/alvinfung/apollo_data/cb702_pre_v2 - only V2_CHAIN_TEST=1 (tests) may point the chain elsewhere
+PASS  round-2 guard: test mode with the REAL cb702_pre_v2 -> exit 2 before anything is read  exit 2: 2_CHAIN_TEST=1 with the REAL data dir /Users/alvinfung/apollo_data/cb702_pre_v2 - test mode never touches the real chain
+PASS  round-2 guard: test mode with the real run's log dir rerun_v2_1025/ -> exit 2 before anything is read  exit 2: the_wise/scripts/probes/_702_r_decomposition_1022/rerun_v2_1025 - a test never writes the checks file the relaunch reads
+PASS  round-2 guard: a checks file already in the log dir (once-only) -> exit 2 before anything is read  exit 2: 705/b3_r1/log_once/02_build_checks_2017-21.txt exists - stage 5 runs ONCE (the operator inspects and removes it by hand)
+PASS  round-2 guard: the freeze re-check fails -> exit 2 before anything is read  exit 2: REFUSED: the freeze re-check (V2_TEST_FREEZE_CMD) exited 1
+PASS  parity run exits 0  [56s] exit 0
+PASS  parity: r_decomp_fills_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  parity: r_decomp_control_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  parity: 02_build_checks_2017-21.txt = the committed file (switch lines dropped; timings and the data path masked)  15 vs 15 lines
+PASS  parity: B8 restored-ticker rows printed for both tables, > 0  B8 restored-ticker rows in r_decomp_fills: 662 of 13,363; B8 restored-ticker rows in r_decomp_control: 112,135 of 2,233,746
+PASS  parity: the two tables appended to the manifest, chain intact
+PASS  parity: the run log's calendar line = 1635 sessions 2016-01-04..2022-06-30 (B6)
+PASS  B5: a flipped byte of trades_pre_exitpb -> exit 2 (manifest)  REFUSED: cb702_pre_v2/out/trades_pre_exitpb.tsv.gz: trades_pre_exitpb.tsv.gz sha256 359fdc9c513f... is not the manifest's a5bbad8804c0... (written by v2-exit-re
+
+B3: 22 of 22 pass -> ALL PASS

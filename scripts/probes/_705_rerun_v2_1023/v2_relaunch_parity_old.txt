@@ -1,0 +1,38 @@
+#705 v2 B4 end to end on a copy of the OLD file - 2026-10-25 22:43; 04_relaunch.sh sha256 89968f6b5e72c60bf741dc80f8852ce97a2869f6eba406f2edb23ca5f0a9bd60, v2_chain.py sha256 381d9c80d38f3024383639e34ab60792825ae33186b76696fc2037e39fdbc7cb, v2_degraded.py sha256 45af514daf9eaba6abe36dd3d59afc7989a48a0e5bd863e21c7a5b5cb52bf94f; TEST MODE (V2_CHAIN_TEST=1, freeze re-check = `true`)
+PASS  04_relaunch.sh exits 0 on the old copy  exit 0 [576s]; log /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/fix705/relaunch_r1/relaunch.log
+PASS  the six calendar checks passed (stage 5's log, read 2's episodes and catch, reads 1 / 3 / 4's builds: CALENDAR OK x6)
+PASS  read 4's pp cell = read 3's S2 cell to 1e-9 (PP PARITY OK)
+PASS  the episode step reproduced its target (EQUAL x2)
+PASS  every B8 restored count printed and > 0 (B8 RESTORED x7)
+PASS  stage 4 ran: G8 consoles and the B9 report on both tables
+PASS  B9 on the old copy reproduces the data standard's C1 count: 5 degraded C0 walks, all endings, on each table  B9 DEGRADED-WALK REPORT (C0 / tl / orh5 / pp; decides nothing): 13,368 rows, 13,363 mature, 5 degraded = 5 endings (the ticker's last bar inside the hold) + 0 holes (a gap inside the walk) | B9 DEGRADED-WALK REPORT (C0 / tl / - / c3_p33_t20_cut3; decides nothing): 13,368 rows, 13,363 mature, 5 degraded = 5 endings (the ticker's last bar inside the hold) + 0 holes (a gap inside the walk)
+PASS  B9 mark check: every ending's mark = the ticker's last close (both tables)
+PASS  the manifest grew by the reads' tables and their 03_* numbers / reports, chain intact, one line per label  23 lines
+PASS  every manifest line names the file as it is now (what stage 7 checks)
+PASS  the freeze re-check ran first (test mode: its line before the manifest check)
+PASS  winner_recall/wrecall_catch_2017-21_x150.tsv.gz = the published table  decompressed bytes
+PASS  winner_recall/wrecall_catch_2017-21_x200.tsv.gz = the published table  decompressed bytes
+PASS  winner_recall/wrecall_episodes_2017-21_x150.tsv.gz = the published table  decompressed bytes
+PASS  winner_recall/wrecall_episodes_2017-21_x200.tsv.gz = the published table  decompressed bytes
+PASS  winner_recall/wrecall_nights_2017-21_x150.tsv.gz = the published table  decompressed bytes
+PASS  winner_recall/wrecall_nights_2017-21_x200.tsv.gz = the published table  decompressed bytes
+PASS  breakout_definition/bdef_control_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  breakout_definition/bdef_fills_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  breakout_definition/bdef_kvar_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  breakout_definition/bdef_r1_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  entry_stop_retry/esr_ctlsample_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  entry_stop_retry/esr_r1_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  entry_stop_retry/esr_win_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  entry_stop_retry/esr_ctl_2017-21.parquet = the published table  sha256
+PASS  trail_variants/trail_ctlsample_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  trail_variants/trail_r1_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  trail_variants/trail_win_2017-21.tsv.gz = the published table  decompressed bytes
+PASS  trail_variants/trail_ctlmatch_2017-21.parquet = the published table  sha256
+PASS  winner_recall/03_numbers.json = the committed file (2017-21 part)  json
+PASS  breakout_definition/03_numbers.json = the committed file (2017-21 part)  json
+PASS  entry_stop_retry/03_headline.json = the committed file (2017-21 part)  json
+PASS  trail_variants/03_headline.json = the committed file (2017-21 part)  json
+PASS  entry_stop_retry/02_numbers_2017-21.json = the committed file (2017-21 part)  json
+PASS  trail_variants/02_numbers_2017-21.json = the committed file (2017-21 part)  json
+
+B4 END TO END: 35 of 35 pass -> ALL PASS

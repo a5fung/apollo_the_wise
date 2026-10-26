@@ -1,0 +1,30 @@
+#705 v2 B1 PARITY on a scratch copy of the OLD file - 2026-10-25 22:39; runner sha256 a4f016720f8226933367ae3d776a7067d9d94dea634b28e5e5685e186bc3ad69, spec module sha256 cbdd3209329e95f6b16c606837f88aa6d8718ea99dd1b4d715241f35542f79c3, scaffold sha256 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449
+SETUP: scratch copy of /Users/alvinfung/apollo_data/cb702_pre's inputs (export, sessions, guard, candidates, watch, minutes tree) -> /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/fix705/parity_r1/cb702_pre_v2 [1s]; the scratch old guard leaves out every symbol starting with B (the restored set for B8)
+STAGE v2-h60-step0: exit 0 [45s]
+§5 (parity copy): filled from stage 0; B8 split {'pre': {'shared': 12697, 'restored': 662}, '2020-21': {'shared': 8416, 'restored': 483}}
+STAGE 0 ON THE OLD COPY vs the OLD registered table H60_EXPECTED (pre + 2020-21, tl_rows included): EQUAL
+STAGE v2-pre-read: exit 0 [40s]
+STAGE v2-h60-read: exit 0 [86s]
+STAGE v2-exit-read: exit 0 [28s]
+
+COMPARE (new body on the old copy vs cb702_pre/out, as published):
+  EQUAL   trades_pre_tl_com.tsv.gz  (decompressed content sha256 d1290a82cba6 vs d1290a82cba6)
+  EQUAL   entries_pre_tl_com.tsv.gz  (decompressed content sha256 e88ce263188f vs e88ce263188f)
+  EQUAL   trades_pre_p5.tsv.gz  (decompressed content sha256 56c5b6cc2f21 vs 56c5b6cc2f21)
+  EQUAL   trades_pre_h60.tsv.gz  (decompressed content sha256 3179adfb6cd4 vs 3179adfb6cd4)
+  EQUAL   trades_pre_h60twin.tsv.gz  (decompressed content sha256 56c5b6cc2f21 vs 56c5b6cc2f21)
+  EQUAL   h60_pairs_pre.tsv.gz  (decompressed content sha256 3a9e8973a892 vs 3a9e8973a892)
+  EQUAL   trades_pre_exitpb.tsv.gz  (decompressed content sha256 6687d97b26e4 vs 6687d97b26e4)
+  EQUAL   h60_step0_pre.tsv.gz  (decompressed content sha256 001cbc8491ca vs 001cbc8491ca)
+  EQUAL   p5_report_pre.tsv  (bytes)
+  EQUAL   h60_report_pre.tsv  (bytes)
+  EQUAL   exitpb_report_pre.tsv  (bytes)
+  EQUAL   exitpb_deltas_pre.tsv  (bytes)
+  EQUAL   h60_verdict_pre.json  (json)
+  EQUAL   exitpb_verdict_pre.json  (json)
+  EQUAL   v2_h60_verdict_pre.json (the scaffold's verdict file) vs the old h60_verdict_pre.json  (json)
+  EQUAL   v2_exit_verdict_pre.json (the scaffold's verdict file) vs the old exitpb_verdict_pre.json  (json)
+  EQUAL   stage 0's v2_step0_1025/h60_step0_pre.tsv.gz vs the old h60_step0_pre.tsv.gz (decompressed)
+MANIFEST: 33 lines, chain intact, stages ['v2-exit-read', 'v2-h60-read', 'v2-pre-read']
+
+PARITY: 17 of 17 equal -> ALL EQUAL; WALL TIME 203s

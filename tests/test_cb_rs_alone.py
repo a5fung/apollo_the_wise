@@ -720,5 +720,6 @@ class TestFailingCases:
 
 
 def test_the_registry_holds_the_four_registered_reads():
-    assert set(rn.REGISTERED_READS) == {"aplus-read", "aplus-confirm", "aplus-hindsight", "rs-alone-read"}
+    # + the v2 re-run's four (tests/test_cb_v2_rerun.py)
+    assert set(rn.REGISTERED_READS) == {"aplus-read", "aplus-confirm", "aplus-hindsight", "rs-alone-read"} | {"v2-h60-step0", "v2-pre-read", "v2-h60-read", "v2-exit-read"}
     assert "rs-alone-read" not in rn.BUILTIN_STAGES

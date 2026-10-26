@@ -14,6 +14,19 @@ Windows: the forward window is (E, E+k] in SPY sessions - it starts the session 
 a separate flag records whether E's own daily high already stood T ADR above the fill (the daily bar cannot tell before/after the fill).
 ADR20 = mean of (high - low) / close over the 20 sessions ending at D (the module's `adr20_pct_from_bars`), as a fraction.
 Nothing under DATA is modified or deleted; the runner is not imported.
+
+#705 v2 re-run switches (docs/analysis/cb_2017_21_rerun_v2_prereg_2026-10-25.md §4 B3; both unset = today's behaviour, byte for byte):
+  CB_PRE_DIR  the 2017-21 data dir (default /Users/alvinfung/apollo_data/cb702_pre); the tables are written under ITS out/
+  CB_PRE_LOG  where 02_build_checks_<era>.txt goes (default this dir)
+With either set the switch is on and BOTH must be set (exit 2 before anything is read): on the real run CB_PRE_DIR must be the real
+/Users/alvinfung/apollo_data/cb702_pre_v2 and CB_PRE_LOG this dir's rerun_v2_1025/ (the one dir 04_relaunch.sh reads the checks file from; the
+committed 02_build_checks_2017-21.txt is never overwritten); only in test mode (V2_CHAIN_TEST=1, tests and the B3 receipt) may they point
+elsewhere - and then never at the real cb702_pre_v2, this dir or its rerun_v2_1025/. A checks file already in the log dir refuses (once-only).
+Then the §8 freeze re-check (v2_chain.freeze_recheck = runner.py v2-exit-read --dry-run; test mode: V2_TEST_FREEZE_CMD) must pass (exit 2). The era
+must be 2017-21 alone, and the chain's checks run (scripts/probes/_cb_backtest/v2_chain.py): the input trades_pre_exitpb
+must equal its last line in <data>/out/v2_chain_manifest.tsv (B5, else exit 2 before anything is read); the SPY calendar must equal <data>/sessions.txt
+(B6, exit 2); each table must carry rows on the restored tickers (B8: <data>/symbol_guard.tsv minus the sibling cb702_pre/symbol_guard.tsv; exit 3
+before the table is written); the two tables are appended to the manifest.
 """
 from __future__ import annotations
 import re, sys, time
@@ -31,6 +44,17 @@ TICK_RE = re.compile(r"^[A-Z]{1,5}$")
 THRESH = (5.0, 10.0)
 HORIZONS = (5, 20, 60)
 checks: list[str] = []
+# #705 v2 re-run switches (B3): unset = the literals above
+import os  # noqa: E402
+CB_PRE_DIR, CB_PRE_LOG = os.environ.get("CB_PRE_DIR"), os.environ.get("CB_PRE_LOG")
+LOG_DIR = CB_PRE_LOG or HERE
+V2_SWITCH = bool(CB_PRE_DIR or CB_PRE_LOG)
+if CB_PRE_DIR:
+    ERAS["2017-21"]["data"] = CB_PRE_DIR
+_v2c = None
+if V2_SWITCH:
+    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[3]))
+    from scripts.probes._cb_backtest import v2_chain as _v2c  # noqa: E402
 
 
 def log(s):
@@ -64,11 +88,27 @@ def fwd_roll(x: pd.DataFrame, k: int, fn: str) -> pd.DataFrame:
 def build(era: str, cfg: dict):
     log(f"== {era}")
     data = cfg["data"]
+    if V2_SWITCH:                                   # B5: the input table is the one the chain's exit read wrote
+        pr = _v2c.manifest_problems(f"{data}/out/{_v2c.MANIFEST_NAME}", [(f"{_v2c.V2_NAME}/out/trades_pre_exitpb.tsv.gz", __import__("pathlib").Path(f"{data}/{cfg['trades']}"))])
+        if pr:
+            print("REFUSED: " + "; ".join(pr), file=sys.stderr)
+            sys.exit(2)
+        done = [f for f in (f"{data}/out/r_decomp_fills_{era}.tsv.gz", f"{data}/out/r_decomp_control_{era}.tsv.gz") if os.path.exists(f)]
+        if done:                                    # once-only: a re-run never overwrites a table the chain already made
+            print(f"REFUSED: {done[0]} exists - stage 5 runs ONCE (the operator inspects and removes it by hand)", file=sys.stderr)
+            sys.exit(2)
+        rest = _v2c.restored_set(f"{data}/symbol_guard.tsv", f"{os.path.dirname(data.rstrip('/'))}/{_v2c.OLD_NAME}/symbol_guard.tsv")
+        log(f"  v2 switch: data {data}; log dir {LOG_DIR}; manifest line of trades_pre_exitpb verified; restored tickers {len(rest):,}")
     ex = load_export(f"{data}/daily_closes_all.csv.gz", cfg["cut"])
     spy = ex[ex.ticker == "SPY"].date.sort_values()
     cal = pd.Index(spy.values)
     off = (~ex.date.isin(cal)).sum()
     log(f"  calendar = SPY sessions: {len(cal)} ({cal[0]}..{cal[-1]}); off-calendar bars dropped {off:,}")
+    if V2_SWITCH:                                   # B6: one calendar per record
+        problem = _v2c.calendar_problem(list(cal), _v2c.read_sessions(f"{data}/sessions.txt"))
+        if problem:
+            print(f"REFUSED (B6): {problem}", file=sys.stderr)
+            sys.exit(2)
     ex = ex[ex.date.isin(cal)]
     tickers = pd.Index(sorted(ex.ticker.unique()))
     t0 = time.time()
@@ -168,6 +208,12 @@ def build(era: str, cfg: dict):
             "exit_kind", "exit_px", "exit_session", "stopped_after_third_le_fill", "fwd_bars", "fwd_hole", "ci", "h_E", "l_E", "c_E", "c_D",
             "ret63_D", "dv_D", "fill_in_bar", "fwd_bars_60"] + [c for c in m.columns if c.startswith(("complete_", "mfe", "mae", "ret5_", "ret20_", "ret60_", "first_", "day0_high"))]
     out_f = f"{data}/out/r_decomp_fills_{era}.tsv.gz"
+    if V2_SWITCH:                                   # B8: the restored names reached this table
+        n_r = int(m.ticker.isin(rest).sum())
+        log(f"  B8 restored-ticker rows in r_decomp_fills: {n_r:,} of {len(m):,}")
+        if n_r == 0:
+            print("REFUSED (B8): 0 fills on restored tickers - the restored names were dropped upstream", file=sys.stderr)
+            sys.exit(3)
     m[keep].to_csv(out_f, sep="\t", index=False, float_format="%.6g")
     log(f"  wrote {out_f}: {len(m)} rows; complete_20 {int(m.complete_20.sum())}, complete_60 {int(m.complete_60.sum())}")
 
@@ -203,16 +249,52 @@ def build(era: str, cfg: dict):
         rows.append(r)
     ctl = pd.concat(rows, ignore_index=True)
     out_c = f"{data}/out/r_decomp_control_{era}.tsv.gz"
+    if V2_SWITCH:                                   # B8: the restored names reached the control pool too
+        n_r = int(ctl.ticker.isin(rest).sum())
+        log(f"  B8 restored-ticker rows in r_decomp_control: {n_r:,} of {len(ctl):,}")
+        if n_r == 0:
+            print("REFUSED (B8): 0 control rows on restored tickers", file=sys.stderr)
+            sys.exit(3)
     ctl.to_csv(out_c, sep="\t", index=False, float_format="%.6g")
     log(f"  wrote {out_c}: {len(ctl):,} control rows over {len(Es)} E dates (mean {len(ctl)/len(Es):.0f} per E); excluded as a fill/watch ticker: {n_excl:,}")
     # the breakout population passes its own universe filter at D in my export-based reading? (a check on the control's filter)
     bu = (m.c_D >= MIN_PRICE) & (m.dv_D >= MIN_DV)
     log(f"  CHECK breakouts passing my price/dollar-volume filter at D (adjusted close): {int(bu.sum())} of {len(m)}")
+    if V2_SWITCH:
+        for r in _v2c.manifest_append(f"{data}/out/{_v2c.MANIFEST_NAME}", "02_build_paths",
+                                      [(f"{_v2c.V2_NAME}/out/{os.path.basename(f)}", __import__("pathlib").Path(f)) for f in (out_f, out_c)]):
+            log(f"  manifest + {r['label']} {r['sha256'][:12]}...")
 
 
 if __name__ == "__main__":
     eras = sys.argv[1:] or list(ERAS)
+    assert not V2_SWITCH or eras == ["2017-21"], "CB_PRE_DIR / CB_PRE_LOG re-run the 2017-21 era only"
+    if V2_SWITCH:                                   # B3: a switched run writes its checks file elsewhere - never over the committed one
+        fixed_log = os.path.join(HERE, "rerun_v2_1025")
+        if not (CB_PRE_DIR and CB_PRE_LOG) or os.path.realpath(LOG_DIR) == os.path.realpath(HERE):
+            print(f"REFUSED (B3): CB_PRE_DIR and CB_PRE_LOG must both be set and CB_PRE_LOG ({CB_PRE_LOG}) must not be {HERE} - the committed "
+                  f"02_build_checks_2017-21.txt is never overwritten", file=sys.stderr)
+            sys.exit(2)
+        if _v2c.test_mode():
+            print(f"TEST MODE ({_v2c.TEST_ENV}=1): CB_PRE_DIR {CB_PRE_DIR}, CB_PRE_LOG {CB_PRE_LOG}", flush=True)
+            problem = _v2c.data_dir_problem(CB_PRE_DIR)
+            if not problem and os.path.realpath(LOG_DIR) == os.path.realpath(fixed_log):
+                problem = f"test mode with CB_PRE_LOG = the real run's {fixed_log} - a test never writes the checks file the relaunch reads"
+        elif os.path.realpath(LOG_DIR) != os.path.realpath(fixed_log):
+            problem = f"CB_PRE_LOG {CB_PRE_LOG} is not {fixed_log} - the one dir 04_relaunch.sh reads stage 5's checks file from"
+        else:
+            problem = _v2c.data_dir_problem(CB_PRE_DIR)
+        if not problem and os.path.exists(f"{LOG_DIR}/02_build_checks_{'_'.join(eras)}.txt"):
+            problem = f"{LOG_DIR}/02_build_checks_{'_'.join(eras)}.txt exists - stage 5 runs ONCE (the operator inspects and removes it by hand)"
+        if problem:
+            print(f"REFUSED (B3): {problem}", file=sys.stderr)
+            sys.exit(2)
+        pr = _v2c.freeze_recheck(CB_PRE_DIR, say=lambda m: print(m, flush=True))
+        if pr:
+            print("REFUSED: " + "; ".join(pr), file=sys.stderr)
+            sys.exit(2)
+        os.makedirs(LOG_DIR, exist_ok=True)
     for era in eras:
         build(era, ERAS[era])
-    with open(f"{HERE}/02_build_checks{'_' + '_'.join(eras) if len(eras) < len(ERAS) else ''}.txt", "w") as fh:
+    with open(f"{LOG_DIR}/02_build_checks{'_' + '_'.join(eras) if len(eras) < len(ERAS) else ''}.txt", "w") as fh:
         fh.write("\n".join(checks) + "\n")

@@ -4425,7 +4425,9 @@ def h60_step0_text(period: str, bases: dict, facts: dict, states: dict, pick: di
     for wname, counts in counts_by_window.items():
         pr = problems_by_window[wname]
         A("")
-        A(f"REGISTERED TABLE CHECK (check 5) - window {wname}: " + ("EQUAL to the registration's table" if not pr else "DIFFERS: " + "; ".join(pr)))
+        A(f"REGISTERED TABLE CHECK (check 5) - window {wname}: " + ("NO REGISTERED TABLE YET (expected=None: the counts below are what a new "
+                                                                    "registration registers; nothing was compared)" if pr is None else
+                                                                    "EQUAL to the registration's table" if not pr else "DIFFERS: " + "; ".join(pr)))
         body = []
         for cell in CELL_COLS:
             body.append([cell, counts.get(("tl", cell), 0), counts.get(("tl", cell + "_multi"), 0), counts.get(("tl", cell + "_orh5_fills"), 0),
@@ -4497,9 +4499,18 @@ def h60_pinned_fills(out: Path, period: str, bases: dict) -> dict:
     return dict(out_)
 
 
-def h60_step0(bases: dict, inp: dict, workers: int, period: str, out: Path, small: Path, pinned_fills: "dict | None") -> dict:
+_H60_EXPECTED_DEFAULT = object()          # `h60_step0(expected=...)` unset: the module's H60_EXPECTED, looked up at CALL time (a rebind is seen)
+
+
+def h60_step0(bases: dict, inp: dict, workers: int, period: str, out: Path, small: Path, pinned_fills: "dict | None",
+              expected=_H60_EXPECTED_DEFAULT) -> dict:
     """Run STEP 0 (the per-date job, the selection, the counts, the checks) and write `h60_step0_<period>.tsv.gz` + `.txt`. Returns
-    {facts, pick, problems (by window), text, data_share, early_problems} - what the callers read."""
+    {facts, pick, problems (by window), text, data_share, early_problems} - what the callers read.
+    `expected` (#705 v2 re-run, docs/analysis/cb_2017_21_rerun_v2_prereg_2026-10-25.md B1 - the one named exception to "unchanged"): the
+    registered table the counts are checked against, {window: {key: count}}. Unset = `H60_EXPECTED` (today's bytes, every finished caller);
+    a dict = that table (the v2 reads pass the doc's §5); None = no registered table yet (stage 0 of a new registration: problems are None
+    per window and the text says nothing was compared - never "EQUAL" against an empty table)."""
+    table = H60_EXPECTED if expected is _H60_EXPECTED_DEFAULT else expected
     _G.update(by_date=inp["by_date"], files=inp["files"], done=inp["done"])
     facts, states, shares = {}, {}, {}
     for d, (fx, st, share) in zip(list(inp["by_date"]), _pool_map(_h60_step0_job, list(inp["by_date"]), workers)):
@@ -4511,7 +4522,10 @@ def h60_step0(bases: dict, inp: dict, workers: int, period: str, out: Path, smal
     counts, problems = {}, {}
     for wname, years in h60_windows_of(period):
         counts[wname] = h60_step0_counts(bases, facts, pick, years)
-        exp = H60_EXPECTED.get(wname, {})
+        if table is None:
+            problems[wname] = None
+            continue
+        exp = table.get(wname, {})
         problems[wname] = h60_step0_problems(counts[wname], {k: v for k, v in exp.items() if k != "tl_rows"})
     rows = h60_step0_rows(bases, facts, states, pick, period)
     out.mkdir(parents=True, exist_ok=True)
@@ -6638,6 +6652,11 @@ REGISTERED_READS.update(_aplus.REGISTERED)
 # on the same scaffold, its own artefact names (`rs_alone_*`, never `aplus_*holdout*`). BUILT ON SYNTHETIC DATA; no real outcome.
 from scripts.probes._cb_backtest import rs_alone_read as _rs_alone  # noqa: E402
 REGISTERED_READS.update(_rs_alone.REGISTERED)
+# #705 v2 re-run (docs/analysis/cb_2017_21_rerun_v2_prereg_2026-10-25.md): `v2-h60-step0` (stage 0, before the freeze, doc=None), `v2-pre-read`,
+# `v2-h60-read`, `v2-exit-read` - the 2017-21 chain on cb702_pre_v2 under a NEW lock (their bodies live in v2_rerun_read.py, the pinned `spec
+# module`; every tag starts with `v2`). BUILT ON SYNTHETIC DATA + a parity run on a scratch copy of the old file; not run on v2.
+from scripts.probes._cb_backtest import v2_rerun_read as _v2  # noqa: E402
+REGISTERED_READS.update(_v2.REGISTERED)
 
 
 def run_registered_read(spec: "rr.RegisteredRead", args) -> int:

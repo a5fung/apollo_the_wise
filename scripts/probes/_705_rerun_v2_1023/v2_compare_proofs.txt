@@ -1,0 +1,27 @@
+#705 v2 B7 proofs of v2_compare.py (on the published old sources; no v2 number exists)
+PASS  P1 old vs old: every deciding line holds  17 deciding lines
+PASS  P1 old vs old: every read's conclusion holds  {1: 'holds', 2: 'holds', 3: 'holds', 4: 'holds'}
+PASS  P1 old vs old: every check passes (2.0 at 994, 4.0)
+PASS  P1 old vs old: every beside and stage line holds or is reported
+PASS  P1 old vs old: no source check fires (each old value read = the value §7 quotes)
+PASS  P1 old vs old: every restored-only method reproduces the read's own number (none withheld)
+PASS  P2 the restored-only path prints a value on every deciding line (B* as the restored set)  1.1: +1.3130 on 662 rows vs all +1.1630 on 13,363; restored fraction 5.0%; 1.2: 44 of 662 = 6.65% vs all 8.22%; restored fraction 5.0% -> the band (+-4.11 ; 1.3: 481 of 662 = 72.66% vs all 76.43%; restored fraction 5.0% -> the band (+-5.; 1.6: +0.4452 on 438 rows vs all +0.4364 on 9,281 (entry side; the control is not; 2.2: 15 of 27 = 55.56% vs all 49.90%; restored fraction 5.6% -> the band (+-5.00; 2.3: 15 of 27 = 55.56% vs all 49.27%; restored fraction 5.6% -> the band (+-5.00; 2.4: 2 of 27 = 7.41% vs all 5.20%; restored fraction 5.6% -> the band (+-2.60 po; 2.5: 0 of 27 = 0.00% vs all 0.62%; restored fraction 5.6% -> the band (+-2.00 po; 3.1: 17 of 27 = 62.96% vs all 44.28%; restored fraction 5.6% -> the band (+-5.00; 3.3: +0.0895 on 436 rows vs all +0.0518 on 9,239 (entry side; the control is not; 3.4: +2.5229 on 436 rows vs all +1.9050 on 9,239 (entry side; the control is not; 4.1: 18 of 27 = 66.67% vs all 53.22%; restored fraction 5.6% -> the band (+-5.00; 4.2: 6 of 27 = 22.22% vs all 19.13%; restored fraction 5.6% -> the band (+-5.00 ; 4.2b: 0 of 27 = 0.00% vs all 1.66%; restored fraction 5.6% -> the band (+-2.00 po; 4.2c: gap +6 doublers on 27 restored doublers vs +84 on all 481; restored fractio; 4.4: +0.0895 on 436 rows vs all +0.0518 on 9,239 (entry side; the control is not; 4.4b: +0.1040 on 436 rows vs all +0.0768 on 9,239 (entry side; the control is not
+PASS  P3 push 1.6: that line -> changes, and only it among the deciding lines  1.6 changes: class SPANS -> ABOVE
+PASS  P3 push 1.6: read 1's conclusion -> changes, the other reads hold  ('changes', 'lines that changed: 1.6')
+PASS  P3 push 2.2: that line -> changes, and only it among the deciding lines  2.2 changes: 49.90% -> 43.66% (|diff| 6.24 vs tolerance +-5.00 points)
+PASS  P3 push 2.2: read 2's conclusion -> changes, the other reads hold  ('changes', 'lines that changed: 2.2')
+PASS  P3 push 3.1: that line -> changes, and only it among the deciding lines  3.1 changes: best cell now S1_T2 (+4.16 points over S2_T2); 44.28% -> 44.28% (|diff| 0.00 vs tolerance +-5.00 points)
+PASS  P3 push 3.1: read 3's conclusion -> changes, the other reads hold  ('changes', 'lines that changed: 3.1')
+PASS  P3 push 4.4b: that line -> changes, and only it among the deciding lines  4.4b changes: class SPANS -> BELOW
+PASS  P3 push 4.4b: read 4's conclusion -> changes, the other reads hold  ('changes', 'lines that changed: 4.4b')
+PASS  P4 push 4.0: the check FAILS -> read 4 NOT COMPARED, the other reads hold  ('NOT COMPARED', 'check 4.0 failed - the failure is the result')
+PASS  P1 every line prints the source it read (old and new path + the key)  43 of 43 lines
+PASS  P3 push 1.1: the median's direction flips -> changes; read 1 changes  +1.16 -> -0.1 (the direction flips)
+PASS  P5 push 2.0 (993 big winners, target 994): the check FAILS -> read 2 NOT COMPARED, the other reads hold  big winners 993 (must be 994); ('NOT COMPARED', 'check 2.0 failed - the failure is the result')
+PASS  P6 push S6's word (loss -> can't tell): S6 changes  'loss' -> "can't tell"; class BELOW -> BELOW; n 180 -> 180
+PASS  P7 1.6's interval NaN: 1.6 NOT COMPARED and read 1 NOT COMPARED (never holds); the other reads hold  ('NOT COMPARED', 'deciding line(s) 1.6 carry a value that is not finite - not compared, never a holds')
+PASS  P8 the CLI in --proofs mode: exit 0, every read holds, every source's sha256 printed  exit 0
+PASS  P8 a proof option without --proofs refuses (exit 2), nothing written
+PASS  P9 §7's tables (lines, roles, rules, stated R3 tolerances, the 2.0 target) = the script's
+
+B7 PROOFS: 24 of 24 pass -> ALL PASS
