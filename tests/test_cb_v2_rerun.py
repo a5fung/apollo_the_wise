@@ -31,6 +31,9 @@ except ImportError:                                              # pragma: no co
 
 REAL_REPO = Path(rn.__file__).resolve().parents[3]
 REAL_DATA = Path("/Users/alvinfung/apollo_data")
+# The code tree 04_relaunch.sh guards: its REAL_B literal. NOT REAL_REPO / "scripts" / "probes" - REAL_REPO is whatever checkout runs the suite,
+# and the pre-push hook (dirty tree) and CI run it from another path, where that copy is a scratch tree the guard rightly lets through.
+REAL_PROBES = Path("/Users/alvinfung/apollo_the_wise/scripts/probes")
 PRE_START = T.dt.date(2019, 10, 31)                              # E1 = 2020-05-28, E2 = 2020-06-01 (the exit read's TSLA check); both windows carry the bases
 E1, E2 = T.H60_E1, T.H60_E2
 
@@ -1242,9 +1245,11 @@ def test_the_relaunch_honours_its_overrides_only_in_test_mode(case, tmp_path):
     (tmp_path / "probes").mkdir()
     if case == "test_mode_real_dir" and not v2c.REAL_V2.is_dir():
         pytest.skip("the real cb702_pre_v2 is not on this machine")
+    if case == "test_mode_real_probes" and not REAL_PROBES.is_dir():
+        pytest.skip("the real code tree is not on this machine")
     env = {"real_mode_override": {**base, "V2_DIR": str(tmp_path)}, "real_mode_probes": {**base, "PROBES": str(tmp_path / "probes")},
            "test_mode_real_dir": {**base, **tm, "V2_DIR": str(v2c.REAL_V2), "PROBES": str(tmp_path / "probes")},
-           "test_mode_real_probes": {**base, **tm, "V2_DIR": str(tmp_path), "PROBES": str(REAL_REPO / "scripts" / "probes")},
+           "test_mode_real_probes": {**base, **tm, "V2_DIR": str(tmp_path), "PROBES": str(REAL_PROBES)},
            "test_mode_no_probes": {**base, **tm, "V2_DIR": str(tmp_path)}}[case]
     p = subprocess.run(["bash", str(RELAUNCH)], capture_output=True, text=True, env=env)
     want = {"real_mode_override": "V2_DIR is set - a test-only override", "real_mode_probes": "PROBES is set - a test-only override",
