@@ -96,11 +96,11 @@
 - exits_study: a95d323b106e81cfd6c7ddd5dc112773951fa119754dbc62ece88bb1852eb783
 - intra_doc_body: 6c3741e48788c1fab6664a366e86980c9e10b74a07aa63c6190577b773668bc3
 - mix_module: 75c832541cef5e0abf2476a6484f37b857ab191284672914666996669d7bf300
-- mix_tests: 5ae03748a597e81732d2fb748a64735a0eae8c354e7c42649407bb7ced52a8f3
-- mix_dryrun_printout: 75d9abf85e6cf582e457a4684c2843b6876fd176646d88be17052019d7def2fa
+- mix_tests: 1af37fcb01c7b6003f94da39f1214e1fed17accdf2b1106f71339b12008a7a8f
+- mix_dryrun_printout: 3e3d27736dd788c1df75684ea45089564e19b3b13d353fecc3df57e0661bd2e0
 - mix_ledger: ABSENT
 - doc_body_freeze: 6a2512024c5f2ed562469919d5e733dd48ba36a4d6bde0045f2d9e7f071985fd
 - doc_body: 6a2512024c5f2ed562469919d5e733dd48ba36a4d6bde0045f2d9e7f071985fd
-- freeze record: NOT YET under the marker: 102 of 102 pins
+- freeze record: complete
 - absent inputs / outputs (named, not refused): mix_ledger
-- the body above the marker stored under freeze_bodies/ (6a2512024c5f...); doc_body_freeze above = the CURRENT body (paste it: this is the freeze)
+- the body above the marker stored under freeze_bodies/ (6a2512024c5f...); doc_body_freeze above = the pinned value under the marker
