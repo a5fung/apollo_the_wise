@@ -1,0 +1,271 @@
+# #705 RULE MIX 01 — DRY RUN: every input loaded; the intraday registration's set claims and every count of §2 / §8 of THIS doc asserted; the composition line from the clocks; the data gate from the fetch logs only; the library order; the pins. NO outcome: no minute file opened, no bar after a buy day, no rule fired, the loss share not computed.
+# registration: docs/analysis/cb_rule_mix_prereg_2026-10-25.md
+- pins re-checked: the previous read's (exports, candidates, labels, guards, the frozen modules and tests) through the frozen module; this read's (the fetch list, 00_pop_fetch.py and its printout, the frozen previous module): no drift
+- this read's inputs: the frozen intraday module ac598fc58aae, the intraday doc body 6c3741e48788, the six intraday TSVs and the printouts on disk (their sha256 pinned under the marker)
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+
+## The intraday registration's set claims (the frozen population_claims, against its own doc)
+
+## The previous registration's 63 composition counts (the frozen population_claims, re-run quietly)
+  [L115] the previous registration's 63 counts: the 47 composition claims its frozen population_claims carries (the other 16 were data-gate / caption / record-builder lines derived only inside its dry run; their current equivalents are this doc's own §8 / §11 claims below) | doc 47 OK, 0 MISMATCH | mine 47 OK, 0 MISMATCH | OK
+
+## §2 — the population table (n / non-flicker / in-session windows (nf) / exits known / era B)
+  [L120] fit dated 2020: n / non-flicker / in-session (nf) / exits known / era B | doc 149 / 104 / 32 (24) / 149 / 0 | mine 149 / 104 / 32 (24) / 149 / 0 | OK
+  [L121] fit undated 2020: n / non-flicker / in-session (nf) / exits known / era B | doc 304 / 188 / 94 (59) / 304 / 0 | mine 304 / 188 / 94 (59) / 304 / 0 | OK
+  [L122] 2021-22 dated: n / non-flicker / in-session (nf) / exits known / era B | doc 111 / 68 / 20 (13) / 111 / 7 | mine 111 / 68 / 20 (13) / 111 / 7 | OK
+  [L123] 2021-22 undated: n / non-flicker / in-session (nf) / exits known / era B | doc 226 / 145 / 63 (44) / 226 / 8 | mine 226 / 145 / 63 (44) / 226 / 8 | OK
+  [L124] untouched 2019 dated: n / non-flicker / in-session (nf) / exits known / era B | doc 16 / 13 / 1 (1) / 16 / 0 | mine 16 / 13 / 1 (1) / 16 / 0 | OK
+  [L125] untouched 2019 undated: n / non-flicker / in-session (nf) / exits known / era B | doc 44 / 26 / 18 (10) / 44 / 0 | mine 44 / 26 / 18 (10) / 44 / 0 | OK
+  [L126] untouched 2023 dated: n / non-flicker / in-session / exits known (still held) / era B | doc 7 / 7 / 0 / 3 (4) / 7 | mine 7 / 7 / 0 / 3 (4) / 7 | OK
+  [L127] untouched 2023 undated: n / non-flicker / in-session (nf) / exits known / era B | doc 8 / 5 / 3 (2) / 8 / 8 | mine 8 / 5 / 3 (2) / 8 / 8 | OK
+  [L128] untouched 2022 after 06-14: dated + undated / non-flicker / in-session / exits known / era B | doc 2 + 1 / 3 / 0 / 3 / 3 | mine 2 + 1 / 3 / 0 / 3 / 3 | OK
+  [L129] untouched 2020 before 01-27: dated + undated / non-flicker / in-session (nf) / exits known / era B | doc 2 + 9 / 11 / 7 (7) / 11 / 0 | mine 2 + 9 / 11 / 7 (7) / 11 / 0 | OK
+  [L130] the virgin block: n = undated + dated / non-flicker / in-session (nf) -> scorable (nf) / exits known / era B | doc 89 = 62 + 27 / 65 / 29 (20) -> 17 (9) / 85 / 18 | mine 89 = 62 + 27 / 65 / 29 (20) -> 17 (9) / 85 / 18 | OK
+  [L131] listed 2017-18: n / non-flicker / in-session / exits known / era B | doc 4 / 4 / 0 / 4 / 0 | mine 4 / 4 / 0 / 4 / 0 | OK
+
+## §2a-d — streams per year, the windows' clocks, the clock-sanity rule, his sells
+  [L133] streams per year (videos / session dates): 2017 / 2018 / 2019 / 2020 / 2021 / 2022 / 2023 | doc 11/11 / 1/1 / 39/39 / 218/216 / 177/177 / 59/59 / 12/12 | mine 11/11 / 1/1 / 39/39 / 218/216 / 177/177 / 59/59 / 12/12 | OK
+  [L139] 2021-22 in-session windows closing at or after 10:00: undated nf / dated; undated nf opening at or after 10:00 | doc 43 of 44 / 17 of 20; 14 of 44 | mine 43 of 44 / 17 of 20; 14 of 44 | OK
+  [L140] fit in-session windows closing at or after 10:00: undated nf / dated | doc 48 of 59 / 19 of 32 | mine 48 of 59 / 19 of 32 | OK
+  [L141] held before 09:35 (KOLD out): n / L7 exists (first seen 09:31-09:34) / not (09:30) | doc 9 / 7 / 2 | mine 9 / 7 / 2 | OK
+  [L151] §2c virgin: in-session -> scorable (nf); 2021-22 undated nf -> ; dated -> ; fit dated -> ; fit undated nf -> ; fit flickers -> | doc 29 -> 17 (9); 43; 20; 31; 59; 34 | mine 29 -> 17 (9); 43; 20; 31; 59; 34 | OK
+  [L150] §2c the 9 scorable non-flicker untouched windows | doc ASPS 2019-10-03, JCP 2019-10-07, RLGY 2019-10-10, CCS 2019-10-17, BABA 2019-11-01, LX 2019-11-15, APT 2020-01-23, CVNA 2023-05-18, AI 2023-05-19 | mine ASPS 2019-10-03, JCP 2019-10-07, RLGY 2019-10-10, CCS 2019-10-17, BABA 2019-11-01, LX 2019-11-15, APT 2020-01-23, CVNA 2023-05-18, AI 2023-05-19 | OK
+  [L151] §2c 2021-22 undated window dropped | doc DWAC 2022-01-31 flat_before_open | mine DWAC 2022-01-31 flat_before_open | OK
+  - §2c dropped, fit dated: DXCM 2020-07-29 (flicker) zero_width
+  - §2c dropped, fit undated: VIR 2020-03-05 (flicker) zero_width
+  - §2c dropped, 2021-22 dated: none
+  - §2c dropped, virgin block: MIK 2019-10-10 flat_before_open, SWN 2019-10-01 (flicker) flat_before_open, APPS 2019-10-01 zero_width, ASPS 2019-10-17 zero_width, FBR 2019-10-23 flat_before_open, JCP 2019-10-23 flat_before_open, ARWR 2020-01-02 flat_before_open, AVLR 2020-01-02 flat_before_open, ITCI 2020-01-02 flat_before_open, FCEL 2020-01-02 flat_before_open, LX 2020-01-02 flat_before_open, NTCT 2020-01-02 flat_before_open
+  [L155] 2d: 2021-22 dated with exits / 2021 trades with a one-session sell window | doc 111 / 80 of 101 | mine 111 / 80 of 101 | OK
+  [L156] 2d: 2019 dated sell windows span (sessions) / GSIT and GTLB 2023 span | doc 1-14 / 121, 121 | mine 1-14 / 121, 121 | OK
+  [L108] era B among the virgin block / of the 2021-22 dated / of the 2021-22 undated | doc 18 / 7 / 8 | mine 18 / 7 / 8 | OK
+  [L247] 2021-22 in-session windows after §2c closing before 10:00: dated / undated | doc 3 / 1 | mine 3 / 1 | OK
+  [L556] the FSLY known answer: eid 693 = sym, buy day, exit window, undated, non-flicker | doc FSLY 2020-06-29 2020-07-13..2020-07-14 undated non-flicker | mine FSLY 2020-06-29 2020-07-13..2020-07-14 undated non-flicker | OK
+  [L87] the intraday registration's set claims: OK / MISMATCH | doc 25 OK, 0 MISMATCH | mine 25 OK, 0 MISMATCH | OK
+- daily exports loaded in 6s: era A 692,401 of 12,005,007 rows (563 tickers, 2016-01-04..2022-06-30); era B 63,175 of 13,830,569 rows (81 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- minute trees: A 149,587 log rows, B 80,858 log rows, EP 196 log rows, EP2 39 log rows, REV 1,322 log rows, INTRA 19,470 log rows; era B export calendar 2021-09-27..2024-12-31 (821 sessions) — every era-B record's offsets are bisected on it (one calendar per record)
+
+## §2 — the populations (sets, records by the floor, buy-day minutes from the fetch logs); the guard-5 trades the fits excluded RETURN
+  [L90] guard5_returning: guard (5) fit exclusions that RETURN here: ENTER / STOP / EXIT | doc 1 of 90 / 16 of 453 / 10 of 149 | mine 1 of 90 / 16 of 453 / 10 of 149 | OK
+  - returning (ENTER): APT 2020-02-28
+  - returning (STOP): FCEL 2020-02-10, BLDP 2020-02-10, APT 2020-02-21, APT 2020-02-28, APT 2020-03-02, STNE 2020-03-03, APT 2020-03-05, SE 2020-04-06, TDOC 2020-04-07, APT 2020-04-22, FCEL 2020-04-22, APT 2020-04-23, SE 2020-04-27, SE 2020-05-05, APT 2020-05-06, TDOC 2020-05-12
+  - returning (EXIT): BLDP 2020-02-10, APT 2020-02-21, APT 2020-02-28, APT 2020-04-22, APT 2020-04-23, TDOC 2020-05-12, FEAC 2020-11-30, TLRY 2020-12-16, MSTR 2020-12-28, NIO 2020-12-30
+  [L92] run_records: this run's records: ENTER 2020 with minutes / STOP 2020 / EXIT 2020 dated | doc 88 / 431 / 149 | mine 88 / 431 / 149 | OK
+  [L97] enter_2020: ENTER 2020: windows dated + undated nf (undated flickers); the printout's scorable deciding = dated + undated; flickers scorable | doc 31 + 59 (34); 87 = 30 + 57; 28 | mine 31 + 59 (34); 87 = 30 + 57; 28 | OK
+  [L98] enter_2122: ENTER 2021-22: dated (flickers) + undated nf (undated flickers); scorable undated nf + dated; flickers scorable | doc 20 (7) + 43 (19); 40 + 20; 19 | mine 20 (7) + 43 (19); 40 + 20; 19 | OK
+  [L99] enter_untouched: ENTER untouched: non-flicker + flicker windows; scorable | doc 9 + 8; 9 + 7 | mine 9 + 8; 9 + 7 | OK
+  [L100] enter_premarket: ENTER beside, pre-market-flat scored: 2020 dated + undated (undated population); 2021-22 dated + undated (undated population) | doc 41 + 56 (58); 41 + 52 (55) | mine 41 + 56 (58); 41 + 52 (55) | OK
+  - this run's ENTER records with minutes (no guard-5 exclusion): 2020 88; pre-market-flat 2020 dated 41 / undated 57; flickers 2020 30
+  [L102] stop_2020: STOP 2020: dated + undated | doc 149 + 304 | mine 149 + 304 | OK
+  - STOP / EXIT 2020 records (floor 50): dated 149, undated 282; the STOP fit printout's 415 after guard 5
+  [L103] se_2122: STOP / EXIT 2021-22: dated (records) + undated (records) | doc 111 (110) + 226 (212) | mine 111 (110) + 226 (212) | OK
+  [L104] stop_untouched: STOP untouched: undated (records) + dated (records) | doc 62 (58) + 27 (26) | mine 62 (58) + 27 (26) | OK
+  [L105] exit_2020: EXIT 2020 dated: n; the intraday EXIT fit's scorable rows (exit_fit_trades.tsv E1_scorable) | doc 149; 139 | mine 149; 139 | OK
+  [L107] exit_2122: EXIT 2021-22 dated: the armed rows of check_exit_trades.tsv (abstain empty) | doc 107 | mine 107 | OK
+  [L107] exit_2122b: the 2021-22 undated EXIT scorable (the trivial-exit base; read at --tag, gate viii-c) | doc 199 | mine at --tag | NOTE
+  [L108] exit_untouched: EXIT untouched dated: n / with exits / windows <= 20; records with exits / windows <= 20; undated n | doc 27 / 23 / 19; 22 / 18; 62 | mine 27 / 23 / 19; 22 / 18; 62 | OK
+  [L458] fit_chain_rows: the 2020 fit-chain rows of the TSVs: stop rows fill_src level:L8 / exit rows level:L8 / exit walks bounded by the guard (cut_why guard) | doc 33 / 8 / 22 | mine 33 / 8 / 22 | OK
+  [L477] fsly: the FSLY known answer: eid 693 | doc FSLY 2020-06-29 2020-07-13..2020-07-14 undated | mine FSLY 2020-06-29 2020-07-13..2020-07-14 undated | OK
+  - FSLY 693 in the STOP / EXIT 2020 undated set: True; record (floor 50): True
+
+## The intraday TSVs gate (viii) re-reads: their eids against the printout populations (guard 5 applied as the fits had it)
+  [L455] TSV check_enter_trades group 'deciding': its eids = the replayed draw population's records with minutes | doc 61 eids | mine 61 eids | OK
+  [L455] TSV check_enter_trades group 'flickers': its eids = the replayed draw population's records with minutes | doc 19 eids | mine 19 eids | OK
+  [L455] TSV check_enter_trades group 'virgin': its eids = the replayed draw population's records with minutes | doc 16 eids | mine 16 eids | OK
+  [L455] TSV enter_fit_trades group 'deciding': its eids = the replayed draw population's records with minutes | doc 87 eids | mine 87 eids | OK
+  [L455] TSV enter_fit_trades group 'flickers 2020 (in-session windows after §2c)': its eids = the replayed draw population's records with minutes | doc 28 eids | mine 28 eids | OK
+  [L455] TSV enter_fit_trades group 'pre-market-flat windows, dated 2020': its eids = the replayed draw population's records with minutes | doc 41 eids | mine 41 eids | OK
+  [L455] TSV enter_fit_trades group 'pre-market-flat windows, undated 2020': its eids = the replayed draw population's records with minutes | doc 56 eids | mine 56 eids | OK
+  [L291] vii_population: the previous draw population's undated 2021-22 records with minutes (gate vii's base) | doc 41 | mine 41 | OK
+  [L455] TSV stop_fit_trades: its eids = the printout population's records | doc 415 eids | mine 415 eids | OK
+  [L455] TSV exit_fit_trades: its eids = the printout population's records | doc 139 eids | mine 139 eids | OK
+  [L455] TSV check_stop_trades: its eids = the printout population's records | doc 406 eids | mine 406 eids | OK
+  [L455] TSV check_exit_trades: its eids = the printout population's records | doc 110 eids | mine 110 eids | OK
+
+## §4c — the composition line from the panel clocks (every buy after §2b; what share of his buys the ENTER library CAN speak to)
+  - ENTER 2020 (453 buys): dropped by §2c 2 | in-session (taggable) 89 | in-session, no_minutes 1 | in-session, undated flicker (beside) 34 | no flat frame on the buy day 19 | no frame on the buy day / first seen after the close 5 | pre-market first sighting 160 | pre-market-flat window (beside) 143
+  - ENTER 2021-22 (337 buys): dropped by §2c 1 | in-session (taggable) 63 | in-session, undated flicker (beside) 19 | no flat frame on the buy day 17 | no frame on the buy day / first seen after the close 7 | pre-market first sighting 94 | pre-market-flat window (beside) 136
+  - ENTER untouched (89 buys): dropped by §2c 12 | in-session (taggable) 9 | in-session, undated flicker (beside) 8 | no flat frame on the buy day 3 | no frame on the buy day / first seen after the close 11 | pre-market first sighting 21 | pre-market-flat window (beside) 25
+  - STOP / EXIT 2020 dated: 149 buys, records 149; still held 0; windows > 20 sessions 0; sell window starting on the buy day (control (a) no_room) 27 (the losers' share is an outcome: read at --tag)
+  - STOP / EXIT 2020 undated: 304 buys, records 282; still held 0; windows > 20 sessions 0; sell window starting on the buy day (control (a) no_room) 71 (the losers' share is an outcome: read at --tag)
+  - STOP / EXIT 2021-22 dated: 111 buys, records 110; still held 0; windows > 20 sessions 0; sell window starting on the buy day (control (a) no_room) 31 (the losers' share is an outcome: read at --tag)
+  - STOP / EXIT 2021-22 undated: 226 buys, records 212; still held 0; windows > 20 sessions 0; sell window starting on the buy day (control (a) no_room) 61 (the losers' share is an outcome: read at --tag)
+  - STOP / EXIT untouched dated: 27 buys, records 26; still held 4; windows > 20 sessions 4; sell window starting on the buy day (control (a) no_room) 2 (the losers' share is an outcome: read at --tag)
+  - STOP / EXIT untouched undated: 62 buys, records 58; still held 0; windows > 20 sessions 4; sell window starting on the buy day (control (a) no_room) 28 (the losers' share is an outcome: read at --tag)
+
+## §8 — the data gate: the intraday fetch list and the logs, then every (session, symbol) pair the tag walks (logs only; no minute file opened)
+  [L404] fetch_log: the intraday fetch list / its log ok / empty / pending | doc 19470 / 19184 / 286 / 0 | mine 19470 / 19184 / 286 / 0 | OK
+  - coverage ENTER buy day: ok 405
+  - coverage STOP/EXIT 2020 dated: empty 15, ok 5,742
+  - coverage STOP/EXIT 2020 undated: empty 11, ok 10,207
+  - coverage STOP/EXIT 2021-22 dated: ok 4,052
+  - coverage STOP/EXIT 2021-22 undated: empty 1, ok 7,560
+  - coverage STOP/EXIT untouched dated: ok 1,476
+  - coverage STOP/EXIT untouched undated: ok 2,674
+  - pending pairs (in no tree's log): 0 -> dryrun_side/pending.psv (expected empty; a missing pair reads no_minutes / UNRESOLVED, never skipped); empty at the source: 27 pairs by set: SE 2020 dated 15, SE 2020 undated 11, SE 2021-22 undated 1 -> dryrun_side/empty_pairs.psv
+  [L407] pending pairs on the walked sessions | doc 0 | mine 0 | OK
+
+## §3 — THE LIBRARIES, fixed rules in the fixed order (the constant `LIBRARY`, pinned with the module)
+- ENTER (the order IS the row order of §3; tier 1 = his words, tier 2 = our proposal):
+   1. E-1   L1     tier 1 | the 5-minute opening-range high | source: his words l.1941-1942 | ordering number: feasible 36.0% on 89 (01_rev_enter_fit.txt l.12); re-read 36.8% on 87 (01_intra_enter_fit.txt l.27)
+   2. E-2   L8     tier 1 | the 30-minute high (his 60-minute first candle) | source: his words l.1941-1942, l.2090 | ordering number: 34.5% on 87 (01_intra_enter_fit.txt l.25)
+   3. E-3   L2     tier 1 | the prior session's high | source: a READING of his words l.2091-2092 (no level named) | ordering number: 18.0% (01_rev_enter_fit.txt l.13); re-read 18.4% on 87 (l.28)
+   4. E-4   L7     tier 1 | the 1-minute opening-range high | source: his words l.1941-1942 | ordering number: 16.1% (01_intra_enter_fit.txt l.24)
+   5. E-5   L3     tier 1 | the base high / breakout level | source: a READING of his words l.2091-2092 (no level named) | ordering number: 13.5% (01_rev_enter_fit.txt l.14); re-read 13.8% on 87 (l.29)
+   6. E-6   L9     tier 2 | the prior completed 60-minute bar's high | source: our reading (the intraday §5a; caption tnHw5CKxcH4) | ordering number: 34.5% (01_intra_enter_fit.txt l.26) - tier 2
+   7. E-7   L4     tier 2 | the open | source: our reading (pre-market buys) | ordering number: 1.1% (01_rev_enter_fit.txt l.15)
+- STOP (the order IS the row order of §3; tier 1 = his words, tier 2 = our proposal):
+   1. S-1   S1-T   tier 1 | the low of the day up to the fill minute, touched | source: his words l.1943 | ordering number: tier 1 alone
+   2. S-2   S10-T  tier 2 | the last completed 60-minute bar's low, touched | source: our reading (the 60-minute lows of the option-1 ruling) | ordering number: median width 2.8% (01_intra_stop_fit.txt l.49)
+   3. S-3   S10-H  tier 2 | the last completed 60-minute bar's low, 60-minute close below | source: our reading | ordering number: after S-2 (fire order T, H, C within a level)
+   4. S-4   S10-C  tier 2 | the last completed 60-minute bar's low, daily close below | source: our reading | ordering number: after S-3
+   5. S-5   S9-T   tier 2 | the 09:30-10:00 low, touched | source: our reading (his first-candle low) | ordering number: 2.9% (01_intra_stop_fit.txt l.46)
+   6. S-6   S9-H   tier 2 | the 09:30-10:00 low, 60-minute close below | source: our reading | ordering number: after S-5
+   7. S-7   S9-C   tier 2 | the 09:30-10:00 low, daily close below | source: our reading | ordering number: after S-6
+   8. S-8   S1-H   tier 2 | the low of the day at the fill, 60-minute close below | source: our reading (a close below where his words name the low) | ordering number: 3.2% (01_intra_stop_fit.txt l.42)
+   9. S-9   S1-C   tier 2 | the low of the day at the fill, daily close below | source: our reading | ordering number: after S-8
+  10. S-10  S3-T   tier 2 | the prior session's low, touched | source: our reading (his FSLY words name it as an EXIT; as a stop it is our transfer) | ordering number: 5.6% (01_intra_stop_fit.txt l.43)
+  11. S-11  S3-H   tier 2 | the prior session's low, 60-minute close below | source: our reading | ordering number: after S-10
+  12. S-12  S3-C   tier 2 | the prior session's low, daily close below | source: our reading | ordering number: after S-11
+  13. S-13  S4-T   tier 2 | one ADR20 below the fill, touched | source: our reading of l.1943's cap used as a level | ordering number: last by definition
+  14. S-14  S4-H   tier 2 | one ADR20 below the fill, 60-minute close below | source: our reading | ordering number: after S-13
+  15. S-15  S4-C   tier 2 | one ADR20 below the fill, daily close below | source: our reading | ordering number: after S-14
+- EXIT (the order IS the row order of §3; tier 1 = his words, tier 2 = our proposal):
+   1. M-1   M-1    tier 1 | the 60-minute 20-EMA close | source: his words (the FSLY captions cMkRsqvlVHM / YwMoUTd4naQ); all out = our reading | ordering number: E1 last-leg hit 40.3% on 139 (01_intra_exit_fit.txt l.37)
+   2. M-2   M-2    tier 1 | the prior session's low, touched | source: his words (FSLY: took out the previous day's lows) | ordering number: 39.6% (01_intra_exit_fit.txt l.37)
+   3. M-3   M-3    tier 1 | the 10-day average, first close below | source: his words l.1946-1947, l.2046 | ordering number: 39 of 117 = 33.3% (exits study §3)
+   4. M-4   M-4    tier 1 | the 20-day average, first close below | source: his words l.1946-1947, l.2046 | ordering number: 28 of 117 = 23.9% (exits study §3)
+   5. M-5   M-5    tier 1 | the session-3 stall cut (no +1R by then) | source: his yes l.2078-2079 to the definition | ordering number: an upper bound only: <= 13.7% (exits study §3); a strict subset of M-9
+   6. M-9   M-9    tier 1 | the close of session 3 | source: his words l.1946 and l.2060; all out = our reading | ordering number: 20.1% on 139 (01_intra_exit_fit.txt l.40)
+   7. M-6   M-6    tier 1 | +2R | source: his words l.2046; all out = our reading | ordering number: 12 of 117 = 10.3% (exits study §3)
+   8. M-2s  M-2s   tier 1 | the prior session's low touched on or after the first 60-minute close below the 20-EMA | source: his words (the FSLY captions read as the sequence they state) | ordering number: no 2020 number: after the numbered tier-1 rules, before M-11
+   9. M-11  M-11   tier 1 | the close of session 5 | source: his words l.1946, l.2060; all out = our reading | ordering number: no 2020 hit rate: last in tier 1
+  10. M-7   M-7    tier 2 | the prior session's low, daily close below | source: our reading (a daily close where his word was took out) | ordering number: E2 last-leg hit 40.3% on 139 (01_intra_exit_fit.txt l.37)
+  11. M-8   M-8    tier 2 | the first red close | source: our reading (the exits study's description) | ordering number: 31.7% on 139 (01_intra_exit_fit.txt l.40)
+  12. M-10  M-10   tier 2 | an extension or big up day | source: our reading (the brief's example) | ordering number: extension 13 / big up 6 of 117 (exits study §3) -> 11.1%
+
+## The readings this module fixes where the registration is silent (the stricter each time; the module docstring R1-R16)
+  R1  Bucket precedence (one function for the real window and every control placement): abstain -> NEITHER; a buy-day firing that is UNRESOLVED -> UNRESOLVED (ahead of EXPLAINS: a firing that may precede his buy explains nothing); a missing minute session between the armed point and the firing -> UNRESOLVED; booked session in the window -> EXPLAINS; before it -> MISS-EARLY; none by the window's end -> UNRESOLVED when a missing session lies at or before the window's end, else NEITHER. The missing sessions are the minute-less sessions for the rules that read 60-minute bars (M-1, M-2s through its arming, the STOP H cells); the touch and daily rules read the daily bar, which a minute-less session cannot hide; a daily hole bounds the path (J_tail) and never precedes a firing.
+  R2  The frozen close-fill touch (T, a dated close-proxy fill, a buy-day low at the level — `held_through_intra` marks it unresolved and scans on): two alternatives, the touch after his fill (a buy-day firing) or before it (the later first touch); the bucket is theirs when both agree, else UNRESOLVED (reproduces the mapping table's MISS-EARLY row and never lets the unresolved touch read EXPLAINS).
+  R3  An exit_lo `unresolved` of the frozen function (no frame minute on exit_lo) is NOT a buy-day unresolved: the window unit reads it EXPLAINS (§4a), counted in the contradicted line only when a frame contradicts it.
+  R4  STOP H cells: the bucket compares the BOOKED session (§4a's table: a close below on the day's last 60-minute bar books on the next session); gate (viii) compares the frozen fields (the event session) row for row.
+  R5  Gate (viii-b) compares the frame-free first firing (the frozen walk reads no frame) with the frozen leg; the tag applies the buy-day frame rule (a firing at or before flat_clock is not an event and the scan goes on); the rows the frame rule moves are counted.
+  R6  M-2 / M-7 abstain only without an armed 60-minute bar (their trigger is the armed bar's CLOSE, not the average); `ema_thin` abstains M-1 and, through it, M-2s.
+  R7  M-5 sits on the session-3 close of THIS doc's numbering (the buy day = session 1 = offset 2) — a strict subset of M-9; the +1R test reads the day-0 peak after the fill minute (`cb.day0_peak_high`; an open fill without minutes: the daily high; a close fill: none) and the highs of offsets 1-2.
+  R8  M-10 and the daily rules arm at the fill (§4a): the buy day's own close counts (M-8 alone starts at session 2, R17).
+  R9  The random-level control: its per-rule floor is ONE level per draw (key `mix|rlevel|{eid}|{d}`); its UNION line is a union of k levels per draw, price i standing for library rule i (key `mix|rlevel|{eid}|{d}|{i}`) — one level cannot stand for k rules (the k-price reasoning of §5). Its touch is the frozen T reading from the fill (`held_through_intra` on a bare price), in his real window.
+  R10 The ENTER chance line a rule is held against = the LARGEST of the random-price floor, the frozen per-level shifted share and the shared-window share; the union against the largest of the k-price, shared-window and per-level shifted unions (§6).
+  R11 Blocks for the labels: 2020, 2021-22 and the untouched years, dated and undated together (ENTER: the in-session non-flicker windows plus the dated windows); the sub-blocks (dated / undated) are printed beside with their own labels, never deciding.
+  R12 A record outside the previous draw population (a returning guard-5 trade, a beside window the fit excluded) takes its 200 random-price draws from `mix|rprice1|{eid}` — the previous stream is replayed exactly and never re-ordered to make room.
+  R13 Gate (ix): M-1's first firing must be BOOKED on or before 2020-07-10's offset (stricter than the event).
+  R14 The dry run's side files (pending.psv, the freeze body copy) go under this module's folder (the task's write scope); the tag's per-trade files go where §9 puts them (holdings_1024/rule_mix/). The tests are `tests/test_rule_mix.py` (the task's name; §9 says test_01_mix.py) and are pinned as `mix_tests`.
+  R15 The window controls run in two modes and the chance line is the LARGER: frame-aware (R1 on every placement, the mode gate (x) holds equal to the real tag at s = exit_lo) and frame-free (§4a: "the controls have no frames" — a buy-day firing inside a placement is EXPLAINS, before it MISS-EARLY; the close-fill touch reads its buy-day alternative; the missing-session rule unchanged).
+  R16 A daily close on the buy day (the STOP C cells, M-3, M-4, M-7, M-10) takes §4a's buy-day clock test at the close: no in-session buy-day frame -> UNRESOLVED; at or before flat_clock (a flat frame after the close) -> not an event, the scan goes on. The frozen held_through_intra applies no buy-day test to C (`if j == 0 and variant != "C"`) and reads such a close certain; §4a's sentence ("every buy-day firing is unresolved") and the exit daily rules decide it here, so the STOP C cells and the EXIT library read the same close alike. Gate (viii) still compares the frozen fields; the (trade, C cell) pairs R16 moves are counted beside the STOP table.
+
+- the body above the marker stored under freeze_bodies/ (6a2512024c5f...): the freeze pin `doc_body_freeze` will name it
+
+## Pins (sha256) — the inputs; --print-pins adds the dry run and the ledger; every value goes under the doc's freeze marker line before --tag
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b
+- matched_events: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0
+- cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a
+- cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+- guard_A: 876a75ec6d51744579c1ea2744c1b529cbd941355ef12eb8f0451bbe7ba1af08
+- guard_A_audit: 729741b4cfc5759b6ea5d81da6afdd36c11d806bbcad845964b2b37c72d94057
+- guard_B: b6cb81b6c4a1f415defc5adcf236402d93cd654c33736aa0b120b78c357b5650
+- flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d
+- flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5
+- verdict_A: 02cbb1c0106101cb12e8d5deb9448051ae3ced67966ac11d2475d06f26538de3
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178
+- panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012
+- calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610
+- lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+- ep_A: 59f196e5aa45a35eb7d98e1a1147ac4925e9f4967a17863e039659eed6c9dc46
+- ep_B: 160401c752ff0b8d3d3f2ad7a1eff63d6c36d285aaa34c6e5ca00b737b68ee3c
+- entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf
+- exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f
+- snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff
+- control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc
+- timeline_printout: cbc08080f82705b6fb4e2fd2970166113b5c0f35ab646ca2226d2344cea6a6ac
+- panel_read_printout: cee0fca158007117fa4370511cbbce4a3d1da6ca6760f8792885988ecd1b9ad3
+- done_EP: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735
+- done_EP2: f8255199e52f0fa14aebcec5d50a407a1a52ac7c8b6cd4129bf41aa2f8cc591a
+- small_pulls: b8d37aae5ef85c25bc52479eef7f6b04a8a4e67557caaef7a426d8ae20194643
+- sic: 0e476c4422d56648d615c48d941edb971a348dfb99821023116d0fd98e617346
+- raw_close_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444
+- stream_moments: 7cd53c671f425f71e44ecd70472564df125780bf2e1a55c92b51f5caecea7104
+- video_status: 9f7a7e4cb1fd8ae5eb69a4daa4eb9eec7f9e969341249d41ffa469cb1bf9c692
+- fetch_list: 4191485f2abddc25c042132729742491c191dfbe85d0dc2099fa023d34e3770f
+- done_REV: 945c41fb3618ed6b85a000232f6becc82c9d8e201b9bde99bd8673f9f7036d5e
+- runner: a4f016720f8226933367ae3d776a7067d9d94dea634b28e5e5685e186bc3ad69
+- registered_read: 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449
+- cb_module: e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b
+- constants: 72dadd72503a842f593621b0868f908ab99e1d77851330c2842be7797aa99400
+- fit_module: 3fca7bf4f26ffcdf7152ddc9d4180c295aafe29067591def812fcc6884f38d27
+- join_script: 6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c
+- aplus_read: e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee
+- trade_impact: 9b7cce415479c1abfda422c432c6de1f3a6d591f298a1167fa637a578051e146
+- replay_module: c44785889670b31f3e9baf1ac0e1563aeacfefacc5de5ef426ee7b15724e7bfa
+- replay_tests: 37c918a08329b138f6c37c5787af3c95e0ea2abeceb100209cd0f5f0dd0a96ad
+- exec_module: 346516fb4c236cc552103032163b790d030b10a536e83c70d4cf2390c3f9f485
+- exec_tests: 6ce013bb1d7f1521e8083d014e4221fc837f30c59f9c5e00fbc023344d1a1949
+- timeline_module: e91e3f4dd8d7bc29664cfeccd2fe6b8ec7a5f906a25281bd338f3fe62d2bfee7
+- timeline_tests: 920085c4fecd2b2ea4799b939f16a30a2f1b271fc199149419c2ed0f0df029af
+- holdings_module: 4275d72f82aaf66c7c24372afe48e0b503dedb51e2c7715d8fbd26c4372e9ce9
+- holdings_tests: eee66bf08ef8f70c5da66b4aeec0f626f592ca327dcfc7c6c0c6fd1943a0b75f
+- panel_reader: 14a9764f883aa5516a85da47346871247eabfbcb514ce03c8e602175cbf2a230
+- qmlib: 0f281f05338f5b40d4b1d8be4b9ada427ebcb919c012cd3af9300f6d70f8640b
+- security_type_check: e634362271876028736100249f21bfa410b4c99a3cd2106af89f3af41972bc40
+- rev_module: e908253f7405f814351ced03bd61a80b7886268bcee366f70f66c4a5f74aaeff
+- rev_tests: c74babedfc1923d65e79698284c3783b0e405fe0f337eab26791fb6a1c6fc749
+- subs_list: 99929453752cb3590b261e6928d99317312f35d9a50c0c147e33393b101a64a9
+- first_doc_body: aaaadd295aba5a9de534a738410ebe391ac4993637faa7ead0cab78e2b7a9dab
+- second_doc_body: 329ac865f814de0909332ff516ea5d52dea525fbef7b5fdcf1c9208a521143fe
+- holdings_doc_body: 69510e1a3092e1c74b9869342a24b624500ca65c814410ae7cf2348f71384b58
+- rev_dryrun_printout: 935ce2981efec7b314f6f9ffa9746f6602982ccc195a2456d0b161d79e7e2e4a
+- rev_select_fit_printout: 0893e38a7d2afbf9abfc0c350db2d43f4cf461b0a26f86ce4b46b9b96297208e
+- rev_enter_fit_printout: 743e0c124bc5992b3d7adc1ff55545540f267f4def4f5788f9aae5f93d326724
+- rev_stop_fit_printout: 95b97b95b44099b41c52acbff0623ff48c8b6c918286a6d162e4011c8abe80f0
+- rev_exit_fit_printout: eac07e9a42fce45397b6951e14594fe0bddca59b8dcabedc7635812fbaf29305
+- rev_ledger: 45dc2c7cd2870e017cf0906dadaed53b425521e1452e2b0828f076319976045f
+- rev_doc_body: 16a3057d99b55f4588ffa3cf3fea34da97d5d1e7dee7c0da76d8bfaffe7fe287
+- fetch_list_intra: e66f33d690f7d0d2ac9c797bedc16ff5bc79b9fffda268859016ed0d1d3f6254
+- pop_fetch_script: b7b75d56adb80aeb0a6833a3cf4b9f274e7038e7f4e85de6f96db89a6db4cd67
+- pop_fetch_printout: d6bd0f6743773f562ce92f28fcfc6cb9fc872227dfe5bf8fe04afd954245c7d5
+- rev_frozen_module: e908253f7405f814351ced03bd61a80b7886268bcee366f70f66c4a5f74aaeff
+- rev_enter_fit_trades: ae8efb34baa439295f911b1e4495c601568f4187f5f61a61ec5c722804a318d8
+- rev_stop_fit_trades: 78f890fcc5011a90c82d2ee429b24b1f92c445eac095e6d0d00b2e7fa384464c
+- rev_exit_fit_chosen: d62e7410ae7c7d0cba825f3763d68a65e860c3244470d6f043a2714085f2074f
+- rev_check_printout: 43e3de92c29f6e955e48176b134ae1f5aca7b8aea0d39c8a2ee8da8b6b56a43a
+- done_INTRA: a9dc793c33af220a2c030ae3d36f83af5d80ab91890b0e80c0deea3868d3f243
+- intra_module: ac598fc58aae62dc03c93f5d274aa26af37594821f98d1e1c162c2bb8d20f7ee
+- intra_tests: b9669a31d32c36cd5771b69ec8173013e8a774e319d3ca62fafe4664e7725d15
+- intra_doc: f816434f3f666de220d74b8961acfff83680f58c5c9419fc822b327734eff918
+- intra_frozen_module: ac598fc58aae62dc03c93f5d274aa26af37594821f98d1e1c162c2bb8d20f7ee
+- intra_dryrun_printout: 62eae23a68e2405a5920f9b8df6aad778462495a890b8941fd38ebb7ee0c21f6
+- intra_enter_fit_printout: c34caf77d12e09aabb95afd33278bd0b0f6111ccd89204eb91a64f93ab9281b6
+- intra_stop_fit_printout: 4b6af1c4b039c477358f793067b72daae40af43e5cd05ba6fec0024b86e9433b
+- intra_exit_fit_printout: 64d9089a1fd95f7e428f8d97ef57bf0d42a1cca358286dfe9753005b69cca9cd
+- intra_check_printout: a6db5a635fafbe02f78140cf41dcac4ff7f2d2ad32fdb0c54181e314b93b034f
+- intra_ledger: 542d7ab449f25342bfb37e02eb02bc0e20caec4b32bfacbd1cad7f05bf9360cc
+- intra_enter_fit_trades: 85c04f260b20321450694bccd36dd5052b9dc0e1c6322e76cb148eef14986d59
+- intra_check_enter_trades: 36e0f05ce74cf1e3cbcbe04022d1b3d276b43c7656d7347427fa359f5d032865
+- intra_stop_fit_trades: f3a282aa864c36f0a7c383529aca0499c4615aa7d43645a89b726383daffcb55
+- intra_check_stop_trades: 3ce21d8fd072e2d010f09fe8da31bee1552a1b5addbd66ff7d30c98ae57e0211
+- intra_exit_fit_trades: 238cfdbdcdba7d4df5eb9cf406a9d9c8a7ad2c57b1ee5d82cd66e3c82bc95a2b
+- intra_check_exit_trades: ed1e617b1046e46cd75776c1b505a1946342f1e73a07f6f2d71bb55f8286e200
+- exits_study: a95d323b106e81cfd6c7ddd5dc112773951fa119754dbc62ece88bb1852eb783
+- intra_doc_body: 6c3741e48788c1fab6664a366e86980c9e10b74a07aa63c6190577b773668bc3
+- mix_module: 75c832541cef5e0abf2476a6484f37b857ab191284672914666996669d7bf300
+- mix_tests: 5ae03748a597e81732d2fb748a64735a0eae8c354e7c42649407bb7ced52a8f3
+- doc_body_freeze: 6a2512024c5f2ed562469919d5e733dd48ba36a4d6bde0045f2d9e7f071985fd
+- doc_body: 6a2512024c5f2ed562469919d5e733dd48ba36a4d6bde0045f2d9e7f071985fd
+- freeze record: NOT YET under the freeze marker line: 100 pins
+
+## RESULT: 28 claims, 28 OK, 0 MISMATCH; 2 notes
+
+DRY RUN COMPLETE: every count reproduced; no minute file opened (0 reads), no bar after a buy day read, no rule fired, no outcome computed; pending pairs 0.

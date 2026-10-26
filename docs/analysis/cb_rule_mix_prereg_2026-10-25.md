@@ -245,13 +245,18 @@ the frozen walk's convention; the printed 40.3% already carries it, and gate (vi
 
 | frozen output | bucket |
 |---|---|
-| `first_j` < exit_lo_j and `certain` | MISS-EARLY |
+| `first_j` < exit_lo_j and `certain` | MISS-EARLY (a C cell's buy-day close: R16 below) |
 | `first_j` in [exit_lo_j, exit_hi_j] (whatever `certain` says on exit_lo) | EXPLAINS — the window unit, the same as the controls |
 | `unresolved` on the buy day (or after a missing session, above) | UNRESOLVED |
 | no `first_j` by exit_hi_j | NEITHER |
 
 On exit_lo the frozen function reads a touch before the last in-session frame as "held through"; this read counts it as EXPLAINS (the window
 unit). The count of **EXPLAINS on exit_lo contradicted by an in-session frame that day** is printed per rule and block beside the shares.
+**One exception to the mapping (R16, chosen at the second check's fix 2026-10-26 by §4a's own sentence; no money, not THE LINE):** the frozen function applies no
+buy-day clock test to a C cell (`if j == 0 and variant != "C"`) and reads a buy-day close below the level as `certain`; this read applies
+§4a's buy-day rule to it, as it does to the exit daily rules (M-3, M-4, M-7, M-10) on the same close — no in-session buy-day frame →
+UNRESOLVED; a flat frame after the close → not an event, the scan goes on. So the stop C cells and the EXIT library read the same close
+alike. Gate (viii) still compares the frozen fields; the (trade, C cell) pairs R16 moves are counted beside the STOP table.
 
 **4b. The greedy tag** = the first rule in the library order whose bucket is EXPLAINS; none → **discretion**. Printed per rule and block:
 **greedy share** (tagged ÷ scorable), **standalone share** (EXPLAINS ÷ scorable — the previous reads' feasible share / hit rate, re-read),
@@ -330,7 +335,8 @@ one ADR20, undated) — the R unit of M-6 and the "losing" test. Stated, never f
   against the check's own random-price control of 30.0% (`01_intra_check.txt` l.21, l.29; the intraday read failed it on the absolute 50%
   bar) — against its shifted share alone (3.6%) it sits 41 points over chance, against the random-price floor exactly 15.0 points over,
   the bar's edge, so there its label turns on precision. STOP / EXIT — the LARGER of control (a) and the random-level control (§5). **Labelling
-  convention for the table, fixed now (a label, not a verdict), printed per block:** a STANDALONE share ≥ 15 points over that chance share
+  convention for the table, fixed now (a label, not a verdict), printed per block, compared on the printed one-decimal percentages:** a
+  STANDALONE share ≥ 15 points over that chance share
   AND precision ≥ 50% → `carries`; within 5 points of it → `chance`; more than 5 points UNDER it → `below chance`; the rest → `weak`. **A
   rule's summary label is `carries` only when it is `carries` on BOTH 2020 and 2021-22, each against its own chance line** (the greedy
   share is printed beside, never labelled — it depends on the order). The union is labelled `mix` when it beats the chance union by ≥ 15
@@ -350,7 +356,9 @@ one ADR20, undated) — the R unit of M-6 and the "losing" test. Stated, never f
   at the random window, instead of the armed point) turns every MISS-EARLY into EXPLAINS, so the real data reads ABOVE chance with
   precision near 100% on every rule.** A near-100% precision is an alarm, not a finding. Which gate catches which failure: wrong symbol or
   session — gate (i); a consistent calendar offset (which gate (i) cannot see, since it compares the SAME (ticker, session) both ways) —
-  gates (viii) and (x); the 60-minute builder — gates (ii) and (viii-a); the daily rules' session index — gate (viii-c); the scan origin —
+  gates (viii) and (x); a clock shift — gate (i)'s clock arm (a one-minute-late stamp empties minute 0 on every session; the open / close
+  arm reads such a shift within about a point of its 90% bar) and gate (viii) ENTER's cross minutes row for row (only where the TSVs came
+  from other files); the 60-minute builder — gates (ii) and (viii-a); the daily rules' session index — gate (viii-c); the scan origin —
   gate (viii) (`_certain` row for row), (viii-b), (viii-c) and (x). The known-answer gates certify the run, never the shape of the result.
 
 ## 7. Expectations, written now (guesses to be scored, never targets; a miss changes nothing)
@@ -440,7 +448,8 @@ one ADR20, undated) — the R unit of M-6 and the "losing" test. Stated, never f
   `--tag` may run again).
 - **Known-answer gates on REAL data, at the top of `--tag`, each STOPS the run before any new number** (cleared only by a bug fix shown in the
   code, never by changing a registered rule): **(i)** minute-built session bars vs the daily export, two arms (high / low within 0.5% on ≥ 98%;
-  open / close within 0.5% on ≥ 90%); **(ii)** raw L7 ≤ L1 ≤ L8 ≤ L6 and the 60-minute builder's first bar = L8_raw on every window; **(iii)**
+  open / close within 0.5% on ≥ 90%), and a clock arm on the buy days: a bar at minute 0 (09:30) on ≥ 98% of them (expected about 99%:
+  `no_bar_0930` on 3 of the 400 scored windows, `01_intra_enter_fit.txt` l.62, `01_intra_check.txt` l.44, l.56); **(ii)** raw L7 ≤ L1 ≤ L8 ≤ L6 and the 60-minute builder's first bar = L8_raw on every window; **(iii)**
   a daily close below a level beyond the auction band implies the last 60-minute bar closes below it on ≥ 98% of such days; **(vii)** the
   random-price control re-reads 31.7% / 85.9% on the previous 41 undated 2021-22 records, with the draw stream replayed over the exact
   previous draw population (§5). **Every gate (viii) arm runs ONLY on the eids present in the intraday TSV it re-reads**
@@ -476,8 +485,9 @@ one ADR20, undated) — the R unit of M-6 and the "losing" test. Stated, never f
   through viii / ix).
 - **Guards (the intraday twelve, kept; stated where this read differs):** (1) the line-anchored freeze lock — `--tag` refuses unless every pin
   incl. `doc_body` (the sha256 of this file's bytes above the one line that is exactly the freeze marker; the literal appears once in this
-  file) sits under the marker, the module's sha equals its pin, THIS read's dry run (`01_mix_dryrun.txt`, passed by path) ends `DRY RUN
-  COMPLETE` and the tag printout does not exist —
+  file) sits under the marker BY NAME (each pin's own `- name: value` line carries its value; an ABSENT pin its literal `- name: ABSENT`
+  line), the module's sha equals its pin, THIS read's dry run (`01_mix_dryrun.txt`, passed by path) opens with this read's dry-run header,
+  carries a `RESULT: .. 0 MISMATCH` line and ends `DRY RUN COMPLETE`, and the tag printout does not exist —
   **there is no fit stage and no chosen line: the library order is a constant, printed by the dry run and pinned with the module**; (2) the
   module copied beside the pins before any post-run edit; (3) populations asserted before any bar; (4) G8 before numbers; (5) **no fit stage,
   so no forbidden pairs: the one run reads every block once (`BarGuard(allowed_eids=None)`) — this read has no held-out set, said plainly**;
@@ -493,7 +503,8 @@ one ADR20, undated) — the R unit of M-6 and the "losing" test. Stated, never f
   session) and (viii-b) on one where it does not; the FSLY 693 buckets on synthetic bars shaped like it; the library constants' sources parse; the freeze lock against this exact text; the module scan;
   **one end-to-end synthetic world** (`--dry-run` → `--tag`) with era-A and era-B trades, an early-close day, a missing minute day, a
   still-held trade, a 1-session hold (control (a) `no_room`), a loser and a winner on one name, objects freed and ids reused between stages;
-  and the gate (viii) re-read on a planted TSV row that must FAIL when one `first_j` is shifted by a session. **The synthetic world also
+  and the gate (viii) re-read on a planted TSV row that must FAIL when one `first_j` is shifted by a session — and one planted failure per
+  known-answer gate ((i) incl. its clock arm, (ii), (iii), (vii), (viii), (viii-a), (viii-b), (x)) and a dry-run mismatch, each of which must STOP. **The synthetic world also
   holds the real shapes that drive the gates:** an undated trade with no in-session buy-day frame (every buy-day firing UNRESOLVED — the
   common case on the 304 + 226); a TSV row with `fill_src = level:L8`; a guard-5 trade that returns; a firing on the session's last 60-minute
   bar (booked on the next session); a `no_bar` day before an in-window firing (must read UNRESOLVED); an exit_lo firing before the last
@@ -578,8 +589,9 @@ the choices the review's fixes required.
 
 ## 12. Revisions before the freeze (2026-10-25)
 
-The review (25 findings) and the recount (4 mismatches, 14 notes) were applied before any freeze; nothing was run and no bar opened. Each
-row is one change.
+The review (25 findings) and the recount (4 mismatches, 14 notes) were applied before any freeze; nothing was run and no bar opened. The
+second check of the module (12 findings, 2026-10-26) was applied likewise: only the dry run and the TSVs' offset columns (`cut_why`,
+`J_tail`, `exit_hi_j`) were read; no outcome was computed. Each row is one change.
 
 | source | finding | change |
 |---|---|---|
@@ -611,6 +623,14 @@ row is one change.
 | review | F25 | §5: placements enumerated, no draws |
 | recount | F1-F4 | L4 wording; L8 example against the check's own 30.0%; 20-33%; l.2090-2092 |
 | recount | notes | pre-market scored vs population counts; untouched-dated bases; S-8 cite l.42; l.1942 paraphrase unquoted; §11 Q5 cite |
+| check 2 | F1 | module: a guard-bounded EXIT row is re-walked under its own cut reason (`cut_at_guard`); latent here — all 22 such rows have J_tail = exit_hi + 20 |
+| check 2 | F2 | §9 guard (1): pins checked by name (ABSENT on its own line); the dry run by its header and its 0-MISMATCH RESULT line |
+| check 2 | F3 | §4a: R16 — a C cell's buy-day close takes the buy-day clock test, as the exit daily rules do; the moved pairs counted beside STOP |
+| check 2 | F4-F7, F9 | tests only: registered semantics, every gate's failing branch, gate (vii) and G8 run end to end, an era-B own-calendar offset |
+| check 2 | F8 | §6, §9 gate (i): a clock arm (a bar at minute 0 on ≥ 98% of buy days); the clock shift named in the gate-per-failure sentence |
+| check 2 | F9 | §6: labels compared on the printed one-decimal percentages |
+| check 2 | F10 | module: gate (x) re-reads the frozen per-level shifted placements through this read's window predicate |
+| check 2 | F11, F12 | module: the dry run prints no self-hash; every §2b NEW cell flagged in its table; the pre-empted rows' no-stop firings counted |
 
 <!-- FREEZE -->
 ## Freeze record
