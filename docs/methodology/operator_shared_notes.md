@@ -2596,3 +2596,7 @@ Ruling recorded (#705): the intraday layer is registered and checked BEFORE the 
 > "What seems to be the case is there's no 100% had rule, there's rules and discretion, so best to to categorize them e.g. 20% rule X, 34% rule Y, etc. To see if we get the right coverage when summed together." (2026-10-25, after the intraday check: no single entry, stop or exit rule reproduced his trades)
 
 Method from this (#705): treat his trading as a MIX of rules plus discretion. For each decision (entry, stop, exit), list the candidate rules from his words, tag each trade with the rule that explains it, report each rule's share, and judge the set by its combined coverage — against what the same set of rules covers by chance.
+
+> "1" (2026-10-25, choosing option 1 on the fork: keep the sealed 2025-26 data on hold — the 'RS leadership alone' breakout read, registered 2026-10-22 to run once on 2025-26, stays frozen-draft and leaves #705's done-list; it runs inside the one combined 2025-26 test — vs option 2, run it now and spend the sealed data on one stock-picking question)
+
+Ruling recorded (#705): the sealed 2025-26 data stays unspent until an entry and an exit reproduce him; no single read spends it first.
