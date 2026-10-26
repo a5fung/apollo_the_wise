@@ -1,0 +1,28 @@
+/Library/Frameworks/Python.framework/Versions/3.14/bin/python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/trade_impact.py --flags /Users/alvinfung/apollo_data/audit_runs_2026-10-23/B_flags.tsv --export /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz --trades /Users/alvinfung/apollo_the_wise/scripts/probes/_705_context_1026/out/ctx_run_g8_B.tsv --label B --kind r1 --cell ctx --cutoff 2024-12-31
+
+[B] r1 ctx trades n=33  distinct tickers=27  E range 2022-04-05..2023-12-14  mean R +0.0000  >=10R per 100 0.000  worst +0.0
+  trades entered after the cutoff 2024-12-31 (their bars are sealed): 0
+  trades whose hold runs past the last bar kept (truncated or no bars): 0
+                                                   class  trades_hold_touched  meanR_touched  meanR_untouched  n_ge10R_touched  trades_pre60_touched  meanR_pre_touched
+                               gap reverted next session                    2            0.0              0.0                0                     1                0.0
+                                   gap reverted within 5                    2            0.0              0.0                0                     2                0.0
+                        gap open-only, reverted same day                    1            0.0              0.0                0                     1                0.0
+                        gap reverted AND no volume event                    0            NaN              0.0                0                     0                NaN
+                                    gap persistent (all)                    8            0.0              0.0                0                    10                0.0
+                gap persistent DOWN >=25% close-to-close                    1            0.0              0.0                0                     2                0.0
+                  gap persistent UP >=25% close-to-close                    8            0.0              0.0                0                     8                0.0
+adjusted series broken across a vendor/listed adjustment                    0            NaN              0.0                0                     0                NaN
+                          spin-off candidate, mechanical                    1            0.0              0.0                0                     0                NaN
+                               spin-off candidate, other                    0            NaN              0.0                0                     2                0.0
+                      split-like ratio, volume-confirmed                    0            NaN              0.0                0                     0                NaN
+                           split-like ratio, unconfirmed                    0            NaN              0.0                0                     2                0.0
+                                wick >= 1.5x with volume                    0            NaN              0.0                0                     0                NaN
+                             interior hole >= 5 sessions                    0            NaN              0.0                0                     0                NaN
+  trades on a ticker inside an identical-series pair: 0  on an exchange test ticker: 0
+  trades duplicated one-for-one under both symbols (same E, same R): 0
+  trades filled at an adjusted price >= $1000: 0  mean R +nan
+UNION of strong artifacts ['gap reverted AND no volume event', 'adjusted series broken across a vendor/listed adjustment', 'spin-off candidate, mechanical', 'split-like ratio, volume-confirmed']
+  touched in the hold: 1  touched in the 60 bars before E: 0  either: 1  (of n=33)
+  published              n=    33  mean R +0.0000  median +0.000  >=10R per 100 0.000  >=4R per 100 0.000  worst +0.0
+  hold-clean             n=    32  mean R +0.0000  median +0.000  >=10R per 100 0.000  >=4R per 100 0.000  worst +0.0
+  hold- and pre-clean    n=    32  mean R +0.0000  median +0.000  >=10R per 100 0.000  >=4R per 100 0.000  worst +0.0

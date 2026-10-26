@@ -1,0 +1,325 @@
+# #705 CONTEXT RULES 01 — RUN (ONE run): the gates, then ENTER -> STOP -> EXIT on every block and tolerance, the comparators, the controls, the tables
+# registration: docs/analysis/cb_context_rules_prereg_2026-10-26.md; module be361a83988a... copied to 01_ctx_frozen_be361a83988a.py; every pin under the marker; the dry run COMPLETE
+- pins re-checked: the previous read's (exports, candidates, labels, guards, the frozen modules and tests) through the frozen module; this read's (the fetch list, 00_pop_fetch.py and its printout, the frozen previous module): no drift
+- this read's inputs: the frozen intraday module ac598fc58aae, the intraday doc body 6c3741e48788, the six intraday TSVs and the printouts on disk (their sha256 pinned under the marker)
+- this read's inputs: the frozen rule-mix module 75c832541cef, the rule-mix doc body 6a2512024c5f, the rule-mix ledger re-verified (the three tag files, control_windows.tsv.gz and 01_mix_tag.txt unchanged since the tag), the recount on disk
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- populations re-asserted against §2 / §2a-d of this doc and the previous 63 counts: 25 claims, every one equals the registration (guard 3)
+- daily exports loaded in 6s: era A 692,401 of 12,005,007 rows (563 tickers, 2016-01-04..2022-06-30); era B 63,175 of 13,830,569 rows (81 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- minute trees: A 149,587 log rows, B 80,858 log rows, EP 196 log rows, EP2 39 log rows, REV 1,322 log rows, INTRA 19,470 log rows; era B export calendar 2021-09-27..2024-12-31 (821 sessions) — every era-B record's offsets are bisected on it (one calendar per record)
+- records (no chain): ENTER 405 (dropped {'no_bar_on_E': 5, 'bars_before_E_lt_20': 7, 'ticker_not_in_export': 2}), STOP / EXIT 837 (dropped {'no_bar_on_E': 11, 'bars_before_E_lt_50': 27, 'ticker_not_in_export': 4}); the buy-day minute files read 505
+- populations re-asserted against the tag files by eid (labels, offsets, clocks only): ENTER 404 rows / STOP 837 / EXIT 837; records ENTER 405, STOP / EXIT 837; differences 0
+- G6 the decision-time guard: every context of every trade from the truncated view vs the full record, the by-date assertion: 0 failures
+- the constants re-derived (the cuts, the medians, the floors, the tree orders): 37; differing from the pins 0
+- records: ENTER 405 (dropped {'no_bar_on_E': 5, 'bars_before_E_lt_20': 7, 'ticker_not_in_export': 2}), STOP / EXIT 837 (dropped {'no_bar_on_E': 11, 'bars_before_E_lt_50': 27, 'ticker_not_in_export': 4}); the registered chain: S10_is_S1 421, S1_is_S2 575, S9_is_S1 421, fill_close_proxy 23, fill_fallback 0, fill_open 552, fill_orh5 219, fill_orh5_too_wide 43
+- the rule-mix fires re-built: 405 ENTER windows, 823 STOP / EXIT records tagged
+
+## G8 — ctx_run: this read's own trade list through trade_impact.py (before any number)
+- era A: entered after the cutoff 0, holds past the last bar 0 (804 trades)
+- era B: entered after the cutoff 0, holds past the last bar 0 (33 trades)
+
+## THE KNOWN-ANSWER GATES (each STOPS the run before any new number)
+- G6 passed above (before any bucket was read)
+- G1 identity: the re-built cells vs the tag files — ENTER 11716, STOP 67724, EXIT 57848 cells: 0 differences
+- the CLOSE matrices and the chance arms built: ENTER 2020 88, 2021-22 60, untouched 9; STOP 2020 139, 2021-22 116, untouched 12; EXIT 2020 333, 2021-22 229, untouched 44
+- G2 the ±0 known answers (BEST L1, S1-T, M-8 and the UNION on 2020 / 2021-22): 0 differences
+- G3 tolerance consistency: 66663 widened (trade, rule, tolerance) buckets vs the derivation from the ±0 tag bucket, jb, je and the missing sessions: 0 differences; UNRESOLVED -> CLOSE upgrades {('STOP', 'pm1c'): 3, ('STOP', 'pm1'): 13, ('STOP', 'pm2'): 13}
+- G4 the 10/20 switch at the extreme cuts: 3292 (trade, reading, cut) firings vs M-3 / M-4: 0 differences
+- G5 the no-split tree's per-leaf chance at ±0 vs the rule-mix printout (L1 / S1-T / M-8, every arm, 2020 and 2021-22): 0 differences
+
+ALL GATES PASSED — the numbers below are new
+
+## ENTER — the map chosen on 2020, scored on 2021-22; the untouched block a sign check
+
+decision ENTER — tolerance the bracket (primary) — n 88 / 60 / 9; the chosen map: 4 groups: [C-E2 = 0 & C-E1 <= T2 (5.459)] -> L8; [C-E2 = 0 & C-E1 > T2 (5.459)] -> L1; [C-E2 = 1 & C-E1 <= T1 (2.526)] -> L8; [C-E2 = 1 & C-E1 > T1 (2.526)] -> L1; m 15; trees searched 21
+  line                           | 2020 (fit, in-sample)                         | 2021-22 (scored as chosen)                  | untouched (sign)  
+  -------------------------------+-----------------------------------------------+---------------------------------------------+-------------------
+  MAP                            | 46.6% [36.2%, 57.0%] (n 88)                   | 45.0% [32.4%, 57.6%] (n 60)                 | MAP − BEST 0 (n 9)
+  BEST (L1)                      | 36.4%                                         | 43.3%                                       | 22.2%             
+  MAP − BEST (paired)            | +10.2 [+2.3, +18.2]; McNemar 12 / 3 (p 0.035) | +1.7 [-8.3, +11.7]; McNemar 5 / 4 (p 1.000) |                   
+  ORACLE-1                       | —                                             | 43.3% (L1)                                  |                   
+  SHUF mean                      | 41.8% (p95 45.5%; MAP at pctile 97.8)         | 41.5% (p95 48.3%)                           |                   
+  MAP − SHUF (paired)            | +4.8 [-1.0, +10.4]                            | +3.5 [-4.3, +12.0]                          |                   
+  (c-1) k-price random prices    | MAP 20.9% / BEST 21.0% -> net gain +10.3      | MAP 31.1% / BEST 31.3% -> net gain +1.9     |                   
+  (c-1) the shared random window | MAP 4.4% / BEST 3.1% -> net gain +8.9         | MAP 6.1% / BEST 4.4% -> net gain +0.0       |                   
+  (c-2) k-price random prices    | MAP 31.2% / BEST 25.3% -> net gain +4.3       | MAP 31.6% / BEST 31.7% -> net gain +1.8     |                   
+  (c-2) the shared random window | MAP 8.6% / BEST 7.4% -> net gain +9.0         | MAP 8.4% / BEST 9.7% -> net gain +3.0       |                   
+  (largest arm, layout only)     | (c-1) 20.9% / (c-2) 31.2%                     | (c-1) 31.1% / (c-2) 31.6%                   |                   
+  UNION                          | 56.8%; gap closed 50.0%                       | 66.7%; gap closed 7.1%                      |                   
+  -> context helps: no (2020 no, 2021-22 no) | beats chance (every arm's net gain >= 10.0, (c-1) and (c-2)): no | SUMMARY: no context gain
+  group [C-E2 = 0 & C-E1 <= T2 (5.459)] rule L8: 2020 n 15 -> 33.3% (dated 2, EP 0; bracket median 21) | 2021-22 n 8 -> 50.0% (dated 2, EP 0; bracket median 45.5) | untouched n 0 -> - (dated 0, EP 0; bracket median -)
+  group [C-E2 = 0 & C-E1 > T2 (5.459)] rule L1: 2020 n 22 -> 45.5% (dated 12, EP 5; bracket median 25.5) | 2021-22 n 12 -> 33.3% (dated 7, EP 5; bracket median 41.5) | untouched n 1 -> 100.0% (dated 0, EP 0; bracket median 5)
+  group [C-E2 = 1 & C-E1 <= T1 (2.526)] rule L8: 2020 n 23 -> 60.9% (dated 9, EP 0; bracket median 30) | 2021-22 n 16 -> 31.2% (dated 3, EP 0; bracket median 54) | untouched n 3 -> 0.0% (dated 0, EP 0; bracket median 14)
+  group [C-E2 = 1 & C-E1 > T1 (2.526)] rule L1: 2020 n 28 -> 42.9% (dated 8, EP 0; bracket median 25.5) | 2021-22 n 24 -> 58.3% (dated 8, EP 0; bracket median 36) | untouched n 5 -> 20.0% (dated 0, EP 0; bracket median 29)
+  missing per context (2020 / 2021-22 / untouched): C-E1 0/7/0; C-E2 0/0/0; C-E3 0/0/0
+  beside, the undated flickers (scored by the 2020-chosen map, never summed): 2020 n 30: MAP 13.3% / BEST 10.0%; 2021-22 n 19: MAP 42.1% / BEST 36.8%; untouched n 7: MAP 0.0% / BEST 0.0%
+  beside MAP-T1 — 4 groups: [C-E2 = 0 & C-E1 <= T2 (5.459)] -> L8; [C-E2 = 0 & C-E1 > T2 (5.459)] -> L1; [C-E2 = 1 & C-E1 <= T1 (2.526)] -> L8; [C-E2 = 1 & C-E1 > T1 (2.526)] -> L1: 2020 46.6% / 2021-22 45.0% / untouched 22.2% vs its BEST 36.4% / 43.3%; SHUF 41.8% / 41.5%; kprice: (c-1) 20.9% / 31.1%, (c-2) 29.9% / 31.4%; shared: (c-1) 4.4% / 6.1%, (c-2) 6.6% / 6.2% -> helps no, beats chance no: no context gain (beside, never the summary)
+  beside HW-E — C-E1 above the 2020 median -> L1, else L8 (l.1712-1713); cut 3.3445208190090354: 2020 47.7% / 2021-22 43.3% / untouched 33.3% vs its BEST 36.4% / 43.3%; SHUF 35.7% / 41.0%; kprice: (c-1) 20.9% / 31.1%, (c-2) 20.9% / 31.1%; shared: (c-1) 4.4% / 6.4%, (c-2) 4.4% / 6.5% -> helps no, beats chance no: no context gain (beside, never the summary)
+
+decision ENTER — tolerance B1 re-cross — n 88 / 60 / 9; the chosen map: 2 groups: [C-E1 <= T1 (2.526)] -> L8; [C-E1 > T1 (2.526)] -> L1; m 15; trees searched 21
+  line                           | 2020 (fit, in-sample)                       | 2021-22 (scored as chosen)                  | untouched (sign)  
+  -------------------------------+---------------------------------------------+---------------------------------------------+-------------------
+  MAP                            | 59.1% [48.8%, 69.4%] (n 88)                 | 60.0% [47.6%, 72.4%] (n 60)                 | MAP − BEST − (n 9)
+  BEST (L1)                      | 54.5%                                       | 66.7%                                       | 44.4%             
+  MAP − BEST (paired)            | +4.5 [+0.0, +10.2]; McNemar 5 / 1 (p 0.219) | -6.7 [-15.0, +0.0]; McNemar 1 / 5 (p 0.219) |                   
+  ORACLE-1                       | —                                           | 66.7% (L1)                                  |                   
+  SHUF mean                      | 55.6% (p95 58.0%; MAP at pctile 97.8)       | 64.8% (p95 66.7%)                           |                   
+  MAP − SHUF (paired)            | +3.5 [-1.0, +8.6]                           | -4.8 [-12.4, +2.2]                          |                   
+  (c-1) k-price random prices    | MAP 43.8% / BEST 43.7% -> net gain +4.5     | MAP 56.7% / BEST 56.6% -> net gain -6.8     |                   
+  (c-1) the shared random window | MAP 17.9% / BEST 16.3% -> net gain +3.0     | MAP 21.5% / BEST 19.2% -> net gain -9.0     |                   
+  (c-2) k-price random prices    | MAP 56.5% / BEST 49.0% -> net gain -2.9     | MAP 56.8% / BEST 57.0% -> net gain -6.5     |                   
+  (c-2) the shared random window | MAP 30.9% / BEST 28.9% -> net gain +2.6     | MAP 32.4% / BEST 36.9% -> net gain -2.2     |                   
+  (largest arm, layout only)     | (c-1) 43.8% / (c-2) 56.5%                   | (c-1) 56.7% / (c-2) 56.8%                   |                   
+  UNION                          | 77.3%; gap closed 20.0%                     | 85.0%; gap closed -36.4%                    |                   
+  -> context helps: no (2020 no, 2021-22 no) | beats chance (every arm's net gain >= 10.0, (c-1) and (c-2)): no | SUMMARY (beside, never the summary): no context gain
+  group [C-E1 <= T1 (2.526)] rule L8: 2020 n 30 -> 56.7% (dated 10, EP 0; bracket median 29.5) | 2021-22 n 19 -> 42.1% (dated 4, EP 0; bracket median 46) | untouched n 3 -> 0.0% (dated 0, EP 0; bracket median 14)
+  group [C-E1 > T1 (2.526)] rule L1: 2020 n 58 -> 60.3% (dated 21, EP 5; bracket median 24) | 2021-22 n 41 -> 68.3% (dated 16, EP 5; bracket median 38) | untouched n 6 -> 50.0% (dated 0, EP 0; bracket median 22.5)
+  missing per context (2020 / 2021-22 / untouched): C-E1 0/7/0; C-E2 0/0/0; C-E3 0/0/0
+  beside, the undated flickers (scored by the 2020-chosen map, never summed): 2020 n 30: MAP 20.0% / BEST 20.0%; 2021-22 n 19: MAP 52.6% / BEST 57.9%; untouched n 7: MAP 42.9% / BEST 42.9%
+
+decision ENTER — tolerance B2 hit-or-ballpark — n 88 / 60 / 9; the chosen map: 4 groups: [C-E2 = 0 & C-E1 <= T2 (5.459)] -> L1; [C-E2 = 0 & C-E1 > T2 (5.459)] -> L7; [C-E2 = 1 & C-E1 <= T1 (2.526)] -> L9; [C-E2 = 1 & C-E1 > T1 (2.526)] -> L1; m 15; trees searched 21
+  line                           | 2020 (fit, in-sample)                      | 2021-22 (scored as chosen)                 | untouched (sign)  
+  -------------------------------+--------------------------------------------+--------------------------------------------+-------------------
+  MAP                            | 90.9% [84.9%, 96.9%] (n 88)                | 88.3% [80.2%, 96.5%] (n 60)                | MAP − BEST − (n 9)
+  BEST (L1)                      | 86.4%                                      | 88.3%                                      | 88.9%             
+  MAP − BEST (paired)            | +4.5 [+1.1, +9.1]; McNemar 4 / 0 (p 0.125) | +0.0 [-5.0, +5.0]; McNemar 1 / 1 (p 1.000) |                   
+  ORACLE-1                       | —                                          | 88.3% (L1)                                 |                   
+  SHUF mean                      | 87.4% (p95 89.8%; MAP at pctile 99.5)      | 87.6% (p95 90.0%)                          |                   
+  MAP − SHUF (paired)            | +3.5 [+0.3, +7.7]                          | +0.7 [-3.8, +4.9]                          |                   
+  (c-1) k-price random prices    | MAP 75.2% / BEST 75.0% -> net gain +4.3    | MAP 81.5% / BEST 81.7% -> net gain +0.2    |                   
+  (c-1) the shared random window | MAP 58.2% / BEST 48.1% -> net gain -5.6    | MAP 59.9% / BEST 51.7% -> net gain -8.2    |                   
+  (c-2) k-price random prices    | MAP 84.8% / BEST 79.7% -> net gain -0.6    | MAP 81.2% / BEST 80.8% -> net gain -0.4    |                   
+  (c-2) the shared random window | MAP 81.5% / BEST 81.4% -> net gain +4.4    | MAP 85.3% / BEST 85.8% -> net gain +0.5    |                   
+  (largest arm, layout only)     | (c-1) 75.2% / (c-2) 84.8%                  | (c-1) 81.5% / (c-2) 85.3%                  |                   
+  UNION                          | 97.7%; gap closed 40.0%                    | 96.7%; gap closed 0.0%                     |                   
+  -> context helps: no (2020 no, 2021-22 no) | beats chance (every arm's net gain >= 10.0, (c-1) and (c-2)): no | SUMMARY (beside, never the summary): no context gain
+  group [C-E2 = 0 & C-E1 <= T2 (5.459)] rule L1: 2020 n 15 -> 86.7% (dated 2, EP 0; bracket median 21) | 2021-22 n 8 -> 100.0% (dated 2, EP 0; bracket median 45.5) | untouched n 0 -> - (dated 0, EP 0; bracket median -)
+  group [C-E2 = 0 & C-E1 > T2 (5.459)] rule L7: 2020 n 22 -> 95.5% (dated 12, EP 5; bracket median 25.5) | 2021-22 n 12 -> 66.7% (dated 7, EP 5; bracket median 41.5) | untouched n 1 -> 100.0% (dated 0, EP 0; bracket median 5)
+  group [C-E2 = 1 & C-E1 <= T1 (2.526)] rule L9: 2020 n 23 -> 91.3% (dated 9, EP 0; bracket median 30) | 2021-22 n 16 -> 93.8% (dated 3, EP 0; bracket median 54) | untouched n 3 -> 66.7% (dated 0, EP 0; bracket median 14)
+  group [C-E2 = 1 & C-E1 > T1 (2.526)] rule L1: 2020 n 28 -> 89.3% (dated 8, EP 0; bracket median 25.5) | 2021-22 n 24 -> 91.7% (dated 8, EP 0; bracket median 36) | untouched n 5 -> 80.0% (dated 0, EP 0; bracket median 29)
+  missing per context (2020 / 2021-22 / untouched): C-E1 0/7/0; C-E2 0/0/0; C-E3 0/0/0
+  beside, the undated flickers (scored by the 2020-chosen map, never summed): 2020 n 30: MAP 60.0% / BEST 76.7%; 2021-22 n 19: MAP 89.5% / BEST 89.5%; untouched n 7: MAP 85.7% / BEST 85.7%
+
+  ENTER beside (never the summary): B1 re-cross no context gain | B2 hit-or-ballpark no context gain | MAP-T1 no context gain | HW-E no context gain
+
+## STOP — the map chosen on 2020, scored on 2021-22; the untouched block a sign check
+
+decision STOP — tolerance ±1c (primary) — n 139 / 116 / 12; the chosen map: 4 groups: [C-S2 <= T2 (0.08659) & C-S2 <= T1 (0.06016)] -> S1-T; [C-S2 <= T2 (0.08659) & C-S2 > T1 (0.06016)] -> S10-H; [C-S2 > T2 (0.08659) & C-S3 = 0] -> S10-H; [C-S2 > T2 (0.08659) & C-S3 = 1] -> S1-T; m 15; trees searched 26
+  line                         | 2020 (fit, in-sample)                      | 2021-22 (scored as chosen)                 | untouched (sign)   
+  -----------------------------+--------------------------------------------+--------------------------------------------+--------------------
+  MAP                          | 56.1% [47.9%, 64.4%] (n 139)               | 52.6% [43.5%, 61.7%] (n 116)               | MAP − BEST − (n 12)
+  BEST (S1-T)                  | 53.2%                                      | 52.6%                                      | 83.3%              
+  MAP − BEST (paired)          | +2.9 [-1.4, +7.2]; McNemar 7 / 3 (p 0.344) | +0.0 [-2.6, +2.6]; McNemar 1 / 1 (p 1.000) |                    
+  ORACLE-1                     | —                                          | 53.4% (S10-H)                              |                    
+  SHUF mean                    | 55.3% (p95 56.8%; MAP at pctile 83.2)      | 52.5% (p95 55.2%)                          |                    
+  MAP − SHUF (paired)          | +0.8 [-2.1, +3.4]                          | +0.1 [-2.3, +2.4]                          |                    
+  (c-1) control (a), frames    | MAP 40.1% / BEST 36.6% -> net gain -0.6    | MAP 34.6% / BEST 34.8% -> net gain +0.2    |                    
+  (c-1) control (a), no frames | MAP 41.2% / BEST 39.6% -> net gain +1.3    | MAP 36.8% / BEST 37.0% -> net gain +0.2    |                    
+  (c-1) random levels          | MAP 50.9% / BEST 50.9% -> net gain +2.9    | MAP 51.0% / BEST 51.0% -> net gain +0.0    |                    
+  (c-2) control (a), frames    | MAP 41.4% / BEST 38.9% -> net gain +0.4    | MAP 36.8% / BEST 38.5% -> net gain +1.7    |                    
+  (c-2) control (a), no frames | MAP 46.4% / BEST 44.4% -> net gain +0.9    | MAP 42.4% / BEST 44.4% -> net gain +2.0    |                    
+  (c-2) random levels          | MAP 60.6% / BEST 55.8% -> net gain -1.9    | MAP 50.8% / BEST 51.0% -> net gain +0.2    |                    
+  (largest arm, layout only)   | (c-1) 50.9% / (c-2) 60.6%                  | (c-1) 51.0% / (c-2) 50.8%                  |                    
+  UNION                        | 69.8%; gap closed 17.4%                    | 70.7%; gap closed 0.0%                     |                    
+  -> context helps: no (2020 no, 2021-22 no) | beats chance (every arm's net gain >= 10.0, (c-1) and (c-2)): no | SUMMARY: no context gain
+  group [C-S2 <= T2 (0.08659) & C-S2 <= T1 (0.06016)] rule S1-T: 2020 n 47 -> 70.2% (dated 18, EP 1; window median 1, exit_lo_j median 1) | 2021-22 n 62 -> 59.7% (dated 22, EP 2; window median 1, exit_lo_j median 2) | untouched n 7 -> 85.7% (dated 2, EP 1; window median 5, exit_lo_j median 3)
+  group [C-S2 <= T2 (0.08659) & C-S2 > T1 (0.06016)] rule S10-H: 2020 n 46 -> 52.2% (dated 15, EP 2; window median 1, exit_lo_j median 2) | 2021-22 n 20 -> 50.0% (dated 8, EP 4; window median 1, exit_lo_j median 2.5) | untouched n 3 -> 66.7% (dated 1, EP 0; window median 1, exit_lo_j median 2)
+  group [C-S2 > T2 (0.08659) & C-S3 = 0] rule S10-H: 2020 n 16 -> 37.5% (dated 5, EP 3; window median 1, exit_lo_j median 2.5) | 2021-22 n 2 -> 100.0% (dated 1, EP 1; window median 1.5, exit_lo_j median 1.5) | untouched n 0 -> - (dated 0, EP 0; window median -, exit_lo_j median -)
+  group [C-S2 > T2 (0.08659) & C-S3 = 1] rule S1-T: 2020 n 30 -> 50.0% (dated 10, EP 3; window median 1, exit_lo_j median 2) | 2021-22 n 32 -> 37.5% (dated 9, EP 1; window median 1, exit_lo_j median 3) | untouched n 2 -> 50.0% (dated 1, EP 0; window median 5, exit_lo_j median 9)
+  controls: clipped placements (s < a_f, fired rules, frames) 2020 24.1%, 2021-22 19.5%, untouched 18.3%; control (a) frames at s >= a_f 2020 MAP 57.4% / BEST 55.3%, 2021-22 MAP 48.4% / BEST 48.7%, untouched MAP 61.0% / BEST 65.1% | UNRESOLVED -> CLOSE upgrades 2020 S10-T 1, 2020 S3-T 1, 2020 S9-T 1
+  missing per context (2020 / 2021-22 / untouched): C-S1 91/76/8; C-S2 0/0/0; C-S3 0/0/0
+  beside MAP-T1 — the single tier-1 rule S1-T (no search): 2020 53.2% / 2021-22 52.6% / untouched 83.3% vs its BEST 53.2% / 52.6%; SHUF 53.2% / 52.6%; a_frames: (c-1) 36.6% / 34.8%, (c-2) 36.6% / 34.9%; a_noframes: (c-1) 39.6% / 37.0%, (c-2) 39.5% / 37.0%; rlevel: (c-1) 50.9% / 51.0%, (c-2) 51.0% / 50.8% -> helps no, beats chance no: no context gain (beside, never the summary)
+  beside HW-S — C-S1 <= 1.0 -> S1-T, else S4-T (l.1943); cut 1.0: 2020 53.2% / 2021-22 51.7% / untouched 83.3% vs its BEST 53.2% / 52.6%; SHUF 51.6% / 51.2%; a_frames: (c-1) 36.9% / 35.2%, (c-2) 36.9% / 35.3%; a_noframes: (c-1) 41.0% / 37.8%, (c-2) 40.9% / 37.9%; rlevel: (c-1) 50.9% / 51.0%, (c-2) 51.1% / 50.7% -> helps no, beats chance no: no context gain (beside, never the summary)
+
+decision STOP — tolerance ±0 — n 139 / 116 / 12; the chosen map: 1 group: [all] -> S1-T; m 15; trees searched 26
+  line                         | 2020 (fit, in-sample)                      | 2021-22 (scored as chosen)                 | untouched (sign)   
+  -----------------------------+--------------------------------------------+--------------------------------------------+--------------------
+  MAP                          | 45.3% [37.0%, 53.6%] (n 139)               | 44.8% [35.8%, 53.9%] (n 116)               | MAP − BEST 0 (n 12)
+  BEST (S1-T)                  | 45.3%                                      | 44.8%                                      | 66.7%              
+  MAP − BEST (paired)          | +0.0 [+0.0, +0.0]; McNemar 0 / 0 (p 1.000) | +0.0 [+0.0, +0.0]; McNemar 0 / 0 (p 1.000) |                    
+  ORACLE-1                     | —                                          | 44.8% (S1-T)                               |                    
+  SHUF mean                    | 45.7% (p95 46.8%; MAP at pctile 27.0)      | 44.6% (p95 45.7%)                          |                    
+  MAP − SHUF (paired)          | -0.4 [-0.9, +0.0]                          | +0.3 [-0.1, +0.6]                          |                    
+  (c-1) control (a), frames    | MAP 30.0% / BEST 30.0% -> net gain +0.0    | MAP 28.5% / BEST 28.5% -> net gain +0.0    |                    
+  (c-1) control (a), no frames | MAP 31.5% / BEST 31.5% -> net gain +0.0    | MAP 29.6% / BEST 29.6% -> net gain +0.0    |                    
+  (c-1) random levels          | MAP 40.4% / BEST 40.4% -> net gain +0.0    | MAP 41.7% / BEST 41.7% -> net gain +0.0    |                    
+  (c-2) control (a), frames    | MAP 32.8% / BEST 30.5% -> net gain -2.3    | MAP 27.8% / BEST 28.7% -> net gain +0.9    |                    
+  (c-2) control (a), no frames | MAP 36.0% / BEST 33.4% -> net gain -2.6    | MAP 29.9% / BEST 30.7% -> net gain +0.8    |                    
+  (c-2) random levels          | MAP 49.2% / BEST 44.7% -> net gain -4.5    | MAP 42.0% / BEST 41.8% -> net gain -0.2    |                    
+  (largest arm, layout only)   | (c-1) 40.4% / (c-2) 49.2%                  | (c-1) 41.7% / (c-2) 42.0%                  |                    
+  UNION                        | 54.0%; gap closed 0.0%                     | 57.8%; gap closed 0.0%                     |                    
+  -> context helps: no (2020 no, 2021-22 no) | beats chance (every arm's net gain >= 10.0, (c-1) and (c-2)): no | SUMMARY (beside, never the summary): no context gain
+  group [all] rule S1-T: 2020 n 139 -> 45.3% (dated 48, EP 9; window median 1, exit_lo_j median 2) | 2021-22 n 116 -> 44.8% (dated 40, EP 8; window median 1, exit_lo_j median 2) | untouched n 12 -> 66.7% (dated 4, EP 1; window median 2, exit_lo_j median 2.5)
+  controls: clipped placements (s < a_f, fired rules, frames) 2020 0.0%, 2021-22 0.0%, untouched 0.0%; control (a) frames at s >= a_f 2020 MAP 30.0% / BEST 30.0%, 2021-22 MAP 28.5% / BEST 28.5%, untouched MAP 48.9% / BEST 48.9% | UNRESOLVED -> CLOSE upgrades none
+  missing per context (2020 / 2021-22 / untouched): C-S1 91/76/8; C-S2 0/0/0; C-S3 0/0/0
+
+decision STOP — tolerance ±1 symmetric — n 139 / 116 / 12; the chosen map: 3 groups: [C-S1 <= T2 (0.6431) & C-S2 <= T1 (0.06016)] -> S1-T; [C-S1 <= T2 (0.6431) & C-S2 > T1 (0.06016)] -> S10-H; [C-S1 > T2 (0.6431)] -> S4-H; m 15; trees searched 26
+  line                         | 2020 (fit, in-sample)                      | 2021-22 (scored as chosen)                 | untouched (sign)   
+  -----------------------------+--------------------------------------------+--------------------------------------------+--------------------
+  MAP                          | 64.0% [56.1%, 72.0%] (n 139)               | 62.9% [54.1%, 71.7%] (n 116)               | MAP − BEST − (n 12)
+  BEST (S1-T)                  | 60.4%                                      | 66.4%                                      | 83.3%              
+  MAP − BEST (paired)          | +3.6 [-1.4, +8.6]; McNemar 9 / 4 (p 0.267) | -3.4 [-7.8, +0.0]; McNemar 1 / 5 (p 0.219) |                    
+  ORACLE-1                     | —                                          | 66.4% (S1-T)                               |                    
+  SHUF mean                    | 63.2% (p95 64.7%; MAP at pctile 84.2)      | 64.5% (p95 66.4%)                          |                    
+  MAP − SHUF (paired)          | +0.9 [-2.7, +4.4]                          | -1.5 [-5.0, +1.6]                          |                    
+  (c-1) control (a), frames    | MAP 62.8% / BEST 62.2% -> net gain +3.0    | MAP 57.1% / BEST 57.3% -> net gain -3.3    |                    
+  (c-1) control (a), no frames | MAP 63.5% / BEST 65.2% -> net gain +5.3    | MAP 59.3% / BEST 59.5% -> net gain -3.3    |                    
+  (c-1) random levels          | MAP 50.9% / BEST 50.9% -> net gain +3.6    | MAP 51.5% / BEST 51.5% -> net gain -3.5    |                    
+  (c-2) control (a), frames    | MAP 64.8% / BEST 62.2% -> net gain +1.0    | MAP 57.0% / BEST 57.6% -> net gain -2.9    |                    
+  (c-2) control (a), no frames | MAP 67.8% / BEST 65.6% -> net gain +1.4    | MAP 59.9% / BEST 60.5% -> net gain -2.9    |                    
+  (c-2) random levels          | MAP 60.7% / BEST 55.8% -> net gain -1.3    | MAP 51.3% / BEST 51.5% -> net gain -3.3    |                    
+  (largest arm, layout only)   | (c-1) 63.5% / (c-2) 67.8%                  | (c-1) 59.3% / (c-2) 59.9%                  |                    
+  UNION                        | 76.3%; gap closed 22.7%                    | 81.9%; gap closed -22.2%                   |                    
+  -> context helps: no (2020 no, 2021-22 no) | beats chance (every arm's net gain >= 10.0, (c-1) and (c-2)): no | SUMMARY (beside, never the summary): no context gain
+  group [C-S1 <= T2 (0.6431) & C-S2 <= T1 (0.06016)] rule S1-T: 2020 n 40 -> 82.5% (dated 11, EP 0; window median 1, exit_lo_j median 1) | 2021-22 n 51 -> 68.6% (dated 11, EP 0; window median 1, exit_lo_j median 2) | untouched n 5 -> 100.0% (dated 0, EP 0; window median 6, exit_lo_j median 2)
+  group [C-S1 <= T2 (0.6431) & C-S2 > T1 (0.06016)] rule S10-H: 2020 n 83 -> 53.0% (dated 21, EP 4; window median 1, exit_lo_j median 2) | 2021-22 n 46 -> 54.3% (dated 10, EP 2; window median 1, exit_lo_j median 3) | untouched n 5 -> 60.0% (dated 2, EP 0; window median 1, exit_lo_j median 2)
+  group [C-S1 > T2 (0.6431)] rule S4-H: 2020 n 16 -> 75.0% (dated 16, EP 5; window median 1, exit_lo_j median 2.5) | 2021-22 n 19 -> 68.4% (dated 19, EP 6; window median 1, exit_lo_j median 3) | untouched n 2 -> 50.0% (dated 2, EP 1; window median 3, exit_lo_j median 3.5)
+  controls: clipped placements (s < a_f, fired rules, frames) 2020 24.5%, 2021-22 19.9%, untouched 18.8%; control (a) frames at s >= a_f 2020 MAP 65.9% / BEST 64.9%, 2021-22 MAP 60.9% / BEST 61.6%, untouched MAP 64.6% / BEST 73.6% | UNRESOLVED -> CLOSE upgrades 2020 S10-T 1, 2020 S3-T 1, 2020 S4-T 1, 2020 S9-T 1
+  missing per context (2020 / 2021-22 / untouched): C-S1 91/76/8; C-S2 0/0/0; C-S3 0/0/0
+
+decision STOP — tolerance ±2 — n 139 / 116 / 12; the chosen map: 3 groups: [C-S1 <= T2 (0.6431) & C-S2 <= T1 (0.06016)] -> S1-T; [C-S1 <= T2 (0.6431) & C-S2 > T1 (0.06016)] -> S1-H; [C-S1 > T2 (0.6431)] -> S4-H; m 15; trees searched 26
+  line                         | 2020 (fit, in-sample)                      | 2021-22 (scored as chosen)                 | untouched (sign)   
+  -----------------------------+--------------------------------------------+--------------------------------------------+--------------------
+  MAP                          | 71.9% [64.5%, 79.4%] (n 139)               | 70.7% [62.4%, 79.0%] (n 116)               | MAP − BEST 0 (n 12)
+  BEST (S1-H)                  | 69.8%                                      | 72.4%                                      | 83.3%              
+  MAP − BEST (paired)          | +2.2 [+0.0, +5.0]; McNemar 3 / 0 (p 0.250) | -1.7 [-4.3, +0.0]; McNemar 0 / 2 (p 0.500) |                    
+  ORACLE-1                     | —                                          | 74.1% (S1-T)                               |                    
+  SHUF mean                    | 71.8% (p95 73.4%; MAP at pctile 56.5)      | 72.0% (p95 74.1%)                          |                    
+  MAP − SHUF (paired)          | +0.1 [-2.6, +3.1]                          | -1.3 [-3.9, +1.0]                          |                    
+  (c-1) control (a), frames    | MAP 73.6% / BEST 71.8% -> net gain +0.3    | MAP 69.2% / BEST 69.9% -> net gain -1.0    |                    
+  (c-1) control (a), no frames | MAP 74.3% / BEST 73.2% -> net gain +1.0    | MAP 72.0% / BEST 71.6% -> net gain -2.1    |                    
+  (c-1) random levels          | MAP 56.2% / BEST 56.2% -> net gain +2.1    | MAP 56.4% / BEST 56.4% -> net gain -1.7    |                    
+  (c-2) control (a), frames    | MAP 76.7% / BEST 74.1% -> net gain -0.5    | MAP 69.7% / BEST 71.0% -> net gain -0.4    |                    
+  (c-2) control (a), no frames | MAP 79.4% / BEST 77.7% -> net gain +0.4    | MAP 73.4% / BEST 74.0% -> net gain -1.1    |                    
+  (c-2) random levels          | MAP 66.4% / BEST 61.4% -> net gain -2.9    | MAP 56.8% / BEST 56.1% -> net gain -2.4    |                    
+  (largest arm, layout only)   | (c-1) 74.3% / (c-2) 79.4%                  | (c-1) 72.0% / (c-2) 73.4%                  |                    
+  UNION                        | 83.5%; gap closed 15.8%                    | 85.3%; gap closed -13.3%                   |                    
+  -> context helps: no (2020 no, 2021-22 no) | beats chance (every arm's net gain >= 10.0, (c-1) and (c-2)): no | SUMMARY (beside, never the summary): no context gain
+  group [C-S1 <= T2 (0.6431) & C-S2 <= T1 (0.06016)] rule S1-T: 2020 n 40 -> 87.5% (dated 11, EP 0; window median 1, exit_lo_j median 1) | 2021-22 n 51 -> 72.5% (dated 11, EP 0; window median 1, exit_lo_j median 2) | untouched n 5 -> 100.0% (dated 0, EP 0; window median 6, exit_lo_j median 2)
+  group [C-S1 <= T2 (0.6431) & C-S2 > T1 (0.06016)] rule S1-H: 2020 n 83 -> 63.9% (dated 21, EP 4; window median 1, exit_lo_j median 2) | 2021-22 n 46 -> 65.2% (dated 10, EP 2; window median 1, exit_lo_j median 3) | untouched n 5 -> 80.0% (dated 2, EP 0; window median 1, exit_lo_j median 2)
+  group [C-S1 > T2 (0.6431)] rule S4-H: 2020 n 16 -> 75.0% (dated 16, EP 5; window median 1, exit_lo_j median 2.5) | 2021-22 n 19 -> 78.9% (dated 19, EP 6; window median 1, exit_lo_j median 3) | untouched n 2 -> 50.0% (dated 2, EP 1; window median 3, exit_lo_j median 3.5)
+  controls: clipped placements (s < a_f, fired rules, frames) 2020 48.9%, 2021-22 39.9%, untouched 37.6%; control (a) frames at s >= a_f 2020 MAP 67.7% / BEST 65.2%, 2021-22 MAP 62.0% / BEST 62.5%, untouched MAP 62.6% / BEST 62.6% | UNRESOLVED -> CLOSE upgrades 2020 S10-T 1, 2020 S3-T 1, 2020 S4-T 1, 2020 S9-T 1
+  missing per context (2020 / 2021-22 / untouched): C-S1 91/76/8; C-S2 0/0/0; C-S3 0/0/0
+
+  STOP beside (never the summary): ±0 no context gain | ±1 symmetric no context gain | ±2 no context gain | MAP-T1 no context gain | HW-S no context gain
+
+## EXIT — the map chosen on 2020, scored on 2021-22; the untouched block a sign check
+
+decision EXIT — tolerance ±1c (primary) — n 333 / 229 / 44; the chosen map: 4 groups: [C-X2 <= T1 (-0.03727) & C-X1 <= T1 (0.05786)] -> M-3; [C-X2 <= T1 (-0.03727) & C-X1 > T1 (0.05786)] -> M-8; [C-X2 > T1 (-0.03727) & C-X1 <= T2 (0.08828)] -> M-8; [C-X2 > T1 (-0.03727) & C-X1 > T2 (0.08828)] -> M-9; m 34; trees searched 151
+  line                         | 2020 (fit, in-sample)                        | 2021-22 (scored as chosen)                   | untouched (sign)   
+  -----------------------------+----------------------------------------------+----------------------------------------------+--------------------
+  MAP                          | 45.3% [40.0%, 50.7%] (n 333)                 | 39.7% [33.4%, 46.1%] (n 229)                 | MAP − BEST − (n 44)
+  BEST (M-8)                   | 41.4%                                        | 40.6%                                        | 31.8%              
+  MAP − BEST (paired)          | +3.9 [+0.6, +7.5]; McNemar 24 / 11 (p 0.041) | -0.9 [-5.2, +3.1]; McNemar 11 / 13 (p 0.839) |                    
+  ORACLE-1                     | —                                            | 40.6% (M-8)                                  |                    
+  SHUF mean                    | 43.6% (p95 45.0%; MAP at pctile 97.0)        | 38.6% (p95 41.9%)                            |                    
+  MAP − SHUF (paired)          | +1.7 [-1.5, +4.9]                            | +1.2 [-2.7, +5.1]                            |                    
+  (c-1) control (a), frames    | MAP 35.2% / BEST 37.0% -> net gain +5.7      | MAP 36.4% / BEST 40.8% -> net gain +3.5      |                    
+  (c-1) control (a), no frames | MAP 36.0% / BEST 37.0% -> net gain +4.9      | MAP 37.8% / BEST 40.8% -> net gain +2.1      |                    
+  (c-1) random levels          | MAP 29.7% / BEST 29.7% -> net gain +3.9      | MAP 33.4% / BEST 33.4% -> net gain -0.9      |                    
+  (c-2) control (a), frames    | MAP 38.1% / BEST 37.0% -> net gain +2.8      | MAP 37.7% / BEST 40.6% -> net gain +2.0      |                    
+  (c-2) control (a), no frames | MAP 42.6% / BEST 39.5% -> net gain +0.8      | MAP 39.7% / BEST 39.6% -> net gain -1.0      |                    
+  (c-2) random levels          | MAP 34.4% / BEST 31.2% -> net gain +0.7      | MAP 32.4% / BEST 32.3% -> net gain -1.0      |                    
+  (largest arm, layout only)   | (c-1) 36.0% / (c-2) 42.6%                    | (c-1) 37.8% / (c-2) 39.7%                    |                    
+  UNION                        | 81.1%; gap closed 9.8%                       | 82.5%; gap closed -2.1%                      |                    
+  -> context helps: no (2020 no, 2021-22 no) | beats chance (every arm's net gain >= 10.0, (c-1) and (c-2)): no | SUMMARY: no context gain
+  group [C-X2 <= T1 (-0.03727) & C-X1 <= T1 (0.05786)] rule M-3: 2020 n 46 -> 54.3% (dated 15, EP 0; window median 1, exit_lo_j median 5) | 2021-22 n 43 -> 53.5% (dated 16, EP 5; window median 1, exit_lo_j median 2) | untouched n 6 -> 16.7% (dated 5, EP 4; window median 2.5, exit_lo_j median 20.5)
+  group [C-X2 <= T1 (-0.03727) & C-X1 > T1 (0.05786)] rule M-8: 2020 n 65 -> 56.9% (dated 18, EP 2; window median 1, exit_lo_j median 2) | 2021-22 n 56 -> 32.1% (dated 15, EP 2; window median 1, exit_lo_j median 4) | untouched n 4 -> 75.0% (dated 1, EP 1; window median 1.5, exit_lo_j median 2.5)
+  group [C-X2 > T1 (-0.03727) & C-X1 <= T2 (0.08828)] rule M-8: 2020 n 146 -> 39.7% (dated 69, EP 8; window median 1, exit_lo_j median 3) | 2021-22 n 87 -> 41.4% (dated 32, EP 5; window median 1, exit_lo_j median 4) | untouched n 27 -> 29.6% (dated 9, EP 2; window median 1, exit_lo_j median 5)
+  group [C-X2 > T1 (-0.03727) & C-X1 > T2 (0.08828)] rule M-9: 2020 n 76 -> 40.8% (dated 20, EP 9; window median 1, exit_lo_j median 3) | 2021-22 n 43 -> 32.6% (dated 16, EP 5; window median 1, exit_lo_j median 3) | untouched n 7 -> 14.3% (dated 1, EP 0; window median 1, exit_lo_j median 9)
+  controls: clipped placements (s < a_f, fired rules, frames) 2020 11.3%, 2021-22 12.8%, untouched 5.5%; control (a) frames at s >= a_f 2020 MAP 46.8% / BEST 50.2%, 2021-22 MAP 46.7% / BEST 52.9%, untouched MAP 42.5% / BEST 42.4% | UNRESOLVED -> CLOSE upgrades none
+  missing per context (2020 / 2021-22 / untouched): C-X1 0/0/0; C-X2 0/0/0; C-X3 0/0/0; C-X4 0/0/0
+  beside, losers / non-losers: 2020 losers n 139: MAP 56.8% / BEST 54.0%; 2020 non-losers n 194: MAP 37.1% / BEST 32.5%; 2021-22 losers n 116: MAP 49.1% / BEST 51.7%; 2021-22 non-losers n 113: MAP 30.1% / BEST 29.2%; untouched losers n 12: MAP 50.0% / BEST 50.0%; untouched non-losers n 32: MAP 21.9% / BEST 25.0%
+  beside MAP-T1 — 4 groups: [C-X1 <= T1 (0.05786) & C-X2 <= T1 (-0.03727)] -> M-3; [C-X1 <= T1 (0.05786) & C-X2 > T1 (-0.03727)] -> M-2; [C-X1 > T1 (0.05786) & C-X2 <= T2 (0.5522)] -> M-2; [C-X1 > T1 (0.05786) & C-X2 > T2 (0.5522)] -> M-9: 2020 42.3% / 2021-22 38.4% / untouched 25.0% vs its BEST 36.9% / 37.1%; SHUF 40.5% / 35.2%; a_frames: (c-1) 31.9% / 32.2%, (c-2) 34.0% / 30.4%; a_noframes: (c-1) 37.0% / 38.6%, (c-2) 41.4% / 39.0%; rlevel: (c-1) 29.7% / 33.4%, (c-2) 34.1% / 32.2% -> helps no, beats chance no: no context gain (beside, never the summary)
+  beside HW-X — C-X1 above the 2020 median -> M-3 (the 10-day), else M-4 (l.2046-2047); cut 0.07156011787100518: 2020 31.8% / 2021-22 31.9% / untouched 29.5% vs its BEST 41.4% / 40.6%; SHUF 30.3% / 30.6%; a_frames: (c-1) 17.2% / 15.4%, (c-2) 17.3% / 15.4%; a_noframes: (c-1) 22.3% / 22.2%, (c-2) 22.4% / 22.2%; rlevel: (c-1) 29.7% / 33.4%, (c-2) 29.1% / 32.3% -> helps no, beats chance no: no context gain (beside, never the summary)
+  beside HW-X' — C-X1 > 0.0479 (TRAIL_SPEED_ADR_CUT) -> M-3, else M-4; cut 0.0479: 2020 33.6% / 2021-22 32.8% / untouched 22.7% vs its BEST 41.4% / 40.6%; SHUF 33.3% / 32.5%; a_frames: (c-1) 20.0% / 17.7%, (c-2) 19.9% / 17.7%; a_noframes: (c-1) 25.1% / 22.3%, (c-2) 25.0% / 22.3%; rlevel: (c-1) 29.7% / 33.4%, (c-2) 29.0% / 32.5% -> helps no, beats chance no: no context gain (beside, never the summary)
+  beside SW-a — the 10/20 switch, far -> the 10-day (cut T2 of C-X3 = 0.9961028770629429); a composite rule, not in the library: 2020 33.3% / 2021-22 31.9% / untouched 20.5% vs its BEST 41.4% / 40.6%; SHUF 33.3% / 31.9%; a_frames: (c-1) 18.8% / 18.8%, (c-2) 18.8% / 18.8%; a_noframes: (c-1) 24.8% / 26.1%, (c-2) 24.9% / 26.0%; rlevel: (c-1) 29.7% / 33.4%, (c-2) 29.0% / 32.4% -> helps no, beats chance no: no context gain (beside, never the summary)
+  beside SW-b — the 10/20 switch, far -> the 20-day (cut T2 of C-X3 = 0.9961028770629429); a composite rule, not in the library: 2020 30.3% / 2021-22 29.7% / untouched 22.7% vs its BEST 41.4% / 40.6%; SHUF 30.3% / 29.7%; a_frames: (c-1) 16.2% / 15.9%, (c-2) 16.2% / 15.8%; a_noframes: (c-1) 20.6% / 20.6%, (c-2) 20.6% / 20.4%; rlevel: (c-1) 29.7% / 33.4%, (c-2) 29.0% / 32.4% -> helps no, beats chance no: no context gain (beside, never the summary)
+
+decision EXIT — tolerance ±0 — n 333 / 229 / 44; the chosen map: 4 groups: [C-X2 <= T1 (-0.03727) & C-X1 <= T1 (0.05786)] -> M-3; [C-X2 <= T1 (-0.03727) & C-X1 > T1 (0.05786)] -> M-8; [C-X2 > T1 (-0.03727) & C-X2 <= T2 (0.5522)] -> M-2; [C-X2 > T1 (-0.03727) & C-X2 > T2 (0.5522)] -> M-8; m 34; trees searched 151
+  line                         | 2020 (fit, in-sample)                       | 2021-22 (scored as chosen)                  | untouched (sign)   
+  -----------------------------+---------------------------------------------+---------------------------------------------+--------------------
+  MAP                          | 35.1% [30.0%, 40.3%] (n 333)                | 30.6% [24.6%, 36.5%] (n 229)                | MAP − BEST + (n 44)
+  BEST (M-8)                   | 30.9%                                       | 27.9%                                       | 18.2%              
+  MAP − BEST (paired)          | +4.2 [+1.5, +7.5]; McNemar 21 / 7 (p 0.013) | +2.6 [-1.3, +6.6]; McNemar 14 / 8 (p 0.286) |                    
+  ORACLE-1                     | —                                           | 28.4% (M-2)                                 |                    
+  SHUF mean                    | 34.2% (p95 35.1%; MAP at pctile 92.0)       | 27.9% (p95 31.4%)                           |                    
+  MAP − SHUF (paired)          | +1.0 [-1.7, +3.8]                           | +2.6 [-0.9, +6.1]                           |                    
+  (c-1) control (a), frames    | MAP 27.4% / BEST 28.7% -> net gain +5.5     | MAP 28.2% / BEST 30.7% -> net gain +5.2     |                    
+  (c-1) control (a), no frames | MAP 28.8% / BEST 28.7% -> net gain +4.1     | MAP 29.4% / BEST 30.7% -> net gain +4.0     |                    
+  (c-1) random levels          | MAP 23.6% / BEST 23.6% -> net gain +4.2     | MAP 28.1% / BEST 28.1% -> net gain +2.7     |                    
+  (c-2) control (a), frames    | MAP 30.2% / BEST 28.5% -> net gain +2.5     | MAP 27.9% / BEST 30.5% -> net gain +5.3     |                    
+  (c-2) control (a), no frames | MAP 32.1% / BEST 29.2% -> net gain +1.3     | MAP 28.3% / BEST 29.2% -> net gain +3.6     |                    
+  (c-2) random levels          | MAP 27.8% / BEST 25.0% -> net gain +1.4     | MAP 27.1% / BEST 27.1% -> net gain +2.7     |                    
+  (largest arm, layout only)   | (c-1) 28.8% / (c-2) 32.1%                   | (c-1) 29.4% / (c-2) 28.3%                   |                    
+  UNION                        | 71.5%; gap closed 10.4%                     | 72.9%; gap closed 5.8%                      |                    
+  -> context helps: no (2020 no, 2021-22 no) | beats chance (every arm's net gain >= 10.0, (c-1) and (c-2)): no | SUMMARY (beside, never the summary): no context gain
+  group [C-X2 <= T1 (-0.03727) & C-X1 <= T1 (0.05786)] rule M-3: 2020 n 46 -> 41.3% (dated 15, EP 0; window median 1, exit_lo_j median 5) | 2021-22 n 43 -> 41.9% (dated 16, EP 5; window median 1, exit_lo_j median 2) | untouched n 6 -> 0.0% (dated 5, EP 4; window median 2.5, exit_lo_j median 20.5)
+  group [C-X2 <= T1 (-0.03727) & C-X1 > T1 (0.05786)] rule M-8: 2020 n 65 -> 46.2% (dated 18, EP 2; window median 1, exit_lo_j median 2) | 2021-22 n 56 -> 23.2% (dated 15, EP 2; window median 1, exit_lo_j median 4) | untouched n 4 -> 25.0% (dated 1, EP 1; window median 1.5, exit_lo_j median 2.5)
+  group [C-X2 > T1 (-0.03727) & C-X2 <= T2 (0.5522)] rule M-2: 2020 n 111 -> 38.7% (dated 50, EP 4; window median 1, exit_lo_j median 3) | 2021-22 n 64 -> 31.2% (dated 25, EP 3; window median 1, exit_lo_j median 4) | untouched n 13 -> 23.1% (dated 5, EP 0; window median 1, exit_lo_j median 7)
+  group [C-X2 > T1 (-0.03727) & C-X2 > T2 (0.5522)] rule M-8: 2020 n 111 -> 22.5% (dated 39, EP 13; window median 1, exit_lo_j median 3) | 2021-22 n 66 -> 28.8% (dated 23, EP 7; window median 1, exit_lo_j median 3) | untouched n 21 -> 28.6% (dated 5, EP 2; window median 1, exit_lo_j median 4)
+  controls: clipped placements (s < a_f, fired rules, frames) 2020 0.0%, 2021-22 0.0%, untouched 0.0%; control (a) frames at s >= a_f 2020 MAP 27.4% / BEST 28.7%, 2021-22 MAP 28.2% / BEST 30.7%, untouched MAP 29.3% / BEST 25.3% | UNRESOLVED -> CLOSE upgrades none
+  missing per context (2020 / 2021-22 / untouched): C-X1 0/0/0; C-X2 0/0/0; C-X3 0/0/0; C-X4 0/0/0
+  beside, losers / non-losers: 2020 losers n 139: MAP 41.7% / BEST 40.3%; 2020 non-losers n 194: MAP 30.4% / BEST 24.2%; 2021-22 losers n 116: MAP 37.9% / BEST 35.3%; 2021-22 non-losers n 113: MAP 23.0% / BEST 20.4%; untouched losers n 12: MAP 41.7% / BEST 33.3%; untouched non-losers n 32: MAP 15.6% / BEST 12.5%
+
+decision EXIT — tolerance ±1 symmetric — n 333 / 229 / 44; the chosen map: 3 groups: [C-X1 <= T1 (0.05786) & C-X2 <= T1 (-0.03727)] -> M-4; [C-X1 <= T1 (0.05786) & C-X2 > T1 (-0.03727)] -> M-9; [C-X1 > T1 (0.05786)] -> M-9; m 34; trees searched 151
+  line                         | 2020 (fit, in-sample)                       | 2021-22 (scored as chosen)                  | untouched (sign)   
+  -----------------------------+---------------------------------------------+---------------------------------------------+--------------------
+  MAP                          | 57.7% [52.4%, 63.0%] (n 333)                | 51.1% [44.6%, 57.6%] (n 229)                | MAP − BEST 0 (n 44)
+  BEST (M-9)                   | 55.3%                                       | 51.5%                                       | 40.9%              
+  MAP − BEST (paired)          | +2.4 [+0.0, +5.1]; McNemar 13 / 5 (p 0.096) | -0.4 [-3.9, +3.1]; McNemar 9 / 10 (p 1.000) |                    
+  ORACLE-1                     | —                                           | 51.5% (M-9)                                 |                    
+  SHUF mean                    | 55.7% (p95 56.8%; MAP at pctile 98.8)       | 50.6% (p95 52.0%)                           |                    
+  MAP − SHUF (paired)          | +1.9 [-0.4, +4.2]                           | +0.5 [-3.4, +4.3]                           |                    
+  (c-1) control (a), frames    | MAP 51.2% / BEST 52.6% -> net gain +3.8     | MAP 51.8% / BEST 54.5% -> net gain +2.3     |                    
+  (c-1) control (a), no frames | MAP 51.9% / BEST 52.6% -> net gain +3.1     | MAP 53.9% / BEST 54.5% -> net gain +0.2     |                    
+  (c-1) random levels          | MAP 31.2% / BEST 31.2% -> net gain +2.4     | MAP 34.8% / BEST 34.8% -> net gain -0.4     |                    
+  (c-2) control (a), frames    | MAP 59.0% / BEST 57.8% -> net gain +1.2     | MAP 57.7% / BEST 59.6% -> net gain +1.5     |                    
+  (c-2) control (a), no frames | MAP 60.5% / BEST 57.9% -> net gain -0.2     | MAP 57.4% / BEST 59.0% -> net gain +1.2     |                    
+  (c-2) random levels          | MAP 35.9% / BEST 32.7% -> net gain -0.8     | MAP 33.8% / BEST 33.7% -> net gain -0.5     |                    
+  (largest arm, layout only)   | (c-1) 51.9% / (c-2) 60.5%                   | (c-1) 53.9% / (c-2) 57.7%                   |                    
+  UNION                        | 86.8%; gap closed 7.6%                      | 87.8%; gap closed -1.2%                     |                    
+  -> context helps: no (2020 no, 2021-22 no) | beats chance (every arm's net gain >= 10.0, (c-1) and (c-2)): no | SUMMARY (beside, never the summary): no context gain
+  group [C-X1 <= T1 (0.05786) & C-X2 <= T1 (-0.03727)] rule M-4: 2020 n 46 -> 58.7% (dated 15, EP 0; window median 1, exit_lo_j median 5) | 2021-22 n 43 -> 60.5% (dated 16, EP 5; window median 1, exit_lo_j median 2) | untouched n 6 -> 16.7% (dated 5, EP 4; window median 2.5, exit_lo_j median 20.5)
+  group [C-X1 <= T1 (0.05786) & C-X2 > T1 (-0.03727)] rule M-9: 2020 n 65 -> 46.2% (dated 36, EP 4; window median 1, exit_lo_j median 4) | 2021-22 n 56 -> 42.9% (dated 19, EP 0; window median 1, exit_lo_j median 5) | untouched n 24 -> 37.5% (dated 7, EP 2; window median 1.5, exit_lo_j median 7)
+  group [C-X1 > T1 (0.05786)] rule M-9: 2020 n 222 -> 60.8% (dated 71, EP 15; window median 1, exit_lo_j median 3) | 2021-22 n 130 -> 51.5% (dated 44, EP 12; window median 1, exit_lo_j median 3) | untouched n 14 -> 57.1% (dated 4, EP 1; window median 1, exit_lo_j median 2.5)
+  controls: clipped placements (s < a_f, fired rules, frames) 2020 12.3%, 2021-22 14.0%, untouched 6.0%; control (a) frames at s >= a_f 2020 MAP 67.4% / BEST 70.8%, 2021-22 MAP 65.5% / BEST 70.8%, untouched MAP 57.9% / BEST 56.6% | UNRESOLVED -> CLOSE upgrades none
+  missing per context (2020 / 2021-22 / untouched): C-X1 0/0/0; C-X2 0/0/0; C-X3 0/0/0; C-X4 0/0/0
+  beside, losers / non-losers: 2020 losers n 139: MAP 71.2% / BEST 69.8%; 2020 non-losers n 194: MAP 47.9% / BEST 44.8%; 2021-22 losers n 116: MAP 61.2% / BEST 63.8%; 2021-22 non-losers n 113: MAP 40.7% / BEST 38.9%; untouched losers n 12: MAP 58.3% / BEST 58.3%; untouched non-losers n 32: MAP 34.4% / BEST 34.4%
+
+decision EXIT — tolerance ±2 — n 333 / 229 / 44; the chosen map: 4 groups: [C-X2 <= T1 (-0.03727) & C-X1 <= T1 (0.05786)] -> M-4; [C-X2 <= T1 (-0.03727) & C-X1 > T1 (0.05786)] -> M-8; [C-X2 > T1 (-0.03727) & C-X3 <= T2 (0.9961)] -> M-8; [C-X2 > T1 (-0.03727) & C-X3 > T2 (0.9961)] -> M-9; m 34; trees searched 151
+  line                         | 2020 (fit, in-sample)                       | 2021-22 (scored as chosen)                   | untouched (sign)   
+  -----------------------------+---------------------------------------------+----------------------------------------------+--------------------
+  MAP                          | 64.0% [58.8%, 69.1%] (n 333)                | 56.3% [49.9%, 62.8%] (n 229)                 | MAP − BEST − (n 44)
+  BEST (M-9)                   | 60.7%                                       | 57.2%                                        | 45.5%              
+  MAP − BEST (paired)          | +3.3 [+0.3, +6.3]; McNemar 20 / 9 (p 0.061) | -0.9 [-4.8, +3.5]; McNemar 11 / 13 (p 0.839) |                    
+  ORACLE-1                     | —                                           | 57.2% (M-9)                                  |                    
+  SHUF mean                    | 62.4% (p95 63.4%; MAP at pctile 97.0)       | 55.9% (p95 58.1%)                            |                    
+  MAP − SHUF (paired)          | +1.6 [-1.0, +4.1]                           | +0.4 [-3.2, +4.0]                            |                    
+  (c-1) control (a), frames    | MAP 71.3% / BEST 77.7% -> net gain +9.7     | MAP 69.8% / BEST 79.1% -> net gain +8.4      |                    
+  (c-1) control (a), no frames | MAP 72.2% / BEST 77.7% -> net gain +8.8     | MAP 72.2% / BEST 79.1% -> net gain +6.0      |                    
+  (c-1) random levels          | MAP 35.6% / BEST 35.6% -> net gain +3.3     | MAP 39.3% / BEST 39.3% -> net gain -0.9      |                    
+  (c-2) control (a), frames    | MAP 78.1% / BEST 77.7% -> net gain +2.9     | MAP 78.7% / BEST 79.2% -> net gain -0.4      |                    
+  (c-2) control (a), no frames | MAP 78.4% / BEST 77.7% -> net gain +2.6     | MAP 77.8% / BEST 79.2% -> net gain +0.5      |                    
+  (c-2) random levels          | MAP 40.5% / BEST 37.1% -> net gain -0.1     | MAP 38.0% / BEST 37.8% -> net gain -1.1      |                    
+  (largest arm, layout only)   | (c-1) 72.2% / (c-2) 78.4%                   | (c-1) 72.2% / (c-2) 78.7%                    |                    
+  UNION                        | 89.5%; gap closed 11.5%                     | 90.0%; gap closed -2.7%                      |                    
+  -> context helps: no (2020 no, 2021-22 no) | beats chance (every arm's net gain >= 10.0, (c-1) and (c-2)): no | SUMMARY (beside, never the summary): no context gain
+  group [C-X2 <= T1 (-0.03727) & C-X1 <= T1 (0.05786)] rule M-4: 2020 n 46 -> 63.0% (dated 15, EP 0; window median 1, exit_lo_j median 5) | 2021-22 n 43 -> 67.4% (dated 16, EP 5; window median 1, exit_lo_j median 2) | untouched n 6 -> 16.7% (dated 5, EP 4; window median 2.5, exit_lo_j median 20.5)
+  group [C-X2 <= T1 (-0.03727) & C-X1 > T1 (0.05786)] rule M-8: 2020 n 65 -> 73.8% (dated 18, EP 2; window median 1, exit_lo_j median 2) | 2021-22 n 56 -> 46.4% (dated 15, EP 2; window median 1, exit_lo_j median 4) | untouched n 4 -> 75.0% (dated 1, EP 1; window median 1.5, exit_lo_j median 2.5)
+  group [C-X2 > T1 (-0.03727) & C-X3 <= T2 (0.9961)] rule M-8: 2020 n 113 -> 55.8% (dated 60, EP 3; window median 1, exit_lo_j median 3) | 2021-22 n 73 -> 49.3% (dated 33, EP 4; window median 1, exit_lo_j median 5) | untouched n 14 -> 35.7% (dated 7, EP 1; window median 1, exit_lo_j median 6)
+  group [C-X2 > T1 (-0.03727) & C-X3 > T2 (0.9961)] rule M-9: 2020 n 109 -> 67.0% (dated 29, EP 14; window median 1, exit_lo_j median 3) | 2021-22 n 57 -> 66.7% (dated 15, EP 6; window median 1, exit_lo_j median 3) | untouched n 20 -> 45.0% (dated 3, EP 1; window median 1, exit_lo_j median 6)
+  controls: clipped placements (s < a_f, fired rules, frames) 2020 24.7%, 2021-22 27.9%, untouched 12.0%; control (a) frames at s >= a_f 2020 MAP 59.2% / BEST 62.3%, 2021-22 MAP 62.3% / BEST 64.9%, untouched MAP 51.9% / BEST 51.8% | UNRESOLVED -> CLOSE upgrades none
+  missing per context (2020 / 2021-22 / untouched): C-X1 0/0/0; C-X2 0/0/0; C-X3 0/0/0; C-X4 0/0/0
+  beside, losers / non-losers: 2020 losers n 139: MAP 75.5% / BEST 77.7%; 2020 non-losers n 194: MAP 55.7% / BEST 48.5%; 2021-22 losers n 116: MAP 68.1% / BEST 70.7%; 2021-22 non-losers n 113: MAP 44.2% / BEST 43.4%; untouched losers n 12: MAP 58.3% / BEST 66.7%; untouched non-losers n 32: MAP 34.4% / BEST 37.5%
+
+  EXIT beside (never the summary): ±0 no context gain | ±1 symmetric no context gain | ±2 no context gain | MAP-T1 no context gain | HW-X no context gain | HW-X' no context gain | SW-a no context gain | SW-b no context gain
+
+## THE SUMMARY (the primary tolerance; a description, not a verdict — it moves no rule, threshold, size or safeguard)
+- ENTER: no context gain
+- STOP: no context gain
+- EXIT: no context gain
+
+- per-trade files -> /Users/alvinfung/apollo_the_wise/scripts/probes/_705_context_1026/out/ (contexts.tsv, maps.tsv, groups.tsv, controls.tsv.gz); the ledger records each
+
+RUN COMPLETE
