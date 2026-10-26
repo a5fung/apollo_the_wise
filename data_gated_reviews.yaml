@@ -12947,6 +12947,12 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_10_25: >-
+      SURFACED by the Sun 10-25 weekly review as "ripe" (and "8 rule changes since, latest 2026-10-13 - re-check the question").
+      No new out-of-sample alert session since the 10-24 read (a weekend), so nothing can move: the 10-24 reading stands
+      ("does not validate" by the registered rule; matured top cell 6 rows, 0 at 8x). The rule-change re-check was answered
+      10-18 and no rule changed since 10-13: the changes are exit / entry-execution rules, and this read scores the SELECTION
+      ranking on each alert's own 5-day best high, which no exit rule touches. Next movement: the first new alert session.
     resolution_2026_10_24: >-
       RAN 2026-10-24, prod read-only, the pinned SQL and measure (5-day best high from the EP-day open in ADR20 multiples,
       8x bar, top quartile = rank <= 0.25). Predicate 27 sessions (was 24). confidence_label(27) = DECISION-GRADE, but the
