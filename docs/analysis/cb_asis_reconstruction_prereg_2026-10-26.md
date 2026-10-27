@@ -668,3 +668,79 @@ Frozen after his "Ok" (§13). Step 5's dry run: 49 claims, 49 OK, 0 MISMATCH. St
 - run_printout: ABSENT
 - ledger: ABSENT
 - doc_body: 2b330f044c3f59da643f248ef97723dd80534b262458a766979f5fd22d748db0
+
+### RE-RUN 1 of step 5 — the minute pull (his "Yes", 2026-10-26; regular hours only, his note "he doesn't buy premarket")
+
+Disclosed event: 1,721 missing (session, symbol) pairs fetched (1,366 ok, 355 empty; `00_fetch_list.py`, `fetch_list_asis_1026.tsv`) into a new tree `ASIS`, read LAST so no covered pair changes tree; every dry-run claim stays computed on the six pre-pull trees and the post-pull coverage prints beside (buys 70.4% → 88.8%, sales 60.5% → 88.3% of in-span windows with minute bars on every session); run 1's outputs archived as `*_run1` with ledger rows. Dry run 49 / 49 OK.
+
+#### Pins (step 5, re-run 1)
+
+- entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf
+- exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f
+- snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff
+- control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc
+- panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012
+- calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610
+- lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178
+- done_EP: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735
+- done_EP2: f8255199e52f0fa14aebcec5d50a407a1a52ac7c8b6cd4129bf41aa2f8cc591a
+- done_REV: 945c41fb3618ed6b85a000232f6becc82c9d8e201b9bde99bd8673f9f7036d5e
+- done_INTRA: a9dc793c33af220a2c030ae3d36f83af5d80ab91890b0e80c0deea3868d3f243
+- done_ASIS: b18dea5e0e75d64991c1c0de366c7deee65d9488ebd921a6b26b37994ba598e1
+- raw_close_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444
+- splits_B: 3199d06d5fb7dcd52ebd34e8c71e148b45ec0ca4a15f7f03ea1b715718882b0b
+- subs_list: 99929453752cb3590b261e6928d99317312f35d9a50c0c147e33393b101a64a9
+- asis_common.py: 89116c1ab9dc7aa2592737747884772776a3be8e9e58d113cebb42eab1b75f6b
+- 01_points.py: 0864c933d7e8364d3002053a92fcf1b9fdd4751ff110f14cdbe272374e0e651e
+- forbidden_identifiers.txt: ba8f4bb5f23f2325b6e1ed78e299d2044d3182313955f4509b1e16969e3ff81c
+- dryrun_printout: 35232be6a47bc23c5e5e9a0e5987760193bb02ab7ae5446316dc192b170ef452
+- run_printout: ABSENT
+- ledger: dc0971a82e7e057830a1e4d76d7ad4fb9e04f7b614e9b01a28774aba87ac328a
+- doc_body: 2b330f044c3f59da643f248ef97723dd80534b262458a766979f5fd22d748db0
+
+### Step 6a — the caption machine pass (`02_captions.py`), pinned before any sheet is drawn
+
+Dry run 24 / 24 OK. Reading order (main loop, 2026-10-26; capacity, not a criterion): reader 1 reads the T1 price batch (434 statements) first — it alone decides R1 — and the blind reader 2 its 150 + 200 rows; the remaining strata wait for R1's result. Tickers are resolved by the readers from the captions; the machine's tied symbols (e.g. 'tesla' → TSLA / TELA) decide only the reading order.
+
+#### Pins (step 6a)
+
+- entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf
+- exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f
+- snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff
+- control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc
+- panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012
+- calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610
+- lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178
+- done_EP: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735
+- done_EP2: f8255199e52f0fa14aebcec5d50a407a1a52ac7c8b6cd4129bf41aa2f8cc591a
+- done_REV: 945c41fb3618ed6b85a000232f6becc82c9d8e201b9bde99bd8673f9f7036d5e
+- done_INTRA: a9dc793c33af220a2c030ae3d36f83af5d80ab91890b0e80c0deea3868d3f243
+- done_ASIS: b18dea5e0e75d64991c1c0de366c7deee65d9488ebd921a6b26b37994ba598e1
+- raw_close_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444
+- splits_B: 3199d06d5fb7dcd52ebd34e8c71e148b45ec0ca4a15f7f03ea1b715718882b0b
+- subs_list: 99929453752cb3590b261e6928d99317312f35d9a50c0c147e33393b101a64a9
+- asis_common.py: 89116c1ab9dc7aa2592737747884772776a3be8e9e58d113cebb42eab1b75f6b
+- 01_points.py: 0864c933d7e8364d3002053a92fcf1b9fdd4751ff110f14cdbe272374e0e651e
+- forbidden_identifiers.txt: ba8f4bb5f23f2325b6e1ed78e299d2044d3182313955f4509b1e16969e3ff81c
+- doc_body: 2b330f044c3f59da643f248ef97723dd80534b262458a766979f5fd22d748db0
+- 02_captions.py: 40e5df6fbd5b069f38eb4b5a1b40c22f2ab8a25f697ecb807b0fc31e7759d308
+- captions_inventory.py: 23eaf3dae1cf68b87dfa70c6cda05a011b5af923a9a9dc01a82585afe81e0f08
+- video_status: 9f7a7e4cb1fd8ae5eb69a4daa4eb9eec7f9e969341249d41ffa469cb1bf9c692
+- caption_sample: c8bef564780f39bca8698e9d6f7290c5b0a38564530d944da595ea35e3aa0bb4
+- account_statements: 30474545b6e017cc25a72e3189d249b301d84052abaeba844780ad60d85926ad
+- dict_web2: be41ad97963bf8dabedd5871d5d691596175269d540956b0f9965a885c2bbab9
+- dict_web2a: 9313e251fee3e56204db2b284346d61c3a80ce613d7a077c5674f15f9cb33ab3
+- dict_connectives: 5d2e495b5b12226bc89802ac6ebfabfc7fe1b0b374b2bfa19eb50145d5ccff76
+- dryrun6a_printout: 31f2dabb2f684340aacc9394c2fb6e23086dc34645d3345d03c6c1c65ec2a5a4

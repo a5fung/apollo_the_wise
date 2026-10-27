@@ -65,6 +65,10 @@ READINGS where the plan is silent, ambiguous or contradicts itself (numbered; th
       numbers (price = level / factor); `dist_round` and the density tolerance are read in raw price (the $0.05 floor is a tick size).
       The helpers `raw_factor_for` (cb), `load_splits` and `factor_by_bar` (runner) are copied byte-identically; the subset loader is ours.
 
+  R37-R39 (re-run 1, 2026-10-26; numbered in 01_points.py's docstring): the seventh minute tree `ASIS` (his pull, regular hours only) is last in
+      `FILES` / `MINUTES` / `TREE_ORDER`; `PRE_PULL_TREES` names the six the inventory's claims were measured on; `ledger_verify` is ours (not
+      a copy) and accepts run 1's archived files (`ARCHIVE_STAGE`, `archive_path`).
+
 No network, no model client, no DB, no subagent. Nothing is opened at import.
 """
 from __future__ import annotations
@@ -124,12 +128,14 @@ FILES = {
     "done_EP2": f"{B_DIR}/minutes_ep_1024/_done.psv",
     "done_REV": f"{B_DIR}/minutes_rev_1024/_done.psv",
     "done_INTRA": f"{B_DIR}/minutes_intra_1025/_done.psv",
+    "done_ASIS": f"{B_DIR}/minutes_asis_1026/_done.psv",                 # R37: the re-run 1 pull (his 'Yes' 2026-10-26), regular hours only
     "raw_close_A": f"{A_DIR}/daily_raw_close.csv.gz",                    # R12: ticker,date,RAW close of every export-A row (today's symbol)
     "splits_B": f"{B_DIR}/cb702_splits.psv",                             # R12: sym|exec_date|from|to; cut at the seal at read
 }
 MINUTES = {"A": f"{A_DIR}/minutes", "B": f"{B_DIR}/minutes", "EP": f"{B_DIR}/minutes_ep_1023", "EP2": f"{B_DIR}/minutes_ep_1024",
-           "REV": f"{B_DIR}/minutes_rev_1024", "INTRA": f"{B_DIR}/minutes_intra_1025"}
-TREE_ORDER = ("A", "B", "EP", "EP2", "REV", "INTRA")
+           "REV": f"{B_DIR}/minutes_rev_1024", "INTRA": f"{B_DIR}/minutes_intra_1025", "ASIS": f"{B_DIR}/minutes_asis_1026"}
+TREE_ORDER = ("A", "B", "EP", "EP2", "REV", "INTRA", "ASIS")        # R37: ASIS LAST, so no pair already covered changes tree
+PRE_PULL_TREES = ("A", "B", "EP", "EP2", "REV", "INTRA")            # R37: the six trees the inventory's coverage facts were measured on
 FORBIDDEN_DIRS = tuple(f"{H_DIR}/{d}" for d in ("replay", "his_exits", "intraday", "reverse", "rule_mix", "reverse_fit_events",
                                                  "reverse_recount_cache"))        # guard (2): the seven outcome folders, never opened
 OUTPUTS = {k: f"{OUT_DIR}/{k}.tsv" for k in ("candidates", "ranges", "coverage")}
@@ -744,17 +750,33 @@ def ledger_append(stage: str, path: str) -> None:
             fh.write("stage\tpath\tsha256\ttime\n")
         fh.write(f"{stage}\t{path}\t{sha(path)}\t{_dt.datetime.now().isoformat(timespec='seconds')}\n")
 
+ARCHIVE_STAGE = "archive_run1_"      # R38: the stage prefix of the ledger rows that record run 1's files after their rename
+
+
+def archive_path(path: str) -> str:
+    """R38: where run 1's copy of `path` lives after the re-run's archive step: `_run1` before the extension (candidates.tsv ->
+    candidates_run1.tsv, 01_points.txt -> 01_points_run1.txt)."""
+    root, ext = os.path.splitext(path)
+    return f"{root}_run1{ext}"
+
+
 def ledger_verify() -> list:
-    """Every ledger row's file must exist with the recorded sha (a deleted or regenerated printout is caught). -> the problems."""
+    """Every ledger row's file must exist with the recorded sha (a deleted or regenerated printout is caught). -> the problems.
+    R38 (ours, no longer a copy of the reverse read's): a row whose file is missing or changed is accepted ONLY when run 1's archived copy
+    (`archive_path`) exists with the recorded sha AND the ledger carries an `archive_run1_*` row for that exact archived path and sha — the
+    rename is a ledger fact, the content is checked, and anything else (a deleted or edited file with no archive) is still a problem."""
     if not os.path.exists(LEDGER):
         return ["ledger missing"]
     bad = []
-    rows = pd.read_csv(LEDGER, sep="\t", dtype=str, keep_default_na=False)
-    for r in rows.to_dict("records"):
-        if not os.path.exists(r["path"]):
-            bad.append(f"{r['path']}: missing")
-        elif sha(r["path"]) != r["sha256"]:
-            bad.append(f"{r['path']}: changed since the ledger recorded it")
+    rows = pd.read_csv(LEDGER, sep="\t", dtype=str, keep_default_na=False).to_dict("records")
+    archived = {(r["path"], r["sha256"]) for r in rows if r["stage"].startswith(ARCHIVE_STAGE)}
+    for r in rows:
+        if os.path.exists(r["path"]) and sha(r["path"]) == r["sha256"]:
+            continue
+        arc = archive_path(r["path"])
+        if (not r["stage"].startswith(ARCHIVE_STAGE) and (arc, r["sha256"]) in archived and os.path.exists(arc) and sha(arc) == r["sha256"]):
+            continue
+        bad.append(f"{r['path']}: " + ("missing" if not os.path.exists(r["path"]) else "changed since the ledger recorded it"))
     return bad
 
 def dry_run_complete(path: str = None) -> bool:
@@ -1005,7 +1027,6 @@ COPIED = (
     ('scripts/probes/_705_reverse_1024/01_rev.py', 'minute_state', 'def', {'param_index': 0, 'to': 'd'}),
     ('scripts/probes/_705_reverse_1024/01_rev.py', 'subs_list_sha', 'def', {}),
     ('scripts/probes/_705_reverse_1024/01_rev.py', 'ledger_append', 'def', {}),
-    ('scripts/probes/_705_reverse_1024/01_rev.py', 'ledger_verify', 'def', {}),
     ('scripts/probes/_705_reverse_1024/01_rev.py', 'dry_run_complete', 'def', {}),
     ('scripts/probes/_705_intraday_1025/01_intra.py', 'MinuteStore.__init__', 'method', {}),
     ('scripts/probes/_705_intraday_1025/01_intra.py', 'MinuteStore.check_forbid', 'method', {}),

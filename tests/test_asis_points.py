@@ -778,3 +778,161 @@ def test_run_gate_refuses_until_frozen(tmp_path, monkeypatch):
     doc.write_text(doc.read_text().replace("# body", "# body edited"))
     assert any("doc_body" in x for x in P.run_gate(str(doc)))
     assert P.dry_run_mismatches(str(tmp_path / "absent.txt")) is None
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════ re-run 1: the pull's tree, the archive (R37-R39)
+def test_pull_tree_is_last_and_pre_pull_trees_are_the_original_six():
+    assert C.PRE_PULL_TREES == ("A", "B", "EP", "EP2", "REV", "INTRA")
+    assert C.TREE_ORDER == C.PRE_PULL_TREES + ("ASIS",)                        # last: no pair already covered changes tree
+    assert "done_ASIS" in C.FILES and "ASIS" in C.MINUTES
+    assert C.FILES["done_ASIS"] == C.MINUTES["ASIS"] + "/_done.psv"
+    for tr in C.TREE_ORDER:                                                    # one fetch log and one folder per tree, nothing orphaned
+        assert C.FILES[f"done_{tr}"].endswith("/_done.psv") and tr in C.MINUTES
+    assert {k for k in C.FILES if k.startswith("done_")} == {f"done_{t}" for t in C.TREE_ORDER}
+
+
+def test_coverage_claims_read_pre_pull_trees_and_the_pull_is_measured_beside(world, tmp_path):
+    S2, bars = world["S"], world["bars"]
+    d_pre, d_new, d_both = "2020-06-01", "2020-06-02", "2020-06-03"             # pre-pull tree A holds d_pre and d_both; the pull's tree d_new, d_both
+    pull = tmp_path / "pull"
+    write_minute_tree(pull, d_new, {"XYZ": synthetic_day(ANCHORS)}, {"XYZ": "ok"})
+    write_minute_tree(pull, d_both, {"XYZ": synthetic_day(ANCHORS, n=200)}, {"XYZ": "ok"})
+    write_minute_tree(world["tree"], d_both, {"XYZ": synthetic_day(ANCHORS)}, {"XYZ": "ok"})
+    st = bars.store
+    st.done["A"], _ = C.load_done(str(world["tree"] / "_done.psv"), cut=C.CUT_B)
+    st.files["A"] = C.minute_date_files(world["tree"])
+    st.done["ASIS"], _ = C.load_done(str(pull / "_done.psv"), cut=C.CUT_B)
+    st.files["ASIS"] = C.minute_date_files(pull)
+    assert st.state(d_both, "XYZ") == "ok/A"                                   # a pair already covered keeps its tree (ASIS is last)
+    assert st.get(d_both, "XYZ") is not None and len(st.get(d_both, "XYZ")) == 390
+    assert st.state(d_new, "XYZ") == "ok/ASIS"
+
+    def win(lo, hi):
+        w = P.Window(1, "XYZ", "XYZ", "buy", lo, hi, None, None, False, False)
+        w.sym_a_orig = "XYZ"
+        return w
+    for lo, hi, pre, post in ((d_pre, d_pre, True, True),                        # covered before: stays covered
+                              (d_new, d_new, False, True),                       # only the pull covers it: the claims do not see it, the after does
+                              (d_pre, d_new, False, True),                       # a window needs EVERY session: one pull session completes it
+                              (d_both, d_both, True, True),                      # held by both trees: counted in the pre-pull claims (tree A)
+                              (d_pre, d_both, False, True)):                     # spans d_new, which only the pull holds
+        w = win(lo, hi)
+        assert P.inventory_coverage(w, bars, S2)[2] is pre                                          # the default is the PRE-pull trees
+        assert P.inventory_coverage(w, bars, S2, trees=C.PRE_PULL_TREES)[2] is pre
+        assert P.inventory_coverage(w, bars, S2, trees=C.TREE_ORDER)[2] is post
+    assert P.inventory_coverage(win("2020-06-04", "2020-06-04"), bars, S2, trees=C.TREE_ORDER)[2] is False     # nobody holds it: still uncovered
+    # an empty log in the pull counts as no minute bars (the 355 empties of the real pull)
+    write_minute_tree(pull, "2020-06-04", {}, {"XYZ": "empty"})
+    st.done["ASIS"], _ = C.load_done(str(pull / "_done.psv"), cut=C.CUT_B)
+    st.files["ASIS"] = C.minute_date_files(pull)
+    assert P.inventory_coverage(win("2020-06-04", "2020-06-04"), bars, S2, trees=C.TREE_ORDER)[2] is False
+
+
+def test_ledger_verify_accepts_the_run1_archive_and_nothing_else(tmp_path, monkeypatch):
+    monkeypatch.setattr(C, "LEDGER", str(tmp_path / "ledger.tsv"))
+    assert C.ledger_verify() == ["ledger missing"]
+    assert C.archive_path("/x/01_points.txt") == "/x/01_points_run1.txt" and C.archive_path("/x/candidates.tsv") == "/x/candidates_run1.tsv"
+    a, b = tmp_path / "01_points.txt", tmp_path / "candidates.tsv"
+    a.write_text("run 1 printout\n")
+    b.write_text("run 1 table\n")
+    C.ledger_append("step5_points", str(a))
+    C.ledger_append("step5_candidates", str(b))
+    assert C.ledger_verify() == []
+    # a deleted file with no archive is a problem; so is an edit
+    b2 = b.read_text()
+    b.unlink()
+    assert C.ledger_verify() == [f"{b}: missing"]
+    # the rename alone is not enough: the archive must be a ledger fact
+    (tmp_path / "candidates_run1.tsv").write_text(b2)
+    assert C.ledger_verify() == [f"{b}: missing"]
+    C.ledger_append(C.ARCHIVE_STAGE + "candidates", str(tmp_path / "candidates_run1.tsv"))
+    assert C.ledger_verify() == []
+    # run 2 writes a fresh file at the original path and appends its own row: both rows verify
+    b.write_text("run 2 table\n")
+    C.ledger_append("step5_rerun1_candidates", str(b))
+    assert C.ledger_verify() == []
+    # a regenerated printout (the dry run is rewritten) needs its archived copy too
+    a_old = a.read_text()
+    a.write_text("a regenerated printout\n")
+    assert C.ledger_verify() == [f"{a}: changed since the ledger recorded it"]
+    (tmp_path / "01_points_run1.txt").write_text(a_old)
+    C.ledger_append(C.ARCHIVE_STAGE + "points", str(tmp_path / "01_points_run1.txt"))
+    assert C.ledger_verify() == []
+    # the archive is itself checked: edit it and the run-1 rows fail with it
+    (tmp_path / "candidates_run1.tsv").write_text("tampered\n")
+    bad = C.ledger_verify()
+    assert f"{tmp_path}/candidates_run1.tsv: changed since the ledger recorded it" in bad and f"{b}: changed since the ledger recorded it" in bad
+
+
+def test_run_gate_passes_the_outputs_check_once_run1_is_archived(tmp_path, monkeypatch):
+    monkeypatch.setattr(C, "P_DRY", str(tmp_path / "dry.txt"))
+    monkeypatch.setattr(C, "P_RUN", str(tmp_path / "run.txt"))
+    monkeypatch.setattr(C, "LEDGER", str(tmp_path / "ledger.tsv"))
+    monkeypatch.setattr(C, "OUTPUTS", {k: str(tmp_path / f"{k}.tsv") for k in ("candidates", "ranges", "coverage")})
+    doc = tmp_path / "doc.md"
+    doc.write_text("# body\n\n<!-- FREEZE -->\n")
+    for k, p in C.OUTPUTS.items():
+        open(p, "w").write(f"{k} run 1\n")
+    open(C.P_RUN, "w").write("run 1\n")
+    assert any("outputs exist" in x for x in P.run_gate(str(doc)))
+    for k, p in list(C.OUTPUTS.items()) + [("points", C.P_RUN)]:
+        C.ledger_append("step5_" + k, p)
+        os.replace(p, C.archive_path(p))
+        C.ledger_append(C.ARCHIVE_STAGE + k, C.archive_path(p))
+    problems = P.run_gate(str(doc))
+    assert not any("outputs exist" in x or "ledger" in x for x in problems)
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════ re-run 1 review fixes (F4, F12)
+def test_pull_row_counts_gains_only_where_the_pull_adds_minutes(world, tmp_path):
+    """Review F4: the before / after table's row is a module function; a mutation pointing 'after' at the pre-pull trees must fail here."""
+    S2, bars = world["S"], world["bars"]
+    d_pre, d_new = "2020-06-01", "2020-06-02"                                   # tree A holds d_pre; only the pull holds d_new
+    pull = tmp_path / "pull"
+    write_minute_tree(pull, d_new, {"XYZ": synthetic_day(ANCHORS)}, {"XYZ": "ok"})
+    st = bars.store
+    st.done["ASIS"], _ = C.load_done(str(pull / "_done.psv"), cut=C.CUT_B)
+    st.files["ASIS"] = C.minute_date_files(pull)
+
+    def win(lo, hi):
+        w = P.Window(1, "XYZ", "XYZ", "buy", lo, hi, None, None, False, False)
+        w.sym_a_orig = "XYZ"
+        return w
+    ws = [win(d_pre, d_pre), win(d_new, d_new), win("2020-06-04", "2020-06-04")]
+    row = P.pull_row("BUY", "span", ws, bars, S2)
+    # [side, group, n, minute % before, after, gained, width-1 n, width-1 before, after, width-1 gained]
+    assert row[:3] == ["BUY", "span", 3] and row[5] == 1 and row[6] == 3 and row[9] == 1       # exactly ONE window gained, the pull-only one
+    assert row[3] == P.pct(1, 3) and row[4] == P.pct(2, 3)                                    # 1/3 covered before, 2/3 after
+    # a window covered before the pull stays covered: nothing gained when the pull adds nothing
+    row0 = P.pull_row("SALE", "2020", [win(d_pre, d_pre)], bars, S2)
+    assert row0[5] == 0 and row0[3] == row0[4] == P.pct(1, 1)
+
+
+def test_fetch_list_reads_the_pre_pull_state_so_it_stays_reproducible(world, tmp_path):
+    """Review F12: a pair the pull has since fetched STAYS in the list (reading the post-pull state would silently rewrite it to empty)."""
+    fetch = _load("asis_fetch00", ASIS / "00_fetch_list.py")
+    st = world["store"]
+    d_pre, d_pulled, d_nobody = "2020-06-01", "2020-06-02", "2020-06-04"
+    pull = tmp_path / "pull"
+    write_minute_tree(pull, d_pulled, {"XYZ": synthetic_day(ANCHORS)}, {"XYZ": "ok"})
+    st.done["ASIS"], _ = C.load_done(str(pull / "_done.psv"), cut=C.CUT_B)
+    st.files["ASIS"] = C.minute_date_files(pull)
+    pairs = {(d_pre, "XYZ"), (d_pulled, "XYZ"), (d_nobody, "XYZ")}
+    state, missing = fetch.missing_pairs(pairs, st)
+    assert sorted(missing) == [("XYZ", d_pulled), ("XYZ", d_nobody)] and state["ok/A"] == 1 and state["missing"] == 2    # the pulled pair is still listed
+    _, after = fetch.missing_pairs(pairs, st, trees=C.TREE_ORDER)                # the post-pull state would have dropped it: that is the mutation
+    assert after == [("XYZ", d_nobody)]
+
+
+def test_ledger_archive_rows_are_the_only_excuse_and_the_rerun_has_its_own_stage_names(tmp_path, monkeypatch):
+    """Review F12: a NON-archive row that happens to record a *_run1 path does not excuse a missing file; the re-run's stage prefix is not run 1's."""
+    monkeypatch.setattr(C, "LEDGER", str(tmp_path / "ledger.tsv"))
+    b = tmp_path / "candidates.tsv"
+    b.write_text("run 1 table\n")
+    C.ledger_append("step5_candidates", str(b))
+    arc = tmp_path / "candidates_run1.tsv"
+    arc.write_text("run 1 table\n")
+    C.ledger_append("step5_something_else", str(arc))                          # same sha, same _run1 path, but NOT an archive_run1_ row
+    b.unlink()
+    assert any("missing" in x for x in C.ledger_verify())
+    assert P.RERUN_STAGE.startswith("step5_rerun") and not "step5_candidates".startswith(P.RERUN_STAGE) and P.RERUN_STAGE != "step5_"

@@ -41,6 +41,7 @@
     "tests/test_account_mode_literal_gate.py": 4,
     "tests/test_alert_rank_shadow.py": 2,
     "tests/test_anticipation_graduation_predicate.py": 1,
+    "tests/test_asis_captions.py": 2,
     "tests/test_asis_points.py": 1,
     "tests/test_audit_detail_json_safe_truncation.py": 4,
     "tests/test_breakeven_at_broker_548.py": 3,
@@ -145,6 +146,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 423,
+  "total": 425,
   "unescaped": 359
 }

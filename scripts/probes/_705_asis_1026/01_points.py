@@ -124,11 +124,30 @@ READINGS where the plan is silent, ambiguous or contradicts itself (numbered on 
   R36 (review F9) The same-day width claims pass at a tolerance of 1 minute: the inventory prints integer medians (38, 44) where the
       build's medians of an even count are half-integers (38.5, 43.5) — a median convention, not a width difference.
 
+  R37 (re-run 1, 2026-10-26) The minute pull he approved ("Yes"; regular hours only, his note the same evening: "from my understanding he
+      doesn't buy premarket") lands in a seventh tree, `ASIS` (/cb702/minutes_asis_1026/, 486 files: 484 date files + `_done.psv` + `fetch.log`, 1,366 ok /
+      355 empty over the 1,721 pairs of `fetch_list_asis_1026.tsv`), added LAST to `FILES` (`done_ASIS`), `MINUTES` and `TREE_ORDER`, so no
+      pair already covered changes tree (the pull holds only pairs no tree logged). Stricter reading: every inventory coverage CLAIM is a fact
+      about the data BEFORE the pull, so `inventory_coverage` defaults to `PRE_PULL_TREES` (the six original trees, a named tuple) and the
+      dry run still reads 0 MISMATCH; the candidates / ranges / coverage outputs (and the reachable-set coverage table) read ALL seven trees.
+      `00_fetch_list.py` reads the pre-pull state so its list stays reproducible. The pull is regular hours only: a pre-market buy window
+      keeps its `pre_market_possible` flag and gains no extended-hours minutes (under his note such a buy is read as a regular-session buy;
+      the 460 `next_in_pre` sale windows are unchanged).
+  R38 (re-run 1) Run 1's four outputs are ARCHIVED, not deleted: candidates / ranges / coverage .tsv -> `*_run1.tsv` and 01_points.txt ->
+      01_points_run1.txt, and (stricter reading, the dry run being rewritten) the run-1 dry-run printout is first copied to
+      01_points_dryrun_run1.txt. The ledger keeps its five run-1 rows and gains five `archive_run1_*` rows (path = the archived copy, sha =
+      the run-1 sha). `ledger_verify` is no longer a copy of the reverse read's (it is out of `COPIED`): a row whose file is missing or
+      changed is accepted only when its `_run1` copy exists with the recorded sha AND the ledger carries the archive row for that path + sha.
+      The run-2 ledger rows are staged `step5_rerun1_*`.
+  R39 (re-run 1) The dry run prints the pull's effect BESIDE the claims: minute coverage of the in-span windows, before and after (all
+      sessions covered, and width-1), by side, by window-end year (2020 / 2021 / 2022), and by bracket type; it asserts no window covered
+      before becomes uncovered after.
 BUILD HISTORY (the real-data crash-fix reruns, disclosed; see `BUILD_HISTORY`):
   2026-10-26 build: `R.Daily` shim missing (crash at load); tree B's 449 post-seal date files tripped the seal on LISTING (excluded
       unopened); F10 on split-adjusted prices (DRYS 2017: 11,700 levels; capped, R27); a mixed-key sort in the printout.
   2026-10-26 review fixes (this file): raw factor (R31), F9 dropped (R33), the run gates (R34), merged rows (R20), the clock /
       extended-hours flags (R35), the claims recast (R32); the dry run rerun after each.
+  re-run 1 (2026-10-26): the minute pull (his 'Yes'), regular hours only; claims pre-pull, coverage post-pull beside (R37-R39).
 
 Run:  python3 scripts/probes/_705_asis_1026/01_points.py --dry-run | --print-pins | --run
 No subagent, no network, no production server, no paid call, nothing after 2024-12-31, none of the seven outcome folders.
@@ -211,6 +230,9 @@ BUILD_HISTORY = (   # R34: the real-data crash-fix reruns, printed in both print
     "unopened); F10 on split-adjusted prices (DRYS 2017: 11,700 levels; capped, R27); a mixed-key sort in the printout",
     "2026-10-26 review fixes: raw factor (R31), F9 dropped (R33), the run gates (R34), merged rows (R20), clock / extended-hours flags "
     "(R35), the bracket claims recast (R32); the dry run rerun after each",
+    "re-run 1 (2026-10-26): the minute pull (his 'Yes'), regular hours only; claims pre-pull, coverage post-pull beside",
+    "re-run 1 review fixes (2026-10-26): the before / after row is a module function (`pull_row`, testable); the ledger stage prefix is a "
+    "constant (`RERUN_STAGE`); the fetch list's pair classifier is a function; the dry run rerun after each",
 )
 COVER_COLS = ["eid", "sym", "bar_sym", "side", "year", "in_span", "bracket", "n_sessions", "daily_sessions", "minute_sessions", "resolution",
               "daily_only_reason", "export", "export_fallback"]
@@ -1182,16 +1204,19 @@ def preload_minutes(L: dict, say) -> None:
         f"; files read " + ", ".join(f"{k} {v}" for k, v in sorted(L["store"].reads.items())) + f" ({time.time() - t0:.0f}s)")
 
 
-def inventory_coverage(w: Window, bars: Bars, S: Sessions, renamed: bool = False) -> tuple:
+def inventory_coverage(w: Window, bars: Bars, S: Sessions, renamed: bool = False, trees: tuple = None) -> tuple:
     """R23: the inventory's own coverage definition per window session: daily = A under sym_a OR B under sym; minute = any tree ok under the
     inventory's bar symbol. `renamed=False` uses entries.tsv's sym_a (the inventory's numbers, the claims); True the rename-extended one.
-    -> (daily_all, daily_any, minute_all)."""
+    R37: `trees` defaults to the six PRE-PULL trees (the inventory's coverage facts predate the re-run's pull); `C.TREE_ORDER` gives the
+    post-pull reading printed beside. -> (daily_all, daily_any, minute_all)."""
+    trees = C.PRE_PULL_TREES if trees is None else trees
+    trees = tuple(t for t in trees if t in bars.store.done)
     lo_i, hi_i = S.le(w.lo), S.le(w.hi)
     ds = [S.date(i) for i in range(lo_i, hi_i + 1)]
     sym_a = w.sym_a if renamed else w.sym_a_orig
     inv_sym = C.bar_sym(w.hi, sym_a, w.sym)
     daily = [bars.has_daily("A", sym_a, d) or bars.has_daily("B", w.sym, d) for d in ds]
-    minute = [bars.store.state(d, inv_sym).startswith("ok") for d in ds]
+    minute = [C.minute_state(d, inv_sym, bars.store.done, bars.store.files, trees).startswith("ok") for d in ds]
     return all(daily), any(daily), all(minute)
 
 
@@ -1206,6 +1231,20 @@ def compute_all(L: dict, say, tally: collections.Counter) -> dict:
         cands.extend(cr)
     say(f"- candidates built for {len(ranges):,} sides in {time.time() - t0:.0f}s: {len(cands):,} rows")
     return {"ranges": ranges, "covers": covers, "cands": cands, "not_reached": nr_all}
+
+
+def pull_row(side: str, label: str, ws_: list, bars, S) -> list:
+    """R39 (review F4, hoisted out of `report` so it is testable): one row of the before / after table for `ws_`. Before = the six PRE-PULL
+    trees (the claims' definition), after = all seven; both on the same windows, the rename table not applied. Asserts the pull's tree is last
+    (a window covered before cannot become uncovered). -> [side, group, n, all-sessions minute % before, after, windows gained, width-1 n,
+    width-1 minute % before, after, width-1 gained]."""
+    pre_ = [inventory_coverage(w, bars, S, trees=C.PRE_PULL_TREES)[2] for w in ws_]
+    post_ = [inventory_coverage(w, bars, S, trees=C.TREE_ORDER)[2] for w in ws_]
+    one_ = [i for i, w in enumerate(ws_) if S.le(w.hi) == S.le(w.lo)]
+    assert all(a <= b for a, b in zip(pre_, post_)), "the pull's tree is last: a window covered before cannot become uncovered"
+    return [side, label, len(ws_), pct(sum(pre_), len(ws_)), pct(sum(post_), len(ws_)), sum(post_) - sum(pre_), len(one_),
+            pct(sum(pre_[i] for i in one_), len(one_)), pct(sum(post_[i] for i in one_), len(one_)),
+            sum(post_[i] for i in one_) - sum(pre_[i] for i in one_)]
 
 
 def report(L: dict, R: dict, say, claims: "Claims | None", tally: collections.Counter) -> None:
@@ -1309,7 +1348,8 @@ def report(L: dict, R: dict, say, claims: "Claims | None", tally: collections.Co
                 claims(f"{side} {b} median width (min; tolerance 1: the inventory prints integer medians, R36)",
                        {"BUYsame_in_in": 31, "BUYsame_pre_in": 38, "SALEsame_in_in": 31, "SALEsame_pre_in": 44}[side + b], med, tol=1.0)
     table(say, ["side", "bracket", "n", "width <= 0", "median width"], rows)
-    say("\n## Coverage in the span, the inventory's definitions (data.md §3.1-3.2; before the rename extension these are the claims)")
+    say("\n## Coverage in the span, the inventory's definitions (data.md §3.1-3.2; before the rename extension these are the claims) — "
+        "R37: computed on the six PRE-PULL trees, " + "+".join(C.PRE_PULL_TREES) + " (the pull's tree is not in these numbers)")
     bars = L["bars"]
     rows = []
     for side, ws, exp_d, exp_m, exp_none, exp_d1, exp_m1 in (("BUY", bs, 88.7, 70.4, 168, 91.3, 76.0), ("SALE", ss, 88.8, 60.5, 172, 89.9, 64.9)):
@@ -1333,6 +1373,26 @@ def report(L: dict, R: dict, say, claims: "Claims | None", tally: collections.Co
         cov = [inventory_coverage(w, bars, S, renamed=True) for w in ws]
         rows.append([side, len(ws), pct(sum(c[0] for c in cov), len(ws)), sum(1 for c in cov if not c[1]), pct(sum(c[2] for c in cov), len(ws))])
     table(say, ["side", "n", "daily all sessions", "daily none", "minute all sessions"], rows)
+    say("\n## Minute coverage BEFORE and AFTER the pull (R37 / R39: his 'Yes' 2026-10-26, regular hours only — his note: 'he doesn't buy "
+        "premarket'; before = the six pre-pull trees, the claims above; after = those + the pull's tree, " + "+".join(C.TREE_ORDER) + ")")
+    say("- 'minute all sessions' = every session of the window has minute bars under the inventory's bar symbol; 'width-1' = a one-session "
+        "window; same windows both sides of each pair, the rename table NOT applied (the claims' definition); in-span windows only")
+    pull_rows = []
+
+    def pull_line(side, label, ws_):
+        pull_rows.append(pull_row(side, label, ws_, bars, S))
+
+    for side, ws in (("BUY", bs), ("SALE", ss)):
+        pull_line(side, "span", ws)
+        for y in (2020, 2021, 2022):
+            pull_line(side, str(y), [w for w in ws if w.year == y])
+    for b in BRACKETS:
+        for side, ws in (("BUY", bs), ("SALE", ss)):
+            sel = [w for w in ws if w.bracket == b]
+            if sel:
+                pull_line(side, BRACKET_WORDS[b], sel)
+    table(say, ["side", "group", "n", "all-sessions minute % before", "after", "windows gained", "width-1 n", "width-1 minute % before",
+                "after", "width-1 gained"], pull_rows)
     covers = R["covers"]
     say("\n## Coverage of the REACHABLE sets, this read's export rule (R23), by year and resolution")
     rows = []
@@ -1557,13 +1617,14 @@ def main(argv=None) -> int:
         say(f"- {k}: {p} ({C.sha(p)[:16]})")
     say("RUN COMPLETE")
     say.write(C.P_RUN)
-    C.ledger_append("step5_dry_run", C.P_DRY)       # R34: the dry-run printout this run was frozen on, then the run itself
-    C.ledger_append("step5_points", C.P_RUN)
+    C.ledger_append(RERUN_STAGE + "dry_run", C.P_DRY)       # R34: the dry-run printout this run was frozen on, then the run itself (R38: re-run 1)
+    C.ledger_append(RERUN_STAGE + "points", C.P_RUN)
     for k, p in C.OUTPUTS.items():
-        C.ledger_append(f"step5_{k}", p)
+        C.ledger_append(RERUN_STAGE + k, p)
     return 0
 
 
+RERUN_STAGE = "step5_rerun1_"       # R38: the ledger stage prefix of the re-run (run 1's rows are "step5_*"; the two must never share a name)
 MODULE_FILES = ("asis_common.py", "01_points.py", "forbidden_identifiers.txt")
 
 

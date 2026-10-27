@@ -1,0 +1,188 @@
+# #705 as-is STEP 6a (machine pass) — DRY RUN (2026-10-26 20:32)
+Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders. No rule, setup name or pattern label enters; the readers see captions only.
+- identifier scan: clean (the step-5/6 modules hold none of the excluded names)
+- import belt: no rule module in sys.modules
+- modules: asis_common.py 89116c1ab9dc7aa2 01_points.py 0864c933d7e8364d 02_captions.py 40e5df6fbd5b069f forbidden_identifiers.txt ba8f4bb5f23f2325 inventory/captions_inventory.py 23eaf3dae1cf68b8
+
+## Inputs
+- captions: 495 caption files, 485 unique streams, 10 duplicate uploads dropped (4s)
+- dictionary: web2 be41ad97963bf8da, web2a 9313e251fee3e562, connectives 5d2e495b5b12226b; 234,454 words + 150 connectives; 26 fillers; a dictionary word said in 50% of the streams is 'common' (R41): 515 tokens
+- lexicon 22,744 symbols; alias map 576 (signature 504, dedupe 70, rename table 2)
+- machine pass: 11,207 widened statements over 483 streams (5s)
+- input pins (sha256, first 16): video_status 9f7a7e4cb1fd8ae5, caption_sample c8bef564780f39bc, account_statements 30474545b6e017cc, lexicon c7fb05ac383ff63f, calendar_cache 47111a051ac101f1, snapshots a8987fce15fa1a96, entries 6a0dda2da7932b6d, exits 1ed76a2806091f7d, subs_list 99929453752cb359, dictionary web2 be41ad97963bf8da, web2a 9313e251fee3e562, connectives 5d2e495b5b12226b
+- windows: 3,722 step-5 windows read from snapshots / entries / exits (no bar, minute or export opened)
+
+## 1. The original nine-kind extraction: the inventory's numbers are claims on it (R46)
+  [OK] caption files: expected 495, got 495
+  [OK] unique streams: expected 485, got 485
+  [OK] duplicate uploads dropped: expected 10, got 10
+  [OK] statements, all years (the copied engine): expected 9474, got 9474
+  [OK] ... the copied engine equals the inventory's own functions: expected 9474, got 9474
+  [OK] statements in 2020-22 (upload year): expected 7607, got 7607
+  [OK] ... stopped: expected 1829, got 1829
+  [OK] ... sold_part: expected 221, got 221
+  [OK] ... sold: expected 1165, got 1165
+  [OK] ... added: expected 433, got 433
+  [OK] ... bought: expected 1977, got 1977
+  [OK] ... buy_now: expected 462, got 462
+  [OK] ... profit: expected 29, got 29
+  [OK] ... cost_stop: expected 901, got 901
+  [OK] ... account: expected 590, got 590
+  [OK] 'Late upload' videos among the caption files: expected 8, got 8
+  [OK] lexicon symbols: expected 22744, got 22744
+  [OK] account statements listed by the inventory: expected 133, got 133
+
+## 2. The widened extraction (+ shorted, covered) beside it
+  [OK] original statements with NO overlapping widened statement (lost): expected 0, got 0
+- widened statements, all years 11,224 (original 9,474); 2020-22 upload years 9,027 (original 7,607)
+- GAINED (no original statement overlaps them): 1762; widened statements that MERGED two or more original ones: 13
+  gained, by kind  2017  2018  2019  2020  2021  2022  2023  total
+  shorted          133   1     102   720   229   4     5     1194 
+  covered          60    2     29    374   96    6     1     568  
+- shorted / covered matches inside ANY statement (gained or merged into an old one): shorted 1419, covered 682
+    e.g. 20231215 JNVA5cd_m7M@0:04:09 [shorted] i i had some small shares but i'm like oh i should short it but hey what what if it goes to 10 you whatever that
+    e.g. 20230519 _y9Wo0eBP4A@0:55:07 [shorted] trades probably the biggest trade uh last year for me and then i shorted it right on day four piece of you have to remember someth
+    e.g. 20230126 GdMs1y_RTnM@0:34:56 [shorted] tighter and she and s have been short since two days ago i initially shorted it to opening range lows on this day here then it wen
+    e.g. 20230126 GdMs1y_RTnM@0:35:05 [covered] day here then it went down like 45 percent the same day i covered most and then i covered the rest of monday then it had
+    e.g. 20230126 GdMs1y_RTnM@0:35:34 [shorted] place again bbby we had a perfect parabolic type of a setup shorted at opening range lows on this day we haven't had many over the
+    e.g. 20230126 GdMs1y_RTnM@0:45:47 [shorted] s i since 16th of november 2022 16 to november 2022 was i shorted i must have been shorted right had i assigned here i don't
+    e.g. 20220428 PquLytys1k4@0:18:13 [shorted] uh what's going on here tesla taking another dump man i wish i'd shorted more kind of funny netflix holy this is what the stairs u
+    e.g. 20220228 uX2B8fAMuLE@0:35:14 [covered] right at the 200 i may re-enter it on the short side i covered it like 8 20 or so when it took out the previous
+  [OK] inventory hand-read rows (caption_sample.tsv): expected 120, got 120
+  [OK] ... each found in the original-engine statements: expected 120, got 120
+  [OK] ... each overlapped by a widened statement (none lost): expected 120, got 120
+  widened engine on those rows: 1 renamed by the new kinds, 1 now carry a shorted / covered match
+  the hand-read filter on the inventory's usable rows (the share it DROPS is the recall loss; the plan expected under 10%):
+  filter variant                                                                usable_strict (18)  dropped  usable_anydate (44)  dropped  usable_loose (33)  dropped
+  S1: strong + resolved garble                                                  9                   50.0%    26                   40.9%    20                 39.4%  
+  S1+S2: + dictionary-word symbol within 12 words                               14                  22.2%    35                   20.5%    27                 18.2%  
+  S1-S3: + garble with tied candidates                                          16                  11.1%    37                   15.9%    29                 12.1%  
+  S1-S4: + dictionary-word symbol anywhere in 30 s (the plan's literal filter)  17                  5.6%     41                   6.8%     30                 9.1%   
+  ... the S1-S4 filter, with the LABELLED ticker among its hits                 12                  33.3%    25                   43.2%    20                 39.4%  
+  review F6: the table above counts the inventory's 'account' rows (0 strict, 1 anydate, 1 loose), which R47 keeps out of the set by design, so EVERY cut drops them. Without them, with the 95% Wilson range of the share dropped (a handful of rows decides each cell; ranges that overlap are not different):
+  filter variant (no account rows)                                              strict dropped  share (95% range)  anydate dropped  share (95% range)  loose dropped  share (95% range)
+  S1: strong + resolved garble                                                  9/18            50.0% (29.0-71.0)  17/43            39.5% (26.4-54.4)  12/32          37.5% (22.9-54.7)
+  S1+S2: + dictionary-word symbol within 12 words                               4/18            22.2% (9.0-45.2)   8/43             18.6% (9.7-32.6)   5/32           15.6% (6.9-31.8) 
+  S1-S3: + garble with tied candidates                                          2/18            11.1% (3.1-32.8)   6/43             14.0% (6.6-27.3)   3/32           9.4% (3.2-24.2)  
+  S1-S4: + dictionary-word symbol anywhere in 30 s (the plan's literal filter)  1/18            5.6% (1.0-25.8)    2/43             4.7% (1.3-15.5)    2/32           6.2% (1.7-20.1)  
+  (the rows the filter cannot see: the ticker is a company name said whole - shopify, peloton -, an inferred referent ('that thing'), a garble beyond the edit limit, or a delisted name; those are what the 200-statement blind sample measures)
+
+## 3. Stream dates (R48)
+- qR39bUmxHdE upload 2021-01-05 -> stream 2020-12-31 ('Late upload: Dec 31 stream')
+- DNSJux1yiOI upload 2021-03-08 -> stream 2021-03-05 ('Late upload - Friday March 5th')
+- NRgCKsBnxm8 upload 2021-03-17 -> stream 2021-03-16 ('Late upload - Tuesday March 16')
+- XE96XfekTv4 upload 2021-03-17 -> stream 2021-03-15 ('Late upload - Monday March 15')
+- DROPPED 7FwJ4xIX6aA (upload 2021-03-09, 'Monday March 8th, late upload'): the same stream as 08gcg73CxeQ (stream 2021-03-08, 4326s)
+- DROPPED ytWg3aGNc10 (upload 2021-03-09, 'Friday March 5th, late upload'): the same stream as DNSJux1yiOI (stream 2021-03-05, 3907s)
+- CORRECTED (R48, review F11): b7FVVWd280g upload 2020-10-06 -> stream 2020-10-05 ('This is yesterdays video': the previous weekday of the upload)
+  [OK] 'Late upload' streams among the 485 (8 files less the 2 duplicate uploads the inventory dropped): expected 6, got 6
+  [OK] ... every late upload's title date resolves: expected 0, got 0
+- streams in the primary span 2020-01-01..2022-06-30 (stream date): 375 of 483
+
+## 4. The search set (R41, R44)
+- symbols per stream date (strong + weak keys): min 7,998, median 8,364, max 12,396; example date 2020-01-02: {'weak': 890, 'strong': 7134}
+- NO_BARS_SYMBOLS (always in the set, R44): GBTC, ETHE, FNGU, TVIX
+- 'common' tokens (never a mention): 515 dictionary words said in 50% of the streams + 150 connectives + 26 fillers
+
+## 5. The hand-read set (§4.1 step 3)
+- primary-span statements: 9,006 (577 'account', not put in the set: R47); non-account 8,429
+- statements with at least one hit of class: strong 4,081, alias 1,410, weak_near 1,789, weak 3,442, amb 2,459  (strong = not a dictionary word; alias = resolved garble; weak_near = a dictionary-word symbol within 12 words; weak = the same, farther than 12 words but inside 30 s; amb = a garble with tied candidates)
+  stratum  hit classes   statements (strongest hit here)  of them price candidates  cumulative  cumulative price candidates
+  S1       strong+alias  4,786                            276                       4,786       276                        
+  S2       weak_near     808                              48                        5,594       324                        
+  S3       amb           836                              56                        6,430       380                        
+  S4       weak          744                              54                        7,174       434                        
+- HAND-READ SET (the plan's literal filter, strata S1-S4): 7,174 statements vs the plan's expected 1,500-2,500 (OUTSIDE the band); stratum S1 alone 4,786. For scale: the plan's own arithmetic is 43% of the inventory's 7,607 = ~3,270 ticker + action statements, and the widened kinds add 1,376 here
+- review F6: the plan's literal filter admits 7,174 of the 8,429 non-account in-span statements = 85.1%; the blind pool (no symbol of any class) is the other 1,255. Taken literally the filter barely filters: dictionary-word symbols (plug, eyes, ads, apt, stay, save, free, huge ...) count as mentions. The strata are the only cut that separates them; where to stop is his ruling
+- the single word 'tesla' (TSLA or TELA, tied) is the ONLY reason 376 statements sit in stratum S3; a one-line ruling (tesla = TSLA) would move them to S1, but a name table is not 'from the captions alone' (R43), so it is the main loop's call
+- blind pool (no symbol of ANY class within +-30 s): 1,255; the sample drawn from it: 200
+- hand-read set by stream year: 2020 5,192, 2021 1,845, 2022 137; by kind: stopped 1526, covered 477, shorted 899, sold_part 185, sold 991, added 338, bought 1656, buy_now 371, profit 25, cost_stop 706
+- of stratum S1, reached ONLY through a resolved garble: 705
+- the 25 most frequent hit tokens of stratum S1 (a noise audit: jargon that is also a symbol shows here): mrna 259, sc 204, gbtc 189, roku 143, nio 137, pdd 134, jd 117, amc 115, qs 95, ttd 92, nvx 85, tna 83, crypto 83, nioh 79, nasdaq 76, gsx 72, gme 72, ccl 70, nvidia 66, iii 56, spxl 55, nclh 55, ual 54, bldp 53, nikola 53
+- the 25 most frequent hit tokens of stratum S2 (a noise audit: jargon that is also a symbol shows here): plug 34, eyes 34, ads 34, apt 30, riot 27, stay 19, save 19, free 17, huge 17, amd 16, ice 15, ad 15, mara 15, mark 14, pump 14, leg 13, lake 13, ino 13, shop 12, nine 11, forty 11, pen 11, car 11, mu 10, hi 10
+- the 25 most frequent hit tokens of stratum S3 (a noise audit: jargon that is also a symbol shows here): tesla 376, held 70, tqq 51, evap 27, adr 27, etf 20, ish 17, emph 16, paid 12, scdg 12, mega 10, vix 9, etc 9, vap 8, doku 8, tilray 7, emas 7, mia 6, vxr 6, mph 6, gopro 6, ssr 5, blew 5, vax 5, goku 5
+- the 25 most frequent hit tokens of stratum S4 (a noise audit: jargon that is also a symbol shows here): plug 28, huge 26, apt 22, amd 20, mark 20, stay 18, net 18, eyes 17, ads 16, free 15, main 15, edge 15, pump 14, riot 14, nine 12, oil 12, shop 12, car 12, dog 12, leg 11, term 11, sub 11, home 11, pen 11, key 11
+
+## 6. The alias list (R40, R42, R43)
+- accepted aliases (a word -> ONE live symbol, heard within +-30 s of a statement): 392 word-symbol pairs, 1,311 hearings; ambiguous words (tied candidates, not used): 412
+- review F9: the alias list is UNVERIFIED and its top is noisy (a company or sector word one edit from a ticker: crypto > CRTO, nasdaq > NDAQ, pfizer > PFIE where Pfizer is PFE, cciv > CCI where CCIV is not in the lexicon). S1 is a stratum of strong hit classes, NOT a precision tier; the readers resolve every ticker from the words and 03 joins on THEIR tickers only
+  word    symbol  heard  evidence (first)                                                                                              
+  crypto  CRTO    91     _2urSPdZVec@1:37:33: also bought riot and mara which are also crypto names okay ba looks like it got rejected 
+  nasdaq  NDAQ    79     1QtMVbPrKUw@0:54:12: which is a spy's you still get the nasdaq same thing yet we start violating this pricing 
+  nvidia  NVDA    61     PZNGPoSE7Z8@0:09:49: an explosive stock i'd rather own explosive names nvidia good earnings also but a lot of 
+  nioh    NIO     58     YwMoUTd4naQ@0:14:49: i just bought a hundred thousand shares of nioh this thing looks like tesla is breaking o
+  nikola  NKLA    38     BaOesIGPVUo@0:08:04: friday ba i showed it some pre-market and nikola this one i have small size left it      
+  twilio  TWLO    36     VTqwr9d1g0Y@0:18:36: so and there was another one was it twilio that was also up like 40 percent those        
+  vivre   VIVE    31     ZS0JjG1EfpU@1:16:53: a lot more soon because now it's below vivre up again and you know you could use         
+  tilray  TLRY    29     T1oQYHFdW-Q@0:59:40: holy amazing i just bought a bunch of tilray it looks good big bull flag and it's        
+  twix    TVIX    27     ZS0JjG1EfpU@0:40:26: let's do another scan here shoei peloton hmm twix i should have sold some free market i  
+  maura   MARA    27     -4SriUVLDKo@0:48:30: raise my stop now lvg erasing my stop maura i mean look if bitcoin is they taking        
+  etfs    ETFC    20     kmSFnqIL6Hk@1:07:17: interesting clorox some of the see names like etfs there's probably a lot of these looks 
+  baidu   BIDU    19     J1LItXxFaBw@0:02:58: good morning guys baidu is not even close to being a parabolic                           
+  airbnb  ABNB    18     p8WQ_4XdNPY@0:08:33: i think the 20 needs to catch up airbnb opening range highs you mean yesterday it was    
+  roblox  RBLX    18     udNfV6Rt7Xc@0:19:32: may not have been me on fcx oh roblox okay i'm going to use lucid as my                  
+  fiverr  FVRR    17     v57-ET009qU@0:04:14: zoom dipped a bit zetherium thingy looks good fiverr looks good palladium looks good vera
+  cciv    CCI     15     0udk9grGeqE@0:56:22: or something today intraday wait what happened to cciv i got stopped out of it i did     
+  kobe    KBE     13     1GUt-E5lNps@1:29:01: a hyped up growth story and we did kobe 19 you know teams are not gonna be               
+  tqqs    TQQQ    13     GAUMqB_R1bE@2:14:11: i'm gonna cover a tiny bit of the tqqs i shorted like really really tiny just tiny       
+  msdr    MSTR    13     uTMK9uhQZCc@1:26:39: oh 39 i'm gonna do them later okay msdr breakout yeah it's breaking out of a range       
+  vapp    VAPO    12     ZwPbyiN3Qvo@1:18:14: i will add if it takes out v vapp later i have a decent sized shortwave higher           
+  pfizer  PFIE    11     6fsq62nKgH0@0:02:25: this thing be anti exes collaboration with the pfizer on this vaccine so it's gapping up 
+  jumia   JMIA    11     KsozMIjFBis@0:41:23: in february same thing exact same pattern as jumia you see this has a big move on        
+  meili   MELI    10     DrZPOU_gi7o@0:06:04: of the day music should have bought this meili instead and then kay this thing looks good
+  mrnas   MRNA    10     jdzlp4nUoQI@0:22:43: bunch of tweaks with highs as my stop mrnas strong oh get fix this could be the          
+  livan   LIVN    10     TcLLotmFsig@0:04:05: our short both sp excellent eqq since yesterday livan go is capping higher w i'm short al
+- the plan's own examples against a mid-2020 search set: twix: other -> alias TVIX; tweaks: dict; tricks: dict; twigs: dict; gosh: dict; cash: dict; tqq: other -> ambiguous ; tq: other -> none ; tvix: other -> none ; gush: dict; tqqq: other -> none 
+- READOUT (not acted on): 425 dictionary-word / symbol pairs 1 edit apart that the English test kept OUT of the alias list; the 25 most heard: zoom>ZOM 190, kept>KEP 171, eight>EGHT 169, codex>CODX 169, billy>BILL 163, fifty>FFTY 158, focus>FOCS 130, using>USIG 125, hate>HAE 121, raise>RISE 110, power>POWR 96, pulls>PULS 84, trust>TRST 84, wide>WIRE 83, enter>ENTR 76, kodak>KODK 75, quick>QUIK 74, level>LEVL 73, shake>SHAK 72, space>SPCE 68, story>STOR 67, trend>TRND 65, penny>PENN 63, laser>LASR 62, large>LRGE 61
+- READOUT (R43): the 40 most heard non-dictionary words near statements that match NO live symbol within the edits: shopify 213, intraday 208, draftkings 192, bitcoin 175, anymore 153, earlier 144, airlines 141, livongo 133, workhorse 113, rebought 111, pinterest 102, crowdstrike 91, premarket 78, etfs 78, youtube 61, nicola 61, snapchat 59, vwap 49, shitty 48, heist 47, vivap 43, ethereum 41, netflix 41, internet 36, tupperware 36, palantir 35, breakeven 32, lavon 32, shitload 26, coronavirus 26, airline 26, anywho 26, koopa 25, carvana 24, congrats 23, sweden 23, spotify 23, biotech 22, largest 22, proud 21
+
+## 7. Tiers (R49, R51)
+- price candidates (T1 sheet): 434 vs the plan's 300-600 (inside); the plan's expected T1 AFTER the readers' labels is 100-250 (about 20% of the ~1,070 dated statements carry a price, roughly half clean)
+- shares + dollar result anywhere in the +-30 s (T1b candidates): 61 vs the plan's 50-150 after labels
+- machine day-word split of the rest (a PROJECTION of T2 / T3; the readers' day labels decide): day word present 1,483, absent 5,257; the inventory's yield projected on the set: usable-now 14% = 1,004, ticker + action any day 43% = 3,084
+
+## 8. The symbol-and-day join, PROVISIONAL (R52): the day is the stream date, the only day known before the readers
+- windows 3,722 (1,861 buy, 1,861 sale) over 684 panel symbols
+- hand-read statements joined (best symbol of each): unique 1,797, ambiguous 445, no position within a session 3,352; 1,580 more carry only a tied-garble or far dictionary-word hit (S3 / S4) and have no join symbol (R56)
+- the 3,352 'none' split (review F3): the symbol is held but the stream date lies BETWEEN that position's first and last window (inside a hold: a trade said mid-hold, not an invisible trade) 678; held on another date 963; never on his panel 1,711 (this last includes false aliases such as crypto, nasdaq, pfizer). Only the last two are even a candidate for 'invisible'; 03 treats a stated day inside a hold as HELD, not none
+- the 445 'ambiguous' ties (review F2): 340 are ONE position's buy window and sale window on the same session; their eid and side are left BLANK on the join (a sort would hand every tie to 'buy' and make each sale said on a day-trade day look like a miss); `tied` lists them
+  stream year  unique  ambiguous  none
+  2020         1284    315        2402
+  2021         487     125        874 
+  2022         26      5          76  
+- own-trade statements whose ticker the readers could not identify: not measurable before the readers (the blind sample reports it)
+
+## 9. Sheet sizes (nothing written by the dry run)
+  sheet                 rows  approx tokens (4 chars each, context + labels)  strata of its statements (manifest only; NOT on the sheet, review F10)
+  reader1_t1_price      434   137,987                                         S1:276 S2:48 S3:56 S4:54                                              
+  reader1_rest_b01      500   152,188                                         S1:500                                                                
+  reader1_rest_b02      500   153,373                                         S1:500                                                                
+  reader1_rest_b03      500   159,825                                         S1:500                                                                
+  reader1_rest_b04      500   161,084                                         S1:500                                                                
+  reader1_rest_b05      500   159,956                                         S1:500                                                                
+  reader1_rest_b06      500   157,385                                         S1:500                                                                
+  reader1_rest_b07      500   159,291                                         S1:500                                                                
+  reader1_rest_b08      500   157,119                                         S1:500                                                                
+  reader1_rest_b09      500   152,519                                         S1:500                                                                
+  reader1_rest_b10      10    3,065                                           S1:10                                                                 
+  reader1_rest_b11      500   150,769                                         S2:500                                                                
+  reader1_rest_b12      260   76,833                                          S2:260                                                                
+  reader1_rest_b13      500   153,467                                         S3:500                                                                
+  reader1_rest_b14      280   86,706                                          S3:280                                                                
+  reader1_rest_b15      500   158,999                                         S4:500                                                                
+  reader1_rest_b16      190   60,541                                          S4:190                                                                
+  reader2_150           150   47,752                                          S1:93 S2:16 S3:21 S4:20                                               
+  reader2_nosymbol_200  200   58,182                                          blind:200                                                             
+- the reading menu (the main loop stops at a line; the sheets are in this order):
+  block                                               rows  tokens     cumulative tokens
+  T1 price batch (price candidates of the whole set)  434   137,987    137,987          
+  rest, stratum S1                                    4510  1,415,805  1,553,792        
+  rest, stratum S2                                    760   227,602    1,781,394        
+  rest, stratum S3                                    780   240,173    2,021,567        
+  rest, stratum S4                                    690   219,540    2,241,107        
+- reader 1: 7,174 rows, about 2,241,107 tokens of sheet (the plan priced ~700k for 1,500-2,500 statements); the T1 sheet alone 434 rows, about 137,987 tokens; reader 2: 150 + 200 blind rows, about 105,934 tokens
+- every sheet's columns checked: captions-only layout, no window / bar / price / machine-hint column
+- context length (words): median 107, max 232
+
+RESULT: 24 claims, 24 OK, 0 MISMATCH
+DRY RUN COMPLETE
