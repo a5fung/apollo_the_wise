@@ -73,22 +73,14 @@ myself.
   a gate built 09-06 precisely so the cadence is not my memory). He confirmed the shape himself
   2026-09-08: *"what you are still waiting on me legitimately is the labeled charts."*
 
-## 🗓 WEEKEND PLAN — Fri 10-23 prep · Sat 10-24 · Sun 10-25 (agreed with him 2026-10-21)
+## 🗓 WEEK PLAN — Tue 10-27 .. Fri 10-30 night (agreed with him 2026-10-26: "Ok plan"; full capacity after his reset)
 
-Friday = prep so the weekend is pure build + run (his: "maximize build time, get new setups (breakouts, HTF) as ready as possible, clean
-up backlog"; Friday early starts only on his ask, before the 8 PM PT capacity reset). One heavy card at a time + one small one beside it.
-- **Fri (his 10-22: "We can continue build tmr as we had a reset" — builds continue Friday beside the eight verifies):** #705's stop × retry read results (running), then the graded-stream-picks extraction; #314's replay pre-registration. WAS: pre-register #705's two reads and #314's replay (before any outcome); free SEC XBRL coverage probe for warrants / convertibles on
-  small caps (#314 stealth dilution); build #706 (Sonnet); read Friday's verify-due lines (#704, #624, #701, #695, #491, #314).
-- **Sat:** the shared registered-read scaffold + golden harness (#705 (a), Fable; serves #705 and #314); #655 fold fix (Sonnet); #706
-  review + deploy; Opus reviews on each.
-- **Sun:** #705 (b) the two breakout reads (Fable); #314 five-year replay — EP-floor and small-cap populations, the selection reads, 3- vs
-  5-day time stop, stealth dilution if the data covers it (Fable); #697 the SMA20-invalidation corpus read on the labelled HTF examples
-  incl. HTFL (Opus) → any rule change to him (CHANGE_PROCESS).
-- **In between (me):** stale-deploy re-checks (#482, #644, #491) and #519 against their DoDs — close or re-date; #705 (c) `pp` in the
-  shadow if time, else Sat 10-31.
-- **Stretch — "we get to it if we get to it" (his 10-21):** the parabolic-short REVIEW / UPDATE on #314 (below).
-- **Planning session (his 10-21):** #707 the trading knowledge vault — initial planning; he decides how and when to implement.
-- **Drop order if the weekend runs short (pre-decided 10-21, from his priorities — breakouts and HTF first):** 1 #705 (scaffold, then the A+ rating read), 2 #697 HTF corpus read, 3 #655 move-path fix, 4 #314 replay, 5 #707 vault planning, 6 #706 trades stats + duplicate message, 7 the parabolic review (stretch). Lower items slip first.
+Weekdays carry builds this week (no money path, no rule change): one heavy card at a time; drop order if short — #705 first, #314 second, the #482 add-on last.
+- **Mon night (pulled forward):** #705 as-is step 5 run + re-run with the minute pull (done); step 6a sheets drawn; readers 1 (the 434 priced statements) and 2 (blind, 150 + 200) running.
+- **Tue 10-27:** 12:00 ET deploy market-agent (the recorder tidy-ups); #705 step 6a agreement score; #655 RH read; evening #482 night two, #491 night 2, the pp recorder's first walked rows + the 3-fill re-walk cross-check.
+- **Wed 10-28:** #705 step 6b/6c check code (`03_check.py` R1-R5, `04_band.py`; Fable build, Opus review); #314 replay build starts (Fable) + its STEP 0 Polygon / EDGAR pull on the server (in his "Ok plan"); evening #491.
+- **Thu 10-29:** #705 R1 price check runs — the decisive read, to him (step 7, or fix first); the remaining caption batches (Sonnet); the #482 add-on — the first-hour entry recorded on every ORB alert (`mi_orb_shadow_trades`; Sonnet build, Opus review) and its 12:00 ET deploy; evening #491.
+- **Fri 10-30:** #705 full step-6 report + the step-7 grouping plan for his weekend review (Fable); #314 replay freeze, run, recount; the verify reads #687, #695, #704, #706 — close or re-date.
 - Anything that changes a rule, paper or live money is his call (THE LINE).
 
 ## Launch — 6/22 GO/NO-GO (the long-horizon plan, as dated tasks · SSoT-spec: docs/roadmap/launch-2026-06-22.md)
