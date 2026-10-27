@@ -1,0 +1,162 @@
+# #705 as-is STEP 6b (the check against his words) — RUN (2026-10-27 09:06)
+Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders. No rule, setup name or pattern label enters; the join reads the symbol and the day only.
+- identifier scan: clean (the step-5/6 modules hold none of the excluded names)
+- import belt: no rule module in sys.modules
+- modules: asis_common.py 89116c1ab9dc7aa2 01_points.py 0864c933d7e8364d 02_captions.py 40e5df6fbd5b069f asis_check_common.py d80220da0d3cb02b 03_check.py 0a4314131a6d0fe4 forbidden_identifiers.txt ba8f4bb5f23f2325 inventory/captions_inventory.py 23eaf3dae1cf68b8
+- run gates: the dry run completed with 0 MISMATCH by these modules; every pin (inputs, modules, doc body, the dry-run printout) is below the doc's freeze marker; the ledger verifies; no output exists
+
+## Inputs
+- sheets: reader1_t1_v2_part1.tsv 62c27b319e6fd2d9, reader1_t1_v2_part2.tsv 42473ba3f0cb8b8e, reader1_t1_v2_part3.tsv c0de450d9af7a1a5; wording v2 84a939c93d5ee9c1
+- ranges.tsv 85efdf138f9d103e (3,722 sides; its stated_* columns stay blank, R74)
+- calendar: 2,264 sessions 2016-01-04..2024-12-31 (the reader's cache, cut at 2024-12-31)
+- snapshots: 2,907 frames, 2,082 full
+- lexicon 22,744 symbols; alias map 574 (signature 504, dedupe 70); rename table added 2 (R8)
+- export A: 12,005,007 rows read, 1,235,568 kept for 1,247 names, 0 dated after the cut dropped at read; calendar 2016-01-04..2022-06-30 = the reader's (3s)
+- export B: 13,830,569 rows read, 556,450 kept for 1,247 names, 5,210,943 dated after the cut dropped at read; calendar 2021-09-27..2024-12-31 = the reader's (4s)
+- minute trees: A 1,219 date files / 149,587 logged pairs, B 691 date files / 80,858 logged pairs, EP 48 date files / 196 logged pairs, EP2 36 date files / 39 logged pairs, REV 508 date files / 1,322 logged pairs, INTRA 1,005 date files / 19,470 logged pairs, ASIS 484 date files / 1,721 logged pairs; date files after the seal left unopened: B 449
+- raw closes (R12): 12,005,007 rows read, 701,185 kept for 573 of 683 bar symbols, 0 dated after the cut dropped at read; split list 3,864 splits of 3,063 names to the seal, 3,090 after it dropped at read (1s)
+- panel: 2,977 panel frames, 41,099 rows, 39,137 with a % read, 34,355 agreeing with the bars
+- loaded in 8s
+- minutes preloaded: 4,498 (session, symbol) pairs -> empty 378, ok 4,120; files read A 309, ASIS 484, B 11, EP 15, EP2 32, INTRA 413, REV 447 (7s)
+- windows: 3,722 (the readers' tickers are joined to the panel symbol)
+
+## Populations
+- v2 price batch: 434 rows in 3 parts; reader1_t1_v2_part1 145, reader1_t1_v2_part2 145, reader1_t1_v2_part3 144
+- his own trade: 340; ticker identified Y 194, amb 90, N 56
+- R1 input (own + ticker Y + price stated): 102; own + price stated at ANY ticker reading (the freeze record's 'incl. amb', which counts N too): 174 = Y 102 + amb 38 + N 34 (printed, never scored)
+- of the R1 input: clean 67 / garbled 35 (R64); fill 89 / level 13 (R63); clean fills 58
+- of the clean fills (R85, by the reader's labels): price kind matching the action's side 47 (holding/entry or side-mismatched 11); of the matched, day class naming a day 25 (unstated / approx_earlier 22) = the primary population BEFORE the join: 25
+- R1 input by action x price kind: add/entry 5, buy/entry 35, buy/other 1, buy/stop 1, covered/exit 5, holding/entry 7, sell_all/entry 1, sell_all/exit 1, sell_part/entry 1, sell_part/exit 3, sell_unspec/exit 14, shorted/entry 7, shorted/stop 1, stop_level/entry 1, stop_level/stop 5, stopped/entry 4, stopped/exit 6, stopped/stop 4
+- R1 input by day class: approx_earlier 8, implied_recent 40, stated_earlier 20, stream_day 6, unstated 28
+- T1 under each reading (R65): the freeze record's (own + ticker Y + price stated) 102; §4.1's tier words (an event action + a day class that names a day) 53; with approx_earlier 61; with stop_level too 67. The §9 floor (100) is read on the SCORED primary n in the run, never on these; every §4.1 reading sits under 100, the freeze record's clears it by 2
+- R4 input (shares AND a dollar result on one own-trade statement): 2 (R71)
+- ranges.tsv: 3,722 sides; buys 1,861, sales 1,861; in-span buys 1,511, sales 1,538
+- round trips (both sides in ranges.tsv): 1,848
+
+## The join (symbol and day only; R62: the stream date for every day class)
+- own-trade, ticker-identified statements: 194 -> joined (unique) 83 / ambiguous 29 (of which one position's two windows 20) / no window 82 (inside_hold 42, not_on_panel 13, other_date 27)
+- of the R1 input: joined 33 / ambiguous 14 (one position's two windows 9) / no window 55 (inside_hold 29, not_on_panel 6, other_date 20); with a range 32; clean fills 17: PRIMARY (matched kind, named day; R85) 11, beside: holding/entry or side-mismatched 5, unstated / approx day 1; garbled line 8; level line 7
+- the primary by action x price kind x day class: buy/entry/implied_recent 4, buy/entry/stream_day 1, sell_all/exit/implied_recent 1, sell_part/exit/implied_recent 1, sell_unspec/exit/stated_earlier 2, sell_unspec/exit/stream_day 1, stopped/exit/stream_day 1
+- the §9 floor (R65) on the scored n: primary 11 < 100: the gap bar will read NOT DECIDABLE, the would-be verdict beside (no share is computed in a dry run)
+- joined R1 input by day class: implied_recent 20, stated_earlier 6, stream_day 3, unstated 4
+- joined R1 input by bracket: next_in_pre 10, same_in_in 4, same_pre_in 9, sessions_2_5 7, sessions_6plus 3
+- joined R1 input with pre_market_possible: 10
+- distinct (position, side, price) among the primary: 11 (R73)
+- joined own-trade statements by action: add 1, buy 19, covered 7, holding 9, sell_all 1, sell_part 6, sell_unspec 11, shorted 4, stop_level 8, stopped 17
+- R5 population (joined, action with a side): 66; excluded (holding / stop_level / result): 17 (R72)
+- R3 population (R70): the joined own-trade rows of the v2 PRICE batch only; the T2 batches (reader1_rest_b01-16) are not yet labelled, so T2 proper is NOT read here
+- control (a): 192 shifted windows for 32 statements; 176 (session, symbol) pairs preloaded -> cached 42, missing 22, ok 112 (1s)
+
+## Control populations (built, not scored in a dry run)
+- statements with controls: 32; with at least one shifted window ranged 32, with all six 32; with at least one cross name 32 (median cross names 12.5)
+- control rows: shifted 192 (ranged 192), cross 484 (ranged 433)
+
+## §4.1 step 7 — the price-stated trades beside the rest (before any anchor)
+  set                   side  n     median hold (sessions, max, the position's)  flicker  daily-only  median frame clock ET  bracket types                                           
+  price-stated, joined  buy   15    6                                            0.0%     6.7%        09:59                  same_pre_in 46.7%, sessions_2_5 20.0%, next_in_pre 20.0%
+  price-stated, joined  sale  15    6                                            13.3%    13.3%       10:25                  next_in_pre 33.3%, sessions_2_5 26.7%, same_in_in 20.0% 
+  all in-span sides     buy   1511  4                                            37.4%    5.5%        10:13                  same_pre_in 26.5%, next_in_pre 20.2%, same_in_in 19.9%  
+  all in-span sides     sale  1538  4                                            36.9%    5.7%        10:30                  next_in_pre 29.9%, sessions_2_5 22.2%, same_in_in 16.4% 
+
+## R1 containment (the primary: clean fills, kind matching the action's side, a named day — R85; bars-only range; raw price; §4.2 tolerance)
+  set                 n   inside %  with panel %  shifted %    cross %     gap shifted  gap cross  verdict                      
+  all                 11  81.8      81.8          45.5 (n 11)  4.6 (n 11)  36.4         77.2       NOT DECIDABLE (would be PASS)
+  2020                9   77.8      77.8          37.0 (n 9)   4.2 (n 9)   40.7         73.6       beside (no bar)              
+  2021-22             2   100.0     100.0         83.3 (n 2)   6.3 (n 2)   16.7         93.7       beside (no bar)              
+  without flickers    10  80.0      80.0          45.0 (n 10)  5.0 (n 10)  35.0         75.0       beside (no bar)              
+  flickers only       1   100.0     100.0         50.0 (n 1)   0.0 (n 1)   50.0         100.0      beside (no bar)              
+  without daily-only  9   77.8      77.8          37.0 (n 9)   4.2 (n 9)   40.7         73.6       beside (no bar)              
+  daily-only only     2   100.0     100.0         83.3 (n 2)   6.3 (n 2)   16.7         93.7       beside (no bar)              
+- the §9 floor is read on the SCORED n (R65): primary n = 11 < 100; T1 per the freeze record = 102; a 95% interval on a share near 70% at n = 11 is about ±27.1 points (the plan priced ±9 at n = 100-250); only the 'all' line is the bar, every other row is beside
+
+### R1 by bracket type (pre_market_possible on its own line; no separate bar)
+  set                                                   n  inside %  with panel %  shifted %   cross %    gap shifted  gap cross  verdict        
+  same_in_in (same day, in-session -> in-session)       2  50.0      50.0          0.0 (n 2)   2.6 (n 2)  50.0         47.4       beside (no bar)
+  next_in_pre (next session, in-session -> pre-market)  2  50.0      50.0          41.7 (n 2)  5.0 (n 2)  8.3          45.0       beside (no bar)
+  sessions_2_5 (2-5 sessions apart)                     3  100.0     100.0         61.1 (n 3)  7.5 (n 3)  38.9         92.5       beside (no bar)
+  sessions_6plus (6+ sessions apart)                    2  100.0     100.0         83.3 (n 2)  6.3 (n 2)  16.7         93.7       beside (no bar)
+  pre_market_possible (any bracket)                     2  100.0     100.0         33.3 (n 2)  0.0 (n 2)  66.7         100.0      beside (no bar)
+
+### R1 beside (no bar): the clean fills outside the primary by the reader's labels (R85), the garbled prices, the levels (R63)
+  set                                          n  inside %  with panel %  shifted %    cross %    gap shifted  gap cross  verdict        
+  holding/entry or side-mismatched fills       5  80.0      80.0          23.3 (n 5)   4.0 (n 5)  56.7         76.0       beside (no bar)
+  matched fills, unstated / approx day         1  100.0     100.0         100.0 (n 1)  7.7 (n 1)  0.0          92.3       beside (no bar)
+  garbled fills                                8  75.0      75.0          33.3 (n 8)   8.1 (n 8)  41.7         66.9       beside (no bar)
+  levels (stop / other / stop_level / result)  7  57.1      57.1          31.0 (n 7)   5.1 (n 7)  26.2         52.1       beside (no bar)
+- beside rows by action x price kind: holding/entry or side-mismatched: holding/entry 4, stopped/entry 1; unstated / approx day: buy/entry 1
+
+### The primary statements outside the range (kept, anchored on the stated price, flagged stated_outside_range)
+  stmt               date        ticker  action       price  range raw      tol   bracket      day class       shifted  cross       
+  YYFwzNZkRDI:10644  2020-08-05  APT     sell_all     19.99  18.85-19.285   0.29  same_in_in   implied_recent  000000   5.26% (n 19)
+  N9n9_WUB5V0:2665   2020-11-09  NUGT    sell_unspec  85.0   91.03-93.6999  0.85  next_in_pre  stream_day      110000   10.0% (n 10)
+
+### Beside, never in the bar — the R1-input statements the one-session join cannot place (R82 mid-hold: the hold's two windows; R83 a day-trade tie: the position's two windows), clean fills, the price against each window
+- mid-hold (R82): n 13; inside the buy window 58.3%, inside the sale window 69.2%, inside either 76.9%; by action: add 1, buy 9, covered 1, holding 1, sell_unspec 1
+- one-position tie (R83): n 8; inside the buy window 75.0%, inside the sale window 75.0%, inside either 75.0%; by action: buy 4, holding 2, shorted 2
+
+## R3 day offset (stated day - window start / end, in sessions) by the reader's day class — the shape is the readout
+  day class       n   day - start (sessions:count)         day - end                   inside the window (secondary)
+  stream_day      7   +0:4 +1:3                            -5:1 +0:4 +1:2              71.4%                        
+  stated_earlier  17  +0:4 +1:7 +2:4 +6:1 +7:1             -3:1 -2:1 -1:1 +0:5 +1:9    47.1%                        
+  implied_recent  51  -1:6 +0:30 +1:5 +2:6 +3:1 +4:1 +5:2  -4:1 -3:1 -1:8 +0:30 +1:11  66.7%                        
+  approx_earlier  2   +0:2                                 -1:1 +0:1                   100.0%                       
+  unstated        6   -1:2 +1:3 +4:1                       -3:1 -1:2 +1:3              16.7%                        
+- a -1 among stream_day statements is next-morning talk (a reader dating question); a window is re-read only if RESOLVED-day statements sit one session off
+
+### R3 beside (secondary, R88): the `other_date` statements — the one-session join never placed them — and the signed distance in sessions to the NEAREST window of their name (negative: before its start; positive: after its end)
+  day class       n   nearest window offset (sessions:count)                                   median |offset|  within 5 sessions
+  stated_earlier  4   -7:2 +18:2                                                               12               0.0%             
+  implied_recent  3   -4:1 +12:1 +29:1                                                         12               33.3%            
+  approx_earlier  5   -7:1 +2:1 +4:1 +9:1 +45:1                                                7                40.0%            
+  unstated        15  -19:1 -4:1 -2:1 +2:2 +3:1 +6:1 +9:1 +10:1 +11:1 +13:1 +15:2 +26:1 +27:1  10               33.3%            
+- 27 other_date statements of the price batch (20 in the R1 input); a spread wider than the windows here means the caption dating is loose (§4.2), not a late window
+
+## R4 implied move (dollar result / shares, % of the entry price) against the trade's band of outcomes
+  stmt    ticker  shares  dollars  implied move %  band %  verdict
+  (none)                                                          
+- n = 0: the 70% bar is printed, not read, at this n (R71): n/a inside
+
+## R5 side agreement (the join never saw the action)
+R5 BAR: FAIL — 46 / 66 = 69.7% agree (bar >= 90%); excluded, no side: 17
+  - all: 46 / 66 = 69.7%
+  - 2020: 39 / 55 = 70.9%
+  - 2021-22: 7 / 11 = 63.6%
+  - without flickers: 42 / 58 = 72.4%
+  - flickers only: 4 / 8 = 50.0%
+  - without daily-only: 43 / 62 = 69.4%
+  - daily-only only: 3 / 4 = 75.0%
+  stmt              date        ticker  action       landed side  dist  day class     
+  O333thFuU40:1521  2020-01-22  LAKE    sell_part    buy          1     implied_recent
+  qmhLHCHRBnM:848   2020-02-03  APT     buy          sale         0     implied_recent
+  eTanNJy7c38:35    2020-02-12  SHOP    buy          sale         0     implied_recent
+  lZNUaBx_H98:989   2020-03-23  TVIX    shorted      sale         1     unstated      
+  T1oQYHFdW-Q:116   2020-04-20  SPXL    covered      buy          1     stated_earlier
+  Feyk4S1vVRk:4359  2020-05-06  RCL     stopped      buy          0     implied_recent
+  7tIk1NhphuQ:641   2020-05-13  NVAX    stopped      buy          0     implied_recent
+  -4SriUVLDKo:4799  2020-05-20  NNDM    stopped      buy          0     implied_recent
+  m8KjHohwlzM:479   2020-06-11  ZM      sell_part    buy          1     stated_earlier
+  YYFwzNZkRDI:4841  2020-08-05  JMIA    buy          sale         1     stated_earlier
+  obo0RcmxNNE:1080  2020-09-21  TSLA    stopped      buy          0     implied_recent
+  LMrz-rWQqac:324   2020-09-25  ZM      shorted      sale         0     stated_earlier
+  VOGuzD4wFN8:1264  2020-11-02  TSLA    shorted      sale         0     stated_earlier
+  YTRrhSIj064:4771  2020-12-18  TAN     sell_unspec  buy          0     unstated      
+  l4lpLA7vvbg:5842  2020-12-21  PLTR    stopped      buy          0     implied_recent
+  l4lpLA7vvbg:6723  2020-12-21  PLTR    covered      buy          0     implied_recent
+  146r7DqtOXU:292   2021-02-23  AMC     buy          sale         0     implied_recent
+  7jPFXy_nrBE:1164  2021-03-19  UPST    sell_part    buy          1     implied_recent
+  uX2B8fAMuLE:737   2022-02-28  NUGT    stopped      buy          1     implied_recent
+  uX2B8fAMuLE:752   2022-02-28  NUGT    stopped      buy          1     implied_recent
+
+## Anchors (R73, R74): the mean clean fill price per (position, side); ranges.tsv is not written
+- anchored sides: 11; outside the range: 2; several statements: 0, of which differing beyond the tolerance: 0
+
+## Consequence table (§4.2, the labels verbatim)
+R1 GAP BAR: NOT DECIDABLE — gap over the shifted-window control 36.4 points, over the cross-symbol control 77.2 points (bar >= 25 each); n_T1 = 102, primary n = 11; would read PASS at a decidable n
+- under 100 T1: R1's gap bar cannot be told from noise; the read reports the n and the bar is marked not decidable
+- R5 under 90% → the same
+- density (§3.3, ranges.tsv density_all median 1.000 over 3,251 sides, line 0.6): the density check (§3.3) says "where he acts" is not decidable → step 7 reads the band and the continuous chart measures only, and the point description is dropped
+
+## Outputs
+- check_r1_r5: /Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/check_r1_r5.tsv (b86698e4653d1b08)
+- control_ranges: /Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/control_ranges.tsv (c10d2336745807ef)
+RUN COMPLETE

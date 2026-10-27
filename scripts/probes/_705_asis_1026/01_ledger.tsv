@@ -20,3 +20,7 @@ step6a_aliases	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/aliases.t
 step6a_joins	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/joins.tsv	00a1108d16b18f14c410a22fb74201846a1dee02c95f148df21e0505eadb18ad	2026-10-26T21:00:36
 step6a_machine_statements	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/machine_statements.tsv	2118fa9b04a2963222be86c38ff9d841ffc5f5c8c782e0e7208d0165353b8b7e	2026-10-26T21:00:36
 step6a_sheet_manifest	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/sheet_manifest.tsv	e418d033e6c0dbab77957fa396b2193ec1d3912037d0be09634de220e19b9972	2026-10-26T21:00:36
+step6b_dry_run	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_1026/03_check_dryrun.txt	99f07613f2569ae7ced6c23881c5806ae55475300935431dba8aaac0b76ca822	2026-10-27T09:06:37
+step6b_check	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_1026/03_check.txt	085e9a80ebff719bed3024e0a50ec58a910315fefcf60cf320aae7005ae510c0	2026-10-27T09:06:37
+step6b_check_r1_r5	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/check_r1_r5.tsv	b86698e4653d1b0866481d10640caa7c5ba3559c696afb90f6409c7eddf41252	2026-10-27T09:06:37
+step6b_control_ranges	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/control_ranges.tsv	c10d2336745807efafbad06d40ed5ff8393ba848b27240517559a3f344960e37	2026-10-27T09:06:37
