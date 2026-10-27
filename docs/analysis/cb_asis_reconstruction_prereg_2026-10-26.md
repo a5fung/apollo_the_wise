@@ -822,3 +822,46 @@ Dry run 24 / 24 OK. Reading order (main loop, 2026-10-26; capacity, not a criter
 - **6b ran once, as registered** (`03_check.txt`): R1 NOT DECIDABLE (primary n 11 < 100; it would read PASS: 81.8% inside vs 45.5% shifted, 4.6% cross-symbol); **R5 FAIL** 46 / 66 = 69.7% (bar 90%). 6c refuses (R79).
 - **The diagnosis** (`fork/r5_miss_diagnosis.md`, Opus + a blind Sonnet re-check of 8): the windows are mostly right; the misses are mostly the panel's blind spots — same-day round trips 5, talk about another day 6, trades the panel never showed 4, adds / trims with no window 3 — and **one real window flaw: the blip fill bridges a stock's absence from every complete frame of a session, merging two positions** (SPXL 04-20 confirmed by his words; LAKE 01-23 probable); every fill sits on a frame read as complete (573 filled symbol-frames on 518 frames, main-loop count). Every defensible fix together reaches about 76%, so the 90% bar did not allow for the panel's blind spots.
 - **His decision, 2026-10-27 ("Ok" to option A, the main loop's rec):** limit gap-filling to single-frame misses, rebuild the windows, re-run steps 5-6 ONCE (disclosed), then step 7. The R1 / R5 bars and every other rule stay as registered.
+
+### RE-RUN 2 of step 5 — windows v2 (his "Ok" to option A, 2026-10-27), and the 6b re-run that follows (once)
+
+- **The change, the only one:** gap-filling limited to single-frame misses (`00c_windows_v2.py`, `blip_fill_single_frame`): a fill bridges a stock's absence only when it is missing from ONE complete frame of a session and present in another frame of that session; an absence from every complete frame of a session is a real exit. R48 (main loop, confirmed): a session whose ONLY complete frame lacks the stock is a single-frame miss, read by the unchanged two-complete-frame exit rule (5 positions carried). The old rule rebuilt from `snapshots.tsv` reproduces today's `entries.tsv` / `exits.tsv` exactly (0 / 0 / 0).
+- **Effect:** 125 fill candidates → 9 kept, 116 dropped; 80 positions split into 166 (SPXL 04-20 and LAKE 01-23 as his words say), 2 vanished (BNTX 07-27, SE 03-15: every sighting was a filled frame); positions 1,874 → 1,958; in-span buy windows 1,511 → 1,588, sales 1,538 → 1,615. Every pre-fix claim stays computed on the original windows; v2 counts print beside. Step 5's re-run 1 outputs and 6b's first run are archived (`*_run2_prev`, `*_run1`) with ledger rows.
+- **6b re-run:** the same module, bars and rules; R1 / R5 read on the v2 windows; the result decides step 7 or his call.
+
+#### Pins (step 5, re-run 2)
+
+- entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf
+- exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f
+- snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff
+- control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc
+- panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012
+- calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610
+- lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178
+- done_EP: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735
+- done_EP2: f8255199e52f0fa14aebcec5d50a407a1a52ac7c8b6cd4129bf41aa2f8cc591a
+- done_REV: 945c41fb3618ed6b85a000232f6becc82c9d8e201b9bde99bd8673f9f7036d5e
+- done_INTRA: a9dc793c33af220a2c030ae3d36f83af5d80ab91890b0e80c0deea3868d3f243
+- done_ASIS: b18dea5e0e75d64991c1c0de366c7deee65d9488ebd921a6b26b37994ba598e1
+- raw_close_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444
+- splits_B: 3199d06d5fb7dcd52ebd34e8c71e148b45ec0ca4a15f7f03ea1b715718882b0b
+- entries_v2: 11f6ee5a7b652bdd421bde44ba8caa75dfcdc553f04280f23aefac4ae451c613
+- exits_v2: 226579577eb169ada38b63a4bd320facf72ebe39a63f0141eb95d33c28c780de
+- snapshots_v2: de4b8cce9a7ec6925024b467fb90c471d67a2475a141121b6fd2fa2eaffd0759
+- subs_list: 99929453752cb3590b261e6928d99317312f35d9a50c0c147e33393b101a64a9
+- asis_common.py: 4d36d6a42532dc782b7ccdce86a530a3b0bd948f66db74d5f1ab7af79a4562c4
+- 01_points.py: aa30dc3c0402178d6b787b6e7f5957ec4921961feea39a40109b58fda66c6c65
+- forbidden_identifiers.txt: ba8f4bb5f23f2325b6e1ed78e299d2044d3182313955f4509b1e16969e3ff81c
+- 00c_windows_v2.py: de9ba698e9d238483f5f7a3864aa5e9ef4be9f2bf5c8307ba97659ed0bd9a6e4
+- dryrun00c_printout: c08075f6727b91fa59bb19b1a0277715bf09dcc76c0b52f25a38f498872d1a4d
+- write00c_printout: 49f8374b7ec6a4b9a0ea6143418037f599aff90e77d01e858b9eb4e21cd73f6c
+- dryrun_printout: f7060953c6f41438cd722fb56d2a534bd6059d294a00cf1383e1987fb147ef38
+- run_printout: ABSENT
+- ledger: d5d3fac7087510eea2b64cf780dd68b0315eaac621f455533b198950c99e1eac
+- doc_body: 2b330f044c3f59da643f248ef97723dd80534b262458a766979f5fd22d748db0
