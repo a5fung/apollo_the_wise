@@ -759,3 +759,12 @@ Dry run 24 / 24 OK. Reading order (main loop, 2026-10-26; capacity, not a criter
 
 - **Re-test RESULT** (`02_agreement_retest.txt`; the first test's printout kept as `02_agreement_test1.txt`): two new readers on the fresh 150 under wording v2 — joint label 121 / 150 = 80.7% (bar 80%) PASS, narrowly; the price number 34 / 39 = 87.2% (bar 85%) PASS. Step 6a continues.
 - **Reading (main loop, the stricter one):** the agreement validates the v2 wording, so the price batch that feeds R1 is RE-LABELLED under v2 (reader 1's 434 rows, three batches, private folders) before R1 runs; the v1 labels are kept beside, never mixed.
+- **The price batch re-labelled under v2** (three readers, private folders; the v1 labels kept in `sheets_filled/_v1_wording/`): 434 rows, every data column identical to the sheet; his own trade with the ticker identified and a price stated: **102** (the R1 input — inside the plan's 100-250, at its low end); with any ticker reading incl. `amb`: 174. One reader filled price fields on rows that are not his own trade; R1 reads his own trades only, so this changes nothing.
+
+#### Pins (the v2 price batch)
+
+- reader1_t1_v2_part1: 62c27b319e6fd2d9f1e81fafdeabfe5146401036fb33f998dff67737d5a6444a
+- reader1_t1_v2_part2: 42473ba3f0cb8b8eb9a4de0f1f20a5763126538003139e6a9950a5fbcfae9fe3
+- reader1_t1_v2_part3: c0de450d9af7a1a5cf6e2097a03adc2109e7ef7834ec30b1915fe65e74085905
+- reread_150_A: 41b449d6e4226dbf53508658b1197df24f8bc2a34fdfa70082314f54111238c2
+- reread_150_B: 0d606f37db021748744331cdd9a8504ea87e9ef50d99c241136b433c0c373259
