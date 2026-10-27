@@ -14,7 +14,9 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 15 -> 25 (2026-10-27): the suite (~12.8k tests) now runs 10-15 min on the runner and slow runners hit
+    # the old 15-minute cap, which cancels the run (reads as 'cancelled', not a test failure).
+    timeout-minutes: 25
     steps:
       # v5/v6 = the Node 24 builds (GitHub deprecates Node 20 runners
       # 2026-06-16; v4/v5 emitted a deprecation warning on every run).
