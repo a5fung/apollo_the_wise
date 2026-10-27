@@ -617,7 +617,7 @@ def _with_pp_facts(row: dict, minutes: Optional["cb.MinuteBars"]) -> None:
     except Exception as ex:  # loud-ok: logged here, counted by record_entries_for (pp_day0_missing) - the entry row still lands
         logger.error(f"consolidation_breakout_shadow: day0_pp facts failed for {row['ticker']} {row['break_date']} "
                      f"{row['k']}/{row['entry_variant']}: {type(ex).__name__}: {ex}")
-        row["day0_pp"] = None
+        # the column stays the builder's None: the failing call raised before any assignment
 
 
 def _group_complete(rows: list) -> bool:

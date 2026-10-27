@@ -109,8 +109,8 @@ def walk_pp(*, fill: float, stop: float, closes_before, fwd: "cb.DailyBars", arm
     n = len(c)
     events: list = []
     pnl = 0.0
-    last_before = float(np.asarray(closes_before, dtype=float)[-1]) if len(closes_before) else None
     cb_arr = np.asarray(closes_before, dtype=float)
+    last_before = float(cb_arr[-1]) if len(cb_arr) else None
     trail_n = int(base.trail_sma)
     tail = cb_arr[-trail_n:]
     n_before = len(tail)

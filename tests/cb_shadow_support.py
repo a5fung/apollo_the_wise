@@ -320,3 +320,36 @@ class FakeCollector:
         from agents.market_intelligence import collector
         monkeypatch.setattr(collector, "get_alpaca_minute_bars_window", self.get_alpaca_minute_bars_window)
         monkeypatch.setattr(collector, "_polygon_get", self._polygon_get)
+
+
+# ── shared by test_cb_shadow.py and test_cb_pp_recorder.py (they each carried a copy until 2026-10-26) ──────────────
+def run_shadow(day: dt.date):
+    """One night of the shadow job, as the scheduler runs it."""
+    import asyncio
+    from agents.market_intelligence import consolidation_breakout_shadow as sh
+    return asyncio.run(sh.run_consolidation_breakout_shadow(day))
+
+
+def polygon_cs(path):
+    """The Polygon ticker-detail answer the fixtures use: a common stock in SIC 2836."""
+    return {"results": {"sic_code": "2836", "sic_description": "biological products", "type": "CS"}}
+
+
+def mrna_bars(m: Market):
+    """MRNA's daily rows of the fixture market as `cb.DailyBars`."""
+    from agents.market_intelligence import consolidation_breakout as cb
+    rows = m.bars["MRNA"]
+    return cb.daily_bars_from_arrays([r[0] for r in rows], [r[1] for r in rows], [r[2] for r in rows],
+                                     [r[3] for r in rows], [r[4] for r in rows], [r[5] for r in rows])
+
+
+def make_world(monkeypatch, sh) -> tuple:
+    """The fixture market through 24 future sessions, the fake store installed on `sh`, and MRNA's break-day minutes."""
+    m = build_market(future=24)
+    store = FakeStore(m)
+    store.install(monkeypatch, sh)
+    r = {x[0]: x for x in m.bars["MRNA"]}[BREAK_DAY]
+    mins = synth_minutes(BREAK_DAY, *r[1:5])
+    coll = FakeCollector(m, minutes_for={("MRNA", BREAK_DAY): mins}, polygon=polygon_cs)
+    coll.install(monkeypatch)
+    return m, store, coll

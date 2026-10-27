@@ -30,19 +30,15 @@ from agents.market_intelligence import consolidation_breakout_pp as ppx
 from agents.market_intelligence import consolidation_breakout_shadow as sh
 from agents.market_intelligence import db
 from scripts.probes._cb_backtest import runner as rn
-from tests.cb_shadow_support import (BREAK_DAY, WATCH_NIGHT, FakeCollector, FakeStore, build_market, synth_minutes)
+from tests.cb_shadow_support import (BREAK_DAY, WATCH_NIGHT, FakeCollector, FakeStore, build_market, make_world,
+                                     synth_minutes)
+from tests.cb_shadow_support import mrna_bars as _mrna_bars
+from tests.cb_shadow_support import polygon_cs as _polygon
+from tests.cb_shadow_support import run_shadow as run
 from tests.test_cb_backtest_runner import (STALL_TAIL, XP_FILL, XP_GOLDEN_TAIL, XP_PROFIT_TAIL, XP_STOP, _mb,
                                            _stall_minutes, _weekdays, _xp_bars)
 
 D = dt.date
-
-
-def run(day):
-    return asyncio.run(sh.run_consolidation_breakout_shadow(day))
-
-
-def _polygon(path):
-    return {"results": {"sic_code": "2836", "sic_description": "biological products", "type": "CS"}}
 
 
 def _roundtrip(facts: dict) -> dict:
@@ -236,20 +232,7 @@ class TestDay0Facts:
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 @pytest.fixture
 def world(monkeypatch):
-    m = build_market(future=24)
-    store = FakeStore(m)
-    store.install(monkeypatch, sh)
-    r = {x[0]: x for x in m.bars["MRNA"]}[BREAK_DAY]
-    mins = synth_minutes(BREAK_DAY, *r[1:5])
-    coll = FakeCollector(m, minutes_for={("MRNA", BREAK_DAY): mins}, polygon=_polygon)
-    coll.install(monkeypatch)
-    return m, store, coll
-
-
-def _mrna_bars(m):
-    rows = m.bars["MRNA"]
-    return cb.daily_bars_from_arrays([r[0] for r in rows], [r[1] for r in rows], [r[2] for r in rows],
-                                     [r[3] for r in rows], [r[4] for r in rows], [r[5] for r in rows])
+    return make_world(monkeypatch, sh)
 
 
 def _pp_rows(store):
@@ -393,7 +376,8 @@ class TestTheJob:
         monkeypatch.setattr(ppx, "walk_pp_arms", boom)
         run(WATCH_NIGHT)
         out = run(BREAK_DAY)
-        assert out["pp_exit_errors"] == 17 or out["pp_exit_errors"] > 0
+        n_filled = sum(1 for v in store.entry.values() if v["status"] == "filled")
+        assert out["pp_exit_errors"] == n_filled == 19                # one counted crash per filled entry, nothing else
         assert _pp_rows(store) == {} and len(store.exit_registered()) == 19 * len(cb.ARMS) == out["exit_rows"]
         monkeypatch.setattr(ppx, "walk_pp_arms", real)
         out = run(m.cal[m.cal.index(BREAK_DAY) + 1])                   # the next night recomputes in full

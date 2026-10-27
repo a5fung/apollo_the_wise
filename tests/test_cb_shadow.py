@@ -33,19 +33,14 @@ import pytest
 from agents.market_intelligence import consolidation_breakout as cb
 from agents.market_intelligence import consolidation_breakout_shadow as sh
 from scripts.probes._cb_backtest import runner as rn
-from tests.cb_shadow_support import (BREAK_DAY, WATCH_NIGHT, FakeCollector, FakeStore, build_market,
+from tests.cb_shadow_support import (BREAK_DAY, WATCH_NIGHT, FakeCollector, FakeStore, build_market, make_world,
                                      synth_minutes)
+from tests.cb_shadow_support import mrna_bars as _mrna_bars
+from tests.cb_shadow_support import polygon_cs as _polygon
+from tests.cb_shadow_support import run_shadow as run
 
 REPO = Path(__file__).resolve().parent.parent
 D = dt.date
-
-
-def run(day):
-    return asyncio.run(sh.run_consolidation_breakout_shadow(day))
-
-
-def _polygon(path):
-    return {"results": {"sic_code": "2836", "sic_description": "biological products", "type": "CS"}}
 
 
 def _real_split(style, exec_date, split_from, split_to, **over):
@@ -72,20 +67,7 @@ def _phantom_split(exec_date, split_from=1, split_to=4):
 
 @pytest.fixture
 def world(monkeypatch):
-    m = build_market(future=24)
-    store = FakeStore(m)
-    store.install(monkeypatch, sh)
-    r = {x[0]: x for x in m.bars["MRNA"]}[BREAK_DAY]
-    mins = synth_minutes(BREAK_DAY, *r[1:5])
-    coll = FakeCollector(m, minutes_for={("MRNA", BREAK_DAY): mins}, polygon=_polygon)
-    coll.install(monkeypatch)
-    return m, store, coll
-
-
-def _mrna_bars(m):
-    rows = m.bars["MRNA"]
-    return cb.daily_bars_from_arrays([r[0] for r in rows], [r[1] for r in rows], [r[2] for r in rows],
-                                     [r[3] for r in rows], [r[4] for r in rows], [r[5] for r in rows])
+    return make_world(monkeypatch, sh)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
