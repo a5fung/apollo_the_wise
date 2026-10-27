@@ -744,3 +744,15 @@ Dry run 24 / 24 OK. Reading order (main loop, 2026-10-26; capacity, not a criter
 - dict_web2a: 9313e251fee3e56204db2b284346d61c3a80ce613d7a077c5674f15f9cb33ab3
 - dict_connectives: 5d2e495b5b12226bc89802ac6ebfabfc7fe1b0b374b2bfa19eb50145d5ccff76
 - dryrun6a_printout: 31f2dabb2f684340aacc9394c2fb6e23086dc34645d3345d03c6c1c65ec2a5a4
+
+### Step 6a agreement — first test BELOW the bar, and the plan's one re-test (2026-10-26, disclosed)
+
+- **First test** (`02_agreement.txt`): reader 1 (the 434 priced statements) vs the blind reader 2 on the 100 shared rows — joint label 67% (bar 80%), the price number 89% where both read one (bar 85%, PASS). The 33 disagreements: ticker identified vs not 21, 'today' vs 'live position, no day word' 17, action 4. Before scoring, reader 2 and reader 1's batch 3 were RE-READ in private folders because the first readers shared a scratch folder (14 shared statements could have been seen; the first outputs are kept in `sheets_filled/_contaminated_1026/`).
+- **The re-test, as §4.1 step 5 prescribes (once):** the wording fixed on those labels (`reader_wording_v1.txt` → `reader_wording_v2.txt`: ticker_ident judged by 'would a second reader write the same symbol from these words', stream_day only on a said 'today' word, sell_all only on a said 'all'); a FRESH 150 neither reader saw (100 priced + 50 other, the first 150 excluded, keys `asis_6a_reread_*`; `02b_fresh150.py` → `sheets/reread_150.tsv`); two NEW independent readers. A second miss stops step 6a and goes to him.
+
+#### Pins (the re-test)
+
+- reread_draw: 8e2ca858f23c5f9e692b6e691ab27c0b7c3f53edc4f95c6fa727b3ffd823634c
+- reread_sheet: 184d3a455dc6f1e4b8f3c4e197b798ab819abbb7d5a1653a2d9658886857d5e7
+- reader_wording_v1: 51a1b516e73fbcb33a21fac3db1cd5932fdb65e8b2284a19d91b590890fd1a68
+- reader_wording_v2: 84a939c93d5ee9c1a693e55eddbcebb8db46c0b11dd610a7bc688118cbbc8510

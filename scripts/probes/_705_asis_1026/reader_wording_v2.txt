@@ -1,0 +1,24 @@
+# #705 step 6a reader wording v2 (2026-10-26, after the first agreement 67% < 80%): the re-test's exact instructions
+You are a careful human-style reader labelling statements from the auto-captions of a trader's daily live streams (Qullamaggie, 2017-2023). Each row of your sheet is one candidate statement: 'snippet' is the statement, 'context' is about 30 seconds of caption text either side, 'stream_date' is the stream's date. Auto-captions garble tickers and numbers.
+HARD RULES: do NOT spawn subagents. Read ONLY your input sheet /Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/sheets/reread_150.tsv. Do not open any other file under /Users/alvinfung/apollo_data or the repo — no holdings lists, no price bars, no other sheet, no other reader's output, nothing in sheets_filled/. No network. Use ONLY your private scratch folder (named below) for temporary files — never the session scratchpad or any shared folder. Resolve a ticker or a price from the words alone. Write ONLY your output file.
+LABELS — fill exactly these columns, leave every other column byte-identical:
+- ticker_ident — THE TEST: would a second careful reader, given only these words, write the SAME symbol?
+  Y = yes: the ticker is said, or a company name is said (tesla -> TSLA, draftkings -> DKNG), or a phonetic garble is pinned by the context (e.g. 'twix' with talk of volatility -> TVIX). Put the symbol in 'ticker'; ticker_inferred = Y when you mapped a name or a garble, blank when the ticker itself is said.
+  amb = you can only GUESS (a garbled token with no confirming context, or two plausible symbols). Put your best guess in 'ticker' anyway.
+  N = no stock is named in the context.
+- his_trade: Y (a first-person FACT about HIS OWN position, past or present) | advice | plan (if-then, 'gonna', intentions, 'I would buy') | viewer | other (regret/counterfactual 'should have', jokes, insiders, 'we' meaning the chat or someone else)
+- action (only when his_trade=Y): buy | add | sell_part | sell_all (ONLY when he says all / everything / the rest / completely out) | sell_unspec (sold, size not said) | stopped | shorted | covered | holding | stop_level | result
+- side: long | short — only when he says it (else blank)
+- date_pinnable (only when his_trade=Y) — WHEN did the event happen, from the WORDS:
+  stream_day = the words put it TODAY: 'today', 'this morning', 'just', 'just now', 'at the open', 'pre-market', 'a minute ago'.
+  stated_earlier = the words name an earlier day: 'yesterday', 'Friday', 'last night', 'two days ago'.
+  implied_recent = a live position or event told with NO day word ('I'm long X', 'I'm in X', 'I bought X', 'I got stopped' with no time word).
+  approx_earlier = a vague past: 'last week', 'a month ago', 'a while back'.
+  unstated = chart pointing ('here', 'this day', 'on this candle') or no time at all for a past event.
+  If no day word is said, it is NOT stream_day — choose implied_recent (live) or unstated.
+- price_stated: Y if he states a PRICE of the stock for this trade (entry, exit or stop price), else N; price_value: the number as a plain decimal (e.g. 42.5), blank if N; price_garbled: Y if the number is ambiguous in the captions (keep your best reading in price_value); price_kind: entry | exit | stop | other
+- shares: a share count if stated, else blank; dollar_result: a dollar gain/loss if stated (negative for a loss), else blank; note: one short phrase only if needed
+Do NOT treat a share count, a dollar amount or a percent as a price. When unsure between two labels, pick the stricter (amb over Y; not his_trade over Y; implied_recent over stream_day).
+METHOD: load the sheet with Python's csv module (tab-delimited, header row), fill the label columns row by row from your reading, and write the output with the SAME header and the SAME row order (csv.writer, tab delimiter, lineterminator '\\n'). Verify: same row count (150), same stmt_id sequence, every non-label column identical to the input; every row has ticker_ident and his_trade; rows with his_trade=Y have action and date_pinnable.
+Read every row yourself — do not label by keyword rules or a script heuristic; a script only reads and writes the file.
+Return: rows labelled, counts of his_trade=Y, ticker_ident Y/amb/N, date_pinnable classes, price_stated=Y, and any row you could not label.

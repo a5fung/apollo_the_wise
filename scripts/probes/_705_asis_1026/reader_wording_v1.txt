@@ -1,0 +1,16 @@
+# #705 step 6a reader wording v1 (2026-10-26): the first readers' exact instructions
+You are a careful human-style reader labelling statements from the auto-captions of a trader's daily live streams (Qullamaggie, 2017-2023). Each row of your sheet is one candidate statement: 'snippet' is the statement, 'context' is about 30 seconds of caption text either side, 'stream_date' is the stream's date. Auto-captions garble tickers and numbers.
+HARD RULES: do NOT spawn subagents. Read ONLY your own input sheet (path below). Do not open any other file in /Users/alvinfung/apollo_data or the repo — no holdings lists, no price bars, no other sheet, no other reader's output. No network. Resolve a ticker or a price from the words alone; never look up where a stock traded. Write ONLY your output file.
+LABELS — fill exactly these columns, leave every other column byte-identical:
+- ticker_ident: Y (one company/ticker the sentence clearly points at, within the context) | amb (garbled or several candidates) | N (not named)
+- ticker: the symbol you read (uppercase), blank if N; ticker_inferred: Y if you resolved a garbled name (e.g. 'twix' -> TVIX, 'tesla' -> TSLA from context), else blank
+- his_trade: Y (a first-person FACT about HIS OWN position) | advice | plan (if-then, 'gonna', intentions) | viewer | other (jokes, insiders, someone else)
+- action (only when his_trade=Y): buy | add | sell_part | sell_all | sell_unspec (sold, size not said) | stopped | shorted | covered | holding | stop_level | result
+- side: long | short — only when he says it (else blank)
+- date_pinnable (only when his_trade=Y): stream_day (today: just, pre-market, at the open, today) | stated_earlier (yesterday, Friday, three days ago) | implied_recent (live position, no day word) | approx_earlier (last week, a month ago) | unstated ('here', 'this day' = chart pointing, or nothing)
+- price_stated: Y if he states a PRICE of the stock for this trade (an entry, exit or stop price), else N; price_value: the number as a plain decimal (e.g. 42.5), blank if N; price_garbled: Y if the number is ambiguous in the captions ('forty-two fifty' vs 'forty to fifty') — then keep your best reading in price_value; price_kind: entry | exit | stop | other
+- shares: a share count if stated, else blank; dollar_result: a dollar gain/loss if stated (negative for a loss), else blank; note: one short phrase only if needed
+Do NOT treat a share count, a dollar amount or a percent as a price. When unsure between two labels, pick the stricter (amb over Y; not his_trade over Y).
+METHOD: load the sheet with Python's csv module (tab-delimited, header row), fill the label columns row by row from your reading, and write the output with the SAME header and the SAME row order (csv.writer, tab delimiter, lineterminator '\\n'). Then verify: same row count, same stmt_id sequence, every non-label column identical to the input. Every row must have ticker_ident and his_trade filled; rows with his_trade=Y must have action and date_pinnable.
+Read every row yourself — do not label by keyword rules or a script heuristic; the script only reads and writes the file.
+Return: rows labelled, counts of his_trade=Y, ticker_ident Y/amb/N, price_stated=Y, and any row you could not label.
