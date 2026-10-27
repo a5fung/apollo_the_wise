@@ -76,10 +76,10 @@ myself.
 ## 🗓 WEEK PLAN — Tue 10-27 .. Fri 10-30 night (agreed with him 2026-10-26: "Ok plan"; full capacity after his reset)
 
 Weekdays carry builds this week (no money path, no rule change): one heavy card at a time; drop order if short — #705 first, #314 second, the #482 add-on last.
-- **Mon night (pulled forward):** #705 as-is step 5 run + re-run with the minute pull (done); step 6a sheets drawn; readers 1 (the 434 priced statements) and 2 (blind, 150 + 200) running.
-- **Tue 10-27:** 12:00 ET deploy market-agent (the recorder tidy-ups); #705 step 6a agreement score; #655 RH read; evening #482 night two, #491 night 2, the pp recorder's first walked rows + the 3-fill re-walk cross-check.
+- **Mon night (pulled forward):** #705 as-is step 5 run + re-run with the minute pull (done); step 6a sheets drawn; readers 1 (the 434 priced statements) and 2 (blind, 150 + 200) read; agreement scored (price 89% PASS, joint label 67% below the bar).
+- **Tue 10-27:** 12:00 ET deploy market-agent (the recorder tidy-ups); #705 step 6a: the sheet's wording fixed and both readers re-read a fresh 150 (agreement was 67% vs the 80% bar; once, disclosed); the #482 add-on — the first-hour entry recorded on every ORB alert (`mi_orb_shadow_trades`; Sonnet build, Opus review; MOVED from Thu on his 'Ok move to Tuesday' 10-26) and its 21:15 ET deploy; #655 RH read; evening #482 night two, #491 night 2, the pp recorder's first walked rows + the 3-fill re-walk cross-check.
 - **Wed 10-28:** #705 step 6b/6c check code (`03_check.py` R1-R5, `04_band.py`; Fable build, Opus review); #314 replay build starts (Fable) + its STEP 0 Polygon / EDGAR pull on the server (in his "Ok plan"); evening #491.
-- **Thu 10-29:** #705 R1 price check runs — the decisive read, to him (step 7, or fix first); the remaining caption batches (Sonnet); the #482 add-on — the first-hour entry recorded on every ORB alert (`mi_orb_shadow_trades`; Sonnet build, Opus review) and its 12:00 ET deploy; evening #491.
+- **Thu 10-29:** #705 R1 price check runs — the decisive read, to him (step 7, or fix first); the remaining caption batches (Sonnet); the #482 add-on's first night read; evening #491.
 - **Fri 10-30:** #705 full step-6 report + the step-7 grouping plan for his weekend review (Fable); #314 replay freeze, run, recount; the verify reads #687, #695, #704, #706 — close or re-date.
 - Anything that changes a rule, paper or live money is his call (THE LINE).
 
