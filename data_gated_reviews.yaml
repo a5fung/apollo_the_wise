@@ -16105,10 +16105,14 @@ reviews:
       population_actionable: "The action reads exactly these rows - filled, first-break, 5-minute opening-range entries with a mature primary-arm exit that carries an R (a split-voided 'unbookable' arm has none and is not counted) and C1 true on their watch night - and then every other cell and arm of the same entries; retriggers are reported apart, not counted."
       instrument_trusted: "mi_consolidation_breakout_exit / _entry, written by one job; its plumbing is pinned against the offline runner's own functions (tests/test_cb_shadow.py) and its SQL against a real Postgres (tests/test_cb_shadow_pg.py). Known caveats: the SIC cache fills over the first week so group cells are thin until then; a split between a watch night and its break day is judged like-for-like and abstains by name; a high minute_daily_mismatch share on sip rows is a broken minute path, not a thin-feed artifact."
     action_when_ready: >-
-      Run the forward read on the mature entries (script from the P5 holdout read, pointed at the forward tables): n; share at
+      FIRST (carried from #705's close, 2026-10-26): confirm the pp recorder's own forward checks in
+      docs/setups/consolidation_breakout.md §"Verify-live for #705 (c)" — a walked `pp` row with n_fwd >= 1, both `pp` and `A`
+      mature by a daily walk on one entry, and the re-walk cross-check (runner.exitpb_walk_arms on re-fetched minutes) agreeing
+      on the first 3 minute fills; a disagreement is fixed before any forward number is read.
+      Then run the forward read on the mature entries (script from the P5 holdout read, pointed at the forward tables): n; share at
       >= 5R and >= 10R; mean R without the top 5; mean R with a month-block 95% interval; mean P&L in ADR units; by month and by
       phase - for C1 and for C0 on the same entry and exit - and the same table for the backtest's holdout. Report the abstain
       share by reason (a high minute_daily_mismatch share on feed = sip rows flags a broken minute path) before any R. Then bring the operator ONE decision: paper yes/no for this setup
       on its own evidence, with the cell and entry it would use. Live is his sign-off and not asked here.
-    cross_refs: ["task #705 (continues #702)", "docs/setups/consolidation_breakout.md", "docs/methodology/operator_shared_notes.md", "scripts/probes/_cb_backtest/README.md"]
+    cross_refs: ["task #705 (continues #702; closed 2026-10-26, docs/task_closes.md)", "docs/setups/consolidation_breakout.md", "docs/methodology/operator_shared_notes.md", "scripts/probes/_cb_backtest/README.md"]
     zero_verdict: "2026-10-17 WAITING — born with the recorder: the tables are empty until the first deploy night; a mature C1 primary-arm exit needs a C1 breakout and then the primary walk to terminate (trail or stop), typically 2-6 weeks after the break."

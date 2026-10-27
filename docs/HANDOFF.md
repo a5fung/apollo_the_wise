@@ -6,7 +6,20 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-10-25 (Sun) CLOSE — 🔴 RESUME HERE. Supersedes the 10-24 close below.
+## 2026-10-26 (Mon) CLOSE — 🔴 RESUME HERE. Supersedes the 10-25 close below.
+
+**2026-10-26 (Mon): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.) Capacity RESET by him ~13:40 PT — full on every model.
+
+- **Board 22 → 21** (#701 the M&A filter watches CLOSED — the coil board's buyout hold fired correctly on its first real case, SYNA, a signed $123 cash target; the never-fired EP re-grade carried by the tripwire `mna_release_merit_grade_first_fire_701`; #705 CLOSED on its DoD — scaffold, the A+ read's verdict, the pp/A rows on all 571 first-night fills; its recorder forward checks carried into the review `consolidation_breakout_forward_read`; **#711 FILED** = his trades as they are, steps 6-8). **Server 738320a2** (market-agent 12:52 ET + execution 21:16 ET: the #482 book arms).
+- **#705 reads, all done today:** the context-rules read (frozen `7c3ff0ae`, run `c7ecdd6d`, recount 27/27 `2431fffd`): NO CONTEXT GAIN — a 2020 map does not carry to 2021-22. His reaction: be certain of the goal first; his 8 steps (`docs/methodology/operator_shared_notes.md` L2608-2616): reverse-engineer his trades AS THEY ARE, no rule list until step 8; his streams are the reference; "he doesn't buy premarket".
+- **#711 (his trades as they are)** — `docs/analysis/cb_asis_reconstruction_prereg_2026-10-26.md`, frozen (doc_body `2b330f04`): step 5 run + re-run 1 with the free minute pull (1,366 of 1,721 stock-days; buys 70% → 89% minute coverage); step 6a caption pass; first reader agreement 67% (below 80%) → wording fixed → fresh-150 re-test PASSED 80.7% (price 87.2%); the 434 priced statements re-labelled under v2 → **102 of his own priced statements feed R1**. Disclosed: the first readers shared a scratch folder (re-read in private folders). NEXT: build `03_check.py` + `04_band.py` (Fable build, Opus review) → pins → R1 → to him.
+- **Live verifies tonight (all clean):** #482 night one (17 fill_facts rows, PENG +4.35, 195 old rows hash-equal; expected dead-column flags fired once before the first write); the pp recorder's first night (571 fills, 0 errors); #491 night 1 of 10 (0 bounces, the wall fired twice).
+- **Committed, NOT deployed — Tue 10-27 12:00 ET market-agent** (execution only if the scope guard asks): the pp recorder tidy-ups (`4550681d`) + the #482 simplify (behaviour-neutral, golden byte-equal). #482's night two (18:04 ET) reads the refactored code — its checks unchanged.
+- **CI** was red from `7dfa483e` (15 rule-mix lock tests need the local data) until `ecace282` (skip guard) — green now. Lesson saved: read CI after pushing; the pre-push hook runs where the data lives.
+- **Week plan (his "Ok plan"; PLAN.md §WEEK PLAN):** Tue — deploy; #482 add-on (first-hour entry on every ORB alert) moved to Tue on his word; #655 RH read; evening verifies. Wed — #711 check code; #314 replay build + its free data pull (in his "Ok plan"). Thu — R1 runs → to him. Fri — step-6 report + step-7 plan; #314 run; #687/#695/#704/#706 reads.
+- **Open his-call items: none.**
+
+## 2026-10-25 (Sun) CLOSE — (superseded by 10-26 above)
 
 **2026-10-25 (Sun): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.)
 

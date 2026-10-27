@@ -72,15 +72,15 @@
     "status": "deployed"
   },
   {
-    "id": 705,
-    "status": "pending"
-  },
-  {
     "id": 706,
     "status": "deployed"
   },
   {
     "id": 710,
     "status": "blocked"
+  },
+  {
+    "id": 711,
+    "status": "in_progress"
   }
 ]
