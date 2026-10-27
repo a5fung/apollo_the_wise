@@ -1,0 +1,17 @@
+SET
+string_agg
+id,ticker,theme_name,removed_at,cooldown_until,removal_reason,removal_count,bypassed,bypassed_at,bypassed_reason
+(1 row)
+event_type|count|min|max
+description_generated|1|17:00:59.905088|17:00:59.905088
+theme_birth_validated|1|17:06:33.053984|17:06:33.053984
+theme_low_quality_description|10|17:01:07.240212|17:03:08.926352
+ticker_revalidated_out|10|17:01:04.071687|17:06:33.050924
+validation_cooldown_triggered|10|17:01:04.080769|17:06:33.05296
+(5 rows)
+et|left
+2026-10-26 17:01:04.080769|SHOP → 'AI-Enabled Travel, Expense & Vehicle Data Software' cooldown 14d (removal #1)
+2026-10-26 17:01:23.209631|ZM → 'Cloud Contact Center & CCaaS Communication Platforms' cooldown 14d (removal #1)
+2026-10-26 17:01:24.022809|ADSK → 'Cloud Content, Nonprofit & SMB Software Re-Rating' cooldown 14d (removal #1)
+2026-10-26 17:02:54.620262|ODFL → 'Industrial Equipment Rental & Safety/Industrial Products Cyclicals' cooldown 14d (removal #1)
+(4 rows)

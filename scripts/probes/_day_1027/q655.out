@@ -1,0 +1,15 @@
+SET
+theme_date|name|stage|source
+2026-10-23|Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings|Mainstream|live
+2026-10-26|Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings|Mainstream|live
+(2 rows)
+ERROR:  column "created_at" does not exist
+LINE 1: ...ROM mi_validation_cooldowns WHERE ticker='RH' AND created_at...
+                                                             ^
+et|event_type|left
+2026-10-23 17:07:37.464939|theme_member_rehomed|Rehome: RH joined 'Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings' from a suppressed newborn (tape 0.62) — a paying theme: +10 on its next EP
+2026-10-23 17:07:37.466358|theme_rehome_judged|RH moved -> 'Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings' (tape 0.62, join_carry)
+2026-10-23 17:07:37.467369|theme_rehome_join_carry_ran|Re-homing join-carry: 1 novel member(s) from 1 suppressed newborn(s); 1 on the tape, 1 joined, 0 stayed
+(3 rows)
+et|event_type|left
+(0 rows)

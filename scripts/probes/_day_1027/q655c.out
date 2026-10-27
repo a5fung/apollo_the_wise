@@ -1,0 +1,20 @@
+SET
+ticker|theme_name|timezone|event_type|timezone|tgt
+ADSK|Cloud Content, Nonprofit & SMB Software Re-Rating|2026-10-26 17:01:24.021686|||
+BCO|Industrial Equipment Rental & Safety/Industrial Products Cyclicals|2026-10-26 17:02:54.62229|||
+FMX|Non-Alcoholic Beverages & Energy Drinks|2026-10-26 17:02:58.809969|||
+MELI|Brazil Fintech & Digital Banking Rally|2026-10-26 17:06:33.047882|||
+ODFL|Industrial Equipment Rental & Safety/Industrial Products Cyclicals|2026-10-26 17:02:54.618112|||
+PNRG|Oil & Gas Mineral and Royalty Interests|2026-10-26 17:03:45.896659|theme_member_rehomed|2026-10-26 17:03:45.897735|Energy Supply Disruption: Middle East Geopolitical Risk
+ROL|Recreational Vehicle & Outdoor Leisure Cyclicals|2026-10-26 17:05:54.798159|||
+SHOE|Recreational Vehicle & Outdoor Leisure Cyclicals|2026-10-26 17:05:54.800862|||
+SHOP|AI-Enabled Travel, Expense & Vehicle Data Software|2026-10-26 17:01:04.074922|||
+UGP|Brazil Fintech & Digital Banking Rally|2026-10-26 17:06:33.051829|||
+ZM|Cloud Contact Center & CCaaS Communication Platforms|2026-10-26 17:01:23.20723|||
+(11 rows)
+ticker|theme_name|removed_at
+(0 rows)
+event_type|count
+theme_member_rehomed|24
+theme_sector_cap_absorbed|18
+(2 rows)
