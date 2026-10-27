@@ -287,7 +287,7 @@ def shifted_trades(trades: list, engine, S, k: int, say) -> list:
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 # the printouts
 # ═════════════════════════════════════════════════════════════════════════════════════════════
-def report_populations(say, ranges: dict, trades: list, slots: list, counts: collections.Counter, check: "list | None", anchors: dict, shorts: dict, claims) -> None:
+def report_populations(say, ranges: dict, trades: list, slots: list, counts: collections.Counter, check: "list | None", anchors: dict, shorts: dict, claims, loaded: "dict | None" = None) -> None:
     say("\n## Populations")
     say(f"- ranges.tsv: {len(ranges):,} sides; positions {len({e for (e, _s) in ranges}):,}; round trips (both sides) {counts['round_trips']:,}; one side only {counts['one_side_only']:,}")
     say(f"- trades with a range on both sides: {len(trades):,}; held with no range on a side (a SLOT in N, no return; R76) {len(slots):,}; dropped: sale window ending "
@@ -312,8 +312,12 @@ def report_populations(say, ranges: dict, trades: list, slots: list, counts: col
         eids = collections.defaultdict(set)
         for (e, sd) in ranges:
             eids[e].add(sd)
-        claims("round trips (§2: 1,848)", 1848, sum(1 for v in eids.values() if len(v) == 2))
-        claims("ranges.tsv sides (§3.1: 1,861 per side)", 3722, len(ranges))
+        # Re-run 2 (windows v2, his "Ok" 10-27): the counts are claimed against the LOADED windows, as 03 does (R89); the plan's §2 / §3.1
+        # figures (1,848 round trips, 1,861 per side) are the ORIGINAL windows' and print beside.
+        lw = loaded or {}
+        claims("round trips: ranges.tsv vs the loaded windows (§2 on the original windows: 1,848)", lw.get("round_trips"),
+               sum(1 for v in eids.values() if len(v) == 2))
+        claims("ranges.tsv sides vs the loaded windows (§3.1 on the original windows: 1,861 per side)", lw.get("sides"), len(ranges))
         claims("his dated points (§4.3: n = 15)", 15, len(K.HIS_DATED_POINTS))
         claims("exposure arms (§4.3: 1.0 middle, 0.5 and 1.5 band)", [1.0, 0.5, 1.5], list(K.EXPOSURES))
         claims("every trade's exit session is on or after its entry session", 0, sum(1 for t in trades + slots if t["exit_session"] < t["entry_session"]))
@@ -411,7 +415,11 @@ def main(argv=None) -> int:
     anchors, shorts = anchors_and_sides(check)
     trades, slots, counts = build_trades(ranges, engine, anchors, shorts, S)
     claims = Claims(say) if a.dry_run else None
-    report_populations(say, ranges, trades, slots, counts, check, anchors, shorts, claims)
+    loaded_eids = collections.defaultdict(set)
+    for w in L["buys"] + L["sales"]:
+        loaded_eids[w.eid].add(w.side)
+    loaded = {"round_trips": sum(1 for v in loaded_eids.values() if len(v) == 2), "sides": len(L["buys"]) + len(L["sales"])}
+    report_populations(say, ranges, trades, slots, counts, check, anchors, shorts, claims, loaded)
     if a.dry_run:
         say("")
         say(claims.result())

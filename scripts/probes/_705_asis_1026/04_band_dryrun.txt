@@ -1,14 +1,15 @@
-# #705 as-is STEP 6c (the account floor) — DRY RUN (2026-10-27 08:41)
+# #705 as-is STEP 6c (the account floor) — DRY RUN (2026-10-27 16:30)
 Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders. No rule, setup name or pattern label enters; the join reads the symbol and the day only.
 - identifier scan: clean (the step-5/6 modules hold none of the excluded names)
 - import belt: no rule module in sys.modules
-- modules: asis_common.py 89116c1ab9dc7aa2 01_points.py 0864c933d7e8364d 02_captions.py 40e5df6fbd5b069f asis_check_common.py d80220da0d3cb02b 03_check.py 0a4314131a6d0fe4 forbidden_identifiers.txt ba8f4bb5f23f2325 inventory/captions_inventory.py 23eaf3dae1cf68b8 04_band.py 020e8f59de9fe938
+- modules: asis_common.py 4d36d6a42532dc78 01_points.py aa30dc3c0402178d 02_captions.py 40e5df6fbd5b069f asis_check_common.py c5061dca5ee2f6be 03_check.py 20ac382575b095d0 forbidden_identifiers.txt ba8f4bb5f23f2325 inventory/captions_inventory.py 23eaf3dae1cf68b8 04_band.py 47487be41404e4e1
 
 ## Inputs
-- ranges.tsv 85efdf138f9d103e (3,722 sides)
-- 6b artefacts: 03_check.txt ABSENT check_r1_r5.tsv ABSENT  (6b not run: this dry run is stale once it has; rerun it after 03 --run)
+- ranges.tsv 0d12cf9ab46a4fea (3,890 sides)
+- 6b artefacts: 03_check.txt 38678d784016b633 check_r1_r5.tsv 8df4521acde45b2c
 - calendar: 2,264 sessions 2016-01-04..2024-12-31 (the reader's cache, cut at 2024-12-31)
 - snapshots: 2,907 frames, 2,082 full
+- windows v2 (R44, windows_v2/): 1,958 positions, 1,945 buy / 1,945 sale windows; the original (the claims' population, read beside): 1,874 / 1,861 / 1,861; frames v2 2,907 (2,082 full)
 - lexicon 22,744 symbols; alias map 574 (signature 504, dedupe 70); rename table added 2 (R8)
 - export A: 12,005,007 rows read, 1,235,568 kept for 1,247 names, 0 dated after the cut dropped at read; calendar 2016-01-04..2022-06-30 = the reader's (3s)
 - export B: 13,830,569 rows read, 556,450 kept for 1,247 names, 5,210,943 dated after the cut dropped at read; calendar 2021-09-27..2024-12-31 = the reader's (4s)
@@ -18,26 +19,26 @@ Guards: no network, no production server, no paid call, nothing after 2024-12-31
 - loaded in 8s
 
 ## Populations
-- ranges.tsv: 3,722 sides; positions 1,874; round trips (both sides) 1,848; one side only 26
-- trades with a range on both sides: 1,596; held with no range on a side (a SLOT in N, no return; R76) 250; dropped: sale window ending before the buy window 2
-- middle sources (buy/sale): daily_typical/daily_typical 107, daily_typical/minute_vwap 99, minute_vwap/daily_typical 117, minute_vwap/minute_vwap 1,273
-- daily marks (R76): from the closes 1,596, spread geometrically (no close on the hold) 0; trades whose two sides sit in different exports (the last mark mixes their bar spaces, R75) 9
-- flickers among the trades: 531 (run in and out)
-- trades by exit year: 2017 29, 2018 40, 2019 130, 2020 706, 2021 516, 2022 137, 2023 38
-- 6b's output (check_r1_r5.tsv): ABSENT — sides by statement and anchors are 0 until 03 --run; every position reads long (R78)
+- ranges.tsv: 3,890 sides; positions 1,958; round trips (both sides) 1,932; one side only 26
+- trades with a range on both sides: 1,675; held with no range on a side (a SLOT in N, no return; R76) 255; dropped: sale window ending before the buy window 2
+- middle sources (buy/sale): daily_typical/daily_typical 114, daily_typical/minute_vwap 115, minute_vwap/daily_typical 134, minute_vwap/minute_vwap 1,312
+- daily marks (R76): from the closes 1,675, spread geometrically (no close on the hold) 0; trades whose two sides sit in different exports (the last mark mixes their bar spaces, R75) 8
+- flickers among the trades: 610 (run in and out)
+- trades by exit year: 2017 29, 2018 40, 2019 134, 2020 740, 2021 544, 2022 148, 2023 40
+- 6b's output: 194 statements; positions read SHORT by statement (joined or beside, R87) 20 (1.0% of the trades); anchored sides 11 (on 11 trade sides)
 - sizing (OUR convention, §4.3; R76): a constant mix — on every session exposure x 1 / N in each of the N names held (trades + slots), the money deployed never above exposure x account; exposure 1 / 0.5 / 1.5; arms: 12 (exposure x flickers in/out x middle/anchored)
 - his dated figures (§4.3, n = 15): 2020-06-09 150+%; 2020-07-20 200+%; 2020-11-19 300%; 2020-12-07 500-700%; 2020-12-09 710%; 2020-12-22 800-900%; 2021-02-09 60%; 2021-02-18 60%; 2021-02-23 100%; 2021-02-24 90%; 2021-03-10 100-120%; 2021-03-12 120%; 2021-03-24 90-100%; 2021-05-06 100%; 2022-04-14 15%
 - So 6c is a floor, never a verify. 6c has NO pass bar (§4.3)
 
 ## Claims (the plan)
-  [OK] round trips (§2: 1,848): expected 1848, got 1848
-  [OK] ranges.tsv sides (§3.1: 1,861 per side): expected 3722, got 3722
+  [OK] round trips: ranges.tsv vs the loaded windows (§2 on the original windows: 1,848): expected 1932, got 1932
+  [OK] ranges.tsv sides vs the loaded windows (§3.1 on the original windows: 1,861 per side): expected 3890, got 3890
   [OK] his dated points (§4.3: n = 15): expected 15, got 15
   [OK] exposure arms (§4.3: 1.0 middle, 0.5 and 1.5 band): expected [1.0, 0.5, 1.5], got [1.0, 0.5, 1.5]
   [OK] every trade's exit session is on or after its entry session: expected 0, got 0
   [OK] every trade's middle lies inside its own worst..best band: expected 0, got 0
   [OK] every long trade's daily marks compound to its middle return (R76): expected 0, got 0
-  [OK] trades + slots = the round trips whose sale window ends on or after the buy window's: expected 1846, got 1846
+  [OK] trades + slots = the round trips whose sale window ends on or after the buy window's: expected 1930, got 1930
 
 RESULT: 8 claims, 8 OK, 0 MISMATCH
 DRY RUN COMPLETE
