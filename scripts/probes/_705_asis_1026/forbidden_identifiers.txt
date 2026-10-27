@@ -1,0 +1,36 @@
+# The excluded names of the plan's §3.1 (docs/analysis/cb_asis_reconstruction_prereg_2026-10-26.md): each is dated, labelled or
+# selected by one of our rules. The step-5/6 modules may not contain any of them as a WHOLE identifier or a WHOLE string literal
+# (tokenize; substrings never match). One name per line; '#' lines are comments. Read by asis_common.scan_identifiers.
+E
+D
+era
+setup
+pivot
+adr20
+base_id
+retrigger
+ep_prev_close
+ep_gap_pct
+n_events_in_window
+E_earliest
+kind_earliest
+q1_2022_hole
+undated_reason
+first_clock_on_E
+flat_clock_on_E
+orh5_infeasible
+decides
+ever_candidate
+level_at
+intraday_levels
+stop_levels
+held_through
+exit_walk
+h60_bars
+ema_series
+armed_index
+load_breakouts
+load_eps
+events_in
+date_entry
+control_rows

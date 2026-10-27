@@ -41,6 +41,7 @@
     "tests/test_account_mode_literal_gate.py": 4,
     "tests/test_alert_rank_shadow.py": 2,
     "tests/test_anticipation_graduation_predicate.py": 1,
+    "tests/test_asis_points.py": 1,
     "tests/test_audit_detail_json_safe_truncation.py": 4,
     "tests/test_breakeven_at_broker_548.py": 3,
     "tests/test_brief_composer.py": 3,
@@ -91,7 +92,7 @@
     "tests/test_latest_trade_uses_sip_feed.py": 2,
     "tests/test_lattice_admission_consistency.py": 6,
     "tests/test_lattice_revert_needs_evidence_638.py": 7,
-    "tests/test_live_fill_counterfactuals.py": 5,
+    "tests/test_live_fill_counterfactuals.py": 4,
     "tests/test_live_rules.py": 1,
     "tests/test_live_trades_conflict_target.py": 4,
     "tests/test_llm_response_shape_544.py": 1,
@@ -113,6 +114,7 @@
     "tests/test_recorder_failure_rate_593.py": 4,
     "tests/test_review_registry_dates_are_dates.py": 1,
     "tests/test_reviews_backlog_teeth.py": 1,
+    "tests/test_rule_mix.py": 1,
     "tests/test_scanned_command.py": 3,
     "tests/test_schema_alter_create_parity.py": 2,
     "tests/test_sdk_offload_464.py": 2,
@@ -143,6 +145,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 422,
-  "unescaped": 362
+  "total": 423,
+  "unescaped": 359
 }
