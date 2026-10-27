@@ -1,0 +1,42 @@
+# #705 as-is STEP 6a (machine pass) — AGREEMENT (2026-10-26 21:19)
+Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders. No rule, setup name or pattern label enters; the readers see captions only.
+- rows both readers labelled: 100; not in reader 1's sheets: 50; unlabelled by either: 0
+- joint label (ticker, action, day class): 67 / 100 = 67.0% (bar >= 80%) -> BELOW THE BAR
+- parts: his-own-trade 95 / 100; among rows both call his own (78): ticker 59, action 76, day class 63
+- price number where both read one: 40 / 45 = 88.9% (bar >= 85%) -> PASS
+- blind sample (reader 2 only): 116 of 200 no-symbol statements are his own trade event = 58.0% (95% range 51.1%-64.6%); of them the ticker unidentified: 71
+- disagreements (33):
+    2f1nX_TGelQ:737 A0249: reader 1 ('AVLR', 'stop_level', 'stream_day') | reader 2 ('AVLR', 'stop_level', 'implied_recent')
+    OsnRBJF0xr0:977 A0189: reader 1 ('FMCI', 'sell_part', 'stream_day') | reader 2 ('FMC', 'sell_part', 'stream_day')
+    jLXXUdYYYnM:2507 A0384: reader 1 ('unidentified', 'buy', 'approx_earlier') | reader 2 ('MARA', 'buy', 'approx_earlier')
+    qmhLHCHRBnM:1978 A0038: reader 1 ('unidentified', 'buy', 'stream_day') | reader 2 ('unidentified', 'buy', 'implied_recent')
+    r2A9mbmMl_0:2885 A0135: reader 1 ('unidentified', 'stop_level', 'stream_day') | reader 2 ('FMCI', 'stop_level', 'implied_recent')
+    TsI1kd_DHTU:11577 A0238: reader 1 ('FSLY', 'buy', 'approx_earlier') | reader 2 ('-', 'not_own', '-')
+    22NgCX0FFv4:3535 A0070: reader 1 ('APT', 'holding', 'implied_recent') | reader 2 ('unidentified', 'holding', 'implied_recent')
+    uYkzHI4_2H0:5856 A0420: reader 1 ('AMD', 'sell_unspec', 'unstated') | reader 2 ('unidentified', 'sell_unspec', 'stream_day')
+    O333thFuU40:1521 A0020: reader 1 ('unidentified', 'sell_part', 'implied_recent') | reader 2 ('LAKE', 'sell_part', 'implied_recent')
+    iuzNFGgMu_0:3651 A0066: reader 1 ('STNG', 'add', 'stream_day') | reader 2 ('unidentified', 'add', 'implied_recent')
+    7tIk1NhphuQ:4923 A0133: reader 1 ('MRNA', 'stopped', 'stream_day') | reader 2 ('unidentified', 'stopped', 'stream_day')
+    HsXadHE5hd4:1621 A0154: reader 1 ('ACB', 'buy', 'implied_recent') | reader 2 ('unidentified', 'buy', 'implied_recent')
+    1X0J9XbF7I4:740 A0002: reader 1 ('TSLA', 'stopped', 'stream_day') | reader 2 ('TSLA', 'stopped', 'implied_recent')
+    ZwPbyiN3Qvo:2219 A0063: reader 1 ('BLDP', 'sell_unspec', 'stream_day') | reader 2 ('unidentified', 'sell_unspec', 'implied_recent')
+    WczOCnD0f5w:300 A0261: reader 1 ('PDD', 'buy', 'unstated') | reader 2 ('PDD', 'sell_part', 'unstated')
+    jYxdQDlqnno:1094 A0410: reader 1 ('DVAX', 'buy', 'stream_day') | reader 2 ('DVAC', 'buy', 'stream_day')
+    WG7fUB04aaM:2545 A0033: reader 1 ('CODX', 'buy', 'stream_day') | reader 2 ('unidentified', 'buy', 'stream_day')
+    AG226y4hi1E:2948 A0054: reader 1 ('TSLA', 'buy', 'stream_day') | reader 2 ('TSLA', 'buy', 'implied_recent')
+    dTJueSUqdh4:4457 A0386: reader 1 ('unidentified', 'buy', 'unstated') | reader 2 ('unidentified', 'buy', 'approx_earlier')
+    p8WQ_4XdNPY:1703 A0328: reader 1 ('unidentified', 'sell_unspec', 'stated_earlier') | reader 2 ('unidentified', 'sell_all', 'stated_earlier')
+    ZS0JjG1EfpU:2781 A0025: reader 1 ('unidentified', 'shorted', 'stream_day') | reader 2 ('unidentified', 'shorted', 'implied_recent')
+    Y8xs3JFgVwc:2252 A0273: reader 1 ('unidentified', 'sell_all', 'implied_recent') | reader 2 ('unidentified', 'sell_all', 'stream_day')
+    5-Y6oXm32OE:363 A0374: reader 1 ('unidentified', 'buy', 'unstated') | reader 2 ('SC', 'buy', 'unstated')
+    OsnRBJF0xr0:900 A0188: reader 1 ('FMCI', 'buy', 'stated_earlier') | reader 2 ('FMC', 'buy', 'stated_earlier')
+    LMrz-rWQqac:365 A0284: reader 1 ('ZM', 'holding', 'implied_recent') | reader 2 ('unidentified', 'holding', 'implied_recent')
+    tJufYfo9eTg:5321 A0088: reader 1 ('AUPH', 'covered', 'stream_day') | reader 2 ('unidentified', 'covered', 'unstated')
+    SN9Rlh25xWs:4745 A0230: reader 1 ('GSX', 'covered', 'implied_recent') | reader 2 ('unidentified', 'covered', 'implied_recent')
+    E1ah3mwoV40:4549 A0368: reader 1 ('AMC', 'stop_level', 'stated_earlier') | reader 2 ('unidentified', 'stop_level', 'stated_earlier')
+    Feyk4S1vVRk:4359 A0121: reader 1 ('RCL', 'stopped', 'stream_day') | reader 2 ('RCL', 'stopped', 'implied_recent')
+    S3n57pIXboE:3619 A0128: reader 1 ('NUGT', 'stopped', 'stream_day') | reader 2 ('NUGT', 'stopped', 'implied_recent')
+    clqzWW59_vo:135 A0406: reader 1 ('unidentified', 'holding', 'implied_recent') | reader 2 ('unidentified', 'holding', 'stated_earlier')
+    3WOCGilnS6A:1866 A0258: reader 1 ('JD', 'stop_level', 'implied_recent') | reader 2 ('-', 'not_own', '-')
+    E1ah3mwoV40:4534 A0367: reader 1 ('AMC', 'sell_unspec', 'stated_earlier') | reader 2 ('unidentified', 'sell_unspec', 'stated_earlier')
+AGREEMENT BELOW THE BAR: the wording of the sheet is fixed and BOTH readers re-read a fresh 150 (once, disclosed); a second failure stops step 6a
