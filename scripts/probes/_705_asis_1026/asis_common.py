@@ -68,6 +68,24 @@ READINGS where the plan is silent, ambiguous or contradicts itself (numbered; th
   R37-R39 (re-run 1, 2026-10-26; numbered in 01_points.py's docstring): the seventh minute tree `ASIS` (his pull, regular hours only) is last in
       `FILES` / `MINUTES` / `TREE_ORDER`; `PRE_PULL_TREES` names the six the inventory's claims were measured on; `ledger_verify` is ours (not
       a copy) and accepts run 1's archived files (`ARCHIVE_STAGE`, `archive_path`).
+  R40-R43 (re-run 2, 2026-10-27; the windows v2 — gap-filling limited to single-frame misses, his Ok to option A):
+  R40 The v2 windows are THREE files under `asis_1026/windows_v2/` (`entries_v2`, `exits_v2`, `snapshots_v2`), all pinned. The task named two;
+      the third is forced by the loader: `read_windows` recomputes every sale window's last sighting from the frames' `held` (symbols + the
+      fill column), so the frame table step 5 reads must carry the v2 fills, not the old ones — `snapshots_v2.tsv` is `snapshots.tsv` with ONLY
+      its `blip_filled` column rewritten (every other cell asserted equal by `00c_windows_v2.py`).
+  R41 The archive is any-generation (the re-run 1 review's single-generation collision: `archive_path` hard-wired `_run1`): `archive_path`
+      takes a suffix, `is_archive_of` says whether a path is an archived copy of another (same folder, same extension, the stem extended by
+      `_<suffix>`), and `ledger_verify` accepts a missing / changed row when ANY `archive_*` ledger row names an archived copy of that path
+      with the recorded sha and the copy is on disk with it. `archive_files` performs the archive (refuses an existing target, a missing file,
+      a file whose content differs from its last ledger row, or a suffix not in `ARCHIVE_SUFFIXES` — review F7: the registered
+      generations, so `01_points_dryrun_run1.txt` is never read as an archive of `01_points.txt`) and writes the rows. Re-run 1's step-5 outputs go to `*_run2_prev`
+      (`_run1` is taken by run 1's); 6b's first run to `*_run1` (free there).
+  R42 `pins` also pins `00c_windows_v2.py`, its dry-run printout (the reproduction gate lives in it) and its write printout (the v2 files'
+      shas under the module that wrote them, review F6): the v2 files are inputs of --run and the module that made them is part of the
+      record. `windows_v2_gate` (read by 01_points' run gate) refuses a --run unless the dry run ended COMPLETE with 0 MISMATCH, the
+      write ended WRITE COMPLETE with every recorded sha equal to the file on disk, and both were made by the two modules on disk.
+  R43 `read_windows`' defaults stay the ORIGINAL files: 01_points' `load_all` passes the v2 paths for the windows it ranges and reads the
+      original windows beside for the dry-run claims (pre-fix facts); 02_captions (pinned, step 6a done) keeps reading the original.
 
 No network, no model client, no DB, no subagent. Nothing is opened at import.
 """
@@ -131,7 +149,11 @@ FILES = {
     "done_ASIS": f"{B_DIR}/minutes_asis_1026/_done.psv",                 # R37: the re-run 1 pull (his 'Yes' 2026-10-26), regular hours only
     "raw_close_A": f"{A_DIR}/daily_raw_close.csv.gz",                    # R12: ticker,date,RAW close of every export-A row (today's symbol)
     "splits_B": f"{B_DIR}/cb702_splits.psv",                             # R12: sym|exec_date|from|to; cut at the seal at read
+    "entries_v2": f"{OUT_DIR}/windows_v2/entries_v2.tsv",                # R40: re-run 2's windows (gap-filling limited to single-frame misses)
+    "exits_v2": f"{OUT_DIR}/windows_v2/exits_v2.tsv",
+    "snapshots_v2": f"{OUT_DIR}/windows_v2/snapshots_v2.tsv",            # R40: snapshots.tsv with only `blip_filled` rewritten
 }
+W2_DIR = f"{OUT_DIR}/windows_v2"
 MINUTES = {"A": f"{A_DIR}/minutes", "B": f"{B_DIR}/minutes", "EP": f"{B_DIR}/minutes_ep_1023", "EP2": f"{B_DIR}/minutes_ep_1024",
            "REV": f"{B_DIR}/minutes_rev_1024", "INTRA": f"{B_DIR}/minutes_intra_1025", "ASIS": f"{B_DIR}/minutes_asis_1026"}
 TREE_ORDER = ("A", "B", "EP", "EP2", "REV", "INTRA", "ASIS")        # R37: ASIS LAST, so no pair already covered changes tree
@@ -140,6 +162,9 @@ FORBIDDEN_DIRS = tuple(f"{H_DIR}/{d}" for d in ("replay", "his_exits", "intraday
                                                  "reverse_recount_cache"))        # guard (2): the seven outcome folders, never opened
 OUTPUTS = {k: f"{OUT_DIR}/{k}.tsv" for k in ("candidates", "ranges", "coverage")}
 P_DRY = os.path.join(HERE, "01_points_dryrun.txt")
+P_DRY_00C = os.path.join(HERE, "00c_windows_v2_dryrun.txt")   # R42: the windows-v2 rebuild's dry run (the reproduction gate), pinned
+P_WRITE_00C = os.path.join(HERE, "00c_windows_v2.txt")       # R42 (review F6): its write printout (the v2 files' shas under the module), pinned
+MODULES_00C = ("asis_common.py", "00c_windows_v2.py")        # the two files that compute the v2 windows (the `- modules:` line of both printouts)
 P_PINS = os.path.join(HERE, "01_points_pins.txt")
 P_RUN = os.path.join(HERE, "01_points.txt")
 P_REFUSED = os.path.join(HERE, "01_points.refused.txt")   # a refused --run writes here, never P_RUN (a refusal must not poison the next run)
@@ -750,34 +775,88 @@ def ledger_append(stage: str, path: str) -> None:
             fh.write("stage\tpath\tsha256\ttime\n")
         fh.write(f"{stage}\t{path}\t{sha(path)}\t{_dt.datetime.now().isoformat(timespec='seconds')}\n")
 
-ARCHIVE_STAGE = "archive_run1_"      # R38: the stage prefix of the ledger rows that record run 1's files after their rename
+ARCHIVE_PREFIX = "archive_"          # R41: every ledger row recording an archived copy starts so (any generation)
+ARCHIVE_STAGE = "archive_run1_"      # R38: the stage prefix of the rows that record run 1's step-5 files after their rename
+ARCHIVE_SUFFIX_RUN1 = "_run1"        # R38: run 1's archived copies (candidates_run1.tsv, 01_points_run1.txt)
 
 
-def archive_path(path: str) -> str:
-    """R38: where run 1's copy of `path` lives after the re-run's archive step: `_run1` before the extension (candidates.tsv ->
-    candidates_run1.tsv, 01_points.txt -> 01_points_run1.txt)."""
+def archive_path(path: str, suffix: str = ARCHIVE_SUFFIX_RUN1) -> str:
+    """R38 / R41: where an archived copy of `path` lives: `suffix` before the extension (candidates.tsv -> candidates_run1.tsv,
+    01_points.txt -> 01_points_run2_prev.txt)."""
     root, ext = os.path.splitext(path)
-    return f"{root}_run1{ext}"
+    return f"{root}{suffix}{ext}"
+
+
+ARCHIVE_SUFFIXES = (ARCHIVE_SUFFIX_RUN1, "_run2_prev")   # R41 (review F7): the registered generations; a new one is added here, never implied
+
+
+def is_archive_of(path: str, arc: str) -> bool:
+    """R41: `arc` is an archived copy of `path`: the same folder and extension, the stem extended by ONE REGISTERED suffix (never the file
+    itself; `01_points_dryrun_run1.txt` is not an archive of `01_points.txt` — review F7)."""
+    root, ext = os.path.splitext(path)
+    aroot, aext = os.path.splitext(arc)
+    return aext == ext and any(aroot == root + s for s in ARCHIVE_SUFFIXES)
 
 
 def ledger_verify() -> list:
     """Every ledger row's file must exist with the recorded sha (a deleted or regenerated printout is caught). -> the problems.
-    R38 (ours, no longer a copy of the reverse read's): a row whose file is missing or changed is accepted ONLY when run 1's archived copy
-    (`archive_path`) exists with the recorded sha AND the ledger carries an `archive_run1_*` row for that exact archived path and sha — the
-    rename is a ledger fact, the content is checked, and anything else (a deleted or edited file with no archive) is still a problem."""
+    R38 / R41 (ours, no longer a copy of the reverse read's): a row whose file is missing or changed is accepted ONLY when the ledger carries
+    an `archive_*` row naming an ARCHIVED COPY of that path (`is_archive_of`) with the recorded sha AND that copy is on disk with it — the
+    rename is a ledger fact, the content is checked, and anything else (a deleted or edited file with no archive) is still a problem. Any
+    generation of archive is accepted (`_run1`, `_run2_prev`, ...); an archive row itself is never excused by another."""
     if not os.path.exists(LEDGER):
         return ["ledger missing"]
     bad = []
     rows = pd.read_csv(LEDGER, sep="\t", dtype=str, keep_default_na=False).to_dict("records")
-    archived = {(r["path"], r["sha256"]) for r in rows if r["stage"].startswith(ARCHIVE_STAGE)}
+    archived = {(r["path"], r["sha256"]) for r in rows if r["stage"].startswith(ARCHIVE_PREFIX)}
     for r in rows:
         if os.path.exists(r["path"]) and sha(r["path"]) == r["sha256"]:
             continue
-        arc = archive_path(r["path"])
-        if (not r["stage"].startswith(ARCHIVE_STAGE) and (arc, r["sha256"]) in archived and os.path.exists(arc) and sha(arc) == r["sha256"]):
+        excused = (not r["stage"].startswith(ARCHIVE_PREFIX)) and any(
+            is_archive_of(r["path"], arc) and os.path.exists(arc) and sha(arc) == r["sha256"]
+            for arc, s in archived if s == r["sha256"])
+        if excused:
             continue
         bad.append(f"{r['path']}: " + ("missing" if not os.path.exists(r["path"]) else "changed since the ledger recorded it"))
     return bad
+
+
+def ledger_last_sha(path: str) -> "str | None":
+    """The sha the ledger last recorded for `path` (None when the ledger has no row for it)."""
+    if not os.path.exists(LEDGER):
+        return None
+    rows = pd.read_csv(LEDGER, sep="\t", dtype=str, keep_default_na=False).to_dict("records")
+    hits = [r["sha256"] for r in rows if r["path"] == path]
+    return hits[-1] if hits else None
+
+
+def archive_files(items: list, suffix: str, stage_prefix: str) -> list:
+    """R41: move each (key, path) of `items` to its archived copy (`archive_path(path, suffix)`) and append an `<stage_prefix><key>` ledger row
+    for the copy. REFUSES (GuardStop, nothing moved) when: `stage_prefix` does not start with `archive_`; a file is missing; an archived
+    target already exists; or a file's content differs from the sha the ledger last recorded for it (an edited output is never archived as
+    the run's). -> [(path, archived path, sha)]."""
+    if not stage_prefix.startswith(ARCHIVE_PREFIX):
+        raise GuardStop(f"archive: the stage prefix must start with {ARCHIVE_PREFIX!r}, got {stage_prefix!r}")
+    if suffix not in ARCHIVE_SUFFIXES:
+        raise GuardStop(f"archive: the suffix {suffix!r} is not registered in ARCHIVE_SUFFIXES {ARCHIVE_SUFFIXES}")
+    plan = []
+    for key, path in items:
+        if not os.path.exists(path):
+            raise GuardStop(f"archive: {path} is missing")
+        arc = archive_path(path, suffix)
+        if os.path.exists(arc):
+            raise GuardStop(f"archive: the target {arc} already exists")
+        now = sha(path)
+        rec = ledger_last_sha(path)
+        if rec is not None and rec != now:
+            raise GuardStop(f"archive: {path} differs from the sha the ledger last recorded for it; not archived")
+        plan.append((key, path, arc, now))
+    out = []
+    for key, path, arc, s in plan:
+        os.replace(path, arc)
+        ledger_append(stage_prefix + key, arc)
+        out.append((path, arc, s))
+    return out
 
 def dry_run_complete(path: str = None) -> bool:
     """True when the dry run printout exists and its last non-empty line says DRY RUN COMPLETE (a STOPPED dry run also writes the file;
@@ -788,6 +867,73 @@ def dry_run_complete(path: str = None) -> bool:
     with open(path, encoding="utf-8") as fh:
         lines = [ln for ln in fh.read().splitlines() if ln.strip()]
     return bool(lines) and lines[-1].startswith("DRY RUN COMPLETE")
+
+
+def modules_line(names) -> str:
+    """'<file> <sha16> ...' of the named module files in THIS folder as they are now — the ONE builder of every printout's `- modules:` line
+    and of the gate that compares it (review F6)."""
+    return " ".join(f"{n} {sha(os.path.join(HERE, n))[:16]}" for n in names)
+
+
+def printout_line(path: str, prefix: str) -> "str | None":
+    """The first line of a printout starting with `prefix`, the prefix stripped (None: no file or no such line)."""
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as fh:
+        for ln in fh:
+            if ln.startswith(prefix):
+                return ln[len(prefix):].strip()
+    return None
+
+
+def printout_mismatches(path: str) -> "int | None":
+    """The MISMATCH count of a printout's RESULT line (None when absent or unreadable)."""
+    ln = printout_line(path, "RESULT:")
+    if ln is None:
+        return None
+    try:
+        return int(ln.split("MISMATCH")[0].strip().split()[-1])
+    except (ValueError, IndexError):
+        return None
+
+
+def printout_ends(path: str, text: str) -> bool:
+    """True when the printout exists and its last non-empty line starts with `text`."""
+    if not os.path.exists(path):
+        return False
+    with open(path, encoding="utf-8") as fh:
+        lines = [ln for ln in fh.read().splitlines() if ln.strip()]
+    return bool(lines) and lines[-1].startswith(text)
+
+
+def windows_v2_gate() -> list:
+    """R42 (review F6): the reasons the v2 windows are not a fit input of step 5's --run (empty = go). The rebuild's dry run (`P_DRY_00C`)
+    ended DRY RUN COMPLETE with 0 MISMATCH (the reproduction gate is among its claims) and was made by the two modules on disk; its write
+    printout (`P_WRITE_00C`) ended WRITE COMPLETE, was made by the same modules, and the sha it recorded for each v2 file equals the file
+    on disk — so the pinned v2 files are the ones that module wrote, and the module is the one whose dry run passed."""
+    problems = []
+    if not printout_ends(P_DRY_00C, "DRY RUN COMPLETE"):
+        problems.append(f"the windows-v2 dry run has not completed ({os.path.basename(P_DRY_00C)})")
+    else:
+        mm = printout_mismatches(P_DRY_00C)
+        if mm is None:
+            problems.append("the windows-v2 dry run's RESULT line is missing or unreadable")
+        elif mm > 0:
+            problems.append(f"the windows-v2 dry run ended with {mm} MISMATCH")
+    if not printout_ends(P_WRITE_00C, "WRITE COMPLETE"):
+        problems.append(f"the windows-v2 write has not completed ({os.path.basename(P_WRITE_00C)})")
+    else:
+        for key in ("entries_v2", "exits_v2", "snapshots_v2"):
+            rec = printout_line(P_WRITE_00C, f"- {key}: ")
+            on_disk = sha(FILES[key])[:16] if os.path.exists(FILES[key]) else "ABSENT"
+            if rec is None or not rec.endswith(f", {on_disk})"):
+                problems.append(f"{key}: the write printout recorded {rec!r}, on disk {on_disk}")
+    want = modules_line(MODULES_00C)
+    for lab, path in (("dry run", P_DRY_00C), ("write", P_WRITE_00C)):
+        got = printout_line(path, "- modules: ")
+        if os.path.exists(path) and got != want:
+            problems.append(f"the windows-v2 {lab} was made by other code than the modules on disk (or carries no module line): {got}")
+    return problems
 
 
 rev = SimpleNamespace(covered_tree=covered_tree, minute_state=minute_state, sma_series=sma_series)
@@ -964,9 +1110,11 @@ def pins(doc: str = None, include_outputs: bool = True) -> dict:
     for name, path in FILES.items():
         p[name] = sha(checked(path)) if os.path.exists(path) else "ABSENT"
     p["subs_list"] = subs_list_sha()
-    for name in ("asis_common.py", "01_points.py", "forbidden_identifiers.txt"):
+    for name in ("asis_common.py", "01_points.py", "forbidden_identifiers.txt", "00c_windows_v2.py"):
         path = os.path.join(HERE, name)
         p[name] = sha(path) if os.path.exists(path) else "ABSENT"
+    p["dryrun00c_printout"] = sha(P_DRY_00C) if os.path.exists(P_DRY_00C) else "ABSENT"    # R42: the reproduction gate's printout
+    p["write00c_printout"] = sha(P_WRITE_00C) if os.path.exists(P_WRITE_00C) else "ABSENT"  # R42 (review F6): the write printout
     if include_outputs:
         p["dryrun_printout"] = sha(P_DRY) if os.path.exists(P_DRY) else "ABSENT"
         p["run_printout"] = sha(P_RUN) if os.path.exists(P_RUN) else "ABSENT"

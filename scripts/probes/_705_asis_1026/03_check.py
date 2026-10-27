@@ -34,7 +34,11 @@ STAGES  --dry-run    inputs, populations, the join's counts, the control populat
                      the dry-run printout sits below the doc's freeze marker, the ledger verifies and no output exists (run_gate '6b');
                      otherwise writes check_r1_r5.tsv, control_ranges.tsv and 03_check.txt, and appends the step6b_* ledger rows.
 
-Run:  python3 scripts/probes/_705_asis_1026/03_check.py --dry-run | --print-pins | --run
+        --archive    (re-run 2, asis_check_common R90) moves 6b's first-run files to *_run1 with `archive_run1_6b_*` ledger rows.
+  re-run 2 (2026-10-27): the windows are v2 (01_points R44); the population claims read ranges.tsv against the LOADED windows with §3.1's
+                    figures beside (R89); a dry run before step 5's re-run 2 STOPS on the absent ranges.tsv (R90); the bars are unchanged.
+
+Run:  python3 scripts/probes/_705_asis_1026/03_check.py --archive | --dry-run | --print-pins | --run
 No subagent, no network, no production server, no paid call, nothing after 2024-12-31, none of the seven outcome folders.
 """
 from __future__ import annotations
@@ -354,7 +358,7 @@ def beside_table(say, stmts: list, ranges: dict, engine, S) -> None:
     table(say, ["set", "side", "n", "median hold (sessions, max, the position's)", "flicker", "daily-only", "median frame clock ET", "bracket types"], rows)
 
 
-def report_populations(say, rows: list, stmts: list, ranges: dict, claims) -> dict:
+def report_populations(say, rows: list, stmts: list, ranges: dict, claims, windows: list = None) -> dict:
     say("\n## Populations")
     say(f"- v2 price batch: {len(rows):,} rows in {len(set(r['part'] for r in rows))} parts; " +
         ", ".join(f"{p} {n}" for p, n in sorted(collections.Counter(r['part'] for r in rows).items())))
@@ -420,12 +424,30 @@ def report_populations(say, rows: list, stmts: list, ranges: dict, claims) -> di
         claims("v2 price batch rows (freeze record: 434)", 434, len(rows))
         claims("R1 input: own + ticker Y + price stated (freeze record: 102)", 102, len(t1))
         claims("own + price stated at any ticker reading (freeze record: 174 'incl. amb')", 174, len(any_t))
-        claims("ranges.tsv sides (§3.1: 1,861 per side)", 3722, len(ranges))
-        claims("buy sides", 1861, sum(1 for (_e, sd) in ranges if sd == "buy"))
-        claims("sale sides", 1861, sum(1 for (_e, sd) in ranges if sd == "sale"))
-        claims("in-span buy windows (§3.1: 1,511)", 1511, sum(1 for r in ranges.values() if r["side"] == "buy" and r["in_span"] == "True"))
-        claims("in-span sale windows (§3.1: 1,538)", 1538, sum(1 for r in ranges.values() if r["side"] == "sale" and r["in_span"] == "True"))
-        claims("round trips (§2: 1,848)", 1848, sum(1 for v in eids.values() if len(v) == 2))
+        # R89: ranges.tsv against the LOADED windows (the v2 windows since re-run 2); §3.1's figures are the pre-fix facts, printed beside
+        ws = windows or []
+        wb, wsale = [w for w in ws if w[1] == "buy"], [w for w in ws if w[1] == "sale"]
+        in_span = lambda w: P.SPAN[0] <= w[4] <= P.SPAN[1]
+        w_eids = collections.defaultdict(set)
+        for w in ws:
+            w_eids[int(w[0])].add(w[1])
+        missing, extra, differ = K.ranges_vs_windows(ranges, ws)
+        say(f"- ranges.tsv against the loaded windows (R89): ranges keys with no window {len(missing)}, windows with no ranges row {len(extra)}, "
+            f"keys matched whose (sym, lo, hi) differ from the window's {len(differ)} (review F5)"
+            + (f" — e.g. {missing[:3]} / {extra[:3]} / {differ[:3]}" if missing or extra or differ else "")
+            + "; the pre-fix facts (§3.1, the original windows): 1,861 sides each way, 1,511 / 1,538 in span, 1,848 round trips")
+        claims("ranges.tsv sides = the loaded windows", len(ws), len(ranges))
+        claims("buy sides = the loaded buy windows", len(wb), sum(1 for (_e, sd) in ranges if sd == "buy"))
+        claims("sale sides = the loaded sale windows", len(wsale), sum(1 for (_e, sd) in ranges if sd == "sale"))
+        claims("in-span buy windows = the loaded in-span buys", sum(1 for w in wb if in_span(w)),
+               sum(1 for r in ranges.values() if r["side"] == "buy" and r["in_span"] == "True"))
+        claims("in-span sale windows = the loaded in-span sales", sum(1 for w in wsale if in_span(w)),
+               sum(1 for r in ranges.values() if r["side"] == "sale" and r["in_span"] == "True"))
+        claims("round trips = the loaded round trips", sum(1 for v in w_eids.values() if len(v) == 2), sum(1 for v in eids.values() if len(v) == 2))
+        claims("every ranges.tsv (eid, side) is a loaded window and every loaded window has a ranges row (R89: one generation)", (0, 0),
+               (len(missing), len(extra)))
+        claims("every matched ranges.tsv row's (sym, lo, hi) is the loaded window's (R89, review F5: the key check alone passes a subset generation)",
+               0, len(differ))
         claims("joined + ambiguous + none = the statements", jc["n"], jc["unique"] + jc["ambiguous"] + jc["none"])
         claims("the join never reads the action or a price (02_captions.join_position signature)",
                ["symbol", "day", "by_sym", "S"], list(CAP.join_position.__code__.co_varnames[:CAP.join_position.__code__.co_argcount]))
@@ -592,6 +614,7 @@ def main(argv=None) -> int:
     g.add_argument("--dry-run", action="store_true")
     g.add_argument("--print-pins", action="store_true")
     g.add_argument("--run", action="store_true")
+    g.add_argument("--archive", action="store_true", help="R90: move 6b's first-run files to *_run1 with ledger rows")
     a = ap.parse_args(argv)
     if a.print_pins:
         lines = [f"{k}\t{v}" for k, v in K.pins_6b().items()]
@@ -600,6 +623,17 @@ def main(argv=None) -> int:
             fh.write("\n".join(lines) + "\n")
         print(f"(written to {K.P03['pins']})")
         return 0
+    if a.archive:
+        try:
+            moved = C.archive_files(K.archive_items_6b(), K.ARCHIVE_SUFFIX_6B, K.ARCHIVE_STAGE_6B)
+        except K.GuardStop as ex:
+            print(f"REFUSED: {ex}")
+            return 3
+        for path, arc, s in moved:
+            print(f"archived {path} -> {arc} ({s[:16]}); ledger row {K.ARCHIVE_STAGE_6B}*")
+        bad = C.ledger_verify()
+        print("ledger verifies" if not bad else "LEDGER PROBLEMS: " + "; ".join(bad))
+        return 0 if not bad else 3
     say = Say()
     refused_to = K.P03["dry"] if a.dry_run else K.P03["refused"]
     if not K.preamble(say, "6b (the check against his words)", "DRY RUN" if a.dry_run else "RUN", SCAN_FILES, K.MODULE_FILES_6B, refused_to):
@@ -616,6 +650,11 @@ def main(argv=None) -> int:
     say("\n## Inputs")
     rows = K.read_sheets()
     say(f"- sheets: " + ", ".join(f"{os.path.basename(p)} {C.sha(p)[:16]}" for p in K.V2_SHEETS) + f"; wording v2 {C.sha(K.WORDING_V2)[:16]}")
+    if not os.path.exists(K.RANGES):                                   # R90: step 5's re-run has not written its ranges yet
+        say(f"STOPPED: ranges.tsv is absent ({K.RANGES}) — step 5's re-run 2 has not run; 6b reads the windows' ranges and cannot be dry-run "
+            "before it (order: 01 --run, then 03 --dry-run, --print-pins, paste, --run)")
+        say.write(refused_to)
+        return 2
     ranges = K.read_ranges()
     say(f"- ranges.tsv {C.sha(K.RANGES)[:16]} ({len(ranges):,} sides; its stated_* columns stay blank, R74)")
     tally = collections.Counter()
@@ -628,7 +667,7 @@ def main(argv=None) -> int:
     say(f"- windows: {len(windows):,} (the readers' tickers are joined to the panel symbol)")
     stmts = build_statements(rows, by_sym, holds, ranges, engine, S)
     claims = Claims(say) if a.dry_run else None
-    pop = report_populations(say, rows, stmts, ranges, claims)
+    pop = report_populations(say, rows, stmts, ranges, claims, windows)
     consistency_claim(stmts, ranges, engine, S, claims)
     controls = build_controls(stmts, by_sym, ranges, engine, S, say)
     report_controls(say, stmts, controls)

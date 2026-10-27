@@ -753,6 +753,10 @@ def test_run_gate_refuses_until_frozen(tmp_path, monkeypatch):
     monkeypatch.setattr(C, "OUTPUTS", {k: str(tmp_path / f"{k}.tsv") for k in ("candidates", "ranges", "coverage")})
     doc = tmp_path / "doc.md"
     doc.write_text("# body\n\n<!-- FREEZE -->\n")
+    # R46 (review F6): the windows-v2 gate is threaded through (its own reading is tested in test_asis_windows_v2; here it never reads real data)
+    monkeypatch.setattr(C, "windows_v2_gate", lambda: ["the windows-v2 dry run has not completed (synthetic)"])
+    assert any("windows-v2 dry run" in x for x in P.run_gate(str(doc)))
+    monkeypatch.setattr(C, "windows_v2_gate", lambda: [])
     problems = P.run_gate(str(doc))
     assert any("not completed" in x for x in problems) and any("pins not below" in x for x in problems)
     (tmp_path / "dry.txt").write_text("stuff\nRESULT: 3 claims, 2 OK, 1 MISMATCH\nDRY RUN COMPLETE\n")

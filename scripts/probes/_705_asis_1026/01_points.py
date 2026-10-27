@@ -142,14 +142,33 @@ READINGS where the plan is silent, ambiguous or contradicts itself (numbered on 
   R39 (re-run 1) The dry run prints the pull's effect BESIDE the claims: minute coverage of the in-span windows, before and after (all
       sessions covered, and width-1), by side, by window-end year (2020 / 2021 / 2022), and by bracket type; it asserts no window covered
       before becomes uncovered after.
+  R44 (re-run 2, 2026-10-27; his Ok to option A after 6b's R5 read 46 / 66) THE WINDOWS ARE v2: `load_all` ranges the windows of
+      `windows_v2/` (entries_v2 / exits_v2 / snapshots_v2, built by `00c_windows_v2.py` with gap-filling limited to single-frame misses —
+      the rule is in that module's docstring; its dry run carries the reproduction gate: the old rule rebuilt from snapshots.tsv reproduces
+      today's entries.tsv / exits.tsv / blip column with 0 differences, so the only change is the rule). The ORIGINAL windows are read
+      beside (`L["v1"]`, through the same `read_windows`, bracketed and reached the same way, never ranged): EVERY existing dry-run claim is
+      computed on them as before — they are pre-fix facts about the inventory's population — and the v2 count is printed beside each
+      block. The reachable-set coverage, the pull table, the ranges, the candidates and the density read the v2 windows (the ones the run
+      writes). `eid` is renumbered in v2 (a split position is two positions); a v1 eid never names a v2 window.
+  R45 (re-run 2) The archive is any-generation (asis_common R41): `--archive` moves re-run 1's five files (the dry-run printout, the run
+      printout, candidates / ranges / coverage) to `*_run2_prev` (`_run1` is run 1's) and writes `archive_run2_prev_*` ledger rows; it
+      refuses an existing target or a file that differs from its last ledger row. The re-run's own rows are staged `step5_rerun2_*`.
+  R46 (re-run 2) The pins gain the three v2 files, `00c_windows_v2.py`, its dry-run printout and its write printout (asis_common R42); the
+      `- modules:` line stays the three files that compute the run. The run gate also runs `asis_common.windows_v2_gate` (review F6): the
+      rebuild's dry run COMPLETE with 0 MISMATCH, its write COMPLETE with every recorded sha equal to the v2 file on disk, both made by the
+      two modules on disk — a --run never reads v2 windows that no passing dry run vouches for.
+  R47 (re-run 2) 02_captions (step 6a, done and pinned) keeps reading the ORIGINAL windows through `read_windows`' unchanged defaults;
+      6a's joins.tsv (v1 eids) is pinned, never read by 6b. 03_check reads the v2 windows through this module's `load_all`.
 BUILD HISTORY (the real-data crash-fix reruns, disclosed; see `BUILD_HISTORY`):
   2026-10-26 build: `R.Daily` shim missing (crash at load); tree B's 449 post-seal date files tripped the seal on LISTING (excluded
       unopened); F10 on split-adjusted prices (DRYS 2017: 11,700 levels; capped, R27); a mixed-key sort in the printout.
   2026-10-26 review fixes (this file): raw factor (R31), F9 dropped (R33), the run gates (R34), merged rows (R20), the clock /
       extended-hours flags (R35), the claims recast (R32); the dry run rerun after each.
   re-run 1 (2026-10-26): the minute pull (his 'Yes'), regular hours only; claims pre-pull, coverage post-pull beside (R37-R39).
+  re-run 2 (2026-10-27): windows v2 — gap-filling limited to single-frame misses (his Ok to option A); claims on the original windows,
+      the v2 counts beside (R44-R47).
 
-Run:  python3 scripts/probes/_705_asis_1026/01_points.py --dry-run | --print-pins | --run
+Run:  python3 scripts/probes/_705_asis_1026/01_points.py --archive | --dry-run | --print-pins | --run
 No subagent, no network, no production server, no paid call, nothing after 2024-12-31, none of the seven outcome folders.
 """
 from __future__ import annotations
@@ -233,6 +252,7 @@ BUILD_HISTORY = (   # R34: the real-data crash-fix reruns, printed in both print
     "re-run 1 (2026-10-26): the minute pull (his 'Yes'), regular hours only; claims pre-pull, coverage post-pull beside",
     "re-run 1 review fixes (2026-10-26): the before / after row is a module function (`pull_row`, testable); the ledger stage prefix is a "
     "constant (`RERUN_STAGE`); the fetch list's pair classifier is a function; the dry run rerun after each",
+    "re-run 2 (2026-10-27): windows v2 — gap-filling limited to single-frame misses (his Ok to option A)",
 )
 COVER_COLS = ["eid", "sym", "bar_sym", "side", "year", "in_span", "bracket", "n_sessions", "daily_sessions", "minute_sessions", "resolution",
               "daily_only_reason", "export", "export_fallback"]
@@ -1130,29 +1150,36 @@ def load_all(say, tally: collections.Counter) -> dict:
         C.checked(p)
     S = C.sealed_sessions()
     say(f"- calendar: {len(S.cal):,} sessions {S.cal[0]}..{S.cal[-1]} (the reader's cache, cut at {C.CUT_B})")
-    frames = read_frames(C.FILES["snapshots"])
-    say(f"- snapshots: {len(frames):,} frames, {sum(f.full for f in frames.values()):,} full")
-    buys, sales, ent = read_windows(frames, S, tally)
+    frames1 = read_frames(C.FILES["snapshots"])                        # R44: the ORIGINAL frame table and windows (the claims' population)
+    say(f"- snapshots: {len(frames1):,} frames, {sum(f.full for f in frames1.values()):,} full")
+    tally1 = collections.Counter()
+    buys1, sales1, ent1 = read_windows(frames1, S, tally1)
+    frames = read_frames(C.FILES["snapshots_v2"])                      # R44: the windows v2 — the ones this read ranges
+    buys, sales, ent = read_windows(frames, S, tally, C.FILES["entries_v2"], C.FILES["exits_v2"])
+    say(f"- windows v2 (R44, windows_v2/): {len(ent):,} positions, {len(buys):,} buy / {len(sales):,} sale windows; the original "
+        f"(the claims' population, read beside): {len(ent1):,} / {len(buys1):,} / {len(sales1):,}; frames v2 {len(frames):,} "
+        f"({sum(f.full for f in frames.values()):,} full)")
     lex = C.load_lexicon()
     alias = C.load_alias(lex, tally)
     alias2 = C.extend_alias_renames(alias, lex, tally)
     say(f"- lexicon {len(lex):,} symbols; alias map {len(alias):,} (signature {tally['alias_signature']}, dedupe {tally['alias_dedupe']}); "
         f"rename table added {tally['alias_rename_table']} (R8)")
-    for w in buys + sales:
-        w.year = int(w.hi[:4])
-        w.in_span = SPAN[0] <= w.hi <= SPAN[1]
-        w.bracket = type_bracket(w, S)
-        reachable(w, S)
-        w.sym_a_orig = w.sym_a
-        if w.sym in alias2 and w.sym_a == w.sym:
-            w.sym_a = alias2[w.sym]
-            tally[f"renamed_{w.side}"] += 1
+    for ws, t in ((buys + sales, tally), (buys1 + sales1, tally1)):
+        for w in ws:
+            w.year = int(w.hi[:4])
+            w.in_span = SPAN[0] <= w.hi <= SPAN[1]
+            w.bracket = type_bracket(w, S)
+            reachable(w, S)
+            w.sym_a_orig = w.sym_a
+            if w.sym in alias2 and w.sym_a == w.sym:
+                w.sym_a = alias2[w.sym]
+                t[f"renamed_{w.side}"] += 1
     by_eid = {w.eid: w for w in buys}
     for w in sales:
         bw = by_eid.get(w.eid)
         if bw is not None:
             w.hold_min, w.hold_max = hold_sessions(bw, w, S)
-    keep = {w.sym for w in buys + sales} | {w.sym_a for w in buys + sales} | set(alias2.values())
+    keep = {w.sym for w in buys + sales + buys1 + sales1} | {w.sym_a for w in buys + sales + buys1 + sales1} | set(alias2.values())
     dailies = {}
     for ex in ("A", "B"):
         t1 = time.time()
@@ -1188,7 +1215,8 @@ def load_all(say, tally: collections.Counter) -> dict:
         f"read, {panel['_counts']['rows_pct_ok']:,} agreeing with the bars")
     say(f"- loaded in {time.time() - t0:.0f}s")
     return {"S": S, "frames": frames, "buys": buys, "sales": sales, "ent": ent, "lex": lex, "alias": alias2, "bars": bars, "panel": panel,
-            "dailies": dailies, "store": store, "rawmap": rawmap, "splits": splits}
+            "dailies": dailies, "store": store, "rawmap": rawmap, "splits": splits,
+            "v1": {"frames": frames1, "buys": buys1, "sales": sales1, "ent": ent1, "tally": tally1}}      # R44: the original, beside
 
 
 def preload_minutes(L: dict, say) -> None:
@@ -1250,61 +1278,76 @@ def pull_row(side: str, label: str, ws_: list, bars, S) -> list:
 def report(L: dict, R: dict, say, claims: "Claims | None", tally: collections.Counter) -> None:
     S, buys, sales = L["S"], L["buys"], L["sales"]
     ent = L["ent"]
-    say("\n## Population (data.md §0, §2.1, §2.3)")
+    # R44: every claim below is made on the ORIGINAL windows (pre-fix facts about the inventory's population); the v2 count prints beside
+    V = L["v1"]
+    buys1, sales1, ent1, tally1, frames1 = V["buys"], V["sales"], V["ent"], V["tally"], V["frames"]
+    say("\n## Population (data.md §0, §2.1, §2.3) — the claims on the ORIGINAL windows (R44), the windows v2 beside")
     if claims:
-        claims("positions (entries.tsv rows)", 1874, len(ent))
-        claims("buy windows", 1861, len(buys))
-        claims("sale windows", 1861, len(sales))
-        claims("round trips (both windows)", 1848, len({w.eid for w in buys} & {w.eid for w in sales}))
-        claims("initial holdings", 13, tally["initial"])
-        claims("still held at the end", 13, tally["still_held"])
-        claims("flickers", 659, tally["flicker"])
-        claims("inverted buy windows", 34, tally["buy_inverted"])
-        claims("inverted sale windows (recomputed)", 38, tally["sale_inverted"])
-        claims("sale windows reproduced from snapshots.tsv", 1861, tally["exit_windows_reproduced"])
-        claims("snapshots", 2907, len(L["frames"]))
-        claims("full snapshots", 2082, sum(f.full for f in L["frames"].values()))
+        claims("positions (entries.tsv rows)", 1874, len(ent1))
+        claims("buy windows", 1861, len(buys1))
+        claims("sale windows", 1861, len(sales1))
+        claims("round trips (both windows)", 1848, len({w.eid for w in buys1} & {w.eid for w in sales1}))
+        claims("initial holdings", 13, tally1["initial"])
+        claims("still held at the end", 13, tally1["still_held"])
+        claims("flickers", 659, tally1["flicker"])
+        claims("inverted buy windows", 34, tally1["buy_inverted"])
+        claims("inverted sale windows (recomputed)", 38, tally1["sale_inverted"])
+        claims("sale windows reproduced from snapshots.tsv", 1861, tally1["exit_windows_reproduced"])
+        claims("snapshots", 2907, len(frames1))
+        claims("full snapshots", 2082, sum(f.full for f in frames1.values()))
         claims("calendar sessions to 2024-12-31", 2264, len(S.cal))
         pc = L["panel"]["_counts"]
         claims("panel rows", 41099, pc["rows"])
         claims("panel rows with a % read", 39137, pc["rows_with_pct"])
         claims("panel rows agreeing with the bars", 34355, pc["rows_pct_ok"])
-    say("\n## Counts by year (year of the window end)")
+    say(f"- windows v2 beside (R44): positions {len(ent):,}, buy windows {len(buys):,}, sale windows {len(sales):,}, round trips "
+        f"{len({w.eid for w in buys} & {w.eid for w in sales}):,}, initial {tally['initial']}, still held {tally['still_held']}, flickers {tally['flicker']}, "
+        f"inverted buy {tally['buy_inverted']} / sale {tally['sale_inverted']}, sale windows reproduced from snapshots_v2.tsv "
+        f"{tally['exit_windows_reproduced']} of {len(sales)}; frames v2 {len(L['frames']):,} ({sum(f.full for f in L['frames'].values()):,} full)")
+    if claims:
+        claims("v2: every sale window reproduced from snapshots_v2.tsv (R40)", len(sales), tally["exit_windows_reproduced"])
+        claims("v2: positions >= the original (a dropped fill never merges)", True, len(ent) >= len(ent1))
+    say("\n## Counts by year (year of the window end) — the claims on the original; v2 beside")
     years = [2017, 2018, 2019, 2020, 2021, 2022, 2023]
     exp_buy = {2017: 81, 2018: 16, 2019: 198, 2020: 803, 2021: 583, 2022: 132, 2023: 48}
     exp_sale = {2017: 46, 2018: 48, 2019: 184, 2020: 814, 2021: 589, 2022: 139, 2023: 41}
     rows = []
-    for side, ws, exp in (("buys", buys, exp_buy), ("sales", sales, exp_sale)):
+    for side, ws, ws2, exp in (("buys", buys1, buys, exp_buy), ("sales", sales1, sales, exp_sale)):
         cnt = collections.Counter(w.year for w in ws)
-        rows.append([side] + [cnt.get(y, 0) for y in years] + [len(ws)])
+        cnt2 = collections.Counter(w.year for w in ws2)
+        rows.append([side + " (original)"] + [cnt.get(y, 0) for y in years] + [len(ws)])
+        rows.append([side + " (v2)"] + [cnt2.get(y, 0) for y in years] + [len(ws2)])
         if claims:
             claims(f"{side} by year 2017..2023", [exp[y] for y in years], [cnt.get(y, 0) for y in years])
     table(say, ["side"] + [str(y) for y in years] + ["total"], rows)
-    say("\n## Primary span (window end 2020-01-01..2022-06-30) — data.md §3, plan §3.1")
+    say("\n## Primary span (window end 2020-01-01..2022-06-30) — data.md §3, plan §3.1 (claims on the original; v2 beside)")
     bs, ss = [w for w in buys if w.in_span], [w for w in sales if w.in_span]
+    bs1, ss1 = [w for w in buys1 if w.in_span], [w for w in sales1 if w.in_span]
     if claims:
-        claims("buys in span", 1511, len(bs))
-        claims("sales in span", 1538, len(ss))
-        claims("flicker buys in span", 565, sum(w.flicker for w in bs))
-        claims("flicker sales in span", 567, sum(w.flicker for w in ss))
-        claims("inverted buys in span", 21, sum(w.inverted for w in bs))
-        claims("inverted sales in span", 26, sum(w.inverted for w in ss))
+        claims("buys in span", 1511, len(bs1))
+        claims("sales in span", 1538, len(ss1))
+        claims("flicker buys in span", 565, sum(w.flicker for w in bs1))
+        claims("flicker sales in span", 567, sum(w.flicker for w in ss1))
+        claims("inverted buys in span", 21, sum(w.inverted for w in bs1))
+        claims("inverted sales in span", 26, sum(w.inverted for w in ss1))
+    say(f"- v2 beside: buys in span {len(bs):,} (flicker {sum(w.flicker for w in bs)}, inverted {sum(w.inverted for w in bs)}), sales in span "
+        f"{len(ss):,} (flicker {sum(w.flicker for w in ss)}, inverted {sum(w.inverted for w in ss)})")
     say("\n## Bracket types (data.md §2.5; the plan's §3.2 rows with `other` split as the inventory's two rows) — R28 / R32: the claims are the"
-        " IN-SPAN vectors, the in-span bracket_other and the all-years sum other + 6+; the all-years split is a readout")
+        " IN-SPAN vectors, the in-span bracket_other and the all-years sum other + 6+; the all-years split is a readout (on the original windows)")
     exp_b = {"same_in_in": (338, 289), "same_pre_in": (436, 271), "same_other": (31, 35), "next_in_pre": (318, 490), "next_in_in": (64, 81),
              "next_other": (73, 39), "sessions_2_5": (353, 395), "sessions_6plus": (248, 261)}
     exp_span = {"same_in_in": (301, 252), "same_pre_in": (400, 252), "same_other": (21, 26), "next_in_pre": (305, 460), "next_in_in": (44, 74),
                 "next_other": (62, 35), "sessions_2_5": (287, 341), "sessions_6plus": (91, 98)}
-    cb_, cs_ = collections.Counter(w.bracket for w in buys), collections.Counter(w.bracket for w in sales)
+    cb_, cs_ = collections.Counter(w.bracket for w in buys1), collections.Counter(w.bracket for w in sales1)
     # the inventory types the inverted windows by their frames (they sit inside its two `other` rows): count them that way for the claims
-    cb_inv = collections.Counter(type_bracket_frames(w, S) for w in buys)
-    cs_inv = collections.Counter(type_bracket_frames(w, S) for w in sales)
-    cb_sp = collections.Counter(type_bracket_frames(w, S) for w in buys if w.in_span)
-    cs_sp = collections.Counter(type_bracket_frames(w, S) for w in sales if w.in_span)
+    cb_inv = collections.Counter(type_bracket_frames(w, S) for w in buys1)
+    cs_inv = collections.Counter(type_bracket_frames(w, S) for w in sales1)
+    cb_sp = collections.Counter(type_bracket_frames(w, S) for w in buys1 if w.in_span)
+    cs_sp = collections.Counter(type_bracket_frames(w, S) for w in sales1 if w.in_span)
     rows = [[BRACKET_WORDS[b], cb_inv.get(b, 0), exp_b[b][0], cb_sp.get(b, 0), exp_span[b][0], cs_inv.get(b, 0), exp_b[b][1], cs_sp.get(b, 0), exp_span[b][1]]
             for b in exp_b]
-    rows.append(["inverted (plan's row; inside the inventory's `other` rows)", cb_.get("inverted", 0), 34, sum(w.inverted for w in bs), 21,
-                 cs_.get("inverted", 0), 38, sum(w.inverted for w in ss), 26])
+    rows.append(["inverted (plan's row; inside the inventory's `other` rows)", cb_.get("inverted", 0), 34, sum(w.inverted for w in bs1), 21,
+                 cs_.get("inverted", 0), 38, sum(w.inverted for w in ss1), 26])
     table(say, ["bracket (frames)", "buys", "inventory", "buys span", "inventory", "sales", "inventory", "sales span", "inventory"], rows)
     oth = ("same_other", "next_other", "sessions_6plus")
     say(f"- all-years other + 6+ (buys): build {[cb_inv.get(b, 0) for b in oth]} vs inventory {[exp_b[b][0] for b in oth]}; sales build "
@@ -1319,64 +1362,74 @@ def report(L: dict, R: dict, say, claims: "Claims | None", tally: collections.Co
         claims("buys all years, other + 6+ together", 31 + 73 + 248, sum(cb_inv.get(b, 0) for b in oth))
         claims("sales all years, other + 6+ together", 35 + 39 + 261, sum(cs_inv.get(b, 0) for b in oth))
         claims("bracket_other buys in span (inventory's in-span other rows 21 + 62 less the 21 inverted)", 62,
-               sum(1 for w in bs if w.bracket in ("same_other", "next_other")))
+               sum(1 for w in bs1 if w.bracket in ("same_other", "next_other")))
         claims("bracket_other sales in span (inventory's in-span other rows 26 + 35 less the 26 inverted)", 35,
-               sum(1 for w in ss if w.bracket in ("same_other", "next_other")))
+               sum(1 for w in ss1 if w.bracket in ("same_other", "next_other")))
         say(f"- (readout, not a claim) all-years bracket_other: buys {cb_.get('same_other', 0) + cb_.get('next_other', 0)} / plan §3.2 70, sales "
             f"{cs_.get('same_other', 0) + cs_.get('next_other', 0)} / plan §3.2 36 — the plan's figures are the inventory's inconsistent split less "
             "the inverted (R28); the main loop decides whether the plan's table is corrected")
-    say("\n## Same-day bracket widths in minutes (data.md §2.5)")
+    say("- the windows v2 by bracket type (R44; the typing of this read, inverted its own row), all years / in span:")
+    cb2, cs2 = collections.Counter(w.bracket for w in buys), collections.Counter(w.bracket for w in sales)
+    cb2s, cs2s = collections.Counter(w.bracket for w in bs), collections.Counter(w.bracket for w in ss)
+    table(say, ["bracket", "buys v2", "buys v2 span", "sales v2", "sales v2 span"],
+          [[BRACKET_WORDS[b], cb2.get(b, 0), cb2s.get(b, 0), cs2.get(b, 0), cs2s.get(b, 0)] for b in BRACKETS])
+    say("\n## Same-day bracket widths in minutes (data.md §2.5) — the claims on the original; v2 rows beside")
     rows = []
-    for side, ws in (("BUY", buys), ("SALE", sales)):
-        for b in ("same_in_in", "same_pre_in"):
-            sel = [w for w in ws if w.bracket == b]
-            widths, nonpos = [], 0
-            for w in sel:
-                ma, mb = clock_minute(w.earlier.clock), clock_minute(w.later.clock)
-                if ma is None or mb is None:
-                    continue
-                if b == "same_pre_in":
-                    ma = 0
-                wd = mb - ma
-                if wd <= 0:
-                    nonpos += 1
-                else:
-                    widths.append(wd)
-            med = statistics.median(widths) if widths else ""
-            rows.append([side, BRACKET_WORDS[b], len(sel), nonpos, med])
-            if claims and med != "":
-                claims(f"{side} {b} median width (min; tolerance 1: the inventory prints integer medians, R36)",
-                       {"BUYsame_in_in": 31, "BUYsame_pre_in": 38, "SALEsame_in_in": 31, "SALEsame_pre_in": 44}[side + b], med, tol=1.0)
-    table(say, ["side", "bracket", "n", "width <= 0", "median width"], rows)
+    for tag, bb, ssx in (("original", buys1, sales1), ("v2", buys, sales)):
+        for side, ws in (("BUY", bb), ("SALE", ssx)):
+            for b in ("same_in_in", "same_pre_in"):
+                sel = [w for w in ws if w.bracket == b]
+                widths, nonpos = [], 0
+                for w in sel:
+                    ma, mb = clock_minute(w.earlier.clock), clock_minute(w.later.clock)
+                    if ma is None or mb is None:
+                        continue
+                    if b == "same_pre_in":
+                        ma = 0
+                    wd = mb - ma
+                    if wd <= 0:
+                        nonpos += 1
+                    else:
+                        widths.append(wd)
+                med = statistics.median(widths) if widths else ""
+                rows.append([tag, side, BRACKET_WORDS[b], len(sel), nonpos, med])
+                if claims and med != "" and tag == "original":
+                    claims(f"{side} {b} median width (min; tolerance 1: the inventory prints integer medians, R36)",
+                           {"BUYsame_in_in": 31, "BUYsame_pre_in": 38, "SALEsame_in_in": 31, "SALEsame_pre_in": 44}[side + b], med, tol=1.0)
+    table(say, ["windows", "side", "bracket", "n", "width <= 0", "median width"], rows)
     say("\n## Coverage in the span, the inventory's definitions (data.md §3.1-3.2; before the rename extension these are the claims) — "
-        "R37: computed on the six PRE-PULL trees, " + "+".join(C.PRE_PULL_TREES) + " (the pull's tree is not in these numbers)")
+        "R37: computed on the six PRE-PULL trees, " + "+".join(C.PRE_PULL_TREES) + " (the pull's tree is not in these numbers); the claims on "
+        "the ORIGINAL windows (R44), the v2 rows beside")
     bars = L["bars"]
     rows = []
-    for side, ws, exp_d, exp_m, exp_none, exp_d1, exp_m1 in (("BUY", bs, 88.7, 70.4, 168, 91.3, 76.0), ("SALE", ss, 88.8, 60.5, 172, 89.9, 64.9)):
-        cov = [inventory_coverage(w, bars, S) for w in ws]
-        d_all = sum(c[0] for c in cov)
-        d_none = sum(1 for c in cov if not c[1])
-        m_all = sum(c[2] for c in cov)
-        one = [c for w, c in zip(ws, cov) if S.le(w.hi) == S.le(w.lo)]
-        rows.append([side, len(ws), pct(d_all, len(ws)), d_none, pct(m_all, len(ws)), len(one), pct(sum(c[0] for c in one), len(one)), pct(sum(c[2] for c in one), len(one))])
-        if claims:
-            claims(f"{side} every session has a daily bar (%)", exp_d, round(100.0 * d_all / len(ws), 1), tol=0.15)
-            claims(f"{side} no session has a daily bar", exp_none, d_none)
-            claims(f"{side} every session has minute bars (%)", exp_m, round(100.0 * m_all / len(ws), 1), tol=0.15)
-            claims(f"{side} width-1 daily (%)", exp_d1, round(100.0 * sum(c[0] for c in one) / len(one), 1), tol=0.15)
-            claims(f"{side} width-1 minute (%)", exp_m1, round(100.0 * sum(c[2] for c in one) / len(one), 1), tol=0.15)
-    table(say, ["side", "n", "daily all sessions", "daily none", "minute all sessions", "width-1 n", "width-1 daily", "width-1 minute"], rows)
-    say(f"- the rename table (R8) re-pointed {tally['renamed_buy']} buy and {tally['renamed_sale']} sale windows (GSX -> GOTU, SBE -> CHPT); "
-        "after it (span):")
+    for tag, pairs in (("original", (("BUY", bs1), ("SALE", ss1))), ("v2", (("BUY", bs), ("SALE", ss)))):
+        for (side, ws), (exp_d, exp_m, exp_none, exp_d1, exp_m1) in zip(pairs, ((88.7, 70.4, 168, 91.3, 76.0), (88.8, 60.5, 172, 89.9, 64.9))):
+            cov = [inventory_coverage(w, bars, S) for w in ws]
+            d_all = sum(c[0] for c in cov)
+            d_none = sum(1 for c in cov if not c[1])
+            m_all = sum(c[2] for c in cov)
+            one = [c for w, c in zip(ws, cov) if S.le(w.hi) == S.le(w.lo)]
+            rows.append([tag, side, len(ws), pct(d_all, len(ws)), d_none, pct(m_all, len(ws)), len(one), pct(sum(c[0] for c in one), len(one)), pct(sum(c[2] for c in one), len(one))])
+            if claims and tag == "original":
+                claims(f"{side} every session has a daily bar (%)", exp_d, round(100.0 * d_all / len(ws), 1), tol=0.15)
+                claims(f"{side} no session has a daily bar", exp_none, d_none)
+                claims(f"{side} every session has minute bars (%)", exp_m, round(100.0 * m_all / len(ws), 1), tol=0.15)
+                claims(f"{side} width-1 daily (%)", exp_d1, round(100.0 * sum(c[0] for c in one) / len(one), 1), tol=0.15)
+                claims(f"{side} width-1 minute (%)", exp_m1, round(100.0 * sum(c[2] for c in one) / len(one), 1), tol=0.15)
+    table(say, ["windows", "side", "n", "daily all sessions", "daily none", "minute all sessions", "width-1 n", "width-1 daily", "width-1 minute"], rows)
+    say(f"- the rename table (R8) re-pointed {tally1['renamed_buy']} buy and {tally1['renamed_sale']} sale windows of the original "
+        f"({tally['renamed_buy']} / {tally['renamed_sale']} of v2) (GSX -> GOTU, SBE -> CHPT); after it (span):")
     rows = []
-    for side, ws in (("BUY", bs), ("SALE", ss)):
-        cov = [inventory_coverage(w, bars, S, renamed=True) for w in ws]
-        rows.append([side, len(ws), pct(sum(c[0] for c in cov), len(ws)), sum(1 for c in cov if not c[1]), pct(sum(c[2] for c in cov), len(ws))])
-    table(say, ["side", "n", "daily all sessions", "daily none", "minute all sessions"], rows)
+    for tag, pairs in (("original", (("BUY", bs1), ("SALE", ss1))), ("v2", (("BUY", bs), ("SALE", ss)))):
+        for side, ws in pairs:
+            cov = [inventory_coverage(w, bars, S, renamed=True) for w in ws]
+            rows.append([tag, side, len(ws), pct(sum(c[0] for c in cov), len(ws)), sum(1 for c in cov if not c[1]), pct(sum(c[2] for c in cov), len(ws))])
+    table(say, ["windows", "side", "n", "daily all sessions", "daily none", "minute all sessions"], rows)
     say("\n## Minute coverage BEFORE and AFTER the pull (R37 / R39: his 'Yes' 2026-10-26, regular hours only — his note: 'he doesn't buy "
         "premarket'; before = the six pre-pull trees, the claims above; after = those + the pull's tree, " + "+".join(C.TREE_ORDER) + ")")
     say("- 'minute all sessions' = every session of the window has minute bars under the inventory's bar symbol; 'width-1' = a one-session "
-        "window; same windows both sides of each pair, the rename table NOT applied (the claims' definition); in-span windows only")
+        "window; same windows both sides of each pair, the rename table NOT applied (the claims' definition); in-span windows only — the "
+        "WINDOWS v2 here (R44: the windows this read ranges), the claims above being on the original")
     pull_rows = []
 
     def pull_line(side, label, ws_):
@@ -1558,6 +1611,7 @@ def main(argv=None) -> int:
     g.add_argument("--dry-run", action="store_true")
     g.add_argument("--print-pins", action="store_true")
     g.add_argument("--run", action="store_true")
+    g.add_argument("--archive", action="store_true", help="R45: move the previous re-run's five files to *_run2_prev with ledger rows")
     a = ap.parse_args(argv)
     if a.print_pins:
         lines = [f"{k}\t{v}" for k, v in C.pins().items()]
@@ -1566,6 +1620,17 @@ def main(argv=None) -> int:
             fh.write("\n".join(lines) + "\n")
         print(f"(written to {C.P_PINS})")
         return 0
+    if a.archive:
+        try:
+            moved = C.archive_files(archive_items(), ARCHIVE_SUFFIX, ARCHIVE_STAGE)
+        except GuardStop as ex:
+            print(f"REFUSED: {ex}")
+            return 3
+        for path, arc, s in moved:
+            print(f"archived {path} -> {arc} ({s[:16]}); ledger row {ARCHIVE_STAGE}*")
+        bad = C.ledger_verify()
+        print("ledger verifies" if not bad else "LEDGER PROBLEMS: " + "; ".join(bad))
+        return 0 if not bad else 3
     say = Say()
     tally = collections.Counter()
     stage = "DRY RUN" if a.dry_run else "RUN"
@@ -1624,8 +1689,16 @@ def main(argv=None) -> int:
     return 0
 
 
-RERUN_STAGE = "step5_rerun1_"       # R38: the ledger stage prefix of the re-run (run 1's rows are "step5_*"; the two must never share a name)
+RERUN_STAGE = "step5_rerun2_"       # R38 / R45: the ledger stage prefix of THIS re-run (run 1's rows are "step5_*", re-run 1's "step5_rerun1_*")
+ARCHIVE_SUFFIX = "_run2_prev"       # R45: re-run 1's files, archived before re-run 2 (the `_run1` suffix is run 1's)
+ARCHIVE_STAGE = "archive_run2_prev_"  # R45: the ledger stage prefix of those archive rows
 MODULE_FILES = ("asis_common.py", "01_points.py", "forbidden_identifiers.txt")
+
+
+def archive_items() -> list:
+    """R45: the five files a step-5 run leaves behind, keyed as their ledger rows are: the dry-run printout, the run printout, the three
+    outputs."""
+    return [("dry_run", C.P_DRY), ("points", C.P_RUN)] + [(k, p) for k, p in C.OUTPUTS.items()]
 
 
 def module_shas_line() -> str:
@@ -1676,6 +1749,7 @@ def run_gate(doc: str = None) -> list:
         if ml != module_shas_line():
             problems.append("the dry run was made by other code than the modules on disk (or carries no module line): rerun --dry-run first"
                             + (f" (dry run: {ml})" if ml else ""))
+    problems.extend(C.windows_v2_gate())          # R46 (review F6): the v2 windows' own dry run / write printouts vouch for the pinned files
     p = C.pins(doc, include_outputs=False)
     p["dryrun_printout"] = C.sha(C.P_DRY) if os.path.exists(C.P_DRY) else "ABSENT"
     miss = C.freeze_missing(doc or C.DOC, p)

@@ -1,0 +1,306 @@
+# #705 as-is STEP 5 — DRY RUN (2026-10-26 20:32)
+Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders (asis_common copies). No rule, setup name or pattern label enters.
+- identifier scan: clean (the step-5 modules hold none of the excluded names)
+- import belt: no rule module in sys.modules
+- modules: asis_common.py 89116c1ab9dc7aa2 01_points.py 0864c933d7e8364d forbidden_identifiers.txt ba8f4bb5f23f2325
+- build history (R34): 2026-10-26 build: `R.Daily` shim missing (crash at load); tree B's 449 post-seal date files tripped the seal on listing (now excluded unopened); F10 on split-adjusted prices (DRYS 2017: 11,700 levels; capped, R27); a mixed-key sort in the printout | 2026-10-26 review fixes: raw factor (R31), F9 dropped (R33), the run gates (R34), merged rows (R20), clock / extended-hours flags (R35), the bracket claims recast (R32); the dry run rerun after each | re-run 1 (2026-10-26): the minute pull (his 'Yes'), regular hours only; claims pre-pull, coverage post-pull beside | re-run 1 review fixes (2026-10-26): the before / after row is a module function (`pull_row`, testable); the ledger stage prefix is a constant (`RERUN_STAGE`); the fetch list's pair classifier is a function; the dry run rerun after each
+
+## Inputs
+- calendar: 2,264 sessions 2016-01-04..2024-12-31 (the reader's cache, cut at 2024-12-31)
+- snapshots: 2,907 frames, 2,082 full
+- lexicon 22,744 symbols; alias map 574 (signature 504, dedupe 70); rename table added 2 (R8)
+- export A: 12,005,007 rows read, 1,235,568 kept for 1,247 names, 0 dated after the cut dropped at read; calendar 2016-01-04..2022-06-30 = the reader's (2s)
+- export B: 13,830,569 rows read, 556,450 kept for 1,247 names, 5,210,943 dated after the cut dropped at read; calendar 2021-09-27..2024-12-31 = the reader's (3s)
+- minute trees: A 1,219 date files / 149,587 logged pairs, B 691 date files / 80,858 logged pairs, EP 48 date files / 196 logged pairs, EP2 36 date files / 39 logged pairs, REV 508 date files / 1,322 logged pairs, INTRA 1,005 date files / 19,470 logged pairs, ASIS 484 date files / 1,721 logged pairs; date files after the seal left unopened: B 449
+- raw closes (R12): 12,005,007 rows read, 701,185 kept for 573 of 683 bar symbols, 0 dated after the cut dropped at read; split list 3,864 splits of 3,063 names to the seal, 3,090 after it dropped at read (1s)
+- panel: 2,977 panel frames, 41,099 rows, 39,137 with a % read, 34,355 agreeing with the bars
+- loaded in 8s
+- minutes preloaded: 4,498 (session, symbol) pairs -> empty 378, ok 4,120; files read A 309, ASIS 484, B 11, EP 15, EP2 32, INTRA 413, REV 447 (6s)
+- candidates built for 3,722 sides in 10s: 212,497 rows
+
+## Population (data.md §0, §2.1, §2.3)
+  [OK] positions (entries.tsv rows): expected 1874, got 1874
+  [OK] buy windows: expected 1861, got 1861
+  [OK] sale windows: expected 1861, got 1861
+  [OK] round trips (both windows): expected 1848, got 1848
+  [OK] initial holdings: expected 13, got 13
+  [OK] still held at the end: expected 13, got 13
+  [OK] flickers: expected 659, got 659
+  [OK] inverted buy windows: expected 34, got 34
+  [OK] inverted sale windows (recomputed): expected 38, got 38
+  [OK] sale windows reproduced from snapshots.tsv: expected 1861, got 1861
+  [OK] snapshots: expected 2907, got 2907
+  [OK] full snapshots: expected 2082, got 2082
+  [OK] calendar sessions to 2024-12-31: expected 2264, got 2264
+  [OK] panel rows: expected 41099, got 41099
+  [OK] panel rows with a % read: expected 39137, got 39137
+  [OK] panel rows agreeing with the bars: expected 34355, got 34355
+
+## Counts by year (year of the window end)
+  [OK] buys by year 2017..2023: expected [81, 16, 198, 803, 583, 132, 48], got [81, 16, 198, 803, 583, 132, 48]
+  [OK] sales by year 2017..2023: expected [46, 48, 184, 814, 589, 139, 41], got [46, 48, 184, 814, 589, 139, 41]
+  side   2017  2018  2019  2020  2021  2022  2023  total
+  buys   81    16    198   803   583   132   48    1861 
+  sales  46    48    184   814   589   139   41    1861 
+
+## Primary span (window end 2020-01-01..2022-06-30) — data.md §3, plan §3.1
+  [OK] buys in span: expected 1511, got 1511
+  [OK] sales in span: expected 1538, got 1538
+  [OK] flicker buys in span: expected 565, got 565
+  [OK] flicker sales in span: expected 567, got 567
+  [OK] inverted buys in span: expected 21, got 21
+  [OK] inverted sales in span: expected 26, got 26
+
+## Bracket types (data.md §2.5; the plan's §3.2 rows with `other` split as the inventory's two rows) — R28 / R32: the claims are the IN-SPAN vectors, the in-span bracket_other and the all-years sum other + 6+; the all-years split is a readout
+  bracket (frames)                                            buys  inventory  buys span  inventory  sales  inventory  sales span  inventory
+  same day, in-session -> in-session                          338   338        301        301        289    289        252         252      
+  same day, pre-market -> in-session                          436   436        400        400        271    271        252         252      
+  same day, other clock pairs                                 34    31         21         21         38     35         26          26       
+  next session, in-session -> pre-market                      318   318        305        305        490    490        460         460      
+  next session, in-session -> in-session                      64    64         44         44         81     81         74          74       
+  next session, other                                         76    73         62         62         41     39         35          35       
+  2-5 sessions apart                                          353   353        287        287        395    395        341         341      
+  6+ sessions apart                                           242   248        91         91         256    261        98          98       
+  inverted (plan's row; inside the inventory's `other` rows)  34    34         21         21         38     38         26          26       
+- all-years other + 6+ (buys): build [34, 76, 242] vs inventory [31, 73, 248]; sales build [38, 41, 256] vs inventory [35, 39, 261] — the split differs by 6 buys / 5 sales, all OUTSIDE the span (R28: 2017-19 Sunday frames and pre -> pre pairs); the in-span column agrees on every row
+  [OK] buys by bracket type, in span (inventory typing): expected [301, 400, 21, 305, 44, 62, 287, 91], got [301, 400, 21, 305, 44, 62, 287, 91]
+  [OK] sales by bracket type, in span (inventory typing): expected [252, 252, 26, 460, 74, 35, 341, 98], got [252, 252, 26, 460, 74, 35, 341, 98]
+  [OK] buys by bracket type, all years, the six undisputed rows: expected [338, 436, 318, 64, 353], got [338, 436, 318, 64, 353]
+  [OK] sales by bracket type, all years, the six undisputed rows: expected [289, 271, 490, 81, 395], got [289, 271, 490, 81, 395]
+  [OK] buys all years, other + 6+ together: expected 352, got 352
+  [OK] sales all years, other + 6+ together: expected 335, got 335
+  [OK] bracket_other buys in span (inventory's in-span other rows 21 + 62 less the 21 inverted): expected 62, got 62
+  [OK] bracket_other sales in span (inventory's in-span other rows 26 + 35 less the 26 inverted): expected 35, got 35
+- (readout, not a claim) all-years bracket_other: buys 76 / plan §3.2 70, sales 41 / plan §3.2 36 — the plan's figures are the inventory's inconsistent split less the inverted (R28); the main loop decides whether the plan's table is corrected
+
+## Same-day bracket widths in minutes (data.md §2.5)
+  [OK] BUY same_in_in median width (min; tolerance 1: the inventory prints integer medians, R36): expected 31, got 31
+  [OK] BUY same_pre_in median width (min; tolerance 1: the inventory prints integer medians, R36): expected 38, got 38.5
+  [OK] SALE same_in_in median width (min; tolerance 1: the inventory prints integer medians, R36): expected 31, got 31.0
+  [OK] SALE same_pre_in median width (min; tolerance 1: the inventory prints integer medians, R36): expected 44, got 43.5
+  side  bracket                             n    width <= 0  median width
+  BUY   same day, in-session -> in-session  338  9           31          
+  BUY   same day, pre-market -> in-session  436  10          38.5        
+  SALE  same day, in-session -> in-session  289  11          31.0        
+  SALE  same day, pre-market -> in-session  271  3           43.5        
+
+## Coverage in the span, the inventory's definitions (data.md §3.1-3.2; before the rename extension these are the claims) — R37: computed on the six PRE-PULL trees, A+B+EP+EP2+REV+INTRA (the pull's tree is not in these numbers)
+  [OK] BUY every session has a daily bar (%): expected 88.7, got 88.7
+  [OK] BUY no session has a daily bar: expected 168, got 168
+  [OK] BUY every session has minute bars (%): expected 70.4, got 70.4
+  [OK] BUY width-1 daily (%): expected 91.3, got 91.3
+  [OK] BUY width-1 minute (%): expected 76.0, got 76.0
+  [OK] SALE every session has a daily bar (%): expected 88.8, got 88.8
+  [OK] SALE no session has a daily bar: expected 172, got 172
+  [OK] SALE every session has minute bars (%): expected 60.5, got 60.5
+  [OK] SALE width-1 daily (%): expected 89.9, got 89.9
+  [OK] SALE width-1 minute (%): expected 64.9, got 64.9
+  side  n     daily all sessions  daily none  minute all sessions  width-1 n  width-1 daily  width-1 minute
+  BUY   1511  88.7%               168         70.4%                1052       91.3%          76.0%         
+  SALE  1538  88.8%               172         60.5%                1016       89.9%          64.9%         
+- the rename table (R8) re-pointed 13 buy and 13 sale windows (GSX -> GOTU, SBE -> CHPT); after it (span):
+  side  n     daily all sessions  daily none  minute all sessions
+  BUY   1511  89.6%               155         70.5%              
+  SALE  1538  89.6%               159         60.5%              
+
+## Minute coverage BEFORE and AFTER the pull (R37 / R39: his 'Yes' 2026-10-26, regular hours only — his note: 'he doesn't buy premarket'; before = the six pre-pull trees, the claims above; after = those + the pull's tree, A+B+EP+EP2+REV+INTRA+ASIS)
+- 'minute all sessions' = every session of the window has minute bars under the inventory's bar symbol; 'width-1' = a one-session window; same windows both sides of each pair, the rename table NOT applied (the claims' definition); in-span windows only
+  side  group                                   n     all-sessions minute % before  after  windows gained  width-1 n  width-1 minute % before  after  width-1 gained
+  BUY   span                                    1511  70.4%                         88.8%  278             1052       76.0%                    93.6%  186           
+  BUY   2020                                    803   73.7%                         89.8%  129             560        78.6%                    93.6%  84            
+  BUY   2021                                    583   67.9%                         87.7%  115             414        73.9%                    93.0%  79            
+  BUY   2022                                    125   60.8%                         88.0%  34              78         67.9%                    97.4%  23            
+  SALE  span                                    1538  60.5%                         88.3%  428             1016       64.9%                    91.8%  274           
+  SALE  2020                                    814   65.6%                         88.8%  189             533        70.4%                    92.1%  116           
+  SALE  2021                                    589   58.1%                         87.1%  171             427        60.2%                    90.9%  131           
+  SALE  2022                                    135   40.0%                         90.4%  68              56         48.2%                    96.4%  27            
+  BUY   same day, in-session -> in-session      301   77.1%                         93.0%  48              301        77.1%                    93.0%  48            
+  SALE  same day, in-session -> in-session      252   67.9%                         92.5%  62              252        67.9%                    92.5%  62            
+  BUY   same day, pre-market -> in-session      400   75.8%                         95.5%  79              400        75.8%                    95.5%  79            
+  SALE  same day, pre-market -> in-session      252   65.1%                         91.7%  67              252        65.1%                    91.7%  67            
+  BUY   next session, in-session -> pre-market  305   74.8%                         93.1%  56              305        74.8%                    93.1%  56            
+  SALE  next session, in-session -> pre-market  460   62.8%                         92.8%  138             460        62.8%                    92.8%  138           
+  BUY   next session, in-session -> in-session  44    56.8%                         88.6%  14              0          n/a                      n/a    0             
+  SALE  next session, in-session -> in-session  74    52.7%                         94.6%  31              0          n/a                      n/a    0             
+  BUY   next session, other                     62    71.0%                         85.5%  9               25         80.0%                    92.0%  3             
+  SALE  next session, other                     35    60.0%                         88.6%  10              26         61.5%                    88.5%  7             
+  BUY   2-5 sessions apart                      287   63.1%                         87.8%  71              0          n/a                      n/a    0             
+  SALE  2-5 sessions apart                      341   56.3%                         91.5%  120             0          n/a                      n/a    0             
+  BUY   6+ sessions apart                       91    38.5%                         39.6%  1               0          n/a                      n/a    0             
+  SALE  6+ sessions apart                       98    35.7%                         35.7%  0               0          n/a                      n/a    0             
+  BUY   inverted (no regular session)           21    76.2%                         76.2%  0               21         76.2%                    76.2%  0             
+  SALE  inverted (no regular session)           26    73.1%                         73.1%  0               26         73.1%                    73.1%  0             
+
+## Coverage of the REACHABLE sets, this read's export rule (R23), by year and resolution
+  side  year  n     minute  partial  daily_only  none  of which wide  export fallback
+  buy   2017  81    12      0        57          12    57             0              
+  buy   2018  16    0       0        15          1     15             0              
+  buy   2019  198   119     1        30          48    30             0              
+  buy   2020  803   655     2        42          104   42             0              
+  buy   2021  583   491     0        26          66    24             4              
+  buy   2022  132   111     0        20          1     17             3              
+  buy   2023  48    20      0        26          2     26             0              
+  buy   span  1511  1255    2        83          171   78             7              
+  sale  2017  46    12      0        30          4     30             0              
+  sale  2018  48    0       0        40          8     40             0              
+  sale  2019  184   101     1        39          43    39             0              
+  sale  2020  814   665     0        42          107   42             0              
+  sale  2021  589   486     0        32          71    30             4              
+  sale  2022  139   121     0        17          1     15             3              
+  sale  2023  41    10      0        28          3     28             0              
+  sale  span  1538  1271    0        88          179   84             7              
+- windows straddling 2022-03-31 (the export split): 5; export fallbacks 14
+
+## Coverage by bracket type (span)
+  bracket                                 side  n    minute  partial  daily_only  none
+  same day, in-session -> in-session      buy   301  280     0        0           21  
+  same day, in-session -> in-session      sale  252  230     0        0           22  
+  same day, pre-market -> in-session      buy   400  374     0        1           25  
+  same day, pre-market -> in-session      sale  252  228     0        3           21  
+  same day, other clock pairs             buy   0    0       0        0           0   
+  same day, other clock pairs             sale  0    0       0        0           0   
+  next session, in-session -> pre-market  buy   305  274     0        2           29  
+  next session, in-session -> pre-market  sale  460  419     0        1           40  
+  next session, in-session -> in-session  buy   44   39      0        0           5   
+  next session, in-session -> in-session  sale  74   66      0        0           8   
+  next session, other                     buy   62   49      0        0           13  
+  next session, other                     sale  35   30      0        0           5   
+  2-5 sessions apart                      buy   287  239     2        2           44  
+  2-5 sessions apart                      sale  341  298     0        0           43  
+  6+ sessions apart                       buy   91   0       0        78          13  
+  6+ sessions apart                       sale  98   0       0        84          14  
+  inverted (no regular session)           buy   21   0       0        0           21  
+  inverted (no regular session)           sale  26   0       0        0           26  
+
+## The reachable band (bars only), span, sides with a range
+  side  resolution  n     median width %  q1     q3     panel outside  panel priced
+  buy   minute      1255  5.84            3.23   12.16  244            1206        
+  buy   partial     2     27.11           8.8    45.42  0              1           
+  buy   daily_only  83    31.47           15.16  62.07  13             83          
+  sale  minute      1271  6.58            3.67   12.59  125            1209        
+  sale  daily_only  88    20.64           13.15  38.58  4              80          
+- sides whose reachable range has zero width (one print; density reads 1.0 by construction): 4
+- panel price inside / outside the bars-only range, ALL YEARS: buys 1180 / 325, sales 1336 / 164; IN SPAN: buys 1033 / 257, sales 1160 / 129; outside by the frame's clock context, all years (side:ctx): buy:closed 3, buy:in 41, buy:pre 281, sale:in 52, sale:pre 112
+
+## Raw price (R12 / R31): the bars are split-adjusted to 2026; each session's factor = raw close / the record's own export close
+  side  sides with a range (span)  exact  carried  partial  missing  factor off by > 2%  split inside the window
+  buy   1340                       1332   0        5        3        383                 2                      
+  sale  1359                       1351   0        5        3        388                 1                      
+- sessions by raw source, all years: buy exact 10,591, buy carried 1,572, buy partial 11, buy missing 116, sale exact 19,120, sale carried 2,517, sale partial 18, sale missing 137
+  [OK] raw close NVDA 2020-10-21 (review F2's hand-check): expected 540.99, got 540.99
+  [OK] NVDA window holding 2020-10-21: raw factor (the 4:1 of 2021 x the 10:1 of 2024; tolerance 0.05, the bars are cent-rounded): expected 40.0, got 40.01
+  [OK] SBE Dec-2020 range in raw price lands under $100 (CHPT's 2025 1:20 reverse split undone): expected True, got True
+- in-span sides with a range whose factor is NOT exact or carried (names absent from the raw file; `partial` = the listed splits to the seal only, `missing` = no raw row and no listed split, factor 1.0 assumed): FNGU partial x10, FSR missing x2, PROG missing x2, RSX missing x2
+
+## Candidates per side (span), by bracket type and resolution — plan §3.5 expected 5-15 bracketed, 15-30 unbracketed one-session
+  bracket                                 side  n    median rows  q1  q3   total rows
+  same day, in-session -> in-session      buy   280  10           6   15   3071      
+  same day, in-session -> in-session      sale  230  11           7   15   2697      
+  same day, pre-market -> in-session      buy   375  13           9   17   4915      
+  same day, pre-market -> in-session      sale  231  13           10  18   3335      
+  next session, in-session -> pre-market  buy   276  36           30  44   10514     
+  next session, in-session -> pre-market  sale  420  37           30  46   16288     
+  next session, in-session -> in-session  buy   39   46           41  56   1976      
+  next session, in-session -> in-session  sale  66   48           40  60   3430      
+  next session, other                     buy   49   67           53  91   3507      
+  next session, other                     sale  30   50           39  61   1596      
+  2-5 sessions apart                      buy   243  106          81  167  30909     
+  2-5 sessions apart                      sale  298  101          77  158  35810     
+  6+ sessions apart                       buy   78   115          88  187  14223     
+  6+ sessions apart                       sale  84   118          78  170  13340     
+- candidate rows: 212,497 all years, 145,611 in the span (plan §3.5 guessed 30,000-55,000 in the span)
+
+## Candidates per family (merged rows count a family once per row), span
+  family  buys   sales
+  F1      1839   1649 
+  F2      16912  18173
+  F3      4389   5087 
+  F4      3679   3755 
+  F5      26767  31511
+  F6      2995   3508 
+  F7      3931   3323 
+  F8      5815   6823 
+  F10     44685  50768
+  F11     3538   3637 
+
+## Levels never reached inside the reachable set (not_reached: the level existed and was never traded through; beside it no_level: the level did not exist — too short a history for F7 / F8, no opening bars for F2), all years
+  family  not reached  no level
+  F1      1875         0       
+  F2      46660        160     
+  F3      23250        0       
+  F4      3260         0       
+  F5      79762        0       
+  F6      3094         0       
+  F7      89183        996     
+  F8      69722        660     
+  F10     70957        0       
+  F11     596          0       
+
+## DENSITY CHECK (plan §3.3): median share of a side's reachable range covered by the candidates' tolerance, per family set
+  family set           side  n     median share  q1   q3   verdict (> 60% = not decidable)
+  all families         buy   1340  1.0           1.0  1.0  NOT DECIDABLE                  
+  all families         sale  1359  1.0           1.0  1.0  NOT DECIDABLE                  
+  all families         both  2699  1.0           1.0  1.0  NOT DECIDABLE                  
+  without our_length   buy   1340  1.0           1.0  1.0  NOT DECIDABLE                  
+  without our_length   sale  1359  1.0           1.0  1.0  NOT DECIDABLE                  
+  without our_length   both  2699  1.0           1.0  1.0  NOT DECIDABLE                  
+  F1+F3+F4+F6+F10+F11  buy   1340  1.0           1.0  1.0  NOT DECIDABLE                  
+  F1+F3+F4+F6+F10+F11  sale  1359  1.0           1.0  1.0  NOT DECIDABLE                  
+  F1+F3+F4+F6+F10+F11  both  2699  1.0           1.0  1.0  NOT DECIDABLE                  
+
+## DENSITY READOUTS for the narrowing decision (R30; §3.3 says the tolerance is narrowed or the set thinned, decided then and recorded in the ledger): median share, both sides, span
+  family set           arm                         n     median share  verdict at 60%
+  all families         §4.2 tolerance              2699  1.0           NOT DECIDABLE 
+  all families         without F10                 2699  1.0           NOT DECIDABLE 
+  all families         tolerance / 2               2699  1.0           NOT DECIDABLE 
+  all families         without F10, tolerance / 2  2699  0.961         NOT DECIDABLE 
+  all families         tolerance / 4               2699  0.972         NOT DECIDABLE 
+  all families         without F10, tolerance / 4  2699  0.798         NOT DECIDABLE 
+  without our_length   §4.2 tolerance              2699  1.0           NOT DECIDABLE 
+  without our_length   without F10                 2699  1.0           NOT DECIDABLE 
+  without our_length   tolerance / 2               2699  1.0           NOT DECIDABLE 
+  without our_length   without F10, tolerance / 2  2699  0.943         NOT DECIDABLE 
+  without our_length   tolerance / 4               2699  0.964         NOT DECIDABLE 
+  without our_length   without F10, tolerance / 4  2699  0.761         NOT DECIDABLE 
+  F1+F3+F4+F6+F10+F11  §4.2 tolerance              2699  1.0           NOT DECIDABLE 
+  F1+F3+F4+F6+F10+F11  without F10                 2699  0.855         NOT DECIDABLE 
+  F1+F3+F4+F6+F10+F11  tolerance / 2               2699  1.0           NOT DECIDABLE 
+  F1+F3+F4+F6+F10+F11  without F10, tolerance / 2  2699  0.618         NOT DECIDABLE 
+  F1+F3+F4+F6+F10+F11  tolerance / 4               2699  0.837         NOT DECIDABLE 
+  F1+F3+F4+F6+F10+F11  without F10, tolerance / 4  2699  0.407         readable      
+- by resolution (both sides, all families): minute 1.0, partial 0.848, daily_only 1.0
+
+## DENSITY VERDICT (both sides, span): all families: NOT DECIDABLE (median 100.0%); without our_length: NOT DECIDABLE (median 100.0%); F1+F3+F4+F6+F10+F11: NOT DECIDABLE (median 100.0%)
+
+## Beside: 2017-2019 and 2023, the initial 13 and the still-held 13 — run, never in a bar
+- sides outside the span: 673; with a range 552
+- excluded names (no daily bar on any session, span): GBTC 30, ETHE 28, FNGU 16, TVIX 12, NXTD 12, NO 10, INPX 10, FSR 8, HVBTF 6, CCIV 6, XL 6, ADPS 4, ETCG 4, HTZ 4, TCEHY 4, OPES 4, SPWR 4, CIIC 4, TCRC 2, OXGN 2, TORC 2, TCAC 2, SDFL 2, TMX 2
+
+## Flags over the sides (all years)
+  flag                             buys  sales
+  bar_holes                        16    14   
+  bracket_clipped_lost_daily_only  123   128  
+  bracket_other                    76    41   
+  clock_before_open                21    30   
+  clock_before_open_earlier        41    13   
+  clock_order_broken               0     1    
+  clock_unknown                    3     16   
+  extended_hours_possible          729   1030 
+  inverted                         34    38   
+  minute_daily_close_differ        14    12   
+  no_daily_bar                     200   199  
+  no_minute_bar_in_reach           2     2    
+  panel_no_pct                     121   122  
+  panel_no_prior_close             1     2    
+  panel_outside_range              325   164  
+  pre_market_possible              744   451  
+  range_incomplete                 12    9    
+  round_thinned_to_1               10    4    
+  round_thinned_to_5               0     1    
+  short_history                    80    69   
+  split_inside_window              2     2    
+  wide_window                      242   256  
+  width_zero                       7     10   
+
+RESULT: 49 claims, 49 OK, 0 MISMATCH
+DRY RUN COMPLETE

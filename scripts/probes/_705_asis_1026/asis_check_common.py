@@ -121,6 +121,21 @@ READINGS where the plan is silent, ambiguous or contradicts itself (numbered on 
       cross names, whose count varies by day.
   R81 [what the dry runs never compute] 03's dry run never calls the containment or the scorers (not merely unprinted); 04's never
       compounds an account. Both print inputs, populations, the join's counts and the pins only.
+  R89 [re-run 2, 2026-10-27: the windows v2] 03 reads the windows through step 5's loader, which now ranges the v2 windows (01_points R44: a
+      split position is two positions, `eid` renumbered). The population claims that quoted §3.1's figures (1,511 / 1,538 in-span windows,
+      1,848 round trips, 1,861 sides each way) were facts about the ORIGINAL windows; after re-run 2 they would mismatch for the right reason,
+      so they now claim ranges.tsv AGAINST THE LOADED WINDOWS (every (eid, side) of ranges.tsv is a loaded window and every loaded window has
+      a ranges row — `ranges_vs_windows`; the side, in-span and round-trip counts equal the loaded ones) and print §3.1's figures beside as
+      the pre-fix facts. A ranges.tsv of another generation (v1 eids under v2 windows) now fails the dry run instead of joining silently;
+      the keys matched on (eid, side) are compared on (sym, lo, hi) too (review F5: the v2 eids are a superset of the v1 eids, so the key
+      check alone read 0 missing keys on the previous run's ranges.tsv), claimed 0 differing.
+      The R1 / R5 bars and every other rule are unchanged; 04 is unchanged (its two §3.1 claims — 1,848 round trips, 3,722 sides — would
+      mismatch on a v2 ranges.tsv the same way; it is gated behind 6b and is the main loop's call).
+  R90 [re-run 2: 03's dry run needs step 5's output] The 6b dry run reads ranges.tsv; with step 5's re-run 1 outputs archived and re-run 2
+      not yet run, the file is ABSENT and the dry run STOPS (a 'STOPPED' line, never 'DRY RUN COMPLETE'; the gate stays shut). The order
+      is: 01 --run (re-run 2) -> 03 --dry-run -> 03 --print-pins -> paste -> 03 --run. 6b's first run (03_check_dryrun.txt, 03_check.txt,
+      check_r1_r5.tsv, control_ranges.tsv) is archived to `*_run1` by 03 --archive (asis_common R41; `_run1` is free for 6b's files),
+      ledger rows `archive_run1_6b_*`; the re-run's own rows are staged `step6b_rerun2_*`.
 
 No network, no model client, no DB, no subagent. Nothing is opened at import.
 """
@@ -173,7 +188,26 @@ P04 = {"dry": os.path.join(HERE, "04_band_dryrun.txt"), "run": os.path.join(HERE
 MODULE_FILES_6B = ("asis_common.py", "01_points.py", "02_captions.py", "asis_check_common.py", "03_check.py", "forbidden_identifiers.txt",
                    os.path.join("inventory", "captions_inventory.py"))
 MODULE_FILES_6C = MODULE_FILES_6B + ("04_band.py",)
-STAGE_6B, STAGE_6C = "step6b_", "step6c_"
+STAGE_6B, STAGE_6C = "step6b_rerun2_", "step6c_"     # R90: 6b's first run is "step6b_*"; the re-run never shares a stage name with it
+STAGE_6B_FIRST = "step6b_"
+ARCHIVE_SUFFIX_6B, ARCHIVE_STAGE_6B = "_run1", "archive_run1_6b_"   # R90: 6b's first run, archived before re-run 2's dry run
+
+
+def archive_items_6b() -> list:
+    """R90: the four files 6b's first run left behind, keyed as their ledger rows are: the dry-run printout, the run printout, the two outputs."""
+    return [("dry_run", P03["dry"]), ("check", P03["run"])] + [(k, p) for k, p in OUT_6B.items()]
+
+
+def ranges_vs_windows(ranges: dict, windows: list) -> tuple:
+    """R89 (review F5 of re-run 2): three sorted lists — (keys of ranges.tsv with no loaded window, loaded windows with no ranges row, keys
+    matched on (eid, side) whose ranges row's (sym, lo, hi) differ from the loaded window's, as (eid, side, ranges' (sym, lo, hi), window's)).
+    `windows` = 02_captions' tuples (eid, side, sym, lo, hi); a ranges row carries `sym`, `lo`, `hi`. All three empty = ranges.tsv is THIS
+    generation's: the key check alone passes a ranges.tsv of another generation whose eids are a subset (v1 eids under v2 windows read 0
+    missing keys because the v2 eids are a superset), so the matched keys' windows are compared too."""
+    have = {(int(r[0]), r[1]): (r[2], r[3], r[4]) for r in windows}
+    keys = {(int(e), s): (row["sym"], row["lo"], row["hi"]) for (e, s), row in ranges.items()}
+    differ = sorted((k, keys[k], have[k]) for k in keys.keys() & have.keys() if keys[k] != have[k])
+    return sorted(keys.keys() - have.keys()), sorted(have.keys() - keys.keys()), differ
 
 # ---- constants of §4.2 / §4.3 ---------------------------------------------------------------------------------------------------------------
 SPAN = P.SPAN
@@ -224,10 +258,11 @@ EXPOSURES = (1.0, 0.5, 1.5)
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 # the readers' sheets and the statement classes
 # ═════════════════════════════════════════════════════════════════════════════════════════════
-def read_sheets(paths=V2_SHEETS) -> list:
-    """Every row of the v2 price batch, with `part` (the sheet's basename) added; the data columns are read, never rewritten."""
+def read_sheets(paths=None) -> list:
+    """Every row of the v2 price batch, with `part` (the sheet's basename) added; the data columns are read, never rewritten. The default
+    is read at CALL time (`V2_SHEETS` then; a module-constant default is bound at definition and escapes a test's monkeypatch — review F1)."""
     rows = []
-    for p in paths:
+    for p in (V2_SHEETS if paths is None else paths):
         with open(C.checked(p), encoding="utf-8") as fh:
             for r in csv.DictReader(fh, delimiter="\t"):
                 r["part"] = os.path.basename(p)[:-4]
