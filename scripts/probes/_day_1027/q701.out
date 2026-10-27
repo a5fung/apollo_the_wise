@@ -1,0 +1,4 @@
+SET
+id|et|left|detail
+62061|2026-10-27 09:35:08.974962|MFIC re-scored mna -> routine (acting routine): the open window released it (open5m range 1.3235% > 1.0%)|{"ticker": "MFIC", "alert_date": "2026-10-27", "from": "mna", "to": "routine", "acting": "routine", "pin": {"window": "open5m", "range_pct": 1.3235, "threshold_pct": 1.0, "bars_n": 5, "readable": true, "why": "", "as_of": "2026-10-27T09:35:08-04:00", "pinned": false}, "answer": {"role": "target", "status": "signed", "consideration": "mixed", "counterparty": "Ares Capital Corporation"}}
+(1 row)

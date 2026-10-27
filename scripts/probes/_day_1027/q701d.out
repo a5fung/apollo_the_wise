@@ -1,0 +1,22 @@
+SET
+id|et|event_type|left
+61882|2026-10-27 07:00:08.401104|ep_rt_admit|MFIC rt 18.5% and delayed 18.3% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+61887|2026-10-27 07:00:41.66541|ep_catalyst_provenance|MFIC mna direct=True
+61888|2026-10-27 07:00:41.686772|mna_filter_fired|MFIC via claude_deal_fields (ep)
+62060|2026-10-27 09:35:08.97206|mna_filter_released|MFIC: deal-nominated (target/signed via claude_deal_fields) but the price is FREE — open5m range 1.3235% > 1.0% ceiling; old rule would have blocked (grade_mna, keyword_in_text_0:merger); grader read target/signed/mixed
+62061|2026-10-27 09:35:08.974962|mna_release_merit_grade|MFIC re-scored mna -> routine (acting routine): the open window released it (open5m range 1.3235% > 1.0%)
+(5 rows)
+table_name
+mi_ep_alerts
+mi_ep_catalyst_metrics
+mi_ep_delayed_residual
+mi_ep_grade_corpus
+mi_ep_ground_truth
+mi_ep_missed_outcomes
+mi_ep_scan_log
+mi_ep_scan_outcomes
+mi_ep_score_shadow
+mi_ep_shortlist_shadow
+mi_ep_slot_rank_shadow
+mi_ep_theme_belonging_shadow
+(12 rows)
