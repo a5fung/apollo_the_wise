@@ -121,7 +121,6 @@ from agents.market_intelligence.constants import (
     regime_risk_multiplier,
 )
 from agents.market_intelligence.db import (
-    BOOK_ARM_NAMES,
     BOOK_FILL_FACTS_ARM,
     BOOK_MODULE_ARMS,
     _f,
@@ -182,8 +181,7 @@ BOOK_ARMS: tuple[tuple[str, str, str, str, str, bool], ...] = (
 FILL_FACTS_ARM: tuple[str, str, str, str, Optional[str], bool] = (
     BOOK_FILL_FACTS_ARM, "fill_facts", "live", "none", None, False)
 _HOUR_ENTRY_ARMS = frozenset({"entry_first_hour_bar", "book_first_hour_low_of_day"})
-_ENTRY_RULE_OF = {"entry_first_hour_bar": ENTRY_RULE_FIRST_HOUR, "stop_low_of_day": ENTRY_RULE_LIVE,
-                  "book_first_hour_low_of_day": ENTRY_RULE_FIRST_HOUR}
+ERROR_EVENT = "book_geometry_arm_error"
 
 
 # ── Pure compute (fixture-testable, no IO) ─────────────────────────────────────────────
@@ -380,7 +378,7 @@ async def _write(fields: dict, out: dict, label: str) -> bool:
     changed = await lfc.write_replay_row(
         fields, out, label,
         upsert=insert_live_fill_counterfactual,
-        error_event="book_geometry_arm_error",
+        error_event=ERROR_EVENT,
         outcome_key=lambda f: (
             "fill_facts" if f.get("arm") == BOOK_FILL_FACTS_ARM else _OUTCOME_KEY[f["outcome"]]),
     )
@@ -406,7 +404,7 @@ def _arm_fields(trade: dict, arm: tuple, *, fill_day: date, inputs: dict, era: d
                               settled_session=last_session, target_price=target_price,
                               target_r=target_r, breakeven_arm_r=breakeven_arm_r)
     fields["settle_version"] = SETTLE_VERSION
-    fields["entry_rule"] = _ENTRY_RULE_OF.get(arm[0], ENTRY_RULE_LIVE)
+    fields["entry_rule"] = ENTRY_RULE_FIRST_HOUR if arm[0] in _HOUR_ENTRY_ARMS else ENTRY_RULE_LIVE
     return fields
 
 
@@ -485,7 +483,7 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict, ove
             await _write(fields, out, f"{label} {BOOK_FILL_FACTS_ARM}")
         except Exception as e:  # loud-ok: counted + audited; the walked arms below still run
             out["errors"] += 1
-            await log_audit_event("book_geometry_arm_error", f"{label} arm {BOOK_FILL_FACTS_ARM}: {type(e).__name__}: {e}")
+            await log_audit_event(ERROR_EVENT, f"{label} arm {BOOK_FILL_FACTS_ARM}: {type(e).__name__}: {e}")
     if not todo:
         return
 
@@ -508,7 +506,8 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict, ove
 
     hour: Optional[dict] = None
     if bars is not None and any(a[0] in _HOUR_ENTRY_ARMS for a in todo):
-        hour = classify_hour_entry(bars, session_close_et(fill_day))
+        close_et = session_close_et(fill_day)
+        hour = classify_hour_entry(bars, close_et)
         if hour["kind"] == "needs_daily_high":
             d0 = await get_daily_ohlc_range(conn, ticker, fill_day, fill_day)
             d0_high = _f(d0[0].get("high_price")) if d0 else None
@@ -516,7 +515,7 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict, ove
                 hour = {"kind": "pending", "high": hour["high"], "low": hour["low"],
                         "reason": f"{hour['walk_reason']}:no_stored_day0_daily_bar"}
             else:
-                hour = classify_hour_entry(bars, session_close_et(fill_day), d0_high)
+                hour = classify_hour_entry(bars, close_et, d0_high)
 
     for arm in todo:
         name = arm[0]
@@ -617,7 +616,7 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict, ove
             await _write(fields, out, f"{label} {name}")
         except Exception as e:  # loud-ok: one arm's failure is counted; the others and the live trade proceed
             out["errors"] += 1
-            await log_audit_event("book_geometry_arm_error",
+            await log_audit_event(ERROR_EVENT,
                                   f"{label} arm {name}: {type(e).__name__}: {e}")
 
 
@@ -636,7 +635,7 @@ async def run_book_geometry_arms(today: Optional[date] = None, *,
         fills = await get_book_arm_fills(BACKFILL_FROM, BOOK_MODULE_ARMS)
     except Exception as e:  # loud-ok: the run reports and ends; nothing live depends on it
         out["errors"] += 1
-        await log_audit_event("book_geometry_arm_error", f"fill query failed: {e}")
+        await log_audit_event(ERROR_EVENT, f"fill query failed: {e}")
         return out
     out["population"] = len(fills)
     if fills:
@@ -650,11 +649,11 @@ async def run_book_geometry_arms(today: Optional[date] = None, *,
                     except Exception as e:  # loud-ok: per-fill isolation; counted + audited
                         out["errors"] += 1
                         await log_audit_event(
-                            "book_geometry_arm_error",
+                            ERROR_EVENT,
                             f"{trade.get('ticker')} trade {trade.get('id')}: {type(e).__name__}: {e}")
         except Exception as e:  # loud-ok: pool-level failure; counted + audited
             out["errors"] += 1
-            await log_audit_event("book_geometry_arm_error", f"run failed: {e}")
+            await log_audit_event(ERROR_EVENT, f"run failed: {e}")
     await log_audit_event("book_geometry_arms_recorded", audit_summary(out))
     return out
 

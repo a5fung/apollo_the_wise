@@ -70,7 +70,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.db import (
-    get_pool, log_audit_event, LIVE_SOURCE_SQL,
+    get_pool, log_audit_event, LIVE_SOURCE_SQL, BOOK_ARM_NAMES,
     get_latest_two_theme_dates, get_theme_retired_candidate_names,
     get_theme_history_window, get_theme_member_departures, get_theme_departure_explanations,
     get_theme_quality_alerted_targets, get_recent_rs_batch, get_rs_on_date,
@@ -2179,10 +2179,10 @@ def evaluate_recorder_failure_rate(counters: dict[str, int], attempted_key: str)
 async def check_recorder_failure_rate(
     job_name: str, counters: dict[str, int], attempted_key: str,
 ) -> bool:
-    """Side-effecting wrapper around `evaluate_recorder_failure_rate` for the four nightly
+    """Side-effecting wrapper around `evaluate_recorder_failure_rate` for the nightly
     replay/counterfactual recorders that share this counters shape
-    (`live_fill_counterfactuals.py`, `sustain_reject_replay.py`, `gap_near_miss_replay.py`,
-    `lowcap_lane_replay.py`). Call this right after `out = await run_X(...)` in each scheduler
+    (`live_fill_counterfactuals.py`, `book_geometry_arms.py`, `sustain_reject_replay.py`,
+    `gap_near_miss_replay.py`, `lowcap_lane_replay.py` and its paper lane). Call this right after `out = await run_X(...)` in each scheduler
     job, passing the SAME counters dict the job already logs at INFO — no new persistence, no
     new query, just a decision on data already in hand.
 
@@ -4010,9 +4010,9 @@ _DEAD_COL_EVENT_GATED: dict[str, tuple[str, str]] = {
         "filled only when an arm is still open after 40 forward sessions"),
     # #482 book arms (2026-10-26): the capped-dollar RESULT exists only on a walked book arm that has
     # SETTLED (a horizon, abstain or no-entry row has none, and the twelve original arms never carry
-    # it). The arm names are db.BOOK_ARM_NAMES, inlined because this is raw SQL; a test pins them equal.
+    # it). The arm names are built from db.BOOK_ARM_NAMES, so the SQL cannot drift from the recorder's list.
     "mi_live_fill_counterfactuals.realized_r_capped": (
-        "outcome = 'settled' AND arm IN ('entry_first_hour_bar', 'stop_low_of_day', 'book_first_hour_low_of_day')",
+        "outcome = 'settled' AND arm IN (" + ", ".join(f"'{n}'" for n in BOOK_ARM_NAMES) + ")",
         "filled only on a walked #482 book arm that settled"),
     "mi_gap_near_miss_replays.mark_r": _WALK_OPEN,
     "mi_sustain_reject_replays.mark_r": _WALK_OPEN,

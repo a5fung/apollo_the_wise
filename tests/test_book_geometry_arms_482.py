@@ -33,7 +33,7 @@ from agents.market_intelligence import db
 from agents.market_intelligence import live_fill_counterfactuals as lfc
 from tests import test_live_fill_counterfactuals as base
 from tests._lfc_equality_scenarios import (
-    NOW, TODAY, run_old_recorder, scenarios, to_jsonable)
+    NOW, TODAY, _pre_for, _shift_day0, run_old_recorder, scenarios, to_jsonable)
 
 _ET = base._ET
 _REPO = Path(__file__).resolve().parent.parent
@@ -70,9 +70,9 @@ FACTS = "fill_facts"
 @pytest.mark.parametrize("name", sorted(scenarios()))
 async def test_the_original_recorder_writes_byte_equal_rows_to_the_pre_change_golden(name):
     golden = json.loads((_REPO / "tests" / "fixtures" / "lfc_pre_book_arms_golden.json").read_text())[name]
-    now = run = await run_old_recorder(name, scenarios()[name])
+    run = await run_old_recorder(name, scenarios()[name])
     assert run["out"] == golden["out"], "the original recorder's counters moved"
-    rows = to_jsonable(now["rows"])
+    rows = to_jsonable(run["rows"])
     assert len(rows) == len(golden["rows"]) and len(rows) >= 11
     assert [r["arm"] for r in rows] == [r["arm"] for r in golden["rows"]]
     for new, old in zip(rows, golden["rows"]):
@@ -327,9 +327,8 @@ def test_the_hour_entry_is_proven_no_entry_by_the_daily_high_before_it_abstains(
     assert unknown == {"kind": "pending", "high": 10.6, "low": 9.5,
                        "reason": "entry_window_gaps:11_of_330:session_high_above_hour_high"}
     # full coverage never needs the daily bar
-    full = bga.classify_hour_entry(hour + [dict(b, m=b["m"]) for b in
-                                          [{"m": datetime(2026, 8, 20, 10, 30, tzinfo=_ET) + timedelta(minutes=i),
-                                            "o": 10.0, "h": 10.2, "l": 9.9, "c": 10.0} for i in range(330)]],
+    full = bga.classify_hour_entry(hour + [{"m": datetime(2026, 8, 20, 10, 30, tzinfo=_ET) + timedelta(minutes=i),
+                                            "o": 10.0, "h": 10.2, "l": 9.9, "c": 10.0} for i in range(330)],
                                    time(16, 0))
     assert full["kind"] == "no_entry" and full["reason"] == bga.NO_ENTRY_HOUR
     assert bga.classify_hour_entry(_hour_bars(n=30), time(16, 0)) == {"kind": "pending", "reason": "first_hour_bars:30_of_60"}
@@ -729,9 +728,8 @@ async def test_a_depth_stamped_row_is_era_e_from_the_row_and_walks_the_depth_exi
     depth-stamped fill is era E and its follows-live book arms walk the depth exit; the same fill with
     no stamp stays on today's rule (era D) whatever the date."""
     d = date(2026, 10, 14)
-    shifted = [{**b, "m": b["m"].replace(year=2026, month=10, day=14)} for b in STD]
-    pre = [{"trade_date": x, "open_price": 9.0, "high_price": 9.18, "low_price": 8.82, "close": 9.0}
-           for x in sorted(d - timedelta(days=k) for k in range(1, 40)) if x.weekday() < 5]
+    shifted = _shift_day0(STD, d)
+    pre = _pre_for(d)
     sess = [(date(2026, 10, 15), base._bar(10.8, 10.9, 9.9, 10.4))] + [
         (x, base._bar(11.4, 11.6, 11.3, 11.5)) for x in (date(2026, 10, 16), date(2026, 10, 19), date(2026, 10, 20),
                                                             date(2026, 10, 21), date(2026, 10, 22))]

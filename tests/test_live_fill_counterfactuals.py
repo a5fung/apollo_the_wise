@@ -28,6 +28,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from tests.conftest import make_mock_pool
 from agents.market_intelligence import db
 from agents.market_intelligence import live_fill_counterfactuals as lfc
 from agents.market_intelligence import rule_eras
@@ -600,7 +601,7 @@ async def _captured_schema_sql(monkeypatch) -> str:
         executed.append(sql)
         return "OK"
 
-    conn = MagicMock()
+    pool, conn = make_mock_pool()
     conn.execute = execute
     conn.executemany = AsyncMock(return_value=None)
     conn.fetch = AsyncMock(return_value=[])
@@ -610,11 +611,6 @@ async def _captured_schema_sql(monkeypatch) -> str:
     tx.__aenter__ = AsyncMock(return_value=None)
     tx.__aexit__ = AsyncMock(return_value=None)
     conn.transaction = MagicMock(return_value=tx)
-    cm = MagicMock()
-    cm.__aenter__ = AsyncMock(return_value=conn)
-    cm.__aexit__ = AsyncMock(return_value=None)
-    pool = MagicMock()
-    pool.acquire = MagicMock(return_value=cm)
 
     async def get_pool():
         return pool
