@@ -1,4 +1,4 @@
-# #705 as-is STEP 5 — DRY RUN (2026-10-26 17:42)
+# #705 as-is STEP 5 — DRY RUN (2026-10-26 18:02)
 Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders (asis_common copies). No rule, setup name or pattern label enters.
 - identifier scan: clean (the step-5 modules hold none of the excluded names)
 - import belt: no rule module in sys.modules
@@ -10,7 +10,7 @@ Guards: no network, no production server, no paid call, nothing after 2024-12-31
 - snapshots: 2,907 frames, 2,082 full
 - lexicon 22,744 symbols; alias map 574 (signature 504, dedupe 70); rename table added 2 (R8)
 - export A: 12,005,007 rows read, 1,235,568 kept for 1,247 names, 0 dated after the cut dropped at read; calendar 2016-01-04..2022-06-30 = the reader's (3s)
-- export B: 13,830,569 rows read, 556,450 kept for 1,247 names, 5,210,943 dated after the cut dropped at read; calendar 2021-09-27..2024-12-31 = the reader's (3s)
+- export B: 13,830,569 rows read, 556,450 kept for 1,247 names, 5,210,943 dated after the cut dropped at read; calendar 2021-09-27..2024-12-31 = the reader's (4s)
 - minute trees: A 1,219 date files / 149,587 logged pairs, B 691 date files / 80,858 logged pairs, EP 48 date files / 196 logged pairs, EP2 36 date files / 39 logged pairs, REV 508 date files / 1,322 logged pairs, INTRA 1,005 date files / 19,470 logged pairs; date files after the seal left unopened: B 449
 - raw closes (R12): 12,005,007 rows read, 701,185 kept for 573 of 683 bar symbols, 0 dated after the cut dropped at read; split list 3,864 splits of 3,063 names to the seal, 3,090 after it dropped at read (1s)
 - panel: 2,977 panel frames, 41,099 rows, 39,137 with a % read, 34,355 agreeing with the bars

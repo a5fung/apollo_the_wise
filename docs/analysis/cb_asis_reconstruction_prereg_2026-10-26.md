@@ -619,6 +619,11 @@ together after the dry run; the one-session join tolerance in §4.1 step 6.
 | review, F16 (low) | leftover jargon in §0 ("agent cards", "offset chart", "BOUND", "census", "against chance"); "fills 30% of the windows" vague; the first-minutes' high is our old opening-range entry and it was not said | §0 rewritten in plain words; the pull's effect given as 70% / 60% → about 90% of windows; one bullet names which points overlap our old rule levels and why they stay |
 | review, F17 | the doc checker passed | none |
 | operator 2026-10-26 ("Ok", after the main loop's summary of steps 5-8, the choices of §12 and the one decision) | the plan and the main loop's choices approved; the decision of §12 | the minute pull runs AFTER step 5 (the rec); step 5 builds and runs this week on the data on disk (capacity reset 10-26) |
+| step-5 build review F2 (high), main loop 2026-10-26 | the daily and minute bars are split-adjusted to 2026, so 358 of 1,298 in-span buy windows (28%) sat more than 2% from the prices he saw (NVDA Oct-2020 13.48-13.75 against $541; SBE reads CHPT's 2025 reverse split) — his spoken prices would miss by construction | two inputs added and pinned (`cb702_pre_v2/daily_raw_close.csv.gz`, `cb702/cb702_splits.psv`, cut at the seal): a per-session factor raw ÷ the record's own export close; every bar-space column kept, raw columns added (`price_raw`, `range_lo_raw` / `range_hi_raw`, `avg_traded_price_raw`, `panel_price_raw`); round numbers and their tolerance read the RAW price; three names absent from the raw file (FSR, PROG, RSX) take factor 1.0, printed (module R12 / R31) |
+| step-5 build review F3 | the band ends (F9) were emitted as each day's range ends, not the window's | F9 is not a candidate family; the band ends stay in `ranges.tsv` (module R33) |
+| step-5 build (R28 / R32) | the inventory's 'other' / '6+' split (and F10's 70 / 36 above) differs from the measured one by 6 buys / 5 sales, all outside 2020-01..2022-06 (2017-19 Sunday frames, pre→pre pairs) | the in-span per-bracket counts are the claims (exact); in-span `bracket_other` 62 buys / 35 sales; the all-years split printed as a readout |
+| step-5 dry run, main loop 2026-10-26 | the density check reads 100% on all three family sets at the §4.2 tolerance (round numbers every $0.50 and a 1%-of-price tolerance cover any band on a stock above ~$25) | per §9's consequence, written before the run: "where he acts" is NOT DECIDABLE — step 7 reads the band and the continuous chart measures, and the point description is dropped. The narrowed readouts (without round numbers at ½ tolerance 0.598, at ¼ 0.389) are printed beside and NOT acted on: picking a tolerance after seeing the density would be a fit |
+| main loop 2026-10-26, the freeze | the step-5 module's run gate needs this doc frozen before `--run` | the doc body (steps 5-8, every bar of §4.2-4.3) freezes NOW, before any statement is read or any check runs; step 6's modules and dry run are pinned below the marker when they are built (pins below the marker do not change the body), so steps 5 and 6 still share one frozen text |
 
 <!-- FREEZE -->
 ## Freeze record
@@ -629,3 +634,37 @@ scored, no statement read), runs `--pins`, pastes every pin below, then runs ste
 are frozen together here** (the first draft froze them separately; step 6's design does not depend on step 5's numbers except the
 density check, which the dry run prints before the freeze); step 7 is registered in its own document after step 6 reports. Nothing
 above the marker is edited after the freeze; any edit changes `doc_body` and the run refuses.
+
+### FREEZE 2026-10-26 (step 5; the doc body is frozen for steps 5-8)
+
+Frozen after his "Ok" (§13). Step 5's dry run: 49 claims, 49 OK, 0 MISMATCH. Step 6's modules and dry run are pinned below when built; pins appended below the marker do not change `doc_body`.
+
+### Pins (step 5)
+
+- entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf
+- exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f
+- snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff
+- control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc
+- panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012
+- calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610
+- lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178
+- done_EP: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735
+- done_EP2: f8255199e52f0fa14aebcec5d50a407a1a52ac7c8b6cd4129bf41aa2f8cc591a
+- done_REV: 945c41fb3618ed6b85a000232f6becc82c9d8e201b9bde99bd8673f9f7036d5e
+- done_INTRA: a9dc793c33af220a2c030ae3d36f83af5d80ab91890b0e80c0deea3868d3f243
+- raw_close_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444
+- splits_B: 3199d06d5fb7dcd52ebd34e8c71e148b45ec0ca4a15f7f03ea1b715718882b0b
+- subs_list: 99929453752cb3590b261e6928d99317312f35d9a50c0c147e33393b101a64a9
+- asis_common.py: 90197bef2a329b2661d831781b4701b52a3786de311c8b4e4ceb199f80b39104
+- 01_points.py: 3537f72ca1a3e6265fe01fc8e5536d6cfc32316f1aab7174edd779af2111d3bf
+- forbidden_identifiers.txt: ba8f4bb5f23f2325b6e1ed78e299d2044d3182313955f4509b1e16969e3ff81c
+- dryrun_printout: 9445be53e0c35cde4a383ac7110895527c9d66f9ac11ec29ebd09792fc2b2965
+- run_printout: ABSENT
+- ledger: ABSENT
+- doc_body: 2b330f044c3f59da643f248ef97723dd80534b262458a766979f5fd22d748db0
