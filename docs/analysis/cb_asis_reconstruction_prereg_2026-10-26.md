@@ -816,3 +816,9 @@ Dry run 24 / 24 OK. Reading order (main loop, 2026-10-26; capacity, not a criter
 - asis_check_common.py: d80220da0d3cb02b0c4205d9ce8341dd2b0c562b650db6093418ad57cc2f4fc1
 - 03_check.py: 0a4314131a6d0fe40f4d3345d95920f65025ca94d28bd28313a063ad336058f8
 - dryrun6b_printout: 99f07613f2569ae7ced6c23881c5806ae55475300935431dba8aaac0b76ca822
+
+### Step 6b RESULT, the R5 diagnosis and his decision (2026-10-27)
+
+- **6b ran once, as registered** (`03_check.txt`): R1 NOT DECIDABLE (primary n 11 < 100; it would read PASS: 81.8% inside vs 45.5% shifted, 4.6% cross-symbol); **R5 FAIL** 46 / 66 = 69.7% (bar 90%). 6c refuses (R79).
+- **The diagnosis** (`fork/r5_miss_diagnosis.md`, Opus + a blind Sonnet re-check of 8): the windows are mostly right; the misses are mostly the panel's blind spots — same-day round trips 5, talk about another day 6, trades the panel never showed 4, adds / trims with no window 3 — and **one real window flaw: the blip fill bridges a stock's absence from every complete frame of a session, merging two positions** (SPXL 04-20 confirmed by his words; LAKE 01-23 probable); every fill sits on a frame read as complete (573 filled symbol-frames on 518 frames, main-loop count). Every defensible fix together reaches about 76%, so the 90% bar did not allow for the panel's blind spots.
+- **His decision, 2026-10-27 ("Ok" to option A, the main loop's rec):** limit gap-filling to single-frame misses, rebuild the windows, re-run steps 5-6 ONCE (disclosed), then step 7. The R1 / R5 bars and every other rule stay as registered.
