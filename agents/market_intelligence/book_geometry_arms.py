@@ -50,17 +50,19 @@ fills we took: the names whose 1-MINUTE ORB high filled (~15 MAGNA53 fills since
 the hour bar have paid" — an alert that never took the 1-minute high but did take the hour high is
 invisible here, and at the probe's ~42% hour-arm entry rate only a handful of rows per arm will be
 entered trades. The TEST MAP put the entry test on the 5-minute ORB shadow lane's full alert
-population (`mi_orb_shadow_trades`); whether to ALSO record the hour-bar arm there is his open
-question, not something this module decides.
+population (`mi_orb_shadow_trades`); he said yes on 2026-10-26, and `broker/shadow_orb_tracker
+.run_shadow_hour_pass` records the hour-bar entry there as `bar_size_minutes = 60` on the SAME walk
+(docs/setups/magna53_ep.md 2026-10-27).
 
-THE DAY-0 GAP RULE (review F4). An hour arm whose stored minutes never crossed the hour high but have
-holes after 10:30 is NOT abstained on sight: the stored day-0 DAILY bar decides first. A session high
-at or below the stored hour high proves no later print exceeded it → `no_entry:never_crossed_hour_high`
-with the suffix ':proven_by_daily_high' (the prefix match is unchanged). One path stays invisible at
-that equality: an exact re-touch of the hour high inside a minute that is not stored (a stop triggers
-AT its price) — named here, accepted as the rule. Otherwise (a higher session high, or no stored daily
-bar), the hour arm — like a thin first hour — goes through the original recorder's gap rule: PENDING,
-retried nightly, written `abstain` with the reason named only once the gap is GAP_RETRY_SESSIONS old.
+THE HOUR-BAR WALK IS SHARED. `stop_limit_buy_price`, `entry_walk`, `first_hour_frame`,
+`session_close_et` and `classify_hour_entry` live in `broker/hour_bar_walk.py` (pure math, no Alpaca
+client — the `exit_logic` precedent) since 2026-10-27, so the two recorders cannot drift and the
+execution deploy scope covers the copy the shadow tracker runs; this module re-exports them under
+their old names. THE DAY-0 GAP RULE (review F4) is stated there: a walk with holes after 10:30 and no
+stored cross is decided by the stored day-0 DAILY high — strictly below the hour high proves the
+no-entry (':proven_by_daily_high'); equal or higher, or no stored daily bar, leaves the hour arm —
+like a thin first hour — on the original recorder's gap rule: PENDING, retried nightly, written
+`abstain` with the reason named only once the gap is GAP_RETRY_SESSIONS old.
 
 THE CAPPED-DOLLAR COLUMNS (the 2026-10-06 H10 lesson — `docs/analysis/327_h10_h11_2026-10-06.md`:
 "any stop proposal must be scored in capped dollars beside R"). SIZE OFF THE TRIGGER, RESULT OFF THE
@@ -115,6 +117,18 @@ from typing import Any, Optional
 from shared.dates import _ET
 
 from agents.market_intelligence import live_fill_counterfactuals as lfc
+from agents.market_intelligence.broker.hour_bar_walk import (  # exec-boundary-ok: pure first-hour walk math, no Alpaca client (the exit_logic precedent) — shared with the shadow tracker's 60-minute lane
+    FIRST_HOUR_END,
+    FIRST_HOUR_START,
+    MIN_HOUR_BARS,
+    NO_ENTRY_HOUR,
+    REGULAR_CLOSE,
+    classify_hour_entry,
+    entry_walk,
+    first_hour_frame,
+    session_close_et,
+    stop_limit_buy_price,
+)
 from agents.market_intelligence.constants import (
     MAX_POSITION_PCT,
     RISK_PCT,
@@ -154,10 +168,7 @@ from agents.market_intelligence.rule_eras import (
 logger = logging.getLogger(__name__)
 
 SETTLE_VERSION = "book_v1"
-FIRST_HOUR_START = time(9, 30)
-FIRST_HOUR_END = time(10, 30)        # exclusive: the first 60-minute bar is 09:30-10:29
-MIN_HOUR_BARS = 50                   # of 60 minutes stored; below this the bar's high/low is not trusted
-REGULAR_CLOSE = time(16, 0)
+# FIRST_HOUR_START / FIRST_HOUR_END / MIN_HOUR_BARS / REGULAR_CLOSE / NO_ENTRY_HOUR: broker/hour_bar_walk
 # The 2% base risk went live with the 2026-10-03 (Saturday) deploy — docs/setups/safeguards.md
 # 2026-10-03. Fills before it were sized at 1%. constants.py is hash-frozen, so the switch date lives here.
 RISK_PCT_2PCT_FROM = date(2026, 10, 3)
@@ -166,7 +177,6 @@ RISK_PCT_BEFORE_2PCT = 0.01
 ENTRY_RULE_LIVE = "live_fill"
 ENTRY_RULE_FIRST_HOUR = "first_hour_bar_high"
 FILL_FACTS_REASON = "fill_facts_only"
-NO_ENTRY_HOUR = "no_entry:never_crossed_hour_high"
 
 # (arm, kind, stop_rule, harvest_rule, trail_rule, follows_live_rule) — the lfc.ARMS tuple shape, so
 # lfc._base_fields takes them unchanged. All three follow the live rule (live_replay's levels): they
@@ -261,102 +271,14 @@ def fill_vs_trigger(trade: dict) -> dict[str, Optional[float]]:
     return out
 
 
-def stop_limit_buy_price(stop_price: float) -> float:
-    """The LIMIT of a stop-limit BUY — mirrors broker.order_manager.stop_limit_buy_price (0.5% or
-    $0.02 above the stop, whichever is larger). Inlined: order_manager pulls the Alpaca stack, which
-    a recorder must never import (sustain_reject_replay's precedent; parity pinned by test)."""
-    return round(max(stop_price * 1.005, stop_price + 0.02), 2)
-
-
-def entry_walk(bars: list[dict], level: float, submit: time, cancel: Optional[time]) -> dict:
-    """Mirror of sustain_reject_replay.entry_walk (parity pinned by test): the stop-limit buy
-    (stop = `level`, limit = stop_limit_buy_price) over the minute bars in [submit, cancel). Bars
-    carry `m` as an ET-aware datetime. 'no_entry' only on a fully covered window, else ABSTAIN."""
-    limit = stop_limit_buy_price(level)
-    limit_armed = False
-    window = [b for b in bars
-              if b["m"].time() >= submit and (cancel is None or b["m"].time() < cancel)]
-    for b in window:
-        if limit_armed:
-            if b["l"] <= limit:
-                return {"status": "filled", "px": limit, "minute": b["m"]}
-            continue
-        if b["o"] >= level:
-            if b["o"] <= limit:
-                return {"status": "filled", "px": b["o"], "minute": b["m"]}
-            limit_armed = True
-            if b["l"] <= limit:
-                return {"status": "filled", "px": limit, "minute": b["m"]}
-        elif b["h"] >= level:
-            return {"status": "filled", "px": level, "minute": b["m"]}
-    if limit_armed:
-        return {"status": "no_entry", "reason": "triggered_above_limit_never_filled"}
-    end = cancel if cancel is not None else time(16, 0)
-    expected = int((datetime.combine(date.min, end) -
-                    datetime.combine(date.min, max(submit, time(9, 30)))).total_seconds() // 60)
-    if len(window) < expected:
-        return {"status": "abstain", "reason": f"entry_window_gaps:{expected - len(window)}_of_{expected}"}
-    return {"status": "no_entry", "reason": "never_crossed_orb_high"}
-
-
-def first_hour_frame(bars: list[dict]) -> dict:
-    """The first 60-minute bar from ET-aware 1-minute bars: {'high', 'low', 'n'} or
-    {'abstain': reason}. Fewer than MIN_HOUR_BARS stored minutes of the 60 → abstain with the count
-    named (a stored-bar hole could hide the true high or low)."""
-    hour = [b for b in bars if FIRST_HOUR_START <= b["m"].time() < FIRST_HOUR_END]
-    if len(hour) < MIN_HOUR_BARS:
-        return {"abstain": f"first_hour_bars:{len(hour)}_of_60"}
-    hi, lo = max(b["h"] for b in hour), min(b["l"] for b in hour)
-    if hi <= lo:
-        return {"abstain": "first_hour_zero_range"}
-    return {"high": hi, "low": lo, "n": len(hour)}
+# stop_limit_buy_price / entry_walk / first_hour_frame / session_close_et / classify_hour_entry:
+# broker/hour_bar_walk.py (re-exported above; the tests pin parity through this module's names).
 
 
 def low_of_day_before(bars: list[dict], fill_idx: int) -> Optional[float]:
     """The lowest 1-minute low of the session strictly BEFORE the fill bar (None = no earlier bar)."""
     lows = [b["l"] for b in bars[:fill_idx] if b.get("l") is not None]
     return min(lows) if lows else None
-
-
-def session_close_et(d: date) -> time:
-    """The regular session's close on `d` in ET (13:00 on an NYSE half day), from the same
-    exchange_calendars ruleset the trading calendar uses. Falls back to 16:00 on a calendar error —
-    the walk then reads a half day as gappy and the arm waits / abstains, never invents a fill."""
-    try:
-        from agents.market_intelligence.trading_calendar import _get_nyse_calendar
-        return _get_nyse_calendar().session_close(d.isoformat()).tz_convert(_ET).time()
-    except Exception as e:  # loud-ok: logged; the fallback can only make an arm wait, never fabricate
-        logger.warning(f"book arms: session close for {d} unreadable ({e}); using 16:00")
-        return REGULAR_CLOSE
-
-
-def classify_hour_entry(bars: list[dict], session_close: time,
-                        day0_daily_high: Optional[float] = None) -> dict:
-    """The hour-bar ENTRY both hour arms share, computed once per fill. Returns one of
-      {'kind': 'filled', 'high', 'low', 'px', 'minute'}
-      {'kind': 'no_entry', 'high', 'low', 'reason'}   — reason starts 'no_entry:'
-      {'kind': 'pending', 'reason', 'high'?, 'low'?}  — a data gap: retried, abstained when stale
-      {'kind': 'needs_daily_high', 'high', 'low', 'walk_reason'} — only when `day0_daily_high` is
-                                                       not supplied and the walk saw gaps
-    A walk that saw gaps is decided by the stored day-0 daily high (module docstring, DAY-0 GAP RULE)."""
-    frame = first_hour_frame(bars)
-    if "abstain" in frame:
-        return {"kind": "pending", "reason": frame["abstain"]}
-    hi, lo = frame["high"], frame["low"]
-    walk = entry_walk(bars, hi, FIRST_HOUR_END, session_close)
-    if walk["status"] == "filled":
-        return {"kind": "filled", "high": hi, "low": lo, "px": float(walk["px"]), "minute": walk["minute"]}
-    if walk["status"] == "no_entry":
-        # the mirrored walk names the level 'orb_high'; here the level is the hour bar's
-        return {"kind": "no_entry", "high": hi, "low": lo,
-                "reason": "no_entry:" + walk["reason"].replace("orb_high", "hour_high")}
-    # abstain: the stored minutes after 10:30 have holes and none of them crossed the hour high
-    if day0_daily_high is None:
-        return {"kind": "needs_daily_high", "high": hi, "low": lo, "walk_reason": walk["reason"]}
-    if day0_daily_high <= hi + 1e-9:
-        return {"kind": "no_entry", "high": hi, "low": lo, "reason": f"{NO_ENTRY_HOUR}:proven_by_daily_high"}
-    return {"kind": "pending", "high": hi, "low": lo,
-            "reason": f"{walk['reason']}:session_high_above_hour_high"}
 
 
 def _et_bars(day0_bars: list[dict]) -> list[dict]:

@@ -560,7 +560,8 @@ _TRADE_METRICS: list[MetricSpec] = [
 async def _today_shadow_orb_entries(conn) -> float:
     row = await conn.fetchrow(
         "SELECT COUNT(*) AS n FROM mi_orb_shadow_trades "
-        "WHERE alert_date = CURRENT_DATE AND status IN ('open', 'closed')"
+        "WHERE alert_date = CURRENT_DATE AND status IN ('open', 'closed') "
+        "AND bar_size_minutes = 5"  # the 60-minute lane (#482 add-on) is read by SQL, not here
     )
     return float(row["n"] or 0)
 
@@ -582,6 +583,7 @@ async def _today_shadow_orb_no_entry_rate(conn) -> float | None:
           COUNT(*) FILTER (WHERE status = 'no_entry') AS no_entry
         FROM mi_orb_shadow_trades
         WHERE alert_date = CURRENT_DATE
+          AND bar_size_minutes = 5
         """
     )
     total = int(row["total"] or 0)
@@ -631,14 +633,14 @@ _SHADOW_ORB_METRICS: list[MetricSpec] = [
     MetricSpec(
         "shadow_orb_entries_per_day", _today_shadow_orb_entries,
         "SELECT ticker, signal_type, status, trigger_minute_et, orb_high, orb_low "
-        "FROM mi_orb_shadow_trades WHERE alert_date = CURRENT_DATE "
+        "FROM mi_orb_shadow_trades WHERE alert_date = CURRENT_DATE AND bar_size_minutes = 5 "
         "ORDER BY status, ticker;",
         ["agents/market_intelligence/broker/shadow_orb_tracker.py::run_shadow_pass"],
     ),
     MetricSpec(
         "shadow_orb_no_entry_rate", _today_shadow_orb_no_entry_rate,
         "SELECT status, COUNT(*) FROM mi_orb_shadow_trades "
-        "WHERE alert_date=CURRENT_DATE GROUP BY 1 ORDER BY 2 DESC;",
+        "WHERE alert_date=CURRENT_DATE AND bar_size_minutes=5 GROUP BY 1 ORDER BY 2 DESC;",
         ["agents/market_intelligence/broker/shadow_orb_tracker.py::_process_candidate"],
     ),
     MetricSpec(

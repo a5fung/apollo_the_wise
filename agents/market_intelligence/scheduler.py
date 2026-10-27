@@ -2869,12 +2869,26 @@ async def _shadow_orb_entry_job():
 
 
 async def _shadow_orb_exit_job():
-    """Run at 4:30 PM ET. Apply daily exit step to every open shadow row."""
+    """Run at 4:50 PM ET. First the #482 add-on's first-hour ENTRY pass (the 60-minute rows for
+    every 5-minute row of the last 14 calendar days that lacks one — it needs the day's minutes
+    through the close, so it cannot share the 10:00 slot; no new job id, the #314 precedent), then
+    the daily exit step on every open shadow row of both bar sizes. The two halves fail
+    independently: a crashed hour pass pages as `shadow_orb_hour_entry` and the exit step still runs."""
     from agents.market_intelligence.collector import et_today
-    from agents.market_intelligence.broker.shadow_orb_tracker import update_shadow_positions  # exec-boundary-ok: moves-with-job (W2)
+    from agents.market_intelligence.broker.shadow_orb_tracker import (  # exec-boundary-ok: moves-with-job (W2)
+        run_shadow_hour_pass,
+        update_shadow_positions,
+    )
     today = et_today()
     if not get_market_status(today).is_trading_day:
         return None
+    logger.info("Shadow ORB first-hour entry pass starting...")
+    try:
+        hour_counts = await run_shadow_hour_pass(today)
+        logger.info(f"Shadow ORB first-hour entry pass complete: {hour_counts}")
+    except Exception as e:
+        logger.error(f"Shadow ORB first-hour entry pass failed: {e}")
+        await notify_job_failure("shadow_orb_hour_entry", str(e))
     logger.info("Shadow ORB exit pass starting...")
     try:
         counts = await update_shadow_positions(today)
@@ -7846,7 +7860,9 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=600,
     )
 
-    # Shadow ORB exit: 4:30 PM ET — daily exit step on every open shadow row.
+    # Shadow ORB exit: 4:50 PM ET — the #482 add-on's first-hour entry pass
+    # (60-minute rows, needs the day's minutes through the close), then the
+    # daily exit step on every open shadow row (both bar sizes).
     # 4:50 PM ET — after live_position_update (4:45) which already chose
     # this slot to let Polygon daily aggregate settle. Exit logic walks
     # daily bars; pre-aggregate run would see partial/zero data.
