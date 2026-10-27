@@ -40,6 +40,17 @@ _REAL_CLAIMS = mix.MixClaims                       # the real claims class (the 
 EX, ME, UN, NE = mix.EX, mix.ME, mix.UN, mix.NE
 
 
+def _lock_inputs_on_disk() -> bool:
+    """The freeze lock (`tag_lock` -> `mix_pins`) hashes every input of the two frozen reads it carries (their FILES tables,
+    all under the local apollo_data folder). CI's shallow clone has none of that data, so the tests that reach the lock
+    can only run on a machine that holds it (they run in the pre-push worktree on the build machine)."""
+    return all(os.path.exists(p) for table in (rev.FILES, fz.FILES) for p in table.values())
+
+
+needs_lock_inputs = pytest.mark.skipif(
+    not _lock_inputs_on_disk(), reason="the freeze lock hashes the frozen reads' real inputs; this machine does not hold them")
+
+
 # ═════════════════════════════════════════════════════════════════════════════════════════════ fixtures
 def sessions(n: int, start: str = "2020-01-02") -> list:
     d, out = date.fromisoformat(start), []
@@ -865,6 +876,7 @@ def test_module_scan_no_bare_helper_call_no_float_no_id_no_frozen_writer():
     assert len(hits) == 3
 
 
+@needs_lock_inputs
 def test_guard_1_refuses_when_only_the_intraday_dry_run_exists_and_the_freeze_lock(tmp_path, monkeypatch):
     doc = tmp_path / "doc.md"
     body = ["# synthetic registration", "the fixed library"]
@@ -1364,6 +1376,7 @@ def paste_pins(env) -> dict:
     return p
 
 
+@needs_lock_inputs
 def test_end_to_end_dry_run_then_the_tag_on_the_synthetic_world(world, tsv_cache, tmp_path, monkeypatch):
     env = e2e_env(world, tsv_cache, tmp_path, monkeypatch)
     P = env["paths"]
@@ -1454,6 +1467,7 @@ def test_end_to_end_dry_run_then_the_tag_on_the_synthetic_world(world, tsv_cache
     assert mix.main(["--tag"]) == 2 and mix.main(["--dry-run"]) == 2 and mix.main(["--reset", "why"]) == 2
 
 
+@needs_lock_inputs
 def test_a_planted_tsv_row_stops_gate_viii_then_the_reset_archives_and_the_lock_waits_for_the_disclosure(world, tsv_cache, tmp_path, monkeypatch):
     env = e2e_env(world, tsv_cache, tmp_path, monkeypatch)
     P = env["paths"]
@@ -1605,6 +1619,7 @@ PLANTS = {
 }
 
 
+@needs_lock_inputs
 @pytest.mark.parametrize("plant", sorted(PLANTS))
 def test_every_gate_stops_the_tag_on_a_planted_failure(plant, world, tsv_cache, tmp_path, monkeypatch):
     env = e2e_env(world, tsv_cache, tmp_path, monkeypatch)
@@ -1619,6 +1634,7 @@ def test_every_gate_stops_the_tag_on_a_planted_failure(plant, world, tsv_cache, 
     assert want in stopped and "ALL GATES PASSED" not in stopped and not os.path.exists(P["P_TAG"]), (plant, stopped[-1500:])
 
 
+@needs_lock_inputs
 def test_a_dry_run_mismatch_stops_and_the_tag_stays_locked(world, tsv_cache, tmp_path, monkeypatch):
     """The real MixClaims (not the quiet one): the synthetic world reproduces none of the registration's counts, so the dry run STOPS (3), its
     printout carries no DRY RUN COMPLETE, and guard (1) refuses the tag."""
