@@ -1,0 +1,40 @@
+# #705 as-is STEP 6a (machine pass) — SHEETS (2026-10-26 21:00)
+Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders. No rule, setup name or pattern label enters; the readers see captions only.
+- identifier scan: clean (the step-5/6 modules hold none of the excluded names)
+- import belt: no rule module in sys.modules
+- modules: asis_common.py 89116c1ab9dc7aa2 01_points.py 0864c933d7e8364d 02_captions.py 40e5df6fbd5b069f forbidden_identifiers.txt ba8f4bb5f23f2325 inventory/captions_inventory.py 23eaf3dae1cf68b8
+- sheets gates: the dry run completed with 0 MISMATCH by these modules; every pin (inputs, modules, doc body, the dry-run printout) is below the doc's freeze marker; the ledger verifies; no sheet or side file exists
+
+## Inputs
+- captions: 495 caption files, 485 unique streams, 10 duplicate uploads dropped (4s)
+- dictionary: web2 be41ad97963bf8da, web2a 9313e251fee3e562, connectives 5d2e495b5b12226b; 234,454 words + 150 connectives; 26 fillers; a dictionary word said in 50% of the streams is 'common' (R41): 515 tokens
+- lexicon 22,744 symbols; alias map 576 (signature 504, dedupe 70, rename table 2)
+- machine pass: 11,207 widened statements over 483 streams (5s)
+- input pins (sha256, first 16): video_status 9f7a7e4cb1fd8ae5, caption_sample c8bef564780f39bc, account_statements 30474545b6e017cc, lexicon c7fb05ac383ff63f, calendar_cache 47111a051ac101f1, snapshots a8987fce15fa1a96, entries 6a0dda2da7932b6d, exits 1ed76a2806091f7d, subs_list 99929453752cb359, dictionary web2 be41ad97963bf8da, web2a 9313e251fee3e562, connectives 5d2e495b5b12226b
+- windows: 3,722 step-5 windows read from snapshots / entries / exits (no bar, minute or export opened)
+
+## Outputs
+- reader1_t1_price: 434 rows, ~137,987 tokens (c6182ea464c23ece)
+- reader1_rest_b01: 500 rows, ~152,188 tokens (9d1734ec6c95e55d)
+- reader1_rest_b02: 500 rows, ~153,373 tokens (4a04fa77323d65e9)
+- reader1_rest_b03: 500 rows, ~159,825 tokens (4322341b93a30815)
+- reader1_rest_b04: 500 rows, ~161,084 tokens (f8a50df5adb2ea32)
+- reader1_rest_b05: 500 rows, ~159,956 tokens (81062899185509bb)
+- reader1_rest_b06: 500 rows, ~157,385 tokens (64c1326dbf5b8591)
+- reader1_rest_b07: 500 rows, ~159,291 tokens (8177e2cb383dce89)
+- reader1_rest_b08: 500 rows, ~157,119 tokens (c7785ccd9d0178ff)
+- reader1_rest_b09: 500 rows, ~152,519 tokens (88329e18c7dd12a1)
+- reader1_rest_b10: 10 rows, ~3,065 tokens (f8199076291f1ea3)
+- reader1_rest_b11: 500 rows, ~150,769 tokens (92af0ec990b6a8da)
+- reader1_rest_b12: 260 rows, ~76,833 tokens (41f17c47edf0b007)
+- reader1_rest_b13: 500 rows, ~153,467 tokens (d72dc4e5747779cb)
+- reader1_rest_b14: 280 rows, ~86,706 tokens (7d24380c82a0276f)
+- reader1_rest_b15: 500 rows, ~158,999 tokens (239624e9d4b2c1ba)
+- reader1_rest_b16: 190 rows, ~60,541 tokens (38f583b346a5a86b)
+- reader2_150: 150 rows, ~47,752 tokens (9cb82cc5bf690a84)
+- reader2_nosymbol_200: 200 rows, ~58,182 tokens (03e7afb70ae86f70)
+- aliases.tsv: fe214b6dd0135ef1
+- joins.tsv: 00a1108d16b18f14
+- machine_statements.tsv: 2118fa9b04a29632
+- sheet_manifest.tsv: e418d033e6c0dbab
+SHEETS COMPLETE
