@@ -768,3 +768,4 @@ Dry run 24 / 24 OK. Reading order (main loop, 2026-10-26; capacity, not a criter
 - reader1_t1_v2_part3: c0de450d9af7a1a5cf6e2097a03adc2109e7ef7834ec30b1915fe65e74085905
 - reread_150_A: 41b449d6e4226dbf53508658b1197df24f8bc2a34fdfa70082314f54111238c2
 - reread_150_B: 0d606f37db021748744331cdd9a8504ea87e9ef50d99c241136b433c0c373259
+- **What the v2 wording did to R1's input (disclosed):** his own trade + ticker identified + price stated reads 116 under v1 and 102 under v2 (91 in both, 25 v1-only, 11 v2-only); with any ticker reading 185 vs 174. The stricter ticker test moved 14 statements out of R1 — a smaller n, not a different bar. The re-test's pass margin, plainly: 121 of 150, two rows above the 80% line (120).
