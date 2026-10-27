@@ -1,0 +1,86 @@
+{
+ "inserts": [
+  {
+   "alert_date": "2026-10-27",
+   "atr_14": 1.5,
+   "bar_size_minutes": 5,
+   "entry_price": 10.5,
+   "entry_shares": 10,
+   "hard_stop": 9.5,
+   "orb_high": 10.5,
+   "orb_low": 10.0,
+   "remaining_shares": 10,
+   "risk_dollars": 10.0,
+   "score_tier": "HIGH",
+   "shape_tag": null,
+   "signal_type": "magna53",
+   "skip_reason": null,
+   "status": "open",
+   "stop_price": 9.5,
+   "ticker": "AAA",
+   "trigger_minute_et": "09:41:00"
+  },
+  {
+   "alert_date": "2026-10-27",
+   "atr_14": null,
+   "bar_size_minutes": 5,
+   "entry_price": null,
+   "entry_shares": null,
+   "hard_stop": null,
+   "orb_high": 10.0,
+   "orb_low": 10.0,
+   "remaining_shares": 0,
+   "risk_dollars": null,
+   "score_tier": "HIGH",
+   "shape_tag": null,
+   "signal_type": "magna53",
+   "skip_reason": null,
+   "status": "no_entry",
+   "stop_price": null,
+   "ticker": "BBB",
+   "trigger_minute_et": null
+  }
+ ],
+ "updates": [
+  {
+   "fields": {
+    "breakeven_active": false,
+    "closed_at": "<datetime>",
+    "exits": [
+     {
+      "pnl": -10.0,
+      "price": 9.5,
+      "reason": "stop_hit",
+      "shares": 10.0,
+      "time": "2026-10-28T16:00:00"
+     }
+    ],
+    "hold_days": 1,
+    "partial_taken": false,
+    "remaining_shares": 0,
+    "running_closes": [
+     10.2
+    ],
+    "status": "closed",
+    "stop_price": 9.5,
+    "total_pnl": -10.0
+   },
+   "id": 1
+  },
+  {
+   "fields": {
+    "breakeven_active": false,
+    "exits": [],
+    "hold_days": 1,
+    "partial_taken": false,
+    "remaining_shares": 10.0,
+    "running_closes": [
+     10.2
+    ],
+    "stop_price": 9.0,
+    "total_pnl": 0
+   },
+   "id": 2
+  }
+ ]
+}

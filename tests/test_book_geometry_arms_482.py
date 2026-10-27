@@ -320,12 +320,16 @@ def test_the_hour_entry_is_proven_no_entry_by_the_daily_high_before_it_abstains(
     bars = hour + after
     first = bga.classify_hour_entry(bars, time(16, 0))
     assert first["kind"] == "needs_daily_high" and first["walk_reason"] == "entry_window_gaps:11_of_330"
-    proven = bga.classify_hour_entry(bars, time(16, 0), day0_daily_high=10.6)
+    proven = bga.classify_hour_entry(bars, time(16, 0), day0_daily_high=10.59)
     assert proven["kind"] == "no_entry" and proven["reason"] == "no_entry:never_crossed_hour_high:proven_by_daily_high"
     assert proven["reason"].startswith(bga.NO_ENTRY_HOUR)
     unknown = bga.classify_hour_entry(bars, time(16, 0), day0_daily_high=10.9)
     assert unknown == {"kind": "pending", "high": 10.6, "low": 9.5,
-                       "reason": "entry_window_gaps:11_of_330:session_high_above_hour_high"}
+                       "reason": "entry_window_gaps:11_of_330:session_high_at_or_above_hour_high"}
+    # 2026-10-27 review F6: a daily high EQUAL to the hour high proves nothing — a stop triggers AT its
+    # price, and `entry_walk` fills on h >= level, so the re-touch may sit in an unstored minute
+    equal = bga.classify_hour_entry(bars, time(16, 0), day0_daily_high=10.6)
+    assert equal["kind"] == "pending" and equal["reason"].endswith(":session_high_at_or_above_hour_high")
     # full coverage never needs the daily bar
     full = bga.classify_hour_entry(hour + [{"m": datetime(2026, 8, 20, 10, 30, tzinfo=_ET) + timedelta(minutes=i),
                                             "o": 10.0, "h": 10.2, "l": 9.9, "c": 10.0} for i in range(330)],
@@ -605,13 +609,14 @@ async def test_an_hour_high_never_retaken_is_no_entry_for_both_hour_arms_not_a_l
 
 
 @pytest.mark.asyncio
-async def test_post_1030_holes_with_a_daily_high_at_the_hour_high_are_a_proven_no_entry(monkeypatch):
-    """Review F4 end to end: the walk saw holes and no cross; the stored day-0 daily high (10.6) is the hour
-    high, so the no-entry is written on the first night instead of an abstain."""
+async def test_post_1030_holes_with_a_daily_high_below_the_hour_high_are_a_proven_no_entry(monkeypatch):
+    """Review F4 end to end: the walk saw holes and no cross; the stored day-0 daily high (10.59) sits below
+    the hour high (10.6), so the no-entry is written on the first night instead of an abstain. (Strictly
+    below since the 2026-10-27 review F6 — an equal daily high stays pending.)"""
     bars = [b for b in _day({(9, 30): (9.6, 10.0, 9.5, 9.9), (9, 31): (9.95, 10.05, 9.9, 10.02),
                              (10, 10): (10.3, 10.6, 10.25, 10.3)}, filler=(10.0, 10.2, 9.9, 10.0))
             if not (time(12, 0) <= b["m"].time() < time(12, 10))]                       # 10 minutes not stored
-    _, inserts, _, _ = _wire_book(monkeypatch, minutes=bars, day0_high=10.6)
+    _, inserts, _, _ = _wire_book(monkeypatch, minutes=bars, day0_high=10.59)
     out = await _run()
     fh = _by_arm(inserts)["entry_first_hour_bar"]
     assert fh["outcome"] == "unscoreable" and fh["final_reason"] == "no_entry:never_crossed_hour_high:proven_by_daily_high"
@@ -635,7 +640,7 @@ async def test_post_1030_holes_the_daily_bar_cannot_decide_wait_then_abstain_whe
     by = _by_arm(inserts)
     for a in ("entry_first_hour_bar", "book_first_hour_low_of_day"):
         assert by[a]["outcome"] == "abstain"
-        assert by[a]["final_reason"] == "entry_window_gaps:10_of_330:session_high_above_hour_high", a
+        assert by[a]["final_reason"] == "entry_window_gaps:10_of_330:session_high_at_or_above_hour_high", a
     _, inserts, _, _ = _wire_book(monkeypatch, minutes=bars)                             # no stored daily bar
     await _run()
     assert _by_arm(inserts)["entry_first_hour_bar"]["final_reason"] == "entry_window_gaps:10_of_330:no_stored_day0_daily_bar"
@@ -814,7 +819,9 @@ def test_the_module_has_exactly_one_writer_and_imports_no_live_path():
     mods = set(r.stdout.split())
     assert "agents.market_intelligence.book_geometry_arms" in mods
     assert {m for m in mods if ".broker" in m} <= {"agents.market_intelligence.broker",
-                                                   "agents.market_intelligence.broker.exit_logic"}
+                                                   "agents.market_intelligence.broker.exit_logic",
+                                                   # 2026-10-27: the shared pure hour-bar walk (review F4)
+                                                   "agents.market_intelligence.broker.hour_bar_walk"}
     for banned in ("alpaca", "order_manager", "live_tracker", "entry_pipeline", "execution_client",
                    "telegram", "briefing", "sustain_reject_replay"):
         assert not any(banned in m for m in mods), banned

@@ -964,6 +964,9 @@ def test_nothing_live_imports_the_recorder():
             if (re.search(r"^\s*(from|import)\s+[\w.]*book_geometry_arms\b", text, re.M)
                     or re.search(r"^\s*from\s+[\w.]+\s+import\s+[^\n]*\bbook_geometry_arms\b", text, re.M)):
                 book_importers.append(str(py.relative_to(_REPO)))
+    # #482 add-on (2026-10-27): the ORB shadow tracker's 60-minute lane runs the SAME hour-bar walk,
+    # but through `broker/hour_bar_walk.py` (pure, execution-routed by the broker rule) — never
+    # through this module, so the book recorder stays importable by the job registration only.
     assert book_importers == ["agents/market_intelligence/scheduler.py"], book_importers
     # and the TABLE is named nowhere on the execution side or in the detector/judge/sizing paths
     for py in (_REPO / "agents" / "market_intelligence").rglob("*.py"):

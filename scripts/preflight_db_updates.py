@@ -37,7 +37,8 @@ from agents.market_intelligence.db import (
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
     GRADE_CORPUS_INSERT_SQL, UNIVERSE_FLOOR_SHADOW_INSERT_SQL, _TV_NEWS_SHADOW_UPSERT_SQL,
     CB_ENTRY_UPSERT_SQL, CB_EXIT_UPSERT_SQL, CB_SIC_UPSERT_SQL, CB_WATCH_UPSERT_SQL,
-    PS_SHADOW_INSERT_SQL,
+    PS_SHADOW_INSERT_SQL, SHADOW_HOUR_LANE_CANDIDATES_SQL, SHADOW_TRADE_EXIT_STEP_UPDATE_SQL,
+    SHADOW_TRADE_INSERT_SQL,
     get_pool)
 
 logger = logging.getLogger(__name__)
@@ -463,6 +464,25 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # EMPTY with only a logged error per episode - the silent-recorder case this gate exists for.
         "db.insert_parabolic_short_shadow_row: #314 parabolic-short shadow arm/trigger/outcome rows",
         PS_SHADOW_INSERT_SQL,
+    ),
+    (
+        # #482 add-on (2026-10-27): the ORB shadow lanes' one INSERT (5-minute rows at 10:00 ET, the
+        # first-hour 60-minute rows at 16:50 ET, both ON CONFLICT DO NOTHING ... RETURNING id) and the
+        # widest UPDATE the nightly exit step writes (a closing step: two jsonb lists beside the plain
+        # columns). Unregistered since 2026-05 — a type-deduction failure would have left the hour
+        # lane empty with one logged error per candidate.
+        "db.insert_shadow_trade: ORB shadow lanes (5-minute + first-hour) row insert",
+        SHADOW_TRADE_INSERT_SQL,
+    ),
+    (
+        "db.update_shadow_trade: ORB shadow lanes' closing exit-step UPDATE shape",
+        SHADOW_TRADE_EXIT_STEP_UPDATE_SQL,
+    ),
+    (
+        # a SELECT, registered because it is the one statement the hour lane runs OUTSIDE its
+        # per-candidate isolation — a prepare failure would page every night and record nothing
+        "shadow_orb_tracker._fetch_hour_lane_candidates: the first-hour lane's population",
+        SHADOW_HOUR_LANE_CANDIDATES_SQL,
     ),
 ]
 

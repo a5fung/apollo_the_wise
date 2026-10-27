@@ -1,16 +1,36 @@
-"""Shadow ORB tracker — telemetry-only 5-minute ORB simulation.
+"""Shadow ORB tracker — telemetry-only 5-minute ORB simulation, plus the FIRST-HOUR lane.
 
 Records would-be 5-min ORB entries and outcomes alongside the live 1-min
 trades so we can answer: "is there a class of EPs better entered at 5m
 than at 1m?" Same alert universe, same gates, same exit rules — only the
 ORB bar size differs (apples-to-apples).
 
-No Alpaca submits. No new Telegram alerts. Pure telemetry surfaced via
-`/audit shadow_orb` and the Sunday weekly review.
+THE FIRST-HOUR LANE (#482 add-on, operator 2026-10-26 "Ok move to Tuesday"): a SECOND bar size
+(60) in the same table, one row per 5-minute row — the full alert population, which is what the
+book-arm recorder (`book_geometry_arms.py`, SELECTION EFFECT) could not see because it walks only
+the fills we took. The entry is the book's: a stop-limit buy at the first 60-minute bar's high
+(09:30-10:29 ET) submitted 10:30, day order to the session close (13:00 on a half day), with the
+broker's limit buffer (`book_geometry_arms.entry_walk`); the stop is the live bracket rule restated
+on that bar (2 × bar low − bar high, the formula `prepare_orb_order` uses); the exit ladder is the
+same daily step the 5-minute rows walk. NO admission gate (the `stop_too_wide` ATR gate would refuse
+most hour bars — the book-arm rule), NO account read: the row is sized ONE unit (`entry_shares` 1,
+`risk_dollars` = entry − stop) so every reader's `total_pnl / risk_dollars` is R by construction.
+The walk itself is `broker/hour_bar_walk.py`, the ONE copy the book-arm recorder also runs. The
+day-0 gap rule: a walk whose post-10:30 minutes have holes and never crossed the hour high is
+decided by the day's daily high (strictly below the hour high proves the no-entry); otherwise, on
+a thin first hour (< 50 of 60 minutes), and on a LATE fill whose exit history cannot be walked, the
+row is deferred and retried nightly, written `gate_blocked` with the gap named once the alert is
+HOUR_GAP_RETRY_SESSIONS old. NOTHING is written for a candidate until every read it needs is in
+hand (review F1: an `open` row inserted before its catch-up would be quarantined, not retried).
 
-Two cron entry points:
-    run_shadow_pass(today)        — 10:00 ET, ORB window closed
-    update_shadow_positions(today) — 16:30 ET, daily exit step
+No Alpaca submits. No new Telegram alerts. Pure telemetry surfaced via
+`/audit shadow_orb` and the Sunday weekly review (both 5-minute only; the hour lane is read by SQL —
+docs/setups/magna53_ep.md 2026-10-27).
+
+Cron entry points (all three run in apollo-execution — EXECUTION_OWNED_JOB_IDS):
+    run_shadow_pass(today)         — 10:00 ET, ORB window closed (5-minute entries)
+    run_shadow_hour_pass(today)    — 16:50 ET, inside the exit job, before the step (hour entries)
+    update_shadow_positions(today) — 16:50 ET, daily exit step on BOTH bar sizes
 """
 from __future__ import annotations
 
@@ -24,6 +44,11 @@ from zoneinfo import ZoneInfo
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.broker.entry_pipeline import check_fade_guard
 from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
+from agents.market_intelligence.broker.hour_bar_walk import (
+    NO_ENTRY_HOUR,
+    classify_hour_entry,
+    session_close_et,
+)
 from agents.market_intelligence.broker.order_manager import (
     prepare_prior_day_low_orb_order,
     prepare_orb_order,
@@ -33,6 +58,7 @@ from agents.market_intelligence.broker.skip_reasons import (
 )
 from agents.market_intelligence.collector import get_index_history, prev_trading_days
 from agents.market_intelligence.db import (
+    SHADOW_HOUR_LANE_CANDIDATES_SQL,
     get_all_9m_sugar_babies,
     get_open_shadow_trades,
     get_pool,
@@ -47,6 +73,14 @@ BAR_SIZE_MINUTES = 5
 ORB_WINDOW_MINUTES = 30  # 9:30 → 10:00 ET
 TRIGGER_END_MINUTE = 30  # exclusive — last 1-min bar is 9:59
 SHADOW_CONCURRENCY = 5
+
+# ── the first-hour lane (#482 add-on) ──
+HOUR_BAR_SIZE_MINUTES = 60
+HOUR_LANE_LOOKBACK_DAYS = 14     # calendar days of 5-minute rows the nightly pass looks back over —
+                                 # twice HOUR_GAP_RETRY_SESSIONS, so a gap row is still in the
+                                 # population when it becomes recordable even after a missed night
+HOUR_GAP_RETRY_SESSIONS = 5      # a data gap is retried nightly this many sessions, then recorded
+HOUR_LANE_UNIT_SHARES = 1.0      # one unit: total_pnl / risk_dollars reads as R
 
 
 # ── Entry pass (10:00 ET) ───────────────────────────────────────────────────
@@ -254,6 +288,263 @@ async def _insert_row(
     return trade_id is not None
 
 
+# ── First-hour entry pass (16:50 ET, before the exit step) — #482 add-on ───
+
+
+async def run_shadow_hour_pass(today: date) -> dict[str, int]:
+    """Record the first-hour entry for every 5-minute shadow row that has no 60-minute sibling yet
+    (alert dates within HOUR_LANE_LOOKBACK_DAYS of `today`). The population is DERIVED from the
+    5-minute rows, so the two lanes cover exactly the same alerts by construction.
+
+    Statuses written: open / no_entry / gate_blocked (a non-positive 2R stop, or a data gap that
+    stayed open HOUR_GAP_RETRY_SESSIONS sessions). A gap younger than that writes nothing — the row
+    is picked up again tomorrow. Same kill switch as the 5-minute lane (`shadow_orb_5m`).
+    """
+    from agents.market_intelligence.db import log_audit_event
+    from agents.market_intelligence.strategies.registry import should_run
+    counts = {"open": 0, "no_entry": 0, "gate_blocked": 0, "deferred": 0,
+              "duplicate": 0, "error": 0}
+    if not await should_run("shadow_orb_5m"):
+        await log_audit_event(
+            "strategy_disabled_skip",
+            "shadow_orb_5m disabled — skipping the first-hour shadow pass",
+        )
+        return {**counts, "strategy_disabled": 1}
+
+    candidates = await _fetch_hour_lane_candidates(today)
+    logger.info(f"Shadow first-hour pass: {len(candidates)} 5-minute row(s) without an hour row")
+    sem = asyncio.Semaphore(SHADOW_CONCURRENCY)
+
+    async def _one(row: dict) -> None:
+        async with sem:
+            try:
+                status = await _process_hour_candidate(row, today)
+                counts[status] = counts.get(status, 0) + 1
+            except Exception:
+                logger.exception(
+                    f"Shadow first-hour {row.get('ticker')} {row.get('alert_date')}: per-candidate crash"
+                )
+                counts["error"] += 1
+
+    await asyncio.gather(*[_one(r) for r in candidates])
+    logger.info(f"Shadow first-hour pass complete: {counts}")
+    await log_audit_event(
+        "shadow_orb_hour_pass",
+        f"{len(candidates)} candidate(s): {counts['open']} open, {counts['no_entry']} no-entry, "
+        f"{counts['gate_blocked']} gate-blocked, {counts['deferred']} deferred (gap retried), "
+        f"{counts['error']} error(s)",
+    )
+    return counts
+
+
+def _alpaca_bars_to_walk_shape(bars: list[dict]) -> list[dict]:
+    """`alpaca.get_minute_bars_window` rows → the {m,o,h,l,c} shape the book-arm walks read."""
+    out = []
+    for b in bars:
+        ts = b.get("timestamp")
+        if ts is None:
+            continue
+        out.append({"m": ts.astimezone(ET), "o": b["open"], "h": b["high"], "l": b["low"], "c": b["close"]})
+    return out
+
+
+def _minutes_from_open(t: time) -> int:
+    return (t.hour * 60 + t.minute) - (9 * 60 + 30)
+
+
+def _sessions_old(alert_date: date, today: date) -> int:
+    """Weekday sessions strictly after `alert_date` through `today` (the file's holiday-free rule)."""
+    return _count_weekday_sessions(alert_date, today)
+
+
+async def _process_hour_candidate(row: dict, today: date) -> str:
+    """One 5-minute row → its 60-minute sibling. Returns the status written, 'deferred' when nothing
+    was written (a data gap still inside its retry window), 'duplicate' on a UNIQUE conflict.
+
+    Every read happens BEFORE the first write (review F1): the day's minutes, the day-0 daily high
+    when the walk saw holes, and — for a LATE fill — the exit history of the sessions it missed. A
+    candidate whose reads are incomplete is deferred as a whole; an `open` row is only ever inserted
+    together with the catch-up that makes it steppable."""
+    ticker = row["ticker"]
+    alert_date = row["alert_date"]
+    close_et = session_close_et(alert_date)
+    raw = await alpaca.get_minute_bars_window(ticker, alert_date, 0, _minutes_from_open(close_et))
+    bars = _alpaca_bars_to_walk_shape(raw)
+    stale = _sessions_old(alert_date, today) >= HOUR_GAP_RETRY_SESSIONS
+
+    verdict = classify_hour_entry(bars, close_et) if bars else {"kind": "pending", "reason": "no_minute_bars"}
+    if verdict["kind"] == "needs_daily_high":
+        daily = await get_index_history(ticker, alert_date.isoformat(), alert_date.isoformat())
+        d0_high = float(daily[0]["h"]) if daily and daily[0].get("h") is not None else None
+        if d0_high is None:
+            verdict = {"kind": "pending", "high": verdict["high"], "low": verdict["low"],
+                       "reason": f"{verdict['walk_reason']}:no_day0_daily_bar"}
+        else:
+            verdict = classify_hour_entry(bars, close_et, d0_high)
+
+    hi, lo = verdict.get("high"), verdict.get("low")
+    trigger: time | None = None
+    entry = stop = None
+    catch_up: dict[str, Any] | None = None
+    if verdict["kind"] == "filled":
+        # the live bracket rule restated on the hour bar
+        trigger = verdict["minute"].astimezone(ET).time().replace(microsecond=0)
+        entry = float(verdict["px"])
+        stop = 2 * lo - hi
+        if stop <= 0:
+            inserted = await _insert_hour_row(
+                row, status="gate_blocked",
+                skip_reason=f"first_hour_2r_stop_nonpositive: 2R stop ${stop:.2f} <= $0",
+                orb_high=hi, orb_low=lo, trigger_minute_et=trigger,
+            )
+            return "gate_blocked" if inserted else "duplicate"
+        # A LATE fill (the lookback backfill, or a gap row resolved on a later night) is walked over
+        # the sessions between the alert and yesterday BEFORE it is written — see _walk_missed_sessions.
+        catch_up = await _walk_missed_sessions(ticker, alert_date, entry, stop, today)
+        if catch_up is not None and "_unavailable" in catch_up:
+            verdict = {"kind": "pending", "high": hi, "low": lo, "reason": catch_up["_unavailable"]}
+            catch_up = None
+
+    if verdict["kind"] == "pending":
+        if not stale:
+            return "deferred"
+        inserted = await _insert_hour_row(
+            row, status="gate_blocked",
+            skip_reason=f"{INFRA_NO_BAR}: {verdict['reason']} (unresolved after {HOUR_GAP_RETRY_SESSIONS} sessions)",
+            orb_high=hi, orb_low=lo, trigger_minute_et=trigger,
+        )
+        return "gate_blocked" if inserted else "duplicate"
+
+    if verdict["kind"] == "no_entry":
+        reason = verdict["reason"]
+        inserted = await _insert_hour_row(
+            row, status="no_entry",
+            skip_reason=None if reason == NO_ENTRY_HOUR else reason,
+            orb_high=hi, orb_low=lo,
+        )
+        return "no_entry" if inserted else "duplicate"
+
+    trade_id = await _insert_hour_row(
+        row, status="open",
+        orb_high=hi, orb_low=lo,
+        trigger_minute_et=trigger,
+        entry_price=entry, stop_price=stop, hard_stop=stop,
+        risk_dollars=HOUR_LANE_UNIT_SHARES * (entry - stop),
+        entry_shares=HOUR_LANE_UNIT_SHARES,
+        atr_14=row.get("atr_14"),
+    )
+    if trade_id is None:
+        return "duplicate"
+    if catch_up:
+        await update_shadow_trade(trade_id, catch_up)
+    return "open"
+
+
+async def _walk_missed_sessions(ticker: str, alert_date: date, entry: float, stop: float,
+                                today: date) -> dict[str, Any] | None:
+    """The catch-up for a LATE fill, computed BEFORE anything is written: the daily ladder walked
+    over the real sessions in (alert_date, yesterday] — the live path's own driver (`iter_exit_ladder`,
+    `integer_partial_shares=False`, no prior closes, no opt-ins), exactly as `replay_stale_open_row`
+    drives it. Tonight's own session is left to the exit step that runs right after this pass.
+
+    Returns None when there is nothing to catch up (today is the first session after the alert, or
+    the only sessions between were holidays the stale guard tolerates); the `update_shadow_trade`
+    fields when sessions were walked; or `{"_unavailable": reason}` when the history is missing or
+    short enough that the exit step's own guard (`detect_stale_for_step`) would quarantine the row —
+    the caller then DEFERS the candidate (retried nightly, recorded `gate_blocked` once stale) instead
+    of inserting an `open` row that could never be stepped (review F1). The guard is the same
+    predicate the exit step applies, so a row this returns fields for is one the step will walk."""
+    from agents.market_intelligence.broker.exit_logic import iter_exit_ladder, seed_exit_state
+    if _count_weekday_sessions(alert_date, today) < 2:
+        return None                       # today is the first session after the alert: nothing missed
+    through = today - timedelta(days=1)
+    bars = await get_index_history(ticker, (alert_date + timedelta(days=1)).isoformat(), through.isoformat())
+    day_bars: list[tuple[date, dict]] = []
+    for b in bars or []:
+        ts = b.get("t")
+        if ts is None:
+            continue
+        day = datetime.fromtimestamp(ts / 1000, tz=ET).date()
+        if alert_date < day <= through:
+            day_bars.append((day, b))
+    day_bars.sort(key=lambda x: x[0])
+    fields: dict[str, Any] | None = None
+    if day_bars:
+        state = seed_exit_state(alert_date=alert_date, entry_price=entry, hard_stop=stop,
+                                remaining_shares=HOUR_LANE_UNIT_SHARES)
+        last_step = None
+        for _i, _day, step in iter_exit_ladder(state, day_bars, integer_partial_shares=False):
+            last_step = step
+        if last_step is not None:
+            fields = {
+                "running_closes": state["running_closes"],
+                "exits": state["exits"],
+                "remaining_shares": state["remaining_shares"],
+                "partial_taken": state["partial_taken"],
+                "breakeven_active": state["breakeven_active"],
+                "total_pnl": sum(e.get("pnl", 0) for e in state["exits"]),
+                "hold_days": last_step.hold_days,
+                "stop_price": last_step.effective_stop,
+            }
+            if last_step.closed:
+                fields["status"] = "closed"
+                fields["closed_at"] = datetime.now(ET)
+                return fields             # closed inside the missed sessions: nothing left to step
+    is_stale, reason = detect_stale_for_step(alert_date, fields["hold_days"] if fields else None, today)
+    if is_stale:
+        return {"_unavailable": (
+            f"exit_history:{(alert_date + timedelta(days=1)).isoformat()}..{through.isoformat()}:"
+            f"{len(day_bars)}_session_bar(s) — {reason}")}
+    return fields
+
+
+async def _insert_hour_row(row: dict, *, status: str, skip_reason: str | None = None,
+                           orb_high: float | None = None, orb_low: float | None = None,
+                           trigger_minute_et: time | None = None,
+                           entry_price: float | None = None, stop_price: float | None = None,
+                           hard_stop: float | None = None, risk_dollars: float | None = None,
+                           entry_shares: float | None = None, atr_14: float | None = None) -> int | None:
+    """Returns the new row's id, None on the UNIQUE conflict."""
+    return await insert_shadow_trade({
+        "ticker": row["ticker"],
+        "alert_date": row["alert_date"],
+        "bar_size_minutes": HOUR_BAR_SIZE_MINUTES,
+        "signal_type": row["signal_type"],
+        "shape_tag": row.get("shape_tag"),
+        "score_tier": row.get("score_tier"),
+        "orb_high": orb_high,
+        "orb_low": orb_low,
+        "atr_14": atr_14,
+        "trigger_minute_et": trigger_minute_et,
+        "entry_price": entry_price,
+        "stop_price": stop_price,
+        "hard_stop": hard_stop,
+        "risk_dollars": risk_dollars,
+        "entry_shares": entry_shares,
+        "status": status,
+        "skip_reason": skip_reason,
+        "remaining_shares": entry_shares if status == "open" else 0,
+    })
+
+
+async def _fetch_hour_lane_candidates(today: date) -> list[dict]:
+    """5-minute rows (any status — the whole alert population) within the lookback that have no
+    60-minute sibling yet. `atr_14` rides along so the hour row can state its stop width offline.
+    The statement lives in db.py (`SHADOW_HOUR_LANE_CANDIDATES_SQL`) so the deploy prepares it."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            SHADOW_HOUR_LANE_CANDIDATES_SQL,
+            today, BAR_SIZE_MINUTES, HOUR_BAR_SIZE_MINUTES, HOUR_LANE_LOOKBACK_DAYS,
+        )
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["atr_14"] = float(d["atr_14"]) if d.get("atr_14") is not None else None
+        out.append(d)
+    return out
+
+
 # ── #482 evidence-quarantine: resumed-from-freeze detection (2026-08-17) ───
 # The #216 jsonb double-encoding bug froze `update_shadow_trade` writes for
 # months; the day the fix landed, the exit pass resumed every frozen row
@@ -356,8 +647,13 @@ async def update_shadow_positions(today: date) -> dict[str, int]:
     — a row whose last recorded step is many sessions stale gets quarantined
     (marked, not stepped) instead of silently fabricating a jump. See the
     detection block above.
+
+    #482 add-on (2026-10-27): the 60-minute rows are stepped by the same loop —
+    the open-row read no longer filters on bar size (every lane in the table
+    walks this one ladder; the 5-minute rows' steps are byte-identical, pinned
+    by the golden in tests/test_482_shadow_hour_lane.py).
     """
-    open_rows = await get_open_shadow_trades(bar_size_minutes=BAR_SIZE_MINUTES)
+    open_rows = await get_open_shadow_trades(bar_size_minutes=None)
     if not open_rows:
         logger.info("Shadow ORB exit pass: no open rows")
         return {"closed": 0, "updated": 0, "no_data": 0, "error": 0,

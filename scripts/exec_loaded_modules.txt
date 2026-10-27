@@ -26,6 +26,7 @@ agents/market_intelligence/broker/entry_pipeline.py
 agents/market_intelligence/broker/exit_logic.py
 agents/market_intelligence/broker/gap_through_telemetry.py
 agents/market_intelligence/broker/halt_status_shadow.py
+agents/market_intelligence/broker/hour_bar_walk.py
 agents/market_intelligence/broker/intraday_drawdown.py
 agents/market_intelligence/broker/live_tracker.py
 agents/market_intelligence/broker/lowcap_paper_entry.py

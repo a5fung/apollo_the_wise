@@ -15207,17 +15207,9 @@ async def get_live_trading_summary() -> dict[str, Any]:
 # ── Shadow ORB telemetry (mi_orb_shadow_trades) ───────────────────────────────
 
 
-async def insert_shadow_trade(row: dict[str, Any]) -> int | None:
-    """Insert one shadow row. Returns id, or None on UNIQUE conflict.
-
-    Required keys: ticker, alert_date, bar_size_minutes, signal_type, status.
-    Optional: shape_tag, score_tier, orb_high, orb_low, atr_14,
-    trigger_minute_et, entry_price, stop_price, hard_stop, risk_dollars,
-    entry_shares, skip_reason, remaining_shares.
-    """
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rec = await conn.fetchrow("""
+# The ONE insert both shadow lanes use (bar_size_minutes 5 since 2026-05, 60 since the #482 add-on
+# 2026-10-27). Hoisted so `scripts/preflight_db_updates.py` prepares the exact statement at deploy.
+SHADOW_TRADE_INSERT_SQL = """
             INSERT INTO mi_orb_shadow_trades (
                 ticker, alert_date, bar_size_minutes, signal_type, shape_tag,
                 score_tier, orb_high, orb_low, atr_14, trigger_minute_et,
@@ -15229,7 +15221,38 @@ async def insert_shadow_trade(row: dict[str, Any]) -> int | None:
             )
             ON CONFLICT (ticker, alert_date, bar_size_minutes) DO NOTHING
             RETURNING id
-        """,
+        """
+
+
+# The first-hour lane's population (#482 add-on, 2026-10-27): 5-minute rows of the lookback with no
+# 60-minute sibling. $1 today, $2 = 5, $3 = 60, $4 lookback days. Read by shadow_orb_tracker only.
+SHADOW_HOUR_LANE_CANDIDATES_SQL = """
+            SELECT five.ticker, five.alert_date, five.signal_type, five.shape_tag,
+                   five.score_tier, five.atr_14
+            FROM mi_orb_shadow_trades five
+            LEFT JOIN mi_orb_shadow_trades hour
+              ON hour.ticker = five.ticker
+             AND hour.alert_date = five.alert_date
+             AND hour.bar_size_minutes = $3::int
+            WHERE five.bar_size_minutes = $2::int
+              AND five.alert_date <= $1::date
+              AND five.alert_date >= $1::date - ($4::int * INTERVAL '1 day')
+              AND hour.id IS NULL
+            ORDER BY five.alert_date, five.ticker
+        """
+
+
+async def insert_shadow_trade(row: dict[str, Any]) -> int | None:
+    """Insert one shadow row. Returns id, or None on UNIQUE conflict.
+
+    Required keys: ticker, alert_date, bar_size_minutes, signal_type, status.
+    Optional: shape_tag, score_tier, orb_high, orb_low, atr_14,
+    trigger_minute_et, entry_price, stop_price, hard_stop, risk_dollars,
+    entry_shares, skip_reason, remaining_shares.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rec = await conn.fetchrow(SHADOW_TRADE_INSERT_SQL,
             row["ticker"], row["alert_date"], row["bar_size_minutes"],
             row["signal_type"], row.get("shape_tag"), row.get("score_tier"),
             row.get("orb_high"), row.get("orb_low"), row.get("atr_14"),
@@ -15272,22 +15295,25 @@ async def get_open_shadow_trades(bar_size_minutes: int | None = None
     return [dict(r) for r in rows]
 
 
-async def update_shadow_trade(trade_id: int, fields: dict[str, Any]) -> None:
-    """Partial update on a shadow row. fields keys must be safe column names."""
-    if not fields:
-        return
-    allowed = {
-        "status", "exits", "remaining_shares", "stop_price", "total_pnl",
-        "hold_days", "partial_taken", "breakeven_active", "running_closes",
-        "closed_at", "skip_reason",
-        # #482 evidence-quarantine / faithful-replay marker columns.
-        "quarantined", "quarantine_reason", "quarantined_at",
-        "pre_replay_snapshot", "replayed_at",
-    }
+_SHADOW_TRADE_UPDATE_ALLOWED = frozenset({
+    "status", "exits", "remaining_shares", "stop_price", "total_pnl",
+    "hold_days", "partial_taken", "breakeven_active", "running_closes",
+    "closed_at", "skip_reason",
+    # #482 evidence-quarantine / faithful-replay marker columns.
+    "quarantined", "quarantine_reason", "quarantined_at",
+    "pre_replay_snapshot", "replayed_at",
+})
+
+
+def shadow_trade_update_sql(fields: dict[str, Any]) -> tuple[str | None, list[Any]]:
+    """The exact UPDATE `update_shadow_trade` runs for `fields` (keys outside the allow-list are
+    dropped) and its bound values — `$1` is the row id. Pure, so the deploy preflight can prepare
+    the statement shape the nightly exit step writes (`SHADOW_TRADE_EXIT_STEP_UPDATE_SQL`)."""
     set_clauses, values = [], []
-    for i, (key, val) in enumerate(fields.items(), start=2):
-        if key not in allowed:
+    for key, val in fields.items():
+        if key not in _SHADOW_TRADE_UPDATE_ALLOWED:
             continue
+        i = len(values) + 2
         if key in ("exits", "running_closes"):
             set_clauses.append(f"{key} = ${i}::jsonb")
             # #216: codec single-encodes; do NOT pre-dumps (was double-encoding — the
@@ -15303,8 +15329,26 @@ async def update_shadow_trade(trade_id: int, fields: dict[str, Any]) -> None:
             set_clauses.append(f"{key} = ${i}")
             values.append(val)
     if not set_clauses:
+        return None, []
+    return f"UPDATE mi_orb_shadow_trades SET {', '.join(set_clauses)} WHERE id = $1", values
+
+
+# The widest shape the daily exit step (`shadow_orb_tracker._persist_step`) writes — a closing
+# step: both jsonb lists beside the plain columns. Prepared at deploy by preflight_db_updates.
+SHADOW_TRADE_EXIT_STEP_UPDATE_SQL = shadow_trade_update_sql({
+    "running_closes": [], "exits": [], "remaining_shares": 0, "partial_taken": False,
+    "breakeven_active": False, "total_pnl": 0, "hold_days": 0, "stop_price": 0,
+    "status": "closed", "closed_at": None,
+})[0]
+
+
+async def update_shadow_trade(trade_id: int, fields: dict[str, Any]) -> None:
+    """Partial update on a shadow row. fields keys must be safe column names."""
+    if not fields:
         return
-    sql = f"UPDATE mi_orb_shadow_trades SET {', '.join(set_clauses)} WHERE id = $1"
+    sql, values = shadow_trade_update_sql(fields)
+    if sql is None:
+        return
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(sql, trade_id, *values)
