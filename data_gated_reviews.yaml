@@ -12947,6 +12947,12 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_10_27: >-
+      RAN 2026-10-27 (main loop; the subagent cards' prod reads were refused), the pinned SQL + the same scorer
+      (scripts/probes/_review_1027/alert_rank/verify_rank_shadow_2026-10-27.out, cells_2026-10-27.out). n = 28 sessions
+      (new: RRC 10-26, pool of 1, unmatured), 56 rows, 52 matured at 5 days, 37 at 20. 5-day, 8x: top quartile 0 of 7
+      (MANE matured at 3.39x, no 8x) vs the rest 2 of 45 (MRNA, KOD); broke low 4 of 7 vs 29 of 45; 09:45 reads the same.
+      20-day: top 1 of 5 (VICR) vs rest 2 of 32. The 10-24 reading stands by the registered rule: does not validate.
     resolution_2026_10_25: >-
       SURFACED by the Sun 10-25 weekly review as "ripe" (and "8 rule changes since, latest 2026-10-13 - re-check the question").
       No new out-of-sample alert session since the 10-24 read (a weekend), so nothing can move: the 10-24 reading stands
@@ -14645,7 +14651,18 @@ reviews:
     # pre-fix baseline; fewer would read noise as effect.
     discriminates_on: []
     earliest_review_date: 2026-10-15
-    status: pending
+    status: done
+    closed_on: 2026-10-27
+    outcome: >-
+      OUTCOME (a) — no material shift the data can show; the flags are inert. Read 2026-10-27, prod read-only
+      (scripts/probes/_review_1027/judge_wiring/02_era_split.{sql,out}). Like-for-like (rubric v4, pre-wiring, 08-27..08-28):
+      6 rows, all strong/HIGH (CHRN, CRWD, DG, OKTA, VEEV, SOLS) — too thin to carry a distribution. Wired (v4, 09-02 on):
+      41 rows — game_changer 15, strong 15, routine 10, mna 1 (HIGH 29, MODERATE 10, none 2). The older-rubric column
+      (before 08-27, a DIFFERENT rubric, never pooled): 93 rows — game_changer 35, strong 37, routine 21. Mechanism: 0 of 6
+      pre-wiring and 0 of 41 wired grade reasons cite the source or revenue flags (pattern: primary/direct source, filing,
+      press release; revenue stage / pre-revenue / revenue rule) — the judge reads the evidence, not the two flags. So stop
+      treating has_direct_source / revenue_stage as load-bearing for the grade; nothing to change live.
+
     kind: accrual
     added_on: 2026-09-01
     can_fire:

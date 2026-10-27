@@ -1,0 +1,27 @@
+SET
+era|judge_grade|judge_tier|count
+A_older_rubric|game_changer|HIGH|35
+A_older_rubric|routine|MODERATE|16
+A_older_rubric|routine|none|5
+A_older_rubric|strong|HIGH|33
+A_older_rubric|strong|MODERATE|4
+B_v4_prewiring|strong|HIGH|6
+C_v4_wired|game_changer|HIGH|15
+C_v4_wired|mna|none|1
+C_v4_wired|routine|MODERATE|9
+C_v4_wired|routine|none|1
+C_v4_wired|strong|HIGH|14
+C_v4_wired|strong|MODERATE|1
+(12 rows)
+alert_date|ticker|judge_grade|judge_tier
+2026-08-27|CHRN|strong|HIGH
+2026-08-27|CRWD|strong|HIGH
+2026-08-27|DG|strong|HIGH
+2026-08-27|OKTA|strong|HIGH
+2026-08-27|VEEV|strong|HIGH
+2026-08-28|SOLS|strong|HIGH
+(6 rows)
+era|n|cites_source|cites_revenue
+B_prewiring|6|0|0
+C_wired|41|0|0
+(2 rows)
