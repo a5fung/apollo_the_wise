@@ -1,0 +1,63 @@
+SET
+== A. #482 night two: audit rows since the noon deploy
+id|et|event_type|left
+62517|2026-10-27 18:04:00.110735|live_fill_counterfactual_recorded|3 fill(s) with arms to settle, 21 arm(s) considered: 1 written (0 settled, 0 abstained, 1 unscoreable, 0 at horizon), 20 pending, 0 error(s)
+62518|2026-10-27 18:04:00.136681|book_geometry_arms_recorded|2 fill(s) with book rows to write, 6 row(s) considered: 3 written (1 fill-facts, 0 settled, 0 abstained, 2 unscoreable of which 2 no-entry, 0 at horizon), 3 pending (3 open walk, 0 data gap), 0 error(s)
+(2 rows)
+== A2. fill_facts rows per fill (expect exactly 1 each — no second row on night two)
+trade_id|ticker|n_facts
+(0 rows)
+fills|facts_rows
+265|18
+(1 row)
+== A3. dead-column flags tonight on the new columns (expect none after night one wrote them)
+et|left
+(0 rows)
+== A4. walked book arms settled since night one
+arm|outcome|count
+book_first_hour_low_of_day|settled|8
+book_first_hour_low_of_day|unscoreable|9
+entry_first_hour_bar|settled|8
+entry_first_hour_bar|unscoreable|9
+stop_low_of_day|settled|17
+(5 rows)
+== B. #491 night 2: bounces since the U2 deploy (expect 0), skip rows, failures
+tk|frm|theme_date
+(0 rows)
+et|left
+(0 rows)
+event_type|count
+shadow_themes_promoted|1
+theme_member_rehomed|6
+theme_rehome_pass_ran|1
+(3 rows)
+et|left
+2026-10-27 17:01:31.452059|{"ticker": "EHC", "from": "Hospital & Behavioral Health Facility Procedure Volume Recovery", "to": "Post-Acute & Home-Based Healthcare Services", "target_stage": "Mainstream", "paying": true, "target_corr": 0.5519, "own_corr": 0.3288, "arm": "g2_misfiled", "rationale": "Encompass Health runs inpatient rehabilitation hospitals, which are post-acute care."}
+2026-10-27 17:01:31.459361|{"ticker": "RELY", "from": "Fintech Payments, Prepaid & Consumer Digital Banking Apps", "to": "Fintech & Digital Finance Sector Re-rating on Fed Easing", "target_stage": "Mainstream", "paying": true, "target_corr": 0.5022, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "rationale": "Remitly is a cross-border digital payments company, like DLO and PYPL in this theme."}
+2026-10-27 17:01:31.466024|{"ticker": "PAGS", "from": "Brazil Fintech & Digital Banking Rally", "to": "Fintech & Digital Finance Sector Re-rating on Fed Easing", "target_stage": "Mainstream", "paying": true, "target_corr": 0.4739, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "rationale": "PagSeguro is a payment processor and fintech, comparable to DLO and KSPI in this theme."}
+2026-10-27 17:04:23.222342|{"ticker": "NAT", "from": null, "to": "Product Tanker Shipping", "target_stage": "Nascent", "paying": false, "target_corr": 0.9121, "arm": "join_carry", "rationale": "Nordic American is a tanker owner, and its rates rise with the same Middle East and Hormuz-driven freight spike as existing members like DHT, FRO and TNK."}
+2026-10-27 17:04:23.225767|{"ticker": "INSW", "from": null, "to": "Product Tanker Shipping", "target_stage": "Nascent", "paying": false, "target_corr": 0.902, "arm": "join_carry", "rationale": "International Seaways is a crude and petroleum tanker operator exposed to the same freight rate surge, and it trades with the theme at 0.90."}
+2026-10-27 17:04:23.228872|{"ticker": "ECO", "from": null, "to": "Product Tanker Shipping", "target_stage": "Nascent", "paying": false, "target_corr": 0.8311, "arm": "join_carry", "rationale": "Okeanis Eco Tankers is a crude tanker owner that benefits from the same Hormuz-driven rate spike, and it trades with the theme at 0.83."}
+(6 rows)
+== C. the pp recorder night two: run row, walked pp rows (n_fwd >= 1, not stopped_day0), mature by a daily walk
+id|et
+62506|2026-10-27 17:48:06.76885
+(1 row)
+arm|status|mature|count|max
+A|degraded|f|806|1
+A|stopped|t|145|1
+A|stopped_day0|t|287|0
+pp|degraded|f|806|1
+pp|stopped|t|145|1
+pp|stopped_day0|t|287|0
+(6 rows)
+entry_id|ticker|arm|status|n_fwd|sessions_held|realized_r|left
+4321|AEO|pp|degraded|1|1|4.957158651188529|[[0, "partial_r", 18.564079999999997, 0.3333333333333333], [0, "stop_to", 18.17816, 0.0], [1, "mark", 19.42, 0.6666666666666667]]
+4322|AEO|pp|degraded|1|1|2.496498325286008|[[1, "partial_r", 19.13465, 0.3333333333333333], [1, "stop_to", 18.36835, 0.0], [1, "mark", 19.42, 0.6666666666666667]]
+4324|AEO|pp|degraded|1|1|4.957158651188529|[[0, "partial_r", 18.564079999999997, 0.3333333333333333], [0, "stop_to", 18.17816, 0.0], [1, "mark", 19.42, 0.6666666666666667]]
+4326|AEO|pp|degraded|1|1|1.7287163546109598|[[1, "partial_r", 19.645159999999997, 0.3333333333333333], [1, "stop_to", 18.53852, 0.0], [1, "mark", 19.42, 0.6666666666666667]]
+4327|AEO|pp|degraded|1|1|1.7287163546109598|[[1, "partial_r", 19.645159999999997, 0.3333333333333333], [1, "stop_to", 18.53852, 0.0], [1, "mark", 19.42, 0.6666666666666667]]
+4329|AEO|pp|degraded|1|1|1.7287163546109598|[[1, "partial_r", 19.645159999999997, 0.3333333333333333], [1, "stop_to", 18.53852, 0.0], [1, "mark", 19.42, 0.6666666666666667]]
+4331|AEO|pp|degraded|1|1|1.7287163546109598|[[1, "partial_r", 19.645159999999997, 0.3333333333333333], [1, "stop_to", 18.53852, 0.0], [1, "mark", 19.42, 0.6666666666666667]]
+4332|AEO|pp|degraded|1|1|1.7287163546109598|[[1, "partial_r", 19.645159999999997, 0.3333333333333333], [1, "stop_to", 18.53852, 0.0], [1, "mark", 19.42, 0.6666666666666667]]
+(8 rows)

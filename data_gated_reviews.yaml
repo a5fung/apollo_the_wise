@@ -16135,6 +16135,8 @@ reviews:
       docs/setups/consolidation_breakout.md §"Verify-live for #705 (c)" — a walked `pp` row with n_fwd >= 1, both `pp` and `A`
       mature by a daily walk on one entry, and the re-walk cross-check (runner.exitpb_walk_arms on re-fetched minutes) agreeing
       on the first 3 minute fills; a disagreement is fixed before any forward number is read.
+      [2026-10-27 night two: (b) MET — 806 `pp` rows walked with n_fwd 1; (c) MET — 145 entries with BOTH `pp` and `A` mature by a
+      daily-walk stop at sessions_held 1 (scripts/probes/_eve_1027/q_pp_c.out). Left: the 3-fill re-walk cross-check.]
       Then run the forward read on the mature entries (script from the P5 holdout read, pointed at the forward tables): n; share at
       >= 5R and >= 10R; mean R without the top 5; mean R with a month-block 95% interval; mean P&L in ADR units; by month and by
       phase - for C1 and for C0 on the same entry and exit - and the same table for the backtest's holdout. Report the abstain

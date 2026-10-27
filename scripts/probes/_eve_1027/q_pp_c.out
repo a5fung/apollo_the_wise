@@ -1,0 +1,12 @@
+SET
+entries_both_daily_walk_mature
+145
+(1 row)
+entry_id|ticker|arm|status|sessions_held|r|left
+4401|BZ|A|stopped|1|-1.000|[[1, "stop", 16.37, 1.0]]
+4401|BZ|pp|stopped|1|-1.000|[[1, "stop", 16.37, 1.0]]
+4402|BZ|A|stopped|1|-1.000|[[1, "stop", 16.37, 1.0]]
+4402|BZ|pp|stopped|1|-1.000|[[1, "stop", 16.37, 1.0]]
+4403|BZ|A|stopped|1|-1.000|[[1, "stop", 16.37, 1.0]]
+4403|BZ|pp|stopped|1|-1.000|[[1, "stop", 16.37, 1.0]]
+(6 rows)

@@ -1,0 +1,3 @@
+SET default_transaction_read_only = on;
+SELECT count(*) entries_both_daily_walk_mature FROM (SELECT entry_id FROM mi_consolidation_breakout_exit WHERE arm IN ('A','pp') AND mature AND status IN ('stopped','trailed','time_exit') AND sessions_held >= 1 GROUP BY entry_id HAVING count(DISTINCT arm)=2) q;
+SELECT x.entry_id, e.ticker, x.arm, x.status, x.sessions_held, round(x.realized_r::numeric,3) r, left(x.events::text,220) FROM mi_consolidation_breakout_exit x JOIN mi_consolidation_breakout_entry e ON e.id=x.entry_id WHERE x.arm IN ('A','pp') AND x.mature AND x.status='stopped' AND x.sessions_held >= 1 ORDER BY x.entry_id, x.arm LIMIT 6;
