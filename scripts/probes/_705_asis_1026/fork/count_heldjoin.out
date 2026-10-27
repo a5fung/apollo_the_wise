@@ -1,0 +1,4 @@
+R1 input 102; join classes {('none', 'inside_hold'): 29, ('unique', ''): 33, ('none', 'not_on_panel'): 6, ('ambiguous', ''): 14, ('none', 'other_date'): 20}
+PRIMARY as registered: 11
+held-position join adds (clean fill, matched or holding/entry, side's window has a range): named day {'held_mid_hold': 4, 'held_tie_one_position': 6}, any day class {'held_mid_hold': 10, 'held_tie_one_position': 8}
+=> primary under the amendment: named-day 21; any day class for held statements 29

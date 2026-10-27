@@ -769,3 +769,50 @@ Dry run 24 / 24 OK. Reading order (main loop, 2026-10-26; capacity, not a criter
 - reread_150_A: 41b449d6e4226dbf53508658b1197df24f8bc2a34fdfa70082314f54111238c2
 - reread_150_B: 0d606f37db021748744331cdd9a8504ea87e9ef50d99c241136b433c0c373259
 - **What the v2 wording did to R1's input (disclosed):** his own trade + ticker identified + price stated reads 116 under v1 and 102 under v2 (91 in both, 25 v1-only, 11 v2-only); with any ticker reading 185 vs 174. The stricter ticker test moved 14 statements out of R1 — a smaller n, not a different bar. The re-test's pass margin, plainly: 121 of 150, two rows above the 80% line (120).
+
+### Step 6b — built, reviewed, and the R1 floor read BEFORE the run (2026-10-27)
+
+- **Built** (`asis_check_common.py`, `03_check.py`, `04_band.py`, `tests/test_asis_check.py`; Fable build, Opus review 9 findings all applied, Fable fix). Dry runs: 6b 12/12 OK, 6c 8/8 OK. No R1 number has been computed.
+- **The floor, read on the SCORED n (the stricter reading, review F1):** of the 102 R1-input statements the join places 33 uniquely, 14 tie (9 one position's buy and sale), 29 sit mid-hold, 20 on another date, 6 never on the panel; the primary (a clean fill whose kind matches the action's side, on a named day, uniquely joined to a window with a range) is **11 < the §9 floor of 100** → R1's gap bar will read NOT DECIDABLE.
+- **The fork, measured before any price was compared** (`fork/count_heldjoin.py` → `fork/count_heldjoin.out`; labels and window existence only): a HELD-POSITION join (a statement made during a hold → that position's window on the action's side) would raise the primary to 21 (named day) or 29 (any day class) — still far under the floor and under the ~35 at which an amendment was worth a re-freeze. **Decision (main loop, the registered default, no amendment):** 6b runs AS REGISTERED; R1 reads NOT DECIDABLE (his spoken prices are too sparse for a per-trade check); R5 (side agreement, 66 statements, bar 90%) and R3 are the readable parts; 6c runs only if 6b's gates allow it (R79).
+
+#### Pins (step 6b)
+
+- entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf
+- exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f
+- snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff
+- control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc
+- panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012
+- calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610
+- lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178
+- done_EP: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735
+- done_EP2: f8255199e52f0fa14aebcec5d50a407a1a52ac7c8b6cd4129bf41aa2f8cc591a
+- done_REV: 945c41fb3618ed6b85a000232f6becc82c9d8e201b9bde99bd8673f9f7036d5e
+- done_INTRA: a9dc793c33af220a2c030ae3d36f83af5d80ab91890b0e80c0deea3868d3f243
+- done_ASIS: b18dea5e0e75d64991c1c0de366c7deee65d9488ebd921a6b26b37994ba598e1
+- raw_close_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444
+- splits_B: 3199d06d5fb7dcd52ebd34e8c71e148b45ec0ca4a15f7f03ea1b715718882b0b
+- subs_list: 99929453752cb3590b261e6928d99317312f35d9a50c0c147e33393b101a64a9
+- asis_common.py: 89116c1ab9dc7aa2592737747884772776a3be8e9e58d113cebb42eab1b75f6b
+- 01_points.py: 0864c933d7e8364d3002053a92fcf1b9fdd4751ff110f14cdbe272374e0e651e
+- forbidden_identifiers.txt: ba8f4bb5f23f2325b6e1ed78e299d2044d3182313955f4509b1e16969e3ff81c
+- doc_body: 2b330f044c3f59da643f248ef97723dd80534b262458a766979f5fd22d748db0
+- 02_captions.py: 40e5df6fbd5b069f38eb4b5a1b40c22f2ab8a25f697ecb807b0fc31e7759d308
+- captions_inventory.py: 23eaf3dae1cf68b87dfa70c6cda05a011b5af923a9a9dc01a82585afe81e0f08
+- reader1_t1_v2_part1: 62c27b319e6fd2d9f1e81fafdeabfe5146401036fb33f998dff67737d5a6444a
+- reader1_t1_v2_part2: 42473ba3f0cb8b8eb9a4de0f1f20a5763126538003139e6a9950a5fbcfae9fe3
+- reader1_t1_v2_part3: c0de450d9af7a1a5cf6e2097a03adc2109e7ef7834ec30b1915fe65e74085905
+- reader_wording_v2: 84a939c93d5ee9c1a693e55eddbcebb8db46c0b11dd610a7bc688118cbbc8510
+- candidates: 37c3c96cc6f16697b48a13224197f7f7c1303ee667c579158408e9f7865fc0f0
+- ranges: 85efdf138f9d103ee805858f5acf8b9f51a5bc4f5164d8bbdfc2542b1378833b
+- coverage: e304d2d67f991115be6ec8c5ce497b48170996da4f6a23e9fecf4b68d52fb10e
+- joins_6a: 00a1108d16b18f14c410a22fb74201846a1dee02c95f148df21e0505eadb18ad
+- asis_check_common.py: d80220da0d3cb02b0c4205d9ce8341dd2b0c562b650db6093418ad57cc2f4fc1
+- 03_check.py: 0a4314131a6d0fe40f4d3345d95920f65025ca94d28bd28313a063ad336058f8
+- dryrun6b_printout: 99f07613f2569ae7ced6c23881c5806ae55475300935431dba8aaac0b76ca822
