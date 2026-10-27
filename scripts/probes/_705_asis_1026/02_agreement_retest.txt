@@ -1,0 +1,37 @@
+# #705 as-is STEP 6a (machine pass) — AGREEMENT (2026-10-26 21:47)
+Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders. No rule, setup name or pattern label enters; the readers see captions only.
+- rows both readers labelled: 150; not in reader 1's sheets: 0; unlabelled by either: 0
+- joint label (ticker, action, day class): 121 / 150 = 80.7% (bar >= 80%) -> PASS
+- parts: his-own-trade 142 / 150; among rows both call his own (104): ticker 92, action 98, day class 97
+- price number where both read one: 34 / 39 = 87.2% (bar >= 85%) -> PASS
+- disagreements (29):
+    dTJueSUqdh4:4427 F001: reader 1 ('unidentified', 'buy', 'unstated') | reader 2 ('unidentified', 'buy', 'implied_recent')
+    VNSIUMW-czI:2861 F007: reader 1 ('unidentified', 'covered', 'stated_earlier') | reader 2 ('GDP', 'covered', 'stated_earlier')
+    GVTyWZCJPn0:54 F016: reader 1 ('NIO', 'shorted', 'unstated') | reader 2 ('NIO', 'shorted', 'stated_earlier')
+    ZwPbyiN3Qvo:96 F019: reader 1 ('unidentified', 'buy', 'implied_recent') | reader 2 ('unidentified', 'buy', 'stated_earlier')
+    WfpvTnScSE8:2949 F022: reader 1 ('-', 'not_own', '-') | reader 2 ('NET', 'buy', 'unstated')
+    FN20YOH_XRM:4570 F037: reader 1 ('FCEL', 'covered', 'stream_day') | reader 2 ('FCEL', 'buy', 'stream_day')
+    b7FVVWd280g:392 F038: reader 1 ('FSLY', 'holding', 'unstated') | reader 2 ('FSLY', 'buy', 'unstated')
+    kITl8W5eaEA:2011 F040: reader 1 ('unidentified', 'stopped', 'implied_recent') | reader 2 ('-', 'not_own', '-')
+    kmSFnqIL6Hk:2882 F049: reader 1 ('TVIX', 'sell_all', 'unstated') | reader 2 ('unidentified', 'sell_all', 'unstated')
+    DIvPxYjxRlg:3967 F053: reader 1 ('-', 'not_own', '-') | reader 2 ('NKLA', 'buy', 'unstated')
+    wejub-sXQ2c:527 F055: reader 1 ('unidentified', 'sell_all', 'implied_recent') | reader 2 ('RIOT', 'sell_all', 'implied_recent')
+    uTMK9uhQZCc:1896 F056: reader 1 ('unidentified', 'holding', 'unstated') | reader 2 ('unidentified', 'holding', 'implied_recent')
+    DIvPxYjxRlg:8782 F069: reader 1 ('BILI', 'stopped', 'implied_recent') | reader 2 ('unidentified', 'stopped', 'implied_recent')
+    Fsh39kp9XPM:101 F070: reader 1 ('MOS', 'buy', 'unstated') | reader 2 ('unidentified', 'buy', 'unstated')
+    FKliYFtPHjI:3112 F075: reader 1 ('RIOT', 'stopped', 'implied_recent') | reader 2 ('RIOT', 'stopped', 'unstated')
+    0381XJA3DBQ:328 F077: reader 1 ('unidentified', 'add', 'stated_earlier') | reader 2 ('MARK', 'buy', 'stated_earlier')
+    v57-ET009qU:194 F080: reader 1 ('NIO', 'stopped', 'stated_earlier') | reader 2 ('NIO', 'buy', 'stated_earlier')
+    5-Y6oXm32OE:793 F082: reader 1 ('unidentified', 'buy', 'implied_recent') | reader 2 ('CCL', 'buy', 'implied_recent')
+    zxqFTq59gZU:1909 F093: reader 1 ('FSLY', 'stopped', 'implied_recent') | reader 2 ('unidentified', 'stopped', 'implied_recent')
+    wGJfJ-WIR7M:4585 F094: reader 1 ('CELH', 'buy', 'implied_recent') | reader 2 ('CELH', 'buy', 'unstated')
+    wD4q_XHL8B0:1913 F098: reader 1 ('MARK', 'sell_all', 'implied_recent') | reader 2 ('-', 'not_own', '-')
+    NRgCKsBnxm8:4502 F100: reader 1 ('-', 'not_own', '-') | reader 2 ('KBIO', 'shorted', 'approx_earlier')
+    v5KMw4lT85g:1547 F103: reader 1 ('-', 'not_own', '-') | reader 2 ('unidentified', 'buy', 'unstated')
+    Nb1NvTY5Ulk:4138 F105: reader 1 ('NET', 'sell_part', 'implied_recent') | reader 2 ('unidentified', 'sell_part', 'implied_recent')
+    uOuFauQ6MJY:8871 F124: reader 1 ('TSM', 'sell_part', 'unstated') | reader 2 ('-', 'not_own', '-')
+    iuzNFGgMu_0:3670 F133: reader 1 ('APT', 'add', 'stream_day') | reader 2 ('unidentified', 'holding', 'implied_recent')
+    LMrz-rWQqac:4687 F140: reader 1 ('unidentified', 'covered', 'stream_day') | reader 2 ('TSLA', 'covered', 'stream_day')
+    5-Y6oXm32OE:6600 F142: reader 1 ('unidentified', 'holding', 'implied_recent') | reader 2 ('unidentified', 'buy', 'implied_recent')
+    DIvPxYjxRlg:3771 F150: reader 1 ('NKLA', 'buy', 'unstated') | reader 2 ('unidentified', 'buy', 'unstated')
+AGREEMENT PASS

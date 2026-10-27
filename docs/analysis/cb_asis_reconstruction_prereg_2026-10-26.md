@@ -756,3 +756,6 @@ Dry run 24 / 24 OK. Reading order (main loop, 2026-10-26; capacity, not a criter
 - reread_sheet: 184d3a455dc6f1e4b8f3c4e197b798ab819abbb7d5a1653a2d9658886857d5e7
 - reader_wording_v1: 51a1b516e73fbcb33a21fac3db1cd5932fdb65e8b2284a19d91b590890fd1a68
 - reader_wording_v2: 84a939c93d5ee9c1a693e55eddbcebb8db46c0b11dd610a7bc688118cbbc8510
+
+- **Re-test RESULT** (`02_agreement_retest.txt`; the first test's printout kept as `02_agreement_test1.txt`): two new readers on the fresh 150 under wording v2 — joint label 121 / 150 = 80.7% (bar 80%) PASS, narrowly; the price number 34 / 39 = 87.2% (bar 85%) PASS. Step 6a continues.
+- **Reading (main loop, the stricter one):** the agreement validates the v2 wording, so the price batch that feeds R1 is RE-LABELLED under v2 (reader 1's 434 rows, three batches, private folders) before R1 runs; the v1 labels are kept beside, never mixed.
