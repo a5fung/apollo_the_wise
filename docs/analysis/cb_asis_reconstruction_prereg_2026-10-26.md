@@ -912,3 +912,9 @@ Dry run 24 / 24 OK. Reading order (main loop, 2026-10-26; capacity, not a criter
 - asis_check_common.py: c5061dca5ee2f6bef86dce38887fe27e17001635faefff93caacba85541fe200
 - 03_check.py: 20ac382575b095d06e54e23fe70089ed228a34105efcdf925ff11f41e4d60496
 - dryrun6b_printout: 5114d86bca46e5cadea773cfacd43d223b2851aaaa6195d053a29b512a08c26a
+
+### Step 6b RE-RUN RESULT (windows v2, once — 2026-10-27)
+
+- **R1: NOT DECIDABLE** (primary n 11 < 100; would read PASS): 72.7% inside vs 47.0% on a shifted window and 5.1% on another stock (gaps 25.8 / 67.6, bar 25 each).
+- **R5: FAIL** 48 / 66 = 72.7% (was 69.7% on the original windows; bar 90%). The two statements the window fix was expected to correct (SPXL, LAKE) now agree; the rest are the panel's blind spots the diagnosis named (same-day round trips, trades never on the panel, talk about another day) — the ~76% ceiling it predicted.
+- **Per §0 / §4.2, the step-6 decision is HIS:** the windows close enough to build on (step 7), or fix and re-run (spent: this was the one re-run), or count the blind-spot trades from the captions first. 6c refuses (R79).

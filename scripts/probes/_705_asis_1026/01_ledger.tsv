@@ -38,3 +38,7 @@ step5_rerun2_points	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_10
 step5_rerun2_candidates	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/candidates.tsv	5bde2911dd05a518c3460403beef4638643155e9f1f088551eb5f04cbd98b646	2026-10-27T16:00:19
 step5_rerun2_ranges	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/ranges.tsv	0d12cf9ab46a4fea914691cadb89e401207cd2e0c5359cf9dadeb9525f9c36c2	2026-10-27T16:00:19
 step5_rerun2_coverage	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/coverage.tsv	2584068b3cddb0644d47bb34c7c20ed34efd6feded84af26591852d99d6af7a2	2026-10-27T16:00:19
+step6b_rerun2_dry_run	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_1026/03_check_dryrun.txt	5114d86bca46e5cadea773cfacd43d223b2851aaaa6195d053a29b512a08c26a	2026-10-27T16:01:22
+step6b_rerun2_check	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_1026/03_check.txt	38678d784016b633a6053acf6a21a75e2b2f499e6dfaba50e08a3079281fc092	2026-10-27T16:01:22
+step6b_rerun2_check_r1_r5	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/check_r1_r5.tsv	8df4521acde45b2c9ba7106271620f9e234c55d2c4a6c56aa78e74721123c958	2026-10-27T16:01:22
+step6b_rerun2_control_ranges	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/control_ranges.tsv	a56c725abbbaf4c5d85131d4120d4c25c1148cac80d3022e06d4e09f460f9c50	2026-10-27T16:01:22
