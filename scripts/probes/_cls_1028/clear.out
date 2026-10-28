@@ -1,0 +1,12 @@
+BEGIN
+ id  | ticker | depth_sell_pending_on | stop_price | remaining_shares 
+-----+--------+-----------------------+------------+------------------
+ 429 | CLS    |                       |        272 |                2
+(1 row)
+
+UPDATE 1
+COMMIT
+ id | ticker | depth_sell_pending_on | stop_price | status 
+----+--------+-----------------------+------------+--------
+(0 rows)
+

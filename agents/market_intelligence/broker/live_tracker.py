@@ -1041,6 +1041,8 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         step = apply_daily_exit_step(state, daily_bars[0], today,
                                           # #548: the trail is the STOCK's MA, not our hold-period mean
                                           prior_closes=state.get("prior_closes"),
+                                          # 2026-10-28 (CLS): the line governs only after a close above it
+                                          trail_arm_on_close_above=True,
                                      integer_partial_shares=True,
                                      skip_partial_decision=True)
 
@@ -1109,6 +1111,8 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
             step = apply_daily_exit_step(state, daily_bars[0], today,
                                               # #548: the trail is the STOCK's MA, not our hold-period mean
                                               prior_closes=state.get("prior_closes"),
+                                              # 2026-10-28 (CLS): the line governs only after a close above it
+                                              trail_arm_on_close_above=True,
                                          integer_partial_shares=True,
                                          skip_hard_stop_close=True,
                                          skip_partial_decision=True)
@@ -1350,6 +1354,8 @@ async def run_partial_exits(today: date | None = None) -> list[dict]:
         step = apply_daily_exit_step(state, daily_bars[0], today,
                                           # #548: the trail is the STOCK's MA, not our hold-period mean
                                           prior_closes=state.get("prior_closes"),
+                                          # 2026-10-28 (CLS): the line governs only after a close above it
+                                          trail_arm_on_close_above=True,
                                      integer_partial_shares=True,
                                      skip_hard_stop_close=True,
                                      skip_partial_decision=bool(PROFIT_TRIGGER_R))

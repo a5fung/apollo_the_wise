@@ -142,12 +142,13 @@
     "tests/test_theme_rename_lineage_601.py": 1,
     "tests/test_theme_rename_on_mass_flag.py": 6,
     "tests/test_theme_tombstone_survives_rerun_539.py": 1,
+    "tests/test_trail_arming_on_close_above.py": 1,
     "tests/test_truncation_diagnosis_819.py": 2,
     "tests/test_truncation_self_reporting_543.py": 6,
     "tests/test_v1_closeout_status.py": 1,
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 430,
+  "total": 431,
   "unescaped": 359
 }

@@ -1,0 +1,10 @@
+SET
+ id  | ticker | account_mode | status | alert_date | entry_price | remaining_shares | hard_stop | stop_price | partial_taken | breakeven_active | exit_rule | hold_days | depth_sell_pending_on | n_closes | running_closes 
+-----+--------+--------------+--------+------------+-------------+------------------+-----------+------------+---------------+------------------+-----------+-----------+-----------------------+----------+----------------
+ 429 | CLS    | live         | filled | 2026-10-27 |     272.005 |                2 |    250.26 |        272 | f             | t                | depth     |         1 | 2026-10-28            |        1 | [299.8]
+(1 row)
+
+ERROR:  column "details" does not exist
+LINE 1: .../New_York')::timestamp(0) AS et, event_type, left(details::t...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "mi_audit_log.detail".

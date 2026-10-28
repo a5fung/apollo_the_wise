@@ -380,6 +380,42 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-28 — the trailing line governs only after the stock has CLOSED ABOVE it (OPERATOR-SIGNED "clear + fix + read" 2026-10-28, on live CLS; BUILT, NOT DEPLOYED — deploy Thu 10-29 12:00 ET)
+
+- **Trigger (his words):** *"I think this is a bug, cls has always been under 10ma, never above when we entered, and we just set
+  breakeven stop at 272, so this is wrong"* — on the 16:45 ET page *"CLS closed below its trailing line ($299.80 < $330.52)"*.
+  Read from prod (`scripts/probes/_cls_1028/q1.out`): trade 429, live, entered 2026-10-27 at $272.005, 2 shares, hard stop
+  $250.26, resting stop $272 (breakeven armed), `exit_rule='depth'`, first held close $299.80 — and marked for the 19:01 opening-
+  auction sale on its FIRST close because its 10/20-day line ($330.52) sat above the price from the day it was bought.
+- **The defect (classified a BUG FIX, not a criteria change):** since #548 (2026-08-08, his *"fix it, it's a bug"*) the line is the
+  stock's REAL 10/20-day from day one. That is right for a stock bought above its averages (the EP norm) and wrong for one bought
+  below them: a "trailing" line above the price is not a trail — it sells on the first close whatever the trade does. The rule
+  (EP_TRADING_RULES §B4, *"Trail your stop with the 10- or 20-day moving average… Exit on first daily close below the active MA"*)
+  presumes the price above the line.
+- **What changed:** `exit_logic.apply_daily_exit_step(trail_arm_on_close_above=True)` — the line governs only once the trade was
+  BOUGHT at or above the line it entered under (the line on the closes before the entry day — so a trade bought above its line is
+  exactly as before, a first close below it still sells) or some held day BEFORE today closed at or above that day's own line
+  (`_trail_armed_before_today`); until then the effective stop is the hard stop and the breakeven floor alone (and the depth rule's
+  resting stop rests on that floor). Default False = byte-identical for every
+  non-live caller (backtester, shadow trackers, the #482 recorder, the walkers). The live tracker passes True on all three calls
+  (the 16:45 EOD pass twice, the 3:45 partial pass) — a test derives the call population and pins the flag on each.
+- **Tonight's action (his OK, prod write, 2026-10-28 ~17:30 ET):** trade 429's `depth_sell_pending_on` cleared (one row,
+  `scripts/probes/_cls_1028/clear.out`) so no opening-auction sale went in at 19:01; the $272 stop stayed on. Without the deploy,
+  Thursday's 16:45 pass would mark it again.
+- **EXPECT (written before the deploy; BASELINE = today: CLS marked on its first close; every other open trade unaffected):**
+  (a) Thu 16:45 ET: CLS is NOT marked while it has not closed above its line, and its stop stays at $272 (no `depth_close_below_line`
+  row for trade 429 unless a held close above the line came first); (b) every open trade bought ABOVE its line behaves exactly as
+  before (its first held close above the line arms it, as before the change the line already governed); (c) unintended: a trade
+  that never closes above its line now rests on its hard / breakeven stop for its whole life — visible as no trail exit on it.
+- **DONE-WHEN:** CLS's next 16:45 pass reads as (a) AND one other live or paper trade's next trail decision reads as (b).
+- **WOULD-FAIL-IF:** a `depth_close_below_line` (or an `sma_stopped` full exit) on trade 429 with no held close above its line before
+  it; or any trade bought above its line that now holds through a close below it.
+- **VERIFY-LIVE:** after Thursday's 16:45 ET pass, read trade 429's row and the audit rows for it (`depth_sell_pending_on` NULL,
+  `stop_price` 272), and the pass's log line for CLS.
+- **Reversion:** pass `trail_arm_on_close_above=False` at the three live calls (or drop the kwarg) — no data to migrate.
+- Tests: `tests/test_trail_arming_on_close_above.py` (6: the CLS shape, armed-then-below still sells, unarmed across days then
+  armed, bought-above-the-line exactly as before, default byte-identical + other modes refuse, the live call population); the exit / trail / live-tracker suites (633) pass.
+
 ### 2026-10-14 — #687: the shares a PART-FILLED dead full-exit sale sold are BOOKED as one exits leg + P&L; `remaining_shares` is NEVER written (BOOKKEEPING ONLY — rule unchanged; no exit rule, stop level, target, size or safeguard threshold changed; BUILT, NOT DEPLOYED)
 
 **Trigger**: prod paper trade 421 (KO), 2026-10-13. A planned full-exit sale (3 sh, `purpose='full_exit'`) part-filled

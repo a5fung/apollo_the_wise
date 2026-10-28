@@ -201,6 +201,33 @@ def depth_stop_price(
     return round(floor, 2)
 
 
+def _sma_10_20_line(closes: list[float]) -> float | None:
+    """The live "sma" trail line on these closes: max(SMA10, SMA20), SMA10 alone under 20 closes,
+    None under 10 — the same expressions as `apply_daily_exit_step`'s "sma" branch."""
+    sma_10 = sum(closes[-10:]) / 10 if len(closes) >= 10 else None
+    sma_20 = sum(closes[-20:]) / 20 if len(closes) >= 20 else None
+    if sma_20 is not None:
+        return sma_10 if sma_10 > sma_20 else sma_20
+    return sma_10
+
+
+def _trail_armed_before_today(prior_closes: list[float], running_closes: list[float],
+                              entry_price: float | None = None) -> bool:
+    """True when the trade was BOUGHT at or above the line it entered under (the line on the closes
+    before the entry day), or some HELD day before today closed at or above that day's own line.
+    `running_closes` includes today's close as its last element; each earlier held day j is judged
+    on the closes up to and including day j (prior history + held closes so far). The entry arm
+    keeps a trade bought above its line exactly as before (a first close below it still sells)."""
+    entry_line = _sma_10_20_line(prior_closes)
+    if entry_price and entry_line is not None and float(entry_price) >= entry_line:
+        return True
+    for j in range(len(running_closes) - 1):
+        line = _sma_10_20_line(prior_closes + running_closes[: j + 1])
+        if line is not None and running_closes[j] >= line:
+            return True
+    return False
+
+
 def apply_daily_exit_step(
     state: dict[str, Any],
     daily_bar: dict[str, Any] | None,
@@ -220,6 +247,7 @@ def apply_daily_exit_step(
     character_undercut: float = 0.0,
     trail_undercut: float = 0.0,
     prior_closes: list[float] | None = None,
+    trail_arm_on_close_above: bool = False,
 ) -> ExitStep:
     """Compute one daily exit step.
 
@@ -398,6 +426,22 @@ def apply_daily_exit_step(
                 active_sma = sma_10 if sma_10 > sma_20 else sma_20
             elif sma_10 is not None:
                 active_sma = sma_10
+
+    # 2a. Trail ARMING (2026-10-28, operator: CLS "has always been under 10ma, never above when we
+    # entered ... so this is wrong"; his "clear + fix"). OPT-IN, default False = byte-identical.
+    # Since #548 the line is the stock's REAL 10/20-day from day one, which assumes the stock sits
+    # ABOVE it: a trade entered BELOW its line (CLS 2026-10-27: filled $272.01 under a $330.52 line)
+    # was "stopped" by its trailing line on its first close. A trailing stop is a line under the
+    # price, so the line now GOVERNS only once the trade was bought at or above its entry line, or
+    # the stock has CLOSED AT OR ABOVE it on some held day before today (today's own close above it
+    # is no exit either way) — a trade bought above its line behaves exactly as before. Until then the
+    # effective stop is the hard stop and the breakeven floor alone. "sma" mode only (the live
+    # mode); any other mode with the flag raises.
+    if trail_arm_on_close_above and active_sma is not None:
+        if trail_mode != "sma":
+            raise ValueError(f"trail_arm_on_close_above supports trail_mode 'sma' only, got {trail_mode!r}")
+        if not _trail_armed_before_today(list(prior_closes or []), running_closes, entry_price):
+            active_sma = None
 
     # 3. Partial profit Day 3-5
     partial_fired = False
