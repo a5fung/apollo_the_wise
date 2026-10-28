@@ -2656,3 +2656,7 @@ Ruling recorded (breakout v1): **paper is a GO** for the starting breakout rule 
 > "Size paper similar to EP, grade ok but if I miss a day or two I'll catch-up so can be running list and grade as best effort from me" (2026-10-28, on breakout v1's paper rung)
 
 Rulings recorded (breakout v1 paper): **sizing = the same as EP's** (the 2% account-risk base with EP's regime multiplier and caps; `position_size_multiplier` 1.0). **His grading is a RUNNING LIST, best effort:** a missed day is caught up later, so his grade never blocks a paper entry — every shortlisted candidate that triggers is paper-traded on the mechanical rules, and his grade (A+ / not / not yet graded) is recorded as a label to compare A+ against the rest as fills accrue.
+
+> "touch MAs can be flexible, if it comes within a reasonable range and turns back up it may be ok, discretion of pattern" (2026-10-28, on breakout v1's moving-average rule)
+
+Rule from this (breakout v1): the MA "touch" is a NEAR-MISS band, not a strict touch — the pullback comes WITHIN A REASONABLE RANGE of the 10-, 20- or 50-day and TURNS BACK UP. The band is set from his graded examples (the 2020-08-10 video) as a distance in the stock's own daily range (ADR), not a fixed percent; the final call on a borderline pattern is his grade (discretion), which is why the grade is recorded on every candidate.
