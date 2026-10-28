@@ -1084,3 +1084,5 @@ event.** Every walk and detector golden OK; G8 0 / 0 in both eras.
   this version — the detector's climax, the reversal entry, the time stop of 3-5 sessions — produces no big winner at all, and a
   short seller's edge, like the breakout's, lives in the big ones; the next design question is the exit (the time stop caps every move
   by construction), not whether the setup works.
+
+Result pins: episodes 5a712f21d29a0d4a0cedd71d03b28d0d3cf4d3e87a33b896bbadbc4ccf9e8b89 · result_printout 7bfd79f0a72bf5d0265f0310d57a3442e8baa99ddd4a05cae9691c5b1528966a
