@@ -7860,12 +7860,11 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=600,
     )
 
-    # Shadow ORB exit: 4:50 PM ET — the #482 add-on's first-hour entry pass
-    # (60-minute rows, needs the day's minutes through the close), then the
-    # daily exit step on every open shadow row (both bar sizes).
-    # 4:50 PM ET — after live_position_update (4:45) which already chose
-    # this slot to let Polygon daily aggregate settle. Exit logic walks
-    # daily bars; pre-aggregate run would see partial/zero data.
+    # Shadow ORB exit: 4:50 PM ET — after live_position_update (4:45), so the
+    # Polygon daily aggregate has settled (the exit logic walks daily bars; a
+    # pre-aggregate run would see partial/zero data). First the #482 add-on's
+    # first-hour entry pass (60-minute rows need the day's minutes through the
+    # close), then the daily exit step on every open shadow row (both bar sizes).
     _scheduler.add_job(
         audit_wrap(_shadow_orb_exit_job, "shadow_orb_exit"),
         CronTrigger(hour=16, minute=50, day_of_week="mon-fri", timezone="America/New_York"),

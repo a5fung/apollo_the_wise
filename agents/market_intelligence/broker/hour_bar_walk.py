@@ -72,9 +72,9 @@ def entry_walk(bars: list[dict], level: float, submit: time, cancel: Optional[ti
             return {"status": "filled", "px": level, "minute": b["m"]}
     if limit_armed:
         return {"status": "no_entry", "reason": "triggered_above_limit_never_filled"}
-    end = cancel if cancel is not None else time(16, 0)
+    end = cancel if cancel is not None else REGULAR_CLOSE
     expected = int((datetime.combine(date.min, end) -
-                    datetime.combine(date.min, max(submit, time(9, 30)))).total_seconds() // 60)
+                    datetime.combine(date.min, max(submit, FIRST_HOUR_START))).total_seconds() // 60)
     if len(window) < expected:
         return {"status": "abstain", "reason": f"entry_window_gaps:{expected - len(window)}_of_{expected}"}
     return {"status": "no_entry", "reason": "never_crossed_orb_high"}

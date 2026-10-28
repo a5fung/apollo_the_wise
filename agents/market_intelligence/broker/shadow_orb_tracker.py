@@ -61,6 +61,7 @@ from agents.market_intelligence.db import (
     SHADOW_HOUR_LANE_CANDIDATES_SQL,
     get_all_9m_sugar_babies,
     get_open_shadow_trades,
+    _f,
     get_pool,
     insert_shadow_trade,
     update_shadow_trade,
@@ -352,11 +353,6 @@ def _minutes_from_open(t: time) -> int:
     return (t.hour * 60 + t.minute) - (9 * 60 + 30)
 
 
-def _sessions_old(alert_date: date, today: date) -> int:
-    """Weekday sessions strictly after `alert_date` through `today` (the file's holiday-free rule)."""
-    return _count_weekday_sessions(alert_date, today)
-
-
 async def _process_hour_candidate(row: dict, today: date) -> str:
     """One 5-minute row → its 60-minute sibling. Returns the status written, 'deferred' when nothing
     was written (a data gap still inside its retry window), 'duplicate' on a UNIQUE conflict.
@@ -370,7 +366,7 @@ async def _process_hour_candidate(row: dict, today: date) -> str:
     close_et = session_close_et(alert_date)
     raw = await alpaca.get_minute_bars_window(ticker, alert_date, 0, _minutes_from_open(close_et))
     bars = _alpaca_bars_to_walk_shape(raw)
-    stale = _sessions_old(alert_date, today) >= HOUR_GAP_RETRY_SESSIONS
+    stale = _count_weekday_sessions(alert_date, today) >= HOUR_GAP_RETRY_SESSIONS
 
     verdict = classify_hour_entry(bars, close_et) if bars else {"kind": "pending", "reason": "no_minute_bars"}
     if verdict["kind"] == "needs_daily_high":
@@ -537,11 +533,9 @@ async def _fetch_hour_lane_candidates(today: date) -> list[dict]:
             SHADOW_HOUR_LANE_CANDIDATES_SQL,
             today, BAR_SIZE_MINUTES, HOUR_BAR_SIZE_MINUTES, HOUR_LANE_LOOKBACK_DAYS,
         )
-    out = []
-    for r in rows:
-        d = dict(r)
-        d["atr_14"] = float(d["atr_14"]) if d.get("atr_14") is not None else None
-        out.append(d)
+    out = [dict(r) for r in rows]
+    for d in out:
+        d["atr_14"] = _f(d.get("atr_14"))
     return out
 
 
@@ -633,7 +627,7 @@ def detect_stale_for_step(
     return False, None
 
 
-# ── Daily exit pass (16:30 ET) ──────────────────────────────────────────────
+# ── Daily exit pass (16:50 ET) ──────────────────────────────────────────────
 
 
 async def update_shadow_positions(today: date) -> dict[str, int]:

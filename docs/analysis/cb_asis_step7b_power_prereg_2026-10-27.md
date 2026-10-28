@@ -395,3 +395,37 @@ Frozen before any made-up set of §4 exists, before `--shape` has run, and befor
 - doc_body_steps56: 2b330f044c3f59da643f248ef97723dd80534b262458a766979f5fd22d748db0
 - reference 06_groups.py (8352c78c): 06a3f48f1046b8a91a8bbbe8e93dd30e5c62b3a46332bc7273b5984fcf68d404
 - reference 06_groups_dryrun.txt (8352c78c): e578a7008dc871d82df04470b24a9b120de15a9d098c199608fc22d86c4366ca
+
+### Re-registration 1 — 2026-10-27, after the build and two read-only reviews; before any method was scored on a made-up set of the power run
+
+Seen when this was written: the `--shape` printout (§4.1's summaries) and the 7b dry run's claims (C2, C3, C5, C6, C7) and its plumbing
+pass of two sets per world through every method — no power or false-alarm rate, no selection, no method on the real matrix. Each item
+below is ruled by the main loop (technical; none touches the population, the features, the lines of §6 or a rule).
+
+1. **C5b measures the generator BEFORE the tie step.** As registered, C5b compared the made-up correlation after §4.2 step 5 with R; on a
+   correct pipeline it reads a largest gap of 0.0395 against the 0.03 line, because R was measured on his already-tied scores and step 5
+   ties the latent again — every correlation of a few-level column is weakened a second time, by about 7% at five levels (all nine largest
+   gaps are `entry_sessions_since_hi_5`, five distinct values; before the tie step the largest gap is 0.0243, rms 0.0059). Ruled: C5b is
+   read on the pooled latent through the rank map (the generator samples R), lines unchanged (0.03 / 0.01); the post-tie comparison is
+   printed beside as a readout. **Disclosed consequence:** the made-up sets carry about 7% less of his correlation on his few-level count
+   columns than his data does. Not de-attenuated (that would change the generator after its shape was read).
+2. **R95 accepted — M3's null carries the spectrum of the rows tested.** The real run's mode-A runs reuse the primary's reduction (§7.2);
+   there the tested rows are not exactly unit-spectrum (M3w) or the primary's spectrum (M3u), and a toy single population read p = 0.001 on
+   16 of 16 sets under the old null. The null of every node is built from the eigenvalues of the rows actually tested, in the space tested;
+   in a node's own space (every node of the power run) this is numerically the registered null.
+3. **The M3 noise floor's bootstrap arm tests the resample's DISTINCT rows** (about 63% of n), then assigns every row by nearest leaf mean.
+   A bootstrap resample with duplicate rows makes a significance test over-split (toy: 7 of 12 single-population resamples below 0.01 even
+   with their own reduction; 0 of 12 on a half subset without duplicates).
+4. **Selection falls through to the gap-free arm whenever no method qualifies on the 75 columns** (R87 superseded). §6's Fallback 1 is read
+   as: no qualifier on the 75 columns → the selection repeats on the 56-column arm with the same lines and order; **Fallback 2** = no
+   qualifier on either arm, as §6 words it. (R87 had repeated the selection only when every method failed N1 on 75 columns, which left the
+   case "some method passes N1 on 75, none qualifies there, one qualifies on 56" reading Fallback 2 against §6's wording.)
+5. **Under `--columns pattern_free` the hold and the exit look-backs are described per group** (§6: "described per group, never grouped
+   on"): the description reads the registered columns; the standardization, reduction and grouping read the 56.
+6. **Gates tightened (review):** every real-run gate requires `06b_power.txt`'s modules line to equal the modules on disk, its pin below this
+   marker, a `step7b_power` ledger row, and one of the three registered outcome strings; `--power` writes no `POWER COMPLETE` when any claim
+   other than C1 reads MISMATCH; the M3 null cache carries its key and a stamp of the code that wrote it (a mismatch is a miss); a carried
+   method's dry run and run reach their end (two `choice` reads guarded; §2 item 3's expectation scored on the carried method's own k).
+7. **Process (review):** `06_groups.py --run` also needs the rebuilt `06_groups.py` and its new dry run pinned below the STEP-7 document's
+   marker (its `run_gate` reads that document; pins below a marker do not change its `doc_body`); the reference copy
+   `06_groups_dryrun_ref_8352c78c.txt` (sha e578a700…) is committed with the build.

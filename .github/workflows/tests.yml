@@ -1,6 +1,6 @@
 # CI: full unit suite + the two host-side AST preflight gates on every push/PR.
 # This is the automation backstop for the local discipline — the suite is pure-unit
-# (~12s; broker/DB/LLM all stubbed via tests/conftest.py), so a red run means a real
+# (broker/DB/LLM all stubbed via tests/conftest.py; ~10-15 min serial), so a red run means a real
 # regression, not a flaky integration. Deploy-time integration checks (paper-broker
 # smoke, safeguard walk) stay in scripts/deploy.sh — they need prod credentials and
 # deliberately do NOT run here.

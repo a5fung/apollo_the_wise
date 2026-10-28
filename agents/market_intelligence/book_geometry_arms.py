@@ -111,7 +111,7 @@ sign + N>=10 backtest).
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 from shared.dates import _ET
@@ -119,10 +119,8 @@ from shared.dates import _ET
 from agents.market_intelligence import live_fill_counterfactuals as lfc
 from agents.market_intelligence.broker.hour_bar_walk import (  # exec-boundary-ok: pure first-hour walk math, no Alpaca client (the exit_logic precedent) — shared with the shadow tracker's 60-minute lane
     FIRST_HOUR_END,
-    FIRST_HOUR_START,
     MIN_HOUR_BARS,
     NO_ENTRY_HOUR,
-    REGULAR_CLOSE,
     classify_hour_entry,
     entry_walk,
     first_hour_frame,
@@ -168,7 +166,7 @@ from agents.market_intelligence.rule_eras import (
 logger = logging.getLogger(__name__)
 
 SETTLE_VERSION = "book_v1"
-# FIRST_HOUR_START / FIRST_HOUR_END / MIN_HOUR_BARS / REGULAR_CLOSE / NO_ENTRY_HOUR: broker/hour_bar_walk
+# FIRST_HOUR_END / MIN_HOUR_BARS / NO_ENTRY_HOUR (and the walk functions above) are re-exported from broker/hour_bar_walk
 # The 2% base risk went live with the 2026-10-03 (Saturday) deploy — docs/setups/safeguards.md
 # 2026-10-03. Fills before it were sized at 1%. constants.py is hash-frozen, so the switch date lives here.
 RISK_PCT_2PCT_FROM = date(2026, 10, 3)
