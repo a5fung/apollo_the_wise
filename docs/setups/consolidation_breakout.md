@@ -317,7 +317,7 @@ paper similar to EP"*, and grading as *"running list and grade as best effort fr
 **v1 (the build's spec; each piece's source in brackets):** stocks = rs_best ≥ 98 + the scan his trades imply (ADR20 about 4%+, not
 falling, near the 52-week high) on this file's universe [his words; #705 reverse-engineering SELECT PASS] · setup = this file's prior
 move + base + higher lows + tightening, PLUS his repeated rule (10-28): the pullback comes WITHIN A REASONABLE RANGE of the 10-, 20- or 50-day and TURNS BACK UP
-(his 10-28 clarification: *"touch MAs can be flexible ... discretion of pattern"*; the band is a distance in ADR, set from his graded examples; an undercut-and-reclaim counts) — today's `MA surfing` row checks only "above the 20 and 50" [his words, Qullamaggie's 2020-08-10 review]
+(his 10-28 clarification: *"touch MAs can be flexible ... discretion of pattern"*; the band is a distance in ADR, set from his graded examples; an undercut-and-reclaim counts) — and it is a STRETCH, not a touch: *"it's not touch and done, it'll surf for multiple days near the MAs, tighten, then breakout"* (his 10-28): several sessions in a row inside the band, the range tightening across them, then the breakout; the session count and band come from his graded examples — today's `MA surfing` row checks only "above the 20 and 50" [his words, Qullamaggie's 2020-08-10 review]
 · level = the base high (`full`) — the trendline fired about 1.2 ADR early [#705 breakout-definition read] · breakout day on VOLUME:
 start ≥ 1.5× the 50-day average, provisional [his words; the number is a starting value to be set from the 2020-08-10 graded setups —
 today breakout volume is telemetry only] · entry `orh5`, regular hours [his buys lean on his opening-range highs; beat the hourly-close

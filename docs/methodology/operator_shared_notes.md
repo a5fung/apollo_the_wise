@@ -2660,3 +2660,7 @@ Rulings recorded (breakout v1 paper): **sizing = the same as EP's** (the 2% acco
 > "touch MAs can be flexible, if it comes within a reasonable range and turns back up it may be ok, discretion of pattern" (2026-10-28, on breakout v1's moving-average rule)
 
 Rule from this (breakout v1): the MA "touch" is a NEAR-MISS band, not a strict touch — the pullback comes WITHIN A REASONABLE RANGE of the 10-, 20- or 50-day and TURNS BACK UP. The band is set from his graded examples (the 2020-08-10 video) as a distance in the stock's own daily range (ADR), not a fixed percent; the final call on a borderline pattern is his grade (discretion), which is why the grade is recorded on every candidate.
+
+> "also key is the surfing part, if you look at the charts he reviews, it's not touch and done, it'll surf for multiple days near the MAs, tighten, then breakout" (2026-10-28, on breakout v1's moving-average rule)
+
+Rule from this (breakout v1): "surfing" is a STRETCH, not an event — for several sessions in a row the stock trades near (within the band of) the 10-, 20- or 50-day, riding it; the range TIGHTENS over that stretch; THEN the breakout (on volume). The number of sessions and the band are set from his graded examples (the 2020-08-10 video), not fixed in advance; one touch followed straight by a breakout does not qualify.
