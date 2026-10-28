@@ -1,0 +1,154 @@
+# #314 parabolic-short replay — STEP 0 — derive (derive and count the populations; walk nothing) (2026-10-28 13:07)
+Guards: no network, no DB, no production server, nothing dated after 2024-12-31 read from a bar file (the 2025-26 split rows are read only to undo era B's adjustment basis), cb702_pre's survivors-only export never opened, no episode walked and no outcome computed outside --walk.
+- modules: ps_common.py 6f99467e3a2bc5c3 ps_population.py d1e5184bc3e68cb1 ps_features.py 41d86dbd9b732d36 ps_walk.py a4decccfebb4d49d ps_goldens.py b0c43316bb6e232d ps_stages.py ab7fbfad64d758e0 ps_replay.py cfe842184385ad33 ps_rederive.py 629ff75fea874ae9 ps_pull.py c117b130e351b29c
+
+## The synthetic positive controls (a mismatch refuses)
+  detector golden climax: stage climax, failing [], days_up_streak 20 (expected ('climax', (), 20)) -> OK
+  detector golden streak_2: stage anticipation, failing ['days_up_streak'], days_up_streak 2 (expected ('anticipation', ('days_up_streak',), 2)) -> OK
+  detector golden earnings_today: stage anticipation, failing ['earnings'], days_up_streak 20 (expected ('anticipation', ('earnings',), 20)) -> OK
+  detector golden gap_1_9pct: stage anticipation, failing ['gapped_today'], days_up_streak 20 (expected ('anticipation', ('gapped_today',), 20)) -> OK
+  detector golden volume_one_under: stage anticipation, failing ['climax_volume'], days_up_streak 20 (expected ('anticipation', ('climax_volume',), 20)) -> OK
+  walk golden time_stop=5: settled time_stop on 2023-08-21, entry 140.0 intraday, R 1.2002600780234074 (registered 1.200260078) -> OK
+  walk golden time_stop=3: settled time_stop on 2023-08-17, entry 140.0 intraday, R 0.969079612772721 (registered 0.969079613) -> OK
+  walk goldens through the export layout and both eras' loaders: byte-equal
+  walk golden through walk_one on 120 history rows (r5): R 1.2002600780234074 -> OK
+  walk golden through walk_one on 120 history rows (r3): R 0.969079612772721 -> OK
+
+## The reference pull: 13,254 active + 23,576 delisted records over 36,830 symbols; active company keys 27,795
+- exact duplicate reference records (R63; a refusal if any): 0 on 0 symbols
+
+## Era A: 12,005,007 rows, 12,532 symbols, 1635 sessions
+- era A break symbols: 667 — one-company 664, multi-company 0, no-record 3; breaks applied / not: hole:yes 892, jump:no 344, jump:yes 50
+
+### era A funnel (STEP 0 derive; the cap and the detector gates come at the climax phase)
+  ticker-nights (detectable D0): 10,592,853
+  excluded: symbol pattern / test symbol: 68,345
+  excluded: security type (typed other than CS / ADRC): 3,431,018
+  excluded: security type (untyped W / U / R suffix): 697
+  raw_unknown (no raw close): 0
+  P1: in the raw-price / dollar-volume band: 2,808,182
+  P1: excluded: history (not 120 consecutive sessions): 75,396
+  P1: excluded: identity_break (applied guard break in the window): 2,038
+  P1: excluded: identity_break (earlier-issuer rule, era B): 0
+  P1: admitted: 2,730,748
+  P1:   pre-break holder (typed unknown, admitted; R37): 8,521
+  P1:   jump_unevidenced in the window (kept, flagged): 1,502
+  P1:   pre_hole (kept, flagged): 12,153
+  P1:   alias_outside_span (date-rule owner): 566
+  P1:   type source polygon_record: 2,366,987
+  P1:   type source refetch_record: 347,868
+  P1:   type source unknown: 6,798
+  P1:   type source record_without_type: 567
+  P1:   type source record_not_covering: 7
+  P1:   type source pre_break_holder: 8,521
+  P2-band: in the raw-price / dollar-volume band: 1,539,316
+  P2-band: excluded: history (not 120 consecutive sessions): 99,954
+  P2-band: excluded: identity_break (applied guard break in the window): 606
+  P2-band: excluded: identity_break (earlier-issuer rule, era B): 0
+  P2-band: admitted: 1,438,756
+  P2-band:   pre-break holder (typed unknown, admitted; R37): 3,640
+  P2-band:   jump_unevidenced in the window (kept, flagged): 1,516
+  P2-band:   pre_hole (kept, flagged): 6,992
+  P2-band:   alias_outside_span (date-rule owner): 31
+  P2-band:   type source polygon_record: 1,117,848
+  P2-band:   type source refetch_record: 309,518
+  P2-band:   type source unknown: 6,623
+  P2-band:   type source record_without_type: 875
+  P2-band:   type source record_not_covering: 252
+  P2-band:   type source pre_break_holder: 3,640
+  P2 (typed CS / ADRC): 1,427,366
+  P2's unknown-type row: 11,390
+  P2 untyped share: 0.8%
+- necessary-condition nights (R7: a climax at SOME tier is possible): 1,484; their owners' CIKs: 904
+- distribution control OPLN 2019-06-28: owner active CIK 0001395942 (added to the EDGAR pull)
+- distribution control ZWS 2021-10-05: owner active CIK 0001439288 (added to the EDGAR pull)
+- GME: company keys among its records 1; breaks [('2021-01-27', 'no', 'fac_change=0.0002;one_company:jump_unevidenced'), ('2021-02-24', 'no', 'fac_change=0.0003;one_company:jump_unevidenced')]; Jan-2021 nights INSIDE (typed by its own record)
+- era A type agreement, owner record vs the v2 table, refetched: 2,667 of 2,669 (99.9%)
+- era A type agreement, owner record vs the v2 table, original: 7,972 of 7,976 (99.9%)
+  disagreements: EV:ETF!=CS, KEM:ETF!=CS, POM:CS!=ADRC, RESI:ETF!=CS, VIAC:-!=CS, VIACA:-!=CS
+- alias_outside_span AGC: 667 rows; owner paths {'alias_date_rule': 667}; owners {'Altimeter Growth Corp. Class A Ordinary Shares': 667}
+- alias_outside_span ARYA: 237 rows; owner paths {'alias_date_rule': 237}; owners {'ARYA Sciences Acquisition Corp III Class A Ordinary Shares': 237}
+- alias_outside_span BIOS: 57 rows; owner paths {'alias_date_rule': 57}; owners {'BioPlus Acquisition Corp. Class A Ordinary Shares': 57}
+- alias_outside_span BRPM: 295 rows; owner paths {'alias_date_rule': 295}; owners {'B. Riley Principal 150 Merger Corp. Class A Common Stock': 295}
+- alias_outside_span CYTX: 3 rows; owner paths {'alias_date_rule': 3}; owners {'Cytori Therapeutics Inc.': 3}
+- alias_outside_span DDMX: 151 rows; owner paths {'alias_date_rule': 151}; owners {'DD3 Acquisition Corp. II Class A Common Stock': 151}
+- alias_outside_span KOOL: 43 rows; owner paths {'pre_break_holder': 42, 'no_record_covering_d0': 1}; owners {'unknown': 43}
+- alias_outside_span MACQ: 162 rows; owner paths {'alias_date_rule': 162}; owners {'MCAP Acquisition Corporation Class A Common Stock': 162}
+- alias_outside_span PRTHU: 13 rows; owner paths {'alias_date_rule': 13}; owners {'Priority Technology Holdings, Inc. Unit': 13}
+- alias_outside_span PTIE: 340 rows; owner paths {'alias_date_rule': 340}; owners {'Pain Therapeutics Inc': 340}
+- alias_outside_span RSLS: 52 rows; owner paths {'alias_date_rule': 52}; owners {'ReShape Lifesciences, Inc. Common Stock': 52}
+- alias_outside_span RXII: 3 rows; owner paths {'alias_date_rule': 3}; owners {'RXI Pharmaceuticals Corporation': 3}
+- alias_outside_span SNH: 125 rows; owner paths {'alias_date_rule': 125}; owners {'Senior Housing Properties Trust': 125}
+- alias_outside_span VICL: 101 rows; owner paths {'alias_date_rule': 101}; owners {'Vical Inc': 101}
+- alias_outside_span XL: 678 rows; owner paths {'alias_date_rule': 678}; owners {'XL Fleet Corp.': 678}
+- P1 symbol-keyed companies (no CIK, no FIGI): 82 (each may be one company counted twice)
+- P2 symbol-keyed companies (no CIK, no FIGI): 36 (each may be one company counted twice)
+- P2unk symbol-keyed companies (no CIK, no FIGI): 55 (each may be one company counted twice)
+- owners left empty-keyed (type / CIK / gone unknown): 285: ACGLP, ADF.U, AEPPZ, AGNCB, AIXG, AMFW, AMJL, AMU, AOIL, ARYB, ARYBU, ASRVP, ATMR.U, ATSPT, ATSPU, AVDG, AXAR, BCNA, BDCY, BIKR, BKC, BMLP, BNIXU, BNKO, BNKZ, BPOPN, BPYPM, BSWN, BTYS, BUDX, BUY, BUYN, CADC, CAFN, CAHCU, CBTG, CCT, CEFL, CETC, CGABL, CHEP, CHSCL, CHSCM, CHSCN, CHSCO, CHSCP, CIFS, CLMA, CMLT, CMLTU, CNHX, COB, CPTAG, CPTAL, CQH, CTZ, CUBN, DAUD, DBCP, DCHF, DCRCU, DCRNU, DEFN, DEG, DEUR, DFVL, DFVS, DGBP, DGNS, DIVA, DIVC, DJPY, DLBR, DLBS, DMAQU, DMRE, DNO, DOGS, DQML, DRR, DTUL, DTUS, DTYL, DVHL, DVOP, DVYL, DWT, DYHG, ELJ, ELU, ENNV, ENNVU, ERB, ESGW, EUCG, EUFL, EUSGU, EVAR, EVIX, EVLVU, EXIV, FANZ, FATT, FCFP, FCNCO, FCNCP, FCRW, FCRZ, FEUL, FFEU, FIEU, FJNK, FLAT, FLGE, FMDG, FNGZ, FORE, FOREU, FSBK, FSII, FSKR, FTEO, FXCH, FXCOU, FXS, FXSG, GARD, GBDV, GBGR, GBLO, GIPRU, GLBY, GLSPT, GLSPU, GMII, GMIIU, GNAF, GWIIU, HAHA, HDLV, HOML, HONR, HQCL, HUSE, HYDD, IACB, IACB.U, IDY, IHYD, ILG, IMFI, IMFP, INAU, JBR, JHA, JHD, JMF, JMPNL, JPBI, JTP, JTPY, JWACU, KNAB, LBDC, LEGOU, LGBT, LMLB, LMLP, LRET, LSBG, LSVX, LVUS, MACQ, MACQU, MJJ, MJO, MLPC, MLPE, MLPQ, MLPY, MLPZ, MLTI, MOM, MRRL, MVIN, MVP, NADL, NGCA, NGCAU, NPN, NRGO, NRGZ, NVACU, NXQ, OASI, OCSI, OIIL, OILX, OMNT, ONBPO
+- adjusted-pass / raw-fail: P1 floor: 33,041
+- adjusted-pass / raw-fail: band floor: 14,622
+- raw-pass / adjusted-fail: P1 floor: 4,619
+- raw-pass / adjusted-fail: band floor: 176
+- reresolution:reresolved_delisted: 45
+- reresolution:unresolved: 17
+
+## Era B: 8,619,626 rows, 15,702 symbols, 821 sessions
+- calendar_B.txt written: 821 sessions = the NYSE calendar (a17d991a25a1b6b6)
+- era B break symbols: 1,292 — one-company 1,276, multi-company 0, no-record 16; breaks applied / not: hole:yes 717, jump:no 4778, jump:yes 205
+
+### era B funnel (STEP 0 derive; the cap and the detector gates come at the climax phase)
+  ticker-nights (detectable D0): 7,363,169
+  excluded: symbol pattern / test symbol: 235,145
+  excluded: security type (typed other than CS / ADRC): 3,018,153
+  excluded: security type (untyped W / U / R suffix): 8,688
+  raw_unknown (no raw close): 0
+  P1: in the raw-price / dollar-volume band: 1,401,455
+  P1: excluded: history (not 120 consecutive sessions): 21,406
+  P1: excluded: identity_break (applied guard break in the window): 0
+  P1: excluded: identity_break (earlier-issuer rule, era B): 0
+  P1: admitted: 1,380,049
+  P1:   pre-break holder (typed unknown, admitted; R37): 0
+  P1:   jump_unevidenced in the window (kept, flagged): 117
+  P1:   pre_hole (kept, flagged): 0
+  P1:   alias_outside_span (date-rule owner): 0
+  P1:   type source polygon_record: 1,360,920
+  P1:   type source sic_pull: 1,875
+  P1:   type source unknown: 247
+  P1:   type source record_without_type: 8
+  P1:   type source record_not_covering: 16,999
+  P2-band: in the raw-price / dollar-volume band: 767,802
+  P2-band: excluded: history (not 120 consecutive sessions): 37,103
+  P2-band: excluded: identity_break (applied guard break in the window): 3
+  P2-band: excluded: identity_break (earlier-issuer rule, era B): 9
+  P2-band: admitted: 730,687
+  P2-band:   pre-break holder (typed unknown, admitted; R37): 0
+  P2-band:   jump_unevidenced in the window (kept, flagged): 334
+  P2-band:   pre_hole (kept, flagged): 0
+  P2-band:   alias_outside_span (date-rule owner): 0
+  P2-band:   type source polygon_record: 713,773
+  P2-band:   type source sic_pull: 166
+  P2-band:   type source unknown: 2,987
+  P2-band:   type source record_without_type: 46
+  P2-band:   type source record_not_covering: 13,715
+  P2 (typed CS / ADRC): 713,939
+  P2's unknown-type row: 16,748
+  P2 untyped share: 2.3%
+- necessary-condition nights (R7: a climax at SOME tier is possible): 706; their owners' CIKs: 520
+- earlier-issuer control INBX 2024-05-31: records active 'Inhibrx Biosciences, Inc. Common Stock' cik 0002007919 delisted - key cik:0002007919
+  night 2024-05-31: owner path active, owner 'Inhibrx Biosciences, Inc. Common Stock'; earlier-issuer flag False; guard False; 120 consecutive sessions False
+  the reference holds no earlier record under INBX: the earlier-issuer rule is NOT EXERCISED by this control (R70); the night is excluded (history or identity)
+- earlier-issuer control DOC 2024-03-04: records active 'Healthpeak Properties, Inc.' cik 0000765880 delisted - key cik:0000765880
+  night 2024-03-04: owner path active, owner 'Healthpeak Properties, Inc.'; earlier-issuer flag False; guard False; 120 consecutive sessions False
+  the reference holds no earlier record under DOC: the earlier-issuer rule is NOT EXERCISED by this control (R70); the night is excluded (history or identity)
+- P1 symbol-keyed companies (no CIK, no FIGI): 160 (each may be one company counted twice)
+- P2 symbol-keyed companies (no CIK, no FIGI): 9 (each may be one company counted twice)
+- P2unk symbol-keyed companies (no CIK, no FIGI): 215 (each may be one company counted twice)
+- owners left empty-keyed (type / CIK / gone unknown): 196: ACGLP, ADF, AEPPZ, AMER, ARKC, ARKZ, ASRVP, ASTRW, ATMR, ATSPT, ATSPU, ATSPW, AVDG, BNIXU, BPOPN, BPYPM, BTCR, BTOP, BUDX, BWEB, CAHC, CAHCW, CBTG, CGABL, CHSCL, CHSCM, CHSCN, CHSCO, CHSCP, CLMA, CMLT, CMLTU, CMLTW, CPTAG, CPTAL, CYXTW, DBEH, DCRC, DCRCU, DCRCW, DCRN, DCRNU, DCRNW, DEFN, DGNS, DIVA, DMAQU, DMRE, DWCR, DYHG, ENNV, ENNVU, ENNVW, EOPS, ESGX, ETPA, EUCG, EUSG, EUSGU, EUSGW, FATT, FCNCO, FCNCP, FCRW, FEDX, FEUL, FIVR, FLGE, FNGZ, FORE, FOREU, FOREW, FSII, FTFrw, FXCOU, GBDV, GBGR, GBLO, GIPRU, GLSPT, GLSPU, GLSPW, GMII, GMIIU, GMIIW, GNAF, GUNZ, HCAQ, HKND, HLMNW, HOM, HYRM, IACB, ITCBr, JHCS, JHMC, JHME, JHMF, JHMH, JHMI, JHMS, JHMT, JWACU, KVSB, LBYAV, LBYKV, LCIDW, LEGOU, LEGOW, LFAJ, LFAK, LFAL, LFAN, LFAR, LFAU, LFAV, LFAZ, LFTrw, LGBT, LIAG, LIAJ, LIAP, LIAQ, LIAT, LIAV, LIAW, LIAX, LIV, MACQ, MACQU, MACQW, MBNKP, MDCP, MEUSW, MJJ, MJO, MNTL, MTTRW, MVP, NEEpK, NGCA, NGCAU, NGCAW, NIWM, NSPY, NVACU, NXQ, ONBPO, ONBPP, ORFN, PKO, PSApE, PSYK, PTRAW, PUKp, PUKpA, PYS, QDCC, REC, RHCB, RIGZ, RKLBW, ROVRW, RTPY, RTPYU, RTPYW, SAVN, SCR, SDGS, SECD, SKINW, SOFIW, SPQQ, STXI, SUBZ, TAAG, TADS, TECTP, TEGS, THMA, THMAU, THMAW, TPGS, TPGXL, TPHE, TRYP, UBCB, UGCE, UVDV, VEDL, VFIN, VNMC, VPCC, VPOP, VTRN, VWI
+- adjusted-pass / raw-fail: P1 floor: 18,004
+- adjusted-pass / raw-fail: band floor: 14,237
+- raw-pass / adjusted-fail: P1 floor: 1,804
+- raw-pass / adjusted-fail: band floor: 25
+
+- candidate_ciks.txt: 1,301 CIKs (the EDGAR pull's input)
+
+STEP 0 DERIVE COMPLETE

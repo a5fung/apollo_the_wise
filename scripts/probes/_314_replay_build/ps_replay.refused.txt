@@ -1,0 +1,5 @@
+# #314 parabolic-short replay — STEP 0 — derive (derive and count the populations; walk nothing) (2026-10-28 13:07)
+Guards: no network, no DB, no production server, nothing dated after 2024-12-31 read from a bar file (the 2025-26 split rows are read only to undo era B's adjustment basis), cb702_pre's survivors-only export never opened, no episode walked and no outcome computed outside --walk.
+- modules: ps_common.py 6f99467e3a2bc5c3 ps_population.py d1e5184bc3e68cb1 ps_features.py 41d86dbd9b732d36 ps_walk.py a4decccfebb4d49d ps_goldens.py b0c43316bb6e232d ps_stages.py ab7fbfad64d758e0 ps_replay.py cfe842184385ad33 ps_rederive.py 629ff75fea874ae9 ps_pull.py c117b130e351b29c
+STEP 0 REFUSED:
+  - outputs exist: /Users/alvinfung/apollo_data/ps314/calendar_B.txt

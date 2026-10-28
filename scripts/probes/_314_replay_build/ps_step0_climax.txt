@@ -1,0 +1,179 @@
+# #314 parabolic-short replay — STEP 0 — climax (derive and count the populations; walk nothing) (2026-10-28 14:43)
+Guards: no network, no DB, no production server, nothing dated after 2024-12-31 read from a bar file (the 2025-26 split rows are read only to undo era B's adjustment basis), cb702_pre's survivors-only export never opened, no episode walked and no outcome computed outside --walk.
+- modules: ps_common.py 6f99467e3a2bc5c3 ps_population.py d1e5184bc3e68cb1 ps_features.py 41d86dbd9b732d36 ps_walk.py a4decccfebb4d49d ps_goldens.py b0c43316bb6e232d ps_stages.py ab7fbfad64d758e0 ps_replay.py cfe842184385ad33 ps_rederive.py 629ff75fea874ae9 ps_pull.py c117b130e351b29c
+
+## Expectations (fixed in the plan; a miss is reported first and changes no rule)
+  [MISS] P2 yields more climax nights than P1: P2 243 vs P1 418
+  [MISS] era A's climax count per calendar year is within 2x of era B's per-year mean: A {'2016': 18, '2017': 32, '2018': 16, '2019': 35, '2020': 192, '2021': 136, '2022': 8}, B mean 74.7
+  [held] at least 80% of P2's climax rows typed CS: 220 of 243
+  [held] the reachable-3R proxy share is under 50% in P1: 143 of 418
+  [held] the gone share of P2 climax companies is >= 25% in era A: 52 of 122
+  [held] the gone share of P2 climax companies is >= 15% in era B: 18 of 86
+  [held] duplicate_company_night is under 1% of climax rows: 0 of 844
+  [held] alias_outside_span is under 1% of climax rows: 0 of 844
+  [held] void_adjustment_event is under 2% of climax rows: 7 of 844
+
+## The synthetic positive controls (a mismatch refuses)
+  detector golden climax: stage climax, failing [], days_up_streak 20 (expected ('climax', (), 20)) -> OK
+  detector golden streak_2: stage anticipation, failing ['days_up_streak'], days_up_streak 2 (expected ('anticipation', ('days_up_streak',), 2)) -> OK
+  detector golden earnings_today: stage anticipation, failing ['earnings'], days_up_streak 20 (expected ('anticipation', ('earnings',), 20)) -> OK
+  detector golden gap_1_9pct: stage anticipation, failing ['gapped_today'], days_up_streak 20 (expected ('anticipation', ('gapped_today',), 20)) -> OK
+  detector golden volume_one_under: stage anticipation, failing ['climax_volume'], days_up_streak 20 (expected ('anticipation', ('climax_volume',), 20)) -> OK
+  walk golden time_stop=5: settled time_stop on 2023-08-21, entry 140.0 intraday, R 1.2002600780234074 (registered 1.200260078) -> OK
+  walk golden time_stop=3: settled time_stop on 2023-08-17, entry 140.0 intraday, R 0.969079612772721 (registered 0.969079613) -> OK
+  walk goldens through the export layout and both eras' loaders: byte-equal
+  walk golden through walk_one on 120 history rows (r5): R 1.2002600780234074 -> OK
+  walk golden through walk_one on 120 history rows (r3): R 0.969079612772721 -> OK
+- detector pass P1 (its own process) ...
+- detector pass P2 (its own process) ...
+- detector pass P2small (its own process) ...
+- P1 process: _MIN_DOLLAR_VOL_TODAY = 10,000,000 (asserted in the process)
+- P2 process: _MIN_DOLLAR_VOL_TODAY = 2,000,000 (asserted in the process)
+- P2small process: _MIN_DOLLAR_VOL_TODAY = 2,000,000 (asserted in the process)
+- void_adjustment_event climax rows: 7; distribution suspects: 64
+- duplicate_company_night: 0 climax rows (kept one per company and D0)
+
+### P1 era A: the detector funnel (gates in the plan's order; 2,730,748 nights scored)
+  stopped at / reached prior_move: 2,716,840
+  stopped at / reached sma_extension: 4,668
+  stopped at / reached acceleration: 4,754
+  stopped at / reached burst_score: 2,848
+  stopped at / reached gapped_today: 643
+  stopped at / reached climax_volume: 574
+  stopped at / reached days_up_streak: 132
+  stopped at / reached climax: 289
+  climax candidates REMOVED before the detector (scored as live would, counted only): {'history (not 120 consecutive sessions)': 44, 'identity_break: applied guard break': 1}
+  cap source: {'not_pulled': 2421504, 'xbrl_cover_page': 211354, 'unknown': 97890}; tier: {'unknown': 2519394, 'mid': 86409, 'large': 18300, 'small': 106645}
+  climaxes per calendar year: {'2016': 6, '2017': 17, '2018': 10, '2019': 15, '2020': 132, '2021': 105, '2022': 4}
+  GME 2021-01-04: stage unqualified (prior_move), tier small (cap xbrl_cover_page), prior move 0.2703976435935198, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-05: stage unqualified (prior_move), tier small (cap xbrl_cover_page), prior move 0.2792341678939616, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-06: stage unqualified (prior_move), tier small (cap xbrl_cover_page), prior move 0.35198821796759927, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-07: stage unqualified (prior_move), tier small (cap xbrl_cover_page), prior move 0.3313696612665684, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-08: stage unqualified (prior_move), tier small (cap xbrl_cover_page), prior move 0.30279823269513995, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-11: stage unqualified (prior_move), tier small (cap xbrl_cover_page), prior move 0.4683357879234169, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-12: stage unqualified (prior_move), tier small (cap xbrl_cover_page), prior move 0.4692194403534611, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-13: stage climax (climax), tier mid (cap xbrl_cover_page), prior move 1.312223858615611, ext50 2.030144411801216, streak 3, score 4, gapped True, climax vol True, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-14: stage watch (burst_score), tier mid (cap xbrl_cover_page), prior move 1.9390279823269512, ext50 2.486716577113634, streak 4, score 2, gapped True, climax vol False, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-15: stage watch (burst_score), tier mid (cap xbrl_cover_page), prior move 1.614138438880707, ext50 2.147787113761326, streak 0, score 1, gapped False, climax vol False, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-19: stage watch (burst_score), tier mid (cap xbrl_cover_page), prior move 1.898379970544919, ext50 2.3020774845592364, streak 1, score 1, gapped True, climax vol False, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-20: stage watch (burst_score), tier mid (cap xbrl_cover_page), prior move 1.8807069219440353, ext50 2.2163100477254494, streak 0, score 0, gapped False, climax vol False, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-21: stage watch (burst_score), tier mid (cap xbrl_cover_page), prior move 2.169366715758468, ext50 2.355186663864958, streak 1, score 2, gapped False, climax vol False, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-22: stage watch (burst_score), tier mid (cap xbrl_cover_page), prior move 3.7864506627393224, ext50 3.3600899883792583, streak 2, score 2, gapped False, climax vol True, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-25: stage anticipation (climax_volume), tier mid (cap xbrl_cover_page), prior move 4.655375552282768, ext50 3.717558493459421, streak 3, score 3, gapped True, climax vol False, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-26: stage anticipation (climax_volume), tier large (cap xbrl_cover_page), prior move 9.895434462444772, ext50 6.327706424529399, streak 4, score 4, gapped True, climax vol False, contiguous True, identity flags 0, population P1 True
+  GME 2021-01-27: stage anticipation (climax_volume), tier large (cap xbrl_cover_page), prior move 24.590574374079527, ext50 11.541435187030231, streak 5, score 3, gapped True, climax vol False, contiguous True, identity flags 8, population P1 True
+  GME 2021-01-28: stage watch (burst_score), tier large (cap xbrl_cover_page), prior move 13.256259204712812, ext50 5.7341895125938915, streak 0, score 2, gapped False, climax vol False, contiguous True, identity flags 8, population P1 True
+  GME 2021-01-29: stage watch (burst_score), tier large (cap xbrl_cover_page), prior move 22.932253313696613, ext50 8.120696031103515, streak 1, score 2, gapped True, climax vol False, contiguous True, identity flags 8, population P1 True
+
+### P1 era B: the detector funnel (gates in the plan's order; 1,380,171 nights scored)
+  stopped at / reached prior_move: 1,372,833
+  stopped at / reached sma_extension: 2,589
+  stopped at / reached acceleration: 2,398
+  stopped at / reached burst_score: 1,622
+  stopped at / reached gapped_today: 318
+  stopped at / reached climax_volume: 197
+  stopped at / reached days_up_streak: 85
+  stopped at / reached climax: 129
+  climax candidates REMOVED before the detector (scored as live would, counted only): {'history (not 120 consecutive sessions)': 16}
+  cap source: {'not_pulled': 1217160, 'xbrl_cover_page': 106425, 'unknown': 56586}; tier: {'unknown': 1273746, 'large': 11731, 'mid': 50580, 'small': 44114}
+  climaxes per calendar year: {'2022': 27, '2023': 40, '2024': 62}
+  NVDA 2024-03-01: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.24198466368796034, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-04: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.2866350682284746, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-05: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.2976089844221712, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-06: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.3389083444028498, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-07: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.39881958700639997, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-08: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.3212172442941674, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-11: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.2947409733124018, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-12: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.38740792174858085, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-13: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.3719357565511412, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-14: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.32749667914503067, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-15: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.32587398864871386, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-18: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.33521011955077884, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-19: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.3494445115324234, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-20: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.3641468421688201, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-21: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.380192609588214, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-22: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.4232731554160125, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-25: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.4340357444753047, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-26: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.3971893491124261, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-27: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.3623052771404418, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+  NVDA 2024-03-28: stage unqualified (prior_move), tier unknown (cap not_pulled), prior move 0.36390532544378673, ext50 None, streak None, score 0, gapped None, climax vol None, contiguous True, identity flags 0, population P1 True
+
+### P2 era A: the detector funnel (gates in the plan's order; 1,403,686 nights scored)
+  stopped at / reached prior_move: 1,394,123
+  stopped at / reached sma_extension: 2,684
+  stopped at / reached acceleration: 3,583
+  stopped at / reached burst_score: 2,162
+  stopped at / reached gapped_today: 453
+  stopped at / reached climax_volume: 403
+  stopped at / reached days_up_streak: 130
+  stopped at / reached climax: 148
+  climax candidates REMOVED before the detector (scored as live would, counted only): {'history (not 120 consecutive sessions)': 35}
+  cap source: {'xbrl_cover_page': 212656, 'not_pulled': 1133706, 'unknown': 57324}; tier: {'mid': 6147, 'unknown': 1191030, 'small': 206101, 'large': 408}
+  climaxes per calendar year: {'2016': 12, '2017': 15, '2018': 6, '2019': 20, '2020': 60, '2021': 31, '2022': 4}
+
+### P2 era B: the detector funnel (gates in the plan's order; 702,572 nights scored)
+  stopped at / reached prior_move: 695,091
+  stopped at / reached sma_extension: 1,829
+  stopped at / reached acceleration: 2,837
+  stopped at / reached burst_score: 1,844
+  stopped at / reached gapped_today: 443
+  stopped at / reached climax_volume: 322
+  stopped at / reached days_up_streak: 111
+  stopped at / reached climax: 95
+  climax candidates REMOVED before the detector (scored as live would, counted only): {'history (not 120 consecutive sessions)': 16}
+  cap source: {'not_pulled': 567090, 'xbrl_cover_page': 106664, 'unknown': 28818}; tier: {'unknown': 595908, 'small': 100039, 'mid': 5733, 'large': 892}
+  climaxes per calendar year: {'2022': 9, '2023': 28, '2024': 58}
+
+### P2small era A: the detector funnel (gates in the plan's order; 1,403,686 nights scored)
+  stopped at / reached prior_move: 1,399,445
+  stopped at / reached sma_extension: 370
+  stopped at / reached acceleration: 2,198
+  stopped at / reached burst_score: 1,062
+  stopped at / reached gapped_today: 195
+  stopped at / reached climax_volume: 232
+  stopped at / reached days_up_streak: 70
+  stopped at / reached climax: 114
+  climax candidates REMOVED before the detector (scored as live would, counted only): {'history (not 120 consecutive sessions)': 14}
+  cap source: {'sentinel_small_tier': 1403686}; tier: {'small': 1403686}
+  climaxes per calendar year: {'2016': 7, '2017': 11, '2018': 5, '2019': 17, '2020': 47, '2021': 24, '2022': 3}
+
+### P2small era B: the detector funnel (gates in the plan's order; 702,572 nights scored)
+  stopped at / reached prior_move: 699,467
+  stopped at / reached sma_extension: 226
+  stopped at / reached acceleration: 1,519
+  stopped at / reached burst_score: 845
+  stopped at / reached gapped_today: 206
+  stopped at / reached climax_volume: 189
+  stopped at / reached days_up_streak: 51
+  stopped at / reached climax: 69
+  climax candidates REMOVED before the detector (scored as live would, counted only): {'history (not 120 consecutive sessions)': 6}
+  cap source: {'sentinel_small_tier': 702572}; tier: {'small': 702572}
+  climaxes per calendar year: {'2022': 8, '2023': 18, '2024': 43}
+
+- owner records unknown by the name cross-check (R14): 1021: ABRpD: 'Arbor Realty Trust, Inc. 6.375% Series D Cumulative Redeemable Preferred Stock, Liquidation Preference $25.00 per Share' vs SEC 'ARBOR REALTY TRUST INC'; ABRpE: 'Arbor Realty Trust, Inc. 6.25% Series E Cumulative Redeemable Preferred Stock' vs SEC 'ARBOR REALTY TRUST INC'; ABRpF: 'Arbor Realty Trust, Inc. 6.25% Series F Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock, Liquidation Preference $25.00 per share' vs SEC 'ARBOR REALTY TRUST INC'; ACRpC: 'ACRES Commercial Realty Corp. 8.625% Fixed-to-Floating Series C Cumulative Redeemable Preferred Stock, par value $0.001 per share' vs SEC 'ACRES Commercial Realty Corp.'; ACRpD: 'ACRES Commercial Realty Corp. 7.875% Series D Cumulative Redeemable Preferred Stock' vs SEC 'ACRES Commercial Realty Corp.'; AENTW: 'Alliance Entertainment Holding Corporation Warrants' vs SEC 'ALLIANCE ENTERTAINMENT HOLDING CORP'; AHTpD: 'Ashford Hospitality Trust, Inc. 8.45% Series D' vs SEC 'ASHFORD HOSPITALITY TRUST INC'; AHTpG: 'Ashford Hospitality Trust, Inc   7.375% Series G Cumulative Preferred Stock' vs SEC 'ASHFORD HOSPITALITY TRUST INC'; AHTpH: 'Ashford Hospitality Trust, Inc. 7.50 Percent Series H Cumulative Preferred Stock' vs SEC 'ASHFORD HOSPITALITY TRUST INC'; AHTpI: 'Ashford Hospitality Trust, Inc. 7.50% Series I Cumulative Preferred Stock' vs SEC 'ASHFORD HOSPITALITY TRUST INC'; AISPW: 'Airship AI Holdings, Inc. Warrants' vs SEC 'Airship AI Holdings, Inc.'; AMPG: 'AMPLITECH GROUP INC. COM' vs SEC 'AmpliTech Group, Inc.'; AMPGZ: 'Amplitech Group, Inc. Series B Right' vs SEC 'AmpliTech Group, Inc.'; AMPX.WS: 'Amprius Technologies, Inc. Warrants to purchase one share of Common Stock at an exercise price of $11.50 per share' vs SEC 'Amprius Technologies, Inc.'; AMTD: 'AMTD IDEA Group American Depositary Shares, each representing three hundred sixty (360) Class A Ordinary Shares' vs SEC 'AMTD IDEA GROUP'; AMTX: 'Aemetis, Inc. (DE) Common Stock' vs SEC 'AEMETIS, INC'; ANGHW: 'Anghami Inc. Warrants' vs SEC 'Anghami Inc'; ASM: 'Avino Silver & Gold Mines Ltd. (Canada)' vs SEC 'AVINO SILVER & GOLD MINES LTD'; ASPSW: 'Altisource Portfolio Solutions S.A. Net Settle Stakeholder Warrants' vs SEC 'ALTISOURCE PORTFOLIO SOLUTIONS S.A.'; ASPSZ: 'Altisource Portfolio Solutions S.A. Cash Exercise Stakeholder Warrants' vs SEC 'ALTISOURCE PORTFOLIO SOLUTIONS S.A.'; ASTC: 'Astrotech Corporation (DE) Common Stock' vs SEC 'ASTROTECH Corp'; ATLCL: 'Atlanticus Holdings Corporation 6.125% Senior Notes due 2026' vs SEC 'Atlanticus Holdings Corp'; ATLCP: 'Atlanticus Holdings Corporation 7.625% Series B Cumulative Perpetual Preferred Stock, no par value per share' vs SEC 'Atlanticus Holdings Corp'; ATLCZ: 'Atlanticus Holdings Corporation 9.25% Senior Notes due 2029' vs SEC 'Atlanticus Holdings Corp'; AUROW: 'Aurora Innovation, Inc. Warrant' vs SEC 'Aurora Innovation, Inc.'; AZUL: 'Azul S.A. American Depositary Shares, each representing two (2) Common Shares' vs SEC 'AZUL SA'; BBAI.WS: 'BigBear.ai Holdings, Inc. Redeemable warrants, each full warrant exercisable for one share of common stock at an exercise price of $11.50 per share' vs SEC 'BigBear.ai Holdings, Inc.'; BSET: 'Bassett Furniture Industries I' vs SEC 'BASSETT FURNITURE INDUSTRIES INC'; BWpA: 'Babcock & Wilcox Enterprises, Inc. 7.75% Series A Cumulative Perpetual Preferred Stock' vs SEC 'Babcock & Wilcox Enterprises, Inc.'; BZFDW: 'BuzzFeed, Inc. Warrant' vs SEC 'BuzzFeed, Inc.'; CANF: 'Can-Fite BioPharma Ltd. American Depositary Shares, each representing two (2) Ordinary Shares' vs SEC 'Can-Fite BioPharma Ltd.'; CCXIU: 'Churchill Capital Corp XI Units' vs SEC 'Churchill Capital Corp XI'; CCXIW: 'Churchill Capital Corp XI Warrants' vs SEC 'Churchill Capital Corp XI'; CLPS: 'CLPS Incorporation Common Stock' vs SEC 'CLPS Inc'; CLSKW: 'CleanSpark, Inc. Warrant' vs SEC 'CLEANSPARK, INC.'; CMCM: 'Cheetah Mobile Inc. American Depositary Shares, each representing fifty (50) Class A Ordinary Shares' vs SEC 'Cheetah Mobile Inc.'; CNF: 'CNFinance Holdings Limited American Depositary Shares, each representing two hundred (200) Ordinary Shares' vs SEC 'CNFinance Holdings Ltd.'; COE: '51Talk Online Education Group American Depositary Shares, each representing sixty (60) Class A Ordinary Shares' vs SEC '51Talk Online Education Group'; CPS: 'Cooper-Standard Automotive Inc.' vs SEC 'Cooper-Standard Holdings Inc.'; CXAIW: 'CXApp Inc. Warrant' vs SEC 'CXApp Inc.'; DAO: 'Youdao, Inc. American Depositary Shares, each representing one Class A Ordinary Share' vs SEC 'Youdao, Inc.'; DAVEW: 'Dave Inc. Warrants' vs SEC 'Dave Inc./DE'; DDL: 'Dingdong (Cayman) Limited American Depositary Shares (each two representing three Ordinary Shares)' vs SEC 'Dingdong (Cayman) Ltd'; DDT: "Dillard's, Inc. 7.50% Capital Securities" vs SEC "DILLARD'S, INC."; DJTWW: 'Trump Media & Technology Group Corp. Warrants' vs SEC 'Trump Media & Technology Group Corp.'; DQ: 'Daqo New Energy Corp. American Depositary Shares (each representing 5 Ordinary Shares)' vs SEC 'DAQO NEW ENERGY CORP.'; DSX.WS: 'Diana Shipping Inc. Warrants to Purchase Common Stock (expiring on or about December 14, 2026)' vs SEC 'DIANA SHIPPING INC.'; DSXpB: 'DIANA SHIPPING INC 8.875% Series B Cumulative Redeemable Perpetual Preferred Shares, $0.01 par value' vs SEC 'DIANA SHIPPING INC.'; EDGE: 'MRBL Enhanced Equity ETF' vs SEC 'PDS Biotechnology Corp'; EDN: 'Empresa Distribuidora Y Comercializadora Norte S.A. (Edenor)' vs SEC 'EDENOR'; EDU: 'New Oriental Education and Technology Group, Inc. American Depositary Shares (each representing ten (10) Common Shares)' vs SEC 'New Oriental Education & Technology Group Inc.'; ESLAW: 'Estrella Immunopharma, Inc. Warrant' vs SEC 'Estrella Immunopharma, Inc.'; EYEG: 'AB Corporate Bond ETF' vs SEC 'KIORA PHARMACEUTICALS INC'; FBIOP: 'Fortress Biotech, Inc. 9.375% Series A Cumulative Redeemable Perpetual Preferred Stock' vs SEC 'Fortress Biotech, Inc.'; FCEL: 'FuelCell Energy Inc  NEW (DE)' vs SEC 'FUELCELL ENERGY INC'; FINV: 'FinVolution Group American depositary shares, each representing five Class A ordinary shares' vs SEC 'FinVolution Group'; GEME: 'Pacific North of South EM Equity Active ETF' vs SEC 'CURO Group Holdings Corp.'; GLOPpA: 'GasLog Partners LP 8.625% Series A Cumulative Redeemable Perpetual Fixed to Floating Rate Preference Units' vs SEC 'GasLog Partners LP'; GLOPpB: 'GasLog Partners LP 8.200% Series B Cumulative Redeemable Perpetual Fixed to Floating Rate Preference Units' vs SEC 'GasLog Partners LP'; GLOPpC: 'GasLog Partners LP 8.500% Series C Cumulative Redeemable Perpetual Fixed to Floating Rate Preference Units' vs SEC 'GasLog Partners LP'; GME.WS: 'GameStop Corp. Warrants to Purchase Common Stock' vs SEC 'GameStop Corp.'; GOTU: 'Gaotu Techedu Inc. American Depositary Shares, three of which representing two Class A Ordinary Shares' vs SEC 'Gaotu Techedu Inc.'; GPUSpD: 'Hyperscale Data, Inc. 13.00% Series D Cumulative Redeemable Perpetual Preferred Stock' vs SEC 'Hyperscale Data, Inc.'; GRRRW: 'Gorilla Technology Group Inc. Warrant' vs SEC 'Gorilla Technology Group Inc.'; GRWG: 'GROW GENERATION CORP' vs SEC 'GrowGeneration Corp.'; GSLpB: 'GLOBAL SHIP LEASE, INC. 8.75%  SER B' vs SEC 'Global Ship Lease, Inc.'; HCACR: 'Hall Chadwick Acquisition Corp Rights' vs SEC 'Hall Chadwick Acquisition Corp'; HCACU: 'Hall Chadwick Acquisition Corp. Unit' vs SEC 'Hall Chadwick Acquisition Corp'; HOLOW: 'MicroCloud Hologram Inc. Warrant' vs SEC 'MicroCloud Hologram Inc.'; HOVNP: 'Hovnanian Enterprises Inc. Dep Shr Srs A Pfd' vs SEC 'HOVNANIAN ENTERPRISES INC'; IIPRpA: 'Innovative Industrial Properties, Inc.9.00 Percent Series A Cumulative Redeemable Preferred Stock' vs SEC 'INNOVATIVE INDUSTRIAL PROPERTIES INC'; IIPRpB: 'Innovative Industrial Properties, Inc. 9.25% Series B Cumulative Redeemable Preferred Stock' vs SEC 'INNOVATIVE INDUSTRIAL PROPERTIES INC'; IMPP: 'Imperial Petroleum Inc. Common Shares' vs SEC 'Imperial Petroleum Inc./Marshall Islands'; IMPPP: 'Imperial Petroleum Inc. 8.75% Series A Cumulative Redeemable Perpetual Preferred Shares' vs SEC 'Imperial Petroleum Inc./Marshall Islands'; IVRpC: 'Invesco Mortgage Capital Inc. 7.5% Fixed-to-Floating Series C Cumulative Redeemable Preferred Stock, Liquation Preference $25.00 per Share' vs SEC 'Invesco Mortgage Capital Inc.'; JF: 'J and Friends Holdings Limited American Depositary Shares' vs SEC 'J & Friends Holdings Ltd'; JKS: 'Jinko Holdings Limited' vs SEC 'JinkoSolar Holding Co., Ltd.'; KITTW: 'Nauticus Robotics, Inc Warrant' vs SEC 'Nauticus Robotics, Inc.'; LFVN: 'Lifevantage Corporation Common Stock (Delaware)' vs SEC 'Lifevantage Corp'; LITB: 'LightInTheBox Holding Co., Ltd. American Depositary Shares, each representing twelve ordinary shares' vs SEC 'LightInTheBox Holding Co., Ltd.'; LU: 'Lufax Holding Ltd. American Depositary Shares, (each representing twenty (20) Ordinary Shares)' vs SEC 'Lufax Holding Ltd'; LUCYW: 'Innovative Eyewear, Inc. Series A Warrants 8/16/27' vs SEC 'Innovative Eyewear Inc'; METCI: 'Ramaco Resources, Inc. 8.250% Senior Notes due 2030' vs SEC 'Ramaco Resources, Inc.'; METCZ: 'Ramaco Resources, Inc. 8.375% Senior Notes due 2029' vs SEC 'Ramaco Resources, Inc.'; MFAO: 'MFA Financial, Inc. 9.000% Senior Notes due 2029' vs SEC 'MFA FINANCIAL, INC.'; MFApB: 'MFA Financial, Inc. 7.50% Series B Cumulative Redeemable Preferred Stock' vs SEC 'MFA FINANCIAL, INC.'; MFApC: 'MFA Financial, Inc. 6.50% Series C Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock' vs SEC 'MFA FINANCIAL, INC.'; MIND: 'MIND Technology, Inc. Common Stock (DE)' vs SEC 'MIND TECHNOLOGY, INC'; MITN: 'TPG Mortgage Investment Trust, Inc. 9.500% Senior Notes due 2029' vs SEC 'TPG Mortgage Investment Trust, Inc.'; MITP: 'TPG Mortgage Investment Trust, Inc. 9.500% Senior Notes due 2029' vs SEC 'TPG Mortgage Investment Trust, Inc.'; MITTpA: 'TPG Mortgage Investment Trust, Inc. 8.25% Series A Cumulative Redeemable Preferred Stock' vs SEC 'TPG Mortgage Investment Trust, Inc.'; MITTpB: 'TPG Mortgage Investment Trust, Inc. 8.00% Series B Cumulative Redeemable Preferred Stock' vs SEC 'TPG Mortgage Investment Trust, Inc.'; MITTpC: 'TPG Mortgage Investment Trust, Inc. 8.00% Series C Fixed-to-Floating Rate Cumulative Redeemable Preferred Stock, $0.01 par value per share' vs SEC 'TPG Mortgage Investment Trust, Inc.'; MNSO: 'MINISO Group Holding Limited American Depositary Shares, each representing four Ordinary Shares' vs SEC 'MINISO Group Holding Ltd'; MOBBW: 'Mobilicom Limited Warrants' vs SEC 'Mobilicom Ltd'; MOBXW: 'Mobix Labs, Inc Warrants' vs SEC 'MOBIX LABS, INC'; MOGU: 'MOGU Inc. American Depositary Shares, each representing three-hundred (300) Class A Ordinary Shares' vs SEC 'MOGU Inc.'; MYND: 'Mynd.ai, Inc. American Depositary Shares, each representing ten (10) Class A Ordinary Shares' vs SEC 'Mynd.ai, Inc.'; NAT: 'Nordic American Tanker' vs SEC 'NORDIC AMERICAN TANKERS Ltd'; NCPLW: 'Netcapital Inc. Warrants' vs SEC 'Netcapital Inc.'
+
+## Climax companies: the survivorship floor (refusing on a zero)
+- P1 era A: 210 climax companies; gone 48 (22.9%); gone inside the era's window 18; gone unknown 33
+  era A refetch-sourced climax companies: 43 (20.5%)
+  gone, not refetch-sourced (the subset test, each with its path): [('APHA', 'no active record -> latest delisted'), ('BIMI', 'no active record -> latest delisted'), ('BLCT', 'no active record -> latest delisted'), ('BPTH', 'no active record -> latest delisted'), ('DRYS', 'no active record -> latest delisted'), ('ECYT', 'no active record -> latest delisted'), ('FTSV', 'no active record -> latest delisted'), ('LVGO', 'no active record -> latest delisted'), ('SKYS', 'no active record -> latest delisted'), ('SPRT', 'no active record -> latest delisted'), ('SRNE', 'no active record -> latest delisted'), ('STAB', 'no active record -> latest delisted'), ('STFC', 'no active record -> latest delisted'), ('VXRT', 'no active record -> latest delisted')]
+- P1 era B: 113 climax companies; gone 16 (14.2%); gone inside the era's window 8; gone unknown 12
+- P2 era A: 122 climax companies; gone 52 (42.6%); gone inside the era's window 12; gone unknown 1
+  era A refetch-sourced climax companies: 40 (32.8%)
+  gone, not refetch-sourced (the subset test, each with its path): [('AUTO', 'no active record -> latest delisted'), ('AXU', 'no active record -> latest delisted'), ('CWBR', 'no active record -> latest delisted'), ('ENSV', 'no active record -> latest delisted'), ('GSV', 'no active record -> latest delisted'), ('LGMK', 'no active record -> latest delisted'), ('MARK', 'no active record -> latest delisted'), ('QEP', 'no active record -> latest delisted'), ('SPHS', 'no active record -> latest delisted'), ('STAB', 'no active record -> latest delisted'), ('TCCO', 'no active record -> latest delisted'), ('XELA', 'no active record -> latest delisted'), ('YRIV', 'no active record -> latest delisted')]
+- P2 era B: 86 climax companies; gone 18 (20.9%); gone inside the era's window 9; gone unknown 0
+
+## Climax rows by population and era
+- P1 era A: 289 climax rows (0 open at the seal); reachable 3R proxy 36.3%; void_adjustment_event 3; suspects 9; jump_unevidenced 1; pre_hole 1; alias_outside_span 0; type sources {'refetch_record': 39, 'polygon_record': 205, 'name_mismatch': 37, 'unknown': 8}; key sources {'cik': 241, 'symbol': 46, 'composite_figi': 2}; typed CS 74.4%
+- P1 era B: 129 climax rows (4 open at the seal); reachable 3R proxy 29.5%; void_adjustment_event 1; suspects 13; jump_unevidenced 0; pre_hole 0; alias_outside_span 0; type sources {'polygon_record': 116, 'name_mismatch': 10, 'record_not_covering': 3}; key sources {'cik': 116, 'symbol': 13}; typed CS 84.5%
+- P2 era A: 148 climax rows (0 open at the seal); reachable 3R proxy 16.2%; void_adjustment_event 0; suspects 19; jump_unevidenced 0; pre_hole 2; alias_outside_span 0; type sources {'polygon_record': 102, 'refetch_record': 46}; key sources {'cik': 144, 'symbol': 1, 'composite_figi': 3}; typed CS 92.6%
+  P2's point-in-time cap where known: 98 of 148; under $250M: 76.5%
+- P2 era B: 95 climax rows (8 open at the seal); reachable 3R proxy 12.6%; void_adjustment_event 2; suspects 4; jump_unevidenced 0; pre_hole 0; alias_outside_span 0; type sources {'polygon_record': 95}; key sources {'cik': 95}; typed CS 87.4%
+  P2's point-in-time cap where known: 56 of 95; under $250M: 71.4%
+- P2small era A: 114 climax rows (0 open at the seal); reachable 3R proxy 13.2%; void_adjustment_event 0; suspects 16; jump_unevidenced 0; pre_hole 2; alias_outside_span 0; type sources {'polygon_record': 77, 'refetch_record': 37}; key sources {'cik': 111, 'symbol': 1, 'composite_figi': 2}; typed CS 96.5%
+- P2small era B: 69 climax rows (5 open at the seal); reachable 3R proxy 10.1%; void_adjustment_event 1; suspects 3; jump_unevidenced 0; pre_hole 0; alias_outside_span 0; type sources {'polygon_record': 69}; key sources {'cik': 69}; typed CS 88.4%
+- the flagger over the raw bars lists OPLN 2019-06-28 and ZWS 2021-10-05 (checked; the evidence class comes at the features phase)
+- filings_wanted.tsv 556 rows; news_wanted.tsv 1,313 pulls; suspects_wanted.tsv 41 (ticker, gap date)
+- R67: P1 / P2 climax rows by the symbol in use at D0 (era A keys by today's symbol; Polygon news by the symbol at publication): {('A', 'renamed'): 46, ('A', 'series'): 391, ('B', 'series'): 224}; a `renamed` row's news is pulled under its D0 symbol (R69, the main loop's ruling 10-28); an `ambiguous` row reads news unknown (`renamed_symbol`)
+  renamed (series -> D0 symbol): ABTS->MOXC, AEZS->CSCI, AIFC->ALTS, AIOS->HEBT, ASAP->WTRH, BBBY->BYON, CD->MFH, CRVO->DFFN, DARE->CERU, DOMH->SPEX, ELDN->NVUS, FIRY->SKLZ, FLNA->SAVA, HIIQ->BFYT, HOS->HLX, HTBX->NHWK, HTT->QD, HYFT->IPA, KA->PTI, KIRK->TBHC, LFWD->RWLK, LGMK->NXTD, MBAI->CHEK, NETE->MULN, NILE->DPW, NLS->BFX, NXH->BYON, PR->CDEV, RDNW->RMBL, SCNI->BVXV, STAB->CBLI, TRNE->DM, TRXC->ASXC, XMAX->NVFY
+
+STEP 0 CLIMAX COMPLETE
