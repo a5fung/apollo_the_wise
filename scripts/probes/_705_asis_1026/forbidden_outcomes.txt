@@ -1,0 +1,24 @@
+# Step 7 (docs/analysis/cb_asis_step7_grouping_prereg_2026-10-27.md §3.5): no trade OUTCOME may be read, computed or used to define a
+# tier or to choose any part of the grouping method. The step-7 modules may not contain any of these names as a WHOLE identifier or a
+# WHOLE string literal (tokenize; substrings never match). One name per line; '#' lines are comments. Read by asis_common.scan_identifiers
+# with forbidden_identifiers.txt (the §3.1 names) in the same scan. Includes the names 04_band / 03_check use for outcomes
+# (ret_middle, ret_worst, ret_best, ret_anchored, daily_middle, dollar_result) — review F2, 2026-10-27.
+result_pct
+result_in_day_ranges
+result_sign
+pnl
+gain
+gain_pct
+ret_trade
+trade_return
+r_multiple
+winner
+loser
+worked
+dollar_result
+ret_middle
+ret_worst
+ret_best
+ret_anchored
+daily_middle
+stopped_out
