@@ -633,9 +633,12 @@ def pull_news(P: X.Paths, tr, say=print) -> dict:
             if k in done:
                 stats["skipped"] += 1
                 continue
-            url = with_key(f"{POLYGON}/v2/reference/news?" + urllib.parse.urlencode({"ticker": r["ticker"], "published_utc.gte": r["gte"], "published_utc.lte": r["lte"],
+            # R69 (main-loop ruling 2026-10-28): a RENAMED row is queried under the symbol Polygon tagged at D0 (the #88 rule then names the right
+            # company); an ambiguous row keeps the series symbol and reads unknown downstream
+            qsym = r["d0_symbol"] if r.get("symbol_status") == "renamed" and r.get("d0_symbol") else r["ticker"]
+            url = with_key(f"{POLYGON}/v2/reference/news?" + urllib.parse.urlencode({"ticker": qsym, "published_utc.gte": r["gte"], "published_utc.lte": r["lte"],
                                                                                    "limit": X.NEWS_PAGE_LIMIT, "order": "desc", "sort": "published_utc"}), key)
-            rec = {"ticker": r["ticker"], "d0": r["d0"], "kind": r["kind"], "gte": r["gte"], "lte": r["lte"], "status": None, "pages": 0, "truncated": False,
+            rec = {"ticker": r["ticker"], "query_symbol": qsym, "d0": r["d0"], "kind": r["kind"], "gte": r["gte"], "lte": r["lte"], "status": None, "pages": 0, "truncated": False,
                    "items": [], "pulled_at": now_iso()}
             while url and rec["pages"] < X.NEWS_PAGES_K:
                 st, obj = tr.get_json(url)

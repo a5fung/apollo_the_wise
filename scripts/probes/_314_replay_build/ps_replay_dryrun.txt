@@ -1,6 +1,6 @@
-# #314 parabolic-short replay — DRY RUN (local files only; no pull, no population detector pass, no walk) (2026-10-28 09:53)
+# #314 parabolic-short replay — DRY RUN (local files only; no pull, no population detector pass, no walk) (2026-10-28 11:59)
 Guards: no network, no DB, no production server, nothing dated after 2024-12-31 read from a bar file (the 2025-26 split rows are read only to undo era B's adjustment basis), cb702_pre's survivors-only export never opened, no episode walked and no outcome computed outside --walk.
-- modules: ps_common.py 6f99467e3a2bc5c3 ps_population.py d1e5184bc3e68cb1 ps_features.py 41d86dbd9b732d36 ps_walk.py a4decccfebb4d49d ps_goldens.py b0c43316bb6e232d ps_stages.py 5ab6a8b08e200d5b ps_replay.py cfe842184385ad33 ps_rederive.py 629ff75fea874ae9 ps_pull.py 6d522b7a51e6c028
+- modules: ps_common.py 6f99467e3a2bc5c3 ps_population.py d1e5184bc3e68cb1 ps_features.py 41d86dbd9b732d36 ps_walk.py a4decccfebb4d49d ps_goldens.py b0c43316bb6e232d ps_stages.py 68d90ede6f95c86a ps_replay.py cfe842184385ad33 ps_rederive.py 629ff75fea874ae9 ps_pull.py c117b130e351b29c
 
 ## Pins (the freeze record against the files on disk)
   [OK] pin export_B: expected match, got match

@@ -884,6 +884,28 @@ NOT FROZEN.
 | 30 | L4 — a cost-fragile PASS had no cell | — | it takes its PASS cell, flagged "zero cost only" (still a proposal / candidate) | decided now; a shadow lane holds no money |
 | 31 | L5 — no earlier reading | unstated | stated in Why: no #314 outcome exists on either file | no climax list or episode file anywhere (checked 10-25) |
 
+## Revisions 2026-10-28 (round 5 — the build's plan gaps, ruled by the main loop before the freeze; nothing pulled, nothing walked)
+
+The build (`scripts/probes/_314_replay_build/`, commit `75da93e2`; report `build_review_fix_report.txt`) found eleven places
+the plan was silent or self-contradicting, plus two the reviews raised. Each is technical; the main loop rules them here, before the
+freeze, with the built choice (the runner's R-note) as the reading:
+
+| # | gap | ruling (R-note) |
+|---|---|---|
+| 1 | the INBX 2024-05-31 / DOC 2024-03-04 controls each sit beside a one-session hole, so the history rule alone removes them and "must be excluded" cannot fail a broken earlier-issuer rule | R58 as revised by the review: derive prints each control's records and the night's owner path; when the new (active) record owns the night the earlier-issuer flag must be set on it; when Polygon's lagging delisted date makes the old record own it, the night must be excluded and the flag set on the first night the new record owns |
+| 2 | Read 3 names `collector._polygon_get`, which pages Telegram on a sustained failure, raises instead of returning a status and cannot follow `next_url` | R56: the pull's own transport, same endpoint and parameters, the status recorded |
+| 3 | the name cross-check is a derive-time owner rule but needs the EDGAR pull; strict current-name equality unknowns every renamed company | R14 / R59: run in the climax phase; SEC `formerNames` accepted; state tags (`/DE/`, `/NEW/`) stripped |
+| 4 | the earlier-issuer bound is written only for active-owned nights | R33: every era-B night |
+| 5 | "degraded / still open blocks" a later climax with no release date | R23: released at the last walked bar |
+| 6 | the cap is needed on every night for the per-gate funnel, but EDGAR covers only necessary-condition companies | R51: nights of unpulled companies take the mid tier and are counted (none can be a climax at any tier) |
+| 7 | "pre-break holder" sits under identity_break while the owner bullet admits it as type unknown | R37: admitted as type unknown, printed beside |
+| 8 | the M1 re-resolution of empty-keyed owners, applied to original symbols, would trip the plan's own subset assertion | R61: refetch owners only |
+| 9 | P2's unknown-type row is "a counted beside row" | counted, never scored or walked |
+| 10 | the 7 open-at-the-seal sessions have no detection rule | R35: detected and listed, never walked |
+| 11 | the overlap disagreement reads 1.51% against "under 1%" | a recorded expectation miss; no rule changes |
+| 12 | (review) era A keys every series by today's symbol while Polygon tags news by the symbol at publication, so a renamed company's pre-rename news would read absent | R67 / R69: a RENAMED row's news is pulled under its D0 symbol (the #88 rule then names the right company); an AMBIGUOUS row reads unknown (`renamed_symbol`); a rename Polygon holds no record of stays a silent absent — stated |
+| 13 | (review) the era-A split test between a filing's period end and its filed date fired on cent rounding (tolerance 1e-9) | R17: a split needs a raw / adjusted factor step above 1% (the plan's own jump-evidence bound) between the two dates; 1,333 such steps on 1,073 symbols, 629,656 sub-1% steps are rounding |
+
 <!-- FREEZE -->
 ## Freeze record
 
@@ -945,3 +967,50 @@ and 2026-10-25 (`shasum -a 256`) for the data and the two frozen modules; the ru
 - doc body sha256: (pasted in the freeze commit)
 - freeze commit: the commit that adds this revision on `main`; STEP 0 runs only after it is on `main`, the walk only after the
   STEP 0 pins are.
+
+### FREEZE 2026-10-28 (the main loop, under his 10-26 "Ok plan" for the #314 replay; after the build, two Opus reviews, the fix pass and round 5 above)
+
+Frozen before any pull, any detector pass over a real population and any walk. The runner (`scripts/probes/_314_replay_build/`, built
+`75da93e2`; R69 news-symbol ruling applied) dry run: 99 claims, 99 OK, 0 MISMATCH. STEP 0's pulls run next on the production server
+(the Polygon key lives there; free endpoints; no database write); their files are pinned below in the STEP 0 commit before the walk.
+
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+- splits_B: 3199d06d5fb7dcd52ebd34e8c71e148b45ec0ca4a15f7f03ea1b715718882b0b
+- types_B: b8d37aae5ef85c25bc52479eef7f6b04a8a4e67557caaef7a426d8ae20194643
+- sic_B: 0e476c4422d56648d615c48d941edb971a348dfb99821023116d0fd98e617346
+- guard_B: b6cb81b6c4a1f415defc5adcf236402d93cd654c33736aa0b120b78c357b5650
+- flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+- raw_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+- types_A: d18e925b82ede2f5d4ca9ec8993d3d81f34ff10ebebec91b16f8b20e1aab0ff8
+- sic_A: 0e476c4422d56648d615c48d941edb971a348dfb99821023116d0fd98e617346
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+- guard_A: 876a75ec6d51744579c1ea2744c1b529cbd941355ef12eb8f0451bbe7ba1af08
+- export_stats_A: 040b50dabb0de4aacd7009e1e4cbb22b8214dab2f0579dc90169777e475ca622
+- verdict_A: 02cbb1c0106101cb12e8d5deb9448051ae3ced67966ac11d2475d06f26538de3
+- flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d
+- build_v2: 16f861798a1ea9debfe4d633c650d2d0662484b008ce8f3b3f612ab097546a0b
+- refetch_records: a8c563fffeffee55eef162b6724a490b8db9e43d8b2a9c6c656ece2a1963f9b6
+- straggler_records: d96336761f5b23fbfd1489aebd10bbffb72974ed398a02bb69d20c393d123b92
+- guard_pre: 6665c69f41bff3bd6ea913c66ccb9d0eab8bed0a9f020c32fa50c85d6cb6e6fc
+- parabolic_detector.py: 7530113b4defbdd10b7b02ba32c49b57261fdd32f609f65a28779e419e69cb0b
+- parabolic_short_shadow.py: 3059e90e07e792e48c8fcf7e2c591786fb1d5da7496396cf3afc5e3e8abebb6b
+- consolidation_breakout.py: e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b
+- test_parabolic_short_shadow.py: f697376ef050aff431d4828e6391cf04196e908f2eb3169004c33b584d4c6d56
+- asis_common.py: 4d36d6a42532dc782b7ccdce86a530a3b0bd948f66db74d5f1ab7af79a4562c4
+- runner.py: a4f016720f8226933367ae3d776a7067d9d94dea634b28e5e5685e186bc3ad69
+- test_parabolic_short_replay.py: 314ccffc918c2149058cd459b7eebee2c757232ac6af7d96952b073eb632576d
+- ps_common.py: 6f99467e3a2bc5c36292b87d875a469a7571000b240c663632862722d8bccc10
+- ps_population.py: d1e5184bc3e68cb1d0aac176c051f12cb637b76d7f63de91bae37b044d23582c
+- ps_features.py: 41d86dbd9b732d36e816d172adabedf4da1827b3958058f49879dc75e485e1f5
+- ps_walk.py: a4decccfebb4d49dd6328163f12a1bc1624513ae7a196ecf3ea41d9f48762cb0
+- ps_goldens.py: b0c43316bb6e232d6ec4fdd85060ffcdb1dd74b8e2b8a3f8aa02a2774aae5811
+- ps_stages.py: 68d90ede6f95c86ae1d547d91ec9450cf71d388b6b0c6feb83129f7e080cef84
+- ps_replay.py: cfe842184385ad33ea144bafdcc81901b07cea430929cb9831229833af51f1ac
+- ps_rederive.py: 629ff75fea874ae96e426f04c94f04faf3e75f4e581a4b8dba0a2735ac568f30
+- ps_pull.py: c117b130e351b29ce7b85cc0cec2f43de267244ff6734a2616283bc52848d55e
+- dryrun_printout: dbb70fe68d8293034452c921cb3fddffcdd062a18cceecdea3958d8c8dbaa3ff
+- doc_body: ee3c15a06ca869442a201e0cb87441351373c6c88a8ebee20ec2f83f32931df8
+
+Waiting for STEP 0 (ABSENT now): polygon_reference, edgar_submissions, xbrl_facts, xbrl_instances, polygon_news, alpaca_ca, calendar_B, breaks_applied, owners, climax_list, features, distribution_flags, distribution_suspects, distribution_class, episodes, ledger, step0_derive_printout, step0_climax_printout, step0_features_printout, result_printout

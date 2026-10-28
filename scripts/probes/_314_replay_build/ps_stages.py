@@ -22,6 +22,9 @@ READINGS (continued; the main loop decides):
       ambiguous row's read 3 and row (a) as UNKNOWN (`renamed_symbol`). The pull still queries the series symbol. The fork for the main
       loop: query the D0 symbol (the #88 rule then names it) vs keep them unknown. A rename Polygon carries no record of stays a silent
       `absent` — stated, not caught.
+  R69 (main-loop ruling 2026-10-28, round 5 of the plan) R67's fork: a RENAMED row's news is pulled under its D0 symbol (`ps_pull.pull_news`
+      writes `query_symbol` on the record; read 3 and row (a) match items tagged with it); an AMBIGUOUS row keeps the series symbol and reads
+      unknown (`renamed_symbol`).
   R55 The pooled verdict is per population over both eras; per-era rows beside with their n. Read 3's present share is printed by the
       D0 calendar year.
 """
@@ -901,8 +904,8 @@ def _write_wanted(P, rows, flags, say, former=None) -> None:
     X.write_tsv(P.suspects_wanted, ["ticker", "gap_date"], [{"ticker": t, "gap_date": d} for t, d in sorted(sw)])
     say(f"- filings_wanted.tsv {len(fw):,} rows; news_wanted.tsv {len(nw):,} pulls; suspects_wanted.tsv {len(sw):,} (ticker, gap date)")
     say(f"- R67: P1 / P2 climax rows by the symbol in use at D0 (era A keys by today's symbol; Polygon news by the symbol at publication): "
-        f"{dict(sorted(sym_status.items()))}; a `renamed` / `ambiguous` row reads news unknown (`renamed_symbol`) — the pull still "
-        f"queries the series symbol, its D0 symbol is written beside (a plan gap: the main loop rules query-the-D0-symbol vs unknown)")
+        f"{dict(sorted(sym_status.items()))}; a `renamed` row's news is pulled under its D0 symbol (R69, the main loop's ruling 10-28); an "
+        f"`ambiguous` row reads news unknown (`renamed_symbol`)")
     ren = sorted({(r["ticker"], r["d0_symbol"]) for r in nw if r["symbol_status"] == "renamed"})
     if ren:
         say("  renamed (series -> D0 symbol): " + ", ".join(f"{a}->{b}" for a, b in ren[:100]))
@@ -927,7 +930,7 @@ def features(P: X.Paths, say) -> list:
     news = FT.load_news(P.polygon_news)
     ca = FT.load_alpaca_ca(P.alpaca_ca)
     suspects = X.read_tsv(P.distribution_suspects)
-    renamed = {(w["ticker"], w["d0"]) for w in X.read_tsv(P.news_wanted) if w.get("symbol_status") in ("renamed", "ambiguous")}
+    renamed = {(w["ticker"], w["d0"]) for w in X.read_tsv(P.news_wanted) if w.get("symbol_status") == "ambiguous"}   # R69: renamed rows are pulled under the D0 symbol
     out, classes = [], []
     caps = Caps(subs, facts)
     for era in ("A", "B"):
@@ -978,12 +981,13 @@ def _features_row(r, e, basis, caps, subs, facts, inst, news, cal, renamed=None)
     cik = r["owner_cik"]
     sub = subs.get(cik) if cik else None
     fac = facts.get(cik) if cik else None
-    n3 = FT.news_present(_in_window(news.get((r["ticker"], r["d0"], "read3"))), r["ticker"]) if r["anchor"] != "1" else {
+    p3 = news.get((r["ticker"], r["d0"], "read3"))
+    n3 = FT.news_present(_in_window(p3), (p3 or {}).get("query_symbol") or r["ticker"]) if r["anchor"] != "1" else {
         "news_group": "unknown", "news_status": "", "news_pages": 0, "news_truncated": 0, "news_item_date": "", "news_reason": "anchor_base"}
     mp = _in_window(news.get((r["ticker"], r["d0"], "mna")))
-    mf = FT.mna_flag(mp, r["ticker"])
+    mf = FT.mna_flag(mp, (mp or {}).get("query_symbol") or r["ticker"])                # R69: items are tagged with the symbol queried
     mf["mna_reason"] = ""
-    if renamed and (r["ticker"], r["d0"]) in renamed:              # R67: the series symbol is not the one Polygon tagged at D0
+    if renamed and (r["ticker"], r["d0"]) in renamed:              # R67 / R69: an AMBIGUOUS D0 symbol reads unknown
         n3 = dict(n3, news_group="unknown", news_item_date="", news_reason="renamed_symbol")
         mf = dict(mf, mna_flag="unknown", mna_item_date="", mna_keyword="", mna_reason="renamed_symbol")
     o.update({"news3_" + k[5:]: v for k, v in n3.items()})

@@ -1181,9 +1181,11 @@ def test_end_to_end_on_the_synthetic_tree(tree, monkeypatch):
     assert any(f["earnings_flag"] == "on_climax_day" for f in fa) and all(f["dilution_bucket"] in ("ge20", "lt20") for f in fa)
     cls = Path(P.step0_printout("features")).read_text()
     assert "OPLN 2019-06-28: class distribution" in cls and "ZWS 2021-10-05: class distribution" in cls
-    assert {(f["news3_reason"], f["mna_reason"]) for f in feats if f["ticker"] == "AAA" and f["population"] in ("P1", "P2")} == {
-        ("renamed_symbol", "renamed_symbol")}
-    assert all(f["news3_reason"] != "renamed_symbol" for f in feats if f["ticker"] != "AAA")
+    # R69: a RENAMED row is pulled under its D0 symbol, so its news is read, not voided; only an ambiguous one reads renamed_symbol
+    pulled = [json.loads(l) for l in gzip.open(P.polygon_news, "rt")] if P.polygon_news.endswith(".gz") else [json.loads(l) for l in open(P.polygon_news)]
+    assert {p["query_symbol"] for p in pulled if p["ticker"] == "AAA"} == {"AAAO"}
+    assert all(p["query_symbol"] == p["ticker"] for p in pulled if p["ticker"] != "AAA")
+    assert all(f["news3_reason"] != "renamed_symbol" and f["mna_reason"] != "renamed_symbol" for f in feats)
     assert any("pins not below" in q for q in RP.gate_walk(P))
     r = child("--walk-pop", "P1")                                    # the reviewer's bypass: the gate refuses, the child must too
     assert r.returncode == 2 and not os.path.exists(P.o("episodes_part_P1.tsv")), r.stdout[-2000:]
