@@ -473,3 +473,26 @@ Frozen before any trade outcome is read and before the tier file exists. Tiers r
 - 05_tiers.py: 6c51b4879bced5399b725cef4b39b2a22b13d8ff7094ea9dfd9841d4772bcc03
 - forbidden_outcomes.txt: bc942e6cdf95bc5e904e25a9f3f2935e0ff73ed43f08745c7f375dd1beae8d85
 - dryrun7_printout: 10ab0bec0a6fdeda9029b33759a5eb6a0e00997fe9ee9d0edc476d705d87f831
+
+### Pins (06_groups, before its one run — 2026-10-28; 7b Re-registration 1 item 7)
+
+The rebuilt `06_groups.py` (the 7b `--method` / `--columns` switches, default = the registered method; its default dry run reproduces
+the 8352c78c reference blocks line for line, 33 / 33) and its dry run, with the tier inputs its run gate reads. 7b's power result
+(`docs/analysis/cb_asis_step7b_power_prereg_2026-10-27.md`, below its marker): no style we could show we would see → this document's
+one-population branch, run under the registered method.
+
+- run7_tiers_printout: 5f25491df6f3c1dc39eaaa85f1285dd31c00337d265d26147a79908ae90cafdb
+- tiers: c8fdfcffe40d889409fe63972931d4dcd9d84b59a79ba0577615fedb3d795b27
+- 06_groups.py: c10c2fa75c69be3178929d53de3a283f79514432208aea1e0072600a1b19a1ea
+- dryrun7g_printout: 6f6eb252ff5c950583dd6a9d5a0b966264e8419765fe86fcf5cff3bb951db540
+
+### RESULT of `06_groups.py --run` (2026-10-28, once, under the registered method; RUN COMPLETE)
+
+No stable grouping on the primary (prediction strength 0.524 at k = 2 … 0.151 at k = 8, as the dry run read) → the one-population
+branch, labelled by 7b **no style we could show we would see** (7b's power run: no method finds a hidden 30% group without inventing
+groups in groupless sets; the best honest one needs more than 3 within-group spreads). The typical confident trade, in medians
+(quartiles in `06_groups.txt`): entry about 45 minutes after the open, mid-range of the day, on a +1.4% gap and a 7.4% day range at
+about 1.2x the 10-day volume, 3.8% under the 10-day high and 5.5% above the 13-day average, after +7% in 20 sessions and +28% in 60;
+exit about 56 minutes after the open, in the lower half of the day, 2.5% under the prior close; held 5 sessions (quartiles 2-10).
+Outputs: step7_features 5f3c3727 · step7_groups 61421a9d · step7_descriptions 9f2b639e · step7_stability 43b34fc3 · printout
+`06_groups.txt`.
