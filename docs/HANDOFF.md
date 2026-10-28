@@ -6,7 +6,21 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-10-26 (Mon) CLOSE — 🔴 RESUME HERE. Supersedes the 10-25 close below.
+## 2026-10-27 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the 10-26 close below.
+
+**2026-10-27 (Tue): CLOSE run on his word** ("can we finish tmr instead? Let's run advisor review and simplify today's work then wrap"). (This section mirrors the machine-local pickup memory.)
+
+- **Board 21 → 21.** No closes, no new tasks. **Server 52b0a46f** (#482 hour lane deployed 21:27-21:35 ET, market-agent + execution).
+- **main is AHEAD with undeployed LIVE changes:** `7e44b589` — the 10-27 simplify (behaviour-neutral; broker/shadow_orb_tracker.py, broker/hour_bar_walk.py, book_geometry_arms.py, scheduler.py). Deploy it AFTER Thu's #482 hour-lane verify — market-agent AND execution, one at a time, polling the box. The deferred simplify items and one possible bug (a late-fill hour row's insert + catch-up update are not one transaction) are on the #482 PLAN line.
+- **#711 step 7b — his "B, that was the original ask, no preconceptions, just look at the trades":** prove a stronger sorting method on made-up trades shaped like his before it touches the real ones. Registration `docs/analysis/cb_asis_step7b_power_prereg_2026-10-27.md` frozen (`b605b8ac`, doc_body_7b `cf2ec533`) after two read-only reviews; Re-registration 1 below its marker (`7e44b589`). **The build is UNCOMMITTED in the working tree of the main machine** (`06b_power.py`, `tests/test_asis_power.py`, the `06_groups.py` switches/gates, `tests/test_asis_groups.py`, the printouts, `01_ledger.tsv` +2 shape rows) — the 3 asis test files were 91/91 green at close; backup at `apollo_data/cb702/qm_streams/asis_1026/7b_wip_backup_1027/` (patch + files). The last fix card's edits are applied but UNVERIFIED (the finish workflow was stopped on his word). The next card's prompt is `scripts/probes/_705_asis_1026/7b_cards/3_finish_prompt.md` (with the build prompt and every review finding beside it).
+- **No method has touched his real trades** — the gates refused both of the builder's attempts.
+- **Wed 10-28:** run the finish card (Fable) → one Opus adversarial check → commit the build → pins below the 7b marker (and the rebuilt 06_groups.py + its dry run below the STEP-7 marker) → `06b_power.py --power` (~1.2 h; leave the CPU alone) → the real run once (§7.1) → read. Also #314 replay build + its free Polygon/EDGAR pull; 16:50 ET the #482 hour lane's first run; evening #491 night 3.
+- **Thu 10-29:** #482 hour-lane VERIFY-LIVE (EXPECT in `docs/setups/magna53_ep.md`; baseline `scripts/probes/_eve_1027/baseline_482_hour.out`), then the simplify deploy. **Fri 10-30:** #711 report; #687 / #695 / #704 / #706 / #655 reads.
+- **Vault:** his B note ingested; `tests/711_as_is_day_check.md` and `tests/711_grouping_first_read.md` written.
+- **Capacity (dated 10-27):** the session limit hit ~21:31 PT (reset 21:40); expires at the Fri 10-30 8 PM PT weekly reset.
+- **Open his-call items: none.**
+
+## 2026-10-26 (Mon) CLOSE — (superseded by 10-27 above)
 
 **2026-10-26 (Mon): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.) Capacity RESET by him ~13:40 PT — full on every model.
 

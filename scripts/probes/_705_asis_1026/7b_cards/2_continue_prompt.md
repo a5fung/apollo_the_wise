@@ -2,4 +2,4 @@ CONTINUATION. A previous build card (same task, same rules) ran out of capacity 
 
 Read the original task file (below) — every instruction, MAY and MUST NOT in it applies unchanged — then inspect the existing files (do not start over unless a file is beyond repair), finish the build, get all three asis test files green, run 06b_power.py --shape, 06b_power.py --dry-run, 06_groups.py --dry-run (DEFAULT method and columns only) and the identifier scan, and return the report the original task asks for. If a test fails because the CODE departs from the registration, fix the code; if it fails because the TEST is wrong, fix the test and say so in your report; never weaken a test to hide a departure.
 
-Original task file: /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/7b_build_prompt.md
+Original task file: /Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_1026/7b_cards/1_build_prompt.md
