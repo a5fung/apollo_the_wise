@@ -1062,3 +1062,25 @@ read 3 is effectively a 2024-only read (stated here before any outcome).
 - step0_features_printout: aca52188920b4a81f405506c6735eff5034c71a5a234e2d2c6a1b567c3b07def
 
 Still ABSENT (written by the walk): episodes, result_printout
+
+## RESULT — the walk, run ONCE 2026-10-28 15:10 PT (printout `scripts/probes/_314_replay_build/ps_replay_result.txt`; independent re-derivation `ps_rederive.py`, pandas only, from episodes.tsv alone: 475 numbers, VERDICT MATCH)
+
+**P1 CAN'T TELL × P2 CAN'T TELL → the consequence grid: nothing changes anywhere; both shortfalls named; no re-read without a dated
+event.** Every walk and detector golden OK; G8 0 / 0 in both eras.
+
+| population | settled shorts | mean R [95%] | ADR P&L | trades ≥ 3R | label |
+|---|---|---|---|---|---|
+| P1 (the EP-lane floors: $5, $10M, cap ≥ $250M) | 252 (A 174, B 78) | +0.077 [−0.043, +0.198] | +0.26 | **0** (≥ 2R: 1) | CAN'T TELL |
+| P2 (small caps, no floors) | 168 (A 109, B 59) | −0.067 [−0.182, +0.055] | −0.31 | **0** (≥ 2R: 1) | CAN'T TELL |
+| P2-small (P2 under $250M) | 133 | −0.056 [−0.164, +0.069] | −0.27 | 0 | CAN'T TELL |
+
+- **The tail line fails everywhere:** not one settled short reached 3R in five years (the rule reads ≥ 3R in 3 trades / 3 companies / 3
+  months). Slippage of 0.1% / 0.2% a leg, the voids-in, jump-removed, M&A, cap-floor and 8-K rows read the same.
+- **His reads:** read 1 (the 3- vs 5-session time stop) CAN'T TELL in both (+0.004 / −0.010R); read 2 (the straight-up shape) CAN'T
+  TELL; read 3 (a dated news catalyst) is effectively 2024-only (stated at STEP 0) and CAN'T TELL; read 4 (loss-to-profit) CAN'T
+  TELL; read 5 (stealth dilution) coverage-bound (P2: 1 measured row against 50).
+- **Expectations:** the gone companies carry the higher mean R in P2 — held (−0.03 vs −0.09); ended-mid-walk under 5% — held (0).
+- **What it says, under his standing frame** (a backtest that misses a proven setup is OUR implementation's defect, never "no edge"):
+  this version — the detector's climax, the reversal entry, the time stop of 3-5 sessions — produces no big winner at all, and a
+  short seller's edge, like the breakout's, lives in the big ones; the next design question is the exit (the time stop caps every move
+  by construction), not whether the setup works.

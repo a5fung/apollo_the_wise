@@ -21,3 +21,5 @@ ps314_step0_features:input:xbrl_instances	/Users/alvinfung/apollo_data/ps314/xbr
 ps314_step0_features:input:polygon_news	/Users/alvinfung/apollo_data/ps314/polygon_news.jsonl.gz	b188a9e339890dd095f6fc230f355e61f05c24ec9f73820135c6ac4eb65a869a	2026-10-28T14:56:41
 ps314_step0_features:input:alpaca_ca	/Users/alvinfung/apollo_data/ps314/alpaca_corporate_actions.jsonl.gz	14d79931a0587cab5da1f1b1004952704b40513c6cf9e6884c4b015da863d5bf	2026-10-28T14:56:41
 ps314_step0_features:printout	/Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_step0_features.txt	aca52188920b4a81f405506c6735eff5034c71a5a234e2d2c6a1b567c3b07def	2026-10-28T14:56:41
+ps314_walk:episodes	/Users/alvinfung/apollo_data/ps314/episodes.tsv	5a712f21d29a0d4a0cedd71d03b28d0d3cf4d3e87a33b896bbadbc4ccf9e8b89	2026-10-28T15:11:15
+ps314_walk:result	/Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_replay_result.txt	7bfd79f0a72bf5d0265f0310d57a3442e8baa99ddd4a05cae9691c5b1528966a	2026-10-28T15:11:15

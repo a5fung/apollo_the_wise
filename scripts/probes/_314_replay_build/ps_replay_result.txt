@@ -1,0 +1,100 @@
+# #314 parabolic-short replay — WALK (the one run) (2026-10-28 15:10)
+Guards: no network, no DB, no production server, nothing dated after 2024-12-31 read from a bar file (the 2025-26 split rows are read only to undo era B's adjustment basis), cb702_pre's survivors-only export never opened, no episode walked and no outcome computed outside --walk.
+- modules: ps_common.py 6f99467e3a2bc5c3 ps_population.py d1e5184bc3e68cb1 ps_features.py 41d86dbd9b732d36 ps_walk.py a4decccfebb4d49d ps_goldens.py b0c43316bb6e232d ps_stages.py ab7fbfad64d758e0 ps_replay.py cfe842184385ad33 ps_rederive.py 629ff75fea874ae9 ps_pull.py c117b130e351b29c
+
+## Expectations (fixed in the plan; a miss is reported first and changes no rule)
+  [held] the gone companies carry a HIGHER settled mean R than the survivors in P2: gone -0.03391942925991288, survivors -0.08544446079036679
+  [held] P1: ended_mid_walk is under 5% of armed episodes: 0 of 409
+  [held] P2: ended_mid_walk is under 5% of armed episodes: 0 of 232
+  [n/a] P2: the ended_mid_walk collapse group outnumbers its pinned group: {}
+  detector golden climax: stage climax, failing [], days_up_streak 20 (expected ('climax', (), 20)) -> OK
+  detector golden streak_2: stage anticipation, failing ['days_up_streak'], days_up_streak 2 (expected ('anticipation', ('days_up_streak',), 2)) -> OK
+  detector golden earnings_today: stage anticipation, failing ['earnings'], days_up_streak 20 (expected ('anticipation', ('earnings',), 20)) -> OK
+  detector golden gap_1_9pct: stage anticipation, failing ['gapped_today'], days_up_streak 20 (expected ('anticipation', ('gapped_today',), 20)) -> OK
+  detector golden volume_one_under: stage anticipation, failing ['climax_volume'], days_up_streak 20 (expected ('anticipation', ('climax_volume',), 20)) -> OK
+  walk golden time_stop=5: settled time_stop on 2023-08-21, entry 140.0 intraday, R 1.2002600780234074 (registered 1.200260078) -> OK
+  walk golden time_stop=3: settled time_stop on 2023-08-17, entry 140.0 intraday, R 0.969079612772721 (registered 0.969079613) -> OK
+  walk goldens through the export layout and both eras' loaders: byte-equal
+  walk golden through walk_one on 120 history rows (r5): R 1.2002600780234074 -> OK
+  walk golden through walk_one on 120 history rows (r3): R 0.969079612772721 -> OK
+- walking P1 (its own process) ...
+- walking P2 (its own process) ...
+- walking P2small (its own process) ...
+
+## The base verdict (primary walk; n = settled, admitted by rule (c), not voided)
+
+### P1: climax 418 -> admitted 413 / episode_already_open 5 (the company key adds 0 rejections beyond a ticker key)
+  admitted by status: {'invalidated': 124, 'settled': 255, 'expired_untriggered': 30, 'open_at_seal': 4}
+  P1 pooled: n 252, mean R +0.0767 [-0.0429, +0.1975], ADR P&L +0.2599, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  P1 A: n 174, mean R +0.0827 [-0.0723, +0.2561], ADR P&L +0.2446, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  P1 B: n 78, mean R +0.0633 [-0.0888, +0.2070], ADR P&L +0.2943, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 0 / 0 / 0 -> CAN'T TELL
+  P1 at 0.1% exit slippage per leg: n 252, mean R +0.0723 [-0.0471, +0.2005], ADR P&L +0.2494, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  P1 at 0.2% exit slippage per leg: n 252, mean R +0.0678 [-0.0557, +0.1917], ADR P&L +0.2388, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  ended_mid_walk: 0 ({}); (b) at the last close -> CAN'T TELL; (c) with the 1.25x haircut -> CAN'T TELL; label: CAN'T TELL
+  the $250M floor (his signed rule) rejects 61 climaxes under $250M and 179 with the cap unknown (as live does)
+  beside voids_in: n 255, mean R +0.0757 [-0.0391, +0.1961], ADR P&L +0.2488, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  beside jump_removed: n 252, mean R +0.0767 [-0.0387, +0.1976], ADR P&L +0.2599, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  beside mna: n 249, mean R +0.0777 [-0.0430, +0.2086], ADR P&L +0.2693, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  beside cap_floor: n 102, mean R +0.0322 [-0.1170, +0.1824], ADR P&L +0.1743, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 0 / 0 / 0 -> CAN'T TELL
+  beside 8-K (earnings on the climax day dropped; the earnings exit walked): n 149, mean R +0.0595 [-0.0930, +0.2063], ADR P&L +0.1712, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  8-K groups: {'none': 250, 'on_climax_day': 35, 'unknown': 129, '': 4}
+  the 8-K unknown group (no CIK / no filing history / 6-K filer; its own group, never 'no earnings'): n 84, mean R +0.0798 [-0.0976, +0.2421], ADR P&L +0.3093, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 0 / 0 / 0 -> CAN'T TELL
+  read 1 in the 8-K row (E3 - E5, the earnings window passed the same time stop): groups 149 vs 149 (unknown 0); difference +0.0105 [-0.0269, +0.0542] -> CAN'T TELL
+
+### P1: the reads (unknown groups excluded; their N printed)
+  read 1 time stop 3 vs 5 (R3 - R5, paired): groups 252 vs 252 (unknown 0); difference +0.0038 [-0.0321, +0.0432] -> CAN'T TELL
+  read 1 beside: exit at the close of D0 + 3 (minus R5, paired): groups 252 vs 252 (unknown 0); difference +0.0027 [-0.0384, +0.0448] -> CAN'T TELL
+  read2: groups 92 vs 160 (unknown 0); difference -0.0295 [-0.1544, +0.1163] -> CAN'T TELL
+    run length (base to D0) per group: <= 2 pauses mean 6.0, >= 3 pauses mean 28.5; anchor bases 4
+  read2 beside ratio: groups 104 vs 148 (unknown 0); difference +0.0213 [-0.1116, +0.1732] -> CAN'T TELL
+  read3: groups 6 vs 207 (unknown 39); difference -0.1110 [-0.5450, +0.6844] (redrawn 102) -> CAN'T TELL
+  read4: groups 153 vs 4 (unknown 95); difference -0.0959 [-0.3783, +0.5334] (redrawn 94) -> CAN'T TELL
+  read4 beside any: groups 145 vs 12 (unknown 95); difference +0.0306 [-0.2464, +0.3204] -> CAN'T TELL
+  read5: groups 0 vs 70 (unknown 182); difference nan [nan, nan] -> coverage-bound
+  read5 beside itm: groups 2 vs 68 (unknown 182); difference +0.7029 [-0.0285, +1.4674] (redrawn 280) -> coverage-bound
+
+### P2: climax 243 -> admitted 240 / episode_already_open 3 (the company key adds 0 rejections beyond a ticker key)
+  admitted by status: {'settled': 169, 'expired_untriggered': 13, 'invalidated': 50, 'open_at_seal': 8}
+  P2 pooled: n 168, mean R -0.0670 [-0.1818, +0.0551], ADR P&L -0.3119, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  P2 A: n 109, mean R -0.0613 [-0.1783, +0.0689], ADR P&L -0.3052, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 0 / 0 / 0 -> CAN'T TELL
+  P2 B: n 59, mean R -0.0777 [-0.3041, +0.1797], ADR P&L -0.3243, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  P2 at 0.1% exit slippage per leg: n 168, mean R -0.0703 [-0.1755, +0.0585], ADR P&L -0.3207, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  P2 at 0.2% exit slippage per leg: n 168, mean R -0.0736 [-0.1854, +0.0429], ADR P&L -0.3295, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  ended_mid_walk: 0 ({}); (b) at the last close -> CAN'T TELL; (c) with the 1.25x haircut -> CAN'T TELL; label: CAN'T TELL
+  beside voids_in: n 169, mean R -0.0666 [-0.1789, +0.0574], ADR P&L -0.3102, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  beside jump_removed: n 168, mean R -0.0670 [-0.1804, +0.0559], ADR P&L -0.3119, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  beside mna: n 167, mean R -0.0687 [-0.1815, +0.0475], ADR P&L -0.3248, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  beside 8-K (earnings on the climax day dropped; the earnings exit walked): n 121, mean R -0.0342 [-0.1701, +0.1152], ADR P&L -0.2558, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+  8-K groups: {'unknown': 67, 'none': 164, 'on_climax_day': 4, '': 8}
+  the 8-K unknown group (no CIK / no filing history / 6-K filer; its own group, never 'no earnings'): n 45, mean R -0.1736 [-0.3325, -0.0021], ADR P&L -0.4979, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 0 / 0 / 0 -> FAIL
+  read 1 in the 8-K row (E3 - E5, the earnings window passed the same time stop): groups 121 vs 121 (unknown 0); difference -0.0030 [-0.0526, +0.0315] -> CAN'T TELL
+  gone = yes (expectation: the gone companies carry the higher mean R): n 60, mean R -0.0339 [-0.1810, +0.1346], ADR P&L -0.1129, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 0 / 0 / 0 -> CAN'T TELL
+  gone = no (expectation: the gone companies carry the higher mean R): n 107, mean R -0.0854 [-0.2331, +0.0740], ADR P&L -0.4192, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 1 / 1 / 1 -> CAN'T TELL
+
+### P2: the reads (unknown groups excluded; their N printed)
+  read 1 time stop 3 vs 5 (R3 - R5, paired): groups 168 vs 168 (unknown 0); difference -0.0098 [-0.0462, +0.0179] -> CAN'T TELL
+  read 1 beside: exit at the close of D0 + 3 (minus R5, paired): groups 168 vs 168 (unknown 0); difference +0.0151 [-0.0504, +0.0693] -> CAN'T TELL
+  read2: groups 70 vs 98 (unknown 0); difference -0.0187 [-0.2084, +0.1617] -> CAN'T TELL
+    run length (base to D0) per group: <= 2 pauses mean 5.5, >= 3 pauses mean 24.2; anchor bases 2
+  read2 beside ratio: groups 79 vs 89 (unknown 0); difference +0.0026 [-0.1912, +0.1865] -> CAN'T TELL
+  read3: groups 0 vs 147 (unknown 21); difference nan [nan, nan] -> CAN'T TELL
+  read4: groups 110 vs 3 (unknown 55); difference -0.0282 [-0.3819, +0.3307] (redrawn 105) -> CAN'T TELL
+  read4 beside any: groups 103 vs 10 (unknown 55); difference +0.3159 [-0.0308, +0.7287] -> CAN'T TELL
+  read5: groups 1 vs 50 (unknown 117); difference -0.6046 [-0.8391, -0.4392] (redrawn 1179) -> coverage-bound
+  read5 beside itm: groups 3 vs 48 (unknown 117); difference +0.5673 [-0.6483, +1.8305] (redrawn 90) -> coverage-bound
+
+### P2small: climax 183 -> admitted 181 / episode_already_open 2 (the company key adds 0 rejections beyond a ticker key)
+  admitted by status: {'settled': 134, 'invalidated': 34, 'expired_untriggered': 8, 'open_at_seal': 5}
+  P2small pooled: n 133, mean R -0.0564 [-0.1641, +0.0685], ADR P&L -0.2724, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 0 / 0 / 0 -> CAN'T TELL
+  P2small A: n 87, mean R -0.0641 [-0.2140, +0.0812], ADR P&L -0.3620, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 0 / 0 / 0 -> CAN'T TELL
+  P2small B: n 46, mean R -0.0420 [-0.2505, +0.1697], ADR P&L -0.1030, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 0 / 0 / 0 -> CAN'T TELL
+  P2small at 0.1% exit slippage per leg: n 133, mean R -0.0594 [-0.1750, +0.0611], ADR P&L -0.2807, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 0 / 0 / 0 -> CAN'T TELL
+  P2small at 0.2% exit slippage per leg: n 133, mean R -0.0624 [-0.1762, +0.0612], ADR P&L -0.2889, tail >= 3R 0 trades / 0 companies / 0 months (fail), >= 2R beside 0 / 0 / 0 -> CAN'T TELL
+  ended_mid_walk: 0 ({}); (b) at the last close -> CAN'T TELL; (c) with the 1.25x haircut -> CAN'T TELL; label: CAN'T TELL
+
+## The consequence grid
+- P1 CAN'T TELL x P2 CAN'T TELL: nothing changes anywhere; both shortfalls named; no re-read without a dated event
+- G8 era A: entered after the cutoff 0; holds past the last kept bar 0 (g8_A.txt)
+- G8 era B: entered after the cutoff 0; holds past the last kept bar 0 (g8_B.txt)
+VERDICT MATCH (ps_rederive.py, pandas only, from episodes.tsv alone)
+WALK COMPLETE
