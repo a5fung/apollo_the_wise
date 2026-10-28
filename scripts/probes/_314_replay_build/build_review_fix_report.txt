@@ -1,0 +1,298 @@
+##### BUILD
+ # #314 runner built and green: 40 tests pass, the local dry run reads 93 of 93 claims OK, and STEP 0 now waits only on the five pulls (none run)
+
+- **Not run:** no network call, no server, no git. No real bar walked, no detector pass over a real population, no real outcome. Returns were computed only on the synthetic golden fixture and the synthetic test tree.
+- **Action for the main loop:** rule on the plan gaps below, freeze the plan (the pins are in `ps_replay_pins.txt`), then run the pulls on the server.
+
+## Files
+```
+WRITTEN (new)    /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_replay.py     CLI, gates, pins, the dry run
+                 /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_stages.py     STEP 0 derive/climax/features, detector + walk subprocesses, walk stage, G8
+                 /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_goldens.py    walk goldens through both eras' loaders + synthetic detector golden
+                 /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_rederive.py   independent re-derivation (pandas/numpy only; re-runs rule (c) and every number)
+                 /Users/alvinfung/apollo_the_wise/tests/test_parabolic_short_replay.py              40 tests; holds DETECTOR_GOLDEN_EXPECTED (pinned)
+EDITED (inherited) ps_common.py  ps_population.py  ps_features.py  ps_walk.py  ps_pull.py   (same folder)
+PRINTOUTS        /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_replay_dryrun.txt   (93 claims, 0 MISMATCH, made by the modules on disk)
+                 /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_replay_pins.txt
+SCRATCH          /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/314_build/inherited_0755/  (the previous card's files as found)
+                 .../314_build/dryrun_console{,2,3}.txt   (console captures; run 1 had 2 MISMATCH, see below)
+apollo_data/ps314/ was never created; git untouched (PLAN.md / operator_shared_notes.md were already modified before this card)
+```
+
+## Tests
+```
+tests/test_parabolic_short_replay.py                                      40 passed (~8 s; CI-safe: exchange-calendars, alpaca-py, pytest-asyncio are in requirements/base.txt)
+tests/test_parabolic_short_shadow.py + replay together                    166 passed
+end to end on a synthetic tree, all steps passing:
+  dry run (0 MISMATCH on the tree's own facts) -> freeze -> derive (reference pull via ps_pull's fake transport)
+  -> EDGAR pull -> climax (3 subprocesses: constants 10M / 2M / 2M asserted) -> instances, news, Alpaca pulls -> features
+  -> pins pasted -> walk (3 subprocesses) -> G8 via trade_impact.py -> ps_rederive -> VERDICT MATCH (474+ numbers)
+mutation check: one settled R changed in a copy of episodes.tsv -> the re-derivation no longer matches the runner
+real-data test (skips without apollo_data): every registered pin matches the freeze record
+```
+
+## Dry-run claims (all OK; final run 93/93)
+```
+pins: export_B splits_B types_B sic_B guard_B flags_B export_A raw_A dedupe_A types_A sic_A sessions_A guard_A export_stats_A verdict_A
+      flags_A build_v2 refetch_records parabolic_detector.py parabolic_short_shadow.py consolidation_breakout.py test_parabolic_short_shadow.py = all match (22)
+walk goldens (R 1.2002600780 on D5 / 0.9690796128 on D3; loader byte-equal both eras; walk_one on 120 rows) = 0 problems
+synthetic detector golden (climax + streak_2 / earnings_today / gap_1_9pct / volume_one_under) = 0 problems
+A rows 12,005,007 | symbols 12,532 | sessions 1,635 | raw_unknown 0 | first D0 2016-06-23 | last D0 2022-03-16 (session 1,562) | scorable 1,443 | D0+7 2022-03-25
+A other-char symbols 176 | W/U/R 182/247/39 | ended before 2022-06-30 3,478 | TWTR/ATVI/EA/X all 1,635 sessions
+A guard breaks 667 (209/357/101) | jump symbols 310, 194 reach $2M (R12 median) | APTV/DLPH 2017-12-05 factor change True | GME both jumps False | GME breaks exact
+dedupe 98 pairs / 61,512 rows | alias_outside_span 15 symbols / 2,927 rows / 0 inside, per-symbol counts exact | with a break: KOOL, RSLS
+A adj_event rows 93 | type table 17,172 / 17,028 / 144 / 0 | SIC names 3,942 (byte-identical A/B) | untyped v2 1,885, 0 refetched, 460 reach $2M
+refetch 3,767 records / 3,765 symbols | refetch set 2,669 = v2 minus cb702_pre (equal) | stragglers 31, all dated 2022-06-30, the 18 named own v2 series
+VIAC / VIACA 555 rows each, blank record | refetched no-key 46, 19 reach $2M | flagger lists OPLN 2019-06-28 and ZWS 2021-10-05
+B rows read 13,830,569 | dropped at read 5,210,943 | kept 8,619,626 | symbols 15,702 | 821 sessions = NYSE | last 2024-12-31
+B first D0 2022-03-17 | last settling D0 2024-12-19 | 695 scorable | 7 open at the seal | splits after file 85 | adj events 67 | guard 1,292 | types 14,102
+first run MISMATCHES (fixed claim readings, not data): adj events 90 vs 93 (3 split-table rows repeat a raw-step (ticker, date): LEJU, TBLT, TXMD);
+  SIC 3,924 vs 3,942 (18 names carry no type)
+printed, not claimed: overlap closes differing > 0.5% = 1.51% (expectation under 1%: a MISS); necessary-condition nights A 1,573 on 992 symbols, B 766 on 577
+```
+
+## What STEP 0 waits on
+| pull | endpoint | requests | run time | output |
+|---|---|---|---|---|
+| reference (Polygon key) | `/v3/reference/tickers?market=stocks&active=true\|false&limit=1000`, `next_url` to the end | ~12 pages active + delisted (unmeasured locally, tens) | minutes | `polygon_reference.jsonl.gz` |
+| edgar (SEC user-agent) | `data.sec.gov/submissions/CIK…json` (+ older files) + `api/xbrl/companyfacts/CIK…json` | ≤ ~1,570 CIKs × ~2.3 (bounded by the 992 + 577 symbols above + 2 controls) | about 10 min of requests + bandwidth (companyfacts are MB each, cut to 2 tags) | `edgar_submissions.jsonl.gz`, `xbrl_facts.jsonl.gz` |
+| instances | `Archives/edgar/data/<cik>/<accn>/index.json` + the instance | 2 × distinct filings (≤ ~2,340) | bandwidth-bound | `xbrl_instances.jsonl.gz` |
+| news (Polygon key) | `/v2/reference/news` ticker + gte/lte, limit 1000, desc, ≤ 3 pages | 2 pulls per P1/P2 climax (≤ ~4,700 pulls, 1–3 pages each) | ~15–45 min at 0.2 s | `polygon_news.jsonl.gz` |
+| alpaca_ca (paper keys) | `data.alpaca.markets/v1/corporate-actions` gap −7d..+3d | 1 per suspect + 2 controls | minutes | `alpaca_corporate_actions.jsonl.gz` |
+
+Order: reference → `--step0 derive` → edgar (`--out` = the server copy of ps314/) → `--step0 climax` → instances / news / alpaca_ca → `--step0 features` → `--print-pins` and commit → `--walk`. The climax-phase detector work is about 11.4M nights across the three processes; the detector timed at 3–40 µs a night on synthetic windows. Not measured on real data.
+
+## R-notes (one line each; full text in the module docstrings)
+```
+R1 outputs: data/pulls -> apollo_data/ps314/, printouts/pins/ledger -> the build folder | R2 own ledger path | R3 Say/Claims copied | R4 era-A loader cut at its file end
+R5 golden fixture re-dated (2026 -> 2023) both sides | R6 STEP 0 split into derive/climax/features around the pulls | R7 exact necessary-condition prefilter bounds the EDGAR CIKs
+R8 void_adjustment_event / duplicate rows computed on climax rows, printed in the funnel's slot | R9 flagger (all bars) vs suspects (climax-tied) are two files
+R10 refetched symbol = the build's latest-delisted record | R11 placeholder re-resolution rule | R12 "reach $2M" = 20-session rolling MEDIAN (reproduces 460 / 194 / 19)
+R13 applied jump inside the walk counted, not voided; era-B owner delisting cuts the walk | R14 name cross-check moved to the CLIMAX phase (it unknowns the owner)
+R15 exact periodic forms, amendments excluded | R16 >1 distinct (end,val) on the accn = multi_class | R17 S(end,D0) era A = factor ratio; split check = S(end,filed)!=1
+R18 adjusted prices to D0's raw basis by factor(D0) | R19 quarter 80-100 days, earliest-filed, derived Q4 | R20 8-K charging at 16:00 ET; exit window (close, next open]
+R21 tranche = dimension-member set at the period end (DocumentPeriodEndDate, else reportDate) | R22 2.01 window in sessions; Alpaca spin_offs / special cash only
+R23 degraded / ended episode releases its key at its last walked bar | R24 forward bars cut at hole / series end / owner delisting | R25 collapse / pinned / other + haircut cases
+R26 slippage on every covering leg; ADR20 = 20 sessions to D0-1 | R27 shared-block difference interval with counted redraws | R28 unknown-dominated = >50% of settled
+R29 P2small its own list/walk, base numbers only | R30 instances stored parsed (+sha/bytes) | R31 EDGAR older filing files fetched | R32 retries; a final 4xx is the answer
+R33 earlier-issuer bound applied to every era-B night, not only active-owned | R34 company-key counts read literally | R35 open-at-the-seal climaxes detected, never walked
+R36 prefilter loosened 1e-9; positive lows only | R37 pre-break nights admitted typed unknown (printed beside identity_break) | R38 a record without a type = unknown, never the table
+R39 read-5 tranches on the period-end basis (the inherited period-end bug) | R40 per-CIK filing index | R41 goldens re-dated per era, scenarios derived by recording
+R42 goldens also through walk_one on 120 rows | R43 detector "failing checks" definition | R44 STEP 0 gated on the frozen doc + module pins | R45 ledger per phase, once means once
+R46 climax rows per (population, era, ticker, D0); removed candidates counted | R47 void / suspect windows | R48 reachability proxy from arm_geometry's stop
+R49 beside rows that drop climaxes re-run rule (c) | R50 G8 via trade_impact.py --kind r1 | R51 cap for every night of a pulled CIK; others not_pulled -> mid tier
+R52 GME / NVDA printed in the P1 process at their own cap | R53 read-1 D0+3 beside = time_stop 4-k | R54 pause-ratio beside <=0.20 vs >0.20 | R55 pooled per population, per-era beside
+R56 news via ps_pull's transport, NOT collector._polygon_get (deviation, below) | R57 ps_pull --out | R58 INBX/DOC control asserts the earlier-issuer FLAG
+R59 name check accepts SEC formerNames | R60 the runner's test file is pinned | R61 placeholder re-resolution for refetch-sourced owners only
+```
+
+## Plan gaps and contradictions (each is a main-loop decision; the built choice is in brackets)
+| # | issue | built choice |
+|---|---|---|
+| 1 | INBX 2024-05-31 and DOC 2024-03-04 each have a one-session hole at the switch, so the history rule already removes them and "must be excluded" can't fail a broken earlier-issuer rule | [R58: derive refuses unless the earlier-issuer FLAG is set on both nights] |
+| 2 | Read 3 says call `collector._polygon_get` directly. It pages Telegram on a sustained failure (`maybe_alert_api_failure`), raises instead of returning a status, and can't follow `next_url` | [R56: ps_pull's own transport, same endpoint and parameters, status recorded; switching is a small change] |
+| 3 | The name check is written as a derive-time owner rule but needs the EDGAR pull. Strict current-name equality would unknown every renamed company's delisted record | [R14 climax phase; R59 formerNames accepted] |
+| 4 | The earlier-issuer bound is written only for active-owned nights | [R33: every era-B night] |
+| 5 | "degraded / still open blocks" a later climax, with no release date given; a literal reading blocks the company forever | [R23: release at the last walked bar] |
+| 6 | The cap is needed for the per-gate funnel on every night, but the EDGAR pull only covers necessary-condition companies | [R51: nights of unpulled companies use the mid tier and are counted; none can be a climax at any tier] |
+| 7 | "Pre-break holder" is listed under identity_break but the owner bullet says admit it as type unknown | [R37 admitted, printed beside] |
+| 8 | The M1 re-resolution of empty-keyed owners, applied to original symbols, would trip the plan's own subset assertion | [R61 refetch owners only] |
+| 9 | P2's unknown-type row: "a counted beside row" | [nights counted, not scored or walked] |
+| 10 | The 7 open-at-the-seal sessions get no detection rule | [R35 detected, listed, never walked] |
+| 11 | Overlap disagreement is 1.51% against the plan's "under 1%" | a recorded expectation miss; no rule changes |
+
+## Previous card vs this card
+| | previous card (Fable, ~07:25–07:55) | this card |
+|---|---|---|
+| finished | ps_common, ps_population, ps_features, ps_walk, ps_pull as building blocks; no runner, tests, dry run or report | runner + stages + goldens + re-derivation + 40 tests + dry run + pins |
+| fixed | read 5 passed the cover date as the balance-sheet date, so every parsed name would read ratio 0 | R39 period end; per-tranche split check |
+| fixed | `last_walked_date` never set, so every degraded / ended episode blocked its company key forever | set in walk_one |
+| fixed | empty-keyed records counted as separate companies; superset could drop climaxes on rounding or a zero low; funnel "P1 ∩ P2" line tested the wrong thing; (a) of the three ways used a different bootstrap key than the base verdict | R34; R36; relabelled (the disjointness assertion lives in `populations()`); (a) = the base verdict |
+| added | — | era-B open-at-seal range, night table (owners / type / key / gone / identity), populations + assertions, pull `--out` and formerNames |
+
+No file was rewritten from scratch.
+
+## Undone / caveats
+- Walk, results and re-derivation are tested only on synthetic data. The plan is still REGISTERED, NOT FROZEN: the STEP 0 gate lists the pins the freeze commit must paste (module shas, doc body, dry-run printout).
+- Never run on real data: STEP 0 phases, the GME/NVDA printouts, the OPLN/ZWS evidence class and the gone shares all need the pulls.
+
+##### REVIEW 0 Do not freeze yet. The build mostly follows the round-4 plan: 40 tests pass, the dry run reads 93 of 93 claims OK, and the detector gates, the walk rules, the bootstrap and the consequence grid all match the plan. One high defect changes numbers widely. In era A, the check for a stock split between a filing's cover-page date and its filed date uses a tolerance of 1e-9. Alpaca's adjusted closes are rounded to the cent, so the raw-to-adjusted ratio drifts by about 1e-4 from one bar to the next on any name with a later forward split. Most such nights therefore read as having a split, which makes their market cap unknown. That moves them to the detector's mid tier instead of their real one, makes the P1 $250M floor row reject them, and makes their read-5 dilution unknown. It touches 1,797 of the 12,532 era-A symbols, which carry 13.8% of P1-band and 16% of P2-band nights. Four medium findings: (1) leftover alias rows fall back to today's holder's active record, which the plan forbids; (2) the name cross-check reads SEC names ending in a state tag such as "/DE/" as a different company; (3) the builder's own INBX / DOC refusal (R58) can stop a correct pipeline, because Polygon's delisting date usually lags the last trade by one to two sessions; (4) era-A news is looked up under today's symbol. The low findings are about wiring and clarity. Nothing was edited; the only checks run were the test file and file-only experiments in the scratchpad (314_review_fidelity), with no network call and no bar after 2024-12-31.
+
+[high] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_features.py
+  F: In era A, the check for a split between a fact's `end` date and its `filed` date (`Basis.split_between`, R17: `abs(S - 1) > 1e-9`, S = factor(end) / factor(filed), factor = raw / adjusted) fires on rounding noise, not on real splits. On names with a later forward split, the cap rule returns `split_between_end_and_filed`, so the cap is unknown. The detector then runs at the mid tier (100% prior move) instead of the point-in-time tier (50% large, 200% small). That changes which climaxes are found, empties the P1 $250M floor row of those names, and makes read 5 unknown for them (`dilution_feature` runs the same check on the period end).
+  E: The adjusted closes in cb702_pre_v2 are rounded to cents (AAPL 2016-01-04: adjusted 26.34 against raw 105.35, so the factor is 3.9996, not 4). The factor's drift between consecutive bars, measured over the whole era-A file: 1,797 of 12,532 symbols show sub-1% drift, carrying 532,479 of 3,867,507 P1-band nights (13.8%) and 392,576 of 2,456,491 P2-band nights. `FT.Basis('A').split_between` on real bars, over (end, filed) pairs 2 to 7 sessions apart with no real split between them, returned True on
+  FIX: For era A, treat a split as a factor change greater than the plan's own 1% (`JUMP_FAC_CHANGE`, already used for the jump evidence): either |S(end, filed) − 1| > 0.01, or any bar-to-bar factor step above 1% inside (end, filed]. Optionally snap S(end, D0) to the product of those steps. Add a test on cent-rounded adjusted bars of a forward-split name, and a dry-run claim on the false-split count.
+
+[medium] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_population.py
+  F: The 15 leftover alias symbols (`alias_outside_span`) are owned through `owner_B`, which falls back to the symbol's ACTIVE record when no delisted record has `delisted_utc` ≥ D0. The plan says those rows take 'the record ... whose delisted_utc is the smallest ≥ D0, else unknown — and NEVER the later holder's active record', and lists 'an alias_outside_span row typed by ... a later holder's record' among its WOULD-FAIL-IF checks. The code neither applies the rule nor asserts it, so such a row would take the later holder's type, CIK and company key.
+  E: Synthetic tree: XL rows plus one delisted XL record (2020-05-21) and one active XL record of another company. After `night_table`, the row of 2020-05-22 shows path `alias_date_rule`, owner 'Later holder', key cik:0000000002. Several leftovers are later holders that may still be live: BRPM's v2 series runs 2021-04-13..2022-06-30 after its dropped span ending 2020-02-14, and BIOS runs 2022-01-28..2022-06-28 after a span ending 2020-01-31 (dedupe_applied.tsv and the v2 export).
+  FIX: In the alias branch of `night_table`, choose only among delisted records (the smallest `_delisted` ≥ D0, a tie = unknown) and otherwise set the owner to -1 with path `no_record_covering_d0`. Add the plan's assertion at derive and climax: no F_ALIAS_OUTSIDE row whose owner record is active. Add a test like the synthetic case above.
+
+[medium] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_features.py
+  F: The name cross-check (R14 / R59, `name_normal`, applied in `ps_stages.name_mismatches`) does not strip the state-of-incorporation or '/NEW/' tags that SEC adds to company names. Genuine matches therefore read as mismatches, and the owner becomes unknown: the type is unknown (P2 nights move to the unknown-type row), there is no CIK (cap unknown, so the mid tier, and every read needing a filing turns unknown), and the company is keyed by its symbol. The plan's normalisation covers 'corporate suffixes, punctuation, case'.
+  E: Run on the module: 'Bank of America Corporation' vs 'BANK OF AMERICA CORP /DE/' gives 'bank of america' vs 'bank of america de', a mismatch. The same happens for QUALCOMM INC/DE, MARRIOTT INTERNATIONAL INC /MD/, TJX COMPANIES INC /DE/, VALERO ENERGY CORP/TX, INTERNATIONAL PAPER CO /NEW/ and PROGRESSIVE CORP/OH/. Only 'nv' and 'co' are in the stop list.
+  FIX: Before normalising, strip a trailing '/XX/' or '/XX' state tag and '/NEW/' (regex `\s*/\s*[A-Z]{2,3}\s*/?\s*$` applied repeatedly), plus a trailing 'new'. Print the mismatch count with a sample in the climax printout before the detector pass, and add the pairs above as a test.
+
+[medium] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_stages.py
+  F: R58 makes derive refuse unless the earlier-issuer flag is set on INBX 2024-05-31 and DOC 2024-03-04. Under the era-B date rule, a record whose `delisted_utc` is on or after D0 OWNS D0, and the flag only looks at records delisted strictly before D0. If Polygon dates the old INBX or DOC record on the new holder's first session, the old company owns the control night, the flag cannot be set, and derive stops (GuardStop) on a correct pipeline. Polygon's delisting date routinely lags the last bar by one to two sessions.
+  E: File-only measurement over the 1,038 refetched era-A names whose series ends before 2022-06-29: the record's delisted date comes 1 session after the last bar for 772, 2 sessions for 248 (25.5%), and 3 or more for 17. The plan's own TWTR record shows the same pattern (delisted 2022-10-31; last trade 2022-10-27). INBX: last bar 2024-05-29, hole on 05-30, new holder from 05-31. DOC: hole on 03-01, new holder from 03-04. A 2-session lag puts either record's date on the control night. `test_owner_B_d
+  FIX: Print each control's records (`delisted_utc`, keys) and the night's owner path at derive. Then test the property the control exists for: refuse only when the control night is owned by the ACTIVE (new) record and the flag is not set. Alternatively, evaluate the control on the first session after the old record's `delisted_utc` whose 120-row window still reaches the old bars. The plan's 'must be excluded' is already met through the history rule; this is the builder's added refusal and needs a main-loop ruling.
+
+[medium] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_stages.py
+  F: Read 3 and row (a) query Polygon news under the v2 symbol (`_write_wanted` sets `ticker = r['ticker']`; `ps_pull.pull_news` sends it as is). Era A keys every series by TODAY's symbol (META holds Facebook's 2016–22 bars), while Polygon news is tagged with the symbol in use when the article was published. A renamed company's pre-rename news therefore comes back empty and reads 'absent' (or M&A 'clear'), not unknown. That biases read 3's present − absent difference and the 'present share rises 2016→2024' expectation in era A. The plan says 'ticker' without addressing era A's keying, so this is a gap in the plan.
+  E: ps_stages.py `_write_wanted` (news rows), ps_pull.py `pull_news` (`urlencode({'ticker': r['ticker'], ...})`). The plan's Era A bullet: 'TODAY's symbol — META holds Facebook's 2016–22 bars, OPLN holds KAR's, XYZ holds Square's'. `news_present` returns 'absent' when no tagged item exists.
+  FIX: For an era-A night whose owner shares a CIK or FIGI with a delisted Polygon record of another ticker dated on or after D0 (the symbol the company used at D0), query that ticker. Where it cannot be resolved, set the news groups to unknown with reason `renamed_symbol`. Rule on it before the freeze.
+
+[low] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_stages.py
+  F: R13: an APPLIED jump inside the walk (D0+1..D0+7) is only counted (`jump_in_walk`), and its episode stays in n. The plan says 'R is never booked across a halt or onto another company's prices'. An applied jump is the evidence rule's own sign of a splice or an unabsorbed corporate action, so a short can book a splice as a large winner. No beside row shows the effect.
+  E: `walk_pop` sets `ep['jump_in_walk']` and nothing reads it; `in_n` ignores it. The R13 docstring in ps_population.py. The builder's plan-gap table does not list this.
+  FIX: Put it to the main loop as a gap. Either end the walk before the applied-jump bar (`degraded`), or keep R13 and add a beside row printing n and mean R without the `jump_in_walk` episodes, so the size of the choice is on the record.
+
+[low] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_walk.py
+  F: The 'voids in' beside row merges two rows the plan keeps apart: adjustment events in, and distribution suspects in. The plan's distribution row must also print 'the n each class moves'.
+  E: `results()`: `beside['voids_in']` = every admitted settled episode, with both void kinds included at once. Nothing prints the n by class (`distribution` / `real_move`).
+  FIX: Print two beside rows (`adj_events_in`, `suspects_in`) and the settled n per suspect class. Mirror both in ps_rederive.py.
+
+[low] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_stages.py
+  F: Several registered expectations are printed but never evaluated in the block that lists misses first: P2's untyped share under 5% per era, era A's type agreement ≥ 99%, P2's adjusted-pass / raw-fail tally above zero, overlap disagreement under 1%, and `raw_unknown` = 0. Two others are evaluated off the plan's wording: 'at least 80% of P2's climax NAMES typed CS' is counted on rows, and the per-year 2× test includes partial years (era A 2016 from 06-23 and 2022 to 03-16; era B 2022 from 03-17), which can miss on truncation alone.
+  E: `_climax_expectations` and `_features_expectations` hold only the rows listed in the code. Type agreement and the untyped share are printed as plain lines at derive. `funnel_dry`'s adjusted-pass tallies are for the P1 floor and the band, not for P2.
+  FIX: Add the missing rows to `expectations()` at derive and climax. Count CS by distinct company. Normalise the per-year count by sessions in the year, or exclude partial years, and say which.
+
+[low] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_walk.py
+  F: The per-read consequence table is not wired. The reads print verdict strings but not the plan's consequence: RECORDED as a candidate, NOT recorded, 'coverage-bound' leading to a data proposal, read 1 'reported to him, never applied', and read 5's coverage numbers as the deliverable. Read 5 ('P2 DECIDES, P1 beside') prints P1 and P2 identically. The reads are printed pooled only, while the plan says every result is printed per era and pooled.
+  E: `results()` writes only `_read_line(...) -> verdict`, and only the P1 × P2 grid carries consequence text. The pooled `S` is the only input to the reads.
+  FIX: Map each read verdict to the plan's consequence row and print it. Label P1's read 5 'beside'. Add per-era read rows beside the pooled ones.
+
+[low] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_walk.py
+  F: The plan registers 'ended_mid_walk and open-at-the-seal are the only open states a correct run can print — a runner assertion'. `book()` records an `open_at_end` status without refusing.
+  E: ps_walk.py `book()`: `elif stop_reason == 'end_of_file': status = 'open_at_end'`; no caller raises on it.
+  FIX: Raise GuardStop on `open_at_end`, which cannot happen for a scorable D0 in either era.
+
+[low] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_features.py
+  F: Era B's S(end, D0) and the split check treat 'no split listed' as 1 even when the fact's `end` predates the splits file's first row (2021-09-27). A delinquent filer's latest periodic report before an era-B D0 can have an earlier `end`, and a split before 2021-09-27 is then silently left out.
+  E: `Basis.S` for era B only multiplies listed ratios over (end, D0]. The plan notes cb702_splits.psv starts on 2021-09-27.
+  FIX: Return None (unknown, its own reason) when `end` or `filed` is earlier than the splits file's first date.
+
+[low] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_stages.py
+  F: Derive's funnel, populations and owners.tsv are printed before the R14 name cross-check, which only applies at the climax phase. The STEP 0 population funnel on record is therefore not the funnel that produced climax_list.tsv whenever a name mismatches (and after the medium finding above, there could be many).
+  E: `derive()` calls `build_ctx` without `name_mismatch`; `detect_pop` passes `mm`. The climax phase prints only the detector funnel.
+  FIX: Re-print the pre-detector funnel per population and era in the climax phase, after R14, or print the night count each mismatch moves.
+
+[low] /Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/ps_population.py
+  F: The printed overlap disagreement (1.51%, reported as an expectation miss) joins era A's today's symbols to era B's point-in-time symbols. Renamed or reused symbols are therefore compared across different instruments, so the number mixes symbol naming with vendor disagreement.
+  E: `overlap_compare` merges on (ticker, date). The plan's own example: era B's META before 2022-06-09 is a different ~$10 instrument, while era A's META is Facebook. The data standard's G10 note says 'the residue is symbol naming'.
+  FIX: Also print the share excluding symbols whose two series differ (for example, closes off by more than 1% on more than 5% of shared days), so the miss reads as vendor disagreement or naming. It decides nothing either way.
+
+##### REVIEW 1 Guards lens: NOT freeze-ready. One guard bypass is demonstrated (the hidden subprocess flags book realized R before the STEP 0 pins exist). Two pull defects can change the population: a reference-pull retry duplicates records, and pulls are never checked for coverage. Separately, the resume never retries a failed record, and a 2026 filing reaches features.tsv. Clean on this lens, no change needed: (1) the live and helper imports have no side effects (trap run: no socket, no file write, no env change, collector._SEC_UA included); (2) the era-B loader drops rows after 2024-12-31, and seal_date guards walk exits and news windows; (3) G8's trade_impact.py drops bars after the cutoff and refuses a sealed cutoff; (4) ps_pull writes only under P.out, needs --run plus the env key (Polygon / Alpaca stages), keeps the key out of every output, and touches no DB; (5) the SEC delay of 0.15 s is under 10 requests a second; (6) the cap, read 4 and read 5 assert filed < D0. 40/40 tests pass, but none of them targets the defects below. Scratch evidence: /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/314_review_guards/ (bypass.py, ref_retry.py, edgar_resume.py, ek.py, imp.py, imp2.py).
+
+[high] scripts/probes/_314_replay_build/ps_replay.py
+  F: The hidden subprocess entry points `--walk-pop` and `--detect` (ps_replay.py:471-472, dispatched at :482-485 to ps_stages.walk_pop :954 and detect_pop :351) run with NO gate. The plan's 'the walk refuses to start without those pins' and 'once means once' are enforced only in the parent walk() / step0(). A second route to the same end: `--paths-json` is accepted for EVERY stage (:473-475), and Paths.doc / Paths.pins_override ('TESTS ONLY', ps_common.py:245) then replace the registration doc and the freeze record's pins. So --step0 or --walk can be pointed at a self-written doc and pins JSON.
+  E: Run on the test's synthetic tree (scratch bypass.py): dry run, freeze, then STEP 0 derive / climax / features. gate_walk(P) refuses: "pins not below the doc's marker ... polygon_reference, edgar_submissions, ... climax_list, features ...". Yet `ps_replay.py --walk-pop P1 --paths-json <P>` exits 0 ('[walk P1] WALK COMPLETE') and writes episodes_part_P1.tsv with settled outcomes: AAA 2018-06-01 r5_r 1.5663, CCC 2023-06-01 r5_r 1.5663. No ledger 'ps314_walk' row and no episodes.tsv are written; a s
+  FIX: (1) Make the children refuse unless the parent claimed the run. walk_pop requires `P.episodes + '.partial'` to exist (walk() creates it after gate_walk), re-runs gate_walk(P) minus the .partial / ledger-row clauses, and refuses if episodes_part_{pop}.tsv exists. detect_pop requires gate_step0(P, 'climax') minus its own outputs / ledger clauses. Alternatively the parent writes a one-shot nonce file under P.out, passes its name in an env var, and the child checks and deletes it. (2) In main(), refuse --paths-json for --dry-run / --print-pins / --step0 / --walk, and refuse a non-default P.doc or a non-empty P.pins_override unless PYTEST_CURRENT_TEST is set. (3) Add a test: invoking --walk-pop / --detect standalone on the synthetic tree exits non-zero and writes nothing.
+
+[high] scripts/probes/_314_replay_build/ps_pull.py
+  F: A reference-pull retry after a failed page DUPLICATES every record already fetched. pull_reference (:253-279) writes through Writer(out + '.partial'), which opens in gzip APPEND mode (:199). The stale .partial survives the PullStop, so the second run appends to it and renames it. load_reference (ps_population.py:566-577) does not dedupe, and owner_B's tie rule (:614-627) then returns `two_delisted_same_date` = owner UNKNOWN for every duplicated delisted record. That changes era-B types, CIKs, caps, P2 membership and the gone flags. With tens of delisted pages, a sustained 5xx mid-pull (after the transport's 3 tries) is plausible.
+  E: Scratch ref_retry.py: page 3 returns 503 → 'reference pull: page 3 returned 503'; the .partial exists. After the re-run the file holds {'ZZZ': 2, 'ABC': 2, 'DEF': 1} records per symbol, and owner_B(ABC, '2023-04-01') reads 'two_delisted_same_date'. The printed stats ('1 active + 2 delisted') hide the duplicates. test_reference_pull_stops_on_a_failed_page only asserts that the final file is absent; it never retries.
+  FIX: Delete (or refuse on) a stale .partial at the start of pull_reference, or open it with 'wt'; this pull is a whole rewrite by design. In load_reference, count exact duplicate records (same ticker, _pull, cik, composite_figi, share_class_figi, delisted_utc); derive prints the count and refuses on any. Add a test: fail at page N, retry, then the distinct-record count equals the served count.
+
+[medium] scripts/probes/_314_replay_build/ps_replay.py
+  F: Nothing checks that a pull covers what its phase asked for, and the pull files a phase consumes are not ledgered. gate_step0 (:164-166) checks only that each pull file EXISTS. The climax phase never asserts that every CIK in the ledgered candidate_ciks.txt has a submissions AND a companyfacts record. A missing CIK silently becomes cap `not_pulled` (ps_stages.py:325-326), which is the detector's mid tier: a 100% prior-move bar instead of 200% for a small cap (more climaxes), or instead of 50% for a large cap (fewer). R51's 'none of those can be a climax at any tier' holds only if the pull is complete. The features gate likewise does not check filings_wanted ⊆ instances, news_wanted ⊆ news or suspects_wanted ⊆ alpaca_ca; those gaps silently become 'not_pulled' unknowns. And because step0() ledgers only outputs and printouts (ps_stages.py:98-102), an EDGAR file appended or replaced between the climax and features phases goes undetected; the walk gate then pins only the final file, not the one climax used.
+  E: grep finds no coverage check of candidate_ciks / filings_wanted / news_wanted / suspects_wanted against the pull keys anywhere in ps_stages.py or ps_replay.py. parabolic_detector._classify_cap_tier: unknown → ('unknown', _PRIOR_MOVE_MID = 1.00); small → 2.00; large → 0.50. The pulls run on the server from COPIES of these lists (R57), and ps_pull's 'PULL COMPLETE' line goes to stdout only, not into the file.
+  FIX: In gate_step0('climax'), assert set(candidate_ciks.txt) ⊆ keys(edgar_submissions) ∩ keys(xbrl_facts), each with a final status (200 or a terminal 4xx). In gate_step0('features'), assert the same for filings_wanted → instances, news_wanted → news and suspects_wanted → alpaca_ca. At each phase, ledger every pull file it consumes (stage `step0_<phase>:input:<pull>`), so ledger_verify catches a later append or swap. In derive, also assert the reference file holds both `_pull` kinds.
+
+[medium] scripts/probes/_314_replay_build/ps_pull.py
+  F: Every failure is written as a final answer. On resume, existing_keys (:181-192), used by the edgar (:316-325), instances (:471), news (:545) and alpaca (:608) stages, skips a record whatever its status. So a 5xx / 429 / 599 (transport error) / 598 (bad JSON) left after the transport's 3 tries, and SEC's 403 (its rate-limit answer, treated as final at :115-120), become permanent unknowns: cap unknown → mid tier, plus unknown dilution, news and class. Separately, a failed OLDER submissions file (:330-338) is dropped silently while the record says status 200 (files_fetched counts files requested, not files received). Downstream an early D0 then reads earnings 'none' instead of unknown (eight_k_feature), and item-2.01 evidence is missed, so the suspect classes `real_move` and stays in n.
+  E: Scratch edgar_resume.py: CIK 0000000002 returns 503; after the outage clears, the resume makes 0 requests and the record keeps status 503 ('skipped': 2). test_edgar_pull_reads_older_files_..._records_a_404 asserts 'resume: everything recorded is skipped', which codifies this.
+  FIX: In existing_keys, treat as done only status == 200 or a terminal 404/410 (plus 400 where SEC means 'no such CIK'); re-request 429 / 5xx / 59x and retry 403 from SEC with a long back-off. Print 'PULL COMPLETE' only when no transient status remains, else exit non-zero and list them. Record per-older-file statuses; on any failure mark the CIK `older_files_failed`, and have FT treat filings before the recent block's first date as unknown, never 'none'. Add a 503-then-recover resume test and an older-file-503 test.
+
+[medium] scripts/probes/_314_replay_build/ps_features.py
+  F: Seal leak in the 8-K exit window. eight_k_feature (:525-534) sets open_n = None when the held session is the calendar's LAST session (2024-12-31), so ANY later item-2.02 acceptance in the 2026-pulled submissions (2025–26, the sealed period) books earnings_after on 12-31. That is the plan's 'a feature dated after its cut-off', which the runner never refuses. Reachable only for era-B D0 = 2024-12-19. No R moves: the earnings exit at the 12-31 close is the same close as the time stop, so only the e5 / e3 exit reason changes. But a 2026 fact lands in features.tsv and the walk.
+  E: Scratch ek.py: an 8-K 2.02 with acceptanceDateTime 2026-02-10T21:05Z, D0 2024-12-19 → {'earnings_flag': 'none', 'earnings_after': ['2024-12-31']}.
+  FIX: When nxt is None, use the next NYSE session from exchange_calendars (2025-01-02 09:30 ET) as the bound, or mark that session's exit window undecidable (reason recorded, not appended). Also call X.seal_date on the date of every acceptance used in earnings_after, bounded to at most 2025-01-02 09:30 ET. Add a test using the 2026 acceptance above.
+
+[low] scripts/probes/_314_replay_build/ps_walk.py
+  F: `end_of_file` is booked silently as status `open_at_end` (:190-191) and walk() never refuses it. The plan's WOULD-FAIL-IF includes 'any other open state at the end of a run'. It is unreachable in a correct run (D0+7 always lies inside each era's file), which is exactly why the assertion exists.
+  E: ps_walk.book: `elif stop_reason == 'end_of_file': status = 'open_at_end'`. No GuardStop on it in ps_stages.walk / _walk_asserts / ps_walk.results.
+  FIX: Raise GuardStop in book() on end_of_file, or assert in walk() that the only non-closed statuses are ended_mid_walk / degraded / open_at_seal.
+
+[low] scripts/probes/_314_replay_build/ps_replay.py
+  F: Two of the plan's registered refusals are plain `assert` statements in imported helpers, so `python -O` strips them: the raw-close key set equals the export's (runner.load_raw_close, runner.py ~:373-386), and 'a row dated after the cut survived' (asis_common.load_daily_subset). The seal filter itself still runs, and era B also checks cal[-1] with a GuardStop.
+  E: grep: runner.load_raw_close asserts 'raw-close row not in the export' and similar; asis_common.load_daily_subset: `assert df['d'].max() <= cut`.
+  FIX: In ps_replay.main() and ps_pull.main(), refuse to run when sys.flags.optimize > 0 (one line each).
+
+[low] scripts/probes/_314_replay_build/ps_features.py
+  F: UNVERIFIED premise of the whole 8-K row: accepted_et (:460-471) reads SEC's acceptanceDateTime '…T16:30:00.000Z' as UTC and converts it to ET, and the test fixture (tests/test_parabolic_short_replay.py:528, '# 16:30 ET') bakes that reading in. If SEC's submissions JSON in fact writes Eastern wall time with a literal 'Z', every after-close 8-K moves 4–5 h earlier and is charged to the SAME session. That would shift the item-2.02 climax-day window and the earnings exits by one session for after-close filers: the plan's 'an 8-K acceptance after the session it is charged to'. No local evidence exists either way, so this is not asserted as a defect.
+  E: No cached SEC submissions JSON on this machine; collector.py:1285 reads the field without parsing a timezone.
+  FIX: Once the EDGAR pull is in hand ($0): compare a few filings' JSON acceptanceDateTime with the 'Accepted' timestamp in each filing's -index.htm header, which is labelled ET. Also check the clock distribution: EDGAR accepts filings 06:00–22:00 ET, so values clustering 06–22 with none at 00–05 mean the 'Z' is ET. Make the features phase assert the convention from the data and refuse if it is ambiguous.
+
+[low] scripts/probes/_314_replay_build/ps_population.py
+  F: Pin coverage is uneven. gate_walk demands `straggler_records` and `guard_pre` pins below the marker (the plan's freeze list does not name straggler_records), but frozen_pins (the STEP 0 gate) includes neither. Worse, refetch_set (:348-353) returns None when cb702_pre/symbol_guard.tsv is missing, and build_ctx (ps_stages.py:122-124) then SKIPS the plan's refetch-set equality check silently. Nothing records which ps_pull.py version wrote a pull either, and the edgar / instances stages run on any machine with just --run (no key needed).
+  E: bypass.py's gate_walk listing included 'straggler_records, guard_pre'; ps_common.frozen_pins keep-set = INPUT_PIN_KEYS ∪ modules ∪ doc_body. `if minus_pre is not None and refetched != minus_pre` skips the check when the file is absent.
+  FIX: Add straggler_records and guard_pre to frozen_pins and paste both in the freeze commit (--print-pins already prints them). Make refetch_set raise when guard_pre is missing. Have each pull write a first header record {ps_pull_sha, host, argv}; derive / climax / features refuse when it differs from the frozen ps_pull.py pin.
+
+[low] tests/test_parabolic_short_replay.py
+  F: test_alpaca_ca_pull_and_the_dry_run_make_no_network_call (:329-347) cannot fail on the defect it names. ps_pull.main(--dry-run) returns before any pull function or transport is used, so NoNetwork is never exercised; a network call added to a *_plan() function would pass.
+  E: ps_pull.main :655-659: `if a.dry_run: tr = NoNetwork(); ... return 0`; the PLANS functions only read local files and never receive the transport.
+  FIX: In the dry-run test, monkeypatch urllib.request.urlopen and socket.socket.connect to raise, then run every stage's --dry-run (and ps_replay's --dry-run on the synthetic tree) under that patch.
+
+##### FIX
+ **#314 review — all ten findings were real. Eight are fixed, #4 is fixed but needs your ruling, and #5 needs a plan ruling. Tests went from 40 to 51 passed, and the real-tree dry run gives 99 claims, 99 OK, 0 MISMATCH.**
+
+**Per finding**
+1. Fixed (high). An era-A "split between end and filed" now needs a factor step above 1% between the two dates. That is the plan's own jump-evidence bound. S(end, D0) stays the plan's formula and is not snapped to the step product. I measured every step across the era-A file, so this is not a plan gap: 1,333 steps above 1% on 1,073 symbols. 1,324 are above 10%. The other 9 are real corporate actions (HON's 2018 spin-offs, SLG's stock dividends, AIV, JCI). None is at an adjusted close under $1. There are 629,656 sub-1% steps, which are cent rounding. Recorded in R17.
+2. Fixed. The 15 leftover alias symbols now take only a delisted record with the smallest `delisted_utc` ≥ D0. A tie, or no such record, means unknown (`no_record_covering_d0`). Derive and the detector pass both refuse if any alias row is owned by an active record. R68.
+3. Fixed. SEC's `/XX/`, `/NEW/` and `\XX\` tags and a trailing "new" are stripped before normalising, and the seven named pairs are in a test. The mismatch count and a sample of up to 100 are still printed after the detector funnel in the climax printout, not before the detector pass.
+4. Fixed by revising my own R58. Your ruling is needed. Derive prints each control's records and the control night's owner path. If the new (active) record owns the night, the earlier-issuer flag must be set on it. If Polygon's lagging delisted date makes the old record own it, the night must be excluded and the flag must be set on the first night the new record owns. Both cases and a deliberately broken rule are tested.
+5. Needs the plan. Safe subset shipped (R67): era-A climax rows whose company used another symbol at D0 are detected from the reference records. Their read 3 and row (a) now read unknown (`renamed_symbol`) instead of absent or clear. `news_wanted.tsv` gains `d0_symbol` and `symbol_status` columns. The pull still queries the series symbol.
+   - **Fork:** query the D0 symbol, or keep these rows unknown. My lean is to query the D0 symbol; the #88 rule still names the right company.
+   - A rename that Polygon has no record of still reads silently absent.
+6. Fixed (high). `--detect` and `--walk-pop` refuse unless their parent launched them. The parent writes a one-shot token file and passes the token in the environment; the child checks and deletes it, then re-runs the parent's gate. `--walk-pop` also requires `episodes.tsv.partial` to exist and its own part file to be absent. Outside pytest, `--paths-json` is accepted only by those two children, and the paths must equal the real tree's. That is stricter than the review asked. R62.
+7. Fixed (high). The reference pull deletes a stale `.partial` and rewrites the file. Derive refuses on any exact duplicate record and on a file missing either the active or the delisted pull. R63.
+8. Fixed. The climax and features gates need a final record for every wanted key: every candidate CIK in both the submissions and companyfacts pulls, every wanted filing, news pull and corporate-action pull. Each phase now ledgers the pull files it read, so a pull re-run after its consumer refuses the next phase by design. R66.
+9. Fixed. Only 200, a 4xx about the data, or the instance stage's own 595–597 counts as a final record; everything else is re-requested on resume.
+   - SEC 403: retried with a 60/120/180 s back-off. After that the pull stops and asks to resume later, instead of logging 403s CIK after CIK.
+   - Older submissions files: each status is recorded. A failed one marks the CIK `older_files_failed`, with `coverage_from` set to the recent block's first date. The cap, read 5, 8-K and item-2.01 lookups that need earlier filings then read unknown, never "none". A 404 older file counts as done but stays holed, so it cannot block the gate forever.
+   - `PULL COMPLETE` prints only when every wanted record is final; otherwise `PULL INCOMPLETE` lists the keys and exits 4.
+   - A cut-short pull file now refuses instead of crashing.
+   - R64, R65.
+10. Fixed. The last session's earnings-exit window closes at the next NYSE open from exchange_calendars (2025-01-02 09:30 ET), which reads no bar. A 2026 acceptance now books nothing. Walk sessions after the seal refuse. Recorded in R20.
+
+**Tests:** `tests/test_parabolic_short_replay.py`, 51 passed (40 before). The one real-data test runs on this machine.
+
+**Dry run:** `ps_replay.py --dry-run` (real tree): RESULT: 99 claims, 99 OK, 0 MISMATCH, DRY RUN COMPLETE. The modules line matches the shas on disk. The six new lines in this run are the R17 split checks:
+- era A bar-to-bar raw / adjusted factor steps above 1% (R17's split test): 1,333 on 1,073 symbols; steps in (1e-9, 1%] (cent rounding, never a split): 629,656 (printed, never claimed)
+- [OK] era A GME: dates of a factor step above 1%: expected (), got ()
+- [OK] era A AAPL: dates of a factor step above 1%: expected ('2020-08-31',), got ('2020-08-31',)
+- [OK] era A GME: a split between end 2020-10-31 and filed 2020-12-08: expected False, got False
+- [OK] era A GME: a split between end 2020-12-31 and filed 2021-01-29: expected False, got False
+- [OK] era A AAPL: a split between end 2020-06-27 and filed 2020-07-31: expected False, got False
+- [OK] era A AAPL: a split between end 2020-06-27 and filed 2020-10-30: expected True, got True
+
+The other 93 claims match the previous run with the same numbers:
+- 22 pin matches: export, splits, types, sic, guard and flags for both eras; raw_A, dedupe_A, sessions_A, export_stats_A, verdict_A, build_v2, refetch_records; the four live modules.
+- The walk and detector goldens: R 1.2002600780 and 0.9690796128, plus the climax and four one-gate-off copies.
+- Era A: 12,005,007 rows; 12,532 symbols; 1,635 sessions; raw_unknown 0; D0 2016-06-23 to 2022-03-16 (session 1562); 1,443 scorable; D0+7 2022-03-25; 176 / 182 / 247 / 39 excluded symbols; 3,478 ending early; TWTR, ATVI, EA and X carry every session.
+- Era A guard: 667 symbols with a break; (209, 357, 101) jump-only / hole-only / both; 310 with a jump, 194 of them reaching $2M; APTV and DLPH True, GME False twice; GME's two guard breaks.
+- Era A dedupe and types: 98 dedupe pairs; 61,512 rows dropped; 15 alias symbols with 2,927 rows outside the span, 0 inside, the per-symbol counts, KOOL and RSLS with breaks; 93 adjustment events; type table (17172, 17028, 144, 0); 3,942 SIC names; byte-identical SIC copy; 1,885 untyped symbols, 0 refetched, 460 reaching $2M.
+- Era A refetch: (3767, 3765) records / symbols; 2,669 refetch-sourced, and the two sets equal; 31 stragglers, all dated 2022-06-30, 18 owning a series; VIAC and VIACA (555, True); 46 with no key, 19 reaching $2M; OPLN and ZWS flagged.
+- Era B: 13,830,569 rows read, 5,210,943 dropped, 8,619,626 kept; 15,702 symbols; 821 sessions ending 2024-12-31 = the NYSE calendar; D0 2022-03-17 to 2024-12-19; 695 scorable; 7 open at the seal; 85 splits dropped; 67 adjustment events; 1,292 symbols with a guard break; 14,102 type rows.
+
+**Pins:** `ps_replay.py --print-pins` exit 0, written to `ps_replay_pins.txt`. `dryrun_printout` debff6e7fcb8e23d; `doc_body` cdfc3f9ef7edbb43, unchanged, so the plan was not edited. 20 STEP 0 files read ABSENT, as expected before the pulls.
+
+**Undone / open**
+- Two rulings for you: #4 (the R58 revision) and #5 (query the D0 symbol vs keep unknown).
+- The rename detector can wrongly flag a two-class company whose records carry no FIGIs. That errs to unknown, never to a wrong "absent".
+- A pull file cut short by a hard kill refuses on resume with a repair message; it is not repaired automatically.
+- Nothing committed, no network call, no subagent; no tracked file changed. Only the nine build modules and the test file were touched.
+
+Files are in `/Users/alvinfung/apollo_the_wise/scripts/probes/_314_replay_build/`:
+- `ps_replay_dryrun.txt`
+- `ps_replay_pins.txt`
+- `ps_common.py`
+- `ps_population.py`
+- `ps_features.py`
+- `ps_stages.py`
+- `ps_replay.py`
+- `ps_pull.py`
+
+The test file is `/Users/alvinfung/apollo_the_wise/tests/test_parabolic_short_replay.py`.

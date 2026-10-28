@@ -1,0 +1,190 @@
+# #314 parabolic-short replay — DRY RUN (local files only; no pull, no population detector pass, no walk) (2026-10-28 09:53)
+Guards: no network, no DB, no production server, nothing dated after 2024-12-31 read from a bar file (the 2025-26 split rows are read only to undo era B's adjustment basis), cb702_pre's survivors-only export never opened, no episode walked and no outcome computed outside --walk.
+- modules: ps_common.py 6f99467e3a2bc5c3 ps_population.py d1e5184bc3e68cb1 ps_features.py 41d86dbd9b732d36 ps_walk.py a4decccfebb4d49d ps_goldens.py b0c43316bb6e232d ps_stages.py 5ab6a8b08e200d5b ps_replay.py cfe842184385ad33 ps_rederive.py 629ff75fea874ae9 ps_pull.py 6d522b7a51e6c028
+
+## Pins (the freeze record against the files on disk)
+  [OK] pin export_B: expected match, got match
+  [OK] pin splits_B: expected match, got match
+  [OK] pin types_B: expected match, got match
+  [OK] pin sic_B: expected match, got match
+  [OK] pin guard_B: expected match, got match
+  [OK] pin flags_B: expected match, got match
+  [OK] pin export_A: expected match, got match
+  [OK] pin raw_A: expected match, got match
+  [OK] pin dedupe_A: expected match, got match
+  [OK] pin types_A: expected match, got match
+  [OK] pin sic_A: expected match, got match
+  [OK] pin sessions_A: expected match, got match
+  [OK] pin guard_A: expected match, got match
+  [OK] pin export_stats_A: expected match, got match
+  [OK] pin verdict_A: expected match, got match
+  [OK] pin flags_A: expected match, got match
+  [OK] pin build_v2: expected match, got match
+  [OK] pin refetch_records: expected match, got match
+  [OK] pin parabolic_detector.py: expected match, got match
+  [OK] pin parabolic_short_shadow.py: expected match, got match
+  [OK] pin consolidation_breakout.py: expected match, got match
+  [OK] pin test_parabolic_short_shadow.py: expected match, got match
+
+## The synthetic positive controls (refusing at STEP 0 and the walk)
+  walk golden time_stop=5: settled time_stop on 2023-08-21, entry 140.0 intraday, R 1.2002600780234074 (registered 1.200260078) -> OK
+  walk golden time_stop=3: settled time_stop on 2023-08-17, entry 140.0 intraday, R 0.969079612772721 (registered 0.969079613) -> OK
+  walk goldens through the export layout and both eras' loaders: byte-equal
+  walk golden through walk_one on 120 history rows (r5): R 1.2002600780234074 -> OK
+  walk golden through walk_one on 120 history rows (r3): R 0.969079612772721 -> OK
+  [OK] walk goldens (time stop 5 / 3, through the loader and walk_one): expected 0, got 0
+  detector golden climax: stage climax, failing [], days_up_streak 20 (expected ('climax', (), 20)) -> OK
+  detector golden streak_2: stage anticipation, failing ['days_up_streak'], days_up_streak 2 (expected ('anticipation', ('days_up_streak',), 2)) -> OK
+  detector golden earnings_today: stage anticipation, failing ['earnings'], days_up_streak 20 (expected ('anticipation', ('earnings',), 20)) -> OK
+  detector golden gap_1_9pct: stage anticipation, failing ['gapped_today'], days_up_streak 20 (expected ('anticipation', ('gapped_today',), 20)) -> OK
+  detector golden volume_one_under: stage anticipation, failing ['climax_volume'], days_up_streak 20 (expected ('anticipation', ('climax_volume',), 20)) -> OK
+  [OK] synthetic detector golden (climax + four one-gate-off copies): expected 0, got 0
+
+## Era A — cb702_pre_v2 (Alpaca, rebuilt), D0 2016-06-23 .. 2022-03-16
+  [OK] era A rows: expected 12005007, got 12005007
+  [OK] era A symbols (SPY included): expected 12532, got 12532
+  [OK] era A sessions (= sessions.txt, asserted at load): expected 1635, got 1635
+  [OK] era A raw-close key set = the export's (both ways, asserted at load): raw_unknown: expected 0, got 0
+  [OK] era A first scorable D0 (the 120th session): expected 2016-06-23, got 2016-06-23
+  [OK] era A last D0 (the session before era B's first): expected 2022-03-16, got 2022-03-16
+  [OK] era A last D0 is session number: expected 1562, got 1562
+  [OK] era A scorable D0 sessions: expected 1443, got 1443
+  [OK] era A D0 + 7 of the last D0: expected 2022-03-25, got 2022-03-25
+  [OK] era A symbols with characters outside ^[A-Z]{1,5}$: expected 176, got 176
+  [OK] era A 5-letter symbols ending W: expected 182, got 182
+  [OK] era A 5-letter symbols ending U: expected 247, got 247
+  [OK] era A 5-letter symbols ending R: expected 39, got 39
+  [OK] era A symbols ending before 2022-06-30: expected 3478, got 3478
+  [OK] era A TWTR carries every session: expected 1635, got 1635
+  [OK] era A ATVI carries every session: expected 1635, got 1635
+  [OK] era A EA carries every session: expected 1635, got 1635
+  [OK] era A X carries every session: expected 1635, got 1635
+  [OK] era A symbols with a guard break: expected 667, got 667
+  [OK] era A jump-only / hole-only / both: expected (209, 357, 101), got (209, 357, 101)
+  [OK] era A symbols with a jump: expected 310, got 310
+  [OK] era A jump symbols reaching $2M (R12: 20-session rolling median): expected 194, got 194
+  (beside, never claimed: by the 20-session mean 216, by a single day 263)
+- era A jumps with a raw / adjusted factor change > 1% on the date (applied whatever the company evidence): 48 of 394; the rest wait on the reference pull's company evidence (`pending`)
+  [OK] era A APTV 2017-12-05 jump: factor change > 1%: expected True, got True
+  [OK] era A DLPH 2017-12-05 jump: factor change > 1%: expected True, got True
+  [OK] era A GME 2021-01-27 jump: factor change > 1%: expected False, got False
+  [OK] era A GME 2021-02-24 jump: factor change > 1%: expected False, got False
+  [OK] era A GME guard breaks: expected 2021-01-27:jump;2021-02-24:jump, got 2021-01-27:jump;2021-02-24:jump
+- era A bar-to-bar raw / adjusted factor steps above 1% (R17's split test): 1,333 on 1,073 symbols; steps in (1e-9, 1%] (cent rounding, never a split): 629,656 (printed, never claimed)
+  [OK] era A GME: dates of a factor step above 1%: expected (), got ()
+  [OK] era A AAPL: dates of a factor step above 1%: expected ('2020-08-31',), got ('2020-08-31',)
+  [OK] era A GME: a split between end 2020-10-31 and filed 2020-12-08: expected False, got False
+  [OK] era A GME: a split between end 2020-12-31 and filed 2021-01-29: expected False, got False
+  [OK] era A AAPL: a split between end 2020-06-27 and filed 2020-07-31: expected False, got False
+  [OK] era A AAPL: a split between end 2020-06-27 and filed 2020-10-30: expected True, got True
+  [OK] dedupe pairs: expected 98, got 98
+  [OK] dedupe rows dropped: expected 61512, got 61512
+  [OK] alias_outside_span symbols (dropped symbols still in v2): expected 15, got 15
+  [OK] alias_outside_span rows outside the dropped span: expected 2927, got 2927
+  [OK] rows of a dropped symbol INSIDE its span (a refusal if > 0): expected 0, got 0
+  [OK] alias_outside_span rows per symbol: expected {'AGC': 667, 'ARYA': 237, 'BIOS': 57, 'BRPM': 295, 'CYTX': 3, 'DDMX': 151, 'KOOL': 43, 'MACQ': 162, 'PRTHU': 13, 'PTIE': 340, 'RSLS': 52, 'RXII': 3, 'SNH': 125, 'VICL': 101, 'XL': 678}, got {'AGC': 667, 'ARYA': 237, 'BIOS': 57, 'BRPM': 295, 'CYTX': 3, 'DDMX': 151, 'KOOL': 43, 'MACQ': 162, 'PRTHU': 13, 'PTIE': 340, 'RSLS': 52, 'RXII': 3, 'SNH': 125, 'VICL': 101, 'XL': 678}
+  [OK] alias_outside_span symbols carrying a guard break: expected ('KOOL', 'RSLS'), got ('KOOL', 'RSLS')
+  [OK] era A adjustment events (adj_event rows): expected 93, got 93
+  (90 distinct (ticker, date) events: 3 rows of the split table repeat a raw-step row — LEJU, TBLT, TXMD on the real file)
+  [OK] era A type table rows / symbols / typed twice / conflicts: expected (17172, 17028, 144, 0), got (17172, 17028, 144, 0)
+  [OK] SIC pull names (era-A copy): expected 3942, got 3942
+  (3924 of them carry a type; the rest fall through to unknown)
+  [OK] SIC pull: the era-A copy is byte-identical to era B's: expected 0e476c4422d56648d615c48d941edb971a348dfb99821023116d0fd98e617346, got 0e476c4422d56648d615c48d941edb971a348dfb99821023116d0fd98e617346
+  [OK] era A v2 symbols with no type-table row: expected 1885, got 1885
+  [OK]   ... of which refetched (expected 0: all are original symbols): expected 0, got 0
+  [OK]   ... passing the symbol rules (suffix rule included) and reaching $2M (R12 median): expected 460, got 460
+  (beside: 1453 pass the symbol rules; by the 20-session mean 658, by a single day 1174)
+  [OK] refetch records / symbols: expected (3767, 3765), got (3767, 3765)
+  [OK] refetch-sourced symbols (records ∩ v2): expected 2669, got 2669
+  [OK] v2 minus cb702_pre's symbols (its guard table's symbol list; the export never opened): expected 2669, got 2669
+  [OK] the two refetch sets are equal: expected True, got True
+  [OK] straggler records: expected 31, got 31
+  [OK] straggler records dated 2022-06-30 (the fetch cut-off, never a Polygon delisted_utc): expected 31, got 31
+  [OK] straggler records that own a v2 series: expected ('BBBY', 'BHG', 'CDAY', 'CPSI', 'DADA', 'HSC', 'LAZY', 'LPI', 'MCG', 'NOVA', 'OBNK', 'PLYA', 'RLGY', 'SASR', 'SCHN', 'VIAC', 'VIACA', 'X'), got ('BBBY', 'BHG', 'CDAY', 'CPSI', 'DADA', 'HSC', 'LAZY', 'LPI', 'MCG', 'NOVA', 'OBNK', 'PLYA', 'RLGY', 'SASR', 'SCHN', 'VIAC', 'VIACA', 'X')
+  [OK] VIAC: rows in v2 / its record's type, CIK and FIGIs blank: expected (555, True), got (555, True)
+  [OK] VIACA: rows in v2 / its record's type, CIK and FIGIs blank: expected (555, True), got (555, True)
+  [OK] refetched v2 symbols with no CIK or FIGI at all: expected 46, got 46
+  [OK]   ... reaching $2M a day (R12 median): expected 19, got 19
+  (beside: by the 20-session mean 27, by a single day 41)
+  [OK] the flagger lists OPLN 2019-06-28 (refusing at STEP 0): expected True, got True
+  [OK] the flagger lists ZWS 2021-10-05 (refusing at STEP 0): expected True, got True
+- the flagger lists BEP 2020-07-30; it is an adj_event: True (voided either way)
+- era A flagged gaps (open / prior close - 1 <= -25%) over all bars: 3,997
+
+### era A funnel through the bands (file-only; owners, types, the guard and the detector wait on the pulls)
+  ticker_nights: 12,005,007
+  detectable ticker-nights (scorable D0 + open-at-seal): 10,592,853
+    of which open at the seal (era B, R35): 0
+  excluded: symbol pattern: 68,345
+  excluded: test symbol: 0
+  after symbol rules: 10,524,508
+  excluded: history (not 120 consecutive sessions): 1,821,144
+  after history: 8,703,364
+  band ($1 / $2M on the RAW close): 5,364,835
+  P1 ($5 / $10M on the RAW close): 3,327,980
+  P2 band (the complement): 2,036,855
+  P1 nights outside the $1 / $2M band (0: P1 implies the band): 0
+  adjusted-pass / raw-fail: P1 floor: 33,041
+  adjusted-pass / raw-fail: band floor: 14,622
+  raw-pass / adjusted-fail: P1 floor: 4,619
+  raw-pass / adjusted-fail: band floor: 176
+  band nights by year: {'2016': 439036, '2017': 859142, '2018': 899738, '2019': 888357, '2020': 958926, '2021': 1094267, '2022': 225369}
+- era A necessary-condition nights (R7; before owners, types and the guard): 1,573 on 992 symbols (an upper bound on the EDGAR pull's companies from this era)
+- GME (printed golden, era A): 1635 bars; its 2021-01 sessions are scored at STEP 0 climax at their point-in-time tier (the cap needs the EDGAR pull)
+
+## Era B — cb702 (Polygon), read through 2024-12-31 only; D0 2022-03-17 .. 2024-12-19 (+ 7 open at the seal)
+  [OK] era B rows read (the whole file): expected 13830569, got 13830569
+  [OK] era B rows dropped at read (dated after 2024-12-31): expected 5210943, got 5210943
+  [OK] era B rows kept: expected 8619626, got 8619626
+  [OK] era B symbols kept: expected 15702, got 15702
+  (the whole file's 20,285 tickers are not re-counted: it would need the sealed rows' tickers)
+  [OK] era B sessions (SPY to 2024-12-31): expected 821, got 821
+  [OK] era B last session: expected 2024-12-31, got 2024-12-31
+  [OK] era B calendar = the NYSE calendar over 2021-09-27 .. 2024-12-31: expected True, got True
+  [OK] era B first scorable D0 (the 120th session): expected 2022-03-17, got 2022-03-17
+  [OK] era B last D0 that can settle (D0 + 7 = the seal): expected 2024-12-19, got 2024-12-19
+  [OK] era B scorable D0 sessions: expected 695, got 695
+  [OK] era B open-at-the-seal sessions: expected 7, got 7
+  [OK] splits executing after the file's last day (dropped): expected 85, got 85
+  [OK] era B adjustment events (dated <= 2024-12-31): expected 67, got 67
+  [OK] era B symbols with a guard break: expected 1292, got 1292
+- era B jumps with a split executing on the date (applied whatever the company evidence): 5 of 4983; the rest wait on the reference pull
+  [OK] era B type table rows: expected 14102, got 14102
+- era B flagged gaps over all bars: 21,935 (no testable positive control at this cut: the plan's ⚠)
+
+### era B funnel through the bands (file-only)
+  ticker_nights: 8,619,626
+  detectable ticker-nights (scorable D0 + open-at-seal): 7,363,169
+    of which open at the seal (era B, R35): 74,561
+  excluded: symbol pattern: 229,473
+  excluded: test symbol: 5,672
+  after symbol rules: 7,128,024
+  excluded: history (not 120 consecutive sessions): 1,141,388
+  after history: 5,986,636
+  band ($1 / $2M on the RAW close): 2,891,505
+  P1 ($5 / $10M on the RAW close): 1,780,961
+  P2 band (the complement): 1,110,544
+  P1 nights outside the $1 / $2M band (0: P1 implies the band): 0
+  adjusted-pass / raw-fail: P1 floor: 18,004
+  adjusted-pass / raw-fail: band floor: 14,237
+  raw-pass / adjusted-fail: P1 floor: 1,804
+  raw-pass / adjusted-fail: band floor: 25
+  band nights by year: {'2022': 836897, '2023': 1000517, '2024': 1054091}
+- era B necessary-condition nights (R7; before owners, types and the guard): 766 on 577 symbols (an upper bound on the EDGAR pull's companies from this era)
+- the overlap (2021-09-27 .. 2022-06-30): 1,569,375 ticker-days in both files; adjusted closes differing by more than 0.5%: 23,647 = 1.51% (printed, decides nothing; expectation: under 1%)
+- control INBX 2024-05-31: bar present; 120 consecutive sessions: False; window's first bar 2023-12-07; guard breaks on INBX: [] (R58: derive tests the earlier-issuer FLAG on this night when the new record owns it, else on the first night it does)
+- control DOC 2024-03-04: bar present; 120 consecutive sessions: False; window's first bar 2023-09-11; guard breaks on DOC: [] (R58: derive tests the earlier-issuer FLAG on this night when the new record owns it, else on the first night it does)
+- NVDA (printed golden, era B): 821 bars; its 2024-03 sessions are scored at STEP 0 climax
+
+## What STEP 0 waits on (the pulls; ps_pull.py on the production server, never here)
+- reference: endpoint = https://api.polygon.io/v3/reference/tickers?market=stocks&active=<true|false>&limit=1000 (+ next_url pages); requests = one page per 1,000 records, both pulls: about 12 pages active (~11-12k active stock records); the delisted count is not measured on this machine (the 10-23 refetch pulled active=false on the server and logged no count) — tens of pages; run_time = minutes at a 0.2 s courtesy delay; output = /Users/alvinfung/apollo_data/ps314/polygon_reference.jsonl.gz; key = POLYGON_API_KEY
+- edgar: endpoint = https://data.sec.gov/submissions/CIK##########.json (+ filings.files[]) and https://data.sec.gov/api/xbrl/companyfacts/CIK##########.json; ciks = 0; requests = n CIKs x ~2.3 (candidate_ciks.txt is not written yet: run `ps_replay.py --step0 derive` first); run_time = n x 2.3 x 0.15 s; outputs = ['/Users/alvinfung/apollo_data/ps314/edgar_submissions.jsonl.gz', '/Users/alvinfung/apollo_data/ps314/xbrl_facts.jsonl.gz']; key = none (SEC User-Agent from collector._SEC_UA / SEC_USER_AGENT)
+- instances: endpoint = https://www.sec.gov/Archives/edgar/data/<cik>/<accn>/index.json then the instance named there; filings = 0; requests = 2 x distinct filings (filings_wanted.tsv is not written yet: run `--step0 climax` first); run_time = 2 x n x 0.15 s + downloads; output = /Users/alvinfung/apollo_data/ps314/xbrl_instances.jsonl.gz; key = none (SEC User-Agent)
+- news: endpoint = https://api.polygon.io/v2/reference/news?ticker=&published_utc.gte=&published_utc.lte=&limit=1000&order=desc&sort=published_utc (<= 3 pages); pulls = 0; requests = 2 pulls per climax x 1-3 pages (news_wanted.tsv is not written yet: run `--step0 climax` first); run_time = n x 1.1 x 0.2 s; output = /Users/alvinfung/apollo_data/ps314/polygon_news.jsonl.gz; key = POLYGON_API_KEY
+- alpaca_ca: endpoint = https://data.alpaca.markets/v1/corporate-actions?symbols=&start=gap-7d&end=gap+3d&limit=1000; suspects = 0; requests = one per distinct (ticker, gap date) suspect (suspects_wanted.tsv is not written yet: run `--step0 climax` first); run_time = n x 0.25 s; output = /Users/alvinfung/apollo_data/ps314/alpaca_corporate_actions.jsonl.gz; key = ALPACA_PAPER_API_KEY / SECRET
+- derive waits on: polygon_reference.jsonl.gz (owners, types, CIKs, company keys, the break evidence, the earlier-issuer rule, the INBX / DOC controls, the gone test)
+- climax waits on: edgar_submissions.jsonl.gz + xbrl_facts.jsonl.gz (the cap -> the detector's tier; the name cross-check; GME 2021-01 / NVDA 2024-03 printed at their point-in-time tier)
+- features waits on: xbrl_instances, polygon_news, alpaca_corporate_actions (reads 3-5, row (a), the distribution class with the OPLN / ZWS evidence controls)
+
+RESULT: 99 claims, 99 OK, 0 MISMATCH
+DRY RUN COMPLETE
