@@ -2664,3 +2664,7 @@ Rule from this (breakout v1): the MA "touch" is a NEAR-MISS band, not a strict t
 > "also key is the surfing part, if you look at the charts he reviews, it's not touch and done, it'll surf for multiple days near the MAs, tighten, then breakout" (2026-10-28, on breakout v1's moving-average rule)
 
 Rule from this (breakout v1): "surfing" is a STRETCH, not an event — for several sessions in a row the stock trades near (within the band of) the 10-, 20- or 50-day, riding it; the range TIGHTENS over that stretch; THEN the breakout (on volume). The number of sessions and the band are set from his graded examples (the 2020-08-10 video), not fixed in advance; one touch followed straight by a breakout does not qualify.
+
+> "Yes" (2026-10-28, confirming breakout v1's three starting values, set from his 24 good setups in the dated 2020-08-10 review)
+
+Ruling recorded (breakout v1, paper): surfing = 5+ sessions in a row with the low within 1.0 ADR of the 10-, 20- or 50-day; tightening = the last 5 sessions' mean range no more than 1.1x the 5 before; breakout-day volume at least 1.2x the 50-day average (replacing the provisional 1.5x, which failed 11 of his 24 good setups). Starting values, refined on paper fills (`scripts/probes/_qm_0810_review/dating_calibration.md`).
