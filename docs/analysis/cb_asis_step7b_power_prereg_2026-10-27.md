@@ -503,3 +503,9 @@ below is ruled by the main loop (technical; none touches the population, the fea
 - **Consequence (§7.1, written before the run):** `06_groups.py --run` under the registered method writes the one-population description, labelled **no style we could show we would see**, with the size line.
 
 Pins: power7b_printout 841c3a9ecabd933e5b598cc8486766477d6cabca3202c0e0cf31179b7b7fc10a · step7b_power 6e7c71d45e9e09b07f27db8511a1ccb1edc29b4b1bffdb5d68b5d1feb325d822
+
+### His decision on the registered fork (2026-10-28): *"aligned, go"* — on "skip the 510 seen-once trades; go to step 8"
+
+The frozen step-7 consequence for no stable grouping left him the call "run on + ONE-STREAM (more trades) or stop". Put to him with the
+rec "skip — the power run shows more trades of this kind cannot rescue an undirected sort", his reply: *"aligned, go"*. + ONE-STREAM
+is NOT run; step 8 follows, in its own registration.

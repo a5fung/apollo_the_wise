@@ -2636,3 +2636,7 @@ Source noted (#711, step 8 input): his stream of 2020-08-10 (video 438_cyYQ888; 
 > "btw, he goes through the charts in that vid and talks about historical setups, over the past 6mth of the stock, not the date of the stream" (2026-10-28, on the 2020-08-10 video)
 
 Reading from this (#711 step 8 input): each label in that review is a HISTORICAL setup instance somewhere in the stock's prior six months (2020-02..2020-08), pointed at on the chart — not a setup as of 2020-08-10. The captions carry his verdict and his reason but not the date; each instance must be dated from the chart (the frame where he points) and confirmed on the daily bars (the breakout day his words describe), before it can serve as a labelled example.
+
+> "aligned, go" (2026-10-28, on #711's step-7 fork after the 7b power run: skip adding the 510 seen-once trades; go to step 8 — read his trades against his stated rules, which name the measures to look at)
+
+Ruling recorded (#711): + ONE-STREAM is not run; step 8 is registered next.
