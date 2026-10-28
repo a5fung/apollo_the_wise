@@ -509,3 +509,10 @@ Pins: power7b_printout 841c3a9ecabd933e5b598cc8486766477d6cabca3202c0e0cf31179b7
 The frozen step-7 consequence for no stable grouping left him the call "run on + ONE-STREAM (more trades) or stop". Put to him with the
 rec "skip — the power run shows more trades of this kind cannot rescue an undirected sort", his reply: *"aligned, go"*. + ONE-STREAM
 is NOT run; step 8 follows, in its own registration.
+
+### Step 8 paused (2026-10-28, his direction an hour after "aligned, go")
+
+His note: *"let's get to some near-term conclusion, some near-term rules that we're confident it to work with and refine over time as
+we trade ... let's not boil the ocean here"* (`operator_shared_notes.md`, 2026-10-28). The step-8 design card was STOPPED before it
+wrote anything (no step-8 document exists). #711's as-is reconstruction stays as a refinement source; the near-term breakout rule set
+(his mechanics, Apollo's tested execution, his selection) is carried on the #711 line.

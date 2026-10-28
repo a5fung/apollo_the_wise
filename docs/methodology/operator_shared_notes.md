@@ -2640,3 +2640,11 @@ Reading from this (#711 step 8 input): each label in that review is a HISTORICAL
 > "aligned, go" (2026-10-28, on #711's step-7 fork after the 7b power run: skip adding the 510 seen-once trades; go to step 8 — read his trades against his stated rules, which name the measures to look at)
 
 Ruling recorded (#711): + ONE-STREAM is not run; step 8 is registered next.
+
+> "also, let's get to some near-term conclusion, some near-term rules that we're confident it to work with and refine over time as we trade, see what works, what doesn't work, gather more external info, charts, etc. breakouts is a common trading setup, there's tons of evidence and examples, let's not boil the ocean here, get a good starting point to iterate and improve instead of trying to get to 100% settled and perfect" (2026-10-28, after #711 step 7b's power run read no style an undirected sort could see)
+
+Direction from this (#711 / the breakout setup): stop chasing a fully settled reconstruction; set a STARTING breakout rule set now — his stated mechanics, Apollo's tested execution, and selection where the evidence actually is — trade it (paper first), and refine it on what the fills and his chart grades show, adding outside material (charts, examples) as it comes. #711 step 8 is paused; the as-is work stays as a refinement source.
+
+> "but let's not completely abandon the data we gathered, the streams, etc. we can revisit and test things out, especially the setups vid i pointed at this morning so don't pivot completely and abandon this" (2026-10-28, right after the near-term-rules note)
+
+Reading from this (#711): the near-term rule set does not replace the stream work, it gives it a job. The streams, his positions panel and the 2020-08-10 setups review stay live as the TEST BED for the starting rules: date the video's graded setups first, then check what the starting rules would have done on each (caught / missed / caught late), and audit the 854 graded stream moments before they are used. Only #711 step 8's broad design is paused.
