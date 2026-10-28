@@ -424,3 +424,52 @@ Empty until the freeze. After his go: the main loop freezes this document (`doc_
 every pin below, runs `05_tiers.py --run` once (writes `tiers.tsv`), then builds part 2 (`06_groups.py`), whose dry run and pins are
 pasted below the marker before ITS run. Nothing above the marker is edited after the freeze; any edit changes `doc_body` and the run
 refuses.
+
+### FREEZE 2026-10-27 (his "Go" to the tiers; the step-7 plan body frozen)
+
+Frozen before any trade outcome is read and before the tier file exists. Tiers re-derived exactly as approved (30 of 30 dry-run claims OK). `06_groups.py` and its dry run are pinned below when built (pins below the marker do not change `doc_body`).
+
+### Pins (05_tiers)
+
+- entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf
+- exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f
+- snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff
+- control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc
+- panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012
+- calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610
+- lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178
+- done_EP: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735
+- done_EP2: f8255199e52f0fa14aebcec5d50a407a1a52ac7c8b6cd4129bf41aa2f8cc591a
+- done_REV: 945c41fb3618ed6b85a000232f6becc82c9d8e201b9bde99bd8673f9f7036d5e
+- done_INTRA: a9dc793c33af220a2c030ae3d36f83af5d80ab91890b0e80c0deea3868d3f243
+- done_ASIS: b18dea5e0e75d64991c1c0de366c7deee65d9488ebd921a6b26b37994ba598e1
+- raw_close_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444
+- splits_B: 3199d06d5fb7dcd52ebd34e8c71e148b45ec0ca4a15f7f03ea1b715718882b0b
+- entries_v2: 11f6ee5a7b652bdd421bde44ba8caa75dfcdc553f04280f23aefac4ae451c613
+- exits_v2: 226579577eb169ada38b63a4bd320facf72ebe39a63f0141eb95d33c28c780de
+- snapshots_v2: de4b8cce9a7ec6925024b467fb90c471d67a2475a141121b6fd2fa2eaffd0759
+- subs_list: 99929453752cb3590b261e6928d99317312f35d9a50c0c147e33393b101a64a9
+- asis_common.py: 4d36d6a42532dc782b7ccdce86a530a3b0bd948f66db74d5f1ab7af79a4562c4
+- 01_points.py: aa30dc3c0402178d6b787b6e7f5957ec4921961feea39a40109b58fda66c6c65
+- forbidden_identifiers.txt: ba8f4bb5f23f2325b6e1ed78e299d2044d3182313955f4509b1e16969e3ff81c
+- 00c_windows_v2.py: de9ba698e9d238483f5f7a3864aa5e9ef4be9f2bf5c8307ba97659ed0bd9a6e4
+- dryrun00c_printout: c08075f6727b91fa59bb19b1a0277715bf09dcc76c0b52f25a38f498872d1a4d
+- write00c_printout: 49f8374b7ec6a4b9a0ea6143418037f599aff90e77d01e858b9eb4e21cd73f6c
+- doc_body: b16d81fea023322db3e77f4cc99c24974d3591182f98ab7a4c7d0fdeaa52b5cb
+- doc_body_steps56: 2b330f044c3f59da643f248ef97723dd80534b262458a766979f5fd22d748db0
+- candidates: 5bde2911dd05a518c3460403beef4638643155e9f1f088551eb5f04cbd98b646
+- ranges: 0d12cf9ab46a4fea914691cadb89e401207cd2e0c5359cf9dadeb9525f9c36c2
+- coverage: 2584068b3cddb0644d47bb34c7c20ed34efd6feded84af26591852d99d6af7a2
+- asis_check_common.py: c5061dca5ee2f6bef86dce38887fe27e17001635faefff93caacba85541fe200
+- 03_check.py: 20ac382575b095d06e54e23fe70089ed228a34105efcdf925ff11f41e4d60496
+- run6b_printout: 38678d784016b633a6053acf6a21a75e2b2f499e6dfaba50e08a3079281fc092
+- check_r1_r5: 8df4521acde45b2c9ba7106271620f9e234c55d2c4a6c56aa78e74721123c958
+- 05_tiers.py: 6c51b4879bced5399b725cef4b39b2a22b13d8ff7094ea9dfd9841d4772bcc03
+- forbidden_outcomes.txt: bc942e6cdf95bc5e904e25a9f3f2935e0ff73ed43f08745c7f375dd1beae8d85
+- dryrun7_printout: 10ab0bec0a6fdeda9029b33759a5eb6a0e00997fe9ee9d0edc476d705d87f831
