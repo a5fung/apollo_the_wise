@@ -308,6 +308,34 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
+### 2026-10-28 — his PAPER GO for "breakout v1" (the starting rule set, refined as we trade); NOTHING built yet — the build is Sat 10-31
+
+**Trigger**: his direction 2026-10-28 (`operator_shared_notes.md`): *"let's get to some near-term conclusion, some near-term rules
+that we're confident it to work with and refine over time as we trade ... let's not boil the ocean here"*, then *"Yes paper"*, *"Size
+paper similar to EP"*, and grading as *"running list and grade as best effort from me"*.
+
+**v1 (the build's spec; each piece's source in brackets):** stocks = rs_best ≥ 98 + the scan his trades imply (ADR20 about 4%+, not
+falling, near the 52-week high) on this file's universe [his words; #705 reverse-engineering SELECT PASS] · setup = this file's prior
+move + base + higher lows + tightening, PLUS his repeated rule (10-28): the pullback TOUCHES AND HOLDS the 10-, 20- or 50-day (an
+undercut-and-reclaim counts) — today's `MA surfing` row checks only "above the 20 and 50" [his words, Qullamaggie's 2020-08-10 review]
+· level = the base high (`full`) — the trendline fired about 1.2 ADR early [#705 breakout-definition read] · breakout day on VOLUME:
+start ≥ 1.5× the 50-day average, provisional [his words; the number is a starting value to be set from the 2020-08-10 graded setups —
+today breakout volume is telemetry only] · entry `orh5`, regular hours [his buys lean on his opening-range highs; beat the hourly-close
+entry] · stop = the day's low, abstain beyond 1 ADR [the article] · exit = the recorded `pp` arm [his corrected rule + the stall cut] ·
+size = EP's (2% account-risk base, EP's regime multiplier and caps) — **a departure from the article's 0.25-1%, by his ruling** ·
+his A+ grade = a label on a running list, never a gate on a paper entry.
+
+**Evidence, stated honestly**: the mechanical version LOST on the 2025-26 holdout (C1 −0.72R on 30, above); the only PASS on file is
+his own picks traded with his rules (+264%, alpha t 2.31, `cb_holdings_replay_prereg_2026-10-24.md`). Paper is his call and carries
+no money; the label comparison (his A+ vs the rest) is what v1's paper run is for. CHANGE_PROCESS: the two new gates (MA touch,
+volume) are threshold additions — their starting values are set from his graded examples before the build and recorded here with
+the counts; the paper read replaces a pre-paper backtest by his direction (no money at risk), stated as such.
+
+**The paper-path items above still stand** and become the build: a per-strategy trail / partial mode, a breakout entry window that
+is NOT the EP ORB window (a breakout can come any time of day — his 10-22 note), EP sizing (his ruling replaces the article's ≤ 1%
+multiplier), paper slots shared with any EP paper lane, a nightly running list + a grade command (three places for a Telegram
+command). **Reversion**: nothing to revert until the build; after it, the paper row's `enabled` flag.
+
 ### 2026-10-25 — #705 (c) the forward shadow also records `pp` (his carried exit) beside `A` — a recorder change, no order path, no registered number moved
 
 **Trigger**: the 2026-10-19 registration carried `pp` (the day-3 third only in profit, the stop to cost after any third) as the
