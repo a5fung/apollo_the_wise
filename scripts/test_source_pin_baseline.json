@@ -103,6 +103,7 @@
     "tests/test_no_nested_pool_acquire.py": 1,
     "tests/test_orb_extension_shadow_fill_threshold.py": 1,
     "tests/test_output_ceilings.py": 1,
+    "tests/test_parabolic_short_replay.py": 3,
     "tests/test_partial_at_2r_is_reachable.py": 6,
     "tests/test_partial_breaker_per_mode_525.py": 2,
     "tests/test_partial_exit_deadlock_20260805.py": 11,
@@ -147,6 +148,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 427,
+  "total": 430,
   "unescaped": 359
 }
