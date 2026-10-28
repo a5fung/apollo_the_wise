@@ -211,17 +211,23 @@ def _sma_10_20_line(closes: list[float]) -> float | None:
     return sma_10
 
 
-def _trail_armed_before_today(prior_closes: list[float], running_closes: list[float],
-                              entry_price: float | None = None) -> bool:
-    """True when the trade was BOUGHT at or above the line it entered under (the line on the closes
-    before the entry day), or some HELD day before today closed at or above that day's own line.
-    `running_closes` includes today's close as its last element; each earlier held day j is judged
-    on the closes up to and including day j (prior history + held closes so far). The entry arm
-    keeps a trade bought above its line exactly as before (a first close below it still sells)."""
+def _trail_armed(prior_closes: list[float], running_closes: list[float],
+                 entry_price: float | None = None, entry_day_close: float | None = None) -> bool:
+    """True when the trailing line may govern today (2026-10-28, CLS): the trade was BOUGHT at or
+    above the line it entered under (the line on the closes before the entry day), or the ENTRY
+    DAY closed at or above its own line, or some HELD day up to and including today closed at or
+    above that day's line. `running_closes` holds the held days (today last); each held day j is
+    judged on prior history + held closes up to and including day j — the same closes the live line
+    reads. Counting today cannot cause an exit (a close at or above the line is not below it); it only
+    lets the line raise the stop the evening the stock reclaims it."""
     entry_line = _sma_10_20_line(prior_closes)
     if entry_price and entry_line is not None and float(entry_price) >= entry_line:
         return True
-    for j in range(len(running_closes) - 1):
+    if entry_day_close is not None:
+        day0_line = _sma_10_20_line(prior_closes + [float(entry_day_close)])
+        if day0_line is not None and float(entry_day_close) >= day0_line:
+            return True
+    for j in range(len(running_closes)):
         line = _sma_10_20_line(prior_closes + running_closes[: j + 1])
         if line is not None and running_closes[j] >= line:
             return True
@@ -248,6 +254,7 @@ def apply_daily_exit_step(
     trail_undercut: float = 0.0,
     prior_closes: list[float] | None = None,
     trail_arm_on_close_above: bool = False,
+    entry_day_close: float | None = None,
 ) -> ExitStep:
     """Compute one daily exit step.
 
@@ -433,14 +440,17 @@ def apply_daily_exit_step(
     # ABOVE it: a trade entered BELOW its line (CLS 2026-10-27: filled $272.01 under a $330.52 line)
     # was "stopped" by its trailing line on its first close. A trailing stop is a line under the
     # price, so the line now GOVERNS only once the trade was bought at or above its entry line, or
-    # the stock has CLOSED AT OR ABOVE it on some held day before today (today's own close above it
-    # is no exit either way) — a trade bought above its line behaves exactly as before. Until then the
+    # the entry day or a held day (today included — a close above the line is no exit, it only lets
+    # the line raise the stop) CLOSED AT OR ABOVE its line — a trade bought above its line behaves
+    # exactly as before. Until then the
     # effective stop is the hard stop and the breakeven floor alone. "sma" mode only (the live
     # mode); any other mode with the flag raises.
-    if trail_arm_on_close_above and active_sma is not None:
+    # With NO prior closes (the history fetch failed this pass) the arming is skipped, so the
+    # documented fail-soft fallback (the held-period line, pre-#548) stays byte-identical.
+    if trail_arm_on_close_above and active_sma is not None and prior_closes:
         if trail_mode != "sma":
             raise ValueError(f"trail_arm_on_close_above supports trail_mode 'sma' only, got {trail_mode!r}")
-        if not _trail_armed_before_today(list(prior_closes or []), running_closes, entry_price):
+        if not _trail_armed(list(prior_closes), running_closes, entry_price, entry_day_close):
             active_sma = None
 
     # 3. Partial profit Day 3-5

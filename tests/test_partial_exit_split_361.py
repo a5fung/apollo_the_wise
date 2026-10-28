@@ -353,23 +353,31 @@ def test_load_exit_state_success_builds_expected_state_and_bars(monkeypatch):
         # #687 B: the depth rule's ADR20 from the same prior bars — one bar is fewer than the
         # 10 usable sessions it needs, so None.
         "adr20_pct": None,
+        # 2026-10-28 (CLS): the entry day's own close, for the trail ARMING only; the stub's bar
+        # carries no timestamp, so it stays a prior bar and no entry-day close is found.
+        "entry_day_close": None,
     }
 
 
 def test_load_exit_state_fetches_prior_closes_from_BEFORE_the_entry(monkeypatch):
     """The trail must average the STOCK's history, not our holding period (#548, operator:
-    *"10d MA exists regardless of how long we traded it"*). Two things have to be true and
-    only the second is obvious:
+    *"10d MA exists regardless of how long we traded it"*), and never count the entry day twice.
 
-    1. a prior-close window is requested at all, and
-    2. it ENDS THE DAY BEFORE alert_date — the entry day's own close arrives separately via
-       `running_closes` on the first daily pass, so including it here double-counts it into
-       the mean."""
+    2026-10-28 (CLS review): the window now REACHES alert_date so the entry day's own close can arm
+    the trail (`exit_logic._trail_armed`), and the entry-day bar is SPLIT OFF by its timestamp — it
+    never enters `prior_closes` (nor ADR20), so the line reads exactly the closes it read before. The
+    old docstring's premise (the entry-day close "arrives via running_closes on the first pass") was
+    false: the alert-day pass is skipped, so that close was in neither list."""
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _Z
     calls = []
+    alert = _trade_row()["alert_date"]
+    t_prior = int(_dt.combine(alert - timedelta(days=1), _dt.min.time(), tzinfo=_Z("America/New_York")).timestamp() * 1000)
+    t_entry = int(_dt.combine(alert, _dt.min.time(), tzinfo=_Z("America/New_York")).timestamp() * 1000)
 
     def _hist(ticker, start, end, *a, **k):
         calls.append((start, end))
-        return asyncio.sleep(0, result=[{"l": 1.0, "c": 2.0}])
+        return asyncio.sleep(0, result=[{"l": 1.0, "c": 2.0, "t": t_prior}, {"l": 1.0, "c": 5.0, "t": t_entry}])
 
     monkeypatch.setattr(live_tracker, "get_index_history", _hist)
     row = _trade_row()
@@ -378,11 +386,9 @@ def test_load_exit_state_fetches_prior_closes_from_BEFORE_the_entry(monkeypatch)
 
     assert len(calls) == 2, f"expected today's bar + a prior-close window, got {calls}"
     _start, end = calls[1]
-    alert = row["alert_date"]
-    assert end == (alert - timedelta(days=1)).strftime("%Y-%m-%d"), (
-        f"prior-close window ends {end}, must end the day BEFORE alert_date {alert} — "
-        "otherwise the entry day's close is counted twice in the moving average")
-    assert state["prior_closes"] == [2.0]
+    assert end == alert.strftime("%Y-%m-%d")                         # the window reaches the entry day ...
+    assert state["prior_closes"] == [2.0]                            # ... but the entry-day close is not a prior close
+    assert state["entry_day_close"] == 5.0                           # it is carried apart, for the arming only
 
 
 def test_a_failed_prior_close_fetch_does_not_break_position_management(monkeypatch):

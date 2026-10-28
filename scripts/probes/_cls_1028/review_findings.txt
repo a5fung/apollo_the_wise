@@ -1,0 +1,87 @@
+##### REVIEW 0 ready= False
+Not ready as written. The fix does what it says for CLS, and a trade bought at or above its line behaves exactly as before (53,745 constructed steps, 0 differences). Two things block it. First, the deploy note names no scope, and the two jobs that run this code live on apollo-execution. Second, the entry day's close is never counted as a held day, so a trade bought under its line that closes above it on day one is held through a day-2 close below the line. Deploying is still safer for CLS than Thursday's 16:45 pass on old code, so deploy with the execution step and fix or rule on finding 2 next.
+
+[high] PLAN.md
+  F: The deploy note says 'deploy Thu 10-29 12:00 ET with the 10-27 simplify' and names no scope. The two jobs this fix changes (16:45 live_position_update and 3:45 partial_exit_scan) run on apollo-execution. A market-agent or both deploy alone leaves that container on old code, so Thursday's 16:45 pass marks CLS again and it is sold in Friday's opening auction.
+  E: scheduler.py:121-122 lists 'live_position_update' and 'partial_exit_scan' in EXECUTION_OWNED_JOB_IDS. For broker/ changes deploy.sh:291-300 only prints a warning ('NOT an abort ... a broker fix is a legit two-step'). The memory deploy-broker-changes-need-execution-step records a mis-scoped deploy like this once before (#500).
+  FIX: Write the scope into the PLAN #687 line and the exit_discipline 2026-10-28 entry: `bash scripts/deploy.sh both` then `bash scripts/deploy.sh execution`. Add a pre-16:45 check that apollo-execution runs da6417a1 or later, e.g. `docker exec apollo-execution grep -c trail_arm_on_close_above /app/agents/market_intelligence/broker/live_tracker.py` returns 3.
+
+[high] agents/market_intelligence/broker/live_tracker.py
+  F: The entry day's close is in neither list the arming reads. prior_closes stops the day before alert_date, and the 16:45 pass skips the entry day (`today <= alert_date` returns 'silent'), so running_closes starts with day 2's close. A trade bought below its line that closes above it on the entry day (a common shape for a gap up out of a downtrend) is not armed. If day 2 then closes below the line, it is held on the hard or breakeven stop when the written rule ('some held day closed at or above its own line') says sell. The same gap means the live 10/20-day line itself has skipped one session since #548; the CLS $330.52 line left out the 10-27 close.
+  E: Prod row (scripts/probes/_cls_1028/q1.out): alert 2026-10-27, hold_days 1, running_closes [299.8], which is the 10-28 close; the 10-27 close appears nowhere. _load_exit_state ends the fetch at `alert_date - timedelta(days=1)`, and its comment plus exit_discipline.md #548 claim the entry-day close 'arrives via running_closes on the first pass', which is false. Constructed case: prior closes falling 120 to 101 (entry line 110.5), bought at 104, entry day closes 116 (above its line), day 2 closes 108 (below its 109.9 line). Old code sells; new code holds with the stop at 95. `_trail_armed_before_today(prior, [116, 108], 104)` returns True when the entry day is included.
+  FIX: Arming only (no change to any line value): in _load_exit_state, fetch the alert_date bar, pass it as `entry_day_close`, and in _trail_armed_before_today check it first against `_sma_10_20_line(prior_closes + [entry_day_close])`. Including the entry-day close in the trail line itself would change the line on every open trade. That is a #548 bug fix, but it moves a live stop value, so put it to the operator as a separate yes/no.
+
+[medium] agents/market_intelligence/broker/exit_logic.py
+  F: On the evening a stock first closes back above its line, the stop is not raised to the line. The loop `range(len(running_closes) - 1)` leaves out today, so the trade is still unarmed and the stop stays on the hard or breakeven floor for the next session. Counting today's close cannot cause an exit (close ≥ line means the line cannot trigger one), so leaving it out only delays protection by a day.
+  E: Constructed CLS case: held [299.8], the stock reclaims with a 340 close against a 318.19 line. New code gives effective_stop 272.0 (source breakeven, active_sma None), and depth_stop_price rests at 272.0. With today counted it would rest at 305.46 (ADR 4%). The comment '(today's own close above it is no exit either way)' covers the exit but not the stop.
+  FIX: Loop over `range(len(running_closes))` and update the docstring and comment. Add a test: an unarmed trade whose close today is at or above its line comes back with active_sma set and the same action. The bought-above-line tests stay as they are.
+
+[medium] agents/market_intelligence/broker/exit_logic.py
+  F: When the price-history fetch fails, the trade no longer falls back to the old behaviour. With prior_closes empty, the bought-above-line check cannot run, and the held-day check needs 10 or more held closes. On any pass where the fetch fails, a trade held 10+ days that was bought above its line loses its trailing line unless some earlier held day closed above the held-only average. _load_exit_state still promises the failure path is 'byte-identical to the pre-#548 behavior'.
+  E: Experiment, prior_closes = [] over 25-day random walks: 4,958 of 63,247 steps differ from the old code. The first difference is on day 10: old code sells on the held-only line at 87.72, new code holds with the stop at 80.0.
+  FIX: Skip the arming check when prior_closes is empty: `if trail_arm_on_close_above and active_sma is not None and prior_closes:`. That restores the documented fallback exactly. Add a test with prior_closes=[] and 10+ held closes showing new output equals old.
+
+[medium] agents/market_intelligence/live_fill_counterfactuals.py
+  F: The #482 recorder's follows-live arms and the ep_replay harness still call the exit ladder without the flag, while both describe themselves as the live ladder ('a replay cannot diverge from live'). From the deploy day, any trade bought below its line gets a day-1 trail exit in the replay that live will not take. rule_eras.exit_rules_as_of has no switch for this rule, so stored rows cannot be split by it. That breaks the repo's own rule that a value which changes meaning moves every consumer together (P15).
+  E: live_fill_counterfactuals.py:778-783 and scripts/ep_replay.py:1085 call apply_daily_exit_step with prior_closes only. rule_eras.py has TRAIL_PRIOR_CLOSES_DATE but nothing for trail arming. The exit_discipline entry lists 'the #482 recorder' as deliberately unaffected.
+  FIX: Add `TRAIL_ARM_ON_CLOSE_ABOVE_DATE` (the first 16:45 pass on new code, set on deploy day) and a `trail_arm_on_close_above` field to exit_rules_as_of. Thread it through stack_walk_inputs into the walk_arm and _walk_leg calls on the follows-live arms only. If that is deferred, at least say in both docstrings that they diverge from live for trades bought below the line.
+
+[low] docs/setups/exit_discipline.md
+  F: Three wording problems. EXPECT (b) says a bought-above trade is armed by 'its first held close above the line', but it is armed from the fill. DONE-WHEN (b) cannot fail, because undeployed code gives the same reading for a bought-above trade. The PLAN line says 'live only', but the flag also runs on every paper row (including magna53_smallcap) because they share live_tracker.
+  E: _trail_armed_before_today returns True when entry_price ≥ the line on the closes before entry, before checking any held day. live_tracker selects every `status='filled'` row whatever its account_mode.
+  FIX: Reword (b) to 'armed from the fill'. Replace DONE-WHEN (b) with a check that can fail, e.g. 'the 16:45 log line for a bought-above trade shows sma=<line> and not 0'. Change 'live only' in PLAN to 'live and paper books (shared live_tracker)'.
+
+[low] agents/market_intelligence/broker/live_tracker.py
+  F: The depth-sale Telegram and audit row say 'closed below its trailing line ($close < $effective_stop)' even when stop_source is breakeven or hard_stop. Now that unarmed trades are normal, a close under the breakeven floor would be paged as a trailing-line exit at $272.
+  E: live_tracker.py:1148 and 1158 format step.effective_stop as 'the trailing line' without checking step.stop_source. When unarmed, step.stop_source is 'breakeven' or 'hard_stop'.
+  FIX: Choose the wording from step.stop_source, for example 'closed below its breakeven stop ($X < $272)' when it is not 'trail'.
+##### REVIEW 1 ready= False
+The fix does reach the live code path: both live jobs run it, and my scratch run through the real 16:45 job leaves CLS unmarked. It is not deployable as things stand, because the fix commit da6417a1 is only on this machine. Local origin/main is 98ec5ae2, and deploy.sh runs `git pull origin main`, so a noon deploy tomorrow would ship 7e44b589 without the fix. CLS would then be marked again at 16:45 Thu and sold at Friday's open.
+
+Once pushed, it can go out Thu 12:00 ET:
+- **Commands, in this order:** `bash scripts/deploy.sh execution`, poll the box, confirm the flag is live in the running container, then `bash scripts/deploy.sh market-agent`.
+- **Why that order:** the two jobs that need the fix (15:45 partial_exit_scan and 16:45 live_position_update) are execution-owned and import live_tracker in-process on apollo-execution. They do not go through execution routes, and apollo-market (intelligence role) never runs them. Both orders are functionally safe because the delta has no schema, route or compose change. The 10-27 pair took about 8 minutes.
+- **Ride-along code:** only 7e44b589, which is behaviour-neutral. The yaml, docs, tests, probes, .github and PLAN changes are also neutral.
+- **CLS until the deploy:** safe. Its mark is cleared, the 19:01 job selects only marked rows, the boot recovery sweep skips execution-owned jobs, and the 15:45 pass cannot partial it (hold day 2).
+
+Scratch evidence (clsreview_deploy/test_cls_e2e.py, run against the real update_open_positions_live and exit ladder):
+- With the flag, CLS is not marked on 10-28, 10-29 or 10-30, and update_stop is never called, so the $272 stop stays.
+- With the flag forced off on 10-29, CLS is marked depth_sell_pending. This is the check that tells the fixed code from the broken code.
+- Mutation run: dropping the flag or setting it False on any of the three calls fails the new test (6 of 6).
+
+Disclosure: I ran `scripts/live_rules.py --drift-only` to check the docs against the code. It contacted prod read-only (it printed "prod: reachable, server checkout 52b0a46f"), which broke the no-network rule. It wrote nothing and found no drift.
+
+[high] agents/market_intelligence/broker/live_tracker.py
+  F: The fix commit has not been pushed, so tomorrow's deploy would not include it.
+  E: `git log --oneline origin/main..HEAD` lists da6417a1, and local origin/main is 98ec5ae2. deploy.sh step [1/5] is `git pull origin main`, so the server would move 52b0a46f -> 98ec5ae2 (7e44b589 included, the fix not). Thu 16:45 would then mark CLS on the old code, and 19:01 would cancel the $272 stop and queue the opening-auction sale for Friday.
+  FIX: Run `git show --stat HEAD` (check files and author) and then `git push origin main` before 12:00 ET Thu. On the server, after the pull, confirm `git rev-parse HEAD` is da6417a1 or later before the build starts.
+
+[medium] docs/setups/exit_discipline.md
+  F: No deploy scope is written down for this fix (the commit message, the 2026-10-28 SSoT entry and the PLAN line all just say 'deploy Thu 12:00 ET'), yet the fix only takes effect when apollo-execution is recreated.
+  E: scheduler.py:113-140 lists live_position_update and partial_exit_scan in EXECUTION_OWNED_JOB_IDS. The wrappers at scheduler.py:1883-1916 import live_tracker in-process. docker-compose.prod.yml gives market-agent SERVICE_ROLE: intelligence and apollo-execution SERVICE_ROLE: execution. My replay of deploy.sh's scope rules on 52b0a46f..HEAD gives NEED_ORCH=0, NEED_MARKET=1, NEED_EXEC=1. A market-agent-only deploy prints DEPLOY OK plus a warning banner and leaves the 16:45 pass on old code (the 7/23 #500 class).
+  FIX: Write the scope into the PLAN line and the SSoT VERIFY-LIVE. Run `bash scripts/deploy.sh execution` first, since it carries the money fix and matters most if the box stalls (10-22). Then poll the box, then run `bash scripts/deploy.sh market-agent` so apollo-market is not left on 52b0a46f. Execution alone passes the scope guard silently, so do not stop there. Add a check before 16:45 that the stale container cannot pass: `docker exec apollo-execution python -c "import inspect; from agents.market_intelligence.broker import live_tracker as l; print(inspect.getsource(l).count('trail_arm_on_close_above=True'))"` must print 3 (a stale container prints 0).
+
+[medium] docs/setups/exit_discipline.md
+  F: If the deploy misses the noon window, there is no written fallback, and the evening window opens after the sale has already gone in.
+  E: With the flag off (old code), my scratch run on 10-29 returns depth_sell_pending. The 19:01 run_depth_open_sales job then cancels the stop and sends the opening-auction order. The 21:15-22:15 window opens after 19:01, and the 15:45 pass cannot act on CLS (hold day 2 is under 3). The SSoT only says 'Thursday's 16:45 pass would mark it again'.
+  FIX: Put the fork on the PLAN line now, as the operator's call (it touches live trade state). Option 1: repeat tonight's one-row clear between 16:45 and 19:01 ET, with a pre-written clear_1029.sql (same guards, depth_sell_pending_on = DATE '2026-10-29'). Option 2: an operator-only `APOLLO_DEPLOY_ANYTIME=1` deploy between 13:00 and 16:45 ET.
+
+[low] agents/market_intelligence/broker/shadow_orb_tracker.py
+  F: 7e44b589 ships with this deploy. Its commit says it waits for the #482 verify, but that verify still needs Thursday's 16:50 run, which will now run on 7e44b589 code. The change itself is behaviour-neutral.
+  E: 7e44b589 changes: hour_bar_walk REGULAR_CLOSE = time(16,0) and FIRST_HOUR_START = time(9,30), equal to the old literals; db._f gives float-or-None on asyncpg Decimal/None and differs only on garbage (None instead of raising); the _sessions_old alias is inlined; dead imports removed; comments. The #482 VERIFY-LIVE (6) and DONE-WHEN need Thu 16:50 ('one later night shows a 60 row stepped'). Every other change since 52b0a46f (yaml annotation, docs, tests, probes, .github, PLAN) is neutral.
+  FIX: Do #482 reads (1)-(5) on Wednesday's rows before 12:00 ET and note on the #482 line that Thursday's 16:50 run used 7e44b589. At 11:55 ET re-run `git log 52b0a46f..origin/main -- agents/ channels/ shared/ core/ docker/ scripts/deploy.sh` so nothing pushed overnight rides along unread.
+
+[low] tests/test_trail_arming_on_close_above.py
+  F: The call-site test only finds calls written as plain `apply_daily_exit_step(...)`. It also only checks the source text and never runs the 16:45 job.
+  E: Mutation run on a copy of the source: dropping the flag or setting it False fails the test on all three calls. A new call without the flag still passes if it is written as `exit_logic.apply_daily_exit_step(...)`, through an alias, or via functools.partial (`getattr(n.func, 'id')` skips ast.Attribute). No repo test drives update_open_positions_live with the real exit ladder; the depth harness stubs it out.
+  FIX: Also match `ast.Attribute` nodes with attr == 'apply_daily_exit_step'. Add an end-to-end test like scratchpad clsreview_deploy/test_cls_e2e.py: a CLS-shaped row through the real update_open_positions_live is not marked on 10-28, 10-29 or 10-30 with update_stop never called, and is marked on 10-29 with the flag forced False.
+
+[low] agents/market_intelligence/rule_eras.py
+  F: After the deploy, the #482 recorder's 'live_replay' control arm stops matching live for trades bought under their line, and rule_eras has no switch date for the change. No money is affected.
+  E: live_fill_counterfactuals.py:778 calls apply_daily_exit_step without the flag, while the arms at :268-269 are meant to mirror the live ladder. exit_rules_as_of() has no arming field, so those rows cannot be split by era (the 08-16 pooling defect this module exists to prevent).
+  FIX: Add a dated switch for the arming rule (the deploy date) to rule_eras with a 'trail_arm_on_close_above' field. Pass the flag in the recorder's sma arms only when the date says it was live (never in pivot_swing or character_ma, which raise).
+
+[low] agents/market_intelligence/broker/live_tracker.py
+  F: Already there before this fix: the entry day's own close is never counted in the trail line or in the new arming check. The comment in _load_exit_state says it arrives through running_closes, which is wrong.
+  E: The prior-close window ends at alert_date-1 (live_tracker.py ~952). The alert-day pass returns early when today <= alert_date. The first pass then appends that day's own bar, so CLS shows running_closes [299.8] with n_closes 1 after 10-28 (q1.out), and the 10-27 close is in neither list.
+  FIX: End the prior window at alert_date, or seed running_closes with the entry-day close. Treat that as a separate change with its own sign-off, and correct the comment either way.

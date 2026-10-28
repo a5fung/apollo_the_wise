@@ -380,41 +380,59 @@ what any live position does.
 
 ## Change log (newest first)
 
-### 2026-10-28 — the trailing line governs only after the stock has CLOSED ABOVE it (OPERATOR-SIGNED "clear + fix + read" 2026-10-28, on live CLS; BUILT, NOT DEPLOYED — deploy Thu 10-29 12:00 ET)
+### 2026-10-28 — the trailing line governs only after the trade was ABOVE it (OPERATOR-SIGNED "clear + fix + read" 2026-10-28, on live CLS; BUILT, NOT DEPLOYED — deploy Thu 10-29 12:00 ET: `deploy.sh execution` FIRST, then `deploy.sh market-agent`)
 
 - **Trigger (his words):** *"I think this is a bug, cls has always been under 10ma, never above when we entered, and we just set
   breakeven stop at 272, so this is wrong"* — on the 16:45 ET page *"CLS closed below its trailing line ($299.80 < $330.52)"*.
   Read from prod (`scripts/probes/_cls_1028/q1.out`): trade 429, live, entered 2026-10-27 at $272.005, 2 shares, hard stop
-  $250.26, resting stop $272 (breakeven armed), `exit_rule='depth'`, first held close $299.80 — and marked for the 19:01 opening-
-  auction sale on its FIRST close because its 10/20-day line ($330.52) sat above the price from the day it was bought.
-- **The defect (classified a BUG FIX, not a criteria change):** since #548 (2026-08-08, his *"fix it, it's a bug"*) the line is the
-  stock's REAL 10/20-day from day one. That is right for a stock bought above its averages (the EP norm) and wrong for one bought
-  below them: a "trailing" line above the price is not a trail — it sells on the first close whatever the trade does. The rule
-  (EP_TRADING_RULES §B4, *"Trail your stop with the 10- or 20-day moving average… Exit on first daily close below the active MA"*)
-  presumes the price above the line.
-- **What changed:** `exit_logic.apply_daily_exit_step(trail_arm_on_close_above=True)` — the line governs only once the trade was
-  BOUGHT at or above the line it entered under (the line on the closes before the entry day — so a trade bought above its line is
-  exactly as before, a first close below it still sells) or some held day BEFORE today closed at or above that day's own line
-  (`_trail_armed_before_today`); until then the effective stop is the hard stop and the breakeven floor alone (and the depth rule's
-  resting stop rests on that floor). Default False = byte-identical for every
-  non-live caller (backtester, shadow trackers, the #482 recorder, the walkers). The live tracker passes True on all three calls
-  (the 16:45 EOD pass twice, the 3:45 partial pass) — a test derives the call population and pins the flag on each.
+  $250.26, resting stop $272 (breakeven armed), `exit_rule='depth'`, marked for the 19:01 opening-auction sale on its FIRST close.
+  Its bars (`bars.out`, through the app): every close from 10-09 to 10-28 under its 10/20-day line — entry day $276.54 vs $329.36,
+  10-28 $299.80 vs $326.28.
+- **The defect (a BUG FIX, not a criteria change):** since #548 the line is the stock's REAL 10/20-day from day one, which is right for
+  a stock bought above its averages (the EP norm) and wrong for one bought below them: a "trailing" line above the price sells on the
+  first close whatever the trade does. §B4 (*"Trail your stop with the 10- or 20-day moving average… Exit on first daily close below the
+  active MA"*) presumes the price above the line.
+- **What changed:** `exit_logic.apply_daily_exit_step(trail_arm_on_close_above=True, entry_day_close=…)` — the line governs only once
+  the trade is ARMED (`_trail_armed`): bought at or above the line it entered under (the line on the closes before the entry day), OR
+  the entry day closed at or above its own line, OR a held day — today included — closed at or above that day's line. A close at or
+  above the line is never an exit, so counting today only lets the line raise the stop the evening the stock reclaims it. Until armed,
+  the effective stop is the hard stop and the breakeven floor alone (the depth rule's resting stop rests on that floor; `update_stop`
+  is raise-only, so nothing is lowered). **A trade bought above its line is exactly as before** (armed from the fill; the review's
+  53,745 constructed steps: 0 differences). **No prior closes (the history fetch failed) → arming skipped**, so the documented
+  pre-#548 fallback stays byte-identical. Default False = byte-identical for every non-live caller. The live tracker passes it on all
+  three calls (the 16:45 pass twice, the 3:45 partial pass) and loads `entry_day_close` (its history window now reaches the entry day;
+  that bar is split off, so the line and ADR20 read exactly the closes they read before). It runs on BOTH books (live and paper rows,
+  including `magna53_smallcap`) — they share the tracker.
 - **Tonight's action (his OK, prod write, 2026-10-28 ~17:30 ET):** trade 429's `depth_sell_pending_on` cleared (one row,
-  `scripts/probes/_cls_1028/clear.out`) so no opening-auction sale went in at 19:01; the $272 stop stayed on. Without the deploy,
-  Thursday's 16:45 pass would mark it again.
-- **EXPECT (written before the deploy; BASELINE = today: CLS marked on its first close; every other open trade unaffected):**
-  (a) Thu 16:45 ET: CLS is NOT marked while it has not closed above its line, and its stop stays at $272 (no `depth_close_below_line`
-  row for trade 429 unless a held close above the line came first); (b) every open trade bought ABOVE its line behaves exactly as
-  before (its first held close above the line arms it, as before the change the line already governed); (c) unintended: a trade
-  that never closes above its line now rests on its hard / breakeven stop for its whole life — visible as no trail exit on it.
-- **DONE-WHEN:** CLS's next 16:45 pass reads as (a) AND one other live or paper trade's next trail decision reads as (b).
-- **WOULD-FAIL-IF:** a `depth_close_below_line` (or an `sma_stopped` full exit) on trade 429 with no held close above its line before
-  it; or any trade bought above its line that now holds through a close below it.
-- **VERIFY-LIVE:** after Thursday's 16:45 ET pass, read trade 429's row and the audit rows for it (`depth_sell_pending_on` NULL,
-  `stop_price` 272), and the pass's log line for CLS.
-- **Reversion:** pass `trail_arm_on_close_above=False` at the three live calls (or drop the kwarg) — no data to migrate.
-- Tests: `tests/test_trail_arming_on_close_above.py` (6: the CLS shape, armed-then-below still sells, unarmed across days then
-  armed, bought-above-the-line exactly as before, default byte-identical + other modes refuse, the live call population); the exit / trail / live-tracker suites (633) pass.
+  `scripts/probes/_cls_1028/clear.out`); the $272 stop stayed on.
+- **DEPLOY (the review's high finding — the jobs are execution-owned):** `live_position_update` (16:45) and `partial_exit_scan`
+  (15:45) run on apollo-execution (`scheduler.EXECUTION_OWNED_JOB_IDS`). Order: `bash scripts/deploy.sh execution`, poll the box, then
+  `bash scripts/deploy.sh market-agent` (the 10-27 simplify `7e44b589` rides along, behaviour-neutral). Before 16:45 ET, the check a stale
+  container cannot pass: `docker exec apollo-execution python -c "import inspect; from agents.market_intelligence.broker import
+  live_tracker as l; print(inspect.getsource(l).count('trail_arm_on_close_above=True'))"` must print 3. **If the deploy misses the noon
+  window**, the fallback is HIS call (live trade state): repeat the one-row clear between 16:45 and 19:01 ET, or an operator-only
+  `APOLLO_DEPLOY_ANYTIME=1` deploy before 16:45.
+- **EXPECT (written before the deploy; BASELINE = today: CLS marked on its first close; every bought-above trade unaffected):**
+  (a) Thu 16:45 ET: CLS is NOT marked while unarmed, and its stop stays at $272 (no `depth_close_below_line` row for trade 429); if it
+  closes at or above its line it is armed that evening and its stop may rise (depth: one ADR20 under the line); (b) every open trade bought
+  ABOVE its line: armed from the fill, its 16:45 log line shows the same `sma` line value and the same decision as before; (c) unintended:
+  a trade that never closes above its line rests on its hard / breakeven stop for its whole life.
+- **DONE-WHEN:** CLS's next 16:45 pass reads as (a) AND one bought-above trade's next 16:45 log line shows a non-zero line and the same
+  decision the old code would take.
+- **WOULD-FAIL-IF:** a `depth_close_below_line` (or a same-day trail full exit) on trade 429 while unarmed; any bought-above trade holding
+  through a close below its line; the running container printing 0 for the check above.
+- **VERIFY-LIVE:** after Thursday's 16:45 ET pass, trade 429's row (`depth_sell_pending_on` NULL, `stop_price` ≥ 272) and the pass's log
+  line for CLS.
+- **Known divergence (recorded, not fixed here):** the #482 recorder's follows-live arms (`live_fill_counterfactuals.py`, freeze-hashed)
+  and `scripts/ep_replay.py` call the ladder without the flag, so from the deploy they differ from live on trades bought below their
+  line; `rule_eras` has no switch date for it yet (#687 line).
+- **For HIS call, separate (it moves live stop values):** the live 10/20-day line itself has excluded the entry day's own close since
+  #548 (the window ends the day before entry; the comment that it "arrives through running_closes" is wrong) — CLS's line read $330.52
+  where the true 10/20-day is $326.28. Including it changes the line on every open trade.
+- **Reversion:** pass `trail_arm_on_close_above=False` at the three live calls — no data to migrate.
+- Tests: `tests/test_trail_arming_on_close_above.py` (9: the CLS shape, armed-then-below still sells, unarmed across days, today's
+  reclaim arms today, the entry-day close arms, bought-above exactly as before, no-history fallback byte-identical, default off + other
+  modes refuse, the live call population incl. attribute calls); the exit / trail / live-tracker suites pass.
 
 ### 2026-10-14 — #687: the shares a PART-FILLED dead full-exit sale sold are BOOKED as one exits leg + P&L; `remaining_shares` is NEVER written (BOOKKEEPING ONLY — rule unchanged; no exit rule, stop level, target, size or safeguard threshold changed; BUILT, NOT DEPLOYED)
 

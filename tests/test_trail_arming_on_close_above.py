@@ -9,7 +9,7 @@ import pytest
 
 from agents.market_intelligence.broker.exit_logic import (
     _sma_10_20_line,
-    _trail_armed_before_today,
+    _trail_armed,
     apply_daily_exit_step,
 )
 
@@ -48,7 +48,7 @@ def test_cls_shape_day_one_below_the_line_is_not_a_trail_exit_when_arming_is_on(
 def test_the_line_governs_once_a_held_day_closed_above_it():
     rising = [100.0 + i for i in range(20)]                                    # a stock above its averages
     held = [121.0, 125.0]                                                      # day 1 closes above its line
-    assert _trail_armed_before_today(rising, held + [110.0], entry_price=95.0)   # bought under it, armed by day 1's close
+    assert _trail_armed(rising, held + [110.0], entry_price=95.0)   # bought under it, armed by day 1's close
     st = _state(held, entry=95.0, hard=90.0, be=False, prior=rising)
     step = _step(st, 112.0, 111.0, date(2026, 10, 30), trail_arm_on_close_above=True)
     assert step.action == "sma_stopped"                                        # armed: a close below the line still sells
@@ -56,11 +56,11 @@ def test_the_line_governs_once_a_held_day_closed_above_it():
 
 def test_never_above_stays_unarmed_across_several_days_and_today_above_arms_without_an_exit():
     st = _state([290.0, 295.0], prior=PRIOR)                                   # two held days, both under their lines
-    assert not _trail_armed_before_today(PRIOR, [290.0, 295.0, 298.0])
+    assert not _trail_armed(PRIOR, [290.0, 295.0, 298.0])
     step = _step(st, 298.0, 291.0, date(2026, 10, 30), trail_arm_on_close_above=True)
     assert step.action != "sma_stopped"
     st2 = _state([290.0, 295.0, 345.0], prior=PRIOR)                           # day 3 closes ABOVE its line ...
-    assert _trail_armed_before_today(PRIOR, [290.0, 295.0, 345.0, 300.0])      # ... so day 4 is armed
+    assert _trail_armed(PRIOR, [290.0, 295.0, 345.0, 300.0])                  # ... so day 4 is armed
     step2 = _step(st2, 300.0, 296.0, date(2026, 11, 2), trail_arm_on_close_above=True)
     assert step2.action == "sma_stopped"
 
@@ -69,11 +69,40 @@ def test_a_trade_bought_above_its_line_behaves_exactly_as_before():
     rising = [100.0 + i for i in range(20)]
     entry_line = _sma_10_20_line(rising)
     assert 120.0 >= entry_line                                                 # bought above the line it entered under
-    assert _trail_armed_before_today(rising, [109.0], entry_price=120.0)       # armed from the fill
+    assert _trail_armed(rising, [109.0], entry_price=120.0)       # armed from the fill
     st = _state([], entry=120.0, hard=105.0, be=False, prior=rising)
     old = _step(st, 109.0, 108.0, date(2026, 10, 28))                          # first close BELOW the line
     new = _step(st, 109.0, 108.0, date(2026, 10, 28), trail_arm_on_close_above=True)
     assert old.action == "sma_stopped" and new == old                          # same decision, same numbers
+
+
+def test_the_entry_days_own_close_above_its_line_arms_the_trail():
+    """Review 10-28 (high): the entry day's close is in neither list the line reads, so a stock bought
+    under its line that CLOSES above it on the entry day was not armed; `entry_day_close` arms it."""
+    falling = [120.0 - i for i in range(20)]                                   # entry line ~110.5
+    assert not _trail_armed(falling, [108.0], entry_price=104.0)               # without the entry-day close: unarmed
+    assert _trail_armed(falling, [108.0], entry_price=104.0, entry_day_close=116.0)
+    st = _state([], entry=104.0, hard=95.0, be=False, prior=falling)
+    step = _step(st, 108.0, 106.0, date(2026, 10, 28), trail_arm_on_close_above=True, entry_day_close=116.0)
+    old = _step(st, 108.0, 106.0, date(2026, 10, 28))
+    assert step.action == old.action == "sma_stopped"                         # armed by day 0: sells as before
+
+
+def test_todays_close_above_the_line_arms_today_so_the_line_raises_the_stop():
+    st = _state([299.8], prior=PRIOR)                                          # CLS: day 1 under the line
+    step = _step(st, 340.0, 330.0, date(2026, 10, 29), trail_arm_on_close_above=True)
+    old = _step(st, 340.0, 330.0, date(2026, 10, 29))
+    assert step.action != "sma_stopped" and step.active_sma is not None        # the reclaim arms it today
+    assert step.effective_stop == pytest.approx(old.effective_stop)            # the stop rises to the line tonight
+
+
+def test_no_prior_closes_keeps_the_documented_fallback_byte_identical():
+    held = [100.0 + (i % 3) for i in range(12)]                                # 12 held closes, no history fetched
+    st = _state(held, entry=99.0, hard=90.0, be=False, prior=[])
+    for close in (95.0, 103.0):
+        a = _step(st, close, close - 1, date(2026, 11, 12))
+        b = _step(st, close, close - 1, date(2026, 11, 12), trail_arm_on_close_above=True)
+        assert a == b
 
 
 def test_default_off_is_byte_identical_and_other_modes_refuse_the_flag():
@@ -91,8 +120,12 @@ def test_the_live_tracker_passes_the_flag_on_all_three_calls():
     # source-pin-ok: the population of live call sites — every apply_daily_exit_step call in the live tracker must carry the flag, which no single behaviour run can show for all three paths
     from agents.market_intelligence.broker import live_tracker
     tree = ast.parse(inspect.getsource(live_tracker))
-    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and getattr(n.func, "id", None) == "apply_daily_exit_step"]
+    def _named(n):
+        f = n.func
+        return getattr(f, "id", None) == "apply_daily_exit_step" or getattr(f, "attr", None) == "apply_daily_exit_step"
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and _named(n)]
     assert len(calls) == 3
     for c in calls:
         kw = {k.arg: k.value for k in c.keywords}
         assert "trail_arm_on_close_above" in kw and getattr(kw["trail_arm_on_close_above"], "value", None) is True
+        assert "entry_day_close" in kw
