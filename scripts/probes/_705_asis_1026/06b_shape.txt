@@ -1,0 +1,135 @@
+# #711 as-is STEP 7b (a stronger sorting method, proven on made-up trades first) — SHAPE (§4.1 — the only stage that opens real data) (2026-10-27 22:15)
+Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders. No outcome of any trade is read, computed or printed (both name lists are scanned against every step-7 module and this one); no rule, setup name or pattern label enters.
+- identifier scan: clean (the §3.1 names and the outcome names are absent from: asis_common.py, 01_points.py, 05_tiers.py, 06_groups.py, 06b_power.py)
+- import belt: no rule module in sys.modules
+- modules: asis_common.py 4d36d6a42532dc78 01_points.py aa30dc3c0402178d 05_tiers.py 6c51b4879bced539 06_groups.py b9ec5622832aa063 06b_power.py bed29c20f707f868 forbidden_identifiers.txt ba8f4bb5f23f2325 forbidden_outcomes.txt bc942e6cdf95bc5e
+- shape gates: the 7b registration is frozen (doc_body_7b below its marker); no step7b_shape ledger row; no output exists
+
+## Inputs (06_groups' own loaders)
+- tiers.tsv: 1588 positions (c8fdfcffe40d8894); 05's run printout ends RUN COMPLETE: True
+- ranges.tsv: 3890 rows (0d12cf9ab46a4fea) — the reachable band of every side (its resolution, range, band ends)
+- check_r1_r5.tsv: never opened here (`confirmed` comes from tiers.tsv)
+- calendar: 2,264 sessions 2016-01-04..2024-12-31 (the reader's cache, cut at 2024-12-31)
+- snapshots: 2,907 frames, 2,082 full
+- windows v2 (R44, windows_v2/): 1,958 positions, 1,945 buy / 1,945 sale windows; the original (the claims' population, read beside): 1,874 / 1,861 / 1,861; frames v2 2,907 (2,082 full)
+- lexicon 22,744 symbols; alias map 574 (signature 504, dedupe 70); rename table added 2 (R8)
+- export A: 12,005,007 rows read, 1,235,568 kept for 1,247 names, 0 dated after the cut dropped at read; calendar 2016-01-04..2022-06-30 = the reader's (3s)
+- export B: 13,830,569 rows read, 556,450 kept for 1,247 names, 5,210,943 dated after the cut dropped at read; calendar 2021-09-27..2024-12-31 = the reader's (4s)
+- minute trees: A 1,219 date files / 149,587 logged pairs, B 691 date files / 80,858 logged pairs, EP 48 date files / 196 logged pairs, EP2 36 date files / 39 logged pairs, REV 508 date files / 1,322 logged pairs, INTRA 1,005 date files / 19,470 logged pairs, ASIS 484 date files / 1,721 logged pairs; date files after the seal left unopened: B 449
+- raw closes (R12): 12,005,007 rows read, 701,185 kept for 573 of 683 bar symbols, 0 dated after the cut dropped at read; split list 3,864 splits of 3,063 names to the seal, 3,090 after it dropped at read (2s)
+- panel: 2,977 panel frames, 41,099 rows, 39,137 with a % read, 34,355 agreeing with the bars
+- loaded in 9s
+- minutes preloaded: 4,682 (session, symbol) pairs -> empty 378, missing 94, ok 4,210; files read A 317, ASIS 483, B 11, EP 15, EP2 32, INTRA 424, REV 447 (7s)
+- feature rows built for 1,588 positions in 1s; range re-derivation vs ranges.tsv: 2819 sides equal, 0 differ; sweep N=20 vs the frozen column: 8457 equal, 0 differ; band ends (R53): low 0 / 0, high 0 / 0 (equal / differ)
+- primary rows fitted 658 of 677 (dropped by the quarter rule: 19); columns 75
+
+## The four summaries (§4.1)
+- n = 658 rows, 75 columns in run_columns('primary') order; blank cells 8119 of 49350 (16.5%); rows with no exit look-back at all: 126
+- pairs set to 0: 360 sharing fewer than 30 rows, 0 with no spread on a side; columns with under 30 non-blank rows: exit_dist_ma_30 (19), exit_dist_hi_40 (9), exit_dist_lo_40 (9), exit_dist_ma_50 (4), exit_sessions_since_hi_60 (3)
+- eigenvalue clipping at 0.001: smallest eigenvalue -0.18096 -> 0.00096; largest change on pairs sharing >= 300 rows 0.0222 (C5a line 0.05); on all pairs 0.0471
+- pairs sharing >= 300 rows: 1891 of 2775; |R| above 0.5 on 304 pairs, above 0.8 on 64
+- the real hold x exit-look-back coupling (R79): Spearman(hold rank, non-blank exit look-backs) = 0.9112
+- the bend's factor: the first eigenvector carries 22.1% of the variance of R
+### the coherent shift per block (§4.4): Delta_B = sep / sqrt(1' R_BB^-1 1); every other column moves by what R implies; the hold by 0
+  block  Delta-equiv  sep   Delta_B  Mahalanobis after zeroing the hold  largest |move|  the five largest moves                                                                                                     
+  B1     1.0          1.73  1.310    1.733                               1.313           entry_vol_day_vs_40 +1.31, entry_range_pct +1.31, entry_vol_day_vs_10 +1.31, entry_gap_pct +1.31, entry_vol_day_vs_60 +1.29
+  B1     1.5          2.60  1.966    2.599                               1.970           entry_vol_day_vs_40 +1.97, entry_range_pct +1.97, entry_vol_day_vs_10 +1.97, entry_gap_pct +1.97, entry_vol_day_vs_60 +1.93
+  B1     2.0          3.46  2.621    3.466                               2.626           entry_vol_day_vs_40 +2.63, entry_range_pct +2.62, entry_vol_day_vs_10 +2.62, entry_gap_pct +2.62, entry_vol_day_vs_60 +2.58
+  B1     3.0          5.20  3.931    5.199                               3.939           entry_vol_day_vs_40 +3.94, entry_range_pct +3.93, entry_vol_day_vs_10 +3.93, entry_gap_pct +3.93, entry_vol_day_vs_60 +3.86
+  B2     1.0          1.73  1.254    1.734                               1.385           entry_dist_ma_30 +1.38, entry_dist_hi_40 +1.29, entry_dist_hi_10 +1.25, entry_ret_20 +1.25, entry_dist_ma_13 +1.25         
+  B2     1.5          2.60  1.882    2.601                               2.077           entry_dist_ma_30 +2.08, entry_dist_hi_40 +1.93, entry_dist_hi_10 +1.88, entry_ret_20 +1.88, entry_dist_ma_13 +1.88         
+  B2     2.0          3.46  2.509    3.468                               2.770           entry_dist_ma_30 +2.77, entry_dist_hi_40 +2.57, entry_dist_hi_10 +2.51, entry_ret_20 +2.51, entry_dist_ma_13 +2.51         
+  B2     3.0          5.20  3.763    5.203                               4.154           entry_dist_ma_30 +4.15, entry_dist_hi_40 +3.86, entry_dist_hi_10 +3.76, entry_ret_20 +3.76, entry_dist_ma_13 +3.76         
+  B3     1.0          1.73  0.934    1.743                               0.967           exit_vol_sofar_vs_60 +0.97, exit_pos_in_day +0.93, exit_range_pct +0.93, exit_minute +0.93, exit_vol_sofar_vs_40 +0.93     
+  B3     1.5          2.60  1.402    2.615                               1.450           exit_vol_sofar_vs_60 +1.45, exit_pos_in_day +1.40, exit_range_pct +1.40, exit_minute +1.40, exit_vol_sofar_vs_40 +1.40     
+  B3     2.0          3.46  1.869    3.486                               1.934           exit_vol_sofar_vs_60 +1.93, exit_pos_in_day +1.87, exit_range_pct +1.87, exit_minute +1.87, exit_vol_sofar_vs_40 +1.86     
+  B3     3.0          5.20  2.803    5.229                               2.900           exit_vol_sofar_vs_60 +2.90, exit_pos_in_day +2.80, exit_range_pct +2.80, exit_minute +2.80, exit_vol_sofar_vs_40 +2.79     
+### repeated values (counts only): runs of equal values per column among its non-blank cells
+  column                      non-blank  distinct values  largest run  runs of 2+
+  entry_pos_in_day            658        633              3            24        
+  entry_minute                658        241              16           130       
+  entry_gap_pct               658        656              2            2         
+  entry_range_pct             658        656              2            2         
+  entry_range_vs_avgrange_5   658        648              2            10        
+  entry_range_vs_avgrange_10  658        646              2            12        
+  entry_range_vs_avgrange_40  658        648              3            9         
+  entry_range_vs_avgrange_60  654        643              2            11        
+  entry_vol_day_vs_5          658        649              2            9         
+  entry_vol_day_vs_10         658        654              2            4         
+  entry_vol_day_vs_40         658        653              2            5         
+  entry_vol_day_vs_60         654        648              2            6         
+  entry_vol_sofar_vs_5        644        624              2            20        
+  entry_vol_sofar_vs_10       644        622              3            21        
+  entry_vol_sofar_vs_40       644        618              3            25        
+  entry_vol_sofar_vs_60       640        620              2            20        
+  entry_dist_prev_high        658        656              3            1         
+  entry_dist_prev_low         658        657              2            1         
+  entry_dist_prev_close       658        657              2            1         
+  entry_dist_hi_3             658        654              4            2         
+  entry_dist_lo_3             658        658              1            0         
+  entry_dist_hi_5             658        654              3            3         
+  entry_dist_lo_5             658        657              2            1         
+  entry_dist_ma_5             658        655              2            3         
+  entry_sessions_since_hi_5   658        5                185          5         
+  entry_dist_ma_8             658        658              1            0         
+  entry_dist_hi_10            658        657              2            1         
+  entry_dist_lo_10            658        657              2            1         
+  entry_dist_ma_13            658        657              2            1         
+  entry_dist_ma_30            658        658              1            0         
+  entry_dist_hi_40            658        657              2            1         
+  entry_dist_lo_40            658        657              2            1         
+  entry_dist_ma_50            655        655              1            0         
+  entry_sessions_since_hi_60  654        60               65           60        
+  entry_ret_3                 658        655              3            2         
+  entry_ret_5                 658        655              3            2         
+  entry_ret_10                658        655              4            1         
+  entry_ret_20                658        657              2            1         
+  entry_ret_40                658        658              1            0         
+  entry_ret_60                653        653              1            0         
+  exit_pos_in_day             658        621              2            37        
+  exit_minute                 658        260              14           139       
+  exit_gap_pct                658        647              11           2         
+  exit_range_pct              658        654              2            4         
+  exit_range_vs_avgrange_5    658        644              2            14        
+  exit_range_vs_avgrange_10   658        648              2            10        
+  exit_range_vs_avgrange_40   658        650              2            8         
+  exit_range_vs_avgrange_60   654        647              2            7         
+  exit_vol_day_vs_5           658        638              3            19        
+  exit_vol_day_vs_10          658        643              2            15        
+  exit_vol_day_vs_40          658        653              2            5         
+  exit_vol_day_vs_60          654        640              3            13        
+  exit_vol_sofar_vs_5         649        631              3            17        
+  exit_vol_sofar_vs_10        649        630              2            19        
+  exit_vol_sofar_vs_40        649        630              2            19        
+  exit_vol_sofar_vs_60        645        618              3            26        
+  exit_dist_prev_high         532        530              2            2         
+  exit_dist_prev_low          532        532              1            0         
+  exit_dist_prev_close        532        529              2            3         
+  exit_dist_hi_3              345        345              1            0         
+  exit_dist_lo_3              345        345              1            0         
+  exit_dist_hi_5              251        251              1            0         
+  exit_dist_lo_5              251        251              1            0         
+  exit_dist_ma_5              251        251              1            0         
+  exit_sessions_since_hi_5    251        5                60           5         
+  exit_dist_ma_8              161        160              2            1         
+  exit_dist_hi_10             131        131              1            0         
+  exit_dist_lo_10             131        131              1            0         
+  exit_dist_ma_13             96         96               1            0         
+  exit_dist_ma_30             19         19               1            0         
+  exit_dist_hi_40             9          9                1            0         
+  exit_dist_lo_40             9          9                1            0         
+  exit_dist_ma_50             4          4                1            0         
+  exit_sessions_since_hi_60   3          3                1            0         
+  hold_sessions_max           658        47               87           30        
+
+## Claims
+  [OK] fitted primary rows (§3: 658): expected 658, got 658
+  [OK] columns = run_columns('primary') (75): expected 75, got 75
+  [OK] blank cells (structural + data) = 8,119 of 49,350: expected 8119, got 8119
+  [OK] the shape file holds exactly §4.1's keys: expected ['R', 'R_unclipped', 'cols', 'hold_rank', 'masks', 'n', 'run_offsets', 'run_sizes', 'shared'], got ['R', 'R_unclipped', 'cols', 'hold_rank', 'masks', 'n', 'run_offsets', 'run_sizes', 'shared']
+  [OK] C5a — the clipping changes no pair sharing >= 300 rows by more than 0.05: expected True, got True
+  [OK] R is positive definite after the clipping: expected True, got True
+
+RESULT: 6 claims, 6 OK, 0 MISMATCH
+- written: /Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/step7b_shape.npz (b5013f3eec4db769); no row's values leave this stage
+SHAPE COMPLETE

@@ -117,6 +117,24 @@ READINGS where the registration is silent or ambiguous (the stricter reading eac
       with N < hold_sessions_min "ends before the entry day"; it STARTS after the entry day (the prior N sessions of the exit, E-N..E-1, all
       lie after the buy session B when N < E-B). The rule is right — the window never reaches the entry — the words are wrong (review F8).
 
+STEP 7b (2026-10-27, docs/analysis/cb_asis_step7b_power_prereg_2026-10-27.md §7 / §11; the methods live in 06b_power.py and are imported
+  LAZILY, only for a non-default switch — the default path is the registered one above, unchanged): `--method {registered, M1, M2w, M2u,
+  M3w, M3u, M4}` and `--columns {registered, pattern_free}`. EVERY stage that opens the real matrix (--dry-run included) refuses a non-default
+  method or column set until 06b_power.txt ends `POWER COMPLETE: carried <method> on <columns>` naming them and its pin sits below the 7b
+  doc's marker; --run (default or not) is refused until POWER COMPLETE, and when a `step7_groups` ledger row exists. Under a carried method:
+  group means replace the centroids wherever the comparison code reads them; a row is assigned by the method's rule (nearest group / leaf
+  mean; the posterior argmax for M4); the noise floor refits the carried method (06b R91); mode-A runs reuse the primary's maps and its
+  reduction in the method's space (whitened PCA, or M1's parallel-analysis components, unwhitened); mode-B runs fit their own. Under
+  `pattern_free`: the primary and every mode-A run on the 56 gap-free columns, entry-only unchanged (40), exit-only the 16 exit-day-own
+  columns, with `our_length` the entry columns plus the exit-day-own ones (69). The default dry run also CLAIMS that its k-sweep block and
+  32 claim lines reproduce the pinned reference printout (8352c78c; 06b R89). A non-default dry run writes `06_groups_dryrun_<method>_<columns>.txt`
+  (06b R90). Fix card (2026-10-27, two read-only reviews; the readings are 06b's R95-R100): a carried method carries no `choice`, so the
+  dry run's minimum-size claim and step 7 §7's first expectation read the method's own fit (R96); under `pattern_free` the hold and the
+  exit look-backs are DESCRIBED per group from the run's registered columns, never grouped on (R97, `assemble(drop=False)`); both 7b gates
+  also require 06b_power.txt made by the modules on disk, pinned below the 7b marker and ledgered (R99). Finish card (2026-10-28, 7b
+  Re-registration 1; 06b R101-R104): under a carried M3w / M3u the noise floor's bootstrap refits test each resample's DISTINCT rows and
+  then assign every row by nearest leaf mean (R102; the counts are printed).
+
 BUILD NOTE (2026-10-27, disclosed — made AFTER the first real-data dry run read the primary's k sweep; no method or line changed; the
   synthetic checks below were run after that null was seen, so they are a reading of it, not a pre-registered test): the first dry run read
   NO STABLE GROUPING on the primary (prediction strength 0.52 at k = 2, falling with k; 658 fitted rows, 18 whitened components at 90.7%).
@@ -171,11 +189,28 @@ GuardStop, fnum = C.GuardStop, C.fnum
 # ---- paths -------------------------------------------------------------------------------------------------------------------------------
 DOC7 = T.DOC7
 P06 = {"dry": os.path.join(HERE, "06_groups_dryrun.txt"), "run": os.path.join(HERE, "06_groups.txt"),
-       "refused": os.path.join(HERE, "06_groups.refused.txt"), "pins": os.path.join(HERE, "06_groups_pins.txt")}
+       "refused": os.path.join(HERE, "06_groups.refused.txt"), "pins": os.path.join(HERE, "06_groups_pins.txt"),
+       "power": os.path.join(HERE, "06b_power.txt")}                                   # 7b: the power run's printout (its POWER COMPLETE line gates)
 OUT_G = {k: os.path.join(C.OUT_DIR, f"step7_{k}.tsv") for k in ("features", "groups", "descriptions", "stability")}
-MODULE_FILES_G = ("asis_common.py", "01_points.py", "05_tiers.py", "06_groups.py", "forbidden_identifiers.txt", "forbidden_outcomes.txt")
-SCAN_FILES_G = ("asis_common.py", "01_points.py", "05_tiers.py", "06_groups.py")
+MODULE_FILES_G = ("asis_common.py", "01_points.py", "05_tiers.py", "06_groups.py", "06b_power.py", "forbidden_identifiers.txt", "forbidden_outcomes.txt")
+SCAN_FILES_G = ("asis_common.py", "01_points.py", "05_tiers.py", "06_groups.py", "06b_power.py")
 STAGE_G = "step7_groups_"
+METHODS_7B = ("registered", "M1", "M2w", "M2u", "M3w", "M3u", "M4")                    # 7b §11: the --method switch
+COLUMNS_7B = ("registered", "pattern_free")                                           # 7b §11: the --columns switch
+
+
+def power_module():
+    """7b: 06b_power.py, loaded lazily (never at import; the default path never touches it)."""
+    sys.modules.setdefault("asis_groups06", sys.modules[__name__])
+    return _load("asis_power06b", "06b_power.py")
+
+
+def dry_path_for(method: str = "registered", columns: str = "registered") -> str:
+    """06b R90: the default dry run's printout is the pinned one; a non-default configuration writes its own, beside it (so a test that
+    redirects P06 never writes into this folder)."""
+    if method == "registered" and columns == "registered":
+        return P06["dry"]
+    return os.path.join(os.path.dirname(P06["dry"]), f"06_groups_dryrun_{method}_{columns}.txt")
 
 # ---- the registration, as code (imported from 05_tiers; never widened) ------------------------------------------------------------------
 FEATURES = T.STEP7_FEATURES
@@ -234,12 +269,18 @@ def family_of(col: str) -> str:
     raise ValueError(f"no family for {col}")
 
 
-def run_columns(run: str) -> list:
-    """The matrix columns of a run: `entry_<c>` / `exit_<c>` / the trade-level column, from the registered sets."""
+def run_columns(run: str, columns: str = "registered") -> list:
+    """The matrix columns of a run: `entry_<c>` / `exit_<c>` / the trade-level column, from the registered sets. `columns = pattern_free`
+    (7b §7.3, only under Fallback 1): the gap-free columns — every entry column and the exit day's own; the exit look-backs and the hold out."""
     fs = FEATURES["with_our_length" if run == "with_our_length" else "primary"]
     ent = [f"entry_{c}" for c in fs["entry"]]
     exi = [f"exit_{c}" for c in fs["exit"]]
     tr = list(fs["trade"])
+    if columns == "pattern_free":
+        exi = [c for c in exi if c[5:] in DAY_OWN]
+        tr = []
+    elif columns != "registered":
+        raise ValueError(f"unknown column set {columns!r}")
     if run == "entry_only":
         return ent
     if run == "exit_only":
@@ -535,9 +576,10 @@ def _fv(x):
     return v if np.isfinite(v) else np.nan
 
 
-def assemble(feats: dict, eids: list, cols: list, mode: str = "middle") -> dict:
+def assemble(feats: dict, eids: list, cols: list, mode: str = "middle", drop: bool = True) -> dict:
     """The raw matrix of a run: X (n x p, NaN = blank), `struct` mask (structural blanks), the rows dropped by the quarter rule (listed with
-    their blank share) and the structural pattern per row."""
+    their blank share) and the structural pattern per row. `drop=False` (7b, the description matrix under `pattern_free` — 06b R97): the
+    quarter rule is NOT applied, so the rows are exactly `eids` in order (a row without features on the side is still dropped)."""
     X, SM, keep, dropped, patterns = [], [], [], [], []
     for eid in eids:
         rec = feats[eid].get(mode)
@@ -557,7 +599,7 @@ def assemble(feats: dict, eids: list, cols: list, mode: str = "middle") -> dict:
         row, sm = np.array(row), np.array(sm)
         non_struct = ~sm
         share = float(np.isnan(row[non_struct]).mean()) if non_struct.any() else 0.0
-        if share > DATA_BLANK_DROP:
+        if drop and share > DATA_BLANK_DROP:
             dropped.append((eid, share, "over a quarter of the non-structural features blank"))
             continue
         X.append(row)
@@ -935,22 +977,31 @@ def run_rows(run: str, tiers: list, feats: dict) -> list:
     return sorted(int(tr["eid"]) for tr in rows)
 
 
-def fit_run(run: str, feats: dict, tiers: list, primary: dict | None, say, dry: bool = False) -> dict:
-    """One run end to end: assemble, standardize (the primary's maps / PCA in mode A; own in mode B), choose k, fit, profiles."""
+def fit_run(run: str, feats: dict, tiers: list, primary: dict | None, say, dry: bool = False, method: str = "registered", columns: str = "registered") -> dict:
+    """One run end to end: assemble, standardize (the primary's maps / PCA in mode A; own in mode B), choose k, fit, profiles. Under a 7b
+    `method` (never the default): the method's own reduction and k rule, group means as the centroids, its assignment rule for CONFIRMED."""
     mode = "low" if run == "edges_low" else "high" if run == "edges_high" else "middle"
-    cols = run_columns(run)
+    cols = run_columns(run, columns)
     eids = run_rows(run, tiers, feats)
     A = assemble(feats, eids, cols, mode)
+    desc = None
+    if columns == "pattern_free":                    # 7b §6 Fallback 1: the hold and the exit look-backs are DESCRIBED per group, never grouped on (06b R97)
+        dcols = run_columns(run)
+        desc = {"cols": dcols, "X": assemble(feats, A["eids"], dcols, mode, drop=False)["X"]}      # the run's registered columns on the SAME fitted rows
+        if desc["X"].shape[0] != len(A["eids"]):
+            raise GuardStop(f"{run}: the description matrix holds {desc['X'].shape[0]} rows for {len(A['eids'])} fitted rows (R97)")
     own = primary is None or run in MODE_B
     if own:
         maps = fit_maps(A["X"], cols)
     else:
         maps = primary["maps"]
     Z, extra, blanks = standardize(A["X"], cols, maps)
+    if method != "registered":
+        return _fit_run_7b(run, A, Z, cols, eids, maps, extra, blanks, own, primary, method, desc)
     pca = PCA(Z) if own else primary["pca"]
     Zp = pca.transform(Z)
     R = {"run": run, "cols": cols, "eids": A["eids"], "X": A["X"], "Z": Z, "Zp": Zp, "maps": maps, "pca": pca, "extra": extra, "blanks": blanks,
-         "dropped": A["dropped"], "patterns": A["patterns"], "struct": A["struct"], "mode_b": run in MODE_B, "own_space": own}
+         "dropped": A["dropped"], "patterns": A["patterns"], "struct": A["struct"], "mode_b": run in MODE_B, "own_space": own, "desc": desc}
     if run == "confirmed":                                                                      # R57: assignment, no k choice
         R["labels"] = nearest(Zp, primary["centroids"])
         R["centroids"] = primary["centroids"]
@@ -963,8 +1014,48 @@ def fit_run(run: str, feats: dict, tiers: list, primary: dict | None, say, dry: 
         if ch["k"] is not None:
             fit = ch["sweep"][ch["k"]]["fit"]
             R["labels"], R["centroids"] = fit["labels"], fit["centroids"]
+    _profiles(R, Z, A, cols, own, primary)
+    return R
+
+
+def _fit_run_7b(run: str, A: dict, Z: np.ndarray, cols: list, eids: list, maps: dict, extra: dict, blanks: dict, own: bool, primary: dict | None, method: str,
+                desc: dict | None = None) -> dict:
+    """7b §7.2: the run under a carried method — the shared space of the primary (mode A) or the run's own (mode B), the method's k rule,
+    group means as `centroids`, the method's assignment for CONFIRMED. The fit and the spaces travel on the run (`fit7b`, `spaces7b`);
+    `desc` = the description matrix under `pattern_free` (06b R97)."""
+    PW = power_module()
+    kind = PW.SPACE_OF[method]
+    if own:
+        spaces = PW.Spaces(Z, f"step7b_real_M1_{run}_perm")                                    # 06b R81: the components are M1's
+    else:
+        spaces = primary["spaces7b"]
+    red = spaces.red[kind]
+    Zp = red.transform(Z)
+    R = {"run": run, "cols": cols, "eids": A["eids"], "X": A["X"], "Z": Z, "Zp": Zp, "maps": maps, "pca": red, "extra": extra, "blanks": blanks,
+         "dropped": A["dropped"], "patterns": A["patterns"], "struct": A["struct"], "mode_b": run in MODE_B, "own_space": own, "spaces7b": spaces,
+         "method7b": method, "desc": desc}
+    if run == "confirmed":                                                                      # R57 under the method's assignment rule
+        R["labels"] = PW.assign(primary["fit7b"], Zp)
+        R["centroids"] = primary["centroids"]
+        R["k"] = len(primary["centroids"])
+        R["choice"] = None
+        R["fit7b"] = primary["fit7b"]
+    else:
+        n_min = min_group_size(len(eids))                                                       # R70
+        fit = PW.run_method(method, spaces, n_min, f"step7b_real_{method}_{run}", True, top_space=red, Zp_given=Zp, Z=Z)
+        R["fit7b"], R["choice"] = fit, None
+        R["k"] = fit["k"] if fit["k"] >= 2 else None
+        if R["k"] is not None:
+            R["labels"], R["centroids"] = fit["labels"], fit["means"]
+    _profiles(R, Z, A, cols, own, primary)
+    return R
+
+
+def _profiles(R: dict, Z: np.ndarray, A: dict, cols: list, own: bool, primary: dict | None) -> None:
+    """The group profiles of a fitted run (R61: survival on the common columns against the primary's frozen means). `run_mean` is set
+    whatever the fit read (a group-less primary still carries the mean the other runs' common-column profiles are measured against)."""
+    R["run_mean"] = Z.mean(0)
     if R.get("labels") is not None:
-        R["run_mean"] = Z.mean(0)
         R["profiles"] = {g: profile(Z, R["labels"], g, R["run_mean"]) for g in range(R["k"])}
         if primary is not None:                      # R61: survival on the common columns, the primary's maps, against the primary's frozen means
             common = [c for c in cols if c in primary["cols"]]
@@ -976,7 +1067,6 @@ def fit_run(run: str, feats: dict, tiers: list, primary: dict | None, say, dry: 
             pref = np.array([primary["run_mean"][primary["cols"].index(c)] for c in common])
             R["profiles_common"] = {g: profile(Zc, R["labels"], g, pref) for g in range(R["k"])}
             R["common_cols"] = common
-    return R
 
 
 def primary_profile_on(primary: dict, i: int, common: list) -> np.ndarray:
@@ -1065,12 +1155,15 @@ def describe_group(R: dict, g: int, tiers_by_eid: dict, ranges: dict, structural
         rb, rs = ranges.get((str(e), "buy"), {}), ranges.get((str(e), "sale"), {})
         examples.append(f"{e} {tr['sym']} buy {rb.get('lo', '')}..{rb.get('hi', '')} sale {rs.get('lo', '')}..{rs.get('hi', '')}")
     medians = {}
-    for k, c in enumerate(cols):
-        vals = X[mem, k]
+    dcols, dX = (R["desc"]["cols"], R["desc"]["X"]) if R.get("desc") else (cols, X)     # 7b R97: under pattern_free the medians cover the run's REGISTERED columns
+    for k, c in enumerate(dcols):
+        vals = dX[mem, k]
         vals = vals[np.isfinite(vals)]
         medians[c] = float(np.median(vals)) if len(vals) else None
+    described_only = {c: medians[c] for c in dcols if c not in cols}                     # described per group, never grouped on (7b §6 Fallback 1)
     return {"group": g, "n": len(eids), "share": len(eids) / len(labels), "features": feats, "tier_mix": dict(tier_mix), "confirmed": conf,
-            "daily_only_rows": daily, "band_width": bw, "examples": examples, "structural": structural[g], "medians": medians, "eids": eids}
+            "daily_only_rows": daily, "band_width": bw, "examples": examples, "structural": structural[g], "medians": medians, "eids": eids,
+            "described_only": described_only}
 
 
 def expectation_descriptions(descs: list) -> dict:
@@ -1183,6 +1276,14 @@ def print_sweep(choice: dict, say, label: str) -> None:
     say(f"- k chosen by the rule (the largest passing both lines): {choice['k'] if choice['k'] is not None else 'NONE — no stable grouping (§1.2)'}")
 
 
+def print_run_sweep(R: dict, say, label: str, tiers: list, feats: dict) -> None:
+    """The run's k sweep: the registered prediction-strength table, or the carried 7b method's own (06b print_fit)."""
+    if R.get("method7b"):
+        power_module().print_fit(R["fit7b"], say, label, len(R["eids"]), min_group_size(len(run_rows(R["run"], tiers, feats))))
+    else:
+        print_sweep(R["choice"], say, label)
+
+
 def print_descriptions(R: dict, descs: list, structural: dict, say) -> None:
     for d in descs:
         s = d["structural"]
@@ -1193,6 +1294,9 @@ def print_descriptions(R: dict, descs: list, structural: dict, say) -> None:
             + (" — MOSTLY DAILY-ONLY (a feature artefact, not a behaviour)" if d["n"] and d["daily_only_rows"] / d["n"] > 0.5 else ""))
         say(f"- band width (median % of price): buy {f4(d['band_width']['buy'])}, sale {f4(d['band_width']['sale'])}")
         say(f"- structural pattern: {s['top_pattern']!r} holds {s['top_share']:.0%} (" + ", ".join(f"{k!r} {v}" for k, v in s["patterns"].most_common(4)) + ")")
+        if d.get("described_only"):                                                       # 7b §6 Fallback 1 (06b R97): never grouped on, described here
+            say("- described, never grouped on (7b §6 Fallback 1 — the hold and the exit look-backs; group medians): "
+                + ", ".join(f"{c} {f4(m)}" for c, m in d["described_only"].items()))
         say("- examples (for him to pull up): " + "; ".join(d["examples"]))
 
 
@@ -1235,11 +1339,27 @@ def stage_pin_keys(pins: dict, doc: str = None) -> list:
     return [k for k in pins if k not in base]
 
 
-def run_gate(doc: str = None, paths: dict = None) -> list:
-    """The reasons a --run is refused (empty = go)."""
+def ledger_stage_rows(prefix: str) -> list:
+    """The ledger's stages starting with `prefix` (7b §11: a --run is refused when a `step7_groups` row exists)."""
+    if not os.path.exists(C.LEDGER):
+        return []
+    rows = pd.read_csv(C.LEDGER, sep="\t", dtype=str, keep_default_na=False).to_dict("records")
+    return [r["stage"] for r in rows if r["stage"].startswith(prefix)]
+
+
+def run_gate(doc: str = None, paths: dict = None, method: str = "registered", columns: str = "registered") -> list:
+    """The reasons a --run is refused (empty = go). 7b §11 adds: 06b_power.txt ends POWER COMPLETE (naming the method and columns when
+    non-default; not naming a carried method when default — 06b R90) and no `step7_groups` ledger row exists."""
     paths = paths or P06
     doc = doc or DOC7
     problems = []
+    if method != "registered" or columns != "registered":
+        problems += power_module().named_by_power_complete(method, columns, path=paths.get("power", P06["power"]))
+    else:
+        problems += power_module().default_run_gate(paths.get("power", P06["power"]))
+    rows = ledger_stage_rows(STAGE_G)
+    if rows:
+        problems.append("a step7_groups ledger row exists (the run happens once): " + ", ".join(rows))
     if not C.dry_run_complete(paths["dry"]):
         problems.append(f"the step-7 groups dry run has not completed ({os.path.basename(paths['dry'])})")
     else:
@@ -1308,6 +1428,8 @@ def main(argv=None) -> int:
     g.add_argument("--dry-run", action="store_true")
     g.add_argument("--print-pins", action="store_true")
     g.add_argument("--run", action="store_true")
+    ap.add_argument("--method", choices=METHODS_7B, default="registered", help="7b §11: the carried method (refused until POWER COMPLETE names it)")
+    ap.add_argument("--columns", choices=COLUMNS_7B, default="registered", help="7b §7.3: the column set (refused until POWER COMPLETE names it)")
     a = ap.parse_args(argv)
     if a.print_pins:
         lines = [f"{k}\t{v}" for k, v in pins_g().items()]
@@ -1318,11 +1440,13 @@ def main(argv=None) -> int:
         return 0
     say = Say()
     stage = "DRY RUN" if a.dry_run else "RUN"
+    default_7b = a.method == "registered" and a.columns == "registered"
+    dry_path = dry_path_for(a.method, a.columns)
     say(f"# #711 as-is STEP 7 (part 2, the groups) — {stage} ({time.strftime('%Y-%m-%d %H:%M')})")
     say("Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing "
         "imported from the rule folders. No outcome of any trade is read, computed or printed (both name lists are scanned); no rule, setup "
         "name or pattern label enters; the groups are descriptions in chart words, never a rule.")
-    refused_to = P06["dry"] if a.dry_run else P06["refused"]
+    refused_to = dry_path if a.dry_run else P06["refused"]
     hits = C.scan_identifiers([os.path.join(HERE, n) for n in SCAN_FILES_G], T.forbidden_all())
     if hits:
         say("IDENTIFIER SCAN FAILED: " + "; ".join(f"{os.path.basename(p)}:{ln} {t}" for p, ln, t in hits))
@@ -1336,21 +1460,33 @@ def main(argv=None) -> int:
         return 2
     say("- import belt: no rule module in sys.modules")
     say("- modules: " + module_shas_line())
+    if not default_7b:                                                                       # 7b §11: EVERY real-data stage, the dry run included
+        problems = power_module().named_by_power_complete(a.method, a.columns, path=P06["power"])
+        if problems:
+            for pr in problems:
+                say("REFUSED: " + pr)
+            say.write(refused_to)
+            return 3
+        say(f"- 7b gate: 06b_power.txt ends POWER COMPLETE naming {a.method} on {a.columns}, pinned below the 7b doc's marker")
     if a.run:
-        problems = run_gate()
+        problems = run_gate(paths=dict(P06, dry=dry_path), method=a.method, columns=a.columns)
         if problems:
             for pr in problems:
                 say("REFUSED: " + pr)
             say.write(P06["refused"])
             return 3
         say("- run gates: the dry run completed with 0 MISMATCH; 05's run complete; every pin (inputs, modules, both doc bodies, tiers.tsv, the "
-            "dry-run printouts) is below the step-7 doc's freeze marker; the ledger verifies; no output exists")
+            "dry-run printouts) is below the step-7 doc's freeze marker; the ledger verifies; no output exists; 06b_power.txt ends POWER COMPLETE; "
+            "no step7_groups ledger row")
     say("\n## Inputs")
     I = load_inputs(say)
     tiers, ranges, L = I["tiers"], I["ranges"], I["L"]
     tiers_by_eid = {int(tr["eid"]): tr for tr in tiers}
     tier_of_eid = {e: tr["tier"] for e, tr in tiers_by_eid.items()}
     print_registration(say)
+    if not default_7b:
+        say(f"- 7b (§7): the carried method {a.method} on the {a.columns} columns — 06b_power.py's implementation, the registered settings; group means stand "
+            f"where centroids are read; the noise floor refits the carried method; primary columns {len(run_columns('primary', a.columns))}")
     feats = build_features(L, tiers, ranges, say)
     checks = feats.pop("_checks")
     claims = Claims(say) if a.dry_run else None
@@ -1358,15 +1494,19 @@ def main(argv=None) -> int:
 
     # ---- the primary: assemble, standardize, reduce, the k sweep ----
     say("\n## The primary run (HIGH + MEDIUM) — standardization, reduction, the k sweep")
-    primary = fit_run("primary", feats, tiers, None, say)
+    primary = fit_run("primary", feats, tiers, None, say, method=a.method, columns=a.columns)
     say(f"- rows {len(primary['eids'])} of {len(run_rows('primary', tiers, feats))} (dropped by the quarter rule: {len(primary['dropped'])}"
         + (": " + "; ".join(f"{e} ({s:.0%}, {why})" for e, s, why in primary["dropped"][:12]) if primary["dropped"] else "") + ")")
     dropped_short = sum(1 for e, _s, _w in primary["dropped"] if "short_history" in (ranges.get((str(e), "buy"), {}).get("flags", "") + ranges.get((str(e), "sale"), {}).get("flags", "")))
     say(f"- the dropped rows carry `short_history` on a side (fewer than 60 prior sessions — a recent listing): {dropped_short} of {len(primary['dropped'])} (a readout; the registration states no count)")
     say(f"- columns {len(primary['cols'])}; blanks after the maps (zero-filled): {sum(primary['blanks'].values())} cells "
         f"({sum(int(primary['struct'][:, k].sum()) for k in range(len(primary['cols'])))} structural, the rest data)")
-    say(f"- PCA: {primary['pca'].m} components carry {primary['pca'].explained:.1%} of the variance (whitened)")
-    print_sweep(primary["choice"], say, "PRIMARY")
+    if default_7b:
+        say(f"- PCA: {primary['pca'].m} components carry {primary['pca'].explained:.1%} of the variance (whitened)")
+        print_sweep(primary["choice"], say, "PRIMARY")
+    else:
+        say(f"- reduction ({primary['fit7b']['space']}): {primary['pca'].m} components carry {primary['pca'].explained:.1%} of the variance")
+        power_module().print_fit(primary["fit7b"], say, "PRIMARY", len(primary["eids"]), min_group_size(len(run_rows("primary", tiers, feats))))
 
     # ---- extrapolation under the primary's maps, per tier (a fact about the maps, printed in both stages) ----
     say("\n## Values outside the primary's range under its maps (linear tails, never clipped), per added tier")
@@ -1430,7 +1570,8 @@ def main(argv=None) -> int:
         claims("exit feature sets carry no ret_N", 0, sum(1 for run in FEATURES for c in FEATURES[run]["exit"] if c.startswith("ret_")))
         claims("primary feature set carries no our_length column", 0, sum(1 for c in FEATURES["primary"]["entry"] + FEATURES["primary"]["exit"] if c in T.OUR_LENGTH))
         claims("the 13 families cover every column", 13, len({family_of(c) for c in run_columns("with_our_length")}))
-        claims("minimum group size for the primary (5% of the registered 677, R70)", 34, primary["choice"]["n_min"])
+        claims("minimum group size for the primary (5% of the registered 677, R70)", 34,
+               primary["choice"]["n_min"] if primary.get("choice") else min_group_size(len(prim_eids)))      # 7b: a carried method carries no `choice` (06b R96)
         claims("every primary position has features on both sides", 677, sum(1 for e in prim_eids if feats[e]["middle"] is not None))
         claims("primary positions with NO exit look-back defined / the prior session only", (128, 196),
                (sum(1 for e in prim_eids if structural_pattern(tiers_by_eid[e]["hold_sessions_min"], tiers_by_eid[e]["hold_sessions_max"]) == "(none)"),
@@ -1458,11 +1599,18 @@ def main(argv=None) -> int:
         claims("re-derived band equals ranges.tsv on every described side (lo, hi)", 0, checks["range_mismatch"])
         claims("sweep N = 20 equals the frozen 20-session column on every described side", 0, checks["sweep20_mismatch"])
         claims("re-derived band ends equal ranges.tsv's range_lo_minute / range_hi_minute on the primary's sides", (0, 0), (checks["lo_at_mismatch"], checks["hi_at_mismatch"]))
-        claims("hold_sessions_max of the primary never below 1 (so a same-day hold extrapolates below the lowest knot)", True, float(np.nanmin(primary["X"][:, primary["cols"].index("hold_sessions_max")])) >= 1)
+        claims("hold_sessions_max of the primary never below 1 (so a same-day hold extrapolates below the lowest knot)", True,
+               float(np.nanmin(primary["X"][:, primary["cols"].index("hold_sessions_max")])) >= 1 if "hold_sessions_max" in primary["cols"]
+               else float(min(float(tr["hold_sessions_max"]) for tr in tiers if tr["tier"] in PRIMARY_TIERS)) >= 1)
+        if default_7b:                                                                    # 7b §11 (06b R89): the default path reproduces the pinned reference
+            ok, why = power_module().reproduces_reference(say.lines)
+            claims("the k-sweep block and the 32 claim lines above reproduce the reference dry run (8352c78c, sha e578a700) line for line (7b §11)", True, ok)
+            if not ok:
+                say(f"  first difference: {why}")
         say("")
         say(claims.result())
         say("DRY RUN COMPLETE")
-        say.write(P06["dry"])
+        say.write(dry_path)
         return 0
 
     # ---- the RUN: every run of §5, the descriptions, the stability tables, the consequence table, the §7 scoring ----
@@ -1484,16 +1632,22 @@ def main(argv=None) -> int:
         descs = [describe_group(primary, g, tiers_by_eid, ranges, structural_p) for g in range(primary["k"])]
         descs_all["primary"] = descs
         print_descriptions(primary, descs, structural_p, say)
-        floor = noise_floor(primary["Zp"], primary)
-        say("\n## The noise floor — the primary against itself")
+        if default_7b:
+            floor = noise_floor(primary["Zp"], primary)
+        else:
+            floor = power_module().noise_floor_7b(primary, min_group_size(len(run_rows("primary", tiers, feats))))      # 7b §7.2 (06b R91)
+        say("\n## The noise floor — the primary against itself" + ("" if default_7b else f" (the carried method {a.method} refitted)"))
         say(f"- 5 seeded refits (other starts, same rows): moved {', '.join(f'{x:.1%}' for x in floor['seeded'])} -> floor {floor['floor_seeded']:.1%}")
         say(f"- 5 bootstrap refits (fit on a resample, every row assigned): moved {', '.join(f'{x:.1%}' for x in floor['bootstrap'])} -> floor {floor['floor_bootstrap']:.1%}")
+        if floor.get("boot_rows"):                                                   # 06b R102 (7b Re-registration 1 item 3): the split test on the resample's distinct rows
+            say(f"- the carried split test refits on each resample's DISTINCT rows ({', '.join(str(x) for x in floor['boot_rows'])} of {len(primary['eids'])}), "
+                "then assigns every row by nearest leaf mean (7b Re-registration 1 item 3)")
         say(f"- the lines below read as EXCESS over the larger floor: {floor['floor']:.1%}")
         results["floor"] = floor
         prim_set = set(primary["eids"])
         for run in RUNS[1:]:
             say(f"\n## Run: {run}")
-            R = fit_run(run, feats, tiers, primary, say)
+            R = fit_run(run, feats, tiers, primary, say, method=a.method, columns=a.columns)
             results[run] = R
             say(f"- rows {len(R['eids'])} (dropped by the quarter rule: {len(R['dropped'])}" + (f"; by reason {collections.Counter(w for _e, _s, w in R['dropped'])}" if R["dropped"] else "") + ")"
                 + (f"; own maps and reduction on these rows ({R['pca'].m} components, {R['pca'].explained:.1%})" if R["own_space"] else "; the primary's frozen maps and reduction")
@@ -1520,11 +1674,11 @@ def main(argv=None) -> int:
                     group_rows.append({"run": run, "eid": e, "group": int(l), "matched_primary_group": int(l)})
                 continue
             if R["k"] is None:
-                print_sweep(R["choice"], say, run)
+                print_run_sweep(R, say, run, tiers, feats)
                 say("- no stable grouping in this run: no comparison can be made; reported as such")
                 stab_rows.append({"run": run, "k": "", "moved": "", "n_common": "", "moved_share": "", "excess_over_floor": "", "survival": "", "new_groups": "", "reading": "no stable grouping"})
                 continue
-            print_sweep(R["choice"], say, run)
+            print_run_sweep(R, say, run, tiers, feats)
             st = structural_groups(R)
             descs = [describe_group(R, g_, tiers_by_eid, ranges, st) for g_ in range(R["k"])]
             descs_all[run] = descs
@@ -1572,8 +1726,12 @@ def main(argv=None) -> int:
         # ---- §7 expectations, scored ----
         say("\n## Expectations (§7), scored at the report — a miss changes nothing by itself")
         kk = primary["k"]
-        ps_k = primary["choice"]["sweep"][kk]["strength"]
-        exp_rows = [("primary k", "3-5 groups at strength >= 0.80", f"k = {kk}, strength {ps_k:.3f}", "met" if 3 <= kk <= 5 else "missed")]
+        if primary.get("method7b"):                                                       # 7b §2 item 3: scored on the carried method's OWN k (06b R96)
+            f7 = primary["fit7b"]
+            exp_rows = [("primary k", f"3-5 groups by its rule ({f7['rule']}; 7b §2 item 3)", f"k = {kk} by {f7['rule']}; {f7['detail']}", "met" if 3 <= kk <= 5 else "missed")]
+        else:
+            ps_k = primary["choice"]["sweep"][kk]["strength"]
+            exp_rows = [("primary k", "3-5 groups at strength >= 0.80", f"k = {kk}, strength {ps_k:.3f}", "met" if 3 <= kk <= 5 else "missed")]
         exp_rows.append(("noise floor", "seeded < 5%, bootstrap < 10%", f"{floor['floor_seeded']:.1%} / {floor['floor_bootstrap']:.1%}",
                          "met" if floor["floor_seeded"] < 0.05 and floor["floor_bootstrap"] < 0.10 else "missed" + (" (floor above 15%: the tier comparisons read as excess over it)" if floor["floor"] > 0.15 else "")))
 
@@ -1615,18 +1773,19 @@ def main(argv=None) -> int:
                               "daily_only_rows": d["daily_only_rows"], "band_width_buy": f4(d["band_width"]["buy"]), "band_width_sale": f4(d["band_width"]["sale"]),
                               "description": " | ".join(f["words"] for f in d["features"]),
                               "features": "; ".join(f"{f['column']} {f['sign']}{abs(f['deviation']):.2f} med {f4(f['median'])}" for f in d["features"]),
-                              "examples": "; ".join(d["examples"])})
+                              "examples": "; ".join(d["examples"]),
+                              "described_not_grouped": "; ".join(f"{c} med {f4(m)}" for c, m in d.get("described_only", {}).items())})      # 7b R97
     write_tsv(feature_out_rows(feats, tiers), FEATURE_OUT_COLS, OUT_G["features"])
     write_tsv(group_rows, ["run", "eid", "group", "matched_primary_group"], OUT_G["groups"])
     write_tsv(desc_rows, ["run", "group", "n", "share", "structural", "top_pattern", "top_pattern_share", "tier_mix", "confirmed", "daily_only_rows",
-                          "band_width_buy", "band_width_sale", "description", "features", "examples"], OUT_G["descriptions"])
+                          "band_width_buy", "band_width_sale", "description", "features", "examples", "described_not_grouped"], OUT_G["descriptions"])
     write_tsv(stab_rows, ["run", "k", "moved", "n_common", "moved_share", "excess_over_floor", "survival", "new_groups", "reading", "ari"], OUT_G["stability"])
     say("\n## Outputs")
     for k, p in OUT_G.items():
         say(f"- {k}: {p} ({C.sha(p)[:16]})")
     say("RUN COMPLETE")
     say.write(P06["run"])
-    C.ledger_append(STAGE_G + "dry_run", P06["dry"])
+    C.ledger_append(STAGE_G + "dry_run", dry_path)                                   # 7b (06b R90 / R96): the dry run that gated THIS run (the method's own under a carried method)
     C.ledger_append(STAGE_G + "printout", P06["run"])
     for k, p in OUT_G.items():
         C.ledger_append(STAGE_G + k, p)

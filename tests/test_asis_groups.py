@@ -349,10 +349,17 @@ def test_artefact_rule_needs_both_conditions_of_section_5d():
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════ the run gate
-def _gate_env(tmp_path, monkeypatch, complete=True, mismatch=0, modules_line=None, tiers_run=True):
+def _gate_env(tmp_path, monkeypatch, complete=True, mismatch=0, modules_line=None, tiers_run=True, outcome="no style we could show we would see"):
     d = tmp_path / "w"
     d.mkdir(parents=True)
-    paths = {"dry": str(d / "dry.txt"), "run": str(d / "run.txt"), "refused": str(d / "refused.txt"), "pins": str(d / "pins.txt")}
+    paths = {"dry": str(d / "dry.txt"), "run": str(d / "run.txt"), "refused": str(d / "refused.txt"), "pins": str(d / "pins.txt"), "power": str(d / "06b_power.txt")}
+    B = G.power_module()
+    # 7b §11 (fix card, 06b R99): the --run waits for a POWER COMPLETE made by the modules on disk, pinned below the 7b doc's marker, with its step7b_power ledger row
+    Path(paths["power"]).write_text(f"# power\n- modules: {B.module_shas_line()}\nPOWER COMPLETE: {outcome}\n", encoding="utf-8")
+    doc7b = d / "doc7b.md"
+    doc7b.write_text(f"# step 7b\n\nbody 7b\n\n<!-- FREEZE -->\n## Freeze record\n- power7b_printout: {C.sha(paths['power'])}\n", encoding="utf-8")
+    monkeypatch.setattr(B, "DOC7B", str(doc7b))
+    monkeypatch.setattr(B, "CACHE_DIR", str(d / "step7b_cache"))                     # 06b R83: no test writes the null cache into the data tree
     ml = G.module_shas_line() if modules_line is None else modules_line
     lines = ["# dry", f"- modules: {ml}", f"RESULT: 3 claims, {3 - mismatch} OK, {mismatch} MISMATCH"]
     if complete:
@@ -371,7 +378,7 @@ def _gate_env(tmp_path, monkeypatch, complete=True, mismatch=0, modules_line=Non
     monkeypatch.setattr(T, "OUT_7", {"tiers": str(d / "tiers.tsv")})
     monkeypatch.setattr(T, "P05", {"dry": str(d / "05dry.txt"), "run": str(d / "05run.txt"), "refused": str(d / "05ref.txt"), "pins": str(d / "05pins.txt")})
     monkeypatch.setattr(G, "OUT_G", {k: str(d / f"step7_{k}.tsv") for k in ("features", "groups", "descriptions", "stability")})
-    (d / "ledger.tsv").write_text("stage\tpath\tsha256\ttime\n", encoding="utf-8")
+    (d / "ledger.tsv").write_text(f"stage\tpath\tsha256\ttime\nstep7b_power\t{d / 'step7b_power.tsv'}\tx\tnow\n", encoding="utf-8")     # 7b R99: the power run's ledger row
     monkeypatch.setattr(C, "LEDGER", str(d / "ledger.tsv"))
     monkeypatch.setattr(C, "ledger_verify", lambda: [])
     monkeypatch.setattr(C, "subs_list_sha", lambda paths=None: "subs")
@@ -379,7 +386,7 @@ def _gate_env(tmp_path, monkeypatch, complete=True, mismatch=0, modules_line=Non
     doc.write_text("# step 7\n\nbody\n\n<!-- FREEZE -->\n## Freeze record\n", encoding="utf-8")
     pins = G.pins_g(str(doc), paths["dry"])
     doc.write_text(doc.read_text(encoding="utf-8") + "\n".join(f"- {k}: {v}" for k, v in pins.items()) + "\n", encoding="utf-8")
-    return {"paths": paths, "doc": str(doc), "dir": d}
+    return {"paths": paths, "doc": str(doc), "dir": d, "doc7b": str(doc7b)}
 
 
 def test_run_gate_passes_in_a_complete_world_and_its_stage_pins_are_the_step7_ones(tmp_path, monkeypatch):
@@ -596,6 +603,93 @@ def test_run_path_reads_a_far_added_tier_as_a_real_new_group_not_included():
     assert cons["new_real"] and not cons["new_artefact"] and "he decides" in cons["action"] and "INCLUDED" not in cons["action"]
     # the same world with the far groups read as artefacts (the first build's one-condition rule) would have INCLUDED the tier
     assert "INCLUDED" in G.consequence(cmp, floor["floor"], {g["group"] for g in new})["action"]
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════ 7b: main() under a carried method / column set
+def _world_env(monkeypatch, n_per=120, seed="w2"):
+    """main() on the synthetic world: the real-data loaders replaced (never the real matrix), the belt check stubbed (a shared pytest process)."""
+    feats, tiers, ranges = _synthetic_world(n_per=n_per, seed=seed)
+    monkeypatch.setattr(G, "load_inputs", lambda say: {"tiers": tiers, "ranges": ranges, "L": None})
+
+    def _build(L, tiers_, ranges_, say, modes=("middle", "low", "high")):
+        f = dict(feats)                                                            # main() pops `_checks`: a fresh dict per stage
+        f["_checks"] = {"range_mismatch": 0, "sweep20_mismatch": 0, "lo_at_mismatch": 0, "hi_at_mismatch": 0}
+        return f
+    monkeypatch.setattr(G, "build_features", _build)
+    monkeypatch.setattr(C, "rule_modules_loaded", lambda: [])
+    return feats, tiers, ranges
+
+
+@pytest.mark.parametrize("method", G.METHODS_7B[1:])
+def test_main_under_each_carried_method_reaches_dry_run_complete_and_run_complete_on_the_synthetic_world(tmp_path, monkeypatch, method):
+    """7b fix card (06b R96): under a carried method the primary carries no `choice`; the dry run's minimum-size claim and step 7 §7's first
+    expectation read the method's own fit. Both stages of main() run end to end on the synthetic world, gated as the real run is (POWER
+    COMPLETE naming the method, made by the modules on disk, pinned, ledgered; the method's own dry printout), and the §7 block is reached
+    whenever the method reads groups — the reviewer's crash points sat AFTER the carried method's real reading had been printed."""
+    w = _gate_env(tmp_path, monkeypatch, outcome=f"carried {method} on registered")
+    B = G.power_module()
+    monkeypatch.setattr(B, "M3_NULL", 100)                                        # the resolution of M3's null, never its construction
+    monkeypatch.setattr(G, "P06", dict(G.P06, **w["paths"]))
+    monkeypatch.setattr(G, "DOC7", w["doc"])
+    _world_env(monkeypatch)
+    assert G.main(["--dry-run", "--method", method]) == 0
+    dry = Path(G.dry_path_for(method, "registered"))
+    text = dry.read_text(encoding="utf-8")
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    assert lines[-1].startswith("DRY RUN COMPLETE") and f"### {method} — PRIMARY" in text and "- 7b gate: 06b_power.txt ends POWER COMPLETE naming" in text
+    assert "[OK] minimum group size for the primary (5% of the registered 677, R70): expected 34, got 34" not in text        # the synthetic world's n differs
+    assert "minimum group size for the primary (5% of the registered 677, R70): expected 34, got 30" in text               # 06b R96: min_group_size(240) = 30
+    assert not os.path.exists(w["paths"]["dry"]) or "REFUSED" not in Path(w["paths"]["dry"]).read_text(encoding="utf-8")   # the pinned default printout untouched
+    # the run: its gate reads the METHOD's dry printout; the synthetic world cannot meet the registration's counts, so a 0-MISMATCH printout
+    # by the modules on disk stands in (as _gate_env's default one does) and is pinned below the step-7 doc's marker
+    dry.write_text("\n".join(["# dry", f"- modules: {G.module_shas_line()}", "RESULT: 33 claims, 33 OK, 0 MISMATCH", "DRY RUN COMPLETE"]) + "\n", encoding="utf-8")
+    Path(w["doc"]).write_text(Path(w["doc"]).read_text(encoding="utf-8") + f"- dryrun7g_printout: {C.sha(str(dry))}\n", encoding="utf-8")
+    assert G.run_gate(w["doc"], dict(w["paths"], dry=str(dry)), method=method) == []
+    assert G.main(["--run", "--method", method]) == 0, Path(w["paths"]["refused"]).read_text(encoding="utf-8") if os.path.exists(w["paths"]["refused"]) else ""
+    run = Path(w["paths"]["run"]).read_text(encoding="utf-8")
+    rlines = [ln for ln in run.splitlines() if ln.strip()]
+    assert rlines[-1].startswith("RUN COMPLETE") and f"the carried method {method} on the registered columns" in run
+    assert all(os.path.exists(p) for p in G.OUT_G.values())
+    if "NO STABLE GROUPING on the primary" in run:                               # M1 and M3u read one group on this world: the one-population branch
+        assert "## Expectations (§7)" not in run and "- the other runs are not compared" in run
+    else:                                                                        # M2w, M2u, M3w, M4 read groups here: the whole §5 machinery and the §7 block
+        assert "## Expectations (§7)" in run and "3-5 groups by its rule (" in run and "3-5 groups at strength >= 0.80" not in run   # 7b §2 item 3
+        assert f"(the carried method {method} refitted)" in run and "## Run: plus_one_stream" in run and "## Run: exit_only" in run
+        assert ("DISTINCT rows" in run) == (method in ("M3w", "M3u"))               # 06b R102: the split test's bootstrap arm on the resample's distinct rows
+    assert G.ledger_stage_rows("step7_groups_dry_run") and str(dry) in Path(C.LEDGER).read_text(encoding="utf-8")                   # the ledger names the method's own dry run
+
+
+def test_pattern_free_run_describes_the_hold_and_the_exit_lookbacks_per_group_while_grouping_on_56_columns():
+    """7b §6 Fallback 1 (06b R97): under `--columns pattern_free` a run groups on its gap-free columns but DESCRIBES the hold and the exit
+    look-backs per group — the group medians cover the run's registered columns (so R63's hold line can be scored), the printout carries a
+    'described, never grouped on' line, and the five farthest features stay on the grouped columns."""
+    feats, tiers, ranges = _synthetic_world(n_per=120, seed="w2")
+    say = G.Say()
+    tiers_by_eid = {int(t["eid"]): t for t in tiers}
+    primary = G.fit_run("primary", feats, tiers, None, say, columns="pattern_free")
+    assert primary["Z"].shape[1] == 56 and len(primary["cols"]) == 56 and primary["k"] == 2
+    assert primary["desc"]["cols"] == G.run_columns("primary") and primary["desc"]["X"].shape == (len(primary["eids"]), 75)
+    st = G.structural_groups(primary)
+    descs = [G.describe_group(primary, g, tiers_by_eid, ranges, st) for g in range(primary["k"])]
+    for d in descs:
+        assert d["medians"]["hold_sessions_max"] is not None and set(d["medians"]) == set(G.run_columns("primary"))
+        assert set(d["described_only"]) == set(G.run_columns("primary")) - set(primary["cols"]) and len(d["described_only"]) == 19
+        assert "hold_sessions_max" in d["described_only"] and all(c.startswith("exit_") or c == "hold_sessions_max" for c in d["described_only"])
+        assert all(f["column"] in primary["cols"] for f in d["features"])
+    G.print_descriptions(primary, descs, st, say)
+    assert any("described, never grouped on" in ln and "hold_sessions_max" in ln and "exit_dist_prev_close" in ln for ln in say.lines)
+    assert "sale_within_two_sessions_near_low" in G.expectation_descriptions(descs)                       # R63 reads the hold from the medians
+    # the registered column set carries no description matrix and its medians are the grouped columns' (the default path, unchanged)
+    reg = G.fit_run("primary", feats, tiers, None, say)
+    assert reg["desc"] is None
+    dreg = G.describe_group(reg, 0, tiers_by_eid, ranges, G.structural_groups(reg))
+    assert dreg["described_only"] == {} and set(dreg["medians"]) == set(reg["cols"])
+    # every other run under pattern_free: its own fitted rows, its registered columns described (exit-only: the 16 grouped, 35 described)
+    for run, n_desc in (("plus_one_stream", 75), ("exit_only", 35), ("with_our_length", 95), ("year_2020", 75)):
+        R = G.fit_run(run, feats, tiers, primary, say, columns="pattern_free")
+        assert R["desc"]["cols"] == G.run_columns(run) and R["desc"]["X"].shape == (len(R["eids"]), n_desc), run
+        assert len(R["cols"]) == len(G.run_columns(run, "pattern_free"))
+    assert G.assemble(feats, [1, 2, 3], G.run_columns("primary"), drop=False)["eids"] == [1, 2, 3]
 
 
 def _factor_world(seed="pw1", n=658, nf=18, noise=1.2, shift=5.0, n_split=8):

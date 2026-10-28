@@ -1,8 +1,8 @@
-# #711 as-is STEP 7 (part 2, the groups) — DRY RUN (2026-10-27 19:21)
+# #711 as-is STEP 7 (part 2, the groups) — DRY RUN (2026-10-28 06:58)
 Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders. No outcome of any trade is read, computed or printed (both name lists are scanned); no rule, setup name or pattern label enters; the groups are descriptions in chart words, never a rule.
-- identifier scan: clean (the §3.1 names and the outcome names are absent from the step-7 modules: asis_common.py, 01_points.py, 05_tiers.py, 06_groups.py)
+- identifier scan: clean (the §3.1 names and the outcome names are absent from the step-7 modules: asis_common.py, 01_points.py, 05_tiers.py, 06_groups.py, 06b_power.py)
 - import belt: no rule module in sys.modules
-- modules: asis_common.py 4d36d6a42532dc78 01_points.py aa30dc3c0402178d 05_tiers.py 6c51b4879bced539 06_groups.py 06a3f48f1046b8a9 forbidden_identifiers.txt ba8f4bb5f23f2325 forbidden_outcomes.txt bc942e6cdf95bc5e
+- modules: asis_common.py 4d36d6a42532dc78 01_points.py aa30dc3c0402178d 05_tiers.py 6c51b4879bced539 06_groups.py c10c2fa75c69be31 06b_power.py d36e15048084003d forbidden_identifiers.txt ba8f4bb5f23f2325 forbidden_outcomes.txt bc942e6cdf95bc5e
 
 ## Inputs
 - tiers.tsv: 1588 positions (c8fdfcffe40d8894); 05's run printout ends RUN COMPLETE: True
@@ -15,9 +15,9 @@ Guards: no network, no production server, no paid call, nothing after 2024-12-31
 - export A: 12,005,007 rows read, 1,235,568 kept for 1,247 names, 0 dated after the cut dropped at read; calendar 2016-01-04..2022-06-30 = the reader's (3s)
 - export B: 13,830,569 rows read, 556,450 kept for 1,247 names, 5,210,943 dated after the cut dropped at read; calendar 2021-09-27..2024-12-31 = the reader's (4s)
 - minute trees: A 1,219 date files / 149,587 logged pairs, B 691 date files / 80,858 logged pairs, EP 48 date files / 196 logged pairs, EP2 36 date files / 39 logged pairs, REV 508 date files / 1,322 logged pairs, INTRA 1,005 date files / 19,470 logged pairs, ASIS 484 date files / 1,721 logged pairs; date files after the seal left unopened: B 449
-- raw closes (R12): 12,005,007 rows read, 701,185 kept for 573 of 683 bar symbols, 0 dated after the cut dropped at read; split list 3,864 splits of 3,063 names to the seal, 3,090 after it dropped at read (1s)
+- raw closes (R12): 12,005,007 rows read, 701,185 kept for 573 of 683 bar symbols, 0 dated after the cut dropped at read; split list 3,864 splits of 3,063 names to the seal, 3,090 after it dropped at read (2s)
 - panel: 2,977 panel frames, 41,099 rows, 39,137 with a % read, 34,355 agreeing with the bars
-- loaded in 8s
+- loaded in 9s
 - minutes preloaded: 4,682 (session, symbol) pairs -> empty 378, missing 94, ok 4,210; files read A 317, ASIS 483, B 11, EP 15, EP2 32, INTRA 424, REV 447 (7s)
 
 ## The features (05_tiers.STEP7_FEATURES, imported — never widened here)
@@ -304,6 +304,7 @@ Guards: no network, no production server, no paid call, nothing after 2024-12-31
   [OK] sweep N = 20 equals the frozen 20-session column on every described side: expected 0, got 0
   [OK] re-derived band ends equal ranges.tsv's range_lo_minute / range_hi_minute on the primary's sides: expected (0, 0), got (0, 0)
   [OK] hold_sessions_max of the primary never below 1 (so a same-day hold extrapolates below the lowest knot): expected True, got True
+  [OK] the k-sweep block and the 32 claim lines above reproduce the reference dry run (8352c78c, sha e578a700) line for line (7b §11): expected True, got True
 
-RESULT: 32 claims, 32 OK, 0 MISMATCH
+RESULT: 33 claims, 33 OK, 0 MISMATCH
 DRY RUN COMPLETE

@@ -45,3 +45,5 @@ step6b_rerun2_control_ranges	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_
 step7_tiers_dry_run	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_1026/05_tiers_dryrun.txt	10ab0bec0a6fdeda9029b33759a5eb6a0e00997fe9ee9d0edc476d705d87f831	2026-10-27T17:37:50
 step7_tiers_tiers_printout	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_1026/05_tiers.txt	5f25491df6f3c1dc39eaaa85f1285dd31c00337d265d26147a79908ae90cafdb	2026-10-27T17:37:50
 step7_tiers_tiers	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/tiers.tsv	c8fdfcffe40d889409fe63972931d4dcd9d84b59a79ba0577615fedb3d795b27	2026-10-27T17:37:50
+step7b_shape	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/step7b_shape.npz	b5013f3eec4db769c7232475f0fad5fa69c52aa57f0b773423949fee2c659090	2026-10-27T22:16:12
+step7b_shape_printout	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_1026/06b_shape.txt	542b22c2c1a358735dcaac4dc9319fb8301a80ec9363c47ca6eb716556ade324	2026-10-27T22:16:12

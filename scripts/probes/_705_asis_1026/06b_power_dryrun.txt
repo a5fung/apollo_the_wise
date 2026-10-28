@@ -1,0 +1,336 @@
+# #711 as-is STEP 7b (a stronger sorting method, proven on made-up trades first) — DRY RUN (made-up sets only) (2026-10-28 06:54)
+Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders. No outcome of any trade is read, computed or printed (both name lists are scanned against every step-7 module and this one); no rule, setup name or pattern label enters.
+- identifier scan: clean (the §3.1 names and the outcome names are absent from: asis_common.py, 01_points.py, 05_tiers.py, 06_groups.py, 06b_power.py)
+- import belt: no rule module in sys.modules
+- modules: asis_common.py 4d36d6a42532dc78 01_points.py aa30dc3c0402178d 05_tiers.py 6c51b4879bced539 06_groups.py c10c2fa75c69be31 06b_power.py d36e15048084003d forbidden_identifiers.txt ba8f4bb5f23f2325 forbidden_outcomes.txt bc942e6cdf95bc5e
+- real-data loaders sealed (R104, derived): 21 callables named load_* / read_* / preload_* across asis_common, 01_points, 05_tiers, 06_groups, MinuteStore and build_features raise inside this stage
+
+## The shape file (b5013f3eec4db769): keys R, R_unclipped, cols, hold_rank, masks, n, run_offsets, run_sizes, shared
+- n = 658 rows, 75 columns in run_columns('primary') order; blank cells 8119 of 49350 (16.5%); rows with no exit look-back at all: 126
+- pairs set to 0: 360 sharing fewer than 30 rows; columns with under 30 non-blank rows: exit_dist_ma_30 (19), exit_dist_hi_40 (9), exit_dist_lo_40 (9), exit_dist_ma_50 (4), exit_sessions_since_hi_60 (3)
+- eigenvalue clipping at 0.001: smallest eigenvalue -0.18096 -> 0.00096; largest change on pairs sharing >= 300 rows 0.0222 (C5a line 0.05); on all pairs 0.0471
+- pairs sharing >= 300 rows: 1891 of 2775; |R| above 0.5 on 304 pairs, above 0.8 on 64
+- the real hold x exit-look-back coupling (R79): Spearman(hold rank, non-blank exit look-backs) = 0.9112
+- the bend's factor: the first eigenvector carries 22.1% of the variance of R
+### the coherent shift per block (§4.4): Delta_B = sep / sqrt(1' R_BB^-1 1); every other column moves by what R implies; the hold by 0
+  block  Delta-equiv  sep   Delta_B  Mahalanobis after zeroing the hold  largest |move|  the five largest moves                                                                                                     
+  B1     1.0          1.73  1.310    1.733                               1.313           entry_vol_day_vs_40 +1.31, entry_range_pct +1.31, entry_vol_day_vs_10 +1.31, entry_gap_pct +1.31, entry_vol_day_vs_60 +1.29
+  B1     1.5          2.60  1.966    2.599                               1.970           entry_vol_day_vs_40 +1.97, entry_range_pct +1.97, entry_vol_day_vs_10 +1.97, entry_gap_pct +1.97, entry_vol_day_vs_60 +1.93
+  B1     2.0          3.46  2.621    3.466                               2.626           entry_vol_day_vs_40 +2.63, entry_range_pct +2.62, entry_vol_day_vs_10 +2.62, entry_gap_pct +2.62, entry_vol_day_vs_60 +2.58
+  B1     3.0          5.20  3.931    5.199                               3.939           entry_vol_day_vs_40 +3.94, entry_range_pct +3.93, entry_vol_day_vs_10 +3.93, entry_gap_pct +3.93, entry_vol_day_vs_60 +3.86
+  B2     1.0          1.73  1.254    1.734                               1.385           entry_dist_ma_30 +1.38, entry_dist_hi_40 +1.29, entry_dist_hi_10 +1.25, entry_ret_20 +1.25, entry_dist_ma_13 +1.25         
+  B2     1.5          2.60  1.882    2.601                               2.077           entry_dist_ma_30 +2.08, entry_dist_hi_40 +1.93, entry_dist_hi_10 +1.88, entry_ret_20 +1.88, entry_dist_ma_13 +1.88         
+  B2     2.0          3.46  2.509    3.468                               2.770           entry_dist_ma_30 +2.77, entry_dist_hi_40 +2.57, entry_dist_hi_10 +2.51, entry_ret_20 +2.51, entry_dist_ma_13 +2.51         
+  B2     3.0          5.20  3.763    5.203                               4.154           entry_dist_ma_30 +4.15, entry_dist_hi_40 +3.86, entry_dist_hi_10 +3.76, entry_ret_20 +3.76, entry_dist_ma_13 +3.76         
+  B3     1.0          1.73  0.934    1.743                               0.967           exit_vol_sofar_vs_60 +0.97, exit_pos_in_day +0.93, exit_range_pct +0.93, exit_minute +0.93, exit_vol_sofar_vs_40 +0.93     
+  B3     1.5          2.60  1.402    2.615                               1.450           exit_vol_sofar_vs_60 +1.45, exit_pos_in_day +1.40, exit_range_pct +1.40, exit_minute +1.40, exit_vol_sofar_vs_40 +1.40     
+  B3     2.0          3.46  1.869    3.486                               1.934           exit_vol_sofar_vs_60 +1.93, exit_pos_in_day +1.87, exit_range_pct +1.87, exit_minute +1.87, exit_vol_sofar_vs_40 +1.86     
+  B3     3.0          5.20  2.803    5.229                               2.900           exit_vol_sofar_vs_60 +2.90, exit_pos_in_day +2.80, exit_range_pct +2.80, exit_minute +2.80, exit_vol_sofar_vs_40 +2.79     
+### repeated values (counts only): runs of equal values per column among its non-blank cells
+  column                      non-blank  distinct values  largest run  runs of 2+
+  entry_pos_in_day            658        633              3            24        
+  entry_minute                658        241              16           130       
+  entry_gap_pct               658        656              2            2         
+  entry_range_pct             658        656              2            2         
+  entry_range_vs_avgrange_5   658        648              2            10        
+  entry_range_vs_avgrange_10  658        646              2            12        
+  entry_range_vs_avgrange_40  658        648              3            9         
+  entry_range_vs_avgrange_60  654        643              2            11        
+  entry_vol_day_vs_5          658        649              2            9         
+  entry_vol_day_vs_10         658        654              2            4         
+  entry_vol_day_vs_40         658        653              2            5         
+  entry_vol_day_vs_60         654        648              2            6         
+  entry_vol_sofar_vs_5        644        624              2            20        
+  entry_vol_sofar_vs_10       644        622              3            21        
+  entry_vol_sofar_vs_40       644        618              3            25        
+  entry_vol_sofar_vs_60       640        620              2            20        
+  entry_dist_prev_high        658        656              3            1         
+  entry_dist_prev_low         658        657              2            1         
+  entry_dist_prev_close       658        657              2            1         
+  entry_dist_hi_3             658        654              4            2         
+  entry_dist_lo_3             658        658              1            0         
+  entry_dist_hi_5             658        654              3            3         
+  entry_dist_lo_5             658        657              2            1         
+  entry_dist_ma_5             658        655              2            3         
+  entry_sessions_since_hi_5   658        5                185          5         
+  entry_dist_ma_8             658        658              1            0         
+  entry_dist_hi_10            658        657              2            1         
+  entry_dist_lo_10            658        657              2            1         
+  entry_dist_ma_13            658        657              2            1         
+  entry_dist_ma_30            658        658              1            0         
+  entry_dist_hi_40            658        657              2            1         
+  entry_dist_lo_40            658        657              2            1         
+  entry_dist_ma_50            655        655              1            0         
+  entry_sessions_since_hi_60  654        60               65           60        
+  entry_ret_3                 658        655              3            2         
+  entry_ret_5                 658        655              3            2         
+  entry_ret_10                658        655              4            1         
+  entry_ret_20                658        657              2            1         
+  entry_ret_40                658        658              1            0         
+  entry_ret_60                653        653              1            0         
+  exit_pos_in_day             658        621              2            37        
+  exit_minute                 658        260              14           139       
+  exit_gap_pct                658        647              11           2         
+  exit_range_pct              658        654              2            4         
+  exit_range_vs_avgrange_5    658        644              2            14        
+  exit_range_vs_avgrange_10   658        648              2            10        
+  exit_range_vs_avgrange_40   658        650              2            8         
+  exit_range_vs_avgrange_60   654        647              2            7         
+  exit_vol_day_vs_5           658        638              3            19        
+  exit_vol_day_vs_10          658        643              2            15        
+  exit_vol_day_vs_40          658        653              2            5         
+  exit_vol_day_vs_60          654        640              3            13        
+  exit_vol_sofar_vs_5         649        631              3            17        
+  exit_vol_sofar_vs_10        649        630              2            19        
+  exit_vol_sofar_vs_40        649        630              2            19        
+  exit_vol_sofar_vs_60        645        618              3            26        
+  exit_dist_prev_high         532        530              2            2         
+  exit_dist_prev_low          532        532              1            0         
+  exit_dist_prev_close        532        529              2            3         
+  exit_dist_hi_3              345        345              1            0         
+  exit_dist_lo_3              345        345              1            0         
+  exit_dist_hi_5              251        251              1            0         
+  exit_dist_lo_5              251        251              1            0         
+  exit_dist_ma_5              251        251              1            0         
+  exit_sessions_since_hi_5    251        5                60           5         
+  exit_dist_ma_8              161        160              2            1         
+  exit_dist_hi_10             131        131              1            0         
+  exit_dist_lo_10             131        131              1            0         
+  exit_dist_ma_13             96         96               1            0         
+  exit_dist_ma_30             19         19               1            0         
+  exit_dist_hi_40             9          9                1            0         
+  exit_dist_lo_40             9          9                1            0         
+  exit_dist_ma_50             4          4                1            0         
+  exit_sessions_since_hi_60   3          3                1            0         
+  hold_sessions_max           658        47               87           30        
+- the plant counts at this shape's n = 658 (R93): curve 197, small 99, three (329, 197, 132); at the registered 658: 197 / 99 / (329, 197, 132)
+
+## C6 — the target is reachable: the oracle on 200 latent target sets per block (steps 1 and 3 only)
+  block  oracle hits                        mean adjusted Rand  line  
+  B1     200 of 200 = 100.0% [98.1, 100.0]  0.674               >= 95%
+  B2     200 of 200 = 100.0% [98.1, 100.0]  0.681               >= 95%
+  B3     200 of 200 = 100.0% [98.1, 100.0]  0.677               >= 95%
+- 0.2s
+
+## C2 — the plant is there and survives the pipeline (50 latent sets per cell, steps 1-5; no method runs; the 50 N1 / N2 sets go through step 6 for C5 and the index readout)
+  world  cell       group  block column         AUC (latent, mean of sets)  line Phi(Delta_B/sqrt2) - 0.02  verdict  final AUC (after ties and masks)
+  curve  B1_d1.0    1      entry_gap_pct        0.825                       0.803                           OK       0.825                           
+  curve  B1_d1.0    1      entry_range_pct      0.823                       0.803                           OK       0.823                           
+  curve  B1_d1.0    1      entry_vol_day_vs_10  0.822                       0.803                           OK       0.822                           
+  curve  B2_d1.0    1      entry_dist_hi_10     0.816                       0.792                           OK       0.816                           
+  curve  B2_d1.0    1      entry_dist_ma_13     0.812                       0.792                           OK       0.812                           
+  curve  B2_d1.0    1      entry_ret_20         0.814                       0.792                           OK       0.814                           
+  curve  B3_d1.0    1      exit_pos_in_day      0.748                       0.726                           OK       0.748                           
+  curve  B3_d1.0    1      exit_minute          0.744                       0.726                           OK       0.744                           
+  curve  B3_d1.0    1      exit_range_pct       0.739                       0.726                           OK       0.739                           
+  curve  B1_d1.5    1      entry_gap_pct        0.917                       0.898                           OK       0.917                           
+  curve  B1_d1.5    1      entry_range_pct      0.918                       0.898                           OK       0.918                           
+  curve  B1_d1.5    1      entry_vol_day_vs_10  0.917                       0.898                           OK       0.917                           
+  curve  B2_d1.5    1      entry_dist_hi_10     0.907                       0.888                           OK       0.907                           
+  curve  B2_d1.5    1      entry_dist_ma_13     0.911                       0.888                           OK       0.911                           
+  curve  B2_d1.5    1      entry_ret_20         0.910                       0.888                           OK       0.910                           
+  curve  B3_d1.5    1      exit_pos_in_day      0.839                       0.819                           OK       0.839                           
+  curve  B3_d1.5    1      exit_minute          0.836                       0.819                           OK       0.836                           
+  curve  B3_d1.5    1      exit_range_pct       0.837                       0.819                           OK       0.837                           
+  curve  B1_d2.0    1      entry_gap_pct        0.968                       0.948                           OK       0.968                           
+  curve  B1_d2.0    1      entry_range_pct      0.969                       0.948                           OK       0.969                           
+  curve  B1_d2.0    1      entry_vol_day_vs_10  0.968                       0.948                           OK       0.968                           
+  curve  B2_d2.0    1      entry_dist_hi_10     0.962                       0.942                           OK       0.962                           
+  curve  B2_d2.0    1      entry_dist_ma_13     0.963                       0.942                           OK       0.963                           
+  curve  B2_d2.0    1      entry_ret_20         0.963                       0.942                           OK       0.963                           
+  curve  B3_d2.0    1      exit_pos_in_day      0.910                       0.887                           OK       0.910                           
+  curve  B3_d2.0    1      exit_minute          0.907                       0.887                           OK       0.907                           
+  curve  B3_d2.0    1      exit_range_pct       0.906                       0.887                           OK       0.906                           
+  curve  B1_d3.0    1      entry_gap_pct        0.997                       0.977                           OK       0.997                           
+  curve  B1_d3.0    1      entry_range_pct      0.997                       0.977                           OK       0.997                           
+  curve  B1_d3.0    1      entry_vol_day_vs_10  0.997                       0.977                           OK       0.997                           
+  curve  B2_d3.0    1      entry_dist_hi_10     0.996                       0.976                           OK       0.996                           
+  curve  B2_d3.0    1      entry_dist_ma_13     0.996                       0.976                           OK       0.996                           
+  curve  B2_d3.0    1      entry_ret_20         0.996                       0.976                           OK       0.996                           
+  curve  B3_d3.0    1      exit_pos_in_day      0.975                       0.956                           OK       0.975                           
+  curve  B3_d3.0    1      exit_minute          0.977                       0.956                           OK       0.977                           
+  curve  B3_d3.0    1      exit_range_pct       0.976                       0.956                           OK       0.976                           
+  small  B1_d2.0    1      entry_gap_pct        0.966                       0.948                           OK       0.966                           
+  small  B1_d2.0    1      entry_range_pct      0.967                       0.948                           OK       0.967                           
+  small  B1_d2.0    1      entry_vol_day_vs_10  0.967                       0.948                           OK       0.967                           
+  small  B2_d2.0    1      entry_dist_hi_10     0.964                       0.942                           OK       0.964                           
+  small  B2_d2.0    1      entry_dist_ma_13     0.964                       0.942                           OK       0.964                           
+  small  B2_d2.0    1      entry_ret_20         0.963                       0.942                           OK       0.963                           
+  small  B3_d2.0    1      exit_pos_in_day      0.907                       0.887                           OK       0.907                           
+  small  B3_d2.0    1      exit_minute          0.905                       0.887                           OK       0.905                           
+  small  B3_d2.0    1      exit_range_pct       0.903                       0.887                           OK       0.903                           
+  three  B1B3_d1.5  1      entry_gap_pct        0.919                       0.898                           OK       0.919                           
+  three  B1B3_d1.5  1      entry_range_pct      0.916                       0.898                           OK       0.916                           
+  three  B1B3_d1.5  1      entry_vol_day_vs_10  0.915                       0.898                           OK       0.915                           
+  three  B1B3_d1.5  2      exit_pos_in_day      0.839                       0.819                           OK       0.839                           
+  three  B1B3_d1.5  2      exit_minute          0.833                       0.819                           OK       0.833                           
+  three  B1B3_d1.5  2      exit_range_pct       0.837                       0.819                           OK       0.837                           
+- (b) the handed value is non-decreasing in the latent value: 67500 of 67500 (set, column) pairs
+- C3 over these 900 sets: 0 failing (the blank cells must be 8119; Spearman(latent hold, non-blank exit look-backs) must equal 0.911)
+- 4.9s
+
+## C5 — the shape is his: the generator against R, pooled over 50 N1 sets — the latent through the rank map, BEFORE the tie step (Re-registration 1 item 1, R101); the post-tie comparison beside as a readout
+- (b) the pooled latent through the rank map against R on the 1886 pairs sharing >= 300 real rows (hold x exit look-back pairs apart): largest gap 0.0243 (line 0.03), root-mean-square 0.0052 (line 0.01)
+- readout — the same against the UNCLIPPED real values: largest gap 0.0292, rms 0.0059
+- readout — AFTER the tie step (the registered pipeline's scores, his repeated values applied; R was measured on his already-tied scores, so a few-level column's correlations are attenuated a second time here — a disclosed consequence, not de-attenuated): largest gap 0.0395, rms 0.0059; against the unclipped values 0.0399 / 0.0065
+- readout — the hold x exit look-back pairs (the masks restrict their range twice): column, shared real rows, R, made-up before / after the tie step
+  exit look-back        shared rows  R       made-up (latent through the map)  made-up (after the tie step)
+  exit_dist_prev_high   532          -0.034  -0.027                            -0.027                      
+  exit_dist_prev_low    532          -0.106  -0.092                            -0.091                      
+  exit_dist_prev_close  532          -0.051  -0.047                            -0.046                      
+  exit_dist_hi_3        345          0.036   0.027                             0.027                       
+  exit_dist_lo_3        345          -0.166  -0.117                            -0.117                      
+- readout — the twelve largest gaps of the claim's comparison (R vs the latent through the map; distinct values per column = how tied it is)
+  column a                    column b              shared  R       made-up  gap     distinct a  distinct b
+  entry_range_vs_avgrange_40  exit_dist_lo_3        345     0.130   0.154    0.0243  648         345       
+  entry_vol_day_vs_10         exit_dist_lo_3        345     -0.013  0.011    0.0241  654         345       
+  entry_range_vs_avgrange_5   exit_dist_lo_3        345     -0.004  0.020    0.0240  648         345       
+  entry_range_vs_avgrange_60  exit_dist_lo_3        344     0.138   0.161    0.0227  643         345       
+  entry_range_vs_avgrange_10  exit_dist_lo_3        345     0.045   0.067    0.0225  646         345       
+  entry_vol_day_vs_40         exit_dist_lo_3        345     0.087   0.109    0.0220  653         345       
+  entry_vol_day_vs_60         exit_dist_lo_3        344     0.114   0.135    0.0214  648         345       
+  entry_vol_day_vs_5          exit_dist_lo_3        345     -0.034  -0.012   0.0212  649         345       
+  entry_range_vs_avgrange_5   exit_dist_prev_close  532     -0.058  -0.037   0.0207  648         529       
+  entry_range_vs_avgrange_40  exit_dist_prev_close  532     -0.009  0.012    0.0206  648         529       
+  entry_dist_hi_40            exit_dist_lo_3        345     -0.054  -0.034   0.0206  657         345       
+  entry_dist_prev_high        exit_dist_lo_3        345     -0.090  -0.070   0.0201  656         345       
+- readout — the twelve largest gaps AFTER the tie step (where the few-level columns sit)
+  column a                    column b                   shared  R       made-up  gap     distinct a  distinct b
+  entry_sessions_since_hi_5   entry_ret_5                658     -0.606  -0.566   0.0395  5           655       
+  entry_sessions_since_hi_5   entry_ret_3                658     -0.517  -0.483   0.0339  5           655       
+  entry_sessions_since_hi_5   entry_dist_ma_8            658     -0.486  -0.453   0.0324  5           658       
+  entry_dist_ma_5             entry_sessions_since_hi_5  658     -0.421  -0.392   0.0294  655         5         
+  entry_sessions_since_hi_5   entry_dist_ma_13           658     -0.443  -0.414   0.0289  5           657       
+  entry_sessions_since_hi_5   entry_dist_hi_10           658     -0.408  -0.379   0.0287  5           657       
+  entry_dist_lo_5             entry_sessions_since_hi_5  658     -0.354  -0.326   0.0283  657         5         
+  entry_dist_hi_5             entry_sessions_since_hi_5  658     -0.347  -0.320   0.0268  654         5         
+  entry_dist_lo_3             entry_sessions_since_hi_5  658     -0.286  -0.262   0.0245  658         5         
+  entry_range_vs_avgrange_40  exit_dist_lo_3             345     0.130   0.154    0.0243  648         345       
+  entry_vol_day_vs_10         exit_dist_lo_3             345     -0.013  0.011    0.0241  654         345       
+  entry_range_vs_avgrange_5   exit_dist_lo_3             345     -0.004  0.020    0.0240  648         345       
+- (c) whitened components at 90% on the 50 N1 sets: min 17, median 18, max 18 (his: 18; line 14-22)
+- readout — the whitened 2-means index: N1 mean 0.9599 (sd 0.0008), N2 mean 0.9602 (sd 0.0011) — the bend did not lower the index
+
+## Plumbing and C7 — 2 sets per world through every method (75 columns); the gap-free arm on the first set of N1, N2 and the target
+  world  cell       i  columns       method  k  ARI vs plant  oracle ARI  components  seconds  detail (truncated)                                          
+  N1     plain      0  registered    M0      1                            18          5.1      2:0.500|3:0.341|4:0.259|5:0.212|6:0.175|7:0.155|8:0.135     
+  N1     plain      0  registered    M1      2                            10          4.7      2:0.858|3:0.479|4:0.398|5:0.360|6:0.289|7:0.246|8:0.225     
+  N1     plain      0  registered    M2w     1                            18          1.9      2:0.017|3:0.053|4:0.119|5:0.106|6:0.101|7:0.127|8:0.129     
+  N1     plain      0  registered    M2u     2                            10          1.8      2:0.899|3:0.663|4:0.549|5:0.528|6:0.450|7:0.381|8:0.363     
+  N1     plain      0  registered    M3w     1                            18          0.0      d0:n658:p0.1119                                             
+  N1     plain      0  registered    M3u     2                            10          2.4      d0:n658:p0.0040:S|d1:n316:p0.2488|d1:n342:p0.3137           
+  N1     plain      0  registered    M4      1                            18          1.8      1:33827|2:33934|3:34086x|4:34227x|5:34325x|6:34550x|7:34721x
+  N1     plain      0  pattern_free  M0      1                            15          5.0      2:0.499|3:0.332|4:0.250|5:0.200|6:0.169|7:0.149|8:0.130     
+  N1     plain      0  pattern_free  M1      2                            8           4.8      2:0.850|3:0.449|4:0.387|5:0.374|6:0.301|7:0.260|8:0.240     
+  N1     plain      0  pattern_free  M2w     1                            15          1.7      2:0.020|3:0.055|4:0.066|5:0.081|6:0.093|7:0.079|8:0.101     
+  N1     plain      0  pattern_free  M2u     2                            8           1.8      2:0.895|3:0.575|4:0.522|5:0.606|6:0.448|7:0.432|8:0.396     
+  N1     plain      0  pattern_free  M3w     1                            15          1.6      d0:n658:p0.2128                                             
+  N1     plain      0  pattern_free  M3u     1                            8           0.9      d0:n658:p0.0120                                             
+  N1     plain      0  pattern_free  M4      1                            15          1.7      1:28190|2:28324|3:28469x|4:28605x|5:28739x|6:28856x|7:29005x
+  N1     plain      1  registered    M0      1                            18          5.1      2:0.501|3:0.343|4:0.261|5:0.212|6:0.178|7:0.156|8:0.134     
+  N1     plain      1  registered    M1      2                            9           4.8      2:0.858|3:0.445|4:0.515|5:0.374|6:0.321|7:0.281|8:0.239     
+  N1     plain      1  registered    M2w     1                            18          2.0      2:0.037|3:0.075|4:0.089|5:0.127|6:0.135|7:0.138|8:0.148     
+  N1     plain      1  registered    M2u     2                            9           1.7      2:0.907|3:0.502|4:0.666|5:0.513|6:0.505|7:0.457|8:0.394     
+  N1     plain      1  registered    M3w     1                            18          0.0      d0:n658:p0.7293                                             
+  N1     plain      1  registered    M3u     1                            9           0.9      d0:n658:p0.1758                                             
+  N1     plain      1  registered    M4      1                            18          1.7      1:33827|2:33942|3:34107|4:34235x|5:34411x|6:34584x|7:34738x|
+  N2     curved     0  registered    M0      1                            18          5.3      2:0.521|3:0.364|4:0.285|5:0.246|6:0.201|7:0.185|8:0.162     
+  N2     curved     0  registered    M1      2                            10          5.0      2:0.836|3:0.523|4:0.530|5:0.336|6:0.326|7:0.279|8:0.251     
+  N2     curved     0  registered    M2w     1                            18          1.9      2:0.045|3:0.071|4:0.124|5:0.160|6:0.186|7:0.217|8:0.187     
+  N2     curved     0  registered    M2u     2                            10          1.8      2:0.910|3:0.648|4:0.739|5:0.484|6:0.479|7:0.500|8:0.442     
+  N2     curved     0  registered    M3w     1                            18          0.0      d0:n658:p0.8112                                             
+  N2     curved     0  registered    M3u     2                            10          2.5      d0:n658:p0.0010:S|d1:n394:p0.0060|d1:n264:p0.0400           
+  N2     curved     0  registered    M4      2                            18          1.3      1:33827|2:33728|3:33818|4:33766|5:33917x|6:33946|7:34201x|8:
+  N2     curved     0  pattern_free  M0      1                            15          5.4      2:0.520|3:0.366|4:0.314|5:0.258|6:0.208|7:0.176|8:0.149     
+  N2     curved     0  pattern_free  M1      2                            9           5.0      2:0.831|3:0.532|4:0.543|5:0.344|6:0.328|7:0.320|8:0.263     
+  N2     curved     0  pattern_free  M2w     1                            15          1.9      2:0.042|3:0.102|4:0.189|5:0.192|6:0.178|7:0.201|8:0.169     
+  N2     curved     0  pattern_free  M2u     2                            9           1.7      2:0.897|3:0.628|4:0.756|5:0.511|6:0.490|7:0.523|8:0.484     
+  N2     curved     0  pattern_free  M3w     1                            15          0.0      d0:n658:p0.3227                                             
+  N2     curved     0  pattern_free  M3u     2                            9           2.5      d0:n658:p0.0010:S|d1:n395:p0.0130|d1:n263:p0.0529           
+  N2     curved     0  pattern_free  M4      3                            15          1.0      1:28190|2:28062|3:27976|4:28044|5:28170x|6:28158x|7:28303x|8
+  N2     curved     1  registered    M0      1                            18          5.4      2:0.512|3:0.363|4:0.300|5:0.242|6:0.212|7:0.181|8:0.152     
+  N2     curved     1  registered    M1      1                            10          4.9      2:0.771|3:0.580|4:0.487|5:0.396|6:0.348|7:0.304|8:0.269     
+  N2     curved     1  registered    M2w     1                            18          2.1      2:0.028|3:0.081|4:0.125|5:0.188|6:0.212|7:0.213|8:0.213     
+  N2     curved     1  registered    M2u     2                            10          1.7      2:0.840|3:0.728|4:0.694|5:0.612|6:0.493|7:0.514|8:0.535     
+  N2     curved     1  registered    M3w     1                            18          0.0      d0:n658:p0.0240                                             
+  N2     curved     1  registered    M3u     2                            10          2.5      d0:n658:p0.0040:S|d1:n274:p0.0759|d1:n384:p0.0210           
+  N2     curved     1  registered    M4      2                            18          1.2      1:33827|2:33788|3:33874|4:33903|5:33950x|6:34099x|7:34217x|8
+  curve  B1_d1.5    0  registered    M0      1  0.00          0.64        16          5.1      2:0.505|3:0.341|4:0.261|5:0.216|6:0.182|7:0.163|8:0.139     
+  curve  B1_d1.5    0  registered    M1      2  0.39          0.64        9           4.7      2:0.894|3:0.686|4:0.468|5:0.337|6:0.319|7:0.301|8:0.281     
+  curve  B1_d1.5    0  registered    M2w     1  0.00          0.64        16          1.9      2:0.052|3:0.073|4:0.114|5:0.132|6:0.139|7:0.152|8:0.143     
+  curve  B1_d1.5    0  registered    M2u     2  0.39          0.64        9           1.7      2:0.941|3:0.799|4:0.693|5:0.559|6:0.435|7:0.480|8:0.419     
+  curve  B1_d1.5    0  registered    M3w     1  0.00          0.64        16          1.6      d0:n658:p0.9800                                             
+  curve  B1_d1.5    0  registered    M3u     1  0.00          0.64        9           0.9      d0:n658:p0.0180                                             
+  curve  B1_d1.5    0  registered    M4      1  0.00          0.64        16          1.5      1:30069|2:30174x|3:30302x|4:30437x|5:30579x|6:30711x|7:30885
+  curve  B1_d1.5    0  pattern_free  M0      1  0.00          0.64        13          5.0      2:0.500|3:0.332|4:0.252|5:0.203|6:0.174|7:0.153|8:0.140     
+  curve  B1_d1.5    0  pattern_free  M1      2  0.39          0.64        8           4.7      2:0.900|3:0.716|4:0.500|5:0.363|6:0.310|7:0.303|8:0.276     
+  curve  B1_d1.5    0  pattern_free  M2w     1  0.00          0.64        13          1.8      2:0.039|3:0.050|4:0.091|5:0.109|6:0.119|7:0.144|8:0.123     
+  curve  B1_d1.5    0  pattern_free  M2u     3  0.25          0.64        8           1.8      2:0.932|3:0.833|4:0.729|5:0.523|6:0.484|7:0.491|8:0.428     
+  curve  B1_d1.5    0  pattern_free  M3w     1  0.00          0.64        13          1.7      d0:n658:p0.7243                                             
+  curve  B1_d1.5    0  pattern_free  M3u     1  0.00          0.64        8           0.9      d0:n658:p0.0180                                             
+  curve  B1_d1.5    0  pattern_free  M4      1  0.00          0.64        13          1.7      1:24431|2:24552x|3:24658x|4:24783x|5:24914x|6:25064x|7:25168
+  curve  B1_d1.5    1  registered    M0      1  0.00          0.70        16          5.0      2:0.501|3:0.340|4:0.262|5:0.214|6:0.182|7:0.157|8:0.140     
+  curve  B1_d1.5    1  registered    M1      2  0.36          0.70        9           4.8      2:0.831|3:0.676|4:0.529|5:0.373|6:0.318|7:0.306|8:0.283     
+  curve  B1_d1.5    1  registered    M2w     1  0.00          0.70        16          1.9      2:0.043|3:0.056|4:0.113|5:0.124|6:0.123|7:0.143|8:0.148     
+  curve  B1_d1.5    1  registered    M2u     2  0.36          0.70        9           1.9      2:0.919|3:0.783|4:0.731|5:0.562|6:0.456|7:0.515|8:0.493     
+  curve  B1_d1.5    1  registered    M3w     1  0.00          0.70        16          0.0      d0:n658:p0.0260                                             
+  curve  B1_d1.5    1  registered    M3u     1  0.00          0.70        9           0.9      d0:n658:p0.1528                                             
+  curve  B1_d1.5    1  registered    M4      1  0.00          0.70        16          1.6      1:30069|2:30154|3:30257|4:30385x|5:30525x|6:30662x|7:30782x|
+  small  B1_d2.0    0  registered    M0      1  0.00          0.85        16          5.1      2:0.504|3:0.342|4:0.266|5:0.221|6:0.186|7:0.161|8:0.144     
+  small  B1_d2.0    0  registered    M1      2  0.19          0.85        9           5.0      2:0.819|3:0.736|4:0.618|5:0.412|6:0.410|7:0.300|8:0.269     
+  small  B1_d2.0    0  registered    M2w     1  0.00          0.85        16          1.9      2:0.059|3:0.057|4:0.104|5:0.156|6:0.175|7:0.147|8:0.148     
+  small  B1_d2.0    0  registered    M2u     3  0.25          0.85        9           1.7      2:0.884|3:0.814|4:0.749|5:0.647|6:0.643|7:0.500|8:0.464     
+  small  B1_d2.0    0  registered    M3w     1  0.00          0.85        16          0.0      d0:n658:p0.3666                                             
+  small  B1_d2.0    0  registered    M3u     1  0.00          0.85        9           0.9      d0:n658:p0.8102                                             
+  small  B1_d2.0    0  registered    M4      1  0.00          0.85        16          1.5      1:30069|2:30130|3:30247|4:30374x|5:30509x|6:30666x|7:30803x|
+  small  B1_d2.0    1  registered    M0      1  0.00          0.87        17          5.2      2:0.501|3:0.335|4:0.258|5:0.211|6:0.180|7:0.161|8:0.137     
+  small  B1_d2.0    1  registered    M1      2  0.22          0.87        9           4.8      2:0.888|3:0.673|4:0.625|5:0.417|6:0.333|7:0.272|8:0.246     
+  small  B1_d2.0    1  registered    M2w     1  0.00          0.87        17          1.9      2:0.028|3:0.088|4:0.114|5:0.112|6:0.117|7:0.140|8:0.133     
+  small  B1_d2.0    1  registered    M2u     2  0.22          0.87        9           1.8      2:0.926|3:0.744|4:0.756|5:0.631|6:0.527|7:0.458|8:0.451     
+  small  B1_d2.0    1  registered    M3w     1  0.00          0.87        17          1.7      d0:n658:p0.3996                                             
+  small  B1_d2.0    1  registered    M3u     1  0.00          0.87        9           0.9      d0:n658:p0.8472                                             
+  small  B1_d2.0    1  registered    M4      1  0.00          0.87        17          1.7      1:31948|2:32070x|3:32198x|4:32353x|5:32506x|6:32662x|7:32816
+  three  B1B3_d1.5  0  registered    M0      1  0.00          0.61        16          5.1      2:0.504|3:0.341|4:0.266|5:0.218|6:0.185|7:0.157|8:0.140     
+  three  B1B3_d1.5  0  registered    M1      2  0.35          0.61        9           4.8      2:0.897|3:0.610|4:0.622|5:0.464|6:0.345|7:0.307|8:0.284     
+  three  B1B3_d1.5  0  registered    M2w     1  0.00          0.61        16          1.8      2:0.029|3:0.072|4:0.118|5:0.137|6:0.130|7:0.143|8:0.148     
+  three  B1B3_d1.5  0  registered    M2u     4  0.20          0.61        9           1.8      2:0.926|3:0.755|4:0.802|5:0.736|6:0.532|7:0.524|8:0.507     
+  three  B1B3_d1.5  0  registered    M3w     1  0.00          0.61        16          0.0      d0:n658:p0.2288                                             
+  three  B1B3_d1.5  0  registered    M3u     1  0.00          0.61        9           0.9      d0:n658:p0.0599                                             
+  three  B1B3_d1.5  0  registered    M4      1  0.00          0.61        16          1.6      1:30069|2:30174|3:30292x|4:30428x|5:30575x|6:30743x|7:30863x
+  three  B1B3_d1.5  1  registered    M0      1  0.00          0.60        16          5.1      2:0.500|3:0.345|4:0.261|5:0.216|6:0.187|7:0.163|8:0.139     
+  three  B1B3_d1.5  1  registered    M1      2  0.22          0.60        9           4.8      2:0.852|3:0.555|4:0.498|5:0.390|6:0.349|7:0.317|8:0.268     
+  three  B1B3_d1.5  1  registered    M2w     1  0.00          0.60        16          1.8      2:0.049|3:0.052|4:0.090|5:0.135|6:0.104|7:0.128|8:0.136     
+  three  B1B3_d1.5  1  registered    M2u     2  0.23          0.60        9           1.8      2:0.886|3:0.761|4:0.710|5:0.608|6:0.582|7:0.514|8:0.469     
+  three  B1B3_d1.5  1  registered    M3w     1  0.00          0.60        16          0.0      d0:n658:p0.4715                                             
+  three  B1B3_d1.5  1  registered    M3u     3  0.28          0.60        9           3.1      d0:n658:p0.0030:S|d1:n326:p0.0030:S|d2:n152:p0.4066|d2:n174:
+  three  B1B3_d1.5  1  registered    M4      1  0.00          0.60        16          1.4      1:30069|2:30140|3:30243x|4:30374x|5:30515x|6:30657x|7:30801x
+- 224.2s
+### C7 — per-set seconds by world and method (mean of the plumbing sets), and the projection on 10 cores (R88)
+  world  columns       sets  M0   M1   M2w  M2u  M3w  M3u  M4   per set  CPU-hours
+  N1     registered    300   5.1  4.8  1.9  1.8  0.0  1.7  1.8  17.0     1.41     
+  N1     pattern_free  300   5.0  4.8  1.7  1.8  1.6  0.9  1.7  17.5     1.46     
+  N2     registered    300   5.4  4.9  2.0  1.8  0.0  2.5  1.2  17.8     1.48     
+  N2     pattern_free  300   5.4  5.0  1.9  1.7  0.0  2.5  1.0  17.5     1.46     
+  curve  registered    660   5.1  4.7  1.9  1.8  0.8  0.9  1.6  16.8     3.08     
+  curve  pattern_free  300   5.0  4.7  1.8  1.8  1.7  0.9  1.7  17.5     1.46     
+  small  registered    120   5.2  4.9  1.9  1.7  0.8  0.9  1.6  17.1     0.57     
+  three  registered    40    5.1  4.8  1.8  1.8  0.0  2.0  1.5  16.9     0.19     
+- CPU-hours by method: M0 3.31, M1 3.10, M2w 1.21, M2u 1.15, M3w 0.45, M3u 0.91, M4 0.97; the fresh sets (400 at the slowest method's 5.1s) 0.57
+- C7: total 11.7 CPU-hours -> projected wall time on 10 cores 1.2 hours (the run runs in full whatever it is)
+
+## Claims
+  [OK] C5a — the clipping changes no pair sharing >= 300 real rows by more than 0.05 (largest change): expected True, got True
+  [OK] C5b — the generator samples R: largest gap <= 0.03 and rms <= 0.01 on the well-supported pairs, the pooled latent through the rank map over 50 N1 sets (before the tie step, Re-registration 1 item 1): expected (True, True), got (True, True)
+  [OK] C5c — whitened components at 90% on the N1 sets within 14-22 (min, max): expected (True, True), got (True, True)
+  [OK] C6 — the oracle hits at the target on block B1 in at least 95% of 200 latent sets: expected True, got True
+  [OK] C6 — the oracle hits at the target on block B2 in at least 95% of 200 latent sets: expected True, got True
+  [OK] C6 — the oracle hits at the target on block B3 in at least 95% of 200 latent sets: expected True, got True
+  [OK] C2 (a) — (cell, group, block column) triples whose latent AUC sits below Phi(Delta_B/sqrt2) - 0.02: expected 0, got 0
+  [OK] C2 (b) — (set, column) pairs where the handed value is not non-decreasing in the latent value: expected 0, got 0
+  [OK] C3 — sets whose blank mask is not his 658 masks or whose hold x gap Spearman differs from the real 0.911: expected 0, got 0
+  [OK] the shape file holds exactly §4.1's keys: expected ['R', 'R_unclipped', 'cols', 'hold_rank', 'masks', 'n', 'run_offsets', 'run_sizes', 'shared'], got ['R', 'R_unclipped', 'cols', 'hold_rank', 'masks', 'n', 'run_offsets', 'run_sizes', 'shared']
+  [OK] the plant counts at the registered n = 658 are §4.4's 197 / 99 / 329-197-132 (R93): expected (197, 99, (329, 197, 132)), got (197, 99, (329, 197, 132))
+  [OK] every method ran on every plumbing set: expected True, got True
+
+RESULT: 12 claims, 12 OK, 0 MISMATCH
+DRY RUN COMPLETE
