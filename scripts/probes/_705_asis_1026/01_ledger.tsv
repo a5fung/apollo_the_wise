@@ -47,3 +47,6 @@ step7_tiers_tiers_printout	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_
 step7_tiers_tiers	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/tiers.tsv	c8fdfcffe40d889409fe63972931d4dcd9d84b59a79ba0577615fedb3d795b27	2026-10-27T17:37:50
 step7b_shape	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/step7b_shape.npz	b5013f3eec4db769c7232475f0fad5fa69c52aa57f0b773423949fee2c659090	2026-10-27T22:16:12
 step7b_shape_printout	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_1026/06b_shape.txt	542b22c2c1a358735dcaac4dc9319fb8301a80ec9363c47ca6eb716556ade324	2026-10-27T22:16:12
+step7b_dry_run	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_1026/06b_power_dryrun.txt	02dfec90346e4154dceb418178647ae66de0c462cef37fe5502c648541731ff8	2026-10-28T10:03:59
+step7b_power_printout	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_asis_1026/06b_power.txt	841c3a9ecabd933e5b598cc8486766477d6cabca3202c0e0cf31179b7b7fc10a	2026-10-28T10:03:59
+step7b_power	/Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/step7b_power.tsv	6e7c71d45e9e09b07f27db8511a1ccb1edc29b4b1bffdb5d68b5d1feb325d822	2026-10-28T10:03:59

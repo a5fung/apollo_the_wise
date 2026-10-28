@@ -491,3 +491,15 @@ below is ruled by the main loop (technical; none touches the population, the fea
 - shape7b_printout: 542b22c2c1a358735dcaac4dc9319fb8301a80ec9363c47ca6eb716556ade324
 - 06b_power.py: d36e15048084003d1d3d719363010e7eeaf4e1d30954ee8b004a899cc66b4c43
 - dryrun7b_printout: 02dfec90346e4154dceb418178647ae66de0c462cef37fe5502c648541731ff8
+
+### RESULT of `--power` (2026-10-28, run once, 159.8 min on 10 processes; 9 claims, 9 OK, 0 MISMATCH)
+
+**POWER COMPLETE: no style we could show we would see** (Fallback 2 — Fallback 1 fired and the gap-free arm qualified nothing either).
+
+- **C1 (the premise) holds:** the registered rule (M0) finds the target group in 0 of 300 sets; the best possible sorter (the oracle) finds it in 300 of 300 — the information is in the data, no unsupervised method recovers it.
+- **No method qualifies on either column set.** At the target every method hits 0-2 of 300. The methods that keep false alarms down (M0, M2w) see nothing at any separation; the ones with some reach (M1, M3u: 60% of 120 at Δ 3.0; M2u) invent groups in the null sets — M1 251 / 300 plain and 194 / 300 curved, M2u 296 / 292, M3u 224 / 300 curved, M4 279 / 300 curved.
+- **The size line (from M2w, the best method passing both false-alarm lines):** it finds a hidden group of 30% of trades only when it stands apart by MORE than 3.0 within-group spreads on three separate measures; a 15% group at Δ 2.0: 0 in 100.
+- Expectations (§8): C1 under 30% — met (0%); M4 fails N1 — missed (0 / 300 on N1, but 279 / 300 on N2, so it fails anyway); whitened methods under 50% at the target — met (0%); "M3u qualifies" — missed (N2 224 / 300); 15% group under 80% — met (0%); his real trades — not run (§7.1: the one-population branch).
+- **Consequence (§7.1, written before the run):** `06_groups.py --run` under the registered method writes the one-population description, labelled **no style we could show we would see**, with the size line.
+
+Pins: power7b_printout 841c3a9ecabd933e5b598cc8486766477d6cabca3202c0e0cf31179b7b7fc10a · step7b_power 6e7c71d45e9e09b07f27db8511a1ccb1edc29b4b1bffdb5d68b5d1feb325d822

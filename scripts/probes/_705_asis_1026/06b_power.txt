@@ -1,0 +1,171 @@
+# #711 as-is STEP 7b (a stronger sorting method, proven on made-up trades first) — POWER RUN (the one run; made-up sets only) (2026-10-28 07:24)
+Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders. No outcome of any trade is read, computed or printed (both name lists are scanned against every step-7 module and this one); no rule, setup name or pattern label enters.
+- identifier scan: clean (the §3.1 names and the outcome names are absent from: asis_common.py, 01_points.py, 05_tiers.py, 06_groups.py, 06b_power.py)
+- import belt: no rule module in sys.modules
+- modules: asis_common.py 4d36d6a42532dc78 01_points.py aa30dc3c0402178d 05_tiers.py 6c51b4879bced539 06_groups.py c10c2fa75c69be31 06b_power.py d36e15048084003d forbidden_identifiers.txt ba8f4bb5f23f2325 forbidden_outcomes.txt bc942e6cdf95bc5e
+- power gates: both dry runs complete with 0 MISMATCH by the modules on disk; every pin below the 7b doc's marker; the ledger verifies; no output and no step7b_power ledger row
+- the shape file (b5013f3eec4db769); n = 658, 75 columns; 10 processes, per-set seeds (the order of tasks changes nothing)
+- sets: N1 plain 300, N2 curved 300, curve B1_d1.0 40, curve B2_d1.0 40, curve B3_d1.0 40, curve B1_d1.5 100, curve B2_d1.5 100, curve B3_d1.5 100, curve B1_d2.0 40, curve B2_d2.0 40, curve B3_d2.0 40, curve B1_d3.0 40, curve B2_d3.0 40, curve B3_d3.0 40, small B1_d2.0 40, small B2_d2.0 40, small B3_d2.0 40, three B1B3_d1.5 40 = 1420
+
+## C2 / C3 on every set (steps 1-5; no method runs until these hold)
+- C2/C3: 1420 tasks on 10 processes in 0.0 minutes
+  world  cell       group  block column         sets  AUC (latent)  line   verdict  final AUC
+  curve  B1_d1.0    1      entry_gap_pct        40    0.827         0.803  OK       0.827    
+  curve  B1_d1.0    1      entry_range_pct      40    0.822         0.803  OK       0.822    
+  curve  B1_d1.0    1      entry_vol_day_vs_10  40    0.820         0.803  OK       0.820    
+  curve  B1_d1.5    1      entry_gap_pct        100   0.918         0.898  OK       0.918    
+  curve  B1_d1.5    1      entry_range_pct      100   0.917         0.898  OK       0.916    
+  curve  B1_d1.5    1      entry_vol_day_vs_10  100   0.918         0.898  OK       0.918    
+  curve  B1_d2.0    1      entry_gap_pct        40    0.968         0.948  OK       0.968    
+  curve  B1_d2.0    1      entry_range_pct      40    0.969         0.948  OK       0.969    
+  curve  B1_d2.0    1      entry_vol_day_vs_10  40    0.967         0.948  OK       0.967    
+  curve  B1_d3.0    1      entry_gap_pct        40    0.997         0.977  OK       0.997    
+  curve  B1_d3.0    1      entry_range_pct      40    0.997         0.977  OK       0.997    
+  curve  B1_d3.0    1      entry_vol_day_vs_10  40    0.997         0.977  OK       0.997    
+  curve  B2_d1.0    1      entry_dist_hi_10     40    0.816         0.792  OK       0.816    
+  curve  B2_d1.0    1      entry_dist_ma_13     40    0.811         0.792  OK       0.811    
+  curve  B2_d1.0    1      entry_ret_20         40    0.813         0.792  OK       0.813    
+  curve  B2_d1.5    1      entry_dist_hi_10     100   0.908         0.888  OK       0.908    
+  curve  B2_d1.5    1      entry_dist_ma_13     100   0.910         0.888  OK       0.910    
+  curve  B2_d1.5    1      entry_ret_20         100   0.909         0.888  OK       0.909    
+  curve  B2_d2.0    1      entry_dist_hi_10     40    0.961         0.942  OK       0.961    
+  curve  B2_d2.0    1      entry_dist_ma_13     40    0.963         0.942  OK       0.963    
+  curve  B2_d2.0    1      entry_ret_20         40    0.962         0.942  OK       0.962    
+  curve  B2_d3.0    1      entry_dist_hi_10     40    0.997         0.976  OK       0.997    
+  curve  B2_d3.0    1      entry_dist_ma_13     40    0.996         0.976  OK       0.996    
+  curve  B2_d3.0    1      entry_ret_20         40    0.996         0.976  OK       0.996    
+  curve  B3_d1.0    1      exit_minute          40    0.743         0.726  OK       0.743    
+  curve  B3_d1.0    1      exit_pos_in_day      40    0.748         0.726  OK       0.748    
+  curve  B3_d1.0    1      exit_range_pct       40    0.741         0.726  OK       0.741    
+  curve  B3_d1.5    1      exit_minute          100   0.836         0.819  OK       0.836    
+  curve  B3_d1.5    1      exit_pos_in_day      100   0.839         0.819  OK       0.839    
+  curve  B3_d1.5    1      exit_range_pct       100   0.838         0.819  OK       0.838    
+  curve  B3_d2.0    1      exit_minute          40    0.907         0.887  OK       0.907    
+  curve  B3_d2.0    1      exit_pos_in_day      40    0.910         0.887  OK       0.910    
+  curve  B3_d2.0    1      exit_range_pct       40    0.905         0.887  OK       0.905    
+  curve  B3_d3.0    1      exit_minute          40    0.977         0.956  OK       0.977    
+  curve  B3_d3.0    1      exit_pos_in_day      40    0.974         0.956  OK       0.974    
+  curve  B3_d3.0    1      exit_range_pct       40    0.976         0.956  OK       0.976    
+  small  B1_d2.0    1      entry_gap_pct        40    0.966         0.948  OK       0.966    
+  small  B1_d2.0    1      entry_range_pct      40    0.966         0.948  OK       0.966    
+  small  B1_d2.0    1      entry_vol_day_vs_10  40    0.967         0.948  OK       0.967    
+  small  B2_d2.0    1      entry_dist_hi_10     40    0.965         0.942  OK       0.965    
+  small  B2_d2.0    1      entry_dist_ma_13     40    0.965         0.942  OK       0.965    
+  small  B2_d2.0    1      entry_ret_20         40    0.963         0.942  OK       0.963    
+  small  B3_d2.0    1      exit_minute          40    0.904         0.887  OK       0.904    
+  small  B3_d2.0    1      exit_pos_in_day      40    0.907         0.887  OK       0.907    
+  small  B3_d2.0    1      exit_range_pct       40    0.903         0.887  OK       0.903    
+  three  B1B3_d1.5  1      entry_gap_pct        40    0.920         0.898  OK       0.920    
+  three  B1B3_d1.5  1      entry_range_pct      40    0.917         0.898  OK       0.917    
+  three  B1B3_d1.5  1      entry_vol_day_vs_10  40    0.915         0.898  OK       0.915    
+  three  B1B3_d1.5  2      exit_minute          40    0.834         0.819  OK       0.834    
+  three  B1B3_d1.5  2      exit_pos_in_day      40    0.838         0.819  OK       0.838    
+  three  B1B3_d1.5  2      exit_range_pct       40    0.835         0.819  OK       0.835    
+- (b) monotone: 106500 of 106500 (set, column) pairs; C3 failing sets: 0 of 1420
+  [OK] C2 (a) — (cell, group, block column) triples below the line: expected 0, got 0
+  [OK] C2 (b) — (set, column) pairs not monotone: expected 0, got 0
+  [OK] C3 — sets failing the mask / hold-gap check: expected 0, got 0
+
+## The methods on every set
+- methods: 1420 tasks on 10 processes in 159.8 minutes
+- whitened components at 90% over the sets: min 14, median 17, max 19; parallel analysis keeps min 8, median 9, max 11
+- the whitened 2-means index: N1 mean 0.9600, N2 mean 0.9602
+
+## The tables (every rate with its 95% interval, R85)
+
+### false alarms — registered columns (k >= 2 on a null set; lines: N1 <= 15 of 300, N2 <= 30 of 300)
+  method  N1 plain                         passes  N2 curved                        passes
+  M0      0 of 300 = 0.0% [0.0, 1.3]       yes     0 of 300 = 0.0% [0.0, 1.3]       yes   
+  M1      251 of 300 = 83.7% [79.1, 87.4]  no      194 of 300 = 64.7% [59.1, 69.9]  no    
+  M2w     0 of 300 = 0.0% [0.0, 1.3]       yes     0 of 300 = 0.0% [0.0, 1.3]       yes   
+  M2u     296 of 300 = 98.7% [96.6, 99.5]  no      292 of 300 = 97.3% [94.8, 98.6]  no    
+  M3w     9 of 300 = 3.0% [1.6, 5.6]       yes     48 of 300 = 16.0% [12.3, 20.6]   no    
+  M3u     4 of 300 = 1.3% [0.5, 3.4]       yes     224 of 300 = 74.7% [69.5, 79.3]  no    
+  M4      0 of 300 = 0.0% [0.0, 1.3]       yes     279 of 300 = 93.0% [89.5, 95.4]  no    
+
+### power — registered columns (a hit = the planted k AND adjusted Rand >= 0.5; the oracle beside, which no method can beat)
+  cell                                          M0                          M1                              M2w                         M2u                            M3w                             M3u                             M4                          oracle                                     
+  curve B1 Delta 1.0 (sep 1.73)                 0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]      0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8], ARI 0.43        
+  curve B2 Delta 1.0 (sep 1.73)                 0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]      0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   2 of 40 = 5.0% [1.4, 16.5], ARI 0.43       
+  curve B3 Delta 1.0 (sep 1.73)                 0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]      0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8], ARI 0.42        
+  curve B1 Delta 1.5 (sep 2.60)                 0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]      0 of 100 = 0.0% [0.0, 3.7]  2 of 100 = 2.0% [0.6, 7.0]     0 of 100 = 0.0% [0.0, 3.7]      1 of 100 = 1.0% [0.2, 5.4]      0 of 100 = 0.0% [0.0, 3.7]  100 of 100 = 100.0% [96.3, 100.0], ARI 0.67
+  curve B2 Delta 1.5 (sep 2.60)                 0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]      0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]     0 of 100 = 0.0% [0.0, 3.7]      0 of 100 = 0.0% [0.0, 3.7]      0 of 100 = 0.0% [0.0, 3.7]  100 of 100 = 100.0% [96.3, 100.0], ARI 0.68
+  curve B3 Delta 1.5 (sep 2.60)                 0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]      0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]     0 of 100 = 0.0% [0.0, 3.7]      0 of 100 = 0.0% [0.0, 3.7]      0 of 100 = 0.0% [0.0, 3.7]  100 of 100 = 100.0% [96.3, 100.0], ARI 0.67
+  curve B1 Delta 2.0 (sep 3.46)                 0 of 40 = 0.0% [0.0, 8.8]   39 of 40 = 97.5% [87.1, 99.6]   0 of 40 = 0.0% [0.0, 8.8]   11 of 40 = 27.5% [16.1, 42.8]  0 of 40 = 0.0% [0.0, 8.8]       21 of 40 = 52.5% [37.5, 67.1]   0 of 40 = 0.0% [0.0, 8.8]   40 of 40 = 100.0% [91.2, 100.0], ARI 0.85  
+  curve B2 Delta 2.0 (sep 3.46)                 0 of 40 = 0.0% [0.0, 8.8]   8 of 40 = 20.0% [10.5, 34.8]    0 of 40 = 0.0% [0.0, 8.8]   7 of 40 = 17.5% [8.7, 31.9]    0 of 40 = 0.0% [0.0, 8.8]       4 of 40 = 10.0% [4.0, 23.1]     0 of 40 = 0.0% [0.0, 8.8]   40 of 40 = 100.0% [91.2, 100.0], ARI 0.85  
+  curve B3 Delta 2.0 (sep 3.46)                 0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]      2 of 40 = 5.0% [1.4, 16.5]      0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   40 of 40 = 100.0% [91.2, 100.0], ARI 0.86  
+  curve B1 Delta 3.0 (sep 5.20)                 0 of 40 = 0.0% [0.0, 8.8]   33 of 40 = 82.5% [68.1, 91.3]   0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]      3 of 40 = 7.5% [2.6, 19.9]      36 of 40 = 90.0% [76.9, 96.0]   0 of 40 = 0.0% [0.0, 8.8]   40 of 40 = 100.0% [91.2, 100.0], ARI 0.98  
+  curve B2 Delta 3.0 (sep 5.20)                 0 of 40 = 0.0% [0.0, 8.8]   34 of 40 = 85.0% [70.9, 92.9]   0 of 40 = 0.0% [0.0, 8.8]   3 of 40 = 7.5% [2.6, 19.9]     8 of 40 = 20.0% [10.5, 34.8]    31 of 40 = 77.5% [62.5, 87.7]   0 of 40 = 0.0% [0.0, 8.8]   40 of 40 = 100.0% [91.2, 100.0], ARI 0.98  
+  curve B3 Delta 3.0 (sep 5.20)                 0 of 40 = 0.0% [0.0, 8.8]   5 of 40 = 12.5% [5.5, 26.1]     0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]      8 of 40 = 20.0% [10.5, 34.8]    5 of 40 = 12.5% [5.5, 26.1]     0 of 40 = 0.0% [0.0, 8.8]   40 of 40 = 100.0% [91.2, 100.0], ARI 0.98  
+  small (15%) B1 Delta 2.0                      0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]      0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   40 of 40 = 100.0% [91.2, 100.0], ARI 0.85  
+  small (15%) B2 Delta 2.0                      0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]      0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   40 of 40 = 100.0% [91.2, 100.0], ARI 0.87  
+  small (15%) B3 Delta 2.0                      0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]      0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   40 of 40 = 100.0% [91.2, 100.0], ARI 0.85  
+  three (329 / 197 / 132) B1 + B3 at Delta 1.5  0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   0 of 40 = 0.0% [0.0, 8.8]      0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]       0 of 40 = 0.0% [0.0, 8.8]   40 of 40 = 100.0% [91.2, 100.0], ARI 0.62  
+  curve pooled Delta 1.0                        0 of 120 = 0.0% [0.0, 3.1]  0 of 120 = 0.0% [0.0, 3.1]      0 of 120 = 0.0% [0.0, 3.1]  0 of 120 = 0.0% [0.0, 3.1]     0 of 120 = 0.0% [0.0, 3.1]      0 of 120 = 0.0% [0.0, 3.1]      0 of 120 = 0.0% [0.0, 3.1]  2 of 120 = 1.7% [0.5, 5.9]                 
+  curve pooled Delta 1.5 = THE TARGET           0 of 300 = 0.0% [0.0, 1.3]  0 of 300 = 0.0% [0.0, 1.3]      0 of 300 = 0.0% [0.0, 1.3]  2 of 300 = 0.7% [0.2, 2.4]     0 of 300 = 0.0% [0.0, 1.3]      1 of 300 = 0.3% [0.1, 1.9]      0 of 300 = 0.0% [0.0, 1.3]  300 of 300 = 100.0% [98.7, 100.0]          
+  curve pooled Delta 2.0                        0 of 120 = 0.0% [0.0, 3.1]  47 of 120 = 39.2% [30.9, 48.1]  0 of 120 = 0.0% [0.0, 3.1]  18 of 120 = 15.0% [9.7, 22.5]  2 of 120 = 1.7% [0.5, 5.9]      25 of 120 = 20.8% [14.5, 28.9]  0 of 120 = 0.0% [0.0, 3.1]  120 of 120 = 100.0% [96.9, 100.0]          
+  curve pooled Delta 3.0                        0 of 120 = 0.0% [0.0, 3.1]  72 of 120 = 60.0% [51.1, 68.3]  0 of 120 = 0.0% [0.0, 3.1]  3 of 120 = 2.5% [0.9, 7.1]     19 of 120 = 15.8% [10.4, 23.4]  72 of 120 = 60.0% [51.1, 68.3]  0 of 120 = 0.0% [0.0, 3.1]  120 of 120 = 100.0% [96.9, 100.0]          
+
+### false alarms — pattern_free columns (k >= 2 on a null set; lines: N1 <= 15 of 300, N2 <= 30 of 300)
+  method  N1 plain                         passes  N2 curved                          passes
+  M0      0 of 300 = 0.0% [0.0, 1.3]       yes     0 of 300 = 0.0% [0.0, 1.3]         yes   
+  M1      259 of 300 = 86.3% [82.0, 89.8]  no      205 of 300 = 68.3% [62.9, 73.3]    no    
+  M2w     0 of 300 = 0.0% [0.0, 1.3]       yes     0 of 300 = 0.0% [0.0, 1.3]         yes   
+  M2u     296 of 300 = 98.7% [96.6, 99.5]  no      294 of 300 = 98.0% [95.7, 99.1]    no    
+  M3w     5 of 300 = 1.7% [0.7, 3.8]       yes     79 of 300 = 26.3% [21.7, 31.6]     no    
+  M3u     2 of 300 = 0.7% [0.2, 2.4]       yes     203 of 300 = 67.7% [62.2, 72.7]    no    
+  M4      0 of 300 = 0.0% [0.0, 1.3]       yes     300 of 300 = 100.0% [98.7, 100.0]  no    
+
+### power — pattern_free columns (a hit = the planted k AND adjusted Rand >= 0.5; the oracle beside, which no method can beat)
+  cell                                 M0                          M1                          M2w                         M2u                         M3w                         M3u                         M4                          oracle                                     
+  curve B1 Delta 1.5 (sep 2.60)        0 of 100 = 0.0% [0.0, 3.7]  1 of 100 = 1.0% [0.2, 5.4]  0 of 100 = 0.0% [0.0, 3.7]  1 of 100 = 1.0% [0.2, 5.4]  0 of 100 = 0.0% [0.0, 3.7]  1 of 100 = 1.0% [0.2, 5.4]  0 of 100 = 0.0% [0.0, 3.7]  100 of 100 = 100.0% [96.3, 100.0], ARI 0.67
+  curve B2 Delta 1.5 (sep 2.60)        0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  100 of 100 = 100.0% [96.3, 100.0], ARI 0.68
+  curve B3 Delta 1.5 (sep 2.60)        0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  0 of 100 = 0.0% [0.0, 3.7]  100 of 100 = 100.0% [96.3, 100.0], ARI 0.67
+  curve pooled Delta 1.5 = THE TARGET  0 of 300 = 0.0% [0.0, 1.3]  1 of 300 = 0.3% [0.1, 1.9]  0 of 300 = 0.0% [0.0, 1.3]  1 of 300 = 0.3% [0.1, 1.9]  0 of 300 = 0.0% [0.0, 1.3]  1 of 300 = 0.3% [0.1, 1.9]  0 of 300 = 0.0% [0.0, 1.3]  300 of 300 = 100.0% [98.7, 100.0]          
+
+## C1 — the premise: M0 (the registered rule) at the target
+- M0 target power: 0 of 300 = 0.0% [0.0, 1.3] (the line: under 240 of 300)
+
+## Qualification (§6): N1 <= 15 of 300, N2 <= 30 of 300, target >= 240 of 300 pooled AND >= 70 of 100 on each block
+### registered columns
+  method  N1        N2        target pooled  B1        B2        B3        qualifies
+  M1      251 FAIL  194 FAIL  0 of 300 FAIL  0 of 100  0 of 100  0 of 100  no       
+  M2w     0 ok      0 ok      0 of 300 FAIL  0 of 100  0 of 100  0 of 100  no       
+  M2u     296 FAIL  292 FAIL  2 of 300 FAIL  2 of 100  0 of 100  0 of 100  no       
+  M3w     9 ok      48 FAIL   0 of 300 FAIL  0 of 100  0 of 100  0 of 100  no       
+  M3u     4 ok      224 FAIL  1 of 300 FAIL  1 of 100  0 of 100  0 of 100  no       
+  M4      0 ok      279 FAIL  0 of 300 FAIL  0 of 100  0 of 100  0 of 100  no       
+### pattern_free columns — the gap-free arm (a readout; the selection repeats here only under Fallback 1)
+  method  N1        N2        target pooled  B1        B2        B3        qualifies
+  M1      259 FAIL  205 FAIL  1 of 300 FAIL  1 of 100  0 of 100  0 of 100  no       
+  M2w     0 ok      0 ok      0 of 300 FAIL  0 of 100  0 of 100  0 of 100  no       
+  M2u     296 FAIL  294 FAIL  1 of 300 FAIL  1 of 100  0 of 100  0 of 100  no       
+  M3w     5 ok      79 FAIL   0 of 300 FAIL  0 of 100  0 of 100  0 of 100  no       
+  M3u     2 ok      203 FAIL  1 of 300 FAIL  1 of 100  0 of 100  0 of 100  no       
+  M4      0 ok      300 FAIL  0 of 300 FAIL  0 of 100  0 of 100  0 of 100  no       
+
+## Selection
+- Fallback 1 (no method qualifies on the 75 columns — Re-registration 1 item 4): FIRES — the selection repeats on the gap-free arm (56 columns) with the same lines and order
+- carried: NONE on either column set -> Fallback 2: the primary is described as one population on its registered columns, NO STYLE WE COULD SHOW WE WOULD SEE
+
+## The size line (source: M2w on registered — the highest-power method among those passing both false-alarm lines on the registered columns (none qualified on either arm))
+  Delta-equivalent  pooled power                >= 80%
+  1.0               0 of 120 = 0.0% [0.0, 3.1]  no    
+  1.5               0 of 300 = 0.0% [0.0, 1.3]  no    
+  2.0               0 of 120 = 0.0% [0.0, 3.1]  no    
+  3.0               0 of 120 = 0.0% [0.0, 3.1]  no    
+- this method (M2w, registered) finds a hidden group of 30% of trades only when it stands apart as clearly as more than 3.0 within-group spreads on three separate measures (about — of each measure's spread across all his trades); a 15% group at Delta 2.0: 0 in 100
+
+## Claims
+  [OK] the shape file's n is the registered 658 (its plant counts are §4.4's, R93): expected 658, got 658
+  [OK] C1 — M0's target power below 80% (under 240 of 300): expected True, got True
+  [OK] C2 (a) — triples below the line: expected 0, got 0
+  [OK] C2 (b) — pairs not monotone: expected 0, got 0
+  [OK] C3 — sets failing: expected 0, got 0
+  [OK] every set carries every method on its column sets (rows): expected 16240, got 16240
+
+RESULT: 9 claims, 9 OK, 0 MISMATCH
+
+## Outputs
+- step7b_power.tsv: /Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/step7b_power.tsv (6e7c71d45e9e09b0), 16240 rows
+POWER COMPLETE: no style we could show we would see
