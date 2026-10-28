@@ -253,7 +253,7 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
       # staleness class, now against the check whose whole job is catching staleness. Must
       # precede the generic docs/* deploy-irrelevant arm this replaces below.
       docs/*)                                 NEED_MARKET=1 ;;
-      tests/*|*.md|.apollo_open_tasks.json|.githooks/*) ;;  # #221 deploy-irrelevant: tests/governance/SoT + local git hooks (.githooks run on git ops, never inside the container) — present in the image but never executed, so they require no redeploy. MUST precede the yaml arms (a tests/ fixture yaml is not deployable config).
+      tests/*|*.md|.apollo_open_tasks.json|.githooks/*|.github/*) ;;  # #221 deploy-irrelevant: tests/governance/SoT + local git hooks (.githooks run on git ops, never inside the container) + CI config (.github/ runs on GitHub's runners, never in a container; 2026-10-27: a CI timeout change blocked a market-agent deploy) — present in the image but never executed, so they require no redeploy. MUST precede the yaml arms (a tests/ fixture yaml is not deployable config).
       # The two KNOWN market-agent-only runtime yamls keep their narrow scope (the
       # 2026-07-09 incident: the catch-all dragged all 3 services into review-yaml-only
       # deploys; review 7/17 caught the generic arm below re-introducing that via

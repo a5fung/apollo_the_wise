@@ -207,3 +207,12 @@ def test_touching_a_copied_core_file_warns_for_execution_on_deploy_both():
     assert "bash scripts/deploy.sh execution" in r.stdout, (
         "the warning fired but does not tell the operator the command to run"
     )
+
+
+def test_ci_config_needs_no_service_deploy():
+    """2026-10-27: a CI-only change (`.github/workflows/tests.yml`, the job timeout) fell to the catch-all and
+    aborted a market-agent deploy as orchestrator-owned. CI config runs on GitHub's runners, never in a
+    container, so it must flag no service; a real orchestrator file in the same pull still must."""
+    assert _classify([".github/workflows/tests.yml"]) == {"ORCH": "0", "MARKET": "0", "EXEC": "0"}
+    assert _classify([".github/workflows/tests.yml", "channels/telegram.py"])["ORCH"] == "1"
+
