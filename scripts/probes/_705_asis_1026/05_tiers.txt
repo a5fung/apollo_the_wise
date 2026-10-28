@@ -1,0 +1,251 @@
+# #711 as-is STEP 7 (part 1, the tiers) — RUN (2026-10-27 17:37)
+Guards: no network, no production server, no paid call, nothing after 2024-12-31, the seven outcome folders never opened, nothing imported from the rule folders. No outcome of any trade is read (the outcome-name list is scanned); no rule, setup name or pattern label enters; the tiers are screen facts only.
+- identifier scan: clean (the §3.1 names and the outcome names are absent from the step-7 modules)
+- import belt: no rule module in sys.modules
+- modules: asis_common.py 4d36d6a42532dc78 05_tiers.py 6c51b4879bced539 forbidden_identifiers.txt ba8f4bb5f23f2325 forbidden_outcomes.txt bc942e6cdf95bc5e
+- run gates: the dry run completed with 0 MISMATCH; every pin (inputs, modules, both doc bodies, the dry-run printout) is below the step-7 doc's freeze marker; the ledger verifies; no output exists
+
+## Inputs
+- ranges.tsv: 3890 rows (0d12cf9ab46a4fea)
+- entries_v2.tsv: 1958 positions (11f6ee5a7b652bdd)
+- check_r1_r5.tsv: 194 statements (8df4521acde45b2c); columns loaded (usecols): eid, r5_agree, inside, fill, primary, join_status — its other columns (his stated dollar result among them) are never in memory
+
+## The tiers (the registration §2, verbatim)
+- HIGH: buy AND sale side each in a bracket of at most one session (same_in_in, same_pre_in, next_in_pre, next_in_in), resolution minute, not inverted, seen on 2+ streams (not a flicker)
+- MEDIUM: both sides within 2-5 sessions or better, any resolution with a range, seen on 2+ streams
+- ONE-STREAM: flickers (seen on one stream only): a real quick trade or a misread ticker
+- LOW: the rest (wide windows, missing data, inverted)
+- 'seen on 2+ streams' = the panel's `flicker` flag is False (flicker = one stream AND gone within 5 sessions); the literal n_streams >= 2 reading differs on the positions listed under `single_stream_nonflicker` below
+
+## Population: positions whose BUY window ends in 2020-01-01..2022-06-30 (ranges.tsv in_span, windows v2)
+- positions 1588; with a sale row 1588; sale window also in span 1585 (the rest kept: the position is in span by its buy)
+
+## Counts by tier
+  tier        n    share  proposed
+  HIGH        398  25.1%  398     
+  MEDIUM      279  17.6%  279     
+  ONE-STREAM  510  32.1%  510     
+  LOW         401  25.3%  401     
+
+### LOW by reason
+  reason         n  
+  bracket_other  64 
+  inverted       31 
+  no_range       153
+  wide_window    153
+
+### single_stream_nonflicker: 53 positions seen on one stream but held longer than 5 sessions (not flickers)
+  tier    n 
+  LOW     50
+  MEDIUM  3 
+- in MEDIUM: 1589 UVXY 2021, 1603 KWEB 2021, 1833 BOIL 2022
+
+## Counts by tier x year
+  tier        2020  2021  2022  all
+  HIGH        207   176   15    398
+  MEDIUM      140   104   35    279
+  ONE-STREAM  262   190   58    510
+  LOW         230   142   29    401
+
+## Counts by tier x side bracket (buy side | sale side)
+### buy side
+  tier        same_in_in  same_pre_in  next_in_pre  next_in_in  sessions_2_5  sessions_6plus  next_other  inverted
+  HIGH        110         154          118          16          0             0               0           0       
+  MEDIUM      44          50           45           6           134           0               0           0       
+  ONE-STREAM  118         174          114          20          84            0               0           0       
+  LOW         36          45           46           7           87            93              64          23      
+### sale side
+  tier        same_in_in  same_pre_in  next_in_pre  next_in_in  sessions_2_5  sessions_6plus  next_other  inverted
+  HIGH        83          137          159          19          0             0               0           0       
+  MEDIUM      21          34           40           11          173           0               0           0       
+  ONE-STREAM  114         53           225          30          88            0               0           0       
+  LOW         40          36           63           17          89            98              32          26      
+
+## Composition per tier (screen facts only; what each tier over- or under-represents)
+### HIGH (n = 398)
+  facet                                                   value        n    share 
+  hold length (sessions, max)                             1            87   21.9% 
+  hold length (sessions, max)                             2-5          174  43.7% 
+  hold length (sessions, max)                             6-20         115  28.9% 
+  hold length (sessions, max)                             21+          22   5.5%  
+  year of the buy window                                  2020         207  52.0% 
+  year of the buy window                                  2021         176  44.2% 
+  year of the buy window                                  2022         15   3.8%  
+  bracket pair (buy/sale)                                 tight/tight  398  100.0%
+  minute coverage                                         both         398  100.0%
+  average traded price, buy side (minute-resolved sides)  <$5          23   5.8%  
+  average traded price, buy side (minute-resolved sides)  $5-20        59   14.8% 
+  average traded price, buy side (minute-resolved sides)  $20-100      179  45.0% 
+  average traded price, buy side (minute-resolved sides)  $100+        137  34.4% 
+  streams seen on                                         2            139  34.9% 
+  streams seen on                                         3-5          131  32.9% 
+  streams seen on                                         6+           128  32.2% 
+  pre-market possible (buy side)                          True         154  38.7% 
+  pre-market possible (buy side)                          False        244  61.3% 
+  confirmed by his words                                  True         18   4.5%  
+  confirmed by his words                                  False        380  95.5% 
+### MEDIUM (n = 279)
+  facet                                                   value                         n    share
+  hold length (sessions, max)                             1                             2    0.7% 
+  hold length (sessions, max)                             2-5                           96   34.4%
+  hold length (sessions, max)                             6-20                          152  54.5%
+  hold length (sessions, max)                             21+                           29   10.4%
+  year of the buy window                                  2020                          140  50.2%
+  year of the buy window                                  2021                          104  37.3%
+  year of the buy window                                  2022                          35   12.5%
+  bracket pair (buy/sale)                                 tight/near                    134  48.0%
+  bracket pair (buy/sale)                                 near/tight                    95   34.1%
+  bracket pair (buy/sale)                                 near/near                     39   14.0%
+  bracket pair (buy/sale)                                 tight/tight                   11   3.9% 
+  minute coverage                                         both                          255  91.4%
+  minute coverage                                         one                           22   7.9% 
+  minute coverage                                         none                          2    0.7% 
+  average traded price, buy side (minute-resolved sides)  <$5                           22   7.9% 
+  average traded price, buy side (minute-resolved sides)  $5-20                         46   16.5%
+  average traded price, buy side (minute-resolved sides)  $20-100                       130  46.6%
+  average traded price, buy side (minute-resolved sides)  $100+                         66   23.7%
+  average traded price, buy side (minute-resolved sides)  daily-only (no minute price)  14   5.0% 
+  average traded price, buy side (minute-resolved sides)  minute, no price              1    0.4% 
+  streams seen on                                         1                             3    1.1% 
+  streams seen on                                         2                             66   23.7%
+  streams seen on                                         3-5                           103  36.9%
+  streams seen on                                         6+                            107  38.4%
+  pre-market possible (buy side)                          True                          80   28.7%
+  pre-market possible (buy side)                          False                         199  71.3%
+  confirmed by his words                                  True                          15   5.4% 
+  confirmed by his words                                  False                         264  94.6%
+### ONE-STREAM (n = 510)
+  facet                                                   value                         n    share 
+  hold length (sessions, max)                             0                             220  43.1% 
+  hold length (sessions, max)                             1                             164  32.2% 
+  hold length (sessions, max)                             2-5                           116  22.7% 
+  hold length (sessions, max)                             6-20                          10   2.0%  
+  year of the buy window                                  2020                          262  51.4% 
+  year of the buy window                                  2021                          190  37.3% 
+  year of the buy window                                  2022                          58   11.4% 
+  bracket pair (buy/sale)                                 tight/tight                   355  69.6% 
+  bracket pair (buy/sale)                                 tight/near                    71   13.9% 
+  bracket pair (buy/sale)                                 near/tight                    67   13.1% 
+  bracket pair (buy/sale)                                 near/near                     17   3.3%  
+  minute coverage                                         both                          490  96.1% 
+  minute coverage                                         one                           15   2.9%  
+  minute coverage                                         none                          5    1.0%  
+  average traded price, buy side (minute-resolved sides)  <$5                           37   7.3%  
+  average traded price, buy side (minute-resolved sides)  $5-20                         95   18.6% 
+  average traded price, buy side (minute-resolved sides)  $20-100                       231  45.3% 
+  average traded price, buy side (minute-resolved sides)  $100+                         138  27.1% 
+  average traded price, buy side (minute-resolved sides)  daily-only (no minute price)  7    1.4%  
+  average traded price, buy side (minute-resolved sides)  minute, no price              2    0.4%  
+  streams seen on                                         1                             510  100.0%
+  pre-market possible (buy side)                          True                          193  37.8% 
+  pre-market possible (buy side)                          False                         317  62.2% 
+  confirmed by his words                                  True                          4    0.8%  
+  confirmed by his words                                  False                         506  99.2% 
+### LOW (n = 401)
+  facet                                                   value                         n    share
+  hold length (sessions, max)                             0                             39   9.7% 
+  hold length (sessions, max)                             1                             27   6.7% 
+  hold length (sessions, max)                             2-5                           81   20.2%
+  hold length (sessions, max)                             6-20                          210  52.4%
+  hold length (sessions, max)                             21+                           44   11.0%
+  year of the buy window                                  2020                          230  57.4%
+  year of the buy window                                  2021                          142  35.4%
+  year of the buy window                                  2022                          29   7.2% 
+  bracket pair (buy/sale)                                 tight/tight                   60   15.0%
+  bracket pair (buy/sale)                                 wide/tight                    41   10.2%
+  bracket pair (buy/sale)                                 near/wide                     37   9.2% 
+  bracket pair (buy/sale)                                 wide/near                     37   9.2% 
+  bracket pair (buy/sale)                                 tight/wide                    35   8.7% 
+  bracket pair (buy/sale)                                 other/tight                   30   7.5% 
+  bracket pair (buy/sale)                                 near/tight                    23   5.7% 
+  bracket pair (buy/sale)                                 near/near                     19   4.7% 
+  bracket pair (buy/sale)                                 inverted/inverted             18   4.5% 
+  bracket pair (buy/sale)                                 tight/other                   17   4.2% 
+  bracket pair (buy/sale)                                 other/near                    16   4.0% 
+  bracket pair (buy/sale)                                 tight/near                    15   3.7% 
+  bracket pair (buy/sale)                                 wide/wide                     13   3.2% 
+  bracket pair (buy/sale)                                 other/wide                    12   3.0% 
+  bracket pair (buy/sale)                                 near/other                    7    1.7% 
+  bracket pair (buy/sale)                                 tight/inverted                7    1.7% 
+  bracket pair (buy/sale)                                 other/other                   6    1.5% 
+  bracket pair (buy/sale)                                 inverted/tight                2    0.5% 
+  bracket pair (buy/sale)                                 inverted/near                 2    0.5% 
+  bracket pair (buy/sale)                                 wide/other                    2    0.5% 
+  bracket pair (buy/sale)                                 near/inverted                 1    0.2% 
+  bracket pair (buy/sale)                                 inverted/wide                 1    0.2% 
+  minute coverage                                         both                          63   15.7%
+  minute coverage                                         one                           147  36.7%
+  minute coverage                                         none                          191  47.6%
+  average traded price, buy side (minute-resolved sides)  <$5                           13   3.2% 
+  average traded price, buy side (minute-resolved sides)  $5-20                         21   5.2% 
+  average traded price, buy side (minute-resolved sides)  $20-100                       64   16.0%
+  average traded price, buy side (minute-resolved sides)  $100+                         42   10.5%
+  average traded price, buy side (minute-resolved sides)  daily-only (no minute price)  83   20.7%
+  average traded price, buy side (minute-resolved sides)  no bars                       154  38.4%
+  average traded price, buy side (minute-resolved sides)  no range (inverted)           23   5.7% 
+  average traded price, buy side (minute-resolved sides)  minute, no price              1    0.2% 
+  streams seen on                                         1                             180  44.9%
+  streams seen on                                         2                             60   15.0%
+  streams seen on                                         3-5                           87   21.7%
+  streams seen on                                         6+                            74   18.5%
+  pre-market possible (buy side)                          True                          166  41.4%
+  pre-market possible (buy side)                          False                         235  58.6%
+  confirmed by his words                                  True                          16   4.0% 
+  confirmed by his words                                  False                         385  96.0%
+
+## Step-7 feature registration (part 2's input; the doc §3.3 — review F1 / F4)
+- primary: entry 40 columns, exit 34 columns, trade-level hold_sessions_max; exit-side ret_N columns: 0; our_length columns in the set: 0
+- with_our_length: entry 50 columns, exit 44 columns, trade-level hold_sessions_max; exit-side ret_N columns: 0; our_length columns in the set: 20
+- held out of every run: family, direction, k, our_length, dist_round, dist_vwap, pos_in_day_so_far, vol_min_vs_median, range_width_pct (and every outcome column, by the identifier scan)
+- exit-side look-back rule: a look-back over the prior N sessions is defined only when N < hold_sessions_min, or the trade is a same-session round trip (hold_sessions_max = 0); otherwise a STRUCTURAL blank, counted, never filled from the bars
+### exit-side look-back lengths defined, by hold (hold_sessions_min / max), per tier — share of the tier's positions
+  tier        exit look-backs defined (N)   n    share
+  HIGH        1                             113  28.4%
+  HIGH        (none)                        95   23.9%
+  HIGH        1,3                           55   13.8%
+  HIGH        1,3,5                         48   12.1%
+  HIGH        1,3,5,8,10,13                 28   7.0% 
+  HIGH        1,3,5,8,10                    21   5.3% 
+  HIGH        1,3,5,8                       17   4.3% 
+  HIGH        1,3,5,8,10,13,20              11   2.8% 
+  HIGH        1,3,5,8,10,13,20,30           3    0.8% 
+  HIGH        1,3,5,8,10,13,20,30,40        3    0.8% 
+  HIGH        1,3,5,8,10,13,20,30,40,50,60  3    0.8% 
+  HIGH        1,3,5,8,10,13,20,30,40,50     1    0.3% 
+  MEDIUM      1                             83   29.7%
+  MEDIUM      1,3,5                         44   15.8%
+  MEDIUM      1,3                           43   15.4%
+  MEDIUM      (none)                        33   11.8%
+  MEDIUM      1,3,5,8,10,13                 21   7.5% 
+  MEDIUM      1,3,5,8,10,13,20              18   6.5% 
+  MEDIUM      1,3,5,8,10                    15   5.4% 
+  MEDIUM      1,3,5,8                       13   4.7% 
+  MEDIUM      1,3,5,8,10,13,20,30           7    2.5% 
+  MEDIUM      1,3,5,8,10,13,20,30,40        2    0.7% 
+  ONE-STREAM  (none)                        290  56.9%
+  ONE-STREAM  1,3,5,8,10,13,20,30,40,50,60  220  43.1%
+  LOW         (none)                        171  42.6%
+  LOW         1                             73   18.2%
+  LOW         1,3,5,8,10,13,20,30,40,50,60  39   9.7% 
+  LOW         1,3                           31   7.7% 
+  LOW         1,3,5                         25   6.2% 
+  LOW         1,3,5,8                       18   4.5% 
+  LOW         1,3,5,8,10,13                 18   4.5% 
+  LOW         1,3,5,8,10                    11   2.7% 
+  LOW         1,3,5,8,10,13,20              10   2.5% 
+  LOW         1,3,5,8,10,13,20,30           3    0.7% 
+  LOW         1,3,5,8,10,13,20,30,40        2    0.5% 
+- primary (HIGH + MEDIUM, n = 677): 128 positions (18.9%) have NO exit look-back defined (hold_sessions_min of 0 or 1: the prior session may be the entry day); same-session round trips in the primary: 0; daily-only on one side 22, on both 2
+
+## Confirmed by his words (a sub-flag, not a tier)
+- r5 (action agreed with the window's side): 46 positions; r1 (a stated fill inside the range): 19; of which the R1 primary line: 8; union 53; overlap 12
+- assignable to the groups (a reachable range on both sides, so features exist): 47 of 53 — 33 are rows of the primary fit (HIGH / MEDIUM), 14 lie outside it (placed by nearest centroid); of those 47, daily-only on a side: 9; the rest have no bars on a side (Counter({'no_range': 6}))
+  tier        confirmed  r5  r1  r1_primary  share of tier
+  HIGH        18         16  8   2           4.5%         
+  MEDIUM      15         13  5   3           5.4%         
+  ONE-STREAM  4          3   2   1           0.8%         
+  LOW         16         14  4   2           4.0%         
+
+## Outputs
+- tiers: /Users/alvinfung/apollo_data/cb702/qm_streams/asis_1026/tiers.tsv (c8fdfcffe40d8894)
+RUN COMPLETE
