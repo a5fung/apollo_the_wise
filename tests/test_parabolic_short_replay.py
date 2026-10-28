@@ -729,6 +729,25 @@ def test_the_earlier_issuer_control_passes_whichever_record_owns_the_control_nig
         assert ST.earlier_issuer_control(e, nt, recs, "INBX", cal[201])[0] is False
 
 
+def test_the_earlier_issuer_control_without_an_earlier_record_checks_exclusion_only(tmp_path):
+    """R70 (the first real STEP 0, 10-28): Polygon's reference held only the ACTIVE INBX / DOC records (the old Inhibrx sits under
+    INBXV, no old DOC at all), so the rule has nothing to act on; the control then passes only if the night is excluded, and says so."""
+    e, nt, recs, cal = _control_era(tmp_path, 199)
+    only_new = [r for r in recs if r["_pull"] == "active"]
+    nt2 = PP.night_table(e, PP.Ctx(ref={"INBX": only_new}, active_keys={only_new[0]["_cik"]}))
+    i = e.bar_index("INBX", cal[201])
+    assert not bool(e.contig[i])                                       # the one-session hole: the history rule excludes the night
+    ok, lines = ST.earlier_issuer_control(e, nt2, only_new, "INBX", cal[201])
+    assert ok and "NOT EXERCISED" in lines[-1] and "excluded" in lines[-1], lines
+    # ... and a night NOT excluded still refuses (the branch never passes vacuously)
+    rows = [(x, 34, 34.3, 33.7, 34, 1e6) for x in cal]                  # no hole: 120 consecutive sessions reach the night
+    (tmp_path / "nohole").mkdir()
+    e3, _P = _flat_era(tmp_path / "nohole", {"INBX": rows}, cal=cal)
+    nt3 = PP.night_table(e3, PP.Ctx(ref={"INBX": only_new}, active_keys={only_new[0]["_cik"]}))
+    ok3, lines3 = ST.earlier_issuer_control(e3, nt3, only_new, "INBX", cal[201])
+    assert ok3 is False and "NOT excluded" in lines3[-1], lines3
+
+
 def test_former_symbols_find_the_symbol_in_use_at_d0():
     fb = {"ticker": "FB", "_pull": "delisted", "_delisted": "2022-06-09", "_cik": "0001326801", "type": "CS", "composite_figi": "C1",
           "share_class_figi": "S1"}

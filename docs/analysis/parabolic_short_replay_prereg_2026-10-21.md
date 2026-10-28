@@ -1014,3 +1014,21 @@ Frozen before any pull, any detector pass over a real population and any walk. T
 - doc_body: ee3c15a06ca869442a201e0cb87441351373c6c88a8ebee20ec2f83f32931df8
 
 Waiting for STEP 0 (ABSENT now): polygon_reference, edgar_submissions, xbrl_facts, xbrl_instances, polygon_news, alpaca_ca, calendar_B, breaks_applied, owners, climax_list, features, distribution_flags, distribution_suspects, distribution_class, episodes, ledger, step0_derive_printout, step0_climax_printout, step0_features_printout, result_printout
+
+### Re-registration 1 — 2026-10-28, STEP 0's first real run (derive), before any climax pass or walk
+
+The reference pull ran on the server (38 requests: 13,254 active + 23,576 delisted records; `polygon_reference.jsonl.gz` sha256
+2957f836…, pulled inside the apollo-market container, copied out). `--step0 derive` then STOPPED on the INBX 2024-05-31 control:
+Polygon's reference holds only the ACTIVE INBX record (Inhibrx Biosciences); the old Inhibrx is filed under `INBXV` (a when-issued
+symbol) and no old DOC record exists at all — so the earlier-issuer rule has nothing to act on at either control, and R58's "the flag
+must be set" cannot be met by real data. **R70 (ruled by the main loop):** when the reference holds no earlier record under the
+control's symbol, the control checks only the plan's own words — the night "must be excluded" (here by the one-session hole) — and
+prints that the rule is NOT EXERCISED by it. The rule's real-data firing is the funnel's own row: `identity_break (earlier-issuer
+rule, era B)` = 9 nights in the P2 band. A test covers both branches (excluded passes; not excluded refuses). Dry run 99 / 99 on the
+changed module; the changed pins:
+
+- test_parabolic_short_replay.py: 0572b5d75f3283aaac4c74f44c952ea23f8b45d8edf62dcd7d42ffa726376908
+- ps_stages.py: ab7fbfad64d758e02feff2578b79470d90709f81fab15a76cd51ade3dcc5aa9e
+- polygon_reference: 2957f8367ef3dc19a8accce12eedc3c0a3fe6c27674dead2c00bed6e19c34f08
+- calendar_B: a17d991a25a1b6b6977c388f352213142868635f94c2010813a7a0f8ef79d2be
+- dryrun_printout: 945a47c6c31f98c31f10bee8605554263b85ac25340ee5121fdd8150e49f478f

@@ -308,6 +308,15 @@ def earlier_issuer_control(e, nt, recs: list, s: str, d: str) -> tuple:
                  f"{bool(fl & PP.F_ID_EARLIER)}; guard {bool(fl & PP.F_ID_GUARD)}; 120 consecutive sessions {bool(e.contig[i])}")
     if rec is None:
         return False, lines + ["  the control night has no owner (a tie or no record): the control cannot be evaluated"]
+    if not any(not PP.is_active_record(r) for r in recs):
+        # R70 (main-loop ruling 2026-10-28, STEP 0's first real run): the reference holds NO earlier record under this symbol (Polygon
+        # files the old INBX under INBXV, and no old DOC record at all), so the earlier-issuer rule has nothing to act on here and the
+        # control cannot exercise it; it then checks only the plan's own words — the night "must be excluded" — and says so. The rule's
+        # real-data firing count is the derive funnel's `identity_break (earlier-issuer rule, era B)` row; its logic is the tests' job.
+        excluded = (not bool(e.contig[i])) or bool(fl & (PP.F_ID_EARLIER | PP.F_ID_GUARD))
+        tail = "excluded (history or identity)" if excluded else "NOT excluded"
+        return excluded, lines + [f"  the reference holds no earlier record under {s}: the earlier-issuer rule is NOT EXERCISED by this "
+                                  f"control (R70); the night is {tail}"]
     if PP.is_active_record(rec):
         if fl & PP.F_ID_EARLIER:
             return True, lines + ["  active-owned and flagged: the rule catches the control night"]
