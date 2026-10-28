@@ -12947,6 +12947,11 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_10_28: >-
+      RAN 2026-10-28 (main loop, read-only, his ok after the classifier first refused it), the pinned SQL + the same scorer
+      (scripts/probes/_review_1028/alert_rank/verify_rank_shadow_2026-10-28.out, cells_2026-10-28.out). n = 29 sessions (new:
+      10-27 CLS / INIO / SOFI, pool of 3, none in the top quartile at EOD, unmatured). Matured cells unchanged from 10-27: 5-day
+      8x top 0 of 7 vs rest 2 of 45 (MRNA, KOD); 20-day top 1 of 5 (VICR) vs 2 of 32. The reading stands: does not validate.
     resolution_2026_10_27: >-
       RAN 2026-10-27 (main loop; the subagent cards' prod reads were refused), the pinned SQL + the same scorer
       (scripts/probes/_review_1027/alert_rank/verify_rank_shadow_2026-10-27.out, cells_2026-10-27.out). n = 28 sessions
