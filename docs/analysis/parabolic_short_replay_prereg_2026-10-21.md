@@ -1032,3 +1032,33 @@ changed module; the changed pins:
 - polygon_reference: 2957f8367ef3dc19a8accce12eedc3c0a3fe6c27674dead2c00bed6e19c34f08
 - calendar_B: a17d991a25a1b6b6977c388f352213142868635f94c2010813a7a0f8ef79d2be
 - dryrun_printout: 945a47c6c31f98c31f10bee8605554263b85ac25340ee5121fdd8150e49f478f
+
+### STEP 0 pins (2026-10-28) — every pull complete, derive / climax / features done; pasted before the walk
+
+Pulls (all free; the reference and news on the server's Polygon key inside apollo-market, the EDGAR ones with the app's own SEC
+User-Agent there, the corporate actions with the paper keys inside apollo-execution; copied home, sha256 equal both sides): reference
+38 requests; EDGAR 3,000 (1,301 CIKs: submissions 1,301 ok, companyfacts 1,287 ok / 14 none); instances 935 (475 filings: 460 ok,
+15 no instance); news 1,313 pulls, 0 failed, 0 truncated; corporate actions 41. STEP 0 counts: 844 climax rows (P1 418, P2 243,
+P2-small 183) across both eras; printed expectation misses (no rule changes): P2 yields fewer climaxes than P1; era A's climaxes
+are concentrated in 2020-21; read 5's known buckets under 30 in both populations (CAN'T TELL expected); **read 3's 'present' share is
+0% in every year 2016-2023 and 17% / 6% in 2024 — Polygon news carries the per-ticker insights the read keys on only from 2024**, so
+read 3 is effectively a 2024-only read (stated here before any outcome).
+
+- edgar_submissions: cf78ad762db1b246ecc801217624d1bb691e26047faa9b778bfe7a01f7c4010e
+- xbrl_facts: 5a32a4e5dcc4fd67b2b4297fc949969b84cde48deb46c7a0400f6b6d63cc1a19
+- xbrl_instances: 889bf9e684689b93c47d4b3bfcb4b0b5cc5503203d43db14241c4b8c59701ec7
+- polygon_news: b188a9e339890dd095f6fc230f355e61f05c24ec9f73820135c6ac4eb65a869a
+- alpaca_ca: 14d79931a0587cab5da1f1b1004952704b40513c6cf9e6884c4b015da863d5bf
+- breaks_applied: a0ff7869ee4f470d29a034c6cbcc6306e2c6d276f7628c9bb945dfc6c292c258
+- owners: edcb764e22a7f4e74ee9ab9a9646143f3ab85a67089acaa2b59bb96f73271d16
+- climax_list: 53af1961b7b0a19325d378433f150fccd0253dc3498a8b05b83e73aa78facf6a
+- features: 0d708082460a71f582a25d6749ee2a4b90a38085e380cd4af773fbedaa440574
+- distribution_flags: d488432615a1b50dd4478f86f6cf85d2e8bbf6632c8a4fe0dfa72e2b57adb2db
+- distribution_suspects: b3886372cf1b1101a4e61c7d5fb8a416edcd7ada9b8054962bab17beca6e11bf
+- distribution_class: 798ac0427447a9d6242307f91bae9b7f15d8b9221dc3fb529873620ab2051fab
+- ledger: cc45a8c3c0d77007ce008ec68bcd0791b69d6a80a0f9da0ebb2bbdb91a9ce20b
+- step0_derive_printout: cebcc72c1269a97843406fd8b03079cc191b77635bd6c6761dd0600a96d0be3e
+- step0_climax_printout: 98e36f3686193064db733d6ff19d61cc0d14c035dee809a05d319ed99ade287c
+- step0_features_printout: aca52188920b4a81f405506c6735eff5034c71a5a234e2d2c6a1b567c3b07def
+
+Still ABSENT (written by the walk): episodes, result_printout

@@ -1,0 +1,64 @@
+# #314 parabolic-short replay — STEP 0 — features (derive and count the populations; walk nothing) (2026-10-28 14:56)
+Guards: no network, no DB, no production server, nothing dated after 2024-12-31 read from a bar file (the 2025-26 split rows are read only to undo era B's adjustment basis), cb702_pre's survivors-only export never opened, no episode walked and no outcome computed outside --walk.
+- modules: ps_common.py 6f99467e3a2bc5c3 ps_population.py d1e5184bc3e68cb1 ps_features.py 41d86dbd9b732d36 ps_walk.py a4decccfebb4d49d ps_goldens.py b0c43316bb6e232d ps_stages.py ab7fbfad64d758e0 ps_replay.py cfe842184385ad33 ps_rederive.py 629ff75fea874ae9 ps_pull.py c117b130e351b29c
+
+## Expectations (fixed in the plan; a miss is reported first and changes no rule)
+  [MISS] P1: the read-5 known buckets are under 30 each (CAN'T TELL expected): >= 20% 0, < 20% 125
+  [MISS] P2: the read-5 known buckets are under 30 each (CAN'T TELL expected): >= 20% 2, < 20% 68
+  [held] P1: truncated news pulls are under 1% of pulls: 0 of 836
+  [held] P1: the share 'present' in read 3 rises across 2016 -> 2024: 2016 0%, 2017 0%, 2018 0%, 2019 0%, 2020 0%, 2021 0%, 2022 0%, 2023 0%, 2024 17%
+  [held] P2: truncated news pulls are under 1% of pulls: 0 of 486
+  [held] P2: the share 'present' in read 3 rises across 2016 -> 2024: 2016 0%, 2017 0%, 2018 0%, 2019 0%, 2020 0%, 2021 0%, 2022 0%, 2023 0%, 2024 6%
+  [held] under 10% of the distribution suspects are classed `distribution`: 1 of 64
+
+## The synthetic positive controls (a mismatch refuses)
+  detector golden climax: stage climax, failing [], days_up_streak 20 (expected ('climax', (), 20)) -> OK
+  detector golden streak_2: stage anticipation, failing ['days_up_streak'], days_up_streak 2 (expected ('anticipation', ('days_up_streak',), 2)) -> OK
+  detector golden earnings_today: stage anticipation, failing ['earnings'], days_up_streak 20 (expected ('anticipation', ('earnings',), 20)) -> OK
+  detector golden gap_1_9pct: stage anticipation, failing ['gapped_today'], days_up_streak 20 (expected ('anticipation', ('gapped_today',), 20)) -> OK
+  detector golden volume_one_under: stage anticipation, failing ['climax_volume'], days_up_streak 20 (expected ('anticipation', ('climax_volume',), 20)) -> OK
+  walk golden time_stop=5: settled time_stop on 2023-08-21, entry 140.0 intraday, R 1.2002600780234074 (registered 1.200260078) -> OK
+  walk golden time_stop=3: settled time_stop on 2023-08-17, entry 140.0 intraday, R 0.969079612772721 (registered 0.969079613) -> OK
+  walk goldens through the export layout and both eras' loaders: byte-equal
+  walk golden through walk_one on 120 history rows (r5): R 1.2002600780234074 -> OK
+  walk golden through walk_one on 120 history rows (r3): R 0.969079612772721 -> OK
+- distribution control OPLN 2019-06-28: class distribution (8-K_2.01:2019-06-28T16:43:01-04:00; owner CIK 0001395942)
+- distribution control ZWS 2021-10-05: class distribution (8-K_2.01:2021-10-05T17:21:36-04:00; owner CIK 0001439288)
+
+### P1: the reads' groups before any walk (N per group; unknown reasons)
+- read 2 pause count <= 2 / >= 3 / unknown: 136 / 282 / 0; anchor bases 7
+- read 3 news: {'absent': 343, 'unknown': 66, 'present': 9}
+- read 4 swing (primary): {'unknown': 148, 'no_swing': 263, 'swing': 7}
+- read 4 swing (beside): {'unknown': 148, 'no_swing': 249, 'swing': 21}
+- read 5 dilution: {'unknown': 293, 'lt20': 125}
+- row (a) M&A keyword: {'clear': 409, 'flagged': 9}
+- 8-K item 2.02: {'none': 253, 'on_climax_day': 35, 'unknown': 130}
+  news3_reason: {'tagged_without_insights': 59, 'anchor_base': 7}
+  mna_reason: {}
+  swing_reason: {'fewer_than_two_quarters': 81, 'no_cik': 61, 'latest_two_not_consecutive': 5, 'no_companyfacts': 1}
+  dilution_reason: {'split_between_end_and_filed': 11, 'no_denominator:no_cover_fact': 86, 'foreign_filer_no_tags': 29, 'no_cik': 61, 'no_denominator:no_raw_close_on_end_or_filed': 1, 'unpaired_tranche': 77, 'no_filing_before_d0': 24, 'instance_fetch_failed': 1, 'no_raw_close_on_period_end_or_filed': 3}
+  earnings_reason: {'foreign_filer_6k': 69, 'no_cik': 61}
+- truncated news pulls: 0 of 836 (0.0%; expectation: under 1%)
+- read 3 share present by D0 year: 2016 0.0%, 2017 0.0%, 2018 0.0%, 2019 0.0%, 2020 0.0%, 2021 0.0%, 2022 0.0%, 2023 0.0%, 2024 17.3%
+- read 5 coverage: names with a CIK 357, parsed with a ratio 125, tranches paired 43; ratio-0 names with the warrant text tag 0 (the tranche parser's bound)
+
+### P2: the reads' groups before any walk (N per group; unknown reasons)
+- read 2 pause count <= 2 / >= 3 / unknown: 104 / 139 / 0; anchor bases 2
+- read 3 news: {'absent': 213, 'unknown': 27, 'present': 3}
+- read 4 swing (primary): {'unknown': 81, 'no_swing': 157, 'swing': 5}
+- read 4 swing (beside): {'unknown': 81, 'no_swing': 150, 'swing': 12}
+- read 5 dilution: {'unknown': 173, 'lt20': 68, 'ge20': 2}
+- row (a) M&A keyword: {'clear': 239, 'flagged': 4}
+- 8-K item 2.02: {'unknown': 69, 'none': 170, 'on_climax_day': 4}
+  news3_reason: {'tagged_without_insights': 25, 'anchor_base': 2}
+  mna_reason: {}
+  swing_reason: {'fewer_than_two_quarters': 76, 'no_cik': 4, 'latest_two_not_consecutive': 1}
+  dilution_reason: {'foreign_filer_no_tags': 16, 'no_filing_before_d0': 16, 'no_denominator:no_cover_fact': 48, 'unpaired_tranche': 65, 'instance_fetch_failed': 17, 'no_cik': 4, 'split_between_end_and_filed': 7}
+  earnings_reason: {'foreign_filer_6k': 65, 'no_cik': 4}
+- truncated news pulls: 0 of 486 (0.0%; expectation: under 1%)
+- read 3 share present by D0 year: 2016 0.0%, 2017 0.0%, 2018 0.0%, 2019 0.0%, 2020 0.0%, 2021 0.0%, 2022 0.0%, 2023 0.0%, 2024 6.0%
+- read 5 coverage: names with a CIK 239, parsed with a ratio 70, tranches paired 46; ratio-0 names with the warrant text tag 0 (the tranche parser's bound)
+
+- distribution suspects classed: {'real_move': 63, 'distribution': 1} (expectation: under 10% `distribution`)
+
+STEP 0 FEATURES COMPLETE
