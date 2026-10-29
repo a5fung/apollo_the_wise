@@ -308,6 +308,10 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
+### 2026-10-29 — breakout v1 BUILD SPEC written for the Fri 10-30 paper build (nothing built)
+
+`docs/design/breakout_v1_build_spec_2026-10-29.md`: seven components in priority order (the rules as a pure module with a parity test that must reproduce his 12 of 24, the nightly list, the running list + `/bgrade`, the strategy row behind four paper walls, the `orh5` entry with the stop kept at the day's low until the fill, the `pp` exit, the SSoT/verify), a cut line (list + grade first; an entry never ships without its exit), and two forks that are his: how breakout volume is judged at an intraday buy (rec: volume so far vs the stock's normal volume by that minute ≥ 1.2×) and whether the paper book's cap of 5 is shared (rec: shared).
+
 ### 2026-10-28 — breakout v1 FINAL for the Saturday 10-31 build (his "Ok" after the check against his 24 dated good setups)
 
 | piece | v1 (build this) | why (`scripts/probes/_qm_0810_review/`) |
