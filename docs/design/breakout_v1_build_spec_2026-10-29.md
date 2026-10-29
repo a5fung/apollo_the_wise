@@ -10,7 +10,7 @@ the 10 / 20 / 50-day · tightening = last 5 sessions' mean range ≤ 1.1× the 5
 entry `orh5` in regular hours · stop = the day's low at the fill, abstain beyond 1 ADR · exit = the `pp` arm · size = EP's ·
 his grade = a label on a running list, never a gate.
 
-## Two forks that are HIS (entry discipline / safeguards — THE LINE); the build waits on neither, it carries the rec as a toggle
+## Two forks that were HIS (entry discipline / safeguards — THE LINE) — RULED 2026-10-29 ("ok" to both recs): F1 (a), F2 (a)
 
 | # | Fork | Options | Rec |
 |---|---|---|---|
