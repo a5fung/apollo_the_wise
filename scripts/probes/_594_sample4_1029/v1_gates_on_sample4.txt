@@ -1,0 +1,10 @@
+Breakout v1 on the 8 sample-4 gap days (setup measured at the close before the gap, breakout = the gap day). RS (top 2%) not computed.
+ticker  date        prior>=30%  higher_lows  surf>=5  tight<=1.1  level  vol>=1.2x  -> all setup+trigger gates
+AKAM   2026-09-25  False      True         False (3) False (1.53) True   True       -> no  (prior move +17%)
+PHVS   2026-09-08  False      True         True (8) True (0.92) True   True       -> no  (prior move +29%)
+DFTX   2026-09-14  True       False        False (1) True (0.67) True   True       -> no  (prior move +151%)
+GNRC   2026-09-17  False      False        False (0) True (1.05) True   True       -> no  (prior move +4%)
+ROIV   2026-09-08  False      False        False (0) True (0.95) True   True       -> no  (prior move +24%)
+CCL    2026-09-29  False      False        False (2) False (1.36) True   True       -> no  (prior move +20%)
+ODD    2026-09-09  True       True         True (11) True (1.06) True   True       -> FIRES  (prior move +95%)
+SIG    2026-09-09  False      True         True (7) False (1.19) True   True       -> no  (prior move +25%)

@@ -1,0 +1,19 @@
+SET
+== gap-day bars
+ticker|trade_date|open_price|high_price|low_price|close|volume
+AKAM|2026-09-25|125.225|128.46|113.84|113.94|31790403
+CCL|2026-09-29|24.39|25.29|24|25.11|75308530
+DFTX|2026-09-14|43.53|43.77|39.5|40.25|7250026
+GNRC|2026-09-17|229.5|231.8871|202.26|207.23|8016802
+ODD|2026-09-09|17.5|18.4402|14.57|16.48|11895581
+PHVS|2026-09-08|40.96|43.25|37.6|37.84|6294472
+ROIV|2026-09-08|39.98|42.5|38.41|41.48|24553921
+SIG|2026-09-09|95.01|103|94.33|102.48|4471522
+(8 rows)
+== breakout shadow watch rows in the 10 sessions before each gap
+ticker|scan_date|pole_date|k5
+(0 rows)
+== breakout shadow entries on the gap day
+ERROR:  column e.entry_date does not exist
+LINE 3:   ON e.ticker = s.t AND e.entry_date = s.d ORDER BY 1,3;
+                                ^
