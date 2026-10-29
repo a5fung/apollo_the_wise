@@ -1,0 +1,20 @@
+SET
+== trade 429 after the 10-29 16:45 pass
+id|ticker|status|remaining_shares|stop_price|hard_stop|breakeven_active|depth_sell_pending_on|exit_rule|n_closes|running_closes
+422|IRON|filled|3|70.96|66.013|f||depth|8|[79.48, 76.0, 75.03, 74.51, 77.66, 79.9, 83.2, 82.84]
+429|CLS|filled|2|272|250.26|t||depth|2|[299.8, 282.75]
+(2 rows)
+== the 16:45 job run
+job_id|status|et
+order_status_reconcile|success|2026-10-29 16:45:00.012411
+paper_trade_tracker|success|2026-10-29 16:45:00.013355
+live_position_update|success|2026-10-29 16:45:00.015828
+(3 rows)
+== audit rows naming CLS or IRON since 16:40
+et|event_type|left
+16:45:00|stop_update_started|IRON: $68.37 → $70.96 (3 of 3 after 0 held)
+16:45:00|stop_update_retry_triggered|IRON: place_stop_order raised on first attempt — APIError — retrying in 3s
+16:45:03|stop_update_retry_succeeded|IRON: retry placed stop @$70.96
+16:45:03|stop_replacement_confirmed_silent|IRON: WS safety-net agrees with order_manager's own recorded evidence ($70.96, ded4a3ff-5de5-4ca2-84d2-037084bc64ac) via audit_price_only — Telegram suppressed, operator already notified via order_manager
+16:45:04|stop_updated|IRON: stop now $70.96 (ded4a3ff-5de5-4ca2-84d2-037084bc64ac) for 3 sh
+(5 rows)
