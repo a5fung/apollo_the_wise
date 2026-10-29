@@ -320,7 +320,10 @@ def _fresh(code: str):
 
 def test_execution_does_not_load_the_breakout_modules():
     listed = (REPO / "scripts" / "exec_loaded_modules.txt").read_text()
-    assert "breakout_v1" not in listed
+    # phase 2 (2026-10-30): the PAPER order step lives under broker/ and IS execution's (broker/breakout_v1_entry.py,
+    # broker/breakout_v1_volume_curve.py); the nightly LIST modules (agents/market_intelligence/breakout_v1*.py)
+    # still are not
+    assert "agents/market_intelligence/breakout_v1" not in listed
     r = _fresh("import sys; import agents.market_intelligence.scheduler, agents.market_intelligence.agent; "
                "sys.exit(int(any(m.startswith('agents.market_intelligence.breakout_v1') for m in sys.modules)))")
     assert r.returncode == 0, r.stdout + r.stderr

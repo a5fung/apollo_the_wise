@@ -411,6 +411,12 @@ async def submit_trade_entry(
     # #624: the #197 "CAP+1 CANDIDATE — consider acting manually" page is about the LIVE book;
     # the paper lane passes False so a paper small-cap never prompts a manual real-money trade.
     page_cap_plus_one: bool = True,
+    # Breakout v1 PAPER (2026-10-30): the caller's own opening-range source, same signature as
+    # `fetch_orb_bar_with_retry(ticker, today, strategy_label) -> dict | None`. Breakout v1 buys
+    # the 5-MINUTE opening range (`orh5`), measured by its own job before it calls the funnel, so
+    # it hands that range in here. None (every existing caller: MAGNA53 and the small-cap lane) =
+    # `fetch_orb_bar_with_retry`, looked up at call time exactly as before — byte-identical.
+    bar_fetcher: Callable[[str, date, str], Awaitable[dict | None]] | None = None,
 ) -> dict:
     """Single entry-submission pipeline.
 
@@ -684,8 +690,9 @@ async def submit_trade_entry(
     except Exception as _fe:
         logger.warning(f"exposure_family shadow check failed for {ticker} (non-fatal): {_fe}")
 
-    # 3. Bar fetch with retry.
-    orb_bar = await fetch_orb_bar_with_retry(ticker, today, strategy_label)
+    # 3. Bar fetch with retry (or the caller's own opening-range source — breakout v1's 5-minute range).
+    _fetch_bar = bar_fetcher if bar_fetcher is not None else fetch_orb_bar_with_retry
+    orb_bar = await _fetch_bar(ticker, today, strategy_label)
     if not orb_bar:
         return await _skip(
             f"{INFRA_NO_BAR}: {BAR_RETRY_MAX} retries exhausted",

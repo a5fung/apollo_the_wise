@@ -313,6 +313,132 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 17:55 ET (`scripts/probes/_bv1_first_night_1030/q1.out`): `breakout_v1_list_run` written, **27 names** on the list of a 4,097-name RS pool (2,814 listable, 2,801 with history), every stored row's gates all pass, the paper-chat message sent; 17:00 stored Polygon names for 13,257 of 14,202 security rows; funds kept 39, excluded 15 (leveraged / inverse 8, basket 4, two underlyings 2, no known underlying 1; 0 for a missing name); ZCSH listed (rank 2, rs 99.9). Gate fails: rs 2,654 · prior move 2,026 · surf 1,872 · breakdown 995 · tightening 960 · higher lows 791.
 ⚠ **THE EXPECT'S "about 4 names a night" WAS WRONG — corrected, not a defect of the build:** the 2020 check's ~3.7 a night counted FIRES (the watch night's gates AND the next session's level break on 1.2x volume); this table is the WATCH LIST — the setups that could break out next session — so it runs several times the fire count. A second, smaller push: ruling (a)'s pool carries ~1,500 rank-only funds/ETFs today (vs ~550 in the 2020 data), so stocks clear 98 slightly more easily. Re-read the count with the fires once the paper entry (phase 2) runs; the ceiling question goes to him only if the list is too long to grade.
 
+### 2026-10-29 — breakout v1 PHASE 2 BUILT on branch `breakout-v1-phase2` (the paper buy + the pp exit), NOT MERGED, NOT DEPLOYED — two forks wait on him (the stop at the fill; a +2R touch read as the third sold)
+
+The two builders' entries follow as written (entry, then exit), after a four-lens review and one fix round (13,140 passed). Deploys only after his two rulings and the main loop's own read of the shared-code diffs.
+
+### 2026-10-30 — breakout v1 PHASE 2 part A BUILT: the strategy row, the four paper walls and the `orh5` entry (NOT deployed; the exit is part B)
+
+**Built** (spec `docs/design/breakout_v1_build_spec_2026-10-29.md` B4 + B5; his rulings as written — entry `orh5` in regular hours, stop = the day's low AT THE FILL with the 1 ADR20 abstain, size = EP's, F1 (a), F2 (a)):
+- **Strategy row** `mi_strategies 'breakout_v1'` (`db._seed_strategies_registry`, seeded once): phase 'paper', enabled, `position_size_multiplier` 1.0, `max_concurrent_positions` NULL — F2: it shares the paper account's cap of 5 with the small-cap paper lane, no cap of its own. Exit levels left NULL (the exit is the per-row stamp below).
+- **Stop switch:** runtime toggle `breakout_v1_paper` (`mi_safeguard_state`, account_mode 'global', default ON) + `mi_strategies.enabled`. LIVE_TRADING_ENABLED=false stops the job. `/pause` does not (paper; same as #624).
+- **The four walls** (mirrored from `broker/lowcap_paper_entry.py`, each pinned in `tests/test_breakout_v1_entry.py`): (1) reads only `mi_breakout_v1_list`; (2) every tick refuses unless the row is phase 'paper' AND resolves to 'paper' (a refusal pages once); (3) `submit_trade_entry(require_account_mode='paper')`; (4) order ids `make_client_order_id('paper', 'breakout_v1', ticker)` (built by `submit_entry` from the paper row). Pre-flight: the paper account must answer before the first order of the day.
+- **The entry** `agents/market_intelligence/broker/breakout_v1_entry.py`, job `breakout_v1_entry` (EXECUTION-owned, every minute 09:35–15:55 ET mon-fri, second 10; window enforced in the tick; NYSE holidays skipped): for each name on the previous session's list — ORH5 / ORL5 from the 09:30–09:34 minute bars, `level = max(ORH5, list level)`; a stop-limit buy at the level (limit `stop_limit_buy_price(level)`), DAY, OTO with the protective stop at the day's low so far, through the funnel with a spec builder that sizes like EP (`_resolve_regime_risk_pct` × paper equity / (level − stop), the 20% notional cap, the funnel's composite multiplier — pinned equal to `prepare_orb_order` share for share where the stops coincide). The #500 price-aware submit applies (pinned on a breakout row: price past the level → limit at latest × 1.002 inside the 1.5× chase cap).
+- **F1 (RULED)** — the buy is only placed, and only kept live, while the volume through the last completed minute ≥ the list's volume bar (1.2 × the 50-day average) × the share of a day's volume normally done by that minute. **The curve is ONE pooled curve for every stock (not per-stock — a per-stock curve is a later refinement):** `broker/breakout_v1_volume_curve.py` (390 minutes), built once by `scripts/probes/_breakout_v1_phase2/build_volume_curve.py` (output `build_volume_curve.out`) from the stored SIP minute bars of the consolidation-breakout backtest (`apollo_data/cb702_pre_v2/minutes`) and that backtest's daily volumes (`daily_closes_all.csv.gz`, the same Polygon grouped-daily family as `mi_daily_closes`): **149,086 ticker-days, 3,151 tickers, 1,215 full sessions 2017-03-02 .. 2022-01-03** (4 early-close sessions dropped; 221 ticker-days with no daily row dropped), the mean over ticker-days of regular-hours volume through the minute / **the day's FULL daily volume** — the same unit as the list's 50-day average, so the bar is his 1.2× like for like. It reads 3.1% of a day's full volume by the end of 09:34, 9.9% by 09:59, 58% by 14:59 and 80% by 15:59 (the other ~20% trades in extended hours and the 16:00 closing cross); stable year to year (09:59: 9.1–10.8%). The curve is a mean; the median ticker-day is lower early in the day (2.4% by 09:34), so for a typical stock the opening minutes ask a little more than 1.2× its own pace. **Review fix 2026-10-30:** the first build divided by the day's regular-hours volume (ending at exactly 1.0) while the bar is full-day volume — that made F1 ask about 1.5× normal volume (1.6× at 09:34), close to the 1.5× he rejected on 10-28; rebuilt with the full-day denominator, pinned by test.
+- **The stop at the fill:** while the buy is unfilled, a new day's low cancels the order (broker-confirmed) and places it again on the same row with the new stop and a fresh `apollo_paper_breakout_v1_*` id — never two live buys; a cancel that races a fill is never re-placed (the fill stands, paged). The buy is CANCELLED with `setup:stop_too_wide` once (level − day low) > ADR20 × level, with `setup:breakout_volume_below_curve` when F1 stops permitting, and with `window:breakout_unfilled_eod` at 15:55 ET. New named abstain `setup:no_opening_range_minutes` (a durable paper skip row).
+- **Restart-safe:** every tick reconciles from the broker (the paper account's open orders in the `apollo_paper_breakout_v1_` family + `get_order` on each row's order) and today's rows; a planned cancel writes the marker `breakout_v1_planned_entry_cancel` (trade + order) BEFORE it cancels, so the trade stream does not record it as a broker kill (`trade_stream._handle_cancel_or_reject`: a marked, UNFILLED breakout cancel → no status write, no page; every other cancel unchanged, pinned) and a tick after a crash finishes the step from broker truth. **The polling backup `order_manager.check_fills` (10:00, 10:30, hourly to 15:00) knows the marker too** (review fix 2026-10-30): a marked breakout cancel is left to the minute job, and any other breakout cancel it records is compare-and-set on the row still being `order_placed` on THAT order (`_cancel_breakout_row_if_unchanged`) — so it can never mark cancelled a row the minute job has just re-priced onto a new order (which would have left the new buy resting untracked). Every other strategy's row takes check_fills' unchanged write (pinned for MAGNA53, the small-cap lane, 9M and NULL rows). A BUY-side order in the family that no LIVE row carries (none, or only a `cancelled` / `skipped` row) is cancelled and paged; a `filled` row still owns its partly filled entry (sell-side orders — protective stop legs — are never in the family, so the sweep can never strip a position's stop).
+- **One trade per list name per day** (the funnel's duplicate key). **The 10:00 ET EP cleanup no longer cancels breakout rows** — excluded by SIGNAL TYPE (`cancel_unfilled_entries(exclude_signal_types=("breakout_v1",))` from `_orb_window_cleanup_job` only); the small-cap paper lane's unfilled orders and legacy NULL-signal rows are still cancelled at 10:00 (pinned); the 16:05 ET EOD cleanup is unchanged and is the backstop.
+- **Exit stamp:** every breakout row is stamped `exit_rule = 'breakout_pp'` at insert (`order_manager.resolve_exit_rule_stamp`, no toggle; MAGNA53 / small-cap / 9M unchanged, pinned). **The exit itself is part B — this part must not deploy without it**: until B lands a filled row would meet the global +2R third (`scan_profit_triggers`) and the 16:45 default ladder.
+- **Shared code, defaults = today:** `submit_trade_entry(bar_fetcher=None)` → `fetch_orb_bar_with_retry` exactly as before (EP and the small-cap lane pass none — pinned by an AST scan of every call site; 9M Day 2 has had no call site since #515); `cancel_unfilled_entries(exclude_signal_types=())`; `trade_stream`'s new branch is reached only by a `breakout_v1` row. Registrations: `EXECUTION_OWNED_JOB_IDS`, `scripts/audit_column_writes.py` (two compare-and-set writers), `scripts/preflight_db_updates.py` (both UPDATEs, copies pinned to source), `scripts/exec_loaded_modules.txt` (regenerated: +2 broker modules), skip-reason labels, `_SIGNAL_DISPLAY` / `/skipped` labels, the registry adapter.
+
+**Readings the build had to make (mechanics, not his rules — each can be overruled):**
+1. **An F1 lapse after the buy is resting is terminal for the day** (the row's duplicate key is one trade per name per day); before the first buy, F1 only holds — the buy is placed the first minute it permits (recorded once per state change, `breakout_v1_entry_hold`).
+2. **Everything reads through the last COMPLETED minute, and nothing revisits the stop after the fill** — so the stop attached at the fill can sit well ABOVE his "day's low at the fill", and a day his rule abstains as too wide can fill. The resting order carries the stop of the last tick (second 10 of each minute), which has read through the minute before the fill minute at best, or two minutes before when the break comes in the fill minute's first ~10 s. A drop in those last one or two minutes — or inside the fill minute itself — is not in the stop: the gap can be most of the true risk (a shakeout-then-rip: 09:36 flushes to 9.95, the break at 09:37:02 fills with the 10.05 stop — 0.10 tighter on a 0.55 true risk), and when 09:36 flushes to 9.80 and breaks 10.50 inside the same minute the order fills with stop 10.20 while his rule abstains too-wide (width 6.7% > ADR20 6%) — pinned by `test_disclosed_the_resting_stop_lags_the_low_inside_the_fill_minute`. On synthetic minute paths (`scripts/probes/_breakout_v1_phase2/stop_lag_probe.out`, not real tape) the stop differs on 0.6–2.3% of fills, tighter by a median ~9% (up to 50%) of the true risk; 6 of 3,956 too-wide days filled. Never wider. **His call (a fork, not decided in code):** (a) accept as is; (b) on the first tick after a fill, compare the true low through the fill minute and exit a fill his rule would have abstained as too wide; (c) on that tick lower the stop leg to the true low (more dollar risk than was sized). The stop sits on the cent at or below the low.
+3. **A lower stop re-sizes the order** so the dollar risk placed never grows and the share count never rises (EP's sizing divides by the stop distance).
+4. **The 1 ADR20 width is also judged at the #500 fallback's fill** (latest × 1.002) when the price is already past the level.
+5. **At 09:35 the range waits one minute for the 09:34 bar**; `no_opening_range_minutes` only when later minutes exist and none in 09:30–09:34 (`cb._entry_one`'s rule).
+6. **The curve and the bar are in the same unit** (full daily volume, extended hours and the closing cross included — review fix 2026-10-30, above). The live numerator is regular-hours volume only, matching the curve's numerator. On an early-close day the full-session curve makes F1 easier late in the session.
+7. **Switch off (toggle / disabled / refused) cancels every resting unfilled breakout buy** (`block:strategy_disabled`), not just new ones.
+8. **A resting unfilled buy holds a paper slot all day** (`order_placed` counts as open — F2's shared 5); a funnel skip (cap full at that minute, etc.) is terminal for the day, as for EP.
+9. **Gap % on the row** = today's first open / the list night's close − 1. No fade guard, no EP gap floor.
+
+**Known interactions, recorded not changed:** the paper book's (ticker, day) duplicate key is shared with the small-cap lane — whichever writes a paper row on a name first that day owns it. The stop-ACK watchdog's fallback stop (a fill whose stop leg never acks) sits at `orb_low` = ORL5, which is at or above the day-low stop — tighter, not wider. The previous session is the NYSE calendar's (`trading_calendar`), and the list is read for exactly that night: a night whose list job did not run (or wrote 0 names) is no names — a list a session stale is never traded.
+
+**EXPECT** (BASELINE today: no `mi_strategies` row 'breakout_v1'; 0 `mi_live_trades` rows with signal_type 'breakout_v1'; 0 `breakout_v1_*` entry audit rows; 0 `breakout_v1_entry` job runs):
+- positives: the row exists (paper, enabled, 1.0, cap NULL); `breakout_v1_entry` runs about 381 times a market day; on a day the list has names, ONE `breakout_v1_preflight_ok`, then each name reaches a named state — an order row (status `order_placed`, `exit_rule='breakout_pp'`, `orb_high` = the level, `stop_price` ≤ ORL5, order id `apollo_paper_breakout_v1_*`) or a `breakout_v1_entry_hold` / `breakout_v1_entry_abstain` row; `breakout_v1_stop_repriced` rows when an unfilled name prints a new low; unfilled buys cancelled at 15:55 ET with `window:breakout_unfilled_eod`; ONE `breakout_v1_entry_day` row at 15:55; the 10:00 cleanup touches no breakout row and still cancels the lane's unfilled paper orders.
+- unintended: any breakout row outside the paper book; two open family orders on one ticker at once; a row `order_placed` with no open or filled order at the broker after a re-price; `breakout_v1_entry_crash` / `breakout_v1_cancel_failed` / `breakout_v1_reprice_lost` / `breakout_v1_orphan_order` rows; a paper "Entry CANCELLED" page for a planned re-price; any page on a normal day; a MAGNA53 or small-cap row stamped differently or cancelled differently than before.
+
+**DONE-WHEN:** the first list day ends with every list name in exactly one named state in that day's `breakout_v1_entry_day` row, at least one breakout order placed through the funnel (paper id, `breakout_pp` stamp), and — the first time an unfilled name prints a new low — a `breakout_v1_stop_repriced` row whose new order's stop leg at the broker equals the row's `stop_price`. Then this part closes with part B's exit.
+
+**WOULD-FAIL-IF:** a re-priced row's broker stop leg is still at the old stop (or the row is `order_placed` with a dead order); the 10:00 cleanup cancels a breakout row, or no longer cancels a lane row; a name with F1 permitting and a valid range has no order and no hold/abstain row explaining why; a filled breakout order is cancelled or a second buy is placed for the same name that day; an EP / lane entry fetches its opening bar anywhere but `fetch_orb_bar_with_retry`.
+
+**VERIFY-LIVE:**
+```sql
+SELECT strategy_id, phase, enabled, position_size_multiplier, max_concurrent_positions FROM mi_strategies WHERE strategy_id = 'breakout_v1';
+SELECT date(started_at AT TIME ZONE 'America/New_York') d, count(*), count(*) FILTER (WHERE status <> 'success') bad
+  FROM mi_job_runs WHERE job_id = 'breakout_v1_entry' GROUP BY 1 ORDER BY 1 DESC LIMIT 3;
+SELECT id, ticker, status, orb_high, orb_low, stop_price, entry_shares, exit_rule, skip_reason, entry_order_id
+  FROM mi_live_trades WHERE signal_type = 'breakout_v1' ORDER BY id DESC LIMIT 20;
+SELECT created_at, event_type, summary FROM mi_audit_log WHERE event_type LIKE 'breakout_v1_%' AND event_type <> 'breakout_v1_list_run'
+ ORDER BY created_at DESC LIMIT 40;
+SELECT o.alpaca_order_id, o.side, o.order_type, o.stop_price, o.status, o.purpose FROM mi_live_orders o
+  JOIN mi_live_trades t ON t.id = o.trade_id WHERE t.signal_type = 'breakout_v1' ORDER BY o.id DESC LIMIT 20;
+```
+(The broker side of the re-price check: the paper account's open orders for the ticker — one parent, its stop leg at the row's `stop_price`.)
+
+Deploy scope: `execution` FIRST (broker/*, `trade_stream.py`, `scheduler.py`, `db.py` run on apollo-execution), then `both` (`db.py`, `agent.py`, `sell_discipline.py`, `strategies/adapters.py`). Ships with part B (the exit), never alone. Not deployed.
+
+### 2026-10-30 — Breakout v1 PAPER, phase 2 part B: the `pp` exit on the paper book (BUILT, not deployed)
+
+**What.** Every `breakout_v1` row (stamped `exit_rule = 'breakout_pp'` at insert, part A) now runs his `pp` arm live, on the
+PAPER book only. No rule moved: the definition is `consolidation_breakout_pp.walk_pp` (arm `pp`), and the live decisions are
+held equal to it event for event (`tests/test_breakout_pp_exit.py`, 500 random daily + minute days, the scenario tails,
+120+-session paths and short histories; mutation-checked: a wrong trail length, cut level, leg session, a missing stop
+move or a dropped reach test each fail it).
+
+**Who does what (the mapping).**
+| Walk event | Live owner | When |
+|---|---|---|
+| a third at +2R (at the target; at the open when it opened above), breakout day on | `order_manager.scan_profit_triggers` (unchanged): R = entry − hard_stop (breakout_v1 is not ORB-framed), the global multiple 2.0, `int(shares // 3)`; sells via `execute_partial_exit` | the 5-minute poll of the minute highs since the fill |
+| after any third the stop rests at the fill | `execute_partial_exit` (breakeven in the same call); the 16:45 job lifts a stop still under the fill once a third has sold (raise-only) | at the third; 16:45 backstop |
+| stall cut: no high at fill + 1R by the close of session 3 → everything sold at that close | `live_tracker.run_partial_exits` → `execute_full_exit(.., 'breakout_stall_cut')` | 15:45 ET on session 3 |
+| session-3 third, ONLY when that close is above the fill (and no third yet) | `run_partial_exits` → `execute_partial_exit` | 15:45 ET on session 3 |
+| the rest at the next open after the first close under the 20-day SMA — live from session 3, or from a +2R third | `live_tracker.update_open_positions_live` MARKS (`depth_sell_pending_on`); `order_manager.run_breakout_pp_open_sales` (new job `breakout_pp_open_sale`, 19:02 ET mon–fri, execution-owned) sends the PAPER DAY market sale (#687 option (c)'s vehicle, through `execute_depth_open_sale`) | 16:45 on the settled close → fills at the next open |
+| the stop (the day's low at the fill) | the broker's resting stop leg; the 16:45 ladder's trail-stop raise does NOT run on these rows | always |
+| day-0 facts (the +2R touch before the stop, the highest minute high after the fill) | `breakout_pp_exit.ensure_day0_facts` = the recorder's `day0_facts` (ported; equal on 600 random minute days), from the breakout day's minute bars, stored once on `mi_live_trades.breakout_day0_pp` (JSONB, new column, one writer) | 16:45 ET on the breakout day (or the first later run that finds it missing) |
+
+A `breakout_pp` row is never put through the day-3/5 ladder or the 10/20 trail, and a `breakout_pp` row whose account is not
+'paper' is refused by the 15:45, 16:45 AND 19:02 steps (audited `breakout_pp_refused_not_paper` + paged, nothing sold or moved). Depth rows, EP, the small-cap lane and 9M run
+exactly as before (the depth runner still selects `exit_rule = 'depth'` alone; its words are unchanged).
+
+**Where the live machinery CANNOT express the walk exactly (named, not bent):**
+1. Intrabar order: the walk's daily bar puts the stop before the +2R (unless the session opened above it); live, the broker
+   and the poll act in real time order. After a +2R third on session 1+ the walk rests the stop at the fill from the NEXT
+   session; live moves it at once (a same-session fall back to the fill stops the rest at cost). Day 0 matches (the minute
+   walk also moves it from the next minute).
+2. The +2R third is found by the 5-minute poll and sold at market (or a resting limit at the target when the paper
+   resting-limit toggle is on) — not exactly at the target.
+3. "The close of session 3" is the 15:45 ET price: the cut, the session-3 third and its price are decided 15 minutes early;
+   a +1R high printed after 15:45 does not save a trade from the cut. A missed 15:45 run is not retried.
+4. Whole shares: a third = shares ÷ 3 rounded down; 1–2 shares → no third (and so no stop move to cost).
+5. "The next open" = a DAY market order queued at 19:02 ET that fills at the first prints after 09:30, not the opening print.
+6. No horizon: the walk marks a trade at 120 sessions; live holds until a stop, the cut or the trail.
+7. Session j is counted from the stock's daily bars; a missing daily bar shifts it.
+8. No breakout-day record (no fill time in the session, no minute bars) → the stall cut is NOT applied (audited, paged).
+9. The +2R third rides the global `PROFIT_TRIGGER_R` (2.0) and its on/off switch (the breakout row has no override). A
+   test pins the poll's target to the pp target, so changing the global fails the build.
+10. **A +2R touch counts as the third even when it did not sell** (review 2026-10-30; disclosed, his call). "Was a third
+   sold" is read the walk's way — a daily high at the target — not from the row (`partial_taken`). On the paper book the
+   +2R third is a resting limit at the target (with its own OCO breakeven stop; `profit_take_resting_limit` and
+   `profit_take_oco` were both on for paper when read from prod on 2026-10-10), so a touch that the limit does not fill
+   still counts: the 20-day trail turns on before session 3 and the session-3 third is skipped. After a trail sale the
+   unfilled third stays open with its own target and breakeven stop until one of them fills. A pre- or post-market print
+   at the target may also count (whether Polygon's daily high includes extended hours is unsettled, `magna53_ep.md`), with
+   no order placed at all. Pinned by `test_disclosed_a_target_touch_counts_as_the_third_even_when_the_resting_limit_did_not_fill`.
+   **The fork:** (a) keep it (walk-equal; the leftover third closes on its own OCO); (b) read the row's truth instead
+   (`partial_taken`, or a resting partial order) — live then departs from the walk on these paths, and a session-3 third
+   must not be sold beside a resting one.
+
+**EXPECT** (baseline 2026-10-30: 0 breakout paper trades, 0 rows with `breakout_day0_pp`, 0 `breakout_pp_*` audit rows):
+on the first breakout paper fill — that evening one `breakout_pp_day0_facts` audit row and the row's `breakout_day0_pp`
+set (`v` = 1); `hold_days` advancing each evening while it is open; on session 3 at
+15:45 exactly one of: a stall cut (`breakout_pp_stall_cut` + a full exit), a third (`breakout_pp_session_third` + a partial exit), or
+nothing (price at or under the fill / a third already sold); a 16:45 close under the 20-day → `breakout_pp_close_below_sma20`
+and at 19:02 a `depth_open_sale_placed` row with vehicle `day_market`, `apollo_paper_breakout_v1_` order id, filled after
+09:30 next day. Unintended (each would be a defect): a `breakout_pp` row's stop raised to a 10/20 line, a day-3/5 ladder
+partial on it, any `breakout_pp` action on a non-paper row, any change in a depth/EP/9M row's exit.
+**DONE-WHEN:** the first breakout paper trade has closed through one of the pp exits (stop, cut, trail) with its day-0 record
+written and every live event matching a re-walk of `walk_pp` on its stored fill/stop and the prod bars (modulo the named
+differences above). A third left resting under its OCO after a trail sale (difference 10) closes when its own target or
+breakeven stop fills; the trade is done when that leg is.
+**WOULD-FAIL-IF:** a breakout paper row with no `breakout_day0_pp` after its breakout-day 16:45 · a session-3 third at or
+under the fill · a trail sale before session 3 with no daily high at the +2R target · a stall cut on a trade whose recorded peak or a session
+1–3 high reached fill + 1R · a `breakout_pp` stop moved anywhere but to the fill · a 19:02 sale on the live account.
+**VERIFY-LIVE:** `SELECT id, ticker, breakout_day0_pp, partial_taken, stop_price, hard_stop, entry_price, status FROM
+mi_live_trades WHERE exit_rule = 'breakout_pp'`; `SELECT * FROM mi_audit_log WHERE event_type LIKE 'breakout_pp_%' ORDER BY
+created_at`; re-walk each trade with `consolidation_breakout_pp.walk_pp_arms` on its fill, hard_stop, stored facts and the prod
+daily bars, and compare events.
+
 ### 2026-10-29 — breakout v1 PHASE 1 BUILT (the nightly list + grading; no orders)
 
 **Built** (spec `docs/design/breakout_v1_build_spec_2026-10-29.md` B1–B3 + this entry; B4 strategy row, B5 entry, B6 exit NOT built):

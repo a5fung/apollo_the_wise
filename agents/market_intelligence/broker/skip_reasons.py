@@ -48,6 +48,12 @@ SETUP_CHASE_CAP_EXCEEDED   = "setup:chase_cap_exceeded"  # #500 bounded-chase ga
 # 09:31 was still entered. Operator ruled that a BUG, not a new filter — the floor (10% at the time,
 # 9% since 2026-08-19) is an existing signed criterion and the entry path simply was not enforcing it.
 SETUP_GAP_BELOW_FLOOR      = "setup:gap_below_floor"
+# Breakout v1 PAPER (2026-10-30, broker/breakout_v1_entry.py; docs/setups/consolidation_breakout.md):
+# `cb._entry_one`'s own abstain — no trade printed in the first five minutes, so there is no opening range — and F1
+# (his ruling 2026-10-29): the buy is only placed / kept live while the volume so far is >= 1.2x the stock's normal
+# volume by that minute.
+SETUP_NO_OPENING_RANGE_MINUTES     = "setup:no_opening_range_minutes"
+SETUP_BREAKOUT_VOLUME_BELOW_CURVE  = "setup:breakout_volume_below_curve"
 
 # ── block: safeguards (circuit breakers, position limits, strategy gate) ──
 BLOCK_MAX_POSITIONS              = "block:max_positions"
@@ -82,6 +88,7 @@ INFRA_HALT_STATE_UNREADABLE = "infra:halt_state_unreadable"  # #345 fail-SAFE bl
 WINDOW_OUT_OF_ORB   = "window:out_of_orb"
 WINDOW_DUPLICATE    = "window:duplicate"
 WINDOW_PROPOSAL_EXPIRED = "window:proposal_expired"  # #436 — unconfirmed staged proposal outlived its ORB day
+WINDOW_BREAKOUT_UNFILLED_EOD = "window:breakout_unfilled_eod"  # breakout v1: its buy unfilled at 15:55 ET, cancelled
 
 # ── broker: the BROKER killed an accepted entry order (#500 reason capture) ──
 # Alpaca sends NO textual reason on cancel/reject/expire, so these reasons
@@ -118,6 +125,8 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_FADED_FROM_ORB:       "Price faded below ORB midpoint",
     SETUP_GAP_BELOW_FLOOR:      "Gap retreated below the entry floor before entry",
     SETUP_CHASE_CAP_EXCEEDED:   "Ran too far past ORB high to chase",
+    SETUP_NO_OPENING_RANGE_MINUTES:    "No trades in the first five minutes",
+    SETUP_BREAKOUT_VOLUME_BELOW_CURVE: "Volume below 1.2x normal for the time of day",
     BLOCK_MAX_POSITIONS:           "Max open positions reached",
     BLOCK_DAILY_LOSS:              "Daily loss limit hit",
     BLOCK_CIRCUIT_BREAKER:         "Consecutive-loss circuit breaker tripped",
@@ -140,6 +149,7 @@ _HUMAN_LABELS: dict[str, str] = {
     WINDOW_OUT_OF_ORB:          "Arrived after ORB window closed",
     WINDOW_DUPLICATE:           "Duplicate — trade already exists",
     WINDOW_PROPOSAL_EXPIRED:    "Staged proposal expired — ORB day passed unconfirmed",
+    WINDOW_BREAKOUT_UNFILLED_EOD: "Breakout buy unfilled by 15:55 ET",
     BROKER_ENTRY_CANCELLED:     "Broker cancelled the entry order",
     BROKER_ENTRY_REJECTED:      "Broker rejected the entry order",
     BROKER_ENTRY_EXPIRED:       "Entry order expired unfilled",

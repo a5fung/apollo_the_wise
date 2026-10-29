@@ -1,0 +1,4 @@
+synthetic paths 20000 (seed 1030); reference fills at the level (fill minute >= 7, no gap): 12193; of which the reference abstains too-wide: 3956
+stop read through F-1: stop differs on 53 of 8237 non-wide fills (0.6%); when it differs the live stop is TIGHTER by median 9.5% / p90 23.5% / max 50.0% of the reference risk; too-wide days the live order would still fill: 0 of 3956
+stop read through F-2: stop differs on 189 of 8237 non-wide fills (2.3%); when it differs the live stop is TIGHTER by median 8.6% / p90 23.5% / max 50.0% of the reference risk; too-wide days the live order would still fill: 6 of 3956
+Synthetic paths (a gaussian minute walk), NOT real tape: the rates show the mechanism and its order of magnitude, not the live frequency.

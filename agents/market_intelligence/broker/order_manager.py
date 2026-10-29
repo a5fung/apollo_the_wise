@@ -1061,13 +1061,18 @@ async def note_partial_fill_close_failed(trade: dict, account_mode: str, filled_
     return True
 
 
+# Breakout v1 PAPER's signal type (= db.BREAKOUT_V1_STRATEGY_ID, test-pinned): check_fills leaves that strategy's planned
+# cancels to its own minute job and writes its other cancels compare-and-set (review fix 2026-10-30).
+BREAKOUT_V1_SIGNAL_TYPE = "breakout_v1"
+
+
 async def check_fills() -> list[dict]:
     """Poll Alpaca for fills on pending entry orders + Day 1 stop-outs for re-entry."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         pending = await conn.fetch("""
             SELECT id, ticker, entry_order_id, entry_shares, orb_low, orb_high,
-                   stop_price, entry_attempt, account_mode
+                   stop_price, entry_attempt, account_mode, signal_type
             FROM mi_live_trades
             WHERE status = 'order_placed' AND entry_order_id IS NOT NULL
         """)
@@ -1158,6 +1163,28 @@ async def check_fills() -> list[dict]:
             results.append({"ticker": ticker, "action": "filled", "price": filled_price})
 
         elif status in _CANCEL_LIKE_ORDER_STATUSES:
+            # Breakout v1 PAPER (review fix 2026-10-30): its minute job cancels and RE-PLACES its own
+            # unfilled buys on the SAME row (a new day's low moves the stop). A cancel it planned
+            # (the marker names this trade AND this order) is the job's to settle from broker truth —
+            # recording it here as a broker kill would cancel the row under the re-placed order.
+            # Any other breakout cancel is written compare-and-set on the row's status AND this
+            # order, so a row that already moved on to a new order is never overwritten. Every
+            # other strategy's row takes the unchanged path below.
+            if trade.get("signal_type") == BREAKOUT_V1_SIGNAL_TYPE:
+                from agents.market_intelligence.broker.breakout_v1_entry import planned_entry_cancel_marked
+                if await planned_entry_cancel_marked(trade["id"], trade["entry_order_id"]):
+                    logger.info(f"check_fills: {ticker} breakout v1 planned cancel — the minute job settles it")
+                    continue
+                skip_reason = await broker_terminal_reason(
+                    status, ticker, trade.get("orb_high"),
+                )
+                if not await _cancel_breakout_row_if_unchanged(
+                        trade["id"], trade["entry_order_id"], skip_reason):
+                    logger.info(f"check_fills: {ticker} breakout v1 row moved on — not overwritten")
+                    continue
+                logger.info(f"Order {status}: {ticker} ({skip_reason})")
+                results.append({"ticker": ticker, "action": status})
+                continue
             # #500 reason capture (polling backup path): never write the bare
             # broker status — synthesize the price-vs-trigger diagnosis.
             skip_reason = await broker_terminal_reason(
@@ -5846,11 +5873,29 @@ async def _magna53_depth_exit_enabled(account_mode: str) -> bool:
         return False
 
 
+# Breakout v1 PAPER (2026-10-30): every breakout_v1 row is stamped with ITS exit, the `pp` arm of
+# `consolidation_breakout_pp` (his ruling: "exit = the pp arm"), at insert, for life — no toggle.
+# The exit itself (the live mapping of `walk_pp`): broker/breakout_pp_rules.py (decisions) + breakout_pp_exit.py (inputs),
+# acted on by live_tracker's 15:45 / 16:45 branches, scan_profit_triggers (+2R) and run_breakout_pp_open_sales (19:02).
+BREAKOUT_PP_EXIT_RULE = "breakout_pp"
+_BREAKOUT_PP_STRATEGY = "breakout_v1"
+# The stamps whose 16:45 close decision is sold at the NEXT OPEN by `execute_depth_open_sale` (live: the
+# opening auction; paper: a DAY market order, #687 c). Part B (2026-10-30): the breakout `pp` arm's 20-day
+# trail sells "at the next open" too, on the paper book only — the same vehicle. Each rule has its own
+# runner (`run_depth_open_sales` selects 'depth' rows only, exactly as before).
+_NEXT_OPEN_SALE_RULES = frozenset({DEPTH_EXIT_RULE, BREAKOUT_PP_EXIT_RULE})
+
+
 async def resolve_exit_rule_stamp(signal_type: str, account_mode: str) -> str | None:
     """The exit rule a NEW trade row is stamped with: 'depth' for a MAGNA53 or small-cap-lane
     (`magna53_smallcap`) entry while the toggle is on for THAT ROW'S account mode, else None
     (today's rule). Read once, at row creation. The strategy test comes first, so a strategy
-    outside the set (9M, the shadow low-cap lane) never reads the toggle at all."""
+    outside the set (9M, the shadow low-cap lane) never reads the toggle at all.
+
+    Breakout v1 (2026-10-30): a `breakout_v1` row is always stamped 'breakout_pp' (its own exit, no
+    toggle); it never reads the depth toggle. Every other strategy is unchanged."""
+    if signal_type == _BREAKOUT_PP_STRATEGY:
+        return BREAKOUT_PP_EXIT_RULE
     if signal_type not in _DEPTH_EXIT_STRATEGIES:
         return None
     return DEPTH_EXIT_RULE if await _magna53_depth_exit_enabled(account_mode) else None
@@ -5954,12 +5999,17 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
         vehicle = depth_sale_vehicle(account_mode)
         words = _DEPTH_SALE_WORDS[vehicle]
         if (trade.get("status") != "filled" or float(trade.get("remaining_shares") or 0) <= 0
-                or trade.get("exit_rule") != DEPTH_EXIT_RULE
+                or trade.get("exit_rule") not in _NEXT_OPEN_SALE_RULES
                 or trade.get("depth_sell_pending_on") is None):
             logger.info(f"execute_depth_open_sale: {ticker} #{trade_id} no longer a pending "
                         f"depth sale (status={trade.get('status')}) — mark cleared")
             await _clear_depth_sell_mark(trade_id)
             return False
+
+        # Breakout v1 (2026-10-30): a 'breakout_pp' row's mark is sold by the same path (its own runner,
+        # `run_breakout_pp_open_sales`); its resting stop is not a depth stop, so the words say "stop".
+        # A depth row's text is unchanged.
+        _stop_word = "depth stop" if trade.get("exit_rule") == DEPTH_EXIT_RULE else "stop"
 
         # A mark from an EARLIER session is never acted on. The rule decides on the TRUE close;
         # if the 19:01 job was missed (container down past its grace, a recovery re-run after
@@ -5980,7 +6030,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
             await send_telegram_message(md_to_html(
                 f"{mode_prefix(account_mode)}⚠️ {ticker}: the close-below-the-line decision from "
                 f"{decided_on} was never sent {words['never_sent']}. Nothing was cancelled or "
-                f"sold — the depth stop stays on and the next close decides."
+                f"sold — the {_stop_word} stays on and the next close decides."
             ), parse_mode="HTML")
             return False
 
@@ -6027,7 +6077,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
                     f"{ticker} {words['sale']} REJECTED ({reason}) — {sell_qty} sh still open",
                     json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
                                 "shares": sell_qty, "account_mode": account_mode,
-                                "vehicle": vehicle, "exit_rule": DEPTH_EXIT_RULE,
+                                "vehicle": vehicle, "exit_rule": trade.get("exit_rule"),
                                 "stop_price": stop_price, "error": str(e)[:400]}),
                 )
             except Exception as _ae:   # loud-ok: the page and the restore matter more than the row
@@ -6048,7 +6098,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
         await _clear_depth_sell_mark(trade_id)
         await log_audit_event(
             "depth_open_sale_placed",
-            f"{ticker}: {words['queued'].format(qty=sell_qty)} ({reason}); depth stop "
+            f"{ticker}: {words['queued'].format(qty=sell_qty)} ({reason}); {_stop_word} "
             f"{stop_id or 'none'} cancelled",
             json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
                         "vehicle": vehicle,
@@ -6064,7 +6114,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
             f"{mode_prefix(account_mode)}📋 *Closing order placed ({words['tag']}):* {ticker} — "
             f"{reason}\n"
             f"Sells {sell_qty} sh {words['when']} (Order {order['id'][:8]}). "
-            f"The depth stop was cancelled; the queued sale is the exit.\n"
+            f"The {_stop_word} was cancelled; the queued sale is the exit.\n"
             f"_Confirms with real P&L on fill._{_third_line}"
         )
         return True
@@ -6079,6 +6129,26 @@ async def run_depth_open_sales() -> list[dict]:
     market order instead, #687 (c); it is sent at the same moment.) Each trade is independent:
     one failure is audited + paged inside `execute_depth_open_sale` and never stops the next.
     """
+    return await _run_next_open_sales(DEPTH_EXIT_RULE)
+
+
+async def run_breakout_pp_open_sales() -> list[dict]:
+    """19:02 ET (breakout v1 PAPER, 2026-10-30): the `pp` arm's 20-day trail — for every 'breakout_pp' row the
+    16:45 job marked (a close under the 20-day), the sale at the next open through `execute_depth_open_sale`.
+    Breakout rows are PAPER rows only, so the vehicle is always the DAY market order that fills at the open
+    (#687 option (c)). The same per-trade independence as the depth runner.
+
+    PAPER WALL (THE LINE): a marked 'breakout_pp' row whose account is not 'paper' is never sold here — audited
+    (`breakout_pp_refused_not_paper`) + paged, its stop untouched; `execute_depth_open_sale` would otherwise pick the
+    vehicle (and the account) from the row."""
+    from agents.market_intelligence.db import BREAKOUT_V1_ACCOUNT_MODE
+    return await _run_next_open_sales(BREAKOUT_PP_EXIT_RULE, only_account_mode=BREAKOUT_V1_ACCOUNT_MODE)
+
+
+async def _run_next_open_sales(rule: str, only_account_mode: str | None = None) -> list[dict]:
+    """Every marked, still-open trade stamped `rule` -> `execute_depth_open_sale`, one at a time. `only_account_mode`
+    (the breakout runner's paper wall): a row on any other account is refused — audited + paged, nothing cancelled or
+    sold. None (the depth runner) = every row, exactly as before."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -6086,9 +6156,24 @@ async def run_depth_open_sales() -> list[dict]:
             WHERE status = 'filled' AND remaining_shares > 0
               AND exit_rule = $1 AND depth_sell_pending_on IS NOT NULL
             ORDER BY id
-        """, DEPTH_EXIT_RULE)
+        """, rule)
     results: list[dict] = []
     for r in rows:
+        if only_account_mode is not None and r["account_mode"] != only_account_mode:
+            await log_audit_event(
+                "breakout_pp_refused_not_paper",
+                f"{r['ticker']} #{r['id']}: a marked {rule} row on account {r['account_mode']!r} — the next-open "
+                f"sale was NOT sent ({only_account_mode} only)",
+                json.dumps({"trade_id": r["id"], "ticker": r["ticker"], "account_mode": r["account_mode"],
+                            "rule": rule, "job": "next_open_sale"}),
+            )
+            await send_telegram_message(md_to_html(
+                f"{mode_prefix(only_account_mode)}🚨 {r['ticker']}: a {rule} trade marked for sale is on the "
+                f"{r['account_mode']!r} account. The sale was NOT sent — check it by hand."
+            ), parse_mode="HTML")
+            results.append({"trade_id": r["id"], "ticker": r["ticker"], "placed": False,
+                            "refused": "account_mode"})
+            continue
         try:
             ok = await execute_depth_open_sale(r["id"])
             results.append({"trade_id": r["id"], "ticker": r["ticker"], "placed": ok})
@@ -6574,8 +6659,15 @@ def _cleanup_cancel_label(explicit_mode: str | None, touched_modes: set[str]) ->
     return BOTH_BOOKS_TAG    # #699: one source - the paper-chat switch must never see this as a paper tag
 
 
-async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: str | None = None) -> int:
+async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: str | None = None,
+                                  exclude_signal_types: tuple[str, ...] = ()) -> int:
     """Cancel all unfilled entry orders. Returns count cancelled.
+
+    exclude_signal_types (breakout v1, 2026-10-30): strategies whose unfilled entries this run must
+    NOT touch. The 10:00 ET ORB-window cleanup passes ('breakout_v1',) — a breakout buy rests all
+    day under its own job (broker/breakout_v1_entry.py, which cancels it at 15:55 ET). Excluded by
+    SIGNAL TYPE, never by account mode: the paper book also holds the #624 small-cap lane, whose
+    unfilled orders must still be cancelled at 10:00. Default () = every row, byte-identical.
 
     Called from cleanup paths AND the operator panic button — passing the right
     reason keeps skip_reason and Telegram copy honest:
@@ -6595,13 +6687,17 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: st
         pending = await conn.fetch("""
             SELECT t.id, t.ticker, t.entry_order_id, t.alert_date, t.proposed_at,
                    t.entry_price, t.stop_price, t.entry_shares, t.orb_high,
-                   t.account_mode, a.pm_rvol
+                   t.account_mode, a.pm_rvol, t.signal_type
             FROM mi_live_trades t
             LEFT JOIN mi_ep_alerts a
               ON a.ticker = t.ticker AND a.alert_date = t.alert_date
             WHERE t.status = 'order_placed' AND t.entry_order_id IS NOT NULL
               AND ($1::text IS NULL OR t.account_mode = $1)
         """, account_mode)
+    if exclude_signal_types:
+        # A row with no signal_type (legacy) is never excluded — only a named strategy is.
+        _excluded = frozenset(exclude_signal_types)
+        pending = [t for t in pending if t.get("signal_type") not in _excluded]
 
     cancelled = 0
     cancelled_tickers: list[str] = []
@@ -10649,6 +10745,22 @@ async def track_open_position_extremes(sweep: bool = False) -> int:
         await _sweep_multi_day_coverage(pool, open_trades, today_open_et)
 
     return len(update_rows)
+
+
+async def _cancel_breakout_row_if_unchanged(trade_id: int, entry_order_id: str, skip_reason: str) -> bool:
+    """check_fills' cancel write for a Breakout v1 PAPER row ONLY (review fix 2026-10-30): compare-and-set on the
+    row still being 'order_placed' on THIS entry order, so a row the minute job has re-priced onto a new order is
+    never marked cancelled under it. -> True when the row was written."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        got = await conn.fetchval(
+            """
+            UPDATE mi_live_trades SET status = 'cancelled', skip_reason = $3
+            WHERE id = $1 AND status = 'order_placed' AND entry_order_id = $2 AND signal_type = $4
+            RETURNING id
+            """,
+            trade_id, entry_order_id, skip_reason, BREAKOUT_V1_SIGNAL_TYPE)
+    return got is not None
 
 
 async def _update_trade_status(trade_id: int, status: str, skip_reason: str | None = None) -> None:

@@ -528,7 +528,8 @@ def test_the_strategy_row_is_paper_size_one_with_magna53_exits_and_its_own_cap()
     from tests.test_strategy_deprecation_424 import _run_seed
     from agents.market_intelligence.constants import resolve_account_mode_for_strategy
     conn = _run_seed()
-    lane_calls = [(q, a) for q, a in conn.execute_calls if "INSERT INTO mi_strategies" in q]
+    lane_calls = [(q, a) for q, a in conn.execute_calls
+                  if "INSERT INTO mi_strategies" in q and a and a[0] == LANE]   # breakout_v1 has its own seed (2026-10-30)
     assert len(lane_calls) == 1
     q, args = lane_calls[0]
     assert args[0] == LANE and args[2] == db.LOWCAP_PAPER_LANE_POSITION_CAP == 5

@@ -20,6 +20,10 @@ agents/market_intelligence/briefing.py
 agents/market_intelligence/broker/__init__.py
 agents/market_intelligence/broker/alpaca_client.py
 agents/market_intelligence/broker/bar_stream.py
+agents/market_intelligence/broker/breakout_pp_exit.py
+agents/market_intelligence/broker/breakout_pp_rules.py
+agents/market_intelligence/broker/breakout_v1_entry.py
+agents/market_intelligence/broker/breakout_v1_volume_curve.py
 agents/market_intelligence/broker/coverage_drift.py
 agents/market_intelligence/broker/drawdown_breaker.py
 agents/market_intelligence/broker/entry_pipeline.py

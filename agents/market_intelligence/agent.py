@@ -4837,6 +4837,7 @@ class MarketIntelligenceAgent(BaseAgent):
         strategy_emoji = {
             "magna53": "📈",
             "magna53_smallcap": "🧪",  # #624 paper lane
+            "breakout_v1": "🧱",  # breakout v1 paper (2026-10-30)
             "9m_day2": "🍬",
             "shadow_orb_5m": "📐",
             "parabolic_short": "🔻",
@@ -4844,6 +4845,7 @@ class MarketIntelligenceAgent(BaseAgent):
         strategy_label = {
             "magna53": "MAGNA53 EP",
             "magna53_smallcap": "MAGNA53 small-cap (paper)",  # #624 — no raw underscore in Markdown
+            "breakout_v1": "Breakout v1 (paper)",  # no raw underscore in Markdown
             "9m_day2": "9M Day 2",
             "shadow_orb_5m": "Shadow ORB 5m",
             "parabolic_short": "Parabolic Short",

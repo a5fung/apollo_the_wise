@@ -1746,6 +1746,39 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
               AND status IN ('order_placed', 'submitting', 'pending_confirmation', 'confirmed')
         """, order_id, account_mode)
 
+    if (entry_trade and entry_trade["signal_type"] == "breakout_v1"
+            and event_norm == "cancelled"
+            and not float(getattr(order, "filled_qty", None) or 0)):
+        # Breakout v1 PAPER (2026-10-30): its own minute job cancels an unfilled buy ON PURPOSE —
+        # to re-price the protective stop to a new day's low (cancel + replace), or for its own
+        # named reasons (stop too wide, volume below the curve, 15:55 ET). It writes a marker
+        # (`breakout_v1_entry.PLANNED_ENTRY_CANCEL`) naming this trade AND this order immediately
+        # before the cancel, and then settles the row itself. A marked, UNFILLED cancel is
+        # therefore not a broker kill: no status write, no page here. No marker, a fill on the
+        # order, any other strategy, or a failed marker read → the branch below, unchanged.
+        try:
+            from agents.market_intelligence.broker.breakout_v1_entry import planned_entry_cancel_marked
+            _planned = await planned_entry_cancel_marked(entry_trade["id"], order_id)
+        except Exception as _pe:  # loud-ok: a marker we cannot read is NOT planned — the branch below records + pages as before
+            logger.warning(f"WS [{account_mode}]: breakout v1 marker read failed for {symbol}: {_pe}")
+            _planned = False
+        if _planned:
+            try:
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        "UPDATE mi_live_orders SET status = $2, cancelled_at = COALESCE(cancelled_at, NOW()) "
+                        "WHERE alpaca_order_id = $1", order_id, event_norm)
+            except Exception as _oe:  # loud-ok: the order row's status is bookkeeping; reconcile_order_states re-reads the broker
+                logger.warning(f"WS [{account_mode}]: breakout v1 order-row status write failed for {symbol}: {_oe}")
+            await log_audit_event(
+                "breakout_v1_planned_cancel_seen",
+                f"{symbol} [{account_mode}] order {order_id[:8]} cancelled by the breakout v1 job "
+                f"on purpose — the job settles the row",
+                json.dumps({"trade_id": entry_trade["id"], "order_id": order_id,
+                            "account_mode": account_mode}),
+            )
+            return
+
     if entry_trade:
         # #500 reason capture (2026-07-23): Alpaca sends NO textual reason on a
         # cancel/reject, so never write the bare event word (the ARWR 7/22

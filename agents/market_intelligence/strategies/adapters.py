@@ -290,6 +290,8 @@ _ADAPTERS: dict[str, Callable[[int], Awaitable[list[OutcomeRow]]]] = {
     # #624 small-cap PAPER lane (2026-10-10): its paper fills. Its TAIL RATE is read from the
     # replays (mi_lowcap_paper_lane_replays), not from here — this feeds the registry's counts.
     LOWCAP_PAPER_LANE_STRATEGY_ID: partial(_adapter_live_trades, signal_type=LOWCAP_PAPER_LANE_STRATEGY_ID),
+    # Breakout v1 PAPER (2026-10-30): its paper fills (mi_live_trades, signal_type 'breakout_v1').
+    "breakout_v1":        partial(_adapter_live_trades, signal_type="breakout_v1"),
     "parabolic_short":    _adapter_parabolic,
     "flag_continuation":  _adapter_flag_continuation,
 }

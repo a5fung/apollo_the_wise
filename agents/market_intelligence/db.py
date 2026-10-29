@@ -174,6 +174,16 @@ LOWCAP_PAPER_LANE_TOGGLE = "lowcap_paper_lane"
 LOWCAP_PAPER_LANE_TOGGLE_ENV = "LOWCAP_PAPER_LANE_ENABLED"
 LOWCAP_PAPER_LANE_ACCOUNT_MODE = "paper"   # mode-ok: the lane's ONE permitted account — compared / passed, never a filter literal
 
+# Breakout v1 PAPER (phase 2 build 2026-10-30; his PAPER GO 2026-10-28, rulings F1 / F2 2026-10-29 —
+# docs/setups/consolidation_breakout.md). Its strategy row id (= the signal_type on every mi_live_trades row it opens),
+# its runtime stop switch (mi_safeguard_state, account_mode='global', default ON) and the ONE account it may order on.
+# NO per-strategy position cap (F2 RULED: it shares the paper account's cap of 5 with the small-cap paper lane), so
+# the seed leaves max_concurrent_positions NULL. The order step is broker/breakout_v1_entry.py.
+BREAKOUT_V1_STRATEGY_ID = "breakout_v1"
+BREAKOUT_V1_PAPER_TOGGLE = "breakout_v1_paper"
+BREAKOUT_V1_PAPER_TOGGLE_ENV = "BREAKOUT_V1_PAPER_ENABLED"
+BREAKOUT_V1_ACCOUNT_MODE = "paper"   # mode-ok: breakout v1's ONE permitted account — compared / passed, never a filter literal
+
 
 async def _seed_strategies_registry(conn) -> None:
     """Insert one row per strategy if not already present.
@@ -419,6 +429,28 @@ async def _seed_strategies_registry(conn) -> None:
         LOWCAP_PAPER_LANE_STRATEGY_ID,
         _jsonb_param({"paper_to_live": {"min_closed": 30, "min_median_r": None}}),
         LOWCAP_PAPER_LANE_POSITION_CAP,
+    )
+
+    # Breakout v1 PAPER (phase 2, 2026-10-30; his PAPER GO 2026-10-28 "Yes paper", "Size paper similar to EP"; F2
+    # RULED 2026-10-29: share the paper account's cap of 5 — so NO per-strategy cap, max_concurrent_positions NULL).
+    # phase 'paper' -> resolve_account_mode_for_strategy -> 'paper'; size 1.0 (EP's sizing, the composite multiplier
+    # starts at 1.0). Exit LEVELS are left NULL here: the exit is the `pp` arm, stamped per row (exit_rule
+    # 'breakout_pp', order_manager.resolve_exit_rule_stamp) and implemented by broker/breakout_pp_rules.py — not by this row's columns.
+    # Seeded ONCE (ON CONFLICT DO NOTHING) so an operator edit is never re-stomped. live_real_enabled stays FALSE
+    # (column default) and the order step refuses any phase but 'paper' (broker/breakout_v1_entry.py).
+    await conn.execute(
+        """
+        INSERT INTO mi_strategies
+            (strategy_id, name, family, phase, signal_type, outcomes_table,
+             promotion_model, promotion_thresholds, position_size_multiplier,
+             max_concurrent_positions)
+        VALUES ($1, 'Breakout v1 (paper)', 'long_setup',
+                'paper',  -- mode-ok: the seed phase of the operator-ruled PAPER setup (breakout v1); a seed, never a filter
+                $1, 'mi_live_trades', 'unpaired_r', $2::jsonb, 1.0, NULL)
+        ON CONFLICT (strategy_id) DO NOTHING
+        """,
+        BREAKOUT_V1_STRATEGY_ID,
+        _jsonb_param({"paper_to_live": {"min_closed": 30, "min_median_r": None}}),
     )
 
 
@@ -1180,6 +1212,12 @@ async def initialize_schema() -> None:
                 -- job); the 19:01 job sends the depth sale (see exit_rule above) and clears it. NULL = no
                 -- sale decided.
                 depth_sell_pending_on DATE,
+                -- Breakout v1 PAPER (2026-10-30): the breakout day's facts for an exit_rule='breakout_pp' row
+                -- (broker/breakout_pp_rules.day0_facts = consolidation_breakout_pp.day0_facts: the minutes after
+                -- the fill against the stop and the +2R target, and the day's highest minute high after the
+                -- fill). Written ONCE by breakout_pp_exit._store_day0_facts; read by the stall cut. NULL = not
+                -- a breakout row, or not recorded yet.
+                breakout_day0_pp JSONB,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 filled_at TIMESTAMPTZ,
                 closed_at TIMESTAMPTZ,
@@ -5471,6 +5509,9 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS exit_rule TEXT;
             ALTER TABLE mi_live_trades
                 ADD COLUMN IF NOT EXISTS depth_sell_pending_on DATE;
+            -- Breakout v1 PAPER (2026-10-30): see the CREATE TABLE comment (the breakout day's pp facts).
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS breakout_day0_pp JSONB;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
             ALTER TABLE mi_themes

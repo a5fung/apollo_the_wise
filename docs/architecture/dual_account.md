@@ -47,8 +47,15 @@ run `success`. The job lets a crash propagate (`audit_run` records it `failed` a
 |---|---|---|---|---|
 | `magna53` | live (`live_real_enabled`) | live | `live_tracker.process_new_alerts_live` (via `trigger_orb_entry`) | `mi_ep_alerts` |
 | `magna53_smallcap` (#624 small-cap paper lane) | paper | paper — and ONLY paper | `broker/lowcap_paper_entry.process_lowcap_paper_alerts` (via `trigger_lowcap_paper_entry`) | `mi_lowcap_paper_lane_alerts` |
+| `breakout_v1` (breakout v1 paper, built 2026-10-30) | paper | paper — and ONLY paper | `broker/breakout_v1_entry.run_breakout_v1_entry_tick` (execution-owned job `breakout_v1_entry`, every minute 09:35–15:55 ET) | `mi_breakout_v1_list` (last night's list) |
 
-The two order steps never read each other's table. The lane is bound to paper three ways: its
+The order steps never read each other's table. **Breakout v1** (2026-10-30) mirrors the lane's four walls (its own
+list table only; phase 'paper' resolving to 'paper' checked every tick; `submit_trade_entry(require_account_mode=
+'paper')`; order ids `apollo_paper_breakout_v1_*`) and has NO slot cap of its own (`max_concurrent_positions` NULL —
+his ruling F2, 2026-10-29: it shares the paper account's 5 with the lane). It shares the paper book's
+(ticker, day) duplicate key with the lane: whichever strategy writes a paper row on a name first that day owns it.
+Its resting buys are excluded from the 10:00 ET cleanup by signal type (`cancel_unfilled_entries(exclude_signal_types=
+("breakout_v1",))`); the lane's are not. Its exit (the `pp` arm, part B) acts only on rows whose account_mode is 'paper' — a `breakout_pp` row on any other book is refused + paged by both exit jobs — and its next-open sale is always the PAPER DAY market order (#687 c). Owner doc: `docs/setups/consolidation_breakout.md`. The lane is bound to paper three ways: its
 order step refuses any phase but 'paper'; it calls `submit_trade_entry(require_account_mode=
 'paper')`, which blocks (step 1c, before safeguards, the trade row or any order — after steps
 1 / 1b / 1a, which can write a skipped row into the book the phase resolves to) a strategy row that

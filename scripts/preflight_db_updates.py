@@ -59,6 +59,39 @@ logger = logging.getLogger(__name__)
 # instead, so those can't go stale.
 TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
     (
+        # Breakout v1 PAPER (2026-10-30): the order step's two compare-and-set writes on its own unfilled paper
+        # rows (copies — tests/test_breakout_v1_entry.py pins each against its source). A type-deduction failure
+        # here would first fire on the first re-price / named cancel in the market.
+        "breakout_v1_entry._mark_cancelled: a planned cancel settles the row",
+        """
+            UPDATE mi_live_trades SET status = 'cancelled', skip_reason = $4
+            WHERE id = $1 AND status = $2 AND entry_order_id IS NOT DISTINCT FROM $3
+              AND signal_type = $5 AND account_mode = $6
+            RETURNING id
+        """,
+    ),
+    (
+        # Review fix 2026-10-30: check_fills' compare-and-set cancel write for a breakout_v1 row (a copy —
+        # tests/test_breakout_v1_entry.py pins it against what the writer sends).
+        "order_manager._cancel_breakout_row_if_unchanged: check_fills' breakout cancel write (CAS)",
+        """
+            UPDATE mi_live_trades SET status = 'cancelled', skip_reason = $3
+            WHERE id = $1 AND status = 'order_placed' AND entry_order_id = $2 AND signal_type = $4
+            RETURNING id
+        """,
+    ),
+    (
+        "breakout_v1_entry._set_unsubmitted_order: the stop re-priced to a new day low, the row re-armed",
+        """
+            UPDATE mi_live_trades SET status = 'confirmed', entry_order_id = NULL, stop_order_id = NULL,
+                   stop_price = $4, hard_stop = $4, entry_shares = $5, position_size = $6,
+                   risk_dollars_actual = $7, skip_reason = NULL
+            WHERE id = $1 AND status = $2 AND entry_order_id IS NOT DISTINCT FROM $3
+              AND signal_type = $8 AND account_mode = $9
+            RETURNING id
+        """,
+    ),
+    (
         "trade_stream._process_entry_fill: entry-fill UPDATE (post-T1.1 5-param)",
         # T1.1 refactor 2026-05-17: dropped stop_price + hard_stop from this
         # UPDATE (entry-fill is not the authorized writer; INSERT sets initial
@@ -164,6 +197,16 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
                         hold_days = $2, running_closes = $3::jsonb,
                         depth_sell_pending_on = $4
                     WHERE id = $1
+        """,
+    ),
+    (
+        # Breakout v1 PAPER (2026-10-30): the pp exit's write-once day-0 facts (a copy — tests/test_breakout_pp_exit.py
+        # pins it against its source). A type-deduction failure here would first fire on the first breakout fill's 16:45.
+        "breakout_pp_exit._store_day0_facts: the breakout day's pp facts (write-once)",
+        """
+            UPDATE mi_live_trades SET breakout_day0_pp = $2::jsonb
+            WHERE id = $1 AND breakout_day0_pp IS NULL AND exit_rule = $3 AND account_mode = $4
+            RETURNING id
         """,
     ),
     (

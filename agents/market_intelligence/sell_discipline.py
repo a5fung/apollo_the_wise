@@ -578,7 +578,8 @@ async def _exit_counterfactual_running_read(conn, exit_era: str) -> Optional[dic
 # (a future strategy) fall back to a title-cased version of the code rather than the raw
 # underscored id, so a new strategy can't reintroduce the same lingo this cleanup removes.
 _SIGNAL_DISPLAY = {"magna53": "MAGNA53 EP", "9m_day2": "9M Day 2",
-                   "magna53_smallcap": "MAGNA53 small-cap (paper)"}  # #624 paper lane
+                   "magna53_smallcap": "MAGNA53 small-cap (paper)",  # #624 paper lane
+                   "breakout_v1": "Breakout v1 (paper)"}  # breakout v1 paper (2026-10-30)
 
 # entry_mode values on mi_consolidation_entry_shadow — display words only.
 _CONSOL_MODE_DISPLAY = {"anticipate": "early entry", "confirm": "confirmed entry"}

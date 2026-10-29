@@ -126,6 +126,9 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # once it has run to an outcome.
     "depth_sell_pending_on": {"live_tracker.update_open_positions_live",
                               "order_manager._clear_depth_sell_mark"},
+    # Breakout v1 PAPER (2026-10-30) — the breakout day's pp facts, written ONCE (only while NULL, only on a
+    # breakout_pp row of the account it names) by the exit's capture step; read by the stall cut.
+    "breakout_day0_pp":      {"breakout_pp_exit._store_day0_facts"},
     "dead_stop_price":       {"order_manager._preserve_dead_stop_price"},
     "dead_stop_order_id":    {"order_manager._preserve_dead_stop_price"},
     "dead_stop_status":      {"order_manager._preserve_dead_stop_price"},
@@ -240,6 +243,23 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         "trade_stream._process_entry_fill", "trade_stream._handle_cancel_or_reject",
     },
 }
+
+# Breakout v1 PAPER (2026-10-30) — `broker/breakout_v1_entry.py` settles and re-prices its OWN unfilled paper buys.
+# Both writers are compare-and-set on the row's own status AND entry order id, and only on rows with
+# signal_type 'breakout_v1' AND account_mode 'paper' — a racing fill (trade_stream) or stream write always wins.
+#   _mark_cancelled         an unfilled buy it cancelled for a named reason (too wide / volume / 15:55 / switch off)
+#   _set_unsubmitted_order  the stop moved to a new day's low before the fill: the row goes back to 'confirmed' with
+#                           no order, the new stop (stop_price + hard_stop = his "day's low at the fill") and the
+#                           re-sized shares (dollar risk placed never grows), and `submit_entry` places it again.
+for _col in ("status", "skip_reason"):
+    ALLOWED_WRITERS[_col].add("breakout_v1_entry._mark_cancelled")
+for _col in ("status", "skip_reason", "entry_order_id", "stop_order_id", "stop_price", "hard_stop",
+             "entry_shares", "position_size", "risk_dollars_actual"):
+    ALLOWED_WRITERS[_col].add("breakout_v1_entry._set_unsubmitted_order")
+# check_fills' cancel write for a breakout_v1 row (review fix 2026-10-30): compare-and-set on 'order_placed' AND the
+# entry order it read, so the polling backup can never mark cancelled a row the minute job re-priced onto a new order.
+for _col in ("status", "skip_reason"):
+    ALLOWED_WRITERS[_col].add("order_manager._cancel_breakout_row_if_unchanged")
 
 # Match an UPDATE block: from `UPDATE mi_live_trades SET` up to first
 # `WHERE` (case-insensitive, multiline). Captures the SET clause.

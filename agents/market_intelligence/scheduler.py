@@ -136,6 +136,8 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "eod_cleanup", JOB_TIME_STOP_SCAN, "account_equity_snapshot",
     "unified_allocator_shadow",
     "sdk_pool_rollup",  # #664 — flushes `_sdk` thread-pool telemetry; the pool it measures is THIS process's
+    "breakout_v1_entry",  # breakout v1 PAPER phase 2 (2026-10-30) — the minute order step 09:35-15:55 ET: places / re-prices / cancels PAPER breakout buys (broker writes)
+    "breakout_pp_open_sale",  # breakout v1 PAPER phase 2 part B (2026-10-30) — 19:02 ET: the pp arm's 20-day trail sale at the next open (PAPER DAY market order; broker writes)
 }) | _CHECK_FILLS_JOB_IDS
 
 # Declared INTELLIGENCE jobs — detection / themes / judge / briefings / audits /
@@ -2574,6 +2576,27 @@ async def _depth_open_auction_sale_job():
         await notify_job_failure("depth_open_auction_sale", str(e))
 
 
+async def _breakout_pp_open_sale_job():
+    """Run at 7:02 PM ET (breakout v1 PAPER phase 2 part B, 2026-10-30). For every 'breakout_pp' trade the 16:45
+    job marked (its session closed under the 20-day), the sale at the next open: a PAPER DAY market sell queued
+    overnight (#687 option (c)'s vehicle), through the depth rule's own sale path (`execute_depth_open_sale`).
+    Its own job, one minute after the depth sale, so a failure of one never touches the other. Inert while no
+    row carries exit_rule='breakout_pp' with a mark."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            run_breakout_pp_open_sales,
+        )
+        results = await run_breakout_pp_open_sales()
+        if results:
+            logger.info(f"Breakout pp next-open sales: {results}")
+    except Exception as e:
+        logger.error(f"Breakout pp next-open sale job failed: {e}")
+        await notify_job_failure("breakout_pp_open_sale", str(e))
+
+
 async def _evening_position_backstop_job():
     """Run at 9:00 PM ET. Backstop sync_positions catching late EXPIRED events
     or earlier remediation failures — market closed, no other jobs running, so
@@ -2905,6 +2928,23 @@ async def _shadow_orb_exit_job():
         return None
 
 
+async def _breakout_v1_entry_job():
+    """Every minute 09:35-15:55 ET mon-fri — breakout v1 PAPER phase 2 (`broker/breakout_v1_entry.py`): last night's
+    list names get their `orh5` buy on the PAPER account (F1 volume curve, the day-low stop re-priced until the fill,
+    cancelled when too wide / volume lapses / 15:55 ET). EXECUTION-owned (broker writes). The window is enforced inside
+    the tick (the hour="9-15" cron idiom fires wider). A per-name failure is audited + paged inside; a failure of
+    the whole tick lands here."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.breakout_v1_entry import run_breakout_v1_entry_tick  # exec-boundary-ok: moves-with-job (W2)
+        await run_breakout_v1_entry_tick()
+    except Exception as e:
+        logger.error(f"breakout v1 entry tick failed: {e}")
+        await notify_job_failure("breakout_v1_entry", str(e))
+
+
 async def _orb_window_cleanup_job():
     """Run at 10:00 AM ET. Cancel unfilled ORB entries that haven't triggered.
     If the stop-limit buy hasn't filled in the first 29 min, the ORB high wasn't
@@ -2916,7 +2956,11 @@ async def _orb_window_cleanup_job():
     logger.info("ORB window cleanup starting (10:00 AM cancel)...")
     try:
         from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries, expire_stale_proposals  # exec-boundary-ok: moves-with-job (W2)
-        cancelled = await cancel_unfilled_entries(reason="ORB window unfilled")
+        # Breakout v1's buy rests all day under its own job (cancelled at 15:55 ET by
+        # broker/breakout_v1_entry.py) — excluded by SIGNAL TYPE; the small-cap paper lane's
+        # unfilled orders in the same paper book are still cancelled here.
+        cancelled = await cancel_unfilled_entries(reason="ORB window unfilled",
+                                                  exclude_signal_types=("breakout_v1",))
         expired = await expire_stale_proposals()   # #436 — dead staged proposals, no broker calls
         logger.info(f"ORB window cleanup: {cancelled} cancelled, {expired} proposal(s) expired")
     except Exception as e:
@@ -7867,6 +7911,19 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
+    # Breakout v1 PAPER phase 2 (2026-10-30): the minute order step, 09:35-15:55 ET mon-fri (window enforced inside
+    # the tick). second=10 gives the just-closed minute bar time to publish. One instance at a time: a tick that runs
+    # past a minute makes the next one skip, never overlap (every tick reconciles from the broker anyway).
+    _scheduler.add_job(
+        audit_wrap(_breakout_v1_entry_job, "breakout_v1_entry"),
+        CronTrigger(hour="9-15", minute="*", second=10, day_of_week="mon-fri", timezone="America/New_York"),
+        id="breakout_v1_entry",
+        replace_existing=True,
+        misfire_grace_time=30,
+        max_instances=1,
+        coalesce=True,
+    )
+
     # Shadow ORB entry: 10:00 AM ET — 5-min ORB telemetry. Shares the slot
     # with orb_window_cleanup (distinct job_id). Reads 9:30-10:00 1-min bars,
     # writes mi_orb_shadow_trades rows. No Alpaca submits.
@@ -7978,6 +8035,15 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_depth_open_auction_sale_job, "depth_open_auction_sale"),
         CronTrigger(hour=19, minute=1, day_of_week="mon-fri", timezone="America/New_York"),
         id="depth_open_auction_sale",
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+    # Breakout v1 PAPER phase 2 part B (2026-10-30): the pp arm's 20-day trail sale at the next open — the 16:45
+    # mark's PAPER DAY market order, one minute after the depth sale (its own job, its own failure page).
+    _scheduler.add_job(
+        audit_wrap(_breakout_pp_open_sale_job, "breakout_pp_open_sale"),
+        CronTrigger(hour=19, minute=2, day_of_week="mon-fri", timezone="America/New_York"),
+        id="breakout_pp_open_sale",
         replace_existing=True,
         misfire_grace_time=1800,
     )
