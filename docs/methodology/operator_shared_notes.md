@@ -2668,3 +2668,9 @@ Rule from this (breakout v1): "surfing" is a STRETCH, not an event — for sever
 > "Yes" (2026-10-28, confirming breakout v1's three starting values, set from his 24 good setups in the dated 2020-08-10 review)
 
 Ruling recorded (breakout v1, paper): surfing = 5+ sessions in a row with the low within 1.0 ADR of the 10-, 20- or 50-day; tightening = the last 5 sessions' mean range no more than 1.1x the 5 before; breakout-day volume at least 1.2x the 50-day average (replacing the provisional 1.5x, which failed 11 of his 24 good setups). Starting values, refined on paper fills (`scripts/probes/_qm_0810_review/dating_calibration.md`).
+
+> "This scan happens prior to breakout, right? He's looking at the biggest gainers in 1,3,6 month and look for basing and then breakout of those in list. It's not biggest gainers for the day" (2026-10-28) → confirmed: the RS rule is the 1-, 3- and 6-month return ranked across all stocks the night before the breakout (best of the three ≥ 98th percentile), never a one-day gain.
+
+> "Ok" (2026-10-28, approving breakout v1 for the Saturday paper build after the check against his 24 dated good setups: 12 caught with every rule, 14 counting two earlier fires on the same base)
+
+Ruling recorded (breakout v1, paper): the module's base-anchor rule DROPPED (a close above an earlier peak no longer counts as the base broken); the LEVEL = the highest high of the last 5 sessions (the tight range), not the whole base's high; the universe lowered to raw close ≥ $2 and 20-session median dollar volume ≥ $5M; RS = best of the 1-, 3- and 6-month return percentiles ≥ 98, measured the night before; plus the confirmed surf (5+ sessions within 1 ADR of the 10/20/50-day), tightening (≤ 1.1x) and breakout volume (≥ 1.2x the 50-day). About 4 names a night in 2020 (`scripts/probes/_qm_0810_review/v1_check_variant*.txt`).

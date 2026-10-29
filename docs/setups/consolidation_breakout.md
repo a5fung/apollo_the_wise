@@ -308,6 +308,23 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
+### 2026-10-28 — breakout v1 FINAL for the Saturday 10-31 build (his "Ok" after the check against his 24 dated good setups)
+
+| piece | v1 (build this) | why (`scripts/probes/_qm_0810_review/`) |
+|---|---|---|
+| universe | raw close ≥ $2, 20-session median dollar volume ≥ $5M (was $5 / $10M) | the $5 / $10M floor alone failed 7 of his 24 good setups |
+| RS | best of the 21 / 63 / 126-session return percentiles ≥ 98, the night before | his article; his "biggest gainers in 1,3,6 month ... prior to breakout" |
+| prior move, higher lows | as this file's rows | — |
+| base anchor | **dropped** (a close above an earlier peak no longer breaks the base) | it failed 8 of 24 |
+| level | the **highest high of the last 5 sessions** (the tight range), strict | his breakouts clear it 23 of 24; the whole base high 15 of 24 |
+| surf / tightening / volume | 5+ sessions within 1.0 ADR of one of the 10/20/50-day; last 5 sessions' range ≤ 1.1× the 5 before; breakout volume ≥ 1.2× the 50-day | his confirmed starting values |
+| entry, stop, exit, size, grade | `orh5` regular hours; the day's low ≤ 1 ADR; the `pp` arm; EP sizing; his grade a label | the entries above |
+
+**Check on his 24 dated good setups (2020-08-10 review): 12 caught on his day or 1-2 sessions late (14 counting two earlier fires on the
+same base); about 3.7 fires a night across the 2020 universe.** The misses: not a top-2% gainer then (CVNA, DFS, PLUG, PENN-3); below-
+average breakout volume (NVAX, NAIL); too small (QUMU, TTOO — "tiny accounts only"); base did not surf or tighten (OPK-3, RUN). One
+stream, picked in hindsight: starting values, refined on paper fills and his grades.
+
 ### 2026-10-28 — his PAPER GO for "breakout v1" (the starting rule set, refined as we trade); NOTHING built yet — the build is Sat 10-31
 
 **Trigger**: his direction 2026-10-28 (`operator_shared_notes.md`): *"let's get to some near-term conclusion, some near-term rules
