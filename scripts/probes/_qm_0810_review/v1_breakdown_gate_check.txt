@@ -1,0 +1,17 @@
+Candidate breakdown gates, measured at the fire's watch night D (the close before the breakout), on the 12 of his 24
+good setups breakout v1 catches (V3 + RSbest, v1_check_variant_rs.txt). A gate that fails here would lose that setup.
+G1 = close(D) not below ALL of the 10/20/50-day; G2 = low(D) not below the lowest low of the 10 sessions before; G3 = close(D) >= the 50-day; G4 = G1 and G2
+  CELH-1  fire 2020-06-23  close(D)     3.38  10/20/50-day 3.18/3.11/2.33  low(D) 3.26 vs 10-session low 2.87  G1=pass G2=pass G3=pass G4=pass
+  CELH-3  fire 2020-08-05  close(D)     4.75  10/20/50-day 4.86/4.69/3.87  low(D) 4.64 vs 10-session low 4.40  G1=pass G2=pass G3=pass G4=pass
+  CODX-1  fire 2020-04-16  close(D)   285.00  10/20/50-day 271.35/274.75/247.55  low(D) 282.00 vs 10-session low 204.30  G1=pass G2=pass G3=pass G4=pass
+  LVGO-4  fire 2020-07-06  close(D)    72.81  10/20/50-day 73.65/68.02/58.66  low(D) 71.77 vs 10-session low 66.27  G1=pass G2=pass G3=pass G4=pass
+  OPK-2   fire 2020-07-17  close(D)     4.03  10/20/50-day 3.93/3.36/2.82  low(D) 3.99 vs 10-session low 3.32  G1=pass G2=pass G3=pass G4=pass
+  OSTK-2  fire 2020-06-23  close(D)    27.38  10/20/50-day 22.60/21.12/16.52  low(D) 25.01 vs 10-session low 18.84  G1=pass G2=pass G3=pass G4=pass
+  SRNE-2  fire 2020-07-31  close(D)     8.55  10/20/50-day 7.85/7.59/6.09  low(D) 7.67 vs 10-session low 6.12  G1=pass G2=pass G3=pass G4=pass
+  PRTS    fire 2020-07-08  close(D)    87.40  10/20/50-day 87.45/86.70/67.30  low(D) 85.80 vs 10-session low 81.90  G1=pass G2=pass G3=pass G4=pass
+  ARCT    fire 2020-07-13  close(D)    46.89  10/20/50-day 47.66/44.41/42.73  low(D) 46.50 vs 10-session low 43.18  G1=pass G2=pass G3=pass G4=pass
+  HL      fire 2020-08-04  close(D)     5.59  10/20/50-day 5.36/4.73/3.78  low(D) 5.31 vs 10-session low 4.58  G1=pass G2=pass G3=pass G4=pass
+  IBIO-1  fire 2020-07-15  close(D)  1160.00  10/20/50-day 1092.00/965.00/808.90  low(D) 1090.00 vs 10-session low 925.00  G1=pass G2=pass G3=pass G4=pass
+  PENN-2  fire 2020-06-23  close(D)    31.43  10/20/50-day 31.24/32.16/23.44  low(D) 30.36 vs 10-session low 27.52  G1=pass G2=pass G3=pass G4=pass
+KEPT of 12: G1_not_below_all 12/12, G2_no_new_10d_low 12/12, G3_above_50 12/12, G4_both 12/12
+ODD 2026-09-08 (his 'no setup on Sept 8'): close 13.02 vs 10/20/50-day 14.20/13.53/14.94, low 12.99 vs 10-session low 13.07 -> G1 FAIL, G2 FAIL, G3 FAIL

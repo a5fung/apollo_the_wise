@@ -1,0 +1,4 @@
+ODD, breakout day 2026-10-09 (setup at the 2026-10-08 close) — his 'Oct 9 is a better setup'
+  prior move +71% (pole 2026-09-11 20.16); higher lows True; surf run 16 (>=5 True); tightening 0.80 (<=1.1 True)
+  level k5 20.68: high(E) 21.56 -> True; volume(E) 767,079 vs 1.2x 50-day 1,460,436 -> False
+  new check: close(D) 19.55 vs 10/20/50-day 18.81/18.58/15.80 (not below all: True); low(D) 18.79 vs 10-session low 17.08 (True)

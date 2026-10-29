@@ -701,7 +701,11 @@ CHART_RULINGS: list[ChartRuling] = [
     ChartRuling(
         ticker='ODD', alert_date='2026-09-09', verdict=BAD_CHART,
         label_source="operator", ruling_date="2026-10-29",
-        operator_words='garbage, no pattern at all, chopping around',
+        operator_words=('garbage, no pattern at all, chopping around' + ' | ' +
+                        'on sept 8 ODD dropped 5% below all moving avg, below recent lows, it\'s still higher then a low on Aug 17 but no longer surfing cleaning and became less tight. Even though it gapped up next day but there\'s no setup on Sept 8' + ' | ' +
+                        'For ODD, Oct 9 is a better setup'),
+        better_date='2026-10-09', better_date_provenance=STATED,
+        better_date_note='his "For ODD, Oct 9 is a better setup" (2026-10-29). Breakout v1 misses it: volume 0.63x the 50-day (needs 1.2x) and strength 96.6 (needs 98).',
         gap_open_pct=34.4, ret_5d=None,
         prior_runup_note='WE SKIPPED IT: best score 40, catalyst=routine. 20 sessions later +9%. Volume 14.8x. Ruled outcome-blind.',
     ),

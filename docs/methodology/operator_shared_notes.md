@@ -2706,3 +2706,9 @@ Rulings recorded (#594 chart review, sample 4 — the first page shown with NO r
 
 Ruling recorded (breakout v1, paper): the universe adds SINGLE-ASSET funds — one underlying (a coin, a metal, a commodity, a currency), like ZCSH — beside common stock and ADRs. Not general ETFs. Applied as stated: the `ETV` security type (92 names on 10-29) also holds leveraged and inverse funds (AGQ, BOIL, KOLD, GLL, UCO, SCO, UGL, ZSL, YCL, YCS, ULE, EUO and the like) and multi-asset baskets (DBC, GSG, USCI, GLTR, GDLC and the like); those are not single-asset and stay out. The build derives the list from the fund names and prints the kept and the excluded for him to check.
 
+> "on sept 8 ODD dropped 5% below all moving avg, below recent lows, it's still higher then a low on Aug 17 but no longer surfing cleaning and became less tight. Even though it gapped up next day but there's no setup on Sept 8" (2026-10-29, after being told ODD 09-09 passes every breakout v1 shape rule and only the top-2% strength rule stops it)
+
+> "For ODD, Oct 9 is a better setup" (2026-10-29)
+
+Rule from this (breakout v1, his reading of the setup day): the night before a breakout the stock must still be IN the pattern — a session that closes below ALL the moving averages and undercuts the recent lows has broken the surf, even when a deeper earlier low (ODD's Aug 17) keeps "higher lows" technically true. Checked on his 12 caught good setups before proposing anything (`scripts/probes/_qm_0810_review/v1_breakdown_gate_check.txt`): a check "close not below all of the 10/20/50-day AND low not below the 10 sessions' lowest low" keeps 12 of 12 and rejects ODD 09-08. His better date, ODD 2026-10-09, is a labelled positive example (`tests/fixtures/must_not_trade_charts.py`, better_date STATED).
+
