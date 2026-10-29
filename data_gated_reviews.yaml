@@ -15833,7 +15833,14 @@ reviews:
     zero_verdict: "2026-10-17 WAITING — 0 crowded days since the 10-12 fix; 2 ever (09-17 max board 23, 10-05 max 27), about 6% of scan days."
     discriminates_on: [mi_ep_shortlist_shadow.board_n, mi_ep_shortlist_shadow.scan_date]
     earliest_review_date: 2026-10-17
-    status: pending
+    status: done
+    closed_on: 2026-10-29
+    outcome: >-
+      FIRED 10-28 (one tick, 09:55 ET, 21 names) and 10-29 (four ticks 09:40-09:55, up to 31). On all five crowded
+      ticks the ranking is composite then 20-day dollar volume with no order break; in every tier straddling the
+      cut the shortlisted names out-volume the cut ones; the cut is never the alphabetically-last names of a tier;
+      the 16 pending rows had no score row on the prior complete date. #694 closed (docs/task_closes.md,
+      scripts/probes/_694_close_1029/).
     kind: tripwire
     added_on: 2026-10-17
     can_fire:

@@ -732,8 +732,9 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         )
     regime_record = dict(regime_record) if regime_record else None
 
-    # Per-alert concurrency. Bar-fetch retry can block up to 3 × 60s on a
-    # single ticker; serial would stack past the 5-min cron interval on
+    # Per-alert concurrency. Bar-fetch retry can block up to ~1 min on a
+    # single ticker (entry_pipeline BAR_RETRY_MAX x BAR_RETRY_DELAY_SEC); serial
+    # would stack past the 5-min cron interval on
     # any morning where multiple alerts miss the first bar. Semaphore
     # caps Alpaca-bound work to keep us under per-account rate limits.
     sem = asyncio.Semaphore(5)

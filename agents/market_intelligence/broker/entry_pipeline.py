@@ -52,8 +52,14 @@ import math
 
 logger = logging.getLogger(__name__)
 
-BAR_RETRY_MAX = 3
+# 2026-10-29 (GKOS, operator "go"): REST attempts 3 -> 6, so the wait for the opening bar is ~50 s
+# of sleeps instead of ~20 s, and the in-memory stream cache is re-read every BAR_CACHE_POLL_SEC
+# during each sleep instead of once per attempt. GKOS's own 09:30 bar reached the stream about one
+# second after the old budget gave up; the skip row then blocked the stream's own retry. REST keeps
+# its 10 s cadence (rate limits); only the cache read is fast.
+BAR_RETRY_MAX = 6
 BAR_RETRY_DELAY_SEC = 10
+BAR_CACHE_POLL_SEC = 1
 FADE_MIDPOINT_RATIO = 0.5
 
 # ── #461 per-account_mode position-cap lock (advisory, xact-scoped, DB-global) ─
@@ -102,14 +108,21 @@ async def fetch_orb_bar_with_retry(
     FALLBACK: REST get_first_bar, exactly today's behaviour — the REST
     endpoint can take a few seconds after bar close (9:31:00) to return the
     settled bar; single-attempt callers miss any candidate that hits the gap.
+
+    2026-10-29: between REST attempts the cache is re-read every
+    BAR_CACHE_POLL_SEC (`_sleep_until_stream_bar`), so a bar the stream
+    delivers mid-wait is served within about a second, not at the next
+    attempt. The audit row carries the seconds since the first attempt.
     """
     bar: dict | None = None
+    started = asyncio.get_running_loop().time()
     for attempt in range(1, BAR_RETRY_MAX + 1):
         stream_bar = _stream_cached_bar(ticker, today)
         if stream_bar:
+            waited = asyncio.get_running_loop().time() - started
             logger.info(
                 f"{strategy_label} {ticker}: ORB bar from stream cache "
-                f"(attempt {attempt}) O={stream_bar['open']:.2f} "
+                f"(attempt {attempt}, {waited:.1f}s after the first) O={stream_bar['open']:.2f} "
                 f"H={stream_bar['high']:.2f} L={stream_bar['low']:.2f}"
             )
             try:
@@ -117,7 +130,7 @@ async def fetch_orb_bar_with_retry(
                     "orb_bar_stream_used",
                     f"{strategy_label} {ticker} attempt {attempt} — "
                     f"O={stream_bar['open']:.2f} H={stream_bar['high']:.2f} "
-                    f"L={stream_bar['low']:.2f}",
+                    f"L={stream_bar['low']:.2f} waited={waited:.1f}s",
                 )
             except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); logger.info already fired immediately above
                 pass
@@ -138,8 +151,18 @@ async def fetch_orb_bar_with_retry(
                 )
             except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); logger.info already fired immediately above
                 pass
-            await asyncio.sleep(BAR_RETRY_DELAY_SEC)
+            await _sleep_until_stream_bar(ticker, today, BAR_RETRY_DELAY_SEC)
     return None
+
+
+async def _sleep_until_stream_bar(ticker: str, today: date, seconds: float) -> None:
+    """Sleep up to `seconds`, re-reading the stream cache every BAR_CACHE_POLL_SEC and returning
+    early once it holds the bar (the caller's next attempt serves it). Always yields at least once."""
+    polls = max(1, math.ceil(seconds / BAR_CACHE_POLL_SEC))
+    for _ in range(polls):
+        await asyncio.sleep(seconds / polls)
+        if _stream_cached_bar(ticker, today):
+            return
 
 
 def _stream_cached_bar(ticker: str, today: date) -> dict | None:

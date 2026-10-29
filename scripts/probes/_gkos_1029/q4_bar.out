@@ -1,0 +1,7 @@
+SET
+et|open|high|low|close|volume
+09:30:00|212.83|214.92|207.41|208.575|152002
+(1 row)
+atr_14|orb_high|orb_low|status|skip_reason
+|||skipped|infra:no_bar: 3 retries exhausted
+(1 row)

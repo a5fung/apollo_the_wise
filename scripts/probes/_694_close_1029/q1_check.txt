@@ -1,0 +1,17 @@
+crowded ticks: 5 rows: 129
+2026-10-28 09:55:00 board 21 acting prescore shortlisted 20 cut 1 | order violations [] | tier violations [] | tiers at the cut [10.0] | cut == alphabetically-last within tier [] | pending ['AIOK', 'BOOM', 'ULBI', 'KIDS', 'EVMN', 'FWRD']
+   cut: [('GENB', 10.0, 12.1, 'rs_prev_complete')]
+   last 3 shortlisted: [('HAYW', 10.0, 41.5), ('WEN', 10.0, 31.9), ('DNA', 10.0, 28.6)]
+2026-10-29 09:40:00 board 22 acting prescore shortlisted 20 cut 2 | order violations [] | tier violations [] | tiers at the cut [10.0] | cut == alphabetically-last within tier [] | pending ['MAX', 'NUWE', 'MESO', 'CLPT', 'CLMB', 'LXU']
+   cut: [('PWP', 10.0, 21.6, 'rs_prev_complete'), ('BHC', 10.0, 12.0, 'rs_prev_complete')]
+   last 3 shortlisted: [('DRS', 10.0, 36.2), ('TDOC', 10.0, 24.9), ('PRCH', 10.0, 24.3)]
+2026-10-29 09:45:00 board 25 acting prescore shortlisted 20 cut 5 | order violations [] | tier violations [] | tiers at the cut [10.0] | cut == alphabetically-last within tier [] | pending ['MAX', 'NUWE', 'MESO', 'BOOM', 'CLMB', 'RM', 'FINW', 'LXU']
+   cut: [('TDOC', 10.0, 24.9, 'rs_prev_complete'), ('PRCH', 10.0, 24.3, 'rs_prev_complete'), ('PWP', 10.0, 21.6, 'rs_prev_complete'), ('TRN', 10.0, 19.8, 'rs_prev_complete'), ('BHC', 10.0, 12.0, 'rs_prev_complete')]
+   last 3 shortlisted: [('LXU', 32.5, None), ('PI', 31.0, 71.6), ('DRS', 10.0, 36.2)]
+2026-10-29 09:50:00 board 30 acting prescore shortlisted 20 cut 10 | order violations [] | tier violations [] | tiers at the cut [] | cut == alphabetically-last within tier [] | pending ['MAX', 'NUWE', 'BOOM', 'MESO', 'CLMB', 'LXU', 'RM', 'KPLT', 'FINW']
+   cut: [('BOOT', 31.0, 96.4, 'rs_prev_complete'), ('ADT', 31.0, 52.7, 'rs_prev_complete'), ('KMPR', 20.0, 24.7, 'rs_prev_complete'), ('DFIN', 20.0, 12.1, 'rs_prev_complete'), ('DRS', 10.0, 36.2, 'rs_prev_complete'), ('TDOC', 10.0, 24.9, 'rs_prev_complete'), ('PRCH', 10.0, 24.3, 'rs_prev_complete'), ('PWP', 10.0, 21.6, 'rs_prev_complete'), ('TRN', 10.0, 19.8, 'rs_prev_complete'), ('BHC', 10.0, 12.0, 'rs_prev_complete')]
+   last 3 shortlisted: [('RM', 32.5, None), ('KPLT', 32.5, None), ('FINW', 32.5, None)]
+2026-10-29 09:55:00 board 31 acting prescore shortlisted 20 cut 11 | order violations [] | tier violations [] | tiers at the cut [31.0] | cut == alphabetically-last within tier [] | pending ['MAX', 'NUWE', 'BOOM', 'MESO', 'LXU', 'CLMB', 'RM', 'KPLT', 'FINW']
+   cut: [('PI', 31.0, 71.6, 'rs_prev_complete'), ('ADT', 31.0, 52.7, 'rs_prev_complete'), ('KMPR', 20.0, 24.7, 'rs_prev_complete'), ('DFIN', 20.0, 12.1, 'rs_prev_complete'), ('DRS', 10.0, 36.2, 'rs_prev_complete'), ('TDOC', 10.0, 24.9, 'rs_prev_complete'), ('PRCH', 10.0, 24.3, 'rs_prev_complete'), ('PWP', 10.0, 21.6, 'rs_prev_complete'), ('TRN', 10.0, 19.8, 'rs_prev_complete'), ('NEXT', 10.0, 16.2, 'rs_prev_complete'), ('BHC', 10.0, 12.0, 'rs_prev_complete')]
+   last 3 shortlisted: [('KPLT', 32.5, None), ('FINW', 32.5, None), ('BOOT', 31.0, 96.4)]
+ALL ORDERED BY VOLUME: True

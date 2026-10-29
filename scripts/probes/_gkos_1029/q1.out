@@ -1,0 +1,17 @@
+SET
+et|event_type|s
+09:28:00.079|unified_allocation_decided|slots=3 winners=['GKOS'] n=1 (0 lower-ranked)
+09:31:00.105|orb_triggered|[bar_stream] 1 alerts: ['GKOS']
+09:31:00.689|exposure_family_checked|GKOS (live/ORB): 0 same-family open(s), breach=False
+09:31:00.718|orb_bar_miss|ORB GKOS attempt 1/3 — bar not available, retry 10s
+09:31:10.749|orb_bar_miss|ORB GKOS attempt 2/3 — bar not available, retry 10s
+09:31:20.798|orb_skipped|ORB GKOS — infra:no_bar: 3 retries exhausted
+09:31:21.94|orb_triggered|[bar_stream] 1 alerts: ['GKOS']
+(7 rows)
+et|event_type|s
+09:31:00.105|orb_triggered|[bar_stream] 1 alerts: ['GKOS']
+09:31:00.718|orb_bar_miss|ORB GKOS attempt 1/3 — bar not available, retry 10s
+09:31:10.749|orb_bar_miss|ORB GKOS attempt 2/3 — bar not available, retry 10s
+09:31:20.798|orb_skipped|ORB GKOS — infra:no_bar: 3 retries exhausted
+09:31:21.94|orb_triggered|[bar_stream] 1 alerts: ['GKOS']
+(5 rows)
