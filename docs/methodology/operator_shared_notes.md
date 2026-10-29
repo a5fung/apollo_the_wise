@@ -2682,3 +2682,23 @@ Ruling recorded (live exits): the 10/20-day trailing line governs only once the 
 > "ok" (2026-10-29, to the two recommendations put to him for breakout v1's paper build: how breakout volume is judged at an intraday buy, and whether the paper account's position cap is shared)
 
 Rulings recorded (breakout v1, paper): (1) **breakout volume at the buy** — the `orh5` buy happens during the day, before the day's volume is known, so the rule "breakout volume ≥ 1.2× the 50-day" is judged at the moment the buy triggers as the volume SO FAR against the stock's normal volume BY THAT MINUTE (an intraday volume curve measured once from stored minute bars), ≥ 1.2×; (2) **the cap** — breakout v1 shares the paper account's cap of 5 open positions with the small-cap paper lane (no per-strategy cap of its own). Both were the recommendation; the alternatives put to him were EP's linear projection or no check at the buy (1), and its own cap of 5 (2).
+
+## 2026-10-29 — chart review sample 4 ruled (outcome-blind), and ZCSH as the breakout pattern (operator, verbatim)
+
+> "ROIV - not great, under all moving avg and not surfing it, no high lowers, no tightness.
+> AKAM - crap, clear downtrend, no higher lowers, weeks below moving avgs,
+> ODD - garbage, no pattern at all, chopping around
+> GNRC - garbage, no pattern whatsoever, surfing DOWNWARDS
+> DFTX - garbage, what am i looking at? THere's nothing here at all, looks like crap
+> CCL - garbage garbage garbage, there's no breakout pattern at all
+> PHVS - no
+> SIG - no"
+
+> "What you shared looks nothing like qullamaggie breakout patterns, clear strong up move, pulls back into around moving averages, make higher lows, tightens then breaks out. None of these look remotely like that, all random stocks with no pattern whatsoever."
+
+> "Look at ZCSH today, big run up, pulls back, pulls into 50d then moves back above all moving avg making higher lows, tighten and trying to breakout today. Completely different then the ones you showed."
+
+Shared with it (2026-10-29): an X post by @FranVezz, *"$ZCSH showing RMV of 0!"* quoting his earlier *"Showing @Deepvue RMV at 2.57 - very coiled."* — a ZCSH (Grayscale Zcash ETF) daily chart on Deepvue: a run from ~$12 in August to ~$44 in late September, a pullback into the 50-day, back above every average with higher lows, the range squeezing to an RMV of 0, sitting under ~$35 on 10-29. Image kept: `docs/methodology/images/zcsh_2026-10-29_rmv_coil_franvezz_post.png`.
+
+Rulings recorded (#594 chart review, sample 4 — the first page shown with NO result, score or group): all eight BAD_CHART, his words per name (`tests/fixtures/must_not_trade_charts.py`, ruling session 2026-10-29). His standard for a good chart, in his words above: a clear strong up move, a pullback to around the moving averages, higher lows, tightening, then the breakout. ZCSH is his positive example of that pattern (a labelled example, not a trade call).
+

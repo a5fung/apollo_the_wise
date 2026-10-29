@@ -107,7 +107,7 @@ RULING_DATE = "2026-08-25"          # session 1 — the original eleven
 # review sample #1 (ten names where our score and the outcome disagreed). Every member
 # carries its own `ruling_date`; this set is what a test may check membership against, so
 # a typo cannot invent a session that never happened.
-RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06", "2026-09-23", "2026-10-05"})
+RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06", "2026-09-23", "2026-10-05", "2026-10-29"})
 # The eleven BAD_CHART members of session 1 are the population the v3 backtest measured.
 # Later BAD_CHART rulings are NOT in it — the doc's numbers are against these only.
 V3_MEASURED_POPULATION_SIZE = 11
@@ -674,6 +674,71 @@ CHART_RULINGS: list[ChartRuling] = [
         gap_open_pct=10.5, ret_5d=None,
         prior_runup_note="WE SKIPPED IT: best score 37, catalyst=routine. Volume 5.2x. 20 sessions later +17% — a chart he calls bad that still ran. "
                          "(Written 'kro - bad' in his reply; confirmed: 'last one was hurn bad'.)",
+    ),
+    # ══════════════════════════════════════════════════════════════════════════════════
+    # REVIEW SAMPLE #4 — 2026-10-29, the FIRST OUTCOME-BLIND page (his 2026-10-10 ruling):
+    # eight real gap days 09-08..09-29 shuffled into one list, no result / score / arm shown
+    # (scripts/probes/_594_sample4_1029/). He ruled all eight bad. His words on the set
+    # (docs/methodology/operator_shared_notes.md, 2026-10-29): "None of these look remotely
+    # like that, all random stocks with no pattern whatsoever" — "that" = a strong up move,
+    # a pullback to around the moving averages, higher lows, tightening, then the breakout.
+    # Blind, he rejected all 5 HIGH alerts that fell AND all 3 skipped names that ran.
+    # ══════════════════════════════════════════════════════════════════════════════════
+    ChartRuling(
+        ticker='ROIV', alert_date='2026-09-08', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-29",
+        operator_words='not great, under all moving avg and not surfing it, no high lowers, no tightness',
+        gap_open_pct=14.5, ret_5d=None,
+        prior_runup_note='WE ALERTED IT HIGH: score 90, catalyst=game_changer. 20 sessions later -11%. Volume 3.3x. Ruled outcome-blind.',
+    ),
+    ChartRuling(
+        ticker='AKAM', alert_date='2026-09-25', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-29",
+        operator_words='crap, clear downtrend, no higher lowers, weeks below moving avgs,',
+        gap_open_pct=13.4, ret_5d=None,
+        prior_runup_note='WE ALERTED IT HIGH: score 90, catalyst=game_changer. 20 sessions later -25%. Volume 9.1x. Ruled outcome-blind.',
+    ),
+    ChartRuling(
+        ticker='ODD', alert_date='2026-09-09', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-29",
+        operator_words='garbage, no pattern at all, chopping around',
+        gap_open_pct=34.4, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 40, catalyst=routine. 20 sessions later +9%. Volume 14.8x. Ruled outcome-blind.',
+    ),
+    ChartRuling(
+        ticker='GNRC', alert_date='2026-09-17', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-29",
+        operator_words='garbage, no pattern whatsoever, surfing DOWNWARDS',
+        gap_open_pct=31.1, ret_5d=None,
+        prior_runup_note='WE ALERTED IT HIGH: score 65, catalyst=strong. 20 sessions later -14%. Volume 8.6x. Ruled outcome-blind.',
+    ),
+    ChartRuling(
+        ticker='DFTX', alert_date='2026-09-14', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-29",
+        operator_words="garbage, what am i looking at? THere's nothing here at all, looks like crap",
+        gap_open_pct=11.9, ret_5d=None,
+        prior_runup_note='WE ALERTED IT HIGH: score 90, catalyst=game_changer. 20 sessions later -19%. Volume 4.4x. Ruled outcome-blind.',
+    ),
+    ChartRuling(
+        ticker='CCL', alert_date='2026-09-29', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-29",
+        operator_words="garbage garbage garbage, there's no breakout pattern at all",
+        gap_open_pct=10.2, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 48.8, catalyst=routine. 20 sessions later +14%. Volume 3.2x. Ruled outcome-blind.',
+    ),
+    ChartRuling(
+        ticker='PHVS', alert_date='2026-09-08', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-29",
+        operator_words='no',
+        gap_open_pct=16.2, ret_5d=None,
+        prior_runup_note='WE ALERTED IT HIGH: score 90, catalyst=game_changer. 20 sessions later -24%. Volume 9.9x. Ruled outcome-blind.',
+    ),
+    ChartRuling(
+        ticker='SIG', alert_date='2026-09-09', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-10-29",
+        operator_words='no',
+        gap_open_pct=14.9, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 48.8, catalyst=routine. 20 sessions later +9%. Volume 6.4x. Ruled outcome-blind.',
     ),
 ]
 

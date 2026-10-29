@@ -1,0 +1,8 @@
+ZCSH, setup as of the 2026-10-28 close (security type ETV — outside the breakout universe, which takes CS/ADRC only)
+  price 34.63; 20-session median dollar volume $41.3M  -> universe ($2/$5M): True
+  returns: 1 month -6%, 3 months +215%, 6 months +354% (RS percentile not computed; ETFs are not in the stock cross-section)
+  prior move +337% (>= 30%: True); pole top 2026-09-23 at 43.91; base 25 sessions
+  higher lows (last 5 lows above the base low): True
+  surf: longest run within 1 ADR of the 10/20/50-day = 7 sessions (>= 5: True)
+  tightening: last 5 sessions' range / the 5 before = 0.56 (<= 1.1: True)
+  level for today's breakout = highest high of the last 5 sessions = 35.13; needs volume >= 1.2 x 50-day (1,922,869 shares)

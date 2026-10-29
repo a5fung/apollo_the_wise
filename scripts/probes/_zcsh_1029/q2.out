@@ -1,0 +1,13 @@
+SET
+watch_rows_ever
+0
+(1 row)
+ERROR:  column "scan_date" does not exist
+LINE 1: SELECT count(*) AS coil_rows_ever, max(scan_date) FROM mi_an...
+                                               ^
+security_type|count
+ETN|52
+ETS|116
+ETV|92
+ETF|5809
+(4 rows)
