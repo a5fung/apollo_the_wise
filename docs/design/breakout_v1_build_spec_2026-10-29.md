@@ -30,7 +30,7 @@ is NOT edited. The surf / tightening / volume / level / universe arithmetic is p
   1–2 sessions late, and the per-gate miss table. A mismatch is a defect in the port, never a reason to move a threshold.
 
 **B2 — the nightly list (job `breakout_v1_list`, 17:55 ET mon–fri, after the 17:48 shadow).** Universe from `mi_daily_closes`
-+ `mi_security_types` at the v1 floors ($2 / $5M); RS cross-section over THAT universe (`cb.cross_section_one_date`'s
++ `mi_security_types` at the v1 floors ($2 / $5M) — common stock + ADRs + SINGLE-ASSET funds (his 10-29 ruling: `ETV` minus leveraged / inverse and multi-asset baskets, derived from the fund names in the ticker reference, the kept and excluded lists printed in the build's output and pinned by a test for his check; ZCSH must be kept); RS cross-section over THAT universe (`cb.cross_section_one_date`'s
 `rs_best`, measured at D exactly as the probe did); `v1_gates` per name; every passing name → `mi_breakout_v1_list`
 (scan_date, ticker, level, adr20, rs_best, every gate value as JSON, list_rank by rs_best). ~4 names a night (the check's
 3.7). One audit row `breakout_v1_list_run` (n universe / n passing / per-gate fail counts). SILENT except a job failure.

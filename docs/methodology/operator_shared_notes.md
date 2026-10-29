@@ -2702,3 +2702,7 @@ Shared with it (2026-10-29): an X post by @FranVezz, *"$ZCSH showing RMV of 0!"*
 
 Rulings recorded (#594 chart review, sample 4 — the first page shown with NO result, score or group): all eight BAD_CHART, his words per name (`tests/fixtures/must_not_trade_charts.py`, ruling session 2026-10-29). His standard for a good chart, in his words above: a clear strong up move, a pullback to around the moving averages, higher lows, tightening, then the breakout. ZCSH is his positive example of that pattern (a labelled example, not a trade call).
 
+> "yes, single asset makes sense" (2026-10-29, to the recommendation to put single-asset funds such as ZCSH on the breakout list, but not the general ETFs)
+
+Ruling recorded (breakout v1, paper): the universe adds SINGLE-ASSET funds — one underlying (a coin, a metal, a commodity, a currency), like ZCSH — beside common stock and ADRs. Not general ETFs. Applied as stated: the `ETV` security type (92 names on 10-29) also holds leveraged and inverse funds (AGQ, BOIL, KOLD, GLL, UCO, SCO, UGL, ZSL, YCL, YCS, ULE, EUO and the like) and multi-asset baskets (DBC, GSG, USCI, GLTR, GDLC and the like); those are not single-asset and stay out. The build derives the list from the fund names and prints the kept and the excluded for him to check.
+
