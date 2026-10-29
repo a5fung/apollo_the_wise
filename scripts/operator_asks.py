@@ -102,7 +102,7 @@ def _gated_reviews_ready() -> list[str]:
             ready.append(f"{rid}: ⚠ READY — predicate reads {got} against threshold {thr}"
                          f"{'' if not earliest else f', earliest {earliest} has passed'}. "
                          f"RUN THE REVIEW (my work first; his decision only after it produces a "
-                         f"result). Action: {str(r.get('action_when_ready','')).strip().splitlines()[0][:100]}")
+                         f"result). Action: {(str(r.get('action_when_ready','')).strip().splitlines() or ['(no action_when_ready text)'])[0][:100]}")
         elif thr is not None and got >= thr:
             accruing.append(f"{rid}: threshold MET ({got}/{thr}) but earliest date {earliest} "
                             f"is still ahead. Not an ask yet.")
