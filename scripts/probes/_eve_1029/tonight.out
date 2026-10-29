@@ -1,0 +1,27 @@
+SET
+== B. #491 night 4: bounces since the U2 deploy (expect 0), skip rows, failures, rehomes
+tk|frm|theme_date
+(0 rows)
+et|left
+(0 rows)
+event_type|count
+shadow_themes_promoted|1
+theme_rehome_pass_ran|1
+(2 rows)
+== H. #482 check 6: the 60 rows after Thu 16:50 (each open row gains one close; VRT 10-28 should now hold 1)
+id|ticker|alert_date|status|n_closes|hold_days|total_pnl
+433|IRON|2026-10-19|closed|5|7|-0.519900000000006912159733474254608154296875
+423|MANE|2026-10-19|open|8|10|6.3566666666666691298814839683473110198974609375
+428|SAIQ|2026-10-21|open|6|8|0.33666666666666689167186632403172552585601806640625
+435|CART|2026-10-26|open|3|3|0.7466666666666672558250184010830707848072052001953125
+432|VRT|2026-10-28|open|1|1|0
+443|AXGN|2026-10-29|open|0||
+442|GKOS|2026-10-29|open|0||
+(7 rows)
+et|event_type|left
+2026-10-29 16:50:00.157844|shadow_orb_hour_pass|6 candidate(s): 2 open, 3 no-entry, 0 gate-blocked, 1 deferred (gap retried), 0 error(s)
+(1 row)
+job_id|status|et
+shadow_orb_entry|success|2026-10-29 10:00:00.019575
+shadow_orb_exit|success|2026-10-29 16:50:00.001759
+(2 rows)
