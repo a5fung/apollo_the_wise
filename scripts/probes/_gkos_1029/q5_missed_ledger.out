@@ -1,0 +1,10 @@
+SET
+alert_date|ticker|source|skip_category|skip_reason|ret_5d|ret_20d|max_high_20d
+2026-08-13|CGEM|high_unentered|infra_skip|infra:no_bar: 3 retries exhausted|0.03185328185328186|-0.006274131274131227|0.11920849420849433
+2026-08-13|CGEM|scan_filter|duplicate_scan|already scored earlier today|0.03185328185328186|-0.006274131274131227|0.11920849420849433
+2026-08-13|CRMD|scan_filter|duplicate_scan|already scored earlier today|-0.01907032181168059|-0.06734207389749707|0.07032181168057208
+2026-08-13|CRMD|high_unentered|infra_skip|infra:no_bar: 3 retries exhausted|-0.01907032181168059|-0.06734207389749707|0.07032181168057208
+2026-08-13|HLIT|scan_filter|duplicate_scan|already scored earlier today|-0.14571823204419898|-0.17127071823204423|0.04005524861878453
+2026-08-13|HLIT|high_unentered|infra_skip|infra:no_bar: 3 retries exhausted|-0.14571823204419898|-0.17127071823204423|0.04005524861878453
+2026-08-20|RARE|high_unentered|infra_skip|infra:no_bar: 3 retries exhausted|-0.0750264177527298||0.0038746037337090322
+(7 rows)

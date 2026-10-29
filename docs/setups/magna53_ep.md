@@ -566,6 +566,25 @@ before that), so lane trades run MAGNA53's per-mode mechanics. **`magna53_depth_
 either mode** — it is the one still to set (both rows together, Mon 2026-10-12 noon ET; the two
 statements are in the change log entry 2026-10-10 "the DEPTH exit also covers the small-cap PAPER lane").
 
+## Misses caused by our own defects — the accounting ledger (operator 2026-10-29)
+
+*"we should document this miss if GKOS turn into a big winner, it'll affect our accounting."* A HIGH alert the live rules would
+have bought, lost to OUR defect rather than a rule, is listed here, so MAGNA53's record can be stated two ways: as traded, and with
+these trades added at their would-be numbers. The automatic copy is `mi_ep_missed_outcomes` (`source='high_unentered'`,
+`skip_category='infra_skip'`, refreshed nightly; returns from the gap-day OPEN, not from our entry) — this table adds the entry and
+stop the live rules would have used and the outcome under the live exit. A row's outcome is filled by replaying stored bars under
+the exit rule live that day (the `depth` rule since 10-12), at 20 sessions.
+
+| alert | ticker | what broke (fix) | would-be entry / stop (live rules that day) | 20-session move from the open (`mi_ep_missed_outcomes`) | outcome under the live exit |
+|---|---|---|---|---|---|
+| 2026-08-13 | CGEM | opening bar re-fetched over REST, stream bar ignored (stream cache, 08-13) | ORB high / entry − 2R | −0.6% (best +11.9%) | not replayed — no big winner |
+| 2026-08-13 | CRMD | same | same | −6.7% (best +7.0%) | not replayed — no big winner |
+| 2026-08-13 | HLIT | same | same | −17.1% (best +4.0%) | not replayed — no big winner |
+| 2026-08-20 | RARE | the 20-second wait ran out (the 10-29 fix, #712) | same | blank in the table (best +0.4%) | not replayed — no big winner |
+| 2026-10-29 | GKOS | its own opening bar reached the stream ~1 s after the 20-second wait ran out; the skip row then blocked the stream's retry (#712, deploys 10-29 21:15 ET) | stop-limit buy at the ORB high **$214.92** (limit $215.99; the #500 chase applied if the price was already above), stop **$199.90** (= 2 × $207.41 − $214.92; R = $7.51), exit rule `depth` | filled by the nightly refresh | **read at 20 sessions (#712's DoD)** |
+
+Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier misses), `q4_bar.out` (GKOS's 09:30 bar).
+
 ## Known limitations / open questions
 
 1. ~~`is_earnings_day` fail-soft direction inconsistent~~ — **resolved 2026-05-08 (session 2)**. All four call sites (parabolic, EP boost, EP cooldown bypass, EP MODERATE→HIGH override) now treat yfinance error as `True` (earnings day). Defensive at each site: rather over-boost / over-bypass / over-promote on data outage than miss a real earnings EP.
