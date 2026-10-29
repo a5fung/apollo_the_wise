@@ -144,11 +144,19 @@ def test_the_estimate_is_enforced_before_any_call(samples):
     assert "ABORT: worst case" in text and "Nothing was spent" in text
 
 
-def test_a_job_bound_to_another_model_aborts_before_any_spend(samples):
+def test_a_job_bound_to_another_model_aborts_before_any_spend(samples, monkeypatch):
+    # 2026-10-29: the committed offline fallback (SONNET_PIN) is now claude-sonnet-5-5, so the bare test env
+    # binds THEME_MODEL to 5.5 and nothing would abort — bind it to a pre-5.5 id explicitly (the prod shape
+    # this guards: a container whose resolved model differs from the one between_tools exists on).
+    from shared import llm_models
+    monkeypatch.setitem(llm_models._ROLE_RESOLUTIONS, "THEME_MODEL", llm_models._TierResolution(
+        "sonnet", "claude-sonnet-4-6", "override", None, "test: THEME_MODEL bound to a pre-5.5 id"))
+    assert llm_models.effective_model("THEME_MODEL") == "claude-sonnet-4-6"
     client = FakeClient(_good_reply)
-    code, text = _run([], client)     # no --model: the test env binds THEME_MODEL to a pre-5.5 id
+    code, text = _run([], client)     # no --model: THEME_MODEL is bound to the pre-5.5 id above
     assert code == 3 and client.calls == []
     assert "between_tools exists only on claude-sonnet-5-5" in text
+    assert "claude-sonnet-4-6" in text.split("ABORT:", 1)[1]    # the abort names the stray binding
 
 
 def test_xhigh_effort_skips_variant_b_because_it_would_be_a_400(samples):

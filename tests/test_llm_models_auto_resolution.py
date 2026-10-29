@@ -26,7 +26,7 @@ from shared.model_resolver import TierResolution
 def test_tier_constants_are_plain_literal_pins():
     # The committed FAIL-SAFE FLOOR: this assertion moves WITH a deliberate bump and fails loudly on an accidental one.
     assert llm_models.OPUS == llm_models.OPUS_PIN == "claude-opus-5-5"
-    assert llm_models.SONNET == llm_models.SONNET_PIN == "claude-sonnet-4-6"
+    assert llm_models.SONNET == llm_models.SONNET_PIN == "claude-sonnet-5-5"
     assert llm_models.HAIKU == llm_models.HAIKU_PIN == "claude-haiku-4-5-20251001"
 
 
@@ -166,7 +166,11 @@ def test_tier_of_none_for_unparseable():
 def test_pricing_for_exact_match():
     assert llm_models.pricing_for(llm_models.OPUS) == {"input": 4.00, "output": 20.00, "cache_read_mult": 0.05}
     assert llm_models.pricing_for(llm_models.OPUS_5) == {"input": 5.00, "output": 25.00}   # the previous pin's history
-    assert llm_models.pricing_for(llm_models.SONNET) == {"input": 3.00, "output": 15.00}
+    # SONNET is claude-sonnet-5-5 since 2026-10-29 ($2/$10, its real rate); the previous pin keeps its
+    # own explicit row, so an old row or an override on claude-sonnet-4-6 still prices at $3/$15.
+    assert llm_models.pricing_for(llm_models.SONNET) == {"input": 2.00, "output": 10.00}
+    assert llm_models.pricing_for("claude-sonnet-5-5") == {"input": 2.00, "output": 10.00}
+    assert llm_models.pricing_for("claude-sonnet-4-6") == {"input": 3.00, "output": 15.00}
     assert llm_models.pricing_for("sonar-pro") == {"input": 3.00, "output": 15.00}
 
 
@@ -223,7 +227,9 @@ def test_uncached_input_is_billed_alongside_cache_tokens_in_both_writers():
 # through llm_models._resolve_for (the function _ROLE_RESOLUTIONS is built from) against a real
 # cache file, so a reordering of the chain fails here, not in prod.
 
-def _hold_cache(tmp_path, *, sonnet="claude-sonnet-5-5", hold="claude-sonnet-5"):
+# 2026-10-29: the committed sonnet pin (claude-sonnet-5-5) is the FLOOR of resolution, so the scenario sits
+# above it: the tier resolved to a hypothetical newer claude-sonnet-6 and THEME_MODEL is held back AT the pin.
+def _hold_cache(tmp_path, *, sonnet="claude-sonnet-6", hold="claude-sonnet-5-5"):
     from shared.model_resolver import write_cache
     path = tmp_path / "cache.json"
     write_cache({"sonnet": sonnet}, {"sonnet": "2026-09-28T22:08:00+00:00"}, cache_path=path,
@@ -235,10 +241,10 @@ def _hold_cache(tmp_path, *, sonnet="claude-sonnet-5-5", hold="claude-sonnet-5")
 def test_a_cache_hold_keeps_the_role_on_its_held_id_and_only_that_role(tmp_path):
     path = _hold_cache(tmp_path)
     held = llm_models._resolve_for("THEME_MODEL", "sonnet", path)
-    assert (held.model, held.source) == ("claude-sonnet-5", "hold")
+    assert (held.model, held.source) == ("claude-sonnet-5-5", "hold")
     assert held.changed_at == "2026-09-30T22:08:00+00:00" and "refused" in held.note
     other = llm_models._resolve_for("SYNTHESIS_MODEL", "sonnet", path)
-    assert (other.model, other.source) == ("claude-sonnet-5-5", "cache")
+    assert (other.model, other.source) == ("claude-sonnet-6", "cache")
 
 
 def test_a_tier_override_beats_a_hold(tmp_path, monkeypatch):
@@ -251,28 +257,32 @@ def test_a_tier_override_beats_a_hold(tmp_path, monkeypatch):
 def test_a_role_override_beats_a_tier_override_and_a_hold(tmp_path, monkeypatch):
     path = _hold_cache(tmp_path)
     monkeypatch.setitem(llm_models._TIER_OVERRIDES, "sonnet", "claude-sonnet-4-6")
-    monkeypatch.setitem(llm_models._ROLE_OVERRIDES, "THEME_MODEL", "claude-sonnet-5-5")
+    monkeypatch.setitem(llm_models._ROLE_OVERRIDES, "THEME_MODEL", "claude-sonnet-5")   # distinct from the hold (5-5), the tier (6) and the tier override (4-6)
     res = llm_models._resolve_for("THEME_MODEL", "sonnet", path)
-    assert (res.model, res.source) == ("claude-sonnet-5-5", "override")
+    assert (res.model, res.source) == ("claude-sonnet-5", "override")
 
 
 def test_a_hold_can_never_move_a_role_forward(tmp_path):
     # a hold NEWER than the tier's own resolution is ignored — holds only ever keep a role back
-    path = _hold_cache(tmp_path, sonnet="claude-sonnet-5", hold="claude-sonnet-5-5")
+    path = _hold_cache(tmp_path, sonnet="claude-sonnet-6", hold="claude-sonnet-6-1")
     res = llm_models._resolve_for("THEME_MODEL", "sonnet", path)
-    assert (res.model, res.source) == ("claude-sonnet-5", "cache")
+    assert (res.model, res.source) == ("claude-sonnet-6", "cache")
 
 
-def test_a_hold_below_the_committed_pin_is_ignored(tmp_path):
-    path = _hold_cache(tmp_path, sonnet="claude-sonnet-5-5", hold="claude-sonnet-4-5")
-    res = llm_models._resolve_for("THEME_MODEL", "sonnet", path)
-    assert (res.model, res.source) == ("claude-sonnet-5-5", "cache")
+def test_a_hold_below_the_committed_pin_is_ignored(tmp_path, caplog):
+    # the hold is parseable, same tier and OLDER than the tier's resolution — only the pin floor (claude-sonnet-5-5)
+    # can be what drops it, and the warning names that rule
+    path = _hold_cache(tmp_path, sonnet="claude-sonnet-6", hold="claude-sonnet-5")
+    with caplog.at_level("WARNING", logger="shared.model_resolver"):
+        res = llm_models._resolve_for("THEME_MODEL", "sonnet", path)
+    assert (res.model, res.source) == ("claude-sonnet-6", "cache")
+    assert "below the pin claude-sonnet-5-5" in caplog.text
 
 
 def test_the_cache_carries_role_holds_through_a_write(tmp_path):
     from shared.model_resolver import cached_role_hold, read_cache
     path = _hold_cache(tmp_path)
-    assert read_cache(path)["role_holds"]["THEME_MODEL"]["model"] == "claude-sonnet-5"
+    assert read_cache(path)["role_holds"]["THEME_MODEL"]["model"] == "claude-sonnet-5-5"
     assert cached_role_hold("THEME_MODEL", path)["error"] == "refused"
     assert cached_role_hold("SYNTHESIS_MODEL", path) is None
 

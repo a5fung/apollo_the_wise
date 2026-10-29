@@ -246,9 +246,10 @@ def test_reduction_opportunity_opus_where_sonnet_fits():
     assert len(opus_flags) == 1
     f = opus_flags[0]
     assert f["caller"] == "theme_senior_advisor"
-    # sonnet-equivalent: 200k/1e6*3.00 + 20k/1e6*15.00 = 0.6 + 0.3 = 0.9
-    assert f["sonnet_equiv"] == pytest.approx(0.90, abs=0.01)
-    assert f["est_savings"] == pytest.approx(4.10, abs=0.01)
+    # sonnet-equivalent at claude-sonnet-5-5's $2/$10 (the SONNET pin since 2026-10-29):
+    # 200k/1e6*2.00 + 20k/1e6*10.00 = 0.4 + 0.2 = 0.6; savings = 5.0 spent - 0.6 = 4.4
+    assert f["sonnet_equiv"] == pytest.approx(0.60, abs=0.01)
+    assert f["est_savings"] == pytest.approx(4.40, abs=0.01)
 
 
 def test_reduction_opportunity_oversized_prompt():

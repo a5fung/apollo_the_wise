@@ -541,7 +541,9 @@ GRADE_KEY = "agents.market_intelligence.ep_detector:_classify_catalyst_claude"  
 GRADE_TOOL = {"name": "grade_catalyst", "input_schema": {
     "type": "object", "required": ["quality"],
     "properties": {"quality": {"type": "string"}, "analysis": {"type": "string"}}}}
-OLD, NEW = "claude-sonnet-5", "claude-sonnet-5-5"
+# 2026-10-29: the committed sonnet pin (= the resolution FLOOR) is now claude-sonnet-5-5, and a hold below it is ignored
+# at boot — so the held (OLD) model sits AT the pin and the newly-released tier model (NEW) above it.
+OLD, NEW = "claude-sonnet-5-5", "claude-sonnet-6"
 
 
 class _Block:
@@ -637,7 +639,7 @@ def _events(audit):
 
 def test_a_refusing_role_is_held_while_the_tier_moves_for_the_others(monkeypatch, tmp_path):
     """(a) The 2026-09-28 shape: the new sonnet refuses our theme prompts. THEME_MODEL is HELD on
-    Sonnet 5, the tier still moves for every other role, and the Telegram names the hold."""
+    Sonnet 5.5, the tier still moves for every other role, and the Telegram names the hold."""
     from shared.model_resolver import read_cache
     _theme_and_grade_samples(tmp_path, grade_quality="high")
     audit, tg, fake, cache = _replay_refresh(
@@ -654,8 +656,8 @@ def test_a_refusing_role_is_held_while_the_tier_moves_for_the_others(monkeypatch
     assert "model_role_held" in _events(audit) and "model_replay_digest" in _events(audit)
 
     text = tg.await_args.args[0]
-    assert "New Claude model available" in text and "Sonnet 5 → Sonnet 5.5" in text
-    assert "theme discovery: <b>HELD</b> on Sonnet 5 — rename theme to fit cluster: refused" in text
+    assert "New Claude model available" in text and "Sonnet 5.5 → Sonnet 6" in text
+    assert "theme discovery: <b>HELD</b> on Sonnet 5.5 — rename theme to fit cluster: refused" in text
     assert "catalyst grading: 1 same" in text
     assert "next deploy or restart" in text
 
@@ -731,7 +733,7 @@ def test_a_held_role_is_released_once_its_requests_pass(monkeypatch, tmp_path):
     assert "model_role_hold_released" in _events(audit)
     tg.assert_awaited_once()
     text = tg.await_args.args[0]
-    assert "hold released" in text.lower() and "theme discovery" in text and "Sonnet 5.5" in text
+    assert "hold released" in text.lower() and "theme discovery" in text and "Sonnet 6" in text
 
 
 def test_a_held_role_that_still_fails_stays_held_quietly(monkeypatch, tmp_path):
@@ -885,7 +887,7 @@ def test_the_digest_says_a_held_role_has_no_request_to_retest(monkeypatch, tmp_p
     assert data["resolved"]["sonnet"] == NEW and data["role_holds"] == HELD_THEME
     assert "model_role_hold_released" not in _events(audit)
     text = tg.await_args.args[0]
-    assert "theme discovery: still HELD on Sonnet 5 — no recent request to re-test" in text
+    assert "theme discovery: still HELD on Sonnet 5.5 — no recent request to re-test" in text
 
 
 def test_a_hold_on_a_retired_model_is_released_and_the_operator_told(monkeypatch, tmp_path):
@@ -938,8 +940,8 @@ def test_a_failing_role_whose_current_model_is_retired_is_not_held(monkeypatch, 
     assert data["resolved"]["sonnet"] == NEW and data["role_holds"] == {}
     assert "model_role_hold_impossible" in _events(audit) and "model_role_held" not in _events(audit)
     text = tg.await_args.args[0]
-    assert "theme discovery: <b>FAILED</b> on Sonnet 5.5 — rename theme to fit cluster: refused" in text
-    assert "Sonnet 5 is no longer served" in text and "HELD" not in text
+    assert "theme discovery: <b>FAILED</b> on Sonnet 6 — rename theme to fit cluster: refused" in text
+    assert "Sonnet 5.5 is no longer served" in text and "HELD" not in text
 
 
 # ── classification of a replayed call, through the real replay path ──────────

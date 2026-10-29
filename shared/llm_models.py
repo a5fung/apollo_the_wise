@@ -124,7 +124,8 @@ from shared.dates import et_today as _et_today
 
 # ── Tier pins (committed fail-safe floor — what the deploy gate validates;
 # never auto-edited) ──────────────────────────────────────────────────────────
-SONNET_PIN = "claude-sonnet-4-6"
+SONNET_PIN = "claude-sonnet-5-5"   # 2026-10-29: the model every sonnet role has resolved to since 09-28 (the 30-day
+                                   # "fallback pin behind" nudge); was claude-sonnet-4-6. Only the offline fallback moves.
 HAIKU_PIN = "claude-haiku-4-5-20251001"
 OPUS_PIN = "claude-opus-5-5"   # 2026-10-23: the model production runs AND the passing judge eval graded
                                # (36/36 on 10-03, scripts/evals/judge_eval_pass_record.json). Earlier pins: the legacy group.
@@ -433,8 +434,9 @@ JUDGE_NAMED_THEMES_MODEL = effective_model("JUDGE_NAMED_THEMES_MODEL")
 # no pricing, so the resolver cannot verify rates; pricing_for logs a WARNING
 # every time it uses the fallback so this doesn't stay silent.
 PRICING_PER_MTOK: dict[str, dict[str, float]] = {
-    SONNET:     {"input": 3.00, "output": 15.00},
-    SONNET_PIN: {"input": 3.00, "output": 15.00},
+    SONNET:     {"input": 2.00, "output": 10.00},   # = SONNET_PIN
+    SONNET_PIN: {"input": 2.00, "output": 10.00},   # claude-sonnet-5-5 since 2026-10-29 (the explicit row below agrees)
+    "claude-sonnet-4-6": {"input": 3.00, "output": 15.00},   # the pre-10-29 pin, kept priced for old rows / an override
     SONNET_4_5: {"input": 3.00, "output": 15.00},
     HAIKU:      {"input": 1.00, "output": 5.00},
     HAIKU_PIN:  {"input": 1.00, "output": 5.00},
