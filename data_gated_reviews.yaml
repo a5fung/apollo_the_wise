@@ -15842,7 +15842,6 @@ reviews:
       SELECT count(DISTINCT scan_date) FROM mi_ep_shortlist_shadow
        WHERE board_n > 20 AND scan_date >= DATE '2026-10-12'
     threshold: 1
-    zero_verdict: "2026-10-17 WAITING — 0 crowded days since the 10-12 fix; 2 ever (09-17 max board 23, 10-05 max 27), about 6% of scan days."
     discriminates_on: [mi_ep_shortlist_shadow.board_n, mi_ep_shortlist_shadow.scan_date]
     earliest_review_date: 2026-10-17
     status: done
