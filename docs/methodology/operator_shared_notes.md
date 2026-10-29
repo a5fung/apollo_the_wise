@@ -2712,3 +2712,7 @@ Ruling recorded (breakout v1, paper): the universe adds SINGLE-ASSET funds — o
 
 Rule from this (breakout v1, his reading of the setup day): the night before a breakout the stock must still be IN the pattern — a session that closes below ALL the moving averages and undercuts the recent lows has broken the surf, even when a deeper earlier low (ODD's Aug 17) keeps "higher lows" technically true. Checked on his 12 caught good setups before proposing anything (`scripts/probes/_qm_0810_review/v1_breakdown_gate_check.txt`): a check "close not below all of the 10/20/50-day AND low not below the 10 sessions' lowest low" keeps 12 of 12 and rejects ODD 09-08. His better date, ODD 2026-10-09, is a labelled positive example (`tests/fixtures/must_not_trade_charts.py`, better_date STATED).
 
+> "yes, but we can build now?" (2026-10-29, to adding the breakdown check to breakout v1 — the night before a breakout the stock must not close below all of its 10, 20 and 50-day averages nor make a new 10-session low)
+
+Ruling recorded (breakout v1, paper): the breakdown check is IN v1 — at the watch night D, close not below ALL of the 10/20/50-day and low not below the lowest low of the 10 sessions before; it kept 12 of his 12 caught good setups and rejects ODD 09-08. Built today (his "we can build now?"): the nightly list and the grading first, the buy and the sell next.
+

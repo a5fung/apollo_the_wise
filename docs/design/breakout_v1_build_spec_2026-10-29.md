@@ -20,7 +20,7 @@ his grade = a label on a running list, never a gate.
 ## Components (build order = priority; B1–B4 are the minimum for Monday's first list, B5–B7 for Monday's first fill)
 
 **B1 — the rules, PURE (`agents/market_intelligence/breakout_v1.py`, new).** `v1_gates(bars, D, *, rs_best) -> dict` returns
-each gate's pass/fail and value plus `level`, `adr20`, `pole` facts, by CALLING `consolidation_breakout` (`cb`) primitives
+each gate's pass/fail and value plus `level`, `adr20`, `pole` facts — including the BREAKDOWN check (his "yes" 2026-10-29: at D, close not below ALL of the 10/20/50-day AND low not below the lowest low of the 10 sessions before) — by CALLING `consolidation_breakout` (`cb`) primitives
 (`_pole_top`, the higher-lows and prior-move helpers, `_sma_at`, ADR20) — `cb` is sha-pinned (`runner.EXITPB_MODULE_SHA`) and
 is NOT edited. The surf / tightening / volume / level / universe arithmetic is ported from
 `scripts/probes/_qm_0810_review/v1_check.py` + `v1_check_variant.py` (V3 + RSbest), not re-derived.
