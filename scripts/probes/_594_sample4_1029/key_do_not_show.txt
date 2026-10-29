@@ -1,0 +1,9 @@
+#594 sample #4 key: page order -> arm and outcome. NOT shown to him (outcome-blind, his 10-10 ruling).
+1|ROIV|2026-09-08|ARM_A|score 90.0|game_changer|20d -11%
+2|AKAM|2026-09-25|ARM_A|score 90.0|game_changer|20d -25%
+3|ODD|2026-09-09|ARM_B|score 40.0|routine|20d 9%
+4|GNRC|2026-09-17|ARM_A|score 65.0|strong|20d -14%
+5|DFTX|2026-09-14|ARM_A|score 90.0|game_changer|20d -19%
+6|CCL|2026-09-29|ARM_B|score 48.8|routine|20d 14%
+7|PHVS|2026-09-08|ARM_A|score 90.0|game_changer|20d -24%
+8|SIG|2026-09-09|ARM_B|score 48.8|routine|20d 9%

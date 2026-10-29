@@ -1,0 +1,23 @@
+SET
+== ARM_A
+ticker|the_date|gap|vol_x|score|cat|pct_20d
+AKAM|2026-09-25|13.4|9.1|90.0|game_changer|-25
+PHVS|2026-09-08|16.2|9.9|90.0|game_changer|-24
+DFTX|2026-09-14|11.9|4.4|90.0|game_changer|-19
+GNRC|2026-09-17|31.1|8.6|65.0|strong|-14
+ROIV|2026-09-08|14.5|3.3|90.0|game_changer|-11
+ONON|2026-09-22|11.3|5.1|65.0|strong|17
+KOD|2026-09-28|90.7|45.1|90.0|game_changer|45
+(7 rows)
+== ARM_B
+ticker|the_date|gap|vol_x|score|cat|pct_20d
+CCL|2026-09-29|10.2|3.2|48.8|routine|14
+ODD|2026-09-09|34.4|14.8|40.0|routine|9
+SIG|2026-09-09|14.9|6.4|48.8|routine|9
+WOR|2026-09-23|13.9|4.0|33.8|routine|-3
+INNV|2026-09-09|11.2|4.7|33.8|routine|-22
+AMPX|2026-09-28|11.6|3.3|46.2|strong|-23
+NVTS|2026-09-29|9.2|3.2|40.0|routine|-27
+AESI|2026-09-25|11.9|4.0|46.2|strong|-30
+NUAI|2026-09-21|17.2|4.2|33.8|routine|-57
+(9 rows)

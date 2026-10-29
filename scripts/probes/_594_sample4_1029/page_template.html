@@ -1,0 +1,157 @@
+<title>Chart Review Sample 4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a grading sheet — a short brief, a progress line, then one card per chart (two across, one on a phone). */
+:root {
+  --bg: #f3f4f1;
+  --surface: #ffffff;
+  --ink: #1b1f1d;
+  --muted: #5d6661;
+  --line: #d9ddd8;
+  --accent: #1f6f5c;
+  --accent-ink: #ffffff;
+  --chip: #eceeea;
+  --bad: #a23b2c;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121614; --surface: #1b201e; --ink: #e8ece9; --muted: #9aa49f; --line: #2e3532;
+  --accent: #4fb397; --accent-ink: #0d1411; --chip: #262d2a; --bad: #e07a68; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121614; --surface: #1b201e; --ink: #e8ece9; --muted: #9aa49f; --line: #2e3532;
+  --accent: #4fb397; --accent-ink: #0d1411; --chip: #262d2a; --bad: #e07a68; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 22px; }
+h1 { font: 800 clamp(26px, 4vw, 36px)/1.1 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.brief { max-width: 68ch; color: var(--muted); margin: 6px 0 0; }
+.status { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: baseline; font: 500 13px/1.4 var(--mono); color: var(--muted); }
+.status b { color: var(--ink); font-weight: 500; }
+.status .warn { color: var(--bad); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 20px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.card.done { border-color: var(--accent); }
+.head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tkr { font: 800 22px/1 var(--display); letter-spacing: 0.02em; }
+.when { font: 500 13px/1.3 var(--mono); color: var(--muted); }
+.facts { font-size: 14px; color: var(--muted); margin: 0; }
+.facts span { font-family: var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.chart { width: 100%; height: auto; border-radius: 4px; border: 1px solid var(--line); background: #fff; display: block; }
+.cap { font-size: 12px; color: var(--muted); margin: -6px 0 0; }
+fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+legend { font: 700 11px/1 var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; padding: 0; }
+.chip { font: 600 13px/1 var(--body); padding: 8px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--chip); color: var(--ink); cursor: pointer; }
+.chip:hover { border-color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.chip:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+textarea { width: 100%; box-sizing: border-box; min-height: 58px; resize: vertical; font: 15px/1.4 var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; }
+.saved { font: 500 12px/1 var(--mono); color: var(--muted); min-height: 12px; }
+.saved.err { color: var(--bad); }
+@media (prefers-reduced-motion: no-preference) { .card { transition: border-color .2s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Chart review — sample 4</h1>
+    <p class="brief">Eight real gap days from September, in random order. Each chart stops the day before the gap, the way the system saw it. No results are shown on purpose, so your read is only about the chart. Pick one verdict per chart and add a note if you want.</p>
+  </header>
+  <div class="status" id="status"><span>Graded <b id="count">0</b> of <b id="total">0</b></span><span id="conn">Connecting to saved grades…</span></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const CARDS = /*__CARDS__*/[];
+const VERDICTS = [
+  ["GOOD_CHART", "Good chart"],
+  ["OKISH_CHART", "OK-ish"],
+  ["OKISH_EARLIER", "Was OK earlier"],
+  ["BAD_CHART", "Bad chart"],
+  ["WRONG_STAGE", "Wrong stage"],
+  ["WRONG_DAY", "Wrong day"],
+  ["NO_SETUP_ON_THIS_DATE", "No setup this day"],
+];
+const state = {};          // id -> {verdict, note}
+let db = null;
+const grid = document.getElementById("grid");
+document.getElementById("total").textContent = CARDS.length;
+
+function fmtDate(c) {
+  const [y, m, d] = c.date.split("-");
+  return `${c.weekday} ${Number(m)}/${Number(d)}/${y}`;
+}
+
+function render() {
+  grid.textContent = "";
+  for (const c of CARDS) {
+    const s = state[c.id] || {};
+    const card = document.createElement("article");
+    card.className = "card" + (s.verdict ? " done" : "");
+    card.innerHTML = `
+      <div class="head"><span class="tkr"></span><span class="when"></span></div>
+      <p class="facts">Opened <span class="g"></span> above the prior close, on <span class="v"></span> its normal daily volume.</p>
+      <img class="chart" alt="">
+      <p class="cap">Daily chart through the day before; lines are the 10, 20 and 50-day averages.</p>
+      <fieldset><legend>Verdict</legend></fieldset>
+      <textarea placeholder="Note (optional) — what you see, or the date you think was right"></textarea>
+      <div class="saved"></div>`;
+    card.querySelector(".tkr").textContent = c.ticker;
+    card.querySelector(".when").textContent = fmtDate(c);
+    card.querySelector(".g").textContent = "+" + c.gap.toFixed(1) + "%";
+    card.querySelector(".v").textContent = c.volx.toFixed(1) + "×";
+    const img = card.querySelector("img");
+    img.src = c.img; img.alt = `${c.ticker} daily chart through the day before ${c.date}`;
+    const fs = card.querySelector("fieldset");
+    for (const [key, label] of VERDICTS) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.id = `v-${c.id}-${key}`;
+      b.textContent = label; b.setAttribute("aria-pressed", String(s.verdict === key));
+      b.addEventListener("click", () => save(c, { verdict: s.verdict === key ? null : key }));
+      fs.appendChild(b);
+    }
+    const ta = card.querySelector("textarea");
+    ta.id = `note-${c.id}`; ta.value = s.note || "";
+    ta.addEventListener("change", () => save(c, { note: ta.value.trim() }));
+    card.dataset.id = c.id;
+    grid.appendChild(card);
+  }
+  const n = CARDS.filter(c => (state[c.id] || {}).verdict).length;
+  document.getElementById("count").textContent = n;
+}
+
+async function save(c, patch) {
+  const next = { ...(state[c.id] || {}), ...patch };
+  state[c.id] = next;
+  render();
+  const el = grid.querySelector(`[data-id="${c.id}"] .saved`);
+  if (!db) { el.textContent = "Not saved — grades can't be stored in this view."; el.classList.add("err"); return; }
+  el.textContent = "Saving…";
+  try {
+    await db.collection("rulings").doc(c.id).set({
+      ticker: c.ticker, date: c.date, verdict: next.verdict || null, note: next.note || "",
+      updated_at: new Date().toISOString(),
+    });
+    const el2 = grid.querySelector(`[data-id="${c.id}"] .saved`);
+    if (el2) { el2.textContent = "Saved"; el2.classList.remove("err"); }
+  } catch (e) {
+    const el2 = grid.querySelector(`[data-id="${c.id}"] .saved`);
+    if (el2) { el2.textContent = "Not saved (" + (e && e.code || "error") + "). Try the choice again."; el2.classList.add("err"); }
+  }
+}
+
+render();
+(async () => {
+  const conn = document.getElementById("conn");
+  try { db = await window.claude?.use?.("db"); } catch (e) { db = null; }
+  if (!db) { conn.textContent = "Grades can't be saved in this view — open it signed in on claude.ai."; conn.className = "warn"; return; }
+  conn.textContent = "Grades save as you choose.";
+  db.collection("rulings").onSnapshot(snap => {
+    for (const d of snap.docs) {
+      const v = d.data() || {};
+      state[d.id] = { verdict: v.verdict || null, note: v.note || "" };
+    }
+    if (!document.activeElement || document.activeElement.tagName !== "TEXTAREA") render();
+  }, () => { conn.textContent = "Lost the connection to saved grades — reload to see the latest."; conn.className = "warn"; });
+})();
+</script>
