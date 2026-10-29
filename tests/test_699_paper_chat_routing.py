@@ -351,6 +351,9 @@ _BUILDERS_VIA_SENDER = {
     ("agents/market_intelligence/broker/order_ingest.py", "_handle_r2_r3i"),
     ("agents/market_intelligence/broker/order_manager.py", "_cleanup_cancel_label"),  # label in front of a send_telegram_message digest
     ("agents/market_intelligence/broker/trade_stream.py", "_full_exit_restore_page"),  # page text -> send_telegram_message
+    # breakout v1 phase 1 (2026-10-29): the nightly list message, paper-tagged ON PURPOSE (a paper setup's list ->
+    # the paper chat); run_breakout_v1_list hands it to send_telegram_message
+    ("agents/market_intelligence/breakout_v1_list.py", "format_list_message"),
 }
 _BUILDERS_NOT_ROUTED = {
     # an interactive /dryrun reply to the operator: stays where he asked

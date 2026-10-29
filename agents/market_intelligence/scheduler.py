@@ -204,6 +204,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "sugar_babies_cohort_refresh", "position_mgmt_judge",
     "chart_axis_shadow", "chart_axis_shadow_weekly_digest", "kill_scale_band_eval",
     "ladder_watchdog",  # #312 ADR 0022 L2 (2026-10-15) — DARK nightly demotion-trigger read per paper/live strategy; registry + mi_live_trades READ, ONE audit row, no phase/sizing/order write, no broker, SILENT (no Telegram) — same DB-only shape as kill_scale_band_eval
+    "breakout_v1_list",  # breakout v1 PAPER phase 1 (2026-10-29) — the nightly list (mi_daily_closes + mi_security_types READ, mi_breakout_v1_list + ONE audit row WRITTEN) and ONE paper-chat Telegram naming tonight's names (only when the list is non-empty); no phase/sizing/order write, no strategy row, no broker import
     "consolidation_breakout_shadow",  # #702 P6 (2026-10-17) — Consolidation Breakout forward SHADOW; mi_daily_closes + Alpaca minute-bar READ, four shadow tables + ONE audit row WRITTEN, no phase/sizing/order write, no broker import (gate 5j), SILENT (no Telegram on a normal night) — same DB-only shape as ladder_watchdog
     # data / RS / regime / crypto
     "nightly_data_pull", "baseline_refresh", "minute_volume_curves_refresh",
@@ -442,10 +443,14 @@ async def _nightly_data_pull():
 
     # 1b. Refresh security types (weekly — classifies CS vs ETF/warrant/SPAC/etc.)
     try:
-        from agents.market_intelligence.db import get_security_types_count, upsert_security_types_batch
+        from agents.market_intelligence.db import (
+            get_security_type_names_count, get_security_types_count, upsert_security_types_batch,
+        )
         types_count = await get_security_types_count()
-        # Bootstrap on first run, then refresh weekly (Monday)
-        if types_count == 0 or _today.weekday() == 0:
+        # Bootstrap on first run, then refresh weekly (Monday). Breakout v1 (2026-10-29): also when NO row carries a
+        # stored name yet (the column is new) - the single-asset fund rule reads the name, and a fund with none is
+        # excluded, so the first night after the deploy fills names instead of waiting for Monday.
+        if types_count == 0 or _today.weekday() == 0 or await get_security_type_names_count() == 0:
             from agents.market_intelligence.collector import fetch_all_ticker_types
             ticker_types = await fetch_all_ticker_types()
             if ticker_types:
@@ -5489,6 +5494,19 @@ async def _consolidation_breakout_shadow_job():
                 f"{res['exit_rows']} exit row(s), skipped={res['skipped']}, timed_out={res['timed_out']}")
 
 
+async def _breakout_v1_list_job():
+    """17:55 ET mon-fri — breakout v1 PAPER phase 1 (`breakout_v1_list.py`): tonight's list of names passing every
+    v1 gate -> `mi_breakout_v1_list`, ONE audit row, ONE paper-chat message when the list is non-empty. No order
+    path. The date comes from `et_today()` (the #672 recovery pin reaches it); a crash propagates to `audit_wrap`.
+    Imported INSIDE the function: `scheduler.py` is on the execution image's module list and execution must never
+    load this module."""
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.breakout_v1_list import run_breakout_v1_list
+    res = await run_breakout_v1_list(et_today())
+    logger.info(f"breakout v1 list: {res['passing']} name(s) of {res['universe_n']}, message {res['message']}, "
+                f"skipped={res['skipped']}, timed_out={res['timed_out']}")
+
+
 async def _strength_spread_alert_job():
     """Run at 17:40 ET mon-fri — after the 17:00 nightly_data_pull refreshes
     mi_daily_closes (the input is DAILY CLOSES, so this is the earliest hour the reading can
@@ -8025,6 +8043,17 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_consolidation_breakout_shadow_job, "consolidation_breakout_shadow"),
         CronTrigger(hour=17, minute=48, day_of_week="mon-fri", timezone="America/New_York"),
         id="consolidation_breakout_shadow",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
+
+    # Breakout v1 PAPER phase 1 (2026-10-29): the nightly list, 17:55 ET mon-fri — after the 17:48 consolidation
+    # breakout shadow (its own job and budget, so neither can starve the other) and the 17:00 nightly pull. A LIST
+    # and a GRADE only: no order path, no strategy row. Shares the minute with coverage_probe (both DB-only).
+    _scheduler.add_job(
+        audit_wrap(_breakout_v1_list_job, "breakout_v1_list"),
+        CronTrigger(hour=17, minute=55, day_of_week="mon-fri", timezone="America/New_York"),
+        id="breakout_v1_list",
         replace_existing=True,
         misfire_grace_time=600,
     )

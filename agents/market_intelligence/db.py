@@ -659,7 +659,8 @@ async def initialize_schema() -> None:
                 ticker TEXT PRIMARY KEY,
                 security_type TEXT NOT NULL,
                 exchange TEXT DEFAULT '',
-                updated_at TIMESTAMPTZ DEFAULT NOW()
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                name TEXT                       -- Polygon's reference name (breakout v1 fund rule, 2026-10-29)
             );
 
             CREATE TABLE IF NOT EXISTS mi_job_log (
@@ -5510,6 +5511,10 @@ async def initialize_schema() -> None:
         # One module-level DDL string (`_CB_SHADOW_DDL`, end of this file), idempotent: the schema init and
         # `tests/test_cb_shadow.py::TestDdlAndStatements` and `tests/test_cb_shadow_pg.py` run the very same text.
         await conn.execute(_CB_SHADOW_DDL)
+
+        # Breakout v1 phase 1 (2026-10-29) — the nightly list + his grades, and mi_security_types.name for the
+        # single-asset fund rule. Idempotent (`_BREAKOUT_V1_DDL`, end of this file).
+        await conn.execute(_BREAKOUT_V1_DDL)
 
         # ── One-time cleanup: delete auto-generated descriptions for tickers ──
         # that now have authoritative static entries in universe.py.
@@ -14899,24 +14904,29 @@ async def get_sector_rs_rank(
 # ── Security types ───────────────────────────────────────────────────────────
 
 
+SECURITY_TYPES_UPSERT_SQL = """
+    INSERT INTO mi_security_types (ticker, security_type, exchange, name, updated_at)
+    VALUES ($1, $2, $3, $4, NOW())
+    ON CONFLICT (ticker) DO UPDATE SET
+        security_type = EXCLUDED.security_type,
+        exchange = EXCLUDED.exchange,
+        name = COALESCE(EXCLUDED.name, mi_security_types.name),
+        updated_at = NOW()
+"""
+
+
 async def upsert_security_types_batch(types: dict[str, dict]) -> int:
     """Batch-upsert security types from Polygon reference data.
-    types: {ticker: {"type": "CS"|"ETF"|..., "exchange": "XNYS"|...}}
+    types: {ticker: {"type": "CS"|"ETF"|..., "exchange": "XNYS"|..., "name": "..."}}
+    `name` (breakout v1, 2026-10-29: the single-asset fund rule reads it) is kept when a later fetch carries none.
     """
     if not types:
         return 0
     pool = await get_pool()
-    rows = [(tk, info["type"], info.get("exchange", ""))
+    rows = [(tk, info["type"], info.get("exchange", ""), (info.get("name") or None))
             for tk, info in types.items() if info.get("type")]
     async with pool.acquire() as conn:
-        await conn.executemany("""
-            INSERT INTO mi_security_types (ticker, security_type, exchange, updated_at)
-            VALUES ($1, $2, $3, NOW())
-            ON CONFLICT (ticker) DO UPDATE SET
-                security_type = EXCLUDED.security_type,
-                exchange = EXCLUDED.exchange,
-                updated_at = NOW()
-        """, rows)
+        await conn.executemany(SECURITY_TYPES_UPSERT_SQL, rows)
     return len(rows)
 
 
@@ -19809,4 +19819,125 @@ async def get_parabolic_short_open_episodes() -> list[dict]:
                                   AND o.row_kind = 'outcome')
              ORDER BY a.climax_date, a.ticker
             """)
+    return [dict(r) for r in rows]
+
+
+# ── Breakout v1 (the operator's PAPER setup, phase 1: the nightly list + his grades; NO order path) ─────────────
+# Owner doc: docs/setups/consolidation_breakout.md (change log 2026-10-29 "breakout v1 PHASE 1 BUILT"). The rules are
+# agents/market_intelligence/breakout_v1.py (PURE); the job is agents/market_intelligence/breakout_v1_list.py.
+# Neither table is read by any entry / sizing / order / safeguard path - a grade is a LABEL, never a gate.
+_BREAKOUT_V1_DDL = """
+    -- One row per (watch night D, ticker) that passed EVERY v1 gate at D; tomorrow's breakout is high > level on
+    -- volume >= vol_bar. Rewritten whole each night (the job deletes the night's rows, then inserts), so a re-run is
+    -- idempotent and a name that no longer passes is gone.
+    CREATE TABLE IF NOT EXISTS mi_breakout_v1_list (
+        scan_date   DATE NOT NULL,                      -- the watch night D (plain DATE: liveness is keyed on it)
+        ticker      TEXT NOT NULL,
+        level       DOUBLE PRECISION NOT NULL,          -- the highest high of the last 5 sessions ending D (break: high > it)
+        vol_bar     DOUBLE PRECISION NOT NULL,          -- 1.2 x the mean volume of the 50 sessions ending D (shares)
+        adr20       DOUBLE PRECISION,                   -- ADR20 at D as a FRACTION of the close
+        rs_best     DOUBLE PRECISION NOT NULL,          -- best of the 21/63/126-session percentiles over the night's v1 universe
+        close       DOUBLE PRECISION,
+        security_type TEXT,                             -- CS / ADRC / ETV (a kept single-asset fund) / '' (unknown)
+        gates       JSONB NOT NULL,                     -- breakout_v1.v1_gates: every gate's pass + value
+        list_rank   INT NOT NULL,                       -- 1 = the highest rs_best that night
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (scan_date, ticker)
+    );
+    -- His grade on a list name (/bgrade TICKER A+|A|B|C|skip [note]); scan_date = the latest list carrying it.
+    CREATE TABLE IF NOT EXISTS mi_breakout_v1_grades (
+        scan_date   DATE NOT NULL,
+        ticker      TEXT NOT NULL,
+        grade       TEXT NOT NULL CHECK (grade IN ('A+', 'A', 'B', 'C', 'skip')),
+        note        TEXT,
+        graded_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (scan_date, ticker)
+    );
+    -- Polygon's reference `name`, persisted by the security-type refresh: the single-asset fund rule reads it.
+    ALTER TABLE mi_security_types ADD COLUMN IF NOT EXISTS name TEXT;
+"""
+
+BV1_LIST_COLS = ("scan_date", "ticker", "level", "vol_bar", "adr20", "rs_best", "close", "security_type", "gates",
+                 "list_rank")
+_BV1_LIST_JSONB = frozenset({"gates"})
+BV1_LIST_INSERT_SQL = (
+    f"INSERT INTO mi_breakout_v1_list ({', '.join(BV1_LIST_COLS)}) VALUES ("
+    + _jsonb_value_list(BV1_LIST_COLS, _BV1_LIST_JSONB)
+    + ") ON CONFLICT (scan_date, ticker) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in BV1_LIST_COLS if c not in ("scan_date", "ticker"))
+    + ", created_at = NOW()"
+)
+BV1_GRADE_UPSERT_SQL = (
+    "INSERT INTO mi_breakout_v1_grades (scan_date, ticker, grade, note) VALUES ($1, $2, $3, $4) "
+    "ON CONFLICT (scan_date, ticker) DO UPDATE SET grade = EXCLUDED.grade, note = EXCLUDED.note, graded_at = NOW()"
+)
+
+
+async def bv1_get_security_types_named(tickers: list[str]) -> dict[str, tuple]:
+    """{ticker: (security_type, name)} from mi_security_types (name NULL until the refresh has stored it)."""
+    if not tickers:
+        return {}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, security_type, name FROM mi_security_types WHERE ticker = ANY($1::text[])",
+            list(tickers))
+    return {r["ticker"]: (r["security_type"], r["name"]) for r in rows}
+
+
+async def get_security_type_names_count() -> int:
+    """Rows of mi_security_types carrying a stored name (0 = the refresh has not stored names yet)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval("SELECT COUNT(*) FROM mi_security_types WHERE name IS NOT NULL") or 0
+
+
+async def bv1_replace_list(scan_date: date, rows: list[dict]) -> int:
+    """Tonight's list, whole: the night's existing rows are deleted and `rows` inserted in ONE transaction, so a
+    re-run is idempotent and a crash leaves the previous version intact."""
+    vals = [_row_params(r, BV1_LIST_COLS, jsonb_dict=_BV1_LIST_JSONB) for r in rows]
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("DELETE FROM mi_breakout_v1_list WHERE scan_date = $1", scan_date)
+            if vals:
+                await conn.executemany(BV1_LIST_INSERT_SQL, vals)
+    return len(rows)
+
+
+async def bv1_get_list(scan_date: date) -> list[dict]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT scan_date, ticker, level, vol_bar, adr20, rs_best, close, security_type, list_rank "
+            "FROM mi_breakout_v1_list WHERE scan_date = $1 ORDER BY list_rank", scan_date)
+    return [dict(r) for r in rows]
+
+
+async def bv1_latest_list_date_for(ticker: str) -> Optional[date]:
+    """The latest watch night whose list carries `ticker` (None = never listed)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval("SELECT MAX(scan_date) FROM mi_breakout_v1_list WHERE ticker = $1", ticker)
+
+
+async def bv1_upsert_grade(scan_date: date, ticker: str, grade: str, note: Optional[str]) -> None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(BV1_GRADE_UPSERT_SQL, scan_date, ticker, grade, note)
+
+
+async def bv1_ungraded(nights: int = 5) -> list[dict]:
+    """List names of the last `nights` list nights that carry no grade yet, newest night first."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            WITH n AS (SELECT DISTINCT scan_date FROM mi_breakout_v1_list ORDER BY scan_date DESC LIMIT $1)
+            SELECT l.scan_date, l.ticker, l.level, l.rs_best, l.list_rank
+              FROM mi_breakout_v1_list l JOIN n ON n.scan_date = l.scan_date
+             WHERE NOT EXISTS (SELECT 1 FROM mi_breakout_v1_grades g
+                                WHERE g.scan_date = l.scan_date AND g.ticker = l.ticker)
+             ORDER BY l.scan_date DESC, l.list_rank
+            """, int(nights))
     return [dict(r) for r in rows]

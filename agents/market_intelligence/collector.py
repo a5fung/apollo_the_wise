@@ -625,8 +625,8 @@ async def get_splits_today(execution_date: str) -> "set[str] | None":
 
 async def fetch_all_ticker_types() -> dict[str, dict]:
     """
-    Fetch security type + exchange for all US stock tickers from Polygon Reference API.
-    Returns: {ticker: {"type": "CS"|"ETF"|..., "exchange": "XNYS"|...}}
+    Fetch security type + exchange + name for all US stock tickers from Polygon Reference API.
+    Returns: {ticker: {"type": "CS"|"ETF"|..., "exchange": "XNYS"|..., "name": str | None}}
     Paginated — typically 3-4 API calls for ~14K tickers.
     """
     result: dict[str, dict] = {}
@@ -648,6 +648,8 @@ async def fetch_all_ticker_types() -> dict[str, dict]:
                 result[ticker] = {
                     "type": t.get("type", ""),
                     "exchange": t.get("primary_exchange", ""),
+                    # breakout v1 (2026-10-29): the single-asset fund rule reads the fund's name
+                    "name": t.get("name") or None,
                 }
 
         next_url = data.get("next_url")

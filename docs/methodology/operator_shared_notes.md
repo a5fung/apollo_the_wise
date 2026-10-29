@@ -2716,3 +2716,7 @@ Rule from this (breakout v1, his reading of the setup day): the night before a b
 
 Ruling recorded (breakout v1, paper): the breakdown check is IN v1 — at the watch night D, close not below ALL of the 10/20/50-day and low not below the lowest low of the 10 sessions before; it kept 12 of his 12 caught good setups and rejects ODD 09-08. Built today (his "we can build now?"): the nightly list and the grading first, the buy and the sell next.
 
+> "Ok a" (2026-10-29, choosing what breakout v1's top-2% strength rule ranks against: (a) every security above $2 and $5M a day, ETFs included — the pool of the check that caught 12 of his 24 good setups — or (b) only stocks and single-asset funds, 10 of 24)
+
+Ruling recorded (breakout v1, paper): the strength percentile is ranked against EVERY security above $2 / $5M a day, funds and ETFs included; the type rule (stocks, ADRs, single-asset funds) decides only who can be LISTED.
+

@@ -37,6 +37,7 @@ from agents.market_intelligence.db import (
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
     GRADE_CORPUS_INSERT_SQL, UNIVERSE_FLOOR_SHADOW_INSERT_SQL, _TV_NEWS_SHADOW_UPSERT_SQL,
     CB_ENTRY_UPSERT_SQL, CB_EXIT_UPSERT_SQL, CB_SIC_UPSERT_SQL, CB_WATCH_UPSERT_SQL,
+    BV1_GRADE_UPSERT_SQL, BV1_LIST_INSERT_SQL, SECURITY_TYPES_UPSERT_SQL,
     PS_SHADOW_INSERT_SQL, SHADOW_HOUR_LANE_CANDIDATES_SQL, SHADOW_TRADE_EXIT_STEP_UPDATE_SQL,
     SHADOW_TRADE_INSERT_SQL,
     get_pool)
@@ -456,6 +457,22 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
     (
         "db.cb_upsert_sic_rows: #702 Consolidation Breakout SIC cache",
         CB_SIC_UPSERT_SQL,
+    ),
+    (
+        # Breakout v1 phase 1 (2026-10-29): the nightly list's one writer (a jsonb `gates` param beside plain
+        # ones; SILENT on a normal night, so a type-deduction failure would leave the list empty with only a
+        # job-failure page), his /bgrade upsert, and the security-type refresh that now stores the fund NAME the
+        # single-asset fund rule reads (a dead write there excludes every fund, fail closed, silently).
+        "db.bv1_replace_list: breakout v1 nightly list rows",
+        BV1_LIST_INSERT_SQL,
+    ),
+    (
+        "db.bv1_upsert_grade: breakout v1 /bgrade grade upsert",
+        BV1_GRADE_UPSERT_SQL,
+    ),
+    (
+        "db.upsert_security_types_batch: mi_security_types refresh (type, exchange, name)",
+        SECURITY_TYPES_UPSERT_SQL,
     ),
     (
         # #314 (2026-10-17): the parabolic-short shadow's one writer - arm / trigger / outcome rows, INSERT

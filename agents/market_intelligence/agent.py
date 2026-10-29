@@ -3021,6 +3021,29 @@ class MarketIntelligenceAgent(BaseAgent):
             f"_Stored in the ground-truth corpus (review). `/reviews` to see recent._"
         ))
 
+    async def _handle_bgrade_command(self, request: AgentRequest) -> AgentResponse:
+        """`/bgrade TICKER A+|A|B|C|skip [note]` — his grade on a breakout v1 list name (PAPER phase 1, 2026-10-29)
+        -> mi_breakout_v1_grades, scan_date = the latest list night carrying the ticker (upsert: a re-grade replaces).
+        Bare `/bgrade` lists the ungraded names of the last 5 list nights ("if I miss a day or two I'll catch up").
+        A grade is a LABEL: nothing reads it to gate, size or place anything. Imports are local: this module is on the
+        execution image's list and execution must not load the breakout modules."""
+        from agents.market_intelligence.breakout_v1_list import (
+            BGRADE_USAGE, UNGRADED_NIGHTS, format_ungraded, parse_bgrade,
+        )
+        from agents.market_intelligence.db import bv1_latest_list_date_for, bv1_ungraded, bv1_upsert_grade
+
+        p = parse_bgrade(request.task)
+        if p is None:
+            return self._ok(request, result=BGRADE_USAGE)
+        if p["list"]:
+            return self._ok(request, result=format_ungraded(await bv1_ungraded(UNGRADED_NIGHTS)))
+        night = await bv1_latest_list_date_for(p["ticker"])
+        if night is None:
+            return self._ok(request, result=f"_`{p['ticker']}` is not on any breakout v1 list — nothing to grade._")
+        await bv1_upsert_grade(night, p["ticker"], p["grade"], p["note"])
+        note = f" — {p['note']}" if p["note"] else ""
+        return self._ok(request, result=f"✅ `{p['ticker']}` graded {p['grade']} (list of {night.isoformat()}){note}")
+
     async def _handle_spotted_command(self, request: AgentRequest) -> AgentResponse:
         """`/spotted TICKER [YYYY-MM-DD] <grade> <narrative...>` — inject an externally-
         spotted real EP (e.g. a tweet from a good trader — the FSLR case) as ground truth.
@@ -5884,6 +5907,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/rubric":         self._handle_rubric_query,
             "/review":         self._handle_review_command,
             "/spotted":        self._handle_spotted_command,
+            "/bgrade":         self._handle_bgrade_command,   # breakout v1 PAPER phase 1 (2026-10-29) — his grade, a label
             "/reviews":        self._handle_reviews_query,
             "/datareviews":    self._handle_data_reviews_query,
             "/cost":           self._handle_cost_query,

@@ -1824,7 +1824,9 @@ class TelegramChannel:
                      # auto-promoted ecosystem (the 🆕 alert carries the command)
                      "vetoecosystem",
                      # 2026-06-19 #345 one-command real-money trading halt
-                     "pause", "resume"):
+                     "pause", "resume",
+                     # 2026-10-29 breakout v1 PAPER phase 1 — his grade on a list name (a label, never a gate)
+                     "bgrade"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
@@ -1887,6 +1889,9 @@ class TelegramChannel:
             BotCommand("regime",       "Market regime + breadth"),
             BotCommand("themes",       "Active themes — what is leading"),
             BotCommand("htf",          "Higher-timeframe flag bases (watch only)"),
+            # Breakout v1 PAPER phase 1 (2026-10-29): the nightly list message names the command; in the menu so a
+            # missed night can be caught up from here.
+            BotCommand("bgrade",       "/bgrade TICKER A+|A|B|C|skip — grade a breakout v1 list name"),
             BotCommand("status",       "System health + API spend"),
             BotCommand("help",         "Capabilities, rules, command reference"),
         ]
