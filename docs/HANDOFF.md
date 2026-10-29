@@ -6,7 +6,20 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-10-27 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the 10-26 close below.
+## 2026-10-28 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 10-27 close below.
+
+**2026-10-28 (Wed): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.)
+
+- **Board 21 → 21.** **Server 52b0a46f; main is AHEAD** with the CLS live trail fix (`da6417a1`, `a541a356`, simplify `a6a0bb23`) and the 10-27 simplify (`7e44b589`) — NOT deployed.
+- **LIVE — CLS (trade 429):** marked on its first close for the opening-auction sale because its 10/20-day line sat above the price since entry. His "clear + fix + read": the pending sale cleared on prod (one row; 19:01 placed nothing, verified); stop $272 on. **Thu:** read every open row on both books first (armed or not, `scripts/probes/_cls_1028/`); the #482 hour-lane verify (a defect = say so before deploying); 12:00 ET `bash scripts/deploy.sh execution`, poll the box, then `bash scripts/deploy.sh market-agent`; before 16:45 ET the running apollo-execution must print 3 for the `trail_arm_on_close_above=True` count; after 16:45 verify trade 429 unmarked (EXPECT: `docs/setups/exit_discipline.md` 2026-10-28). Missed noon = HIS call (repeat the one-row clear, or an operator-only anytime deploy).
+- **Breakout v1 FINAL (his "Ok"; `docs/setups/consolidation_breakout.md` 2026-10-28):** caught 12 of his 24 dated good setups (14 with two earlier fires), ~4 names a night. **Paper build MOVED to Fri 10-30 (Opus), deploy 21:15 ET; first list Mon 11-02.** Thu: the build spec.
+- **#711:** step 7b ran (no style an undirected sort can see; the oracle 300/300); step 7 = one population; step 8 paused on his pivot to near-term rules. Close Fri on its DoD, file breakout v1 paper as its own task. The 2020-08-10 video extracted and dated (`scripts/probes/_qm_0810_review/`); the stream-moment dating defect recorded (vault `database/BUILD.md`), audit Fri.
+- **#314:** the 5-year replay ran once (frozen, STEP 0 pulled on the server, re-derived MATCH): CAN'T TELL; not one short ≥ 3R. Paused on his word.
+- **Weekend:** A (date his setups across his review streams — PRICE FIRST), C (v1 replay 2017-24), B (#314 his entry/stop + Russo's 1-3 days).
+- **Capacity (dated 10-28):** Fable out until Fri 8 PM PT.
+- **Open his-call items:** whether the 10/20-day line should count the entry day's own close — not urgent.
+
+## 2026-10-27 (Tue) CLOSE — (superseded by 10-28 above)
 
 **2026-10-27 (Tue): CLOSE run on his word** ("can we finish tmr instead? Let's run advisor review and simplify today's work then wrap"). (This section mirrors the machine-local pickup memory.)
 
