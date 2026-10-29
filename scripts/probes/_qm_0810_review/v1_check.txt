@@ -1,0 +1,229 @@
+BREAKOUT v1 CHECK against his dated good setups (2020-08-10 review) — free, local, analysis only
+Bars: cb702_pre_v2/daily_closes_all.csv.gz (split-adjusted) + daily_raw_close.csv.gz (the $5 test), rows dated 2019-01-02 .. 2020-08-10 only. Tickers evaluated: 7946 
+RS >= 98 and the market phase are NOT part of this check (they need the universe-wide percentile and an index
+read); step 2 adds an RS stand-in beside (the 63-session return at D in the top 2% of the day's universe).
+
+=== 0. Reproduction check: surf runs / tightening / volume vs the calibration (TSV measures column) ===
+   28 setups x 6 measures: 0 rows with a difference
+
+=== 1. THE 24 (agreed, high/medium, tier A+B): v1 on his breakout day ===
+   verdict columns: v1 (universe + setup gates) | setup gates only (no $5 / $10M) | any-average surf | no base anchor
+   CELH-1   A 2020-06-23 | MISS         | setup-only HIT          | any-avg MISS         | no-anchor MISS         | failed on his day: universe
+   CELH-3   A 2020-08-05 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor HIT          | failed on his day: close_above_pole_high
+   CODX-1   A 2020-04-16 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor MISS         | failed on his day: level
+   CVNA-1   A 2020-06-02 | HIT          | setup-only HIT          | any-avg HIT          | no-anchor HIT          | failed on his day: -
+   CWH-2    A 2020-05-06 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor MISS         | failed on his day: prior_move, level
+   LVGO-4   A 2020-07-06 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor HIT          | failed on his day: close_above_pole_high
+   NVAX     A 2020-06-15 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor MISS         | failed on his day: level, volume
+   OPK-2    A 2020-07-17 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor MISS         | failed on his day: universe, close_above_pole_high
+   OSTK-2   A 2020-06-19 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor LATE+2       | failed on his day: close_above_pole_high, higher_lows, surf
+   PLUG     A 2020-06-23 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor HIT          | failed on his day: close_above_pole_high
+   SRNE-2   A 2020-07-30 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor LATE+1       | failed on his day: level, volume
+   PRTS     A 2020-07-08 | MISS         | setup-only HIT          | any-avg MISS         | no-anchor MISS         | failed on his day: universe
+   DFS      A 2020-05-26 | LATE+1       | setup-only LATE+1       | any-avg LATE+1       | no-anchor LATE+1       | failed on his day: level
+   QUMU     A 2020-08-10 | MISS(8/10)   | setup-only MISS(8/10)   | any-avg MISS(8/10)   | no-anchor MISS(8/10)   | failed on his day: universe, level
+   ARCT     B 2020-07-13 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor MISS         | failed on his day: level
+   HL       B 2020-08-04 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor HIT          | failed on his day: close_above_pole_high
+   IBIO-1   B 2020-07-15 | MISS         | setup-only HIT          | any-avg MISS         | no-anchor MISS         | failed on his day: universe
+   OPK-1    B 2020-06-29 | MISS         | setup-only EARLY-14     | any-avg MISS         | no-anchor MISS         | failed on his day: universe, tightening, volume
+   OPK-3    B 2020-08-06 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor MISS         | failed on his day: higher_lows, surf, level, volume
+   PENN-2   B 2020-06-23 | HIT          | setup-only HIT          | any-avg HIT          | no-anchor HIT          | failed on his day: -
+   PENN-3   B 2020-08-06 | HIT          | setup-only HIT          | any-avg HIT          | no-anchor HIT          | failed on his day: -
+   RUN      B 2020-08-04 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor MISS         | failed on his day: close_above_pole_high, higher_lows, surf, tightening
+   TTOO     B 2020-08-10 | MISS(8/10)   | setup-only MISS(8/10)   | any-avg MISS(8/10)   | no-anchor MISS(8/10)   | failed on his day: universe, level
+   NAIL     B 2020-08-10 | MISS(8/10)   | setup-only MISS(8/10)   | any-avg MISS(8/10)   | no-anchor MISS(8/10)   | failed on his day: close_above_pole_high, volume
+   tally main      : HIT 3, LATE 1, MISS 20
+   tally setup_only: EARLY 1, HIT 6, LATE 1, MISS 16
+   tally any_surf  : HIT 3, LATE 1, MISS 20
+   tally no_anchor : HIT 7, LATE 3, MISS 14
+   values on his day (* = the gate failed; RS63 pct = the stand-in, NOT a v1 gate):
+   CELH-1   raw$10.14 dv$6.1M* | prior +177% P 2020-05-26 base 19 | anchor ok | HL y | surf best 18 (10:18 20:10 50:0) any 18 | tight 1.04 | high/level +9.1% | vol 1.57x | RS63 pct n/a | 130-sess y
+            diag: level 3.50 set 2020-06-18 | high(E) 3.82 clears k10 y (3.50) k5 y (3.50) | highest high of [D-45, D] 2020-06-19 = 2 sessions before E
+   CELH-3   raw$14.25 dv$10.6M | prior +90% P 2020-07-17 base 12 | anchor BROKEN* | HL y | surf best 48 (10:48 20:4 50:0) any 48 | tight 0.72 | high/level +4.1% | vol 1.66x | RS63 pct 99.0 | 130-sess y
+            diag: level 5.16 set 2020-07-28 | high(E) 5.37 clears k10 y (5.16) k5 y (5.14) | highest high of [D-45, D] 2020-07-28 = 6 sessions before E | first close above high(P) 2020-07-27
+   CODX-1   raw$9.50 dv$40.8M | prior +2372% P 2020-02-28 base 32 | anchor ok | HL y | surf best 9 (10:9 20:8 50:0) any 30 | tight 0.90 | high/level -23.6%* | vol 2.49x | RS63 pct 100.0 | 130-sess y
+            diag: level 540.00 set 2020-03-02 | high(E) 412.50 clears k10 y (336.00) k5 y (317.40) | highest high of [D-45, D] 2020-02-28 = 33 sessions before E
+   CVNA-1   raw$91.85 dv$207.6M | prior +393% P 2020-05-08 base 15 | anchor ok | HL y | surf best 19 (10:19 20:14 50:0) any 48 | tight 1.03 | high/level +6.8% | vol 1.88x | RS63 pct 82.1 | 130-sess y
+            diag: level 20.70 set 2020-05-26 | high(E) 22.10 clears k10 y (20.70) k5 y (20.70) | highest high of [D-45, D] 2020-05-08 = 16 sessions before E
+   CWH-2    raw$9.14 dv$13.6M | prior +15%* P 2020-03-03 base 44 | anchor ok | HL y | surf best 7 (10:4 20:0 50:7) any 21 | tight 0.89 | high/level -20.0%* | vol 1.60x | RS63 pct 13.7 | 130-sess y
+            diag: level 13.13 set 2020-03-04 | high(E) 10.50 clears k10 y (10.19) k5 y (10.19) | highest high of [D-45, D] 2020-03-03 = 45 sessions before E
+   LVGO-4   raw$72.81 dv$283.6M | prior +92% P 2020-06-17 base 11 | anchor BROKEN* | HL y | surf best 7 (10:7 20:1 50:0) any 7 | tight 1.02 | high/level +4.3% | vol 1.60x | RS63 pct 97.5 | 130-sess y
+            diag: level 79.10 set 2020-06-23 | high(E) 82.50 clears k10 y (79.10) k5 y (76.40) | highest high of [D-45, D] 2020-06-23 = 8 sessions before E | first close above high(P) 2020-06-22
+   NVAX     raw$45.57 dv$308.1M | prior +543% P 2020-05-18 base 18 | anchor ok | HL y | surf best 8 (10:7 20:8 50:0) any 12 | tight 0.55 | high/level -15.5%* | vol 0.90x* | RS63 pct 99.9 | 130-sess y
+            diag: level 61.00 set 2020-05-19 | high(E) 51.53 clears k10 n (53.97) k5 y (48.43) | highest high of [D-45, D] 2020-05-18 = 19 sessions before E
+   OPK-2    raw$4.03* dv$46.0M | prior +112% P 2020-07-01 base 10 | anchor BROKEN* | HL y | surf best 5 (10:5 20:0 50:0) any 5 | tight 0.70 | high/level +13.1% | vol 1.98x | RS63 pct n/a | 130-sess y
+            diag: level 4.27 set 2020-07-09 | high(E) 4.83 clears k10 y (4.27) k5 y (4.21) | highest high of [D-45, D] 2020-07-09 = 6 sessions before E | first close above high(P) 2020-07-08
+   OSTK-2   raw$22.41 dv$60.0M | prior +365% P 2020-06-04 base 10 | anchor BROKEN* | HL n* | surf best 3* (10:3 20:1 50:0) any 43 | tight 0.88 | high/level +4.2% | vol 1.36x | RS63 pct 99.8 | 130-sess y
+            diag: level 24.23 set 2020-06-10 | high(E) 25.24 clears k10 y (24.23) k5 y (23.54) | highest high of [D-45, D] 2020-06-10 = 7 sessions before E | first close above high(P) 2020-06-10
+   PLUG     raw$5.57 dv$61.3M | prior +43% P 2020-06-08 base 10 | anchor BROKEN* | HL y | surf best 8 (10:8 20:0 50:0) any 8 | tight 0.51 | high/level +17.8% | vol 5.75x | RS63 pct 71.4 | 130-sess y
+            diag: level 5.97 set 2020-06-10 | high(E) 7.03 clears k10 y (5.97) k5 y (5.63) | highest high of [D-45, D] 2020-06-10 = 9 sessions before E | first close above high(P) 2020-06-10
+   SRNE-2   raw$7.75 dv$154.5M | prior +232% P 2020-07-10 base 13 | anchor ok | HL y | surf best 8 (10:8 20:7 50:0) any 13 | tight 0.88 | high/level -0.1%* | vol 0.92x* | RS63 pct 99.2 | 130-sess y
+            diag: level 8.57 set 2020-07-20 | high(E) 8.56 clears k10 n (8.57) k5 y (8.29) | highest high of [D-45, D] 2020-07-20 = 8 sessions before E
+   PRTS     raw$8.74 dv$8.7M* | prior +474% P 2020-06-03 base 23 | anchor ok | HL y | surf best 23 (10:23 20:13 50:0) any 23 | tight 0.65 | high/level +11.0% | vol 3.45x | RS63 pct n/a | 130-sess y
+            diag: level 92.10 set 2020-06-16 | high(E) 102.20 clears k10 y (91.80) k5 y (89.45) | highest high of [D-45, D] 2020-06-03 = 24 sessions before E
+   DFS      raw$40.47 dv$203.5M | prior +99% P 2020-04-29 base 17 | anchor ok | HL y | surf best 6 (10:6 20:6 50:0) any 6 | tight 0.52 | high/level -0.4%* | vol 1.24x | RS63 pct 8.2 | 130-sess y
+            diag: level 45.19 set 2020-04-30 | high(E) 45.01 clears k10 y (41.69) k5 y (41.56) | highest high of [D-45, D] 2020-04-29 = 18 sessions before E
+   QUMU     raw$4.77* dv$0.4M* | prior +170% P 2020-07-13 base 19 | anchor ok | HL y | surf best 17 (10:17 20:12 50:0) any 19 | tight 0.84 | high/level -6.5%* | vol 1.28x | RS63 pct n/a | 130-sess y
+            diag: level 5.35 set 2020-07-17 | high(E) 5.00 clears k10 n (5.00) k5 y (4.95) | highest high of [D-45, D] 2020-07-13 = 20 sessions before E
+   ARCT     raw$46.89 dv$40.0M | prior +438% P 2020-05-19 base 36 | anchor ok | HL y | surf best 10 (10:10 20:2 50:1) any 10 | tight 0.68 | high/level -6.4%* | vol 1.43x | RS63 pct 99.2 | 130-sess y
+            diag: level 60.84 set 2020-05-26 | high(E) 56.93 clears k10 y (52.08) k5 y (52.08) | highest high of [D-45, D] 2020-05-19 = 37 sessions before E
+   HL       raw$5.59 dv$67.5M | prior +79% P 2020-07-20 base 10 | anchor BROKEN* | HL y | surf best 5 (10:5 20:0 50:0) any 5 | tight 0.71 | high/level +7.2% | vol 1.44x | RS63 pct 96.8 | 130-sess y
+            diag: level 5.68 set 2020-07-27 | high(E) 6.09 clears k10 y (5.68) k5 y (5.64) | highest high of [D-45, D] 2020-07-27 = 6 sessions before E | first close above high(P) 2020-07-21
+   IBIO-1   raw$2.32* dv$21.1M | prior +181% P 2020-06-29 base 10 | anchor ok | HL y | surf best 9 (10:9 20:0 50:0) any 9 | tight 0.88 | high/level +62.4% | vol 6.22x | RS63 pct n/a | 130-sess y
+            diag: level 1225.00 set 2020-07-08 | high(E) 1990.00 clears k10 y (1225.00) k5 y (1225.00) | highest high of [D-45, D] 2020-06-29 = 11 sessions before E
+   OPK-1    raw$2.78* dv$32.4M | prior +155% P 2020-05-18 base 28 | anchor ok | HL y | surf best 16 (10:5 20:16 50:0) any 20 | tight 1.16* | high/level +5.9% | vol 1.11x* | RS63 pct n/a | 130-sess y | plain-argmax P 2020-06-10
+            diag: level 2.90 set 2020-06-09 | high(E) 3.07 clears k10 y (2.85) k5 y (2.85) | highest high of [D-45, D] 2020-06-10 = 13 sessions before E
+   OPK-3    raw$5.45 dv$110.6M | prior +211% P 2020-07-21 base 11 | anchor ok | HL n* | surf best 4* (10:3 20:4 50:0) any 9 | tight 0.94 | high/level -2.3%* | vol 0.90x* | RS63 pct 98.0 | 130-sess y
+            diag: level 6.02 set 2020-07-30 | high(E) 5.88 clears k10 n (6.02) k5 n (6.02) | highest high of [D-45, D] 2020-07-21 = 12 sessions before E
+   PENN-2   raw$31.43 dv$462.6M | prior +258% P 2020-06-05 base 11 | anchor ok | HL y | surf best 9 (10:5 20:9 50:0) any 17 | tight 0.81 | high/level +1.9% | vol 2.04x | RS63 pct 98.5 | 130-sess y
+            diag: level 36.75 set 2020-06-08 | high(E) 37.43 clears k10 y (34.66) k5 y (34.66) | highest high of [D-45, D] 2020-06-05 = 12 sessions before E
+   PENN-3   raw$38.39 dv$268.9M | prior +258% P 2020-06-05 base 42 | anchor ok | HL y | surf best 20 (10:20 20:4 50:0) any 25 | tight 0.92 | high/level +13.3% | vol 1.73x | RS63 pct 98.3 | 130-sess y
+            diag: level 39.40 set 2020-08-05 | high(E) 44.64 clears k10 y (39.40) k5 y (39.40) | highest high of [D-45, D] 2020-06-05 = 43 sessions before E
+   RUN      raw$39.78 dv$231.9M | prior +159% P 2020-07-20 base 10 | anchor BROKEN* | HL n* | surf best 4* (10:0 20:4 50:0) any 7 | tight 1.16* | high/level +0.9% | vol 1.24x | RS63 pct 98.9 | 130-sess y
+            diag: level 43.18 set 2020-07-27 | high(E) 43.55 clears k10 y (43.18) k5 y (41.99) | highest high of [D-45, D] 2020-07-27 = 6 sessions before E | first close above high(P) 2020-07-22
+   TTOO     raw$1.70* dv$14.5M | prior +307% P 2020-06-10 base 41 | anchor ok | HL y | surf best 13 (10:8 20:13 50:0) any 31 | tight 0.72 | high/level -7.4%* | vol 2.71x | RS63 pct n/a | 130-sess y | plain-argmax P 2020-07-01
+            diag: level 11550.00 set 2020-07-01 | high(E) 10700.00 clears k10 y (8750.00) k5 y (8750.00) | highest high of [D-45, D] 2020-07-01 = 27 sessions before E
+   NAIL     raw$43.88 dv$47.7M | prior +91% P 2020-07-23 base 11 | anchor BROKEN* | HL y | surf best 11 (10:11 20:0 50:0) any 11 | tight 0.46 | high/level +9.0% | vol 0.80x* | RS63 pct 97.8 | 130-sess y
+            diag: level 44.34 set 2020-07-28 | high(E) 48.34 clears k10 y (44.34) k5 y (44.27) | highest high of [D-45, D] 2020-07-28 = 9 sessions before E | first close above high(P) 2020-07-27
+   level clears on his day (diagnostic, not v1): full (v1) 15/24, k10 20/24, k5 23/24
+   gate failures on his day (a row can fail several): universe 7, prior_move 1, close_above_pole_high 8, higher_lows 3, surf 3, tightening 2, level 9, volume 5; any-average surf 0
+   MISS(8/10) = no fire on 2020-08-10, the file's last day, so a LATE fire cannot be observed
+   failed on VOLUME ONLY on his day: none
+   failed on the UNIVERSE ONLY on his day: CELH-1, PRTS, IBIO-1
+
+=== 1. THE 4 SECONDARY (disputed rows settled at medium): v1 on his breakout day ===
+   verdict columns: v1 (universe + setup gates) | setup gates only (no $5 / $10M) | any-average surf | no base anchor
+   CLSK     B 2020-07-22 | MISS         | setup-only EARLY-9      | any-avg MISS         | no-anchor LATE+1       | failed on his day: universe, close_above_pole_high
+   INO-3    A 2020-04-20 | MISS         | setup-only MISS         | any-avg MISS         | no-anchor MISS         | failed on his day: level, volume
+   INO-4    B 2020-06-23 | HIT          | setup-only HIT          | any-avg HIT          | no-anchor HIT          | failed on his day: -
+   TRVN     B 2020-07-15 | MISS         | setup-only HIT          | any-avg MISS         | no-anchor MISS         | failed on his day: universe
+   tally main      : HIT 1, MISS 3
+   tally setup_only: EARLY 1, HIT 2, MISS 1
+   tally any_surf  : HIT 1, MISS 3
+   tally no_anchor : HIT 1, LATE 1, MISS 2
+   values on his day (* = the gate failed; RS63 pct = the stand-in, NOT a v1 gate):
+   CLSK     raw$4.46* dv$12.2M | prior +183% P 2020-06-29 base 15 | anchor BROKEN* | HL y | surf best 8 (10:8 20:0 50:0) any 8 | tight 0.82 | high/level +11.2% | vol 2.14x | RS63 pct n/a | 130-sess n
+            diag: level 5.10 set 2020-07-21 | high(E) 5.67 clears k10 y (5.10) k5 y (5.10) | highest high of [D-45, D] 2020-07-21 = 1 sessions before E | first close above high(P) 2020-07-09
+   INO-3    raw$8.26 dv$120.3M | prior +537% P 2020-03-09 base 28 | anchor ok | HL y | surf best 28 (10:2 20:28 50:0) any 29 | tight 0.83 | high/level -17.4%* | vol 1.16x* | RS63 pct 99.7 | 130-sess y
+            diag: level 143.16 set 2020-03-12 | high(E) 118.26 clears k10 y (110.43) k5 y (100.68) | highest high of [D-45, D] 2020-03-09 = 29 sessions before E
+   INO-4    raw$15.30 dv$228.6M | prior +331% P 2020-04-27 base 39 | anchor ok | HL y | surf best 10 (10:10 20:7 50:0) any 38 | tight 0.73 | high/level +34.0% | vol 5.36x | RS63 pct 94.5 | 130-sess y | plain-argmax P 2020-05-20
+            diag: level 203.04 set 2020-05-20 | high(E) 272.16 clears k10 y (183.84) k5 y (183.84) | highest high of [D-45, D] 2020-05-20 = 23 sessions before E
+   TRVN     raw$1.70* dv$5.1M* | prior +180% P 2020-06-23 base 14 | anchor ok | HL y | surf best 12 (10:10 20:12 50:0) any 12 | tight 0.79 | high/level +7.2% | vol 3.10x | RS63 pct n/a | 130-sess y
+            diag: level 1125.00 set 2020-06-24 | high(E) 1206.25 clears k10 y (1112.50) k5 y (1093.75) | highest high of [D-45, D] 2020-06-23 = 15 sessions before E
+   level clears on his day (diagnostic, not v1): full (v1) 3/4, k10 4/4, k5 4/4
+   gate failures on his day (a row can fail several): universe 2, prior_move 0, close_above_pole_high 1, higher_lows 0, surf 0, tightening 0, level 1, volume 1; any-average surf 0
+   MISS(8/10) = no fire on 2020-08-10, the file's last day, so a LATE fire cannot be observed
+   failed on VOLUME ONLY on his day: none
+   failed on the UNIVERSE ONLY on his day: TRVN
+
+=== 1b. Noise on his own names: v1 fires (universe + setup gates) with E in 2020-02-03..2020-08-10 ===
+   credited = the fire counted for one of his 28 setups (HIT / LATE / EARLY); other = every other fire.
+   an other-fire date carries [his ...] when it is within 2 sessions of ANY dated row of his in the TSV (any tier).
+   ARCT  fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 2 | any-avg 0 | no-anchor 2
+   CELH  fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 1 | any-avg 0 | no-anchor 2
+   CLSK  fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 2 | any-avg 0 | no-anchor 2
+   CODX  fires  1 | credited 0 (-) | other 1: 2020-07-21 [his U/low 2020-07-21]
+         setup-only fires 1 | any-avg 1 | no-anchor 4
+   CVNA  fires  2 | credited 1 (2020-06-02) | other 1: 2020-02-19
+         setup-only fires 2 | any-avg 2 | no-anchor 2
+   CWH   fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 0 | any-avg 0 | no-anchor 2
+   DFS   fires  1 | credited 1 (2020-05-27) | other 0: -
+         setup-only fires 1 | any-avg 1 | no-anchor 1
+   HL    fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 1 | any-avg 0 | no-anchor 2
+   IBIO  fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 3 | any-avg 0 | no-anchor 0
+   INO   fires  1 | credited 1 (2020-06-23) | other 0: -
+         setup-only fires 1 | any-avg 1 | no-anchor 1
+   LVGO  fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 0 | any-avg 0 | no-anchor 7
+   NAIL  fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 0 | any-avg 0 | no-anchor 2
+   NVAX  fires  2 | credited 0 (-) | other 2: 2020-02-26, 2020-04-08
+         setup-only fires 2 | any-avg 3 | no-anchor 5
+   NXH   fires  1 | credited 0 (-) | other 1: 2020-06-02 [his A/low 2020-06-02]
+         setup-only fires 1 | any-avg 1 | no-anchor 6
+   OPK   fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 1 | any-avg 0 | no-anchor 0
+   PENN  fires  2 | credited 2 (2020-06-23, 2020-08-06) | other 0: -
+         setup-only fires 2 | any-avg 2 | no-anchor 4
+   PLUG  fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 1 | any-avg 0 | no-anchor 1
+   PRTS  fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 1 | any-avg 0 | no-anchor 0
+   QUMU  fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 0 | any-avg 0 | no-anchor 0
+   RUN   fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 0 | any-avg 0 | no-anchor 2
+   SRNE  fires  1 | credited 0 (-) | other 1: 2020-06-25 [his C/low 2020-06-24]
+         setup-only fires 2 | any-avg 1 | no-anchor 2
+   TRVN  fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 2 | any-avg 0 | no-anchor 0
+   TTOO  fires  0 | credited 0 (-) | other 0: -
+         setup-only fires 0 | any-avg 0 | no-anchor 0
+   total other fires on his 23 names: 6
+
+=== 2. Volume of names: v1 over EVERY stock, every E in 2020-02-03..2020-08-07 (27 Mon-Fri weeks) ===
+   data guard skipped 110680 ticker-days (bars D-85..E not consecutive sessions)
+   per week, fire-days (a stock firing on 2 days counts 2) / unique names:
+   v1            fire-days: median 17 | q1 6 | q3 28 | max 95 | min 0 | total 647
+                 names    : median 16 | q1 6 | q3 26 | max 87 | min 0 | total 603
+   v1+RS         fire-days: median 2 | q1 0 | q3 3 | max 6 | min 0 | total 47
+                 names    : median 1 | q1 0 | q3 2 | max 6 | min 0 | total 42
+   any-avg       fire-days: median 19 | q1 6 | q3 28 | max 102 | min 1 | total 696
+                 names    : median 18 | q1 6 | q3 26 | max 94 | min 1 | total 651
+   any-avg+RS    fire-days: median 2 | q1 0 | q3 3 | max 6 | min 0 | total 50
+                 names    : median 2 | q1 0 | q3 2 | max 6 | min 0 | total 45
+   no-anchor     fire-days: median 38 | q1 14 | q3 68 | max 229 | min 2 | total 1479
+                 names    : median 33 | q1 12 | q3 61 | max 212 | min 2 | total 1264
+   no-anchor+RS  fire-days: median 5 | q1 3 | q3 10 | max 16 | min 0 | total 166
+                 names    : median 4 | q1 2 | q3 6 | max 15 | min 0 | total 127
+
+   week of | sessions | v1 fd/names | v1+RS fd/names | any-avg fd/names | any-avg+RS fd/names | no-anchor fd/names | no-anchor+RS fd/names
+   2020-02-03 | 5 | 14/13 | 0/0 | 17/16 | 0/0 | 32/25 | 2/1
+   2020-02-10 | 5 | 17/16 | 4/4 | 19/18 | 4/4 | 32/25 | 11/6
+   2020-02-17 | 4 | 23/21 | 2/2 | 23/21 | 2/2 | 42/35 | 8/6
+   2020-02-24 | 5 | 4/3 | 3/2 | 5/4 | 3/2 | 8/7 | 5/4
+   2020-03-02 | 5 | 1/1 | 0/0 | 1/1 | 0/0 | 2/2 | 0/0
+   2020-03-09 | 5 | 0/0 | 0/0 | 1/1 | 0/0 | 3/2 | 2/1
+   2020-03-16 | 5 | 2/2 | 2/2 | 2/2 | 2/2 | 3/2 | 3/2
+   2020-03-23 | 5 | 2/2 | 1/1 | 4/4 | 2/2 | 5/5 | 4/4
+   2020-03-30 | 5 | 7/5 | 4/3 | 7/5 | 4/3 | 8/5 | 5/4
+   2020-04-06 | 4 | 6/6 | 2/2 | 6/6 | 2/2 | 7/7 | 2/2
+   2020-04-13 | 5 | 14/11 | 4/3 | 14/11 | 4/3 | 23/17 | 12/8
+   2020-04-20 | 5 | 21/18 | 1/1 | 22/19 | 2/2 | 37/27 | 11/7
+   2020-04-27 | 5 | 5/5 | 0/0 | 5/5 | 0/0 | 20/17 | 5/3
+   2020-05-04 | 5 | 13/10 | 2/1 | 14/11 | 2/1 | 33/27 | 9/6
+   2020-05-11 | 5 | 19/19 | 0/0 | 21/21 | 0/0 | 50/45 | 3/3
+   2020-05-18 | 5 | 11/11 | 0/0 | 12/12 | 0/0 | 48/42 | 3/2
+   2020-05-25 | 4 | 95/87 | 0/0 | 102/94 | 0/0 | 172/148 | 4/3
+   2020-06-01 | 5 | 87/84 | 3/3 | 94/91 | 3/3 | 229/212 | 5/5
+   2020-06-08 | 5 | 21/20 | 1/1 | 22/21 | 1/1 | 65/59 | 3/3
+   2020-06-15 | 5 | 30/27 | 1/1 | 35/32 | 2/2 | 93/69 | 13/9
+   2020-06-22 | 5 | 65/62 | 6/6 | 70/66 | 6/6 | 125/108 | 16/15
+   2020-06-29 | 4 | 14/13 | 0/0 | 18/17 | 0/0 | 38/33 | 3/2
+   2020-07-06 | 5 | 55/51 | 2/2 | 57/53 | 2/2 | 110/90 | 11/9
+   2020-07-13 | 5 | 27/26 | 2/2 | 28/27 | 2/2 | 58/53 | 5/5
+   2020-07-20 | 5 | 23/22 | 3/2 | 24/23 | 3/2 | 51/44 | 4/3
+   2020-07-27 | 5 | 28/26 | 1/1 | 28/26 | 1/1 | 71/63 | 5/3
+   2020-08-03 | 5 | 43/42 | 3/3 | 45/44 | 3/3 | 114/95 | 12/11
+   per session (v1): 4.9 fires a night on average over 131 sessions; with the RS stand-in 0.4
+   universe size at D (two gates, 63-session return known): median 2331, min 2246, max 2563
+
+=== Readings (where the v1 wording left a choice) ===
+   universe = only the two named gates (RAW close >= $5 at D, 20-session median of adjusted close x volume >= $10M at D);
+     the SSoT row's security type / ticker pattern / 130-consecutive-session history are NOT applied (130-sess column shown);
+   prior move P = cb._pole_top (the code behind the "Prior move" row, #592 walk) — a plain highest high differs where shown;
+     pole low = min low of [P-40, P] (41 sessions incl. P, the module) rather than "the 40 sessions before it";
+   base anchor (no CLOSE above high(P) in (P, D]) is applied as a named gate (the module's base); the no-anchor column drops it;
+   higher lows: min low D-4..D > the base low (P+1..D), strict; level = max high P+1..D, high(E) > level strict;
+   surf band per session (each session's own ADR20 and close, as the calibration measured it); "within" inclusive;
+   tightening on (h-l)/c, inclusive 1.1x; volume inclusive 1.2x of mean volume D-49..D; all three match the calibration;
+   EARLY = a fire after his base's pole top P (taken at his D) and before his day; LATE = 1 or 2 sessions after;
+   precedence HIT > LATE > EARLY > MISS; 2020-08-10 rows: the file ends that day, so LATE cannot be observed;
+   RS stand-in measured at D (the watch night, as the module does), percentile over the day's two-gate universe;
+   NAIL is a 3x leveraged ETF (Direxion homebuilders); the SSoT type filter would drop it — kept here (no type gate).
