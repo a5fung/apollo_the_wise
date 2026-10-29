@@ -1,0 +1,50 @@
+V3 WITH EACH RS STAND-IN AS A GATE — his setups (2020-08-10 review); free, local, analysis only
+V3 = v1 without the base anchor, level = max high D-4..D, universe raw close >= $2 and 20-session median $vol >= $5M
+(v1_check_variant.py). RS percentiles at D = E-1 over the $2/$5M universe that day (v1_check_variant's V3 pool):
+RS63 = 63-session return percentile; RSbest = max of the 21/63/126-session percentiles (cb.cross_section_one_date).
+Gate applied to EVERY V3 fire, then each setup classified as before (HIT / LATE+k / EARLY-k / MISS).
+
+=== THE 24 ===
+   setup    t his day    |   RS63 | RSbest | r21/r63/r126 pct   | V3          | V3+RS63     | V3+RSbest  
+   CELH-1   A 2020-06-23 |   94.5 |   98.0 | 87.9/94.5/98.0     | HIT         | MISS        | HIT        
+   CELH-3   A 2020-08-05 |   98.6 |   98.6 | 93.9/98.6/97.5     | HIT         | HIT         | HIT        
+   CODX-1   A 2020-04-16 |  100.0 |  100.0 | 26.5/100.0/99.9    | HIT         | HIT         | HIT        
+   CVNA-1   A 2020-06-02 |   82.4 |   82.4 | 77.6/82.4/62.1     | HIT         | MISS        | MISS       
+   CWH-2    A 2020-05-06 |   14.7 |   98.5 | 98.5/14.7/69.2     | EARLY-6     | MISS        | MISS       
+   LVGO-4   A 2020-07-06 |   97.3 |   98.6 | 93.8/97.3/98.6     | HIT         | EARLY-9     | HIT        
+   NVAX     A 2020-06-15 |   99.7 |   99.9 | 49.9/99.7/99.9     | MISS        | MISS        | MISS       
+   OPK-2    A 2020-07-17 |   97.4 |   98.9 | 98.9/97.4/98.3     | HIT         | MISS        | HIT        
+   OSTK-2   A 2020-06-19 |   99.6 |   99.6 | 88.3/99.6/99.0     | LATE+2      | LATE+2      | LATE+2     
+   PLUG     A 2020-06-23 |   71.4 |   96.7 | 95.4/71.4/96.7     | HIT         | MISS        | MISS       
+   SRNE-2   A 2020-07-30 |   99.0 |   99.0 | 94.0/99.0/96.3     | LATE+1      | LATE+1      | LATE+1     
+   PRTS     A 2020-07-08 |   99.6 |   99.6 | 89.7/99.6/99.2     | HIT         | HIT         | HIT        
+   DFS      A 2020-05-26 |    9.2 |   72.8 | 72.8/9.2/7.1       | HIT         | MISS        | MISS       
+   QUMU     A 2020-08-10 |    n/a |    n/a | 62.8/97.9/94.8     | MISS(8/10)  | MISS(8/10)  | MISS(8/10)   (outside the $2/$5M universe at D; would rank RS63 97.9, RSbest 97.9 if added)
+   ARCT     B 2020-07-13 |   98.9 |   99.3 | 98.2/98.9/99.3     | HIT         | HIT         | HIT        
+   HL       B 2020-08-04 |   96.1 |   98.8 | 98.8/96.1/94.7     | HIT         | MISS        | HIT        
+   IBIO-1   B 2020-07-15 |   98.1 |   99.8 | 98.1/98.1/99.8     | HIT         | HIT         | HIT        
+   OPK-1    B 2020-06-29 |   94.6 |   96.4 | 95.9/94.6/96.4     | EARLY-14    | MISS        | MISS       
+   OPK-3    B 2020-08-06 |   97.3 |   98.7 | 96.4/97.3/98.7     | MISS        | MISS        | MISS       
+   PENN-2   B 2020-06-23 |   98.2 |   98.2 | 46.2/98.2/85.7     | HIT         | HIT         | HIT        
+   PENN-3   B 2020-08-06 |   97.7 |   97.7 | 95.0/97.7/79.0     | HIT         | EARLY-31    | EARLY-31   
+   RUN      B 2020-08-04 |   98.6 |   99.2 | 99.2/98.6/96.6     | MISS        | MISS        | MISS       
+   TTOO     B 2020-08-10 |    n/a |    n/a | 91.4/99.1/96.0     | MISS(8/10)  | MISS(8/10)  | MISS(8/10)   (outside the $2/$5M universe at D; would rank RS63 99.1, RSbest 99.1 if added)
+   NAIL     B 2020-08-10 |   97.0 |   98.3 | 98.3/97.0/4.2      | MISS(8/10)  | MISS(8/10)  | MISS(8/10) 
+   V3 (no RS gate)    HIT 14 | LATE 2 | EARLY 2 | MISS 6 | caught (HIT+LATE) 16/24
+   V3 + RS63 >= 98    HIT 6 | LATE 2 | EARLY 2 | MISS 14 | caught (HIT+LATE) 8/24
+   V3 + RSbest >= 98  HIT 10 | LATE 2 | EARLY 1 | MISS 11 | caught (HIT+LATE) 12/24
+   reproduction of v1_check_variant.txt's V3 tally {'HIT': 14, 'LATE': 2, 'EARLY': 2, 'MISS': 6}: PASS
+
+=== THE 4 SECONDARY ===
+   setup    t his day    |   RS63 | RSbest | r21/r63/r126 pct   | V3          | V3+RS63     | V3+RSbest  
+   CLSK     B 2020-07-22 |   98.4 |   99.7 | 99.7/98.4/-        | HIT         | HIT         | HIT        
+   INO-3    A 2020-04-20 |   99.6 |   99.6 | 23.1/99.6/99.6     | MISS        | MISS        | MISS       
+   INO-4    B 2020-06-23 |   93.9 |   99.5 | 53.6/93.9/99.5     | HIT         | MISS        | HIT        
+   TRVN     B 2020-07-15 |    n/a |    n/a | 96.1/97.9/96.8     | MISS        | MISS        | MISS         (outside the $2/$5M universe at D; would rank RS63 97.9, RSbest 97.9 if added)
+   V3 (no RS gate)    HIT 2 | LATE 0 | EARLY 0 | MISS 2 | caught (HIT+LATE) 2/4
+   V3 + RS63 >= 98    HIT 1 | LATE 0 | EARLY 0 | MISS 3 | caught (HIT+LATE) 1/4
+   V3 + RSbest >= 98  HIT 2 | LATE 0 | EARLY 0 | MISS 2 | caught (HIT+LATE) 2/4
+   reproduction of v1_check_variant.txt's V3 tally {'HIT': 2, 'MISS': 2}: PASS
+
+Readings: the RS gate is read on the fire's own watch night (D = that fire's E - 1), so a LATE fire is gated on
+its own day; "n/a" = the name is outside the $2/$5M universe that day, so it cannot pass any RS gate there.

@@ -1,0 +1,228 @@
+BREAKOUT v1 VARIANTS against his dated good setups (2020-08-10 review) — free, local, analysis only
+Bars: cb702_pre_v2 daily_closes_all + daily_raw_close, rows dated 2019-01-02 .. 2020-08-10 only (v1_check.load). Tickers evaluated: 7946 
+Variants (everything else exactly v1_check.py: prior move, higher lows, SURF one-average >= 5 within 1.0 ADR,
+tightening <= 1.1x, volume >= 1.2x the 50-session mean, data guard):
+   V0 = v1 as checked: base anchor on | level = base high | universe raw close >= $5, 20-session median $vol >= $10M
+   V1 = V0 without the base anchor
+   V2 = V1 with level = the highest high of the last 5 sessions to D (D-4..D)
+   V3 = V2 with universe raw close >= $2, 20-session median $vol >= $5M
+   V4 = V3 with level = the highest high of the last 10 sessions to D (D-9..D)
+RS >= 98 and the market phase are NOT gates of any variant; the fires-per-week block shows two RS stand-ins beside.
+
+=== 0. Reproduction of v1_check.txt ===
+   V0 == v1_check verdict "main" and V1 == "no_anchor" on every evaluated day: his names PASS; universe-wide candidates 7634 equal, 0 differ PASS
+   V0 24 tally               PASS  got {'MISS': 20, 'HIT': 3, 'LATE': 1}  v1_check.txt {'HIT': 3, 'LATE': 1, 'MISS': 20}
+   V0 4 tally                PASS  got {'MISS': 3, 'HIT': 1}  v1_check.txt {'HIT': 1, 'MISS': 3}
+   V0 fire-days/week         PASS  got {'median': 17.0, 'q1': 6.5, 'q3': 27.5, 'max': 95.0, 'total': 647.0}  v1_check.txt {'median': 17, 'q1': 6, 'q3': 28, 'max': 95, 'total': 647}
+   V0 names total            PASS  got 603.0  v1_check.txt 603
+   V0 +RS63 fire-days/week   PASS  got {'median': 2.0, 'q1': 0.0, 'q3': 3.0, 'max': 6.0, 'total': 47.0}  v1_check.txt {'median': 2, 'q1': 0, 'q3': 3, 'max': 6, 'total': 47}
+   V1 24 tally               PASS  got {'MISS': 14, 'HIT': 7, 'LATE': 3}  v1_check.txt {'HIT': 7, 'LATE': 3, 'MISS': 14}
+   V1 4 tally                PASS  got {'LATE': 1, 'MISS': 2, 'HIT': 1}  v1_check.txt {'HIT': 1, 'LATE': 1, 'MISS': 2}
+   V1 fire-days/week         PASS  got {'median': 38.0, 'q1': 14.0, 'q3': 68.0, 'max': 229.0, 'total': 1479.0}  v1_check.txt {'median': 38, 'q1': 14, 'q3': 68, 'max': 229, 'total': 1479}
+   V1 names total            PASS  got 1264.0  v1_check.txt 1264
+   V1 +RS63 fire-days/week   PASS  got {'median': 5.0, 'q1': 3.0, 'q3': 10.0, 'max': 16.0, 'total': 166.0}  v1_check.txt {'median': 5, 'q1': 3, 'q3': 10, 'max': 16, 'total': 166}
+   OVERALL: V0 and V1 REPRODUCE v1_check.txt
+
+=== 1. THE 24 (agreed, high/medium, tier A+B): each variant on his breakout day ===
+   cell = HIT / LATE+k (k sessions after his day) / EARLY-k (k sessions before, same base) / MISS; MISS(8/10) = his day is the file's last
+   setup    t his day    | V0          | V1          | V2          | V3          | V4         
+   CELH-1   A 2020-06-23 | MISS        | MISS        | MISS        | HIT         | HIT        
+   CELH-3   A 2020-08-05 | MISS        | HIT         | HIT         | HIT         | HIT        
+   CODX-1   A 2020-04-16 | MISS        | MISS        | HIT         | HIT         | HIT        
+   CVNA-1   A 2020-06-02 | HIT         | HIT         | HIT         | HIT         | HIT        
+   CWH-2    A 2020-05-06 | MISS        | MISS        | EARLY-6     | EARLY-6     | EARLY-6    
+   LVGO-4   A 2020-07-06 | MISS        | HIT         | HIT         | HIT         | HIT        
+   NVAX     A 2020-06-15 | MISS        | MISS        | MISS        | MISS        | MISS       
+   OPK-2    A 2020-07-17 | MISS        | MISS        | MISS        | HIT         | HIT        
+   OSTK-2   A 2020-06-19 | MISS        | LATE+2      | LATE+2      | LATE+2      | LATE+2     
+   PLUG     A 2020-06-23 | MISS        | HIT         | HIT         | HIT         | HIT        
+   SRNE-2   A 2020-07-30 | MISS        | LATE+1      | LATE+1      | LATE+1      | LATE+1     
+   PRTS     A 2020-07-08 | MISS        | MISS        | MISS        | HIT         | HIT        
+   DFS      A 2020-05-26 | LATE+1      | LATE+1      | HIT         | HIT         | HIT        
+   QUMU     A 2020-08-10 | MISS(8/10)  | MISS(8/10)  | MISS(8/10)  | MISS(8/10)  | MISS(8/10) 
+   ARCT     B 2020-07-13 | MISS        | MISS        | HIT         | HIT         | HIT        
+   HL       B 2020-08-04 | MISS        | HIT         | HIT         | HIT         | HIT        
+   IBIO-1   B 2020-07-15 | MISS        | MISS        | MISS        | HIT         | HIT        
+   OPK-1    B 2020-06-29 | MISS        | MISS        | MISS        | EARLY-14    | EARLY-14   
+   OPK-3    B 2020-08-06 | MISS        | MISS        | MISS        | MISS        | MISS       
+   PENN-2   B 2020-06-23 | HIT         | HIT         | HIT         | HIT         | HIT        
+   PENN-3   B 2020-08-06 | HIT         | HIT         | HIT         | HIT         | HIT        
+   RUN      B 2020-08-04 | MISS        | MISS        | MISS        | MISS        | MISS       
+   TTOO     B 2020-08-10 | MISS(8/10)  | MISS(8/10)  | MISS(8/10)  | MISS(8/10)  | MISS(8/10) 
+   NAIL     B 2020-08-10 | MISS(8/10)  | MISS(8/10)  | MISS(8/10)  | MISS(8/10)  | MISS(8/10) 
+   failed gates on his day, per variant (- = all pass):
+   CELH-1   V0: universe | V1: universe | V2: universe | V3: - | V4: -
+   CELH-3   V0: close_above_pole_high | V1: - | V2: - | V3: - | V4: -
+   CODX-1   V0: level | V1: level | V2: - | V3: - | V4: -
+   CVNA-1   V0: - | V1: - | V2: - | V3: - | V4: -
+   CWH-2    V0: prior_move,level | V1: prior_move,level | V2: prior_move | V3: prior_move | V4: prior_move
+   LVGO-4   V0: close_above_pole_high | V1: - | V2: - | V3: - | V4: -
+   NVAX     V0: level,volume | V1: level,volume | V2: volume | V3: volume | V4: level,volume
+   OPK-2    V0: universe,close_above_pole_high | V1: universe | V2: universe | V3: - | V4: -
+   OSTK-2   V0: close_above_pole_high,higher_lows,surf | V1: higher_lows,surf | V2: higher_lows,surf | V3: higher_lows,surf | V4: higher_lows,surf
+   PLUG     V0: close_above_pole_high | V1: - | V2: - | V3: - | V4: -
+   SRNE-2   V0: level,volume | V1: level,volume | V2: volume | V3: volume | V4: level,volume
+   PRTS     V0: universe | V1: universe | V2: universe | V3: - | V4: -
+   DFS      V0: level | V1: level | V2: - | V3: - | V4: -
+   QUMU     V0: universe,level | V1: universe,level | V2: universe | V3: universe | V4: universe,level
+   ARCT     V0: level | V1: level | V2: - | V3: - | V4: -
+   HL       V0: close_above_pole_high | V1: - | V2: - | V3: - | V4: -
+   IBIO-1   V0: universe | V1: universe | V2: universe | V3: - | V4: -
+   OPK-1    V0: universe,tightening,volume | V1: universe,tightening,volume | V2: universe,tightening,volume | V3: tightening,volume | V4: tightening,volume
+   OPK-3    V0: higher_lows,surf,level,volume | V1: higher_lows,surf,level,volume | V2: higher_lows,surf,level,volume | V3: higher_lows,surf,level,volume | V4: higher_lows,surf,level,volume
+   PENN-2   V0: - | V1: - | V2: - | V3: - | V4: -
+   PENN-3   V0: - | V1: - | V2: - | V3: - | V4: -
+   RUN      V0: close_above_pole_high,higher_lows,surf,tightening | V1: higher_lows,surf,tightening | V2: higher_lows,surf,tightening | V3: higher_lows,surf,tightening | V4: higher_lows,surf,tightening
+   TTOO     V0: universe,level | V1: universe,level | V2: universe | V3: universe | V4: universe
+   NAIL     V0: close_above_pole_high,volume | V1: volume | V2: volume | V3: volume | V4: volume
+   TALLY            HIT   | LATE  | EARLY | MISS  | caught (HIT+LATE)
+   V0                   3 |     1 |     0 |    20 | 4/24
+   V1                   7 |     3 |     0 |    14 | 10/24
+   V2                  10 |     2 |     1 |    11 | 12/24
+   V3                  14 |     2 |     2 |     6 | 16/24
+   V4                  14 |     2 |     2 |     6 | 16/24
+   gate failures on his day (a row can fail several): 
+   V0: universe 7, prior_move 1, close_above_pole_high 8, higher_lows 3, surf 3, tightening 2, level 9, volume 5
+   V1: universe 7, prior_move 1, higher_lows 3, surf 3, tightening 2, level 9, volume 5
+   V2: universe 7, prior_move 1, higher_lows 3, surf 3, tightening 2, level 1, volume 5
+   V3: universe 2, prior_move 1, higher_lows 3, surf 3, tightening 2, level 1, volume 5
+   V4: universe 2, prior_move 1, higher_lows 3, surf 3, tightening 2, level 4, volume 5
+
+=== 1. THE 4 SECONDARY (disputed rows settled at medium): each variant on his breakout day ===
+   cell = HIT / LATE+k (k sessions after his day) / EARLY-k (k sessions before, same base) / MISS; MISS(8/10) = his day is the file's last
+   setup    t his day    | V0          | V1          | V2          | V3          | V4         
+   CLSK     B 2020-07-22 | MISS        | LATE+1      | LATE+1      | HIT         | HIT        
+   INO-3    A 2020-04-20 | MISS        | MISS        | MISS        | MISS        | MISS       
+   INO-4    B 2020-06-23 | HIT         | HIT         | HIT         | HIT         | HIT        
+   TRVN     B 2020-07-15 | MISS        | MISS        | MISS        | MISS        | MISS       
+   failed gates on his day, per variant (- = all pass):
+   CLSK     V0: universe,close_above_pole_high | V1: universe | V2: universe | V3: - | V4: -
+   INO-3    V0: level,volume | V1: level,volume | V2: volume | V3: volume | V4: volume
+   INO-4    V0: - | V1: - | V2: - | V3: - | V4: -
+   TRVN     V0: universe | V1: universe | V2: universe | V3: universe | V4: universe
+   TALLY            HIT   | LATE  | EARLY | MISS  | caught (HIT+LATE)
+   V0                   1 |     0 |     0 |     3 | 1/4
+   V1                   1 |     1 |     0 |     2 | 2/4
+   V2                   1 |     1 |     0 |     2 | 2/4
+   V3                   2 |     0 |     0 |     2 | 2/4
+   V4                   2 |     0 |     0 |     2 | 2/4
+   gate failures on his day (a row can fail several): 
+   V0: universe 2, close_above_pole_high 1, level 1, volume 1
+   V1: universe 2, level 1, volume 1
+   V2: universe 2, volume 1
+   V3: universe 1, volume 1
+   V4: universe 1, volume 1
+
+=== 2. Fires per week, EVERY stock, every E in 2020-02-03..2020-08-07 (27 Mon-Fri weeks) ===
+   fire-days = a stock firing on 2 days counts 2; names = unique stocks that week. RS percentiles over the
+   names passing THAT variant's universe gates at D (V0-V2: $5/$10M pool; V3-V4: $2/$5M pool).
+   variant          fire-days per week
+   V0 (no RS)       median 17 | middle half 6-28 | max 95 | min 0 | total 647 | 4.9 a night
+   V0 + RS63        median 2 | middle half 0-3 | max 6 | min 0 | total 47 | 0.4 a night
+   V0 + RSbest      median 3 | middle half 2-4 | max 12 | min 0 | total 91 | 0.7 a night
+   V1 (no RS)       median 38 | middle half 14-68 | max 229 | min 2 | total 1479 | 11.3 a night
+   V1 + RS63        median 5 | middle half 3-10 | max 16 | min 0 | total 166 | 1.3 a night
+   V1 + RSbest      median 8 | middle half 5-15 | max 27 | min 1 | total 278 | 2.1 a night
+   V2 (no RS)       median 67 | middle half 46-134 | max 348 | min 4 | total 2601 | 19.9 a night
+   V2 + RS63        median 6 | middle half 4-13 | max 22 | min 1 | total 228 | 1.7 a night
+   V2 + RSbest      median 11 | middle half 8-20 | max 35 | min 2 | total 378 | 2.9 a night
+   V3 (no RS)       median 94 | middle half 64-186 | max 462 | min 4 | total 3524 | 26.9 a night
+   V3 + RS63        median 9 | middle half 7-16 | max 24 | min 2 | total 291 | 2.2 a night
+   V3 + RSbest      median 16 | middle half 10-24 | max 38 | min 4 | total 486 | 3.7 a night
+   V4 (no RS)       median 83 | middle half 50-155 | max 420 | min 3 | total 3075 | 23.5 a night
+   V4 + RS63        median 8 | middle half 6-12 | max 20 | min 1 | total 251 | 1.9 a night
+   V4 + RSbest      median 13 | middle half 10-22 | max 33 | min 2 | total 414 | 3.2 a night
+   variant          unique names per week
+   V0 (no RS)       median 16 | middle half 6-26 | max 87 | min 0 | total 603
+   V0 + RS63        median 1 | middle half 0-2 | max 6 | min 0 | total 42
+   V0 + RSbest      median 2 | middle half 2-4 | max 10 | min 0 | total 85
+   V1 (no RS)       median 33 | middle half 12-61 | max 212 | min 2 | total 1264
+   V1 + RS63        median 4 | middle half 2-6 | max 15 | min 0 | total 127
+   V1 + RSbest      median 7 | middle half 5-10 | max 23 | min 1 | total 227
+   V2 (no RS)       median 54 | middle half 37-119 | max 289 | min 2 | total 2192
+   V2 + RS63        median 6 | middle half 3-9 | max 18 | min 1 | total 178
+   V2 + RSbest      median 11 | middle half 7-16 | max 28 | min 2 | total 310
+   V3 (no RS)       median 73 | middle half 50-158 | max 377 | min 2 | total 2962
+   V3 + RS63        median 9 | middle half 5-11 | max 18 | min 2 | total 227
+   V3 + RSbest      median 15 | middle half 10-20 | max 30 | min 2 | total 396
+   V4 (no RS)       median 66 | middle half 40-140 | max 349 | min 2 | total 2590
+   V4 + RS63        median 8 | middle half 4-10 | max 14 | min 1 | total 197
+   V4 + RSbest      median 10 | middle half 8-18 | max 26 | min 2 | total 340
+
+   week of | sess | V0 -/63/best | V1 -/63/best | V2 -/63/best | V3 -/63/best | V4 -/63/best   (fire-days)
+   2020-02-03 | 5 | 14/0/5        | 32/2/8        | 44/4/11       | 54/8/15       | 46/7/12      
+   2020-02-10 | 5 | 17/4/7        | 32/11/15      | 54/16/21      | 70/17/22      | 65/16/21     
+   2020-02-17 | 4 | 23/2/3        | 42/8/12       | 67/11/16      | 83/11/20      | 75/9/17      
+   2020-02-24 | 5 | 4/3/3         | 8/5/6         | 10/5/7        | 15/7/8        | 13/7/7       
+   2020-03-02 | 5 | 1/0/0         | 2/0/1         | 4/1/2         | 9/4/6         | 4/1/2        
+   2020-03-09 | 5 | 0/0/0         | 3/2/2         | 10/3/4        | 13/6/7        | 11/4/5       
+   2020-03-16 | 5 | 2/2/2         | 3/3/3         | 4/4/4         | 4/4/4         | 3/3/3        
+   2020-03-23 | 5 | 2/1/2         | 5/4/5         | 12/7/8        | 17/9/10       | 16/8/9       
+   2020-03-30 | 5 | 7/4/4         | 8/5/5         | 53/15/15      | 64/17/19      | 50/10/12     
+   2020-04-06 | 4 | 6/2/4         | 7/2/5         | 67/5/14       | 94/5/16       | 74/5/13      
+   2020-04-13 | 5 | 14/4/12       | 23/12/20      | 75/16/29      | 103/24/36     | 94/20/32     
+   2020-04-20 | 5 | 21/1/4        | 37/11/15      | 72/15/26      | 98/16/30      | 85/14/25     
+   2020-04-27 | 5 | 5/0/2         | 20/5/9        | 43/5/10       | 70/7/14       | 63/6/12      
+   2020-05-04 | 5 | 13/2/3        | 33/9/13       | 47/12/17      | 63/15/24      | 51/11/18     
+   2020-05-11 | 5 | 19/0/2        | 50/3/7        | 69/7/12       | 94/10/16      | 83/10/16     
+   2020-05-18 | 5 | 11/0/1        | 48/3/4        | 54/3/4        | 82/6/11       | 73/6/10      
+   2020-05-25 | 4 | 95/0/0        | 172/4/4       | 348/5/5       | 462/8/10      | 420/8/10     
+   2020-06-01 | 5 | 87/3/4        | 229/5/18      | 302/6/19      | 415/11/24     | 386/11/23    
+   2020-06-08 | 5 | 21/1/2        | 65/3/6        | 96/6/9        | 144/9/10      | 118/8/9      
+   2020-06-15 | 5 | 30/1/4        | 93/13/25      | 149/16/29     | 191/17/33     | 143/13/28    
+   2020-06-22 | 5 | 65/6/9        | 125/16/27     | 206/22/35     | 261/22/38     | 218/17/33    
+   2020-06-29 | 4 | 14/0/1        | 38/3/8        | 65/3/9        | 105/2/12      | 87/2/9       
+   2020-07-06 | 5 | 55/2/2        | 110/11/18     | 169/11/22     | 224/17/31     | 196/17/24    
+   2020-07-13 | 5 | 27/2/4        | 58/5/8        | 124/7/11      | 169/11/19     | 148/10/17    
+   2020-07-20 | 5 | 23/3/5        | 51/4/7        | 140/4/8       | 188/7/14      | 169/7/13     
+   2020-07-27 | 5 | 28/1/1        | 71/5/8        | 129/5/9       | 184/8/12      | 162/8/10     
+   2020-08-03 | 5 | 43/3/5        | 114/12/19     | 188/14/22     | 248/13/25     | 222/13/24    
+   RS pool size at D ($5/$10M): median 2331, min 2246, max 2563
+   RS pool size at D ($2/$5M): median 2953, min 2855, max 3264
+   candidates evaluated after the shared prefilter: 7634
+
+=== 3. Noise on his 23 names: universe-wide fires (E 2020-02-03..2020-08-07) NOT credited to his 28 setups ===
+   credited = the fire counted HIT / LATE / EARLY for one of his 28 setups under that variant (v1_check 1b's rule).
+   of the rest: "on" = E is a date of ANY dated TSV row of his on that name (any tier/confidence); "near" = within
+   1-2 sessions of one; "unnamed" = neither. 2020-08-10 fires sit outside this window (fires-per-week window).
+   V0: fires on his names 11 | credited 5 | NOT credited 6 (on a dated row of his 2, near one 1, unnamed 3) | not-credited passing RS63 4, RSbest 5
+   V1: fires on his names 46 | credited 12 | NOT credited 34 (on a dated row of his 3, near one 6, unnamed 25) | not-credited passing RS63 22, RSbest 31
+   V2: fires on his names 68 | credited 15 | NOT credited 53 (on a dated row of his 4, near one 8, unnamed 41) | not-credited passing RS63 27, RSbest 37
+   V3: fires on his names 98 | credited 20 | NOT credited 78 (on a dated row of his 5, near one 11, unnamed 62) | not-credited passing RS63 39, RSbest 48
+   V3 per name (not-credited fires; [his ...] = his dated rows within 2 sessions):
+     ARCT  credited 1 (2020-07-13) | not credited 6: 2020-05-18 (RS+63+best), 2020-05-19 (RS+63+best), 2020-06-19 (RS+63+best), 2020-06-23 (RS+63+best), 2020-06-24 (RS+63+best), 2020-06-25 (RS+63+best)
+     CELH  credited 2 (2020-06-23, 2020-08-05) | not credited 6: 2020-06-05 (RS+best), 2020-06-26 (RS+63+best), 2020-07-08 [on: his C/medium 2020-07-08] (RS+63+best), 2020-07-09 [near: his C/medium 2020-07-08] (RS+63+best), 2020-07-13 (RS+63+best), 2020-08-06 [near: his A/high 2020-08-05] (RS+63+best)
+     CLSK  credited 1 (2020-07-22) | not credited 1: 2020-07-23 [near: his B/medium 2020-07-22] (RS+63+best)
+     CODX  credited 1 (2020-04-16) | not credited 6: 2020-02-10 (RS+63+best), 2020-02-24 (RS+63+best), 2020-05-13 (RS+63+best), 2020-07-21 [on: his U/low 2020-07-21] (RS+best), 2020-07-31 (RS+best), 2020-08-03 (RS+best)
+     CVNA  credited 1 (2020-06-02) | not credited 4: 2020-02-18, 2020-02-19, 2020-04-07, 2020-04-09
+     CWH   credited 1 (2020-04-28) | not credited 3: 2020-04-27, 2020-06-08 (RS+63+best), 2020-06-19 (RS+63+best)
+     DFS   credited 1 (2020-05-26) | not credited 2: 2020-05-27 [near: his A/medium 2020-05-26], 2020-07-23
+     HL    credited 1 (2020-08-04) | not credited 5: 2020-02-06, 2020-05-15, 2020-06-10, 2020-06-30, 2020-08-05 [near: his B/high 2020-08-04] (RS+best)
+     IBIO  credited 1 (2020-07-15) | not credited 0: -
+     INO   credited 1 (2020-06-23) | not credited 2: 2020-02-27 (RS+63+best), 2020-07-13 [on: his C/low 2020-07-13] (RS+63+best)
+     LVGO  credited 1 (2020-07-06) | not credited 7: 2020-02-12, 2020-06-16 [on: his C/low 2020-06-16] (RS+63+best), 2020-06-17 [near: his C/low 2020-06-16] (RS+63+best), 2020-06-19 (RS+63+best), 2020-06-22 (RS+63+best), 2020-07-07 [near: his A/medium 2020-07-06] (RS+best), 2020-08-04 (RS+63+best)
+     NAIL  credited 0 (-) | not credited 5: 2020-04-27, 2020-04-28, 2020-05-08, 2020-06-05, 2020-06-08
+     NVAX  credited 0 (-) | not credited 5: 2020-02-26 (RS+63+best), 2020-04-08 (RS+63+best), 2020-04-20 (RS+63+best), 2020-07-17 (RS+63+best), 2020-08-05 (RS+63+best)
+     NXH   credited 1 (2020-06-23) | not credited 7: 2020-04-08, 2020-04-09 (RS+best), 2020-05-06 (RS+63+best), 2020-05-07 (RS+63+best), 2020-05-12 (RS+63+best), 2020-06-02 [on: his A/low 2020-06-02] (RS+63+best), 2020-07-06 (RS+63+best)
+     OPK   credited 2 (2020-06-09, 2020-07-17) | not credited 1: 2020-06-08
+     PENN  credited 2 (2020-06-23, 2020-08-06) | not credited 5: 2020-04-14, 2020-04-27, 2020-04-29, 2020-05-19, 2020-06-05 [near: his A/low 2020-06-04] (RS+best)
+     PLUG  credited 1 (2020-06-23) | not credited 4: 2020-02-18 (RS+best), 2020-05-28, 2020-06-04, 2020-06-19 [near: his A/medium 2020-06-23]
+     PRTS  credited 1 (2020-07-08) | not credited 3: 2020-06-16 (RS+63+best), 2020-06-25 (RS+63+best), 2020-07-09 [near: his A/high 2020-07-08] (RS+63+best)
+     QUMU  credited 0 (-) | not credited 0: -
+     RUN   credited 0 (-) | not credited 2: 2020-02-04, 2020-02-05
+     SRNE  credited 1 (2020-07-31) | not credited 3: 2020-04-03, 2020-05-12, 2020-06-25 [near: his C/low 2020-06-24] (RS+63+best)
+     TRVN  credited 0 (-) | not credited 1: 2020-08-03 (RS+63+best)
+     TTOO  credited 0 (-) | not credited 0: -
+   V4: fires on his names 90 | credited 20 | NOT credited 70 (on a dated row of his 4, near one 10, unnamed 56) | not-credited passing RS63 36, RSbest 44
+   prefilter cross-check (universe-wide fires on his names == the unfiltered per-name scan, E <= 08-07): V0 PASS (11 universe-wide vs 11 per-name); V1 PASS (46 universe-wide vs 46 per-name); V2 PASS (68 universe-wide vs 68 per-name); V3 PASS (98 universe-wide vs 98 per-name); V4 PASS (90 universe-wide vs 90 per-name)
+
+=== Readings ===
+   all gates other than the three moved axes are v1_check.py's own functions (structure, derive, the run/tight/volume
+     arrays) — imported, not re-implemented; V0/V1 are checked against v1_check.verdicts on every evaluated day;
+   level k5/k10 = max high of D-4..D / D-9..D, high(E) strictly above (the same expressions v1_check printed as diag);
+   the prior move, the base (P+1..D, 10..45 sessions) and higher lows still hang off the module's pole top P in every
+     variant — only the breakout LEVEL moves; EARLY = a fire after his P and before his day (as v1_check);
+   $2/$5M universe: RAW close >= $2 at D and the 20-session median of adjusted close x volume >= $5M at D;
+   RS pools: names with >= 87 bars, a known 63-session return at D, and the variant's universe at D, in ticker order
+     (v1_check's pool, reproduced); RSbest = max of the available 21/63/126 percentiles (a missing horizon is skipped);
+   V3 noise counts fires with E <= 2020-08-07 (the fires-per-week window); a 2020-08-10 fire is not in it.
