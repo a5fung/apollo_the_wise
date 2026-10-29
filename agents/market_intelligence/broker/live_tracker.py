@@ -943,11 +943,10 @@ async def _load_exit_state(
     # dead on a book whose longest hold is 2 days.
     #
     # 40 calendar days back covers the 20 trading closes SMA20 needs with room for holidays.
-    # prior_closes hold the closes BEFORE alert_date only. ⚠ Corrected 2026-10-28: this comment
-    # said the entry day's own close "arrives through running_closes on the first daily pass" —
-    # it does not (the alert-day pass is skipped), so the line has excluded it since #548 (a
-    # separate change, his call: it moves live stop values). The window now reaches alert_date only
-    # so that bar can be split off as `entry_day_close` for the trail ARMING.
+    # prior_closes = the closes BEFORE alert_date (the line and ADR20 read only these; the line has
+    # never included the entry day's own close — a separate change, his call). The entry-day bar
+    # is fetched in the same window but split off as `entry_day_close`, read only by the trail
+    # ARMING (2026-10-28, CLS).
     #
     # FAIL-SOFT ON PURPOSE: any failure leaves prior_closes empty, which is byte-identical
     # to the pre-#548 behavior. A history hiccup must never abort a position-management
@@ -956,21 +955,18 @@ async def _load_exit_state(
     prior_bars: list[dict] = []
     entry_day_close: float | None = None
     try:
-        # 2026-10-28 (CLS review): the window now reaches the ENTRY DAY so its own close can arm the
-        # trail (`exit_logic._trail_armed`); the entry-day bar is split off and never enters
-        # prior_closes / prior_bars, so the line and ADR20 read exactly the closes they read before.
         _hist = await get_index_history(
             trade["ticker"],
             (alert_date - timedelta(days=40)).strftime("%Y-%m-%d"),
             alert_date.strftime("%Y-%m-%d"),
         )
-        for b in list(_hist or []):
+        for b in _hist or []:
             ts = b.get("t")
             if ts is not None and datetime.fromtimestamp(ts / 1000, tz=_ET_ZONE).date() >= alert_date:
                 if b.get("c") is not None:
                     entry_day_close = float(b["c"])
-                continue
-            prior_bars.append(b)
+            else:
+                prior_bars.append(b)
         prior_closes = [float(b["c"]) for b in prior_bars if b.get("c") is not None]
     except Exception as e:  # loud-ok: display/indicator input, never the stop itself
         logger.warning(
@@ -989,8 +985,7 @@ async def _load_exit_state(
         # Not part of the persisted trade state — recomputed each pass from price history,
         # so there is nothing to migrate and nothing to go stale.
         "prior_closes": prior_closes,
-        # 2026-10-28: the entry day's own close — read ONLY by the trail arming (never the line).
-        "entry_day_close": entry_day_close,
+        "entry_day_close": entry_day_close,     # arming input only; never part of the line
         # #687 B: the depth rule's ADR20 (the 20 sessions BEFORE entry, from the SAME bars as
         # prior_closes). None below 10 usable sessions — including when the fetch failed this
         # pass — and the depth stop then rests at the hard/breakeven floor, as the analysis
@@ -1056,8 +1051,8 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         step = apply_daily_exit_step(state, daily_bars[0], today,
                                           # #548: the trail is the STOCK's MA, not our hold-period mean
                                           prior_closes=state.get("prior_closes"),
-                                          # 2026-10-28 (CLS): the line governs only after a close above it
-                                          trail_arm_on_close_above=True, entry_day_close=state.get("entry_day_close"),
+                                          trail_arm_on_close_above=True,
+                                          entry_day_close=state.get("entry_day_close"),
                                      integer_partial_shares=True,
                                      skip_partial_decision=True)
 
@@ -1126,8 +1121,8 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
             step = apply_daily_exit_step(state, daily_bars[0], today,
                                               # #548: the trail is the STOCK's MA, not our hold-period mean
                                               prior_closes=state.get("prior_closes"),
-                                              # 2026-10-28 (CLS): the line governs only after a close above it
-                                              trail_arm_on_close_above=True, entry_day_close=state.get("entry_day_close"),
+                                              trail_arm_on_close_above=True,
+                                              entry_day_close=state.get("entry_day_close"),
                                          integer_partial_shares=True,
                                          skip_hard_stop_close=True,
                                          skip_partial_decision=True)
@@ -1369,8 +1364,8 @@ async def run_partial_exits(today: date | None = None) -> list[dict]:
         step = apply_daily_exit_step(state, daily_bars[0], today,
                                           # #548: the trail is the STOCK's MA, not our hold-period mean
                                           prior_closes=state.get("prior_closes"),
-                                          # 2026-10-28 (CLS): the line governs only after a close above it
-                                          trail_arm_on_close_above=True, entry_day_close=state.get("entry_day_close"),
+                                          trail_arm_on_close_above=True,
+                                          entry_day_close=state.get("entry_day_close"),
                                      integer_partial_shares=True,
                                      skip_hard_stop_close=True,
                                      skip_partial_decision=bool(PROFIT_TRIGGER_R))

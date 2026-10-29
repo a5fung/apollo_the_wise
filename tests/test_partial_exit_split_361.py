@@ -360,14 +360,10 @@ def test_load_exit_state_success_builds_expected_state_and_bars(monkeypatch):
 
 
 def test_load_exit_state_fetches_prior_closes_from_BEFORE_the_entry(monkeypatch):
-    """The trail must average the STOCK's history, not our holding period (#548, operator:
-    *"10d MA exists regardless of how long we traded it"*), and never count the entry day twice.
-
-    2026-10-28 (CLS review): the window now REACHES alert_date so the entry day's own close can arm
-    the trail (`exit_logic._trail_armed`), and the entry-day bar is SPLIT OFF by its timestamp — it
-    never enters `prior_closes` (nor ADR20), so the line reads exactly the closes it read before. The
-    old docstring's premise (the entry-day close "arrives via running_closes on the first pass") was
-    false: the alert-day pass is skipped, so that close was in neither list."""
+    """The trail averages the STOCK's history, not our holding period (#548, operator: *"10d MA
+    exists regardless of how long we traded it"*). The window reaches the entry day, whose bar is
+    split off by timestamp as `entry_day_close` (the trail arming's input, 2026-10-28) and never
+    enters `prior_closes` (nor ADR20)."""
     from datetime import datetime as _dt
     from zoneinfo import ZoneInfo as _Z
     calls = []
