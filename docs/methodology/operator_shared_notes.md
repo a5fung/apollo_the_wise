@@ -2720,3 +2720,7 @@ Ruling recorded (breakout v1, paper): the breakdown check is IN v1 — at the wa
 
 Ruling recorded (breakout v1, paper): the strength percentile is ranked against EVERY security above $2 / $5M a day, funds and ETFs included; the type rule (stocks, ADRs, single-asset funds) decides only who can be LISTED.
 
+> "Go with rec" (2026-10-29, to the two breakout v1 PAPER mechanics put to him after the phase-2 build: (1) the stop at the fill, (2) whether a +2R touch counts as the first third sold)
+
+Rulings recorded (breakout v1, paper): (1) **the stop at the fill** — the resting order's stop is set from the last completed minute, so a flush inside the fill minute is missed; one minute after a fill the system reads the TRUE low through the fill minute: if the 1-ADR width rule fails on it, the position is sold at once; otherwise the stop is lowered to that true low (the dollar risk may then sit slightly above what was sized). (2) **the first third at +2R** — follow what ACTUALLY FILLED: a +2R touch whose resting limit did not fill is NOT a third sold (the trail does not start early and the session-3 third still applies); live then departs from the replay on exactly those paths, and the difference is recorded.
+
