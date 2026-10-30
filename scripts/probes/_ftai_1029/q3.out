@@ -1,0 +1,4 @@
+SET
+scan_date|listed|best_theme|best_stage|corr|n_sessions|shortlist|nascent_shortlist|fit_status|fit_theme|rationale|belongs_paying|reason|acting_in_theme
+2026-10-29|f|Building Products & HVAC/Industrial Motion Rotation|Mainstream|0.35|60|[{"theme": "Building Products & HVAC/Industrial Motion Rotation", "stage": "Mainstream", "corr": 0.3544}]||rejected||Aviation leasing; unrelated to building products/HVAC theme|f|shortlisted_rejected|f
+(1 row)

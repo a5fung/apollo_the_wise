@@ -1,0 +1,38 @@
+SET
+== themes listing FTAI, last 10 days
+theme_date|name|stage|source
+2026-10-29|Defense Electronics & Aircraft Aftermarket Services|Nascent|shadow_promoted
+2026-10-29|Railcar & Transportation Equipment Leasing|Nascent|shadow_promoted
+(2 rows)
+== defense-named themes, last 3 days (stage, size, FTAI in?)
+theme_date|name|stage|n|has_ftai
+2026-10-29|Defense & Aerospace Contractors & Suppliers|Accelerating|10|f
+2026-10-29|Defense Electronics & Aircraft Aftermarket Services|Nascent|3|t
+2026-10-29|Defensive Consumer Staples Rotation|Mainstream|15|f
+2026-10-29|Government Services Contractors: Defense Engineering & Benefits Administration|Mainstream|2|f
+2026-10-29|Regulated Electric Utilities Defensive Rotation|Mainstream|22|f
+2026-10-28|Defense & Aerospace Contractors & Suppliers|Accelerating|6|f
+2026-10-28|Defensive Consumer Staples Rotation|Mainstream|21|f
+2026-10-28|Government Services Contractors: Defense Engineering & Benefits Administration|Nascent|2|f
+2026-10-28|Regulated Electric Utilities Defensive Rotation|Mainstream|20|f
+2026-10-27|Defense & Aerospace Contractors & Suppliers|Accelerating|6|f
+2026-10-27|Defensive Consumer Staples Rotation|Mainstream|27|f
+2026-10-27|Defensive Consumer Staples Rotation (Inflation-Driven)|Retired|0|f
+2026-10-27|Government Services Contractors: Defense Engineering & Benefits Administration|Nascent|2|f
+2026-10-27|Regulated Electric Utilities Defensive Rotation|Mainstream|20|f
+2026-10-26|Defense & Aerospace Contractors & Suppliers|Accelerating|5|f
+2026-10-26|Defense & Aerospace Electronics and Subsystems Suppliers|Retired|0|f
+2026-10-26|Defensive Consumer Staples Rotation (Inflation-Driven)|Nascent|20|f
+2026-10-26|Government Services Contractors: Defense Engineering & Benefits Administration|Nascent|2|f
+2026-10-26|Regulated Electric Utilities Defensive Rotation|Mainstream|20|f
+(19 rows)
+== the scan
+t|in_active_theme
+09:10:00|f
+09:15:00|f
+09:30:00|f
+09:45:00|f
+09:50:00|f
+09:55:00|f
+(6 rows)
+unterminated quoted string
