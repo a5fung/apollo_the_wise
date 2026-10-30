@@ -2724,3 +2724,7 @@ Ruling recorded (breakout v1, paper): the strength percentile is ranked against 
 
 Rulings recorded (breakout v1, paper): (1) **the stop at the fill** — the resting order's stop is set from the last completed minute, so a flush inside the fill minute is missed; one minute after a fill the system reads the TRUE low through the fill minute: if the 1-ADR width rule fails on it, the position is sold at once; otherwise the stop is lowered to that true low (the dollar risk may then sit slightly above what was sized). (2) **the first third at +2R** — follow what ACTUALLY FILLED: a +2R touch whose resting limit did not fill is NOT a third sold (the trail does not start early and the session-3 third still applies); live then departs from the replay on exactly those paths, and the difference is recorded.
 
+> "Friday, and option a" (2026-10-29 late, after tonight's 21:15-22:15 ET window closed before his "Deploy" reached the box: (1) deploy in Friday's 12:00-13:00 ET window rather than an override tonight; (2) the +2R third on breakout v1 PAPER)
+
+Rulings recorded: (1) the GKOS fix (#712) and breakout v1's nightly list deploy in the Friday 2026-10-30 12:00-13:00 ET window (both, then execution), no out-of-window override. (2) **Breakout v1 paper, a +2R touch whose resting limit did not fill:** on session 3, if the close is above the fill, CANCEL the still-resting +2R limit and sell the third at the close (one third, never two); and the stop stays where it was until a third ACTUALLY sells — placing the +2R limit does not by itself move the stop to breakeven.
+
