@@ -1,0 +1,12 @@
+SET
+et|event_type|detail
+09:36:30.705|orb_order_failed|
+09:36:30.276|entry_chase_cap_skipped|{"trade_id": 434, "ticker": "REGN", "orb_high": 869.88, "stop": 817.5000000000001}
+09:36:30.198|orb_bar_fetched|
+(3 rows)
+ticker|bar_size_minutes|status|orb_high|orb_low|entry_price|trigger_minute_et|skip_reason
+(0 rows)
+close|open_price|high_price|low_price|trade_date
+813.27|807.06|821.16|802.2|2026-10-28
+818.77|826.14|828.1899|811.63|2026-10-29
+(2 rows)
