@@ -308,6 +308,11 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
+### 2026-10-30 — breakout v1 PHASE 1 LIVE: the first night's list (DEPLOYED 10-30 12:00-12:08 ET, server `7acfed65`)
+
+17:55 ET (`scripts/probes/_bv1_first_night_1030/q1.out`): `breakout_v1_list_run` written, **27 names** on the list of a 4,097-name RS pool (2,814 listable, 2,801 with history), every stored row's gates all pass, the paper-chat message sent; 17:00 stored Polygon names for 13,257 of 14,202 security rows; funds kept 39, excluded 15 (leveraged / inverse 8, basket 4, two underlyings 2, no known underlying 1; 0 for a missing name); ZCSH listed (rank 2, rs 99.9). Gate fails: rs 2,654 · prior move 2,026 · surf 1,872 · breakdown 995 · tightening 960 · higher lows 791.
+⚠ **THE EXPECT'S "about 4 names a night" WAS WRONG — corrected, not a defect of the build:** the 2020 check's ~3.7 a night counted FIRES (the watch night's gates AND the next session's level break on 1.2x volume); this table is the WATCH LIST — the setups that could break out next session — so it runs several times the fire count. A second, smaller push: ruling (a)'s pool carries ~1,500 rank-only funds/ETFs today (vs ~550 in the 2020 data), so stocks clear 98 slightly more easily. Re-read the count with the fires once the paper entry (phase 2) runs; the ceiling question goes to him only if the list is too long to grade.
+
 ### 2026-10-29 — breakout v1 PHASE 1 BUILT (the nightly list + grading; no orders)
 
 **Built** (spec `docs/design/breakout_v1_build_spec_2026-10-29.md` B1–B3 + this entry; B4 strategy row, B5 entry, B6 exit NOT built):

@@ -1,0 +1,18 @@
+SET
+== audit
+et|event_type|left|left
+17:55:05|breakout_v1_list_run|2026-10-30: 27 name(s) on the list of 4097 universe name(s) (2801 evaluated); funds kept 39, excluded 15 (0 with no stored name); message sent; 4.8s|{"date": "2026-10-30", "skipped": null, "timed_out": false, "error": null, "prefilter_tickers": 4562, "bad_bars": 0, "universe_n": 4097, "listable_n": 2814, "evaluated": 2801, "passing": 27, "written": 27, "counts": {"admitted_stock": 2988, "rank_only_type_other": 1490, "below_floors": 407, "no_r63": 22, "rank_only_fund_leveraged_or_inverse": 8, "excluded_ticker": 24, "admitted_type_unknown": 6, "short_history": 12, "admitted_fund_kept": 39, "rank_only_fund_no_known_underlying": 1, "rank_only_fund_several_underlyings": 2, "rank_only_fund_basket": 4}, "gate_fails": {"rs": 2654, "prior_move": 2026, "higher_lows": 791, "surf": 1872, "breakdown": 995, "tightening": 960, "history": 13}, "funds_kept": 39, "funds_excluded": 15, "funds_excluded_no_name": 0, "fund_kept_tickers": ["BAR", "BHYP", "BITB", "BNO", "BSOL", "BTC", "CANE", "CPER", "DBO", "ETH", "ETHE", "ETHW", "FXE", "FXY", "GBTC", "GLD"
+(1 row)
+== list
+scan_date|names|all_pass|list
+2026-10-30|27|t|CYPH:CS:100.0 ZCSH:ETV:99.9 KOD:CS:99.8 CAI:CS:99.7 OKTA:CS:99.7 IBTA:CS:99.6 LIFE:CS:99.5 PLSE:CS:99.5 PCRX:CS:99.3 BSP:CS:99.0 CRWD:CS:99.0 NIQ:CS:99.0 VSTM:CS:98.9 AMC:CS:98.8 ARX:CS:98.7 HAE:CS:98.6 MTW:CS:98.6 RDVT:CS:98.5 TRAX:CS:98.5 BWMN:CS:98.4 LIND:CS:98.4 NTRA:CS:98.4 TEM:CS:98.4 ACN:CS:98.3 ANF:CS:98.2 JILL:CS:98.2 DOCS:CS:98.0
+(1 row)
+== names stored
+named|count
+13257|14202
+(1 row)
+== job runs
+job_id|status|et
+nightly_data_pull|success|17:00:00
+breakout_v1_list|success|17:55:00
+(2 rows)
