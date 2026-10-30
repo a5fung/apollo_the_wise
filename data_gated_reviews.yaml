@@ -183,9 +183,10 @@ reviews:
     # exactly this. Use a YAML comment like this one, or /* */, never `--` in a folded scalar.
     # Cadence, not accrual: fires on alert volume elapsed since the last review sample, so a
     # quiet fortnight does not manufacture a review with nothing new to look at.
+    anchor_note: "2026-10-30: the predicate's date re-anchored 2026-10-05 -> 2026-10-29 (sample #4 surfaced and ruled 10-29); the cadence restarts from it."
     predicate_sql: >-
       SELECT count(*) FROM mi_ep_alerts
-      WHERE alert_date > '2026-10-29';   -- 2026-10-30: re-anchored to sample #4 (surfaced + ruled 10-29); the cadence restarts from it
+      WHERE alert_date > '2026-10-29';
     can_fire:
       predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 11: alerts on
         09-08 (6), 09-14 (2), 09-16 (1), 09-17 (2). It did NOT run before 2026-09-10: the entire

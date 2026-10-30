@@ -515,6 +515,54 @@ def _format_catalyst_grade_block(grade: dict, analysis_cap: int = 400) -> list[s
     return lines
 
 
+async def _why_score_block(pool, ticker: str, target_date, alert_score=None) -> list[str]:
+    """#713 — the '/why' SCORE section: how the EP score was built (each part, what the next
+    tier pays, the multiplier, the rescale, the raw-point gap to the HIGH bar), plus the theme
+    read for a name that got no theme points.
+
+    DISPLAY ONLY. Picks the scan-log row the alert actually carried (closest stored score to
+    `alert_score`), else the day's best-scoring row; a row scored but with no stored parts says
+    so. Every failure degrades to no section, never to a broken /why. Renderer + wording:
+    `ep_score_math` (pure, tested without a DB)."""
+    from agents.market_intelligence.ep_score_math import score_math_lines, theme_read_lines
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT scan_time_et, ep_score, score_tier, score_breakdown, score_side, ep_bar,
+                   catalyst_quality, gap_pct, adv, prev_close, projected_vol_multiple,
+                   rel_volume, float_shares, vol_percentile
+            FROM mi_ep_scan_log
+            WHERE ticker = $1 AND scan_date = $2 AND ep_score IS NOT NULL
+            ORDER BY (score_breakdown IS NULL),
+                     CASE WHEN $3::float8 IS NOT NULL THEN ABS(ep_score - $3::float8) END
+                         ASC NULLS LAST,
+                     ep_score DESC, scan_time_et DESC NULLS LAST, id DESC
+            LIMIT 1
+        """, ticker, target_date, float(alert_score) if alert_score is not None else None)
+        if not row:
+            return []
+        out = score_math_lines(dict(row))
+        bd = row.get("score_breakdown")
+        if isinstance(bd, str):
+            import json as _json
+            try:
+                bd = _json.loads(bd)
+            except ValueError:
+                bd = None
+        if isinstance(bd, dict) and "theme_bonus" in bd and not (bd.get("theme_bonus") or 0):
+            try:
+                shadow = await conn.fetchrow("""
+                    SELECT listed, best_theme, best_stage, best_corr, shortlist, fit_status,
+                           fit_theme, fit_stage, fit_rationale, belongs_paying, reason,
+                           acting_in_theme, shortlist_bar
+                    FROM mi_ep_theme_belonging_shadow
+                    WHERE ticker = $1 AND scan_date = $2
+                """, ticker, target_date)
+                out.extend(theme_read_lines(dict(shadow) if shadow else None))
+            except Exception as _tre:   # the theme read is a bonus on a bonus — never the score
+                logger.debug(f"/why {ticker}: theme read failed: {_tre}")
+    return out
+
+
 def _strip_lifecycle_summary(summary: str, ticker: str) -> str:
     """Strip the redundant ticker + internal scaffolding (order ids / UUIDs / live tags /
     share-qty / trade_id) from a /why LIFECYCLE event summary, keeping the signal
@@ -6143,6 +6191,14 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.extend(_format_catalyst_grade_block(grade))
         except Exception as _gfe:   # display-only — never break the diagnosis
             logger.debug(f"/why {ticker}: catalyst-grade render failed: {_gfe}")
+
+        # 🧮 Score math (#713) — how the EP score was built: each part, the multiplier, the
+        # rescale and the raw-point gap to the HIGH bar. Display only, fail-open.
+        try:
+            lines.extend(await _why_score_block(
+                pool, ticker, target_date, alert.get("ep_score") if alert else None))
+        except Exception as _sme:
+            logger.debug(f"/why {ticker}: score-math render failed: {_sme}")
 
         # 💰 Outcome
         lines.append("")
