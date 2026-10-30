@@ -256,6 +256,12 @@ for _col in ("status", "skip_reason"):
 for _col in ("status", "skip_reason", "entry_order_id", "stop_order_id", "stop_price", "hard_stop",
              "entry_shares", "position_size", "risk_dollars_actual"):
     ALLOWED_WRITERS[_col].add("breakout_v1_entry._set_unsubmitted_order")
+# His ruling 2026-10-29 (the stop at the fill): one minute after a fill the stop is LOWERED to the true low through the
+# fill minute — the row follows the broker AFTER the successor leg is confirmed live. Compare-and-set: a FILLED
+# 'breakout_v1' PAPER row with no third sold, never a raise. hard_stop moves with it (his "day's low at the fill" — the
+# pp exit's R, its +2R target and stall cut read it), so it is no longer written at the INSERT alone for this strategy.
+for _col in ("stop_order_id", "stop_price", "hard_stop", "risk_dollars_actual"):
+    ALLOWED_WRITERS[_col].add("breakout_v1_entry._record_stop_lowered")
 # check_fills' cancel write for a breakout_v1 row (review fix 2026-10-30): compare-and-set on 'order_placed' AND the
 # entry order it read, so the polling backup can never mark cancelled a row the minute job re-priced onto a new order.
 for _col in ("status", "skip_reason"):

@@ -92,6 +92,17 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         """,
     ),
     (
+        # His ruling 2026-10-29 (the stop at the fill): the row follows the lowered stop leg (a copy —
+        # tests/test_breakout_v1_entry.py pins it against what the writer sends).
+        "breakout_v1_entry._record_stop_lowered: the stop lowered to the true low after the fill",
+        """
+            UPDATE mi_live_trades SET stop_order_id = $2, stop_price = $3, hard_stop = $3, risk_dollars_actual = $4
+            WHERE id = $1 AND status = 'filled' AND signal_type = $5 AND account_mode = $6
+              AND COALESCE(partial_taken, FALSE) = FALSE AND (stop_price IS NULL OR stop_price >= $3)
+            RETURNING id
+        """,
+    ),
+    (
         "trade_stream._process_entry_fill: entry-fill UPDATE (post-T1.1 5-param)",
         # T1.1 refactor 2026-05-17: dropped stop_price + hard_stop from this
         # UPDATE (entry-fill is not the authorized writer; INSERT sets initial

@@ -16,6 +16,13 @@ daily conventions (a stop fills at the stop, or at the open when the session ope
 target, or at the open when the session opened above it). Where the live machinery cannot express the walk exactly, the
 differences are named in the SSoT entry (intrabar order, the 15:45 price as the session-3 close, whole shares, no
 horizon) and are NOT bent into either side here.
+
+HIS RULING 2026-10-29 ("Go with rec", the first third at +2R): "a third sold" is what ACTUALLY FILLED (the row's
+`partial_taken`), never a high at +2R. The equality bar therefore holds on the paths where the resting +2R limit filled
+in the session that touched the target (`LIMIT_AT_TOUCH` — every path of the fuzz), and on the paths where an intrabar
+touch did NOT fill (`LIMIT_NEXT_TOUCH`) live departs from the walk by design: `TestTheDefinedDivergenceWhenTheLimitDidNotFill`
+asserts that divergence rule by rule (it never skips those paths), and asserts equality on every path of that model
+with no touch or a touch that fills.
 """
 from __future__ import annotations
 
@@ -119,48 +126,108 @@ def _fwd_dicts(fwd) -> list[dict]:
             for k in range(len(fwd.c))]
 
 
+LIMIT_AT_TOUCH = "at_touch"        # the resting +2R limit fills in the session that touched the target (the walk's book)
+LIMIT_NEXT_TOUCH = "next_touch"    # an INTRABAR first touch does not fill; the GTC limit fills on the next session that
+                                   # reaches the target (or never, when none does) — his ruling 2026-10-29's other kind
+
+
 def live_replay(*, fill: float, stop: float, closes_before, fwd: list[dict], facts: dict, adr20: float,
-                horizon: int = cb.EXIT_HORIZON) -> dict:
+                horizon: int = cb.EXIT_HORIZON, limit_fill: str = LIMIT_AT_TOUCH) -> dict:
     """The live system on this path, session by session, deciding ONLY with breakout_pp_rules (see the module docstring).
-    Returns `walk_exit`'s shape so it compares with `walk_pp_arms` directly."""
+    Returns `walk_exit`'s shape so it compares with `walk_pp_arms` directly.
+
+    "A third sold" is the row's `partial_taken` — what actually FILLED (his ruling 2026-10-29). The +2R third is the
+    poll's RESTING limit (an OCO) at the target, placed when the target trades: placing it moves the stop on the whole
+    position to the fill at once (the shared #548 resting mode moves the 2/3's stop to breakeven at placement and the
+    third's OCO sibling stop sits at breakeven), whether or not the limit fills. A gap open above the target always fills
+    (the limit is placed below the market). `limit_fill` says whether an INTRABAR touch fills: `LIMIT_AT_TOUCH` (the
+    walk's convention — equality) or `LIMIT_NEXT_TOUCH` (the defined divergence)."""
     fill, stop = float(fill), float(stop)
     risk = fill - stop
     F = rules.PARTIAL_FRAC
     events: list = []
     pnl, remaining = 0.0, 1.0
-    partial = False                        # the row's partial_taken
+    partial = False                        # the row's partial_taken: a third FILLED
+    resting = False                        # a +2R third placed at the target and not filled yet
     stop_now = stop                        # the broker's resting stop (the row's stop_price)
     closes_before = [float(x) for x in closes_before]
+    target = rules.target_price(fill, stop)
+    assert limit_fill in (LIMIT_AT_TOUCH, LIMIT_NEXT_TOUCH)
 
     def out(status, held):
         return cb._outcome(status, pnl, risk, fill, adr20, held, events)
 
-    def third(j, kind, px, close_j):       # a third sold -> the stop to cost (execute_partial_exit does it in the call)
-        nonlocal pnl, remaining, partial, stop_now
-        events.append((j, kind, px, F))
-        pnl += (px - fill) * F
-        remaining -= F
-        partial = True
+    def stop_to_cost(j, close_j):
+        nonlocal stop_now
         stop_now = rules.stop_after_third(stop_now, fill)
         events.append((j, "stop_to", stop_now, 0.0))
         if stop_now > close_j:
             events.append((j, "be_above_close", close_j, 0.0))
 
+    def third(j, kind, px, close_j):       # a third FILLED -> partial_taken; the stop to cost (if not already there)
+        nonlocal pnl, remaining, partial, resting
+        events.append((j, kind, px, F))
+        pnl += (px - fill) * F
+        remaining -= F
+        was_resting, partial, resting = resting, True, False
+        if not was_resting:                # a resting limit already moved the stop to cost at its placement
+            stop_to_cost(j, close_j)
+
+    def rest_limit(j, close_j):            # an intrabar touch the limit did not fill: placed, resting, stop to cost
+        nonlocal resting
+        resting = True
+        events.append((j, "limit_rested", target, 0.0))
+        stop_to_cost(j, close_j)
+
+    def walk_the_resting_third(j0):        # after a trail sale of the 2/3, the third rests under its own OCO
+        nonlocal pnl, remaining
+        for k in range(j0, min(int(horizon), n) + 1):
+            b = fwd[k - 1]
+            o, h, lo = b["o"], b["h"], b["l"]
+            if o >= target:
+                events.append((k, "partial_r", o, F))
+                pnl += (o - fill) * F
+                remaining -= F
+                return k
+            if o <= stop_now or lo <= stop_now:
+                px = o if o <= stop_now else stop_now
+                events.append((k, "stop_gap" if o < stop_now else "stop", px, F))
+                pnl += (px - fill) * F
+                remaining -= F
+                return k
+            if h >= target:
+                events.append((k, "partial_r", target, F))
+                pnl += (target - fill) * F
+                remaining -= F
+                return k
+        k = min(int(horizon), n)
+        events.append((k, "mark", fwd[k - 1]["c"], F))
+        pnl += (fwd[k - 1]["c"] - fill) * F
+        remaining -= F
+        return k
+
     # day 0 — the stored facts ARE the breakout day's minutes walked against the stop and the poll's +2R
+    pp0 = facts["partial_price"]
+    fills0 = pp0 is not None and (limit_fill == LIMIT_AT_TOUCH or float(pp0) > target)   # an open above always fills
     if facts["stopped"]:
-        if facts["partial_price"] is not None:
-            events.append((0, "partial_r", float(facts["partial_price"]), F))
-            pnl += (float(facts["partial_price"]) - fill) * F
-            remaining -= F
+        if pp0 is not None:
+            if fills0:
+                events.append((0, "partial_r", float(pp0), F))
+                pnl += (float(pp0) - fill) * F
+                remaining -= F
+            else:
+                events.append((0, "limit_rested", target, 0.0))
             events.append((0, "stop_to", float(facts["stop_in_force"]), 0.0))
         px = float(facts["exit_price"])
         events.append((0, "day0_gap" if px < float(facts["stop_in_force"]) else "day0_stop", px, remaining))
         pnl += (px - fill) * remaining
         return out("stopped_day0", 0)
-    if facts["partial_price"] is not None:
-        third(0, "partial_r", float(facts["partial_price"]), closes_before[-1])
+    if pp0 is not None:
+        if fills0:
+            third(0, "partial_r", float(pp0), closes_before[-1])
+        else:
+            rest_limit(0, closes_before[-1])
 
-    target = rules.target_price(fill, stop)
     n = len(fwd)
     for j in range(1, min(int(horizon), n) + 1):
         b = fwd[j - 1]
@@ -176,23 +243,34 @@ def live_replay(*, fill: float, stop: float, closes_before, fwd: list[dict], fac
             events.append((j, "stop_gap" if o < stop_j else "stop", px, remaining))
             pnl += (px - fill) * remaining
             return out("stopped", j)
-        if gap:                                            # the poll's +2R third (a gap open sells at the open)
+        if gap:                                            # a gap open above the target fills the third at the open
             third(j, "partial_r", o, c)
         elif not partial and h >= target:
-            third(j, "partial_r", target, c)
-        d = rules.session3_decision(fill=fill, stop=stop, day0=facts, fwd=fwd[:j], partial_taken=partial)   # 15:45
+            if resting or limit_fill == LIMIT_AT_TOUCH:    # the resting limit (or the at-touch book) fills at the target
+                third(j, "partial_r", target, c)
+            else:
+                rest_limit(j, c)
+        d = rules.session3_decision(fill=fill, stop=stop, day0=facts, fwd=fwd[:j], partial_taken=partial,
+                                    third_resting=resting)                                          # 15:45
         if d == "cut":
+            assert not resting, "a stall cut beside a resting +2R third (a +2R touch is past +1R)"
             events.append((j, "cut", c, remaining))
             pnl += (c - fill) * remaining
             return out("time_exit", j)
         if d == "session_third":
+            assert not resting
             third(j, "partial", c, c)
-        t = rules.trail_decision(fill=fill, stop=stop, day0=facts, closes_before=closes_before, fwd=fwd[:j],
-                                 partial_taken=partial)                                                     # 16:45
+        if d == "third_resting":
+            events.append((j, "third_resting", c, 0.0))   # no second third beside the resting one
+        t = rules.trail_decision(closes_before=closes_before, fwd=fwd[:j], partial_taken=partial)   # 16:45
         if t["sell"] and j < n:                            # 19:02 PAPER DAY market sale -> fills at the next open
             opx = fwd[j]["o"]
-            events.append((j + 1, "trail", opx, remaining))
-            pnl += (opx - fill) * remaining
+            sold = remaining - (F if resting else 0.0)    # the sale goes beside a resting third (it keeps its OCO)
+            events.append((j + 1, "trail", opx, sold))
+            pnl += (opx - fill) * sold
+            remaining -= sold
+            if resting:
+                return out("trailed", walk_the_resting_third(j + 1))
             return out("censored" if j == int(horizon) else "trailed", j + 1)
         if j == int(horizon):                              # (the recorder's horizon; live has none — a mark only)
             events.append((j, "mark", c, remaining))
@@ -213,7 +291,7 @@ def _same(a: dict, b: dict) -> None:
     assert a["realized_r"] == pytest.approx(b["realized_r"], abs=1e-12)
 
 
-def _both(bars, e, mb, *, fill, stop, fill_minute=7, adr20=0.10, horizon=cb.EXIT_HORIZON):
+def _both(bars, e, mb, *, fill, stop, fill_minute=7, adr20=0.10, horizon=cb.EXIT_HORIZON, limit_fill=LIMIT_AT_TOUCH):
     fwd, _cut = cb.forward_window(bars, np.arange(len(bars)), e, horizon)
     want_facts = json.loads(json.dumps(ppx.day0_facts(mb, fill=fill, stop=stop, fill_minute=fill_minute)))
     got_facts = rules.day0_facts(_mins(mb), fill=fill, stop=stop, fill_minute=fill_minute)
@@ -221,7 +299,7 @@ def _both(bars, e, mb, *, fill, stop, fill_minute=7, adr20=0.10, horizon=cb.EXIT
     want = ppx.walk_pp_arms({"fill": fill, "stop": stop}, want_facts, closes_before=bars.c[:e + 1], fwd=fwd,
                             adr20=adr20, horizon=horizon, arms=("pp",))["pp"]
     got = live_replay(fill=fill, stop=stop, closes_before=list(bars.c[:e + 1]), fwd=_fwd_dicts(fwd), facts=got_facts,
-                      adr20=adr20, horizon=horizon)
+                      adr20=adr20, horizon=horizon, limit_fill=limit_fill)
     return want, got
 
 
@@ -300,6 +378,121 @@ class TestTheLiveMappingEqualsWalkPP:
                     assert ev[0] == 3 and ev[2] > fill
                     n_session += 1
         assert n_session > 0
+
+
+def _fuzz_path(rng, seed):
+    """One random daily path + breakout-day minutes (the generator of `test_a_fuzz_of_random_days`)."""
+    n, e = 200, 150
+    sig = float(rng.choice([0.015, 0.03, 0.05]))
+    steps = rng.normal(0.002, sig, n)
+    if seed % 2 == 1:                                    # reach +1R early, then roll over through the fill
+        steps[e + 1:] = rng.normal(-0.012, 0.012, n - e - 1)
+    c = 10.0 * np.exp(np.cumsum(steps))
+    o = c * (1 + rng.normal(0, 0.01, n))
+    h = np.maximum(o, c) * (1 + rng.uniform(0, 0.03, n))
+    lo = np.minimum(o, c) * (1 - rng.uniform(0, 0.03, n))
+    bars = cb.daily_bars_from_arrays(_weekdays(n), o, h, lo, c, np.full(n, 1e6))
+    fill = float(o[e]) * 1.01
+    stop = fill * (1 - rng.uniform(0.01, 0.06))
+    mb = _mb(_random_minutes(rng, fill))
+    fm = int(rng.integers(5, 60))
+    return bars, e, mb, fill, stop, fm
+
+
+class TestTheDefinedDivergenceWhenTheLimitDidNotFill:
+    """His ruling 2026-10-29 (the first third at +2R): follow what ACTUALLY FILLED. On a path where the +2R target was
+    first touched INTRABAR and the resting limit did NOT fill there (`LIMIT_NEXT_TOUCH`: it fills on the next session
+    that reaches the target, or never), live departs from `walk_pp` BY DESIGN. Every path of the fuzz is classified:
+      * no +2R touch, or a first touch that fills (a gap open above the target) -> live == the walk, event for event;
+      * a first touch that does not fill -> the DEFINED divergence, asserted rule by rule (never skipped):
+          D1 every event before the touch session is the walk's;
+          D2 at the touch: no third — the limit rests at the target ('limit_rested') and the stop moves to the fill
+             (the shared #548 resting mode moves the whole position's stop to breakeven at placement);
+          D3 a third is only ever booked when it FILLS: after the touch, at the target or at an open above it;
+          D4 no 20-day trail sale is decided before session 3 unless a third really filled by then;
+          D5 no session-3 third beside a still-resting +2R third — instead the 15:45 step records 'third_resting'
+             whenever the session-3 close is above the fill.
+    Each class must be non-empty, so a generator change cannot silently stop exercising one."""
+
+    def test_the_fuzz_partitions_into_walk_equal_and_the_defined_divergence(self):
+        rng = np.random.default_rng(1031)
+        counts = {"no_touch": 0, "filled_at_touch": 0, "unfilled_touch": 0, "diverged": 0, "later_fill": 0,
+                  "third_resting": 0, "walk_trailed_early_live_did_not": 0}
+        for seed in range(500):
+            bars, e, mb, fill, stop, fm = _fuzz_path(rng, seed)
+            want, at_touch = _both(bars, e, mb, fill=fill, stop=stop, fill_minute=fm, adr20=0.05)
+            _same(want, at_touch)                                       # the first kind: equality
+            _w, got = _both(bars, e, mb, fill=fill, stop=stop, fill_minute=fm, adr20=0.05,
+                            limit_fill=LIMIT_NEXT_TOUCH)
+            target = rules.target_price(fill, stop)
+            touches = [ev for ev in want["events"] if ev[1] == "partial_r"]
+            if not touches:
+                counts["no_touch"] += 1
+                _same(want, got)
+                continue
+            j0, px0 = touches[0][0], touches[0][2]
+            if px0 > target:                                            # a gap open above the target: it fills
+                counts["filled_at_touch"] += 1
+                _same(want, got)
+                continue
+            counts["unfilled_touch"] += 1
+            wev, gev = [tuple(x) for x in want["events"]], [tuple(x) for x in got["events"]]
+            counts["diverged"] += wev != gev
+            # D1
+            assert [x for x in gev if x[0] < j0] == [x for x in wev if x[0] < j0]
+            # D2
+            assert (j0, "limit_rested", target, 0.0) in gev
+            assert not [x for x in gev if x[0] == j0 and x[1] in ("partial_r", "partial")]
+            assert any(x[0] == j0 and x[1] == "stop_to" and x[2] == pytest.approx(max(fill, stop)) for x in gev)
+            # D3
+            for x in gev:
+                if x[1] == "partial_r":
+                    assert x[0] > j0 and x[2] >= target - 1e-12
+                    counts["later_fill"] += 1
+            filled_by = {x[0] for x in gev if x[1] == "partial_r"}
+            # D4
+            for x in gev:
+                if x[1] == "trail" and x[0] - 1 < rules.LEG_SESSION:
+                    assert any(s <= x[0] - 1 for s in filled_by), (seed, gev)
+            if any(x[1] == "trail" and x[0] - 1 < rules.LEG_SESSION for x in wev) and \
+                    not any(x[1] == "trail" and x[0] - 1 < rules.LEG_SESSION for x in gev):
+                counts["walk_trailed_early_live_did_not"] += 1
+            # D5
+            resting_at_3 = j0 <= rules.LEG_SESSION and not any(s <= rules.LEG_SESSION for s in filled_by)
+            if resting_at_3:
+                assert not [x for x in gev if x[1] == "partial"]
+                alive_at_3 = not any(x[0] <= rules.LEG_SESSION and x[1] in ("stop", "stop_gap", "day0_stop",
+                                                                             "day0_gap", "cut") for x in gev) \
+                    and not any(x[1] == "trail" and x[0] <= rules.LEG_SESSION for x in gev)
+                s3 = _fwd_dicts(cb.forward_window(bars, np.arange(len(bars)), e, cb.EXIT_HORIZON)[0])[2]
+                if alive_at_3 and s3["c"] > fill:
+                    assert (rules.LEG_SESSION, "third_resting", s3["c"], 0.0) in gev, (seed, gev)
+                    counts["third_resting"] += 1
+        assert all(v > 0 for v in counts.values()), counts
+
+    def test_the_reviewers_case_exactly(self):
+        """The review's shape (fill 10.30, stop 10.10, target 10.70): session 1 trades 10.71 intrabar and closes 10.45
+        under a 20-day of 10.50; the resting limit does not fill. The walk books the third and sells the rest at
+        session 2's open; live rests the limit, moves the stop to the fill, starts NO trail, and at session 3 (close
+        10.46 above the fill) records 'third_resting' instead of a second third; the 20-day trail (live from session 3)
+        sells the 2/3 at session 4's open beside the resting third, which then fills at the target on session 5."""
+        fill, stop = 10.30, 10.10
+        day0 = {"v": rules.DAY0_FACTS_VERSION, "stopped": False, "peak": 10.40, "exit_price": None,
+                "exit_minute": None, "partial_price": None, "partial_minute": None, "stop_in_force": None}
+        fwd = [{"o": 10.35, "h": 10.71, "l": 10.31, "c": 10.45}, {"o": 10.44, "h": 10.60, "l": 10.40, "c": 10.55},
+               {"o": 10.55, "h": 10.60, "l": 10.40, "c": 10.46}, {"o": 10.47, "h": 10.50, "l": 10.42, "c": 10.48},
+               {"o": 10.50, "h": 10.75, "l": 10.45, "c": 10.70}]
+        got = live_replay(fill=fill, stop=stop, closes_before=[10.50] * 20, fwd=fwd, facts=day0, adr20=0.05,
+                          limit_fill=LIMIT_NEXT_TOUCH)
+        target = rules.target_price(fill, stop)
+        F = rules.PARTIAL_FRAC
+        assert [tuple(x) for x in got["events"]] == [
+            (1, "limit_rested", target, 0.0), (1, "stop_to", 10.30, 0.0),
+            (3, "third_resting", 10.46, 0.0),
+            (4, "trail", 10.47, pytest.approx(1 - F)),
+            (5, "partial_r", target, F)]
+        at = live_replay(fill=fill, stop=stop, closes_before=[10.50] * 20, fwd=fwd, facts=day0, adr20=0.05)
+        assert [x[:2] for x in at["events"]][:3] == [(1, "partial_r"), (1, "stop_to"), (2, "trail")]
 
 
 def test_the_polls_target_for_a_breakout_row_is_the_pp_target():
@@ -427,7 +620,7 @@ def _step(action="updated", close=10.40, low=10.20):
         new_total_pnl=0.0, stop_source="trail")
 
 
-def _install(monkeypatch, row, *, today, today_bar, fwd_bars=(), prior_close=10.0, step=None):
+def _install(monkeypatch, row, *, today, today_bar, fwd_bars=(), prior_close=10.0, step=None, resting=None):
     conn = _Conn([row])
     pool = _Pool(conn)
     monkeypatch.setattr(lt, "get_pool", AsyncMock(return_value=pool))
@@ -451,6 +644,8 @@ def _install(monkeypatch, row, *, today, today_bar, fwd_bars=(), prior_close=10.
              "log_audit_event": AsyncMock(), "finalize_stop_fill": AsyncMock()}
     for name, mock in calls.items():
         monkeypatch.setattr(lt, name, mock)
+    calls["resting_third"] = AsyncMock(return_value=(resting is not None, resting))
+    monkeypatch.setattr(bpe, "resting_third", calls["resting_third"])
     calls["bpe_audit"] = AsyncMock()
     calls["bpe_page"] = AsyncMock()
     monkeypatch.setattr(bpe, "log_audit_event", calls["bpe_audit"])
@@ -709,27 +904,88 @@ def test_the_column_has_exactly_one_writer():
     assert ALLOWED_WRITERS["breakout_day0_pp"] == {"breakout_pp_exit._store_day0_facts"}
 
 
-def test_disclosed_a_target_touch_counts_as_the_third_even_when_the_resting_limit_did_not_fill():
-    """Review finding 3 (2026-10-30), DISCLOSED, a fork for him (not changed in code): `partial_done_through` follows
-    the walk — a daily high at +2R means the third is sold — whatever the row's `partial_taken` says. On the paper book
-    the +2R third is a resting limit (or OCO) at the target, so a touch the limit does not fill still counts: the trail
-    turns live before session 3 and the session-3 third is skipped. Pinned on the reviewer's case (fill 10.30, stop
-    10.10, target 10.70; session 1 trades 10.71 and closes 10.45 under a 20-day of 10.50; partial_taken False). If
-    this test starts failing, the behaviour changed — update the SSoT's tenth named live-vs-walk difference with it."""
+def test_ruled_a_target_touch_whose_limit_did_not_fill_is_not_a_third_sold():
+    """Review finding 3 (2026-10-30) — RULED 2026-10-29 ("Go with rec": follow what actually filled). The reviewer's case
+    (fill 10.30, stop 10.10, target 10.70; session 1 trades 10.71 and closes 10.45 under a 20-day of 10.50;
+    partial_taken False because the resting limit did not fill): the trail is NOT live on session 1, and on session 3
+    (close above the fill) the third still applies — 'session_third' with nothing resting, 'third_resting' (no second
+    third) while the +2R limit still rests. A third that really filled (partial_taken) turns the trail live and skips the
+    session-3 third, as before."""
     fill, stop = 10.30, 10.10
     assert rules.target_price(fill, stop) == pytest.approx(10.70)
     day0 = {"v": rules.DAY0_FACTS_VERSION, "stopped": False, "peak": 10.40, "exit_price": None, "exit_minute": None,
             "partial_price": None, "partial_minute": None, "stop_in_force": None}
     closes_before = [10.50] * 20
     s1 = {"o": 10.35, "h": 10.71, "l": 10.30, "c": 10.45}
-    t = rules.trail_decision(fill=fill, stop=stop, day0=day0, closes_before=closes_before, fwd=[s1],
-                             partial_taken=False)
-    assert t["trail_live"] is True and t["sell"] is True             # trail live on session 1, no third really sold
-    # a session-3 close above the fill: the session-3 third is skipped (the touch already "sold" it)
+    t = rules.trail_decision(closes_before=closes_before, fwd=[s1], partial_taken=False)
+    assert t["trail_live"] is False and t["sell"] is False          # a touch is not a sale
+    t = rules.trail_decision(closes_before=closes_before, fwd=[s1], partial_taken=True)
+    assert t["trail_live"] is True and t["sell"] is True            # a third that FILLED starts the trail
     s2 = {"o": 10.45, "h": 10.60, "l": 10.40, "c": 10.55}
     s3 = {"o": 10.55, "h": 10.60, "l": 10.40, "c": 10.46}
-    assert rules.session3_decision(fill=fill, stop=stop, day0=day0, fwd=[s1, s2, s3], partial_taken=False) is None
-    # without the touch (high 10.69) the same session 3 sells its third
-    s1_no = dict(s1, h=10.69)
-    assert rules.session3_decision(fill=fill, stop=stop, day0=day0, fwd=[s1_no, s2, s3],
-                                   partial_taken=False) == "session_third"
+    kw = dict(fill=fill, stop=stop, day0=day0, fwd=[s1, s2, s3])
+    assert rules.session3_decision(**kw, partial_taken=False) == "session_third"
+    assert rules.session3_decision(**kw, partial_taken=False, third_resting=True) == "third_resting"
+    assert rules.session3_decision(**kw, partial_taken=True) is None
+    assert rules.session3_decision(**kw, partial_taken=True, third_resting=True) is None
+    # a day-0 MODELLED third (the minute walk's partial_price) is not a sale either
+    d0 = dict(day0, partial_price=10.70, partial_minute=30)
+    assert rules.session3_decision(fill=fill, stop=stop, day0=d0, fwd=[s1, s2, s3], partial_taken=False) == \
+        "session_third"
+    assert rules.third_sold(partial_taken=False) is False and rules.third_sold(partial_taken=True) is True
+
+
+def test_1545_session3_with_the_2r_third_still_resting_sells_no_second_third(monkeypatch):
+    tb = {"o": 10.40, "h": 10.50, "l": 10.35, "c": 10.46}
+    _conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=tb, resting="lim-9",
+                            fwd_bars=[(10.40, 10.52, 10.35, 10.45), (10.45, 10.50, 10.35, 10.42)])
+    out = asyncio.run(lt.run_partial_exits(S3))
+    calls["execute_partial_exit"].assert_not_awaited()
+    calls["execute_full_exit"].assert_not_awaited()
+    calls["resting_third"].assert_awaited_once_with(701)
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_third_resting", "session": 3}]
+    ev = [c.args for c in calls["log_audit_event"].await_args_list if c.args[0] == "breakout_pp_session_third_resting"]
+    assert ev and json.loads(ev[0][2])["resting_order_id"] == "lim-9"
+
+
+def test_1545_a_third_already_filled_is_not_asked_about_a_resting_order(monkeypatch):
+    tb = {"o": 10.40, "h": 10.50, "l": 10.35, "c": 10.46}
+    _conn, calls = _install(monkeypatch, _row(partial_taken=True, remaining_shares=6), today=S3, today_bar=tb,
+                            fwd_bars=[(10.40, 10.52, 10.35, 10.45), (10.45, 10.50, 10.35, 10.42)])
+    asyncio.run(lt.run_partial_exits(S3))
+    calls["execute_partial_exit"].assert_not_awaited()
+    calls["resting_third"].assert_not_awaited()
+
+
+def test_1545_with_no_breakout_day_record_a_resting_third_still_blocks_a_second_third(monkeypatch):
+    tb = {"o": 10.40, "h": 10.50, "l": 10.35, "c": 10.46}
+    _conn, calls = _install(monkeypatch, _row(breakout_day0_pp=None, filled_at=None), today=S3, today_bar=tb,
+                            resting="lim-9", fwd_bars=[(10.40, 10.52, 10.35, 10.45), (10.45, 10.50, 10.35, 10.42)])
+    out = asyncio.run(lt.run_partial_exits(S3))
+    calls["execute_partial_exit"].assert_not_awaited()
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_third_resting", "session": 3}]
+
+
+def test_resting_third_reads_the_open_partial_exits_with_the_shared_terminal_set_and_fails_safe(monkeypatch):
+    seen = []
+
+    class _C:
+        async def fetchval(self, sql, *a):
+            seen.append((sql, a))
+            return "lim-1"
+    monkeypatch.setattr(bpe, "get_pool", AsyncMock(return_value=_Pool(_C())))
+    assert asyncio.run(bpe.resting_third(701)) == (True, "lim-1")
+    sql, args = seen[0]
+    assert "purpose = 'partial_exit'" in sql and args == (701, list(om.PENDING_EXIT_TERMINAL_STATUSES))
+
+    class _None:
+        async def fetchval(self, sql, *a):
+            return None
+    monkeypatch.setattr(bpe, "get_pool", AsyncMock(return_value=_Pool(_None())))
+    assert asyncio.run(bpe.resting_third(701)) == (False, None)
+
+    audit = AsyncMock()
+    monkeypatch.setattr(bpe, "log_audit_event", audit)
+    monkeypatch.setattr(bpe, "get_pool", AsyncMock(side_effect=RuntimeError("db down")))
+    assert asyncio.run(bpe.resting_third(701)) == (True, None)         # unreadable -> resting: no second third
+    assert audit.await_args.args[0] == "breakout_pp_resting_third_unreadable"

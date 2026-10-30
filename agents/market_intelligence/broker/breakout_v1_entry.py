@@ -21,6 +21,12 @@ name on LAST NIGHT's list (`mi_breakout_v1_list`, scan_date = the previous sessi
     stop (cancel the whole order, then place it again with the new stop and a fresh `apollo_paper_breakout_v1_*` order
     id; the share count re-sized so the dollar risk placed never grows), and the buy is CANCELLED with
     `setup:stop_too_wide` once (level - day low) > ADR20 x level (`cb._finish_entry`'s width rule);
+  * THE STOP AT THE FILL (his ruling 2026-10-29, "Go with rec"): the resting order's stop lags a flush inside the fill
+    minute, so ONE MINUTE AFTER A FILL (the first tick whose last completed minute is the fill minute) the true low of
+    the day through the fill minute is read: the 1 ADR20 width rule fails on it -> the whole position is sold at once
+    (`setup:stop_too_wide_after_fill`, paged); else a true low below the placed stop LOWERS the stop leg to it (a
+    price-only replace; never raised; the dollar risk may sit slightly above what was sized — recorded). Once per
+    trade (the `FILL_STOP_CHECKED` marker, written after the step; a restart re-decides from broker truth);
   * unfilled at 15:55 ET -> cancelled (`window:breakout_unfilled_eod`). The 10:00 ET EP cleanup skips this
     strategy (`cancel_unfilled_entries(exclude_signal_types=...)`); the 16:05 ET EOD cleanup is the backstop.
   * every row is stamped `exit_rule = 'breakout_pp'` at insert (`order_manager.resolve_exit_rule_stamp`); the exit
@@ -79,6 +85,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     SETUP_PRICE_EXCEEDS_CAP,
     SETUP_SIZE_TOO_SMALL,
     SETUP_STOP_TOO_WIDE,
+    SETUP_STOP_TOO_WIDE_AFTER_FILL,
     SETUP_ZERO_RANGE,
     WINDOW_BREAKOUT_UNFILLED_EOD,
     WINDOW_DUPLICATE,
@@ -383,13 +390,16 @@ async def paper_account_preflight(today: date) -> bool:
     return True
 
 
+_SWITCHED_OFF_WHY = "strategy row missing or disabled"
+
+
 async def _strategy_state(today: date) -> tuple[bool, str]:
     """(may order, why not). Wall 2: the strategy row must be enabled, phase 'paper', and resolve to 'paper'. A
     missing / disabled row is the switch OFF (quiet); any other phase is REFUSED (audit + page)."""
     from agents.market_intelligence.strategies.registry import get_strategy
     strategy = await get_strategy(STRATEGY_ID)
     if strategy is None or not strategy.enabled:
-        return False, "strategy row missing or disabled"
+        return False, _SWITCHED_OFF_WHY
     try:
         mode = resolve_account_mode_for_strategy(strategy) if strategy.phase == "paper" else None  # mode-ok: breakout v1's own phase guard — refuses anything but paper
     except Exception:  # loud-ok: an unresolvable phase is refused below
@@ -682,6 +692,451 @@ async def _manage(row: dict, lrow: dict | None, st: dict | None, m: int, open_by
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 6b. THE STOP AT THE FILL (his ruling 2026-10-29, "Go with rec")
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# The resting buy carries the stop of the last tick (read through the last COMPLETED minute), so a flush inside the fill
+# minute — or in the minute or two before it — is not in the stop. ONE MINUTE AFTER A FILL (the first tick whose last
+# completed minute is the fill minute) the TRUE low of the day through the fill minute is read from the minute bars:
+#   * `cb._finish_entry`'s 1 ADR20 width rule fails on it ((fill - true low) > ADR20 x fill) -> the whole position is
+#     sold at once (paper, market: `order_manager.execute_full_exit`, reason `setup:stop_too_wide_after_fill`), paged;
+#   * otherwise, the true low BELOW the placed stop -> the protective stop is LOWERED to it (an atomic price-only replace
+#     of the stop leg; never raised; the dollar risk may then sit slightly above what was sized — recorded on the row's
+#     `risk_dollars_actual` and in the audit row beside the sized `risk_dollars`);
+#   * otherwise nothing changes.
+# Exactly once per trade: decided from the broker and the row, then the marker `FILL_STOP_CHECKED` (an audit row naming
+# the trade) is written AFTER the step completed, so a tick after a crash re-decides from broker truth (a stop already at
+# the new price is only recorded; a sale already pending or a row already closed is only marked). Never touches a row
+# that is not a 'breakout_v1' PAPER row (the tick only reads its own paper rows; every write below is guarded again).
+FILL_STOP_CHECKED = "breakout_v1_fill_stop_checked"
+FILL_BAR_WAIT_MINUTES = 3        # the fill minute's bar not published yet: wait up to 3 minutes, then judge without it
+STOP_LOWER_VERIFY_POLLS = 12     # x STOP_LOWER_VERIFY_S: the successor stop must be CONFIRMED live before the row says so
+STOP_LOWER_VERIFY_S = 0.25
+_fill_checked: set[int] = set()  # in-memory cache of a marker already read (never order state; a restart re-reads it)
+
+
+def _parse_ts(v) -> datetime | None:
+    if v is None:
+        return None
+    if isinstance(v, datetime):
+        return v
+    try:
+        return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def fill_minute_of(filled_at: datetime | None, d: date) -> int | None:
+    """Minutes since 09:30 ET of the fill on `d` (the minute bar it printed in); None outside that session."""
+    if filled_at is None or filled_at.tzinfo is None:
+        return None
+    t = filled_at.astimezone(_ET)
+    if t.date() != d:
+        return None
+    m = int((t - session_open(d)).total_seconds() // 60)
+    return m if 0 <= m < N_SESSION_MINUTES else None
+
+
+def stop_at_fill_decision(*, fill: float, true_low: float, adr20: float | None, placed_stop: float) -> dict:
+    """His ruling 2026-10-29, PURE. -> {"action": 'sell_all' | 'lower' | 'keep', "fill", "true_low", "width",
+    "new_stop", "reason"}. `width` = (fill - true low) / fill, the `cb._finish_entry` rule on the RAW low (the walk's
+    stop); 'sell_all' when it exceeds ADR20. Else 'lower' when the stop on the cent at or below the true low
+    (`stop_from_low`) is below the placed stop by more than half a cent; else 'keep'. Never raises a stop."""
+    fill, true_low, placed_stop = float(fill), float(true_low), float(placed_stop)
+    width = (fill - true_low) / fill
+    out = {"action": "keep", "fill": fill, "true_low": true_low, "width": width, "new_stop": None, "reason": None}
+    if adr20 is None or not math.isfinite(float(adr20)) or float(adr20) <= 0:
+        out["reason"] = "ADR20 unknown on the list row — the width rule cannot be judged; the stop is kept"
+        return out
+    if width > float(adr20):
+        out.update(action="sell_all", reason=(
+            f"{SETUP_STOP_TOO_WIDE_AFTER_FILL}: fill ${fill:.2f} - true low ${true_low:.2f} = {width:.2%} "
+            f"> ADR20 {float(adr20):.2%}"))
+        return out
+    new_stop = stop_from_low(true_low)
+    if new_stop < placed_stop - STOP_EPS:
+        out.update(action="lower", new_stop=new_stop,
+                   reason=f"true low ${true_low:.2f} under the placed stop ${placed_stop:.2f}")
+    return out
+
+
+async def _mark_fill_checked(row: dict, decision: str, summary: str, detail: dict | None = None) -> None:
+    """The once-per-trade marker, written AFTER the step completed. Never raises (a lost marker only means the next
+    tick re-decides from broker truth, which is idempotent)."""
+    try:
+        await log_audit_event(
+            FILL_STOP_CHECKED, f"{row['ticker']} #{row['id']}: {summary}",
+            json.dumps(dict(detail or {}, trade_id=row["id"], ticker=row["ticker"], decision=decision,
+                            account_mode=ACCOUNT_MODE), default=str))
+        _fill_checked.add(int(row["id"]))
+    except Exception as e:  # loud-ok: logged; the next tick re-decides from broker truth
+        logger.warning(f"breakout v1 {row['ticker']}: fill-stop marker write failed: {e}")
+
+
+async def fill_stop_checked(trade_id) -> bool:
+    """Has the stop at the fill already been decided for this trade? A `FILL_STOP_CHECKED` row naming it (the last 3
+    days; matched in Python, detail is TEXT). A read failure -> False: the step re-decides from broker truth."""
+    if int(trade_id) in _fill_checked:
+        return True
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT event_type, detail FROM mi_audit_log WHERE event_type = $1 "
+                "AND created_at > NOW() - INTERVAL '3 days' ORDER BY created_at DESC",
+                FILL_STOP_CHECKED)
+        for r in rows or []:
+            try:
+                d = json.loads(r["detail"])
+            except Exception:  # loud-ok: one malformed row is skipped, never the check
+                continue
+            if r["event_type"] == FILL_STOP_CHECKED and str(d.get("trade_id")) == str(trade_id):
+                _fill_checked.add(int(trade_id))
+                return True
+    except Exception as e:  # loud-ok: re-deciding is idempotent (broker truth), so False is the safe answer
+        logger.warning(f"breakout v1: fill-stop marker read failed ({e}) — re-deciding from broker truth")
+    return False
+
+
+async def _record_stop_lowered(trade_id: int, *, stop_order_id: str, new_stop: float, risk_dollars_actual: float) -> bool:
+    """The row follows the broker AFTER the lowered stop is confirmed live: the leg pointer, `stop_price` and
+    `hard_stop` (his "day's low at the fill" — the pp exit's R, the +2R target and the stall cut read it) and the dollar
+    risk now carried. Compare-and-set: only a FILLED 'breakout_v1' PAPER row with no third sold, and never a raise."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        got = await conn.fetchval(
+            """
+            UPDATE mi_live_trades SET stop_order_id = $2, stop_price = $3, hard_stop = $3, risk_dollars_actual = $4
+            WHERE id = $1 AND status = 'filled' AND signal_type = $5 AND account_mode = $6
+              AND COALESCE(partial_taken, FALSE) = FALSE AND (stop_price IS NULL OR stop_price >= $3)
+            RETURNING id
+            """,
+            trade_id, str(stop_order_id), float(new_stop), float(risk_dollars_actual), STRATEGY_ID, ACCOUNT_MODE)
+    return got is not None
+
+
+async def _insert_stop_leg_row(trade_id: int, order: dict, ticker: str, qty: float, stop: float) -> None:
+    """The successor stop in `mi_live_orders` (purpose 'stop_loss') so its fill routes to the stop-fill handler —
+    the same row `scan_breakeven_arms` writes for its price-only replace."""
+    from agents.market_intelligence.db import _jsonb_param
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_live_orders
+                (trade_id, alpaca_order_id, ticker, side, order_type,
+                 qty, stop_price, status, raw_response, purpose, exit_reason)
+            VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb,
+                    'stop_loss', 'stop_hit')
+            ON CONFLICT (alpaca_order_id) DO NOTHING
+        """, trade_id, order["id"], ticker, float(qty), float(stop), order.get("status", "new"), _jsonb_param(order))
+
+
+async def _row_state(trade_id: int) -> dict | None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        r = await conn.fetchrow(
+            "SELECT id, status, remaining_shares, partial_taken, stop_order_id, stop_price FROM mi_live_trades "
+            "WHERE id = $1 AND signal_type = $2 AND account_mode = $3", trade_id, STRATEGY_ID, ACCOUNT_MODE)
+    return dict(r) if r else None
+
+
+async def _adopt_replaced_successor(row: dict, shares: float, replaced_id: str, detail: dict) -> str:
+    """The row's stop leg reads 'replaced' (Alpaca accepted our lower, then the tick died before the row followed, or
+    the replace call raised after the broker took it): the successor is the ONE live sell-stop for the ticker in THIS
+    strategy's order-id family (the replace carries `make_client_order_id(..., STRATEGY_ID, ...)`) covering the shares.
+    Exactly one -> the row's pointer is moved to it (a pure DB write; nothing placed or cancelled) and the next tick
+    records it at its price; 0 or >1, or the book unreadable -> nothing guessed, audited, retried next minute."""
+    from agents.market_intelligence.broker import order_manager as om
+    ticker, tid = row["ticker"], row["id"]
+    err = ""
+    try:
+        open_orders = await alpaca.get_open_orders(ticker=ticker, account_mode=ACCOUNT_MODE, raise_on_error=True)
+    except Exception as e:  # loud-ok: get_open_orders alerts before re-raising; audited below, retried next minute
+        open_orders, err = None, f"{type(e).__name__}: {str(e)[:200]}"
+    cands = []
+    for o in om._live_sell_stops(open_orders or []):
+        try:
+            covers = o.get("qty") is not None and float(o["qty"]) >= float(shares) - 0.5
+        except (TypeError, ValueError):
+            covers = False
+        if covers and str(o.get("client_order_id") or "").startswith(COID_FAMILY_PREFIX) and o.get("id"):
+            cands.append(o)
+    if open_orders is None or len(cands) != 1:
+        why = err if open_orders is None else f"{len(cands)} live family sell-stops"
+        await log_audit_event("breakout_v1_fill_stop_unreadable",
+                              f"{ticker} #{tid}: stop {str(replaced_id)[:8]} reads 'replaced' and its successor could "
+                              f"not be named ({why}) — nothing touched, retried next minute",
+                              json.dumps(dict(detail, successor_candidates=len(cands)), default=str))
+        return "fill_check_wait"
+    succ = cands[0]
+    await om.set_stop_order_id(tid, succ["id"], reason="breakout_v1_fill_stop_successor_adopted",
+                               account_mode=ACCOUNT_MODE)
+    await log_audit_event("breakout_v1_fill_stop_successor_adopted",
+                          f"{ticker} #{tid}: stop {str(replaced_id)[:8]} was replaced at the broker — the row now "
+                          f"points at its successor {str(succ['id'])[:8]} (${float(succ.get('stop_price') or 0):.2f}); "
+                          f"recorded next minute", json.dumps(dict(detail, successor_id=succ["id"]), default=str))
+    return "fill_check_wait"
+
+
+async def _sell_after_fill(row: dict, dec: dict) -> str:
+    """The width rule fails at the true low: sell the WHOLE position now (paper, market), paged. Restart-safe: a row
+    already closed / emptied, or a sale already pending at the broker, is only marked."""
+    from agents.market_intelligence.broker.order_manager import execute_full_exit, get_pending_exit_qty
+    ticker, tid = row["ticker"], row["id"]
+    detail = {k: dec[k] for k in ("fill", "true_low", "width")}
+    ok = await execute_full_exit(tid, dec["reason"])
+    if not ok:
+        now = await _row_state(tid)
+        if now is None or now["status"] != "filled" or float(now.get("remaining_shares") or 0) <= 0:
+            await _mark_fill_checked(row, "closed_before_sale", "the position was already closed — nothing to sell",
+                                     detail)
+            return "fill_closed"
+        if await get_pending_exit_qty(tid) > 0:
+            await _mark_fill_checked(row, "sale_pending", "a sale is already pending at the broker", detail)
+            return "fill_sale_pending"
+        await log_audit_event("breakout_v1_fill_sale_failed",
+                              f"{ticker} #{tid}: the stop at the fill is too wide but the sale failed — retried "
+                              f"next minute ({dec['reason']})", json.dumps(dict(detail, trade_id=tid), default=str))
+        await _page_once(("fill_sale_failed", tid),
+                         f"🚨 Breakout v1 *{ticker}*: the stop at the true low is too wide (his rule) but the sale "
+                         f"FAILED — the position is still open with its stop; retrying every minute")
+        return "fill_sale_failed"
+    await _mark_fill_checked(row, "sold", dec["reason"], detail)
+    await log_audit_event("breakout_v1_sold_too_wide_after_fill", f"{ticker} #{tid}: {dec['reason']} — sold all",
+                          json.dumps(dict(detail, trade_id=tid), default=str))
+    await _page_once(("fill_sold", tid),
+                     f"✂️ Breakout v1 *{ticker}*: sold the whole position a minute after the fill — the true low "
+                     f"${dec['true_low']:.2f} makes the stop too wide (fill ${dec['fill']:.2f}, {dec['width']:.1%} > "
+                     f"1 ADR20). His rule: never hold a fill his entry would have abstained on.")
+    return "fill_sold_too_wide"
+
+
+async def _lower_stop_after_fill(row: dict, dec: dict) -> str:
+    """Lower the protective stop leg to the true low — an atomic PRICE-ONLY replace (quantity unchanged; a rejected
+    replace leaves the old stop live), the shape of `order_manager.scan_breakeven_arms`: the live leg is read first, the
+    successor is confirmed live before the row says so, a dead stop is re-protected to broker truth. Never raises a
+    stop; never runs beside a third (sold or pending — its stop is at cost / being reduced)."""
+    from agents.market_intelligence.broker import order_manager as om
+    ticker, tid = row["ticker"], row["id"]
+    new_stop, fill = float(dec["new_stop"]), float(dec["fill"])
+    shares = float(row.get("remaining_shares") or row.get("entry_shares") or 0)
+    risk_now = round(shares * (fill - new_stop), 2)
+    detail = {"fill": fill, "true_low": dec["true_low"], "width": dec["width"], "new_stop": new_stop,
+              "shares": shares, "risk_dollars_sized": row.get("risk_dollars"), "risk_dollars_now": risk_now}
+    if row.get("partial_taken") or await om.get_pending_exit_qty(tid) > 0:
+        await _mark_fill_checked(row, "superseded_by_exit", "a third / an exit is already in flight — stop not "
+                                                            "lowered (never under a stop at cost)", detail)
+        return "fill_superseded"
+    stop_id = row.get("stop_order_id")
+    if not stop_id:
+        await log_audit_event("breakout_v1_fill_stop_no_leg", f"{ticker} #{tid}: no stop leg on the row yet — the "
+                                                               f"lower is retried next minute", json.dumps(detail))
+        await _page_once(("fill_no_leg", tid), f"⚠️ Breakout v1 *{ticker}*: the filled position has no stop leg on "
+                                               f"its row — the stop at the true low could not be set yet; retrying")
+        return "fill_check_wait"
+    reprotect = False
+    outcome = "fill_check_wait"
+    async with om._trade_advisory_try_lock(tid) as have_lock:
+        if not have_lock:
+            return "fill_check_wait"           # an exit holds the trade lock — the next tick decides again
+        live = await alpaca.get_order(stop_id, account_mode=ACCOUNT_MODE)
+        status = om._canonical_order_status(live.get("status") if live else None)
+        broker_stop = live.get("stop_price") if live else None
+        detail.update(stop_order_id=stop_id, broker_status=status, broker_stop=broker_stop)
+        if status == "filled":
+            await _mark_fill_checked(row, "stopped_before_check", "the stop filled before the check", detail)
+            return "fill_stopped"
+        if status == "replaced":
+            # our lower was accepted and the row never followed (a crash during the verify polls): adopt the successor
+            return await _adopt_replaced_successor(row, shares, stop_id, detail)
+        if status not in om._STOP_CONFIRMED_LIVE_STATUSES or broker_stop is None:
+            await log_audit_event("breakout_v1_fill_stop_unreadable",
+                                  f"{ticker} #{tid}: stop {str(stop_id)[:8]} not confirmed live (status={status}) — "
+                                  f"nothing touched, retried next minute", json.dumps(detail, default=str))
+            return "fill_check_wait"
+        broker_stop = float(broker_stop)
+        if broker_stop >= fill - 1e-9:
+            await _mark_fill_checked(row, "superseded_stop_at_cost", f"the broker stop ${broker_stop:.2f} is already "
+                                                                     f"at/above the fill — never lowered", detail)
+            return "fill_superseded"
+        if broker_stop <= new_stop + 1e-9:
+            # already at the true low (a tick after a crash, or an unverified successor that is now live): record it
+            if await _record_stop_lowered(tid, stop_order_id=stop_id, new_stop=broker_stop,
+                                          risk_dollars_actual=round(shares * (fill - broker_stop), 2)):
+                await _insert_stop_leg_row(tid, live, ticker, shares, broker_stop)   # ON CONFLICT DO NOTHING
+            await _mark_fill_checked(row, "lowered", f"stop already at ${broker_stop:.2f} at the broker — recorded",
+                                     detail)
+            return "fill_stop_lowered"
+        new_order = None
+        try:
+            new_order = await alpaca.replace_order(
+                stop_id, stop_price=new_stop, account_mode=ACCOUNT_MODE,
+                client_order_id=alpaca.make_client_order_id(ACCOUNT_MODE, STRATEGY_ID, ticker))
+        except Exception as e:
+            chk = await alpaca.get_order(stop_id, account_mode=ACCOUNT_MODE)
+            chk_status = om._canonical_order_status(chk.get("status") if chk else None)
+            detail.update(error=str(e)[:300], recheck_status=chk_status)
+            if chk_status in om._STOP_CONFIRMED_LIVE_STATUSES:
+                await log_audit_event("breakout_v1_stop_lower_rejected",
+                                      f"{ticker} #{tid}: lowering the stop to ${new_stop:.2f} was rejected "
+                                      f"({type(e).__name__}); stop ${broker_stop:.2f} still live — retried next minute",
+                                      json.dumps(detail, default=str))
+                await _page_once(("fill_lower_rejected", tid),
+                                 f"⚠️ Breakout v1 *{ticker}*: lowering the stop to the true low ${new_stop:.2f} was "
+                                 f"rejected — the stop stays at ${broker_stop:.2f} (protected); retrying every minute")
+                return "fill_lower_rejected"
+            if chk_status == "filled":
+                await _mark_fill_checked(row, "stopped_before_check", "the stop filled during the lower", detail)
+                return "fill_stopped"
+            if chk_status == "replaced":
+                # the call raised but the broker took the replace: a live successor exists — adopt it, never re-protect
+                return await _adopt_replaced_successor(row, shares, stop_id, detail)
+            if chk_status in om._STOP_DEAD_STATUSES:
+                await om.set_stop_order_id(tid, None, reason="breakout_v1_fill_stop_lower_failed",
+                                           account_mode=ACCOUNT_MODE)
+                reprotect = True
+                outcome = "fill_lower_failed_stop_dead"
+            else:
+                await log_audit_event("breakout_v1_stop_lower_failed",
+                                      f"{ticker} #{tid}: the lower raised and the stop could not be read back "
+                                      f"(status={chk_status}) — nothing changed here", json.dumps(detail, default=str))
+                await _page_once(("fill_lower_unknown", tid),
+                                 f"⚠️ Breakout v1 *{ticker}*: lowering the stop to ${new_stop:.2f} failed and the "
+                                 f"stop could not be read back — verify the stop on Alpaca")
+                return "fill_lower_unverified"
+        if new_order is not None:
+            new_id = new_order["id"]
+            # the pointer follows the broker AT ONCE: Alpaca marks the old leg 'replaced' the moment it accepts, so a
+            # crash during the verify polls below must never leave the row on a dead id (review 2026-10-29)
+            await om.set_stop_order_id(tid, new_id, reason="breakout_v1_fill_stop_lower_issued",
+                                       account_mode=ACCOUNT_MODE)
+            succ = "unknown"
+            for i in range(STOP_LOWER_VERIFY_POLLS):
+                chk = await alpaca.get_order(new_id, account_mode=ACCOUNT_MODE)
+                st = om._canonical_order_status(chk.get("status") if chk else None)
+                if st in om._STOP_CONFIRMED_LIVE_STATUSES:
+                    succ = "live"
+                    break
+                if st in om._STOP_DEAD_STATUSES or st == "filled":
+                    succ = "dead" if st != "filled" else "filled"
+                    break
+                if i < STOP_LOWER_VERIFY_POLLS - 1:
+                    await asyncio.sleep(STOP_LOWER_VERIFY_S)
+            detail.update(new_stop_order_id=new_id, successor=succ)
+            if succ == "live":
+                if not await _record_stop_lowered(tid, stop_order_id=new_id, new_stop=new_stop,
+                                                  risk_dollars_actual=risk_now):
+                    # the row moved under us: never leave its pointer on the REPLACED leg while the successor rests
+                    await om.set_stop_order_id(tid, new_id, reason="breakout_v1_fill_stop_lower_row_moved",
+                                               account_mode=ACCOUNT_MODE)
+                    await log_audit_event("breakout_v1_stop_lower_row_moved",
+                                          f"{ticker} #{tid}: stop lowered to ${new_stop:.2f} at the broker but the row "
+                                          f"moved — pointer set to {new_id[:8]}, price not written",
+                                          json.dumps(detail, default=str))
+                await _insert_stop_leg_row(tid, new_order, ticker, shares, new_stop)
+                await log_audit_event(
+                    "breakout_v1_stop_lowered_after_fill",
+                    f"{ticker} #{tid}: stop ${broker_stop:.2f} → ${new_stop:.2f} (the true low through the fill minute "
+                    f"${dec['true_low']:.2f}); risk now ${risk_now:,.0f} vs ${float(row.get('risk_dollars') or 0):,.0f} "
+                    f"sized ({str(stop_id)[:8]}→{new_id[:8]})", json.dumps(detail, default=str))
+                await _mark_fill_checked(row, "lowered", f"stop lowered to ${new_stop:.2f}", detail)
+                outcome = "fill_stop_lowered"
+            elif succ == "filled":
+                await om.set_stop_order_id(tid, new_id, reason="breakout_v1_fill_stop_lowered",
+                                           account_mode=ACCOUNT_MODE)
+                await _mark_fill_checked(row, "stopped_before_check", "the lowered stop filled at once", detail)
+                outcome = "fill_stopped"
+            elif succ == "dead":
+                await om.set_stop_order_id(tid, None, reason="breakout_v1_fill_stop_lower_failed",
+                                           account_mode=ACCOUNT_MODE)
+                reprotect = True
+                outcome = "fill_lower_failed_stop_dead"
+            else:
+                # still settling: the pointer is already on the successor (written as the replace returned); the price
+                # is withheld — the next tick finds the new leg at the true low and records it
+                await log_audit_event("breakout_v1_stop_lower_unverified",
+                                      f"{ticker} #{tid}: the lower to ${new_stop:.2f} was accepted but not yet confirmed "
+                                      f"live — re-read next minute", json.dumps(detail, default=str))
+                outcome = "fill_check_wait"
+    if reprotect:
+        msg = None
+        try:
+            pos = await alpaca.get_position(ticker, account_mode=ACCOUNT_MODE)
+            qty = float(pos.get("qty")) if pos and pos.get("qty") is not None else None
+            if qty and qty > 0:
+                msg = await om._ensure_stop_coverage(tid, ticker, qty, row.get("stop_price"), STRATEGY_ID,
+                                                     ACCOUNT_MODE)
+        except Exception as e:  # loud-ok: audited + paged below; the coverage retry reconciles
+            msg = f"re-protect raised: {type(e).__name__}: {e}"
+        await log_audit_event("breakout_v1_stop_lower_failed",
+                              f"{ticker} #{tid}: the stop read back dead after the lower — pointer nulled, "
+                              f"re-protecting ({msg or 'coverage met / deferred'})", json.dumps(detail, default=str))
+        await _page_once(("fill_lower_dead", tid),
+                         f"🚨 Breakout v1 *{ticker}*: lowering the stop failed and the stop read back DEAD — "
+                         f"re-protecting ({msg or 'verify the stop on Alpaca'}); the lower is retried next minute")
+    return outcome
+
+
+async def _check_stop_at_fill(row: dict, lrow: dict | None, now_et: datetime, m: int) -> str:
+    """ONE filled breakout row: the stop at the fill, once (see the section comment). -> the tick's action label."""
+    ticker, tid = row["ticker"], row["id"]
+    if row.get("signal_type") != STRATEGY_ID or row.get("account_mode") != ACCOUNT_MODE:
+        return "untouched"                   # never another strategy's or another account's row
+    if await fill_stop_checked(tid):
+        return "fill_checked"
+    result = await _check_stop_at_fill_once(row, lrow, now_et, m)
+    if result == "fill_check_wait" and m >= EOD_MINUTE:
+        await log_audit_event("breakout_v1_fill_stop_unchecked",
+                              f"{ticker} #{tid}: the stop at the fill could not be decided by 15:55 ET — the last "
+                              f"tick of the day; the stop was not confirmed at the true low")
+        await _page_once(("fill_unchecked", tid), f"⚠️ Breakout v1 *{ticker}*: the stop at the true low could not be "
+                                                  f"checked before 15:55 ET — check the stop on Alpaca by hand")
+    return result
+
+
+async def _check_stop_at_fill_once(row: dict, lrow: dict | None, now_et: datetime, m: int) -> str:
+    ticker, tid, today = row["ticker"], row["id"], now_et.date()
+    order = (await alpaca.get_order(row["entry_order_id"], account_mode=ACCOUNT_MODE)
+             if row.get("entry_order_id") else None)
+    if order is not None and order.get("status") not in ("filled",):
+        return "fill_check_wait"             # still partly filled (more shares may come) — decided once complete
+    filled_at = _parse_ts((order or {}).get("filled_at")) or _parse_ts(row.get("filled_at"))
+    fm = fill_minute_of(filled_at, today)
+    fill = float((order or {}).get("filled_avg_price") or row.get("entry_price") or 0)
+    detail = {"fill": fill, "fill_minute": fm, "filled_at": filled_at}
+    if fm is None or fill <= 0:
+        await _mark_fill_checked(row, "not_checkable", "no fill time inside today's session / no fill price — the "
+                                                       "stop it filled with stands", detail)
+        await _page_once(("fill_not_checkable", tid), f"⚠️ Breakout v1 *{ticker}*: the fill time or price is "
+                                                      f"unknown — the stop at the true low was not checked")
+        return "fill_not_checkable"
+    last_completed = min(m - 1, N_SESSION_MINUTES - 1)
+    if last_completed < fm:
+        return "fill_check_wait"             # the fill minute is still printing — one minute after the fill
+    bars = await alpaca.get_minute_bars_range(ticker, session_open(today), now_et)
+    mins = bars_by_minute(bars, today, fm)
+    if fm not in mins and m < fm + 1 + FILL_BAR_WAIT_MINUTES:
+        return "fill_check_wait"             # the fill minute's bar is not published yet
+    if not mins:
+        await _mark_fill_checked(row, "not_checkable", "no minute bars through the fill minute — the stop it filled "
+                                                       "with stands", detail)
+        await _page_once(("fill_not_checkable", tid), f"⚠️ Breakout v1 *{ticker}*: no minute bars through the fill — "
+                                                      f"the stop at the true low was not checked")
+        return "fill_not_checkable"
+    true_low = min(min(float(b["low"]) for b in mins.values()), fill)
+    placed = row.get("stop_price") if row.get("stop_price") is not None else row.get("hard_stop")
+    dec = stop_at_fill_decision(fill=fill, true_low=true_low, adr20=(lrow or {}).get("adr20"),
+                                placed_stop=float(placed) if placed is not None else fill)
+    detail.update(true_low=true_low, width=dec["width"], placed_stop=placed, fill_bar_seen=fm in mins)
+    if dec["action"] == "sell_all":
+        return await _sell_after_fill(row, dec)
+    if dec["action"] == "lower":
+        return await _lower_stop_after_fill(row, dec)
+    await _mark_fill_checked(row, "kept", dec["reason"] or f"true low ${true_low:.2f} is not under the placed stop "
+                                                           f"— the stop is kept", detail)
+    return "fill_stop_kept"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
 # 7. The tick
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 async def _previous_session(today: date) -> date | None:
@@ -796,6 +1251,22 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
 
     switch_on = await get_runtime_toggle(TOGGLE, TOGGLE_ENV, default=True)
     may_order, why = await _strategy_state(today) if switch_on else (False, f"toggle {TOGGLE} off")
+    if not may_order and (not switch_on or why == _SWITCHED_OFF_WHY):
+        # THE STOP AT THE FILL is part of a filled position's stop, not a new order: it still runs when the switch is
+        # off (like the pp exit's jobs) — never on a refused phase (wall 2: nothing is touched then).
+        for r in rows.values():
+            if r.get("signal_type") == STRATEGY_ID and r["status"] == "filled":
+                try:
+                    out["actions"][r["ticker"]] = await _check_stop_at_fill(
+                        r, next((x for x in lrows if x["ticker"] == r["ticker"]), None), now_et, m)
+                except Exception as e:  # loud-ok: audited + paged; the switch-off cancels below still run
+                    logger.exception(f"breakout v1 {r['ticker']}: the stop at the fill crashed")
+                    await log_audit_event("breakout_v1_entry_crash", f"{r['ticker']} (stop at the fill) — "
+                                                                     f"{type(e).__name__}: {str(e)[:300]}")
+                    await _page_once(("crash_fill", today, r["ticker"]),
+                                     f"🚨 *{r['ticker']}* breakout v1 stop-at-the-fill step crashed — "
+                                     f"{type(e).__name__}: {str(e)[:160]}")
+                    out["actions"][r["ticker"]] = "crashed"
     if not may_order:
         # the switch is off / the row refused: no new order, no re-price — and no resting breakout buy is left live
         reason = f"{BLOCK_STRATEGY_DISABLED}: breakout v1 switched off ({why})"
@@ -820,6 +1291,10 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
             row = rows.get(ticker)
             if row is not None and row.get("signal_type") != STRATEGY_ID:
                 out["actions"][ticker] = f"owned_by_{row.get('signal_type')}"    # another paper strategy has it today
+                continue
+            if row is not None and row["status"] == "filled":
+                # his ruling 2026-10-29: one minute after the fill, the stop at the TRUE low (once per trade)
+                out["actions"][ticker] = await _check_stop_at_fill(row, lrow, now_et, m)
                 continue
             if row is not None and row["status"] not in ("order_placed", "confirmed"):
                 out["actions"][ticker] = f"row_{row['status']}"

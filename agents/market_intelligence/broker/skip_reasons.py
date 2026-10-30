@@ -54,6 +54,10 @@ SETUP_GAP_BELOW_FLOOR      = "setup:gap_below_floor"
 # volume by that minute.
 SETUP_NO_OPENING_RANGE_MINUTES     = "setup:no_opening_range_minutes"
 SETUP_BREAKOUT_VOLUME_BELOW_CURVE  = "setup:breakout_volume_below_curve"
+# Breakout v1 PAPER, his ruling 2026-10-29 ("Go with rec", the stop at the fill): one minute after a fill the TRUE low
+# through the fill minute is read; when `cb._finish_entry`'s 1 ADR20 width rule fails on it the whole position is sold
+# at once — the exit reason of that sale (`execute_full_exit`), not an entry skip.
+SETUP_STOP_TOO_WIDE_AFTER_FILL     = "setup:stop_too_wide_after_fill"
 
 # ── block: safeguards (circuit breakers, position limits, strategy gate) ──
 BLOCK_MAX_POSITIONS              = "block:max_positions"
@@ -127,6 +131,7 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_CHASE_CAP_EXCEEDED:   "Ran too far past ORB high to chase",
     SETUP_NO_OPENING_RANGE_MINUTES:    "No trades in the first five minutes",
     SETUP_BREAKOUT_VOLUME_BELOW_CURVE: "Volume below 1.2x normal for the time of day",
+    SETUP_STOP_TOO_WIDE_AFTER_FILL:    "Stop too wide at the true low after the fill",
     BLOCK_MAX_POSITIONS:           "Max open positions reached",
     BLOCK_DAILY_LOSS:              "Daily loss limit hit",
     BLOCK_CIRCUIT_BREAKER:         "Consecutive-loss circuit breaker tripped",

@@ -1148,21 +1148,20 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         # Breakout v1 PAPER (2026-10-30): the `pp` arm's evening — ITS OWN trail and stop, never the
         # ladder below. The stop-hit reconcile above is shared (it only books a stop the broker
         # already filled). Here: the close test against the stock's 20-day simple average (live from
-        # session 3, or from a +2R third) -> MARK the trade (`depth_sell_pending_on`, the same mark the
+        # session 3, or from a +2R third that FILLED) -> MARK the trade (`depth_sell_pending_on`, the same mark the
         # depth rule uses) and the 19:02 ET job sends the PAPER DAY market sale that fills at the next
         # open (#687 option (c)'s vehicle); NO trail stop is ever rested (the walk's stop is the day's
         # low at the fill, then the fill after a third) — the backstop below only lifts a stop still
         # under the fill once a third has sold. Decisions: broker/breakout_pp_rules.trail_decision.
         if is_breakout_pp:
             _sessions = await _bpp.load_sessions(trade, today, daily_bars[0])
-            _facts = _bpp.coerce_facts(trade.get("breakout_day0_pp")) or {}
             _entry = float(trade["entry_price"])
-            _stop0 = float(state["hard_stop"])
             if _sessions is not None:
                 _cb, _fwd = _sessions
+                # "a third sold" = the row's partial_taken (what actually FILLED — his ruling 2026-10-29),
+                # never a high at +2R: a touch whose resting limit did not fill starts no trail
                 _td = _bpp_rules.trail_decision(
-                    fill=_entry, stop=_stop0, day0=_facts, closes_before=_cb, fwd=_fwd,
-                    partial_taken=bool(trade.get("partial_taken")))
+                    closes_before=_cb, fwd=_fwd, partial_taken=bool(trade.get("partial_taken")))
             else:
                 _td = {"j": None, "trail_live": False, "sma20": None, "close": step.bar_close, "sell": False}
             if _td["sell"]:
@@ -1368,10 +1367,14 @@ async def _breakout_pp_session3(trade: dict, today: date, state: dict, today_bar
         return {"ticker": ticker, "action": "breakout_pp_not_session3", "session": len(fwd)}
     fill, stop0 = float(trade["entry_price"]), float(state["hard_stop"])
     facts = await _bpp.ensure_day0_facts(trade)
+    # "a third sold" = what actually FILLED (his ruling 2026-10-29): the row's partial_taken; and a +2R third still
+    # RESTING at the broker is never doubled by a session-3 third beside it ('third_resting').
     partial_taken = bool(trade.get("partial_taken"))
+    resting, resting_oid = (False, None) if partial_taken else await _bpp.resting_third(trade["id"])
     if facts is None:
-        done = _bpp_rules.partial_done_through(fill=fill, stop=stop0, day0={}, fwd=fwd, partial_taken=partial_taken)
-        decision = "session_third" if (not done and float(fwd[-1]["c"]) > fill) else None
+        decision = None
+        if not _bpp_rules.third_sold(partial_taken=partial_taken) and float(fwd[-1]["c"]) > fill:
+            decision = "third_resting" if resting else "session_third"
         await log_audit_event(
             "breakout_pp_cut_not_applied",
             f"{ticker} #{trade['id']}: session 3 — no breakout-day record, the stall cut was NOT applied",
@@ -1379,7 +1382,7 @@ async def _breakout_pp_session3(trade: dict, today: date, state: dict, today_bar
         )
     else:
         decision = _bpp_rules.session3_decision(fill=fill, stop=stop0, day0=facts, fwd=fwd,
-                                                partial_taken=partial_taken)
+                                                partial_taken=partial_taken, third_resting=resting)
     last = float(fwd[-1]["c"])
     r_now = (last - fill) / (fill - stop0) if fill > stop0 else None
     _r = f" · {r_now:+.2f}R" if r_now is not None else ""
@@ -1399,6 +1402,15 @@ async def _breakout_pp_session3(trade: dict, today: date, state: dict, today_bar
             logger.warning(f"breakout pp stall-cut notify failed for {ticker}", exc_info=True)
         ok = await execute_full_exit(trade["id"], "breakout_stall_cut")
         return {"ticker": ticker, "action": "breakout_pp_cut_submitted" if ok else "breakout_pp_cut_failed"}
+    if decision == "third_resting":
+        await log_audit_event(
+            "breakout_pp_session_third_resting",
+            f"{ticker}: session 3 at ${last:.2f}, above the fill ${fill:.2f}, but the +2R third is still resting "
+            f"(order {str(resting_oid or '?')[:8]}) — no second third sold",
+            json.dumps({"trade_id": trade["id"], "ticker": ticker, "last": last, "fill": fill,
+                        "resting_order_id": resting_oid}),
+        )
+        return {"ticker": ticker, "action": "breakout_pp_third_resting", "session": 3}
     if decision == "session_third":
         shares = profit_take_shares(trade["remaining_shares"], trade.get("signal_type"))
         if shares < 1:

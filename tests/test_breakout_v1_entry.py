@@ -289,11 +289,22 @@ class World:
             w.sql.append(sql)
             if "mi_market_regime" in sql:
                 return None
+            if "FROM mi_live_trades WHERE id = $1" in sql:
+                return next((dict(r) for r in w.rows.values() if r["id"] == a[0]), None)
             raise AssertionError(f"unhandled fetchrow: {sql[:90]}")
 
         async def fetchval(sql, *a):
             w.sql.append(sql)
             row = next((r for r in w.rows.values() if r["id"] == a[0]), None)
+            if "SET stop_order_id = $2, stop_price = $3, hard_stop = $3" in sql:     # _record_stop_lowered (CAS)
+                ok = (row is not None and row["status"] == "filled" and (row["signal_type"], row["account_mode"])
+                      == tuple(a[4:6]) == (SID, "paper") and not row.get("partial_taken")
+                      and (row.get("stop_price") is None or row["stop_price"] >= a[2]))
+                if not ok:
+                    return None
+                row.update(stop_order_id=a[1], stop_price=a[2], hard_stop=a[2], risk_dollars_actual=a[3])
+                w.events.append(("row_stop_lowered", row["ticker"], a[1], a[2], a[3]))
+                return row["id"]
             cas = (row is not None and row["status"] == a[1] and row.get("entry_order_id") == a[2]
                    and (row["signal_type"], row["account_mode"]) == tuple(a[-2:]) == (SID, "paper"))
             if "SET status = 'cancelled'" in sql:
@@ -311,7 +322,14 @@ class World:
                 return row["id"]
             raise AssertionError(f"unhandled fetchval: {sql[:90]}")
 
-        conn.fetch, conn.fetchrow, conn.fetchval = fetch, fetchrow, fetchval
+        async def execute(sql, *a):
+            w.sql.append(sql)
+            if "INSERT INTO mi_live_orders" in sql:
+                w.events.append(("order_row", a[1], a[4]))
+                return "INSERT 0 1"
+            raise AssertionError(f"unhandled execute: {sql[:90]}")
+
+        conn.fetch, conn.fetchrow, conn.fetchval, conn.execute = fetch, fetchrow, fetchval, execute
         self.pool = pool
 
         async def audit(ev, summary, detail=""):
@@ -395,6 +413,7 @@ class World:
         monkeypatch.setattr(be, "_paged", set())
         monkeypatch.setattr(be, "_noted", {})
         monkeypatch.setattr(be, "_snapshot_fails", 0)
+        monkeypatch.setattr(be, "_fill_checked", set())
 
         async def ins(ticker, today, alert, regime, reason, signal_type=None, account_mode=None):
             w.skips.append((ticker, reason, signal_type, account_mode))
@@ -1145,16 +1164,120 @@ async def test_a_partly_filled_entry_on_a_filled_row_is_not_an_orphan(monkeypatc
               orders=[_order(oid="ord-1", status="partially_filled", filled=400.0)])
     out = await w.tick()
     assert not [e for e in w.events if e[0] == "cancel"] and not w.ev("breakout_v1_orphan_order") and not w.pages
-    assert out["actions"]["BRKO"] == "row_filled"
+    assert out["actions"]["BRKO"] == "fill_check_wait"       # the stop at the fill waits for the complete fill
 
 
-def test_disclosed_the_resting_stop_lags_the_low_inside_the_fill_minute():
-    """Review finding 2 (2026-10-30), DISCLOSED, his call (not changed in code): the resting buy carries the stop of the
-    last tick, read through the last COMPLETED minute; a low printed inside the fill minute is never seen and nothing
-    revisits the stop after the fill. Pinned on the reviewer's shape: the 09:36 minute flushes to 9.80 and breaks 10.50
-    in the same minute. His rule (`cb._entry_one('orh5')`, through the fill minute) ABSTAINS too-wide; the order resting
-    from the 09:36:10 tick (through 09:35) carries stop 10.20 and fills. If this test starts failing, the behaviour
-    changed — update the SSoT's disclosed difference with it (scripts/probes/_breakout_v1_phase2/stop_lag_probe.out)."""
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 8. HIS RULING 2026-10-29 ("Go with rec") — THE STOP AT THE FILL
+#    one minute after a fill: the TRUE low through the fill minute; too wide -> sell all; else lower the stop to it
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+from contextlib import asynccontextmanager  # noqa: E402
+
+FILL_AT = datetime(TODAY.year, TODAY.month, TODAY.day, 9, 37, 2, tzinfo=_ET)      # inside minute 7
+
+
+def _filled_row(**over):
+    r = {"id": 11, "ticker": "BRKO", "alert_date": TODAY, "account_mode": "paper", "signal_type": SID,
+         "status": "filled", "exit_rule": "breakout_pp", "entry_order_id": "ord-1", "stop_order_id": "leg-1",
+         "orb_high": 10.00, "orb_low": 9.80, "stop_price": 9.80, "hard_stop": 9.80, "entry_price": 10.00,
+         "entry_shares": 1250.0, "remaining_shares": 1250.0, "risk_dollars": 250.0, "partial_taken": False,
+         "filled_at": FILL_AT}
+    r.update(over)
+    return r
+
+
+def _filled_orders(*, leg_stop=9.80, leg_status="new", entry_status="filled", filled_at=FILL_AT):
+    return [{"id": "ord-1", "symbol": "BRKO", "side": "buy", "status": entry_status, "qty": 1250.0,
+             "filled_qty": 1250.0, "filled_avg_price": 10.00, "filled_at": filled_at.isoformat(),
+             "client_order_id": "apollo_paper_breakout_v1_BRKO_1"},
+            {"id": "leg-1", "symbol": "BRKO", "side": "sell", "type": "stop", "status": leg_status, "qty": 1250.0,
+             "filled_qty": 0, "stop_price": leg_stop, "client_order_id": "leg-coid-1"}]
+
+
+def _fill_minute_bars(low7: float, *, upto: int = 7):
+    return _flat_bars(7, low=9.80, high=9.95, vol=60_000.0) + [_bar(7, 9.95, 10.05, low7, 10.02, 90_000.0)] + \
+        [_bar(m, 10.02, 10.06, 9.99, 10.03, 60_000.0) for m in range(8, upto + 1)]
+
+
+def _fill_world(monkeypatch, *, low7=9.70, rows=None, orders=None, bars=None, replace="ok", pending_exit=0,
+                lock=True, **kw):
+    w = World(monkeypatch, rows=rows or [_filled_row()], orders=orders or _filled_orders(),
+              bars={"BRKO": bars if bars is not None else _fill_minute_bars(low7)}, **kw)
+    w.replace_mode = replace
+    w.full_exit = AsyncMock(return_value=True)
+
+    async def _set_stop_id(tid, new_id, *, reason, account_mode, **_k):
+        for r in w.rows.values():                                   # the pointer write, as the real helper does it
+            if r["id"] == tid:
+                r["stop_order_id"] = new_id
+        return True
+
+    w.set_stop_id = AsyncMock(side_effect=_set_stop_id)
+    w.coverage = AsyncMock(return_value=None)
+
+    async def replace_order(oid, *, stop_price=None, account_mode=None, client_order_id=None, **_k):
+        assert account_mode == "paper" and client_order_id.startswith("apollo_paper_breakout_v1_BRKO_")
+        w.events.append(("replace", oid, stop_price))
+        if w.replace_mode == "reject":
+            raise RuntimeError("42210000 rejected")
+        w.orders[oid]["status"] = "replaced"
+        new = {"id": f"leg-{len(w.orders) + 1}", "symbol": "BRKO", "side": "sell", "type": "stop", "status": "new",
+               "qty": w.orders[oid]["qty"], "filled_qty": 0, "stop_price": stop_price, "client_order_id": client_order_id}
+        w.orders[new["id"]] = new
+        if w.replace_mode == "raise_after_accept":                   # the broker took it, the call timed out
+            raise TimeoutError("read timed out")
+        return dict(new)
+
+    async def get_position(ticker, account_mode=None):
+        return {"qty": 1250.0}
+
+    w.alpaca.replace_order = replace_order
+    w.alpaca.get_position = get_position
+    w.alpaca.make_client_order_id = lambda mode, sid, t: f"apollo_{mode}_{sid}_{t}_99"
+
+    @asynccontextmanager
+    async def try_lock(_tid):
+        yield lock
+
+    monkeypatch.setattr(om, "execute_full_exit", w.full_exit)
+    monkeypatch.setattr(om, "get_pending_exit_qty", AsyncMock(return_value=pending_exit))
+    monkeypatch.setattr(om, "_trade_advisory_try_lock", try_lock)
+    monkeypatch.setattr(om, "set_stop_order_id", w.set_stop_id)
+    monkeypatch.setattr(om, "_ensure_stop_coverage", w.coverage)
+    monkeypatch.setattr(be, "STOP_LOWER_VERIFY_S", 0)
+    return w
+
+
+def _marker(w):
+    return [json.loads(a[2]) for a in w.ev(be.FILL_STOP_CHECKED)]
+
+
+def test_the_stop_at_fill_decision_is_his_width_rule_on_the_raw_true_low_and_never_raises_a_stop():
+    d = be.stop_at_fill_decision(fill=10.00, true_low=9.70, adr20=0.06, placed_stop=9.80)
+    assert d["action"] == "lower" and d["new_stop"] == 9.70 and d["width"] == pytest.approx(0.03)
+    d = be.stop_at_fill_decision(fill=10.00, true_low=9.39, adr20=0.06, placed_stop=9.80)
+    assert d["action"] == "sell_all" and d["reason"].startswith("setup:stop_too_wide_after_fill")
+    assert be.stop_at_fill_decision(fill=10.00, true_low=9.40, adr20=0.06, placed_stop=9.80)["action"] == "lower"
+    assert be.stop_at_fill_decision(fill=10.00, true_low=9.85, adr20=0.06, placed_stop=9.80)["action"] == "keep"
+    assert be.stop_at_fill_decision(fill=10.00, true_low=9.804, adr20=0.06, placed_stop=9.80)["action"] == "keep"
+    assert be.stop_at_fill_decision(fill=10.00, true_low=9.70, adr20=None, placed_stop=9.80)["action"] == "keep"
+    rng = random.Random(1029)
+    for _ in range(2000):
+        fill = rng.uniform(2, 300)
+        placed = fill * (1 - rng.uniform(0.001, 0.06))
+        low = min(fill, placed * (1 + rng.uniform(-0.05, 0.03)))
+        d = be.stop_at_fill_decision(fill=fill, true_low=low, adr20=0.06, placed_stop=placed)
+        assert d["action"] == ("sell_all" if (fill - low) / fill > 0.06 else d["action"])     # cb's rule on the raw low
+        if d["action"] == "lower":
+            assert d["new_stop"] < placed and d["new_stop"] <= low                            # only ever lower
+        bad = cb._finish_entry(fill, low, 7, fill, 0.06)
+        assert (d["action"] == "sell_all") == (bad is not None and bad["reason"] == "too_wide")
+
+
+def test_ruled_the_reviewers_flush_inside_the_fill_minute_is_sold_a_minute_after_the_fill():
+    """The disclosed shape of review finding 2 (2026-10-30), RULED 2026-10-29: the 09:36 minute flushes to 9.80 and
+    breaks 10.50 in the same minute; the resting order (stop 10.20, from the 09:36:10 tick) fills. His rule abstains
+    it too-wide (`cb._entry_one('orh5')`); the check a minute after the fill reads the true low 9.80 and SELLS ALL."""
     path = [(0, 10.20, 10.45, 10.20, 10.40), (1, 10.40, 10.48, 10.30, 10.45), (2, 10.45, 10.50, 10.35, 10.40),
             (3, 10.40, 10.42, 10.25, 10.30), (4, 10.30, 10.38, 10.28, 10.35), (5, 10.35, 10.36, 10.20, 10.25),
             (6, 10.25, 10.55, 9.80, 10.52)]
@@ -1164,3 +1287,263 @@ def test_disclosed_the_resting_stop_lags_the_low_inside_the_fill_minute():
     bars = [_bar(*p, 1e4) for p in path]
     resting = be.evaluate(_mins(bars, 5), list_level=10.40, adr20=0.06, vol_bar=1, last_completed=5)
     assert resting["status"] == "ok" and resting["stop"] == 10.20 and resting["level"] == 10.50
+    true_low = min(float(b["low"]) for b in _mins(bars, 6).values())
+    d = be.stop_at_fill_decision(fill=10.50, true_low=true_low, adr20=0.06, placed_stop=resting["stop"])
+    assert true_low == 9.80 and d["action"] == "sell_all"
+
+
+@pytest.mark.asyncio
+async def test_a_minute_after_the_fill_a_flush_in_the_fill_minute_lowers_the_stop_leg_to_the_true_low(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.70)
+    out = await w.tick(at=(9, 38))                                  # minute 8: the fill minute 7 is complete
+    assert out["actions"]["BRKO"] == "fill_stop_lowered"
+    assert ("replace", "leg-1", 9.70) in w.events                   # a price-only replace of the stop leg
+    row = w.rows["BRKO"]
+    assert row["stop_price"] == row["hard_stop"] == 9.70 and row["stop_order_id"] == "leg-3"
+    assert row["risk_dollars_actual"] == pytest.approx(1250 * 0.30)  # $375 now vs $250 sized — recorded
+    assert ("order_row", "leg-3", 9.70) in w.events                 # the successor routes as the stop
+    [mk] = _marker(w)
+    assert mk["decision"] == "lowered" and mk["trade_id"] == 11
+    ev = w.ev("breakout_v1_stop_lowered_after_fill")
+    assert ev and json.loads(ev[0][2])["risk_dollars_sized"] == 250.0
+    assert w.pages == [] and not w.full_exit.await_count
+    # exactly once: the next minute does nothing, and neither does a restart (the marker is read back)
+    n = len(w.events)
+    assert (await w.tick(at=(9, 39)))["actions"]["BRKO"] == "fill_checked"
+    be._fill_checked.clear()
+    assert (await w.tick(at=(9, 40)))["actions"]["BRKO"] == "fill_checked"
+    assert len(w.events) == n
+
+
+@pytest.mark.asyncio
+async def test_too_wide_at_the_true_low_sells_the_whole_position_at_once_and_pages(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.30)                          # (10.00 - 9.30) / 10.00 = 7% > ADR20 6%
+    out = await w.tick(at=(9, 38))
+    assert out["actions"]["BRKO"] == "fill_sold_too_wide"
+    tid, reason = w.full_exit.await_args.args
+    assert tid == 11 and reason.startswith("setup:stop_too_wide_after_fill")
+    assert not [e for e in w.events if e[0] == "replace"]
+    assert len(w.pages) == 1 and "sold the whole position" in w.pages[0]
+    assert _marker(w)[0]["decision"] == "sold"
+    await w.tick(at=(9, 39))
+    assert w.full_exit.await_count == 1                              # exactly once
+
+
+@pytest.mark.asyncio
+async def test_the_page_is_paper_prefixed(monkeypatch):
+    from agents.market_intelligence.constants import mode_prefix
+    w = _fill_world(monkeypatch, low7=9.30)
+    await w.tick(at=(9, 38))
+    assert w.pages[0].startswith(mode_prefix("paper"))
+
+
+@pytest.mark.asyncio
+async def test_a_true_low_not_under_the_placed_stop_keeps_the_stop(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.85)
+    out = await w.tick(at=(9, 38))
+    assert out["actions"]["BRKO"] == "fill_stop_kept" and _marker(w)[0]["decision"] == "kept"
+    assert not [e for e in w.events if e[0] in ("replace", "row_stop_lowered")] and w.rows["BRKO"]["stop_price"] == 9.80
+
+
+@pytest.mark.asyncio
+async def test_it_waits_until_the_fill_minute_is_complete_then_up_to_three_minutes_for_its_bar(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.70)
+    assert (await w.tick(at=(9, 37)))["actions"]["BRKO"] == "fill_check_wait"     # minute 7 still printing
+    w.bars["BRKO"] = _fill_minute_bars(9.70)[:7]                                   # the fill-minute bar not out yet
+    assert (await w.tick(at=(9, 38)))["actions"]["BRKO"] == "fill_check_wait"
+    assert (await w.tick(at=(9, 40)))["actions"]["BRKO"] == "fill_check_wait"
+    assert not _marker(w) and not [e for e in w.events if e[0] == "replace"]
+    out = await w.tick(at=(9, 41))                                                  # 3 minutes on: judged without it
+    assert out["actions"]["BRKO"] == "fill_stop_kept" and _marker(w)[0]["fill_bar_seen"] is False
+
+
+@pytest.mark.asyncio
+async def test_the_fill_minute_is_the_brokers_fill_time_not_the_rows(monkeypatch):
+    """The row's filled_at is the stream's NOW(); the broker's is the fill. Broker 09:37:02 (minute 7), row 09:39:30:
+    judged at 09:38 on minute 7."""
+    w = _fill_world(monkeypatch, low7=9.70, rows=[_filled_row(filled_at=FILL_AT + timedelta(minutes=2, seconds=28))])
+    assert (await w.tick(at=(9, 38)))["actions"]["BRKO"] == "fill_stop_lowered"
+
+
+@pytest.mark.asyncio
+async def test_a_partly_filled_entry_waits_until_it_is_complete(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.70, orders=_filled_orders(entry_status="partially_filled"))
+    assert (await w.tick(at=(9, 38)))["actions"]["BRKO"] == "fill_check_wait"
+    assert not _marker(w) and not w.events
+
+
+def _replaced_leg_orders():
+    """Broker truth after Alpaca accepted the lower: the OLD id reads 'replaced' (its price untouched) and a NEW id —
+    in this strategy's order-id family — rests at the true low. (A replace never re-prices the same id.)"""
+    orders = _filled_orders(leg_status="replaced")
+    orders.append({"id": "leg-9", "symbol": "BRKO", "side": "sell", "type": "stop", "status": "new", "qty": 1250.0,
+                   "filled_qty": 0, "stop_price": 9.70, "client_order_id": "apollo_paper_breakout_v1_BRKO_99"})
+    return orders
+
+
+@pytest.mark.asyncio
+async def test_restart_after_the_replace_adopts_the_successor_and_records_it_without_replacing_again(monkeypatch):
+    """A tick died after the broker accepted the lower and before the row followed: the row's leg reads 'replaced'.
+    The next tick names the successor (one live family sell-stop covering the shares) and points the row at it; the
+    tick after records it at its price. Never a second replace, never a re-protect."""
+    w = _fill_world(monkeypatch, low7=9.70, orders=_replaced_leg_orders())
+    assert (await w.tick(at=(9, 39)))["actions"]["BRKO"] == "fill_check_wait"
+    assert w.rows["BRKO"]["stop_order_id"] == "leg-9" and w.ev("breakout_v1_fill_stop_successor_adopted")
+    assert w.rows["BRKO"]["stop_price"] == 9.80 and not _marker(w)
+    out = await w.tick(at=(9, 40))
+    assert out["actions"]["BRKO"] == "fill_stop_lowered"
+    row = w.rows["BRKO"]
+    assert row["stop_price"] == row["hard_stop"] == 9.70 and row["stop_order_id"] == "leg-9"
+    assert row["risk_dollars_actual"] == pytest.approx(1250 * 0.30)
+    assert ("order_row", "leg-9", 9.70) in w.events               # the successor routes as the stop
+    assert not [e for e in w.events if e[0] == "replace"] and not w.coverage.await_count
+    assert _marker(w)[0]["decision"] == "lowered"
+
+
+@pytest.mark.asyncio
+async def test_a_replaced_leg_whose_successor_cannot_be_named_is_never_guessed(monkeypatch):
+    orders = _replaced_leg_orders()
+    orders.append(dict(orders[-1], id="leg-10"))                     # two family stops: ambiguous
+    w = _fill_world(monkeypatch, low7=9.70, orders=orders)
+    assert (await w.tick(at=(9, 39)))["actions"]["BRKO"] == "fill_check_wait"
+    assert w.rows["BRKO"]["stop_order_id"] == "leg-1" and not w.ev("breakout_v1_fill_stop_successor_adopted")
+    assert w.ev("breakout_v1_fill_stop_unreadable") and not w.coverage.await_count and not _marker(w)
+    w = _fill_world(monkeypatch, low7=9.70, orders=_replaced_leg_orders())
+    w.orders["leg-9"]["client_order_id"] = "apollo_paper_magna53_BRKO_1"   # another strategy's stop: never adopted
+    assert (await w.tick(at=(9, 39)))["actions"]["BRKO"] == "fill_check_wait"
+    assert w.rows["BRKO"]["stop_order_id"] == "leg-1" and not w.ev("breakout_v1_fill_stop_successor_adopted")
+
+
+@pytest.mark.asyncio
+async def test_the_row_points_at_the_successor_before_the_verify_polls(monkeypatch):
+    """The process dies during the verify polls (here: the first read of the successor raises): the row ALREADY
+    points at the successor, so the next tick records it — no dead pointer, no second replace."""
+    w = _fill_world(monkeypatch, low7=9.70)
+    real_get = w.alpaca.get_order
+
+    async def dies_on_successor(oid, account_mode=None, timeout=None):
+        if oid != "leg-1" and oid != "ord-1":
+            raise SystemExit("killed mid-poll")
+        return await real_get(oid, account_mode=account_mode)
+
+    w.alpaca.get_order = dies_on_successor
+    with pytest.raises(SystemExit):
+        await be._check_stop_at_fill(dict(w.rows["BRKO"]), dict(_LIST), w.now.replace(hour=9, minute=38), 8)
+    assert w.orders["leg-1"]["status"] == "replaced" and w.rows["BRKO"]["stop_order_id"] == "leg-3"
+    w.alpaca.get_order = real_get
+    out = await w.tick(at=(9, 39))
+    assert out["actions"]["BRKO"] == "fill_stop_lowered"
+    assert [e for e in w.events if e[0] == "replace"] == [("replace", "leg-1", 9.70)]
+    assert w.rows["BRKO"]["stop_price"] == 9.70 and _marker(w)[0]["decision"] == "lowered"
+
+
+@pytest.mark.asyncio
+async def test_a_replace_that_raises_after_the_broker_took_it_adopts_the_successor_never_re_protects(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.70, replace="raise_after_accept")
+    assert (await w.tick(at=(9, 38)))["actions"]["BRKO"] == "fill_check_wait"
+    assert w.rows["BRKO"]["stop_order_id"] == "leg-3" and not w.coverage.await_count
+    assert not w.ev("breakout_v1_stop_lower_failed")
+    out = await w.tick(at=(9, 39))
+    assert out["actions"]["BRKO"] == "fill_stop_lowered" and w.rows["BRKO"]["stop_price"] == 9.70
+    assert len([e for e in w.events if e[0] == "replace"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_rejected_lower_keeps_the_old_stop_pages_once_and_retries(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.70, replace="reject")
+    assert (await w.tick(at=(9, 38)))["actions"]["BRKO"] == "fill_lower_rejected"
+    assert w.rows["BRKO"]["stop_price"] == 9.80 and not _marker(w) and len(w.pages) == 1
+    w.replace_mode = "ok"
+    assert (await w.tick(at=(9, 39)))["actions"]["BRKO"] == "fill_stop_lowered"
+    assert len(w.pages) == 1 and w.rows["BRKO"]["stop_price"] == 9.70
+
+
+@pytest.mark.asyncio
+async def test_never_lowered_beside_a_third_in_flight_or_a_stop_already_at_cost(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.70, pending_exit=416)
+    assert (await w.tick(at=(9, 38)))["actions"]["BRKO"] == "fill_superseded"
+    assert not [e for e in w.events if e[0] == "replace"] and _marker(w)[0]["decision"] == "superseded_by_exit"
+    w = _fill_world(monkeypatch, low7=9.70, orders=_filled_orders(leg_stop=10.00))
+    assert (await w.tick(at=(9, 38)))["actions"]["BRKO"] == "fill_superseded"
+    assert not [e for e in w.events if e[0] == "replace"]
+
+
+@pytest.mark.asyncio
+async def test_a_trade_lock_held_by_an_exit_defers_to_the_next_minute(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.70, lock=False)
+    assert (await w.tick(at=(9, 38)))["actions"]["BRKO"] == "fill_check_wait"
+    assert not [e for e in w.events if e[0] == "replace"] and not _marker(w)
+
+
+@pytest.mark.asyncio
+async def test_a_sale_that_fails_pages_and_retries_and_a_closed_row_is_only_marked(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.30)
+    w.full_exit.return_value = False
+    assert (await w.tick(at=(9, 38)))["actions"]["BRKO"] == "fill_sale_failed"
+    assert not _marker(w) and len(w.pages) == 1 and w.ev("breakout_v1_fill_sale_failed")
+    w.rows["BRKO"]["status"] = "closed"
+    w.rows["BRKO"]["remaining_shares"] = 0
+    out = await be._check_stop_at_fill(_filled_row(), dict(_LIST), w.now.replace(minute=39), 9)
+    assert out == "fill_closed" and _marker(w)[0]["decision"] == "closed_before_sale"
+
+
+@pytest.mark.asyncio
+async def test_the_stop_at_the_fill_still_runs_with_the_switch_off_but_never_on_a_refused_phase(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.70, toggle=False)
+    out = await w.tick(at=(9, 38))
+    assert out["skipped"] == "switched_off" and out["actions"]["BRKO"] == "fill_stop_lowered"
+    w = _fill_world(monkeypatch, low7=9.70, phase="live")
+    out = await w.tick(at=(9, 38))
+    assert "BRKO" not in out["actions"] and not [e for e in w.events if e[0] == "replace"]
+
+
+@pytest.mark.asyncio
+async def test_a_non_breakout_or_non_paper_row_is_never_touched(monkeypatch):
+    w = _fill_world(monkeypatch, low7=9.70, rows=[_filled_row(signal_type="lowcap_paper")])
+    out = await w.tick(at=(9, 38))
+    assert out["actions"]["BRKO"] == "owned_by_lowcap_paper" and not w.events
+    for bad in (_filled_row(signal_type="magna53"), _filled_row(account_mode="live")):
+        assert await be._check_stop_at_fill(bad, dict(_LIST), w.now, 8) == "untouched"
+    assert not w.events and not _marker(w)
+
+
+@pytest.mark.asyncio
+async def test_a_fill_the_last_tick_cannot_judge_is_paged_not_left_silent(monkeypatch):
+    late = datetime(TODAY.year, TODAY.month, TODAY.day, 15, 55, 3, tzinfo=_ET)       # minute 385, the last tick's
+    w = _fill_world(monkeypatch, rows=[_filled_row(filled_at=late)], orders=_filled_orders(filled_at=late),
+                    bars=_fill_minute_bars(9.70, upto=384))
+    out = await w.tick(at=(15, 55))
+    assert out["actions"]["BRKO"] == "fill_check_wait" and w.ev("breakout_v1_fill_stop_unchecked")
+    assert len(w.pages) == 1 and "could not be" in w.pages[0]
+
+
+@pytest.mark.asyncio
+async def test_the_lowered_stop_row_write_is_its_preflight_copy(monkeypatch):
+    import scripts.preflight_db_updates as pf
+    from tests.conftest import make_mock_pool
+    by_label = dict(pf.TRADE_LIFECYCLE_UPDATES)
+    pool, conn = make_mock_pool()
+    sent = []
+
+    async def _fv(sql, *a):
+        sent.append((sql, a))
+        return 1
+    conn.fetchval = _fv
+    monkeypatch.setattr(be, "get_pool", AsyncMock(return_value=pool))
+    assert await be._record_stop_lowered(11, stop_order_id="leg-2", new_stop=9.7, risk_dollars_actual=375.0)
+    sql, args = sent[0]
+    assert _norm(sql) == _norm(by_label["breakout_v1_entry._record_stop_lowered: the stop lowered to the true low "
+                                        "after the fill"])
+    assert args == (11, "leg-2", 9.7, 375.0, SID, "paper")
+
+
+def test_the_lowered_stop_writer_is_registered_for_exactly_its_columns():
+    from scripts.audit_column_writes import ALLOWED_WRITERS
+    owned = {c for c, w in ALLOWED_WRITERS.items() if "breakout_v1_entry._record_stop_lowered" in w}
+    assert owned == {"stop_order_id", "stop_price", "hard_stop", "risk_dollars_actual"}
+
+
+def test_the_after_fill_exit_reason_is_in_the_vocabulary_and_humanized():
+    from agents.market_intelligence.broker import skip_reasons as sr
+    assert sr.SETUP_STOP_TOO_WIDE_AFTER_FILL == "setup:stop_too_wide_after_fill"
+    assert sr.humanize(sr.SETUP_STOP_TOO_WIDE_AFTER_FILL + ": x") != sr.SETUP_STOP_TOO_WIDE_AFTER_FILL + ": x"

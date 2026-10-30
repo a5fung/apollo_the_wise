@@ -13,6 +13,8 @@ What lives here:
     facts feed the stall cut's "+1R reached" and are the record the equality with the walk is read against.
   * `load_sessions` — the stock's daily closes through the breakout day and the sessions since, from one daily-bar fetch.
   * `paper_wall` — a `breakout_pp` row whose account is not 'paper' is never acted on: audited + paged, nothing sent.
+  * `resting_third` — is the +2R third still RESTING at the broker (a non-terminal `partial_exit` order on the trade)? The
+    15:45 session-3 step never sells a second third beside one (his ruling 2026-10-29: follow what actually filled).
 
 Telegram: failures page paper-prefixed, once per (trade, kind) per process; normal events are audit rows (the jobs' own
 decision messages are sent by the jobs).
@@ -105,6 +107,32 @@ async def paper_wall(trade: dict, job: str) -> bool:
                      f"🚨 {trade.get('ticker')}: a breakout v1 trade row is on the "
                      f"{trade.get('account_mode')!r} account. Its exit was NOT run (paper only) — check it by hand.")
     return False
+
+
+async def resting_third(trade_id: int) -> tuple[bool, str | None]:
+    """(resting, order id) — True when the trade carries a NON-TERMINAL `partial_exit` order in `mi_live_orders` (the
+    +2R third resting at its target, placed by `scan_profit_triggers` -> `execute_partial_exit`; the terminal set is
+    `order_manager.PENDING_EXIT_TERMINAL_STATUSES`, the one copy `get_pending_exit_qty` and the partial-exit dedup read).
+    FAILS SAFE: an unreadable book reads as resting (no session-3 third is sold beside an order we cannot see), audited."""
+    from agents.market_intelligence.broker.order_manager import PENDING_EXIT_TERMINAL_STATUSES
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            oid = await conn.fetchval("""
+                SELECT alpaca_order_id FROM mi_live_orders
+                WHERE trade_id = $1 AND purpose = 'partial_exit' AND status != ALL($2::text[])
+                ORDER BY id DESC LIMIT 1
+            """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
+        return (oid is not None), (str(oid) if oid is not None else None)
+    except Exception as e:  # loud-ok: fail safe — read as resting (no second third), audited
+        logger.warning(f"breakout pp: resting-third read failed for trade {trade_id} ({e}) — treated as resting")
+        await log_audit_event(
+            "breakout_pp_resting_third_unreadable",
+            f"trade #{trade_id}: the open partial-exit orders could not be read ({type(e).__name__}) — treated as a "
+            f"third still resting (no session-3 third sold)",
+            json.dumps({"trade_id": trade_id, "error": str(e)[:300]}),
+        )
+        return True, None
 
 
 async def _store_day0_facts(trade_id: int, facts: dict, account_mode: str) -> bool:
