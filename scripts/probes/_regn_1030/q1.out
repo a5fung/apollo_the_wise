@@ -1,0 +1,27 @@
+SET
+et|event_type|s
+09:35:03.176|ep_rt_floor_flip_up|REGN rt 11.6% ≥9 > delayed 6.7% @ 09:35 ET
+09:35:15.706|ep_catalyst_provenance|REGN game_changer direct=True
+09:35:24.16|catalyst_rubric_passed|REGN: rubric PASSED composite=25.6 (>= 22) label=strong
+09:35:24.164|vol_conviction_shadow|REGN HIGH live_vol_pct=0 shadow_vol_pct=0 live_score=65.0 shadow_score=65.0
+09:35:24.182|conviction_floor_eligible|REGN gap=11.7% score=65 tier=HIGH
+09:36:21.736|judge_signal_trace|[ep_grade_judge] REGN: direct_source held=True sent=yes | revenue_stage held=True sent=yes
+09:36:28.293|ep_grade_decision|REGN our score HIGH · judge HIGH · judge note hold · outcome verdict
+09:36:28.309|judge_signal_trace|[judge_divergence] REGN: direct_source held=True sent=yes | revenue_stage held=True sent=yes
+09:36:28.309|filter:large_cap_relvol_floor_shadow|REGN HIGH rel_vol=0.41x adv$=583,634,406 @ 09:35 ET (SHADOW — alert NOT skipped)
+09:36:28.374|theme_axis_shadow_adjusted|REGN 2026-10-30: strong -> strong (standalone, +0 step)
+09:36:28.411|ep_catalyst_suppressed|REGN catalyst discovery line suppressed (grounded direct-source grade)
+09:36:28.87|ep_alert|HIGH EP: REGN gap=11.7% score=65
+09:36:28.963|orb_triggered|[post_open_new_high] 1 alerts: ['REGN']
+09:36:30.179|exposure_family_checked|REGN (live/ORB): no theme membership — nothing to compare
+09:36:30.198|orb_bar_fetched|ORB REGN O=869.88 H=869.88 L=843.69 range=26.19
+09:36:30.276|entry_chase_cap_skipped|REGN [live]: setup:chase_cap_exceeded: limit $928.33 risk $110.83/sh vs planned $52.38/sh (cap 1.50x, ORB high $869.88)
+09:36:30.705|orb_order_failed|ORB REGN — submit_entry returned None (trade_id=434)
+09:50:02.973|ep_rt_admit|REGN rt 13.4% and delayed 11.6% BOTH >=9 @ 09:50 ET — real-time AGREES with the admit
+(18 rows)
+id|ticker|status|skip_reason|orb_high|orb_low|entry_price|stop_price|entry_shares|proposed
+434|REGN|cancelled|setup:chase_cap_exceeded: limit $928.33 risk $110.83/sh vs planned $52.38/sh (cap 1.50x, ORB high $869.88)|869.88|843.69|869.88|817.5000000000001|1|09:36:30
+(1 row)
+et|open|high|low|close|volume
+09:30:00|869.88|869.88|843.69|850.54|102683
+(1 row)
