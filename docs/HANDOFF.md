@@ -6,7 +6,21 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-10-28 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 10-27 close below.
+## 2026-10-29 (Thu) CLOSE — 🔴 RESUME HERE. Supersedes the 10-28 close below.
+
+**2026-10-29 (Thu): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.)
+
+- **Board 21 → 21** (#712 filed, #694 closed). **Server checkout `60f32813`, containers on `d0e44011`-era code (the noon deploy).** main `192de560` on GitHub carries what Fri deploys.
+- **LIVE — CLS fix VERIFIED** 16:45 ET (trade 429 unmarked, $272 kept; IRON trailed as before). Deployed noon (execution then market-agent; both print 3).
+- **Fri 12:00-13:00 ET deploy (his "Friday"; the 21:15 one missed: the scope guard needed `both`, the classifier refused it, his go came after 22:15):** `bash scripts/deploy.sh both` then `bash scripts/deploy.sh execution`, polling the box. Ships #712 (the GKOS opening-bar wait, 6 tries + 1-s cache poll), breakout v1 PHASE 1 (17:55 list + /bgrade; first list Fri ~17:55 ET in the paper chat) and SONNET_PIN → sonnet-5-5 (no role holds on prod; offline fallback only). Verify: containers print `6 1`; 17:00 stores fund names; 17:55 `breakout_v1_list_run` + the message (EXPECT `docs/setups/consolidation_breakout.md` PHASE 1 BUILT).
+- **Breakout v1 PHASE 2 (the paper buy + the pp exit) on branch `breakout-v1-phase2` (worktree `/Users/alvinfung/apollo_bv2`), NOT merged:** his rulings in: true-low re-check a minute after a fill; a third counts only when filled; option (a) for an unfilled +2R third. Pre-merge: the 7 low findings + 3 advisor items (`scripts/probes/_breakout_v1_phase2/low_findings_option_a_review_1029.jsonl` on the branch); one line to him on the ≤5-minute unstopped paper third; then merge + deploy (Fri 21:15 or weekend) for Monday's first paper buy.
+- **#711:** its DoD needs an independent recount of step 6 that is not shown — find it or ask him in one line; the breakout task is filed when #711 closes (count flat).
+- **His 10-29 rulings (all in his notes + vault):** chart sample 4 blind = all 8 bad; ZCSH = his breakout pattern; ODD 09-08 no setup → the breakdown check (in v1); single-asset funds in the universe; RS pool (a) = every security at $2/$5M; F1 volume pace ≥ 1.2× by minute; the paper cap shared; the three phase-2 mechanics.
+- **Also:** GKOS miss in the defect-miss ledger (`magna53_ep.md`), its would-be trade read at 20 sessions under #712; CI cap 25 → 45 min (green on b8583096); #482 hour lane verified (follow-ups weekend, ETA 11-01 [b1]).
+- **Weekend:** phase-2 merge if not Fri; A (date his setups across his review streams — PRICE FIRST), C (v1 replay 2017-24), B (#314); the #482 follow-ups.
+- **Capacity (dated 10-29):** heavy Opus card use today (~4.3M subagent tokens across four workflows); the weekly reset is Fri 8 PM PT.
+
+## 2026-10-28 (Wed) CLOSE — (superseded by 10-29 above)
 
 **2026-10-28 (Wed): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.)
 
