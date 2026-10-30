@@ -2459,3 +2459,10 @@ EVIDENCE: the six checks read on prod 2026-10-30 (all reads in `scripts/probes/_
 - **(6) carried, not raised:** whether a refused breakeven move should also sell stays his later call (`exit_discipline.md`).
 - **The original DoD:** Part 1's read + proposal MET 2026-09-29 (his switch ruling on it). The tracker half: **ACCEPTED-PARTIAL / SUPERSEDED** — never built; his 09-29 ruling switched the live rule to the depth trail itself, so the live trades are the tracker.
 - ⚠ **What this close cannot show:** that the opening-auction sale works live (no depth sale has fired) — the condition of his 09-29 ruling is carried by `depth_sale_first_fire_687`, not met.
+
+## #713 — /why shows how the EP score was built (each part, the rescale, the gap to the bar, the theme read) (2026-10-30)
+
+BAR: "after the deploy, /why FTAI (or the next sub-bar HIGH-catalyst name) renders the parts, the rescale and the bar gap, and its numbers reproduce the stored ep_score exactly (verified on the operator-facing output, not the DB)."
+
+EVIDENCE: deployed 2026-10-30 12:00-12:08 ET (server `7acfed65`); the /why SCORE section rendered from the LIVE apollo-market container through the same function /why calls (`_why_score_block`, the deployed code, the live DB) for FTAI 2026-10-29: "🧮 SCORE — 61.2, 3 raw points short of the HIGH bar 65 (09:55 ET scan)", gap +10, liquidity +12 ($286.8M/day), catalyst +15 (strong), float +0 (102M shares), pre-market volume +0, theme +0, raw 37, x1.00, "rescale 1.25 x 37 + 15 = 61.2" — equal to the stored ep_score 61.2 — and the theme read (the belonging check's HVAC shortlist, rejected: "Aviation leasing; unrelated to building products/HVAC theme"). 20 tests (`tests/test_713_why_score_math.py`).
+- ⚠ What this close cannot show: the Telegram transport of the new section (the /why send path is unchanged; the text is plain, no Markdown, so it survives the HTML chunking).
