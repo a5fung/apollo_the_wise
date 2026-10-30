@@ -3458,11 +3458,18 @@ async def execute_partial_exit(
         # below the stop the shares already had; if neither anchor exists the
         # OCO cannot be priced and we FALL BACK to the plain resting limit
         # (today's behaviour, no worse) with a loud audit row.
+        # Breakout v1 PAPER (his ruling 2026-10-29 late, "option a"): on a 'breakout_pp' row this
+        # call NEVER moves the stop — not the 2/3's (Step 2b, the market-mode fold-in) and not the
+        # third's OCO sibling, which sits at the stop the shares already had. The stop moves to the
+        # fill only when a third ACTUALLY SELLS (`finalize_partial_exit`'s breakout-only step).
+        # Every other row: `breakout_hold_stop` is False and each branch below is unchanged.
+        breakout_hold_stop = trade.get("exit_rule") == BREAKOUT_PP_EXIT_RULE
         oco_mode = False
         oco_stop_price = None
         if resting_mode and await _profit_take_oco_enabled(account_mode):
-            _oco_anchors = [float(v) for v in (stop_price, trade.get("entry_price"))
-                            if v is not None]
+            _anchor_vals = ((stop_price,) if breakout_hold_stop
+                            else (stop_price, trade.get("entry_price")))
+            _oco_anchors = [float(v) for v in _anchor_vals if v is not None]
             if _oco_anchors:
                 oco_mode = True
                 oco_stop_price = max(_oco_anchors)
@@ -3530,7 +3537,7 @@ async def execute_partial_exit(
         # resting-mode block comment above for why the re-created stop keeps its current
         # price through the one genuinely-unprotected window.
         _entry = trade.get("entry_price")
-        if (not resting_mode and stop_price and _entry
+        if (not resting_mode and stop_price and _entry and not breakout_hold_stop
                 and await _breakeven_at_broker_enabled(account_mode)):
             _be = max(float(stop_price), float(_entry))
             if _be > float(stop_price):
@@ -4203,6 +4210,19 @@ async def execute_partial_exit(
         # market-mode fold-in above). Gated on the same `breakeven_at_broker`
         # toggle so the operator's one switch governs breakeven in both modes.
         #
+        # Breakout v1 PAPER: the breakeven move is WITHHELD on a 'breakout_pp' row — recorded so
+        # the verify can see placement left the stop where it was (his ruling 2026-10-29 late).
+        if (breakout_hold_stop and resting_mode and not abort_reprotect and new_stop_id
+                and stop_price):
+            await log_audit_event(
+                "breakout_pp_stop_held_at_placement",
+                f"{ticker}: +2R third resting for {shares} sh — the stop stays at "
+                f"${float(stop_price):.2f} until a third actually sells",
+                json.dumps({"trade_id": trade_id, "ticker": ticker,
+                            "stop_price": float(stop_price), "stop_id": new_stop_id,
+                            "oco_stop_price": (float(oco_stop_price) if oco_mode else None),
+                            "limit_price": float(limit_price)}),
+            )
         # (be_stop_id, breakeven_price) once the broker POSITIVELY confirms the
         # remaining shares' breakeven stop is live — None on every other path
         # (not attempted, rejected, or unconfirmed). Step 3 below only claims
@@ -4211,7 +4231,8 @@ async def execute_partial_exit(
         # above and Step 3 must not also assert a fact that isn't true yet.
         _be_confirmed_live: tuple | None = None
         if (resting_mode and not abort_reprotect and new_stop_id and stop_price
-                and _entry and await _breakeven_at_broker_enabled(account_mode)):
+                and _entry and not breakout_hold_stop
+                and await _breakeven_at_broker_enabled(account_mode)):
             _be = max(float(stop_price), float(_entry))
             if _be > float(stop_price) + 1e-9:
                 be_stop_id = None
@@ -4728,7 +4749,74 @@ async def finalize_partial_exit(
     #151 advisory lock (money-path audit 2026-07-12 R1: finalizers were the only
     trade-state writers OUTSIDE the lock; job-side writers already hold it)."""
     async with _trade_advisory_lock(trade_id):
-        return await _finalize_partial_exit_locked(trade_id, filled_qty, filled_price, order_id)
+        committed = await _finalize_partial_exit_locked(trade_id, filled_qty, filled_price, order_id)
+    # Breakout v1 PAPER (his ruling 2026-10-29 late, "option a"): a 'breakout_pp' row's stop stays where
+    # it was until a third ACTUALLY SELLS — and then moves to the fill, here, the moment the sale is
+    # committed (after the lock: `update_stop` re-reads the broker). Only a breakout row that is still
+    # open after this commit returns the flag; every other row returns None and nothing below runs.
+    if committed == _BREAKOUT_PP_STOP_TO_FILL:
+        await _breakout_pp_stop_to_fill_after_third(trade_id, order_id, filled_qty)
+
+
+_BREAKOUT_PP_STOP_TO_FILL = "breakout_pp_stop_to_fill"
+
+
+async def _breakout_pp_stop_to_fill_after_third(trade_id: int, order_id: str, filled_qty) -> None:
+    """Breakout v1 PAPER: after a third of a 'breakout_pp' row FILLED, raise the stop on the rest to the fill (cost) —
+    `breakout_pp_rules.stop_after_third`, raise-only (`update_stop` never lowers). Only when the order that sold it
+    filled IN FULL: a partly filled order cancelled by the broker or by the 15:45 step is the trade stream's re-protect
+    path (`_handle_cancel_or_reject` §3), so this step stays out of its way and the 16:45 job lifts the stop that evening.
+    Paper only. NEVER raises — the fill is already booked; a failed move is audited + paged and the 16:45 job retries."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            trade = await conn.fetchrow(
+                "SELECT id, ticker, entry_price, stop_price, remaining_shares, status, exit_rule, account_mode "
+                "FROM mi_live_trades WHERE id = $1", trade_id)
+            order_qty = await conn.fetchval(
+                "SELECT qty FROM mi_live_orders WHERE alpaca_order_id = $1", order_id)
+        if not trade or trade["exit_rule"] != BREAKOUT_PP_EXIT_RULE or trade["status"] == "closed":
+            return
+        ticker = trade["ticker"]
+        from agents.market_intelligence.db import BREAKOUT_V1_ACCOUNT_MODE
+        if trade["account_mode"] != BREAKOUT_V1_ACCOUNT_MODE:
+            await log_audit_event(
+                "breakout_pp_refused_not_paper",
+                f"{ticker} #{trade_id}: a breakout_pp row on account {trade['account_mode']!r} — the stop was NOT "
+                f"moved after its third (paper only)",
+                json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": trade["account_mode"],
+                            "job": "finalize_partial_exit"}))
+            return
+        if order_qty is not None and float(filled_qty) < float(order_qty) - 0.5:
+            await log_audit_event(
+                "breakout_pp_stop_to_fill_deferred",
+                f"{ticker} #{trade_id}: the third's order {str(order_id)[:8]} filled {float(filled_qty):g} of "
+                f"{float(order_qty):g} sh — the stop is left to the cancel's re-protect; 16:45 lifts it to the fill",
+                json.dumps({"trade_id": trade_id, "ticker": ticker, "order_id": order_id,
+                            "filled_qty": float(filled_qty), "order_qty": float(order_qty)}))
+            return
+        entry = float(trade["entry_price"] or 0)
+        stop_now = float(trade["stop_price"] or 0)
+        if not entry or not (float(trade["remaining_shares"] or 0) > 0) or stop_now >= round(entry, 2) - 0.005:
+            return
+        result = await update_stop(trade_id, round(entry, 2), stop_source="breakeven")
+        await log_audit_event(
+            "breakout_pp_stop_to_fill_after_third",
+            f"{ticker} #{trade_id}: a third sold (order {str(order_id)[:8]}) — the stop on the rest "
+            f"${stop_now:.2f} -> the fill ${round(entry, 2):.2f} ({'moved' if result else 'NOT moved'})",
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "order_id": order_id, "old_stop": stop_now,
+                        "new_stop": round(entry, 2), "moved": bool(result)}))
+        if not result:
+            await send_telegram_message(
+                f"{mode_prefix(BREAKOUT_V1_ACCOUNT_MODE)}⚠️ {ticker}: a third sold but its stop could not be moved to the fill "
+                f"(${round(entry, 2):.2f}) — it stays at ${stop_now:.2f}; the 16:45 job retries. Check it.")
+    except Exception as e:  # loud-ok: the fill is booked; audited, the 16:45 backstop lifts the stop
+        logger.error(f"breakout pp stop-to-fill after the third failed for trade {trade_id}: {e}")
+        await log_audit_event(
+            "breakout_pp_stop_to_fill_failed",
+            f"trade #{trade_id}: moving the stop to the fill after a third raised ({type(e).__name__}) — "
+            f"the 16:45 job lifts it",
+            json.dumps({"trade_id": trade_id, "order_id": order_id, "error": str(e)[:300]}))
 
 
 async def _finalize_partial_exit_locked(
@@ -4857,6 +4945,9 @@ async def _finalize_partial_exit_locked(
         f"P&L: ${pnl:+,.2f} | Remaining: {new_remaining}"
         + (f"\nPosition closed — total P&L ${total_pnl:+,.2f}" if close_now else "")
     )
+    if trade.get("exit_rule") == BREAKOUT_PP_EXIT_RULE and not close_now and new_remaining > 0:
+        return _BREAKOUT_PP_STOP_TO_FILL
+    return None
 
 
 # ── #646: the cancel/sell race, and never returning naked ────────────────────────────────────
@@ -10040,6 +10131,16 @@ async def scan_profit_triggers() -> list[dict]:
         if shares < 1:
             results.append({"ticker": t["ticker"], "action": "too_small_to_split"})
             continue
+        # Breakout v1 PAPER (his ruling 2026-10-29 late, "option a" — exactly one third ever): once the
+        # 15:45 session-3 step has cancelled this trade's resting +2R limit to sell the third at the
+        # close, the +2R limit is never placed again (not in the seconds before that sale, nor after
+        # a sale that failed). Only a breakout_v1 row reads the marker; every other row skips this.
+        _is_breakout = t["signal_type"] == BREAKOUT_V1_SIGNAL_TYPE
+        if _is_breakout:
+            from agents.market_intelligence.broker.breakout_pp_exit import planned_third_cancel_marked
+            if await planned_third_cancel_marked(t["id"]):
+                results.append({"ticker": t["ticker"], "action": "breakout_pp_third_cancelled_no_replace"})
+                continue
         # #548 final design: in resting mode the 1/3 is sold with a GTC limit AT
         # the target (fills at the price, not at whatever the tape shows when the
         # poll notices — the FIGS 0.87R gap). The toggle is read here only for the
@@ -10091,6 +10192,9 @@ async def scan_profit_triggers() -> list[dict]:
                     f"Taking {shares} of {int(float(t['remaining_shares']))} sh, "
                     f"stop moves to breakeven."
                 )
+                if _is_breakout:     # breakout v1: the stop moves only when the third sells
+                    _action_line = _action_line.replace(
+                        "stop moves to breakeven.", "the stop moves to the fill once it sells.")
                 await send_telegram_message(
                     f"{mode_prefix(t['account_mode'])}\U0001F4B0 *Profit target hit: {t['ticker']}*\n"
                     f"traded ${float(hi):.2f} >= ${target:.2f} "

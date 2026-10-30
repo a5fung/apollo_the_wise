@@ -6,23 +6,29 @@ is `consolidation_breakout_pp.walk_pp`, arm `pp`, and this module is held equal 
   * sell a third at +2R (fill + 2 x (fill - stop)) from the breakout day on — AT the target, or at the open when a session
     opened above it;
   * else sell a third at the close of session 3 ONLY WHEN THAT CLOSE IS ABOVE THE FILL;
-  * after any third the stop rests at the fill (cost);
+  * after any third the stop rests at the fill (cost) — moved when a third ACTUALLY SELLS, never by placing the +2R limit
+    (his ruling 2026-10-29 late, "option a");
   * the rest sells at the next open after the first close under the 20-day simple average — live from session 3 whether or
     not a third sold, and from the session of a +2R third before that;
   * the stall cut: no high at fill + 1R by the close of session 3 -> everything sold at that close.
   "A third sold" is what ACTUALLY FILLED (his ruling 2026-10-29, `third_sold`): the row's `partial_taken`, never a high at
-  +2R — a +2R touch whose resting limit did not fill starts no trail and leaves the session-3 third in place (never sold
-  beside a still-resting +2R third: `session3_decision`'s 'third_resting').
+  +2R — a +2R touch whose resting limit did not fill starts no trail and leaves the session-3 third in place. On session
+  3, with the close above the fill and the +2R limit still resting unfilled, the limit is CANCELLED (the cancel confirmed;
+  a fill in the race IS the third) and the third sold at the close — exactly one third ever, never two
+  (`session3_decision`'s 'cancel_resting_third'; his ruling 2026-10-29 late, "option a").
 
 WHO DOES WHAT LIVE (the mapping; `breakout_pp_exit.py` is the I/O half):
   * the +2R third, any session incl. the breakout day -> `order_manager.scan_profit_triggers` (5-minute poll of the minute
     highs since the fill; R = entry - hard_stop because `breakout_v1` is not ORB-framed; the global multiple 2.0), which
-    sells through `execute_partial_exit` (the stop moves to breakeven = the fill in the same call);
-  * the stall cut and the session-3 third -> `live_tracker.run_partial_exits` (15:45 ET, on session 3: `session3_decision`);
+    rests the third through `execute_partial_exit` — for a breakout row that call NEVER moves the stop (no breakeven at
+    placement); the stop moves to the fill when a third FILLS (`order_manager.finalize_partial_exit`'s breakout-only
+    step, the 16:45 job the backstop);
+  * the stall cut and the session-3 third -> `live_tracker.run_partial_exits` (15:45 ET, on session 3: `session3_decision`;
+    a still-resting +2R limit is cancelled first — `breakout_pp_exit.cancel_resting_third`);
   * the 20-day trail -> `live_tracker.update_open_positions_live` (16:45 ET, on the settled close: `trail_decision`), which
     MARKS the trade; `order_manager.run_breakout_pp_open_sales` (19:02 ET) sends the PAPER DAY market sale that fills at
     the next open (#687 option (c)'s vehicle);
-  * the stop -> the broker's resting stop leg (the day's low at the fill, then the fill after a third).
+  * the stop -> the broker's resting stop leg (the day's low at the fill, then the fill after a third SOLD).
 
 WHY THE NUMBERS ARE COPIES, NOT IMPORTS: this module is loaded by the EXECUTION container (live_tracker imports it), and
 `consolidation_breakout` / `consolidation_breakout_pp` must stay out of that container (`tests/test_cb_shadow.py` pins it;
@@ -151,7 +157,8 @@ def third_sold(*, partial_taken: bool) -> bool:
     HIS RULING 2026-10-29 ("Go with rec", the first third at +2R): follow what actually filled. On the paper book the +2R
     third is a resting limit (an OCO) at the target placed by the 5-minute poll AFTER a minute high touched it, so a touch
     the limit does not fill is NOT a third sold — the 20-day trail does not start early and the session-3 third still
-    applies. `walk_pp` (daily bars) books the third at the touch; on a path where the limit filled at the touch the two
+    applies (on session 3 a still-resting limit is cancelled and the third sold at the close — `session3_decision`).
+    `walk_pp` (daily bars) books the third at the touch; on a path where the limit filled at the touch the two
     agree event for event, on a path where it did not, live departs from the walk by design
     (`tests/test_breakout_pp_exit.py`, the defined divergence; `docs/setups/consolidation_breakout.md` difference 10).
     The day-0 facts' `partial_price` is the minute walk's MODELLED third — it no longer counts as a sale either."""
@@ -171,13 +178,17 @@ def reached_plus_1r(*, fill: float, stop: float, day0: dict, fwd: Sequence[dict]
     return any(float(b["h"]) >= lvl for b in list(fwd)[:STALL_CUT_SESSION])
 
 
+CANCEL_RESTING_THIRD = "cancel_resting_third"
+
+
 def session3_decision(*, fill: float, stop: float, day0: dict, fwd: Sequence[dict], partial_taken: bool,
                       third_resting: bool = False) -> Optional[str]:
     """The 15:45 ET decision on session 3 (`len(fwd) == 3`, today's bar last). In the walk's order after the stop and the
     +2R leg: 'cut' (no high at +1R by now -> everything sold at the close) | None (a third already SOLD — `third_sold`) |
-    'third_resting' (no third sold yet, but the +2R third is still RESTING at the broker: no second third is sold beside it
-    — his ruling 2026-10-29) | 'session_third' (no third yet, none resting, and the close is above the fill) | None. Any
-    other session -> None."""
+    'cancel_resting_third' (no third sold yet, the close is above the fill, and the +2R third is still RESTING at the
+    broker: cancel it — confirmed — then sell the third at the close; a fill in the race IS the third, and nothing more is
+    sold — his ruling 2026-10-29 late, "option a") | 'session_third' (no third yet, none resting, and the close is above
+    the fill) | None. Any other session -> None."""
     if len(fwd) != LEG_SESSION:
         return None
     if not reached_plus_1r(fill=fill, stop=stop, day0=day0, fwd=fwd):
@@ -185,7 +196,7 @@ def session3_decision(*, fill: float, stop: float, day0: dict, fwd: Sequence[dic
     if third_sold(partial_taken=partial_taken):
         return None
     if float(fwd[-1]["c"]) > float(fill):
-        return "third_resting" if third_resting else "session_third"
+        return CANCEL_RESTING_THIRD if third_resting else "session_third"
     return None
 
 

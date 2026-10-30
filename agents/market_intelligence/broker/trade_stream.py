@@ -2585,6 +2585,29 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     f"exit order {order_id[:8]} ({_je}) — treating as plain partial"
                 )
                 _raw = {}
+        # Breakout v1 PAPER (his ruling 2026-10-29 late, "option a"): the 15:45 session-3 step cancels a
+        # breakout trade's still-resting +2R third ON PURPOSE, to sell the third at the close itself. It
+        # writes a marker naming this trade AND this order before the cancel. A marked cancel with NOTHING
+        # filled is therefore not a third left uncovered: no re-protect here (one would put a stop on the
+        # very shares that sale is selling). Only a breakout_v1 order id reads the marker; with any fill,
+        # no marker, or any other order the paths below run unchanged.
+        if (_cancel_filled <= 0
+                and "_breakout_v1_" in str((_raw or {}).get("client_order_id") or "")):
+            try:
+                from agents.market_intelligence.broker.breakout_pp_exit import planned_third_cancel_marked
+                _planned_third = await planned_third_cancel_marked(pending_exit["trade_id"], order_id)
+            except Exception as _pe:  # loud-ok: an unreadable marker is NOT planned — the re-protect below runs as before
+                logger.warning(f"WS [{account_mode}]: breakout pp marker read failed for {symbol}: {_pe}")
+                _planned_third = False
+            if _planned_third:
+                await log_audit_event(
+                    "breakout_pp_planned_third_cancel_seen",
+                    f"{symbol} [{account_mode}] +2R third {order_id[:8]} cancelled by the session-3 step on "
+                    f"purpose, nothing filled — the step sells the third; no re-protect here",
+                    json.dumps({"trade_id": pending_exit["trade_id"], "order_id": order_id,
+                                "account_mode": account_mode, "event_norm": event_norm}),
+                )
+                return
         _is_oco_parent = str((_raw or {}).get("order_class") or "").lower() == "oco"
         if _is_oco_parent:
             await _handle_oco_parent_cancel(
