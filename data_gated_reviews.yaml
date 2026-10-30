@@ -16168,3 +16168,93 @@ reviews:
       on its own evidence, with the cell and entry it would use. Live is his sign-off and not asked here.
     cross_refs: ["task #705 (continues #702; closed 2026-10-26, docs/task_closes.md)", "docs/setups/consolidation_breakout.md", "docs/methodology/operator_shared_notes.md", "scripts/probes/_cb_backtest/README.md"]
     zero_verdict: "2026-10-17 WAITING — born with the recorder: the tables are empty until the first deploy night; a mature C1 primary-arm exit needs a C1 breakout and then the primary walk to terminate (trail or stop), typically 2-6 weeks after the break."
+  - review_id: depth_sale_first_fire_687
+    title: "#687 (4) — the FIRST depth sale (paper DAY market order terminal; live vehicle='opg')"
+    question: >-
+      #687 closed 2026-10-30 with its check (4) recorded as a ZERO: no depth sale has ever been sent since the rule went live 10-12 (the one depth mark, CLS 10-28, was cleared by the operator's ruling before the 19:01 sale and the trail-arming fix shipped 10-29). This carries the condition of his 09-29 ruling — that the opening-auction sale works mechanically: on the first sale, a PAPER sale reaches a terminal state as a DAY market order (not the PEP shape that expired unfilled at 09:30:57) and a LIVE sale shows vehicle='opg' and fills in the opening auction.
+    predicate_sql: |
+      SELECT count(*) FROM mi_audit_log WHERE created_at >= DATE '2026-10-12' AND event_type LIKE 'depth_open_sale%'
+    threshold: 1
+    zero_verdict: "2026-10-30 WAITING — a tripwire: 0 since its clock started; it fires on the first real event, by design."
+    discriminates_on: []
+    earliest_review_date: 2026-10-30
+    status: pending
+    kind: tripwire
+    added_on: 2026-10-30
+    can_fire:
+      predicate_runs: >-
+        Run against prod 2026-10-30 (scripts/probes/_687_close_1030/q5_tripwires.out): 0.
+      nonzero_possible: >-
+        Writer: order_manager.execute_depth_open_sale emits depth_open_sale_placed (and the _rejected / never-sent rows) from the 19:01 run_depth_open_sales job, on every row the 16:45 pass marks (depth_sell_pending_on).
+      lane_live: >-
+        Live MAGNA53 trades carry exit_rule='depth' since 10-13 (IRON 10-19, SMCI 10-21, CLS 10-27 — scripts/probes/_687_close_1030/q1.out); the paper small-cap lane is stamped by the same path.
+      threshold_vs_observed: >-
+        Threshold 1 (a tripwire). Observed 0 in 14 sessions; a mark needs a close below the armed 10/20-day line on a held depth trade — rare with 2-3 positions.
+      era_scoped: >-
+        From 2026-10-12, the depth rule's first live session; the trail-arming fix (10-29) narrows WHEN a mark can happen (the line must have been armed), not the sale path.
+      population_actionable: >-
+        Counts exactly the sale events the unproven mechanics produce.
+      instrument_trusted: >-
+        The writer is unit-tested (vehicle by account mode, #687 option (c)); it has never run live, which is what this tripwire's first firing proves.
+    action_when_ready: >-
+      Read the first depth_open_sale_* row(s): the paper sale is a DAY market order that reached a terminal state (filled at the open); a live sale has vehicle='opg' and filled in the opening auction; the row's exits[] and remaining_shares updated once. Then close this review with the evidence.
+  - review_id: broker_flat_rulings_first_fire_687
+    title: "#687 (2) — the flat-broker rulings (i) and (a) fire for the first time"
+    question: >-
+      #687 closed 2026-10-30 with two of its three stop-safety zero clocks recorded as ZERO (10-05 to 10-30): ruling (i) — a flat broker read places no stop (restore_skipped_broker_flat) — and ruling (a) — the coverage repair reads the broker first (coverage_skipped_broker_flat). Ruling (iii) closed on its first real firing (PENG 2026-10-15, scripts/probes/_687_close_1030/q4_peng.out). This carries (i) and (a) to their first firing.
+    predicate_sql: |
+      SELECT count(*) FROM mi_audit_log WHERE created_at >= DATE '2026-10-04' AND event_type IN ('restore_skipped_broker_flat', 'coverage_skipped_broker_flat')
+    threshold: 1
+    zero_verdict: "2026-10-30 WAITING — a tripwire: 0 since its clock started; it fires on the first real event, by design."
+    discriminates_on: []
+    earliest_review_date: 2026-10-30
+    status: pending
+    kind: tripwire
+    added_on: 2026-10-30
+    can_fire:
+      predicate_runs: >-
+        Run against prod 2026-10-30 (scripts/probes/_687_close_1030/q5_tripwires.out): 0.
+      nonzero_possible: >-
+        Writers: order_manager.py restore_skipped_broker_flat (~5041, the cancel/reject restore path) and COVERAGE_SKIPPED_BROKER_FLAT_EVENT (~7305, the coverage repair); both live since the 10-04 deploy.
+      lane_live: >-
+        Live MAGNA53 trades carry exit_rule='depth' since 10-13 (IRON 10-19, SMCI 10-21, CLS 10-27 — scripts/probes/_687_close_1030/q1.out); the paper small-cap lane is stamped by the same path.
+      threshold_vs_observed: >-
+        Threshold 1 (a tripwire). Observed 0 in 20 trading days; both need the broker to report NO position while our book holds one — rare by construction.
+      era_scoped: >-
+        From 2026-10-04, the deploy of both rulings; the code paths are unchanged since.
+      population_actionable: >-
+        Counts exactly the decisions the rulings make.
+      instrument_trusted: >-
+        Unit-tested at build (10-04); never seen live — the first firing is the proof.
+    action_when_ready: >-
+      Read the first row: the broker really read flat at that moment (check the position history), no stop was placed (i) / no repair order was sent (a), and nothing was left unprotected that the broker actually held. Close with the evidence.
+  - review_id: dead_full_exit_partfill_first_fire_687
+    title: "#687 (3) — a part-filled dead full-exit sale is booked for the first time"
+    question: >-
+      #687 closed 2026-10-30 with its check (3) recorded as a ZERO (deployed 10-14, 13 trading days): a planned full-exit sale that PART-fills and then dies must book ONE exits[] leg at the fill price with remaining_shares untouched (the KO 2026-10-13 paper case that prompted it). This carries it to its first live firing, as #646/#649 were handed to evening_stop_gap_first_fire_646_649.
+    predicate_sql: |
+      SELECT count(*) FROM mi_audit_log WHERE created_at >= DATE '2026-10-14' AND event_type IN ('full_exit_dead_fill_booked', 'full_exit_dead_fill_duplicate')
+    threshold: 1
+    zero_verdict: "2026-10-30 WAITING — a tripwire: 0 since its clock started; it fires on the first real event, by design."
+    discriminates_on: []
+    earliest_review_date: 2026-10-30
+    status: pending
+    kind: tripwire
+    added_on: 2026-10-30
+    can_fire:
+      predicate_runs: >-
+        Run against prod 2026-10-30 (scripts/probes/_687_close_1030/q5_tripwires.out): 0.
+      nonzero_possible: >-
+        Writer: trade_stream.py (~1576) emits full_exit_dead_fill_booked when a full_exit order dies after a partial fill; the duplicate guard emits full_exit_dead_fill_duplicate.
+      lane_live: >-
+        Live MAGNA53 trades carry exit_rule='depth' since 10-13 (IRON 10-19, SMCI 10-21, CLS 10-27 — scripts/probes/_687_close_1030/q1.out); the paper small-cap lane is stamped by the same path.
+      threshold_vs_observed: >-
+        Threshold 1 (a tripwire). Observed 0 in 13 trading days; needs a sale that part-fills then expires or is cancelled — rare.
+      era_scoped: >-
+        From 2026-10-14, its deploy; the path is unchanged since.
+      population_actionable: >-
+        Counts exactly the bookings the fix makes.
+      instrument_trusted: >-
+        Unit-tested at build (10-14); never seen live.
+    action_when_ready: >-
+      Read the first row: one exits[] leg at the fill price for the filled shares, remaining_shares unchanged by the booking, P&L for that leg only, no second leg on a duplicate event. Close with the evidence.

@@ -1,0 +1,13 @@
+SET
+id|ticker|status|remaining_shares|stop_price|closed_et|total_pnl
+414|PENG|closed|0|66.87|2026-10-15 09:30:00|-81.59999999999997
+(1 row)
+et|event_type|left
+2026-10-15 09:00:00|order_status_reconciled|PENG order=d21abc5d: accepted -> rejected (live)
+2026-10-15 09:00:00|order_status_reconciled|PENG order=ec1e15ce: new -> canceled (live)
+2026-10-15 09:00:00|stop_breach_market_sale|PENG: price already through the stop $65.70 — selling 10 sh at market (order b0b1d91b)
+2026-10-15 09:00:01|premarket_gap_risk|PENG pre-market $64.12 < stop $66.87 (live)
+2026-10-15 09:00:01|stop_ack_breach_sold_at_market|PENG #414: stop-ACK timeout; fallback stop $65.70 refused — the price is already through it; 10 sh sold at market order=b0b1d91b-fcba-4ffc-9413-b9ab41e999c7
+2026-10-15 09:15:00|order_status_reconciled|PENG order=b0b1d91b: pending_new -> new (live)
+2026-10-15 09:30:00|full_exit_committed|PENG: DB committed on WS fill — sold 10 @$64.05, reason=stop_hit, total_pnl $-81.60 — closed
+(7 rows)

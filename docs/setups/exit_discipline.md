@@ -380,7 +380,7 @@ what any live position does.
 
 ## Change log (newest first)
 
-### 2026-10-28 — the trailing line governs only after the trade was ABOVE it (OPERATOR-SIGNED "clear + fix + read" 2026-10-28, on live CLS; BUILT, NOT DEPLOYED — deploy Thu 10-29 12:00 ET: `deploy.sh execution` FIRST, then `deploy.sh market-agent`)
+### 2026-10-28 — the trailing line governs only after the trade was ABOVE it (OPERATOR-SIGNED "clear + fix + read" 2026-10-28, on live CLS; BUILT, DEPLOYED 2026-10-29 12:00-12:06 ET, VERIFIED LIVE 10-29 16:45 ET (status corrected 2026-10-30 at the #687 close) — deploy Thu 10-29 12:00 ET: `deploy.sh execution` FIRST, then `deploy.sh market-agent`)
 
 - **Trigger (his words):** *"I think this is a bug, cls has always been under 10ma, never above when we entered, and we just set
   breakeven stop at 272, so this is wrong"* — on the 16:45 ET page *"CLS closed below its trailing line ($299.80 < $330.52)"*.
@@ -434,7 +434,7 @@ what any live position does.
   reclaim arms today, the entry-day close arms, bought-above exactly as before, no-history fallback byte-identical, default off + other
   modes refuse, the live call population incl. attribute calls); the exit / trail / live-tracker suites pass.
 
-### 2026-10-14 — #687: the shares a PART-FILLED dead full-exit sale sold are BOOKED as one exits leg + P&L; `remaining_shares` is NEVER written (BOOKKEEPING ONLY — rule unchanged; no exit rule, stop level, target, size or safeguard threshold changed; BUILT, NOT DEPLOYED)
+### 2026-10-14 — #687: the shares a PART-FILLED dead full-exit sale sold are BOOKED as one exits leg + P&L; `remaining_shares` is NEVER written (BOOKKEEPING ONLY — rule unchanged; no exit rule, stop level, target, size or safeguard threshold changed; BUILT, DEPLOYED (status corrected 2026-10-30 at the #687 close: shipped 2026-10-14))
 
 **Trigger**: prod paper trade 421 (KO), 2026-10-13. A planned full-exit sale (3 sh, `purpose='full_exit'`) part-filled
 1 sh @ $90.36 at the open and the other 2 EXPIRED at 09:31:30. `trade_stream._handle_cancel_or_reject` §3's full-exit
@@ -667,7 +667,7 @@ market-agent` in the Tue 12:00–13:00 ET window (fallback 21:15–22:15 ET): th
 weekly review and `sell_discipline` read the constant only inside `apollo-market`, so the commit alone does
 not quiet the 18:02 ET page. Until then the drift rule nags.
 
-### 2026-10-11 — #687 (c): the PAPER lane's 19:01 depth sale is a regular DAY market order; LIVE keeps the opening-auction order (OPERATOR-RULED "got it, c" 2026-10-10; BUILT, NOT DEPLOYED)
+### 2026-10-11 — #687 (c): the PAPER lane's 19:01 depth sale is a regular DAY market order; LIVE keeps the opening-auction order (OPERATOR-RULED "got it, c" 2026-10-10; BUILT, DEPLOYED 2026-10-11 (status corrected 2026-10-30 at the #687 close))
 
 The rule, the derived call-site population, the EXPECT / DONE-WHEN / WOULD-FAIL-IF / VERIFY-LIVE and the
 deploy scope live in the owner of the MAGNA53 rule: `magna53_ep.md` change log 2026-10-11. In this
@@ -686,7 +686,7 @@ endpoint queues an after-hours DAY market sell on paper and fills it at the next
 all filled 09:31-09:37 ET the next session (`scripts/probes/_wk1011_depth_paper_day/q3_afterhours_market_sells.out`);
 the 19:01 minute itself is first observed on the first real paper depth sale.
 
-### 2026-10-10 — #687 / #624: the DEPTH exit's stamp also covers the small-cap PAPER lane (OPERATOR-SIGNED "Ok"; BUILT, NOT DEPLOYED, INERT until the 'paper' toggle row exists)
+### 2026-10-10 — #687 / #624: the DEPTH exit's stamp also covers the small-cap PAPER lane (OPERATOR-SIGNED "Ok"; BUILT, DEPLOYED (status corrected 2026-10-30 at the #687 close), INERT until the 'paper' toggle row exists)
 
 The rule, its derived downstream population (every path that acts on a `depth` row, file:line), the
 known gap (no replay walker models a depth row yet), the live expectations, and the two statements he
@@ -806,7 +806,7 @@ restore that succeeds; the retry makes it more likely.
 **Reversion-flag**: REFINEMENT of #646 / #687 (c) — the same stop, at the same price, for the same count; it waits for
 the broker before giving up. Not a reversal.
 
-**Status**: built on branch `worktree-wf_ab25af87-43d-1` (2026-10-06), NOT merged or deployed (deploy Wed 10-07 21:15
+**Status**: built on branch `worktree-wf_ab25af87-43d-1` (2026-10-06), MERGED and DEPLOYED (status corrected 2026-10-30 at the #687 close; this line was written before the merge) (deploy Wed 10-07 21:15
 ET: `broker/` → both + execution, two steps). Tests: `tests/test_687_restore_retry_held_shares.py` (13: the B2 shape
 restores the same stop on the poll that shows the shares free + one `stop_restore_retried` row; a refusal that
 outlasts the window → today's page + `stop_restore_retry_ended`; a first attempt that succeeds never polls and makes
@@ -916,7 +916,7 @@ has its stop, and none to the replace branch.
 **Reversion-flag**: REFINEMENT of ruling (i) (same day) — the same flat/unreadable/held read, one more consumer.
 Not a reversal.
 
-**Status**: built on branch `687a-coverage-flat` (2026-10-04), NOT merged or deployed. Tests:
+**Status**: built on branch `687a-coverage-flat` (2026-10-04), MERGED and DEPLOYED (status corrected 2026-10-30 at the #687 close; this line was written before the merge). Tests:
 `tests/test_687_ruling_a_coverage_repair_reads_broker.py` (14: flat → nothing placed + the outcome + the one audit row +
 no failure row; the retry's terminal; unreadable and held → the same placement as main, with the read pinned in the
 call list; a held count that differs from the books does NOT re-size the target; the replace branch, the no-price
@@ -1018,7 +1018,7 @@ position, and none when the broker cannot be read.
 
 **Reversion-flag**: REFINEMENT of #687 (c) (2026-10-01) — same sizing, one more source it can name. Not a reversal.
 
-**Status**: built on branch `687i-flat-vs-unreadable` (2026-10-04), NOT merged or deployed. Tests:
+**Status**: built on branch `687i-flat-vs-unreadable` (2026-10-04), MERGED and DEPLOYED (status corrected 2026-10-30 at the #687 close; this line was written before the merge). Tests:
 `tests/test_687_ruling_i_flat_vs_unreadable.py` (16: the sizing's three answers; the restore flat → nothing placed +
 RESTORE_FLAT + the row; unreadable → the books, unchanged; the 16:45 exit, the stream path and the depth page end to
 end; ruling (iii)'s path sells nothing on a flat broker; `get_position` refuses an opt-in flag and keeps its
@@ -1123,7 +1123,7 @@ a stop is accepted, or refused for any other reason.
 - The leg cancel-and-replace resize (`_replace_stop_leg_via_cancel_new`, partial-exit reduce + coverage widen) and
   the +8R profit-take OCO placement: their failures route to the coverage reconciler, so they inherit site 1.
 
-**Status**: built on branch `687-stop-breach-everywhere`, NOT merged or deployed. Tests:
+**Status**: built on branch `687-stop-breach-everywhere`, MERGED and DEPLOYED (status corrected 2026-10-30 at the #687 close; this line was written before the merge). Tests:
 `tests/test_687_ruling_iii_stop_breach_everywhere.py` (28: per site — sold once, any other refusal unchanged, a
 failed sale still pages; the 09:35 refresh after a filled sale; the watchdog tick after a fill; three de-dupe proofs
 against ruling (3)'s own sale); convergence scenarios s32-s38 (baseline re-pinned to main 8e1329f0; all 7
@@ -1162,7 +1162,7 @@ behaviour held as a placeholder because the case was un-ruled; his ruling replac
 out of `total_pnl` on the close day) is a safeguard change: owned by `docs/setups/safeguards.md` item 5 + its
 2026-10-02 entry.
 
-**Status**: built + unit-tested on branch `687-depth-rule`, NOT merged or deployed. Tests:
+**Status**: built + unit-tested on branch `687-depth-rule`, MERGED and DEPLOYED (status corrected 2026-10-30 at the #687 close; this line was written before the merge). Tests:
 `tests/test_687_ruling_ii_plain_limit_left_resting.py` (4: 16:45 limit left resting + 4 free shares sold; nothing
 sold or cancelled when the limit holds every share; 19:01 the same; the OCO third unchanged). Convergence s28 now
 differs from main under "ruling (ii) 2026-10-02".
@@ -1278,7 +1278,7 @@ call in `execute_full_exit` reddens 6 scenarios.
 
 **Anticipated effect**: toggle-OFF trades behave as main except the listed exceptions; the depth flow stays OFF
 (no row stamped). **Reversion-flag**: REFINEMENT of the two 2026-10-01 entries below (parts A and B) plus his
-four rulings. **Status**: built + unit-tested on branch `687-depth-rule`, NOT merged or deployed; toggle
+four rulings. **Status**: built + unit-tested on branch `687-depth-rule`, MERGED and DEPLOYED (status corrected 2026-10-30 at the #687 close; this line was written before the merge); toggle
 `magna53_depth_exit` OFF in both modes.
 
 ### 2026-10-01 — #687 part B: the DEPTH exit rule for NEW MAGNA53 trades — BUILT behind `magna53_depth_exit`, toggle OFF (no live behaviour changes until he flips it)

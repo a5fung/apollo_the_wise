@@ -495,7 +495,7 @@ position is sold instead of left naked. No effect on any tick where the fallback
 
 **Reversion-flag**: REFINEMENT of the 2026-05-17 watchdog entry (one more outcome on its failure path).
 
-**Status**: built on branch `687-stop-breach-everywhere`, NOT merged or deployed. Tests:
+**Status**: built on branch `687-stop-breach-everywhere`, MERGED and DEPLOYED (status corrected 2026-10-30 at the #687 close; this line was written before the merge). Tests:
 `tests/test_687_ruling_iii_stop_breach_everywhere.py` (site 4: once across two ticks, other refusal → CRITICAL
 page, failed sale → CRITICAL page); convergence s36.
 

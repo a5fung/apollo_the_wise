@@ -1,0 +1,17 @@
+SET
+== T1 depth sale first fire
+count
+0
+(1 row)
+== T2 flat-broker rulings (i) (a) first fire
+count
+0
+(1 row)
+== T3 part-filled dead full-exit first fire
+count
+0
+(1 row)
+== writers alive: depth-marked rows ever, live/paper positions held
+marked_now|depth_rows
+0|5
+(1 row)

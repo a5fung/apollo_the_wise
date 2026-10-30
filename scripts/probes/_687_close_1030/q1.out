@@ -1,0 +1,14 @@
+SET
+== (1) live magna53 rows since 10-13 and their exit_rule
+id|ticker|alert_date|account_mode|status|exit_rule
+422|IRON|2026-10-19|live|filled|depth
+424|SMCI|2026-10-21|live|closed|depth
+429|CLS|2026-10-27|live|closed|depth
+(3 rows)
+== (2)(3) the zero clocks: rulings (iii) (i) (a) and the part-filled dead full-exit, since 10-04
+event_type|count|first_et
+stop_breach_market_sale|1|2026-10-15 09:00:00
+(1 row)
+== (4) depth sales since 10-12: vehicle, account, outcome
+et|event_type|s|vehicle|acct
+(0 rows)

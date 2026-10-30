@@ -1,0 +1,4 @@
+SET
+id|et|event_type|summary|detail
+57035|2026-10-15 09:00:00|stop_breach_market_sale|PENG: price already through the stop $65.70 — selling 10 sh at market (order b0b1d91b)|{"trade_id": 414, "ticker": "PENG", "account_mode": "live", "qty": 10, "stop_price": 65.7, "site": "scheduler.stop_ack_watchdog", "order_id": "b0b1d91b-fcba-4ffc-9413-b9ab41e999c7", "reason": "stop_hit", "stop_error": "{\"code\":42210000,\"market_price\":\"63.86\",\"message\":\"stop price must be less than current price\",\"stop_price\":\"65.7\"}"}
+(1 row)

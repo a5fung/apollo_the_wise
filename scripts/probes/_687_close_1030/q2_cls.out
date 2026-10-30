@@ -1,0 +1,12 @@
+SET
+et|event_type|left
+2026-10-29 17:01:17|theme_rehome_judged|ACLS stays — the judgement did not place it (offered on tape 0.59 to 'Enterprise Server, Storage & Data Infrastructure Hardware', own_unjudgeable:thin_basket)
+2026-10-30 09:00:01|premarket_gap_risk|CLS pre-market $262.36 < stop $272.00 (live)
+2026-10-30 09:30:53|entry_partial_fill|[live] CLS partial_fill 1/2 (cum 1) @ $265.63 side=sell
+2026-10-30 09:30:53|trade_lifecycle_telegram_attempted|stop_out CLS @$265.63 pnl=$-12.74
+2026-10-30 09:45:00|order_status_reconciled|CLS order=2bdb98c5: new -> filled (live)
+(5 rows)
+ERROR:  column "exit_reason" does not exist
+LINE 1: ...id, ticker, status, remaining_shares, stop_price, exit_reaso...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "mi_live_trades.skip_reason".
