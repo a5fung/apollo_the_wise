@@ -44,8 +44,13 @@ _META_TAG = re.compile(r"\[(?:ok|blocked|swept|revalidated):", re.I)
 
 @pytest.fixture(scope="module")
 def board():
-    tasks = parse(PLAN.read_text(encoding="utf-8"))[0]
-    assert len(tasks) > 20, "the board did not parse — every assertion below would be vacuous"
+    text = PLAN.read_text(encoding="utf-8")
+    tasks = parse(text)[0]
+    # Every task line must parse (2026-10-31: the old floor `len(tasks) > 20` failed a correct parse the day the
+    # burndown took the board to 20 — a count floor is not a population test; compare against the lines themselves).
+    task_lines = re.findall(r"(?m)^- #\d+ \|", text)
+    assert task_lines and len(tasks) == len(task_lines), \
+        "the board did not parse — every assertion below would be vacuous"
     return tasks
 
 

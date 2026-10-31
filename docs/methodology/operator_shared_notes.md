@@ -2728,3 +2728,19 @@ Rulings recorded (breakout v1, paper): (1) **the stop at the fill** — the rest
 
 Rulings recorded: (1) the GKOS fix (#712) and breakout v1's nightly list deploy in the Friday 2026-10-30 12:00-13:00 ET window (both, then execution), no out-of-window override. (2) **Breakout v1 paper, a +2R touch whose resting limit did not fill:** on session 3, if the close is above the fill, CANCEL the still-resting +2R limit and sell the third at the close (one third, never two); and the stop stays where it was until a third ACTUALLY sells — placing the +2R limit does not by itself move the stop to breakeven.
 
+
+## 2026-10-31 — rulings on the breakout exit, the post-open EP entry, the float points and neglect (operator, verbatim)
+
+> "Go with rec on both" (2026-10-31, answering a two-row table I sent: (1) #655 — "the pass that files a narrow theme under a broader parent now links 0 of 18 pairs, versus 4 of 54 before its change" | my recommendation "I check the 18 pairs by eye today: a real parent it missed means a fix; if there's none, leave it"; (2) Breakout paper trading — "if the planned day-3 sale of a third fails (rare), the trade ends with no third sold, against your "one third" rule" | my recommendation "Retry the sale at the next day's close")
+
+> "Take all recs" (2026-10-31, answering this table I sent — item | my rec | reason):
+> - #715: names that cross 9% only after the open | Adopt "skip if it opened below the line" | It's your own definition (the gap must exist at the open, your REGN point), and the data agrees: it dropped 4 trades, 3 of them losers, and gave up no big winner
+> - #715: "buy where it crossed" | Don't adopt | Its two big winners both came before Aug 27; since then it adds losers
+> - #714: +5 points for float under 50M | Keep for now | The test can't tell either way; dropping it would have removed VICR, a big winner. Re-read on Nov 21 with stored float data
+> - #714: neglect | Stop testing it with price and volume | Four definitions have now shown nothing. The only untried measures need outside data, analyst coverage or news history
+> - Breakout: a take-profit order that fills only partly counts as the third sold | Accept | Selling more at the day-3 close would sell more than a third; the rest still sells at the take-profit price or on the trailing stop
+> - Breakout: after-hours stop change unproven | Deploy anyway | If Alpaca refuses, the stop simply stays where it was placed, never wider, and the first such fill shows it
+
+> "that doesn't make sense, that means our buy point is below the 10% gap range which then defeats the 10% range" (2026-10-30, on REGN — the catch that opened #715)
+
+Rulings recorded: (1) breakout v1 — a decided session-3 third that did not sell is retried at the next close; a part-filled +2R order counts as the third; the after-hours stop lower ships unproven (SSoT `docs/setups/consolidation_breakout.md`). (2) EP — a real-time flip-up whose 09:30 open is below the gap floor is skipped (#718, built shadow-first per CHANGE_PROCESS; the flip to acting is his). (3) EP score — the float points stay for now (re-read 2026-11-21); neglect is no longer tested with price / volume bars. (4) #655's parent pass is left as it is (79 pairs read by eye, none missed).
