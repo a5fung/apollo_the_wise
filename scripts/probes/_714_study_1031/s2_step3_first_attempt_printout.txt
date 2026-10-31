@@ -1,0 +1,118 @@
+
+====================================================================================================
+STEP 0 — composition, stop conditions, hashes (NO outcome is read)
+====================================================================================================
+capture SQL hashes vs prereg §14: ALL 7 MATCH
+schema check wanted/found/missing: ['123', '123', '0'] | missing rows: 0
+labelled list equals shared/operator_labelled_eps.py: True
+labelled ticks present (ticker: n ticks): {'BFLY': 38, 'PLTR': 38, 'ABNB': 2, 'TEAM': 37, 'HTFL': 38, 'MRNA': 37, 'CHPT': 38, 'PENG': 14}
+distinct labelled boards present: 7
+bars: 767,543 rows, 772 tickers, SPY calendar 2021-09-27..2026-10-30 (1280 sessions); rows off the SPY calendar: 0
+POP_B file rows 800: scored (= Population B) 798; labelled-but-unscored (ABNB, CHPT; not in B) 2: ['ABNB', 'CHPT']
+B scan dates 2026-05-01..2026-10-09, distinct tickers 629, distinct dates 110; duplicate (ticker,date): 0
+rows per block: {'B1': 327, 'B2': 296, 'B3': 175} | NYSE sessions in blocks (SPY cal): {'B1': 38, 'B2': 38, 'B3': 36}
+last scan date with 15 forward SPY sessions loaded: 2026-10-09; B rows after it: 0 (censored, never filled)
+stored-float era (first date from which >=90% of that date's scored rows carry a stored float on every later date): 2026-08-31
+census scored ticker-days in B window: 798 (POP_B scored rows 798); stored float on 145; float points >0 on 46
+
+====================================================================================================
+STEP 1 — features for every row (bars strictly before the gap day; NO forward bar, NO fwd_*_pct, NO outcome column)
+====================================================================================================
+yfinance float file: 541 tickers fetched; with a float value 537; fetch window 2026-10-31T20:08:53+00:00 .. 2026-10-31T20:19:26+00:00 (UTC)
+C0 look-ahead assertion: max(bar index used) < index(scan_date) asserted on 1,822 feature computations across 1,386 distinct (ticker, date) rows — 0 violations
+
+====================================================================================================
+STEP 0 (cont.) — C6 composition after bars are attached
+====================================================================================================
+B rows per prior-history band (sessions in mi_daily_closes before the gap day): {'no bars': 0, '1-251': 88, '252-503': 41, '504-755': 42, '756+': 627}
+B rows with no bars at all: 0 | bar missing on gap day: 0
+neglect-eligible (N) rows in B: 662 of 798 | excluded by reason: {'history<504': 129, 'window<95% non-null': 7}
+labelled boards (date: logged / scored / scored rivals / alerted): {'2026-06-18': ('27', '5', '4', '2'), '2026-08-04': ('51', '27', '26', '11'), '2026-08-07': ('64', '21', '20', '16'), '2026-08-14': ('25', '11', '10', '7'), '2026-08-19': ('17', '11', '10', '4'), '2026-09-03': ('298', '7', '7', '3'), '2026-10-07': ('190', '2', '1', '1')}
+his 8 EPs — history sessions, neglect-eligible?, 20-day ADV$, float and its source:
+ticker  scan_date  n_hist neglect_ok     why_not        adv20    float_val   float_src
+  BFLY 2026-06-18  1186.0       True             2.443229e+07  220950303.0      yf_now
+  PLTR 2026-08-04  1217.0       True             4.502336e+09 2109789223.0      yf_now
+  ABNB 2026-08-07  1220.0       True             5.257185e+08  405770554.0      yf_now
+  TEAM 2026-08-07  1220.0       True             4.038923e+08  157854834.0      yf_now
+  HTFL 2026-08-14   255.0      False history<504 2.616417e+07   67249066.0      yf_now
+  MRNA 2026-08-19  1228.0       True             3.104150e+08  371984047.0      yf_now
+  CHPT 2026-09-03  1239.0       True             2.365457e+06   26035954.0      yf_now
+  PENG 2026-10-07   495.0      False history<504 1.279318e+08   53917779.0 stored_tick
+R1 rivals per board (n), with a float value / with 504-session history: {'2026-06-18': (4, 4, 3), '2026-08-04': (26, 26, 24), '2026-08-07': (20, 20, 19), '2026-08-14': (10, 9, 7), '2026-08-19': (10, 10, 9), '2026-09-03': (7, 7, 5), '2026-10-07': (1, 1, 1)}
+R2 rivals per board: {'2026-06-18': 15, '2026-08-04': 42, '2026-08-07': 52, '2026-08-14': 16, '2026-08-19': 10, '2026-09-03': 84, '2026-10-07': 8} | R3 per board: {'2026-06-18': 2, '2026-08-04': 10, '2026-08-07': 15, '2026-08-14': 6, '2026-08-19': 3, '2026-09-03': 3, '2026-10-07': 0}
+
+====================================================================================================
+STEP 2 — freeze strata, cuts and F1 groups; C1; C2 (simulated flags only); C4; C5. NO real runner count is printed.
+====================================================================================================
+Registered choices printed up front: C2 base rate = 0.15 (the registered '~15% runners' of prereg §8.1 — the real rate is not read before STEP 3); C2 = 200 simulations per cell with 2000 inner permutation draws (the verdict uses 20000); planted effect swept 0..15 pp in 1 pp steps; 'must-agree' encodings are not simulated (POST-HOC: C2 power is therefore a slight upper bound). seed 714.
+
+Frozen analysis sets (strata = ADV$ rungs from bars; rung merge map: rung index -> merged rung; a rung <15 rows merges into the next lower; lowest-rung-short merges UP is a POST-HOC fill-in of an unspecified case):
+  F1         n=792, favourable=253, rest=539; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (173, 177), 1: (38, 87), 2: (33, 108), 3: (7, 72), 4: (2, 95)}
+  F1_stored  n=145, favourable=46, rest=99; rung merge map {0: 0, 1: 1, 2: 2, 3: 2, 4: 4}; (fav,rest) by stratum {0: (35, 38), 1: (8, 15), 2: (3, 27), 4: (0, 19)}
+  NP         n=662, favourable=224, rest=438; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (94, 186), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  NV         n=662, favourable=223, rest=439; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (93, 187), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  NA         n=662, favourable=233, rest=429; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (92, 188), 1: (37, 63), 2: (42, 77), 3: (29, 47), 4: (33, 54)}
+  NP_s1      n=662, favourable=224, rest=438; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (94, 186), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  NP_s2      n=662, favourable=224, rest=438; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (94, 186), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  NV_s       n=662, favourable=224, rest=438; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (94, 186), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  NA_s       n=662, favourable=224, rest=438; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (94, 186), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  rows in B with no 20-session ADV$ (cannot be stratified, excluded from every Leg T frame): 1
+
+C1 coverage: rows meeting the 504-session history rule 669; neglect features non-null on 662 = 99.0% (floor 85%). Float known (pooled) on 792 of 798 = 99.2% (floor 85%); stored-era float on 145.
+  NOT MEASURED flags: {'F1': False, 'NP': False, 'NV': False, 'NA': False}
+
+F1 float source on B rows: {'yf_now': 648, 'unknown': 5, 'stored_tick': 145} | lowfloat (<50M) among known: 254 of 793
+Float drift (yf_now / stored-at-alert), 47 era rows with both: median 1.000, share >10% larger now 6%, share >10% smaller 0%, share that cross the 50M line between the two 0%
+yf_now-sourced B rows with an APPLIED split executed between the alert and 2026-10-31 (their 'now' float is on a different share count): 0
+
+====================================================================================================
+C2 — planted-effect check on the real strata and row counts (before any outcome is attached)
+====================================================================================================
+definition                           n   fav | PASS rate at planted 0pp / +10pp |  MDE 50%  MDE 80% | powered?
+F1 pooled (stored + yf_now)        792   253 |    2.5%  /    80.0%              |     8 pp     10 pp | POWERED
+F1 stored-float era only           145    46 |    0.0%  /     0.0%              |   >15 pp    >15 pp | NOT POWERED
+NP                                 662   224 |    0.0%  /    81.5%              |     7 pp     10 pp | POWERED
+NV                                 662   223 |    0.0%  /    84.0%              |     8 pp     10 pp | POWERED
+NA                                 662   233 |    0.5%  /    81.5%              |     7 pp     10 pp | POWERED
+size check (planted 0 pp must read PASS in <=3% of simulations): OK
+
+====================================================================================================
+C4 — positive control for Leg L: ADV$ place of his 8 EPs among their same-day R1 rivals (must read >= 0.60; < 0.50 = Leg L NOT READ)
+====================================================================================================
+ticker  scan_date            raw  n_rivals  n_valid     status   pct
+  BFLY 2026-06-18   24432291.619         4        4         ok 0.500
+  PLTR 2026-08-04 4502335747.145        26       26         ok 1.000
+  ABNB 2026-08-07  525718475.702        20       20         ok 0.950
+  TEAM 2026-08-07  403892296.293        20       20         ok 0.950
+  HTFL 2026-08-14   26164173.844        10       10         ok 0.400
+  MRNA 2026-08-19  310414978.336        10       10         ok 0.800
+  CHPT 2026-09-03    2365457.433         7        7         ok 0.000
+  PENG 2026-10-07  127931766.849         1        1 thin board   NaN
+mean place 0.657 over 7 eligible EPs (thin boards excluded); EPs above 0.5: 4; 90% chance band for that mean 0.30-0.70
+(for reference, all 8 EPs incl. thin boards: mean place 0.700)
+C4 passes (>= 0.60).
+
+====================================================================================================
+C5 — float counterfactual calibration (era rows: stored score parts + ep_bar)
+====================================================================================================
+era rows (stored breakdown and bar): 146; scan dates 2026-08-31..2026-10-09
+factual rebuild reproduces the stored ep_score within 0.05 on 146 of 146 = 100.0% (bar 99%)
+worked-back regime multiplier (rounded 0.01): {1.0: 146}
+multiplier by that day's regime name: {'Choppy': {1.0: 73}, 'Correcting': {1.0: 65}, 'Crisis': {1.0: 8}}
+multiplier is 1.2 on Bull days and 1.0 otherwise on 100.0% of era rows (bar 99%)
+stored conviction-floor part equals max(0, floor(gap, grade) - other parts) (or is absent when no rule matches) on 146 of 146 era rows
+score_tier carried by era rows: {'': 114, 'HIGH': 32} | alert tiers: {'': 114, 'HIGH': 23, 'MODERATE': 8, 'none': 1}
+rows that carry float points: 46; rows that CLEAR the bar with float and would NOT without it (N_flip): 3
+  of N_flip, HIGH-alerted (a live HIGH alert row exists that day): 3 | cross-check via raw-points search (raw >= need): 3
+  N_flip rows: [{'ticker': 'AGX', 'scan_date': '2026-09-03', 'ep_score': 65.0, 'score_cf': 58.8, 'ep_bar': 65.0, 'float_pts': 5.0}, {'ticker': 'VICR', 'scan_date': '2026-09-17', 'ep_score': 65.0, 'score_cf': 58.8, 'ep_bar': 65.0, 'float_pts': 5.0}, {'ticker': 'TLN', 'scan_date': '2026-10-06', 'ep_score': 67.5, 'score_cf': 61.2, 'ep_bar': 65.0, 'float_pts': 5.0}]
+
+====================================================================================================
+STEP 3 — outcomes attached (frame A of #686) and C3 (outcome bridge)
+====================================================================================================
+C3a gap-day close from bars equals mi_ep_scan_outcomes.baseline_close (within 0.5%) on 100.0% of 798 rows that have both (bar 95%)
+C3b bar-derived +10-session close-to-close return within 0.5 pp of fwd_10d_pct on 2.0% of 797 rows that have both (bar 90%)
+C3 diagnostic (POST-HOC): n_sessions_10d on those rows: {10: 755, 9: 36, 8: 6}
+censored rows (fewer than 15 forward sessions with a bar): 1 of 798
+B rows with outcome: 797; runners (run >= 5 ADR): 86 = 10.8%; >= 8 ADR: 28 = 3.5%; max excursion >= +50%: 30 = 3.8%; P90 of max excursion 32.2%
+runner rate by block: {'B1': (49, 327), 'B2': (19, 296), 'B3': (18, 174)}
+C3 FAILED — every outcome number is withheld; STOP.

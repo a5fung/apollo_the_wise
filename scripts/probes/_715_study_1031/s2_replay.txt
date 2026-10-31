@@ -1,0 +1,419 @@
+=== #715 stage 2 replay — PLAN.md is binding; nothing below the OUTCOMES marker was seen before the sections above it were written ===
+run: {'run_et': '2026-10-31 16:01:37', 'session_tz': 'Etc/UTC', 'client_encoding': 'UTF8', 'server_encoding': 'UTF8', 'read_only': 'on', 'pg': 'PostgreSQL 16.13 (Debian 16.13-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit'}
+c1 sections: RUN=1, TOGGLES=14, STRATEGIES=9, POPCOUNT=1, POP=51, EVENTS=736, ALERTS=51, SCANLOG=983, TRADES=50, ORDERS=58, SHADOW=35, CF=127, REGIME=25, SESSIONS=107, COVERAGE=51, CHECKS=1
+c2 sections: MIN=19103, DAILY=5438, MINCOUNT=1
+skipped (field-count mismatch) lines: c1=none c2=none
+
+=== §4 CHECK 4 — population integrity ===
+POPCOUNT: {'flip_ups': '871', 'became_high': '51', 'chase_cap_skips': '3', 'filled': '10'}  (10-30 reading was 871 / 51 / 3 / 10)
+CHECKS: {'pop_rows': '51', 'pop_tickers': '51', 'first_day': '2026-08-03', 'last_day': '2026-10-30', 'with_magna53_trade_row': '50', 'filled': '10', 'chase_cap_skips': '3', 'with_0930_bar': '51', 'with_cf_rows': '8'}
+MINCOUNT.min_rows=19103 ticker_days_with_bars=51; MIN lines parsed=19103
+CHECK 4 (counts): PASS — 51 rows, 51 with the 09:30 bar, MIN complete
+last settled session (c1 SESSIONS) = 2026-10-30; DAILY last date = 2026-10-30; sessions listed = 107
+gap re-check floor at submit: live_tracker.py:826 passes rt_gap_floor_pct=_MAGNA53_MIN_GAP_PCT = ep_detector.MIN_GAP_PCT (default 9.0; 10.0 before 2026-08-19) = the scan floor — the per-row floor parsed from the flip summary is used for both the scan floor and the submit re-check (PLAN §2.1.2).
+toggles confirmed: ep_rt_entry_gap_recheck=on, magna53 profit_trigger_r=8 breakeven_arm_r=3, magna53_depth_exit live=on
+
+=== §1 COMPOSITION — the 51, stated before any outcome ===
+split | count (n of 51)
+admission era (POP.authoritative flag; real-time gap authority first acting session 08-28): pre=32 post=19  [by flip date: before 08-27=28 on/after 08-27=23; the four 08-27 rows (CHRN CRWD DG VEEV) carry authoritative=false — the toggle flipped 13:55 ET that day]
+floor on the day: 10%=26 9%=25 floor_from_date fallback fired=0
+geometry: ORB high >= floor price=29 ORB high < floor price=22
+opening gap (09:30 bar open vs prev close): open >= floor=24 below=27
+first crossing minute (bar HIGH >= floor price): 09:30=29 09:31-09:44=16 never=6
+  sensitivity (bar CLOSE >= floor price): 09:30=25 09:31-09:44=19 >=09:45=1 never=6
+stored fate today: blocked=3 broker_rejected=1 chase_cap_skip=3 filled=10 gap_below_floor=10 infra=3 no_trade_row=1 other_setup_skip=1 out_of_window=17 unfilled_cancel=2
+submit second source: detected_at=17 orb_bar_fetched=32 orb_triggered=2
+in the ORB window (submit second < 09:45): 34; out: 17
+minute-bar coverage: has 09:30 bar=51; full 30 bars 09:30-10:00=45; short (<30) in 09:30-10:00: FTK 2026-08-03 28/30, ECG 2026-08-05 29/30, MRX 2026-08-12 29/30, CHRN 2026-08-27 26/30, AGX 2026-09-03 29/30, SEI 2026-09-08 29/30
+prev_close POP vs scan log mismatch >0.5%: 0
+09:30 bar open vs official daily open (mi_daily_closes.open_price) >0.5% apart: ATRO 2026-08-12 bar=84.84 daily=84.22, VERA 2026-08-14 bar=30.79 daily=31.29, ONON 2026-09-22 bar=30.1 daily=30.4, INIO 2026-10-27 bar=17.05 daily=17.15
+
+per-row composition (date ticker era floor% prevclose floorpx | ORB o/h/l | open>=floor orb_h>=floor | crossing(high) crossing(close) | submit src/sec/minute in_window | fate | bars 0930-1000)
+2026-08-03 FTK   pre  10% pc=23.54 floor=25.89 | 25.10/25.16/24.54 | 0 0 | 09:32 09:32 | orb_bar_fetched 09:31 09:32 IN | no_trade_row | 28/30
+2026-08-04 BTDR  pre  10% pc=11.37 floor=12.51 | 12.81/12.85/12.48 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | filled | 30/30
+2026-08-04 CAT   pre  10% pc=830.03 floor=913.03 | 922.00/935.00/920.00 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | unfilled_cancel | 30/30
+2026-08-04 TSAT  pre  10% pc=40.18 floor=44.20 | 44.00/44.16/43.12 | 0 0 | 09:31 09:31 | detected_at 09:55 09:56 OUT | out_of_window | 30/30
+2026-08-04 ZBRA  pre  10% pc=291.64 floor=320.80 | 330.10/345.47/329.47 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | blocked | 30/30
+2026-08-05 ECG   pre  10% pc=136.16 floor=149.78 | 147.16/150.78/146.89 | 0 1 | 09:30 09:30 | detected_at 09:50 09:51 OUT | out_of_window | 29/30
+2026-08-05 KTOS  pre  10% pc=51.87 floor=57.06 | 58.90/59.93/57.00 | 1 1 | 09:30 09:30 | orb_triggered 09:31 09:32 IN | blocked | 30/30
+2026-08-05 TATT  pre  10% pc=41.65 floor=45.82 | 49.28/51.22/49.28 | 1 1 | 09:30 09:30 | orb_triggered 09:31 09:32 IN | blocked | 30/30
+2026-08-06 DCTH  pre  10% pc=12.63 floor=13.89 | 14.03/14.35/14.00 | 1 1 | 09:30 09:30 | detected_at 09:55 09:56 OUT | out_of_window | 30/30
+2026-08-06 INSM  pre  10% pc=99.02 floor=108.92 | 128.60/129.41/126.15 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | broker_rejected | 30/30
+2026-08-06 RDW   pre  10% pc=10.72 floor=11.79 | 12.24/12.75/12.23 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | unfilled_cancel | 30/30
+2026-08-06 U     pre  10% pc=35.47 floor=39.02 | 36.01/36.61/34.80 | 0 0 | 09:37 09:37 | orb_bar_fetched 09:31 09:32 IN | gap_below_floor | 30/30
+2026-08-10 ABCL  pre  10% pc=6.93 floor=7.62 | 8.76/8.96/8.40 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | filled | 30/30
+2026-08-10 NESR  pre  10% pc=29.02 floor=31.92 | 32.00/32.73/31.86 | 1 1 | 09:30 09:30 | detected_at 09:45 09:46 OUT | out_of_window | 30/30
+2026-08-11 SE    pre  10% pc=114.80 floor=126.28 | 127.87/130.01/125.08 | 1 1 | 09:30 09:32 | orb_bar_fetched 09:31 09:32 IN | gap_below_floor | 30/30
+2026-08-12 ATRO  pre  10% pc=74.91 floor=82.40 | 84.84/85.25/79.50 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | other_setup_skip | 30/30
+2026-08-12 BE    pre  10% pc=211.21 floor=232.33 | 236.71/239.90/235.21 | 1 1 | 09:30 09:30 | detected_at 09:50 09:51 OUT | out_of_window | 30/30
+2026-08-12 EROC  pre  10% pc=11.25 floor=12.38 | 13.12/13.16/12.75 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | chase_cap_skip | 30/30
+2026-08-12 MRX   pre  10% pc=59.93 floor=65.92 | 62.60/64.27/62.60 | 0 0 | 09:31 09:36 | detected_at 09:55 09:56 OUT | out_of_window | 29/30
+2026-08-13 CGEM  pre  10% pc=19.60 floor=21.56 | 20.72/21.00/19.95 | 0 0 | never never | orb_bar_fetched 09:31 09:32 IN | infra | 30/30
+2026-08-13 CRMD  pre  10% pc=7.10 floor=7.81 | 8.39/8.75/8.39 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | infra | 30/30
+2026-08-13 KURA  pre  10% pc=9.94 floor=10.93 | 10.61/10.74/10.40 | 0 0 | 09:31 09:31 | detected_at 09:50 09:51 OUT | out_of_window | 30/30
+2026-08-14 VERA  pre  10% pc=28.89 floor=31.78 | 30.79/31.29/30.30 | 0 0 | 09:36 09:37 | orb_bar_fetched 09:31 09:32 IN | gap_below_floor | 30/30
+2026-08-17 ARGX  pre  10% pc=851.29 floor=936.42 | 925.51/936.78/925.51 | 0 1 | 09:30 09:31 | orb_bar_fetched 09:31 09:32 IN | gap_below_floor | 30/30
+2026-08-19 MRVL  pre  10% pc=216.00 floor=237.60 | 240.13/241.53/235.84 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | filled | 30/30
+2026-08-19 TWST  pre  10% pc=116.10 floor=127.71 | 128.20/132.00/127.75 | 1 1 | 09:30 09:30 | detected_at 09:55 09:56 OUT | out_of_window | 30/30
+2026-08-20 RARE  pre  9% pc=26.24 floor=28.60 | 28.45/28.50/27.70 | 0 0 | never never | orb_bar_fetched 09:31 09:32 IN | infra | 30/30
+2026-08-21 UUUU  pre  9% pc=13.90 floor=15.15 | 14.63/14.79/14.58 | 0 0 | 09:38 09:38 | detected_at 09:55 09:56 OUT | out_of_window | 30/30
+2026-08-27 CHRN  pre  9% pc=21.15 floor=23.05 | 22.36/23.00/22.00 | 0 0 | 09:31 09:31 | detected_at 09:50 09:51 OUT | out_of_window | 26/30
+2026-08-27 CRWD  pre  9% pc=189.18 floor=206.21 | 208.25/210.92/206.10 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | filled | 30/30
+2026-08-27 DG    pre  9% pc=122.78 floor=133.83 | 127.84/127.84/126.60 | 0 0 | never never | orb_bar_fetched 09:31 09:32 IN | gap_below_floor | 30/30
+2026-08-27 VEEV  pre  9% pc=244.91 floor=266.95 | 275.36/281.61/275.05 | 1 1 | 09:30 09:30 | detected_at 09:50 09:51 OUT | out_of_window | 30/30
+2026-09-03 AGX   post 9% pc=410.40 floor=447.34 | 427.27/427.27/419.32 | 0 0 | never never | orb_bar_fetched 09:31 09:32 IN | gap_below_floor | 29/30
+2026-09-03 HOOD  post 9% pc=106.99 floor=116.62 | 113.80/115.90/113.04 | 0 0 | 09:31 09:31 | orb_bar_fetched 09:36 09:37 IN | filled | 30/30
+2026-09-08 IONQ  post 9% pc=39.52 floor=43.08 | 42.32/42.95/42.03 | 0 0 | 09:31 09:31 | orb_bar_fetched 09:35 09:36 IN | chase_cap_skip | 30/30
+2026-09-08 SEI   post 9% pc=55.00 floor=59.95 | 61.85/62.78/60.30 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | filled | 29/30
+2026-09-14 DFTX  post 9% pc=38.89 floor=42.39 | 43.53/43.61/42.01 | 1 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | filled | 30/30
+2026-09-14 SRRK  post 9% pc=55.41 floor=60.40 | 56.50/56.90/55.00 | 0 0 | never never | orb_bar_fetched 09:31 09:32 IN | gap_below_floor | 30/30
+2026-09-22 ONON  post 9% pc=27.32 floor=29.78 | 30.10/30.40/29.40 | 1 1 | 09:30 09:30 | detected_at 09:45 09:46 OUT | out_of_window | 30/30
+2026-10-01 ACN   post 9% pc=183.37 floor=199.87 | 215.98/220.00/214.67 | 1 1 | 09:30 09:30 | detected_at 09:50 09:51 OUT | out_of_window | 30/30
+2026-10-01 SNPS  post 9% pc=434.94 floor=474.08 | 467.57/480.00/462.00 | 0 1 | 09:30 09:31 | detected_at 09:45 09:46 OUT | out_of_window | 30/30
+2026-10-06 CEG   post 9% pc=267.62 floor=291.71 | 291.11/300.71/291.00 | 0 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | filled | 30/30
+2026-10-06 TLN   post 9% pc=331.87 floor=361.74 | 349.40/355.55/349.15 | 0 0 | 09:32 09:32 | detected_at 09:55 09:56 OUT | out_of_window | 30/30
+2026-10-06 VST   post 9% pc=144.89 floor=157.93 | 151.47/154.54/151.44 | 0 0 | 09:42 09:47 | detected_at 09:55 09:56 OUT | out_of_window | 30/30
+2026-10-07 PENG  post 9% pc=64.21 floor=69.99 | 67.30/69.20/65.70 | 0 0 | 09:31 09:31 | orb_bar_fetched 09:35 09:36 IN | filled | 30/30
+2026-10-19 MANE  post 9% pc=108.82 floor=118.61 | 115.34/115.94/113.00 | 0 0 | 09:39 09:40 | orb_bar_fetched 09:31 09:32 IN | gap_below_floor | 30/30
+2026-10-21 SPCX  post 9% pc=147.79 floor=161.09 | 160.56/160.67/158.78 | 0 0 | 09:31 09:31 | orb_bar_fetched 09:31 09:32 IN | gap_below_floor | 30/30
+2026-10-27 CLS   post 9% pc=246.65 floor=268.85 | 264.00/272.74/261.50 | 0 1 | 09:30 09:30 | orb_bar_fetched 09:31 09:32 IN | filled | 30/30
+2026-10-27 INIO  post 9% pc=16.63 floor=18.13 | 17.05/17.40/16.80 | 0 0 | never never | orb_bar_fetched 09:31 09:32 IN | gap_below_floor | 30/30
+2026-10-27 SOFI  post 9% pc=14.46 floor=15.76 | 15.98/16.00/15.67 | 1 1 | 09:30 09:31 | detected_at 09:55 09:56 OUT | out_of_window | 30/30
+2026-10-30 REGN  post 9% pc=818.77 floor=892.46 | 869.88/869.88/843.69 | 0 0 | 09:32 09:33 | orb_bar_fetched 09:36 09:37 IN | chase_cap_skip | 30/30
+
+=== §4 CHECK 3 — stored 09:30 bar vs the live orb_bar_fetched O/H/L ===
+ticker-days with an orb_bar_fetched row: 32; mismatches (>0.005): 0
+CHECK 3: PASS
+
+=== §4 CHECK 4 — coverage per row (named above) + ATR14 cross-check ===
+rows with a stored atr_14: 16; replica mismatches: 0
+ATRO stop_too_wide text says 1.5x ATR $5.29 → ATR 3.527; replica ATR = 3.5250 (1.5x = 5.29); ORB range 5.75
+rows with ATR unavailable (<10 daily rows): 0
+rows with no ADR20 (<10 pre sessions): 0
+CHECK 4: PASS
+
+=== §4 CHECK 1 — today's rule vs the stored fates (mechanism first, then the proxy) ===
+1a. REGISTERED calibration rows (PLAN §2.1.3) (n=7): ticker date | stored latest | primary(open of submit min) err% | sensitivity(close of alert min) err%
+  EROC  2026-08-12 | 13.47 (cap-skip limit/1.002) | 13.42 0.394% | 12.75 5.367%  [submit 09:32, alert min 09:30]
+  CRWD  2026-08-27 | 213.37 (limit-fill limit/1.002) | 211.47 0.890% | 210.92 1.150%  [submit 09:32, alert min 09:30]
+  HOOD  2026-09-03 | 118.41 (limit-fill limit/1.002) | 117.85 0.476% | 118.18 0.197%  [submit 09:37, alert min 09:35]
+  IONQ  2026-09-08 | 43.90 (cap-skip limit/1.002) | 44.23 0.744% | 44.24 0.769%  [submit 09:36, alert min 09:35]
+  CEG   2026-10-06 | 300.94 (limit-fill limit/1.002) | 302.37 0.476% | 300.52 0.139%  [submit 09:32, alert min 09:30]
+  PENG  2026-10-07 | 72.07 (limit-fill limit/1.002) | 71.95 0.161% | 72.08 0.019%  [submit 09:36, alert min 09:35]
+  REGN  2026-10-30 | 926.48 (cap-skip limit/1.002) | 923.01 0.374% | 923.53 0.318%  [submit 09:37, alert min 09:35]
+  median |error|: primary=0.476%  sensitivity=0.318%
+1a-extra. the same + every stored 'last $' read (information, not the deciding set) (n=20): ticker date | stored latest | primary(open of submit min) err% | sensitivity(close of alert min) err%
+  EROC  2026-08-12 | 13.47 (cap-skip limit/1.002) | 13.42 0.394% | 12.75 5.367%  [submit 09:32, alert min 09:30]
+  CRWD  2026-08-27 | 213.37 (limit-fill limit/1.002) | 211.47 0.890% | 210.92 1.150%  [submit 09:32, alert min 09:30]
+  HOOD  2026-09-03 | 118.41 (limit-fill limit/1.002) | 117.85 0.476% | 118.18 0.197%  [submit 09:37, alert min 09:35]
+  IONQ  2026-09-08 | 43.90 (cap-skip limit/1.002) | 44.23 0.744% | 44.24 0.769%  [submit 09:36, alert min 09:35]
+  CEG   2026-10-06 | 300.94 (limit-fill limit/1.002) | 302.37 0.476% | 300.52 0.139%  [submit 09:32, alert min 09:30]
+  PENG  2026-10-07 | 72.07 (limit-fill limit/1.002) | 71.95 0.161% | 72.08 0.019%  [submit 09:36, alert min 09:35]
+  REGN  2026-10-30 | 926.48 (cap-skip limit/1.002) | 923.01 0.374% | 923.53 0.318%  [submit 09:37, alert min 09:35]
+  INSM  2026-08-06 | 128.96 (skip text 'last $') | 130.41 1.124% | 128.89 0.054%  [submit 09:32, alert min 09:30]
+  U     2026-08-06 | 35.83 (skip text 'last $') | 37.83 5.582% | 35.53 0.837%  [submit 09:32, alert min 09:30]
+  SE    2026-08-11 | 125.36 (skip text 'last $') | 126.22 0.686% | 125.39 0.022%  [submit 09:32, alert min 09:30]
+  CGEM  2026-08-13 | 19.95 (audit gap_below_floor 'last $') | 19.22 3.659% | 19.95 0.000%  [submit 09:32, alert min 09:30]
+  VERA  2026-08-14 | 30.50 (skip text 'last $') | 30.38 0.393% | 30.79 0.951%  [submit 09:32, alert min 09:30]
+  ARGX  2026-08-17 | 931.98 (skip text 'last $') | 947.11 1.623% | 931.98 0.000%  [submit 09:32, alert min 09:30]
+  RARE  2026-08-20 | 27.65 (audit gap_below_floor 'last $') | 27.79 0.488% | 28.00 1.266%  [submit 09:32, alert min 09:30]
+  DG    2026-08-27 | 127.26 (skip text 'last $') | 127.35 0.071% | 127.26 0.000%  [submit 09:32, alert min 09:30]
+  AGX   2026-09-03 | 422.86 (skip text 'last $') | 423.95 0.258% | 422.86 0.000%  [submit 09:32, alert min 09:30]
+  SRRK  2026-09-14 | 55.51 (skip text 'last $') | 56.30 1.423% | 55.51 0.000%  [submit 09:32, alert min 09:30]
+  MANE  2026-10-19 | 115.86 (skip text 'last $') | 115.17 0.600% | 115.86 0.000%  [submit 09:32, alert min 09:30]
+  SPCX  2026-10-21 | 160.85 (skip text 'last $') | 162.18 0.824% | 160.13 0.445%  [submit 09:32, alert min 09:30]
+  INIO  2026-10-27 | 17.13 (skip text 'last $') | 16.95 1.080% | 17.13 0.000%  [submit 09:32, alert min 09:30]
+  median |error|: primary=0.643%  sensitivity=0.097%
+PROXY DECISION (pre-registered: median |error| of the primary on the registered rows > 0.3% → the sensitivity becomes primary): registered median primary=0.476% → SENSITIVITY (close of the alert-minute bar) IS PRIMARY
+
+1b. per-row: ticker date | stored fate (skip text) | replay path under today's rule | mechanism check with the row's own stored stop/latest | verdict
+  FTK   2026-08-03 | no_trade_row () | gap_below_floor (setup:gap_below_floor: rt 6.8% < 10% (proxy 25.13)) |  | non-setup live stop (no row) — replay gap_below_floor; stays in every population
+  BTDR  2026-08-04 | filled (block:r3_reentry_disabled) | stop_limit (stop-limit fill 12.85 @ 09:34) | fill 12.85 vs live 12.8500 (0.00%) | match
+  CAT   2026-08-04 | unfilled_cancel (ORB window unfilled) | stoplimit_no_entry (never_crossed_orb_high) |  | match
+  TSAT  2026-08-04 | out_of_window (window:out_of_orb: detected 09:56 ET) | out_of_window (window:out_of_orb: submit 09:55) |  | match
+  ZBRA  2026-08-04 | blocked (block:max_positions: 5/5 (mode=live)) | stop_limit (stop-limit fill 347.20 @ 09:34) |  | non-setup live stop (block:max_positions: 5/5 (mode=live)) — replay enters; stays in every population
+  ECG   2026-08-05 | out_of_window (window:out_of_orb: detected 09:51 ET) | out_of_window (window:out_of_orb: submit 09:50) |  | match
+  KTOS  2026-08-05 | blocked (block:circuit_breaker: cooldown until 2026-08-05T19:50:00.52) | stop_limit (stop-limit fill 60.23 @ 09:32) |  | non-setup live stop (block:circuit_breaker: cooldown until 20) — replay enters; stays in every population
+  TATT  2026-08-05 | blocked (block:circuit_breaker: cooldown until 2026-08-05T19:50:00.52) | stop_limit (stop-limit fill 51.48 @ 09:32) |  | non-setup live stop (block:circuit_breaker: cooldown until 20) — replay enters; stays in every population
+  DCTH  2026-08-06 | out_of_window (window:out_of_orb: detected 09:56 ET) | out_of_window (window:out_of_orb: submit 09:55) |  | match
+  INSM  2026-08-06 | broker_rejected (broker:entry_rejected: last $128.96 at/below trigger $129.41) | stop_limit (stop-limit fill 130.06 @ 09:32) |  | non-setup live stop (broker:entry_rejected: last $128.96 at/b) — replay enters; stays in every population
+  RDW   2026-08-06 | unfilled_cancel (ORB window unfilled) | stoplimit_no_entry (never_crossed_orb_high) |  | match
+  U     2026-08-06 | gap_below_floor (setup:gap_below_floor: rt 1.0% < 10% floor (alert said 18.4%) | gap_below_floor (setup:gap_below_floor: rt 0.2% < 10% (proxy 35.53)) |  | match
+  ABCL  2026-08-10 | filled () | stop_limit (stop-limit fill 8.96 @ 09:34) | fill 8.96 vs live 8.9600 (0.00%) | match
+  NESR  2026-08-10 | out_of_window (window:out_of_orb: detected 09:45 ET) | out_of_window (window:out_of_orb: submit 09:45) |  | match
+  SE    2026-08-11 | gap_below_floor (setup:gap_below_floor: rt 9.2% < 10% floor (alert said 10.6%) | gap_below_floor (setup:gap_below_floor: rt 9.2% < 10% (proxy 125.39)) |  | match
+  ATRO  2026-08-12 | other_setup_skip (setup:stop_too_wide: ORB range $5.75 (7.2%) > 1.5x ATR $5.29) | stop_too_wide (setup:stop_too_wide: range 5.75 > 1.5x ATR 3.52) |  | match
+  BE    2026-08-12 | out_of_window (window:out_of_orb: detected 09:50 ET) | out_of_window (window:out_of_orb: submit 09:50) |  | match
+  EROC  2026-08-12 | chase_cap_skip (setup:chase_cap_exceeded: limit $13.50 risk $0.75/sh vs plan) | stop_limit (stop-limit fill 13.23 @ 09:32) | own stop 12.75 + stored latest 13.47 → chase_cap_skip (1.83x) | STOP ERA: live refused under the ORB-low stop; today's 2R stop admits the same limit — not a mismatch (listed)
+  MRX   2026-08-12 | out_of_window (window:out_of_orb: detected 09:55 ET) | out_of_window (window:out_of_orb: submit 09:55) |  | match
+  CGEM  2026-08-13 | infra (infra:no_bar: 3 retries exhausted) | gap_below_floor (setup:gap_below_floor: rt 1.8% < 10% (proxy 19.95)) |  | non-setup live stop (infra:no_bar: 3 retries exhausted) — replay gap_below_floor; stays in every population
+  CRMD  2026-08-13 | infra (infra:no_bar: 3 retries exhausted) | stop_limit (stop-limit fill 8.75 @ 09:37) |  | non-setup live stop (infra:no_bar: 3 retries exhausted) — replay enters; stays in every population
+  KURA  2026-08-13 | out_of_window (window:out_of_orb: detected 09:51 ET) | out_of_window (window:out_of_orb: submit 09:50) |  | match
+  VERA  2026-08-14 | gap_below_floor (setup:gap_below_floor: rt 5.6% < 10% floor (alert said 14.2%) | gap_below_floor (setup:gap_below_floor: rt 6.6% < 10% (proxy 30.79)) |  | match
+  ARGX  2026-08-17 | gap_below_floor (setup:gap_below_floor: rt 9.5% < 10% floor (alert said 10.5%) | gap_below_floor (setup:gap_below_floor: rt 9.5% < 10% (proxy 931.98)) |  | match
+  MRVL  2026-08-19 | filled (block:r3_reentry_disabled) | stop_limit (stop-limit fill 241.53 @ 09:32) | fill 241.53 vs live 241.5000 (0.01%) | match
+  TWST  2026-08-19 | out_of_window (window:out_of_orb: detected 09:55 ET) | out_of_window (window:out_of_orb: submit 09:55) |  | match
+  RARE  2026-08-20 | infra (infra:no_bar: 3 retries exhausted) | gap_below_floor (setup:gap_below_floor: rt 6.7% < 9% (proxy 28.00)) |  | non-setup live stop (infra:no_bar: 3 retries exhausted) — replay gap_below_floor; stays in every population
+  UUUU  2026-08-21 | out_of_window (window:out_of_orb: detected 09:55 ET) | out_of_window (window:out_of_orb: submit 09:55) |  | match
+  CHRN  2026-08-27 | out_of_window (window:out_of_orb: detected 09:50 ET) | out_of_window (window:out_of_orb: submit 09:50) |  | match
+  CRWD  2026-08-27 | filled () | stop_limit (stop-limit fill 211.47 @ 09:32) | stored latest 213.37 → limit fill 213.80 vs live 213.3058 | BORDERLINE/PROXY: the stored latest reproduces the live fill within 0.5%; the minute proxy does not
+  DG    2026-08-27 | gap_below_floor (setup:gap_below_floor: rt 3.6% < 9% floor (alert said 10.9%,) | gap_below_floor (setup:gap_below_floor: rt 3.6% < 9% (proxy 127.26)) |  | match
+  VEEV  2026-08-27 | out_of_window (window:out_of_orb: detected 09:50 ET) | out_of_window (window:out_of_orb: submit 09:50) |  | match
+  AGX   2026-09-03 | gap_below_floor (setup:gap_below_floor: rt 3.0% < 9% floor (alert said 9.6%, ) | gap_below_floor (setup:gap_below_floor: rt 3.0% < 9% (proxy 422.86)) |  | match
+  HOOD  2026-09-03 | filled () | limit (limit fill 118.42 @ 09:37 (1.44x planned)) | fill 118.42 vs live 118.3700 (0.04%) | match
+  IONQ  2026-09-08 | chase_cap_skip (setup:chase_cap_exceeded: limit $43.99 risk $2.88/sh vs plan) | chase_cap_skip (setup:chase_cap_exceeded: limit 44.33 risk 3.22/sh vs planned 1.84/sh (1.75x)) | own stop 41.11 + stored latest 43.90 → chase_cap_skip (1.57x) | match
+  SEI   2026-09-08 | filled () | stop_limit (stop-limit fill 62.78 @ 09:35) | fill 62.78 vs live 62.8078 (0.04%) | match
+  DFTX  2026-09-14 | filled (block:r3_reentry_disabled) | stop_limit (stop-limit fill 43.61 @ 09:33) | fill 43.61 vs live 43.7600 (0.34%) | match
+  SRRK  2026-09-14 | gap_below_floor (setup:gap_below_floor: rt 0.2% < 9% floor (alert said 11.0%,) | gap_below_floor (setup:gap_below_floor: rt 0.2% < 9% (proxy 55.51)) |  | match
+  ONON  2026-09-22 | out_of_window (window:out_of_orb: detected 09:45 ET) | out_of_window (window:out_of_orb: submit 09:45) |  | match
+  ACN   2026-10-01 | out_of_window (window:out_of_orb: detected 09:50 ET) | out_of_window (window:out_of_orb: submit 09:50) |  | match
+  SNPS  2026-10-01 | out_of_window (window:out_of_orb: detected 09:45 ET) | out_of_window (window:out_of_orb: submit 09:45) |  | match
+  CEG   2026-10-06 | filled () | stop_limit (stop-limit fill 302.21 @ 09:32) | fill 302.21 vs live 300.9400 (0.42%) | match
+  TLN   2026-10-06 | out_of_window (window:out_of_orb: detected 09:55 ET) | out_of_window (window:out_of_orb: submit 09:55) |  | match
+  VST   2026-10-06 | out_of_window (window:out_of_orb: detected 09:55 ET) | out_of_window (window:out_of_orb: submit 09:55) |  | match
+  PENG  2026-10-07 | filled () | limit (limit fill 72.22 @ 09:36 (1.43x planned)) | fill 72.22 vs live 72.2100 (0.01%) | match
+  MANE  2026-10-19 | gap_below_floor (setup:gap_below_floor: rt 6.5% < 9% floor (alert said 9.3%, ) | gap_below_floor (setup:gap_below_floor: rt 6.5% < 9% (proxy 115.86)) |  | match
+  SPCX  2026-10-21 | gap_below_floor (setup:gap_below_floor: rt 8.8% < 9% floor (alert said 9.0%, ) | gap_below_floor (setup:gap_below_floor: rt 8.4% < 9% (proxy 160.13)) |  | match
+  CLS   2026-10-27 | filled () | stop_limit (stop-limit fill 272.74 @ 09:36) | fill 272.74 vs live 272.0050 (0.27%) | match
+  INIO  2026-10-27 | gap_below_floor (setup:gap_below_floor: rt 3.0% < 9% floor (alert said 9.7%, ) | gap_below_floor (setup:gap_below_floor: rt 3.0% < 9% (proxy 17.13)) |  | match
+  SOFI  2026-10-27 | out_of_window (window:out_of_orb: detected 09:55 ET) | out_of_window (window:out_of_orb: submit 09:55) |  | match
+  REGN  2026-10-30 | chase_cap_skip (setup:chase_cap_exceeded: limit $928.33 risk $110.83/sh vs p) | chase_cap_skip (setup:chase_cap_exceeded: limit 925.38 risk 107.88/sh vs planned 52.38/sh (2.06x)) | own stop 817.50 + stored latest 926.48 → chase_cap_skip (2.12x) | match
+
+REGN acceptance: replay path=chase_cap_skip reason=setup:chase_cap_exceeded: limit 925.38 risk 107.88/sh vs planned 52.38/sh (2.06x) (plan: must refuse at planned $52.38 vs actual >= $78.57) → PASS
+CHECK 1 tally: setup/window fates matched=43 mismatched=0 non-setup live stops (listed, replay enters them)=8
+CHECK 1: PASS
+
+=== §4 CHECK 2 — offline depth walk vs the recorder's live_replay rows ===
+  MRVL 2026-08-19 live_replay era_c (pre-depth era) — listed, NOT compared: realized_r=-1 stop_hit s0
+  CRWD 2026-08-27 live_replay era_c (pre-depth era) — listed, NOT compared: realized_r=0.39946337596390025 stop_hit s1
+  HOOD 2026-09-03 live_replay era_c (pre-depth era) — listed, NOT compared: realized_r=-0.844566544566545 stop_hit s7
+  SEI 2026-09-08 live_replay era_d (pre-depth era) — listed, NOT compared: realized_r=0.4302899073739906 stop_hit s10
+  DFTX 2026-09-14 live_replay era_d (pre-depth era) — listed, NOT compared: realized_r=-1 stop_hit s0
+  CEG 2026-10-06 live_replay era_d (pre-depth era) — listed, NOT compared: realized_r=-1 stop_hit s2
+  PENG 2026-10-07 live_replay era_d (pre-depth era) — listed, NOT compared: realized_r=-0.8006993006993015 stop_hit s6
+  CLS 2026-10-27 DEPTH era: offline status=settled realized_r=0.8574 sma_trail_stop s2 | stored realized_r=0.857438491607265 sma_trail_stop s2 | adr20=0.05906 stored 5.90593130363973% | PASS
+CHECK 2: PASS (c2 MIN stops at 15:59 — the recorder's day-0 list carries a 16:00 bar; a difference confined to that bar is a capture bound)
+
+=== §2.2 OPTION ENTRIES (fills only; outcomes are below the marker) ===
+ticker date | today | (a) | (b) | (c)   [path fill@minute stop | note]
+  FTK   2026-08-03 | gap_below_floor | stop_limit 26.32@09:33 stop 24.54 | b_open_below_floor | gap_below_floor   [crossing bar 09:32 h=26.32 l=25.43 submit 09:33 | floor>ORB high]
+  BTDR  2026-08-04 | stop_limit 12.85@09:34 stop 12.11 | stop_limit 12.85@09:34 stop 12.11 | stop_limit 12.85@09:34 stop 12.11 | stop_limit 12.85@09:34 stop 12.11   [crossing bar = 09:30 bar → identical to today]
+  CAT   2026-08-04 | stoplimit_no_entry | stoplimit_no_entry | stoplimit_no_entry | stoplimit_no_entry   [crossing bar = 09:30 bar → identical to today]
+  TSAT  2026-08-04 | out_of_window | out_of_window | b_open_below_floor | out_of_window   [crossing bar 09:31 h=44.80 l=44.00 submit 09:56 | floor>ORB high]
+  ZBRA  2026-08-04 | stop_limit 347.20@09:34 stop 313.48 | stop_limit 347.20@09:34 stop 313.48 | stop_limit 347.20@09:34 stop 313.48 | stop_limit 347.20@09:34 stop 313.48   [crossing bar = 09:30 bar → identical to today]
+  ECG   2026-08-05 | out_of_window | out_of_window | b_open_below_floor | out_of_window   [crossing bar = 09:30 bar → identical to today]
+  KTOS  2026-08-05 | stop_limit 60.23@09:32 stop 54.07 | stop_limit 60.23@09:32 stop 54.07 | stop_limit 60.23@09:32 stop 54.07 | stop_limit 60.23@09:32 stop 54.07   [crossing bar = 09:30 bar → identical to today]
+  TATT  2026-08-05 | stop_limit 51.48@09:32 stop 47.34 | stop_limit 51.48@09:32 stop 47.34 | stop_limit 51.48@09:32 stop 47.34 | stop_limit 51.48@09:32 stop 47.34   [crossing bar = 09:30 bar → identical to today]
+  DCTH  2026-08-06 | out_of_window | out_of_window | out_of_window | out_of_window   [crossing bar = 09:30 bar → identical to today]
+  INSM  2026-08-06 | stop_limit 130.06@09:32 stop 122.89 | stop_limit 130.06@09:32 stop 122.89 | stop_limit 130.06@09:32 stop 122.89 | stop_limit 130.06@09:32 stop 122.89   [crossing bar = 09:30 bar → identical to today]
+  RDW   2026-08-06 | stoplimit_no_entry | stoplimit_no_entry | stoplimit_no_entry | stoplimit_no_entry   [crossing bar = 09:30 bar → identical to today]
+  U     2026-08-06 | gap_below_floor | stop_limit 39.17@09:38 stop 37.83 | b_open_below_floor | gap_below_floor   [crossing bar 09:37 h=39.17 l=38.50 submit 09:38 | floor>ORB high]
+  ABCL  2026-08-10 | stop_limit 8.96@09:34 stop 7.84 | stop_limit 8.96@09:34 stop 7.84 | stop_limit 8.96@09:34 stop 7.84 | stop_limit 8.96@09:34 stop 7.84   [crossing bar = 09:30 bar → identical to today]
+  NESR  2026-08-10 | out_of_window | out_of_window | out_of_window | out_of_window   [crossing bar = 09:30 bar → identical to today]
+  SE    2026-08-11 | gap_below_floor | gap_below_floor | gap_below_floor | gap_below_floor   [crossing bar = 09:30 bar → identical to today]
+  ATRO  2026-08-12 | stop_too_wide | stop_too_wide | stop_too_wide | stop_too_wide   [crossing bar = 09:30 bar → identical to today]
+  BE    2026-08-12 | out_of_window | out_of_window | out_of_window | out_of_window   [crossing bar = 09:30 bar → identical to today]
+  EROC  2026-08-12 | stop_limit 13.23@09:32 stop 12.34 | stop_limit 13.23@09:32 stop 12.34 | stop_limit 13.23@09:32 stop 12.34 | stop_limit 13.23@09:32 stop 12.34   [crossing bar = 09:30 bar → identical to today]
+  MRX   2026-08-12 | out_of_window | out_of_window | b_open_below_floor | out_of_window   [crossing bar 09:31 h=66.75 l=63.15 submit 09:56 | floor>ORB high]
+  CGEM  2026-08-13 | gap_below_floor | a_no_crossing_bar | b_open_below_floor | gap_below_floor   [floor>ORB high]
+  CRMD  2026-08-13 | stop_limit 8.75@09:37 stop 8.03 | stop_limit 8.75@09:37 stop 8.03 | stop_limit 8.75@09:37 stop 8.03 | stop_limit 8.75@09:37 stop 8.03   [crossing bar = 09:30 bar → identical to today]
+  KURA  2026-08-13 | out_of_window | out_of_window | b_open_below_floor | out_of_window   [crossing bar 09:31 h=11.08 l=10.58 submit 09:51 | floor>ORB high]
+  VERA  2026-08-14 | gap_below_floor | gap_below_floor | b_open_below_floor | gap_below_floor   [crossing bar 09:36 h=31.83 l=31.24 submit 09:37 | floor>ORB high]
+  ARGX  2026-08-17 | gap_below_floor | gap_below_floor | b_open_below_floor | gap_below_floor   [crossing bar = 09:30 bar → identical to today]
+  MRVL  2026-08-19 | stop_limit 241.53@09:32 stop 230.15 | stop_limit 241.53@09:32 stop 230.15 | stop_limit 241.53@09:32 stop 230.15 | stop_limit 241.53@09:32 stop 230.15   [crossing bar = 09:30 bar → identical to today]
+  TWST  2026-08-19 | out_of_window | out_of_window | out_of_window | out_of_window   [crossing bar = 09:30 bar → identical to today]
+  RARE  2026-08-20 | gap_below_floor | a_no_crossing_bar | b_open_below_floor | gap_below_floor   [floor>ORB high]
+  UUUU  2026-08-21 | out_of_window | out_of_window | b_open_below_floor | out_of_window   [crossing bar 09:38 h=15.25 l=15.11 submit 09:56 | floor>ORB high]
+  CHRN  2026-08-27 | out_of_window | out_of_window | b_open_below_floor | out_of_window   [crossing bar 09:31 h=24.37 l=22.98 submit 09:51 | floor>ORB high]
+  CRWD  2026-08-27 | stop_limit 211.47@09:32 stop 201.28 | stop_limit 211.47@09:32 stop 201.28 | stop_limit 211.47@09:32 stop 201.28 | stop_limit 211.47@09:32 stop 201.28   [crossing bar = 09:30 bar → identical to today]
+  DG    2026-08-27 | gap_below_floor | a_no_crossing_bar | b_open_below_floor | gap_below_floor   [floor>ORB high]
+  VEEV  2026-08-27 | out_of_window | out_of_window | out_of_window | out_of_window   [crossing bar = 09:30 bar → identical to today]
+  AGX   2026-09-03 | gap_below_floor | a_no_crossing_bar | b_open_below_floor | gap_below_floor   [floor>ORB high]
+  HOOD  2026-09-03 | limit 118.42@09:37 stop 110.18 | stop_limit 118.90@09:38 stop 112.20 | b_open_below_floor | limit 118.42@09:37 stop 110.18   [crossing bar 09:31 h=118.90 l=115.55 submit 09:37 | floor>ORB high]
+  IONQ  2026-09-08 | chase_cap_skip | limit 44.33@09:36 stop 42.02 | b_open_below_floor | chase_cap_skip   [crossing bar 09:31 h=43.64 l=42.83 submit 09:36 | floor>ORB high]
+  SEI   2026-09-08 | stop_limit 62.78@09:35 stop 57.82 | stop_limit 62.78@09:35 stop 57.82 | stop_limit 62.78@09:35 stop 57.82 | stop_limit 62.78@09:35 stop 57.82   [crossing bar = 09:30 bar → identical to today]
+  DFTX  2026-09-14 | stop_limit 43.61@09:33 stop 40.41 | stop_limit 43.61@09:33 stop 40.41 | stop_limit 43.61@09:33 stop 40.41 | stop_limit 43.61@09:33 stop 40.41   [crossing bar = 09:30 bar → identical to today]
+  SRRK  2026-09-14 | gap_below_floor | a_no_crossing_bar | b_open_below_floor | gap_below_floor   [floor>ORB high]
+  ONON  2026-09-22 | out_of_window | out_of_window | out_of_window | out_of_window   [crossing bar = 09:30 bar → identical to today]
+  ACN   2026-10-01 | out_of_window | out_of_window | out_of_window | out_of_window   [crossing bar = 09:30 bar → identical to today]
+  SNPS  2026-10-01 | out_of_window | out_of_window | b_open_below_floor | out_of_window   [crossing bar = 09:30 bar → identical to today]
+  CEG   2026-10-06 | stop_limit 302.21@09:32 stop 281.29 | stop_limit 302.21@09:32 stop 281.29 | b_open_below_floor | stop_limit 302.21@09:32 stop 281.29   [crossing bar = 09:30 bar → identical to today]
+  TLN   2026-10-06 | out_of_window | out_of_window | b_open_below_floor | out_of_window   [crossing bar 09:32 h=362.00 l=356.91 submit 09:56 | floor>ORB high]
+  VST   2026-10-06 | out_of_window | out_of_window | b_open_below_floor | out_of_window   [crossing bar 09:42 h=158.13 l=157.19 submit 09:56 | floor>ORB high]
+  PENG  2026-10-07 | limit 72.22@09:36 stop 62.20 | limit 72.22@09:36 stop 61.43 | b_open_below_floor | limit 72.22@09:36 stop 62.20   [crossing bar 09:31 h=71.45 l=66.44 submit 09:36 | floor>ORB high]
+  MANE  2026-10-19 | gap_below_floor | gap_below_floor | b_open_below_floor | gap_below_floor   [crossing bar 09:39 h=118.69 l=118.10 submit 09:40 | floor>ORB high]
+  SPCX  2026-10-21 | gap_below_floor | stop_limit 162.77@09:48 stop 157.05 | b_open_below_floor | gap_below_floor   [crossing bar 09:31 h=162.77 l=159.91 submit 09:32 | floor>ORB high]
+  CLS   2026-10-27 | stop_limit 272.74@09:36 stop 250.26 | stop_limit 272.74@09:36 stop 250.26 | b_open_below_floor | stop_limit 272.74@09:36 stop 250.26   [crossing bar = 09:30 bar → identical to today]
+  INIO  2026-10-27 | gap_below_floor | a_no_crossing_bar | b_open_below_floor | gap_below_floor   [floor>ORB high]
+  SOFI  2026-10-27 | out_of_window | out_of_window | out_of_window | out_of_window   [crossing bar = 09:30 bar → identical to today]
+  REGN  2026-10-30 | chase_cap_skip | chase_cap_skip | b_open_below_floor | limit 925.38@09:37 stop 817.50   [crossing bar 09:32 h=893.00 l=866.79 submit 09:37 | floor>ORB high]
+today: enters 16 of 51; paths: chase_cap_skip=2 gap_below_floor=13 limit=2 out_of_window=17 stop_limit=14 stop_too_wide=1 stoplimit_no_entry=2
+a: enters 20 of 51; paths: a_no_crossing_bar=6 chase_cap_skip=1 gap_below_floor=4 limit=2 out_of_window=17 stop_limit=18 stop_too_wide=1 stoplimit_no_entry=2
+b: enters 12 of 51; paths: b_open_below_floor=27 gap_below_floor=1 out_of_window=8 stop_limit=12 stop_too_wide=1 stoplimit_no_entry=2
+c: enters 17 of 51; paths: chase_cap_skip=1 gap_below_floor=13 limit=3 out_of_window=17 stop_limit=14 stop_too_wide=1 stoplimit_no_entry=2
+same OUTCOME as today (entered-or-not + fill + stop): today=51 a=45 b=47 c=50   [same path label too: today=51 a=38 b=24 c=50]
+(a) ≡ today on the 29 rows whose crossing bar is the 09:30 bar: asserted
+borderline cap verdicts (|limit − cap limit| <= 0.2% of the limit): none
+
+=== OUTCOMES BELOW === (everything above was written without reading a bar after the entry)
+
+=== §5 THE TABLE — budget-R (pnl per share ÷ (anchor high − placed stop)), 20-session decision horizon ===
+ALL 51
+option | enter (of n) | same as today | settled/horizon/pending/abstain | win share | big winners >=+3R settled | marked | tail R sum(R-3)+ | sum R (settled) | worst loss (gap-through?) | adds / drops vs today | >=+3R at 40 sessions settled | marked
+today | 16 of 51 | — | 16/0/0/0 | 4 of 16 (25%) | 0 [none] | 0 [none] | +0.00 | -6.09 (n=16) | -1.44 | adds - / drops - | 0 of 16 [none] | 0 [none]
+a | 20 of 51 | 45 | 20/0/0/0 | 6 of 20 (30%) | 2 [FTK +3.49, U +3.88] | 0 [none] | +1.37 | -0.33 (n=20) | -1.43 | adds ['FTK 2026-08-03', 'IONQ 2026-09-08', 'SPCX 2026-10-21', 'U 2026-08-06'] / drops - | 2 of 20 [FTK +3.49, U +3.88] | 0 [none]
+b | 12 of 51 | 47 | 12/0/0/0 | 3 of 12 (25%) | 0 [none] | 0 [none] | +0.00 | -3.12 (n=12) | -1.10 | adds - / drops ['CEG 2026-10-06', 'CLS 2026-10-27', 'HOOD 2026-09-03', 'PENG 2026-10-07'] | 0 of 12 [none] | 0 [none]
+c | 17 of 51 | 50 | 16/0/1/0 | 4 of 16 (25%) | 0 [none] | 0 [none] | +0.00 | -6.09 (n=16) | -1.44 | adds ['REGN 2026-10-30'] / drops - | 0 of 16 [none] | 0 [none]
+c' | 17 of 51 | 50 | 16/0/1/0 | 4 of 16 (25%) | 0 [none] | 0 [none] | +0.00 | -5.81 (n=16) | -1.28 | adds ['REGN 2026-10-30'] / drops - | 0 of 16 [none] | 0 [none]
+§3.2 fixed 20-session horizon (harness-independent): option | reached +3 budget-R before the stop | stop first | ambiguous | neither | median best-high R | max best-high R
+today | 3 | 11 | 0 | 2 | 1.18 | 5.51  (n=16)
+a | 5 | 13 | 0 | 2 | 1.17 | 7.46  (n=20)
+b | 3 | 8 | 0 | 1 | 1.17 | 5.51  (n=12)
+c | 3 | 11 | 0 | 3 | 1.17 | 5.51  (n=17)
+c' | 3 | 11 | 0 | 3 | 1.17 | 5.51  (n=17)
+
+POST-08-27 cohort (real-time gap authoritative; n=19)
+option | enter (of n) | same as today | settled/horizon/pending/abstain | win share | big winners >=+3R settled | marked | tail R sum(R-3)+ | sum R (settled) | worst loss (gap-through?) | adds / drops vs today | >=+3R at 40 sessions settled | marked
+today | 6 of 19 | — | 6/0/0/0 | 1 of 6 (17%) | 0 [none] | 0 [none] | +0.00 | -3.98 (n=6) | -1.44 | adds - / drops - | 0 of 6 [none] | 0 [none]
+a | 8 of 19 | - | 8/0/0/0 | 1 of 8 (12%) | 0 [none] | 0 [none] | +0.00 | -5.58 (n=8) | -1.43 | adds ['IONQ 2026-09-08', 'SPCX 2026-10-21'] / drops - | 0 of 8 [none] | 0 [none]
+b | 2 of 19 | - | 2/0/0/0 | 0 of 2 (0%) | 0 [none] | 0 [none] | +0.00 | -1.00 (n=2) | -1.00 | adds - / drops ['CEG 2026-10-06', 'CLS 2026-10-27', 'HOOD 2026-09-03', 'PENG 2026-10-07'] | 0 of 2 [none] | 0 [none]
+c | 7 of 19 | - | 6/0/1/0 | 1 of 6 (17%) | 0 [none] | 0 [none] | +0.00 | -3.98 (n=6) | -1.44 | adds ['REGN 2026-10-30'] / drops - | 0 of 6 [none] | 0 [none]
+c' | 7 of 19 | - | 6/0/1/0 | 1 of 6 (17%) | 0 [none] | 0 [none] | +0.00 | -3.69 (n=6) | -1.28 | adds ['REGN 2026-10-30'] / drops - | 0 of 6 [none] | 0 [none]
+§3.2 fixed 20-session horizon (harness-independent): option | reached +3 budget-R before the stop | stop first | ambiguous | neither | median best-high R | max best-high R
+today | 1 | 4 | 0 | 1 | 1.32 | 3.53  (n=6)
+a | 1 | 6 | 0 | 1 | 1.00 | 3.53  (n=8)
+b | 1 | 1 | 0 | 0 | 1.76 | 3.53  (n=2)
+c | 1 | 4 | 0 | 2 | 1.18 | 3.53  (n=7)
+c' | 1 | 4 | 0 | 2 | 1.18 | 3.53  (n=7)
+
+PRE-08-27 cohort (n=32)
+option | enter (of n) | same as today | settled/horizon/pending/abstain | win share | big winners >=+3R settled | marked | tail R sum(R-3)+ | sum R (settled) | worst loss (gap-through?) | adds / drops vs today | >=+3R at 40 sessions settled | marked
+today | 10 of 32 | — | 10/0/0/0 | 3 of 10 (30%) | 0 [none] | 0 [none] | +0.00 | -2.12 (n=10) | -1.10 | adds - / drops - | 0 of 10 [none] | 0 [none]
+a | 12 of 32 | - | 12/0/0/0 | 5 of 12 (42%) | 2 [FTK +3.49, U +3.88] | 0 [none] | +1.37 | +5.25 (n=12) | -1.10 | adds ['FTK 2026-08-03', 'U 2026-08-06'] / drops - | 2 of 12 [FTK +3.49, U +3.88] | 0 [none]
+b | 10 of 32 | - | 10/0/0/0 | 3 of 10 (30%) | 0 [none] | 0 [none] | +0.00 | -2.12 (n=10) | -1.10 | adds - / drops - | 0 of 10 [none] | 0 [none]
+c | 10 of 32 | - | 10/0/0/0 | 3 of 10 (30%) | 0 [none] | 0 [none] | +0.00 | -2.12 (n=10) | -1.10 | adds - / drops - | 0 of 10 [none] | 0 [none]
+c' | 10 of 32 | - | 10/0/0/0 | 3 of 10 (30%) | 0 [none] | 0 [none] | +0.00 | -2.12 (n=10) | -1.10 | adds - / drops - | 0 of 10 [none] | 0 [none]
+§3.2 fixed 20-session horizon (harness-independent): option | reached +3 budget-R before the stop | stop first | ambiguous | neither | median best-high R | max best-high R
+today | 2 | 7 | 0 | 1 | 1.17 | 5.51  (n=10)
+a | 4 | 7 | 0 | 1 | 1.20 | 7.46  (n=12)
+b | 2 | 7 | 0 | 1 | 1.17 | 5.51  (n=10)
+c | 2 | 7 | 0 | 1 | 1.17 | 5.51  (n=10)
+c' | 2 | 7 | 0 | 1 | 1.17 | 5.51  (n=10)
+
+per-entry outcomes (option ticker date | fill stop budget-den | 20s: status R/mark final exit_session | 40s: status R/mark | fixed: first best_R)
+  today BTDR  2026-08-04 | 12.85 12.11 0.74 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.11
+  today ZBRA  2026-08-04 | 347.20 313.48 32.00 | settled 0.72/- sma_trail_stop s11 | settled 0.72/- | neither 1.22
+  today KTOS  2026-08-05 | 60.23 54.07 5.86 | settled -1.05/- stop_hit s1 | settled -1.05/- | stop_first 1.17
+  today TATT  2026-08-05 | 51.48 47.34 3.88 | settled -1.07/- stop_hit s0 | settled -1.07/- | stop_first 0.13
+  today INSM  2026-08-06 | 130.06 122.89 6.52 | settled -1.10/- stop_hit s6 | settled -1.10/- | stop_first 1.17
+  today ABCL  2026-08-10 | 8.96 7.84 1.12 | settled 1.82/- sma_trail_stop s11 | settled 1.82/- | target_first 3.23
+  today EROC  2026-08-12 | 13.23 12.34 0.82 | settled 1.56/- stop_hit s6 partial | settled 1.56/- | target_first 5.51
+  today CRMD  2026-08-13 | 8.75 8.03 0.72 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.32
+  today MRVL  2026-08-19 | 241.53 230.15 11.38 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 1.15
+  today CRWD  2026-08-27 | 211.47 201.28 9.64 | settled 0.00/- stop_hit s1 | settled 0.00/- | stop_first 5.44
+  today HOOD  2026-09-03 | 118.42 110.18 5.72 | settled -1.44/- stop_hit s7 | settled -1.44/- | stop_first 1.45
+  today SEI   2026-09-08 | 62.78 57.82 4.96 | settled 0.00/- stop_hit s4 | settled 0.00/- | target_first 3.53
+  today DFTX  2026-09-14 | 43.61 40.41 3.20 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.00
+  today CEG   2026-10-06 | 302.21 281.29 19.42 | settled -1.08/- stop_hit s2 | settled -1.08/- | stop_first 0.39
+  today PENG  2026-10-07 | 72.22 62.20 7.00 | settled -1.26/- stop_hit s6 | settled -1.26/- | stop_first 1.18
+  today CLS   2026-10-27 | 272.74 250.26 22.48 | settled 0.80/- sma_trail_stop s2 | settled 0.80/- | neither 1.58
+  a     FTK   2026-08-03 | 26.32 24.54 1.79 | settled 3.49/- stop_hit s10 partial | settled 3.49/- | target_first 7.46
+  a     BTDR  2026-08-04 | 12.85 12.11 0.74 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.11
+  a     ZBRA  2026-08-04 | 347.20 313.48 32.00 | settled 0.72/- sma_trail_stop s11 | settled 0.72/- | neither 1.22
+  a     KTOS  2026-08-05 | 60.23 54.07 5.86 | settled -1.05/- stop_hit s1 | settled -1.05/- | stop_first 1.17
+  a     TATT  2026-08-05 | 51.48 47.34 3.88 | settled -1.07/- stop_hit s0 | settled -1.07/- | stop_first 0.13
+  a     INSM  2026-08-06 | 130.06 122.89 6.52 | settled -1.10/- stop_hit s6 | settled -1.10/- | stop_first 1.17
+  a     U     2026-08-06 | 39.17 37.83 1.34 | settled 3.88/- sma_trail_stop s14 partial | settled 3.88/- | target_first 6.93
+  a     ABCL  2026-08-10 | 8.96 7.84 1.12 | settled 1.82/- sma_trail_stop s11 | settled 1.82/- | target_first 3.23
+  a     EROC  2026-08-12 | 13.23 12.34 0.82 | settled 1.56/- stop_hit s6 partial | settled 1.56/- | target_first 5.51
+  a     CRMD  2026-08-13 | 8.75 8.03 0.72 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.32
+  a     MRVL  2026-08-19 | 241.53 230.15 11.38 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 1.15
+  a     CRWD  2026-08-27 | 211.47 201.28 9.64 | settled 0.00/- stop_hit s1 | settled 0.00/- | stop_first 5.44
+  a     HOOD  2026-09-03 | 118.90 112.20 6.70 | settled -1.00/- stop_hit s4 | settled -1.00/- | stop_first 1.17
+  a     IONQ  2026-09-08 | 44.33 42.02 1.62 | settled -1.43/- stop_hit s0 | settled -1.43/- | stop_first 2.21
+  a     SEI   2026-09-08 | 62.78 57.82 4.96 | settled 0.00/- stop_hit s4 | settled 0.00/- | target_first 3.53
+  a     DFTX  2026-09-14 | 43.61 40.41 3.20 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.00
+  a     CEG   2026-10-06 | 302.21 281.29 19.42 | settled -1.08/- stop_hit s2 | settled -1.08/- | stop_first 0.39
+  a     PENG  2026-10-07 | 72.22 61.43 10.02 | settled -0.88/- stop_hit s6 | settled -0.88/- | stop_first 0.82
+  a     SPCX  2026-10-21 | 162.77 157.05 5.72 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.60
+  a     CLS   2026-10-27 | 272.74 250.26 22.48 | settled 0.80/- sma_trail_stop s2 | settled 0.80/- | neither 1.58
+  b     BTDR  2026-08-04 | 12.85 12.11 0.74 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.11
+  b     ZBRA  2026-08-04 | 347.20 313.48 32.00 | settled 0.72/- sma_trail_stop s11 | settled 0.72/- | neither 1.22
+  b     KTOS  2026-08-05 | 60.23 54.07 5.86 | settled -1.05/- stop_hit s1 | settled -1.05/- | stop_first 1.17
+  b     TATT  2026-08-05 | 51.48 47.34 3.88 | settled -1.07/- stop_hit s0 | settled -1.07/- | stop_first 0.13
+  b     INSM  2026-08-06 | 130.06 122.89 6.52 | settled -1.10/- stop_hit s6 | settled -1.10/- | stop_first 1.17
+  b     ABCL  2026-08-10 | 8.96 7.84 1.12 | settled 1.82/- sma_trail_stop s11 | settled 1.82/- | target_first 3.23
+  b     EROC  2026-08-12 | 13.23 12.34 0.82 | settled 1.56/- stop_hit s6 partial | settled 1.56/- | target_first 5.51
+  b     CRMD  2026-08-13 | 8.75 8.03 0.72 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.32
+  b     MRVL  2026-08-19 | 241.53 230.15 11.38 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 1.15
+  b     CRWD  2026-08-27 | 211.47 201.28 9.64 | settled 0.00/- stop_hit s1 | settled 0.00/- | stop_first 5.44
+  b     SEI   2026-09-08 | 62.78 57.82 4.96 | settled 0.00/- stop_hit s4 | settled 0.00/- | target_first 3.53
+  b     DFTX  2026-09-14 | 43.61 40.41 3.20 | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.00
+  c     BTDR  2026-08-04 | 12.85 12.11 0.74 (c' den 0.74) | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.11
+  c     ZBRA  2026-08-04 | 347.20 313.48 32.00 (c' den 32.00) | settled 0.72/- sma_trail_stop s11 | settled 0.72/- | neither 1.22
+  c     KTOS  2026-08-05 | 60.23 54.07 5.86 (c' den 5.86) | settled -1.05/- stop_hit s1 | settled -1.05/- | stop_first 1.17
+  c     TATT  2026-08-05 | 51.48 47.34 3.88 (c' den 3.88) | settled -1.07/- stop_hit s0 | settled -1.07/- | stop_first 0.13
+  c     INSM  2026-08-06 | 130.06 122.89 6.52 (c' den 6.52) | settled -1.10/- stop_hit s6 | settled -1.10/- | stop_first 1.17
+  c     ABCL  2026-08-10 | 8.96 7.84 1.12 (c' den 1.12) | settled 1.82/- sma_trail_stop s11 | settled 1.82/- | target_first 3.23
+  c     EROC  2026-08-12 | 13.23 12.34 0.82 (c' den 0.82) | settled 1.56/- stop_hit s6 partial | settled 1.56/- | target_first 5.51
+  c     CRMD  2026-08-13 | 8.75 8.03 0.72 (c' den 0.72) | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.32
+  c     MRVL  2026-08-19 | 241.53 230.15 11.38 (c' den 11.38) | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 1.15
+  c     CRWD  2026-08-27 | 211.47 201.28 9.64 (c' den 9.64) | settled 0.00/- stop_hit s1 | settled 0.00/- | stop_first 5.44
+  c     HOOD  2026-09-03 | 118.42 110.18 5.72 (c' den 6.44) | settled -1.44/- stop_hit s7 | settled -1.44/- | stop_first 1.45
+  c     SEI   2026-09-08 | 62.78 57.82 4.96 (c' den 4.96) | settled 0.00/- stop_hit s4 | settled 0.00/- | target_first 3.53
+  c     DFTX  2026-09-14 | 43.61 40.41 3.20 (c' den 3.20) | settled -1.00/- stop_hit s0 | settled -1.00/- | stop_first 0.00
+  c     CEG   2026-10-06 | 302.21 281.29 19.42 (c' den 19.42) | settled -1.08/- stop_hit s2 | settled -1.08/- | stop_first 0.39
+  c     PENG  2026-10-07 | 72.22 62.20 7.00 (c' den 7.79) | settled -1.26/- stop_hit s6 | settled -1.26/- | stop_first 1.18
+  c     CLS   2026-10-27 | 272.74 250.26 22.48 (c' den 22.48) | settled 0.80/- sma_trail_stop s2 | settled 0.80/- | neither 1.58
+  c     REGN  2026-10-30 | 925.38 817.50 52.38 (c' den 74.96) | pending -/- None sNone | pending -/- | neither 0.19
+
+=== §6 RECOMMENDATION RULE (pre-registered; read at 20 sessions; baseline = today) ===
+a: CLEARS
+   1 sample: enters 20>=10 and settled 20>=6 → ok
+   2 access: enters 20 >= today's 16 → ok
+   3 tail: big winners 2 >= 0 and tail +1.37 >= +0.00 → ok
+   4 sum: -0.33 >= today -6.09 + 2.0 → ok
+   5 worst loss -1.43 >= -1.6 → ok
+b: CLEARS
+   1 sample: enters 12>=10 and settled 12>=6 → ok
+   2 (b) drops 4 names, their settled sum -2.98 (n=4) negative and no big winner settled/marked → ok
+   3 tail: big winners 0 >= 0 and tail +0.00 >= +0.00 → ok
+   4 sum: -3.12 >= today -6.09 + 2.0 → ok
+   5 worst loss -1.10 >= -1.6 → ok
+c: does not clear
+   1 sample: enters 17>=10 and settled 16>=6 → ok
+   2 access: enters 17 >= today's 16 → ok
+   3 tail: big winners 0 >= 0 and tail +0.00 >= +0.00 → ok
+   4 sum: -6.09 >= today -6.09 + 2.0 → FAIL
+   5 worst loss -1.44 >= -1.6 → ok
+c': does not clear
+   1 sample: enters 17>=10 and settled 16>=6 → ok
+   2 access: enters 17 >= today's 16 → ok
+   3 tail: big winners 0 >= 0 and tail +0.00 >= +0.00 → ok
+   4 sum: -5.81 >= today -6.09 + 2.0 → FAIL
+   5 worst loss -1.28 >= -1.6 → ok
+cohort direction (sum R vs today's, same cohort): post-08-27 a=-1.61 b=+2.98 c=+0.00 c'=+0.29 | pre-08-27 a=+7.37 b=+0.00 c=+0.00 c'=+0.00
+cohort DISAGREEMENT: a: pre +7.37 vs post -1.61 → the post cohort decides → dropped from the rec
+REC: b
+
+=== POST-HOC — (b)'s admission margin on today's entries (09:30 open vs floor price) ===
+  PENG  2026-10-07 open 67.30 vs floor 69.99 → -3.84% dropped (official daily open 67.33)
+  HOOD  2026-09-03 open 113.80 vs floor 116.62 → -2.42% dropped (official daily open 113.80)
+  CLS   2026-10-27 open 264.00 vs floor 268.85 → -1.80% dropped (official daily open 264.31)
+  CEG   2026-10-06 open 291.11 vs floor 291.71 → -0.20% dropped (official daily open 291.11)
+  CRWD  2026-08-27 open 208.25 vs floor 206.21 → +0.99% ADMITTED (official daily open 208.25)
+  MRVL  2026-08-19 open 240.13 vs floor 237.60 → +1.06% ADMITTED (official daily open 240.13)
+  BTDR  2026-08-04 open 12.81 vs floor 12.51 → +2.42% ADMITTED (official daily open 12.79)
+  DFTX  2026-09-14 open 43.53 vs floor 42.39 → +2.69% ADMITTED (official daily open 43.53)
+  ZBRA  2026-08-04 open 330.10 vs floor 320.80 → +2.90% ADMITTED (official daily open 330.10)
+  SEI   2026-09-08 open 61.85 vs floor 59.95 → +3.17% ADMITTED (official daily open 61.85)
+  KTOS  2026-08-05 open 58.90 vs floor 57.06 → +3.23% ADMITTED (official daily open 58.87)
+  EROC  2026-08-12 open 13.12 vs floor 12.38 → +6.02% ADMITTED (official daily open 13.12)
+  CRMD  2026-08-13 open 8.39 vs floor 7.81 → +7.43% ADMITTED (official daily open 8.39)
+  TATT  2026-08-05 open 49.28 vs floor 45.82 → +7.56% ADMITTED (official daily open 49.28)
+  ABCL  2026-08-10 open 8.76 vs floor 7.62 → +14.92% ADMITTED (official daily open 8.76)
+  INSM  2026-08-06 open 128.60 vs floor 108.92 → +18.07% ADMITTED (official daily open 128.22)
+  if CEG (-0.20%) were admitted: (b) enters 13, sum R -4.19 vs the rule-4 bar -4.09 → rule 4 FAIL; dropped sum -1.90 (n=3)
+REGN-shape rows (ORB high below the floor price AND inside the window): 15 — FTK 2026-08-03, U 2026-08-06, CGEM 2026-08-13, VERA 2026-08-14, RARE 2026-08-20, DG 2026-08-27, AGX 2026-09-03, HOOD 2026-09-03, IONQ 2026-09-08, SRRK 2026-09-14, PENG 2026-10-07, MANE 2026-10-19, SPCX 2026-10-21, INIO 2026-10-27, REGN 2026-10-30
+
+rows written: /Users/alvinfung/apollo_the_wise/scripts/probes/_715_study_1031/s2_rows.tsv

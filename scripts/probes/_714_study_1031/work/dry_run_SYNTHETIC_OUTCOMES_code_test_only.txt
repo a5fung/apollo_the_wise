@@ -1,0 +1,292 @@
+
+====================================================================================================
+STEP 0 — composition, stop conditions, hashes (NO outcome is read)
+====================================================================================================
+capture SQL hashes vs prereg §14: ALL 7 MATCH
+schema check wanted/found/missing: ['123', '123', '0'] | missing rows: 0
+labelled list equals shared/operator_labelled_eps.py: True
+labelled ticks present (ticker: n ticks): {'BFLY': 38, 'PLTR': 38, 'ABNB': 2, 'TEAM': 37, 'HTFL': 38, 'MRNA': 37, 'CHPT': 38, 'PENG': 14}
+distinct labelled boards present: 7
+bars: 767,543 rows, 772 tickers, SPY calendar 2021-09-27..2026-10-30 (1280 sessions); rows off the SPY calendar: 0
+POP_B file rows 800: scored (= Population B) 798; labelled-but-unscored (ABNB, CHPT; not in B) 2: ['ABNB', 'CHPT']
+B scan dates 2026-05-01..2026-10-09, distinct tickers 629, distinct dates 110; duplicate (ticker,date): 0
+rows per block: {'B1': 327, 'B2': 296, 'B3': 175} | NYSE sessions in blocks (SPY cal): {'B1': 38, 'B2': 38, 'B3': 36}
+last scan date with 15 forward SPY sessions loaded: 2026-10-09; B rows after it: 0 (censored, never filled)
+stored-float era (first date from which >=90% of that date's scored rows carry a stored float on every later date): 2026-08-31
+census scored ticker-days in B window: 798 (POP_B scored rows 798); stored float on 145; float points >0 on 46
+
+====================================================================================================
+STEP 1 — features for every row (bars strictly before the gap day; NO forward bar, NO fwd_*_pct, NO outcome column)
+====================================================================================================
+yfinance float file: 541 tickers fetched; with a float value 537; fetch window 2026-10-31T20:08:53+00:00 .. 2026-10-31T20:19:26+00:00 (UTC)
+C0 look-ahead assertion: max(bar index used) < index(scan_date) asserted on 1,822 feature computations across 1,386 distinct (ticker, date) rows — 0 violations
+
+====================================================================================================
+STEP 0 (cont.) — C6 composition after bars are attached
+====================================================================================================
+B rows per prior-history band (sessions in mi_daily_closes before the gap day): {'no bars': 0, '1-251': 88, '252-503': 41, '504-755': 42, '756+': 627}
+B rows with no bars at all: 0 | bar missing on gap day: 0
+neglect-eligible (N) rows in B: 662 of 798 | excluded by reason: {'history<504': 129, 'window<95% non-null': 7}
+labelled boards (date: logged / scored / scored rivals / alerted): {'2026-06-18': ('27', '5', '4', '2'), '2026-08-04': ('51', '27', '26', '11'), '2026-08-07': ('64', '21', '20', '16'), '2026-08-14': ('25', '11', '10', '7'), '2026-08-19': ('17', '11', '10', '4'), '2026-09-03': ('298', '7', '7', '3'), '2026-10-07': ('190', '2', '1', '1')}
+his 8 EPs — history sessions, neglect-eligible?, 20-day ADV$, float and its source:
+ticker  scan_date  n_hist neglect_ok     why_not        adv20    float_val   float_src
+  BFLY 2026-06-18  1186.0       True             2.443229e+07  220950303.0      yf_now
+  PLTR 2026-08-04  1217.0       True             4.502336e+09 2109789223.0      yf_now
+  ABNB 2026-08-07  1220.0       True             5.257185e+08  405770554.0      yf_now
+  TEAM 2026-08-07  1220.0       True             4.038923e+08  157854834.0      yf_now
+  HTFL 2026-08-14   255.0      False history<504 2.616417e+07   67249066.0      yf_now
+  MRNA 2026-08-19  1228.0       True             3.104150e+08  371984047.0      yf_now
+  CHPT 2026-09-03  1239.0       True             2.365457e+06   26035954.0      yf_now
+  PENG 2026-10-07   495.0      False history<504 1.279318e+08   53917779.0 stored_tick
+R1 rivals per board (n), with a float value / with 504-session history: {'2026-06-18': (4, 4, 3), '2026-08-04': (26, 26, 24), '2026-08-07': (20, 20, 19), '2026-08-14': (10, 9, 7), '2026-08-19': (10, 10, 9), '2026-09-03': (7, 7, 5), '2026-10-07': (1, 1, 1)}
+R2 rivals per board: {'2026-06-18': 15, '2026-08-04': 42, '2026-08-07': 52, '2026-08-14': 16, '2026-08-19': 10, '2026-09-03': 84, '2026-10-07': 8} | R3 per board: {'2026-06-18': 2, '2026-08-04': 10, '2026-08-07': 15, '2026-08-14': 6, '2026-08-19': 3, '2026-09-03': 3, '2026-10-07': 0}
+
+====================================================================================================
+STEP 2 — freeze strata, cuts and F1 groups; C1; C2 (simulated flags only); C4; C5. NO real runner count is printed.
+====================================================================================================
+Registered choices printed up front: C2 base rate = 0.15 (the registered '~15% runners' of prereg §8.1 — the real rate is not read before STEP 3); C2 = 200 simulations per cell with 2000 inner permutation draws (the verdict uses 20000); planted effect swept 0..15 pp in 1 pp steps; 'must-agree' encodings are not simulated (POST-HOC: C2 power is therefore a slight upper bound). seed 714.
+
+Frozen analysis sets (strata = ADV$ rungs from bars; rung merge map: rung index -> merged rung; a rung <15 rows merges into the next lower; lowest-rung-short merges UP is a POST-HOC fill-in of an unspecified case):
+  F1         n=792, favourable=253, rest=539; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (173, 177), 1: (38, 87), 2: (33, 108), 3: (7, 72), 4: (2, 95)}
+  F1_stored  n=145, favourable=46, rest=99; rung merge map {0: 0, 1: 1, 2: 2, 3: 2, 4: 4}; (fav,rest) by stratum {0: (35, 38), 1: (8, 15), 2: (3, 27), 4: (0, 19)}
+  NP         n=662, favourable=224, rest=438; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (94, 186), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  NV         n=662, favourable=223, rest=439; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (93, 187), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  NA         n=662, favourable=233, rest=429; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (92, 188), 1: (37, 63), 2: (42, 77), 3: (29, 47), 4: (33, 54)}
+  NP_s1      n=662, favourable=224, rest=438; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (94, 186), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  NP_s2      n=662, favourable=224, rest=438; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (94, 186), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  NV_s       n=662, favourable=224, rest=438; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (94, 186), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  NA_s       n=662, favourable=224, rest=438; rung merge map {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}; (fav,rest) by stratum {0: (94, 186), 1: (34, 66), 2: (40, 79), 3: (26, 50), 4: (30, 57)}
+  rows in B with no 20-session ADV$ (cannot be stratified, excluded from every Leg T frame): 1
+
+C1 coverage: rows meeting the 504-session history rule 669; neglect features non-null on 662 = 99.0% (floor 85%). Float known (pooled) on 792 of 798 = 99.2% (floor 85%); stored-era float on 145.
+  NOT MEASURED flags: {'F1': False, 'NP': False, 'NV': False, 'NA': False}
+
+F1 float source on B rows: {'yf_now': 648, 'unknown': 5, 'stored_tick': 145} | lowfloat (<50M) among known: 254 of 793
+Float drift (yf_now / stored-at-alert), 47 era rows with both: median 1.000, share >10% larger now 6%, share >10% smaller 0%, share that cross the 50M line between the two 0%
+yf_now-sourced B rows with an APPLIED split executed between the alert and 2026-10-31 (their 'now' float is on a different share count): 0
+
+====================================================================================================
+C2 — planted-effect check on the real strata and row counts (before any outcome is attached)
+====================================================================================================
+definition                           n   fav | PASS rate at planted 0pp / +10pp |  MDE 50%  MDE 80% | powered?
+F1 pooled (stored + yf_now)        792   253 |    2.5%  /    80.0%              |     8 pp     10 pp | POWERED
+F1 stored-float era only           145    46 |    0.0%  /     0.0%              |   >15 pp    >15 pp | NOT POWERED
+NP                                 662   224 |    0.0%  /    81.5%              |     7 pp     10 pp | POWERED
+NV                                 662   223 |    0.0%  /    84.0%              |     8 pp     10 pp | POWERED
+NA                                 662   233 |    0.5%  /    81.5%              |     7 pp     10 pp | POWERED
+size check (planted 0 pp must read PASS in <=3% of simulations): OK
+
+====================================================================================================
+C4 — positive control for Leg L: ADV$ place of his 8 EPs among their same-day R1 rivals (must read >= 0.60; < 0.50 = Leg L NOT READ)
+====================================================================================================
+ticker  scan_date            raw  n_rivals  n_valid     status   pct
+  BFLY 2026-06-18   24432291.619         4        4         ok 0.500
+  PLTR 2026-08-04 4502335747.145        26       26         ok 1.000
+  ABNB 2026-08-07  525718475.702        20       20         ok 0.950
+  TEAM 2026-08-07  403892296.293        20       20         ok 0.950
+  HTFL 2026-08-14   26164173.844        10       10         ok 0.400
+  MRNA 2026-08-19  310414978.336        10       10         ok 0.800
+  CHPT 2026-09-03    2365457.433         7        7         ok 0.000
+  PENG 2026-10-07  127931766.849         1        1 thin board   NaN
+mean place 0.657 over 7 eligible EPs (thin boards excluded); EPs above 0.5: 4; 90% chance band for that mean 0.30-0.70
+(for reference, all 8 EPs incl. thin boards: mean place 0.700)
+C4 passes (>= 0.60).
+
+====================================================================================================
+C5 — float counterfactual calibration (era rows: stored score parts + ep_bar)
+====================================================================================================
+era rows (stored breakdown and bar): 146; scan dates 2026-08-31..2026-10-09
+factual rebuild reproduces the stored ep_score within 0.05 on 146 of 146 = 100.0% (bar 99%)
+worked-back regime multiplier (rounded 0.01): {1.0: 146}
+multiplier by that day's regime name: {'Choppy': {1.0: 73}, 'Correcting': {1.0: 65}, 'Crisis': {1.0: 8}}
+multiplier is 1.2 on Bull days and 1.0 otherwise on 100.0% of era rows (bar 99%)
+stored conviction-floor part equals max(0, floor(gap, grade) - other parts) (or is absent when no rule matches) on 146 of 146 era rows
+score_tier carried by era rows: {'': 114, 'HIGH': 32} | alert tiers: {'': 114, 'HIGH': 23, 'MODERATE': 8, 'none': 1}
+rows that carry float points: 46; rows that CLEAR the bar with float and would NOT without it (N_flip): 3
+  of N_flip, HIGH-alerted (a live HIGH alert row exists that day): 3 | cross-check via raw-points search (raw >= need): 3
+  N_flip rows: [{'ticker': 'AGX', 'scan_date': '2026-09-03', 'ep_score': 65.0, 'score_cf': 58.8, 'ep_bar': 65.0, 'float_pts': 5.0}, {'ticker': 'VICR', 'scan_date': '2026-09-17', 'ep_score': 65.0, 'score_cf': 58.8, 'ep_bar': 65.0, 'float_pts': 5.0}, {'ticker': 'TLN', 'scan_date': '2026-10-06', 'ep_score': 67.5, 'score_cf': 61.2, 'ep_bar': 65.0, 'float_pts': 5.0}]
+
+====================================================================================================
+*** DRY RUN — SYNTHETIC OUTCOMES (random 15% runners). Code test only; nothing below is a result. ***
+====================================================================================================
+
+====================================================================================================
+STEP 4 — each definition read ONCE: Leg T (the tail), Leg L (his EPs), verdict words
+====================================================================================================
+
+[F1] F1 pooled (stored + yf_now)  (n=792 censored=0; favourable 253 / rest 539)
+   runner rate favourable 13.8% (35/253) vs rest 14.3% (77/539); unstratified gap -0.5 pp
+   stratified gap (Mantel-Haenszel) +0.6 pp, one-sided p 0.4635, reversed p 0.6285, bootstrap 90% interval -4.0 pp to +5.1 pp
+   by block (gap, rows, runners): B1 +4.1 pp n=324 r=54; B2 -1.6 pp n=294 r=35; B3 -0.4 pp n=174 r=23  -> blocks with gap>0: 1/3
+   drop the top-runner scan date 2026-06-25: gap +0.5 pp
+   big winners: P90 of the max excursion favourable 44.6% vs rest 45.1%; >=8 ADR 9.9% vs 7.4%; >=+50% 11.9% vs 9.6%
+
+[F1_stored] F1 stored-float era only  (n=145 censored=0; favourable 46 / rest 99)
+   runner rate favourable 10.9% (5/46) vs rest 16.2% (16/99); unstratified gap -5.3 pp
+   stratified gap (Mantel-Haenszel) -1.6 pp, one-sided p 0.7080, reversed p 0.5244, bootstrap 90% interval -12.1 pp to +8.7 pp
+   by block (gap, rows, runners): B1 n/a n=0 r=0; B2 n/a n=0 r=0; B3 -1.6 pp n=145 r=21  -> blocks with gap>0: 0/3
+   drop the top-runner scan date 2026-10-05: gap -1.7 pp
+   big winners: P90 of the max excursion favourable 45.5% vs rest 45.0%; >=8 ADR 8.7% vs 8.1%; >=+50% 6.5% vs 12.1%
+
+[NP] NP  (n=662 censored=0; favourable 224 / rest 438)
+   runner rate favourable 15.2% (34/224) vs rest 13.0% (57/438); unstratified gap +2.2 pp
+   stratified gap (Mantel-Haenszel) +2.2 pp, one-sided p 0.2568, reversed p 0.8116, bootstrap 90% interval -2.5 pp to +7.2 pp
+   by block (gap, rows, runners): B1 +2.3 pp n=268 r=43; B2 +2.8 pp n=260 r=32; B3 +4.2 pp n=134 r=16  -> blocks with gap>0: 3/3
+   drop the top-runner scan date 2026-10-05: gap +2.7 pp
+   big winners: P90 of the max excursion favourable 45.7% vs rest 44.8%; >=8 ADR 8.9% vs 8.7%; >=+50% 10.3% vs 9.8%
+
+[NV] NV  (n=662 censored=0; favourable 223 / rest 439)
+   runner rate favourable 10.8% (24/223) vs rest 15.3% (67/439); unstratified gap -4.5 pp
+   stratified gap (Mantel-Haenszel) -4.5 pp, one-sided p 0.9578, reversed p 0.0695, bootstrap 90% interval -8.7 pp to -0.1 pp
+   by block (gap, rows, runners): B1 -5.8 pp n=268 r=43; B2 -0.9 pp n=260 r=32; B3 -7.2 pp n=134 r=16  -> blocks with gap>0: 0/3
+   drop the top-runner scan date 2026-10-05: gap -4.1 pp
+   big winners: P90 of the max excursion favourable 45.8% vs rest 44.7%; >=8 ADR 8.5% vs 8.9%; >=+50% 9.4% vs 10.3%
+
+[NA] NA  (n=662 censored=0; favourable 233 / rest 429)
+   runner rate favourable 15.0% (35/233) vs rest 13.1% (56/429); unstratified gap +2.0 pp
+   stratified gap (Mantel-Haenszel) +2.0 pp, one-sided p 0.2803, reversed p 0.7999, bootstrap 90% interval -2.6 pp to +6.7 pp
+   by block (gap, rows, runners): B1 +0.7 pp n=268 r=43; B2 +3.4 pp n=260 r=32; B3 +3.1 pp n=134 r=16  -> blocks with gap>0: 3/3
+   drop the top-runner scan date 2026-10-05: gap +2.2 pp
+   big winners: P90 of the max excursion favourable 44.5% vs rest 44.8%; >=8 ADR 9.9% vs 8.2%; >=+50% 9.9% vs 10.0%
+
+[NP_s1] NP_s1  (n=662 censored=0; favourable 224 / rest 438)
+   runner rate favourable 15.6% (35/224) vs rest 12.8% (56/438); unstratified gap +2.8 pp
+   stratified gap (Mantel-Haenszel) +2.8 pp, one-sided p 0.1883, reversed p 0.8680, bootstrap 90% interval -1.9 pp to +7.7 pp
+   by block (gap, rows, runners): B1 +1.0 pp n=268 r=43; B2 +1.4 pp n=260 r=32; B3 +10.3 pp n=134 r=16  -> blocks with gap>0: 3/3
+   drop the top-runner scan date 2026-10-05: gap +2.4 pp
+   big winners: P90 of the max excursion favourable 44.4% vs rest 44.9%; >=8 ADR 7.6% vs 9.4%; >=+50% 10.7% vs 9.6%
+
+[NP_s2] NP_s2  (n=662 censored=0; favourable 224 / rest 438)
+   runner rate favourable 13.8% (31/224) vs rest 13.7% (60/438); unstratified gap +0.1 pp
+   stratified gap (Mantel-Haenszel) +0.1 pp, one-sided p 0.5174, reversed p 0.5710, bootstrap 90% interval -4.5 pp to +5.1 pp
+   by block (gap, rows, runners): B1 +2.0 pp n=268 r=43; B2 +1.4 pp n=260 r=32; B3 -3.7 pp n=134 r=16  -> blocks with gap>0: 2/3
+   drop the top-runner scan date 2026-10-05: gap +0.4 pp
+   big winners: P90 of the max excursion favourable 44.3% vs rest 44.8%; >=8 ADR 9.8% vs 8.2%; >=+50% 12.9% vs 8.4%
+
+[NV_s] NV_s  (n=662 censored=0; favourable 224 / rest 438)
+   runner rate favourable 12.9% (29/224) vs rest 14.2% (62/438); unstratified gap -1.2 pp
+   stratified gap (Mantel-Haenszel) -1.2 pp, one-sided p 0.7039, reversed p 0.3879, bootstrap 90% interval -5.8 pp to +3.6 pp
+   by block (gap, rows, runners): B1 -6.6 pp n=268 r=43; B2 +5.4 pp n=260 r=32; B3 -2.5 pp n=134 r=16  -> blocks with gap>0: 1/3
+   drop the top-runner scan date 2026-10-05: gap -1.5 pp
+   big winners: P90 of the max excursion favourable 45.8% vs rest 44.3%; >=8 ADR 7.1% vs 9.6%; >=+50% 11.6% vs 9.1%
+
+[NA_s] NA_s  (n=662 censored=0; favourable 224 / rest 438)
+   runner rate favourable 12.5% (28/224) vs rest 14.4% (63/438); unstratified gap -1.9 pp
+   stratified gap (Mantel-Haenszel) -1.9 pp, one-sided p 0.7806, reversed p 0.2958, bootstrap 90% interval -6.3 pp to +2.7 pp
+   by block (gap, rows, runners): B1 -7.3 pp n=268 r=43; B2 +2.7 pp n=260 r=32; B3 -0.5 pp n=134 r=16  -> blocks with gap>0: 1/3
+   drop the top-runner scan date 2026-10-05: gap -1.3 pp
+   big winners: P90 of the max excursion favourable 45.4% vs rest 44.8%; >=8 ADR 7.6% vs 9.4%; >=+50% 13.8% vs 8.0%
+
+[F1] Leg T word NULL | Leg L word L? | combined NULL  
+   must-agree encodings gap > 0?: none for F1 (see stored-only rule)
+   Leg L vs R1: mean place 0.300 over 7 eligible EPs; above 0.5: 1; below 0.5: 5; chance band 0.30-0.70 -> L?
+   Leg L vs R2: mean place 0.313 over 7 eligible EPs; above 0.5: 1; below 0.5: 6; chance band 0.31-0.69 -> L-
+   Leg L vs R3: mean place 0.100 over 4 eligible EPs; above 0.5: 0; below 0.5: 4; chance band 0.24-0.76 -> NOT READ
+ticker  scan_date    raw  n_rivals  n_valid     status   pct
+  BFLY 2026-06-18 -8.344         4        4         ok 0.500
+  PLTR 2026-08-04 -9.324        26       26         ok 0.000
+  ABNB 2026-08-07 -8.608        20       20         ok 0.000
+  TEAM 2026-08-07 -8.198        20       20         ok 0.100
+  HTFL 2026-08-14 -7.828        10        9         ok 0.444
+  MRNA 2026-08-19 -8.571        10       10         ok 0.200
+  CHPT 2026-09-03 -7.416         7        7         ok 0.857
+  PENG 2026-10-07 -7.732         1        1 thin board   NaN
+
+[NP] Leg T word NULL | Leg L word L+ | combined LABEL-ONLY  
+   must-agree encodings gap > 0?: NP_s1: +2.8 pp, NP_s2: +0.1 pp
+   Leg L vs R1: mean place 0.681 over 5 eligible EPs; above 0.5: 4; below 0.5: 1; chance band 0.27-0.73 -> L+
+   Leg L vs R2: mean place 0.593 over 6 eligible EPs; above 0.5: 3; below 0.5: 1; chance band 0.30-0.70 -> L0
+   Leg L vs R3: mean place 0.571 over 3 eligible EPs; above 0.5: 2; below 0.5: 1; chance band 0.20-0.80 -> NOT READ
+ticker  scan_date   raw  n_rivals  n_valid     status   pct
+  BFLY 2026-06-18 579.1         4        3 thin board   NaN
+  PLTR 2026-08-04   760        26       24         ok 0.167
+  ABNB 2026-08-07 44.87        20       19         ok 1.000
+  TEAM 2026-08-07   135        20       19         ok 0.684
+  HTFL 2026-08-14     -        10        7   no value   NaN
+  MRNA 2026-08-19 265.8        10        9         ok 0.556
+  CHPT 2026-09-03 84.26         7        5         ok 1.000
+  PENG 2026-10-07     -         1        1   no value   NaN
+
+[NV] Leg T word NULL | Leg L word L? | combined NULL  
+   must-agree encodings gap > 0?: NV_s: -1.2 pp
+   Leg L vs R1: mean place 0.688 over 5 eligible EPs; above 0.5: 3; below 0.5: 2; chance band 0.27-0.73 -> L?
+   Leg L vs R2: mean place 0.643 over 6 eligible EPs; above 0.5: 3; below 0.5: 3; chance band 0.30-0.70 -> L?
+   Leg L vs R3: mean place 0.714 over 3 eligible EPs; above 0.5: 2; below 0.5: 1; chance band 0.20-0.80 -> NOT READ
+ticker  scan_date   raw  n_rivals  n_valid     status   pct
+  BFLY 2026-06-18 0.488         4        3 thin board   NaN
+  PLTR 2026-08-04 0.852        26       24         ok 1.000
+  ABNB 2026-08-07 0.716        20       19         ok 1.000
+  TEAM 2026-08-07 0.424        20       19         ok 0.105
+  HTFL 2026-08-14     -        10        7   no value   NaN
+  MRNA 2026-08-19 0.616        10        9         ok 0.333
+  CHPT 2026-09-03 0.848         7        5         ok 1.000
+  PENG 2026-10-07     -         1        1   no value   NaN
+
+[NA] Leg T word NULL | Leg L word L? | combined NULL  
+   must-agree encodings gap > 0?: NA_s: -1.9 pp
+   Leg L vs R1: mean place 0.689 over 5 eligible EPs; above 0.5: 3; below 0.5: 2; chance band 0.27-0.73 -> L?
+   Leg L vs R2: mean place 0.603 over 6 eligible EPs; above 0.5: 4; below 0.5: 2; chance band 0.30-0.70 -> L?
+   Leg L vs R3: mean place 0.917 over 3 eligible EPs; above 0.5: 3; below 0.5: 0; chance band 0.20-0.80 -> NOT READ
+ticker  scan_date raw  n_rivals  n_valid     status   pct
+  BFLY 2026-06-18  13         4        3 thin board   NaN
+  PLTR 2026-08-04   0        26       24         ok 1.000
+  ABNB 2026-08-07   0        20       19         ok 1.000
+  TEAM 2026-08-07   4        20       19         ok 0.658
+  HTFL 2026-08-14   -        10        7   no value   NaN
+  MRNA 2026-08-19   3        10        9         ok 0.389
+  CHPT 2026-09-03   4         7        5         ok 0.400
+  PENG 2026-10-07   -         1        1   no value   NaN
+
+====================================================================================================
+STEP 5 — the table to him, the float counterfactual and keep/drop line, D1-D6 context, still untried
+====================================================================================================
+RESULTS TABLE (plain words; every number carries its n)
+
+* FLOAT: under 50M shares (the +5 points)
+    the tail: 13.8% of the favourable group ran big (35 of 253) vs 14.3% of the rest (77 of 539); gap +0.6 pp (p=0.464); biggest-winner (P90) excursion 45% vs 45%
+    his EPs: mean place among same-day rivals 0.30 (0.5 = coin flip; chance band 0.30-0.70), 1 of 7 readable EPs above 0.5 -> L?
+    combined word: NULL  [tail NULL; EPs L?; powered=True]  
+* NEGLECT 1: price neglect (no big rally in ~2 yrs)
+    the tail: 15.2% of the favourable group ran big (34 of 224) vs 13.0% of the rest (57 of 438); gap +2.2 pp (p=0.257); biggest-winner (P90) excursion 46% vs 45%
+    his EPs: mean place among same-day rivals 0.68 (0.5 = coin flip; chance band 0.27-0.73), 4 of 5 readable EPs above 0.5 -> L+
+    combined word: LABEL-ONLY  [tail NULL; EPs L+; powered=True]  
+* NEGLECT 2: volume neglect (quiet volume for ~1 yr)
+    the tail: 10.8% of the favourable group ran big (24 of 223) vs 15.3% of the rest (67 of 439); gap -4.5 pp (p=0.958); biggest-winner (P90) excursion 46% vs 45%
+    his EPs: mean place among same-day rivals 0.69 (0.5 = coin flip; chance band 0.27-0.73), 3 of 5 readable EPs above 0.5 -> L?
+    combined word: NULL  [tail NULL; EPs L?; powered=True]  
+* NEGLECT 3: attention neglect (few spike-and-move days; a bar-based PROXY for 'no news')
+    the tail: 15.0% of the favourable group ran big (35 of 233) vs 13.1% of the rest (56 of 429); gap +2.0 pp (p=0.280); biggest-winner (P90) excursion 45% vs 45%
+    his EPs: mean place among same-day rivals 0.69 (0.5 = coin flip; chance band 0.27-0.73), 3 of 5 readable EPs above 0.5 -> L?
+    combined word: NULL  [tail NULL; EPs L?; powered=True]  
+
+====================================================================================================
+FLOAT — separation, tail, alerts that exist only because of the +5, and the pre-registered keep/drop rule (prereg 5.5)
+====================================================================================================
+N_flip = 3 (rows that clear the 65 bar with the float points and would not without them; era rows 08-31..10-09 only; fresh block 10-12..10-30 not read)
+  HIGH-alerted among them: 3; ran big (>=5 ADR) among them: 0 of 3
+  rows: [{'ticker': 'AGX', 'scan_date': '2026-09-03', 'ep_score': 65.0, 'score_cf': 58.8, 'ran': 0.0}, {'ticker': 'VICR', 'scan_date': '2026-09-17', 'ep_score': 65.0, 'score_cf': 58.8, 'ran': 0.0}, {'ticker': 'TLN', 'scan_date': '2026-10-06', 'ep_score': 67.5, 'score_cf': 61.2, 'ran': 0.0}]
+  one tier down: the separation table has NO tier below HIGH (MODERATE cutline = None on the separation side) — the second count is not defined.
+PRE-REGISTERED RULE -> float verdict 'NULL', N_flip 3 => DROP-rec
+
+====================================================================================================
+D1-D6 context (descriptive — no verdict word)
+====================================================================================================
+D1 setup_class='episodic_neglect' (stored visibility tag), alerted B rows n=294: tagged 19; runner rate tagged 10.5% (n=19) vs other 11.3% (n=275)
+   his 8 EPs: setup_class = {'BFLY': '(no alert)', 'PLTR': 'mature_leader', 'ABNB': '(no alert)', 'TEAM': 'mature_leader', 'HTFL': 'unclassified', 'MRNA': 'mature_leader', 'CHPT': '(no alert)', 'PENG': 'unclassified'}
+   R1 rivals with an alert n=39: tagged episodic_neglect 4
+D2 expct_scheduled (alerted rows with a value n=294): 'unscheduled' share 29.9%; runner rate unscheduled 13.6% (n=88) vs scheduled 10.2% (n=206)
+   his 8 EPs: {'BFLY': '(none)', 'PLTR': 'scheduled', 'ABNB': '(none)', 'TEAM': 'scheduled', 'HTFL': 'scheduled', 'MRNA': 'unscheduled', 'CHPT': '(none)', 'PENG': 'scheduled'}
+D3 RS strength at D-1 (lower = weaker/'bottom'; his 08-16 'the bottom is where neglect forms'): mean place among R1 rivals 0.32 over 7 readable EPs; above 0.5: 1; band 0.30-0.70 -> L?
+     per EP: {'BFLY': 0.5, 'PLTR': 0.88, 'ABNB': 0.15, 'TEAM': 0.05, 'HTFL': 0.3, 'MRNA': 0.1, 'CHPT': 0.29, 'PENG': 'thin board'}
+D3 share of the prior ~120 sessions spent in the bottom 30% of RS: mean place among R1 rivals 0.43 over 6 readable EPs; above 0.5: 2; band 0.29-0.71 -> L0
+     per EP: {'BFLY': 'no value', 'PLTR': 0.92, 'ABNB': 0.15, 'TEAM': 0.65, 'HTFL': 0.33, 'MRNA': 0.22, 'CHPT': 0.29, 'PENG': 'thin board'}
+D4 analyst coverage: stored estimates as of the gap day with a non-empty num_analysts_eps: 0 of 2772 captured rows -> NOT MEASURED in this capture (the as-of join returned no values even for Sep-Oct rows)
+D5 Qullamaggie combination (NP-favourable [frozen cut] AND gap-day volume >= 5x its 50-day average; gap-day volume is read from the gap-day bar — descriptive only): his EPs 1 of 6 readable; R1 rivals 6 of 68 readable (8.8%)
+   per EP: {'BFLY': 'no', 'PLTR': 'no', 'ABNB': 'no', 'TEAM': 'no', 'HTFL': 'n/a', 'MRNA': 'no', 'CHPT': 'yes', 'PENG': 'n/a'}
+   tail: combination rows 57 of 662; runner rate combination 15.8% vs rest 13.6%
+D6 float cut 20M: rows under 50 of 792; runner rate under 24.0% vs over 13.5%; stratified gap +11.7 pp (one-sided p 0.024)
+D6 float cut 50M: rows under 253 of 792; runner rate under 13.8% vs over 14.3%; stratified gap +0.6 pp (one-sided p 0.466)
+D6 float cut 100M: rows under 430 of 792; runner rate under 14.4% vs over 13.8%; stratified gap +2.4 pp (one-sided p 0.233)
+   float quintiles (smallest to largest) runner rate: [(0, '17.0%', 159), (1, '11.4%', 158), (2, '13.9%', 158), (3, '14.6%', 158), (4, '13.8%', 159)]
+   Spearman(float, ADV$) = 0.57 on 792 rows (the float points favour small names, the liquidity points large)
+   F3 turnover (gap-day volume / float) terciles runner rate (low, mid, high): [(0, '14.4%', 264), (1, '14.0%', 264), (2, '14.0%', 264)]

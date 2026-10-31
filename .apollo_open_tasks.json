@@ -72,15 +72,11 @@
     "status": "deployed"
   },
   {
-    "id": 714,
-    "status": "in_progress"
-  },
-  {
-    "id": 715,
-    "status": "in_progress"
-  },
-  {
     "id": 717,
+    "status": "in_progress"
+  },
+  {
+    "id": 718,
     "status": "in_progress"
   }
 ]

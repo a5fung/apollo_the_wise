@@ -156,3 +156,7 @@ scripts/probes/_146_unpark/q3_bars.tsv.gz
 scripts/probes/**/*.log
 scripts/probes/**/*.err
 scripts/probes/**/*_14h.*
+
+# #715 / #714 studies (2026-10-31): large captures, reproducible from capture/*.sql
+scripts/probes/_715_study_1031/capture/c2_bars.out
+scripts/probes/_714_study_1031/out/30_daily_bars.out.gz

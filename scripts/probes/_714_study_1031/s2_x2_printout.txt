@@ -1,0 +1,14 @@
+X2: fetched 86 tickers on 2026-10-31T20:28:45+00:00..2026-10-31T20:30:16+00:00 UTC; fetch failed (None): 0; fetched but empty (no events on file): 1
+market-cap band source on R1+EPs rows: scan-log mixed (scan-log / mi_market_caps snapshot / yfinance now)
+ticker  band  n_events_365  n_up_90  decel  rivals_same_band  place_n365  place_up90  place_decel  rival_median_events_365
+  BFLY 2-10B          5.00     0.00   0.00                 2         NaN         NaN          NaN                     7.00
+  PLTR >=10B         62.00     3.00  -1.36                 7        0.29        0.00         0.00                    27.00
+  ABNB >=10B         73.00     0.00   3.60                 6        0.00        0.75         1.00                    49.00
+  TEAM >=10B         67.00     0.00   0.33                 6        0.08        0.75         0.67                    49.00
+  HTFL 2-10B         18.00     0.00   0.00                 1         NaN         NaN          NaN                    19.00
+  MRNA >=10B         29.00     0.00   0.00                 5        0.80        0.80         0.50                    41.00
+  CHPT   <2B         19.00     0.00   0.00                 1         NaN         NaN          NaN                    31.00
+  PENG 2-10B         24.00     0.00   0.00                 1         NaN         NaN          NaN                     7.00
+  fewer rating events in the prior year: readable EPs (>=4 same-band rivals with a value) 4 of 8; mean place 0.29 | n_eligible<5 -> NOT READ
+  no upgrade in the last 90 days: readable EPs (>=4 same-band rivals with a value) 4 of 8; mean place 0.57 | n_eligible<5 -> NOT READ
+  upgrade pace slowing: readable EPs (>=4 same-band rivals with a value) 4 of 8; mean place 0.54 | n_eligible<5 -> NOT READ

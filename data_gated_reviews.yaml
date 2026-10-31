@@ -16237,6 +16237,31 @@ reviews:
       Read the depth-exit trades ALONE: kept-vs-peak, win rate, expectancy R, stop-out share and the biggest kept R, each
       with its n and the count of unreadable peaks, beside the 09-06 era (n 8: +1.09R, 38%, 50%, 42%) and the older trades
       (n 29: -0.30R, 24%, 62%, -5%). Reports only.
+  - review_id: float_points_stored_era_reread_714
+    status: pending
+    kind: cadence
+    plan_ref: '#714'
+    title: "Float +5 points — re-read on the stored-float block (his 'keep for now', 2026-10-31)"
+    question: >-
+      #714 (closed 2026-10-31) read the +5 raw points for float under 50M as CAN'T TELL: pooled, low floats ran big no more
+      often (9.9% vs 11.1%), while the stored-float era alone read +11.0 pt (p 0.059, 145 rows, too small and all in one
+      time block). His ruling ("Take all recs"): keep the points for now, re-read when the stored-float block is readable.
+      On the fresh block (scored alert-days 2026-10-12 onward, stored float at scan time) does the stored-era lean hold?
+    predicate_sql: null
+    threshold: 0
+    earliest_review_date: 2026-11-21
+    can_fire:
+      predicate_runs: "N/A by design — kind cadence, predicate_sql null; it becomes due 2026-11-21 and cannot read zero."
+      nonzero_possible: "The fresh block already holds 103 scored alert-days 10-12..10-30, 102 with a stored float (#714 RESULTS.md), and the scan stores float on every scored row since ~08-29."
+      lane_live: "The +5 float points are live in ep_rubric.SCORE_WEIGHTS['float'] on every MAGNA53 scan."
+      threshold_vs_observed: "0 — the date is the gate; the 15-session outcome needs ~3 weeks after the block's last alert."
+      era_scoped: "Stored-float era only (float at scan time), never the 10-31 snapshot used for older rows."
+      population_actionable: "Scored MAGNA53 alert-days — the population the +5 acts on."
+      instrument_trusted: "The capture is pre-written and date-gated: scripts/probes/_714_study_1031/capture/60_fresh_block.sql (refuses before 2026-11-21)."
+    action_when_ready: >-
+      Run scripts/probes/_714_study_1031/capture/60_fresh_block.sql once (main loop, read-only), read the float definition
+      exactly as registered in docs/analysis/ep_float_neglect_prereg_2026-10-31.md (a dated addendum below its freeze
+      line), and report keep/drop to him. Score changes are his (THE LINE, CHANGE_PROCESS).
   - review_id: depth_sale_first_fire_687
     title: "#687 (4) — the FIRST depth sale (paper DAY market order terminal; live vehicle='opg')"
     question: >-
