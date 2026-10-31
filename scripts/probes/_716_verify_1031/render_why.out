@@ -1,0 +1,83 @@
+===== /why REGN 2026-10-30
+📋 REGN 2026-10-30 — HIGH 65 · NOT BOUGHT — ran too far past ORB high to chase
+
+🎯 WHY HIGH
+   [SEC 8-K filed 2026-10-30, items 2.02,9.01] REGN gapped up after its Q3 2026 earnings report beat estimates by a wide margin. Revenue rose 36% year… — read: SEC 8-K
+   gap 10/10 · liquidity 15/15 · catalyst 15/25 · theme 0/10 · float 0/5 · pre-market volume 0/5
+   raw 40 of 70 · HIGH bar 40 · exactly on the bar
+   could still add: catalyst +10 · theme +10 · float +5 · pre-market volume +5
+
+🧠 GRADE NOTE
+   strong · set by the tier correction · held all day — "Regeneron reported Q3 2026 revenue up 36% to $5.1B and non-GAAP EPS up 70% to $20.07."
+
+💰 ENTRY
+   plan: buy $869.88 · stop $817.50 · risk $52.38 a share
+   result: no order was placed — price had run past the buy point; chasing it at $928.33 would have risked $110.83 a share against $52.38 planned (cap 1.5x)
+
+⏱ KEY TIMES
+   09:35  Real-time prices lifted the gap over the floor
+   09:36  Alert sent
+   09:36  Entry skipped by the chase cap
+
+Every section and event: /why REGN 2026-10-30 full
+===== /why REGN 2026-10-30 full
+📋 REGN — lifecycle 2026-10-30
+
+🎯 DETECTED — alert tier HIGH · score 65
+   gap +11.7% · catalyst grade strong (set by the Claude grader)
+
+⚖️ JUDGE — alert tier HIGH (our score said HIGH; the judge held it)
+   materiality material · axis catalyst · rubric v4 (8/27)
+   "A fresh 8-K (2026-10-30) shows Q3 revenue up 36% Y/Y to $5.1B, which is a large acceleration for a $94B pharma. Dupixent (+35%), EYLEA HD (+62%) and Libtayo (+51%) all posted records, and non-GAAP EPS rose 70%. The…"
+
+🧠 CATALYST GRADE — strong
+   set by the tier correction (rule gc_demoted_scheduled_no_content_delta) · the news grader said game_changer
+   graded 09:35 ET · grade held all day · score 65 (HIGH — alerted)
+   "Regeneron reported Q3 2026 revenue up 36% to $5.1B and non-GAAP EPS up 70% to $20.07. Dupixent sales rose 35%, EYLEA HD 62% and Libtayo 51%. It also expanded the Sanofi collaboration with $1.0B upfront and up to $7.0B in milestones, and FDA approved Pasatru for FOP. Strong revenue acceleration plus these catalysts make this a game_changer; the Sanofi expansion is a collaboration, not an…"
+   read: SEC 8-K — 7,719 chars
+   news: [SEC 8-K filed 2026-10-30, items 2.02,9.01] REGN gapped up after its Q3 2026 earnings report beat estimates by a wide margin. Revenue rose 36% year over year to $5.12 billion, and adjusted EPS was $20.07, versus analyst expectations around…
+   news was on the earnings calendar · beat language found · backward-looking content only · no sector confirmation
+
+🧮 SCORE — 65.0, clears the HIGH bar 65 (09:35 ET scan)
+   gap +10  11.7% gap — 8% or more · flat credit, a bigger gap pays nothing more
+   liquidity +15  average daily dollar volume $583.634M — $500M or more · top tier
+   catalyst +15  graded strong · next grade up: game-changing pays 25
+   float +0  96M shares — not under 50M shares · under 50M pays 5
+   pre-market volume +0  at its own 0th percentile — below the lowest tier · next tier 70th percentile pays 3
+   theme +0  not in a paying theme · a paying theme pays 10
+   raw total 40
+   x1.00 regime multiplier (no regime boost; worked back from the stored score) = 40
+   rescale 1.25 x 40 + 15 = 65  (a display step only: the bar goes through the same step)
+   HIGH bar 65 (= 40 before the rescale) needs a raw total of 40; this has 40 (0 to spare)
+   theme read: not listed in a paying theme, and it ran outside the pre-market window; closest match Defensive Consumer Staples Rotation (Mainstream, price co-movement 0.45)
+
+💰 OUTCOME — cancelled — Ran too far past ORB high to chase (limit $928.33 risk $110.83/sh vs planned $52.38/sh (cap 1.50x, ORB high $869.88))
+   planned buy $869.88, stop $817.50 — no order was placed
+
+🔍 Fill diagnosis
+   No order was placed — there was nothing to fill.
+
+📅 LIFECYCLE
+   09:35  ep rt floor flip up — rt 11.6% ≥9 > delayed 6.7% @ 09:35 ET
+   09:35  catalyst rubric passed — rubric PASSED composite=25.6 (>= 22) label=strong
+   09:35  vol conviction shadow — HIGH live_vol_pct=0 shadow_vol_pct=0 live_score=65.0 shadow_score=65.0
+   09:35  conviction floor eligible — gap=11.7% score=65 tier=HIGH
+   09:36  judge signal trace — direct_source held=True sent=yes | revenue_stage held=True sent=yes ×2
+   09:36  filter:large cap relvol floor shadow — HIGH rel_vol=0.41x adv$=583,634,406 @ 09:35 ET (SHADOW — alert NOT skipped
+   09:36  theme axis shadow adjusted — 2026-10-30: strong -> strong (standalone, +0 step
+   09:36  EP detected — HIGH EP: gap=11.7% score=65
+   09:36  exposure family checked — live/ORB): no theme membership — nothing to compare
+   09:36  entry chase cap skipped — [live]: setup:chase_cap_exceeded: limit $928.33 risk $110.83/sh vs planned $52.38/sh (cap…
+   09:36  orb order failed — submit_entry returned None
+   09:50  ep rt admit — rt 13.4% and delayed 11.6% BOTH >=9 @ 09:50 ET — real-time AGREES with the admit
+
+🧪 *Rubric: 25.6/39 (strong ✅)*
+Revenue: *4/5* (+36.0% YoY, accelerating)
+EPS: *4/5* (+70.0% YoY)
+Margins: *2/5* (all margins flat)
+Beat: *4/5* (rev +12.6%, EPS +24.0%)
+Milestone bonus: *+1* (growth_milestone_25%)
+_Not scored: Guidance_
+⚖️ Rubric says strong too — it AGREES with the grade
+_Full breakdown: `/rubric REGN`_
+Theme: —
