@@ -689,7 +689,16 @@ reviews:
     reviewed_on: 2026-08-06
 
   - review_id: exit_rules_since_2026_09_06_first_readable_n
-    status: pending
+    status: done
+    resolution_2026_10_31: >-
+      RAN 2026-10-31 (main loop, prod read-only, scripts/probes/_review_1031/exit_rules/q1_capture.out). Population: closed
+      MAGNA53 LIVE trades, peaks from mi_sell_discipline_records (all 10 post-09-06 peaks readable — DFTX via extremes, a
+      fast exit, peak 0). The 09-06 rules ALONE (alert 09-06..10-11, n 8): expectancy +1.09R, win 38%, stopped 50%, average
+      peak 2.88R, kept-vs-peak 42%. Beside them, the older trades (before 09-06, n 29): -0.30R, 24%, 62%, peak 1.83R,
+      kept-vs-peak -5%. So YES, capture improved under the 09-06 rules — but the whole gain is two runners held to the end:
+      VICR +7.30R (peak 11.52) and KOD +5.87R (peak 8.06, the +8R partial taken); the other six average -0.74R. The rules
+      that RUN NOW are the depth exit (10-12+): n 2 (SMCI -1.01R, CLS -0.29R), unreadable — carried by
+      exit_rules_depth_era_first_readable_n. Reports only; any exit change is his (THE LINE).
     title: "The 2026-09-06 exit change has enough closed trades to read — did taking profit at +8R and moving the stop to breakeven at +3R improve what we KEEP?"
     question: |
       ⚠ THIS EXISTS SO THE ANSWER STOPS BEING RE-DERIVED. On 2026-09-20 the same
@@ -11340,6 +11349,19 @@ reviews:
 
   - review_id: regime_sizing_vs_tail_recheck
     title: "Regime sizing vs where the tail actually is — RECURRING as regime cells fill (#571/#508)"
+    resolution_2026_10_31: >-
+      RAN 2026-10-31 (main loop, prod read-only, scripts/probes/_review_1031/regime_sizing/q1_trades.out,
+      q2_alert_scarcity.out). DIRECTIONAL ONLY — every cell is small. (1) THE TAIL among trades TAKEN, split at the 08-16 stop
+      change (R units differ): in the current 2R-stop era (n 17) the two biggest runners came OUTSIDE Bull — VICR peak 11.52R /
+      kept +7.30R stamped Crisis (sized 0.25) and KOD peak 8.06R / +5.87R in Correcting (0.50); Bull n 4 (2 reached 1.5R,
+      best 5.13R), Choppy n 6 (2, best 2.57R), Correcting n 6 (2, best 8.06R), Crisis n 1. The earlier ORB-low-stop era
+      matches the 08-17 read (Choppy best 7.92R). (2) SCARCITY at the ALERT stage (the half this review exists for; the
+      alert-rank read's own measure, 5-day best high in ADR multiples, regime on the alert date): a run of 3x ADR or more came
+      on 4 of 12 Bull alerts (33%), 3 of 27 Choppy (11%), 2 of 11 Correcting (18%), 1 of 5 Crisis (20%); 8x+ once in Bull
+      (MRNA) and once in Correcting (KOD). READING: winners do look rarer outside Bull at the alert stage, but when one is
+      taken outside Bull it has run as far or further — and the sizing multiplier cut the dollars on exactly the two best
+      trades of the era. Both halves rest on 1-4 events per cell; not a basis for a change. Sizing is his (THE LINE).
+      Next: re-run when each non-Bull alert cell reaches about 20 matured alerts.
     question: |
       Operator 2026-08-17, after the exit_regime_separability read: "we should keep
       monitoring this / review across more regimes to see if we need to adjust the
@@ -12854,7 +12876,20 @@ reviews:
       era_scoped: "Exit era D (rule_eras.exit_era_label); if #687's depth exit goes live 10-12 the read reports era D and the depth-exit era separately, never pooled."
       population_actionable: "Same population definition as the 10-10 re-cut (first real-time read, deduped ticker-days), so the two reads compare."
       instrument_trusted: "The 10-10 harness reproduced byte-identically under Opus verification; 3 of 5 real closed trades replay within 0.25R."
-    status: pending
+    status: done
+    resolution_2026_10_31: >-
+      RAN 2026-10-31 (main loop, prod read-only, scripts/probes/_review_1031/rt_admission/q1_season.out,
+      q2_like_for_like.out, q3_sofi.out). Window: alert days 10-12..10-30 (the depth-exit era — reported alone). VOLUME,
+      measured the 10-10 re-cut's way (the four real-time classes, per day): 27.1 a day across the window — NOT busier than
+      the quiet 09-08..10-09 stretch (28.5) and well under the busy 07-21..08-10 one (72.5); only the last week rose (about
+      47 a day, peak 72 on 10-29). (The raw all-event counts read 61 / 60 / 153 — a different measure; the two were not
+      mixed.) THE 09:45 BUDGET HELD: 14 alerts in the window; the two HIGHs that landed after 09:45 (SOFI 09:55, GMAB 09:45)
+      crossed the floor late in real time — SOFI read 9.1% at 07:35, fell to 8.4% at 09:31 (removed), re-crossed by 09:55 —
+      not slow processing. SLOTS: the 5-position cap never bound (0 max-positions skips; at most 2 open live positions), so
+      no real-time name took a slot from a scored one. Seen beside it: 3 of 11 HIGH alerts were refused at entry because
+      the real-time gap had fallen under 9% (MANE, SPCX, INIO) — the entry check acting as built. NOT read: the in-window
+      class R / tail (the 10-10 replay harness models exit era D; this window is the depth exit, and mixing eras is the
+      error this file forbids). Recommendation to him: keep both switches as they are; nothing in the season read argues a change.
     added_on: 2026-10-10
     cross_refs: ["#559"]
   - review_id: theme_assignment_steady_state_cost
@@ -16175,6 +16210,33 @@ reviews:
       on its own evidence, with the cell and entry it would use. Live is his sign-off and not asked here.
     cross_refs: ["task #705 (continues #702; closed 2026-10-26, docs/task_closes.md)", "docs/setups/consolidation_breakout.md", "docs/methodology/operator_shared_notes.md", "scripts/probes/_cb_backtest/README.md"]
     zero_verdict: "2026-10-17 WAITING — born with the recorder: the tables are empty until the first deploy night; a mature C1 primary-arm exit needs a C1 breakout and then the primary walk to terminate (trail or stop), typically 2-6 weeks after the break."
+  - review_id: exit_rules_depth_era_first_readable_n
+    status: pending
+    plan_ref: '#687'
+    kind: accrual
+    title: "The depth exit (live since 2026-10-12) has enough closed trades to read — what do we KEEP of the peak under the rule that runs now?"
+    question: >-
+      Carried 2026-10-31 from exit_rules_since_2026_09_06_first_readable_n: under the 09-06 rules (n 8) capture rose
+      from -5% to 42% of the peak, all of it two runners (VICR, KOD). The depth exit replaced those rules on 10-12 and has 2
+      closed live trades. On the first readable sample under the depth exit ALONE (never pooled): kept-vs-peak, win rate,
+      expectancy in R, stop-out share and the biggest kept R, each with its n, beside the 09-06 era's figures above.
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_live_trades WHERE status = 'closed' AND account_mode = 'live' AND signal_type = 'magna53' AND exit_rule = 'depth'
+    threshold: 10
+    earliest_review_date: 2026-11-16
+    discriminates_on: [mi_live_trades.exit_rule, mi_live_trades.status, mi_live_trades.account_mode, mi_live_trades.signal_type]
+    can_fire:
+      predicate_runs: "2026-10-31 — the same population ran against prod in scripts/probes/_review_1031/exit_rules/q1_capture.out: 2 closed live MAGNA53 trades with exit_rule='depth' (SMCI 10-21, CLS 10-27)."
+      nonzero_possible: "Already nonzero (2). Every live MAGNA53 entry since 10-13 is stamped exit_rule='depth' (#687 close, scripts/probes/_687_close_1030/q1.out), so the count rises as trades close."
+      lane_live: "The depth exit is the live MAGNA53 exit rule since 2026-10-12 (his 09-29 switch ruling); live entries keep arriving (CLS 10-27)."
+      threshold_vs_observed: "10 against an observed 2 on 2026-10-31 — deliberately not ripe; at the 10-12..10-31 rate (2 closed in ~3 weeks, entries 10-19, 10-21, 10-27) n 10 is roughly two months out, so the date floor of 11-16 only stops an early surface."
+      era_scoped: "exit_rule = 'depth' IS the era: only trades stamped by the rule are counted."
+      population_actionable: "The trades read are the rule that runs now; it reports whether it keeps more of the peak. Any change is his (THE LINE)."
+      instrument_trusted: "Peaks from mi_sell_discipline_records (peak_source; minute_bars on 9 of the last 10); state how many peaks are unreadable rather than counting them as zero."
+    action_when_ready: >-
+      Read the depth-exit trades ALONE: kept-vs-peak, win rate, expectancy R, stop-out share and the biggest kept R, each
+      with its n and the count of unreadable peaks, beside the 09-06 era (n 8: +1.09R, 38%, 50%, 42%) and the older trades
+      (n 29: -0.30R, 24%, 62%, -5%). Reports only.
   - review_id: depth_sale_first_fire_687
     title: "#687 (4) — the FIRST depth sale (paper DAY market order terminal; live vehicle='opg')"
     question: >-

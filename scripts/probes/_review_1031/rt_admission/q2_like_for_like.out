@@ -1,0 +1,26 @@
+SET
+== per window, daily average of (a) all ep_rt_ events (b) the four classes the 10-10 re-cut read (c) deduped ticker-days of those classes
+win|days|all_per_day|four_class_per_day|tickerdays_per_day
+1_busy_0721_0810|15|152.8|72.5|39.7
+2_quiet_0908_1009|24|60.3|28.5|17.7
+3_season_1012_1030|15|61.2|27.1|16.6
+(3 rows)
+== event types in the season window
+event_type|count
+ep_rt_universe_coverage|560
+ep_rt_floor_flip_down|287
+ep_rt_admit|168
+ep_rt_floor_flip_up|138
+ep_rt_universe_catch|100
+ep_rt_sustain_reject|65
+ep_rt_declined_not_missed|40
+ep_rt_tick_quality_reject|39
+ep_rt_sustain_undecidable|38
+ep_rt_shadow_capture|15
+ep_rt_halt_suspect|10
+ep_rt_gap_clamped|7
+ep_rt_postcutover_residual_regression|5
+ep_rt_corp_action_hold|3
+ep_rt_prev_close_mismatch|2
+ep_rt_universe_degraded|1
+(16 rows)

@@ -1,0 +1,25 @@
+SET
+column_name|data_type
+alert_date|date
+regime|text
+status|text
+entry_price|double precision
+stop_price|double precision
+hard_stop|double precision
+risk_dollars|double precision
+stop_order_id|text
+exits|jsonb
+total_pnl|double precision
+partial_taken|boolean
+running_closes|jsonb
+closed_at|timestamp with time zone
+signal_type|text
+account_mode|text
+pnl_attribution|text
+risk_dollars_actual|double precision
+dead_stop_price|double precision
+dead_stop_order_id|text
+dead_stop_status|text
+dead_stop_recorded_at|timestamp with time zone
+exit_rule|text
+(22 rows)

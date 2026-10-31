@@ -1,0 +1,9 @@
+SET
+table_name|column_name
+mi_live_trades|regime
+mi_market_regime|regime_date
+mi_market_regime|regime
+(3 rows)
+table_name
+mi_market_regime
+(1 row)

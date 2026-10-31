@@ -1,0 +1,5 @@
+Alert population: mi_alert_rank_shadow since 2026-08-17 (HIGH-tier pools), 5-day best high from the EP-day open in ADR20 multiples (the alert-rank read's own measure); regime = mi_market_regime on the alert date.
+Bull             alerts  12  filled  5  matured  12  >=3x ADR  4 (33%)  >=8x 1  ['ARGX 4.9x', 'AMLX 5.7x', 'MRNA 9.1x', 'TEM 5.0x']
+Choppy           alerts  30  filled  7  matured  27  >=3x ADR  3 (11%)  >=8x 0  ['PBR 3.2x', 'VST 3.7x', 'PENG 3.8x']
+Correcting       alerts  16  filled  4  matured  11  >=3x ADR  2 (18%)  >=8x 1  ['VICR 6.0x', 'KOD 12.4x']
+Crisis           alerts   5  filled  2  matured   5  >=3x ADR  1 (20%)  >=8x 0  ['MANE 3.4x']

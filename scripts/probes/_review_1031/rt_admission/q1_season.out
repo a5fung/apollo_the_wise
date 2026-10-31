@@ -1,0 +1,56 @@
+SET
+== (A) raw real-time events per day (same filter as the 10-10 EVCOUNT), 10-12..10-30
+d|raw_events|tickers|admits|flips|catches
+2026-10-12|47|14|6|9|2
+2026-10-13|12|5|2|3|2
+2026-10-14|33|12|8|3|4
+2026-10-15|54|14|6|7|9
+2026-10-16|25|5|4|1|1
+2026-10-19|93|22|15|6|8
+2026-10-20|46|13|8|5|4
+2026-10-21|54|20|9|12|4
+2026-10-22|33|13|5|7|5
+2026-10-23|36|11|7|5|2
+2026-10-26|55|19|13|6|7
+2026-10-27|95|32|16|18|10
+2026-10-28|123|41|18|23|14
+2026-10-29|133|48|33|22|17
+2026-10-30|79|25|18|11|11
+(15 rows)
+== (B) the 09:45 budget: alerts by detection time, and the real-time first read before each (ticker-day)
+alert_date|ticker|score_tier|detected_et|first_rt_et|rt_to_alert_min
+2026-10-14|BSP|MODERATE|09:40:00|09:15:01|25.0
+2026-10-19|IRON|HIGH|07:20:00|07:00:03|19.9
+2026-10-19|MANE|HIGH|08:40:00|08:40:01|0.0
+2026-10-21|SMCI|HIGH|07:00:02|07:00:03|0.0
+2026-10-21|SPCX|HIGH|08:40:00|08:40:01|0.0
+2026-10-23|SBAC|MODERATE|08:35:00|08:20:01|15.0
+2026-10-26|RRC|none|07:00:01|07:00:03|0.0
+2026-10-27|CLS|HIGH|07:00:01|07:00:08|-0.1
+2026-10-27|INIO|HIGH|07:40:00|07:40:01|0.0
+2026-10-27|SOFI|HIGH|09:55:00|07:35:01|140.0
+2026-10-28|VRT|HIGH|07:00:01|07:00:02|0.0
+2026-10-28|GMAB|HIGH|09:45:00|09:45:07|-0.1
+2026-10-29|GKOS|HIGH|07:00:02|07:00:04|0.0
+2026-10-30|REGN|HIGH|09:35:00|09:35:03|-0.1
+(14 rows)
+== (C) slots: every live/paper MAGNA53 row 10-12..10-30 with its fate
+alert_date|ticker|account_mode|status|skip_reason|filled_et
+2026-10-19|IRON|live|filled||09:31
+2026-10-19|MANE|live|skipped|setup:gap_below_floor: rt 6.5% < 9% floor (alert said 9.3%, last $115.86 vs prev close $108.82)|
+2026-10-21|SMCI|live|closed|block:r3_reentry_disabled|09:31
+2026-10-21|SPCX|live|skipped|setup:gap_below_floor: rt 8.8% < 9% floor (alert said 9.0%, last $160.85 vs prev close $147.79)|
+2026-10-27|CLS|live|closed||09:31
+2026-10-27|INIO|live|skipped|setup:gap_below_floor: rt 3.0% < 9% floor (alert said 9.7%, last $17.13 vs prev close $16.63)|
+2026-10-27|SOFI|live|skipped|window:out_of_orb: detected 09:55 ET|
+2026-10-28|GMAB|live|skipped|window:out_of_orb: detected 09:46 ET|
+2026-10-28|VRT|live|cancelled|ORB window unfilled|
+2026-10-29|GKOS|live|skipped|infra:no_bar: 3 retries exhausted|
+2026-10-30|REGN|live|cancelled|setup:chase_cap_exceeded: limit $928.33 risk $110.83/sh vs planned $52.38/sh (cap 1.50x, ORB high $869.88)|
+(11 rows)
+== (D) the comparison
+unterminated quoted string
+w|raw_per_day|days
+busy_0721_0810|152.8|15
+quiet_0908_1009|60.3|24
+(2 rows)

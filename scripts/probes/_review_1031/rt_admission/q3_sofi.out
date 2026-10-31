@@ -1,0 +1,20 @@
+SET
+t_et|event_type|summary
+07:35:01|ep_rt_floor_flip_up|SOFI rt 9.1% ≥9 > delayed 5.9% @ 07:35 ET
+07:35:13|ep_catalyst_provenance|SOFI strong direct=True
+07:35:22|catalyst_earnings_revenue_weak_downgrade|SOFI: strong → routine (earnings catalyst, rubric_composite_21.0_below_22_label_routine)
+07:35:24|ep_theme_fit_llm_proposed|Sonnet proposed 1 assignment(s) (batch 1/1, advisor_calls=0)
+07:50:01|ep_rt_floor_flip_down|SOFI delayed 9.1% >=9 > rt 8.2% (stale false-admit REMOVED)
+07:55:03|catalyst_earnings_boost|SOFI: routine → strong (earnings_day, source=earnings_dates)
+08:10:01|ep_rt_admit|SOFI rt 10.3% and delayed 9.2% BOTH >=9 @ 08:10 ET — real-time AGREES with the admit
+09:31:02|ep_rt_floor_flip_down|SOFI delayed 10.4% >=9 > rt 8.4% (stale false-admit REMOVED)
+09:55:09|vol_conviction_shadow|SOFI HIGH live_vol_pct=100 shadow_vol_pct=100 live_score=65.0 shadow_score=65.0
+09:55:20|judge_signal_trace|[ep_grade_judge] SOFI: direct_source held=True sent=yes | revenue_stage held=True sent=yes
+09:55:28|ep_grade_decision|SOFI our score HIGH · judge HIGH · judge note hold · outcome verdict
+09:55:28|judge_signal_trace|[judge_divergence] SOFI: direct_source held=True sent=yes | revenue_stage held=True sent=yes
+09:55:28|theme_axis_shadow_adjusted|SOFI 2026-10-27: routine -> routine (standalone, +0 step)
+09:55:28|ep_catalyst_suppressed|SOFI catalyst discovery line suppressed (grounded direct-source grade)
+09:55:29|ep_alert|HIGH EP: SOFI gap=11.9% score=65
+09:55:29|orb_out_of_window|SOFI — window:out_of_orb: detected 09:55 ET
+17:06:41|lane2_decision_record|2026-10-27: offered=3 join=2 birth=0 seed=1 none=0 conversions=0
+(17 rows)

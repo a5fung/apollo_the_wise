@@ -1,0 +1,20 @@
+SET
+== population: closed magna53 LIVE trades, by exit era (09-06 flip; 10-12 depth exit)
+era|n|with_r|readable_peak|exp_r|win_pct|stopped_pct|avg_peak_r|kept_vs_peak|best_peak|best_kept
+a_pre_0906|29|29|29|-0.30|24|62|1.83|-0.05|7.92|3.42
+b_0906_1011|8|8|8|1.09|38|50|2.88|0.42|11.52|7.30
+c_depth_1012+|2|2|2|-0.65|0|50|1.19|-0.54|1.67|-0.29
+(3 rows)
+== the post-09-06 trades one by one
+id|ticker|alert_date|exit_rule|partial_taken|r|peak|peak_source|peak_bars_n
+394|PHVS|2026-09-08||f|-1.02|0.36|minute_bars|130
+396|SEI|2026-09-08||f|0.41|1.72|minute_bars|4175
+399|DFTX|2026-09-14||f|-1.01|0.00|extremes|46
+400|VICR|2026-09-17||f|7.30|11.52|minute_bars|4655
+404|KOD|2026-09-28||t|5.87|8.06|minute_bars|4322
+409|CEG|2026-10-06||f|-1.00|0.45|minute_bars|983
+414|PENG|2026-10-07||f|-0.82|0.83|minute_bars|2339
+419|HUM|2026-10-09||f|-1.01|0.13|minute_bars|795
+424|SMCI|2026-10-21|depth|f|-1.01|0.72|minute_bars|121
+429|CLS|2026-10-27|depth|f|-0.29|1.67|minute_bars|1172
+(10 rows)
