@@ -623,8 +623,16 @@ class _Conn:
         self.raw = None                      # the stored OCO parent row's raw_response (its legs), when a test sets one
         self.fail_order_close = 0            # how many order-row closes raise (the finding-1 case 2 shape)
         self.fetchrow_result = None
+        self.audit_rows: list = []           # the audit log the marker / due readers see (newest first)
+        self.fail_audit_read = False         # the audit log unreadable (the readers' fail direction)
+        self.sold_order_row = None           # a filled partial_exit / stop_loss order row (`shares_already_sold`)
+        self.fail_sold_read = False
 
-    async def fetch(self, *_a, **_k):
+    async def fetch(self, *a, **_k):
+        if a and "mi_audit_log" in str(a[0]):
+            if self.fail_audit_read:
+                raise RuntimeError("db down")
+            return list(self.audit_rows)
         return self.rows
 
     async def execute(self, *a, **_k):
@@ -637,6 +645,10 @@ class _Conn:
         self.fetchvals.append(a)
         if "raw_response" in a[0]:
             return self.raw
+        if "purpose IN ('partial_exit', 'stop_loss')" in a[0]:
+            if self.fail_sold_read:
+                raise RuntimeError("db down")
+            return self.sold_order_row
         return 1
 
     async def fetchrow(self, *a, **_k):
@@ -1488,3 +1500,585 @@ def test_1645_a_fill_the_minute_job_never_checked_is_checked_before_the_day0_fac
     monkeypatch.setattr(bv1, "check_stop_at_fill_after_close", _chk_returning("fill_checked"))
     asyncio.run(lt.update_open_positions_live(ALERT))
     assert seen == [("check", STOP0, datetime(2026, 10, 26, 16, 45, tzinfo=ET)), ("facts", STOP0)]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 8. HIS RULING 2026-10-31 ("Go with rec": "Retry the sale at the next day's close") — a session-3 third that was
+#    decided but never sold is retried at each later session's close; one third per trade, ever
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+S4, S5, S6 = date(2026, 10, 30), date(2026, 11, 2), date(2026, 11, 3)
+_S3_BAR = (10.40, 10.50, 10.35, 10.46)                 # session 3 settled = _S3_ABOVE
+_LATER_T = (10.48, 10.60, 10.40, 10.55)
+_LATER = {"o": 10.48, "h": 10.60, "l": 10.40, "c": 10.55}
+_UNDER = {"o": 10.30, "h": 10.35, "l": 10.10, "c": 10.20}   # a retry day's close UNDER the fill
+_FWD_LONG = _S12 + [_S3_BAR] + [_LATER_T] * 5          # zip truncates to the sessions before `today`
+_MKT_FILLED = {"id": "mkt-7", "status": "filled", "qty": 3, "filled_qty": 3}
+_MKT_DEAD = {"id": "mkt-7", "status": "canceled", "qty": 3, "filled_qty": 0}
+
+
+def _carry(*callsets):
+    """The audit rows the runs so far WROTE (both audit mocks), as the DB hands them back: newest first."""
+    rows = []
+    for calls in callsets:
+        for m in (calls["log_audit_event"], calls["bpe_audit"]):
+            for c in m.await_args_list:
+                rows.append({"event_type": c.args[0], "detail": (c.args[2] if len(c.args) > 2 else "{}"),
+                             "created_at": len(rows)})
+    rows.reverse()
+    return rows
+
+
+def _trace_lt(calls, br):
+    async def _a(evt, *a, **k):
+        br.log.append(("lt_audit", evt, a[1] if len(a) > 1 else None))
+    calls["log_audit_event"].side_effect = _a
+
+
+def _lt_events(calls):
+    return [c.args[0] for c in calls["log_audit_event"].await_args_list]
+
+
+def _unconfirmed_broker(monkeypatch, calls):
+    br = _Broker(monkeypatch, calls, [_PENDING_CANCEL])
+    ticks = iter(range(0, 10_000))
+    monkeypatch.setattr(bpe, "_clock", lambda: float(next(ticks)))
+    return br
+
+
+def test_retry_decision_is_pure_and_fires_only_on_a_recorded_decision_with_no_third_sold():
+    fwd3 = [{"c": 10.45}, {"c": 10.42}, {"c": 10.46}]
+    fwd4 = fwd3 + [{"c": 10.55}]
+    assert rules.retry_decision(fwd=fwd4, partial_taken=False, session_third_due=True) == rules.RETRY_THIRD
+    assert rules.retry_decision(fwd=fwd4 + [{"c": 10.20}], partial_taken=False, session_third_due=True) == "retry_third"
+    assert rules.retry_decision(fwd=fwd4, partial_taken=True, session_third_due=True) is None     # a third sold: stop
+    assert rules.retry_decision(fwd=fwd4, partial_taken=False, session_third_due=False) is None   # nothing decided
+    assert rules.retry_decision(fwd=fwd3, partial_taken=False, session_third_due=True) is None    # session 3 itself
+    assert rules.retry_decision(fwd=fwd3[:1], partial_taken=False, session_third_due=True) is None
+    # the retry carries no price condition of its own: the decision is the same with the close under the fill
+    assert rules.retry_decision(fwd=fwd3 + [{"c": 9.00}], partial_taken=False, session_third_due=True) == "retry_third"
+    # shares already sold without the flag (the third's stop leg filled): no retry; the same on session 3 itself
+    assert rules.retry_decision(fwd=fwd4, partial_taken=False, session_third_due=True, shares_sold=True) is None
+    day0 = dict(FACTS_REACHED)
+    kw = dict(fill=FILL, stop=STOP0, day0=day0, fwd=[{"o": 10.4, "h": 10.52, "l": 10.35, "c": 10.45},
+                                                    {"o": 10.45, "h": 10.5, "l": 10.35, "c": 10.42}, _S3_ABOVE])
+    assert rules.session3_decision(**kw, partial_taken=False) == "session_third"
+    assert rules.session3_decision(**kw, partial_taken=False, shares_sold=True) is None
+    assert rules.session3_decision(**kw, partial_taken=False, third_resting=True, shares_sold=True) is None
+
+
+def test_session_third_due_reads_the_three_records_and_fails_closed(monkeypatch):
+    """The due reader: any of the due row, the planned-cancel marker or the "selling N sh" row naming the trade; an
+    unreadable log reads as NOT due (nothing sold on a record that cannot be read), audited."""
+    seen = []
+
+    def _pool(rows):
+        class _C:
+            async def fetch(self, sql, *a):
+                seen.append(sorted(a[0]))
+                return rows
+        monkeypatch.setattr(bpe, "get_pool", AsyncMock(return_value=_Pool(_C())))
+
+    for ev in (bpe.SESSION_THIRD_DUE, bpe.PLANNED_THIRD_CANCEL, bpe.SESSION_THIRD_EVENT):
+        _pool([{"event_type": ev, "detail": json.dumps({"trade_id": 701, "ticker": "BRK"})}])
+        assert asyncio.run(bpe.session_third_due(701)) is True, ev
+        assert asyncio.run(bpe.session_third_due(702)) is False
+    assert seen[-1] == sorted([bpe.SESSION_THIRD_DUE, bpe.PLANNED_THIRD_CANCEL, bpe.SESSION_THIRD_EVENT])
+    _pool([{"event_type": bpe.PLANNED_THIRD_CANCEL_WITHDRAWN, "detail": json.dumps({"trade_id": 701})}])
+    assert asyncio.run(bpe.session_third_due(701)) is False          # a withdrawal alone is not a decision
+    _pool([])
+    assert asyncio.run(bpe.session_third_due(701)) is False
+    audit = AsyncMock()
+    monkeypatch.setattr(bpe, "log_audit_event", audit)
+    monkeypatch.setattr(bpe, "get_pool", AsyncMock(side_effect=RuntimeError("db down")))
+    assert asyncio.run(bpe.session_third_due(701)) is False
+    assert audit.await_args.args[0] == "breakout_pp_third_due_unreadable"
+    assert bpe.SESSION_THIRD_EVENT == "breakout_pp_session_third"
+
+
+def test_the_session3_decision_is_recorded_before_the_cancel_and_before_the_plain_sale(monkeypatch):
+    """The retry's record (`breakout_pp_session_third_due`) is written the moment session 3 decides to sell — BEFORE
+    the cancel on the resting path and BEFORE the sale on the plain path — so a crash or a failure anywhere after it
+    still leaves the decision on record. No record on a session 3 that decides nothing, on the cut, or on a trade
+    whose third already sold."""
+    # the resting path: due, then the marker, then the cancel
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    br = _Broker(monkeypatch, calls, [_CANCELLED_EMPTY])
+    _trace_lt(calls, br)
+    asyncio.run(lt.run_partial_exits(S3))
+    seq = [x[:2] for x in br.log]
+    assert seq.index(("lt_audit", bpe.SESSION_THIRD_DUE)) < seq.index(("audit", bpe.PLANNED_THIRD_CANCEL)) \
+        < seq.index(("cancel", "lim-9"))
+    [due] = [c.args for c in calls["log_audit_event"].await_args_list if c.args[0] == bpe.SESSION_THIRD_DUE]
+    d = json.loads(due[2])
+    assert (d["trade_id"], d["decision"], d["resting_order_id"]) == (701, "cancel_resting_third", "lim-9")
+    # the plain path: due, then the sale
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting=None, fwd_bars=_S12)
+    order: list = []
+
+    async def _a(evt, *a, **k):
+        order.append(evt)
+
+    def _sell(*a, **k):
+        order.append("SELL")
+        return True
+    calls["log_audit_event"].side_effect = _a
+    calls["execute_partial_exit"].side_effect = _sell
+    asyncio.run(lt.run_partial_exits(S3))
+    assert order.index(bpe.SESSION_THIRD_DUE) < order.index(bpe.SESSION_THIRD_EVENT) < order.index("SELL")
+    # no record: the close at/under the fill · the cut · a third already sold
+    tb_under = {"o": 10.35, "h": 10.40, "l": 10.20, "c": 10.25}
+    for row, tb, fwd in ((_row(), tb_under, [(10.40, 10.75, 10.35, 10.50), (10.45, 10.50, 10.30, 10.40)]),
+                         (_row(breakout_day0_pp=FACTS_QUIET), {"o": 10.35, "h": 10.45, "l": 10.30, "c": 10.40},
+                          [(10.35, 10.42, 10.25, 10.38), (10.38, 10.45, 10.30, 10.40)]),
+                         (_row(partial_taken=True, remaining_shares=6), _S3_ABOVE, _S12)):
+        conn, calls = _install(monkeypatch, row, today=S3, today_bar=tb, fwd_bars=fwd)
+        asyncio.run(lt.run_partial_exits(S3))
+        assert bpe.SESSION_THIRD_DUE not in _lt_events(calls)
+
+
+def test_retry_an_unconfirmed_session3_cancel_sells_the_third_at_session_4(monkeypatch):
+    """Session 3: the cancel of the resting +2R limit is NOT confirmed inside the deadline — nothing sold, the marker
+    withdrawn, cover converged (the pre-merge (A) path). Session 4, the same 15:45 step: the decision record is read
+    back from the DB, no third has sold, so the sale is RETRIED — (a) the limit still rests: cancelled again (the
+    marker first, confirm-or-replace), dead, and its own size sold at the close; (b) it settled cancelled after
+    session 3 (the stream re-protected; its row closed): a third of the shares held sold at the close. One sale,
+    audited as a retry, the page says it is a retry; the +2R ban stands throughout."""
+    conn3, calls3 = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    _unconfirmed_broker(monkeypatch, calls3)
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_third_cancel_unconfirmed", "session": 3}]
+    msg3 = calls3["send_telegram_message"].await_args.args[0]
+    assert "No third was sold" in msg3 and "retried at the next close" in msg3 and "will not be re-placed" in msg3
+    carried = _carry(calls3)
+    # (a) the limit still rests on session 4
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting="lim-9", fwd_bars=_FWD_LONG)
+    conn.audit_rows = carried
+    br = _Broker(monkeypatch, calls, [_CANCELLED_EMPTY])
+    _trace_lt(calls, br)
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3, "retry": True, "session": 4}]
+    calls["execute_partial_exit"].assert_awaited_once_with(701, 3)
+    calls["execute_full_exit"].assert_not_awaited()
+    seq = [x[:2] for x in br.log]
+    assert seq.index(("lt_audit", "breakout_pp_third_retry")) < seq.index(("audit", bpe.PLANNED_THIRD_CANCEL)) \
+        < seq.index(("cancel", "lim-9")) < seq.index(("lt_audit", "breakout_pp_third_retry_sold"))
+    assert not br.withdrawals()
+    closed = [a for a in conn.executed if "UPDATE mi_live_orders SET status = 'cancelled'" in a[0]]
+    assert len(closed) == 1 and closed[0][1:3] == ("lim-9", 701)
+    ev = _lt_events(calls)
+    assert ev.count("breakout_pp_third_retry") == 1 and ev.count("breakout_pp_third_retry_sold") == 1
+    assert "breakout_pp_third_cancelled_for_session_third" in ev and bpe.SESSION_THIRD_EVENT in ev
+    assert bpe.SESSION_THIRD_DUE not in ev                           # the record is session 3's, written once
+    [retry] = [c.args for c in calls["log_audit_event"].await_args_list if c.args[0] == "breakout_pp_third_retry"]
+    assert json.loads(retry[2]) | {"trade_id": 701, "session": 4, "resting": True} == json.loads(retry[2])
+    msg = calls["send_telegram_message"].await_args.args[0]
+    assert "day 4 (retry)" in msg and "retrying at today's close" in msg and "Selling 3 of 9 sh" in msg
+    # (b) the limit settled cancelled after session 3 — nothing resting at session 4: a plain third of what is held
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting=None, fwd_bars=_FWD_LONG)
+    conn.audit_rows = carried
+    br = _Broker(monkeypatch, calls, [None])
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3, "retry": True, "session": 4}]
+    calls["execute_partial_exit"].assert_awaited_once_with(701, 3)
+    assert not [x for x in br.log if x[0] == "cancel"]
+    # the +2R poll's ban stands on session 3's marker, whatever the retry did
+    _marker_pool(monkeypatch, [r for r in carried
+                               if r["event_type"] in (bpe.PLANNED_THIRD_CANCEL, bpe.PLANNED_THIRD_CANCEL_WITHDRAWN)])
+    assert asyncio.run(bpe.third_replacement_banned(701)) is True
+
+
+def test_retry_a_failed_session3_sale_is_retried_at_session_4_and_sells_once(monkeypatch):
+    """Session 3: the cancel is confirmed, the close sale FAILS (re-protected, paged: 'retried at the next close').
+    Session 4: the third sold — the only sale. The same for a plain session-3 sale that failed with nothing resting
+    (no cancel happened): audited `breakout_pp_session_third_unsold`, paged, retried at session 4."""
+    conn3, calls3 = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    _Broker(monkeypatch, calls3, [_CANCELLED_EMPTY])
+    calls3["execute_partial_exit"].return_value = False
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "partial_failed", "shares": 3}]
+    assert "breakout_pp_session_third_unsold_reprotected" in _lt_events(calls3)
+    assert "retried at the next close" in calls3["send_telegram_message"].await_args.args[0]
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting=None, fwd_bars=_FWD_LONG)
+    conn.audit_rows = _carry(calls3)
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3, "retry": True, "session": 4}]
+    calls["execute_partial_exit"].assert_awaited_once_with(701, 3)
+    assert "breakout_pp_third_retry_sold" in _lt_events(calls)
+    # the plain failure (nothing resting, no cancel): not sold, paged, then retried
+    conn3, calls3 = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting=None, fwd_bars=_S12)
+    calls3["execute_partial_exit"].return_value = False
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "partial_failed", "shares": 3}]
+    assert calls3["resting_third"].await_count == 2                   # the read, then the re-read after the refusal
+    assert "breakout_pp_session_third_unsold" in _lt_events(calls3)
+    msg = calls3["send_telegram_message"].await_args.args[0]
+    assert "NOT sold" in msg and "retried at the next close" in msg
+    calls3["ensure_cov"].assert_not_awaited()                        # no cancel happened: the stop is intact
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting=None, fwd_bars=_FWD_LONG)
+    conn.audit_rows = _carry(calls3)
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3, "retry": True, "session": 4}]
+
+
+def test_retry_a_limit_fill_before_the_session4_step_means_no_retry_sale(monkeypatch):
+    """One third ever: the +2R limit that session 3 could not confirm cancelled FILLS on session 4 before 15:45 — the
+    stream booked it (`partial_taken`), so the retry never starts (no read of the book, nothing cancelled, nothing
+    sold). The same when it fills DURING the retry's cancel: that fill is the third, audited as the retry's outcome."""
+    conn3, calls3 = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    _unconfirmed_broker(monkeypatch, calls3)
+    asyncio.run(lt.run_partial_exits(S3))
+    carried = _carry(calls3)
+    conn, calls = _install(monkeypatch, _row(partial_taken=True, remaining_shares=6), today=S4, today_bar=_LATER,
+                           resting="lim-9", fwd_bars=_FWD_LONG)
+    conn.audit_rows = carried
+    br = _Broker(monkeypatch, calls, [_CANCELLED_EMPTY])
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_not_session3", "session": 4}]
+    calls["resting_third"].assert_not_awaited()
+    calls["execute_partial_exit"].assert_not_awaited()
+    assert not [x for x in br.log if x[0] == "cancel"] and "breakout_pp_third_retry" not in _lt_events(calls)
+    # the race inside the retry: the limit fills while being cancelled
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting="lim-9", fwd_bars=_FWD_LONG)
+    conn.audit_rows = carried
+    _Broker(monkeypatch, calls, [{"id": "lim-9", "status": "filled", "qty": 3, "filled_qty": 3}])
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_third_filled_in_race", "session": 4, "retry": True}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    ev = _lt_events(calls)
+    assert "breakout_pp_third_retry_third_filled" in ev and "breakout_pp_third_retry_failed" not in ev
+
+
+def test_retry_never_fires_on_a_trade_whose_session_3_decided_nothing(monkeypatch):
+    """THE LINE: the retry re-executes a session-3 DECISION. A trade whose session-3 close was at or under the fill
+    (no third due by his rule) is never sold a third on a later session, however high it closes; an unreadable record
+    reads as not due (audited) — nothing sold that session."""
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting=None,
+                           fwd_bars=_S12 + [(10.40, 10.45, 10.20, 10.25)])      # session 3 closed under the fill
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_not_session3", "session": 4}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    calls["resting_third"].assert_not_awaited()
+    assert "breakout_pp_third_retry" not in _lt_events(calls)
+    # a due record for ANOTHER trade is not this trade's
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting="lim-9", fwd_bars=_FWD_LONG)
+    conn.audit_rows = [{"event_type": bpe.SESSION_THIRD_DUE, "detail": json.dumps({"trade_id": 702})}]
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_not_session3", "session": 4}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    # the record unreadable: fail closed, audited, nothing sold
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting="lim-9", fwd_bars=_FWD_LONG)
+    conn.fail_audit_read = True
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_not_session3", "session": 4}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    assert any(c.args[0] == "breakout_pp_third_due_unreadable" for c in calls["bpe_audit"].await_args_list)
+
+
+def test_retry_a_stuck_session3_market_sale_is_the_resting_order_on_session_4(monkeypatch):
+    """On a retry session the resting partial-exit order may be session 3's MARKET sale that never settled, not a +2R
+    limit. The same confirm-or-replace path: it reads filled -> that IS the third, nothing more sold; it reads dead ->
+    its own size sold at the close. The retry's audit names both possibilities."""
+    conn3, calls3 = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting=None, fwd_bars=_S12)
+    asyncio.run(lt.run_partial_exits(S3))                              # the sale submitted ('mkt-7'), never settled
+    carried = _carry(calls3)
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting="mkt-7", fwd_bars=_FWD_LONG)
+    conn.audit_rows = carried
+    _Broker(monkeypatch, calls, [_MKT_FILLED])
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_third_filled_in_race", "session": 4, "retry": True}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    [retry] = [c.args for c in calls["log_audit_event"].await_args_list if c.args[0] == "breakout_pp_third_retry"]
+    assert "a sale that never settled" in retry[1]
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting="mkt-7", fwd_bars=_FWD_LONG)
+    conn.audit_rows = carried
+    _Broker(monkeypatch, calls, [_MKT_DEAD])
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3, "retry": True, "session": 4}]
+    calls["execute_partial_exit"].assert_awaited_once_with(701, 3)
+
+
+def test_1545_the_collision_in_reverse_order_a_refused_sale_re_reads_and_cancels_the_polls_limit(monkeypatch):
+    """Review low (live_tracker ~1529): at 15:45:00 the +2R poll placed its OCO AFTER this step read 'nothing resting'
+    and BEFORE the step's sale took the lock — the pending-exit dedup refused the sale, no marker was written, and the
+    limit rested past session 3. Now the step re-reads the book after a refused plain sale: a limit now resting is
+    cancelled (the marker, confirmed) and the third — its own size — sold, this session. One sale. When the re-read
+    still finds nothing (the poll's row landed later), the sale is audited as not sold and the session-4 retry finds
+    the limit, cancels it and sells — still one third."""
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting=None, fwd_bars=_S12)
+    calls["resting_third"].side_effect = [(False, None), (True, "lim-9")]
+    calls["execute_partial_exit"].side_effect = [False, True]
+    br = _Broker(monkeypatch, calls, [_CANCELLED_EMPTY])
+    _trace_lt(calls, br)
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3}]
+    assert calls["execute_partial_exit"].await_args_list == [((701, 3),), ((701, 3),)]
+    seq = [x[:2] for x in br.log]
+    assert seq.index(("lt_audit", bpe.SESSION_THIRD_DUE)) < seq.index(("lt_audit", bpe.SESSION_THIRD_EVENT)) \
+        < seq.index(("lt_audit", "breakout_pp_session_third_refused_limit_resting")) \
+        < seq.index(("audit", bpe.PLANNED_THIRD_CANCEL)) < seq.index(("cancel", "lim-9"))
+    ev = _lt_events(calls)
+    assert ev.count(bpe.SESSION_THIRD_DUE) == 1 and ev.count(bpe.SESSION_THIRD_EVENT) == 2
+    assert "breakout_pp_third_cancelled_for_session_third" in ev and "breakout_pp_session_third_unsold" not in ev
+    assert len([x for x in br.log if x[0] == "cancel"]) == 1 and not br.withdrawals()
+    closed = [a for a in conn.executed if "UPDATE mi_live_orders SET status = 'cancelled'" in a[0]]
+    assert len(closed) == 1 and closed[0][1:3] == ("lim-9", 701)
+    assert "The resting +2R limit is cancelled." in calls["send_telegram_message"].await_args.args[0]
+    # the re-read still finds nothing: not sold today, the retry at session 4 catches the limit
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting=None, fwd_bars=_S12)
+    calls["resting_third"].side_effect = [(False, None), (False, None)]
+    calls["execute_partial_exit"].return_value = False
+    br = _Broker(monkeypatch, calls, [None])
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "partial_failed", "shares": 3}]
+    assert calls["execute_partial_exit"].await_count == 1 and not [x for x in br.log if x[0] == "cancel"]
+    assert "breakout_pp_session_third_unsold" in _lt_events(calls)
+    carried = _carry(calls)
+    conn4, calls4 = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting="lim-9", fwd_bars=_FWD_LONG)
+    conn4.audit_rows = carried
+    _Broker(monkeypatch, calls4, [_CANCELLED_EMPTY])
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3, "retry": True, "session": 4}]
+    calls4["execute_partial_exit"].assert_awaited_once_with(701, 3)
+    assert "breakout_pp_third_retry_sold" in _lt_events(calls4)
+
+
+def test_retry_sells_at_the_close_whatever_the_price_and_stops_at_a_sold_third(monkeypatch):
+    """The retry re-executes the session-3 decision: his rec ("Retry the sale at the next day's close") carried no
+    price condition, so a retry day that closes UNDER the fill still sells (named in the SSoT as the fork he can
+    rule on). And a retry that sold stops the retries: session 5 with `partial_taken` does nothing."""
+    conn3, calls3 = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    _unconfirmed_broker(monkeypatch, calls3)
+    asyncio.run(lt.run_partial_exits(S3))
+    carried = _carry(calls3)
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_UNDER, resting=None, fwd_bars=_FWD_LONG)
+    conn.audit_rows = carried
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3, "retry": True, "session": 4}]
+    msg = calls["send_telegram_message"].await_args.args[0]
+    assert "above the fill" not in msg and "day 4 (retry)" in msg
+    carried = _carry(calls3, calls)
+    conn, calls = _install(monkeypatch, _row(partial_taken=True, remaining_shares=6), today=S5, today_bar=_LATER,
+                           resting=None, fwd_bars=_FWD_LONG)
+    conn.audit_rows = carried
+    out = asyncio.run(lt.run_partial_exits(S5))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_not_session3", "session": 5}]
+    calls["execute_partial_exit"].assert_not_awaited()
+
+
+def test_retry_never_two_thirds_across_random_interleavings(monkeypatch):
+    """Sessions 3..6 under random broker behaviour: a limit resting or not; a cancel that confirms dead, fills (the
+    limit or its stop leg), or never confirms; a sale that goes through, is refused (with or without the collision's
+    limit landing — and that limit then dead, filled or unconfirmable), or raises; a submitted sale that fills or
+    sticks unfilled into the next session; an unconfirmed cancel that settles later, fills later, or keeps resting.
+    INVARIANTS on every path: at most ONE third ever fills; at most one sale goes through per session and at most one
+    cancel; once a third has filled nothing is cancelled or sold again; while no third has filled the step retries
+    at every later session. Every outcome of the sell path is reached by the fuzz (asserted)."""
+    rng = np.random.default_rng(1031)
+    sessions = [(S3, _S12), (S4, _FWD_LONG), (S5, _FWD_LONG), (S6, _FWD_LONG)]
+    actions_seen, late_retries = set(), 0
+
+    def _reads_for(oid, kind):
+        return {"dead": [dict(_CANCELLED_EMPTY, id=oid)],
+                "filled": [{"id": oid, "status": "filled", "qty": 3, "filled_qty": 3}],
+                "pending": [dict(_PENDING_CANCEL, id=oid)],
+                "stop": [dict(_CANCELLED_EMPTY, id=oid)], "none": [None]}[kind]
+
+    for seed in range(120):
+        partial_taken, resting_oid, thirds, carried, exits = False, None, 0, [], []
+        for today, fwd in sessions:
+            third_done = partial_taken or bool(exits)
+            row = _row(partial_taken=partial_taken, remaining_shares=(6 if third_done else 9), exits=list(exits))
+            conn, calls = _install(monkeypatch, row, today=today, today_bar=_LATER if today != S3 else _S3_ABOVE,
+                                   resting=resting_oid, fwd_bars=fwd)
+            conn.audit_rows = carried
+            is_lim = (resting_oid or "").startswith("lim")
+            conn.raw = dict(_OCO_RAW, id=resting_oid) if is_lim else None
+            collide = (not resting_oid) and bool(rng.random() < 0.5)   # the poll's limit lands between read and sale
+            if resting_oid:
+                kind = str(rng.choice(["dead", "filled", "pending", "stop"] if is_lim else ["dead", "filled", "pending"]))
+                reads = _reads_for(resting_oid, kind)
+            elif collide:
+                kind = str(rng.choice(["dead", "filled", "pending", "stop"]))
+                reads = _reads_for("lim-9", kind)
+                conn.raw = dict(_OCO_RAW)
+            else:
+                kind, reads = "none", [None]
+            legs = None
+            if kind == "stop":
+                legs = {"leg-9": {"id": "leg-9", "status": "filled", "qty": 3, "filled_qty": 3}}
+            elif kind == "dead" and (is_lim or collide):
+                legs = {"leg-9": {"id": "leg-9", "status": "canceled", "qty": 3, "filled_qty": 0}}
+            br = _Broker(monkeypatch, calls, reads, legs=legs)
+            if kind == "pending":
+                ticks = iter(range(0, 10_000))
+                monkeypatch.setattr(bpe, "_clock", lambda: float(next(ticks)))
+            sale = str(rng.choice(["ok", "refused", "raise"]))
+            effects = {"ok": [True, True], "refused": [False, True], "raise": [RuntimeError("lock timeout"), True]}[sale]
+            calls["execute_partial_exit"].side_effect = list(effects)
+            if not resting_oid:
+                calls["resting_third"].side_effect = [(False, None), ((True, "lim-9") if collide else (False, None))]
+            [res] = asyncio.run(lt.run_partial_exits(today))
+            n_sells = calls["execute_partial_exit"].await_count
+            ok_sells = sum(1 for e in effects[:n_sells] if e is True)
+            cancels = [x for x in br.log if x[0] == "cancel"]
+            if third_done:
+                assert n_sells == 0 and not cancels, (seed, today, exits)
+                assert res["action"] == ("breakout_pp_not_session3" if today != S3 else "no_partial"), (seed, today)
+                continue
+            actions_seen.add(res["action"])
+            if today != S3:
+                assert "breakout_pp_third_retry" in _lt_events(calls), (seed, today)   # it kept retrying
+                late_retries += 1
+            assert ok_sells <= 1 and len(cancels) <= 1, (seed, today, sale, kind, collide)
+            # the world's transition from what the step did
+            if res["action"] == "breakout_pp_third_filled_in_race":
+                thirds += 1
+                partial_taken, resting_oid = True, None          # the stream's finalize_partial_exit sets the flag
+            elif res["action"] == "breakout_pp_third_stopped_in_race":
+                thirds += 1                                       # the stop-fill finalizer: an exit booked, NO flag
+                exits, resting_oid = [{"reason": "stop_hit", "shares": 3, "order_id": "leg-9"}], None
+            elif res["action"] == "partial_submitted":
+                assert ok_sells == 1
+                if rng.random() < 0.7:                   # the market sale fills
+                    thirds += 1
+                    partial_taken, resting_oid = True, None
+                else:                                    # stuck unfilled into the next session
+                    resting_oid = "mkt-7"
+            elif res["action"] == "breakout_pp_third_cancel_unconfirmed":
+                assert ok_sells == 0
+                r = rng.random()
+                if r < 0.4:
+                    resting_oid = resting_oid or "lim-9"    # still resting
+                elif r < 0.7:
+                    resting_oid = None                      # settled cancelled: the stream re-protected, the row closed
+                elif r < 0.85:
+                    thirds += 1                             # the limit filled later
+                    partial_taken, resting_oid = True, None
+                else:
+                    thirds += 1                             # its stop leg filled later: the third sold at its stop
+                    exits, resting_oid = [{"reason": "stop_hit", "shares": 3, "order_id": "leg-9"}], None
+            else:                                        # partial_failed / breakout_pp_error / too small: nothing sold
+                assert ok_sells == 0
+                if cancels:
+                    resting_oid = None                      # the cancel confirmed dead; the sale failed
+                elif collide and not cancels:
+                    resting_oid = "lim-9"                   # the poll's limit landed after the re-read
+            assert thirds <= 1, (seed, today, res)
+            carried = _carry(calls) + carried
+        assert thirds <= 1, seed
+        if not (partial_taken or exits):
+            assert thirds == 0, seed
+    assert {"partial_submitted", "partial_failed", "breakout_pp_third_filled_in_race", "breakout_pp_third_stopped_in_race",
+            "breakout_pp_third_cancel_unconfirmed", "breakout_pp_error"} <= actions_seen, actions_seen
+    assert late_retries > 50
+
+
+def test_the_retry_is_a_close_sale_never_a_limit_and_runs_inside_the_1545_step(monkeypatch):
+    """The retry is `run_partial_exits`' own 15:45 step on a later session (no new job), and its sale carries no
+    `limit_price` — a market sale at the close, so the +2R poll's ban on re-placing the limit is never in its way and
+    (C)'s under-the-lock `partial_taken` re-check is the one-third backstop."""
+    conn3, calls3 = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    _unconfirmed_broker(monkeypatch, calls3)
+    asyncio.run(lt.run_partial_exits(S3))
+    conn, calls = _install(monkeypatch, _row(), today=S5, today_bar=_LATER, resting=None, fwd_bars=_FWD_LONG)
+    conn.audit_rows = _carry(calls3)
+    out = asyncio.run(lt.run_partial_exits(S5))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3, "retry": True, "session": 5}]
+    [call] = calls["execute_partial_exit"].await_args_list
+    assert call.args == (701, 3) and "limit_price" not in call.kwargs and not call.kwargs
+
+
+def test_a_stop_leg_fill_of_the_third_is_a_third_sold_and_stops_the_retry_without_the_flag(monkeypatch):
+    """The advisor's final-review finding (2026-10-31): the third's OCO STOP leg filling is the third sold at its stop,
+    but the stop-fill finalizer (`_finalize_stop_fill_locked`) only decrements `remaining_shares` and books a
+    'stop_hit' exit — `partial_taken` stays FALSE. On the next session a retry reading the flag alone would sell a
+    SECOND third. The step and the retry read the wider truth (`shares_already_sold`): a booked exit on the open row,
+    or a filled exit-order row the stream has not booked — nothing is sold, nothing cancelled, no retry started."""
+    stopped = dict(partial_taken=False, remaining_shares=6,
+                   exits=[{"reason": "stop_hit", "shares": 3, "order_id": "leg-9", "price": 10.10}])
+    # (a) the race on session 3 (the leg fills while the limit is being cancelled), then session 4 as the finalizer
+    #     leaves the row: no retry
+    conn3, calls3 = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    conn3.raw = dict(_OCO_RAW)
+    _Broker(monkeypatch, calls3, [_CANCELLED_EMPTY], legs={"leg-9": {"id": "leg-9", "status": "filled", "qty": 3,
+                                                                    "filled_qty": 3}})
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_third_stopped_in_race", "session": 3}]
+    conn, calls = _install(monkeypatch, _row(**stopped), today=S4, today_bar=_LATER, resting=None, fwd_bars=_FWD_LONG)
+    conn.audit_rows = _carry(calls3)                               # the due record from session 3 is on file
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_not_session3", "session": 4}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    calls["resting_third"].assert_not_awaited()
+    assert "breakout_pp_third_retry" not in _lt_events(calls)
+    # (b) the leg fills OUTSIDE the race, in the morning of session 3 (the broker cancelled the parent; its row is
+    #     closed): no session-3 third, no due record, and session 4 retries nothing
+    conn, calls = _install(monkeypatch, _row(**stopped), today=S3, today_bar=_S3_ABOVE, resting=None, fwd_bars=_S12)
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "no_partial", "session": 3}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    calls["resting_third"].assert_not_awaited()
+    ev = _lt_events(calls)
+    assert "breakout_pp_third_already_sold" in ev and bpe.SESSION_THIRD_DUE not in ev
+    carried = _carry(calls)
+    conn, calls = _install(monkeypatch, _row(**stopped), today=S4, today_bar=_LATER, resting=None, fwd_bars=_FWD_LONG)
+    conn.audit_rows = carried
+    assert asyncio.run(lt.run_partial_exits(S4)) == [{"ticker": "BRK", "action": "breakout_pp_not_session3",
+                                                      "session": 4}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    # (c) the order book: a filled partial-exit row the stream has not booked (flag FALSE, no exit yet) — no sale
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    conn.sold_order_row = "lim-9"
+    br = _Broker(monkeypatch, calls, [_CANCELLED_EMPTY])
+    assert asyncio.run(lt.run_partial_exits(S3)) == [{"ticker": "BRK", "action": "no_partial", "session": 3}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    assert not [x for x in br.log if x[0] == "cancel"]
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting="lim-9", fwd_bars=_FWD_LONG)
+    conn.audit_rows = [{"event_type": bpe.SESSION_THIRD_DUE, "detail": json.dumps({"trade_id": 701})}]
+    conn.sold_order_row = "lim-9"
+    br = _Broker(monkeypatch, calls, [_CANCELLED_EMPTY])
+    assert asyncio.run(lt.run_partial_exits(S4)) == [{"ticker": "BRK", "action": "breakout_pp_not_session3",
+                                                      "session": 4}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    assert not [x for x in br.log if x[0] == "cancel"]
+    # (d) the book unreadable: fail closed — nothing sold, audited, the next session reads again
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting=None, fwd_bars=_FWD_LONG)
+    conn.audit_rows = [{"event_type": bpe.SESSION_THIRD_DUE, "detail": json.dumps({"trade_id": 701})}]
+    conn.fail_sold_read = True
+    assert asyncio.run(lt.run_partial_exits(S4)) == [{"ticker": "BRK", "action": "breakout_pp_not_session3",
+                                                      "session": 4}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    assert any(c.args[0] == "breakout_pp_shares_sold_unreadable" for c in calls["bpe_audit"].await_args_list)
+    # the reader itself, on the row alone
+    assert asyncio.run(bpe.shares_already_sold({"id": 1, "partial_taken": True})) == (True, "partial_taken")
+    sold, why = asyncio.run(bpe.shares_already_sold({"id": 1, "partial_taken": False, "exits": json.dumps(stopped["exits"])}))
+    assert sold and "1 exit(s)" in why
+    assert bpe._exits_with_shares([{"reason": "x", "shares": 0}]) == 0 and bpe._exits_with_shares("not json") == 0
+
+
+def test_a_retry_whose_plain_sale_raises_is_audited_as_failed_and_paged_and_the_pass_goes_on(monkeypatch):
+    """A retry's plain sale (nothing resting, no cancel) that RAISES: the terminal `breakout_pp_third_retry_failed` row
+    is written with the error and he is paged ("retried at the next close"); the row after it in the pass still runs;
+    session 5 retries again."""
+    conn3, calls3 = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting=None, fwd_bars=_S12)
+    calls3["execute_partial_exit"].return_value = False
+    asyncio.run(lt.run_partial_exits(S3))
+    carried = _carry(calls3)
+    conn, calls = _install(monkeypatch, _row(), today=S4, today_bar=_LATER, resting=None, fwd_bars=_FWD_LONG)
+    conn.rows = [_row(), dict(_row(), id=702, ticker="BRK2", partial_taken=True, remaining_shares=6)]
+    conn.audit_rows = carried
+    calls["execute_partial_exit"].side_effect = TimeoutError("advisory lock acquire timed out")
+    out = asyncio.run(lt.run_partial_exits(S4))
+    assert out[0] == {"ticker": "BRK", "action": "breakout_pp_error", "retry": True, "session": 4}
+    assert out[1]["ticker"] == "BRK2"
+    [failed] = [c.args for c in calls["log_audit_event"].await_args_list if c.args[0] == "breakout_pp_third_retry_failed"]
+    assert "TimeoutError" in json.loads(failed[2])["error"]
+    assert "breakout_pp_session3_raised" not in _lt_events(calls)
+    msg = calls["send_telegram_message"].await_args.args[0]
+    assert "NOT sold" in msg and "retried at the next close" in msg and "day 4 retry" in msg
+    calls["ensure_cov"].assert_not_awaited()                        # no cancel happened: the stop is intact
+    carried = _carry(calls3, calls)
+    conn, calls = _install(monkeypatch, _row(), today=S5, today_bar=_LATER, resting=None, fwd_bars=_FWD_LONG)
+    conn.audit_rows = carried
+    out = asyncio.run(lt.run_partial_exits(S5))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3, "retry": True, "session": 5}]

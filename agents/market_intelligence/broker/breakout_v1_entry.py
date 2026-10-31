@@ -773,16 +773,17 @@ async def _mark_fill_checked(row: dict, decision: str, summary: str, detail: dic
 
 
 async def fill_stop_checked(trade_id) -> bool:
-    """Has the stop at the fill already been decided for this trade? A `FILL_STOP_CHECKED` row naming it (the last 3
-    days; matched in Python, detail is TEXT). A read failure -> False: the step re-decides from broker truth."""
+    """Has the stop at the fill already been decided for this trade? A `FILL_STOP_CHECKED` row naming it — of ANY
+    age (pre-merge 2026-10-31: the lookup was 3 days, so after a restart, with the in-memory cache gone, an older
+    trade read 'not checked' and could be re-decided from its day-0 bars; matched in Python, detail is TEXT). A read
+    failure -> False: the step re-decides from broker truth."""
     if int(trade_id) in _fill_checked:
         return True
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT event_type, detail FROM mi_audit_log WHERE event_type = $1 "
-                "AND created_at > NOW() - INTERVAL '3 days' ORDER BY created_at DESC",
+                "SELECT event_type, detail FROM mi_audit_log WHERE event_type = $1 ORDER BY created_at DESC",
                 FILL_STOP_CHECKED)
         for r in rows or []:
             try:
@@ -1098,21 +1099,27 @@ async def check_stop_at_fill_after_close(row: dict, now_et: datetime | None = No
     decided — a fill in the 15:55 minute has no tick after it (the disclosed race with the EOD cancel). Run by the
     16:45 pass (`live_tracker.update_open_positions_live`, the breakout branch, before the day-0 facts), the next
     pass that exists: the minute job's population is TODAY's rows for last night's list, so a row filled yesterday
-    is never in it, while the 16:45 pass already visits every open breakout row on its breakout day. Decides from
-    the breakout day's minute bars (`row['alert_date']`'s session, every minute complete) and the broker: the stop
-    leg it lowers is the 16:20 post-close refresh's GTC stop (the entry's DAY leg expired at the close); a pointer
-    still on a dead leg leaves the stop untouched (audited `breakout_v1_fill_stop_unreadable`) and the check runs
-    again the next evening — never a stop placed on top of one the row cannot see. A row already checked costs one
-    marker read. -> the check's action label ('fill_checked' | 'fill_stop_lowered' | 'fill_sold_too_wide' |
-    'fill_stop_kept' | 'fill_check_wait' | ...). NEVER raises (audited + paged)."""
+    is never in it, while the 16:45 pass already visits every open breakout row on its breakout day. ONLY a row
+    FILLED THIS SESSION is checked (`alert_date` = the pass's ET date — review low, pre-merge 2026-10-31: the pass
+    visits every open breakout row every evening, and a row filled days ago with its marker out of a bounded
+    lookup's reach was re-decidable from day-0 bars — and could have been SOLD — days after the fill; the marker
+    is now also read regardless of age). Decides from the breakout day's minute bars (`row['alert_date']`'s
+    session, every minute complete) and the broker: the stop leg it lowers is the 16:20 post-close refresh's GTC
+    stop (the entry's DAY leg expired at the close); a pointer still on a dead leg leaves the stop untouched
+    (audited `breakout_v1_fill_stop_unreadable`, paged) and is NOT retried — the stop stands as it filled, never
+    wider — never a stop placed on top of one the row cannot see. A row already checked costs one marker read.
+    -> the check's action label ('fill_other_session' | 'fill_checked' | 'fill_stop_lowered' |
+    'fill_sold_too_wide' | 'fill_stop_kept' | 'fill_check_wait' | ...). NEVER raises (audited + paged)."""
     ticker, tid = row["ticker"], row["id"]
     if (row.get("signal_type") != STRATEGY_ID or row.get("account_mode") != ACCOUNT_MODE
             or row.get("status") != "filled" or row.get("alert_date") is None):
         return "untouched"
-    if await fill_stop_checked(tid):
-        return "fill_checked"
     alert_date = row["alert_date"]
     now_et = (now_et or datetime.now(_ET)).astimezone(_ET)
+    if alert_date != now_et.date():
+        return "fill_other_session"          # the 15:55 fill race is today's; an older fill is never re-decided here
+    if await fill_stop_checked(tid):
+        return "fill_checked"
     session_end = session_open(alert_date) + timedelta(minutes=N_SESSION_MINUTES)
     m = N_SESSION_MINUTES if now_et >= session_end else market_minute(now_et)
     try:
@@ -1129,19 +1136,20 @@ async def check_stop_at_fill_after_close(row: dict, now_et: datetime | None = No
                          f"{type(e).__name__}: {str(e)[:160]}")
         return "crashed"
     if result in ("fill_check_wait", "fill_lower_rejected", "fill_lower_unverified", "fill_sale_failed"):
-        # the evening pass has no "next minute": whatever `_lower_stop_after_fill` / `_sell_after_fill` audited as
-        # retried next minute is retried the NEXT EVENING. A `breakout_v1_stop_lower_rejected` from HERE is the
-        # signal the broker does not take a price-only replace of the GTC stop after hours — then this check must
-        # move to the next session's first minutes (not built; disclosed in the SSoT).
+        # the evening pass has no "next minute", and no next evening either (only a row filled THIS session is
+        # visited): whatever `_lower_stop_after_fill` / `_sell_after_fill` audited as retried next minute is NOT
+        # retried — the stop stands as it filled (never wider), paged. A `breakout_v1_stop_lower_rejected` from HERE
+        # is the signal the broker does not take a price-only replace of the GTC stop after hours — then this check
+        # must move to the next session's first minutes (not built; disclosed in the SSoT).
         await log_audit_event("breakout_v1_fill_stop_unchecked_after_close",
                               f"{ticker} #{tid}: the stop at the fill was not settled by the evening pass either "
-                              f"({result}) — the stop stands as it is; the check runs again the next evening",
+                              f"({result}) — the stop stands as it filled; not retried",
                               json.dumps({"trade_id": tid, "ticker": ticker, "alert_date": str(alert_date),
                                           "result": result}))
         await _page_once(("fill_unchecked_close", tid),
                          f"⚠️ Breakout v1 *{ticker}*: the stop at the true low could not be settled after the close "
-                         f"either ({result}) — it is retried the next evening, not every minute; check the stop on "
-                         f"Alpaca by hand")
+                         f"either ({result}) — it is NOT retried; the stop stands as it filled (never wider). Check "
+                         f"the stop on Alpaca by hand")
     return result
 
 

@@ -23,6 +23,11 @@ What lives here:
     order whose row it cannot close) WITHDRAWS the marker for the stream (`PLANNED_THIRD_CANCEL_WITHDRAWN`), so a late
     settle is re-protected like any OCO-parent cancel; the poll's ban stands. `reprotect_after_unsold_third` covers the
     third's shares from broker truth whenever the step did not sell (pre-merge 2026-10-31, findings 1-4).
+  * `session_third_due` — HIS RULING 2026-10-31 ("Retry the sale at the next day's close"): did session 3 DECIDE to sell
+    the third (the record the 15:45 step writes at that decision, `SESSION_THIRD_DUE`)? On sessions 4, 5, ... the step
+    retries the close sale on a trade with the record and still no third sold (`breakout_pp_rules.retry_decision`),
+    cancelling any partial-exit order still resting first with the same confirm-or-replace discipline. The poll's ban
+    on re-placing the +2R limit is untouched: the retry is a close sale, never a limit.
 
 Telegram: failures page paper-prefixed, once per (trade, kind) per process; normal events are audit rows (the jobs' own
 decision messages are sent by the jobs).
@@ -52,6 +57,14 @@ PLANNED_THIRD_CANCEL = "breakout_pp_planned_third_cancel"   # the marker the tra
 # an ordinary OCO-parent cancel for the stream (`_handle_oco_parent_cancel` re-protects from broker truth). The +2R
 # poll's ban is NOT withdrawn with it (`third_replacement_banned` reads the marker alone): one third ever stays his.
 PLANNED_THIRD_CANCEL_WITHDRAWN = "breakout_pp_planned_third_cancel_withdrawn"
+# HIS RULING 2026-10-31 ("Go with rec": "Retry the sale at the next day's close"): the 15:45 step records that session 3
+# DECIDED to sell the third (the close above the fill, no third sold) BEFORE it cancels or sells anything. On sessions
+# 4, 5, ... the same step reads this record (`session_third_due`): a trade with it and still no third sold RETRIES the
+# sale at that session's close (`breakout_pp_rules.retry_decision`). The record is what makes the retry restart-safe
+# and keeps it off trades whose session 3 decided nothing (never a third on a trade whose session-3 close was at or
+# under the fill). The planned-cancel marker and the session-third row are read beside it (either proves the decision).
+SESSION_THIRD_DUE = "breakout_pp_session_third_due"
+SESSION_THIRD_EVENT = "breakout_pp_session_third"          # the 15:45 step's "selling N sh" row (live_tracker writes it)
 CANCEL_POLL_ATTEMPTS = 24        # the confirmation poll's cap in reads (x CANCEL_POLL_S between reads)
 CANCEL_POLL_S = 0.25
 CANCEL_READ_TIMEOUT_S = 3.0      # finding 3: each confirmation read is bounded (the SDK default is 30 s)
@@ -275,14 +288,19 @@ async def _withdraw_planned_third_cancel(trade: dict, order_id: str, why: str) -
         return False
 
 
-async def _marker_rows() -> list[dict]:
+async def _audit_rows(event_types: list[str]) -> list[dict]:
+    """The audit rows of `event_types` within a breakout trade's life, newest first (the markers' one query shape)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT event_type, detail, created_at FROM mi_audit_log WHERE event_type = ANY($1::text[]) "
             f"AND created_at > NOW() - INTERVAL '{int(MARKER_LOOKBACK_DAYS)} days' ORDER BY created_at DESC, id DESC",
-            [PLANNED_THIRD_CANCEL, PLANNED_THIRD_CANCEL_WITHDRAWN])
+            list(event_types))
     return list(rows or [])
+
+
+async def _marker_rows() -> list[dict]:
+    return await _audit_rows([PLANNED_THIRD_CANCEL, PLANNED_THIRD_CANCEL_WITHDRAWN])
 
 
 def _marker_matches(row: dict, trade_id, order_id: str | None) -> bool:
@@ -330,6 +348,78 @@ async def third_replacement_banned(trade_id) -> bool:
             f"placed this poll (fail closed); the next poll reads again",
             json.dumps({"trade_id": trade_id, "error": str(e)[:300]}))
         return True
+
+
+async def session_third_due(trade_id) -> bool:
+    """THE RETRY's question (his ruling 2026-10-31): did the 15:45 step on session 3 DECIDE to sell this trade's third?
+    True when any row of `SESSION_THIRD_DUE` (written at the decision, before the cancel or the sale), the planned-cancel
+    marker, or the "selling N sh" row names the trade. FAILS CLOSED for selling: an unreadable log reads as NOT due —
+    nothing is sold this session (a wrongful sale is irreversible; the next session reads again), audited."""
+    due_types = (SESSION_THIRD_DUE, PLANNED_THIRD_CANCEL, SESSION_THIRD_EVENT)
+    try:
+        for row in await _audit_rows(list(due_types)):
+            if row["event_type"] in due_types and _marker_matches(row, trade_id, None):
+                return True
+        return False
+    except Exception as e:  # loud-ok: fail closed — no retry sale on a trade whose record cannot be read
+        logger.warning(f"breakout pp: the session-third record could not be read for trade {trade_id} ({e}) — "
+                       f"no retry this session")
+        await log_audit_event(
+            "breakout_pp_third_due_unreadable",
+            f"trade #{trade_id}: the session-3 decision record could not be read ({type(e).__name__}) — the third is "
+            f"not retried this session; the next close reads again",
+            json.dumps({"trade_id": trade_id, "error": str(e)[:300]}))
+        return False
+
+
+def _exits_with_shares(raw) -> int:
+    """How many booked exits on the row carry shares (`mi_live_trades.exits`: a jsonb list, or its text)."""
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            return 0
+    if not isinstance(raw, list):
+        return 0
+    return sum(1 for e in raw if isinstance(e, dict) and float(e.get("shares") or 0) > 0)
+
+
+async def shares_already_sold(trade: dict) -> tuple[bool, str | None]:
+    """Has ANY share of this trade already been sold? The WIDER "a third sold" the session-3 step and the retry read
+    beside `partial_taken` (his one third ever). `partial_taken` flips only when a PARTIAL-EXIT order fills; the
+    third's OCO sibling STOP leg filling (the third sold at its stop — (A)'s `stop_filled`) is booked by the stream's
+    stop-fill finalizer (`order_manager._finalize_stop_fill_locked`), which decrements `remaining_shares` and appends
+    a 'stop_hit' exit WITHOUT setting the flag — so a trade whose third was just stopped would read "no third sold"
+    the next session and be sold another (the advisor's final-review finding, 2026-10-31). -> (sold, why). Reads, in
+    order: the row's `partial_taken`; its `exits` (any booked exit with shares — on an OPEN breakout row nothing but
+    a sold third, its stop leg, or the reduced 2/3 stop ever books one); then the order book — a 'partial_exit' or
+    'stop_loss' row of the trade filled in full or in part (a fill the stream has not booked yet). FAILS CLOSED for
+    selling: an unreadable book reads as sold (nothing sold this session; the next session reads again), audited."""
+    if trade.get("partial_taken"):
+        return True, "partial_taken"
+    n = _exits_with_shares(trade.get("exits"))
+    if n:
+        return True, f"{n} exit(s) already booked on the open row (a stop-leg fill is the third sold at its stop)"
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            oid = await conn.fetchval("""
+                SELECT alpaca_order_id FROM mi_live_orders
+                WHERE trade_id = $1 AND purpose IN ('partial_exit', 'stop_loss')
+                  AND (status IN ('filled', 'partially_filled') OR COALESCE(filled_qty, 0) > 0)
+                ORDER BY id DESC LIMIT 1
+            """, trade.get("id"))
+        if oid is not None:
+            return True, f"a filled exit order row ({str(oid)[:8]}) the stream has not booked yet"
+        return False, None
+    except Exception as e:  # loud-ok: fail closed — nothing sold on a book that cannot be read
+        logger.warning(f"breakout pp: the exit-order read failed for trade {trade.get('id')} ({e}) — treated as sold")
+        await log_audit_event(
+            "breakout_pp_shares_sold_unreadable",
+            f"{trade.get('ticker')} #{trade.get('id')}: the trade's exit orders could not be read ({type(e).__name__}) "
+            f"— treated as a third already sold (nothing sold this session; the next close reads again)",
+            json.dumps({"trade_id": trade.get("id"), "ticker": trade.get("ticker"), "error": str(e)[:300]}))
+        return True, "the order book could not be read"
 
 
 def _filled(order: dict | None) -> bool:

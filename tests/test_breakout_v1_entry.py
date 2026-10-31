@@ -1595,21 +1595,54 @@ async def test_a_1555_fill_is_checked_by_the_evening_pass_on_the_refreshed_gtc_s
 
 
 @pytest.mark.asyncio
-async def test_the_evening_pass_leaves_a_pointer_on_a_dead_leg_alone_and_reads_again_the_next_evening(monkeypatch):
+async def test_the_evening_pass_leaves_a_pointer_on_a_dead_leg_alone_and_does_not_retry_it(monkeypatch):
     """The 16:20 refresh missed: the row still points at the EXPIRED day leg. Nothing is replaced and no stop is placed
-    on top of one the row cannot see — audited, paged once, no marker — and the check runs again the next evening
-    (the pointer then on a live stop) and lowers it. The position never carries a stop WIDER than the one it filled
-    with; the lowered one arrives a session late on this path."""
+    on top of one the row cannot see — audited, paged once, no marker — and the check is NOT retried the next evening
+    (pre-merge 2026-10-31, review low: the pass visits only rows filled THIS session, so an older fill is never
+    re-decided from its day-0 bars). The position never carries a stop WIDER than the one it filled with; on this path
+    the lowered one never arrives, and the page says so."""
     w = _evening_world(monkeypatch, low385=9.70, pointer="leg-1")
     out = await be.check_stop_at_fill_after_close(w.rows["BRKO"], now_et=EVENING)
     assert out == "fill_check_wait"
     assert not [e for e in w.events if e[0] == "replace"] and not _marker(w)
     assert w.ev("breakout_v1_fill_stop_unreadable") and w.ev("breakout_v1_fill_stop_unchecked_after_close")
-    assert len(w.pages) == 1 and "after the close" in w.pages[0]
+    assert len(w.pages) == 1 and "after the close" in w.pages[0] and "NOT retried" in w.pages[0]
     w.rows["BRKO"]["stop_order_id"] = "gtc-1"                               # the next morning's refresh placed one
+    n = len(w.events)
     out = await be.check_stop_at_fill_after_close(w.rows["BRKO"], now_et=EVENING + timedelta(days=1))
-    assert out == "fill_stop_lowered" and ("replace", "gtc-1", 9.70) in w.events
-    assert _marker(w)[0]["decision"] == "lowered" and len(w.pages) == 1
+    assert out == "fill_other_session" and len(w.events) == n and not _marker(w) and len(w.pages) == 1
+    assert w.rows["BRKO"]["stop_price"] == 9.80                             # the stop stands as it filled
+
+
+@pytest.mark.asyncio
+async def test_a_day0_not_checkable_row_is_never_re_decided_on_a_later_evening_after_a_restart(monkeypatch):
+    """Review low (pre-merge 2026-10-31): the 16:45 pass visits EVERY open breakout row every evening, and the marker
+    lookup was 3 days deep — after a restart (the in-memory cache gone) a row filled more than 3 days ago read 'not
+    checked' and was re-decidable from its day-0 bars: a `not_checkable` row (no bars that evening) could be SOLD days
+    after the fill once the bars existed. Now (a) the pass checks only a row filled THIS session, and (b) the marker is
+    read regardless of age."""
+    w = _evening_world(monkeypatch, low385=9.30)
+    w.bars["BRKO"] = []                                                      # no minute bars that evening
+    assert await be.check_stop_at_fill_after_close(w.rows["BRKO"], now_et=EVENING) == "fill_not_checkable"
+    [mk] = _marker(w)
+    assert mk["decision"] == "not_checkable"
+    # a restart, days later: the bars now exist and the true low is TOO WIDE — the row is never re-decided
+    be._fill_checked.clear()
+    w.bars["BRKO"] = _late_fill_bars(9.30)
+    n_sql, n_ev = len(w.sql), len(w.events)
+    for days in (1, 4, 10):
+        out = await be.check_stop_at_fill_after_close(w.rows["BRKO"], now_et=EVENING + timedelta(days=days))
+        assert out == "fill_other_session"
+    assert not w.full_exit.await_count and len(w.events) == n_ev and len(_marker(w)) == 1
+    assert len(w.sql) == n_sql                                               # no read of any kind: not this session's row
+    # (b) the same session after a restart: the marker is found whatever its age — the read carries no date bound
+    be._fill_checked.clear()
+    assert await be.check_stop_at_fill_after_close(w.rows["BRKO"], now_et=EVENING) == "fill_checked"
+    [marker_sql] = [s for s in w.sql[n_sql:] if "mi_audit_log" in s]
+    assert "INTERVAL" not in marker_sql
+    assert not w.full_exit.await_count and len(_marker(w)) == 1
+    # the minute job's own caller is unchanged: today's row, checked once
+    assert 11 in be._fill_checked
 
 
 @pytest.mark.asyncio

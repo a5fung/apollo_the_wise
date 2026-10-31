@@ -15,7 +15,9 @@ is `consolidation_breakout_pp.walk_pp`, arm `pp`, and this module is held equal 
   +2R — a +2R touch whose resting limit did not fill starts no trail and leaves the session-3 third in place. On session
   3, with the close above the fill and the +2R limit still resting unfilled, the limit is CANCELLED (the cancel confirmed;
   a fill in the race IS the third) and the third sold at the close — exactly one third ever, never two
-  (`session3_decision`'s 'cancel_resting_third'; his ruling 2026-10-29 late, "option a").
+  (`session3_decision`'s 'cancel_resting_third'; his ruling 2026-10-29 late, "option a"). A session-3 third that was
+  DECIDED but did not sell is retried at each later session's close until one third has sold (`retry_decision`; his
+  ruling 2026-10-31, "Retry the sale at the next day's close").
 
 WHO DOES WHAT LIVE (the mapping; `breakout_pp_exit.py` is the I/O half):
   * the +2R third, any session incl. the breakout day -> `order_manager.scan_profit_triggers` (5-minute poll of the minute
@@ -179,12 +181,34 @@ def reached_plus_1r(*, fill: float, stop: float, day0: dict, fwd: Sequence[dict]
 
 
 CANCEL_RESTING_THIRD = "cancel_resting_third"
+RETRY_THIRD = "retry_third"
+
+
+def retry_decision(*, fwd: Sequence[dict], partial_taken: bool, session_third_due: bool,
+                   shares_sold: bool = False) -> Optional[str]:
+    """The 15:45 ET decision on a session AFTER session 3 (`len(fwd) > LEG_SESSION`) — HIS RULING 2026-10-31 ("Go with
+    rec": "Retry the sale at the next day's close"): when session 3 DECIDED to sell the third (`session_third_due` — the
+    durable record the 15:45 step wrote at that decision, before any cancel or sale) and no third has ever sold
+    (`third_sold`), 'retry_third' — a third is sold at THIS session's close (a partial-exit order still resting is
+    cancelled first, confirmed, exactly as on session 3). The retry re-executes the session-3 DECISION: it carries no
+    price condition of its own (his rec had none), and it is never made on a trade whose session 3 decided nothing
+    (the close at or under the fill) or already holds a sold third. `shares_sold` = the wider truth beside the flag
+    (`breakout_pp_exit.shares_already_sold`: a booked exit on the open row — the third's OCO stop leg filling is the
+    third sold at its stop and never sets `partial_taken` — or a filled exit order the stream has not booked): True
+    -> None. Any other session, or no decision on record -> None."""
+    if len(fwd) <= LEG_SESSION:
+        return None
+    if third_sold(partial_taken=partial_taken) or shares_sold:
+        return None
+    return RETRY_THIRD if session_third_due else None
 
 
 def session3_decision(*, fill: float, stop: float, day0: dict, fwd: Sequence[dict], partial_taken: bool,
-                      third_resting: bool = False) -> Optional[str]:
+                      third_resting: bool = False, shares_sold: bool = False) -> Optional[str]:
     """The 15:45 ET decision on session 3 (`len(fwd) == 3`, today's bar last). In the walk's order after the stop and the
-    +2R leg: 'cut' (no high at +1R by now -> everything sold at the close) | None (a third already SOLD — `third_sold`) |
+    +2R leg: 'cut' (no high at +1R by now -> everything sold at the close) | None (a third already SOLD — `third_sold`,
+    or `shares_sold`: a booked exit on the open row / a filled exit order — the third's OCO stop leg filling is the
+    third sold at its stop and never sets `partial_taken`) |
     'cancel_resting_third' (no third sold yet, the close is above the fill, and the +2R third is still RESTING at the
     broker: cancel it — confirmed — then sell the third at the close; a fill in the race IS the third, and nothing more is
     sold — his ruling 2026-10-29 late, "option a") | 'session_third' (no third yet, none resting, and the close is above
@@ -193,7 +217,7 @@ def session3_decision(*, fill: float, stop: float, day0: dict, fwd: Sequence[dic
         return None
     if not reached_plus_1r(fill=fill, stop=stop, day0=day0, fwd=fwd):
         return "cut"
-    if third_sold(partial_taken=partial_taken):
+    if third_sold(partial_taken=partial_taken) or shares_sold:
         return None
     if float(fwd[-1]["c"]) > float(fill):
         return CANCEL_RESTING_THIRD if third_resting else "session_third"
