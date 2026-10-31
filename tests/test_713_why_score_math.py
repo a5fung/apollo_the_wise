@@ -286,7 +286,7 @@ def _wire(monkeypatch, *, score_row, shadow_row, score_sql_raises=False):
     return seen
 
 
-def _why(task="/why FTAI 2026-10-29"):
+def _why(task="/why FTAI 2026-10-29 full"):   # #716: the long layout is `full`
     agent = MarketIntelligenceAgent()
     res = asyncio.run(agent._handle_why_query(
         AgentRequest(task=task, user_id=1, conversation_id="t")))

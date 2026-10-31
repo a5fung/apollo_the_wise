@@ -201,7 +201,7 @@ def test_why_renders_the_grade_section_when_nothing_else_exists(monkeypatch):
     _wire(monkeypatch, grade_row=_nssc_row(), graded_day=date(2026, 8, 24))
     agent = MarketIntelligenceAgent()
     res = asyncio.run(agent._handle_why_query(
-        AgentRequest(task="/why NSSC 2026-08-24", user_id=1, conversation_id="t")))
+        AgentRequest(task="/why NSSC 2026-08-24 full", user_id=1, conversation_id="t")))
     body = res.result if hasattr(res, "result") else res["result"]
     assert "no alert / trade / audit events" not in body
     assert "🧠 CATALYST GRADE — strong" in body

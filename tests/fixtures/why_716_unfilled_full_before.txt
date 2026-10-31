@@ -1,0 +1,43 @@
+📋 ABCD — lifecycle 2026-10-30
+
+🎯 DETECTED — alert tier HIGH · score 65
+   gap +11.7% · catalyst grade strong (set by the Claude grader)
+
+⚖️ JUDGE — alert tier HIGH (our score said HIGH; the judge held it)
+   materiality material · axis direct_source, revenue_stage
+   "Primary source confirms a pivotal trial result and a revenue-stage catalyst; the grade holds."
+
+🧠 CATALYST GRADE — strong
+   set by the news grader · the tier correction agreed
+   graded 09:35–09:36 ET · grade held all day · score 65 (HIGH — alerted)
+   "Regeneron announced a pivotal Phase 3 result that met its primary endpoint, with a regulatory filing planned this year; the move is driven by a new revenue stage, not routine news."
+   read: SEC 8-K · Benzinga x2 (2026-10-30) — 5,210 chars
+   news: Regeneron's Phase 3 trial met its primary endpoint.
+   news was not on the calendar · no beat language · forward-looking content (guidance / outlook) · sector confirmed (2 peers on the board)
+
+🧮 SCORE — 65.0, clears the HIGH bar 65 (09:35 ET scan)
+   gap +10  11.7% gap — 8% or more · flat credit, a bigger gap pays nothing more
+   liquidity +15  average daily dollar volume $583.634M — $500M or more · top tier
+   catalyst +15  graded strong · next grade up: game-changing pays 25
+   float +0  105M shares — not under 50M shares · under 50M pays 5
+   pre-market volume +0  at its own 0th percentile — below the lowest tier · next tier 70th percentile pays 3
+   theme +0  not in a paying theme · a paying theme pays 10
+   raw total 40
+   x1.00 regime multiplier (no regime boost; worked back from the stored score) = 40
+   rescale 1.25 x 40 + 15 = 65  (a display step only: the bar goes through the same step)
+   HIGH bar 65 (= 40 before the rescale) needs a raw total of 40; this has 40 (0 to spare)
+   theme read: no belonging-check record for this name on this day
+
+💰 OUTCOME — cancelled — Entry order expired unfilled (ORB window unfilled)
+   limit $869.88, stop $817.50
+
+🔍 Fill diagnosis
+   ORB H $869.88 · L $843.69 · limit $869.88 · stop $817.50
+   window 09:36:30–10:00:02 (5 bars)
+   🟢 Price topped at $864.00, never reached trigger $869.88 — order correctly didn't fire.
+
+📅 LIFECYCLE
+   09:36  EP detected — HIGH EP: gap=11.7% score=65
+   09:36  Order placed — entry=$869.88 stop=$817.50
+   10:00  ORB unfilled (10:00 cleanup) — unfilled at 10:00 ET cleanup
+Theme: —

@@ -328,6 +328,111 @@ def score_math_lines(row: dict | None) -> list[str]:
     return ["", head + verdict + when] + body
 
 
+# ── The SHORT form (#716): each part OUT OF its maximum ──────────────────────────────────────
+# Display order of the short parts line (the operator-approved mockup order — it differs from
+# `_ORDER`, which is the long section's order and stays as it is).
+_SHORT_ORDER = ("gap", "liquidity", "catalyst", "theme_bonus", "float", "vol_conviction")
+
+
+def part_maxima(w: dict) -> dict[str, float]:
+    """The most each ADDITIVE score part can pay, READ from the weights table `w` — never typed,
+    so a re-tuned table moves the "out of" figures with it. Takes the table as an argument because
+    the two sides differ (the legacy gap ladder tops out at 25, the live flat credit at 10).
+    `conviction_floor` is not here: it is a lift to a floor, not a part with a ceiling."""
+    out: dict[str, float] = {}
+    gap = w.get("gap")
+    if gap and gap.get("tiers"):
+        out["gap"] = max(p for _, p in gap["tiers"])
+    liq = w.get("liquidity")
+    if liq:
+        out["liquidity"] = max([p for _, p in liq.get("adv_tiers", [])]
+                               + [p for _, p in liq.get("fallback_tiers", [])] + [0])
+    cat = w.get("catalyst")
+    if cat and cat.get("points"):
+        out["catalyst"] = max(cat["points"].values())
+    flt = w.get("float")
+    if flt and flt.get("points") is not None:
+        out["float"] = flt["points"]
+    vol = w.get("vol_conviction")
+    if vol and vol.get("tiers"):
+        out["vol_conviction"] = max(p for _, p in vol["tiers"])
+    theme = w.get("theme_bonus")
+    if theme and theme.get("points") is not None:
+        out["theme_bonus"] = theme["points"]
+    return out
+
+
+def _g(v: float) -> str:
+    return f"{v:g}"
+
+
+def score_short_lines(row: dict | None) -> list[str]:
+    """The SHORT `/why` score lines for one `mi_ep_scan_log` row: every part as `points/maximum`,
+    the raw total against the raw total possible and the HIGH bar in RAW points, and what each
+    part still below its maximum could add. Three lines at most, each indented three spaces.
+
+    DISPLAY ONLY, same inputs and same arithmetic as `score_math_lines` (the long section) — the
+    bar in raw points is the smallest raw total that presents at or above the bar under the
+    regime multiplier worked back from the stored score. Returns [] for no row / no stored parts
+    (the caller says so in its own words); a part the breakdown does not carry is not shown, so
+    "of N" only counts the parts that were actually scored."""
+    if not row:
+        return []
+    breakdown = _breakdown_of(row.get("score_breakdown"))
+    if breakdown is None:
+        return []
+    w = _weights_for(row.get("score_side"))
+    legacy = w is SCORE_WEIGHTS_LEGACY
+    scale = w.get("output_scale")
+    parts = {k: _num(v) or 0.0 for k, v in breakdown.items()}
+    maxima = part_maxima(w)
+    raw = sum(parts.values())
+
+    shown: list[str] = []
+    for key in _SHORT_ORDER:
+        if key in parts and key in maxima:
+            shown.append(f"{_LABEL.get(key, key)} {_g(parts[key])}/{_g(maxima[key])}")
+    lift = parts.get("conviction_floor", 0.0)
+    if lift:
+        shown.append(f"floor lift +{_g(lift)}")
+    for key in sorted(k for k in parts if k not in _SHORT_ORDER and k != "conviction_floor"):
+        shown.append(f"{_LABEL.get(key, key.replace('_', ' '))} {_g(parts[key])}")
+    out = ["   " + " · ".join(shown)]
+
+    possible = sum(maxima[k] for k in _SHORT_ORDER if k in parts and k in maxima)
+    total = f"raw {_g(raw)} of {_g(possible)}"
+
+    # Bar in RAW points: the same search the long section uses.
+    ep_score = _num(row.get("ep_score"))
+    mult: float | None = None
+    if ep_score is not None and raw > 0:
+        final = round((ep_score - scale["offset"]) / scale["mult"], 1) if scale else ep_score
+        mult = final / raw
+    bar = _num(row.get("ep_bar"))
+    if bar is None and not legacy:
+        bar = float(SEPARATION_BAR)
+    need = _raw_needed(mult, bar, scale) if (mult is not None and bar is not None) else None
+    if need is None:
+        out.append("   " + total + (f" · HIGH bar {_g(bar)}" if bar is not None else ""))
+    else:
+        gap_pts = raw - need
+        if gap_pts > 0:
+            tail = f"{_g(gap_pts)} to spare"
+        elif gap_pts < 0:
+            tail = f"{_g(-gap_pts)} short"
+        else:
+            tail = "exactly on the bar"
+        boost = (f" ({_mult_label(mult)}, x{mult:.2f})" if abs(mult - 1.0) > 0.005 else "")
+        out.append(f"   {total} · HIGH bar {need}{boost} · {tail}")
+
+    room = [f"{_LABEL.get(k, k)} +{_g(maxima[k] - parts[k])}"
+            for k in _SHORT_ORDER
+            if k in parts and k in maxima and parts[k] < maxima[k]]
+    if room:
+        out.append("   could still add: " + " · ".join(room))
+    return out
+
+
 # ── The theme read (the +10 a name did NOT get) ──────────────────────────────────────────────
 _NO_VERDICT = {
     "failed": "the fit check failed", "timeout": "the fit check timed out",

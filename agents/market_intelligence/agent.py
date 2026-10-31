@@ -515,6 +515,29 @@ def _format_catalyst_grade_block(grade: dict, analysis_cap: int = 400) -> list[s
     return lines
 
 
+# The scan-log row a /why score section describes (#713, shared with the short layout #716): the
+# row the alert actually carried (closest stored score to the alert's), else the day's
+# best-scoring one. One statement for both layouts so they cannot read different ticks.
+_WHY_SCORE_ROW_SQL = """
+            SELECT scan_time_et, ep_score, score_tier, score_breakdown, score_side, ep_bar,
+                   catalyst_quality, gap_pct, adv, prev_close, projected_vol_multiple,
+                   rel_volume, float_shares, vol_percentile
+            FROM mi_ep_scan_log
+            WHERE ticker = $1 AND scan_date = $2 AND ep_score IS NOT NULL
+            ORDER BY (score_breakdown IS NULL),
+                     CASE WHEN $3::float8 IS NOT NULL THEN ABS(ep_score - $3::float8) END
+                         ASC NULLS LAST,
+                     ep_score DESC, scan_time_et DESC NULLS LAST, id DESC
+            LIMIT 1
+        """
+
+
+async def _why_score_row(conn, ticker: str, target_date, alert_score=None):
+    return await conn.fetchrow(
+        _WHY_SCORE_ROW_SQL, ticker, target_date,
+        float(alert_score) if alert_score is not None else None)
+
+
 async def _why_score_block(pool, ticker: str, target_date, alert_score=None) -> list[str]:
     """#713 — the '/why' SCORE section: how the EP score was built (each part, what the next
     tier pays, the multiplier, the rescale, the raw-point gap to the HIGH bar), plus the theme
@@ -526,18 +549,7 @@ async def _why_score_block(pool, ticker: str, target_date, alert_score=None) -> 
     `ep_score_math` (pure, tested without a DB)."""
     from agents.market_intelligence.ep_score_math import score_math_lines, theme_read_lines
     async with pool.acquire() as conn:
-        row = await conn.fetchrow("""
-            SELECT scan_time_et, ep_score, score_tier, score_breakdown, score_side, ep_bar,
-                   catalyst_quality, gap_pct, adv, prev_close, projected_vol_multiple,
-                   rel_volume, float_shares, vol_percentile
-            FROM mi_ep_scan_log
-            WHERE ticker = $1 AND scan_date = $2 AND ep_score IS NOT NULL
-            ORDER BY (score_breakdown IS NULL),
-                     CASE WHEN $3::float8 IS NOT NULL THEN ABS(ep_score - $3::float8) END
-                         ASC NULLS LAST,
-                     ep_score DESC, scan_time_et DESC NULLS LAST, id DESC
-            LIMIT 1
-        """, ticker, target_date, float(alert_score) if alert_score is not None else None)
+        row = await _why_score_row(conn, ticker, target_date, alert_score)
         if not row:
             return []
         out = score_math_lines(dict(row))
@@ -561,6 +573,402 @@ async def _why_score_block(pool, ticker: str, target_date, alert_score=None) -> 
             except Exception as _tre:   # the theme read is a bonus on a bonus — never the score
                 logger.debug(f"/why {ticker}: theme read failed: {_tre}")
     return out
+
+
+def _why_order_placed(trade) -> bool:
+    """True when an entry order for this trade was ever recorded. `entry_order_id` is written when
+    `submit_entry` stores the accepted order, and it is the predicate `cancel_unfilled_entries`
+    selects resting orders by. A trade the chase cap stopped, or one declined before submit, has
+    none: no order existed, so there is nothing to fill and no tape check to run (#716)."""
+    return bool(trade and trade.get("entry_order_id"))
+
+
+async def _why_fill_diagnosis_lines(trade, ticker: str, target_date) -> list[str]:
+    """The '/why' FILL DIAGNOSIS section, as lines (moved out of `_handle_why_query` unchanged
+    for #716 so the short layout can reuse its verdict line). Only meaningful for a trade that
+    was cancelled / rejected / skipped after an entry price was set; it fetches the minute bars
+    in the order's lifetime so the operator can see what the tape did vs the limit — the "chart
+    shows price went above ORB high, why didn't it fill?" class of question (TWLO 5/01).
+
+    #716 DEFECT FIX: with no order ever placed (REGN 2026-10-30 — the chase cap stopped the entry
+    before any order) the old section described a resting order that never existed and told a
+    false "price moved past limit too fast" story. Now it says no order was placed.
+
+    On an exception the lines gathered so far are returned and the failure is logged — the exact
+    behaviour the inline block had."""
+    diagnosis_states = ("cancelled", "rejected", "skipped")
+    if not (
+        trade
+        and (trade.get("status") or "") in diagnosis_states
+        and trade.get("entry_price")
+        and trade.get("proposed_at")
+    ):
+        return []
+    if not _why_order_placed(trade):
+        return ["", "🔍 Fill diagnosis",
+                "   No order was placed — there was nothing to fill."]
+
+    lines: list[str] = []
+    try:
+        from agents.market_intelligence.collector import get_minute_bars, _ET
+        from datetime import datetime as _dt, timedelta as _td
+
+        limit = float(trade["entry_price"])
+        stop = float(trade.get("stop_price") or 0)
+        orb_h = trade.get("orb_high")
+        orb_l = trade.get("orb_low")
+        t0 = trade["proposed_at"].astimezone(_ET)
+        # Window upper bound = order's actual lifetime. Use closed_at
+        # only — `confirmed_at` is the placement timestamp (often
+        # equal to proposed_at), which collapses the window to zero
+        # bars. If closed_at is NULL, default to ORB cleanup at
+        # 10:00 ET (the system's actual cancellation deadline).
+        if trade.get("closed_at"):
+            t1 = trade["closed_at"].astimezone(_ET)
+        else:
+            t1 = _dt.combine(target_date, _dt.min.time(), tzinfo=_ET) + _td(hours=10)
+        d_str = target_date.isoformat()
+        bars = await get_minute_bars(ticker, d_str, d_str)
+        in_window = []
+        for b in bars:
+            bar_t = _dt.fromtimestamp(b["t"] / 1000, tz=_ET)
+            if t0 <= bar_t <= t1:
+                in_window.append((bar_t, float(b["h"]), float(b["l"])))
+
+        lines.append("")
+        lines.append("🔍 Fill diagnosis")
+        ctx_bits = []
+        if orb_h is not None: ctx_bits.append(f"ORB H ${float(orb_h):.2f}")
+        if orb_l is not None: ctx_bits.append(f"L ${float(orb_l):.2f}")
+        ctx_bits.append(f"limit ${limit:.2f}")
+        if stop: ctx_bits.append(f"stop ${stop:.2f}")
+        lines.append("   " + " · ".join(ctx_bits))
+        lines.append(
+            f"   window {t0.strftime('%H:%M:%S')}–{t1.strftime('%H:%M:%S')} "
+            f"({len(in_window)} bars)"
+        )
+
+        if not in_window:
+            lines.append("   ⚠️ No price data for this window — feed gap.")
+        else:
+            max_h = max(h for _, h, _ in in_window)
+            trigger = float(orb_h) if orb_h is not None else limit
+            touches_limit = [(t, h) for t, h, _ in in_window if h >= limit]
+            touched_trigger = max_h >= trigger
+
+            if not touched_trigger:
+                # Price never reached the buy trigger — clean no-fire.
+                lines.append(
+                    f"   🟢 Price topped at ${max_h:.2f}, never reached trigger "
+                    f"${trigger:.2f} — order correctly didn't fire."
+                )
+            elif not touches_limit:
+                # Trigger fired but price stayed below limit — rare; either the
+                # order activated and oscillated in the trigger-to-limit band
+                # without a seller, or the trigger is the limit (no buffer).
+                lines.append(
+                    f"   🟡 Trigger ${trigger:.2f} touched but price stayed below "
+                    f"limit ${limit:.2f} (window max ${max_h:.2f}) — no seller "
+                    f"at limit price."
+                )
+            else:
+                first = touches_limit[0]
+                lines.append(
+                    f"   🔴 Trigger ${trigger:.2f} hit at "
+                    f"{first[0].strftime('%H:%M')}, price ran to ${max_h:.2f}."
+                )
+                lines.append(
+                    f"   Price moved past limit ${limit:.2f} too fast — after "
+                    f"the trigger fired, it never came back to the limit so no "
+                    f"seller matched. (Wider buffer or stop-market would catch "
+                    f"this; current buffer is 0.5%.)"
+                )
+    except Exception as e:
+        logger.warning(f"why fill-diagnosis failed for {ticker}: {e}")
+    return lines
+
+
+# ─── #716 — the SHORT /why layout (the default; `/why TICKER full` keeps every line) ──────────
+#
+# Operator, 2026-10-30, on /why REGN: "Can we make it more readable, now it's a wall of text."
+# DISPLAY ONLY: it re-renders rows the long layout already reads. It decides nothing, and every
+# "out of" figure comes from the live score table (`ep_score_math.part_maxima`), never a typed
+# number. Plain text, no Markdown, no pipe table (Telegram cannot render them).
+
+# The decisive events only. Anything not listed — the judge / rubric / provenance rows, every
+# *_shadow row, tracing, the ORB bookkeeping — stays in the long LIFECYCLE. `orb_order_failed` is
+# deliberately absent: it is the pipeline's bookkeeping row, never a fact about the trade.
+# value = (plain label, append the cleaned event summary?)
+_WHY_KEY_EVENTS: dict[str, tuple[str, bool]] = {
+    "ep_rt_floor_flip_up":      ("Real-time prices lifted the gap over the floor", False),
+    "ep_alert":                 ("Alert sent", False),
+    "orb_order_placed":         ("Order placed", True),
+    "orb_filled":               ("Filled", True),
+    "entry_chase_cap_skipped":  ("Entry skipped by the chase cap", False),
+    "orb_cancelled":            ("Cancelled", True),
+    "orb_skipped":              ("Skipped", True),
+    "orb_blocked":              ("Blocked", True),
+    "orb_unfilled_cancelled":   ("Unfilled at the 10:00 cleanup, order cancelled", False),
+    "eod_unfilled_cancelled":   ("Unfilled at the close, order cancelled", False),
+    "stop_updated":             ("Stop moved", True),
+    "partial_exit_committed":   ("Partial exit", True),
+    "trade_closed":             ("Trade closed", True),
+}
+_WHY_KEY_TIMES_MAX = 5
+
+_CHASE_CAP_RE = re.compile(
+    r"limit \$([\d,]+(?:\.\d+)?) risk \$([\d,]+(?:\.\d+)?)/sh vs planned "
+    r"\$([\d,]+(?:\.\d+)?)/sh \(cap ([\d.]+)x")
+
+
+def _chase_cap_plain(reason) -> str | None:
+    """The stored chase-cap skip reason in plain words, or None when it is some other reason or
+    does not parse (the caller then falls back to the stored text via `humanize`)."""
+    from agents.market_intelligence.broker.skip_reasons import SETUP_CHASE_CAP_EXCEEDED
+    if not isinstance(reason, str) or not reason.startswith(SETUP_CHASE_CAP_EXCEEDED):
+        return None
+    m = _CHASE_CAP_RE.search(reason)
+    if not m:
+        return None
+    limit, risk, planned, cap = m.groups()
+    return (f"price had run past the buy point; chasing it at ${limit} would have risked "
+            f"${risk} a share against ${planned} planned (cap {float(cap):g}x)")
+
+
+def _lower_first(s: str) -> str:
+    return s[:1].lower() + s[1:] if len(s) > 1 and s[0].isalpha() and s[1].islower() else s
+
+
+def _why_reason_label(reason) -> str:
+    """The skip reason's plain label with no detail tail ('Ran too far past ORB high to chase')."""
+    from agents.market_intelligence.broker.skip_reasons import humanize
+    if not reason:
+        return ""
+    return humanize(":".join(str(reason).split(":", 2)[:2]))
+
+
+def _usd_signed(v) -> str:
+    f = float(v or 0)
+    return f"{'+' if f >= 0 else '-'}${abs(f):,.2f}"
+
+
+_WHY_NOT_BOUGHT_STATES = ("skipped", "cancelled", "rejected", "order_failed")
+
+
+def _why_bought_phrase(trade) -> str:
+    """The right-hand half of the verdict header: bought, or not bought and why."""
+    if not trade:
+        return "NOT BOUGHT — no trade record"
+    status = trade.get("status") or "?"
+    if status == "closed":
+        return f"BOUGHT — closed {_usd_signed(trade.get('total_pnl'))}"
+    if status == "filled":
+        return "BOUGHT — position open"
+    if status == "order_placed":
+        return "ORDER PLACED — not filled yet"
+    if status == "pending_confirmation":
+        return "WAITING on your confirmation"
+    if status == "confirmed":
+        return "CONFIRMED — order being placed"
+    if status in _WHY_NOT_BOUGHT_STATES:
+        label = _lower_first(_why_reason_label(trade.get("skip_reason")))
+        return f"NOT BOUGHT — {label or status.replace('_', ' ')}"
+    return status.replace("_", " ").upper()
+
+
+def _why_verdict_line(ticker: str, target_date, alert, scan, grade, trade) -> str:
+    if alert:
+        what = f"{alert.get('score_tier') or 'alert'} {float(alert.get('ep_score') or 0):g}"
+    elif scan and scan.get("filter_reason"):
+        sc = scan.get("ep_score")
+        what = "not alerted" + (f" (score {float(sc):g})" if sc is not None else "")
+    elif grade:
+        gs = grade.get("live_ep_score")
+        what = "graded, never alerted" + (f" (score {float(gs):g})" if gs is not None else "")
+    else:
+        what = "no alert"
+    # A name that never alerted and never traded has nothing to be "not bought": say only that.
+    bought = f" · {_why_bought_phrase(trade)}" if (alert or trade) else ""
+    return f"📋 {ticker} {target_date} — {what}{bought}"
+
+
+def _why_catalyst_line(alert, grade) -> str | None:
+    """The catalyst in ONE line plus where it was read. Prefers the grader's own news summary (what
+    happened); the alert's discovery blurb is skipped when the judge is authoritative — the long
+    layout suppresses it there for the same reason (#317/#336)."""
+    text = ""
+    if grade:
+        text = (grade.get("news_summary") or "").strip()
+    if not text and alert and not alert.get("grade_engine_authority"):
+        text = (alert.get("catalyst") or "").strip()
+    if not text and grade:
+        text = (grade.get("claude_analysis") or "").strip()
+    if not text and alert:
+        text = (alert.get("judge_rationale") or "").strip()
+    if not text and not grade:
+        return None
+    body = _cap_summary(text, 150) if text else "no catalyst text on record"
+    srcs = _corpus_sources((grade or {}).get("grounded_head"))
+    if srcs:
+        src = " · ".join(srcs)
+    elif grade and grade.get("grounded_len"):
+        src = "news corpus (no source stamps)"
+    elif grade:
+        src = "headlines only, no news corpus"
+    else:
+        src = ""
+    return f"   {body}" + (f" — read: {src}" if src else "")
+
+
+def _why_grade_note(alert, grade) -> str | None:
+    """ONE line: the catalyst grade, who set it, whether it held, and the grader's reason.
+    None when there is no grade record and the alert carries no grade either."""
+    from agents.market_intelligence.briefing import format_catalyst_grade
+    if grade:
+        llm = grade.get("live_quality_last") or grade.get("live_quality_first") or "n/a"
+        lat = grade.get("shadow_tier_last") or grade.get("shadow_tier_first")
+        lattice = (grade.get("live_side") or "llm").strip() == "lattice" and bool(lat)
+        acting = lat if lattice else llm
+        _rc = grade.get("regrade_count") or 0
+        bits = [format_catalyst_grade(acting, default="n/a"),
+                "set by the tier correction" if lattice else "set by the news grader",
+                "held all day" if not _rc else f"changed {_rc}x intraday"]
+        line = " · ".join(bits)
+        why = (grade.get("claude_analysis") or "").strip()
+        if why:
+            first = re.split(r"(?<=[.!?])\s", why, maxsplit=1)[0]
+            line += f' — "{_cap_summary(first, 110)}"'
+        return "   " + line
+    q = format_catalyst_grade((alert or {}).get("catalyst_quality"), default="")
+    return f"   {q} · set by the Claude grader" if q else None
+
+
+def _why_fill_verdicts(diag_lines: list[str]) -> list[str]:
+    """The one-line tape verdict(s) of the Fill diagnosis (🟢 / 🟡 / 🔴 / ⚠️), nothing else."""
+    return [ln for ln in diag_lines if ln.strip().startswith(("🟢", "🟡", "🔴", "⚠️"))]
+
+
+def _why_entry_lines(trade, diag_lines: list[str]) -> list[str]:
+    """ENTRY: the plan (buy / stop / risk) and what happened. An outcome with no order says so."""
+    if not trade:
+        return ["   no trade was proposed — nothing reached the entry stage"]
+    from agents.market_intelligence.broker.skip_reasons import humanize
+    out: list[str] = []
+    buy = trade.get("orb_high") if trade.get("orb_high") is not None else trade.get("entry_price")
+    stop = trade.get("stop_price")
+    if buy is not None and stop:
+        out.append(f"   plan: buy ${float(buy):.2f} · stop ${float(stop):.2f} · "
+                   f"risk ${float(buy) - float(stop):.2f} a share")
+    status = trade.get("status") or "?"
+    reason = trade.get("skip_reason")
+    placed = _why_order_placed(trade)
+    if status in _WHY_NOT_BOUGHT_STATES and not placed:
+        why = _chase_cap_plain(reason) or (humanize(reason) if reason else "")
+        out.append("   result: no order was placed" + (f" — {why}" if why else ""))
+    elif status in _WHY_NOT_BOUGHT_STATES:
+        out.append("   result: order placed, never filled"
+                   + (f" — {humanize(reason)}" if reason else ""))
+        out.extend(_why_fill_verdicts(diag_lines))
+    elif status == "closed":
+        out.append(f"   result: bought, closed {_usd_signed(trade.get('total_pnl'))}")
+    elif status == "filled":
+        out.append("   result: filled, position open")
+    elif status == "order_placed":
+        out.append("   result: order resting, not filled yet")
+    else:
+        out.append(f"   result: {status.replace('_', ' ')}")
+    return out
+
+
+def _why_key_times(events, ticker: str) -> list[str]:
+    """KEY TIMES: the 3-5 decisive events, in time order, as `HH:MM  label`. Shadow, trace and
+    bookkeeping rows are not in `_WHY_KEY_EVENTS` so they never appear. Past the cap the first two
+    and last three stay and the middle collapses to one line."""
+    from agents.market_intelligence.collector import _ET
+    items: list[tuple[str, str]] = []
+    for ev in events or []:
+        spec = _WHY_KEY_EVENTS.get(ev["event_type"])
+        if not spec:
+            continue
+        label, with_summary = spec
+        tail = _strip_lifecycle_summary((ev["summary"] or "").strip(), ticker) if with_summary else ""
+        text = f"{label} — {_cap_summary(tail, 70)}" if tail else label
+        items.append((ev["created_at"].astimezone(_ET).strftime("%H:%M"), text))
+    collapsed: list[tuple[str, str]] = []
+    i = 0
+    while i < len(items):
+        n = 1
+        while i + n < len(items) and items[i + n][1] == items[i][1]:
+            n += 1
+        collapsed.append((items[i][0], items[i][1] + (f" ×{n}" if n > 1 else "")))
+        i += n
+    rows = [f"   {t}  {txt}" for t, txt in collapsed]
+    if len(rows) > _WHY_KEY_TIMES_MAX:
+        hidden = len(rows) - _WHY_KEY_TIMES_MAX
+        rows = rows[:2] + [f"   … {hidden} more in the full view"] + rows[-3:]
+    return rows
+
+
+def build_why_short_lines(ticker: str, target_date, *, alert, trade, scan, grade, events,
+                          score_row, diag_lines) -> list[str]:
+    """The SHORT `/why` body: verdict header, WHY, GRADE NOTE, ENTRY, KEY TIMES, a pointer to the
+    full view. Pure: every input is a row the long layout already reads."""
+    from agents.market_intelligence.ep_score_math import score_short_lines
+    lines = [_why_verdict_line(ticker, target_date, alert, scan, grade, trade)]
+
+    lines.append("")
+    if alert:
+        lines.append(f"🎯 WHY {alert.get('score_tier') or 'ALERTED'}")
+    elif scan and scan.get("filter_reason"):
+        lines.append("🎯 WHY NOT ALERTED")
+        lines.append(f"   {_cap_summary(scan['filter_reason'], 160)}")
+    else:
+        lines.append("🎯 WHAT WE SAW")
+    cat = _why_catalyst_line(alert, grade)
+    if cat:
+        lines.append(cat)
+    score_lines = score_short_lines(score_row)
+    if score_lines:
+        lines.extend(score_lines)
+    elif score_row:
+        lines.append("   score parts were not stored for this row")
+
+    note = _why_grade_note(alert, grade)
+    if note:
+        lines.append("")
+        lines.append("🧠 GRADE NOTE")
+        lines.append(note)
+
+    if alert or trade:
+        lines.append("")
+        lines.append("💰 ENTRY")
+        lines.extend(_why_entry_lines(trade, diag_lines))
+
+    key_times = _why_key_times(events, ticker)
+    if key_times:
+        lines.append("")
+        lines.append("⏱ KEY TIMES")
+        lines.extend(key_times)
+
+    lines.append("")
+    lines.append(f"Every section and event: /why {ticker} {target_date} full")
+    return lines
+
+
+async def _why_short_body(pool, ticker: str, target_date, alert, trade, scan, grade, events) -> str:
+    """Gather what the short layout needs beyond the handler's rows (the scored scan row and the
+    fill-diagnosis verdict) and render it."""
+    score_row = None
+    try:
+        async with pool.acquire() as conn:
+            score_row = await _why_score_row(
+                conn, ticker, target_date, alert.get("ep_score") if alert else None)
+    except Exception as e:   # display-only: a failed read drops the score lines, not the answer
+        logger.debug(f"/why {ticker}: short-layout score read failed: {e}")
+    diag_lines = await _why_fill_diagnosis_lines(trade, ticker, target_date)
+    return "\n".join(build_why_short_lines(
+        ticker, target_date, alert=alert, trade=trade, scan=scan, grade=grade, events=events,
+        score_row=dict(score_row) if score_row else None, diag_lines=diag_lines))
 
 
 def _strip_lifecycle_summary(summary: str, ticker: str) -> str:
@@ -5986,24 +6394,22 @@ class MarketIntelligenceAgent(BaseAgent):
         from datetime import date as _date
         from agents.market_intelligence.collector import et_today, _ET
         from agents.market_intelligence.db import (
-            get_catalyst_grade_record, get_latest_catalyst_grade_date,
-            get_pool, get_security_exchange_map,
+            get_catalyst_grade_record, get_latest_catalyst_grade_date, get_pool,
         )
-        from agents.market_intelligence.friday_watchlist import (
-            _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT,
-        )
-        from agents.market_intelligence.briefing import send_telegram_message
-        # _send_plain_with_keyboard: shared module-level helper (deduped, #178).
+        # _send_plain_with_keyboard + the chart button: `_why_deliver` (shared, #178 / #716).
 
         raw = request.task.strip()
         tokens = raw.split()
         cands = _re.findall(r'\b([A-Z]{2,5})\b', raw.upper())
         skip = _PREPOSITION_SKIP | {"WHY", "TRACE", "THE", "FOR", "AND", "WHAT",
                                      "ENTRY", "EXIT", "TRADE", "EP", "ORB", "WE", "DID",
-                                     "SETUP"}  # /setup TICKER DATE delegates here (#178)
+                                     "SETUP",   # /setup TICKER DATE delegates here (#178)
+                                     "FULL"}    # #716: `/why TICKER full` is a flag, not a ticker
         ticker = next((t for t in cands if t not in skip), None)
         if not ticker:
-            return self._ok(request, result="Usage: /why TICKER [YYYY-MM-DD]")
+            return self._ok(request, result="Usage: /why TICKER [YYYY-MM-DD] [full]")
+        # #716: the SHORT layout is the default; `full` keeps every line of the long one.
+        want_full = any(t.lower() == "full" for t in tokens[1:])
 
         target_date: _date | None = None
         for tok in tokens[1:]:
@@ -6058,7 +6464,7 @@ class MarketIntelligenceAgent(BaseAgent):
             trade = await conn.fetchrow("""
                 SELECT status, skip_reason, orb_high, orb_low, entry_price,
                        stop_price, entry_shares, total_pnl, proposed_at,
-                       confirmed_at, closed_at
+                       confirmed_at, closed_at, entry_order_id
                 FROM mi_live_trades
                 WHERE ticker = $1 AND alert_date = $2
             """, ticker, target_date)
@@ -6095,6 +6501,17 @@ class MarketIntelligenceAgent(BaseAgent):
                 request,
                 result=f"🔍 {ticker} — no alert / trade / audit events on {target_date}.",
             )
+
+        if not want_full:
+            # #716: a failed short render must never cost the operator the answer — it falls
+            # through to the long layout below, which is exactly today's output.
+            try:
+                short_body = await _why_short_body(
+                    pool, ticker, target_date, alert, trade, scan, grade, events)
+            except Exception as _se:
+                logger.warning(f"/why {ticker}: short layout failed, using the full view: {_se}")
+            else:
+                return await self._why_deliver(request, ticker, short_body)
 
         from agents.market_intelligence.broker.skip_reasons import humanize
 
@@ -6229,94 +6646,10 @@ class MarketIntelligenceAgent(BaseAgent):
         else:
             lines.append("💰 OUTCOME — no mi_live_trades row (silent drop — see lifecycle)")
 
-        # 🔍 Fill diagnosis — only meaningful for cancelled/rejected (or
-        # skipped with a price-related reason). Fetches minute bars in the
-        # order's lifetime so the user can see what the tape did vs the
-        # limit. Answers the "but the chart shows price went above ORB high
-        # — why didn't it fill?" class of question (TWLO 5/01).
-        diagnosis_states = ("cancelled", "rejected", "skipped")
-        if (
-            trade
-            and (trade.get("status") or "") in diagnosis_states
-            and trade.get("entry_price")
-            and trade.get("proposed_at")
-        ):
-            try:
-                from agents.market_intelligence.collector import get_minute_bars
-                from datetime import datetime as _dt, timedelta as _td
-
-                limit = float(trade["entry_price"])
-                stop = float(trade.get("stop_price") or 0)
-                orb_h = trade.get("orb_high")
-                orb_l = trade.get("orb_low")
-                t0 = trade["proposed_at"].astimezone(_ET)
-                # Window upper bound = order's actual lifetime. Use closed_at
-                # only — `confirmed_at` is the placement timestamp (often
-                # equal to proposed_at), which collapses the window to zero
-                # bars. If closed_at is NULL, default to ORB cleanup at
-                # 10:00 ET (the system's actual cancellation deadline).
-                if trade.get("closed_at"):
-                    t1 = trade["closed_at"].astimezone(_ET)
-                else:
-                    t1 = _dt.combine(target_date, _dt.min.time(), tzinfo=_ET) + _td(hours=10)
-                d_str = target_date.isoformat()
-                bars = await get_minute_bars(ticker, d_str, d_str)
-                in_window = []
-                for b in bars:
-                    bar_t = _dt.fromtimestamp(b["t"] / 1000, tz=_ET)
-                    if t0 <= bar_t <= t1:
-                        in_window.append((bar_t, float(b["h"]), float(b["l"])))
-
-                lines.append("")
-                lines.append("🔍 Fill diagnosis")
-                ctx_bits = []
-                if orb_h is not None: ctx_bits.append(f"ORB H ${float(orb_h):.2f}")
-                if orb_l is not None: ctx_bits.append(f"L ${float(orb_l):.2f}")
-                ctx_bits.append(f"limit ${limit:.2f}")
-                if stop: ctx_bits.append(f"stop ${stop:.2f}")
-                lines.append("   " + " · ".join(ctx_bits))
-                lines.append(
-                    f"   window {t0.strftime('%H:%M:%S')}–{t1.strftime('%H:%M:%S')} "
-                    f"({len(in_window)} bars)"
-                )
-
-                if not in_window:
-                    lines.append("   ⚠️ No price data for this window — feed gap.")
-                else:
-                    max_h = max(h for _, h, _ in in_window)
-                    trigger = float(orb_h) if orb_h is not None else limit
-                    touches_limit = [(t, h) for t, h, _ in in_window if h >= limit]
-                    touched_trigger = max_h >= trigger
-
-                    if not touched_trigger:
-                        # Price never reached the buy trigger — clean no-fire.
-                        lines.append(
-                            f"   🟢 Price topped at ${max_h:.2f}, never reached trigger "
-                            f"${trigger:.2f} — order correctly didn't fire."
-                        )
-                    elif not touches_limit:
-                        # Trigger fired but price stayed below limit — rare; either the
-                        # order activated and oscillated in the trigger-to-limit band
-                        # without a seller, or the trigger is the limit (no buffer).
-                        lines.append(
-                            f"   🟡 Trigger ${trigger:.2f} touched but price stayed below "
-                            f"limit ${limit:.2f} (window max ${max_h:.2f}) — no seller "
-                            f"at limit price."
-                        )
-                    else:
-                        first = touches_limit[0]
-                        lines.append(
-                            f"   🔴 Trigger ${trigger:.2f} hit at "
-                            f"{first[0].strftime('%H:%M')}, price ran to ${max_h:.2f}."
-                        )
-                        lines.append(
-                            f"   Price moved past limit ${limit:.2f} too fast — after "
-                            f"the trigger fired, it never came back to the limit so no "
-                            f"seller matched. (Wider buffer or stop-market would catch "
-                            f"this; current buffer is 0.5%.)"
-                        )
-            except Exception as e:
-                logger.warning(f"why fill-diagnosis failed for {ticker}: {e}")
+        # 🔍 Fill diagnosis — cancelled/rejected/skipped trades with an entry price. Moved into
+        # `_why_fill_diagnosis_lines` for #716 (the short layout reuses its verdict line); the
+        # rendering is unchanged except that a trade with NO order now says so.
+        lines.extend(await _why_fill_diagnosis_lines(trade, ticker, target_date))
 
         # 📅 Lifecycle — filter noise + humanize per-event summary.
         # Drop multi-ticker batch summaries (where this ticker is incidental)
@@ -6445,7 +6778,16 @@ class MarketIntelligenceAgent(BaseAgent):
         except Exception as _ru_e:
             logger.debug(f"why rubric block failed for {ticker}: {_ru_e}")
 
-        body_text = "\n".join(lines)
+        return await self._why_deliver(request, ticker, "\n".join(lines))
+
+    async def _why_deliver(self, request: AgentRequest, ticker: str, body_text: str) -> AgentResponse:
+        """Send a `/why` body with the TradingView chart button — shared by the short and the full
+        layout (#716). Returns result="" when Telegram delivered it, else the text for the caller."""
+        from agents.market_intelligence.db import get_security_exchange_map
+        from agents.market_intelligence.friday_watchlist import (
+            _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT,
+        )
+        from agents.market_intelligence.briefing import send_telegram_message
 
         # TradingView chart button — matches /setup.
         try:

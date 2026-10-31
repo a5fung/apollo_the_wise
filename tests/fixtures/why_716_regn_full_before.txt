@@ -1,0 +1,53 @@
+📋 REGN — lifecycle 2026-10-30
+
+🎯 DETECTED — alert tier HIGH · score 65
+   gap +11.7% · catalyst grade strong (set by the Claude grader)
+
+⚖️ JUDGE — alert tier HIGH (our score said HIGH; the judge held it)
+   materiality material · axis direct_source, revenue_stage
+   "Primary source confirms a pivotal trial result and a revenue-stage catalyst; the grade holds."
+
+🧠 CATALYST GRADE — strong
+   set by the news grader · the tier correction agreed
+   graded 09:35–09:36 ET · grade held all day · score 65 (HIGH — alerted)
+   "Regeneron announced a pivotal Phase 3 result that met its primary endpoint, with a regulatory filing planned this year; the move is driven by a new revenue stage, not routine news."
+   read: SEC 8-K · Benzinga x2 (2026-10-30) — 5,210 chars
+   news: Regeneron's Phase 3 trial met its primary endpoint.
+   news was not on the calendar · no beat language · forward-looking content (guidance / outlook) · sector confirmed (2 peers on the board)
+
+🧮 SCORE — 65.0, clears the HIGH bar 65 (09:35 ET scan)
+   gap +10  11.7% gap — 8% or more · flat credit, a bigger gap pays nothing more
+   liquidity +15  average daily dollar volume $583.634M — $500M or more · top tier
+   catalyst +15  graded strong · next grade up: game-changing pays 25
+   float +0  105M shares — not under 50M shares · under 50M pays 5
+   pre-market volume +0  at its own 0th percentile — below the lowest tier · next tier 70th percentile pays 3
+   theme +0  not in a paying theme · a paying theme pays 10
+   raw total 40
+   x1.00 regime multiplier (no regime boost; worked back from the stored score) = 40
+   rescale 1.25 x 40 + 15 = 65  (a display step only: the bar goes through the same step)
+   HIGH bar 65 (= 40 before the rescale) needs a raw total of 40; this has 40 (0 to spare)
+   theme read: no belonging-check record for this name on this day
+
+💰 OUTCOME — cancelled — Ran too far past ORB high to chase (limit $928.33 risk $110.83/sh vs planned $52.38/sh (cap 1.50x, ORB high $869.88))
+   limit $869.88, stop $817.50
+
+🔍 Fill diagnosis
+   ORB H $869.88 · L $843.69 · limit $869.88 · stop $817.50
+   window 09:36:30–10:00:00 (6 bars)
+   🔴 Trigger $869.88 hit at 09:37, price ran to $930.00.
+   Price moved past limit $869.88 too fast — after the trigger fired, it never came back to the limit so no seller matched. (Wider buffer or stop-market would catch this; current buffer is 0.5%.)
+
+📅 LIFECYCLE
+   09:35  ep rt floor flip up — rt 11.6% ≥9 > delayed 6.7% @ 09:35 ET
+   09:35  catalyst rubric passed — rubric PASSED composite=25.6 (>= 22) label=strong
+   09:35  vol conviction shadow — HIGH live_vol_pct=0 shadow_vol_pct=0 live_score=65.0 shadow_score=65.0
+   09:35  conviction floor eligible — gap=11.7% score=65 tier=HIGH
+   09:36  judge signal trace — direct_source held=True sent=yes | revenue_stage held=True
+   09:36  filter:large cap relvol floor shadow — HIGH rel_vol=0.41x adv$=583,634,406 @ 09:35 ET (SHADOW — alert NOT skipped
+   09:36  theme axis shadow adjusted — 2026-10-30: strong -> strong
+   09:36  EP detected — HIGH EP: gap=11.7% score=65
+   09:36  exposure family checked — live/ORB): no theme membership — nothing to compare
+   09:36  entry chase cap skipped — [live]: setup:chase_cap_exceeded: limit $928.33 risk $110.83/sh vs planned $52.38/sh (cap…
+   09:36  orb order failed — submit_entry returned None
+   09:50  ep rt admit — rt 13.4% and delayed 11.6% BOTH >=9 @ 09:50 ET — real-time AGREES with the admit
+Theme: —

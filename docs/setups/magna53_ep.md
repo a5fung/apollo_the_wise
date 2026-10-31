@@ -197,6 +197,25 @@ now also resolves to the last day the name was GRADED, since a graded-not-alerte
 in no alert/trade/audit row. Read by NO grading / entry / sizing / safeguard path; pinned by
 `tests/test_catalyst_tier_shadow.py::test_catalyst_grade_record_reader_is_display_only`.
 
+**`/why` IS SHORT BY DEFAULT; `/why TICKER [DATE] full` IS THE LONG VIEW (#716, 2026-10-31 — display
+only; no score, bar, weight, grade or rule changed).** Operator 2026-10-30, on `/why REGN`: *"Can we
+make it more readable, now it's a wall of text."* The default is now a one-line verdict header (tier,
+score, bought / not bought and why), WHY (the catalyst in one line + the sources read; every score part
+as `points/maximum`, the raw total of the raw total possible, the HIGH bar in raw points and the gap to
+it, and what each part below its maximum could still add), GRADE NOTE (one line), ENTRY (plan buy / stop
+/ risk, and what happened) and KEY TIMES (the 3-5 decisive events — shadow, trace and bookkeeping rows
+are not in the allowlist `agent._WHY_KEY_EVENTS`). The "out of" maxima are READ from
+`ep_rubric.SCORE_WEIGHTS` (`ep_score_math.part_maxima`; the legacy table for a `score_side='legacy'`
+row), never typed. `full` is a flag (any position, any case; "FULL" is skipped as a ticker candidate) and
+returns every line of the previous layout; a short render that raises falls back to it. `/setup TICKER
+DATE` delegates to the same handler, so it is short too. ⚠ DEFECT FIXED IN BOTH VIEWS: the Fill
+diagnosis described a resting order that never existed when no order was ever placed (REGN 2026-10-30,
+trade 434 — the chase cap stopped the entry before any order, and the section told a "price moved past
+limit too fast" story). "An order was placed" is `mi_live_trades.entry_order_id IS NOT NULL` — the
+predicate `cancel_unfilled_entries` selects resting orders by — and without it the section now says no
+order was placed. Pinned by `tests/test_716_why_short.py` (golden files captured from the unmodified
+handler). DEPLOY: `agent.py` is on `scripts/exec_loaded_modules.txt` — market-agent + execution.
+
 **Grounded grade (2026-06-04, #187/#190 — catalyst-axis Track A+B; deployed live).** The grade now reasons on a GROUNDED, UNTRUNCATED summary — the authoritative **SEC 8-K body** (`collector.get_sec_recent_filings`, near-real-time `data.sec.gov/submissions` endpoint, error-wrapped) + the Perplexity web synthesis — NOT raw 200-char yfinance headlines. Model upgraded **Haiku → `claude-sonnet-4-6`**. New prompt rule: broad sector-momentum / short-squeeze / non-company-specific technical moves grade `routine` (a gap-up alone is not a catalyst).
 - **WHY**: RUM 2026-06-04 traded −1.07R as a false `strong` — the real catalyst (a $270M NVIDIA-Blackwell GPU-cloud **8-K filed 5:04am ET**) reached neither LLM (no EDGAR ingestion existed), so Haiku confabulated `strong` from headlines while the grade truncated the synthesis to 200 chars.
 - **EVIDENCE**: 30-case bake-off — grounded summary flips the false-`strong` junk (RUM/PGY/CRSR/DY, short-squeeze/sector-rotation/ticker-mismatch) → `routine`, and Haiku≈Sonnet≈Opus on identical input (so the **input** is the lever, not the model); RUM grounded+8-K → `strong` with the correct $270M rationale; B0 confirmed EDGAR is near-real-time and the 8-K was retrievable ~4.5h pre-scan.
