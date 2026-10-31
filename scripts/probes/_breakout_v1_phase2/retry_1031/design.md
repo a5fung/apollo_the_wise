@@ -30,6 +30,17 @@ third by his rule; selling it on session 4 would be a rule change = THE LINE).
   A retry on the flag alone would sell a second third the next session. Guard: `breakout_pp_exit.shares_already_sold`
   (the flag, then the row's booked exits, then a filled partial_exit / stop_loss order row; unreadable -> sold, fail
   closed) read by the session-3 step and the retry; the fuzz models the stop-leg fill as the finalizer books it.
+- REVIEW (medium, after 9117c060): the reader never read the row's share counts nor the broker — a session-3 market
+  sale the broker ACCEPTED whose `mi_live_orders` INSERT raised (execute_partial_exit's except returns False) fills as
+  an 'Untracked SELL' (trade_stream._handle_fill step 4: a page, nothing booked); the 16:05 sync lowers
+  remaining_shares alone (`sync_qty_overwrite`). Session 4's retry then sold a SECOND third. Fix: two more reads in
+  `shares_already_sold`, after the exits — (1) `remaining_shares < entry_shares - 0.5` (both set to the FILLED qty at
+  the entry fill by trade_stream ~1009 and check_fills ~1136; an entry partial_fill is visibility-only) and (2) the
+  broker's position `qty` (never `qty_available`: a resting OCO reserves) `< remaining_shares - 0.5`; no position read
+  -> sold (gone or unreadable: get_position answers None to both). Each read has its own `why`; either writes
+  `breakout_pp_shares_left_unbooked`. The retry audits `breakout_pp_third_already_sold` (retry: true) when the wider
+  read stops a retry that was due (it used to stop silently). The fuzz adds the unrecorded sale (after an accepted
+  sale, and after a 'refused' one), synced and not; sessions after it cancel nothing and sell nothing.
 - A retry whose plain sale raises: caught in `_breakout_pp_third_retry` -> `breakout_pp_third_retry_failed` + page;
   the pass goes on (session 3's raise path is unchanged: the guarded wrapper).
 

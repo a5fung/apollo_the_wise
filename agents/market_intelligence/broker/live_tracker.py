@@ -1631,6 +1631,16 @@ async def _breakout_pp_sell_third(trade: dict, *, last: float, fill: float, stop
             )
             return await _breakout_pp_sell_third(trade, last=last, fill=fill, stop0=stop0, resting=True,
                                                  resting_oid=oid2, session=session, retry=retry, after_refusal=True)
+        if await _bpp.partial_taken_now(trade["id"]):
+            # the refusal was the lock's partial_taken re-check: a +2R limit filled between this step's row read and
+            # the sale — that fill IS the third (review low 2026-10-31: no 'No third was sold' page, no retry)
+            await log_audit_event(
+                "breakout_pp_session_third_sold_by_limit",
+                f"{ticker}: {day} — the close sale was refused because the +2R limit filled first — that fill is the "
+                f"third; nothing more is sold",
+                json.dumps({**tag, "shares": int(shares)}),
+            )
+            return {"ticker": ticker, "action": "breakout_pp_third_filled_in_race", "shares": int(shares)}
         await log_audit_event(
             "breakout_pp_session_third_unsold",
             f"{ticker}: {day} — the close sale of {shares} sh was refused or failed and nothing rests at the broker "
@@ -1667,10 +1677,24 @@ async def _breakout_pp_third_retry(trade: dict, fwd: list, state: dict) -> dict:
     no price condition, so none is applied here — and a trade whose session 3 decided nothing is never retried."""
     ticker, session = trade["ticker"], len(fwd)
     partial_taken = bool(trade.get("partial_taken"))
-    # the flag AND the wider truth (a stop-leg fill of the third never sets the flag): nothing is retried once any
-    # share has left the position — the third left under its OCO, if any, closes when its own leg fills
-    sold, _sold_why = await _bpp.shares_already_sold(trade)
-    due = False if sold else await _bpp.session_third_due(trade["id"])
+    # the flag AND the wider truth (a stop-leg fill of the third never sets the flag; a sale the books never recorded
+    # lowers the row's count or the broker's position alone): nothing is retried once any share has left the
+    # position — the third left under its OCO, if any, closes when its own leg fills. `partial_taken` -> nothing,
+    # not even a read.
+    sold, sold_why = await _bpp.shares_already_sold(trade)
+    due = False if partial_taken else await _bpp.session_third_due(trade["id"])
+    if sold and not partial_taken and due:
+        # a retry that WOULD have run is stopped by the wider read: say so (the retry-pass review 2026-10-31 — the
+        # scenario fires here, on session 4, and left no row saying why the retry stopped)
+        await log_audit_event(
+            "breakout_pp_third_already_sold",
+            f"{ticker} #{trade['id']}: session {session} — the session-3 third was due, but shares already left the "
+            f"position ({sold_why}); no retry (one third ever)",
+            json.dumps({"trade_id": trade["id"], "ticker": ticker, "session": session, "retry": True, "why": sold_why,
+                        "remaining_shares": float(trade.get("remaining_shares") or 0),
+                        "entry_shares": (float(trade["entry_shares"]) if trade.get("entry_shares") is not None
+                                         else None)}),
+        )
     if _bpp_rules.retry_decision(fwd=fwd, partial_taken=partial_taken, session_third_due=due,
                                  shares_sold=sold) != _bpp_rules.RETRY_THIRD:
         return {"ticker": ticker, "action": "breakout_pp_not_session3", "session": session}

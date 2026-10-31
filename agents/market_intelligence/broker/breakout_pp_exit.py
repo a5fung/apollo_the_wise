@@ -65,6 +65,13 @@ PLANNED_THIRD_CANCEL_WITHDRAWN = "breakout_pp_planned_third_cancel_withdrawn"
 # under the fill). The planned-cancel marker and the session-third row are read beside it (either proves the decision).
 SESSION_THIRD_DUE = "breakout_pp_session_third_due"
 SESSION_THIRD_EVENT = "breakout_pp_session_third"          # the 15:45 step's "selling N sh" row (live_tracker writes it)
+# Retry-pass review 2026-10-31 (the one-third-ever reader): the row's flag and booked exits are NOT the whole truth of
+# what left the position — a session-3 market sale the broker ACCEPTED whose order row never got written (the INSERT
+# raised, or the process restarted between the place and the INSERT) fills as an 'Untracked SELL' the stream books
+# nowhere; the 16:05 sync then lowers `remaining_shares` alone (`sync_qty_overwrite`: a quantity, no exit, no flag).
+# `shares_already_sold` reads the row's two share counts and the broker's position beside the flag, the exits and the
+# order book, and writes this row when either says shares left that the books never recorded.
+SHARES_LEFT_UNBOOKED = "breakout_pp_shares_left_unbooked"
 CANCEL_POLL_ATTEMPTS = 24        # the confirmation poll's cap in reads (x CANCEL_POLL_S between reads)
 CANCEL_POLL_S = 0.25
 CANCEL_READ_TIMEOUT_S = 3.0      # finding 3: each confirmation read is bounded (the SDK default is 30 s)
@@ -384,22 +391,79 @@ def _exits_with_shares(raw) -> int:
     return sum(1 for e in raw if isinstance(e, dict) and float(e.get("shares") or 0) > 0)
 
 
+def _num(v) -> float | None:
+    """A share count as a float, None when the column is missing or not a number (never a crash, never a false read)."""
+    try:
+        return None if v is None else float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+async def _audit_shares_left(trade: dict, arm: str, why: str, **counts) -> None:
+    """The `breakout_pp_shares_left_unbooked` row: which read disagreed with the books, and the numbers. Its own
+    failure never hides the verdict (the caller has already decided 'sold')."""
+    logger.warning(f"breakout pp: {trade.get('ticker')} #{trade.get('id')} — {why} (read: {arm}); treated as a third "
+                   f"already sold")
+    try:
+        await log_audit_event(
+            SHARES_LEFT_UNBOOKED,
+            f"{trade.get('ticker')} #{trade.get('id')}: {why} — read as a third already sold (nothing sold, nothing "
+            f"cancelled this session; the books are behind a sale they never recorded — look for an 'Untracked SELL' "
+            f"page and a `sync_qty_overwrite` row)",
+            json.dumps({"trade_id": trade.get("id"), "ticker": trade.get("ticker"), "read": arm,
+                        "account_mode": trade.get("account_mode"),
+                        **{k: (None if v is None else float(v)) for k, v in counts.items()}}))
+    except Exception as e:  # loud-ok: the verdict stands; the warning above is the trail
+        logger.warning(f"breakout pp: the shares-left audit failed for trade {trade.get('id')}: {e}")
+
+
+async def partial_taken_now(trade_id) -> bool | None:
+    """The row's `partial_taken` as stored NOW. A +2R limit that filled between a step's row read and its sale's lock
+    flips the flag under that lock, and the sale is refused for it (the retry-pass review, 2026-10-31, low): the step
+    must not then page 'No third was sold'. None when unreadable — the caller keeps its not-sold path, which pages."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            v = await conn.fetchval("SELECT partial_taken FROM mi_live_trades WHERE id = $1", trade_id)
+        return None if v is None else bool(v)
+    except Exception as e:  # loud-ok: None hands the caller its not-sold path, which audits and pages
+        logger.warning(f"breakout pp: the partial_taken re-read failed for trade {trade_id} ({e})")
+        return None
+
+
 async def shares_already_sold(trade: dict) -> tuple[bool, str | None]:
     """Has ANY share of this trade already been sold? The WIDER "a third sold" the session-3 step and the retry read
     beside `partial_taken` (his one third ever). `partial_taken` flips only when a PARTIAL-EXIT order fills; the
     third's OCO sibling STOP leg filling (the third sold at its stop — (A)'s `stop_filled`) is booked by the stream's
     stop-fill finalizer (`order_manager._finalize_stop_fill_locked`), which decrements `remaining_shares` and appends
     a 'stop_hit' exit WITHOUT setting the flag — so a trade whose third was just stopped would read "no third sold"
-    the next session and be sold another (the advisor's final-review finding, 2026-10-31). -> (sold, why). Reads, in
-    order: the row's `partial_taken`; its `exits` (any booked exit with shares — on an OPEN breakout row nothing but
-    a sold third, its stop leg, or the reduced 2/3 stop ever books one); then the order book — a 'partial_exit' or
-    'stop_loss' row of the trade filled in full or in part (a fill the stream has not booked yet). FAILS CLOSED for
-    selling: an unreadable book reads as sold (nothing sold this session; the next session reads again), audited."""
+    the next session and be sold another (the advisor's final-review finding, 2026-10-31). And a sale the books never
+    recorded at all — a session-3 market sale the broker ACCEPTED whose order row was never written (the INSERT raised
+    after the place; a restart between the two): its fill is an 'Untracked SELL' the stream books nowhere, and the
+    16:05 sync then lowers `remaining_shares` alone (the retry-pass review, 2026-10-31) — must read as sold too, or
+    the next session's retry sells a SECOND third. -> (sold, why; each read has its own `why`). Reads, in order:
+    the row's `partial_taken`; its `exits` (any booked exit with shares — on an OPEN breakout row nothing but a sold
+    third, its stop leg, or the reduced 2/3 stop ever books one); the row's own counts — `remaining_shares` below
+    `entry_shares` (both are set to the FILLED quantity at the entry fill, by the stream and by the polling backup
+    alike, so on an open row with no flag and no exit a gap is a sale the books never recorded); the order book — a
+    'partial_exit' or 'stop_loss' row of the trade filled in full or in part (a fill the stream has not booked yet);
+    and last the broker — the position's `qty` below the row's count (the same afternoon, before the sync has folded
+    an unrecorded sale into the row; `qty`, never `qty_available`, which a resting +2R OCO lowers by reserving its
+    shares). FAILS CLOSED for selling: an unreadable book, and no position read (gone, or unreadable — the client
+    answers None to both), read as sold (nothing sold this session; the next session reads again), audited. A read
+    that finds shares left which the books never recorded writes `breakout_pp_shares_left_unbooked`."""
+    tid, ticker = trade.get("id"), trade.get("ticker")
     if trade.get("partial_taken"):
         return True, "partial_taken"
     n = _exits_with_shares(trade.get("exits"))
     if n:
         return True, f"{n} exit(s) already booked on the open row (a stop-leg fill is the third sold at its stop)"
+    remaining, entry = _num(trade.get("remaining_shares")), _num(trade.get("entry_shares"))
+    if remaining is not None and entry is not None and remaining < entry - 0.5:
+        why = (f"shares already left the position: the row holds {remaining:g} of the {entry:g} filled with no exit "
+               f"booked (remaining < entry)")
+        await _audit_shares_left(trade, "row_counts", why, remaining_shares=remaining, entry_shares=entry)
+        return True, why
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
@@ -408,18 +472,41 @@ async def shares_already_sold(trade: dict) -> tuple[bool, str | None]:
                 WHERE trade_id = $1 AND purpose IN ('partial_exit', 'stop_loss')
                   AND (status IN ('filled', 'partially_filled') OR COALESCE(filled_qty, 0) > 0)
                 ORDER BY id DESC LIMIT 1
-            """, trade.get("id"))
+            """, tid)
         if oid is not None:
             return True, f"a filled exit order row ({str(oid)[:8]}) the stream has not booked yet"
-        return False, None
     except Exception as e:  # loud-ok: fail closed — nothing sold on a book that cannot be read
-        logger.warning(f"breakout pp: the exit-order read failed for trade {trade.get('id')} ({e}) — treated as sold")
+        logger.warning(f"breakout pp: the exit-order read failed for trade {tid} ({e}) — treated as sold")
         await log_audit_event(
             "breakout_pp_shares_sold_unreadable",
-            f"{trade.get('ticker')} #{trade.get('id')}: the trade's exit orders could not be read ({type(e).__name__}) "
+            f"{ticker} #{tid}: the trade's exit orders could not be read ({type(e).__name__}) "
             f"— treated as a third already sold (nothing sold this session; the next close reads again)",
-            json.dumps({"trade_id": trade.get("id"), "ticker": trade.get("ticker"), "error": str(e)[:300]}))
+            json.dumps({"trade_id": tid, "ticker": ticker, "error": str(e)[:300]}))
         return True, "the order book could not be read"
+    # the broker last (the one external read): what is HELD against what the row says is held
+    qty, err = None, None
+    try:
+        pos = await alpaca.get_position(ticker, account_mode=trade.get("account_mode"))
+        qty = _num(pos.get("qty")) if isinstance(pos, dict) else None
+    except Exception as e:  # loud-ok: the client swallows its own errors; this is the belt for anything it does not
+        err = f"{type(e).__name__}: {e}"
+    if qty is None:
+        logger.warning(f"breakout pp: no position read for {ticker} #{tid} ({err or 'gone or unreadable'}) — treated "
+                       f"as sold")
+        await log_audit_event(
+            "breakout_pp_shares_sold_unreadable",
+            f"{ticker} #{tid}: no position read at the broker (gone, or unreadable"
+            + (f": {err[:160]}" if err else "") + ") — treated as a third already sold (nothing sold this session; "
+            "the next close reads again)",
+            json.dumps({"trade_id": tid, "ticker": ticker, "error": (err or "")[:300], "read": "broker_position"}))
+        return True, "no position read at the broker (gone, or unreadable)"
+    if remaining is not None and qty < remaining - 0.5:
+        why = (f"shares already left the position: the broker holds {qty:g} against the row's {remaining:g} with no "
+               f"exit booked (broker qty < remaining)")
+        await _audit_shares_left(trade, "broker_position", why, remaining_shares=remaining, entry_shares=entry,
+                                 broker_qty=qty)
+        return True, why
+    return False, None
 
 
 def _filled(order: dict | None) -> bool:

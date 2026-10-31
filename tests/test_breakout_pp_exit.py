@@ -609,7 +609,7 @@ FACTS_QUIET = dict(FACTS_REACHED, peak=10.40)                                   
 
 def _row(**over):
     r = {"id": 701, "ticker": "BRK", "alert_date": ALERT, "account_mode": "paper", "signal_type": "breakout_v1",
-         "exit_rule": "breakout_pp", "remaining_shares": 9, "entry_price": FILL, "hard_stop": STOP0,
+         "exit_rule": "breakout_pp", "remaining_shares": 9, "entry_shares": 9, "entry_price": FILL, "hard_stop": STOP0,
          "stop_price": STOP0, "stop_order_id": "stop-1", "partial_taken": False, "breakeven_active": False,
          "exits": [], "running_closes": [], "status": "filled",
          "filled_at": datetime(2026, 10, 26, 9, 37, 20, tzinfo=ET), "breakout_day0_pp": FACTS_REACHED}
@@ -627,6 +627,7 @@ class _Conn:
         self.fail_audit_read = False         # the audit log unreadable (the readers' fail direction)
         self.sold_order_row = None           # a filled partial_exit / stop_loss order row (`shares_already_sold`)
         self.fail_sold_read = False
+        self.partial_taken_now = None        # the row's partial_taken as re-read after a refused sale (None = unread)
 
     async def fetch(self, *a, **_k):
         if a and "mi_audit_log" in str(a[0]):
@@ -645,6 +646,8 @@ class _Conn:
         self.fetchvals.append(a)
         if "raw_response" in a[0]:
             return self.raw
+        if "SELECT partial_taken FROM mi_live_trades" in a[0]:
+            return self.partial_taken_now
         if "purpose IN ('partial_exit', 'stop_loss')" in a[0]:
             if self.fail_sold_read:
                 raise RuntimeError("db down")
@@ -1842,6 +1845,29 @@ def test_1545_the_collision_in_reverse_order_a_refused_sale_re_reads_and_cancels
     assert "breakout_pp_third_retry_sold" in _lt_events(calls4)
 
 
+def test_a_sale_refused_because_the_limit_filled_first_is_the_third_and_never_pages_not_sold(monkeypatch):
+    """Retry-pass review low (2026-10-31): the +2R limit filled between the step's row read and the sale's lock, so the
+    lock's partial_taken re-check refused the sale and nothing rests any more. That fill IS the third: audited as sold
+    by the limit, no 'NOT sold' page, no retry at session 4. When the flag cannot be re-read, the not-sold path stands."""
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting=None, fwd_bars=_S12)
+    conn.partial_taken_now = True
+    calls["resting_third"].side_effect = [(False, None), (False, None)]
+    calls["execute_partial_exit"].return_value = False
+    _Broker(monkeypatch, calls, [None])
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_third_filled_in_race", "shares": 3}]
+    ev = _lt_events(calls)
+    assert "breakout_pp_session_third_sold_by_limit" in ev and "breakout_pp_session_third_unsold" not in ev
+    assert not any("NOT sold" in c.args[0] for c in calls["send_telegram_message"].await_args_list)
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting=None, fwd_bars=_S12)
+    calls["resting_third"].side_effect = [(False, None), (False, None)]
+    calls["execute_partial_exit"].return_value = False
+    _Broker(monkeypatch, calls, [None])
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "partial_failed", "shares": 3}]
+    assert "breakout_pp_session_third_unsold" in _lt_events(calls)
+
+
 def test_retry_sells_at_the_close_whatever_the_price_and_stops_at_a_sold_third(monkeypatch):
     """The retry re-executes the session-3 decision: his rec ("Retry the sale at the next day's close") carried no
     price condition, so a retry day that closes UNDER the fill still sells (named in the SSoT as the fork he can
@@ -1872,10 +1898,14 @@ def test_retry_never_two_thirds_across_random_interleavings(monkeypatch):
     sticks unfilled into the next session; an unconfirmed cancel that settles later, fills later, or keeps resting.
     INVARIANTS on every path: at most ONE third ever fills; at most one sale goes through per session and at most one
     cancel; once a third has filled nothing is cancelled or sold again; while no third has filled the step retries
-    at every later session. Every outcome of the sell path is reached by the fuzz (asserted)."""
+    at every later session. Every outcome of the sell path is reached by the fuzz (asserted).
+    The retry-pass review (2026-10-31) adds the sale the books never recorded: a sale that went through (or was
+    'refused' — the broker ACCEPTED it and the order row's INSERT raised) fills as an 'Untracked SELL' with no row, no
+    flag and no exit; the 16:05 sync may or may not have lowered the row's count by the next session. The broker's
+    position tracks what actually filled. Sessions after it cancel nothing and sell nothing, and say why."""
     rng = np.random.default_rng(1031)
     sessions = [(S3, _S12), (S4, _FWD_LONG), (S5, _FWD_LONG), (S6, _FWD_LONG)]
-    actions_seen, late_retries = set(), 0
+    actions_seen, late_retries, unbooked_runs = set(), 0, 0
 
     def _reads_for(oid, kind):
         return {"dead": [dict(_CANCELLED_EMPTY, id=oid)],
@@ -1885,12 +1915,18 @@ def test_retry_never_two_thirds_across_random_interleavings(monkeypatch):
 
     for seed in range(120):
         partial_taken, resting_oid, thirds, carried, exits = False, None, 0, [], []
+        unbooked, synced = False, False        # a sale the books never recorded; whether the sync lowered the row's count
         for today, fwd in sessions:
-            third_done = partial_taken or bool(exits)
-            row = _row(partial_taken=partial_taken, remaining_shares=(6 if third_done else 9), exits=list(exits))
+            third_done = partial_taken or bool(exits) or unbooked
+            row = _row(partial_taken=partial_taken, exits=list(exits),
+                       remaining_shares=(6 if (partial_taken or exits or (unbooked and synced)) else 9))
             conn, calls = _install(monkeypatch, row, today=today, today_bar=_LATER if today != S3 else _S3_ABOVE,
                                    resting=resting_oid, fwd_bars=fwd)
             conn.audit_rows = carried
+            # the broker holds what actually filled; a resting order's reservation lowers only qty_available
+            held = float(9 - 3 * thirds)
+            monkeypatch.setattr(bpe.alpaca, "get_position", AsyncMock(return_value={
+                "qty": held, "qty_available": max(0.0, held - (3.0 if resting_oid else 0.0))}))
             is_lim = (resting_oid or "").startswith("lim")
             conn.raw = dict(_OCO_RAW, id=resting_oid) if is_lim else None
             collide = (not resting_oid) and bool(rng.random() < 0.5)   # the poll's limit lands between read and sale
@@ -1922,8 +1958,13 @@ def test_retry_never_two_thirds_across_random_interleavings(monkeypatch):
             ok_sells = sum(1 for e in effects[:n_sells] if e is True)
             cancels = [x for x in br.log if x[0] == "cancel"]
             if third_done:
-                assert n_sells == 0 and not cancels, (seed, today, exits)
+                assert n_sells == 0 and not cancels, (seed, today, exits, unbooked, synced)
                 assert res["action"] == ("breakout_pp_not_session3" if today != S3 else "no_partial"), (seed, today)
+                if unbooked:                                  # the books are behind: the counts or the broker said so
+                    [left] = [x for x in br.log if x[0] == "audit" and x[1] == bpe.SHARES_LEFT_UNBOOKED]
+                    assert json.loads(left[2])["read"] == ("row_counts" if synced else "broker_position"), (seed, today)
+                    assert "breakout_pp_third_already_sold" in _lt_events(calls), (seed, today)   # the stopped retry
+                    unbooked_runs += 1
                 continue
             actions_seen.add(res["action"])
             if today != S3:
@@ -1939,9 +1980,14 @@ def test_retry_never_two_thirds_across_random_interleavings(monkeypatch):
                 exits, resting_oid = [{"reason": "stop_hit", "shares": 3, "order_id": "leg-9"}], None
             elif res["action"] == "partial_submitted":
                 assert ok_sells == 1
-                if rng.random() < 0.7:                   # the market sale fills
+                r = rng.random()
+                if r < 0.6:                              # the market sale fills, booked (the flag)
                     thirds += 1
                     partial_taken, resting_oid = True, None
+                elif r < 0.75:                           # it fills, but its order row was never written (a restart
+                    thirds += 1                          # between the place and the INSERT): an 'Untracked SELL' —
+                    unbooked, synced = True, bool(rng.random() < 0.5)   # no row, no flag, no exit
+                    resting_oid = None
                 else:                                    # stuck unfilled into the next session
                     resting_oid = "mkt-7"
             elif res["action"] == "breakout_pp_third_cancel_unconfirmed":
@@ -1963,14 +2009,20 @@ def test_retry_never_two_thirds_across_random_interleavings(monkeypatch):
                     resting_oid = None                      # the cancel confirmed dead; the sale failed
                 elif collide and not cancels:
                     resting_oid = "lim-9"                   # the poll's limit landed after the re-read
+                if sale == "refused" and not collide and rng.random() < 0.4:
+                    # the reviewer's scenario: the broker ACCEPTED the sale, the order row's INSERT raised, the sell
+                    # path returned False — the fill lands as an 'Untracked SELL' (no row, no flag, no exit)
+                    thirds += 1
+                    unbooked, synced = True, bool(rng.random() < 0.5)
             assert thirds <= 1, (seed, today, res)
             carried = _carry(calls) + carried
         assert thirds <= 1, seed
-        if not (partial_taken or exits):
+        if not (partial_taken or exits or unbooked):
             assert thirds == 0, seed
     assert {"partial_submitted", "partial_failed", "breakout_pp_third_filled_in_race", "breakout_pp_third_stopped_in_race",
             "breakout_pp_third_cancel_unconfirmed", "breakout_pp_error"} <= actions_seen, actions_seen
     assert late_retries > 50
+    assert unbooked_runs >= 20, unbooked_runs        # the unrecorded sale was reached, synced and not, and held
 
 
 def test_the_retry_is_a_close_sale_never_a_limit_and_runs_inside_the_1545_step(monkeypatch):
@@ -2054,6 +2106,117 @@ def test_a_stop_leg_fill_of_the_third_is_a_third_sold_and_stops_the_retry_withou
     sold, why = asyncio.run(bpe.shares_already_sold({"id": 1, "partial_taken": False, "exits": json.dumps(stopped["exits"])}))
     assert sold and "1 exit(s)" in why
     assert bpe._exits_with_shares([{"reason": "x", "shares": 0}]) == 0 and bpe._exits_with_shares("not json") == 0
+
+
+def test_a_sale_the_broker_accepted_but_the_books_never_recorded_is_the_third_and_stops_the_retry(monkeypatch):
+    """The retry-pass review (2026-10-31): session 3's plain market sale is ACCEPTED at the broker, then the order
+    row's INSERT raises — `execute_partial_exit` audits `partial_exit_sell_failed` and returns False; the step re-reads
+    the book, finds nothing resting, audits `breakout_pp_session_third_unsold` ("retried at the next close"). The
+    fill lands as an 'Untracked SELL' (no row to claim: the stream books nothing — `partial_taken` FALSE, `exits`
+    empty); the 16:05 sync lowers `remaining_shares` 9 -> 6 alone (`sync_qty_overwrite`: a quantity, no exit). A retry
+    reading the flag, the exits and the order book alone sells a SECOND third on session 4. The reader now compares the
+    row's share counts (remaining < entry: the synced state) and the broker's position (qty < remaining: the same
+    afternoon, before the sync) — on either, nothing is sold, nothing cancelled, the stopped retry says why
+    (`breakout_pp_third_already_sold` with `retry`), and the books-behind row is written; and an honest row — the
+    broker holding every share, a resting order's reservation lowering only `qty_available` — still sells."""
+    conn3, calls3 = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting=None, fwd_bars=_S12)
+    calls3["execute_partial_exit"].return_value = False                 # accepted at the broker, the row never written
+    asyncio.run(lt.run_partial_exits(S3))
+    carried = _carry(calls3)
+    assert any(r["event_type"] == "breakout_pp_session_third_unsold" for r in carried)
+    assert any(r["event_type"] == bpe.SESSION_THIRD_DUE for r in carried)
+
+    def _later(day, row, position):
+        conn, calls = _install(monkeypatch, row, today=day, today_bar=_LATER, resting=None, fwd_bars=_FWD_LONG)
+        conn.audit_rows = carried
+        monkeypatch.setattr(bpe.alpaca, "get_position", AsyncMock(return_value=position))
+        return asyncio.run(lt.run_partial_exits(day)), calls
+
+    def _left_row(calls):
+        return [json.loads(c.args[2]) for c in calls["bpe_audit"].await_args_list if c.args[0] == bpe.SHARES_LEFT_UNBOOKED]
+
+    def _stopped_row(calls):
+        return [json.loads(c.args[2]) for c in calls["log_audit_event"].await_args_list
+                if c.args[0] == "breakout_pp_third_already_sold"]
+
+    # (a) after the 16:05 sync: the row holds 6 of the 9 filled, no flag, no exit -> the row's own counts say sold;
+    #     sessions 5 and 6 read the same from the row alone (restart-safe: nothing in memory)
+    for day in (S4, S5, S6):
+        out, calls = _later(day, _row(remaining_shares=6), {"qty": 6.0, "qty_available": 6.0})
+        assert out == [{"ticker": "BRK", "action": "breakout_pp_not_session3", "session": {S4: 4, S5: 5, S6: 6}[day]}]
+        calls["execute_partial_exit"].assert_not_awaited()
+        calls["resting_third"].assert_not_awaited()
+        assert "breakout_pp_third_retry" not in _lt_events(calls)
+        [left] = _left_row(calls)
+        assert left["read"] == "row_counts" and left["remaining_shares"] == 6.0 and left["entry_shares"] == 9.0
+        [stopped] = _stopped_row(calls)
+        assert stopped["retry"] is True and "remaining < entry" in stopped["why"] and stopped["entry_shares"] == 9.0
+    # (b) the same afternoon, before the sync: the row still says 9, the broker holds 6 -> the position says sold
+    out, calls = _later(S4, _row(), {"qty": 6.0, "qty_available": 6.0})
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_not_session3", "session": 4}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    calls["resting_third"].assert_not_awaited()
+    [left] = _left_row(calls)
+    assert left["read"] == "broker_position" and left["broker_qty"] == 6.0 and left["remaining_shares"] == 9.0
+    assert "broker qty < remaining" in _stopped_row(calls)[0]["why"]
+    # (c) no position read (gone, or the client swallowed an error — it answers None to both): fail closed, audited
+    for position in (None, {"symbol": "BRK"}):
+        out, calls = _later(S4, _row(), position)
+        assert out == [{"ticker": "BRK", "action": "breakout_pp_not_session3", "session": 4}]
+        calls["execute_partial_exit"].assert_not_awaited()
+        [unread] = [json.loads(c.args[2]) for c in calls["bpe_audit"].await_args_list
+                    if c.args[0] == "breakout_pp_shares_sold_unreadable"]
+        assert unread["read"] == "broker_position"
+        assert not _left_row(calls)
+    # (d) the CONTROL: an honest row (9 of 9) with the broker holding 9 — 6 available, a resting order's reservation
+    #     is not a sale — retries the sale, and nothing says the books are behind
+    out, calls = _later(S4, _row(), {"qty": 9.0, "qty_available": 6.0})
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3, "retry": True, "session": 4}]
+    assert not _left_row(calls) and not _stopped_row(calls)
+    assert "breakout_pp_third_retry" in _lt_events(calls)
+    # (e) the reader on the row alone: each read has its own `why`; a missing count never fires the counts read; a
+    #     position read that RAISES is fail-closed too
+    sold, why = asyncio.run(bpe.shares_already_sold({"id": 1, "ticker": "BRK", "partial_taken": False, "exits": [],
+                                                     "remaining_shares": 6, "entry_shares": 9}))
+    assert sold and "6 of the 9 filled" in why
+    monkeypatch.setattr(bpe.alpaca, "get_position", AsyncMock(return_value={"qty": 6.0}))
+    assert asyncio.run(bpe.shares_already_sold({"id": 1, "ticker": "BRK", "partial_taken": False, "exits": [],
+                                                "remaining_shares": 6, "entry_shares": None})) == (False, None)
+    assert asyncio.run(bpe.shares_already_sold({"id": 1, "ticker": "BRK", "partial_taken": False, "exits": [],
+                                                "remaining_shares": "6", "entry_shares": "x"})) == (False, None)
+    sold, why = asyncio.run(bpe.shares_already_sold({"id": 1, "ticker": "BRK", "partial_taken": False, "exits": [],
+                                                     "remaining_shares": 9, "entry_shares": 9}))
+    assert sold and "broker holds 6 against the row's 9" in why
+    monkeypatch.setattr(bpe.alpaca, "get_position", AsyncMock(side_effect=RuntimeError("socket closed")))
+    sold, why = asyncio.run(bpe.shares_already_sold({"id": 1, "ticker": "BRK", "partial_taken": False, "exits": [],
+                                                     "remaining_shares": 9, "entry_shares": 9}))
+    assert sold and "no position read" in why
+    assert bpe._num(None) is None and bpe._num("abc") is None and bpe._num("6") == 6.0
+
+
+def test_a_resting_2r_limits_reservation_is_not_a_sale_and_session_3_still_cancels_and_sells(monkeypatch):
+    """The negative control for the broker read: a resting +2R OCO reserves its 3 shares, so the position reads
+    `qty 9 / qty_available 6` — the reader compares `qty` (what is HELD), never `qty_available`, and session 3 still
+    cancels the limit and sells the third. The broker holding FEWER than the row (8 of 9: the OCO filled one share,
+    the non-terminal partial the stream only observes — #566's unprobed state) reads as the third already sold: the
+    step cancels nothing and sells nothing, and the OCO's remainder closes through its own limit or leg (the literal
+    one-third-ever reading; the books-behind row says which read fired)."""
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    monkeypatch.setattr(bpe.alpaca, "get_position", AsyncMock(return_value={"qty": 9.0, "qty_available": 6.0}))
+    br = _Broker(monkeypatch, calls, [_CANCELLED_EMPTY])
+    assert asyncio.run(lt.run_partial_exits(S3)) == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3}]
+    cancels = [x for x in br.log if x[0] == "cancel"]
+    assert len(cancels) == 1 and cancels[0][1] == "lim-9"
+    assert not [x for x in br.log if x[0] == "audit" and x[1] == bpe.SHARES_LEFT_UNBOOKED]
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    monkeypatch.setattr(bpe.alpaca, "get_position", AsyncMock(return_value={"qty": 8.0, "qty_available": 6.0}))
+    br = _Broker(monkeypatch, calls, [_CANCELLED_EMPTY])
+    assert asyncio.run(lt.run_partial_exits(S3)) == [{"ticker": "BRK", "action": "no_partial", "session": 3}]
+    assert not [x for x in br.log if x[0] == "cancel"]
+    calls["execute_partial_exit"].assert_not_awaited()
+    [left] = [x for x in br.log if x[0] == "audit" and x[1] == bpe.SHARES_LEFT_UNBOOKED]
+    assert json.loads(left[2])["read"] == "broker_position" and json.loads(left[2])["broker_qty"] == 8.0
+    assert "breakout_pp_third_already_sold" in _lt_events(calls) and bpe.SESSION_THIRD_DUE not in _lt_events(calls)
 
 
 def test_a_retry_whose_plain_sale_raises_is_audited_as_failed_and_paged_and_the_pass_goes_on(monkeypatch):

@@ -194,8 +194,10 @@ def retry_decision(*, fwd: Sequence[dict], partial_taken: bool, session_third_du
     price condition of its own (his rec had none), and it is never made on a trade whose session 3 decided nothing
     (the close at or under the fill) or already holds a sold third. `shares_sold` = the wider truth beside the flag
     (`breakout_pp_exit.shares_already_sold`: a booked exit on the open row — the third's OCO stop leg filling is the
-    third sold at its stop and never sets `partial_taken` — or a filled exit order the stream has not booked): True
-    -> None. Any other session, or no decision on record -> None."""
+    third sold at its stop and never sets `partial_taken` — a filled exit order the stream has not booked, the row's
+    `remaining_shares` below its `entry_shares`, or the broker holding fewer shares than the row says — the last two
+    are a sale the books never recorded, the retry-pass review 2026-10-31): True -> None. Any other session, or no
+    decision on record -> None."""
     if len(fwd) <= LEG_SESSION:
         return None
     if third_sold(partial_taken=partial_taken) or shares_sold:
