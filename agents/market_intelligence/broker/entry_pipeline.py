@@ -31,6 +31,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     strategy_cap_block_reason,
     INFRA_NO_BAR,
     INFRA_ORDER_SUBMIT_FAILED,
+    SETUP_CHASE_CAP_EXCEEDED,
     SETUP_FADED_FROM_ORB,
     SETUP_GAP_BELOW_FLOOR,
     WINDOW_DUPLICATE,
@@ -81,6 +82,10 @@ _CAP_LOCK_NAMESPACE = 0x434150  # "CAP" — fits int4; arbitrary fixed namespace
 ACTION_AUTO_ENTERED = "auto_entered"
 ACTION_PROPOSED = "proposed"
 ACTION_AUTO_ENTER_FAILED = "auto_enter_failed"
+# REGN 2026-10-30: submit_entry returned None because the #500 chase cap DELIBERATELY skipped the
+# entry (and paged for it). Not a failure (lowcap_paper_entry counts AUTO_ENTER_FAILED as one) and
+# not in the ORB skip digest's SKIPPED set (live_tracker would add a second message) - its own action.
+ACTION_CHASE_CAP_SKIPPED = "chase_cap_skipped"
 ACTION_PROPOSAL_SEND_FAILED = "proposal_send_failed"
 ACTION_SKIPPED = "skipped"
 ACTION_BLOCKED = "blocked"
@@ -354,6 +359,26 @@ def _phase_gate_skip_reason(strategy) -> str | None:
     if strategy.phase in NO_SUBMIT_PHASES:
         return BLOCK_STRATEGY_DEPRECATED if strategy.phase == "deprecated" else BLOCK_STRATEGY_IN_SHADOW
     return None
+
+
+async def _entry_ended_by_chase_cap(pool, trade_id, account_mode: str) -> bool:
+    """True when `submit_entry` returned None because the #500 chase cap deliberately stopped
+    this entry. The cap records it on the trade row (`_skip_chase_capped`: status 'cancelled', or
+    'order_failed' on the post-retry branch, with a `setup:chase_cap_exceeded: ...` skip_reason) and
+    sends its own page, so the row - not the bare None - is how a deliberate skip is told from a
+    failed submit. Anything unreadable is NOT a chase-cap skip: the caller then pages as a failure,
+    so an unknown None is never swallowed."""
+    try:
+        async with pool.acquire() as conn:
+            reason = await conn.fetchval(
+                "SELECT skip_reason FROM mi_live_trades WHERE id = $1 AND account_mode = $2",
+                trade_id, account_mode,
+            )
+    except Exception as e:
+        logger.warning(f"trade {trade_id}: chase-cap lookup after submit_entry=None failed "
+                       f"({e}) - treating it as a failed submit")
+        return False
+    return isinstance(reason, str) and reason.startswith(SETUP_CHASE_CAP_EXCEEDED)
 
 
 async def submit_trade_entry(
@@ -933,6 +958,16 @@ async def submit_trade_entry(
         _mode_label = "paper" if is_paper else "LIVE real-$"
         logger.info(f"{strategy_label} {_mode_label} auto-enter: {ticker} (trade_id={trade_id})")
         order = await submit_entry(trade_id)
+        if not order and await _entry_ended_by_chase_cap(pool, trade_id, account_mode):
+            # REGN 2026-10-30 (message-only): the chase cap skipped this entry ON PURPOSE and has
+            # already sent its own page ("No entry for X: ..."); its audit row is
+            # `entry_chase_cap_skipped`, written by submit_entry. The old tail read the None as a
+            # failed submit and paged "auto-enter failed" a second time, plus an `orb_order_failed`
+            # row (which the weekly review counts as a failure). A genuine failure still pages below.
+            logger.info(f"{strategy_label} {ticker}: entry skipped by the chase cap "
+                        f"(trade_id={trade_id}) - no failure page")
+            return {"ticker": ticker, "action": ACTION_CHASE_CAP_SKIPPED,
+                    "reason": SETUP_CHASE_CAP_EXCEEDED, "trade_id": trade_id}
         if not order:
             logger.error(
                 f"{strategy_label} {ticker}: submit_entry returned None "
