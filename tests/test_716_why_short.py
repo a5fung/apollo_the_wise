@@ -114,9 +114,13 @@ def test_full_equals_todays_output_when_an_order_existed(monkeypatch):
     assert fx.render("/why ABCD 2026-10-30 full") == golden
 
 
-def test_full_for_regn_differs_from_todays_output_only_in_the_fill_diagnosis_body(monkeypatch):
+def test_full_for_regn_differs_from_todays_output_only_in_the_no_order_lines(monkeypatch):
+    """Two deliberate differences, both the no-order defect: the Fill diagnosis body and the OUTCOME
+    line, which printed a 'limit' for an order that never existed."""
     fx.wire(monkeypatch, fx.regn_world())
     before = (_FIX / "why_716_regn_full_before.txt").read_text().split("\n")
+    old_outcome = before.index("   limit $869.88, stop $817.50")
+    before[old_outcome] = "   planned buy $869.88, stop $817.50 — no order was placed"
     at = before.index("🔍 Fill diagnosis")
     end = next(i for i in range(at, len(before)) if before[i] == "")
     expected = before[:at + 1] + ["   No order was placed — there was nothing to fill."] + before[end:]

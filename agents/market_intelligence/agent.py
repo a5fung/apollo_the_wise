@@ -6630,7 +6630,11 @@ class MarketIntelligenceAgent(BaseAgent):
             elif status in ("cancelled", "rejected") and reason:
                 lines.append(f"💰 OUTCOME — {status} — {humanize(reason)}")
                 if ep_pr and sp:
-                    lines.append(f"   limit ${float(ep_pr):.2f}, stop ${float(sp):.2f}")
+                    if _why_order_placed(trade):
+                        lines.append(f"   limit ${float(ep_pr):.2f}, stop ${float(sp):.2f}")
+                    else:
+                        # #716: with no order ever placed there was no limit — show the plan as a plan
+                        lines.append(f"   planned buy ${float(ep_pr):.2f}, stop ${float(sp):.2f} — no order was placed")
             elif status == "closed":
                 pnl_v = float(pnl or 0)
                 lines.append(f"💰 OUTCOME — closed P&L ${pnl_v:+,.2f}")
