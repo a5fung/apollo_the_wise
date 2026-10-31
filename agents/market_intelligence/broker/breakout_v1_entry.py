@@ -66,7 +66,7 @@ import asyncio
 import json
 import logging
 import math
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.broker.breakout_v1_volume_curve import CUM_SHARE
@@ -1093,8 +1093,62 @@ async def _check_stop_at_fill(row: dict, lrow: dict | None, now_et: datetime, m:
     return result
 
 
-async def _check_stop_at_fill_once(row: dict, lrow: dict | None, now_et: datetime, m: int) -> str:
-    ticker, tid, today = row["ticker"], row["id"], now_et.date()
+async def check_stop_at_fill_after_close(row: dict, now_et: datetime | None = None) -> str:
+    """Advisor item 3 (pre-merge 2026-10-31): the stop at the fill for a FILLED breakout paper row the minute job never
+    decided — a fill in the 15:55 minute has no tick after it (the disclosed race with the EOD cancel). Run by the
+    16:45 pass (`live_tracker.update_open_positions_live`, the breakout branch, before the day-0 facts), the next
+    pass that exists: the minute job's population is TODAY's rows for last night's list, so a row filled yesterday
+    is never in it, while the 16:45 pass already visits every open breakout row on its breakout day. Decides from
+    the breakout day's minute bars (`row['alert_date']`'s session, every minute complete) and the broker: the stop
+    leg it lowers is the 16:20 post-close refresh's GTC stop (the entry's DAY leg expired at the close); a pointer
+    still on a dead leg leaves the stop untouched (audited `breakout_v1_fill_stop_unreadable`) and the check runs
+    again the next evening — never a stop placed on top of one the row cannot see. A row already checked costs one
+    marker read. -> the check's action label ('fill_checked' | 'fill_stop_lowered' | 'fill_sold_too_wide' |
+    'fill_stop_kept' | 'fill_check_wait' | ...). NEVER raises (audited + paged)."""
+    ticker, tid = row["ticker"], row["id"]
+    if (row.get("signal_type") != STRATEGY_ID or row.get("account_mode") != ACCOUNT_MODE
+            or row.get("status") != "filled" or row.get("alert_date") is None):
+        return "untouched"
+    if await fill_stop_checked(tid):
+        return "fill_checked"
+    alert_date = row["alert_date"]
+    now_et = (now_et or datetime.now(_ET)).astimezone(_ET)
+    session_end = session_open(alert_date) + timedelta(minutes=N_SESSION_MINUTES)
+    m = N_SESSION_MINUTES if now_et >= session_end else market_minute(now_et)
+    try:
+        prev = await _previous_session(alert_date)
+        lrows = await bv1_get_list(prev) if prev else []
+        lrow = next((x for x in lrows if x["ticker"] == ticker), None)
+        result = await _check_stop_at_fill_once(row, lrow, now_et, m, session_date=alert_date)
+    except Exception as e:  # loud-ok: audited + paged; the evening pass must go on to the row's exit
+        logger.exception(f"breakout v1 {ticker}: the stop at the fill (after the close) crashed")
+        await log_audit_event("breakout_v1_entry_crash", f"{ticker} (stop at the fill, after the close) — "
+                                                         f"{type(e).__name__}: {str(e)[:300]}")
+        await _page_once(("crash_fill_close", tid),
+                         f"🚨 *{ticker}* breakout v1 stop-at-the-fill check (after the close) crashed — "
+                         f"{type(e).__name__}: {str(e)[:160]}")
+        return "crashed"
+    if result in ("fill_check_wait", "fill_lower_rejected", "fill_lower_unverified", "fill_sale_failed"):
+        # the evening pass has no "next minute": whatever `_lower_stop_after_fill` / `_sell_after_fill` audited as
+        # retried next minute is retried the NEXT EVENING. A `breakout_v1_stop_lower_rejected` from HERE is the
+        # signal the broker does not take a price-only replace of the GTC stop after hours — then this check must
+        # move to the next session's first minutes (not built; disclosed in the SSoT).
+        await log_audit_event("breakout_v1_fill_stop_unchecked_after_close",
+                              f"{ticker} #{tid}: the stop at the fill was not settled by the evening pass either "
+                              f"({result}) — the stop stands as it is; the check runs again the next evening",
+                              json.dumps({"trade_id": tid, "ticker": ticker, "alert_date": str(alert_date),
+                                          "result": result}))
+        await _page_once(("fill_unchecked_close", tid),
+                         f"⚠️ Breakout v1 *{ticker}*: the stop at the true low could not be settled after the close "
+                         f"either ({result}) — it is retried the next evening, not every minute; check the stop on "
+                         f"Alpaca by hand")
+    return result
+
+
+async def _check_stop_at_fill_once(row: dict, lrow: dict | None, now_et: datetime, m: int,
+                                   session_date: date | None = None) -> str:
+    # `session_date` (the after-close check): the breakout day's session, when `now_et` is no longer on it
+    ticker, tid, today = row["ticker"], row["id"], (session_date or now_et.date())
     order = (await alpaca.get_order(row["entry_order_id"], account_mode=ACCOUNT_MODE)
              if row.get("entry_order_id") else None)
     if order is not None and order.get("status") not in ("filled",):
@@ -1112,7 +1166,8 @@ async def _check_stop_at_fill_once(row: dict, lrow: dict | None, now_et: datetim
     last_completed = min(m - 1, N_SESSION_MINUTES - 1)
     if last_completed < fm:
         return "fill_check_wait"             # the fill minute is still printing — one minute after the fill
-    bars = await alpaca.get_minute_bars_range(ticker, session_open(today), now_et)
+    bars = await alpaca.get_minute_bars_range(
+        ticker, session_open(today), min(now_et, session_open(today) + timedelta(minutes=N_SESSION_MINUTES)))
     mins = bars_by_minute(bars, today, fm)
     if fm not in mins and m < fm + 1 + FILL_BAR_WAIT_MINUTES:
         return "fill_check_wait"             # the fill minute's bar is not published yet

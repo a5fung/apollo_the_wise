@@ -16,9 +16,13 @@ What lives here:
   * `resting_third` — is the +2R third still RESTING at the broker (a non-terminal `partial_exit` order on the trade)? The
     15:45 session-3 step never sells a second third beside one (his ruling 2026-10-29: follow what actually filled).
   * `cancel_resting_third` — the 15:45 session-3 step's cancel of that resting +2R limit before it sells the third at
-    the close (his ruling 2026-10-29 late, "option a"): the marker (`PLANNED_THIRD_CANCEL`, read by the trade stream and
-    the +2R poll — `planned_third_cancel_marked`), the cancel, the broker's confirmation; a fill in the race IS the third.
-    `reprotect_after_unsold_third` covers the third's shares from broker truth when the sale after a cancel fails.
+    the close (his ruling 2026-10-29 late, "option a"): the marker (`PLANNED_THIRD_CANCEL`, read by the trade stream —
+    `planned_third_cancel_marked` — and, fail-closed, by the +2R poll — `third_replacement_banned`), the cancel, the
+    broker's confirmation of the parent AND its sibling stop leg (bounded reads, a wall-clock deadline); a limit fill
+    in the race IS the third, a stop-leg fill is the third sold at its stop. A cancel the step cannot confirm (or a dead
+    order whose row it cannot close) WITHDRAWS the marker for the stream (`PLANNED_THIRD_CANCEL_WITHDRAWN`), so a late
+    settle is re-protected like any OCO-parent cancel; the poll's ban stands. `reprotect_after_unsold_third` covers the
+    third's shares from broker truth whenever the step did not sell (pre-merge 2026-10-31, findings 1-4).
 
 Telegram: failures page paper-prefixed, once per (trade, kind) per process; normal events are audit rows (the jobs' own
 decision messages are sent by the jobs).
@@ -28,6 +32,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from datetime import date, datetime, timedelta
 
 from agents.market_intelligence.broker import alpaca_client as alpaca
@@ -42,11 +47,21 @@ logger = logging.getLogger(__name__)
 
 N_SESSION_MINUTES = 390
 PLANNED_THIRD_CANCEL = "breakout_pp_planned_third_cancel"   # the marker the trade stream and the +2R poll read
-CANCEL_POLL_ATTEMPTS = 12        # ~3 s at 0.25 s: the broker's confirmation of the cancel
+# Pre-merge 2026-10-31 (findings 1+2, advisor item 1): the step WITHDRAWS the stream's "leave this cancel alone" when
+# it did NOT sell the third (an unconfirmed cancel, a dead order whose row could not be closed) — a LATE settle is then
+# an ordinary OCO-parent cancel for the stream (`_handle_oco_parent_cancel` re-protects from broker truth). The +2R
+# poll's ban is NOT withdrawn with it (`third_replacement_banned` reads the marker alone): one third ever stays his.
+PLANNED_THIRD_CANCEL_WITHDRAWN = "breakout_pp_planned_third_cancel_withdrawn"
+CANCEL_POLL_ATTEMPTS = 24        # the confirmation poll's cap in reads (x CANCEL_POLL_S between reads)
 CANCEL_POLL_S = 0.25
+CANCEL_READ_TIMEOUT_S = 3.0      # finding 3: each confirmation read is bounded (the SDK default is 30 s)
+CANCEL_DEADLINE_S = 8.0          # finding 3: the whole confirmation wait is bounded by the wall clock, so the
+#                                  session-3 sale goes out at 15:45, never at the close. The cancel REQUEST itself
+#                                  keeps the SDK's write timeout (alpaca_client.cancel_order takes none).
 MARKER_LOOKBACK_DAYS = 200       # a breakout trade's marker stays readable for its life (the poll guard)
 _DEAD_UNFILLED = frozenset({"canceled", "cancelled", "expired", "rejected", "done_for_day"})
 HISTORY_LOOKBACK_DAYS = 60       # calendar days before the breakout day: ~41 sessions, the 20-day needs 20
+_clock = time.monotonic          # the deadline's clock (patchable in tests)
 
 _paged: set[tuple] = set()
 
@@ -242,97 +257,225 @@ async def _record_planned_third_cancel(trade: dict, order_id: str) -> bool:
         return False
 
 
-async def planned_third_cancel_marked(trade_id, order_id: str | None = None) -> bool:
-    """Did the 15:45 session-3 step cancel this trade's resting +2R third on purpose (this exact order, when
-    `order_id` is given)? Matched in Python (detail is TEXT). A failed read -> False for the stream (it then re-protects
-    as before — the safe side for shares), and the poll's caller treats False as 'not cancelled' (it may re-place)."""
+async def _withdraw_planned_third_cancel(trade: dict, order_id: str, why: str) -> bool:
+    """Pre-merge 2026-10-31: the step did NOT sell the third it marked for — hand the order back to the stream. A row
+    naming the trade AND the order, newer than the marker: `planned_third_cancel_marked` then reads False for the
+    stream, so a cancel that settles late is re-protected through `_handle_oco_parent_cancel` (broker truth,
+    idempotent). The +2R poll's ban (`third_replacement_banned`) does NOT read this row. Never raises."""
     try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT event_type, detail FROM mi_audit_log WHERE event_type = $1 "
-                f"AND created_at > NOW() - INTERVAL '{int(MARKER_LOOKBACK_DAYS)} days' ORDER BY created_at DESC",
-                PLANNED_THIRD_CANCEL)
-        for row in rows or []:
-            if row["event_type"] != PLANNED_THIRD_CANCEL:
+        await log_audit_event(
+            PLANNED_THIRD_CANCEL_WITHDRAWN,
+            f"{trade.get('ticker')} #{trade.get('id')}: the planned cancel of the +2R third {str(order_id)[:8]} did "
+            f"not end in a sale ({why}) — a late settle is the stream's to re-protect",
+            json.dumps({"trade_id": trade.get("id"), "ticker": trade.get("ticker"), "order_id": str(order_id),
+                        "account_mode": trade.get("account_mode"), "why": why}))
+        return True
+    except Exception as e:  # loud-ok: the step still re-protects from broker truth itself (its caller)
+        logger.warning(f"breakout pp planned-third-cancel withdrawal write failed for trade {trade.get('id')}: {e}")
+        return False
+
+
+async def _marker_rows() -> list[dict]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT event_type, detail, created_at FROM mi_audit_log WHERE event_type = ANY($1::text[]) "
+            f"AND created_at > NOW() - INTERVAL '{int(MARKER_LOOKBACK_DAYS)} days' ORDER BY created_at DESC, id DESC",
+            [PLANNED_THIRD_CANCEL, PLANNED_THIRD_CANCEL_WITHDRAWN])
+    return list(rows or [])
+
+
+def _marker_matches(row: dict, trade_id, order_id: str | None) -> bool:
+    try:
+        d = json.loads(row["detail"])
+    except Exception:  # loud-ok: one malformed row is skipped, never the check
+        return False
+    return (str(d.get("trade_id")) == str(trade_id)
+            and (order_id is None or str(d.get("order_id")) == str(order_id)))
+
+
+async def planned_third_cancel_marked(trade_id, order_id: str | None = None) -> bool:
+    """THE STREAM's question: did the 15:45 session-3 step cancel this trade's resting +2R third on purpose (this exact
+    order, when `order_id` is given) AND is it still selling those shares? The NEWEST marker / withdrawal row naming
+    the trade (and order) decides: a marker -> True (leave the cancel alone), a withdrawal -> False (re-protect as any
+    OCO-parent cancel). Matched in Python (detail is TEXT). A failed read -> False (the stream then re-protects as
+    before — the safe side for shares). The +2R POLL must not read this: it reads `third_replacement_banned`."""
+    try:
+        for row in await _marker_rows():
+            if row["event_type"] not in (PLANNED_THIRD_CANCEL, PLANNED_THIRD_CANCEL_WITHDRAWN):
                 continue
-            try:
-                d = json.loads(row["detail"])
-            except Exception:  # loud-ok: one malformed row is skipped, never the check
-                continue
-            if str(d.get("trade_id")) == str(trade_id) and (order_id is None or str(d.get("order_id")) == str(order_id)):
-                return True
-    except Exception as e:  # loud-ok: logged; see the docstring for each caller's safe side
+            if _marker_matches(row, trade_id, order_id):
+                return row["event_type"] == PLANNED_THIRD_CANCEL
+    except Exception as e:  # loud-ok: logged; the stream's safe side is "not marked" (it re-protects)
         logger.warning(f"breakout pp planned-third-cancel marker read failed ({e}) — treated as NOT marked")
     return False
 
 
-def _cancel_state(order: dict | None) -> str:
-    """'filled' (any share filled — that fill IS the third) | 'dead' (terminal, nothing filled) | 'open' | 'unknown'."""
+async def third_replacement_banned(trade_id) -> bool:
+    """THE +2R POLL's question (finding 4, pre-merge 2026-10-31): may a +2R limit be placed on this trade? Banned once
+    the session-3 step has EVER marked a planned cancel on it (withdrawn or not — the intent to sell the third at the
+    close is the ban; one third ever is his ruling, and whether a third should be retried when the sale did not happen
+    is his open question). FAILS CLOSED: an unreadable log reads as banned — a limit that is not placed costs a poll,
+    a limit placed beside a sale is a second third."""
+    try:
+        for row in await _marker_rows():
+            if row["event_type"] == PLANNED_THIRD_CANCEL and _marker_matches(row, trade_id, None):
+                return True
+        return False
+    except Exception as e:  # loud-ok: fail closed — no +2R limit is placed on a trade whose marker cannot be read
+        logger.warning(f"breakout pp: marker read failed for trade {trade_id} ({e}) — the +2R limit is NOT placed")
+        await log_audit_event(          # the durable record: a breakout trade past +2R with no limit and rows of THIS
+            "breakout_pp_marker_unreadable",   # event is a failing read, not a ban (log_audit_event never raises)
+            f"trade #{trade_id}: the planned-cancel marker could not be read ({type(e).__name__}) — no +2R limit "
+            f"placed this poll (fail closed); the next poll reads again",
+            json.dumps({"trade_id": trade_id, "error": str(e)[:300]}))
+        return True
+
+
+def _filled(order: dict | None) -> bool:
+    if not order:
+        return False
+    status = str(order.get("status") or "").split(".")[-1].lower()
+    return float(order.get("filled_qty") or 0) > 0 or status == "filled"
+
+
+def _cancel_state(order: dict | None, leg: dict | None = None, leg_id: str | None = None) -> str:
+    """'filled' (any share of the limit filled — that fill IS the third) | 'stop_filled' (the OCO's sibling STOP leg
+    filled while the parent was being cancelled — the third sold at its stop; the parent reads cancelled with 0 filled,
+    which alone would look 'dead' — finding 2) | 'dead' (terminal, nothing filled, no leg fill) | 'open' | 'unknown'
+    (no read; or a dead parent whose leg exists but could not be read — never sold on)."""
     if not order:
         return "unknown"
-    status = str(order.get("status") or "").split(".")[-1].lower()
-    if float(order.get("filled_qty") or 0) > 0 or status == "filled":
+    if _filled(order):
         return "filled"
+    if _filled(leg):
+        return "stop_filled"
+    status = str(order.get("status") or "").split(".")[-1].lower()
     if status in _DEAD_UNFILLED:
-        return "dead"
+        return "unknown" if (leg_id and leg is None) else "dead"
     return "open"
 
 
-async def cancel_resting_third(trade: dict, order_id: str | None) -> dict:
-    """Cancel the resting +2R third `order_id` of `trade` and wait for the broker to confirm. ->
-    {"state", "order_id", "qty", "filled_qty"}:
-      * 'dead'    — cancelled with NOTHING filled: the order row is closed here (compare-and-set on it still being open,
-                    so `execute_partial_exit`'s dedup sees no open third) and `qty` (the cancelled order's own size) is
-                    the third to sell at the close;
-      * 'filled'  — it filled (in full or in part) before the cancel took: that fill IS the third — nothing more is sold;
-                    the trade stream books it (`finalize_partial_exit`, idempotent) and re-protects any unfilled rest;
-      * 'open'    — still live after the wait, or the cancel was refused: nothing sold (the limit keeps resting);
-      * 'unknown' — no order id, the marker could not be written, or the order is unreadable: nothing sold.
-    Paper only (the caller's wall). NEVER raises."""
-    out = {"state": "unknown", "order_id": order_id, "qty": None, "filled_qty": None}
-    if not order_id:
-        return out
-    mode = trade.get("account_mode")
+async def _stored_leg_id(order_id: str, trade_id) -> str | None:
+    """The OCO's sibling stop-leg id from the stored parent row (`raw_response` holds the placement response with its
+    legs — the record `_handle_oco_parent_cancel` reads too; a plain get_order is not nested). None for a plain limit."""
     try:
-        if not await _record_planned_third_cancel(trade, order_id):
-            return out
-        accepted = await alpaca.cancel_order(order_id, account_mode=mode)
-        order = None
-        for i in range(CANCEL_POLL_ATTEMPTS):
-            order = await alpaca.get_order(order_id, account_mode=mode)
-            out["state"] = _cancel_state(order)
-            if out["state"] in ("dead", "filled"):
-                break
-            if i < CANCEL_POLL_ATTEMPTS - 1:
-                await asyncio.sleep(CANCEL_POLL_S)
-        if order:
-            out["qty"] = float(order.get("qty") or 0) or None
-            out["filled_qty"] = float(order.get("filled_qty") or 0)
-        out["cancel_accepted"] = bool(accepted)
-        if out["state"] == "dead":
-            from agents.market_intelligence.broker.order_manager import PENDING_EXIT_TERMINAL_STATUSES
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            raw = await conn.fetchval(
+                "SELECT raw_response FROM mi_live_orders WHERE alpaca_order_id = $1 AND trade_id = $2",
+                str(order_id), trade_id)
+        if isinstance(raw, str):
+            raw = json.loads(raw)
+        return alpaca.extract_stop_leg_id(raw) if isinstance(raw, dict) else None
+    except Exception as e:  # loud-ok: the live read's legs are the fallback; no leg id -> the parent alone decides
+        logger.warning(f"breakout pp: stored leg read failed for {order_id} ({e})")
+        return None
+
+
+async def _close_order_row(order_id: str, trade_id) -> bool:
+    """The dead +2R limit's order row closed (compare-and-set on it still being open, so `execute_partial_exit`'s
+    dedup and `get_pending_exit_qty` stop seeing a resting third). One retry. False when both attempts raised."""
+    from agents.market_intelligence.broker.order_manager import PENDING_EXIT_TERMINAL_STATUSES
+    for attempt in range(2):
+        try:
             pool = await get_pool()
             async with pool.acquire() as conn:
                 await conn.execute("""
                     UPDATE mi_live_orders SET status = 'cancelled', cancelled_at = COALESCE(cancelled_at, NOW())
                     WHERE alpaca_order_id = $1 AND trade_id = $2 AND status != ALL($3::text[])
-                """, str(order_id), trade.get("id"), list(PENDING_EXIT_TERMINAL_STATUSES))
-            if not out["qty"]:
+                """, str(order_id), trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
+            return True
+        except Exception as e:  # loud-ok: retried once; the caller re-protects instead of trusting the DB
+            logger.warning(f"breakout pp: closing the order row {order_id} failed (attempt {attempt + 1}): {e}")
+            if attempt == 0:
+                await asyncio.sleep(CANCEL_POLL_S)
+    return False
+
+
+async def cancel_resting_third(trade: dict, order_id: str | None) -> dict:
+    """Cancel the resting +2R third `order_id` of `trade` and wait for the broker to confirm. ->
+    {"state", "order_id", "qty", "filled_qty", "cancel_sent", "cancel_accepted", "leg_id", "marker_withdrawn",
+     "row_update_error"}:
+      * 'dead'        — cancelled with NOTHING filled: the order row is closed here (`_close_order_row`, one retry) and
+                        `qty` (the cancelled order's own size) is the third to sell at the close. `row_update_error`
+                        set = the row could NOT be closed: the caller sells nothing (the dedup would refuse on the stale
+                        row) and re-protects (`reprotect_after_unsold_third`, which retries the close first);
+      * 'filled'      — it filled (in full or in part) before the cancel took: that fill IS the third — nothing more is
+                        sold; the trade stream books it (`finalize_partial_exit`, idempotent) and re-protects any rest;
+      * 'stop_filled' — the OCO's sibling STOP leg filled in the race: the third sold at its stop (finding 2) — nothing
+                        more is sold; the leg's own fill event books it. The parent's row is closed (it is dead);
+      * 'open'        — still live after the wait (CANCEL_DEADLINE_S / CANCEL_POLL_ATTEMPTS), or the cancel was
+                        refused: nothing sold. The marker is WITHDRAWN (`marker_withdrawn`), so a cancel that settles
+                        LATER is re-protected by the stream like any OCO-parent cancel; the caller also re-protects
+                        from broker truth at once (a no-op while the limit really rests — its open row nets the third
+                        — and the cover when the stream already closed the row and was told to leave it);
+      * 'unknown'     — no order id / the marker could not be written (nothing cancelled, `cancel_sent` False), or
+                        the order is unreadable, or a dead parent whose stop leg could not be read: nothing sold; the
+                        marker withdrawn when a cancel was sent.
+    Each confirmation read is bounded (CANCEL_READ_TIMEOUT_S) and the wait by the wall clock (finding 3). Paper only
+    (the caller's wall). NEVER raises."""
+    out = {"state": "unknown", "order_id": order_id, "qty": None, "filled_qty": None, "cancel_sent": False,
+           "cancel_accepted": None, "leg_id": None, "marker_withdrawn": False, "row_update_error": None}
+    if not order_id:
+        return out
+    mode, tid = trade.get("account_mode"), trade.get("id")
+    try:
+        if not await _record_planned_third_cancel(trade, order_id):
+            return out
+        out["leg_id"] = leg_id = await _stored_leg_id(order_id, tid)
+        accepted = await alpaca.cancel_order(order_id, account_mode=mode)
+        out["cancel_sent"], out["cancel_accepted"] = True, bool(accepted)
+        order, leg = None, None
+        t0 = _clock()
+        for i in range(CANCEL_POLL_ATTEMPTS):
+            order = await alpaca.get_order(order_id, account_mode=mode, timeout=CANCEL_READ_TIMEOUT_S)
+            if order and not leg_id:
+                leg_id = out["leg_id"] = alpaca.extract_stop_leg_id(order)      # a nested read, when the SDK gives one
+            leg = None
+            if order and leg_id and not _filled(order) and _cancel_state(order) != "open":
+                # the parent reads dead with nothing filled: was it the OCO unwinding on a STOP-leg fill?
+                leg = await alpaca.get_order(leg_id, account_mode=mode, timeout=CANCEL_READ_TIMEOUT_S)
+            out["state"] = _cancel_state(order, leg, leg_id)
+            if out["state"] in ("dead", "filled", "stop_filled"):
+                break
+            if i >= CANCEL_POLL_ATTEMPTS - 1 or _clock() - t0 >= CANCEL_DEADLINE_S:
+                break
+            await asyncio.sleep(CANCEL_POLL_S)
+        if order:
+            out["qty"] = float(order.get("qty") or 0) or None
+            out["filled_qty"] = float(order.get("filled_qty") or 0)
+        # a dead parent's row is closed whatever its leg did (the leg's fill, if any, is the stream's to book; the
+        # coverage repair then sizes from the broker's position, so a closed dead row is right in every case)
+        if order and _cancel_state(order) == "dead":
+            if not await _close_order_row(order_id, tid):
+                out["row_update_error"] = "the order row could not be closed"
+            if out["state"] == "dead" and not out["qty"]:
                 out["state"] = "unknown"        # a dead order with no size: never guess the third
     except Exception as e:  # loud-ok: audited by the caller from the returned state; nothing sold
-        logger.warning(f"breakout pp: cancelling the resting third {order_id} of trade {trade.get('id')} raised: {e}")
-        out["state"] = "unknown" if out["state"] != "filled" else "filled"
+        logger.warning(f"breakout pp: cancelling the resting third {order_id} of trade {tid} raised: {e}")
+        if out["state"] not in ("filled", "stop_filled"):
+            out["state"] = "unknown"
         out["error"] = f"{type(e).__name__}: {e}"[:300]
+    # the step is NOT selling the third it marked for: hand a late settle back to the stream (findings 1 + 2)
+    if out["cancel_sent"] and (out["state"] in ("open", "unknown") or out.get("row_update_error")):
+        why = out.get("row_update_error") or f"cancel {out['state']} after the wait"
+        out["marker_withdrawn"] = await _withdraw_planned_third_cancel(trade, order_id, why)
     return out
 
 
-async def reprotect_after_unsold_third(trade: dict) -> str | None:
-    """After a cancelled +2R third whose sale at the close did not go through, the third's shares may have no stop (the
+async def reprotect_after_unsold_third(trade: dict, dead_order_id: str | None = None) -> str | None:
+    """After a +2R third the step marked for cancel but did not sell, the third's shares may have no stop (the
     cancelled OCO took its sibling stop with it, and the marker kept the trade stream from re-protecting). Converge from
-    BROKER truth with the shared `_ensure_stop_coverage` (idempotent; a no-op when covered), at the row's stop."""
+    BROKER truth with the shared `_ensure_stop_coverage` (idempotent; a no-op when covered — while the limit really
+    rests, its open order row nets the third out of the target and nothing is placed on top of its live stop leg), at
+    the row's stop. `dead_order_id` (the row-update failure path): the dead limit's row is closed FIRST (one more
+    compare-and-set) so `get_pending_exit_qty` stops counting a dead order as cover."""
     from agents.market_intelligence.broker.order_manager import _ensure_stop_coverage
     try:
+        if dead_order_id and not await _close_order_row(dead_order_id, trade.get("id")):
+            logger.error(f"breakout pp: the dead +2R limit {dead_order_id} of trade {trade.get('id')} still could not "
+                         f"be closed — the coverage repair reads it as pending")
         mode = trade.get("account_mode")
         pos = await alpaca.get_position(trade["ticker"], account_mode=mode)
         qty = float(pos.get("qty")) if pos and pos.get("qty") is not None else 0.0

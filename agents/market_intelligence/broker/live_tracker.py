@@ -49,6 +49,7 @@ from agents.market_intelligence.broker import breakout_pp_exit as _bpp
 from agents.market_intelligence.broker import breakout_pp_rules as _bpp_rules
 from agents.market_intelligence.broker.order_manager import (
     BREAKOUT_PP_EXIT_RULE,
+    BREAKOUT_V1_SIGNAL_TYPE as _BREAKOUT_V1_SIGNAL_TYPE,
     DEPTH_EXIT_RULE,
     depth_sale_words,
     profit_take_shares,
@@ -1051,6 +1052,24 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
             if not await _bpp.paper_wall(trade, "16:45"):
                 results.append({"ticker": ticker, "action": "breakout_pp_refused"})
                 continue
+            # Advisor item 3 (pre-merge 2026-10-31): a fill the minute job could not check (a 15:55 fill has no
+            # tick after it) gets his stop-at-the-fill check HERE, the next pass that runs — BEFORE the day-0 facts,
+            # which read `hard_stop` (a lowered stop changes the +2R target they model). A row already checked is
+            # one marker read; a sale (too wide) ends this row's pass; a lowered stop re-reads the row.
+            if trade.get("signal_type") == _BREAKOUT_V1_SIGNAL_TYPE:
+                from agents.market_intelligence.broker.breakout_v1_entry import check_stop_at_fill_after_close
+                _chk = await check_stop_at_fill_after_close(
+                    trade, now_et=datetime.combine(today, time(16, 45), tzinfo=_ET_ZONE))
+                if _chk == "fill_sold_too_wide":
+                    results.append({"ticker": ticker, "action": "breakout_v1_fill_stop_sold"})
+                    continue
+                if _chk == "fill_stop_lowered":
+                    async with pool.acquire() as conn:
+                        _fresh = await conn.fetchrow(
+                            "SELECT stop_price, hard_stop, stop_order_id, remaining_shares, status, "
+                            "risk_dollars_actual FROM mi_live_trades WHERE id = $1", trade["id"])
+                    if _fresh:
+                        trade.update(dict(_fresh))
             if _bpp.coerce_facts(trade.get("breakout_day0_pp")) is None and today >= trade["alert_date"]:
                 _facts = await _bpp.ensure_day0_facts(trade)
                 if _facts is not None:
@@ -1417,7 +1436,9 @@ async def _breakout_pp_session3(trade: dict, today: date, state: dict, today_bar
     if decision == _bpp_rules.CANCEL_RESTING_THIRD:
         cx = await _bpp.cancel_resting_third(trade, resting_oid)
         _cx_detail = {"trade_id": trade["id"], "ticker": ticker, "last": last, "fill": fill,
-                      "resting_order_id": resting_oid, **{k: cx.get(k) for k in ("state", "qty", "filled_qty")}}
+                      "resting_order_id": resting_oid,
+                      **{k: cx.get(k) for k in ("state", "qty", "filled_qty", "leg_id", "cancel_sent",
+                                                "cancel_accepted", "marker_withdrawn", "row_update_error")}}
         if cx["state"] == "filled":
             # the +2R limit filled before the cancel took: THAT fill is the third (the stream books it) — no second
             await log_audit_event(
@@ -1427,18 +1448,45 @@ async def _breakout_pp_session3(trade: dict, today: date, state: dict, today_bar
                 json.dumps(_cx_detail),
             )
             return {"ticker": ticker, "action": "breakout_pp_third_filled_in_race", "session": 3}
-        if cx["state"] != "dead":
+        if cx["state"] == "stop_filled":
+            # finding 2 (pre-merge 2026-10-31): the OCO's sibling STOP leg filled in the race — the third sold at its
+            # stop; the parent reads cancelled with nothing filled. Nothing more is sold (the leg's fill is booked by
+            # the stream's stop-fill handler through its own 'stop_loss' order row).
+            await log_audit_event(
+                "breakout_pp_third_stopped_in_race",
+                f"{ticker}: session 3 — the resting +2R third's own stop leg {str(cx.get('leg_id') or '?')[:8]} "
+                f"filled while the limit was being cancelled — the third sold at its stop; nothing more sold",
+                json.dumps(_cx_detail),
+            )
+            return {"ticker": ticker, "action": "breakout_pp_third_stopped_in_race", "session": 3}
+        if cx["state"] != "dead" or cx.get("row_update_error"):
+            # findings 1 + 2 (pre-merge 2026-10-31): the step is NOT selling the third it marked for — never leave it
+            # to the 5-minute coverage repair. The marker is withdrawn inside cancel_resting_third (a LATE settle is
+            # then the stream's ordinary OCO-parent re-protect) and the cover is converged from broker truth NOW:
+            # a no-op while the limit really rests (its open order row nets the third; nothing is placed on top of
+            # its live stop leg — that would be two sells for one third), the cover when the cancel already settled
+            # and the stream was told to leave it. A dead limit whose row could not be closed is closed again here
+            # first, so the repair stops counting it as cover.
+            cov = None
+            if cx.get("cancel_sent"):
+                cov = await _bpp.reprotect_after_unsold_third(
+                    trade, dead_order_id=(resting_oid if cx.get("row_update_error") else None))
+            _cx_detail["coverage"] = str(cov)[:300] if cov else None
+            why = cx.get("row_update_error") or cx["state"]
             await log_audit_event(
                 "breakout_pp_third_cancel_unconfirmed",
                 f"{ticker}: session 3 at ${last:.2f}, above the fill — the resting +2R third "
-                f"{str(resting_oid or '?')[:8]} could NOT be confirmed cancelled ({cx['state']}) — no third sold",
+                f"{str(resting_oid or '?')[:8]} could NOT be confirmed cancelled and closed ({why}) — no third sold; "
+                f"cover converged from broker truth ({cov or 'already met / limit still resting'})",
                 json.dumps(_cx_detail),
             )
             try:
                 await send_telegram_message(
                     f"{mode_prefix(trade.get('account_mode'))}⚠️ *Breakout third: {ticker}*\n"
-                    f"day 3 · ${last:.2f}{_r} — the resting +2R limit could not be confirmed cancelled "
-                    f"({cx['state']}), so the day-3 third was NOT sold. Check the order on Alpaca.")
+                    f"day 3 · ${last:.2f}{_r} — the resting +2R limit could not be confirmed cancelled ({why}). "
+                    f"No third was sold today, and the +2R limit will not be re-placed. "
+                    f"{cov or 'The shares are covered (the limit still rests, or its stop was put back).'} "
+                    f"Check the order on Alpaca.")
             except Exception:  # loud-ok: audited above
                 logger.warning(f"breakout pp cancel-unconfirmed notify failed for {ticker}", exc_info=True)
             return {"ticker": ticker, "action": "breakout_pp_third_cancel_unconfirmed", "session": 3}
@@ -1499,8 +1547,8 @@ async def _breakout_pp_session3(trade: dict, today: date, state: dict, today_bar
             try:
                 await send_telegram_message(
                     f"{mode_prefix(trade.get('account_mode'))}⚠️ *Breakout third NOT sold: {ticker}*\n"
-                    f"The +2R limit was cancelled but the day-3 sale of {shares} sh failed. "
-                    f"{cov or 'Stop cover already met.'} The +2R limit will not be re-placed.")
+                    f"The +2R limit was cancelled but the day-3 sale of {shares} sh failed. No third was sold "
+                    f"today. {cov or 'Stop cover already met.'} The +2R limit will not be re-placed.")
             except Exception:  # loud-ok: audited above
                 logger.warning(f"breakout pp unsold-third notify failed for {ticker}", exc_info=True)
         return {"ticker": ticker, "action": "partial_submitted" if ok else "partial_failed", "shares": int(shares)}

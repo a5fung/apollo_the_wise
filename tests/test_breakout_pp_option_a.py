@@ -41,8 +41,17 @@ BREAKOUT = {"exit_rule": "breakout_pp", "signal_type": "breakout_v1"}
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # (ii) placement never moves a breakout row's stop — and an EP row's placement is unchanged
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _no_ban(monkeypatch):
+    """The +2R placement's under-lock ban read (finding 4) — not marked, so the placement goes on (the harnesses patch
+    `om.get_pool`, not the exit module's)."""
+    ban = AsyncMock(return_value=False)
+    monkeypatch.setattr(bpe, "third_replacement_banned", ban)
+    return ban
+
+
 @pytest.mark.asyncio
-async def test_resting_placement_does_not_move_a_breakout_rows_stop():
+async def test_resting_placement_does_not_move_a_breakout_rows_stop(monkeypatch):
+    ban = _no_ban(monkeypatch)
     h = r548._harness(om, be_result="be_stop_id", get_order_fake=r548._get_order_all_live, trade_overrides=BREAKOUT)
     ok = await r548._run(om, h)
     assert ok is True
@@ -55,11 +64,13 @@ async def test_resting_placement_does_not_move_a_breakout_rows_stop():
     held = [d for e, _s, d in h["audited"] if e == "breakout_pp_stop_held_at_placement"]
     assert json.loads(held[0])["stop_price"] == r548.STOP_PRICE
     assert not [c for c in h["set_stop"].call_args_list if c.kwargs.get("reason") == "breakeven_replacement"]
+    ban.assert_awaited_once_with(r548.TRADE_ID)                   # the placement re-checked the ban under the lock
 
 
 @pytest.mark.asyncio
-async def test_resting_placement_on_an_ep_row_still_moves_the_stop_to_breakeven():
+async def test_resting_placement_on_an_ep_row_still_moves_the_stop_to_breakeven(monkeypatch):
     """The EP (magna53) row in the same harness: Step 2b runs exactly as before — the control for the gate above."""
+    ban = _no_ban(monkeypatch)
     for st in ("magna53", "smallcap_ep"):
         h = r548._harness(om, be_result="be_stop_id", get_order_fake=r548._get_order_all_live,
                           trade_overrides={"signal_type": st})
@@ -69,10 +80,12 @@ async def test_resting_placement_on_an_ep_row_still_moves_the_stop_to_breakeven(
                 if "SET stop_price" in c.args[0] and c.args[1:] == (r548.TRADE_ID, r548.BREAKEVEN_PRICE)]
         events = [e for e, *_ in h["audited"]]
         assert "partial_exit_breakeven_armed" in events and "breakout_pp_stop_held_at_placement" not in events
+    ban.assert_not_awaited()                                       # an EP row never reads the breakout ban
 
 
 @pytest.mark.asyncio
-async def test_the_oco_sibling_stop_of_a_breakout_third_sits_at_the_current_stop_not_breakeven():
+async def test_the_oco_sibling_stop_of_a_breakout_third_sits_at_the_current_stop_not_breakeven(monkeypatch):
+    _no_ban(monkeypatch)
     h = oco._harness(om, trade_overrides=dict(BREAKOUT, account_mode="paper"))
     assert await oco._run(om, h) is True
     args = h["oco_sell"].await_args.args
@@ -138,9 +151,13 @@ def _fin_row(**over):
     return r
 
 
-def _wire_fin(monkeypatch, row, *, order_qty=3.0):
+def _wire_fin(monkeypatch, row, *, order_qty=3.0, order_status="filled"):
     pool, conn = make_mock_pool()
-    conn.fetchrow = AsyncMock(return_value=row)
+    order_row = {"qty": order_qty, "status": order_status} if order_qty is not None else None
+
+    async def _fetchrow(sql, *a):
+        return row if "FROM mi_live_trades" in sql else order_row
+    conn.fetchrow = AsyncMock(side_effect=_fetchrow)
     conn.fetchval = AsyncMock(return_value=order_qty)
     conn.execute = AsyncMock(return_value="UPDATE 1")
     audited = []
@@ -168,6 +185,7 @@ def test_an_ep_third_that_fills_takes_no_extra_step(monkeypatch):
     asyncio.run(om.finalize_partial_exit(701, 3, 10.70, "lim-9"))
     upd.assert_not_awaited()
     assert conn.fetchrow.await_count == 1 and conn.fetchval.await_count == 0     # not one extra read on an EP row
+    assert all("FROM mi_live_trades" in c.args[0] for c in conn.fetchrow.await_args_list)
     assert not [e for e, *_ in audited if e.startswith("breakout_pp")]
 
 
@@ -222,7 +240,8 @@ def _wire_poll(monkeypatch, row, *, marked):
     epe = AsyncMock(return_value=True)
     monkeypatch.setattr(om, "execute_partial_exit", epe)
     mark = AsyncMock(return_value=marked)
-    monkeypatch.setattr(bpe, "planned_third_cancel_marked", mark)
+    monkeypatch.setattr(bpe, "third_replacement_banned", mark)          # the poll's fail-CLOSED read (finding 4)
+    monkeypatch.setattr(bpe, "planned_third_cancel_marked", AsyncMock(side_effect=AssertionError("the stream's reader")))
 
     class _Now(datetime):
         @classmethod
@@ -313,6 +332,167 @@ def test_the_marker_names_the_trade_and_the_order_and_a_failed_read_is_not_marke
     assert asyncio.run(bpe.planned_third_cancel_marked(701)) is True
     assert asyncio.run(bpe.planned_third_cancel_marked(701, "lim-8")) is False
     assert asyncio.run(bpe.planned_third_cancel_marked(702)) is False
-    assert conn.fetch.await_args.args[1] == bpe.PLANNED_THIRD_CANCEL
+    assert sorted(conn.fetch.await_args.args[1]) == sorted([bpe.PLANNED_THIRD_CANCEL,
+                                                           bpe.PLANNED_THIRD_CANCEL_WITHDRAWN])
     monkeypatch.setattr(bpe, "get_pool", AsyncMock(side_effect=RuntimeError("db down")))
     assert asyncio.run(bpe.planned_third_cancel_marked(701, "lim-9")) is False
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# pre-merge 2026-10-31 — finding 5: a third reported through partial-fill events sizes the stop on the whole rest
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def test_a_third_filled_in_full_through_partial_fill_events_is_marked_filled_before_the_stop_is_sized(monkeypatch):
+    """The stream's terminal partial-fill path leaves the order row 'partially_filled' (cum_filled == qty), which
+    `get_pending_exit_qty` still counts as a pending exit — `update_stop` would then size the stop as remaining MINUS
+    the third again. The row is set 'filled' (compare-and-set) BEFORE the move; the move still happens."""
+    conn, audited, upd = _wire_fin(monkeypatch, _fin_row(), order_qty=3.0, order_status="partially_filled")
+    asyncio.run(om.finalize_partial_exit(701, 3, 10.70, "lim-9"))
+    cas = [c for c in conn.execute.await_args_list if "UPDATE mi_live_orders SET status = 'filled'" in c.args[0]]
+    assert len(cas) == 1 and cas[0].args[1] == "lim-9" and "status = 'partially_filled'" in cas[0].args[0]
+    upd.assert_awaited_once_with(701, 10.30, stop_source="breakeven")
+    events = [e for e, *_ in audited]
+    assert events.index("breakout_pp_third_row_marked_filled") < events.index("breakout_pp_stop_to_fill_after_third")
+    # a REAL partial (cum < qty) still defers, and the row is not touched
+    conn, audited, upd = _wire_fin(monkeypatch, _fin_row(), order_qty=3.0, order_status="partially_filled")
+    asyncio.run(om.finalize_partial_exit(701, 2, 10.70, "lim-9"))
+    upd.assert_not_awaited()
+    assert not [c for c in conn.execute.await_args_list if "mi_live_orders" in c.args[0]]
+    assert any(e == "breakout_pp_stop_to_fill_deferred" for e, *_ in audited)
+    # a row already 'filled': no CAS, the move as before
+    conn, audited, upd = _wire_fin(monkeypatch, _fin_row(), order_qty=3.0, order_status="filled")
+    asyncio.run(om.finalize_partial_exit(701, 3, 10.70, "lim-9"))
+    upd.assert_awaited_once()
+    assert not [c for c in conn.execute.await_args_list if "mi_live_orders" in c.args[0]]
+
+
+def test_the_locked_finalizer_is_annotated_to_return_the_stop_to_fill_flag():
+    """Finding 7: '-> None' hid the flag the caller depends on; a reader or type checker dropping the return would
+    silently disable the stop move after a third."""
+    import inspect
+    assert inspect.signature(om._finalize_partial_exit_locked).return_annotation == "str | None"
+    assert om._BREAKOUT_PP_STOP_TO_FILL == "breakout_pp_stop_to_fill"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# pre-merge 2026-10-31 — finding 4: one third ever, re-checked UNDER THE LOCK (the race with the session-3 sale)
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+@pytest.mark.asyncio
+async def test_a_breakout_placement_is_refused_under_the_lock_once_the_session3_step_marked_its_cancel(monkeypatch):
+    """The poll read the marker as absent, the 15:45 step wrote it (and sold at the close) before the poll's
+    execute_partial_exit took the lock: the ban is re-read under the lock and the +2R limit is NOT placed — no stop
+    touched, no order sent, one audit row."""
+    ban = AsyncMock(return_value=True)
+    monkeypatch.setattr(bpe, "third_replacement_banned", ban)
+    h = r548._harness(om, be_result="be_stop_id", get_order_fake=r548._get_order_all_live, trade_overrides=BREAKOUT)
+    assert await r548._run(om, h) is False
+    assert h["calls"] == []
+    ban.assert_awaited_once_with(r548.TRADE_ID)
+    refused = [d for e, _s, d in h["audited"] if e == "breakout_pp_partial_refused_under_lock"]
+    assert len(refused) == 1 and "planned cancel" in json.loads(refused[0])["reason"]
+
+
+@pytest.mark.asyncio
+async def test_a_breakout_partial_is_refused_under_the_lock_once_a_third_has_sold(monkeypatch):
+    """`partial_taken` flipped between the caller's read and the lock (the session-3 market sale filled, or the +2R
+    limit did): no second third, on either path (a placement or a market sale)."""
+    ban = AsyncMock(return_value=False)
+    monkeypatch.setattr(bpe, "third_replacement_banned", ban)
+    h = r548._harness(om, be_result="be_stop_id", get_order_fake=r548._get_order_all_live,
+                      trade_overrides=dict(BREAKOUT, partial_taken=True))
+    assert await r548._run(om, h) is False
+    assert h["calls"] == [] and not ban.await_count
+    assert [e for e, *_ in h["audited"] if e == "breakout_pp_partial_refused_under_lock"] == [
+        "breakout_pp_partial_refused_under_lock"]
+    h = r548._harness(om, be_result="be_stop_id", get_order_fake=r548._get_order_all_live,
+                      trade_overrides=dict(BREAKOUT, partial_taken=True))        # the market-mode sale, same answer
+    with ExitStack() as stack:
+        for p in h["patches"]:
+            stack.enter_context(p)
+        stack.enter_context(patch.object(om, "_profit_take_resting_limit_enabled", AsyncMock(return_value=False)))
+        assert await om.execute_partial_exit(r548.TRADE_ID, r548.SHARES, force=True) is False
+    assert h["calls"] == [] and not ban.await_count
+    assert [e for e, *_ in h["audited"] if e == "breakout_pp_partial_refused_under_lock"] == [
+        "breakout_pp_partial_refused_under_lock"]
+
+
+@pytest.mark.asyncio
+async def test_the_session3_market_sale_runs_past_its_own_marker_and_an_ep_row_never_reads_it(monkeypatch):
+    """The 15:45 step writes the marker and THEN sells the third at market (no limit_price): the ban must not refuse
+    the step's own sale. An EP row never reads the ban at all."""
+    ban = AsyncMock(return_value=True)
+    monkeypatch.setattr(bpe, "third_replacement_banned", ban)
+    h = r548._harness(om, be_result="be_stop_id", get_order_fake=r548._get_order_all_live, trade_overrides=BREAKOUT)
+    with ExitStack() as stack:
+        for p in h["patches"]:
+            stack.enter_context(p)
+        stack.enter_context(patch.object(om, "_profit_take_resting_limit_enabled", AsyncMock(return_value=False)))
+        assert await om.execute_partial_exit(r548.TRADE_ID, r548.SHARES, force=True) is True
+    assert h["calls"][0] == ("replace", "old_stop_id", r548.NEW_REMAINING, r548.STOP_PRICE)
+    ban.assert_not_awaited()
+    h = r548._harness(om, be_result="be_stop_id", get_order_fake=r548._get_order_all_live,
+                      trade_overrides={"signal_type": "magna53"})
+    assert await r548._run(om, h) is True
+    ban.assert_not_awaited()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# pre-merge 2026-10-31 — findings 1 + 2: a withdrawn marker hands a LATE settle back to the stream's re-protect
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _marker_log(monkeypatch, rows):
+    conn = MagicMock()
+    conn.fetch = AsyncMock(return_value=rows)
+    pool, _c = make_mock_pool()
+    pool.acquire.return_value.__aenter__.return_value = conn
+    monkeypatch.setattr(bpe, "get_pool", AsyncMock(return_value=pool))
+
+
+def test_the_stream_re_protects_a_late_settle_once_the_step_withdrew_its_marker_and_never_doubles_a_stop(monkeypatch):
+    """The step's cancel was unconfirmed at 15:45 (marker withdrawn, cover converged from broker truth); the cancel
+    settles minutes later and its event reaches the stream. The real reader sees the withdrawal (newer than the
+    marker): NOT planned -> the OCO-parent path -> the sibling leg is dead -> `_ensure_stop_coverage` from broker
+    truth (idempotent: after the step's own re-protect it reads the target met and places nothing). No bare
+    place_stop_order on top of anything, ever."""
+    marker = {"event_type": bpe.PLANNED_THIRD_CANCEL, "detail": json.dumps({"trade_id": 701, "order_id": "lim-9"})}
+    withdrawn = {"event_type": bpe.PLANNED_THIRD_CANCEL_WITHDRAWN,
+                 "detail": json.dumps({"trade_id": 701, "order_id": "lim-9"})}
+    h = cxh._wire(monkeypatch, pending_exit_row=cxh._pending(raw=BREAKOUT_OCO_RAW, trade_id=701),
+                  trade_row={"id": 701, "ticker": "BRK", "stop_price": 10.10, "signal_type": "breakout_v1"},
+                  leg_order={"id": "leg-9", "status": "canceled"}, position_qty=9.0)
+    _marker_log(monkeypatch, [withdrawn, marker])                                 # newest first
+    asyncio.run(ts._handle_cancel_or_reject(cxh._cancel_data(order_id="lim-9"), "canceled", "paper"))
+    h["ensure_cov"].assert_awaited_once_with(701, "ETON", 9.0, 10.10, "breakout_v1", "paper")
+    h["place_stop"].assert_not_awaited()
+    h["cancel"].assert_not_awaited()
+    assert [e for e, *_ in h["audited"]] == ["oco_parent_cancelled_unfilled"]
+    # the marker alone (the step IS selling): left alone, exactly as before
+    h = cxh._wire(monkeypatch, pending_exit_row=cxh._pending(raw=BREAKOUT_OCO_RAW, trade_id=701),
+                  trade_row={"id": 701, "ticker": "BRK", "stop_price": 10.10, "signal_type": "breakout_v1"},
+                  leg_order={"id": "leg-9", "status": "canceled"}, position_qty=9.0)
+    _marker_log(monkeypatch, [marker])
+    asyncio.run(ts._handle_cancel_or_reject(cxh._cancel_data(order_id="lim-9"), "canceled", "paper"))
+    h["ensure_cov"].assert_not_awaited()
+    assert [e for e, *_ in h["audited"]] == ["breakout_pp_planned_third_cancel_seen"]
+
+
+@pytest.mark.asyncio
+async def test_the_coverage_repair_places_nothing_when_the_live_stop_already_meets_the_target(monkeypatch):
+    """The idempotency the late-settle path rests on, on the real `_ensure_stop_coverage_outcome`: the step already
+    widened the 2/3's stop to the whole position; the stream's later pass reads it covered and sends NO order."""
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def _lock(_tid):
+        yield True
+    monkeypatch.setattr(om, "_trade_advisory_try_lock", _lock)
+    monkeypatch.setattr(om, "get_pending_exit_qty", AsyncMock(return_value=0))
+    live_stop = {"id": "stop-9", "symbol": "BRK", "side": "sell", "type": "stop", "status": "accepted", "qty": 9.0,
+                 "stop_price": 10.10, "order_class": "simple"}
+    monkeypatch.setattr(om.alpaca, "get_open_orders", AsyncMock(return_value=[live_stop]))
+    place = AsyncMock()
+    replace = AsyncMock()
+    monkeypatch.setattr(om.alpaca, "place_stop_order", place)
+    monkeypatch.setattr(om.alpaca, "replace_order", replace)
+    out = await om._ensure_stop_coverage_outcome(701, "BRK", 9.0, 10.10, "breakout_v1", "paper")
+    assert out.status == om.COVERAGE_COVERED and out.message is None
+    place.assert_not_awaited()
+    replace.assert_not_awaited()

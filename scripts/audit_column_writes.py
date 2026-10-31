@@ -103,12 +103,19 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # until `mi_strategies.breakeven_arm_r` is set; docs/setups/exit_discipline.md.
     "stop_price":         {"entry_pipeline._skip", "order_manager.update_stop", "order_manager.check_fills",
                            "order_manager.execute_partial_exit", "order_manager._mark_breakeven_armed"},
-    # hard_stop: SINGLE WRITER (entry_pipeline._skip INSERT only). Per Gate 3
-    # initial-stop modeling (2026-05-18) — hard_stop is the immutable
-    # risk-basis for R-expectancy calc, set once at INSERT, never updated.
+    # hard_stop: the INSERT writer (entry_pipeline._skip) for every strategy. Per Gate 3
+    # initial-stop modeling (2026-05-18) — hard_stop is the risk-basis for the
+    # R-expectancy calc, set at INSERT and never updated BY THE SHARED PATHS.
     # check_fills removed as a writer 2026-05-18 (previously wrote
     # hard_stop = trade["stop_price"] which could corrupt initial basis
     # if the polling backup ran after a same-tick trail update).
+    # ⚠ NOT single-writer for 'breakout_v1' PAPER rows (his ruling 2026-10-29, "the stop at the fill";
+    # pre-merge 2026-10-31, advisor item 2): two compare-and-set writers in broker/breakout_v1_entry.py
+    # are added below — `_set_unsubmitted_order` BEFORE the fill (the stop re-priced to a new day low
+    # while the buy rests) and `_record_stop_lowered` ONCE after the fill (lowered to the true low
+    # through the fill minute, never raised, never beside a third). The pp exit reads hard_stop for R,
+    # the +2R target and the stall cut, so a lowered stop changes R mid-trade BY DESIGN (the harness in
+    # tests/test_breakout_pp_exit.py exercises a trade whose stop was lowered after the fill).
     "hard_stop":          {"entry_pipeline._skip"},
     # #600 fork 2 (2026-09-04) — the dead stop's last broker-held price, preserved at the
     # moment `_handle_cancel_or_reject` nulls the pointer, so a later re-protect can floor

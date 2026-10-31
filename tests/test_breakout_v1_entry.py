@@ -1547,3 +1547,77 @@ def test_the_after_fill_exit_reason_is_in_the_vocabulary_and_humanized():
     from agents.market_intelligence.broker import skip_reasons as sr
     assert sr.SETUP_STOP_TOO_WIDE_AFTER_FILL == "setup:stop_too_wide_after_fill"
     assert sr.humanize(sr.SETUP_STOP_TOO_WIDE_AFTER_FILL + ": x") != sr.SETUP_STOP_TOO_WIDE_AFTER_FILL + ": x"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# pre-merge 2026-10-31 (advisor item 3) — a 15:55 fill is checked by the 16:45 pass, on the refreshed GTC stop
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+LATE_FILL_AT = datetime(TODAY.year, TODAY.month, TODAY.day, 15, 55, 3, tzinfo=_ET)       # minute 385: no tick after it
+EVENING = datetime(TODAY.year, TODAY.month, TODAY.day, 16, 45, tzinfo=_ET)
+
+
+def _late_fill_bars(low385: float):
+    return _flat_bars(385, low=9.80, high=9.95, vol=60_000.0) + [_bar(385, 9.95, 10.05, low385, 10.02, 90_000.0)]
+
+
+def _evening_world(monkeypatch, *, low385=9.70, pointer="gtc-1", gtc_status="accepted", **kw):
+    """The breakout day's evening: the entry's DAY stop leg EXPIRED at the close and the 16:20 post-close refresh
+    placed a simple GTC stop at the row's (placed) stop — the row's pointer is on it (`pointer='gtc-1'`), or still on
+    the dead leg when the refresh missed (`pointer='leg-1'`)."""
+    orders = _filled_orders(leg_status="expired", filled_at=LATE_FILL_AT) + [
+        {"id": "gtc-1", "symbol": "BRKO", "side": "sell", "type": "stop", "status": gtc_status, "qty": 1250.0,
+         "filled_qty": 0, "stop_price": 9.80, "order_class": "simple", "client_order_id": "apollo_paper_breakout_v1_BRKO_7"}]
+    return _fill_world(monkeypatch, rows=[_filled_row(filled_at=LATE_FILL_AT, stop_order_id=pointer)], orders=orders,
+                       bars=_late_fill_bars(low385), **kw)
+
+
+@pytest.mark.asyncio
+async def test_a_1555_fill_is_checked_by_the_evening_pass_on_the_refreshed_gtc_stop_and_only_once(monkeypatch):
+    """The disclosed 15:55 race: the minute job's last tick cannot judge the fill minute. The 16:45 pass runs the same
+    check on the breakout day's minutes (every minute complete) and lowers the REFRESHED GTC stop (a price-only
+    replace) to the true low; the row follows; the marker makes it once. The alternative pass — the next session's
+    first tick — never sees a row filled the day before (its population is today's rows for last night's list)."""
+    w = _evening_world(monkeypatch, low385=9.70)
+    out = await be.check_stop_at_fill_after_close(w.rows["BRKO"], now_et=EVENING)
+    assert out == "fill_stop_lowered"
+    assert ("replace", "gtc-1", 9.70) in w.events                           # the refreshed stop, not the dead leg
+    assert not [e for e in w.events if e[0] == "replace" and e[1] == "leg-1"]
+    row = w.rows["BRKO"]
+    assert row["stop_price"] == row["hard_stop"] == 9.70 and row["stop_order_id"] != "gtc-1"
+    [mk] = _marker(w)
+    assert mk["decision"] == "lowered" and mk["trade_id"] == 11 and mk["new_stop"] == 9.70
+    assert w.pages == [] and not w.full_exit.await_count
+    n = len(w.events)
+    assert await be.check_stop_at_fill_after_close(w.rows["BRKO"], now_et=EVENING) == "fill_checked"
+    be._fill_checked.clear()                                                # a restart re-reads the marker
+    assert await be.check_stop_at_fill_after_close(w.rows["BRKO"], now_et=EVENING) == "fill_checked"
+    assert len(w.events) == n
+
+
+@pytest.mark.asyncio
+async def test_the_evening_pass_leaves_a_pointer_on_a_dead_leg_alone_and_reads_again_the_next_evening(monkeypatch):
+    """The 16:20 refresh missed: the row still points at the EXPIRED day leg. Nothing is replaced and no stop is placed
+    on top of one the row cannot see — audited, paged once, no marker — and the check runs again the next evening
+    (the pointer then on a live stop) and lowers it. The position never carries a stop WIDER than the one it filled
+    with; the lowered one arrives a session late on this path."""
+    w = _evening_world(monkeypatch, low385=9.70, pointer="leg-1")
+    out = await be.check_stop_at_fill_after_close(w.rows["BRKO"], now_et=EVENING)
+    assert out == "fill_check_wait"
+    assert not [e for e in w.events if e[0] == "replace"] and not _marker(w)
+    assert w.ev("breakout_v1_fill_stop_unreadable") and w.ev("breakout_v1_fill_stop_unchecked_after_close")
+    assert len(w.pages) == 1 and "after the close" in w.pages[0]
+    w.rows["BRKO"]["stop_order_id"] = "gtc-1"                               # the next morning's refresh placed one
+    out = await be.check_stop_at_fill_after_close(w.rows["BRKO"], now_et=EVENING + timedelta(days=1))
+    assert out == "fill_stop_lowered" and ("replace", "gtc-1", 9.70) in w.events
+    assert _marker(w)[0]["decision"] == "lowered" and len(w.pages) == 1
+
+
+@pytest.mark.asyncio
+async def test_the_evening_pass_sells_a_too_wide_fill_and_touches_no_other_row(monkeypatch):
+    w = _evening_world(monkeypatch, low385=9.30)                              # (10.00 - 9.30) / 10.00 = 7% > ADR20 6%
+    assert await be.check_stop_at_fill_after_close(w.rows["BRKO"], now_et=EVENING) == "fill_sold_too_wide"
+    w.full_exit.assert_awaited_once()
+    assert w.full_exit.await_args.args[0] == 11 and _marker(w)[0]["decision"] == "sold"
+    for bad in (_filled_row(signal_type="magna53"), _filled_row(account_mode="live"), _filled_row(status="closed")):
+        assert await be.check_stop_at_fill_after_close(bad, now_et=EVENING) == "untouched"
+    assert w.full_exit.await_count == 1 and len(_marker(w)) == 1

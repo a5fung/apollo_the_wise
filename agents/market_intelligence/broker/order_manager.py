@@ -3422,6 +3422,32 @@ async def execute_partial_exit(
         ticker = trade["ticker"]
         account_mode = trade.get("account_mode") or current_account_mode()
         signal_type = trade.get("signal_type") or "unknown"
+
+        # Breakout v1 PAPER (finding 4, pre-merge 2026-10-31) — ONE THIRD EVER, re-checked UNDER THE LOCK on the
+        # row just read: (a) a third already SOLD (`partial_taken`, which the 15:45 session-3 market sale or a
+        # +2R fill flipped between the caller's read and this lock) refuses any further partial; (b) a +2R
+        # PLACEMENT (the poll's `limit_price`) is refused once the session-3 step has marked its planned cancel
+        # (read fail-CLOSED). The session-3 sale itself carries no limit_price and runs after its own marker.
+        # Every other row: `exit_rule` is not 'breakout_pp' and nothing here runs.
+        if trade.get("exit_rule") == BREAKOUT_PP_EXIT_RULE:
+            _refuse = None
+            if trade.get("partial_taken"):
+                _refuse = "a third already sold (partial_taken)"
+            elif limit_price is not None:
+                from agents.market_intelligence.broker.breakout_pp_exit import third_replacement_banned
+                if await third_replacement_banned(trade_id):
+                    _refuse = "the session-3 step marked its planned cancel of the +2R third"
+            if _refuse:
+                logger.info(f"execute_partial_exit: {ticker} breakout row refused under the lock — {_refuse}")
+                await log_audit_event(
+                    "breakout_pp_partial_refused_under_lock",
+                    f"{ticker}: no partial placed — {_refuse}",
+                    json.dumps({"trade_id": trade_id, "ticker": ticker, "shares": int(shares),
+                                "limit_price": (float(limit_price) if limit_price else None),
+                                "reason": _refuse, "stage": "breakout_pp_recheck_under_lock"}),
+                )
+                return False
+
         shares = int(shares)
         full_remaining = int(trade["remaining_shares"])
         new_remaining = full_remaining - shares
@@ -4773,8 +4799,9 @@ async def _breakout_pp_stop_to_fill_after_third(trade_id: int, order_id: str, fi
             trade = await conn.fetchrow(
                 "SELECT id, ticker, entry_price, stop_price, remaining_shares, status, exit_rule, account_mode "
                 "FROM mi_live_trades WHERE id = $1", trade_id)
-            order_qty = await conn.fetchval(
-                "SELECT qty FROM mi_live_orders WHERE alpaca_order_id = $1", order_id)
+            order_row = await conn.fetchrow(
+                "SELECT qty, status FROM mi_live_orders WHERE alpaca_order_id = $1", order_id)
+        order_qty = order_row["qty"] if order_row else None
         if not trade or trade["exit_rule"] != BREAKOUT_PP_EXIT_RULE or trade["status"] == "closed":
             return
         ticker = trade["ticker"]
@@ -4795,6 +4822,21 @@ async def _breakout_pp_stop_to_fill_after_third(trade_id: int, order_id: str, fi
                 json.dumps({"trade_id": trade_id, "ticker": ticker, "order_id": order_id,
                             "filled_qty": float(filled_qty), "order_qty": float(order_qty)}))
             return
+        # finding 5 (pre-merge 2026-10-31): a third the broker reported through partial_fill events (the stream's
+        # terminal partial path leaves the row 'partially_filled' with cum_filled == qty) IS filled in full — but
+        # `get_pending_exit_qty` counts a non-terminal row as a pending exit, so `update_stop` would size the stop
+        # as remaining MINUS the third again (too small). Set the row 'filled' first (compare-and-set), then size.
+        if order_row is not None and order_row["status"] == "partially_filled":
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE mi_live_orders SET status = 'filled', filled_at = COALESCE(filled_at, NOW()) "
+                    "WHERE alpaca_order_id = $1 AND status = 'partially_filled'", order_id)
+            await log_audit_event(
+                "breakout_pp_third_row_marked_filled",
+                f"{ticker} #{trade_id}: the third's order {str(order_id)[:8]} filled in full through partial-fill "
+                f"events ({float(filled_qty):g} of {float(order_qty):g} sh) — its row set 'filled' before sizing the stop",
+                json.dumps({"trade_id": trade_id, "ticker": ticker, "order_id": order_id,
+                            "filled_qty": float(filled_qty), "order_qty": float(order_qty)}))
         entry = float(trade["entry_price"] or 0)
         stop_now = float(trade["stop_price"] or 0)
         if not entry or not (float(trade["remaining_shares"] or 0) > 0) or stop_now >= round(entry, 2) - 0.005:
@@ -4824,12 +4866,16 @@ async def _finalize_partial_exit_locked(
     filled_qty: int,
     filled_price: float,
     order_id: str,
-) -> None:
+) -> str | None:
     """Commit a partial exit on actual fill (called from WS fill handler).
 
     Splits the original execute_partial_exit "Step 3" out so commit happens
     against the real Alpaca fill price, not the response at submit time.
     Idempotent: silently no-ops if the same order_id is already in exits[].
+
+    Returns `_BREAKOUT_PP_STOP_TO_FILL` for a 'breakout_pp' row still open after this commit (the caller then
+    moves the stop to the fill — breakout v1 ruling (3)(ii), 2026-10-29), else None. Dropping the return
+    silently disables that step (finding 7, pre-merge 2026-10-31).
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -10137,8 +10183,10 @@ async def scan_profit_triggers() -> list[dict]:
         # a sale that failed). Only a breakout_v1 row reads the marker; every other row skips this.
         _is_breakout = t["signal_type"] == BREAKOUT_V1_SIGNAL_TYPE
         if _is_breakout:
-            from agents.market_intelligence.broker.breakout_pp_exit import planned_third_cancel_marked
-            if await planned_third_cancel_marked(t["id"]):
+            # finding 4 (pre-merge 2026-10-31): the read FAILS CLOSED — an unreadable marker means no +2R limit is
+            # placed this poll (the next poll reads again); `execute_partial_exit` re-checks it under the lock.
+            from agents.market_intelligence.broker.breakout_pp_exit import third_replacement_banned
+            if await third_replacement_banned(t["id"]):
                 results.append({"ticker": t["ticker"], "action": "breakout_pp_third_cancelled_no_replace"})
                 continue
         # #548 final design: in resting mode the 1/3 is sold with a GTC limit AT

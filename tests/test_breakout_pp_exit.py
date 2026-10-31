@@ -620,16 +620,27 @@ def _row(**over):
 class _Conn:
     def __init__(self, rows):
         self.rows, self.executed, self.fetchvals = rows, [], []
+        self.raw = None                      # the stored OCO parent row's raw_response (its legs), when a test sets one
+        self.fail_order_close = 0            # how many order-row closes raise (the finding-1 case 2 shape)
+        self.fetchrow_result = None
 
     async def fetch(self, *_a, **_k):
         return self.rows
 
     async def execute(self, *a, **_k):
         self.executed.append(a)
+        if "UPDATE mi_live_orders SET status = 'cancelled'" in a[0] and self.fail_order_close > 0:
+            self.fail_order_close -= 1
+            raise RuntimeError("db write timed out")
 
     async def fetchval(self, *a, **_k):
         self.fetchvals.append(a)
+        if "raw_response" in a[0]:
+            return self.raw
         return 1
+
+    async def fetchrow(self, *a, **_k):
+        return self.fetchrow_result
 
 
 class _Acq:
@@ -690,6 +701,9 @@ def _install(monkeypatch, row, *, today, today_bar, fwd_bars=(), prior_close=10.
     calls["bpe_page"] = AsyncMock()
     monkeypatch.setattr(bpe, "log_audit_event", calls["bpe_audit"])
     monkeypatch.setattr(bpe, "send_telegram_message", calls["bpe_page"])
+    calls["ensure_cov"] = AsyncMock(return_value=None)
+    monkeypatch.setattr(om, "_ensure_stop_coverage", calls["ensure_cov"])
+    monkeypatch.setattr(bpe.alpaca, "get_position", AsyncMock(return_value={"qty": 9.0}))
     bpe._paged.clear()
     return conn, calls
 
@@ -984,23 +998,32 @@ class _Broker:
     """The paper broker for the session-3 cancel: `cancel_order` and the confirmation reads (`get_order`, oldest first;
     the last answer repeats). Records the order of the calls against the audit log (the marker must come FIRST)."""
 
-    def __init__(self, monkeypatch, calls, reads, *, accepted=True):
+    def __init__(self, monkeypatch, calls, reads, *, accepted=True, legs=None):
         self.log, self.reads, self.accepted = calls.setdefault("seq", []), list(reads), accepted
+        self.legs = dict(legs or {})         # leg order id -> its read (the OCO's sibling stop)
+        self.timeouts: list = []
         monkeypatch.setattr(bpe.alpaca, "cancel_order", self._cancel)
         monkeypatch.setattr(bpe.alpaca, "get_order", self._get)
         monkeypatch.setattr(bpe.asyncio, "sleep", AsyncMock())
 
         async def _audit(evt, *a, **k):
-            self.log.append(("audit", evt))
+            self.log.append(("audit", evt, a[1] if len(a) > 1 else None))
         calls["bpe_audit"].side_effect = _audit
 
     async def _cancel(self, oid, account_mode=None):
         self.log.append(("cancel", oid, account_mode))
         return self.accepted
 
-    async def _get(self, oid, account_mode=None):
+    async def _get(self, oid, account_mode=None, timeout=None):
         self.log.append(("get", oid, account_mode))
+        self.timeouts.append(timeout)
+        assert timeout is not None and timeout <= 5.0, "finding 3: every confirmation read is bounded"
+        if oid in self.legs:
+            return self.legs[oid]
         return self.reads.pop(0) if len(self.reads) > 1 else self.reads[0]
+
+    def withdrawals(self):
+        return [x for x in self.log if x[0] == "audit" and x[1] == bpe.PLANNED_THIRD_CANCEL_WITHDRAWN]
 
 
 _S3_ABOVE = {"o": 10.40, "h": 10.50, "l": 10.35, "c": 10.46}
@@ -1019,7 +1042,8 @@ def test_1545_session3_with_the_2r_third_resting_cancels_it_then_sells_the_third
     calls["execute_partial_exit"].assert_awaited_once_with(701, 3)
     calls["execute_full_exit"].assert_not_awaited()
     seq = br.log
-    assert seq[0] == ("audit", bpe.PLANNED_THIRD_CANCEL) and seq[1] == ("cancel", "lim-9", "paper")
+    assert seq[0][:2] == ("audit", bpe.PLANNED_THIRD_CANCEL) and seq[1] == ("cancel", "lim-9", "paper")
+    assert not br.withdrawals()                                     # the step sold: the marker stands
     closed = [a for a in conn.executed if "UPDATE mi_live_orders SET status = 'cancelled'" in a[0]]
     assert len(closed) == 1 and closed[0][1:3] == ("lim-9", 701)
     assert list(closed[0][3]) == list(om.PENDING_EXIT_TERMINAL_STATUSES)
@@ -1046,16 +1070,24 @@ def test_1545_the_race_a_limit_that_fills_while_being_cancelled_is_the_third_and
 
 
 def test_1545_a_cancel_the_broker_does_not_confirm_sells_nothing_and_he_is_told(monkeypatch):
+    """Findings 1 + 2 (pre-merge 2026-10-31): an unconfirmed cancel sells nothing — AND never leaves the third to the
+    5-minute coverage repair: the marker is WITHDRAWN (a late settle is the stream's ordinary OCO-parent re-protect)
+    and the cover is converged from broker truth at once (a no-op while the limit really rests). The page says
+    plainly that no third was sold and that the +2R limit will not be re-placed (finding 6: his open question)."""
     for reads, accepted in (([{"id": "lim-9", "status": "new", "qty": 3, "filled_qty": 0}], True),   # still live
                             ([{"id": "lim-9", "status": "new", "qty": 3, "filled_qty": 0}], False),  # refused
                             ([None], True)):                                                        # unreadable
         conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
-        _Broker(monkeypatch, calls, reads, accepted=accepted)
+        br = _Broker(monkeypatch, calls, reads, accepted=accepted)
         out = asyncio.run(lt.run_partial_exits(S3))
         assert out == [{"ticker": "BRK", "action": "breakout_pp_third_cancel_unconfirmed", "session": 3}]
         calls["execute_partial_exit"].assert_not_awaited()
-        assert not [a for a in conn.executed if "UPDATE mi_live_orders" in a[0]]
-        assert "NOT sold" in calls["send_telegram_message"].await_args.args[0]
+        assert not [a for a in conn.executed if "UPDATE mi_live_orders" in a[0]]      # a live limit's row stays open
+        [wd] = br.withdrawals()
+        assert json.loads(wd[2]) | {"trade_id": 701, "order_id": "lim-9"} == json.loads(wd[2])
+        calls["ensure_cov"].assert_awaited_once_with(701, "BRK", 9.0, STOP0, "breakout_v1", "paper")
+        msg = calls["send_telegram_message"].await_args.args[0]
+        assert "No third was sold" in msg and "will not be re-placed" in msg
 
 
 def test_1545_a_resting_third_whose_order_id_cannot_be_read_is_never_cancelled_or_doubled(monkeypatch):
@@ -1187,3 +1219,272 @@ def test_1645_on_the_breakout_day_a_third_that_sold_lifts_a_stop_still_under_the
     _conn, calls = _install(monkeypatch, _row(), today=ALERT, today_bar=tb)
     asyncio.run(lt.update_open_positions_live(ALERT))
     calls["update_stop"].assert_not_awaited()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 5. pre-merge 2026-10-31 — the unstopped-third window (findings 1, 2, 3 + advisor item 1): one defect
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+_PENDING_CANCEL = {"id": "lim-9", "status": "pending_cancel", "qty": 3, "filled_qty": 0}
+_CANCELLED_EMPTY = {"id": "lim-9", "status": "canceled", "qty": 3, "filled_qty": 0}
+_OCO_RAW = {"id": "lim-9", "order_class": "oco", "type": "limit", "side": "sell", "qty": 3.0,
+            "legs": [{"id": "leg-9", "type": "stop", "status": "held", "qty": 3.0, "stop_price": 10.10}]}
+
+
+def _marker_pool(monkeypatch, rows):
+    """A fake audit log for the marker readers (`rows` newest first, as the query orders them)."""
+    class _C:
+        async def fetch(self, sql, *a):
+            assert sorted(a[0]) == sorted([bpe.PLANNED_THIRD_CANCEL, bpe.PLANNED_THIRD_CANCEL_WITHDRAWN])
+            return rows
+    monkeypatch.setattr(bpe, "get_pool", AsyncMock(return_value=_Pool(_C())))
+
+
+def test_1545_a_cancel_that_settles_after_the_deadline_is_handed_back_to_the_stream_and_the_third_is_covered(monkeypatch):
+    """Finding 1 case 1 + finding 3: the broker accepts the cancel but it is still 'pending_cancel' when the WALL-CLOCK
+    deadline ends the wait (each read bounded <= 5 s). The step sells nothing and (a) WITHDRAWS the marker, so when the
+    cancel settles later the stream treats it as any OCO-parent cancel (re-protect from broker truth), and (b) converges
+    cover from broker truth at once — a no-op while the limit rests, the cover if the settle already raced the
+    withdrawal. No bare stop is ever placed on top of a possibly-live leg (that is two sells for one third)."""
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    br = _Broker(monkeypatch, calls, [_PENDING_CANCEL])
+    ticks = iter(range(0, 10_000))
+    monkeypatch.setattr(bpe, "_clock", lambda: float(next(ticks)))            # a second a read: the deadline ends it
+    place = AsyncMock()
+    monkeypatch.setattr(bpe.alpaca, "place_stop_order", place, raising=False)
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_third_cancel_unconfirmed", "session": 3}]
+    reads = [x for x in br.log if x[0] == "get"]
+    assert 2 <= len(reads) < bpe.CANCEL_POLL_ATTEMPTS                         # the clock ended the wait, not the cap
+    assert bpe.CANCEL_READ_TIMEOUT_S <= 5.0 and all(t == bpe.CANCEL_READ_TIMEOUT_S for t in br.timeouts)
+    calls["execute_partial_exit"].assert_not_awaited()
+    [wd] = br.withdrawals()
+    d = json.loads(wd[2])
+    assert (d["trade_id"], d["order_id"]) == (701, "lim-9")
+    seq = [x[:2] for x in br.log]
+    assert seq.index(("audit", bpe.PLANNED_THIRD_CANCEL_WITHDRAWN)) > max(i for i, x in enumerate(seq) if x[0] == "get")
+    calls["ensure_cov"].assert_awaited_once_with(701, "BRK", 9.0, STOP0, "breakout_v1", "paper")
+    place.assert_not_awaited()
+    assert not [a for a in conn.executed if "UPDATE mi_live_orders" in a[0]]       # a live limit's row stays open
+    msg = calls["send_telegram_message"].await_args.args[0]
+    assert "No third was sold" in msg and "will not be re-placed" in msg
+    # the stream's late settle: the withdrawal (newer) outranks the marker -> NOT planned -> the ordinary re-protect;
+    # the POLL's ban reads the marker alone -> still banned (one third ever stays his question, finding 6)
+    rows = [{"event_type": bpe.PLANNED_THIRD_CANCEL_WITHDRAWN, "detail": json.dumps({"trade_id": 701, "order_id": "lim-9"})},
+            {"event_type": bpe.PLANNED_THIRD_CANCEL, "detail": json.dumps({"trade_id": 701, "order_id": "lim-9"})}]
+    _marker_pool(monkeypatch, rows)
+    assert asyncio.run(bpe.planned_third_cancel_marked(701, "lim-9")) is False
+    assert asyncio.run(bpe.third_replacement_banned(701)) is True
+    _marker_pool(monkeypatch, rows[1:])                                         # the marker alone: still planned
+    assert asyncio.run(bpe.planned_third_cancel_marked(701, "lim-9")) is True
+
+
+def test_1545_a_cancel_that_settles_on_the_last_read_still_sells_the_third_and_keeps_the_marker(monkeypatch):
+    """The read BEFORE the withdrawal decides: a settle seen on the last read is the 'dead' path (the third sold at the
+    close) — never 'not selling' announced and then a sale."""
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    br = _Broker(monkeypatch, calls, [_PENDING_CANCEL, _PENDING_CANCEL, _PENDING_CANCEL, _CANCELLED_EMPTY])
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3}]
+    calls["execute_partial_exit"].assert_awaited_once_with(701, 3)
+    assert not br.withdrawals() and not calls["ensure_cov"].await_count
+
+
+def test_1545_a_stop_leg_fill_during_the_cancel_is_the_third_sold_at_its_stop_and_nothing_more_is_sold(monkeypatch):
+    """Finding 2: the OCO's sibling STOP leg fills while the parent is being cancelled — the parent reads 'canceled'
+    with nothing filled (which alone reads 'dead' and sold a SECOND third). The leg is read (from the stored OCO row's
+    legs, or a nested read): a leg fill IS the third, sold at its stop. The parent's row is closed; nothing is sold."""
+    for source in ("stored_row", "nested_read"):
+        conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+        parent = dict(_CANCELLED_EMPTY)
+        if source == "stored_row":
+            conn.raw = dict(_OCO_RAW)
+        else:
+            parent["legs"] = list(_OCO_RAW["legs"])
+        br = _Broker(monkeypatch, calls, [parent],
+                     legs={"leg-9": {"id": "leg-9", "status": "filled", "qty": 3, "filled_qty": 3}})
+        out = asyncio.run(lt.run_partial_exits(S3))
+        assert out == [{"ticker": "BRK", "action": "breakout_pp_third_stopped_in_race", "session": 3}], source
+        calls["execute_partial_exit"].assert_not_awaited()
+        calls["execute_full_exit"].assert_not_awaited()
+        assert ("get", "leg-9", "paper") in br.log
+        closed = [a for a in conn.executed if "UPDATE mi_live_orders SET status = 'cancelled'" in a[0]]
+        assert len(closed) == 1 and closed[0][1:3] == ("lim-9", 701)
+        assert any(c.args[0] == "breakout_pp_third_stopped_in_race" for c in calls["log_audit_event"].await_args_list)
+        assert not br.withdrawals() and not calls["ensure_cov"].await_count   # the third is gone: nothing to cover
+    # the control: the leg still HELD when the parent died -> the whole OCO unwound unfilled -> the third at the close
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    conn.raw = dict(_OCO_RAW)
+    _Broker(monkeypatch, calls, [_CANCELLED_EMPTY],
+            legs={"leg-9": {"id": "leg-9", "status": "canceled", "qty": 3, "filled_qty": 0}})
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "partial_submitted", "shares": 3}]
+
+
+def test_1545_a_dead_parent_whose_stop_leg_cannot_be_read_sells_nothing_and_covers_from_broker_truth(monkeypatch):
+    """A dead parent with a leg that will not read: a leg fill cannot be ruled out, so no third is sold (a second third
+    is the worse error). The dead row is closed, the marker withdrawn, and cover converged from the broker's position
+    (which already reflects a leg fill, if there was one)."""
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    conn.raw = dict(_OCO_RAW)
+    br = _Broker(monkeypatch, calls, [_CANCELLED_EMPTY], legs={"leg-9": None})
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_third_cancel_unconfirmed", "session": 3}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    assert len([a for a in conn.executed if "UPDATE mi_live_orders SET status = 'cancelled'" in a[0]]) == 1
+    assert len(br.withdrawals()) == 1
+    calls["ensure_cov"].assert_awaited_once()
+
+
+def test_1545_an_order_row_that_cannot_be_closed_after_a_confirmed_cancel_sells_nothing_and_covers_the_third(monkeypatch):
+    """Finding 1 case 2: the cancel is confirmed dead but the order-row close RAISES (twice). The step must not trust
+    the DB (the dedup would refuse the sale on the stale row; `_ensure_stop_coverage` would net the dead limit as
+    pending and read 'covered'): the result is 'dead' + row_update_error, nothing is sold, the marker is withdrawn,
+    the row close is tried ONCE MORE inside the re-protect and cover is converged from broker truth. He is told no
+    third was sold."""
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    conn.fail_order_close = 2
+    br = _Broker(monkeypatch, calls, [_CANCELLED_EMPTY])
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_third_cancel_unconfirmed", "session": 3}]
+    calls["execute_partial_exit"].assert_not_awaited()
+    closes = [a for a in conn.executed if "UPDATE mi_live_orders SET status = 'cancelled'" in a[0]]
+    assert len(closes) == 3                                                  # two in the step, one in the re-protect
+    assert len(br.withdrawals()) == 1
+    calls["ensure_cov"].assert_awaited_once_with(701, "BRK", 9.0, STOP0, "breakout_v1", "paper")
+    unc = [c.args for c in calls["log_audit_event"].await_args_list if c.args[0] == "breakout_pp_third_cancel_unconfirmed"]
+    assert json.loads(unc[0][2])["row_update_error"]
+    assert "No third was sold" in calls["send_telegram_message"].await_args.args[0]
+
+
+def test_1545_a_cancel_the_step_never_sent_withdraws_nothing_and_covers_nothing(monkeypatch):
+    """No order id (an unreadable book) / a marker that could not be written: the OCO was never touched — nothing to
+    hand back, nothing to cover."""
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting=None, fwd_bars=_S12)
+    calls["resting_third"].return_value = (True, None)
+    br = _Broker(monkeypatch, calls, [None])
+    asyncio.run(lt.run_partial_exits(S3))
+    assert not br.withdrawals() and not calls["ensure_cov"].await_count
+    conn, calls = _install(monkeypatch, _row(), today=S3, today_bar=_S3_ABOVE, resting="lim-9", fwd_bars=_S12)
+    br = _Broker(monkeypatch, calls, [None])
+    calls["bpe_audit"].side_effect = RuntimeError("audit log down")           # the marker cannot be written
+    out = asyncio.run(lt.run_partial_exits(S3))
+    assert out == [{"ticker": "BRK", "action": "breakout_pp_third_cancel_unconfirmed", "session": 3}]
+    assert not [x for x in br.log if x[0] == "cancel"] and not calls["ensure_cov"].await_count
+
+
+def test_the_poll_ban_fails_closed_and_the_stream_reader_fails_open(monkeypatch):
+    """Finding 4: an unreadable audit log -> the poll places no +2R limit (banned); the stream reads 'not planned'
+    (it re-protects — the safe side for shares). Both are the safe direction for their caller."""
+    monkeypatch.setattr(bpe, "get_pool", AsyncMock(side_effect=RuntimeError("db down")))
+    assert asyncio.run(bpe.third_replacement_banned(701)) is True
+    assert asyncio.run(bpe.planned_third_cancel_marked(701, "lim-9")) is False
+    _marker_pool(monkeypatch, [])
+    assert asyncio.run(bpe.third_replacement_banned(701)) is False
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 6. pre-merge 2026-10-31 (advisor item 2) — a stop LOWERED after the fill is the exit's R
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+class TestTheLoweredStopIsTheExitsR:
+    """His ruling 2026-10-29 (the stop at the fill): a minute after the fill the stop may be LOWERED to the true low —
+    the row's `hard_stop` moves with it (`breakout_v1_entry._record_stop_lowered`), so the pp exit's R, its +2R target
+    and its stall cut are the walk's (the day's low at the fill), not the resting order's placed stop. The harness
+    exercises that trade: the replay on the lowered stop equals `walk_pp` on the lowered stop and DIFFERS from the
+    replay on the placed stop (a non-vacuous check), and the live readers frame on `hard_stop`."""
+    PLACED, LOWERED = 10.10, 10.00          # fill 10.30: R 0.20 -> +2R 10.70, cut 10.50 | R 0.30 -> +2R 10.90, cut 10.60
+
+    def test_the_replay_on_the_lowered_stop_equals_the_walk_and_differs_from_the_placed_stop(self):
+        tail = [(10.40, 10.75, 10.35, 10.50), (10.50, 10.55, 10.40, 10.52), (10.52, 10.58, 10.45, 10.56),
+                (10.56, 10.95, 10.50, 10.90), (10.90, 10.95, 10.60, 10.70)]
+        bars, e = _xp_bars(tail)
+        mb = _mb(None)
+        want_l, got_l = _both(bars, e, mb, fill=XP_FILL, stop=self.LOWERED)
+        _same(want_l, got_l)
+        want_p, got_p = _both(bars, e, mb, fill=XP_FILL, stop=self.PLACED)
+        _same(want_p, got_p)
+        # session 1's high 10.75 touches the PLACED target (10.70) but not the LOWERED one (10.90): on the placed stop
+        # a third goes at 10.70 on session 1; on the lowered stop no third until the session-3 third at the close
+        assert got_p["events"][0][:2] == (1, "partial_r") and got_p["events"][0][2] == pytest.approx(10.70)
+        assert got_l["events"][0][:2] == (3, "partial") and got_l["events"][0][2] == pytest.approx(10.56)
+        assert [tuple(x) for x in got_l["events"]] != [tuple(x) for x in got_p["events"]]
+        assert rules.target_price(XP_FILL, self.LOWERED) == pytest.approx(10.90)
+        assert rules.cut_level(XP_FILL, self.LOWERED) == pytest.approx(10.60)
+
+    def test_the_1545_step_frames_the_stall_cut_on_hard_stop_not_stop_price(self, monkeypatch):
+        """Session 3 at 15:45: the forming bar's high 10.55 reaches the PLACED +1R (10.50) but not the LOWERED one
+        (10.60). A row whose `hard_stop` is the lowered stop is CUT; one whose hard_stop is the placed stop sells the
+        session-3 third. The columns are crossed on purpose: it is `hard_stop` the step reads, never `stop_price`."""
+        tb = {"o": 10.50, "h": 10.55, "l": 10.45, "c": 10.52}
+        facts = dict(FACTS_REACHED, peak=10.45)
+        fwd = [(10.40, 10.48, 10.35, 10.45), (10.45, 10.47, 10.35, 10.42)]
+        _c, calls = _install(monkeypatch, _row(hard_stop=self.LOWERED, stop_price=self.PLACED, breakout_day0_pp=facts),
+                             today=S3, today_bar=tb, fwd_bars=fwd)
+        asyncio.run(lt.run_partial_exits(S3))
+        calls["execute_full_exit"].assert_awaited_once_with(701, "breakout_stall_cut")
+        calls["execute_partial_exit"].assert_not_awaited()
+        _c, calls = _install(monkeypatch, _row(hard_stop=self.PLACED, stop_price=self.LOWERED, breakout_day0_pp=facts),
+                             today=S3, today_bar=tb, fwd_bars=fwd)
+        asyncio.run(lt.run_partial_exits(S3))
+        calls["execute_full_exit"].assert_not_awaited()
+        calls["execute_partial_exit"].assert_awaited_once_with(701, 3)
+
+    def test_the_day0_facts_frame_the_2r_target_on_hard_stop(self, monkeypatch):
+        """The breakout day's minutes print 10.75 after the fill: on the placed stop that is a +2R touch (10.70), on
+        the lowered stop it is not (10.90). `ensure_day0_facts` reads `hard_stop`."""
+        open_dt = datetime(2026, 10, 26, 9, 30, tzinfo=ET)
+        bars = [{"t_et": open_dt + dt.timedelta(minutes=m), "open": 10.30, "high": 10.35, "low": 10.28}
+                for m in range(0, 8)] + [{"t_et": open_dt + dt.timedelta(minutes=9), "open": 10.40, "high": 10.75,
+                                           "low": 10.38}]
+        monkeypatch.setattr(bpe.alpaca, "get_minute_bars_range", AsyncMock(return_value=bars))
+        monkeypatch.setattr(bpe, "_store_day0_facts", AsyncMock(return_value=True))
+        monkeypatch.setattr(bpe, "log_audit_event", AsyncMock())
+        lowered = asyncio.run(bpe.ensure_day0_facts(_row(hard_stop=self.LOWERED, stop_price=self.PLACED,
+                                                         breakout_day0_pp=None)))
+        placed = asyncio.run(bpe.ensure_day0_facts(_row(hard_stop=self.PLACED, stop_price=self.LOWERED,
+                                                        breakout_day0_pp=None)))
+        assert lowered["partial_price"] is None and placed["partial_price"] == pytest.approx(10.70)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 7. pre-merge 2026-10-31 (advisor item 3) — a fill the minute job never checked is checked by the 16:45 pass
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def test_1645_a_fill_the_minute_job_never_checked_is_checked_before_the_day0_facts(monkeypatch):
+    """A 15:55 fill has no tick after it. The 16:45 pass (the next pass that exists — the minute job never visits a row
+    from an earlier day) runs the stop-at-the-fill check FIRST, then captures the day-0 facts on the row AS CHECKED
+    (a lowered stop changes the +2R target they model); a sale (too wide) ends the row's pass; a row already checked
+    costs one marker read and the facts run as before."""
+    from agents.market_intelligence.broker import breakout_v1_entry as bv1
+    tb = {"o": 10.2, "h": 10.8, "l": 10.1, "c": 10.55}
+    seen: list = []
+
+    def _chk_returning(label):
+        async def _chk(trade, now_et=None):
+            seen.append(("check", trade["hard_stop"], now_et))
+            return label
+        return _chk
+
+    async def _facts(trade):
+        seen.append(("facts", trade["hard_stop"]))
+        return FACTS_REACHED
+
+    monkeypatch.setattr(bpe, "ensure_day0_facts", _facts)
+    # lowered: the check runs first, at 16:45 on the breakout day; the facts see the LOWERED stop
+    conn, _calls = _install(monkeypatch, _row(breakout_day0_pp=None), today=ALERT, today_bar=tb)
+    conn.fetchrow_result = {"stop_price": 10.00, "hard_stop": 10.00, "stop_order_id": "gtc-2", "remaining_shares": 9,
+                            "status": "filled", "risk_dollars_actual": 2.7}
+    monkeypatch.setattr(bv1, "check_stop_at_fill_after_close", _chk_returning("fill_stop_lowered"))
+    asyncio.run(lt.update_open_positions_live(ALERT))
+    assert seen == [("check", STOP0, datetime(2026, 10, 26, 16, 45, tzinfo=ET)), ("facts", 10.00)]
+    # sold too wide: the row's pass ends — no facts
+    seen.clear()
+    conn, _calls = _install(monkeypatch, _row(breakout_day0_pp=None), today=ALERT, today_bar=tb)
+    monkeypatch.setattr(bv1, "check_stop_at_fill_after_close", _chk_returning("fill_sold_too_wide"))
+    out = asyncio.run(lt.update_open_positions_live(ALERT))
+    assert seen == [("check", STOP0, datetime(2026, 10, 26, 16, 45, tzinfo=ET))]
+    assert out == [{"ticker": "BRK", "action": "breakout_v1_fill_stop_sold"}]
+    # already checked: the facts run on the row as it is
+    seen.clear()
+    conn, _calls = _install(monkeypatch, _row(breakout_day0_pp=None), today=ALERT, today_bar=tb)
+    monkeypatch.setattr(bv1, "check_stop_at_fill_after_close", _chk_returning("fill_checked"))
+    asyncio.run(lt.update_open_positions_live(ALERT))
+    assert seen == [("check", STOP0, datetime(2026, 10, 26, 16, 45, tzinfo=ET)), ("facts", STOP0)]
