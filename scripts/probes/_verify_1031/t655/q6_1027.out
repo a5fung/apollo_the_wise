@@ -1,0 +1,5 @@
+SET
+et|stored|name_field|tail
+2026-10-27 17:05:11.289305|True|merged_name='Precious Metals Miners – Monetary Easing Cycle'|description_stored=True (description quality check: ok) lineage_staged='Precious Metals Miners, Royalty & Streaming – Monetary Easing Cycle'->'Precious Metals Miners – Monetary Easing Cycle'
+2026-10-27 17:05:16.1885|False|merged_name='Defensive Consumer Staples Rotation'|description_stored=False (description quality check: no_member_ticker_mentioned) lineage_staged='Non-Alcoholic Beverages & Energy Drinks'->'Defensive Consumer Staples Rotation'
+(2 rows)

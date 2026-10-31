@@ -1,0 +1,8 @@
+SET
+event_type|count|first_et|last_et
+promote_member_skipped|8|2026-10-26|2026-10-30
+shadow_themes_promoted|10|2026-10-19|2026-10-30
+theme_operator_promoted|2|2026-10-22|2026-10-29
+theme_pass1_5_absorption|7|2026-10-21|2026-10-30
+theme_pass1_5_skip|10|2026-10-19|2026-10-30
+(5 rows)

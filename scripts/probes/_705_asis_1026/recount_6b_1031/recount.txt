@@ -1,0 +1,203 @@
+## 0. Inputs and their pins (03_check_pins.txt = the step-6b re-run pins in the doc)
+- reader1_t1_v2_part1  62c27b319e6fd2d9  pin 62c27b319e6fd2d9  MATCH
+- reader1_t1_v2_part2  42473ba3f0cb8b8e  pin 42473ba3f0cb8b8e  MATCH
+- reader1_t1_v2_part3  c0de450d9af7a1a5  pin c0de450d9af7a1a5  MATCH
+- entries_v2           11f6ee5a7b652bdd  pin 11f6ee5a7b652bdd  MATCH
+- exits_v2             226579577eb169ad  pin 226579577eb169ad  MATCH
+- snapshots_v2         de4b8cce9a7ec692  pin de4b8cce9a7ec692  MATCH
+- ranges               0d12cf9ab46a4fea  pin 0d12cf9ab46a4fea  MATCH
+- sessions_A           098a9b50c92a1045  pin 098a9b50c92a1045  MATCH
+- export_A             0d5d2d0eb027abc0  pin 0d5d2d0eb027abc0  MATCH
+- export_B             ccc0097fe535cb8d  pin ccc0097fe535cb8d  MATCH
+- raw_close_A          f978db45074e9109  pin f978db45074e9109  MATCH
+
+# #711 step 6b INDEPENDENT RECOUNT -- recount.txt (2026-10-31)
+Inputs: reader sheets (3 parts), windows v2, ranges.tsv, sessions.txt, daily export A/B + raw close A.  Published verdict columns not read until section 9.
+
+## 1. Statements
+- statements in the 3 price-batch sheets: 434 (unique stmt_id 434)
+- his own trade (his_trade = Y): 340 / 434
+- of his own trade, ticker identified: Y 194, amb 90, N 56
+- own trade + ticker Y: 194
+- R1 input (own + ticker Y + price stated): 102   [published 102]
+- own + price stated at ANY ticker reading: 174 = Y 102 + amb 38 + N 34   [published 174 = 102 + 38 + 34]
+- clean 67 / garbled 35   [published 67 / 35]
+- fill 89 / level 13   [published 89 / 13]
+- clean fills: 58   [published 58]
+- of the clean fills, price kind matching the action's side: 47  (the other 11: holding / entry or side-mismatched)   [published 47 / 11]
+- of those, day class naming a day (stream_day / stated_earlier / implied_recent): 25; unstated / approx_earlier: 22   [published 25 / 22]
+
+## 2. Calendar
+- sessions 2016-01-04..2022-06-30, n 1635
+- price-batch stream dates that are not sessions: 0 []  -> no weekend/holiday convention needed
+- statement day = the stream date for EVERY day class (the sheets carry a day CLASS, not a resolved date; 'yesterday' is therefore caught by the one-session tolerance)
+
+## 3. Windows v2
+- positions 1958 (entries_v2), sale rows 1945 (exits_v2)
+- windows: buy 1945, sale 1945   [published 1,945 / 1,945]
+- ranges.tsv rows 3890; windows whose (lo, hi) disagree with ranges.tsv or are missing there: 0
+
+## 4. The join (symbol and day only)
+- own-trade, ticker-identified statements: 194 -> unique 83 / ambiguous 30 / no window 81   [published 83 / 30 / 81]
+  - ambiguous: one position's two windows 20, across positions 10   [published 20 of 30]
+  - no window: inside_hold 41, not_on_panel 13, other_date 27   [published 41 / 13 / 27]
+- of the R1 input (102): unique 34 / ambiguous 14 (one position's two windows 9) / no window 54   [published 34 / 14 (9) / 54]
+  - R1 input no window: inside_hold 28, not_on_panel 6, other_date 20   [published 28 / 6 / 20]
+- uniquely joined by action: add 1, buy 19, covered 6, holding 9, sell_all 1, sell_part 6, sell_unspec 12, shorted 4, stop_level 8, stopped 17   [published add 1, buy 19, covered 6, holding 9, sell_all 1, sell_part 6, sell_unspec 12, shorted 4, stop_level 8, stopped 17]
+
+## 5. R5 side agreement
+R5 BAR: FAIL -- 48 / 66 = 72.7% agree (bar >= 90%); excluded, no side: 17   [published FAIL 48 / 66 = 72.7%; excluded 17]
+  - 2020: 41 / 55 = 74.5%   [published 2020 41/55, 2021-22 7/11]
+  - 2021-22: 7 / 11 = 63.6%   [published 2020 41/55, 2021-22 7/11]
+  - disagreements (18):
+      qmhLHCHRBnM:848    2020-02-03 APT    buy          landed sale dist 0 day class implied_recent
+      eTanNJy7c38:35     2020-02-12 SHOP   buy          landed sale dist 0 day class implied_recent
+      lZNUaBx_H98:989    2020-03-23 TVIX   shorted      landed sale dist 1 day class unstated
+      Feyk4S1vVRk:4359   2020-05-06 RCL    stopped      landed buy  dist 0 day class implied_recent
+      7tIk1NhphuQ:641    2020-05-13 NVAX   stopped      landed buy  dist 0 day class implied_recent
+      -4SriUVLDKo:4799   2020-05-20 NNDM   stopped      landed buy  dist 0 day class implied_recent
+      m8KjHohwlzM:479    2020-06-11 ZM     sell_part    landed buy  dist 1 day class stated_earlier
+      YYFwzNZkRDI:4841   2020-08-05 JMIA   buy          landed sale dist 1 day class stated_earlier
+      obo0RcmxNNE:1080   2020-09-21 TSLA   stopped      landed buy  dist 0 day class implied_recent
+      LMrz-rWQqac:324    2020-09-25 ZM     shorted      landed sale dist 0 day class stated_earlier
+      VOGuzD4wFN8:1264   2020-11-02 TSLA   shorted      landed sale dist 0 day class stated_earlier
+      YTRrhSIj064:4771   2020-12-18 TAN    sell_unspec  landed buy  dist 0 day class unstated
+      l4lpLA7vvbg:5842   2020-12-21 PLTR   stopped      landed buy  dist 0 day class implied_recent
+      l4lpLA7vvbg:6723   2020-12-21 PLTR   covered      landed buy  dist 0 day class implied_recent
+      146r7DqtOXU:292    2021-02-23 AMC    buy          landed sale dist 0 day class implied_recent
+      7jPFXy_nrBE:1164   2021-03-19 UPST   sell_part    landed buy  dist 1 day class implied_recent
+      uX2B8fAMuLE:737    2022-02-28 NUGT   stopped      landed buy  dist 1 day class implied_recent
+      uX2B8fAMuLE:752    2022-02-28 NUGT   stopped      landed buy  dist 1 day class implied_recent
+
+## 6. R1 containment
+- daily bars loaded for the held names, 2019-11..2022-06: export A 328,596 rows, export B 100,991 rows, raw closes 328,596
+- R1 input uniquely joined: 34; landed window has a range: 32   [published 34 / 32]
+- reading (a) -- section 4.2 LITERAL: clean fills, uniquely joined, landed window ranged: 17   [published 17 = 11 primary + 5 holding/entry-or-side-mismatched + 1 unstated/approx day]
+- reading (b) -- the published narrowing (R85, a module rule BELOW the freeze marker, not frozen section 4.2 text): kind matches the action's side AND the day class names a day: 11   [published PRIMARY 11]
+  - beside (a)-only: holding/entry or side-mismatched 5, matched but unstated / approx day 1   [published 5 / 1]
+  - distinct (position, side, price) among the primary: 11   [published 11]
+
+### the 11 primary statements (reading (b)): the landed window, the range, the tolerance, inside
+  stmt               date       tkr   action        price side   eid bracket      res        range_raw         sess_rng    tol inside  (1%-only / no-tol)
+  O333thFuU40:1521   2020-01-22 LAKE  sell_part      15.0 sale   360 next_in_pre  daily_only 12.01-13.97        1.960  0.196 False  (False / False)
+  qmhLHCHRBnM:848    2020-02-03 APT   buy             6.9 sale   376 same_in_in   minute     6.03-7.05         1.620  0.162 True   (True / True)
+  eTanNJy7c38:35     2020-02-12 SHOP  buy           543.0 sale   394 next_in_pre  minute     528.9502-556.9476    64.894  6.489 True   (True / True)
+  7tIk1NhphuQ:2479   2020-05-13 CODX  sell_unspec    16.5 sale   573 sessions_2_5 minute     16.03-29.72        6.090  0.609 True   (True / True)
+  5S-spryFw8Y:4897   2020-06-09 AMD   buy           53.87 buy    671 same_pre_in  minute     52.72-55.59        3.740  0.539 True   (True / True)
+  UTbvV7Rqd4E:128    2020-07-06 NIO   buy             9.2 buy    737 sessions_2_5 minute     6.93-9.4          0.700  0.092 True   (True / True)
+  PraCEKu-Cos:5308   2020-07-23 MU    buy            53.0 buy    783 same_pre_in  minute     51.57-53.19        2.630  0.530 True   (True / True)
+  YYFwzNZkRDI:10644  2020-08-05 APT   sell_all      19.99 sale   700 same_in_in   minute     18.85-19.285       2.900  0.290 False  (False / False)
+  N9n9_WUB5V0:2665   2020-11-09 NUGT  sell_unspec    85.0 sale  1028 next_in_pre  minute     91.03-93.6999      3.680  0.850 False  (False / False)
+  5dKPq4qscF8:2017   2021-01-08 NUGT  stopped        74.0 sale  1153 sessions_6plus daily_only 62.97-79.5         6.970  0.740 True   (True / True)
+  zjJObr1Gn8A:4672   2021-07-20 ALB   sell_unspec   171.0 sale  1543 sessions_6plus daily_only 169.5-192.7682     9.410  1.710 True   (True / True)
+- REAL containment (primary, reading (b)): 8 / 11 = 72.7%   [published 72.7%]
+  - tolerance sensitivity: 1%-of-price / $0.05 only 8 / 11; no tolerance at all 8 / 11
+- REAL containment, reading (a) (all 17): 13 / 17 = 76.5%
+
+## 7. Control (b): cross-symbol
+- cross windows over the 11 primary statements: 198 (170 ranged); names per statement: 21, 7, 5, 20, 23, 23, 14, 18, 10, 36, 21   [published 21, 7, 5, 20, 23, 23, 14, 18, 10, 36, 21 -- compared row by row in section 9]
+    O333thFuU40:1521   LAKE  0 / 16 other-name windows contain 15.0
+    qmhLHCHRBnM:848    APT   0 / 6 other-name windows contain 6.9
+    eTanNJy7c38:35     SHOP  0 / 4 other-name windows contain 543.0
+    7tIk1NhphuQ:2479   CODX  2 / 16 other-name windows contain 16.5
+    5S-spryFw8Y:4897   AMD   1 / 19 other-name windows contain 53.87
+    UTbvV7Rqd4E:128    NIO   2 / 21 other-name windows contain 9.2
+    PraCEKu-Cos:5308   MU    0 / 13 other-name windows contain 53.0
+    YYFwzNZkRDI:10644  APT   1 / 18 other-name windows contain 19.99
+    N9n9_WUB5V0:2665   NUGT  1 / 9 other-name windows contain 85.0
+    5dKPq4qscF8:2017   NUGT  2 / 29 other-name windows contain 74.0
+    zjJObr1Gn8A:4672   ALB   1 / 19 other-name windows contain 171.0
+- cross-symbol control share (11 primary): mean of per-statement shares 5.1% (n 11 statements); pooled 10 / 170 = 5.9%   [published 5.1% (n 11)]
+
+## 8. Control (a): shifted windows, re-derived from minute bars
+- endpoint frames of the 17 landed windows (early frame -> late frame):
+    eid   360 LAKE  sale next_in_pre   2020-01-22..2020-01-22   early 2020-01-22 in 10:28  ->  late 2020-01-23 pre 09:22
+    eid   376 APT   sale same_in_in    2020-02-03..2020-02-03   early 2020-02-03 in 09:35  ->  late 2020-02-03 in 10:26
+    eid   394 SHOP  sale next_in_pre   2020-02-12..2020-02-12   early 2020-02-12 in 10:30  ->  late 2020-02-13 pre 09:21
+    eid   396 AYX   buy  same_pre_in   2020-02-14..2020-02-14   early 2020-02-14 pre 09:23  ->  late 2020-02-14 in 10:26
+    eid   501 SHOP  buy  same_in_in    2020-04-21..2020-04-21   early 2020-04-21 in 09:36  ->  late 2020-04-21 in 09:50
+    eid   583 TDOC  buy  sessions_2_5  2020-05-11..2020-05-12   early 2020-05-11 in 09:45  ->  late 2020-05-13 pre 09:23
+    eid   573 CODX  sale sessions_2_5  2020-05-11..2020-05-15   early 2020-05-11 in 10:59  ->  late 2020-05-15 in 10:13
+    eid   671 AMD   buy  same_pre_in   2020-06-09..2020-06-09   early 2020-06-09 pre 09:25  ->  late 2020-06-09 in 09:59
+    eid   737 NIO   buy  sessions_2_5  2020-06-29..2020-07-02   early 2020-06-29 in 10:20  ->  late 2020-07-06 pre 09:23
+    eid   783 MU    buy  same_pre_in   2020-07-23..2020-07-23   early 2020-07-23 pre 09:22  ->  late 2020-07-23 in 09:56
+    eid   700 APT   sale same_in_in    2020-08-05..2020-08-05   early 2020-08-05 in 11:00  ->  late 2020-08-05 in 11:11
+    eid   876 AMD   buy  next_in_pre   2020-08-20..2020-08-20   early 2020-08-20 in 09:56  ->  late 2020-08-21 pre 09:14
+    eid   894 PDD   buy  same_pre_in   2020-09-01..2020-09-01   early 2020-09-01 pre 09:22  ->  late 2020-09-01 in 10:09
+    eid  1028 NUGT  sale next_in_pre   2020-11-06..2020-11-06   early 2020-11-06 in 10:13  ->  late 2020-11-09 pre 09:28
+    eid  1070 JMIA  sale next_in_pre   2020-12-02..2020-12-02   early 2020-12-02 in 10:01  ->  late 2020-12-03 pre 09:25
+    eid  1153 NUGT  sale sessions_6plus 2021-01-07..2021-01-15   early 2021-01-07 in 09:41  ->  late 2021-01-19 pre 09:23
+    eid  1543 ALB   sale sessions_6plus 2021-07-09..2021-07-19   early 2021-07-09 in 10:21  ->  late 2021-07-20 pre 09:27
+- builder check on the 17 real landed windows (my range vs ranges.tsv range_lo_raw / range_hi_raw):
+    variant start-inclusive=True end-inclusive=True: 17 / 17 real windows reproduced to the cent
+    variant start-inclusive=True end-inclusive=False: 15 / 17 real windows reproduced to the cent
+    variant start-inclusive=False end-inclusive=True: 15 / 17 real windows reproduced to the cent
+    variant start-inclusive=False end-inclusive=False: 13 / 17 real windows reproduced to the cent
+- cross-symbol windows (distinct, over the 17): 273; edges re-derived from minute / daily bars identical to the cent to ranges.tsv: 239; both without a range: 34; differ: 0
+
+- shifted windows derived: 102 (102 expected = 17 x 6); with a range 102
+
+### shifted-window control: the share of the 6 shifted windows that contain the stated price, per statement
+    O333thFuU40:1521   LAKE     15.0 PRIMARY inside 3/6   by shift k: -3:n -2:n -1:Y +1:n +2:Y +3:Y
+    qmhLHCHRBnM:848    APT       6.9 PRIMARY inside 0/6   by shift k: -3:n -2:n -1:n +1:n +2:n +3:n
+    eTanNJy7c38:35     SHOP    543.0 PRIMARY inside 3/6   by shift k: -3:n -2:n -1:n +1:Y +2:Y +3:Y
+    PZNGPoSE7Z8:1384   AYX    149.77 beside  inside 1/6   by shift k: -3:n -2:n -1:n +1:n +2:Y +3:n
+    TcLLotmFsig:3508   SHOP    647.5 beside  inside 0/6   by shift k: -3:n -2:n -1:n +1:n +2:n +3:n
+    S3n57pIXboE:2703   TDOC   183.12 beside  inside 4/6   by shift k: -3:n -2:n -1:Y +1:Y +2:Y +3:Y
+    7tIk1NhphuQ:2479   CODX     16.5 PRIMARY inside 6/6   by shift k: -3:Y -2:Y -1:Y +1:Y +2:Y +3:Y
+    5S-spryFw8Y:4897   AMD     53.87 PRIMARY inside 3/6   by shift k: -3:Y -2:n -1:Y +1:n +2:n +3:Y
+    UTbvV7Rqd4E:128    NIO       9.2 PRIMARY inside 3/6   by shift k: -3:n -2:n -1:n +1:Y +2:Y +3:Y
+    PraCEKu-Cos:5308   MU       53.0 PRIMARY inside 1/6   by shift k: -3:n -2:Y -1:n +1:n +2:n +3:n
+    YYFwzNZkRDI:10644  APT     19.99 PRIMARY inside 0/6   by shift k: -3:n -2:n -1:n +1:n +2:n +3:n
+    WczOCnD0f5w:7565   AMD     82.06 beside  inside 6/6   by shift k: -3:Y -2:Y -1:Y +1:Y +2:Y +3:Y
+    QyFTLOZ-4zs:2286   PDD      91.0 beside  inside 2/6   by shift k: -3:n -2:Y -1:n +1:Y +2:n +3:n
+    N9n9_WUB5V0:2665   NUGT     85.0 PRIMARY inside 2/6   by shift k: -3:Y -2:Y -1:n +1:n +2:n +3:n
+    BpR5Q4AVO00:3703   JMIA     17.0 beside  inside 0/6   by shift k: -3:n -2:n -1:n +1:n +2:n +3:n
+    5dKPq4qscF8:2017   NUGT     74.0 PRIMARY inside 4/6   by shift k: -3:Y -2:Y -1:Y +1:Y +2:n +3:n
+    zjJObr1Gn8A:4672   ALB     171.0 PRIMARY inside 6/6   by shift k: -3:Y -2:Y -1:Y +1:Y +2:Y +3:Y
+- SHIFTED control (11 primary; mean of per-statement shares, every statement has all six windows), by how 'that session's range' is read for the tolerance:
+    [nearest session] 31 / 66 = 47.0%   [published 47.0% (n 11)]
+    [stated-day+k] 31 / 66 = 47.0%
+    [first session] 31 / 66 = 47.0%
+    [last session] 31 / 66 = 47.0%
+    [max over window] 31 / 66 = 47.0%
+    [1%/$0.05 only] 30 / 66 = 45.5%
+
+## 9. Diff against the published rows (check_r1_r5.tsv, control_ranges.tsv), by stmt_id
+- (a) the join, 194 statements: 194 identical (status, reason, eid, side, dist); 0 differ
+  - ambiguous tie sets: 30 / 30 identical
+- (b) R5: population mine 66 vs published 66 (set-equal True); agree/disagree differs on 0 rows; disagreement sets mine 18 vs published 18, set-equal True
+- (c) primary set: mine 11 vs published 11; set-equal True  (only mine: []; only published: [])
+  - reading (a) set (17): mine vs published clean/fill/unique/ranged: set-equal True
+- (d) real containment rows (17): 17 identical on (inside, tolerance, range lo, range hi, session range); 0 differ
+- (e) shifted windows (102 = 17 x 6): dates identical on 102; edges identical to the cent on 102; resolution identical on 102; tolerance (nearest-session rule) identical on 102; inside identical on 102
+- (f) cross-symbol windows: per-statement window sets identical on 17 / 17 statements; row-level (ranged, inside, tolerance) differs on 0 rows
+
+## 10. The recount
+R1 containment (the primary = reading (b), 11 statements; real share, shifted-window share, cross-symbol share, gaps in points):
+  all                  n 11  inside 8/11 = 72.7%   shifted 47.0%   cross 5.1%   gap shifted 25.8   gap cross 67.6   [published 11 / 72.7 / 47.0 / 5.1 / 25.8 / 67.6 -- identical]
+  2020                 n 9   inside 6/9 = 66.7%   shifted 38.9%   cross 4.9%   gap shifted 27.8   gap cross 61.8   [published 9 / 66.7 / 38.9 / 4.9 / 27.8 / 61.8 -- identical]
+  2021-22              n 2   inside 2/2 = 100.0%   shifted 83.3%   cross 6.1%   gap shifted 16.7   gap cross 93.9   [published 2 / 100.0 / 83.3 / 6.1 / 16.7 / 93.9 -- identical]
+  without flickers     n 9   inside 7/9 = 77.8%   shifted 46.3%   cross 6.2%   gap shifted 31.5   gap cross 71.5   [published 9 / 77.8 / 46.3 / 6.2 / 31.5 / 71.5 -- identical]
+  flickers only        n 2   inside 1/2 = 50.0%   shifted 50.0%   cross 0.0%   gap shifted 0.0   gap cross 50.0   [published 2 / 50.0 / 50.0 / 0.0 / 0.0 / 50.0 -- identical]
+  without daily-only   n 8   inside 6/8 = 75.0%   shifted 37.5%   cross 5.5%   gap shifted 37.5   gap cross 69.5   [published 8 / 75.0 / 37.5 / 5.5 / 37.5 / 69.5 -- identical]
+  daily-only only      n 3   inside 2/3 = 66.7%   shifted 72.2%   cross 4.1%   gap shifted -5.6   gap cross 62.6   [published 3 / 66.7 / 72.2 / 4.1 / -5.6 / 62.6 -- identical]
+R1 GAP BAR: NOT DECIDABLE (primary n 11 < the section 9 floor of 100); gaps 25.8 over the shifted-window control, 67.6 over the cross-symbol control (bar >= 25 each); would read PASS at a decidable n   [published: NOT DECIDABLE, 25.8 / 67.6, would read PASS]
+  - margin on the shifted bar: 31 / 66 shifted windows contain the price; ONE more window inside makes the gap 24.2 (under the bar); the 1%-only tolerance reads 30 / 66 = gap 27.3
+  reading (a), all 17  n 17  inside 13/17 = 76.5%   shifted 43.1%   cross 5.3%   gap shifted 33.3   gap cross 71.2   
+  - reading (a) (the literal section 4.2 population, 17 clean fills): n 17 < 100 -> NOT DECIDABLE as well; would read PASS
+  - sensitivity, cross control read loosely (every other position's nearest window, ties kept): 4.7% (mean of 11 per-statement shares; pooled 13 / 252) -> gap 68.0; same verdict
+
+R5 side agreement (unique joins with an action that has a side):
+  all                  48 / 66 = 72.7%   [published 48 / 66 -- identical]
+  2020                 41 / 55 = 74.5%   [published 41 / 55 -- identical]
+  2021-22              7 / 11 = 63.6%   [published 7 / 11 -- identical]
+  without flickers     43 / 57 = 75.4%   [published 43 / 57 -- identical]
+  flickers only        5 / 9 = 55.6%   [published 5 / 9 -- identical]
+  without daily-only   44 / 61 = 72.1%   [published 44 / 61 -- identical]
+  daily-only only      4 / 5 = 80.0%   [published 4 / 5 -- identical]
+R5 BAR: FAIL -- 48 / 66 = 72.7% (bar >= 90%)   [published FAIL 48 / 66 = 72.7%]
+  - sensitivity, not the bar: if the 90 ticker-AMBIGUOUS own-trade statements (a guessed symbol) were joined too, 16 more would place uniquely with a side and 10 of them agree -> 58 / 82 = 70.7%
+
+MATCH: YES -- every count, every verdict and every row-level cell compared reproduces the published run
+  - R1 lines identical 7 / 7; R5 lines identical 7 / 7; row-level differences: join 0, R5 0, real containment 0, shifted 0, cross 0, re-derived cross edges 0

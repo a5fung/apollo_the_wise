@@ -1,0 +1,14 @@
+2026-10-31 08:25:07.404 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+rows 40 closed 39 open 1
+closed with blank Win/Loss %: 0
+closed with Size/Stop populated (should be none): 0 0
+   Ticker Status   Entry    Stop  Sh  R  P&L Win/Loss % Size %        Stop %
+37   IRON   open  $73.91  $73.28   3  —  $+0          —   4.9%  9.4% to stop
+MD: <div class="op-list"><div class="op-row"><div class="op-head"><span class="op-tkr">IRON</span><span class="op-r mono" style="color: #00D26A;">+0.9R</span></div><div class="op-cells"><div><div class="s
+SUB: Open positions (1)
+SUB: Calendar P&L
+SUB: Setup-tagged stats
+SUB: Worst-vs-you / best-in-favor
+SUB: Equity curve
+SUB: Best & worst trades
+SUB: Holding period

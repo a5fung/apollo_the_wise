@@ -1,0 +1,26 @@
+SET
+et|event_type|s
+2026-10-21 09:31:00.104469|orb_triggered|[bar_stream] 2 alerts: ['SPCX', 'SMCI']
+2026-10-21 09:31:00.44168|orb_bar_miss|ORB SMCI attempt 1/3 — bar not available, retry 10s
+2026-10-21 09:31:00.549122|orb_bar_miss|ORB SPCX attempt 1/3 — bar not available, retry 10s
+2026-10-21 09:31:10.053687|orb_triggered|[cron_9_31] 2 alerts: ['SPCX', 'SMCI']
+2026-10-21 09:31:10.096172|orb_bar_fetched|ORB SMCI O=36.42 H=36.52 L=35.90 range=0.62
+2026-10-21 09:31:10.211359|orb_order_placed|ORB SMCI entry=$36.52 stop=$35.28 shares=27 risk=$50 trade_id=424
+2026-10-21 09:31:10.214321|orb_bar_fetched|ORB SPCX O=160.56 H=160.67 L=158.78 range=1.89
+2026-10-21 09:31:10.225249|orb_gap_below_floor|ORB SPCX — setup:gap_below_floor: rt 8.8% < 9% floor (alert said 9.0%, last $160.85 vs prev close $147.79)
+2026-10-21 09:31:10.463813|orb_bar_fetched|ORB SMCI O=36.42 H=36.52 L=35.90 range=0.62
+2026-10-21 09:31:10.674622|orb_bar_fetched|ORB SPCX O=160.56 H=160.67 L=158.78 range=1.89
+2026-10-21 09:31:10.68476|orb_gap_below_floor|ORB SPCX — setup:gap_below_floor: rt 8.9% < 9% floor (alert said 9.0%, last $160.89 vs prev close $147.79)
+2026-10-21 09:31:11.192071|orb_triggered|[bar_stream] 2 alerts: ['SPCX', 'SMCI']
+2026-10-21 09:31:11.241109|orb_triggered|[bar_stream] 2 alerts: ['SPCX', 'SMCI']
+2026-10-21 09:31:11.290253|orb_triggered|[bar_stream] 2 alerts: ['SPCX', 'SMCI']
+(14 rows)
+id|ticker|status|skip_reason|et
+424|SMCI|closed|block:r3_reentry_disabled|2026-10-21 09:31:10.123755
+425|SPCX|skipped|setup:gap_below_floor: rt 8.8% < 9% floor (alert said 9.0%, last $160.85 vs prev close $147.79)|2026-10-21 09:31:10.223596
+(2 rows)
+column_name
+job_name
+run_date
+ran_at
+(3 rows)

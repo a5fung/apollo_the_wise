@@ -1,0 +1,69 @@
+2026-10-31 08:24:56.090 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+exception: []
+tabs: []
+0 ['Strategy', 'Trades', 'Win rate', 'Wins', 'Scratch', 'Losses', 'Avg R', 'Avg R (win)', 'Avg R (loss)', 'Profit factor', 'Expectancy', 'Avg hold', 'Best', 'Worst'] 1
+
+1 ['Strategy', 'N', 'n_capture', 'Worst', 'Best', 'Capture', 'Exit'] 1
+
+2 ['Ticker', 'Strategy', 'Date', 'Regime', 'Catalyst', 'Gap', 'Entry', 'Exit', 'R', 'P&L', 'Win/Loss %', 'Hold'] 10
+   Ticker       R    P&L Win/Loss %
+33    KOD  +5.87R  $+149     +47.1%
+18   ABCL  +2.68R  $+128     +16.8%
+13   PLTR  +3.42R  $+119     +13.3%
+24   MRNA  +2.08R   $+91     +18.8%
+32   VICR  +7.30R   $+76     +35.8%
+22   AMLX  +1.26R   $+63     +13.0%
+26   OKTA  +1.36R   $+47     +14.1%
+21   ETON  +0.52R   $+19      +2.1%
+25   CRWD  +0.40R   $+14      +2.3%
+30    SEI  +0.41R    $+4      +3.3%
+3 ['Ticker', 'Strategy', 'Date', 'Regime', 'Catalyst', 'Gap', 'Entry', 'Exit', 'R', 'P&L', 'Win/Loss %', 'Hold'] 10
+   Ticker       R   P&L Win/Loss %
+35   PENG  -0.82R  $-82     -11.3%
+34    CEG  -1.00R  $-59      -6.5%
+20     BW  -1.09R  $-50      -5.1%
+27   SOLS  -1.00R  $-49      -6.1%
+23   MRVL  -0.95R  $-43      -4.5%
+12   BLZE  -1.02R  $-37      -8.0%
+36    HUM  -1.01R  $-34      -7.6%
+38   SMCI  -1.01R  $-34      -3.5%
+0    WULF  -1.00R  $-33      -3.3%
+19   FRMI  -0.98R  $-31      -3.2%
+4 ['Ticker', 'Strategy', 'Date', 'Regime', 'Catalyst', 'Gap', 'Entry', 'Exit', 'R', 'P&L', 'Win/Loss %', 'Hold'] 10
+   Ticker       R    P&L Win/Loss %
+32   VICR  +7.30R   $+76     +35.8%
+33    KOD  +5.87R  $+149     +47.1%
+13   PLTR  +3.42R  $+119     +13.3%
+18   ABCL  +2.68R  $+128     +16.8%
+24   MRNA  +2.08R   $+91     +18.8%
+26   OKTA  +1.36R   $+47     +14.1%
+22   AMLX  +1.26R   $+63     +13.0%
+21   ETON  +0.52R   $+19      +2.1%
+30    SEI  +0.41R    $+4      +3.3%
+25   CRWD  +0.40R   $+14      +2.3%
+5 ['Ticker', 'Strategy', 'Date', 'Regime', 'Catalyst', 'Gap', 'Entry', 'Exit', 'R', 'P&L', 'Win/Loss %', 'Hold'] 10
+   Ticker       R   P&L Win/Loss %
+20     BW  -1.09R  $-50      -5.1%
+5     HUT  -1.07R  $-20      -2.1%
+2    WDFC  -1.04R  $-19      -3.2%
+14   BTDR  -1.03R  $-28      -3.0%
+9     WKC  -1.03R  $-24      -3.0%
+11   FTNT  -1.03R   $-7      -4.0%
+12   BLZE  -1.02R  $-37      -8.0%
+29   PHVS  -1.02R  $-11      -8.5%
+15   TEAM  -1.02R  $-24      -2.7%
+31   DFTX  -1.01R  $-24      -7.7%
+6 ['Ticker', 'Strategy', 'Date', 'Filled', 'Closed', 'Status', 'Entry', 'Stop', 'Exit', 'Sh', 'Regime', 'Catalyst', 'Gap', 'Score', 'R', 'P&L', 'Win/Loss %', 'Size %', 'Stop %', 'Hold'] 40
+   Ticker      R    P&L Win/Loss % Size %        Stop %
+39    CLS  -0.29   $-13      -2.3%      —             —
+38   SMCI  -1.01   $-34      -3.5%      —             —
+37   IRON      —    $+0          —   4.9%  9.4% to stop
+36    HUM  -1.01   $-34      -7.6%      —             —
+35   PENG  -0.82   $-82     -11.3%      —             —
+34    CEG  -1.00   $-59      -6.5%      —             —
+33    KOD  +5.87  $+149     +47.1%      —             —
+32   VICR  +7.30   $+76     +35.8%      —             —
+31   DFTX  -1.01   $-24      -7.7%      —             —
+29   PHVS  -1.02   $-11      -8.5%      —             —
+30    SEI  +0.41    $+4      +3.3%      —             —
+28   HOOD  -0.84   $-27      -5.8%      —             —

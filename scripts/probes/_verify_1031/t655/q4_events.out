@@ -1,0 +1,45 @@
+SET
+== (1) renaming Arm B merges since the 10-17 deploy: lineage rows
+id|old_name|new_name|mechanism|theme_date|renamed_at
+7|Aerospace & Defense Components and Israeli/Global Defense Electronics|Defense & Aerospace Electronics and Subsystems Suppliers|arm_b_merge_rename|2026-10-19|2026-10-19 21:11:29.225888+00
+8|Precious Metals Miners — Fed Easing & Rate Tailwind|Precious Metals Miners — Monetary Easing & Rate Tailwind|arm_b_merge_rename|2026-10-20|2026-10-20 21:08:46.15156+00
+9|Precious Metals Miners — Monetary Easing & Rate Tailwind|Precious Metals Miners — Monetary Easing Tailwind|arm_b_merge_rename|2026-10-21|2026-10-21 21:11:56.064696+00
+10|Multifamily Apartment REITs Sunbelt & Coastal Broadening|Multifamily Apartment REIT Recovery|arm_b_merge_rename|2026-10-21|2026-10-21 21:11:56.075256+00
+12|Defensive Consumer Rotation & Trade-Down|Defensive Consumer Staples Rotation (Inflation-Driven)|arm_b_merge_rename|2026-10-23|2026-10-23 21:09:43.595675+00
+13|Precious Metals Miners — Monetary Easing Tailwind|Precious Metals Miners and Royalty/Streaming — Monetary Easing Tailwind|arm_b_merge_rename|2026-10-23|2026-10-23 21:09:43.654026+00
+14|Defense & Aerospace Electronics and Subsystems Suppliers|Defense & Aerospace Contractors & Suppliers|arm_b_merge_rename|2026-10-26|2026-10-26 21:07:59.432001+00
+15|Gold & Silver Royalty/Streaming and Senior Gold Miners|Precious Metals Miners, Royalty & Streaming – Monetary Easing Cycle|arm_b_merge_rename|2026-10-26|2026-10-26 21:07:59.460012+00
+16|Non-Alcoholic Beverages & Energy Drinks|Defensive Consumer Staples Rotation|arm_b_merge_rename|2026-10-27|2026-10-27 21:05:43.503795+00
+17|Precious Metals Miners, Royalty & Streaming – Monetary Easing Cycle|Precious Metals Miners – Monetary Easing Cycle|arm_b_merge_rename|2026-10-27|2026-10-27 21:05:43.529441+00
+18|Truckload & LTL Freight Trucking Carriers|Trucking Freight Carrier Capacity Cycle Recovery|arm_b_merge_rename|2026-10-28|2026-10-28 21:09:06.046727+00
+19|Defense & Aerospace Contractors & Suppliers|Defense & Aerospace Contractors, Electronics & Aftermarket Services|arm_b_merge_rename|2026-10-30|2026-10-30 21:09:15.534632+00
+20|Multifamily Apartment REITs (Sunbelt & Coastal)|Multifamily REIT Recovery|arm_b_merge_rename|2026-10-30|2026-10-30 21:09:15.580464+00
+(13 rows)
+== (1) theme_thesis_merged audit rows since 10-17 (detail head)
+et|left
+2026-10-19 17:09:56.072383|driver_a='Geopolitical conflict and defense budget growth driving military modernization demand' driver_b='Defense and aerospace spending demand from geopolitical escalation' reason='Same directional driver (geopolitical
+2026-10-19 17:10:20.697562|driver_a='Fed easing cycle, Treasury yield decline, USD weakness driving precious metals rally' driver_b='Fed easing, lower yields, safe-haven demand supporting precious metals' reason='Identical macro driver: Fed easing
+2026-10-20 17:07:45.040989|driver_a='Fed easing, falling Treasury yields, weaker USD benefiting precious metals.' driver_b='Softer yields, weaker dollar, precious metals (silver) demand revival.' reason='Identical monetary/rate driver; THEME B add
+2026-10-20 17:07:51.673259|driver_a='Monetary easing and declining Treasury yields lifting global gold prices' driver_b='Gold-price rally from softer yields, concentrated in high-beta South African producers' reason='Both themes share the identica
+2026-10-21 17:10:54.145648|driver_a='Rate sensitivity and rotation into beaten-down residential real estate' driver_b='Geographic rotation within apartment REITs toward Sunbelt/coastal assets' reason='Both themes share identical directional driver
+2026-10-21 17:10:58.848069|driver_a='Monetary easing, lower yields, weaker dollar boosting gold prices' driver_b='Fed rate-hike reprieve, weaker dollar, lower yields boosting silver prices' reason='Identical directional driver across both themes: 
+2026-10-22 17:06:02.862088|driver_a='U.S. dollar weakness and Fed rate easing lift precious metals prices broadly' driver_b='Silver price recovery driven by monetary easing and dollar weakness' reason='Identical directional driver: monetary easing
+2026-10-23 17:08:46.683643|driver_a='Gold and silver price recovery from U.S. dollar easing and Fed rate-hike moderation' driver_b='Bullion price strength driving precious-metals miners and royalty/streaming firms higher' reason='Both themes are d
+2026-10-23 17:08:56.06522|driver_a='Inflation-driven defensive rotation into value retail and discount chains' driver_b='Inflation-driven defensive rotation into branded packaged food staples' reason="Both themes are driven by the same catalyst: 
+2026-10-23 17:09:03.190437|driver_a='Inflation/recession anxiety driving defensive rotation into consumer staples' driver_b='Inflation/recession anxiety driving defensive rotation into large-cap household staples' reason="Both themes ride the same
+2026-10-26 17:07:04.707871|driver_a='Rising allied defense budgets and procurement for subsystems/components, especially Asia-Pacific and Europe.' driver_b='Rising U.S. defense spending, backlog expansion, and contract wins for large platform inte
+2026-10-26 17:07:29.857347|driver_a='Gold/silver bullion price recovery from USD easing and macro relief' driver_b='Gold-sector bullion rebound from Fed-tightening relief and weaker macro pressures' reason='Identical directional driver: bullion pr
+2026-10-27 17:05:11.289305|driver_a='Bullion price strength from monetary easing cycle (rate decline, USD weakness)' driver_b='Bullion price strength from monetary easing cycle (higher leverage to metal prices)' reason='Identical directional drive
+2026-10-27 17:05:16.1885|driver_a='Defensive rotation into consumer staples amid market uncertainty and inflation hedging' driver_b='Defensive rotation into staples (beverages) amid earnings support and market uncertainty' reason='Both themes ar
+2026-10-28 17:08:30.497518|driver_a='Freight-cycle re-rating: tightening truckload capacity lifting spot and contract rates' driver_b='Capacity tightening supporting higher freight rates despite weak demand; carrier exits and driver market tightne
+2026-10-29 17:04:42.227813|driver_a='Gold/silver price rebound & central-bank demand from monetary easing cycle' driver_b='Gold/silver price appreciation with operational leverage from small/mid-cap producer profile' reason="Both themes share iden
+2026-10-30 17:08:19.442301|driver_a='Rising defense budgets, geopolitical tensions, strong platform demand, contract backlog expansion' driver_b='Defense budget increase, aerospace aftermarket demand tailwinds' reason="Both themes ride the same de
+2026-10-30 17:08:44.3615|driver_a='Multifamily REIT rebound on supply normalization and rental demand stabilization' driver_b='Apartment REIT rebound on easing new supply and stabilizing rental demand' reason='Both themes share identical directi
+(18 rows)
+== (2c) Pass 1.5 operator-exempt rows and errors since 10-17
+event_type|count|min|max
+(0 rows)
+== (7) lane2_widen_reconsider predicate (threshold 20)
+count
+9
+(1 row)

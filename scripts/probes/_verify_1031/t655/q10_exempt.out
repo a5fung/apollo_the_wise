@@ -1,0 +1,21 @@
+SET
+== his promotions
+et|left
+2026-10-22 18:06:59.785406|query='Software & Data Platforms Re-Rating for the AI Era' candidate='Software & Data Platforms Re-Rating for the AI Era' final='Software & Data Platforms Re-Rating for the AI Era' tickers=['ADSK', 'BL', 'VERX', 'LZ', 'VYX', 'KD', 'UPWK', 'YELP'] cand_source=rs_slope_synthesis
+2026-10-29 18:09:52.322575|query='Natural Gas Producers & Midstream Pipelines' candidate='Natural Gas Producers & Midstream Pipelines' final='Natural Gas Producers & Midstream Pipelines' tickers=['RRC', 'TRP', 'VIST', 'MGY'] cand_source=rs_slope_synthesis
+(2 rows)
+== Pass 1.5 absorptions and skips since 10-21
+et|event_type|left
+2026-10-21 17:10:19.558467|theme_pass1_5_absorption|t='Franchised Auto Dealership Groups' t_score=4.358144000000001 t_protected=True t_size=2 unique_count=0 target='Auto Aftermarket, Powertrain & Preventive Maintenance Services' target_score=41.08800000000001 target_protected=True
+2026-10-22 17:05:25.515536|theme_pass1_5_absorption|t='Customer Experience, Digital Promotions & Commerce Engagement Software' t_score=78.2 t_protected=True t_size=2 unique_count=1 target='Small-Cap Digital Commerce & Promotions Platforms' target_score=79.5 target_protected=True
+2026-10-23 17:08:01.834722|theme_pass1_5_absorption|t='Cancer Diagnostics & Pathology Testing' t_score=57.3 t_protected=True t_size=3 unique_count=1 target='AI-Driven Diagnostics & Imaging Re-Rating' target_score=72.9 target_protected=True
+2026-10-23 17:08:01.836701|theme_pass1_5_absorption|t='Gold Mining: Africa & Emerging-Market Producers' t_score=18.400000000000002 t_protected=True t_size=2 unique_count=1 target='Precious Metals Miners — Monetary Easing Tailwind' target_score=40.44800000000001 target_protected=True
+2026-10-27 17:04:56.394267|theme_pass1_5_absorption|t='Genomic Diagnostics & Computational Drug Discovery Platforms' t_score=71.1 t_protected=False t_size=3 unique_count=1 target='Genomics & DNA Sequencing Tools' target_score=74.7 target_protected=True
+2026-10-28 17:07:50.842725|theme_pass1_5_absorption|t='Brazil & Latin America Equities Rally (Energy, Fintech, E-Commerce)' t_score=26.38666666666667 t_protected=True t_size=2 unique_count=1 target='Oil & Gas Producers and Oilfield Services Leveraged to Commodity Prices' target_score=74.2 target_protected=True
+2026-10-30 17:08:03.700532|theme_pass1_5_skip|t='Contract Drilling Services (Land & Offshore)' t_score=79.1 t_protected=False t_size=3 unique_count=1
+  skip target='Offshore Contract Drillers' reason=direction:target_score=78.7<t_score=79.1
+  skip target='Oil & Gas Producers and Oilfield Services Leverage
+2026-10-30 17:08:03.702262|theme_pass1_5_skip|t='Defense Electronics & Aircraft Aftermarket Services' t_score=48.13333333333333 t_protected=True t_size=2 unique_count=1
+  skip target='Railcar & Transportation Equipment Leasing' reason=direction:target_score=47.866666666666674<t_score=48.13333333333333
+2026-10-30 17:08:03.703549|theme_pass1_5_absorption|t='Life & Supplemental Health Insurers' t_score=33.86666666666667 t_protected=True t_size=1 unique_count=0 target='Annuity-Focused Insurers' target_score=68.2 target_protected=True
+(9 rows)

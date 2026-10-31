@@ -1,0 +1,33 @@
+SET
+et|event_type|summary
+2026-10-27 09:31:00.150866|orb_triggered|[bar_stream] 2 alerts: ['CLS', 'INIO']
+2026-10-27 09:31:11.854591|orb_triggered|[bar_stream] 2 alerts: ['CLS', 'INIO']
+2026-10-28 09:31:00.256755|orb_triggered|[bar_stream] 1 alerts: ['VRT']
+2026-10-29 09:31:00.105092|orb_triggered|[bar_stream] 1 alerts: ['GKOS']
+2026-10-29 09:31:20.798051|orb_skipped|ORB GKOS — infra:no_bar: 3 retries exhausted
+2026-10-29 09:31:21.939962|orb_triggered|[bar_stream] 1 alerts: ['GKOS']
+2026-10-30 09:36:28.962555|orb_triggered|[post_open_new_high] 1 alerts: ['REGN']
+(7 rows)
+event_type|count
+anticipation_stale_bars_skipped|6
+assignment_skipped_comove_below_bar|69
+assignment_skipped_sector_outlier|1
+entry_chase_cap_skipped|1
+orb_bar_fetched|4
+orb_bar_miss|3
+orb_bar_stream_used|2
+orb_cancellation_classification|1
+orb_cancellation_reclassified|1
+orb_gap_below_floor|1
+orb_order_failed|1
+orb_order_placed|2
+orb_out_of_window|2
+orb_skipped|1
+orb_triggered|6
+orb_unfilled_cancelled|1
+promote_member_skipped|8
+rehome_skipped_unjudgeable|5
+split_apply_skipped_no_data|5
+splits_ingest_fractional_skipped|6
+theme_pass1_5_skip|2
+(21 rows)

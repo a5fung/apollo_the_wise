@@ -1,0 +1,29 @@
+SET
+== live mode
+== suppressions: first-crossing join to a DIFFERENT theme, since the dedup_only flip
+ERROR:  column "key" does not exist
+LINE 1: SELECT * FROM mi_safeguard_state WHERE key ILIKE '%birth_gat...
+                                               ^
+id|name|first_seen|last_seen|sightings|status|mode|join_target|ov|n|tickers
+177|Student Loan Servicing & Education Finance|2026-09-16|2026-09-16|1|watching|dedup_only|Consumer Fintech & Digital Credit Platforms|0.50|2|{NNI,SLM}
+252|Electrical Transmission & Power Infrastructure Contractors|2026-10-06|2026-10-06|1|watching|dedup_only|Industrial Construction Execution & On-Site Supply Chain|0.67|3|{ECG,MYRG,STRL}
+343|Home Furnishings Retail Rebound (Discount & Premium)|2026-10-23|2026-10-23|1|watching|dedup_only|Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings|0.50|2|{RH,BOBS}
+382|Mortgage Origination & Homeownership Finance Platforms|2026-10-30|2026-10-30|1|watching|dedup_only|Fintech Lending & Mortgage Platforms Rebound|0.50|3|{RKT,BETR,PRCH}
+(4 rows)
+== mi_themes columns
+column_name|data_type
+id|integer
+theme_date|date
+name|text
+stage|text
+score|double precision
+description|text
+tickers|ARRAY
+created_at|timestamp with time zone
+rs_avg|double precision
+parent_theme|text
+days_active|integer
+consecutive_accelerating|integer
+pct_above_20sma|real
+source|text
+(14 rows)

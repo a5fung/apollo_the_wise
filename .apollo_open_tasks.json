@@ -60,20 +60,12 @@
     "status": "deployed"
   },
   {
-    "id": 704,
-    "status": "deployed"
-  },
-  {
     "id": 706,
     "status": "deployed"
   },
   {
     "id": 710,
     "status": "blocked"
-  },
-  {
-    "id": 711,
-    "status": "in_progress"
   },
   {
     "id": 712,
@@ -89,6 +81,10 @@
   },
   {
     "id": 716,
+    "status": "in_progress"
+  },
+  {
+    "id": 717,
     "status": "in_progress"
   }
 ]

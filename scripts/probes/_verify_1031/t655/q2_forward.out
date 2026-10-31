@@ -1,0 +1,18 @@
+SET
+== forward: themes after each suppression sharing >= half of the cohort (intersection over the smaller), other than the join target
+cand|theme|days|first_day|last_day|max_ov
+177|Fintech & Digital Finance Sector Re-rating on Fed Easing|6|2026-09-17|2026-09-24|0.50
+252|Industrial Construction Execution & On-Site Supply Chain|6|2026-10-07|2026-10-14|1.00
+343|Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings|5|2026-10-26|2026-10-30|1.00
+(3 rows)
+== the join targets: are they live themes, and since when
+name|days|min|max
+Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings|12|2026-10-15|2026-10-30
+Consumer Fintech & Digital Credit Platforms|54|2026-07-01|2026-09-16
+Fintech Lending & Mortgage Platforms Rebound|3|2026-10-28|2026-10-30
+Industrial Construction Execution & On-Site Supply Chain|62|2026-07-24|2026-10-20
+(4 rows)
+== latest theme_date in the table
+max
+2026-10-30
+(1 row)

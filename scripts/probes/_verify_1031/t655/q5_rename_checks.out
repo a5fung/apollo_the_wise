@@ -1,0 +1,39 @@
+SET
+== merged rows since 10-17: description_stored value and lineage flag, by ET date
+et_date|desc_stored|lineage|has_quality_note
+2026-10-19|True||t
+2026-10-19|||f
+2026-10-20|True||t
+2026-10-20|||f
+2026-10-21|True||t
+2026-10-21|True||t
+2026-10-22|||f
+2026-10-23|True||t
+2026-10-23|True||t
+2026-10-23|||f
+2026-10-26|True||t
+2026-10-26|True||t
+2026-10-27|True||t
+2026-10-27|False||t
+2026-10-28|False||t
+2026-10-29|||f
+2026-10-30|False||t
+2026-10-30|True||t
+(18 rows)
+== WOULD-FAIL-IF part 2: renamed theme whose stored description equals the old
+unterminated quoted string
+new_name|theme_date|same_desc
+Defense & Aerospace Electronics and Subsystems Suppliers|2026-10-19|f
+Precious Metals Miners — Monetary Easing & Rate Tailwind|2026-10-20|f
+Precious Metals Miners — Monetary Easing Tailwind|2026-10-21|f
+Multifamily Apartment REIT Recovery|2026-10-21|f
+Defensive Consumer Staples Rotation (Inflation-Driven)|2026-10-23|f
+Precious Metals Miners and Royalty/Streaming — Monetary Easing Tailwind|2026-10-23|f
+Defense & Aerospace Contractors & Suppliers|2026-10-26|f
+Precious Metals Miners, Royalty & Streaming – Monetary Easing Cycle|2026-10-26|
+Defensive Consumer Staples Rotation|2026-10-27|t
+Precious Metals Miners – Monetary Easing Cycle|2026-10-27|f
+Trucking Freight Carrier Capacity Cycle Recovery|2026-10-28|
+Defense & Aerospace Contractors, Electronics & Aftermarket Services|2026-10-30|f
+Multifamily REIT Recovery|2026-10-30|
+(13 rows)

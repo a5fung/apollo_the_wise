@@ -1,0 +1,12 @@
+apollo-execution Up 23 hours (healthy) 2026-10-30 16:05:28 +0000 UTC
+apollo-market Up 23 hours (healthy) 2026-10-30 16:02:13 +0000 UTC
+apollo-orchestrator Up 23 hours 2026-10-30 16:02:13 +0000 UTC
+apollo-redis Up 8 days (healthy) 2026-07-06 15:30:56 +0000 UTC
+apollo-postgres Up 8 days (healthy) 2026-07-06 15:12:00 +0000 UTC
+apollo-uptime Up 8 days (healthy) 2026-03-23 05:58:51 +0000 UTC
+/apollo-execution 2026-10-30T16:05:28.071398908Z 2026-10-30T16:05:40.287692015Z /var/lib/docker/containers/bd5e171601f3f29fd81d3556c0962c638c1b31ecd48645cdf598aa2aacaee15b/bd5e171601f3f29fd81d3556c0962c638c1b31ecd48645cdf598aa2aacaee15b-json.log
+/apollo-market 2026-10-30T16:02:13.14520448Z 2026-10-30T16:02:25.402269342Z /var/lib/docker/containers/c8e2de0961653331e6b469f9bb97009cbdb0be009dc90bfe9ccf94ccab43b110/c8e2de0961653331e6b469f9bb97009cbdb0be009dc90bfe9ccf94ccab43b110-json.log
+/apollo-orchestrator 2026-10-30T16:02:13.085807352Z 2026-10-30T16:02:25.403403895Z /var/lib/docker/containers/0b115670e23c9d010fd198d730e0c2b106bb727b9ec7245ca5e2a909f43732b7/0b115670e23c9d010fd198d730e0c2b106bb727b9ec7245ca5e2a909f43732b7-json.log
+ls: cannot access '/var/lib/docker/containers/bd5e171601f3f29fd81d3556c0962c638c1b31ecd48645cdf598aa2aacaee15b/bd5e171601f3f29fd81d3556c0962c638c1b31ecd48645cdf598aa2aacaee15b-json.log': Permission denied
+Hint: You are currently not seeing messages from other users and the system.
+      Users in groups 'adm', 'systemd-journal' can see all messages.

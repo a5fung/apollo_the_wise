@@ -1,0 +1,19 @@
+total 291304
+drwxrwxr-x  3 apollo apollo     4096 Oct 30 22:08 .
+drwxrwxr-x 19 apollo apollo     4096 Oct 30 16:00 ..
+-rw-r--r--  1 apollo apollo    39079 Sep 13 02:00 651_capture.jsonl
+-rw-r--r--  1 apollo apollo     3748 Oct 13 13:46 expiry_test_2026-10-13.stdout
+-rw-rw-r--  1 apollo apollo        0 Mar 19  2026 .gitkeep
+drwxr-xr-x  2 apollo apollo     4096 Oct 30 22:20 llm_samples
+-rw-r--r--  1 apollo apollo 27504796 Oct 31 15:30 market-agent.log
+-rw-r--r--  1 apollo apollo   107013 Oct 17 01:17 market-agent.log.1
+-rw-r--r--  1 apollo apollo 52429010 Jul 20 16:57 market-agent.log.10
+-rw-r--r--  1 apollo apollo 52428888 Oct 16 22:00 market-agent.log.2
+-rw-r--r--  1 apollo apollo  4540434 Sep 24 01:17 market-agent.log.3
+-rw-r--r--  1 apollo apollo 52428941 Sep 23 22:00 market-agent.log.4
+-rw-r--r--  1 apollo apollo  3612761 Sep 11 01:16 market-agent.log.5
+-rw-r--r--  1 apollo apollo 52429026 Sep 10 19:45 market-agent.log.6
+-rw-r--r--  1 apollo apollo   237921 Aug 20 03:57 market-agent.log.7
+-rw-r--r--  1 apollo apollo 52428810 Aug 19 21:04 market-agent.log.8
+-rw-r--r--  1 apollo apollo     6996 Jul 20 16:57 market-agent.log.9
+-rw-------  1 apollo apollo      824 Oct 30 22:08 model_resolution.json

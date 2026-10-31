@@ -1,0 +1,10 @@
+SET
+== renames touching the 177 target or its successor
+id|old_name|new_name|mechanism|detail|theme_date|renamed_at
+(0 rows)
+== members on the last target day vs the
+unterminated quoted string
+theme_date|name|tickers
+2026-09-16|Consumer Fintech & Digital Credit Platforms|{}
+2026-09-17|Fintech & Digital Finance Sector Re-rating on Fed Easing|{SSNC,BR,KSPI,MQ,PGY,XP,QTWO,BFH,PYPL,OMF,PAY,ACIW,DAVE,JKHY,ITUB,CHYM,SLM,NU,NCNO,ALKT,DLO,PAGS,XYZ,INTR}
+(2 rows)

@@ -1,0 +1,47 @@
+== suppression-accuracy
+1674 :  10-15/10-16 folds), and the rule decision taken to him; (5) the overdue birth-gate accuracy read: `dedup_only`'s 15 trading days ended 10-02 and its suppression-accuracy rate (bar 85%) was never read — read it and record whether the gate stays; (6) #505's carried 'fewer UNRELATED verdicts' expectation (NOT MET at #505's close, carried here): read the captured 10-12..
+
+9362 :  at all and the churn is upstream in naming. **DONE-WHEN:** 15 trading days at `dedup_only` (first gated run Mon 2026-09-14 ~17:00 ET) AND either the suppression-accuracy rate has held at or above 85% on a larger n — then it stays and this stops being watched — or a wrong suppression has surfaced, which ends the watch immediately and returns the decision to him (`set_
+
+== suppression accuracy
+== accuracy
+1608 : s skip the description check: 5 of 15 on the bar, 6 of 24 with the 10-15/10-16 folds), and the rule decision taken to him; (5) the overdue birth-gate accuracy read: `dedup_only`'s 15 trading days ended 10-02 and its suppression-accuracy rate (bar 85%) was never read — read it and record whether the gate stays; (6) #505's carried 'fewer UNRELATED verdicts' 
+
+1686 :  folds), and the rule decision taken to him; (5) the overdue birth-gate accuracy read: `dedup_only`'s 15 trading days ended 10-02 and its suppression-accuracy rate (bar 85%) was never read — read it and record whether the gate stays; (6) #505's carried 'fewer UNRELATED verdicts' expectation (NOT MET at #505's close, carried here): read the captured 10-12..
+
+9374 : the churn is upstream in naming. **DONE-WHEN:** 15 trading days at `dedup_only` (first gated run Mon 2026-09-14 ~17:00 ET) AND either the suppression-accuracy rate has held at or above 85% on a larger n — then it stays and this stops being watched — or a wrong suppression has surfaced, which ends the watch immediately and returns the decision to him (`set_
+
+== q4.out
+1936 : ed 'fewer UNRELATED verdicts' expectation (NOT MET at #505's close, carried here): read the captured 10-12..10-14 data (`scripts/probes/_655_wed_1014/q4.out`, 0 linked of 18 asks) and record the decision; (7) the data-gated review `lane2_widen_reconsider` (data_gated_reviews.yaml, plan_ref #655, threshold 20, about mid-November) fires and his leave/widen
+
+== fewer UNRELATED
+1790 :  trading days ended 10-02 and its suppression-accuracy rate (bar 85%) was never read — read it and record whether the gate stays; (6) #505's carried 'fewer UNRELATED verdicts' expectation (NOT MET at #505's close, carried here): read the captured 10-12..10-14 data (`scripts/probes/_655_wed_1014/q4.out`, 0 linked of 18 asks) and record the decision; (7) the data-g
+
+46440 : , decided by Fri 10-16); churn re-measure Sat 10-17. >> 📎 **Carried from #505 (closed 2026-10-12):** the parent pass's link-yield watch — its EXPECT 'fewer UNRELATED asks' is unmet so far (10-12: 6 asks, 0 errors; the old run linked 4 CHILD_OF / 12 UNRELATED of 54). Read after the 10-13 and 10-14 nights; not a gate on #655's DoD. >> 🔎 **10-12 evening:** ▶ MON 10-
+
+== lane2_widen
+2018 :  read the captured 10-12..10-14 data (`scripts/probes/_655_wed_1014/q4.out`, 0 linked of 18 asks) and record the decision; (7) the data-gated review `lane2_widen_reconsider` (data_gated_reviews.yaml, plan_ref #655, threshold 20, about mid-November) fires and his leave/widen/retire call is recorded here; (8) carried, not asks: the SEZL validator example (from 
+
+21944 :  RULED 2026-09-14: LEAVE** (*"ok, leave it, let's make sure we track to see if anything changes our decision going forward"*). **Forward tracking is `lane2_widen_reconsider` in `data_gated_reviews.yaml`, filed the same hour with its bars written BEFORE any v2 data: stay-leave under a 15% judgeable miss rate or where Lane 1 made the group within 5 sessions; wi
+
+64822 : wn source-theme cooldown, same second as its move). One move, one rescore: a working path, not a rate. Open (DoD (1), (2), (7)): event-gated items + `lane2_widen_reconsider` (~mid-November). Next read Fri 10-30 with the Friday verifies. 
+
+== arm_b_merge_rename
+723 : ow has a prod read or his recorded decision — (1) the 10-17 renaming-merge build (a renaming Arm B merge stores the merged description and writes an `arm_b_merge_rename` lineage row, so a /bypass filed under the old name keeps protecting; ff81f291 + e9ba41f5, deployed 10-17 at 32267f06 and present in apollo-market AND apollo-execution): its first renaming merge is s
+
+55941 : s"): a renaming Arm B merge now STORES the merged description (only if it passes `_check_description_quality`, else the old one stays) and writes an `arm_b_merge_rename` lineage row, so a /bypass filed under the old name keeps protecting** (ff81f291 + e9ba41f5; SSoT docs/architecture/theme_engine.md). EXPECT (baseline: no `arm_b_merge_rename` row ever): on the first
+
+56116 : ge row, so a /bypass filed under the old name keeps protecting** (ff81f291 + e9ba41f5; SSoT docs/architecture/theme_engine.md). EXPECT (baseline: no `arm_b_merge_rename` row ever): on the first renaming merge, its `theme_thesis_merged` audit detail reads `description_stored=<bool> (description quality check: ...)` and `mi_theme_renames` gains one `arm_b_merge_rename
+
+56316 : ng merge, its `theme_thesis_merged` audit detail reads `description_stored=<bool> (description quality check: ...)` and `mi_theme_renames` gains one `arm_b_merge_rename` row (two if a winner wins twice); non-renaming merges unchanged. The EP theme judge reads description[:120], so its input usually does not change. DONE-WHEN: one renaming merge seen with both. WOULD
+
+== theme_pass1_5_operator_exempt
+54669 : PECT (c), baseline 4 of 9 promotions absorbed within 3 nights: his next promotion that Pass 1.5 would absorb stays on the board 3 engine nights, one `theme_pass1_5_operator_exempt` row per night (count distinct ET dates), absorbed from night 4; an absorption row with his theme as the TARGET is expected. WOULD-FAIL-IF: his theme appears on the LEFT of a `theme_pass1_5_absorptio
+
+54930 : w with his theme as the TARGET is expected. WOULD-FAIL-IF: his theme appears on the LEFT of a `theme_pass1_5_absorption` row inside the window, or a `theme_pass1_5_operator_exempt_error` row appears. EXPECT (d), baseline 10-15: 17 apparel strips under the OLD name: on the next Arm B merge with a new name, every strip between `theme_merge_pairs_proposed` and `theme_thesis_merge
+
+== SEZL
+2200 : ted_reviews.yaml, plan_ref #655, threshold 20, about mid-November) fires and his leave/widen/retire call is recorded here; (8) carried, not asks: the SEZL validator example (from #693's close); the 09-13 partial-join orphan fork and the sticky strong-RS Fading stage, both noted below as his later call and never raised; the funnel-map second definition 
+
+52693 : lso names, or the count reads 0 on a night whose strip rows name a non-moved departure. >> 🏷 **Validator example carried from #693's close (10-16):** SEZL (BNPL) removed 10-14 from 'Alternative Consumer Credit' though its description carries the theme's words — check it when the validator's removals are next read against G-bars; one case, not a verdict
+

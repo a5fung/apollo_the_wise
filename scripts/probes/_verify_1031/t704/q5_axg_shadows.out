@@ -1,0 +1,14 @@
+SET
+== tables with a ticker column whose name marks a shadow / walk that reads split scale
+table_name
+mi_anticipation_consolidation
+mi_consolidation_breakout_entry
+mi_consolidation_breakout_sic
+mi_consolidation_breakout_watch
+mi_consolidation_entry_shadow
+mi_htf_breakout_shadow
+mi_htf_management_shadow
+mi_parabolic_candidates
+mi_parabolic_exclusions
+mi_parabolic_short_shadow
+(10 rows)

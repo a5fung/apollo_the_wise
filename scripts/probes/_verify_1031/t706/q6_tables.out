@@ -1,0 +1,12 @@
+SET
+table_name
+crypto_dominance_alerts
+mi_9m_ep_alerts
+mi_alert_rank_shadow
+mi_audit_log
+mi_ep_alerts
+mi_ep_scan_log
+mi_job_log
+mi_lowcap_paper_lane_alerts
+mi_strength_spread_alert_state
+(9 rows)

@@ -1,0 +1,9 @@
+SET
+== removal/strip rows on a renaming night that name the
+unterminated quoted string
+old_name|event_type|et
+(0 rows)
+== same, naming the NEW (merged) name — the expected side
+count
+0
+(1 row)

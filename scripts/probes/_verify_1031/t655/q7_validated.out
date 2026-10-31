@@ -1,0 +1,24 @@
+SET
+== renaming merged rows: validated_against equals merged_name?
+et_date|merged_name|validated_against
+2026-10-19|Defense & Aerospace Electronics and Subsystems Suppliers|Defense & Aerospace Electronics and Subsystems Suppliers
+2026-10-20|Precious Metals Miners — Monetary Easing & Rate Tailwind|Precious Metals Miners — Monetary Easing & Rate Tailwind
+2026-10-21|Multifamily Apartment REIT Recovery|Multifamily Apartment REIT Recovery
+2026-10-21|Precious Metals Miners — Monetary Easing Tailwind|Precious Metals Miners — Monetary Easing Tailwind
+2026-10-23|Precious Metals Miners and Royalty/Streaming — Monetary Easing Tailwind|Precious Metals Miners and Royalty/Streaming — Monetary Easing Tailwind
+2026-10-23|Defensive Consumer Staples Rotation (Inflation-Driven)|Defensive Consumer Staples Rotation (Inflation-Driven)
+2026-10-26|Defense & Aerospace Contractors & Suppliers|Defense & Aerospace Contractors & Suppliers
+2026-10-26|Precious Metals Miners, Royalty & Streaming – Monetary Easing Cycle|Precious Metals Miners, Royalty & Streaming – Monetary Easing Cycle
+2026-10-27|Precious Metals Miners – Monetary Easing Cycle|Precious Metals Miners – Monetary Easing Cycle
+2026-10-27|Defensive Consumer Staples Rotation|Defensive Consumer Staples Rotation
+2026-10-28|Trucking Freight Carrier Capacity Cycle Recovery|Trucking Freight Carrier Capacity Cycle Recovery
+2026-10-30|Defense & Aerospace Contractors, Electronics & Aftermarket Services|Defense & Aerospace Contractors, Electronics & Aftermarket Services
+2026-10-30|Multifamily REIT Recovery|Multifamily REIT Recovery
+(13 rows)
+== strips on renaming-merge nights: audit event types between proposed and merged that name a theme, 10-19 sample
+event_type|count
+theme_carryforward_filter_stripped|12
+theme_pass1_protect_strip|9
+theme_high_strip_rate|5
+theme_cap_strip|1
+(4 rows)

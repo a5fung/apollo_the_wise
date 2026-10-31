@@ -1,0 +1,27 @@
+SET
+table_name|column_name|data_type
+mi_splits|ticker|text
+mi_splits|execution_date|date
+mi_splits|split_from|integer
+mi_splits|split_to|integer
+mi_splits|polygon_id|text
+mi_splits|fetched_at|timestamp with time zone
+mi_splits|applied_at|timestamp with time zone
+mi_splits|adjustment_applied|boolean
+mi_splits|adjustment_outcome|text
+mi_splits|applied_factor|double precision
+(10 rows)
+table_name|column_name
+mi_audit_log|id
+mi_audit_log|created_at
+mi_audit_log|event_type
+mi_audit_log|summary
+mi_audit_log|detail
+mi_daily_closes|trade_date
+mi_daily_closes|ticker
+mi_daily_closes|close
+mi_daily_closes|volume
+mi_daily_closes|open_price
+mi_daily_closes|high_price
+mi_daily_closes|low_price
+(12 rows)
