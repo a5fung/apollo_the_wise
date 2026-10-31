@@ -14,6 +14,7 @@ out in real time.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import date
 from typing import Any, Awaitable, Callable
@@ -34,6 +35,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     SETUP_CHASE_CAP_EXCEEDED,
     SETUP_FADED_FROM_ORB,
     SETUP_GAP_BELOW_FLOOR,
+    SETUP_OPEN_BELOW_GAP_FLOOR,
     WINDOW_DUPLICATE,
     BLOCK_TICKER_OPEN_POSITION,
     humanize,
@@ -287,6 +289,192 @@ async def check_rt_gap_floor(
         return True, None
 
 
+# ── #715 — the flip-up open rule (2026-10-31, operator "Take all recs") ──────────────────────
+#
+# A MAGNA53 alert ADMITTED BY THE REAL-TIME FLIP-UP — the opening gap read UNDER the floor, the
+# live price over it minutes later (`ep_rt_floor_flip_up`) — is not entered when its 09:30 bar
+# OPENED below the gap floor price, `prev_close × (1 + MIN_GAP_PCT/100)`. His own definition: the
+# gap must exist at the open (REGN 2026-10-30). Evidence: the #715 replay of the 51 flip-ups that
+# became HIGH since 08-02 (`scripts/probes/_715_study_1031/RESULTS.md`, option (b)) — it removes 4
+# of today's 16 entries (HOOD −1.44R, PENG −1.26R, CEG −1.08R, CLS +0.80R) and no big winner. The
+# SSoT, the sign-off and the fragility (CEG's open 0.20% under the line): docs/setups/magna53_ep.md
+# change log 2026-10-31.
+#
+# THREE MODES, one `mi_safeguard_state` row (safeguard `magna53_open_below_floor`, account_mode
+# 'global'): 'shadow' (the DEPLOY DEFAULT — the row absent, unreadable or any other value): the
+# entry proceeds exactly as today and `magna53_open_below_floor_would_skip` records what the rule
+# WOULD have done; 'on': the entry is skipped with `setup:open_below_gap_floor` through `_skip`
+# (one page, like every other setup skip); 'off': nothing is read. The flip shadow → on is HIS.
+#
+# FAIL OPEN, like `check_rt_gap_floor`: the rule may only ever REMOVE entries, so an unreadable
+# toggle, an unreadable flip-up row, a missing denominator or bar, a timeout or any exception lands
+# on today's behaviour (the entry proceeds), never on a block.
+
+OPEN_FLOOR_TOGGLE = "magna53_open_below_floor"
+OPEN_FLOOR_MODES = ("shadow", "on", "off")
+OPEN_FLOOR_DEFAULT_MODE = "shadow"
+# Each DB read on this stage is bounded (the #621 posture): the stage sits on the 09:31 money path.
+OPEN_FLOOR_READ_TIMEOUT_S = 5.0
+
+# "Admitted by the real-time flip-up" = the study's population test, VERBATIM
+# (`scripts/probes/_regn_1030/q3_flipups.sql`, re-run as `c1_population.sql` POPCOUNT): a
+# `mi_audit_log` row of event_type 'ep_rt_floor_flip_up' on the alert's ET date whose summary leads
+# with the ticker. The earliest such row (the first flip-up tick) is returned. Deliberately NOT
+# `mi_ep_alerts.price_source` (set on every authoritative real-time read, agreeing ones included)
+# and NOT `ep_rt_admit` (the AGREE class — real-time and delayed both over the floor).
+FLIP_UP_ADMISSION_SQL = """
+    SELECT created_at, summary, detail
+    FROM mi_audit_log
+    WHERE event_type = 'ep_rt_floor_flip_up'
+      AND created_at >= ($2::date - INTERVAL '1 day')
+      AND (created_at AT TIME ZONE 'America/New_York')::date = $2
+      AND substring(summary from '^([A-Z.]{1,6}) ') = $1
+    ORDER BY created_at, id
+    LIMIT 1
+"""
+
+
+async def get_open_floor_mode() -> str:
+    """'shadow' | 'on' | 'off' from `mi_safeguard_state('magna53_open_below_floor', 'global')`.
+
+    Exactly 'on' → on; exactly 'off' → off; NO row, any other state, a timeout or any error →
+    'shadow' (the entry proceeds, the rule records). The literal name is passed so
+    `scripts/live_rules.py::discover_runtime_toggles` sees the toggle. Flip SQL is in the SSoT."""
+    try:
+        from agents.market_intelligence.db import get_safeguard_state
+        row = await asyncio.wait_for(
+            get_safeguard_state("magna53_open_below_floor", "global"), OPEN_FLOOR_READ_TIMEOUT_S)
+    except Exception as e:  # loud-ok: fail toward shadow — never toward a block (see module note)
+        logger.warning(f"{OPEN_FLOOR_TOGGLE} toggle read failed → '{OPEN_FLOOR_DEFAULT_MODE}': {e}")
+        return OPEN_FLOOR_DEFAULT_MODE
+    state = str(row["state"]).strip().lower() if row is not None and row["state"] is not None else ""
+    if state in ("on", "off"):
+        return state
+    if state and state != "shadow":
+        logger.warning(f"{OPEN_FLOOR_TOGGLE} row carries unknown state {state!r} → '{OPEN_FLOOR_DEFAULT_MODE}'")
+    return OPEN_FLOOR_DEFAULT_MODE
+
+
+async def find_flip_up_admission(ticker: str, alert_date: date) -> dict | None:
+    """The first `ep_rt_floor_flip_up` audit row for (ticker, ET alert date), or None when the name
+    was NOT admitted by the flip-up. Returns {tick_et, rt_gap, delayed_gap, authoritative,
+    created_at} parsed from the row's JSON detail (each None when absent). Raises on a DB error or
+    the timeout — the caller fails open."""
+    async def _read():
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            return await conn.fetchrow(FLIP_UP_ADMISSION_SQL, ticker, alert_date)
+
+    row = await asyncio.wait_for(_read(), OPEN_FLOOR_READ_TIMEOUT_S)
+    if not row:
+        return None
+    out = {"tick_et": None, "rt_gap": None, "delayed_gap": None, "authoritative": None,
+           "created_at": row["created_at"]}
+    detail = row["detail"]
+    if isinstance(detail, str) and detail.lstrip().startswith("{"):
+        try:
+            d = json.loads(detail)
+            for k in ("tick_et", "rt_gap", "delayed_gap", "authoritative"):
+                out[k] = d.get(k)
+        except Exception:  # loud-ok: the detail is telemetry; the row's existence is the decision
+            pass
+    return out
+
+
+async def check_flip_up_open_floor(
+    ticker: str, alert_context: dict, orb_bar: dict | None, floor_pct: float | None,
+) -> tuple[bool, str | None]:
+    """#715 — return (ok, skip_reason). (False, reason) ONLY while the toggle is 'on' AND the alert
+    was admitted by the real-time flip-up AND its 09:30 bar's open is strictly below the floor
+    price. Every other path returns (True, None):
+
+    - `floor_pct` None: the strategy did not opt in (the default — see `flip_up_open_floor_pct`).
+    - mode 'off': nothing else is read.
+    - not a flip-up admit: the rule is not read; no audit row.
+    - no alert_date / prev close / usable open: `magna53_open_floor_unreadable` audit row, proceed.
+    - open ≥ floor price: `magna53_open_floor_checked` (verdict clear), proceed.
+    - open < floor price, 'shadow': `magna53_open_floor_checked` (verdict would_skip) +
+      `magna53_open_below_floor_would_skip`, proceed — the entry is exactly today's.
+    - open < floor price, 'on': `magna53_open_floor_checked` (verdict skip) + (False, reason).
+    - any exception / timeout: a warning, proceed.
+
+    The comparison is the study's: `orb_bar["open"] < prev_close × (1 + floor_pct/100)` (CEG
+    2026-10-06 turned on 0.20%), the floor rounded to 6 decimals only to strip binary float noise
+    so a true tie reads "at the floor". `prev_close` is `db.get_prev_close` — the detector's own
+    Polygon denominator and the 4b re-check's — so the scan, 4a and 4b cannot disagree on one name
+    on one day. The bar is the SAME 09:30 bar every later stage reads; no new data source.
+    """
+    if floor_pct is None:
+        return True, None      # strategy did not opt in — see flip_up_open_floor_pct
+    try:
+        from agents.market_intelligence.db import _coerce_date, get_prev_close
+        mode = await get_open_floor_mode()
+        if mode == "off":
+            return True, None
+        alert_date = _coerce_date(alert_context.get("alert_date"))
+        if alert_date is None:
+            return True, None
+        flip = await find_flip_up_admission(ticker, alert_date)
+        if flip is None:
+            return True, None      # not admitted by the flip-up — the rule is not read
+        tick_et = flip.get("tick_et") or "?"
+        prev_close = await get_prev_close(ticker, alert_date)
+        open_px = None
+        try:
+            open_px = float(orb_bar["open"]) if orb_bar and orb_bar.get("open") is not None else None
+        except (TypeError, ValueError):
+            open_px = None
+        if not prev_close or prev_close <= 0 or open_px is None or open_px <= 0:
+            await log_audit_event(
+                "magna53_open_floor_unreadable",
+                f"ORB {ticker} {alert_date} flip-up admit (tick {tick_et} ET) but prev close "
+                f"{prev_close!r} / 09:30 open {open_px!r} — cannot judge, entry proceeds (mode={mode})",
+                json.dumps({"ticker": ticker, "alert_date": str(alert_date), "mode": mode,
+                            "prev_close": prev_close, "open": open_px, "floor_pct": floor_pct}),
+            )
+            return True, None
+        # The study's arithmetic, with float noise removed: 100 × 1.09 is 109.00000000000001 in
+        # binary, which would call an open of exactly $109.00 "below". Prices are cents and the
+        # floor has at most 4 decimals, so rounding to 6 moves no real comparison (none of the 51
+        # sat within 0.19% of the line) and makes a true tie read "at the floor" = enters.
+        floor_price = round(prev_close * (1 + floor_pct / 100.0), 6)
+        gap_at_open = (open_px - prev_close) / prev_close * 100.0
+        below = open_px < floor_price
+        verdict = "clear" if not below else ("skip" if mode == "on" else "would_skip")
+        detail = json.dumps({
+            "ticker": ticker, "alert_date": str(alert_date), "mode": mode, "verdict": verdict,
+            "open": open_px, "floor_price": round(floor_price, 4), "prev_close": prev_close,
+            "floor_pct": floor_pct, "gap_at_open_pct": round(gap_at_open, 4),
+            "flip_up_tick_et": flip.get("tick_et"), "flip_up_rt_gap": flip.get("rt_gap"),
+            "flip_up_delayed_gap": flip.get("delayed_gap"),
+            "flip_up_authoritative": flip.get("authoritative"),
+        })
+        numbers = (f"09:30 open ${open_px:.2f} {'<' if below else '>='} floor ${floor_price:.2f} "
+                   f"(prev close ${prev_close:.2f} × {1 + floor_pct / 100.0:.2f}; gap at open "
+                   f"{gap_at_open:+.2f}% vs {floor_pct:g}%; flip-up tick {tick_et} ET)")
+        await log_audit_event(
+            "magna53_open_floor_checked",
+            f"ORB {ticker} {numbers} — mode={mode}, verdict={verdict}", detail)
+        if not below:
+            return True, None
+        if mode != "on":
+            await log_audit_event(
+                "magna53_open_below_floor_would_skip",
+                f"ORB {ticker} {numbers} — SHADOW: would skip {SETUP_OPEN_BELOW_GAP_FLOOR}, "
+                f"entry proceeds exactly as today", detail)
+            return True, None
+        return False, (
+            f"{SETUP_OPEN_BELOW_GAP_FLOOR}: 09:30 open ${open_px:.2f} < floor ${floor_price:.2f} "
+            f"({gap_at_open:+.1f}% vs {floor_pct:g}% floor, prev close ${prev_close:.2f}; "
+            f"admitted by the real-time flip-up at {tick_et} ET)"
+        )
+    except Exception as e:
+        # loud-ok: this rule may only ever REMOVE entries. Any failure inside it must land on
+        # today's behaviour, never on a block — an exception here must not become a silent halt.
+        logger.warning(f"flip-up open-floor rule failed for {ticker} (non-fatal, entry proceeds): {e}")
+        return True, None
+
+
 # ── Main pipeline ────────────────────────────────────────────────────────────
 
 SpecBuilder = Callable[
@@ -401,6 +589,15 @@ async def submit_trade_entry(
     # so enforcing MAGNA53's floor there would silently rewrite ANOTHER strategy's entry
     # discipline. Same idiom as fade_midpoint_ratio.
     rt_gap_floor_pct: float | None = None,
+    # #715 (2026-10-31, operator "Take all recs") — the gap floor (percent) the flip-up OPEN rule
+    # measures against, per STRATEGY: a name admitted by the real-time flip-up whose 09:30 bar
+    # opened below `prev_close × (1 + floor/100)` is skipped (`setup:open_below_gap_floor`) while
+    # the `magna53_open_below_floor` toggle is 'on'; recorded only in 'shadow' (the deploy default).
+    # None = the rule is NEVER read (the DEFAULT, deliberately — same idiom as rt_gap_floor_pct):
+    # the small-cap paper lane and breakout v1 pass nothing, and 9M has no caller. Not keyed on
+    # `rt_gap_floor_pct`, which the paper lane also passes. MAGNA53 passes `_MAGNA53_MIN_GAP_PCT`
+    # from live_tracker.py — the day's floor, the same one the scan and stage 4b use.
+    flip_up_open_floor_pct: float | None = None,
     aggregate_skips: bool = False,
     # #624 small-cap PAPER lane (2026-10-10): the ONE account this caller may submit to. When
     # set, the entry is BLOCKED (fail closed, before any bar fetch, sizing, row or order) unless
@@ -712,6 +909,18 @@ async def submit_trade_entry(
     fade_ok, fade_reason = await check_fade_guard(ticker, orb_bar, fade_midpoint_ratio)
     if not fade_ok:
         return await _skip(fade_reason, audit_event="orb_faded")
+
+    # 4a. #715 flip-up open rule (2026-10-31, operator "Take all recs") — a MAGNA53 alert admitted
+    # by the real-time flip-up is not entered when its 09:30 bar OPENED below the gap floor price.
+    # Placed BEFORE 4b exactly as the study replayed option (b): the open test first, then today's
+    # mechanics (the live-price re-check, sizing, the #500 submit). Reads the bar stage 3 already
+    # fetched; opt-in per strategy via `flip_up_open_floor_pct` (MAGNA53 only); three-mode toggle,
+    # 'shadow' by default = the entry proceeds and an audit row says what the rule would have done.
+    # Fails open on every non-answer; see check_flip_up_open_floor.
+    open_ok, open_reason = await check_flip_up_open_floor(
+        ticker, alert_context, orb_bar, flip_up_open_floor_pct)
+    if not open_ok:
+        return await _skip(open_reason, audit_event="orb_open_below_gap_floor")
 
     # 4b. #490 real-time gap re-check — enforce MIN_GAP_PCT at SUBMISSION, not just at the scan
     # tick that wrote the alert row hours earlier. Placed here, beside the fade guard, because it

@@ -48,6 +48,12 @@ SETUP_CHASE_CAP_EXCEEDED   = "setup:chase_cap_exceeded"  # #500 bounded-chase ga
 # 09:31 was still entered. Operator ruled that a BUG, not a new filter — the floor (10% at the time,
 # 9% since 2026-08-19) is an existing signed criterion and the entry path simply was not enforcing it.
 SETUP_GAP_BELOW_FLOOR      = "setup:gap_below_floor"
+# #715 2026-10-31 (operator "Take all recs"; docs/setups/magna53_ep.md change log 2026-10-31): a MAGNA53
+# alert ADMITTED BY THE REAL-TIME FLIP-UP (the opening gap under the floor, the live price over it
+# minutes later) is not entered when its 09:30 bar OPENED below the gap floor price (prev close x
+# (1 + MIN_GAP_PCT)). Written only while the `magna53_open_below_floor` toggle is 'on'; in 'shadow'
+# (the deploy default) the entry proceeds and `magna53_open_below_floor_would_skip` records it.
+SETUP_OPEN_BELOW_GAP_FLOOR = "setup:open_below_gap_floor"
 # Breakout v1 PAPER (2026-10-30, broker/breakout_v1_entry.py; docs/setups/consolidation_breakout.md):
 # `cb._entry_one`'s own abstain — no trade printed in the first five minutes, so there is no opening range — and F1
 # (his ruling 2026-10-29): the buy is only placed / kept live while the volume so far is >= 1.2x the stock's normal
@@ -128,6 +134,7 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_ACCOUNT_FETCH_FAILED: "Couldn't fetch Alpaca account",
     SETUP_FADED_FROM_ORB:       "Price faded below ORB midpoint",
     SETUP_GAP_BELOW_FLOOR:      "Gap retreated below the entry floor before entry",
+    SETUP_OPEN_BELOW_GAP_FLOOR: "Opened below the gap floor",
     SETUP_CHASE_CAP_EXCEEDED:   "Ran too far past ORB high to chase",
     SETUP_NO_OPENING_RANGE_MINUTES:    "No trades in the first five minutes",
     SETUP_BREAKOUT_VOLUME_BELOW_CURVE: "Volume below 1.2x normal for the time of day",

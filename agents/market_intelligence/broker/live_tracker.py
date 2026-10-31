@@ -829,6 +829,11 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 # #490: MAGNA53 opts IN to the submission-time gap re-check at its OWN 10% floor.
                 # 9M Day 2 (line ~1248) deliberately does NOT — its bar is 3%, not 10%.
                 rt_gap_floor_pct=_MAGNA53_MIN_GAP_PCT,
+                # #715 (2026-10-31, operator "Take all recs"): MAGNA53 alone opts IN to the flip-up
+                # open rule — an alert admitted by the real-time flip-up is not entered when its
+                # 09:30 bar opened below the gap floor price. Same day's floor as the scan and the
+                # 4b re-check. The small-cap paper lane and breakout v1 pass nothing (never read).
+                flip_up_open_floor_pct=_MAGNA53_MIN_GAP_PCT,
                 aggregate_skips=True,
             )
 

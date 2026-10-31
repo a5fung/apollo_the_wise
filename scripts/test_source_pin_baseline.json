@@ -38,6 +38,7 @@
     "tests/test_663_ep_scan_result_shape.py": 1,
     "tests/test_667_unbookable_htf_fills.py": 2,
     "tests/test_678_single_job_runs_reader.py": 1,
+    "tests/test_715_open_below_floor.py": 1,
     "tests/test_account_mode_literal_gate.py": 4,
     "tests/test_alert_rank_shadow.py": 2,
     "tests/test_anticipation_graduation_predicate.py": 1,
@@ -149,6 +150,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 431,
+  "total": 432,
   "unescaped": 359
 }

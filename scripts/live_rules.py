@@ -1080,6 +1080,21 @@ def _toggle_line(res: Resolver, name: str) -> str:
     return "; ".join(f"{mode}={r.value} [{r.source}]" for mode, r in states)
 
 
+def _mode_toggle_line(res: Resolver, name: str, default: str) -> str:
+    """A THREE-STATE toggle ('shadow' | 'on' | 'off', e.g. `magna53_open_below_floor`, #715): the
+    DB row's state verbatim when one exists; otherwise the CODE default, named as such. `toggle()`
+    renders a missing "state"-style row as "off (fail-closed default)", which would misstate a
+    toggle whose code default is 'shadow' — the exact docs-vs-prod lie this tool exists to catch."""
+    if not res.prod.reachable:
+        return f"unknown [prod UNREACHABLE — DB toggle row unknown; code default {default}]"
+    rows = [r for r in res.prod.toggles if r["safeguard"] == name]
+    if rows:
+        return "; ".join(
+            f"{r['account_mode']}={r['state']} [mi_safeguard_state (set "
+            f"{(r.get('last_transition_at') or '')[:10] or 'date unrecorded'})]" for r in rows)
+    return f"global={default} [no mi_safeguard_state row — code default]"
+
+
 def build_entry_section(res: Resolver) -> list[str]:
     L: list[str] = []
     strat = {s["strategy_id"]: s for s in res.prod.strategies}
@@ -1114,6 +1129,9 @@ def build_entry_section(res: Resolver) -> list[str]:
              f"`ep_rt_sustain_enabled`: {_toggle_line(res, 'ep_rt_sustain_enabled')}")
     L.append(f"  at submission: gap re-checked on live price — `ep_rt_entry_gap_recheck`: {_toggle_line(res, 'ep_rt_entry_gap_recheck')}; "
              f"ask-aware trigger — `entry_ask_aware`: {_toggle_line(res, 'entry_ask_aware')}")
+    L.append(f"  at submission, flip-up admits only (#715): the 09:30 open must be at/above the gap floor price — "
+             f"`magna53_open_below_floor`: {_mode_toggle_line(res, 'magna53_open_below_floor', 'shadow')} "
+             f"(shadow = enters + records what it would skip; on = skips `setup:open_below_gap_floor`; off = not read)")
     fg = code_fingerprint("agents/market_intelligence/broker/live_tracker.py", r"fade_midpoint_ratio=None")
     L.append(f"  fade guard: MAGNA53 HIGH skips it (ratio None{' — ' + fg if fg else ' — ⚠ fingerprint ABSENT, re-check'}); "
              f"other strategies use ratio {_fmt(res.const('FADE_MIDPOINT_RATIO'))}")
