@@ -992,6 +992,9 @@ async def _lower_stop_after_fill(row: dict, dec: dict) -> str:
                 # the call raised but the broker took the replace: a live successor exists — adopt it, never re-protect
                 return await _adopt_replaced_successor(row, shares, stop_id, detail)
             if chk_status in om._STOP_DEAD_STATUSES:
+                # broker-confirmed: the pointer is cleared only after get_order read the stop back from the broker
+                # in a DEAD status (om._STOP_DEAD_STATUSES) — the leg no longer exists there, and reprotect=True below
+                # places a fresh stop at once (ADR 0008).
                 await om.set_stop_order_id(tid, None, reason="breakout_v1_fill_stop_lower_failed",
                                            account_mode=ACCOUNT_MODE)
                 reprotect = True
