@@ -27,6 +27,7 @@ import asyncio
 
 import agents.market_intelligence.data_gated_reviews as dgr
 import agents.market_intelligence.system_review as sr
+from tests.conftest import real_review_entries
 
 T = None  # today is irrelevant to these entries — no earliest_review_date gate
 
@@ -159,8 +160,12 @@ def test_registry_has_no_undeclared_population_gaps():
     that gap by walking `data_gated_reviews.yaml` itself. Green today because every current gap is
     named in POPULATION_DECLARATION_PENDING_MIGRATION; a new entry (or an existing one edited off
     that list) without a real `discriminates_on:` turns this red."""
+    # `_load_registry` returns [] on a parse failure (it logs and carries on), so "did it load" is
+    # asked against the file read STRAIGHT (a corrupt file raises there). Not `assert entries`: an
+    # empty registry is the burndown finishing, and SKIPS here instead of failing.
+    declared = real_review_entries()
     entries = dgr._load_registry()
-    assert entries, "registry failed to load — check data_gated_reviews.yaml"
+    assert len(entries) == len(declared), "registry failed to load — check data_gated_reviews.yaml"
     undeclared = dgr.find_undeclared_population_entries(entries)
     assert undeclared == [], (
         f"{len(undeclared)} entry(ies) need `discriminates_on:` and have none, and are not on "

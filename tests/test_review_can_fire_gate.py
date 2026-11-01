@@ -36,6 +36,7 @@ import scripts.check_plan as cp
 from scripts.check_plan import (
     _CAN_FIRE_ACTION_KEYS, _CAN_FIRE_KEYS, _review_can_fire_gate, _reviews_by_id, can_fire_missing,
 )
+from tests.conftest import real_review_entries
 
 
 _FULL = {k: "a real sentence about what was actually checked here" for k in _CAN_FIRE_KEYS}
@@ -81,10 +82,19 @@ def test_unparseable_yaml_degrades_to_empty_rather_than_raising():
 
 
 def test_the_live_file_still_parses():
-    """Cheap canary: the one edit made while building this gate broke the file once."""
+    """Cheap canary: the one edit made while building this gate broke the file once.
+
+    `_reviews_by_id` swallows every parse error into `{}`, so the canary compares it with the file
+    read STRAIGHT (a corrupt file raises there) and requires it to have returned EVERY review —
+    not a count floor: `len(got) > 100` went red the day the registry shrank past it, which is
+    the burndown working. An empty registry SKIPS (nothing to parse)."""
     import pathlib
+    declared = {r["review_id"] for r in real_review_entries()
+                if isinstance(r, dict) and r.get("review_id")}
     got = _reviews_by_id(pathlib.Path("data_gated_reviews.yaml").read_text(encoding="utf-8"))
-    assert len(got) > 100
+    assert declared and set(got) == declared, (
+        f"_reviews_by_id returned {len(got)} of the {len(declared)} reviews in the file; "
+        f"missing: {sorted(declared - set(got))[:5]}")
 
 
 def test_the_review_fixed_while_building_this_carries_its_evidence():

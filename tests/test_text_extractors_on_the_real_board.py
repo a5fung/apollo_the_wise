@@ -22,6 +22,7 @@ lines of adversarial real text written over four months.
 So this file is not a fifth gate. It is the population check, made automatic: the properties below
 hold for all open tasks, and any new extractor gets a row here rather than its own gate.
 """
+import inspect
 import re
 
 import pytest
@@ -34,6 +35,7 @@ from scripts.check_plan import (
     parse,
     verify_is_absence_only,
 )
+from tests.conftest import require_population
 
 # Markers that START A NEW THOUGHT in a PLAN line. Nothing extracted as a task's own criterion may
 # contain one: if it does, the capture ran past the end of the criterion into commentary.
@@ -48,8 +50,10 @@ def board():
     tasks = parse(text)[0]
     # Every task line must parse (2026-10-31: the old floor `len(tasks) > 20` failed a correct parse the day the
     # burndown took the board to 20 — a count floor is not a population test; compare against the lines themselves).
-    task_lines = re.findall(r"(?m)^- #\d+ \|", text)
-    assert task_lines and len(tasks) == len(task_lines), \
+    # An EMPTY board (no task lines at all) has nothing to extract from: that SKIPS every property below, and
+    # `test_every_property_holds_on_a_synthetic_board` keeps the extractors exercised regardless.
+    task_lines = require_population(re.findall(r"(?m)^- #\d+ \|", text), "open task lines")
+    assert len(tasks) == len(task_lines), \
         "the board did not parse — every assertion below would be vacuous"
     return tasks
 
@@ -115,3 +119,40 @@ def test_no_deployed_task_rests_on_an_absence_alone(board):
             bad.append(t["id"])
     assert not bad, (f"deployed tasks whose check a BROKEN system would also pass, with no "
                      f"`WOULD-FAIL-IF:`: {bad}")
+
+
+# ── SYNTHETIC PROBE — the properties above, run on a board built here ──────────────────────────
+# The `board` fixture SKIPS on an empty live board, so without this the extractors would go
+# untested the day the burndown reaches zero. This board is written to be ADVERSARIAL for the
+# defects named in the module docstring: a DoD directly followed by a `[ok:]` rebump tag, one
+# followed by a `⚖` scope note, a VERIFY with a positive observable, and a deployed line whose
+# check is an absence rescued by `WOULD-FAIL-IF:`. Every property must hold on it.
+_PROBE_BOARD = """\
+## Probe project
+- #9001 | 2099-01-01 | pending | **Widget shows rows.** DoD: the widget lists at least one real row for a live ticker in prod. [ok:2099-01-01 - rebump prose that is not the criterion]
+- #9002 | 2099-01-01 | pending | **Scope note after the criterion.** DoD: the nightly job writes a non-null reason on a real rejection. \u2696 no strategy change, any flip needs sign-off
+- #9003 | 2099-01-01 | deployed | **Verified by a positive.** EXPECT: the table gains rows. DONE-WHEN: ten rows exist. VERIFY: the new table holds at least ten rows written by the live job. WOULD-FAIL-IF: the table stays empty after a market day.
+"""
+
+
+def _synthetic_board():
+    tasks, errors = parse(_PROBE_BOARD)
+    assert not errors and len(tasks) == len(re.findall(r"(?m)^- #\d+ \|", _PROBE_BOARD)) == 3
+    return tasks
+
+
+def test_every_property_holds_on_a_synthetic_board():
+    """Runs EVERY `board`-taking property above (derived from this module, not hand-listed — a new
+    property is covered the day it is added) against `_PROBE_BOARD`, and checks the probe really
+    does exercise the extractors: each probe line yields a criterion and the rebump / scope
+    commentary is cut out of it."""
+    board = _synthetic_board()
+    props = [fn for name, fn in sorted(globals().items())
+             if name.startswith("test_") and name != "test_every_property_holds_on_a_synthetic_board"
+             and list(inspect.signature(fn).parameters) == ["board"]]
+    assert len(props) >= 5, "the property list was not derived — the probe would run nothing"
+    for fn in props:
+        fn(board)
+    bars = {t["id"]: close_bar_for(t["title"]) for t in board}
+    assert all(bars.values()), f"a probe line yielded no criterion: {bars}"
+    assert "rebump prose" not in bars[9001][1] and "no strategy change" not in bars[9002][1]

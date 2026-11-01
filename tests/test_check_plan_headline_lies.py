@@ -24,7 +24,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "scripts"))
 
-from check_plan import _headline_lies_violations, _headline_of, parse  # noqa: E402
+from check_plan import _headline_lies_violations, _headline_of  # noqa: E402
+from tests.conftest import real_board_tasks, require_population  # noqa: E402
 
 
 def _task(title: str, status: str = "deployed") -> dict:
@@ -91,9 +92,11 @@ def test_the_phrasings_that_actually_get_written():
 
 
 def test_the_live_board_is_clean():
-    """End-to-end against the REAL PLAN.md. Goes vacuous rather than wrong if the board empties."""
-    tasks, _ = parse((REPO / "PLAN.md").read_text(encoding="utf-8"))
-    assert [t for t in tasks if t["status"] == "deployed"], "no deployed tasks — test is vacuous"
+    """End-to-end against the REAL PLAN.md. A board with no `deployed` task has nothing for the
+    gate to look at, so that SKIPS rather than fails (every verify closes, the board empties);
+    the matcher itself is pinned on synthetic titles by the other tests in this file."""
+    tasks = real_board_tasks()
+    require_population([t for t in tasks if t["status"] == "deployed"], "deployed tasks")
     bad = _headline_lies_violations(tasks)
     assert not bad, f"lying headlines on the live board: {[t['id'] for t in bad]}"
 

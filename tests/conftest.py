@@ -229,6 +229,50 @@ def fake_httpx_client(status_code=200, json_body=None, raise_on_status=False):
     return _FakeAsyncClient
 
 
+# ─── Live-board population tests: an EMPTY population is a SKIP, never a FAIL ───────────────────
+# Origin: 2026-10-31 — `len(tasks) > 20` in tests/test_text_extractors_on_the_real_board.py failed a
+# CORRECT parse the day the burndown took the board to 20 lines, and blocked a push. The class is
+# any test that reads the LIVE board / registry (PLAN.md, data_gated_reviews.yaml) and asserts it is
+# non-empty or above a floor: it goes red precisely when the burndown does its job. A test over a
+# live population is vacuous when the population is empty — vacuous is a SKIP, not a failure.
+#
+# ⚠ THE OTHER HALF IS THE TEST'S OWN JOB: a test that exists to check a MATCHER / PARSER must keep a
+# small SYNTHETIC probe, so the matcher stays exercised on a board that has no such line
+# (the pattern in tests/test_shipped_ack_freshness.py::test_the_live_board_markers_are_fresh).
+# A skip with no probe behind it is the unfireable-check shape, one layer down.
+def require_population(items, what):
+    """Return `list(items)` when it is non-empty; otherwise SKIP the calling test (never fail it).
+
+    `what` names the population in plain words ("deployed tasks") and goes into the skip reason,
+    so a skipped test says what it had nothing to look at.
+    """
+    items = list(items)
+    if not items:
+        _pytest.skip(f"no {what} on the live board right now - nothing for this test to check "
+                     f"(an empty population is vacuous, not a failure)")
+    return items
+
+
+def real_board_tasks(status=None):
+    """The live PLAN.md tasks (`scripts.check_plan.parse`), optionally only those at `status`.
+    SKIPS the calling test when that population is empty."""
+    from scripts.check_plan import PLAN, parse
+    tasks = parse(PLAN.read_text(encoding="utf-8"))[0]
+    if status is not None:
+        tasks = [t for t in tasks if t["status"] == status]
+    return require_population(tasks, f"{status} tasks" if status is not None else "open tasks")
+
+
+def real_review_entries():
+    """The live `data_gated_reviews.yaml` `reviews` list, parsed straight from the file with NO
+    error swallowing (a corrupt file RAISES, so a canary built on this cannot pass on a silent
+    `[]`). SKIPS the calling test when the registry holds no reviews."""
+    yaml = _pytest.importorskip("yaml")
+    path = _Path(__file__).resolve().parent.parent / "data_gated_reviews.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return require_population(raw.get("reviews") or [], "gated reviews")
+
+
 # ─── #577 must-not-miss debt summary — always printed, no -v needed ────────────────────────────
 # P1 (docs/roadmap/ep_profitability_program.md § THE PRINCIPLES, operator 2026-08-19): "a real EP
 # must never be missed." tests/fixtures/must_not_miss_eps.py pins today's KNOWN exclusions as a

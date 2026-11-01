@@ -24,6 +24,7 @@ from scripts.check_plan import (
     _SWEEP_MAX_AGE,
     _sweep_is_fresh,
 )
+from tests.conftest import require_population
 
 TODAY = date(2026, 8, 6)
 
@@ -148,17 +149,13 @@ def test_every_swept_marker_on_the_live_board_matches_its_line():
                      + "\n  ".join(bad))
 
 
-def test_every_swept_marker_on_the_live_board_is_parseable_and_not_future():
-    """The markers actually written into PLAN.md must all work. A typo'd marker fails open, so
-    this would not hide a task — but it WOULD mean a sweep someone believed they recorded is not
-    recorded, which is worth failing the suite over."""
-    import pathlib
+def _swept_marker_problems(txt: str, today: date) -> tuple:
+    """-> (markers found, problems). THE CHECK the live-board test runs, extracted so a synthetic
+    probe can exercise it on a board that carries no marker at all."""
     import re as _re
-    txt = pathlib.Path("PLAN.md").read_text(encoding="utf-8")
     # Capture the DATE only — a marker may carry an optional `:hash` suffix, which is checked by
     # test_every_swept_marker_on_the_live_board_matches_its_line, not here.
     found = _re.findall(r"swept:\s*([0-9]{4}-[0-9]{2}-[0-9]{2}|[^\s\]:—]+)", txt, _re.I)
-    assert found, "expected sweep markers on the board; if the sweep idiom is retired, delete this test"
     bad = []
     for raw in found:
         try:
@@ -166,6 +163,32 @@ def test_every_swept_marker_on_the_live_board_is_parseable_and_not_future():
         except ValueError:
             bad.append(f"{raw!r} does not parse")
             continue
-        if d > date.today():
+        if d > today:
             bad.append(f"{raw!r} is in the future")
+    return found, bad
+
+
+def test_every_swept_marker_on_the_live_board_is_parseable_and_not_future():
+    """The markers actually written into PLAN.md must all work. A typo'd marker fails open, so
+    this would not hide a task — but it WOULD mean a sweep someone believed they recorded is not
+    recorded, which is worth failing the suite over. A board with NO marker is a legitimate state
+    (the sweeps all aged out or the idiom was retired): that SKIPS rather than fails, and
+    `test_the_swept_marker_check_flags_what_it_exists_to_flag` keeps the check itself tested."""
+    import pathlib
+    txt = pathlib.Path("PLAN.md").read_text(encoding="utf-8")
+    found, bad = _swept_marker_problems(txt, date.today())
+    require_population(found, "swept: markers")
     assert not bad, "unusable swept: markers on the board:\n  " + "\n  ".join(bad)
+
+
+def test_the_swept_marker_check_flags_what_it_exists_to_flag():
+    """SYNTHETIC PROBE for the live-board test above: its checker must accept a good marker (with
+    and without the `:hash` suffix) and flag a typo and a future date, whatever the board holds."""
+    today = date(2026, 8, 7)
+    good, hashed = "[swept:2026-08-06]", "[swept:2026-08-06:abcd]"
+    found, bad = _swept_marker_problems(f"- #1 | x | deployed | a {good}\n- #2 | x | deployed | b {hashed}", today)
+    assert found == ["2026-08-06", "2026-08-06"] and bad == []
+    found, bad = _swept_marker_problems("- #3 | x | deployed | c [swept:not-a-date] [swept:2099-01-01]", today)
+    assert found == ["not-a-date", "2099-01-01"]
+    assert len(bad) == 2 and "does not parse" in bad[0] and "in the future" in bad[1]
+    assert _swept_marker_problems("a board with no markers at all", today) == ([], [])

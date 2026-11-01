@@ -27,7 +27,8 @@ REPO = Path(__file__).resolve().parents[1]
 # The REAL predicate, imported — not a copy. It was lifted out of main() for exactly this reason
 # (#653: exercise behaviour, do not pin source text). A local re-implementation could pass while
 # the script it describes was broken, which is the failure mode this whole file is about.
-from scripts.operator_asks import _SETTLED_MARKERS, is_open_ask as _is_ask  # noqa: E402
+from scripts.operator_asks import _ASK_BLOCK, _SETTLED_MARKERS, is_open_ask as _is_ask  # noqa: E402
+from tests.conftest import require_population  # noqa: E402
 
 
 def test_the_exact_rows_that_were_invisible_are_asks_now():
@@ -80,14 +81,46 @@ def test_table_furniture_is_not_an_ask():
         assert not _is_ask(line), f"{line!r} parsed as an ask"
 
 
+def _standing_task_rows(plan_text: str):
+    """Rows naming a task inside the standing-ask section, or None when the section is absent.
+    Uses the tool's OWN `_ASK_BLOCK` (imported, not copied) — the table this tool actually reads."""
+    block = _ASK_BLOCK.search(plan_text)
+    if not block:
+        return None
+    return [l for l in block.group(0).splitlines() if l.startswith("|") and re.search(r"\*\*#\d", l)]
+
+
 def test_the_live_table_parses_to_something(monkeypatch=None):
     """End-to-end against the REAL PLAN.md: whatever the table currently holds, the count of rows
-    naming a task must equal asks + settled. A silent drop shows up here as a mismatch."""
-    block = re.search(r"^### Standing — waits on the operator.*?(?=^## |\Z)",
-                      (REPO / "PLAN.md").read_text(encoding="utf-8"), re.M | re.S)
-    assert block, "the standing-ask section is gone from PLAN.md"
-    rows = [l for l in block.group(0).splitlines() if l.startswith("|") and re.search(r"\*\*#\d", l)]
-    assert rows, "no task rows at all in the standing table — furniture only"
+    naming a task must equal asks + settled. A silent drop shows up here as a mismatch.
+
+    A board whose standing section is gone, or holds no task rows, has nothing to parse: that
+    SKIPS (operator_asks.py itself prints "nothing to raise" for it) rather than fails — the row
+    selection is kept tested by `test_the_row_selection_finds_decorated_and_settled_rows`."""
+    rows = require_population(
+        _standing_task_rows((REPO / "PLAN.md").read_text(encoding="utf-8")) or [],
+        "task rows in the standing-ask table")
     asks = [l for l in rows if _is_ask(l)]
     settled = [l for l in rows if not _is_ask(l)]
     assert len(asks) + len(settled) == len(rows), "a row was classified as neither"
+
+
+def test_the_row_selection_finds_decorated_and_settled_rows():
+    """SYNTHETIC PROBE for the live-table test above, so the section regex and the row selection
+    stay exercised whatever the board holds: a decorated OPEN row (the 2026-09-16 miss), a settled
+    row, table furniture, and a row in the NEXT section that must not be read."""
+    plan = (
+        "## Some project\n"
+        "### Standing \u2014 waits on the operator (each carries a PROOF)\n"
+        "| # | the ask | PROOF |\n"
+        "|---|---|---|\n"
+        "| \U0001f534 **#9001 \u2014 a fork** | the question | the query |\n"
+        "| \u2705 **#9002 \u2014 RULED 2026-01-01** | done | verified |\n"
+        "\n"
+        "## Next project\n"
+        "| **#9003** | belongs to the next section | x |\n"
+    )
+    rows = _standing_task_rows(plan)
+    assert rows is not None and len(rows) == 2 and not any("#9003" in r for r in rows)
+    assert [_is_ask(r) for r in rows] == [True, False]
+    assert _standing_task_rows("## Some project\nno standing section here\n") is None
