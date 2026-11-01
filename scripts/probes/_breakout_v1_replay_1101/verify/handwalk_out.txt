@@ -1,0 +1,420 @@
+==================== top 2020-05-06|NXH
+  E_is_next: True
+  list_level: (np.float64(14.5348), np.float64(14.5348))
+  vol_bar: (np.float64(3411410.9039999996), np.float64(3411410.9039999996))
+  adr: (np.float64(0.16087843608623734), np.float64(0.1608784360862373))
+  minfiles: ['minutes_bv1_1101.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (1.0, np.float64(1.0))
+  entry: filled
+  level: (np.float64(14.5348), np.float64(14.5348))
+  orh5_row: 14.5
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (256, np.float64(256.0))
+  fill: (np.float64(14.5348), np.float64(14.5348))
+  placed_stop: (13.59, np.float64(13.59))
+  true_low: (13.59, np.float64(14.5001))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (13.59, np.float64(13.59))
+  reprices: (9, np.int64(9))
+  adverse: (False, np.False_)
+  exit: ('trail', 'trail')
+  exit_date: ('2020-08-28', '2020-08-28')
+  R2: (np.float64(60.26869884278856), np.float64(60.26869884278856))
+  R0: (np.float64(60.311035845328774), np.float64(60.311035845328774))
+  my_events: [(1, 'partial_r', np.float64(17.05), 0.3333333333333333), (80, 'trail', np.float64(98.75), 0.6666666666666667)]
+  their_events: [[1, "partial_r", 17.05, 0.3333333333333333], [1, "stop_to", 14.5348, 0.0], [80, "trail", 98.75, 0.6666666666666667]]
+==================== top 2023-05-16|NVDA
+  E_is_next: True
+  list_level: (np.float64(29.113), np.float64(29.113))
+  vol_bar: (np.float64(513406976.64), np.float64(513406976.64))
+  adr: (np.float64(0.028248461856866525), np.float64(0.0282484618568665))
+  minfiles: ['minutes_bv1_1101.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (None, np.float64(10.0))
+  entry: filled
+  level: (np.float64(29.113), np.float64(29.113))
+  orh5_row: 29.09
+  placed_m: (12, np.float64(12.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (13, np.float64(13.0))
+  fill: (np.float64(29.113), np.float64(29.113))
+  placed_stop: (28.83, np.float64(28.83))
+  true_low: (28.83, np.float64(29.07))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (28.83, np.float64(28.83))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('trail', 'trail')
+  exit_date: ('2023-06-30', '2023-06-30')
+  R2: (np.float64(30.25677267373368), np.float64(30.25677267373368))
+  R0: (np.float64(30.270906949352057), np.float64(30.270906949352057))
+  my_events: [(0, 'partial_r', np.float64(29.679000000000002), 0.3333333333333333), (31, 'trail', np.float64(41.68), 0.6666666666666667)]
+  their_events: [[0, "partial_r", 29.679000000000002, 0.3333333333333333], [0, "stop_to", 29.113, 0.0], [31, "trail", 41.68, 0.6666666666666667]]
+==================== top 2018-05-04|TBCH
+  E_is_next: True
+  list_level: (np.float64(6.2), np.float64(6.2))
+  vol_bar: (np.float64(912651.072), np.float64(912651.072))
+  adr: (np.float64(0.20433583418904427), np.float64(0.2043358341890442))
+  minfiles: ['minutes_bv1_1101.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (1.0, np.float64(1.0))
+  entry: filled
+  level: (6.3, np.float64(6.3))
+  orh5_row: 6.3
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (7, np.float64(7.0))
+  fill: (6.3, np.float64(6.3))
+  placed_stop: (5.98, np.float64(5.98))
+  true_low: (5.98, np.float64(6.165))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (5.98, np.float64(5.98))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('trail', 'trail')
+  exit_date: ('2018-06-28', '2018-06-28')
+  R2: (np.float64(28.95833333333339), np.float64(28.95833333333339))
+  R0: (np.float64(29.083333333333393), np.float64(29.083333333333393))
+  my_events: [(1, 'partial_r', 6.939999999999999, 0.3333333333333333), (38, 'trail', np.float64(19.94), 0.6666666666666667)]
+  their_events: [[1, "partial_r", 6.939999999999999, 0.3333333333333333], [1, "stop_to", 6.3, 0.0], [38, "trail", 19.94, 0.6666666666666667]]
+==================== top 2021-05-26|AMC
+  E_is_next: True
+  list_level: (np.float64(166.7), np.float64(166.7))
+  vol_bar: (np.float64(10582998.624), np.float64(10582998.624))
+  adr: (np.float64(0.09091913016764416), np.float64(0.0909191301676441))
+  minfiles: ['minutes_intra_1025.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (0.1, np.float64(0.1))
+  entry: filled
+  level: (184.5, np.float64(184.5))
+  orh5_row: 184.5
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (27, np.float64(27.0))
+  fill: (184.5, np.float64(184.5))
+  placed_stop: (172.6, np.float64(172.6))
+  true_low: (172.6, np.float64(183.0))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (172.6, np.float64(172.6))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('trail', 'trail')
+  exit_date: ('2021-07-02', '2021-07-02')
+  R2: (np.float64(19.85994397759103), np.float64(19.85994397759103))
+  R0: (np.float64(19.893557422969185), np.float64(19.893557422969185))
+  my_events: [(1, 'partial_r', 208.3, 0.3333333333333333), (26, 'trail', np.float64(527.7), 0.6666666666666667)]
+  their_events: [[1, "partial_r", 208.3, 0.3333333333333333], [1, "stop_to", 184.5, 0.0], [26, "trail", 527.7, 0.6666666666666667]]
+==================== top 2017-04-20|OLED
+  E_is_next: True
+  list_level: (np.float64(83.95), np.float64(83.95))
+  vol_bar: (np.float64(967664.28), np.float64(967664.28))
+  adr: (np.float64(0.030877836120612928), np.float64(0.0308778361206129))
+  minfiles: ['minutes_pre.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (1.0, np.float64(1.0))
+  entry: filled
+  level: (85.5, np.float64(85.5))
+  orh5_row: 85.5
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (6, np.float64(6.0))
+  fill: (85.5, np.float64(85.5))
+  placed_stop: (84.05, np.float64(84.05))
+  true_low: (84.05, np.float64(85.005))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (84.05, np.float64(84.05))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('trail', 'trail')
+  exit_date: ('2017-06-13', '2017-06-13')
+  R2: (np.float64(17.02988505747124), np.float64(17.02988505747124))
+  R0: (np.float64(17.057471264367788), np.float64(17.057471264367788))
+  my_events: [(3, 'partial_r', 88.4, 0.3333333333333333), (37, 'trail', np.float64(121.15), 0.6666666666666667)]
+  their_events: [[3, "partial_r", 88.4, 0.3333333333333333], [3, "stop_to", 85.5, 0.0], [37, "trail", 121.15, 0.6666666666666667]]
+==================== day0 2017-01-03|ATW
+  E_is_next: True
+  list_level: (np.float64(13.835), np.float64(13.835))
+  vol_bar: (np.float64(5307688.488), np.float64(5307688.488))
+  adr: (np.float64(0.06486329206860877), np.float64(0.0648632920686087))
+  minfiles: ['minutes_bv1_1101.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (1.0, np.float64(1.0))
+  entry: filled
+  level: (13.98, np.float64(13.98))
+  orh5_row: 13.98
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (7, np.float64(7.0))
+  fill: (13.98, np.float64(13.98))
+  placed_stop: (13.61, np.float64(13.61))
+  true_low: (13.61, np.float64(13.9))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (13.61, np.float64(13.61))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('day0_stop', 'day0_stop')
+  exit_date: ('2017-01-03', '2017-01-03')
+  R2: (np.float64(-1.1081081081081054), np.float64(-1.1081081081081054))
+  R0: (np.float64(-1.0), np.float64(-1.0))
+  my_events: [(0, 'day0_stop', 13.61, 1)]
+  their_events: [[0, "day0_stop", 13.61, 1.0]]
+==================== day0 2018-10-26|CIG
+  E_is_next: True
+  list_level: (np.float64(1.78), np.float64(1.78))
+  vol_bar: (np.float64(12768808.008), np.float64(12768808.008))
+  adr: (np.float64(0.04994281979906222), np.float64(0.0499428197990622))
+  minfiles: ['minutes_bv1_1101.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (1.6902204635387226, np.float64(1.6902204635387226))
+  entry: filled
+  level: (1.811, np.float64(1.811))
+  orh5_row: 1.811
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (7, np.float64(7.0))
+  fill: (1.811, np.float64(1.811))
+  placed_stop: (1.79, np.float64(1.79))
+  true_low: (1.793, np.float64(1.801))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (1.79, np.float64(1.79))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('day0_stop', 'day0_stop')
+  exit_date: ('2018-10-26', '2018-10-26')
+  R2: (np.float64(-2.1269310399745316), np.float64(-2.1269310399745316))
+  R0: (np.float64(-1.0), np.float64(-1.0))
+  my_events: [(0, 'day0_stop', 1.79, 1)]
+  their_events: [[0, "day0_stop", 1.79, 1.0]]
+==================== day0 2020-10-12|WKHS
+  E_is_next: True
+  list_level: (np.float64(81330.0), np.float64(81330.0))
+  vol_bar: (np.float64(9535.008), np.float64(9535.008))
+  adr: (np.float64(0.10228887716190102), np.float64(0.102288877161901))
+  minfiles: ['minutes_pre.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (0.0003333333333333333, np.float64(0.0003333333333333))
+  entry: filled
+  level: (89550.0, np.float64(89550.0))
+  orh5_row: 89550.0
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (5, np.float64(5.0))
+  fill: (89550.0, np.float64(89550.0))
+  placed_stop: (83880.0, np.float64(83880.0))
+  true_low: (83880.0, np.float64(88943.1))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (83880.0, np.float64(83880.0))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('day0_stop', 'day0_stop')
+  exit_date: ('2020-10-12', '2020-10-12')
+  R2: (np.float64(-1.0211640211640212), np.float64(-1.0211640211640212))
+  R0: (np.float64(-1.0), np.float64(-1.0))
+  my_events: [(0, 'day0_stop', 83880.0, 1)]
+  their_events: [[0, "day0_stop", 83880.0, 1.0]]
+==================== day0 2022-06-17|TAL
+  E_is_next: True
+  list_level: (np.float64(5.0), np.float64(5.0))
+  vol_bar: (np.float64(10262372.76), np.float64(10262372.76))
+  adr: (np.float64(0.10294366543872939), np.float64(0.1029436654387293))
+  minfiles: ['minutes_bv1_1101.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (None, np.float64(1.0))
+  entry: filled
+  level: (5.05, np.float64(5.05))
+  orh5_row: 5.05
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (7, np.float64(7.0))
+  fill: (5.05, np.float64(5.05))
+  placed_stop: (4.97, np.float64(4.97))
+  true_low: (4.97, np.float64(4.99))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (4.97, np.float64(4.97))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('day0_stop', 'day0_stop')
+  exit_date: ('2022-06-17', '2022-06-17')
+  R2: (np.float64(-1.499999999999989), np.float64(-1.499999999999989))
+  R0: (np.float64(-1.0), np.float64(-1.0))
+  my_events: [(0, 'day0_stop', 4.97, 1)]
+  their_events: [[0, "day0_stop", 4.97, 1.0]]
+==================== day0 2024-07-03|NMM
+  E_is_next: True
+  list_level: (np.float64(52.9), np.float64(52.9))
+  vol_bar: (np.float64(226911.552), np.float64(226911.552))
+  adr: (np.float64(0.03453137933019484), np.float64(0.0345313793301948))
+  minfiles: ['minutes.psv', 'minutes_pre_com_1018.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (None, np.float64(1.0))
+  entry: filled
+  level: (53.06, np.float64(53.06))
+  orh5_row: 53.06
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (8, np.float64(8.0))
+  fill: (53.06, np.float64(53.06))
+  placed_stop: (52.69, np.float64(52.69))
+  true_low: (52.69, np.float64(52.91))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (52.69, np.float64(52.69))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('day0_stop', 'day0_stop')
+  exit_date: ('2024-07-03', '2024-07-03')
+  R2: (np.float64(-1.1081081081081237), np.float64(-1.1081081081081237))
+  R0: (np.float64(-1.0), np.float64(-1.0))
+  my_events: [(0, 'day0_stop', 52.69, 1)]
+  their_events: [[0, "day0_stop", 52.69, 1.0]]
+==================== nth 2017-10-30|MZOR
+  E_is_next: True
+  list_level: (np.float64(59.9), np.float64(59.9))
+  vol_bar: (np.float64(616365.24), np.float64(616365.24))
+  adr: (np.float64(0.04215237464605944), np.float64(0.0421523746460594))
+  minfiles: ['minutes_bv1_1101.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (1.0, np.float64(1.0))
+  entry: filled
+  level: (np.float64(59.9), np.float64(59.9))
+  orh5_row: 59.555
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (10, np.float64(10.0))
+  fill: (np.float64(59.9), np.float64(59.9))
+  placed_stop: (58.8, np.float64(58.8))
+  true_low: (58.8, np.float64(59.759))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (58.8, np.float64(58.8))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('stop', 'stop')
+  exit_date: ('2017-11-01', '2017-11-01')
+  R2: (np.float64(0.6303030303030247), np.float64(0.6303030303030247))
+  R0: (np.float64(0.6666666666666666), np.float64(0.6666666666666666))
+  my_events: [(1, 'partial_r', np.float64(62.1), 0.3333333333333333), (2, 'stop', np.float64(59.9), 0.6666666666666667)]
+  their_events: [[1, "partial_r", 62.1, 0.3333333333333333], [1, "stop_to", 59.9, 0.0], [2, "stop", 59.9, 0.6666666666666667]]
+==================== nth 2019-04-29|TCRT
+  E_is_next: True
+  list_level: (np.float64(682.5), np.float64(682.5))
+  vol_bar: (np.float64(15975.936), np.float64(15975.936))
+  adr: (np.float64(0.05816107261610147), np.float64(0.0581610726161014))
+  minfiles: ['minutes_bv1_1101.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (0.006666666666666667, np.float64(0.0066666666666666))
+  entry: filled
+  level: (698.99, np.float64(698.99))
+  orh5_row: 698.99
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (5, np.float64(5.0))
+  fill: (698.99, np.float64(698.99))
+  placed_stop: (675.0, np.float64(675.0))
+  true_low: (675.0, np.float64(694.49))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (675.0, np.float64(675.0))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('day0_stop', 'day0_stop')
+  exit_date: ('2019-04-29', '2019-04-29')
+  R2: (np.float64(-1.2501042100875364), np.float64(-1.2501042100875364))
+  R0: (np.float64(-1.0), np.float64(-1.0))
+  my_events: [(0, 'day0_stop', 675.0, 1)]
+  their_events: [[0, "day0_stop", 675.0, 1.0]]
+==================== nth 2020-11-16|MYOK
+  E_is_next: True
+  list_level: (np.float64(224.85), np.float64(224.85))
+  vol_bar: (np.float64(1843660.584), np.float64(1843660.584))
+  adr: (np.float64(0.0019380889710431885), np.float64(0.0019380889710431))
+  minfiles: ['minutes_bv1_1101.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (1.0, np.float64(1.0))
+  entry: filled
+  level: (224.89, np.float64(224.89))
+  orh5_row: 224.89
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (6, np.float64(6.0))
+  fill: (224.89, np.float64(224.89))
+  placed_stop: (224.82, np.float64(224.82))
+  true_low: (224.82, np.float64(224.85))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (224.82, np.float64(224.82))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('day0_stop', 'day0_stop')
+  exit_date: ('2020-11-16', '2020-11-16')
+  R2: (np.float64(-1.5714285714289193), np.float64(-1.5714285714289191))
+  R0: (np.float64(-1.0), np.float64(-1.0))
+  my_events: [(0, 'day0_stop', 224.82, 1)]
+  their_events: [[0, "day0_stop", 224.82, 1.0]]
+==================== nth 2022-05-16|CVI
+  E_is_next: True
+  list_level: (np.float64(32.26), np.float64(32.26))
+  vol_bar: (np.float64(1070310.648), np.float64(1070310.648))
+  adr: (np.float64(0.06666065584934855), np.float64(0.0666606558493485))
+  minfiles: ['minutes_bv1_1101.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (None, np.float64(1.0))
+  entry: filled
+  level: (32.5, np.float64(32.5))
+  orh5_row: 32.5
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (7, np.float64(7.0))
+  fill: (32.5, np.float64(32.5))
+  placed_stop: (31.61, np.float64(31.61))
+  true_low: (31.61, np.float64(32.34))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (31.61, np.float64(31.61))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('stop', 'stop')
+  exit_date: ('2022-05-18', '2022-05-18')
+  R2: (np.float64(-1.044943820224722), np.float64(-1.044943820224722))
+  R0: (np.float64(-1.0), np.float64(-1.0))
+  my_events: [(2, 'stop', 31.61, 1)]
+  their_events: [[2, "stop", 31.61, 1.0]]
+==================== nth 2023-10-10|SMCI
+  E_is_next: True
+  list_level: (np.float64(29.44), np.float64(29.44))
+  vol_bar: (np.float64(39833013.839999996), np.float64(39833013.84))
+  adr: (np.float64(0.04835471104162015), np.float64(0.0483547110416201))
+  minfiles: ['minutes.psv', 'minutes_pre_com_1018.psv']
+  min_vs_daily: True
+  fwd_gapfree: True
+  rf: (None, np.float64(10.0))
+  entry: filled
+  level: (30.25, np.float64(30.25))
+  orh5_row: 30.25
+  placed_m: (5, np.float64(5.0))
+  kind: ('stop_limit', 'stop_limit')
+  f: (8, np.float64(8.0))
+  fill: (30.25, np.float64(30.25))
+  placed_stop: (29.5, np.float64(29.5))
+  true_low: (29.5, np.float64(30.13))  <<< DIFF
+  check: ('keep', 'keep')
+  stop: (29.5, np.float64(29.5))
+  reprices: (0, np.int64(0))
+  adverse: (False, np.False_)
+  exit: ('stop', 'stop')
+  exit_date: ('2023-10-12', '2023-10-12')
+  R2: (np.float64(0.6613333333333362), np.float64(0.6613333333333362))
+  R0: (np.float64(0.6666666666666666), np.float64(0.6666666666666666))
+  my_events: [(0, 'partial_r', 31.75, 0.3333333333333333), (2, 'stop', 30.25, 0.6666666666666667)]
+  their_events: [[0, "partial_r", 31.75, 0.3333333333333333], [0, "stop_to", 30.25, 0.0], [2, "stop", 30.25, 0.6666666666666667]]
