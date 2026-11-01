@@ -212,6 +212,30 @@ def _sma_10_20_line(closes: list[float]) -> float | None:
     return sma_10
 
 
+# ── The trail-arming rule's first LIVE session (2026-11-01, #482 follow-up) ──────────────────
+# `trail_arm_on_close_above=True` reached the live tracker's three ladder calls with the Thu
+# 2026-10-29 12:00-12:06 ET deploy (`deploy.sh execution` first); its first pass was that day's
+# 16:45 ET `live_position_update`, which decided the 10-29 close. The 10-28 close was decided by the
+# old code (CLS was marked that evening and cleared by hand — exit_discipline.md 2026-10-28). So a
+# replay models live exactly by passing the flag on every SESSION on/after this date and never
+# before — a per-SESSION boundary, not a per-fill era: the rule governs every open trade from the
+# pass it shipped in, whenever the trade was bought (CLS was bought 10-27).
+#
+# DELIBERATELY NOT a `*_DATE` in rule_eras.py: every module-level `*_DATE` there is read as an
+# exit-ERA switch (tests/test_exit_counterfactual_consolidation_631.py re-anchors the #482 gated
+# read and two exit-tune reviews on the latest one), and the 10-28 entry classifies this as a BUG
+# FIX to the ladder mechanics, not a criteria change — the `ep_replay.PARTIAL_MIN_ONE_SHARE_FROM`
+# precedent. It lives beside the flag it dates; the replay callers (`live_fill_counterfactuals.
+# walk_arm`, `book_geometry_arms`, `scripts/ep_replay`) read it from here.
+TRAIL_ARM_LIVE_FROM = date(2026, 10, 29)
+
+
+def trail_arming_live_on(session: date) -> bool:
+    """True when the live tracker decided `session`'s close WITH the trail arming (the 16:45 pass of
+    2026-10-29 was the first); False for every earlier session. The one place replays ask."""
+    return session >= TRAIL_ARM_LIVE_FROM
+
+
 def _trail_armed(prior_closes: list[float], running_closes: list[float],
                  entry_price: float | None = None, entry_day_close: float | None = None) -> bool:
     """True when the trailing line may govern today (2026-10-28, CLS): the trade was BOUGHT at or

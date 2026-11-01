@@ -81,6 +81,7 @@ from shared.dates import _ET as _SHARED_ET  # noqa: E402
 from agents.market_intelligence.backtester.filters import validate_orb_entry  # noqa: E402
 from agents.market_intelligence.broker.skip_reasons import SETUP_STOP_TOO_WIDE  # noqa: E402
 from agents.market_intelligence.broker.exit_logic import (  # noqa: E402
+    TRAIL_ARM_LIVE_FROM,
     apply_daily_exit_step,
     seed_exit_state,
 )
@@ -210,6 +211,17 @@ class RuleSet:
     # (default) keeps every era before 2026-10-12 byte-identical — OKTA 08-27 held 2 shares
     # past its +2R rung and live sold nothing, and the real-book calibration must still say so.
     partial_min_one_share: bool = False
+    # 2026-11-01 (the #482 follow-up to the 2026-10-28 CLS fix, exit_discipline.md): on every
+    # SESSION on/after this date the forward daily walk calls the ladder with
+    # `trail_arm_on_close_above=True, entry_day_close=<the leg day's daily close>` — the line
+    # governs only once the trade was bought at or above it or a held day (the entry day included)
+    # closed at or above it — exactly the live tracker's three calls since the Thu 2026-10-29
+    # 12:00 ET deploy (`exit_logic.TRAIL_ARM_LIVE_FROM`). A per-SESSION boundary (live applied the
+    # fix to every open trade from the pass it shipped in), so a replay that straddles it models
+    # both halves as live did. None (the default for the named era_a/b/c sets) = byte-identical;
+    # `ruleset_as_of` and `current`/`era_d` carry the live date. "sma" trail only (the ladder
+    # refuses the flag on any other line; no other line ever had the rule).
+    trail_arm_from: date | None = None
 
     def stop_price(self, orb_high: float, orb_low: float,
                    adr_dollar: float | None = None) -> float:
@@ -251,7 +263,8 @@ RULESETS: dict[str, RuleSet] = {
 # PARTIAL_MIN_ONE_SHARE_FROM) because `current` must model what the poll does TODAY — a 2-share
 # position sells 1 at +8R. This changes only integer-share replays of 2-share positions.
 RULESETS["era_d"] = replace(RULESETS["era_c"], name="era_d", intraday_partial_r=8.0,
-                            breakeven_at_r=3.0, partial_min_one_share=True)
+                            breakeven_at_r=3.0, partial_min_one_share=True,
+                            trail_arm_from=TRAIL_ARM_LIVE_FROM)
 RULESETS["current"] = RULESETS["era_d"]
 
 # ── 2026-09-05, operator-approved A/B: "yes, test it" ──────────────────────────────────
@@ -382,6 +395,8 @@ def ruleset_as_of(d: date) -> RuleSet:
         breakeven_at_r=BREAKEVEN_ARM_R_VALUE if d >= BREAKEVEN_ARM_R_DATE else None,
         ladder_partial=d < PARTIAL_LIVE_DATE,
         partial_min_one_share=d >= PARTIAL_MIN_ONE_SHARE_FROM,
+        # per-session, so every as-of set carries the date and the walk decides per bar
+        trail_arm_from=TRAIL_ARM_LIVE_FROM,
     )
 
 
@@ -973,6 +988,7 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
                  if d < leg_date and dbars[d]["c"] is not None]
         d0 = dbars.get(leg_date)
         held = [d0["c"]] if d0 and d0.get("c") is not None else [last_close]
+        entry_day_close = d0["c"] if d0 and d0.get("c") is not None else None   # the arming input (2026-11-01)
         atr14 = atr14_abs(dbars, leg_date)
         state = seed_exit_state(
             alert_date=leg_date, entry_price=entry_px, hard_stop=stop,
@@ -1077,12 +1093,18 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
                     break
                 continue
             state["hard_stop"] = resting
+            arming_kw: dict = {}
+            if rs.trail_arm_from is not None and d >= rs.trail_arm_from and rs.trail_mode == "sma":
+                # the live tracker's call since 2026-10-29 (RuleSet.trail_arm_from); earlier
+                # sessions add nothing, so the call stays byte-identical
+                arming_kw = {"trail_arm_on_close_above": True, "entry_day_close": entry_day_close}
             step = apply_daily_exit_step(
                 state, {"l": b["l"], "c": b["c"]}, d,
                 integer_partial_shares=integer_shares,
                 skip_partial_decision=not rs.ladder_partial,
                 trail_mode=rs.trail_mode, trail_undercut=rs.trail_undercut,
-                prior_closes=(prior if rs.trail_prior_closes else None))
+                prior_closes=(prior if rs.trail_prior_closes else None),
+                **arming_kw)
             state.update(remaining_shares=step.new_remaining,
                          partial_taken=step.new_partial_taken,
                          breakeven_active=step.new_breakeven_active,

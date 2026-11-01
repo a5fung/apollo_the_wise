@@ -212,7 +212,7 @@ from typing import Any, Optional
 
 from shared.dates import _ET
 
-from agents.market_intelligence.broker.exit_logic import adr20_pct_from_bars, apply_daily_exit_step, depth_stop_price, seed_exit_state  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the #482 recorder settles every counterfactual through the SAME ladder the live tracker calls instead of re-implementing it (the giveback / pivot-stop shadow precedent); #687: the depth rule's resting stop + ADR20 are the live 16:45 job's own pure functions, so the replay cannot diverge from live; pure compute, no live execution
+from agents.market_intelligence.broker.exit_logic import TRAIL_ARM_LIVE_FROM, adr20_pct_from_bars, apply_daily_exit_step, depth_stop_price, seed_exit_state  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the #482 recorder settles every counterfactual through the SAME ladder the live tracker calls instead of re-implementing it (the giveback / pivot-stop shadow precedent); #687: the depth rule's resting stop + ADR20 are the live 16:45 job's own pure functions, so the replay cannot diverge from live; pure compute, no live execution
 from agents.market_intelligence.constants import resolve_account_mode_for_strategy
 from agents.market_intelligence.db import (
     _f,
@@ -412,6 +412,16 @@ def depth_adr20_from_rows(pre_rows: list[dict]) -> Optional[float]:
                                  "c": _f(r.get("close"))} for r in pre_rows])
 
 
+def split_entry_day(rows: list[dict], alert_date: date) -> tuple[list[dict], Optional[float]]:
+    """(the rows BEFORE `alert_date`, the alert day's close or None) from one stored-daily read that
+    reaches the alert day — the live tracker's own split (`live_tracker._load_exit_state`: the line
+    and ADR20 read only the closes before entry; the entry day's close is the trail ARMING's input
+    alone, 2026-10-28). Pure; shared by the recorder and `book_geometry_arms`."""
+    pre = [r for r in rows if r["trade_date"] < alert_date]
+    close = next((r.get("close") for r in rows if r["trade_date"] == alert_date), None)
+    return pre, (_f(close) if close is not None else None)
+
+
 def depth_first_acting_session(last_transition_at: Any) -> Optional[date]:
     """The first session a `magna53_depth_exit` toggle flipped at `last_transition_at` (a
     datetime or an ISO string, as the row stores it) could stamp — the lanes' era boundary.
@@ -534,8 +544,25 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
              pivot_stops: Optional[list] = None,
              character: Optional[dict] = None,
              depth_exit: bool = False,
-             depth_adr20_pct: Optional[float] = None) -> dict:
+             depth_adr20_pct: Optional[float] = None,
+             trail_arm_from: Optional[date] = None,
+             entry_day_close: Optional[float] = None) -> dict:
     """Walk ONE arm from the fill bar to settlement, on one fractional share.
+
+    `trail_arm_from` / `entry_day_close` (2026-11-01, the #482 follow-up to the 2026-10-28 CLS
+    fix — exit_discipline.md): on every session ON/AFTER `trail_arm_from` the ladder is called
+    with `trail_arm_on_close_above=True, entry_day_close=…` — the line governs only once the
+    trade was bought at or above it, or a held day (the entry day included) closed at or above
+    it — exactly the three calls the live tracker makes since the 2026-10-29 deploy
+    (`exit_logic.TRAIL_ARM_LIVE_FROM`). Before that date, and whenever `trail_arm_from` is None
+    (the DEFAULT), the ladder call is BYTE-IDENTICAL to before: no kwarg is added, so a walk whose
+    sessions all precede the switch (every #705 frozen read: 2016-2022) cannot change. A
+    per-SESSION boundary, not a per-fill one, because live applied the fix to every open trade
+    from the pass it shipped in (CLS, bought 10-27, got it on 10-29). "sma" line only — the two
+    trail_* lines never had the rule (the ladder refuses the flag on them), so on those arms the
+    kwargs are never added. `entry_day_close` is the ENTRY day's daily close (live splits it off
+    the same history window the line reads); None skips that one arming path, as live does when
+    the bar is missing.
 
     `depth_exit` (#687, 2026-10-11): walk the DEPTH exit a row stamped `exit_rule='depth'` runs
     (module docstring, "#687"). Day 0 is unchanged (the 16:45 job skips the alert day). From
@@ -775,6 +802,10 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
                                  character_ma_window=int(character["home_window"]),
                                  character_ma_kind=str(character["home_kind"]),
                                  character_undercut=float(character["undercut_p80"]))
+            elif trail_arm_from is not None and d >= trail_arm_from:
+                # the live tracker's call since 2026-10-29 (docstring, `trail_arm_from`); a
+                # session before the switch adds NOTHING, so the call stays byte-identical
+                ladder_kw.update(trail_arm_on_close_above=True, entry_day_close=entry_day_close)
             step = apply_daily_exit_step(
                 state, bar, d,
                 integer_partial_shares=False,
@@ -1130,9 +1161,14 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
         _be = pinned.get("breakeven_arm_r")
         live_be_r = float(_be) if _be is not None else None
 
-    # Pre-alert daily rows: ADR (last ≤20 sessions) + the trail's prior closes (40 cal days).
-    pre = await get_daily_ohlc_range(conn, ticker, alert_date - timedelta(days=ADR_LOOKBACK_CAL_DAYS),
-                                     alert_date - timedelta(days=1))
+    # Pre-alert daily rows: ADR (last ≤20 sessions) + the trail's prior closes (40 cal days). The
+    # window now reaches the alert day itself and that row is SPLIT OFF as `entry_day_close` (the
+    # trail-arming input, read the way the live tracker reads it — `_load_exit_state`); `pre` is
+    # the rows BEFORE the alert day, exactly as before, so ADR / prior closes / depth ADR are unchanged.
+    pre, entry_day_close = split_entry_day(
+        await get_daily_ohlc_range(conn, ticker, alert_date - timedelta(days=ADR_LOOKBACK_CAL_DAYS),
+                                   alert_date),
+        alert_date)
     adr20_pct, adr20_n = compute_adr20_pct(pre)
     adr_dollar = (adr20_pct / 100.0 * entry) if (adr20_pct is not None and entry) else None
     # #687: the depth rule's ADR20 — a FRACTION, through the live job's own function on the same
@@ -1251,7 +1287,12 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
                            trail_mode=trail_rule, pivot_stops=pivot_stops,
                            character=character,
                            depth_exit=depth_arm,
-                           depth_adr20_pct=depth_adr if depth_arm else None)
+                           depth_adr20_pct=depth_adr if depth_arm else None,
+                           # 2026-11-01: the trail arming on every session from its live date, on
+                           # EVERY sma-line arm (the harvest arms are "the live ladder minus ONE
+                           # element" and `trail_prior_closes` reaches them the same way); walk_arm
+                           # never adds it on the two trail_* lines
+                           trail_arm_from=TRAIL_ARM_LIVE_FROM, entry_day_close=entry_day_close)
             status = res["status"]
             if status == "pending":
                 gap = res.get("pending_at")

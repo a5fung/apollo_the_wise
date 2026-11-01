@@ -423,9 +423,22 @@ what any live position does.
   through a close below its line; the running container printing 0 for the check above.
 - **VERIFY-LIVE:** after Thursday's 16:45 ET pass, trade 429's row (`depth_sell_pending_on` NULL, `stop_price` ≥ 272) and the pass's log
   line for CLS.
-- **Known divergence (recorded, not fixed here):** the #482 recorder's follows-live arms (`live_fill_counterfactuals.py`, freeze-hashed)
-  and `scripts/ep_replay.py` call the ladder without the flag, so from the deploy they differ from live on trades bought below their
-  line; `rule_eras` has no switch date for it yet (#687 line).
+- **Known divergence (recorded 10-28; CLOSED 2026-11-01, the #482 weekend follow-up):** the #482 recorder's arms (`live_fill_counterfactuals.py`,
+  freeze-hashed), the book arms and `scripts/ep_replay.py` called the ladder without the flag, so from the deploy they differed from live on
+  trades bought below their line. **Now:** every replay passes the flag on every SESSION on/after `exit_logic.TRAIL_ARM_LIVE_FROM =
+  2026-10-29` (the first close the live code decided with it — the 16:45 ET pass after the 12:00-12:06 ET deploy; the 10-28 close was decided
+  by the old code) and adds nothing before it, so a walk whose sessions precede the switch is byte-identical (the #705 frozen reads walk
+  2016-2022). A per-SESSION boundary, because live applied the fix to every open trade from the pass it shipped in (CLS, bought 10-27).
+  `entry_day_close` is split off the same daily read the line uses, as `_load_exit_state` does. Every sma-line arm gets it (the harvest arms
+  are "the live ladder minus ONE element", like `trail_prior_closes`); the two trail_* lines never had the rule. **The date is deliberately
+  NOT a `*_DATE` in `rule_eras`** — this entry classifies the change as a BUG FIX, and a rule_eras date is read as an exit-ERA switch that
+  re-anchors the #482 gated read (#631's `*_DATE` scan) — the `ep_replay.PARTIAL_MIN_ONE_SHARE_FROM` precedent. The one honest fidelity
+  delta: trade 429 (CLS) — the walk sells on the 10-28 close as the code did; live held because of the hand clear above, so `live_actual`
+  ≠ `live_replay` on that row and that is correct. Walks settled on the 10-29 and 10-30 nights (before this shipped) that crossed the
+  switch on a below-line buy were walked without the flag — write-once, not rewritten; the live_actual-vs-live_replay pair is the
+  check. The three replay LANES (`stack_walk_inputs`: gap_near_miss / sustain_reject / lowcap) still walk without it — a named
+  follow-up on the #482 line, not touched here (the frozen cb runner calls that function). Tests:
+  `tests/test_482_trail_arming_era_switch.py` (11). Owner of the recorder change: magna53_ep.md 2026-11-01.
 - **For HIS call, separate (it moves live stop values):** the live 10/20-day line itself has excluded the entry day's own close since
   #548 (the window ends the day before entry; the comment that it "arrives through running_closes" is wrong) — CLS's line read $330.52
   where the true 10/20-day is $326.28. Including it changes the line on every open trade.

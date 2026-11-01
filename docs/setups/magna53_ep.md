@@ -647,6 +647,62 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
 
 ## Change log (newest first)
 
+### 2026-11-01 — #482 weekend follow-ups: (1) the replays model the 2026-10-28 trail-arming fix from the session it went live (RECORD / REPLAY CODE ONLY — no live entry, exit, stop, size or safeguard change; BUILT on branch `482-followups`, NOT DEPLOYED)
+
+- **(1) The trail-arming era switch (exit_discipline.md 2026-10-28 "Known divergence", closed).** Since the Thu 2026-10-29 12:00-12:06 ET deploy
+  the live tracker's three ladder calls pass `trail_arm_on_close_above=True` (the line governs only once the trade was bought at or above
+  it, or a held day — the entry day included — closed at or above it); the #482 recorder's arms, the book arms and `scripts/ep_replay`
+  did not, so from that deploy they differed from live on a trade bought below its line. **Now:** `exit_logic.TRAIL_ARM_LIVE_FROM =
+  2026-10-29` + `trail_arming_live_on(session)`; `live_fill_counterfactuals.walk_arm(trail_arm_from=…, entry_day_close=…)` adds
+  `trail_arm_on_close_above=True, entry_day_close` to the ladder call on every SESSION on/after that date and NOTHING before it — the call
+  on an earlier session is byte-identical, not a `False` that happens to match. **Boundary:** per SESSION, not per fill — live applied the
+  fix to every open trade from the pass it shipped in (CLS, bought 10-27, got it on 10-29); the 10-28 close was decided by the old code
+  (CLS was marked that evening; the hand clear is a prod write the walk cannot know — the one honest `live_actual` ≠ `live_replay` row).
+  **Which arms:** every sma-line arm — the follows-live arms AND the four fixed harvest arms (each is "the live ladder minus ONE element";
+  `trail_prior_closes`, the other sma-line mechanic, already reaches them the same way); the two trail_* lines never had the rule and the
+  ladder refuses the flag on them, so walk_arm never adds it there. **Inputs:** the recorder's pre-alert daily read now reaches the alert
+  day and `split_entry_day` lifts that row's close as the arming input (the way `live_tracker._load_exit_state` splits it) — the `pre` rows
+  (ADR, prior closes, depth ADR) are the same rows as before; `book_geometry_arms` mirrors both; `ep_replay.RuleSet.trail_arm_from`
+  (None on the named era_a/b/c sets = byte-identical; `ruleset_as_of` and `current`/`era_d` carry the date) and `_walk_leg` gates per bar
+  with the leg day's daily close. **Not an era:** the date is deliberately NOT a `*_DATE` in `rule_eras` — the 10-28 entry classifies the
+  change as a BUG FIX, and every rule_eras `*_DATE` is read as an exit-ERA switch that re-anchors the #482 gated read and two exit-tune
+  reviews (`tests/test_exit_counterfactual_consolidation_631.py`); the `ep_replay.PARTIAL_MIN_ONE_SHARE_FROM` precedent. So the row stamp
+  (`exit_rules`, `exit_era`) is unchanged and the walk alone carries the switch; which rows walked under it is decidable from `fill_day` +
+  `exit_session` (any session ≥ 2026-10-29). **Known gap, stated:** rows settled on the 10-29 and 10-30 nights that crossed the switch on
+  a below-line buy were walked without the flag — write-once, never rewritten; the live_actual-vs-live_replay pair is the detector. The
+  three replay LANES (`stack_walk_inputs`: gap_near_miss / sustain_reject / lowcap) still walk without it — a named follow-up on the #482
+  PLAN line, not touched here (the frozen #705 cb runner calls that function; the lanes hold no entry-day close yet).
+- **The #705 freeze (both `docs/analysis/cb_preregistration_2026-10-18.md` §Pins and `cb_2017_21_rerun_v2_prereg_2026-10-25.md` §8 pin
+  `live_fill_counterfactuals.py`, `rule_eras.py`, `constants.py`, `exit_logic.py`): design (b), a DISCLOSED re-pin, because the arms are
+  walked inside the pinned file and no sibling-module route can change how an EXISTING arm walks without forking the session loop (which the
+  module's own docstring forbids).** `exit_logic.py` had already left its pin on 10-28 (the live CLS fix, `da6417a1`/`a541a356`/`a6a0bb23`),
+  undisclosed in either doc until now; this commit moves `live_fill_counterfactuals.py`; `rule_eras.py` and `constants.py` keep their pins.
+  Disclosed BELOW each doc's freeze marker (the docs' own rule: nothing above the marker after the freeze; the RESULT goes below the pins —
+  `freeze_check` takes the FIRST footer line per label, so the record is documentary and the re-check keeps refusing on HEAD exactly as it
+  has since 10-28). **Proof the frozen reads' numbers are unchanged:** (a) the gate is `session ≥ 2026-10-29` and those reads walk
+  2016-2022, so no ladder call in them can carry the flag — pinned by a kwargs-capture test on a 2017-dated walk; (b) old-vs-new over the
+  five `_lfc_equality_scenarios` recorder runs (59 rows) plus 44 `walk_arm` fixtures (every harvest × stop, the +8R/3R variant, a
+  below-line buy; 2026- and 2017-dated): byte-identical JSON on the base tree (`62a7ddf4`, lfc = the pinned `6bdb44b9…`) and the changed
+  tree (`scripts/probes/_482_followups_1101/lfc_old_vs_new.{before,after}.sha256`); (c) the five-scenario golden
+  (`tests/fixtures/lfc_pre_book_arms_golden.json`) still byte-equal. Reproduce a frozen read at its freeze commit (`9a61d43d`; every pin
+  verified to hold there), never on HEAD.
+- Tests: `tests/test_482_trail_arming_era_switch.py` (11: the date and that it is not a rule_eras era; the boundary on one below-line fill —
+  10-28 sells under the old rule, 10-29 holds unarmed; armed-by-the-entry-day's-close still sells; the ladder call carries no kwarg before
+  the switch (2017- and 2026-08-dated walks) and the flag + entry-day close after it; the trail_* lines never get it; `split_entry_day`; the
+  recorder and the book arms hand every walk the date and the alert day's close with the `pre` rows and the era stamp unchanged; ep_replay's
+  rule sets carry the date only where live does and its forward walk agrees with the recorder's across the boundary). The 246 tests of the
+  recorder / book-arm / depth-era / ep_replay / trail-arming / #631 / hour-lane suites pass unchanged.
+- **Deploy scope (when it ships — not this commit):** `exit_logic.py` is `broker/` + execution-loaded and `live_fill_counterfactuals.py` /
+  `book_geometry_arms.py` run in apollo-market (the 18:04 ET job) → `deploy.sh market-agent` then `deploy.sh execution`. `scripts/ep_replay.py`
+  is offline. EXPECT (against the night before the deploy): the 18:04 ET run writes 0 `live_fill_counterfactual_error` /
+  `book_geometry_arm_error` rows and the same arm counts it would have; a `live_replay` row written after the deploy on a fill still open
+  across 2026-10-29 and bought under its line shows no `sma_trail_stop` on a session ≥ 10-29 while unarmed; every other row byte-equal to
+  the pre-deploy dump. WOULD-FAIL-IF: an error row naming `trail_arm_on_close_above` (the ladder refusing it on a trail_* arm — the gate
+  failed), or a pre-existing row that differs from the dump. DONE-WHEN: the first post-deploy 18:04 run passes both and the dump is
+  byte-equal. VERIFY-LIVE: the first 18:04 ET run after the deploy.
+- **Reversion-flag:** NEW (closes the 10-28 entry's divergence). Revert = pass `trail_arm_from=None` at the two recorder call sites and
+  `trail_arm_from=None` on `era_d`/`ruleset_as_of` — no data to migrate.
+
 ### 2026-10-31 — #715: a name admitted on the real-time flip-up is NOT entered when it OPENED below the gap floor — built behind the three-mode toggle `magna53_open_below_floor`, SHIPPED IN SHADOW (OPERATOR-SIGNED "Take all recs" 2026-10-31; a LIVE-MONEY ENTRY RULE — THE LINE; BUILT on branch `open-below-floor-715`, NOT DEPLOYED; nothing is skipped until he flips the toggle)
 
 - **The rule (option (b) of the #715 study, exactly as replayed — nothing wider):** a MAGNA53 alert **admitted by the real-time flip-up** — the study's population test, verbatim: an `ep_rt_floor_flip_up` row in `mi_audit_log` on the alert's ET date whose summary leads with the ticker (`scripts/probes/_regn_1030/q3_flipups.sql`, re-run as the study's `c1_population.sql` POPCOUNT) — is **not entered when its 09:30 bar's OPEN is below the gap floor price = prev close × (1 + `MIN_GAP_PCT`/100)** (9% today → ×1.09; prev close = `db.get_prev_close`, the latest `mi_daily_closes` close strictly before the day — the detector's own denominator and the 4b re-check's, so scan, 4a and 4b cannot disagree on one name on one day). Strictly below; an open AT or ABOVE the floor enters. The open is read from the SAME 09:30 bar stage 3 already fetched (`orb_bar["open"]`, the `O=` of `orb_bar_fetched`) — no new data source. **Unchanged:** the ORB anchor (buy the 09:30 high), the stop `2·ORB_low − ORB_high`, the #500 chase cap and its 1.5× bound, the 4b live-price re-check, sizing, every safeguard, the window. **Untouched:** every alert NOT admitted by the flip-up (the delayed read crossed the floor), the small-cap paper lane (`magna53_smallcap`), 9M (no caller exists) and breakout v1 — the floor is a per-strategy kwarg `flip_up_open_floor_pct` (default `None` = the rule is never read), passed by MAGNA53's call site alone (`live_tracker.py`, `_MAGNA53_MIN_GAP_PCT` = `ep_detector.MIN_GAP_PCT`, the day's floor); deliberately NOT keyed on `rt_gap_floor_pct`, which the paper lane also passes.

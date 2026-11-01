@@ -117,6 +117,7 @@ from typing import Any, Optional
 from shared.dates import _ET
 
 from agents.market_intelligence import live_fill_counterfactuals as lfc
+from agents.market_intelligence.broker.exit_logic import TRAIL_ARM_LIVE_FROM  # exec-boundary-ok: one date constant from the PURE ladder module (the exit_logic precedent) — the session the trail arming went live, read by every replay caller
 from agents.market_intelligence.broker.hour_bar_walk import (  # exec-boundary-ok: pure first-hour walk math, no Alpaca client (the exit_logic precedent) — shared with the shadow tracker's 60-minute lane
     FIRST_HOUR_END,
     MIN_HOUR_BARS,
@@ -154,6 +155,7 @@ from agents.market_intelligence.live_fill_counterfactuals import (
     compute_adr20_pct,
     depth_adr20_from_rows,
     pinned_target,
+    split_entry_day,
     walk_arm,
 )
 from agents.market_intelligence.rule_eras import (
@@ -379,8 +381,12 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict, ove
         _be = pinned.get("breakeven_arm_r")
         live_be_r = float(_be) if _be is not None else None
 
-    pre = await get_daily_ohlc_range(conn, ticker, alert_date - timedelta(days=ADR_LOOKBACK_CAL_DAYS),
-                                     alert_date - timedelta(days=1))
+    # the same read + split the original recorder makes (2026-11-01): `pre` = the rows before the
+    # alert day, byte-identical to before; the alert day's close is the trail arming's input
+    pre, entry_day_close = split_entry_day(
+        await get_daily_ohlc_range(conn, ticker, alert_date - timedelta(days=ADR_LOOKBACK_CAL_DAYS),
+                                   alert_date),
+        alert_date)
     adr20_pct, adr20_n = compute_adr20_pct(pre)
     depth_adr = depth_adr20_from_rows(pre) if is_depth else None
     prior_cut = alert_date - timedelta(days=PRIOR_CLOSES_CAL_DAYS)
@@ -519,7 +525,9 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict, ove
                                ladder_partial=bool(rules["ladder_partial"]),
                                breakeven_at_r=live_be_r, r_frame_ps=r_frame,
                                trail_mode="sma", depth_exit=is_depth,
-                               depth_adr20_pct=depth_adr if is_depth else None)
+                               depth_adr20_pct=depth_adr if is_depth else None,
+                               # 2026-11-01: the live ladder arms its trail from 2026-10-29
+                               trail_arm_from=TRAIL_ARM_LIVE_FROM, entry_day_close=entry_day_close)
             status = res["status"]
             if status == "pending":
                 gap_at = res.get("pending_at")
