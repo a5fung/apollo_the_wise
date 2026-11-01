@@ -1,0 +1,11 @@
+BLIND RECOUNT #314 o5h3 (fresh code: pop.py daily.py walk.py stats.py join.py compare.py; no orb_replay/orb_goldens/ps_common import)
+P1 o5h3: n 301 MATCH; mean R +0.363973 MATCH; CI [+0.1012,+0.6313] MATCH exactly with key 'orb:P1:pooled' (2000 draws seed 702, month blocks);
+ >=3R 29 trades / 29 companies / 19 months MATCH; win 126/301 41.9% MATCH; ADR P&L +0.3396 MATCH; 2c row +0.3166 [+0.0711,+0.5819] MATCH, PASS MATCH
+P1 era B: n 87 +0.2482 [-0.1806,+0.6901] CAN'T TELL MATCH
+P2 o5h3: n 181 +0.0964 [-0.1485,+0.3281] 11/11/10 win 84/181 CAN'T TELL MATCH; 2c -0.0743 MATCH
+numbers.json: 216 of 216 fields MATCH within 1e-9 (all P1/P2/P2small headline, era, slip, tick, grid-o5h3 lines)
+per-trade: 621 settled o5h3 rows joined (P1 301, P2 181, P2small 139), 0 differences >1e-6 in entry/stop/exit/R/risk/tick2/slip1/pnl/reason/exit session; max |dR| 4.5e-14
+all 10 variants x 826 rows: 0 status/entry/stop/exit/R/reason differences; rule (c) decisions 0 differences; pre-walk 409/237/180 companies 299/199/153 MATCH
+knife-edge (beside only): P1 o1h3 >=3R exact 46 vs published 45 (VXRT 2020-06-26 R=1.44/0.48=3 exactly, published float 2.9999999999999964);
+ P2 5c row >=2R exact 15/14/13 vs published 14/13/12 (MARK 2020-05-12 and SB 2021-02-16 both exactly 2.0; published float counts MARK, drops SB)
+CI note: result.txt prints two intervals for the identical P1 o5h3 series: headline key 'orb:P1:pooled' [+0.1012,+0.6313], grid key 'orb_o5h3:P1' [+0.1063,+0.6538]; key not registered
