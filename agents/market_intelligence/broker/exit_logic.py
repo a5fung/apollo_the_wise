@@ -230,12 +230,6 @@ def _sma_10_20_line(closes: list[float]) -> float | None:
 TRAIL_ARM_LIVE_FROM = date(2026, 10, 29)
 
 
-def trail_arming_live_on(session: date) -> bool:
-    """True when the live tracker decided `session`'s close WITH the trail arming (the 16:45 pass of
-    2026-10-29 was the first); False for every earlier session. The one place replays ask."""
-    return session >= TRAIL_ARM_LIVE_FROM
-
-
 def _trail_armed(prior_closes: list[float], running_closes: list[float],
                  entry_price: float | None = None, entry_day_close: float | None = None) -> bool:
     """True when the trailing line may govern today (2026-10-28, CLS): the trade was BOUGHT at or

@@ -74,13 +74,15 @@ def test_walked_fields_are_the_carried_state_plus_the_last_steps_two_numbers():
 async def test_the_exit_pass_fetches_todays_bar_once_per_ticker_and_never_for_a_row_the_ladder_skips(monkeypatch):
     """The one INTENDED change: the 5-minute and 60-minute siblings share one fetch; a row on its alert
     day or with nothing left is not fetched (the ladder returns skip_pre_alert before reading a bar);
-    a FAILED fetch is not cached — the next row of the same ticker tries again, as every row did before."""
+    an EMPTY answer is not cached — `collector.get_index_history` never raises (a Polygon failure logs
+    and returns []), so the next row of the same ticker makes its own attempt, as every row did before:
+    BAD answers [] to its 5-minute row (no_data, as before) and a bar to its 60-minute sibling (updated)."""
     fetched: list[str] = []
 
     async def _daily(t, a, b):
         fetched.append(t)
-        if t == "BAD":
-            raise RuntimeError("feed down")
+        if t == "BAD" and fetched.count("BAD") == 1:
+            return []                                   # the real failure shape: logged, [] returned
         return [{"o": 10.4, "h": 10.9, "l": 10.1, "c": 10.2, "t": 0}]
     cap = _Captured()
     _patch_common(monkeypatch, cap, minute_bars=lambda *a: [], daily_bars=_daily)
@@ -93,9 +95,9 @@ async def test_the_exit_pass_fetches_todays_bar_once_per_ticker_and_never_for_a_
         return rows
     monkeypatch.setattr(sot, "get_open_shadow_trades", _open)
     out = await sot.update_shadow_positions(DAY + timedelta(days=1))
-    assert fetched == ["AAA", "BAD", "BAD"]
-    assert out == {"closed": 0, "updated": 2, "no_data": 2, "error": 2, "quarantined_stale": 0}
-    assert sorted(i for i, _ in cap.updates) == [1, 2]                          # the skipped rows write nothing
+    assert fetched == ["AAA", "BAD", "BAD"]                                     # AAA once; BAD retried after []
+    assert out == {"closed": 0, "updated": 3, "no_data": 3, "error": 0, "quarantined_stale": 0}
+    assert sorted(i for i, _ in cap.updates) == [1, 2, 8]                       # the skipped rows and BAD's [] row write nothing
 
 
 def test_both_inserts_build_the_one_row_shape_in_the_inserts_parameter_order():

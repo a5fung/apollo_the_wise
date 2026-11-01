@@ -55,8 +55,10 @@ HELD = base._bar(10.6, 10.8, 10.2, 10.4)
 
 def test_the_live_date_is_the_first_decided_session_not_a_rule_eras_era():
     assert el.TRAIL_ARM_LIVE_FROM == date(2026, 10, 29)          # deployed 12:00-12:06 ET; first pass 16:45 ET
-    assert el.trail_arming_live_on(date(2026, 10, 28)) is False   # that close was decided by the old code
-    assert el.trail_arming_live_on(date(2026, 10, 29)) is True
+    # the constant is the whole surface exit_logic adds: each walk site compares ITS OWN `trail_arm_from`
+    # parameter (None on ep_replay's era_a/b/c sets) — a shared helper would drop that parameterisation
+    assert not hasattr(el, "trail_arming_live_on")
+    assert date(2026, 10, 28) < el.TRAIL_ARM_LIVE_FROM <= date(2026, 10, 29)   # 10-28's close: old code; 10-29's: new
     # not an exit-ERA switch: the #631 gated reads anchor on the latest `*_DATE` in rule_eras and stay there
     assert not any(n.startswith("TRAIL_ARM") for n in vars(rule_eras))
     latest = max(v for k, v in vars(rule_eras).items() if k.endswith("_DATE") and isinstance(v, date))
@@ -229,3 +231,18 @@ def test_the_equality_scenarios_still_match_the_pre_change_golden():
     named here so the proof this switch rests on is visible from this file."""
     from tests._lfc_equality_scenarios import scenarios
     assert set(scenarios()) == {"default", "override_8r_3r", "depth_row", "missing_orb_low", "open_trade"}
+
+
+def test_the_frozen_cb_runner_path_never_carries_the_switch():
+    """The #705 freeze proof (both preregs' disclosed re-pin rows): the cb runner's only `walk_arm`
+    call is `**lfc.stack_walk_inputs(...)[1]`, and that kwargs dict carries NO `trail_arm_from` /
+    `entry_day_close` on ANY stack — so the walk takes the default-None branch on every session,
+    whatever its date (the 10-18 holdout walks D 2025-01-01..2026-10-15 forward; the v2 rerun
+    2016-2022). The named lanes follow-up (giving `stack_walk_inputs` the flag) must knowingly
+    break this test AND re-disclose both docs' `live_fill_counterfactuals.py` pins: a holdout
+    session on/after 2026-10-29 would then walk differently."""
+    for d in (date(2026, 7, 1), date(2026, 8, 20), date(2026, 9, 10), date(2026, 10, 30), date(2017, 3, 2)):
+        for exit_rule in (None, rule_eras.DEPTH_EXIT_RULE):
+            rules = rule_eras.exit_rules_as_of(d, "magna53", exit_rule)
+            _target, kw = lfc.stack_walk_inputs(rules, 10.0, 9.5, [])
+            assert "trail_arm_from" not in kw and "entry_day_close" not in kw, (d, exit_rule, kw)

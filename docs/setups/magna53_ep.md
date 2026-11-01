@@ -653,7 +653,8 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
   the live tracker's three ladder calls pass `trail_arm_on_close_above=True` (the line governs only once the trade was bought at or above
   it, or a held day — the entry day included — closed at or above it); the #482 recorder's arms, the book arms and `scripts/ep_replay`
   did not, so from that deploy they differed from live on a trade bought below its line. **Now:** `exit_logic.TRAIL_ARM_LIVE_FROM =
-  2026-10-29` + `trail_arming_live_on(session)`; `live_fill_counterfactuals.walk_arm(trail_arm_from=…, entry_day_close=…)` adds
+  2026-10-29` (one constant — the review's 2026-11-01 pass removed an uncalled helper beside it: each walk site compares its OWN
+  `trail_arm_from` parameter, None on ep_replay's era_a/b/c sets); `live_fill_counterfactuals.walk_arm(trail_arm_from=…, entry_day_close=…)` adds
   `trail_arm_on_close_above=True, entry_day_close` to the ladder call on every SESSION on/after that date and NOTHING before it — the call
   on an earlier session is byte-identical, not a `False` that happens to match. **Boundary:** per SESSION, not per fill — live applied the
   fix to every open trade from the pass it shipped in (CLS, bought 10-27, got it on 10-29); the 10-28 close was decided by the old code
@@ -679,8 +680,11 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
   undisclosed in either doc until now; this commit moves `live_fill_counterfactuals.py`; `rule_eras.py` and `constants.py` keep their pins.
   Disclosed BELOW each doc's freeze marker (the docs' own rule: nothing above the marker after the freeze; the RESULT goes below the pins —
   `freeze_check` takes the FIRST footer line per label, so the record is documentary and the re-check keeps refusing on HEAD exactly as it
-  has since 10-28). **Proof the frozen reads' numbers are unchanged:** (a) the gate is `session ≥ 2026-10-29` and those reads walk
-  2016-2022, so no ladder call in them can carry the flag — pinned by a kwargs-capture test on a 2017-dated walk; (b) old-vs-new over the
+  has since 10-28). **Proof the frozen reads' numbers are unchanged:** (a) the cb runner's only `walk_arm` call passes `**kw` from
+  `stack_walk_inputs`, which sets no `trail_arm_from` on any stack, so every ladder call in those reads takes the default-None branch
+  whatever the session's date — pinned by `test_the_frozen_cb_runner_path_never_carries_the_switch` (the review's 2026-11-01 correction:
+  the first disclosure argued from the dates, which holds for the v2 rerun's 2016-2022 but NOT for the 10-18 holdout's 2025-01-01..
+  2026-10-15; the kwargs path is the proof for both); (b) old-vs-new over the
   five `_lfc_equality_scenarios` recorder runs (59 rows) plus 44 `walk_arm` fixtures (every harvest × stop, the +8R/3R variant, a
   below-line buy; 2026- and 2017-dated): byte-identical JSON on the base tree (`62a7ddf4`, lfc = the pinned `6bdb44b9…`) and the changed
   tree (`scripts/probes/_482_followups_1101/lfc_old_vs_new.{before,after}.sha256`); (c) the five-scenario golden
@@ -735,10 +739,12 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
   "one place" means one place for the recorders plus a test that it equals the replay's; **(f)** one `_run_candidates` scaffold for the
   two entry passes (semaphore, per-candidate crash isolation, each pass's own crash label); **(g)** the exit pass fetches today's bar ONCE
   per ticker (the 5-minute and 60-minute siblings share it) and not at all for a row the ladder would skip before reading a bar (nothing
-  left, or the alert day itself — `apply_daily_exit_step`'s own first check), a failed fetch never cached. The ONE intended change is
-  the fetch count: `day0_skip` 1 → 0, a six-row mixed pass 5 → 2, a failing fetch 2 → 2; rows and counts identical. The only
-  non-identity is a transient-error path: a second row of the same ticker now gets a fresh fetch attempt instead of its own anyway —
-  which is what it had before. Tests: `tests/test_482_recorder_cleanups_1101.py` (7). Deploy scope when it ships: `broker/*` + the book
+  left, or the alert day itself — `apply_daily_exit_step`'s own first check); only a NON-EMPTY answer is cached. `collector.
+  get_index_history` never raises — a Polygon failure logs and returns [] — so an empty answer may be a passing failure, and the next row
+  of the same ticker makes its own attempt exactly as every row did before (the 2026-11-01 review caught the first cut caching the []:
+  the 60-minute sibling then skipped that night's close for good, since `no_data` leaves a row untouched and the next night appends only
+  its own close). The ONE intended change is the fetch count: `day0_skip` 1 → 0, a six-row mixed pass 5 → 2, an empty-then-good answer
+  2 → 2; rows and counts identical. Tests: `tests/test_482_recorder_cleanups_1101.py` (7). Deploy scope when it ships: `broker/*` + the book
   module → `deploy.sh market-agent` then `deploy.sh execution`.
 
 ### 2026-10-31 — #715: a name admitted on the real-time flip-up is NOT entered when it OPENED below the gap floor — built behind the three-mode toggle `magna53_open_below_floor`, SHIPPED IN SHADOW (OPERATOR-SIGNED "Take all recs" 2026-10-31; a LIVE-MONEY ENTRY RULE — THE LINE; BUILT on branch `open-below-floor-715`, NOT DEPLOYED; nothing is skipped until he flips the toggle)
