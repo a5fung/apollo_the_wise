@@ -48,7 +48,9 @@ from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
 from agents.market_intelligence.broker.hour_bar_walk import (
     NO_ENTRY_HOUR,
     classify_hour_entry,
+    decide_with_daily_high,
     session_close_et,
+    two_r_stop,
 )
 from agents.market_intelligence.broker.order_manager import (
     prepare_prior_day_low_orb_order,
@@ -123,29 +125,37 @@ async def run_shadow_pass(today: date) -> dict[str, int]:
     )
 
     regime_record = await _fetch_latest_regime(today)
-    sem = asyncio.Semaphore(SHADOW_CONCURRENCY)
     counts = {"open": 0, "no_entry": 0, "gate_blocked": 0, "infra:no_bar": 0,
               "duplicate": 0, "error": 0}
 
-    async def _one(builder_kind: str, alert_ctx: dict) -> None:
-        async with sem:
-            try:
-                status = await _process_candidate(
-                    builder_kind, alert_ctx, today, regime_record,
-                )
-                counts[status] = counts.get(status, 0) + 1
-            except Exception:
-                logger.exception(
-                    f"Shadow ORB {alert_ctx.get('ticker')}: per-candidate crash"
-                )
-                counts["error"] += 1
+    async def _process(item: tuple[str, dict]) -> str:
+        builder_kind, alert_ctx = item
+        return await _process_candidate(builder_kind, alert_ctx, today, regime_record)
 
-    tasks = [_one("magna53", a) for a in magna_alerts]
-    tasks += [_one("9m_day2", s) for s in sugar_babies]
-    await asyncio.gather(*tasks)
+    await _run_candidates(
+        [("magna53", a) for a in magna_alerts] + [("9m_day2", s) for s in sugar_babies],
+        _process, counts, crash_label=lambda item: f"Shadow ORB {item[1].get('ticker')}")
 
     logger.info(f"Shadow ORB pass complete: {counts}")
     return counts
+
+
+async def _run_candidates(items: list, process, counts: dict[str, int], *, crash_label) -> None:
+    """The scaffold both entry passes share (2026-11-01): every candidate through `process` under
+    the SHADOW_CONCURRENCY semaphore, its returned status counted; a per-candidate crash is logged
+    with `crash_label(item)`, counted as `error`, and never stops the others."""
+    sem = asyncio.Semaphore(SHADOW_CONCURRENCY)
+
+    async def _one(item) -> None:
+        async with sem:
+            try:
+                status = await process(item)
+                counts[status] = counts.get(status, 0) + 1
+            except Exception:
+                logger.exception(f"{crash_label(item)}: per-candidate crash")
+                counts["error"] += 1
+
+    await asyncio.gather(*[_one(item) for item in items])
 
 
 async def _process_candidate(
@@ -266,10 +276,30 @@ async def _insert_row(
     shape_tag = alert_ctx.get("shape_tag") if signal_type == "9m_day2" else None
     score_tier = alert_ctx.get("score_tier") if signal_type == "magna53" else None
 
-    row = {
+    row = _shadow_row(
+        ticker, today, BAR_SIZE_MINUTES, signal_type, shape_tag, score_tier,
+        status=status, skip_reason=skip_reason, orb_high=orb_high, orb_low=orb_low,
+        trigger_minute_et=trigger_minute_et, entry_price=entry_price, stop_price=stop_price,
+        hard_stop=hard_stop, risk_dollars=risk_dollars, entry_shares=entry_shares, atr_14=atr_14,
+    )
+    trade_id = await insert_shadow_trade(row)
+    return trade_id is not None
+
+
+def _shadow_row(ticker: str, alert_date: date, bar_size_minutes: int, signal_type: str,
+                shape_tag: str | None, score_tier: str | None, *, status: str,
+                skip_reason: str | None = None, orb_high: float | None = None,
+                orb_low: float | None = None, trigger_minute_et: time | None = None,
+                entry_price: float | None = None, stop_price: float | None = None,
+                hard_stop: float | None = None, risk_dollars: float | None = None,
+                entry_shares: float | None = None, atr_14: float | None = None) -> dict[str, Any]:
+    """The one `mi_orb_shadow_trades` row shape both lanes insert (2026-11-01) — the 5-minute lane's
+    ORB bar or the hour lane's first-hour bar in `orb_high` / `orb_low`, `remaining_shares` only on
+    an `open` row. Key order is the INSERT's parameter order (`db.SHADOW_TRADE_INSERT_SQL`)."""
+    return {
         "ticker": ticker,
-        "alert_date": today,
-        "bar_size_minutes": BAR_SIZE_MINUTES,
+        "alert_date": alert_date,
+        "bar_size_minutes": bar_size_minutes,
         "signal_type": signal_type,
         "shape_tag": shape_tag,
         "score_tier": score_tier,
@@ -286,8 +316,6 @@ async def _insert_row(
         "skip_reason": skip_reason,
         "remaining_shares": entry_shares if status == "open" else 0,
     }
-    trade_id = await insert_shadow_trade(row)
-    return trade_id is not None
 
 
 # ── First-hour entry pass (16:50 ET, before the exit step) — #482 add-on ───
@@ -315,20 +343,12 @@ async def run_shadow_hour_pass(today: date) -> dict[str, int]:
 
     candidates = await _fetch_hour_lane_candidates(today)
     logger.info(f"Shadow first-hour pass: {len(candidates)} 5-minute row(s) without an hour row")
-    sem = asyncio.Semaphore(SHADOW_CONCURRENCY)
 
-    async def _one(row: dict) -> None:
-        async with sem:
-            try:
-                status = await _process_hour_candidate(row, today)
-                counts[status] = counts.get(status, 0) + 1
-            except Exception:
-                logger.exception(
-                    f"Shadow first-hour {row.get('ticker')} {row.get('alert_date')}: per-candidate crash"
-                )
-                counts["error"] += 1
+    async def _process(row: dict) -> str:
+        return await _process_hour_candidate(row, today)
 
-    await asyncio.gather(*[_one(r) for r in candidates])
+    await _run_candidates(candidates, _process, counts,
+                          crash_label=lambda row: f"Shadow first-hour {row.get('ticker')} {row.get('alert_date')}")
     logger.info(f"Shadow first-hour pass complete: {counts}")
     await log_audit_event(
         "shadow_orb_hour_pass",
@@ -374,11 +394,7 @@ async def _process_hour_candidate(row: dict, today: date) -> str:
     if verdict["kind"] == "needs_daily_high":
         daily = await get_index_history(ticker, alert_date.isoformat(), alert_date.isoformat())
         d0_high = float(daily[0]["h"]) if daily and daily[0].get("h") is not None else None
-        if d0_high is None:
-            verdict = {"kind": "pending", "high": verdict["high"], "low": verdict["low"],
-                       "reason": f"{verdict['walk_reason']}:no_day0_daily_bar"}
-        else:
-            verdict = classify_hour_entry(bars, close_et, d0_high)
+        verdict = decide_with_daily_high(bars, close_et, verdict, d0_high, missing_reason="no_day0_daily_bar")
 
     hi, lo = verdict.get("high"), verdict.get("low")
     trigger: time | None = None
@@ -388,7 +404,7 @@ async def _process_hour_candidate(row: dict, today: date) -> str:
         # the live bracket rule restated on the hour bar
         trigger = verdict["minute"].astimezone(ET).time().replace(microsecond=0)
         entry = float(verdict["px"])
-        stop = 2 * lo - hi
+        stop = two_r_stop(hi, lo)
         if stop <= 0:
             inserted = await _insert_hour_row(
                 row, status="gate_blocked",
@@ -457,15 +473,7 @@ async def _walk_missed_sessions(ticker: str, alert_date: date, entry: float, sto
         return None                       # today is the first session after the alert: nothing missed
     through = today - timedelta(days=1)
     bars = await get_index_history(ticker, (alert_date + timedelta(days=1)).isoformat(), through.isoformat())
-    day_bars: list[tuple[date, dict]] = []
-    for b in bars or []:
-        ts = b.get("t")
-        if ts is None:
-            continue
-        day = datetime.fromtimestamp(ts / 1000, tz=ET).date()
-        if alert_date < day <= through:
-            day_bars.append((day, b))
-    day_bars.sort(key=lambda x: x[0])
+    day_bars = _session_bars(bars, after=alert_date, through=through)
     fields: dict[str, Any] | None = None
     if day_bars:
         state = seed_exit_state(alert_date=alert_date, entry_price=entry, hard_stop=stop,
@@ -474,19 +482,9 @@ async def _walk_missed_sessions(ticker: str, alert_date: date, entry: float, sto
         for _i, _day, step in iter_exit_ladder(state, day_bars, integer_partial_shares=False):
             last_step = step
         if last_step is not None:
-            fields = {
-                "running_closes": state["running_closes"],
-                "exits": state["exits"],
-                "remaining_shares": state["remaining_shares"],
-                "partial_taken": state["partial_taken"],
-                "breakeven_active": state["breakeven_active"],
-                "total_pnl": sum(e.get("pnl", 0) for e in state["exits"]),
-                "hold_days": last_step.hold_days,
-                "stop_price": last_step.effective_stop,
-            }
+            fields = _walked_fields(state, last_step)
             if last_step.closed:
-                fields["status"] = "closed"
-                fields["closed_at"] = datetime.now(ET)
+                fields.update(_closed_fields())
                 return fields             # closed inside the missed sessions: nothing left to step
     is_stale, reason = detect_stale_for_step(alert_date, fields["hold_days"] if fields else None, today)
     if is_stale:
@@ -494,6 +492,46 @@ async def _walk_missed_sessions(ticker: str, alert_date: date, entry: float, sto
             f"exit_history:{(alert_date + timedelta(days=1)).isoformat()}..{through.isoformat()}:"
             f"{len(day_bars)}_session_bar(s) — {reason}")}
     return fields
+
+
+def _session_bars(bars: list | None, *, after: date | None = None,
+                  through: date | None = None) -> list[tuple[date, dict]]:
+    """`collector.get_index_history` bars → the oldest-first `[(session date, bar)]` the ladder driver
+    reads (2026-11-01, one copy for the late-fill catch-up and the one-time replay). A bar with no
+    timestamp is dropped; with `after` / `through` given, only sessions in (after, through] are kept
+    (the catch-up's window); without them every fetched bar is kept (the replay's)."""
+    out: list[tuple[date, dict]] = []
+    for b in bars or []:
+        ts = b.get("t")
+        if ts is None:
+            continue
+        day = datetime.fromtimestamp(ts / 1000, tz=ET).date()
+        if (after is not None and day <= after) or (through is not None and day > through):
+            continue
+        out.append((day, b))
+    out.sort(key=lambda x: x[0])
+    return out
+
+
+def _walked_fields(state: dict[str, Any], last_step: Any) -> dict[str, Any]:
+    """The `update_shadow_trade` fields a ladder walk driven through `iter_exit_ladder` produced:
+    the carried state plus the last step's hold_days / effective stop (2026-11-01, one copy for the
+    late-fill catch-up and the one-time replay; the nightly step's own fields come from the step)."""
+    return {
+        "running_closes": state["running_closes"],
+        "exits": state["exits"],
+        "remaining_shares": state["remaining_shares"],
+        "partial_taken": state["partial_taken"],
+        "breakeven_active": state["breakeven_active"],
+        "total_pnl": sum(e.get("pnl", 0) for e in state["exits"]),
+        "hold_days": last_step.hold_days,
+        "stop_price": last_step.effective_stop,
+    }
+
+
+def _closed_fields() -> dict[str, Any]:
+    """The two fields a closing write adds (the same clock stamp every closing path writes)."""
+    return {"status": "closed", "closed_at": datetime.now(ET)}
 
 
 async def _insert_hour_row(row: dict, *, status: str, skip_reason: str | None = None,
@@ -505,26 +543,13 @@ async def _insert_hour_row(row: dict, *, status: str, skip_reason: str | None = 
                            catch_up: dict[str, Any] | None = None) -> int | None:
     """Returns the new row's id, None on the UNIQUE conflict. `catch_up` (an open row's missed
     sessions) is written in the SAME transaction as the insert (`db.insert_shadow_trade`)."""
-    return await insert_shadow_trade({
-        "ticker": row["ticker"],
-        "alert_date": row["alert_date"],
-        "bar_size_minutes": HOUR_BAR_SIZE_MINUTES,
-        "signal_type": row["signal_type"],
-        "shape_tag": row.get("shape_tag"),
-        "score_tier": row.get("score_tier"),
-        "orb_high": orb_high,
-        "orb_low": orb_low,
-        "atr_14": atr_14,
-        "trigger_minute_et": trigger_minute_et,
-        "entry_price": entry_price,
-        "stop_price": stop_price,
-        "hard_stop": hard_stop,
-        "risk_dollars": risk_dollars,
-        "entry_shares": entry_shares,
-        "status": status,
-        "skip_reason": skip_reason,
-        "remaining_shares": entry_shares if status == "open" else 0,
-    }, catch_up=catch_up)
+    return await insert_shadow_trade(_shadow_row(
+        row["ticker"], row["alert_date"], HOUR_BAR_SIZE_MINUTES, row["signal_type"],
+        row.get("shape_tag"), row.get("score_tier"),
+        status=status, skip_reason=skip_reason, orb_high=orb_high, orb_low=orb_low,
+        trigger_minute_et=trigger_minute_et, entry_price=entry_price, stop_price=stop_price,
+        hard_stop=hard_stop, risk_dollars=risk_dollars, entry_shares=entry_shares, atr_14=atr_14,
+    ), catch_up=catch_up)
 
 
 async def _fetch_hour_lane_candidates(today: date) -> list[dict]:
@@ -662,6 +687,12 @@ async def update_shadow_positions(today: date) -> dict[str, int]:
     counts = {"closed": 0, "updated": 0, "no_data": 0, "error": 0,
               "quarantined_stale": 0}
     today_str = today.isoformat()
+    # 2026-11-01: today's bar is fetched ONCE per ticker (the 5-minute and 60-minute siblings share
+    # it) and not at all for a row the ladder skips before reading a bar — nothing left, or the
+    # alert day itself (`apply_daily_exit_step`'s own first check: `remaining <= 0 or today <=
+    # alert_date` → skip_pre_alert). Only a successful fetch is cached: a failed one is retried by
+    # the next row of the same ticker, exactly as each row fetched for itself before.
+    bars_by_ticker: dict[str, list] = {}
 
     for row in open_rows:
         try:
@@ -681,9 +712,13 @@ async def update_shadow_positions(today: date) -> dict[str, int]:
                 counts["quarantined_stale"] += 1
                 continue
 
-            bars = await get_index_history(row["ticker"], today_str, today_str)
-            daily_bar = bars[0] if bars else None
             state = _row_to_state(row)
+            daily_bar = None
+            if state["remaining_shares"] > 0 and today > state["alert_date"]:
+                if row["ticker"] not in bars_by_ticker:
+                    bars_by_ticker[row["ticker"]] = await get_index_history(row["ticker"], today_str, today_str)
+                bars = bars_by_ticker[row["ticker"]]
+                daily_bar = bars[0] if bars else None
             step = apply_daily_exit_step(
                 state, daily_bar, today,
                 integer_partial_shares=False,
@@ -846,14 +881,7 @@ async def replay_stale_open_row(row: dict[str, Any], as_of: date) -> dict[str, A
             f"{alert_date.isoformat()}..{as_of.isoformat()}"
         )}
 
-    day_bars: list[tuple[date, dict]] = []
-    for b in bars:
-        ts = b.get("t")
-        if ts is None:
-            continue
-        day = datetime.fromtimestamp(ts / 1000, tz=ET).date()
-        day_bars.append((day, b))
-    day_bars.sort(key=lambda x: x[0])
+    day_bars = _session_bars(bars)
 
     state = seed_exit_state(
         alert_date=alert_date,
@@ -873,7 +901,6 @@ async def replay_stale_open_row(row: dict[str, Any], as_of: date) -> dict[str, A
             f"({alert_date.isoformat()}..{as_of.isoformat()})"
         )}
 
-    total_pnl = sum(e.get("pnl", 0) for e in state["exits"])
     pre_replay_snapshot = {
         "running_closes": row.get("running_closes"),
         "exits": row.get("exits"),
@@ -888,18 +915,10 @@ async def replay_stale_open_row(row: dict[str, Any], as_of: date) -> dict[str, A
     }
 
     fields: dict[str, Any] = {
-        "running_closes": state["running_closes"],
-        "exits": state["exits"],
-        "remaining_shares": state["remaining_shares"],
-        "partial_taken": state["partial_taken"],
-        "breakeven_active": state["breakeven_active"],
-        "total_pnl": total_pnl,
-        "hold_days": last_step.hold_days,
-        "stop_price": last_step.effective_stop,
+        **_walked_fields(state, last_step),
         "pre_replay_snapshot": pre_replay_snapshot,
         "replayed_at": datetime.now(ET),
     }
     if last_step.closed:
-        fields["status"] = "closed"
-        fields["closed_at"] = datetime.now(ET)
+        fields.update(_closed_fields())
     return fields

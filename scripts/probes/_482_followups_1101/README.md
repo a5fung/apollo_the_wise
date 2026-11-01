@@ -12,3 +12,14 @@ precedes 2026-10-29, as every session the frozen #705 reads walk does (2016-2022
     REPO=/path/to/base   python3 lfc_old_vs_new_probe.py > before.json
     REPO=/path/to/change python3 lfc_old_vs_new_probe.py > after.json
     cmp before.json after.json
+
+## Follow-up (3) — the tracker / book-arm cleanups (`tracker_old_vs_new_probe.py`)
+
+Drives 26 hour-lane scenarios, the 5-minute lane, 5 exit-pass scenarios, 2 one-time replays and 10
+book-arm scenarios (the two test suites' own fixtures) and prints every INSERT / UPDATE payload, count
+and audit event. Captured at `bc641105` (before the cleanups) and after them: the payloads are
+byte-identical (`tracker_old_vs_new.{before,after}.sha256`, hashed with the `fetches` key removed).
+The `fetches` key is the one INTENDED change — the exit pass's daily-bar fetch count per scenario:
+`day0_skip` 1 -> 0, `mixed` (six rows: two AAA siblings, CCC, a pre-alert DDD, a stale EEE, a
+nothing-left FFF) 5 -> 2, `fetch_raises` 2 -> 2 (a failed fetch is not cached), `hour_row_closed` and
+`no_bar` 1 -> 1.

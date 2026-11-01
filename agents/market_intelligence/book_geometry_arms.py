@@ -123,10 +123,12 @@ from agents.market_intelligence.broker.hour_bar_walk import (  # exec-boundary-o
     MIN_HOUR_BARS,
     NO_ENTRY_HOUR,
     classify_hour_entry,
+    decide_with_daily_high,
     entry_walk,
     first_hour_frame,
     session_close_et,
     stop_limit_buy_price,
+    two_r_stop,
 )
 from agents.market_intelligence.constants import (
     MAX_POSITION_PCT,
@@ -436,12 +438,8 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict, ove
         hour = classify_hour_entry(bars, close_et)
         if hour["kind"] == "needs_daily_high":
             d0 = await get_daily_ohlc_range(conn, ticker, fill_day, fill_day)
-            d0_high = _f(d0[0].get("high_price")) if d0 else None
-            if d0_high is None:
-                hour = {"kind": "pending", "high": hour["high"], "low": hour["low"],
-                        "reason": f"{hour['walk_reason']}:no_stored_day0_daily_bar"}
-            else:
-                hour = classify_hour_entry(bars, close_et, d0_high)
+            hour = decide_with_daily_high(bars, close_et, hour, _f(d0[0].get("high_price")) if d0 else None,
+                                          missing_reason="no_stored_day0_daily_bar")
 
     for arm in todo:
         name = arm[0]
@@ -485,7 +483,7 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict, ove
                     inputs["entry"] = arm_entry
                     inputs["adr_dollar"] = (adr20_pct / 100.0 * arm_entry) if adr20_pct is not None else None
                     if name == "entry_first_hour_bar":
-                        stop = 2 * hour["low"] - hour["high"]
+                        stop = two_r_stop(hour["high"], hour["low"])
                         if stop <= 0:
                             fail = ("unscoreable", f"first_hour_2r_stop_nonpositive:{stop:.2f}")
                     else:                             # book_first_hour_low_of_day

@@ -42,6 +42,15 @@ REGULAR_CLOSE = time(16, 0)
 NO_ENTRY_HOUR = "no_entry:never_crossed_hour_high"
 
 
+def two_r_stop(bar_high: float, bar_low: float) -> float:
+    """The live bracket's protective stop restated on ANY bar: `2 × low − high` = entry − 2R in the
+    bar's own frame (R = high − low) — the formula `broker.order_manager.prepare_orb_order` places on
+    the 1-minute ORB bar (operator-signed 2026-08-16) and `scripts/ep_replay.RuleSet.stop_price`
+    replays. The ONE copy both recorders use for the first-hour bar (2026-11-01); the live entry
+    path keeps its own line — THE LINE — pinned equal by test."""
+    return 2 * bar_low - bar_high
+
+
 def stop_limit_buy_price(stop_price: float) -> float:
     """The LIMIT of a stop-limit BUY — mirrors broker.order_manager.stop_limit_buy_price (0.5% or
     $0.02 above the stop, whichever is larger). Inlined: order_manager pulls the Alpaca stack, which
@@ -132,3 +141,20 @@ def classify_hour_entry(bars: list[dict], session_close: time,
         return {"kind": "no_entry", "high": hi, "low": lo, "reason": f"{NO_ENTRY_HOUR}:proven_by_daily_high"}
     return {"kind": "pending", "high": hi, "low": lo,
             "reason": f"{walk['reason']}:session_high_at_or_above_hour_high"}
+
+
+
+def decide_with_daily_high(bars: list[dict], session_close: time, verdict: dict,
+                           day0_daily_high: Optional[float], *, missing_reason: str) -> dict:
+    """The second half of the DAY-0 GAP RULE, shared by both recorders (2026-11-01): a
+    `needs_daily_high` verdict re-classified with the day's high once the caller has fetched it
+    (each recorder reads its own source — the tracker Polygon, the book arms the stored daily row).
+    No high (`None`) → pending, the walk's reason suffixed with `missing_reason` (each caller names
+    ITS source: 'no_day0_daily_bar' / 'no_stored_day0_daily_bar'), the hour frame kept. Any other
+    verdict is returned untouched."""
+    if verdict.get("kind") != "needs_daily_high":
+        return verdict
+    if day0_daily_high is None:
+        return {"kind": "pending", "high": verdict["high"], "low": verdict["low"],
+                "reason": f"{verdict['walk_reason']}:{missing_reason}"}
+    return classify_hour_entry(bars, session_close, day0_daily_high)

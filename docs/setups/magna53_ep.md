@@ -647,7 +647,7 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
 
 ## Change log (newest first)
 
-### 2026-11-01 — #482 weekend follow-ups: (1) the replays model the 2026-10-28 trail-arming fix from the session it went live · (2) a LATE fill's open hour row and its catch-up are ONE transaction (RECORD / REPLAY CODE ONLY — no live entry, exit, stop, size or safeguard change; BUILT on branch `482-followups`, NOT DEPLOYED)
+### 2026-11-01 — #482 weekend follow-ups: (1) the replays model the 2026-10-28 trail-arming fix from the session it went live · (2) a LATE fill's open hour row and its catch-up are ONE transaction · (3) the deferred tidy-ups in the two hour-bar recorders, rows byte-identical (RECORD / REPLAY CODE ONLY — no live entry, exit, stop, size or safeguard change; BUILT on branch `482-followups`, NOT DEPLOYED)
 
 - **(1) The trail-arming era switch (exit_discipline.md 2026-10-28 "Known divergence", closed).** Since the Thu 2026-10-29 12:00-12:06 ET deploy
   the live tracker's three ladder calls pass `trail_arm_on_close_above=True` (the line governs only once the trade was bought at or above
@@ -719,6 +719,27 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
   (`tests/fixtures/482_shadow_5m_golden.json`) is byte-equal (that lane never passes a catch-up). Deploy scope when it ships: `db.py`
   (exec-loaded) + `broker/shadow_orb_tracker.py` → `deploy.sh market-agent` then `deploy.sh execution`; VERIFY-LIVE = the next 16:50 ET
   hour pass writing a late `open` row (the 14-day backfill or a resolved gap) with `hold_days` set in the same row the audit line counts.
+- **(3) The deferred cleanups (commit `7e44b589`'s list), each proven BEHAVIOUR-NEUTRAL by an old-vs-new capture, not by green tests
+  alone:** `scripts/probes/_482_followups_1101/tracker_old_vs_new_probe.py` drives 26 hour-lane scenarios, the 5-minute lane, 5 exit-pass
+  scenarios, 2 one-time replays and 10 book-arm scenarios (the suites' own fixtures) on the tree before (`bc641105`) and after — every
+  INSERT / UPDATE payload, count and audit event byte-identical (`tracker_old_vs_new.{before,after}.sha256`), the 5-minute golden
+  byte-equal. Done, all in `broker/shadow_orb_tracker.py` / `broker/hour_bar_walk.py` / `book_geometry_arms.py` (no freeze-pinned file):
+  **(a)** one `_shadow_row` builder for the two inserts (key order = the INSERT's parameter order, test-pinned); **(b)** one `_session_bars`
+  (Polygon bars → `[(session, bar)]`, the catch-up's window as optional bounds so the replay's unbounded read is unchanged) and
+  **(c)** one `_walked_fields` + `_closed_fields` for the late-fill catch-up and the one-time replay (the nightly step keeps its own
+  step-sourced fields; the replay composes its snapshot fields in the same order as before, so even the UPDATE's SET order is unchanged);
+  **(d)** one `hour_bar_walk.decide_with_daily_high` for the second half of the day-0 gap rule in both recorders — each keeps its own
+  fetch (Polygon vs the stored row) and names its own missing-bar suffix (`:no_day0_daily_bar` / `:no_stored_day0_daily_bar`), so no reason
+  string moved; **(e)** one `hour_bar_walk.two_r_stop(high, low)` for the first-hour bar in both recorders, pinned equal to
+  `ep_replay.RuleSet.stop_price` — **`order_manager.prepare_orb_order`'s own line is NOT touched** (the live entry path — THE LINE), so
+  "one place" means one place for the recorders plus a test that it equals the replay's; **(f)** one `_run_candidates` scaffold for the
+  two entry passes (semaphore, per-candidate crash isolation, each pass's own crash label); **(g)** the exit pass fetches today's bar ONCE
+  per ticker (the 5-minute and 60-minute siblings share it) and not at all for a row the ladder would skip before reading a bar (nothing
+  left, or the alert day itself — `apply_daily_exit_step`'s own first check), a failed fetch never cached. The ONE intended change is
+  the fetch count: `day0_skip` 1 → 0, a six-row mixed pass 5 → 2, a failing fetch 2 → 2; rows and counts identical. The only
+  non-identity is a transient-error path: a second row of the same ticker now gets a fresh fetch attempt instead of its own anyway —
+  which is what it had before. Tests: `tests/test_482_recorder_cleanups_1101.py` (7). Deploy scope when it ships: `broker/*` + the book
+  module → `deploy.sh market-agent` then `deploy.sh execution`.
 
 ### 2026-10-31 — #715: a name admitted on the real-time flip-up is NOT entered when it OPENED below the gap floor — built behind the three-mode toggle `magna53_open_below_floor`, SHIPPED IN SHADOW (OPERATOR-SIGNED "Take all recs" 2026-10-31; a LIVE-MONEY ENTRY RULE — THE LINE; BUILT on branch `open-below-floor-715`, NOT DEPLOYED; nothing is skipped until he flips the toggle)
 
