@@ -1,0 +1,330 @@
+# #314 ORB-entry replay — DRY RUN (synthetic fixtures only; no real input opened) (2026-11-01)
+- modules: orb_replay.py 1fa1cbbf0d0a4272 orb_goldens.py b36bed75e4921bb8 ps_common.py 6f99467e3a2bc5c3 ps_walk.py a4decccfebb4d49d
+
+## The fixtures through walk_episode (the hand numbers of the registration's §8)
+  [OK] 1_win_time_exit o5h3 status: expected settled, got settled
+  [OK] 1_win_time_exit o5h3 reason: expected time_stop, got time_stop
+  [OK] 1_win_time_exit o5h3 entry: expected 9.79, got 9.79
+  [OK] 1_win_time_exit o5h3 stop: expected 10.71, got 10.71
+  [OK] 1_win_time_exit o5h3 risk: expected 0.92, got 0.9200000000000017
+  [OK] 1_win_time_exit o5h3 exit: expected 7.6, got 7.6
+  [OK] 1_win_time_exit o5h3 r: expected 2.380434782608696, got 2.380434782608691
+  [OK] 1_win_time_exit o5h3 sessions_held: expected 3, got 3
+  [OK] 1_win_time_exit o5h3 r_slip1: expected 2.372173913043478, got 2.3721739130434742
+  [OK] 1_win_time_exit o5h3 r_slip2: expected 2.363913043478261, got 2.363913043478256
+  [OK] 1_win_time_exit o5h3 mfe: expected 2.489130434782609, got 2.489130434782603
+  [OK] 1_win_time_exit o5h3 mae: expected 0.119565217391304, got 0.11956521739130543
+  [OK] 1_win_time_exit o5h3 pnl_adr: expected 2.236976506639428, got 2.2369765066394276
+  [OK] 1_win_time_exit o5h3 win: expected 1, got 1
+  [OK] 1_win_time_exit o5h1 status: expected settled, got settled
+  [OK] 1_win_time_exit o5h1 reason: expected time_stop, got time_stop
+  [OK] 1_win_time_exit o5h1 exit: expected 9.0, got 9.0
+  [OK] 1_win_time_exit o5h1 r: expected 0.858695652173913, got 0.8586956521739105
+  [OK] 1_win_time_exit o5h1 sessions_held: expected 1, got 1
+  [OK] 1_win_time_exit o5h2 status: expected settled, got settled
+  [OK] 1_win_time_exit o5h2 reason: expected time_stop, got time_stop
+  [OK] 1_win_time_exit o5h2 exit: expected 8.1, got 8.1
+  [OK] 1_win_time_exit o5h2 r: expected 1.83695652173913, got 1.8369565217391264
+  [OK] 1_win_time_exit o5h2 sessions_held: expected 2, got 2
+  [OK] 1_win_time_exit o15h3 status: expected settled, got settled
+  [OK] 1_win_time_exit o15h3 reason: expected time_stop, got time_stop
+  [OK] 1_win_time_exit o15h3 entry: expected 9.69, got 9.69
+  [OK] 1_win_time_exit o15h3 stop: expected 10.71, got 10.71
+  [OK] 1_win_time_exit o15h3 risk: expected 1.02, got 1.0200000000000014
+  [OK] 1_win_time_exit o15h3 r: expected 2.049019607843137, got 2.0490196078431344
+  [OK] 1_win_time_exit o1h3 status: expected settled, got settled
+  [OK] 1_win_time_exit o1h3 reason: expected time_stop, got time_stop
+  [OK] 1_win_time_exit o1h3 entry: expected 9.79, got 9.79
+  [OK] 1_win_time_exit o1h3 stop: expected 10.71, got 10.71
+  [OK] 1_win_time_exit o1h3 r: expected 2.380434782608696, got 2.380434782608691
+  [OK] 2_stopped_day_high o5h3 status: expected settled, got settled
+  [OK] 2_stopped_day_high o5h3 reason: expected stop, got stop
+  [OK] 2_stopped_day_high o5h3 entry: expected 19.89, got 19.89
+  [OK] 2_stopped_day_high o5h3 stop: expected 21.21, got 21.21
+  [OK] 2_stopped_day_high o5h3 risk: expected 1.32, got 1.3200000000000003
+  [OK] 2_stopped_day_high o5h3 exit: expected 21.21, got 21.21
+  [OK] 2_stopped_day_high o5h3 r: expected -1.0, got -1.0
+  [OK] 2_stopped_day_high o5h3 sessions_held: expected 1, got 1
+  [OK] 2_stopped_day_high o5h3 exit_session: expected 2023-07-05, got 2023-07-05
+  [OK] 2_stopped_day_high o5h3 mae: expected 1.0, got 1.0
+  [OK] 2_stopped_day_high o5h3 win: expected 0, got 0
+  [OK] 3_never_triggered o5h3 status: expected untriggered, got untriggered
+  [OK] 4_gap_through o5h3 status: expected settled, got settled
+  [OK] 4_gap_through o5h3 reason: expected time_stop, got time_stop
+  [OK] 4_gap_through o5h3 entry: expected 29.5, got 29.5
+  [OK] 4_gap_through o5h3 stop: expected 31.01, got 31.01
+  [OK] 4_gap_through o5h3 risk: expected 1.51, got 1.5100000000000016
+  [OK] 4_gap_through o5h3 exit: expected 24.0, got 24.0
+  [OK] 4_gap_through o5h3 r: expected 3.642384105960265, got 3.6423841059602613
+  [OK] 4_gap_through o5h3 sessions_held: expected 3, got 3
+  [OK] 5_same_bar_tie o5h3 status: expected settled, got settled
+  [OK] 5_same_bar_tie o5h3 reason: expected stop, got stop
+  [OK] 5_same_bar_tie o5h3 exit: expected 10.71, got 10.71
+  [OK] 5_same_bar_tie o5h3 r: expected -1.0, got -1.0
+  [OK] 5_same_bar_tie o5h3 sessions_held: expected 3, got 3
+  [OK] 6_time_exit_loser o5h3 status: expected settled, got settled
+  [OK] 6_time_exit_loser o5h3 reason: expected time_stop, got time_stop
+  [OK] 6_time_exit_loser o5h3 exit: expected 10.3, got 10.3
+  [OK] 6_time_exit_loser o5h3 r: expected -0.554347826086957, got -0.5543478260869572
+  [OK] 6_time_exit_loser o5h3 sessions_held: expected 3, got 3
+  [OK] 7_stopped_at_session_open o5h3 status: expected settled, got settled
+  [OK] 7_stopped_at_session_open o5h3 reason: expected stop, got stop
+  [OK] 7_stopped_at_session_open o5h3 exit: expected 11.0, got 11.0
+  [OK] 7_stopped_at_session_open o5h3 r: expected -1.315217391304348, got -1.3152173913043463
+  [OK] 7_stopped_at_session_open o5h3 sessions_held: expected 2, got 2
+  [OK] 7_stopped_at_session_open o5h3 exit_session: expected 2023-07-06, got 2023-07-06
+  [OK] 8_minute_missing o5h3 status: expected minute_missing_open, got minute_missing_open
+  [OK] 9_no_orb o5h3 status: expected no_orb, got no_orb
+  [OK] 9_no_orb o15h3 status: expected no_orb, got no_orb
+  [OK] 9b_no_0930_bar o5h3 status: expected no_orb, got no_orb
+  [OK] 9b_no_0930_bar o1h3 status: expected no_orb, got no_orb
+  [OK] 9b_no_0930_bar o15h3 status: expected no_orb, got no_orb
+  [OK] 10_ended_mid_walk_collapse o5h3 status: expected ended_mid_walk, got ended_mid_walk
+  [OK] 10_ended_mid_walk_collapse o5h3 last_close: expected 0.6, got 0.6
+  [OK] 10_ended_mid_walk_collapse o5h3 r_last_close: expected 9.98913043478261, got 9.98913043478259
+  [OK] 10_ended_mid_walk_collapse o5h3 r_haircut: expected 9.826086956521738, got 9.82608695652172
+  [OK] 10_ended_mid_walk_collapse o5h3 ended_class: expected collapse, got collapse
+  [OK] 11_void_geometry o5h3 status: expected void_bad_geometry, got void_bad_geometry
+  [OK] 11_void_geometry o5h3 entry: expected 9.99, got 9.99
+  [OK] 11_void_geometry o5h3 stop: expected 10.06, got 10.06
+  [OK] 12_outside_entry_bar o5h3 status: expected settled, got settled
+  [OK] 12_outside_entry_bar o5h3 reason: expected stop, got stop
+  [OK] 12_outside_entry_bar o5h3 entry: expected 9.79, got 9.79
+  [OK] 12_outside_entry_bar o5h3 stop: expected 10.71, got 10.71
+  [OK] 12_outside_entry_bar o5h3 risk: expected 0.92, got 0.9200000000000017
+  [OK] 12_outside_entry_bar o5h3 exit: expected 10.71, got 10.71
+  [OK] 12_outside_entry_bar o5h3 r: expected -1.0, got -1.0
+  [OK] 12_outside_entry_bar o5h3 sessions_held: expected 1, got 1
+  [OK] 12_outside_entry_bar o5h3 exit_ts: expected 09:35, got 09:35
+  [OK] 12_outside_entry_bar o5h3 entry_ts: expected 09:35, got 09:35
+  [OK] 12_outside_entry_bar o5h3 ambiguous_entry_bar: expected 1, got 1
+  [OK] 12_outside_entry_bar o5h3 mae: expected 1.0, got 1.0
+  [OK] 12_outside_entry_bar o5h3 mfe: expected 0.0, got 0.0
+  [OK] 12_outside_entry_bar o5h3 r_tick1: expected -1.021739130434783, got -1.0217391304347825
+  [OK] 12_outside_entry_bar o5h3 r_tick2: expected -1.043478260869565, got -1.0434782608695652
+  [OK] 12_outside_entry_bar o5h3 r_tick5: expected -1.108695652173913, got -1.1086956521739129
+  [OK] 12_outside_entry_bar o5h3x status: expected settled, got settled
+  [OK] 12_outside_entry_bar o5h3x reason: expected time_stop, got time_stop
+  [OK] 12_outside_entry_bar o5h3x entry: expected 9.79, got 9.79
+  [OK] 12_outside_entry_bar o5h3x stop: expected 11.51, got 11.51
+  [OK] 12_outside_entry_bar o5h3x risk: expected 1.72, got 1.7200000000000006
+  [OK] 12_outside_entry_bar o5h3x exit: expected 11.4, got 11.4
+  [OK] 12_outside_entry_bar o5h3x r: expected -0.936046511627907, got -0.9360465116279073
+  [OK] 12_outside_entry_bar o5h3x sessions_held: expected 3, got 3
+  [OK] 13_gap_through_then_rally o5h3 status: expected settled, got settled
+  [OK] 13_gap_through_then_rally o5h3 reason: expected stop, got stop
+  [OK] 13_gap_through_then_rally o5h3 entry: expected 9.5, got 9.5
+  [OK] 13_gap_through_then_rally o5h3 stop: expected 10.71, got 10.71
+  [OK] 13_gap_through_then_rally o5h3 risk: expected 1.21, got 1.2100000000000009
+  [OK] 13_gap_through_then_rally o5h3 exit: expected 10.71, got 10.71
+  [OK] 13_gap_through_then_rally o5h3 r: expected -1.0, got -1.0
+  [OK] 13_gap_through_then_rally o5h3 sessions_held: expected 1, got 1
+  [OK] 13_gap_through_then_rally o5h3 ambiguous_entry_bar: expected 1, got 1
+  [OK] 13_gap_through_then_rally o5h3x status: expected settled, got settled
+  [OK] 13_gap_through_then_rally o5h3x reason: expected time_stop, got time_stop
+  [OK] 13_gap_through_then_rally o5h3x entry: expected 9.5, got 9.5
+  [OK] 13_gap_through_then_rally o5h3x stop: expected 10.91, got 10.91
+  [OK] 13_gap_through_then_rally o5h3x risk: expected 1.41, got 1.4100000000000001
+  [OK] 13_gap_through_then_rally o5h3x exit: expected 8.0, got 8.0
+  [OK] 13_gap_through_then_rally o5h3x r: expected 1.063829787234043, got 1.0638297872340425
+  [OK] 13_gap_through_then_rally o5h3x sessions_held: expected 3, got 3
+  [OK] 1_win_time_exit o5h3+ r_tick1: expected 2.358695652173913, got 2.358695652173908
+  [OK] 1_win_time_exit o5h3+ r_tick2: expected 2.33695652173913, got 2.336956521739126
+  [OK] 1_win_time_exit o5h3+ r_tick5: expected 2.271739130434783, got 2.2717391304347783
+  [OK] 1_win_time_exit o5h3+ ambiguous_entry_bar: expected 0, got 0
+  [OK] 1_win_time_exit o5h3+ pnl_adr_tick1: expected 2.216547497446374, got 2.2165474974463737
+  [OK] 4_gap_through o5h3+ ambiguous_entry_bar: expected 0, got 0
+  [OK] 2_stopped_day_high o5h3+ ambiguous_entry_bar: expected 0, got 0
+
+## Every fixture x every variant (printed; the registration names the expected rows above; o5h3x = the beside stop rule)
+  fixture                     variant  status               reason             entry      stop       risk      amb  exit       R          held
+  1_win_time_exit             o1h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  1_win_time_exit             o1h2     settled              time_stop          9.790000   10.710000  0.920000  0    8.100000   1.836957   2   
+  1_win_time_exit             o1h3     settled              time_stop          9.790000   10.710000  0.920000  0    7.600000   2.380435   3   
+  1_win_time_exit             o5h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  1_win_time_exit             o5h2     settled              time_stop          9.790000   10.710000  0.920000  0    8.100000   1.836957   2   
+  1_win_time_exit             o5h3     settled              time_stop          9.790000   10.710000  0.920000  0    7.600000   2.380435   3   
+  1_win_time_exit             o15h1    settled              time_stop          9.690000   10.710000  1.020000  0    9.000000   0.676471   1   
+  1_win_time_exit             o15h2    settled              time_stop          9.690000   10.710000  1.020000  0    8.100000   1.558824   2   
+  1_win_time_exit             o15h3    settled              time_stop          9.690000   10.710000  1.020000  0    7.600000   2.049020   3   
+  1_win_time_exit             o5h3x    settled              time_stop          9.790000   10.710000  0.920000  0    7.600000   2.380435   3   
+  2_stopped_day_high          o1h1     settled              stop               19.890000  21.210000  1.320000  0    21.210000  -1.000000  1   
+  2_stopped_day_high          o1h2     settled              stop               19.890000  21.210000  1.320000  0    21.210000  -1.000000  1   
+  2_stopped_day_high          o1h3     settled              stop               19.890000  21.210000  1.320000  0    21.210000  -1.000000  1   
+  2_stopped_day_high          o5h1     settled              stop               19.890000  21.210000  1.320000  0    21.210000  -1.000000  1   
+  2_stopped_day_high          o5h2     settled              stop               19.890000  21.210000  1.320000  0    21.210000  -1.000000  1   
+  2_stopped_day_high          o5h3     settled              stop               19.890000  21.210000  1.320000  0    21.210000  -1.000000  1   
+  2_stopped_day_high          o15h1    untriggered          untriggered                                                                   None
+  2_stopped_day_high          o15h2    untriggered          untriggered                                                                   None
+  2_stopped_day_high          o15h3    untriggered          untriggered                                                                   None
+  2_stopped_day_high          o5h3x    settled              stop               19.890000  21.210000  1.320000  0    21.210000  -1.000000  1   
+  3_never_triggered           o1h1     untriggered          untriggered                                                                   None
+  3_never_triggered           o1h2     untriggered          untriggered                                                                   None
+  3_never_triggered           o1h3     untriggered          untriggered                                                                   None
+  3_never_triggered           o5h1     untriggered          untriggered                                                                   None
+  3_never_triggered           o5h2     untriggered          untriggered                                                                   None
+  3_never_triggered           o5h3     untriggered          untriggered                                                                   None
+  3_never_triggered           o15h1    untriggered          untriggered                                                                   None
+  3_never_triggered           o15h2    untriggered          untriggered                                                                   None
+  3_never_triggered           o15h3    untriggered          untriggered                                                                   None
+  3_never_triggered           o5h3x    untriggered          untriggered                                                                   None
+  4_gap_through               o1h1     settled              time_stop          30.190000  31.010000  0.820000  0    29.100000  1.329268   1   
+  4_gap_through               o1h2     settled              time_stop          30.190000  31.010000  0.820000  0    27.000000  3.890244   2   
+  4_gap_through               o1h3     settled              time_stop          30.190000  31.010000  0.820000  0    24.000000  7.548780   3   
+  4_gap_through               o5h1     settled              time_stop          29.500000  31.010000  1.510000  0    29.100000  0.264901   1   
+  4_gap_through               o5h2     settled              time_stop          29.500000  31.010000  1.510000  0    27.000000  1.655629   2   
+  4_gap_through               o5h3     settled              time_stop          29.500000  31.010000  1.510000  0    24.000000  3.642384   3   
+  4_gap_through               o15h1    settled              time_stop          29.190000  31.010000  1.820000  0    29.100000  0.049451   1   
+  4_gap_through               o15h2    settled              time_stop          29.190000  31.010000  1.820000  0    27.000000  1.203297   2   
+  4_gap_through               o15h3    settled              time_stop          29.190000  31.010000  1.820000  0    24.000000  2.851648   3   
+  4_gap_through               o5h3x    settled              time_stop          29.500000  31.010000  1.510000  0    24.000000  3.642384   3   
+  5_same_bar_tie              o1h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  5_same_bar_tie              o1h2     settled              time_stop          9.790000   10.710000  0.920000  0    8.100000   1.836957   2   
+  5_same_bar_tie              o1h3     settled              stop               9.790000   10.710000  0.920000  0    10.710000  -1.000000  3   
+  5_same_bar_tie              o5h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  5_same_bar_tie              o5h2     settled              time_stop          9.790000   10.710000  0.920000  0    8.100000   1.836957   2   
+  5_same_bar_tie              o5h3     settled              stop               9.790000   10.710000  0.920000  0    10.710000  -1.000000  3   
+  5_same_bar_tie              o15h1    settled              time_stop          9.690000   10.710000  1.020000  0    9.000000   0.676471   1   
+  5_same_bar_tie              o15h2    settled              time_stop          9.690000   10.710000  1.020000  0    8.100000   1.558824   2   
+  5_same_bar_tie              o15h3    settled              stop               9.690000   10.710000  1.020000  0    10.710000  -1.000000  3   
+  5_same_bar_tie              o5h3x    settled              stop               9.790000   10.710000  0.920000  0    10.710000  -1.000000  3   
+  6_time_exit_loser           o1h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  6_time_exit_loser           o1h2     settled              time_stop          9.790000   10.710000  0.920000  0    9.500000   0.315217   2   
+  6_time_exit_loser           o1h3     settled              time_stop          9.790000   10.710000  0.920000  0    10.300000  -0.554348  3   
+  6_time_exit_loser           o5h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  6_time_exit_loser           o5h2     settled              time_stop          9.790000   10.710000  0.920000  0    9.500000   0.315217   2   
+  6_time_exit_loser           o5h3     settled              time_stop          9.790000   10.710000  0.920000  0    10.300000  -0.554348  3   
+  6_time_exit_loser           o15h1    settled              time_stop          9.690000   10.710000  1.020000  0    9.000000   0.676471   1   
+  6_time_exit_loser           o15h2    settled              time_stop          9.690000   10.710000  1.020000  0    9.500000   0.186275   2   
+  6_time_exit_loser           o15h3    settled              time_stop          9.690000   10.710000  1.020000  0    10.300000  -0.598039  3   
+  6_time_exit_loser           o5h3x    settled              time_stop          9.790000   10.710000  0.920000  0    10.300000  -0.554348  3   
+  7_stopped_at_session_open   o1h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  7_stopped_at_session_open   o1h2     settled              stop               9.790000   10.710000  0.920000  0    11.000000  -1.315217  2   
+  7_stopped_at_session_open   o1h3     settled              stop               9.790000   10.710000  0.920000  0    11.000000  -1.315217  2   
+  7_stopped_at_session_open   o5h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  7_stopped_at_session_open   o5h2     settled              stop               9.790000   10.710000  0.920000  0    11.000000  -1.315217  2   
+  7_stopped_at_session_open   o5h3     settled              stop               9.790000   10.710000  0.920000  0    11.000000  -1.315217  2   
+  7_stopped_at_session_open   o15h1    settled              time_stop          9.690000   10.710000  1.020000  0    9.000000   0.676471   1   
+  7_stopped_at_session_open   o15h2    settled              stop               9.690000   10.710000  1.020000  0    11.000000  -1.284314  2   
+  7_stopped_at_session_open   o15h3    settled              stop               9.690000   10.710000  1.020000  0    11.000000  -1.284314  2   
+  7_stopped_at_session_open   o5h3x    settled              stop               9.790000   10.710000  0.920000  0    11.000000  -1.315217  2   
+  8_minute_missing            o1h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  8_minute_missing            o1h2     minute_missing_open  minute_missing     9.790000   10.710000  0.920000  0                          None
+  8_minute_missing            o1h3     minute_missing_open  minute_missing     9.790000   10.710000  0.920000  0                          None
+  8_minute_missing            o5h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  8_minute_missing            o5h2     minute_missing_open  minute_missing     9.790000   10.710000  0.920000  0                          None
+  8_minute_missing            o5h3     minute_missing_open  minute_missing     9.790000   10.710000  0.920000  0                          None
+  8_minute_missing            o15h1    settled              time_stop          9.690000   10.710000  1.020000  0    9.000000   0.676471   1   
+  8_minute_missing            o15h2    minute_missing_open  minute_missing     9.690000   10.710000  1.020000  0                          None
+  8_minute_missing            o15h3    minute_missing_open  minute_missing     9.690000   10.710000  1.020000  0                          None
+  8_minute_missing            o5h3x    minute_missing_open  minute_missing     9.790000   10.710000  0.920000  0                          None
+  9_no_orb                    o1h1     no_orb               no_orb                                                                        None
+  9_no_orb                    o1h2     no_orb               no_orb                                                                        None
+  9_no_orb                    o1h3     no_orb               no_orb                                                                        None
+  9_no_orb                    o5h1     no_orb               no_orb                                                                        None
+  9_no_orb                    o5h2     no_orb               no_orb                                                                        None
+  9_no_orb                    o5h3     no_orb               no_orb                                                                        None
+  9_no_orb                    o15h1    no_orb               no_orb                                                                        None
+  9_no_orb                    o15h2    no_orb               no_orb                                                                        None
+  9_no_orb                    o15h3    no_orb               no_orb                                                                        None
+  9_no_orb                    o5h3x    no_orb               no_orb                                                                        None
+  9b_no_0930_bar              o1h1     no_orb               no_orb                                                                        None
+  9b_no_0930_bar              o1h2     no_orb               no_orb                                                                        None
+  9b_no_0930_bar              o1h3     no_orb               no_orb                                                                        None
+  9b_no_0930_bar              o5h1     no_orb               no_orb                                                                        None
+  9b_no_0930_bar              o5h2     no_orb               no_orb                                                                        None
+  9b_no_0930_bar              o5h3     no_orb               no_orb                                                                        None
+  9b_no_0930_bar              o15h1    no_orb               no_orb                                                                        None
+  9b_no_0930_bar              o15h2    no_orb               no_orb                                                                        None
+  9b_no_0930_bar              o15h3    no_orb               no_orb                                                                        None
+  9b_no_0930_bar              o5h3x    no_orb               no_orb                                                                        None
+  10_ended_mid_walk_collapse  o1h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  10_ended_mid_walk_collapse  o1h2     settled              time_stop          9.790000   10.710000  0.920000  0    0.600000   9.989130   2   
+  10_ended_mid_walk_collapse  o1h3     ended_mid_walk       series_end         9.790000   10.710000  0.920000  0                          2   
+  10_ended_mid_walk_collapse  o5h1     settled              time_stop          9.790000   10.710000  0.920000  0    9.000000   0.858696   1   
+  10_ended_mid_walk_collapse  o5h2     settled              time_stop          9.790000   10.710000  0.920000  0    0.600000   9.989130   2   
+  10_ended_mid_walk_collapse  o5h3     ended_mid_walk       series_end         9.790000   10.710000  0.920000  0                          2   
+  10_ended_mid_walk_collapse  o15h1    settled              time_stop          9.690000   10.710000  1.020000  0    9.000000   0.676471   1   
+  10_ended_mid_walk_collapse  o15h2    settled              time_stop          9.690000   10.710000  1.020000  0    0.600000   8.911765   2   
+  10_ended_mid_walk_collapse  o15h3    ended_mid_walk       series_end         9.690000   10.710000  1.020000  0                          2   
+  10_ended_mid_walk_collapse  o5h3x    ended_mid_walk       series_end         9.790000   10.710000  0.920000  0                          2   
+  11_void_geometry            o1h1     void_bad_geometry    void_bad_geometry  9.990000   10.060000  0.070000  0                          None
+  11_void_geometry            o1h2     void_bad_geometry    void_bad_geometry  9.990000   10.060000  0.070000  0                          None
+  11_void_geometry            o1h3     void_bad_geometry    void_bad_geometry  9.990000   10.060000  0.070000  0                          None
+  11_void_geometry            o5h1     void_bad_geometry    void_bad_geometry  9.990000   10.060000  0.070000  0                          None
+  11_void_geometry            o5h2     void_bad_geometry    void_bad_geometry  9.990000   10.060000  0.070000  0                          None
+  11_void_geometry            o5h3     void_bad_geometry    void_bad_geometry  9.990000   10.060000  0.070000  0                          None
+  11_void_geometry            o15h1    void_bad_geometry    void_bad_geometry  9.970000   10.060000  0.090000  0                          None
+  11_void_geometry            o15h2    void_bad_geometry    void_bad_geometry  9.970000   10.060000  0.090000  0                          None
+  11_void_geometry            o15h3    void_bad_geometry    void_bad_geometry  9.970000   10.060000  0.090000  0                          None
+  11_void_geometry            o5h3x    void_bad_geometry    void_bad_geometry  9.990000   10.060000  0.070000  0                          None
+  12_outside_entry_bar        o1h1     settled              stop               9.790000   10.710000  0.920000  1    10.710000  -1.000000  1   
+  12_outside_entry_bar        o1h2     settled              stop               9.790000   10.710000  0.920000  1    10.710000  -1.000000  1   
+  12_outside_entry_bar        o1h3     settled              stop               9.790000   10.710000  0.920000  1    10.710000  -1.000000  1   
+  12_outside_entry_bar        o5h1     settled              stop               9.790000   10.710000  0.920000  1    10.710000  -1.000000  1   
+  12_outside_entry_bar        o5h2     settled              stop               9.790000   10.710000  0.920000  1    10.710000  -1.000000  1   
+  12_outside_entry_bar        o5h3     settled              stop               9.790000   10.710000  0.920000  1    10.710000  -1.000000  1   
+  12_outside_entry_bar        o15h1    untriggered          untriggered                                                                   None
+  12_outside_entry_bar        o15h2    untriggered          untriggered                                                                   None
+  12_outside_entry_bar        o15h3    untriggered          untriggered                                                                   None
+  12_outside_entry_bar        o5h3x    settled              time_stop          9.790000   11.510000  1.720000  0    11.400000  -0.936047  3   
+  13_gap_through_then_rally   o1h1     settled              stop               9.500000   10.710000  1.210000  1    10.710000  -1.000000  1   
+  13_gap_through_then_rally   o1h2     settled              stop               9.500000   10.710000  1.210000  1    10.710000  -1.000000  1   
+  13_gap_through_then_rally   o1h3     settled              stop               9.500000   10.710000  1.210000  1    10.710000  -1.000000  1   
+  13_gap_through_then_rally   o5h1     settled              stop               9.500000   10.710000  1.210000  1    10.710000  -1.000000  1   
+  13_gap_through_then_rally   o5h2     settled              stop               9.500000   10.710000  1.210000  1    10.710000  -1.000000  1   
+  13_gap_through_then_rally   o5h3     settled              stop               9.500000   10.710000  1.210000  1    10.710000  -1.000000  1   
+  13_gap_through_then_rally   o15h1    settled              time_stop          9.000000   10.910000  1.910000  0    9.000000   0.000000   1   
+  13_gap_through_then_rally   o15h2    settled              time_stop          9.000000   10.910000  1.910000  0    9.000000   0.000000   2   
+  13_gap_through_then_rally   o15h3    settled              time_stop          9.000000   10.910000  1.910000  0    8.000000   0.523560   3   
+  13_gap_through_then_rally   o5h3x    settled              time_stop          9.500000   10.910000  1.410000  0    8.000000   1.063830   3   
+
+## walk_episode on the review's adversarial cases (the refusal and exclusion paths the §8 table does not reach)
+  [OK] early close: the 12:59 bar is the 2-session time exit (the 15:59 print dropped): expected 12:59, got 12:59
+  [OK] early close: R = (9.79 - 9.00) / 0.92: expected 0.858695652173913, got 0.8586956521739105
+  [OK] hole with the position open -> hole_open: expected hole_open, got hole_open
+  [OK] hole on the entry session -> hole (nothing opened): expected hole, got hole
+  [OK] series ended before the entry session -> ended_before_entry: expected ended_before_entry, got ended_before_entry
+  [OK] entry on the last bar, hold 1: time exit at that close, R = (9.79 - 9.10) / 0.92: expected 0.75, got 0.7499999999999981
+  [OK] rule (c): the overlapping second climax is episode_already_open: expected ['admitted', 'episode_already_open', 'admitted'], got ['admitted', 'episode_already_open', 'admitted']
+  [OK] rule (c): tally: expected {'admitted': 2, 'episode_already_open': 1}, got {'admitted': 2, 'episode_already_open': 1}
+  [OK] rule (c): no two admitted episodes of one company key overlap (the §7 assert runs): expected True, got True
+  [OK] a minute row dated 2025-01-02 refuses at the loader: expected True, got True
+  [OK] a duplicate (ticker, session, minute) refuses: expected True, got True
+
+## The synthetic end-to-end trees through the --walk path (loaders, basis + shape checks, rule (c), the verdict functions)
+  [OK] clean tree: BBB (era B) primary R == fixture #1: expected 2.380434782608696, got 2.380434782608691
+  [OK] clean tree: BBB basis + shape checks passed (status settled): expected settled, got settled
+  [OK] clean tree: BBB beside rule (o5h3x) R == the primary's here (the entry bar's high is under the prior high): expected 2.380434782608696, got 2.380434782608691
+  [OK] clean tree: sessions checked against the daily OHLC: expected 5, got 5
+  [OK] clean tree: basis + shape failures: expected 0, got 0
+  [OK] clean tree: request rows == 6 (2 names x 3 sessions): expected 6, got 6
+  [OK] clean tree: AAA (era A) session 2 absent -> minute_missing_open: expected minute_missing_open, got minute_missing_open
+  [OK] clean tree: rule (c) admits both deciding rows: expected 2, got 2
+  clean tree at /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/314orb/dryrun/orb314_biyvjd7s: 3 climax rows walked; printout lines 137
+
+## The refusal trees (each must refuse, naming its reason; no result is written)
+  [OK] refusal tree: a doubled-price pull (basis_mismatch above REFUSE_SHARE): expected True, got True
+    reason: the pull fails its own check: 5 of 5 walked sessions outside the basis / shape bands (100.00% > 2%); first: [('AAA', '2019-06-05', 'basis_mismatch', {'low': 2.0, 'high': 2.0, 'open': 2.0, 'close': 2.0}), ('AAA', '2019-06
+  [OK] refusal tree: a wrong-feed pull (the minute range inside the daily range: shape_mismatch above REFUSE_SHARE): expected True, got True
+    reason: the pull fails its own check: 1 of 5 walked sessions outside the basis / shape bands (20.00% > 2%); first: [('BBB', '2023-07-06', 'shape_mismatch', {'low': 1.0063, 'high': 0.9778, 'open': 1.0, 'close': 1.0})]. Re-pull (f
+  [OK] refusal tree: a sidecar declaring the wrong feed: expected True, got True
+    reason: walk refused: sidecar feed = 'iex', registered 'sip'
+  [OK] refusal tree: a minute row dated 2025-01-02: expected True, got True
+    reason: minute bars: a row dated >= 2025-01-01 (the seal) is in /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/314orb/dryrun/orb314_l68qpogc/here/minute_bars.csv.gz
+  [OK] refusal tree: a data pin that does not match: expected True, got True
+    reason: walk refused: export_B: 26df62b420f31b6c != pinned 0000000000000000 (/private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/314orb/dryrun/orb314_dwlcf3cy/data/cb702/daily
+
+## The exclusion trees (the walk runs; the episode is counted, never silently dropped)
+  [OK] split tree: a split executing inside BBB's walk -> split_in_walk (counted): expected split_in_walk, got split_in_walk
+  [OK] split tree: AAA (era A) session 2 absent -> minute_missing_open: expected minute_missing_open, got minute_missing_open
+  [OK] split tree: rule (c) admits both deciding rows: expected 2, got 2
+  split tree at /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/314orb/dryrun/orb314_rjb_1556: 3 climax rows walked; printout lines 124
+  [OK] delisted tree: BBB's owner delisted at D0+2 -> ended_mid_walk (booked at the last close, then the haircut): expected ended_mid_walk, got ended_mid_walk
+  [OK] delisted tree: BBB r_last_close = (9.79 - 9.00) / 0.92: expected 0.858695652173913, got 0.8586956521739105
+  [OK] delisted tree: AAA (era A) session 2 absent -> minute_missing_open: expected minute_missing_open, got minute_missing_open
+  [OK] delisted tree: rule (c) admits both deciding rows: expected 2, got 2
+  delisted tree at /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/314orb/dryrun/orb314_kffwn_gv: 3 climax rows walked; printout lines 132
+
+RESULT: 164 claims, 164 OK, 0 MISMATCH
+DRY RUN COMPLETE
