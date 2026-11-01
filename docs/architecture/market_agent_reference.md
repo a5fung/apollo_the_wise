@@ -93,7 +93,9 @@ hides exactly the context difference a reader needs. (#239 part (b).)
 After fresh clone, activate the local pre-commit gates:
 ```bash
 git config core.hooksPath .githooks
+git config core.commentChar ";"
 ```
+`core.commentChar` (2026-10-31): our commit subjects start with `#<task>` — with git's default comment character `#`, a rebase or cherry-pick that stops on a conflict strips that subject as a comment (the #718 merge lost its title that way). Tested: no `commit.cleanup` / `--cleanup` mode prevents it; a different comment character does.
 Currently enforces:
 - **pre-commit — YAML dupe-key check** on `data_gated_reviews.yaml` (mirrors deploy.sh `[5e/5]`; catches the 2026-05-24 SNDK class bug at `git commit` time instead of at deploy or runtime), plus the PLAN.md single-SoT gate (Gate 2) + CLAUDE.md size ceiling (Gate 3).
 - **pre-push — full `python -m pytest tests/ -q`** (mirrors CI), runs only when the pushed commits touch Python, blocks the push on failure. Added 2026-06-17 after a subset-only local test run shipped a CI-breaking regression (the downgrade-digest mock). Bypass an emergency push with `git push --no-verify`.
