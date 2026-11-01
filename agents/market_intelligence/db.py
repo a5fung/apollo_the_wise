@@ -15297,26 +15297,47 @@ SHADOW_HOUR_LANE_CANDIDATES_SQL = """
         """
 
 
-async def insert_shadow_trade(row: dict[str, Any]) -> int | None:
+async def insert_shadow_trade(row: dict[str, Any], *, catch_up: dict[str, Any] | None = None) -> int | None:
     """Insert one shadow row. Returns id, or None on UNIQUE conflict.
 
     Required keys: ticker, alert_date, bar_size_minutes, signal_type, status.
     Optional: shape_tag, score_tier, orb_high, orb_low, atr_14,
     trigger_minute_et, entry_price, stop_price, hard_stop, risk_dollars,
     entry_shares, skip_reason, remaining_shares.
+
+    `catch_up` (#482 hour lane, 2026-11-01): the `update_shadow_trade` fields a LATE fill's
+    missed sessions produced (`shadow_orb_tracker._walk_missed_sessions`). When given, the
+    INSERT and that UPDATE run in ONE transaction, so a failure between them leaves no `open`
+    row without its catch-up — such a row would be quarantined by the exit step's stale guard,
+    never retried (the 10-27 simplify note: "two statements, not one transaction"). On the
+    UNIQUE conflict nothing is inserted and the catch-up is not applied. The UPDATE's shape is
+    the exit step's own (`SHADOW_TRADE_EXIT_STEP_UPDATE_SQL`), already prepared at deploy.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rec = await conn.fetchrow(SHADOW_TRADE_INSERT_SQL,
-            row["ticker"], row["alert_date"], row["bar_size_minutes"],
-            row["signal_type"], row.get("shape_tag"), row.get("score_tier"),
-            row.get("orb_high"), row.get("orb_low"), row.get("atr_14"),
-            row.get("trigger_minute_et"),
-            row.get("entry_price"), row.get("stop_price"),
-            row.get("hard_stop"), row.get("risk_dollars"),
-            row.get("entry_shares"), row["status"],
-            row.get("skip_reason"), row.get("remaining_shares") or 0,
-        )
+        if catch_up is None:
+            return await _insert_shadow_trade_on(conn, row)
+        async with conn.transaction():
+            trade_id = await _insert_shadow_trade_on(conn, row)
+            if trade_id is not None:
+                sql, values = shadow_trade_update_sql(catch_up)
+                if sql is not None:
+                    await conn.execute(sql, trade_id, *values)
+            return trade_id
+
+
+async def _insert_shadow_trade_on(conn: Any, row: dict[str, Any]) -> int | None:
+    """The INSERT itself on an acquired connection (so a caller can wrap it in a transaction)."""
+    rec = await conn.fetchrow(SHADOW_TRADE_INSERT_SQL,
+        row["ticker"], row["alert_date"], row["bar_size_minutes"],
+        row["signal_type"], row.get("shape_tag"), row.get("score_tier"),
+        row.get("orb_high"), row.get("orb_low"), row.get("atr_14"),
+        row.get("trigger_minute_et"),
+        row.get("entry_price"), row.get("stop_price"),
+        row.get("hard_stop"), row.get("risk_dollars"),
+        row.get("entry_shares"), row["status"],
+        row.get("skip_reason"), row.get("remaining_shares") or 0,
+    )
     return rec["id"] if rec else None
 
 

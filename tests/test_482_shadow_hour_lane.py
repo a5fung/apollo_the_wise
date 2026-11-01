@@ -85,13 +85,16 @@ class _Captured:
         self.audit: list[tuple[str, str]] = []
         self.existing: set[tuple[str, date, int]] = set()
 
-    async def insert(self, row: dict):
+    async def insert(self, row: dict, *, catch_up: dict | None = None):
         key = (row["ticker"], row["alert_date"], row["bar_size_minutes"])
         if key in self.existing:
             return None
         self.existing.add(key)
         self.inserts.append(dict(row))
-        return len(self.inserts)
+        trade_id = len(self.inserts)
+        if catch_up:            # the late-fill catch-up rides the insert's transaction (2026-11-01)
+            await self.update(trade_id, catch_up)
+        return trade_id
 
     async def update(self, trade_id: int, fields: dict):
         self.updates.append((trade_id, dict(fields)))
@@ -610,10 +613,12 @@ async def test_late_fill_partial_history_is_judged_by_the_exit_steps_own_stale_g
 @pytest.mark.asyncio
 async def test_the_open_row_and_its_catch_up_are_written_together_after_every_read(monkeypatch):
     """Review F1's shape: the minute bars and the exit history are both read before the INSERT, and
-    the catch-up UPDATE follows the INSERT in the same candidate — never an open row alone."""
+    the catch-up rides the INSERT itself (one `insert_shadow_trade(row, catch_up=...)` call = one
+    transaction, 2026-11-01) — never an open row alone, never a second statement the tracker issues."""
     alert, today = date(2026, 10, 20), date(2026, 10, 27)
     order: list[str] = []
     cap = _Captured()
+    carried: list = []
 
     async def _minutes(t, d, s, e):
         order.append("minutes"); return _hour_day(alert, cross=(10, 45))
@@ -621,8 +626,8 @@ async def test_the_open_row_and_its_catch_up_are_written_together_after_every_re
     async def _daily(t, a, b):
         order.append("history"); return [{"o": 11, "h": 11.2, "l": 10.8, "c": 11.0, "t": _ms(date(2026, 10, 26))}]
 
-    async def _insert(row):
-        order.append("insert"); return await cap.insert(row)
+    async def _insert(row, *, catch_up=None):
+        order.append("insert"); carried.append(catch_up); return await cap.insert(row, catch_up=catch_up)
 
     async def _update(i, f):
         order.append("update"); return await cap.update(i, f)
@@ -631,7 +636,16 @@ async def test_the_open_row_and_its_catch_up_are_written_together_after_every_re
     monkeypatch.setattr(sot, "update_shadow_trade", _update)
     monkeypatch.setattr(sot, "_fetch_hour_lane_candidates", AsyncMock(return_value=[_five_row("AAA", alert)]))
     assert (await sot.run_shadow_hour_pass(today))["open"] == 1
-    assert order == ["minutes", "history", "insert", "update"]
+    assert order == ["minutes", "history", "insert"]                 # no separate UPDATE statement
+    (catch_up,) = carried
+    assert catch_up["running_closes"] == [11.0] and catch_up["hold_days"] == 6
+    # a candidate with nothing to catch up passes no catch-up at all (the plain insert, as before)
+    order.clear(); carried.clear(); cap = _Captured()
+    _patch_common(monkeypatch, cap, minute_bars=_minutes, daily_bars=_daily)
+    monkeypatch.setattr(sot, "insert_shadow_trade", _insert)
+    monkeypatch.setattr(sot, "_fetch_hour_lane_candidates", AsyncMock(return_value=[_five_row("AAA", today)]))
+    assert (await sot.run_shadow_hour_pass(today))["open"] == 1
+    assert order == ["minutes", "insert"] and carried == [None]
 
 
 # ── (7) one walk, under broker/, for both recorders ──────────────────────────────────────

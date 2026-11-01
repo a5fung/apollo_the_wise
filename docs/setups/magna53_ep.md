@@ -647,7 +647,7 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
 
 ## Change log (newest first)
 
-### 2026-11-01 — #482 weekend follow-ups: (1) the replays model the 2026-10-28 trail-arming fix from the session it went live (RECORD / REPLAY CODE ONLY — no live entry, exit, stop, size or safeguard change; BUILT on branch `482-followups`, NOT DEPLOYED)
+### 2026-11-01 — #482 weekend follow-ups: (1) the replays model the 2026-10-28 trail-arming fix from the session it went live · (2) a LATE fill's open hour row and its catch-up are ONE transaction (RECORD / REPLAY CODE ONLY — no live entry, exit, stop, size or safeguard change; BUILT on branch `482-followups`, NOT DEPLOYED)
 
 - **(1) The trail-arming era switch (exit_discipline.md 2026-10-28 "Known divergence", closed).** Since the Thu 2026-10-29 12:00-12:06 ET deploy
   the live tracker's three ladder calls pass `trail_arm_on_close_above=True` (the line governs only once the trade was bought at or above
@@ -702,6 +702,23 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
   byte-equal. VERIFY-LIVE: the first 18:04 ET run after the deploy.
 - **Reversion-flag:** NEW (closes the 10-28 entry's divergence). Revert = pass `trail_arm_from=None` at the two recorder call sites and
   `trail_arm_from=None` on `era_d`/`ruleset_as_of` — no data to migrate.
+- **(2) The late-fill transaction bug (the 10-27 simplify note: *"a LATE-fill hour row's insert and its catch-up update are two statements,
+  not one transaction — a failure between them leaves an `open` row the exit step quarantines"*).** `_process_hour_candidate` inserted the
+  `open` 60-minute row (`insert_shadow_trade`) and then wrote the catch-up (`update_shadow_trade`) — a second statement on a second
+  connection; a failure between them left a row with `hold_days` NULL on an alert several sessions old, which `detect_stale_for_step`
+  quarantines on its first step instead of retrying (F1's exact shape, one statement later). **Now:** `db.insert_shadow_trade(row,
+  catch_up=…)` runs the INSERT … RETURNING id and the catch-up UPDATE inside ONE `conn.transaction()` on one connection; the UNIQUE
+  conflict inserts nothing and applies nothing; without a catch-up the call is the plain INSERT it was. The UPDATE's shape is the exit
+  step's own (`SHADOW_TRADE_EXIT_STEP_UPDATE_SQL`, both the still-open and the closed-in-the-missed-sessions field sets), already prepared
+  at deploy — nothing new to register. The tracker issues no separate UPDATE on this path (`_insert_hour_row(..., catch_up=)`); a crash
+  inside the combined write is the per-candidate error path — counted, nothing written, the candidate retried the next night. Tests:
+  `tests/test_482_late_fill_transaction.py` (6: both statements inside one transaction on one connection; the UPDATE's exception leaves the
+  transaction so asyncpg rolls the INSERT back — the fake proves the exception reaches the context exit, the rollback itself is asyncpg's,
+  said in the docstring; the conflict path; the plain path; the prepared shape; the tracker's crash path) and the hour-lane suite's
+  write-together test re-pinned (the catch-up rides the insert; no catch-up → no catch-up argument). The 5-minute golden
+  (`tests/fixtures/482_shadow_5m_golden.json`) is byte-equal (that lane never passes a catch-up). Deploy scope when it ships: `db.py`
+  (exec-loaded) + `broker/shadow_orb_tracker.py` → `deploy.sh market-agent` then `deploy.sh execution`; VERIFY-LIVE = the next 16:50 ET
+  hour pass writing a late `open` row (the 14-day backfill or a resolved gap) with `hold_days` set in the same row the audit line counts.
 
 ### 2026-10-31 — #715: a name admitted on the real-time flip-up is NOT entered when it OPENED below the gap floor — built behind the three-mode toggle `magna53_open_below_floor`, SHIPPED IN SHADOW (OPERATOR-SIGNED "Take all recs" 2026-10-31; a LIVE-MONEY ENTRY RULE — THE LINE; BUILT on branch `open-below-floor-715`, NOT DEPLOYED; nothing is skipped until he flips the toggle)
 

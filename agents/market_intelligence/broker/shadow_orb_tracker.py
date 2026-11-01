@@ -21,7 +21,8 @@ decided by the day's daily high (strictly below the hour high proves the no-entr
 a thin first hour (< 50 of 60 minutes), and on a LATE fill whose exit history cannot be walked, the
 row is deferred and retried nightly, written `gate_blocked` with the gap named once the alert is
 HOUR_GAP_RETRY_SESSIONS old. NOTHING is written for a candidate until every read it needs is in
-hand (review F1: an `open` row inserted before its catch-up would be quarantined, not retried).
+hand (review F1: an `open` row inserted before its catch-up would be quarantined, not retried), and
+the open row and its catch-up are ONE transaction (2026-11-01 — the 10-27 simplify note's bug).
 
 No Alpaca submits. No new Telegram alerts. Pure telemetry surfaced via
 `/audit shadow_orb` and the Sunday weekly review (both 5-minute only; the hour lane is read by SQL —
@@ -360,7 +361,8 @@ async def _process_hour_candidate(row: dict, today: date) -> str:
     Every read happens BEFORE the first write (review F1): the day's minutes, the day-0 daily high
     when the walk saw holes, and — for a LATE fill — the exit history of the sessions it missed. A
     candidate whose reads are incomplete is deferred as a whole; an `open` row is only ever inserted
-    together with the catch-up that makes it steppable."""
+    together with the catch-up that makes it steppable — in ONE transaction (`db.insert_shadow_trade`
+    with `catch_up`), so a failure between the two statements leaves no half row."""
     ticker = row["ticker"]
     alert_date = row["alert_date"]
     close_et = session_close_et(alert_date)
@@ -420,6 +422,9 @@ async def _process_hour_candidate(row: dict, today: date) -> str:
         )
         return "no_entry" if inserted else "duplicate"
 
+    # the open row and its catch-up (a LATE fill's missed sessions) are ONE transaction (2026-11-01):
+    # a failure between the two statements can no longer leave an `open` row the exit step's stale
+    # guard would quarantine instead of retrying
     trade_id = await _insert_hour_row(
         row, status="open",
         orb_high=hi, orb_low=lo,
@@ -428,12 +433,9 @@ async def _process_hour_candidate(row: dict, today: date) -> str:
         risk_dollars=HOUR_LANE_UNIT_SHARES * (entry - stop),
         entry_shares=HOUR_LANE_UNIT_SHARES,
         atr_14=row.get("atr_14"),
+        catch_up=catch_up or None,
     )
-    if trade_id is None:
-        return "duplicate"
-    if catch_up:
-        await update_shadow_trade(trade_id, catch_up)
-    return "open"
+    return "open" if trade_id is not None else "duplicate"
 
 
 async def _walk_missed_sessions(ticker: str, alert_date: date, entry: float, stop: float,
@@ -499,8 +501,10 @@ async def _insert_hour_row(row: dict, *, status: str, skip_reason: str | None = 
                            trigger_minute_et: time | None = None,
                            entry_price: float | None = None, stop_price: float | None = None,
                            hard_stop: float | None = None, risk_dollars: float | None = None,
-                           entry_shares: float | None = None, atr_14: float | None = None) -> int | None:
-    """Returns the new row's id, None on the UNIQUE conflict."""
+                           entry_shares: float | None = None, atr_14: float | None = None,
+                           catch_up: dict[str, Any] | None = None) -> int | None:
+    """Returns the new row's id, None on the UNIQUE conflict. `catch_up` (an open row's missed
+    sessions) is written in the SAME transaction as the insert (`db.insert_shadow_trade`)."""
     return await insert_shadow_trade({
         "ticker": row["ticker"],
         "alert_date": row["alert_date"],
@@ -520,7 +524,7 @@ async def _insert_hour_row(row: dict, *, status: str, skip_reason: str | None = 
         "status": status,
         "skip_reason": skip_reason,
         "remaining_shares": entry_shares if status == "open" else 0,
-    })
+    }, catch_up=catch_up)
 
 
 async def _fetch_hour_lane_candidates(today: date) -> list[dict]:
