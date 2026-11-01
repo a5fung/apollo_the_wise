@@ -473,8 +473,22 @@ Every byte above the next line is the frozen body (`doc_body`). Below it, the ma
 <!-- FREEZE -->
 ## Freeze record (the main loop; pasted after the pre-pull commit and the two pulls, before `walk`)
 
-- freeze_commit = <the pre-pull commit's hash>
-- doc_body = <sha256 of every byte above the marker, printed by `pins footer`>
-- <the `pins footer` lines: every `minutes (...) (tree)` sha256, `raw_close_bv1_1101.csv.gz` sha256, `raw_close_bv1_1101.meta.json` sha256>
-- pull (<date>, main loop): <the minute pull: rows / sessions / pairs with bars / empty / failed; the raw-close pull: tickers / rows>
-- walk (<date>, run ONCE): <the headline lines of `out/report.txt`>
+- freeze_commit = e2c7938db9a82cfc10d669daf591dbfa0a4eb30e
+- doc_body = 6c407f1fe1c1c4277c70d5a0ce813f97fed5e49800edf604e2010756874c756b
+- minutes (cb702_pre_v2/minutes) (tree) sha256: `9d5b332a4a6c31594b3c13302e1e6fa25c7cc7aa18a21c177a56333b65086a65`
+- minutes (cb702/minutes) (tree) sha256: `9b6d5cf4875b4b5276337965ff3c6aaa216076d3c19c5a39256dfe20beb0e08b`
+- minutes (cb702/minutes_asis_1026) (tree) sha256: `079f475f5e42c7391a155634fc00aaa4d71b9b8ccc4f59a34faebb9859285ed5`
+- minutes (cb702/minutes_rev_1024) (tree) sha256: `bcdc099910020c178e221dc11d79c3d6212d16b2bf0903fdf941b54c84f6e460`
+- minutes (cb702/minutes_intra_1025) (tree) sha256: `1d326d2fa23ba6aa4f32ec5b334fa86fac38451784838ff9e83cd4d959e8aacc`
+- minutes (cb702/minutes_ep_1023) (tree) sha256: `08394cc622b8d273b76aee366e1f42796d6f41b8e4a876649456e7471eb6247a`
+- minutes (cb702/minutes_ep_1024) (tree) sha256: `74832cfa550c673c016aeb84deee96a8696c1e73a0445ad81f36a4d9a9d72ba4`
+- minutes (cb702/minutes_com_delta_1018) (tree) sha256: `595ee6638dc5565ed350bb829fd45c11aa0ad1520db6045497cf210cece6e13a`
+- minutes (cb702/minutes_pre_com_1018) (tree) sha256: `dec337798e6c8226c1bf786649bef88af9fea87547705e958b1db1c754cdc000`
+- minutes (cb702/cb702_minutes_delta_out) (tree) sha256: `91a713323a2bd91f5b47a076c651f7028f49e6293a6cbb256905bd0fea357422`
+- minutes (cb702/minutes_bv1_1101) (tree) sha256: `1e0035d02c2b60efd73b8d40af3e983944d5c59cdeec501cb35ceeb4c1ff7646`
+- raw_close_bv1_1101.csv.gz sha256: `1c0e3f8c1edf3c0344a8a43249bb8da4e0fa0c7c4c62d7de8892b4c165ba2f07`
+- raw_close_bv1_1101.meta.json sha256: `16e54977009ebc9e0c77eb489632fb28e66594d6af1b3c0cf9fbe15ca93fc840`
+- pull (2026-11-01, main loop, his "Allow"): minutes — `fetch_minutes.py` in apollo-market, Alpaca SIP 1-min, Adjustment.SPLIT, the whole request: 47,584 pairs / 2,008 sessions, 47,555 with bars, 29 empty, 0 failed (139 MB, `apollo_data/cb702/minutes_bv1_1101/`); raw closes — `pull_raw_closes.py`, Alpaca daily RAW: 192 tickers, 15,553 rows <= 2024-12-31, 1 empty, 0 errors. `coverage`: 0 missing, 0 unfetchable, no problem.
+- walk (2026-11-01, run ONCE on the Polygon raw pull; `out/report.txt`, `out/trades.tsv.gz`): PRIMARY (capped book, guard + 5 slots, 2c) n 1,639, mean R -0.245 [-0.38, -0.09], win 33.1%, >= 3R 4.6% (75), >= 10R 0.9% (15) -> FAIL; 2017-21 n 1,058 -0.153 [-0.34, +0.05] FAIL; 2022-24 n 581 -0.412 [-0.58, -0.21] FAIL. Beside: the uncapped guard book n 4,819 -0.147 [-0.27, -0.02] FAIL. A blind recount and an adversarial audit run before it is reported.
+- ⚠ the raw-close pull REPLACED before any outcome (2026-11-01, disclosed): the first walk REFUSED at its end-of-walk coverage check — 48 of 2,072 raw_src=2 list rows had no pulled raw close (INBX 43: Alpaca returned no rows; ARIS 5) — and wrote nothing (no R printed, no output file; only the per-50-day fill/cancel counts). Checking every pulled raw close against the store's adjusted close on the same day (`raw_ratio_check_alpaca.txt`) then showed Alpaca maps a symbol to its CURRENT owner: 8 tickers' raw/adjusted ratio DRIFTED instead of holding a clean split constant (ARIS, TEN, CNR, CD, SPWR, OSG, VIVO, SAVA — other companies' prices). The pull was re-made from Polygon v2 daily aggregates, adjusted=false, point-in-time by ticker (§7 allows either source; `pull_raw_closes_polygon.py`, `raw_close_pull_log_polygon.txt`): 192 tickers, 16,266 rows, 0 empty, 0 errors; the same check (`raw_ratio_check_polygon.txt`): 0 missing, 0 drifting tickers (SAVA on two levels). The Alpaca file is kept as `apollo_data/cb702/raw_close_bv1_1101.alpaca_superseded.csv.gz`. The two raw pins above are the Polygon file's; nothing above the marker changed (doc_body unchanged); the walk is re-run once on it.
+

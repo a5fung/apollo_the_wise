@@ -1,0 +1,253 @@
+bars: 8,619,626 rows / 15,702 tickers / 821 sessions 2021-09-27..2024-12-31 (5s); 4,178 tickers have a missing session inside their span (188,545 holes)
+store B: loaded in 8s; {'raw_factor': 'bridge (pre_v2 raw / cb702 adjusted on the 2022-04..06 overlap, then the split list <= 2024-12-31) where the ticker is in both stores; else the split list <= 2024-12-31 only', 'splits_rows_skipped_sealed': 3090, 'bridge_tickers': 8518, 'bridge_unstable_fell_back': 224, 'split_list_only_tickers': 7184, 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+bars: 12,005,007 rows / 12,532 tickers / 1635 sessions 2016-01-04..2022-06-30 (4s); 5,007 tickers have a missing session inside their span (211,391 holes)
+store A: loaded in 9s; {'raw_factor': 'pre_v2 daily_raw_close.csv.gz per bar (exact)', 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+  day 0/2012 2017-01-03: 49 rows, {'entry_abstain': 29, 'entry_filled': 5, 'entry_cancelled': 10, 'entry_never_placed': 5} (9s)
+  day 50/2012 2017-03-16: 1223 rows, {'entry_abstain': 603, 'entry_filled': 106, 'entry_cancelled': 239, 'entry_never_placed': 275, 'minutes_pending': 1} (11s)
+  day 100/2012 2017-05-26: 2309 rows, {'entry_abstain': 1103, 'entry_filled': 187, 'entry_cancelled': 412, 'entry_never_placed': 607, 'minutes_pending': 2, 'minute_daily_mismatch': 5} (14s)
+  day 150/2012 2017-08-08: 3640 rows, {'entry_abstain': 1666, 'entry_filled': 314, 'entry_cancelled': 653, 'entry_never_placed': 1007, 'minutes_pending': 2, 'minute_daily_mismatch': 7} (17s)
+  day 200/2012 2017-10-18: 4911 rows, {'entry_abstain': 2222, 'entry_filled': 447, 'entry_cancelled': 880, 'entry_never_placed': 1362, 'minutes_pending': 4, 'minute_daily_mismatch': 8} (19s)
+  day 250/2012 2017-12-29: 6331 rows, {'entry_abstain': 2806, 'entry_filled': 573, 'entry_cancelled': 1171, 'entry_never_placed': 1781, 'minutes_pending': 4, 'minute_daily_mismatch': 9} (22s)
+  day 300/2012 2018-03-14: 7720 rows, {'entry_abstain': 3442, 'entry_filled': 718, 'entry_cancelled': 1435, 'entry_never_placed': 2125, 'minutes_pending': 5, 'minute_daily_mismatch': 11} (25s)
+  day 350/2012 2018-05-24: 9179 rows, {'entry_abstain': 4092, 'entry_filled': 848, 'entry_cancelled': 1695, 'entry_never_placed': 2544, 'minutes_pending': 6, 'minute_daily_mismatch': 41} (28s)
+  day 400/2012 2018-08-06: 10709 rows, {'entry_abstain': 4745, 'entry_filled': 1007, 'entry_cancelled': 1997, 'entry_never_placed': 2960, 'minutes_pending': 8, 'minute_daily_mismatch': 42, 'minutes_no_rows': 1} (31s)
+  day 450/2012 2018-10-16: 12029 rows, {'entry_abstain': 5344, 'entry_filled': 1129, 'entry_cancelled': 2251, 'entry_never_placed': 3305, 'minutes_pending': 8, 'minute_daily_mismatch': 43, 'minutes_no_rows': 1} (33s)
+  day 500/2012 2018-12-28: 13166 rows, {'entry_abstain': 5941, 'entry_filled': 1202, 'entry_cancelled': 2451, 'entry_never_placed': 3571, 'minutes_pending': 9, 'minute_daily_mismatch': 44, 'minutes_no_rows': 1, 'entry_sold_after_fill': 1} (35s)
+  day 550/2012 2019-03-13: 14670 rows, {'entry_abstain': 6489, 'entry_filled': 1356, 'entry_cancelled': 2766, 'entry_never_placed': 4058, 'minutes_pending': 13, 'minute_daily_mismatch': 45, 'minutes_no_rows': 1, 'entry_sold_after_fill': 1} (39s)
+  day 600/2012 2019-05-23: 16182 rows, {'entry_abstain': 7226, 'entry_filled': 1493, 'entry_cancelled': 3017, 'entry_never_placed': 4445, 'minutes_pending': 13, 'minute_daily_mismatch': 45, 'minutes_no_rows': 1, 'entry_sold_after_fill': 1} (42s)
+  day 650/2012 2019-08-05: 17665 rows, {'entry_abstain': 7912, 'entry_filled': 1642, 'entry_cancelled': 3285, 'entry_never_placed': 4825, 'minutes_pending': 13, 'minute_daily_mismatch': 47, 'minutes_no_rows': 1, 'entry_sold_after_fill': 1} (45s)
+  day 700/2012 2019-10-15: 19023 rows, {'entry_abstain': 8493, 'entry_filled': 1779, 'entry_cancelled': 3528, 'entry_never_placed': 5222, 'minutes_pending': 16, 'minute_daily_mismatch': 48, 'minutes_no_rows': 1, 'entry_sold_after_fill': 1} (48s)
+  day 750/2012 2019-12-26: 20507 rows, {'entry_abstain': 9117, 'entry_filled': 1910, 'entry_cancelled': 3816, 'entry_never_placed': 5662, 'minutes_pending': 16, 'minute_daily_mismatch': 49, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (52s)
+  day 800/2012 2020-03-10: 21628 rows, {'entry_abstain': 9640, 'entry_filled': 2035, 'entry_cancelled': 4046, 'entry_never_placed': 5905, 'minutes_pending': 19, 'minute_daily_mismatch': 49, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (54s)
+  day 850/2012 2020-05-20: 23177 rows, {'entry_abstain': 10122, 'entry_filled': 2233, 'entry_cancelled': 4381, 'entry_never_placed': 6439, 'minutes_pending': 20, 'minute_daily_mismatch': 52, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (58s)
+  day 900/2012 2020-07-31: 24958 rows, {'entry_abstain': 10933, 'entry_filled': 2464, 'entry_cancelled': 4729, 'entry_never_placed': 6830, 'minutes_pending': 20, 'minute_daily_mismatch': 55, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (64s)
+  day 950/2012 2020-10-12: 26542 rows, {'entry_abstain': 11575, 'entry_filled': 2664, 'entry_cancelled': 5052, 'entry_never_placed': 7249, 'minutes_pending': 20, 'minute_daily_mismatch': 55, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (68s)
+  day 1000/2012 2020-12-22: 27886 rows, {'entry_abstain': 12165, 'entry_filled': 2876, 'entry_cancelled': 5329, 'entry_never_placed': 7514, 'minutes_pending': 22, 'minute_daily_mismatch': 65, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (71s)
+  day 1050/2012 2021-03-08: 29495 rows, {'entry_abstain': 12838, 'entry_filled': 3191, 'entry_cancelled': 5692, 'entry_never_placed': 7772, 'minutes_pending': 22, 'minute_daily_mismatch': 68, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (75s)
+  day 1100/2012 2021-05-18: 31473 rows, {'entry_abstain': 13772, 'entry_filled': 3371, 'entry_cancelled': 6038, 'entry_never_placed': 8290, 'minutes_pending': 25, 'minute_daily_mismatch': 77, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (79s)
+  day 1150/2012 2021-07-29: 33501 rows, {'entry_abstain': 14660, 'entry_filled': 3627, 'entry_cancelled': 6446, 'entry_never_placed': 8766, 'minutes_pending': 25, 'minute_daily_mismatch': 77, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (84s)
+  day 1200/2012 2021-10-08: 35155 rows, {'entry_abstain': 15407, 'entry_filled': 3811, 'entry_cancelled': 6746, 'entry_never_placed': 9189, 'minutes_pending': 25, 'minute_daily_mismatch': 77, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (87s)
+  day 1250/2012 2021-12-20: 36695 rows, {'entry_abstain': 16184, 'entry_filled': 3977, 'entry_cancelled': 7029, 'entry_never_placed': 9503, 'minutes_pending': 27, 'minute_daily_mismatch': 93, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (89s)
+  day 1300/2012 2022-03-03: 38303 rows, {'entry_abstain': 16851, 'entry_filled': 4154, 'entry_cancelled': 7327, 'entry_never_placed': 9969, 'minutes_pending': 28, 'minute_daily_mismatch': 93, 'minutes_no_rows': 1, 'entry_sold_after_fill': 2} (93s)
+  day 1350/2012 2022-05-13: 39829 rows, {'entry_abstain': 17488, 'entry_filled': 4373, 'entry_cancelled': 7697, 'entry_never_placed': 10269, 'minutes_pending': 31, 'minute_daily_mismatch': 122, 'minutes_no_rows': 3, 'entry_sold_after_fill': 2} (96s)
+  day 1400/2012 2022-07-27: 41738 rows, {'entry_abstain': 18221, 'entry_filled': 4600, 'entry_cancelled': 8145, 'entry_never_placed': 10770, 'minutes_pending': 32, 'minute_daily_mismatch': 140, 'minutes_no_rows': 12, 'entry_sold_after_fill': 2} (100s)
+  day 1450/2012 2022-10-06: 43361 rows, {'entry_abstain': 18984, 'entry_filled': 4786, 'entry_cancelled': 8482, 'entry_never_placed': 11107, 'minutes_pending': 32, 'minute_daily_mismatch': 185, 'minutes_no_rows': 20, 'entry_sold_after_fill': 2} (103s)
+  day 1500/2012 2022-12-16: 45135 rows, {'entry_abstain': 19795, 'entry_filled': 4961, 'entry_cancelled': 8788, 'entry_never_placed': 11589, 'minutes_pending': 35, 'minute_daily_mismatch': 204, 'minutes_no_rows': 35, 'entry_sold_after_fill': 2} (107s)
+  day 1550/2012 2023-03-02: 46944 rows, {'entry_abstain': 20653, 'entry_filled': 5150, 'entry_cancelled': 9129, 'entry_never_placed': 12010, 'minutes_pending': 37, 'minute_daily_mismatch': 212, 'minutes_no_rows': 35, 'entry_sold_after_fill': 2, 'below_floor_raw': 10} (110s)
+  day 1600/2012 2023-05-12: 48575 rows, {'entry_abstain': 21424, 'entry_filled': 5308, 'entry_cancelled': 9415, 'entry_never_placed': 12426, 'minutes_pending': 38, 'minute_daily_mismatch': 234, 'minutes_no_rows': 35, 'entry_sold_after_fill': 2, 'below_floor_raw': 10} (114s)
+  day 1650/2012 2023-07-26: 50115 rows, {'entry_abstain': 22089, 'entry_filled': 5536, 'entry_cancelled': 9717, 'entry_never_placed': 12771, 'minutes_pending': 39, 'minute_daily_mismatch': 279, 'minutes_no_rows': 35, 'entry_sold_after_fill': 2, 'below_floor_raw': 10} (117s)
+  day 1700/2012 2023-10-05: 51372 rows, {'entry_abstain': 22758, 'entry_filled': 5625, 'entry_cancelled': 9944, 'entry_never_placed': 13043, 'minutes_pending': 39, 'minute_daily_mismatch': 287, 'minutes_no_rows': 35, 'entry_sold_after_fill': 2, 'below_floor_raw': 10} (119s)
+  day 1750/2012 2023-12-15: 52574 rows, {'entry_abstain': 23224, 'entry_filled': 5753, 'entry_cancelled': 10142, 'entry_never_placed': 13452, 'minutes_pending': 41, 'minute_daily_mismatch': 305, 'minutes_no_rows': 36, 'entry_sold_after_fill': 3, 'below_floor_raw': 18} (122s)
+  day 1800/2012 2024-02-29: 54263 rows, {'entry_abstain': 24043, 'entry_filled': 5916, 'entry_cancelled': 10410, 'entry_never_placed': 13890, 'minutes_pending': 42, 'minute_daily_mismatch': 318, 'minutes_no_rows': 52, 'entry_sold_after_fill': 4, 'below_floor_raw': 18} (126s)
+  day 1850/2012 2024-05-10: 55735 rows, {'entry_abstain': 24855, 'entry_filled': 6040, 'entry_cancelled': 10633, 'entry_never_placed': 14203, 'minutes_pending': 44, 'minute_daily_mismatch': 340, 'minutes_no_rows': 54, 'entry_sold_after_fill': 4, 'below_floor_raw': 37} (129s)
+  day 1900/2012 2024-07-24: 57117 rows, {'entry_abstain': 25509, 'entry_filled': 6193, 'entry_cancelled': 10870, 'entry_never_placed': 14541, 'minutes_pending': 45, 'minute_daily_mismatch': 395, 'minutes_no_rows': 54, 'entry_sold_after_fill': 4, 'below_floor_raw': 42} (132s)
+  day 1950/2012 2024-10-03: 58694 rows, {'entry_abstain': 26191, 'entry_filled': 6328, 'entry_cancelled': 11120, 'entry_never_placed': 15051, 'minutes_pending': 47, 'minute_daily_mismatch': 398, 'minutes_no_rows': 54, 'entry_sold_after_fill': 4, 'below_floor_raw': 48} (135s)
+  day 2000/2012 2024-12-13: 60171 rows, {'entry_abstain': 26831, 'entry_filled': 6545, 'entry_cancelled': 11412, 'entry_never_placed': 15379, 'minutes_pending': 48, 'minute_daily_mismatch': 406, 'minutes_no_rows': 54, 'entry_sold_after_fill': 4, 'below_floor_raw': 72} (138s)
+BREAKOUT V1 — PAPER BASELINE REPLAY (registration docs/analysis/breakout_v1_paper_replay_prereg_2026-11-01.md)
+written 2026-11-01; list rows walked 60,480; exclusions {'entry_abstain': 26963, 'entry_filled': 6584, 'entry_cancelled': 11506, 'entry_never_placed': 15423, 'minutes_pending': 49, 'minute_daily_mismatch': 407, 'minutes_no_rows': 54, 'entry_sold_after_fill': 4, 'below_floor_raw': 81}
+blocked per book: {'guard': {'block:ticker_open_position': 3587}, 'cap': {'block:max_positions': 11808, 'block:ticker_open_position': 1260}, 'lane': {'block:max_positions': 11542, 'block:ticker_open_position': 1260, 'block:daily_loss': 282, 'block:circuit_breaker': 52}}
+filled 6,588; mature 6,559; open marks 29; walked but NOT decisive (E after the cutoff 2024-07-10) 419; sold after the fill (too wide) 4; Q1-2022 seam walked on the sealed cb702 copy 1,778; fill-minute low under the placed stop (the adverse row) 6 of 6,588
+raw-close pull: {'adjustment': 'raw', 'feed': 'polygon v2 aggs adjusted=false', 'request_sha256': '2f256edfe4f9b232ac8e69921c649f96cf3d9efa4bba1d4574ea5310a02e5d4d', 'source': "polygon v2 aggregates (1 day, adjusted=false), point-in-time by ticker; run in apollo-market by the main loop; replaces the first Alpaca pull (symbol reuse returned other companies' prices)", 'pulled_at': '2026-11-01T23:05:32.056430+00:00'}
+
+THE PRIMARY ROW: the CAPPED book (guard + 5 slots, the small-cap lane's occupancy 0) at 2c on the entry and every exit;
+decisive trades only (mature, E on or before the cutoff). Verdict per group (the bar, §6 of the registration):
+PASS = n >= 100, interval lower end > 0, >= 3R share >= 8%; FAIL = n >= 100, interval wholly under +0.25R, >= 3R share < 8%;
+else CAN'T TELL (with its named sub-reading). Every other row is reported beside with the same words and decides nothing.
+
+==== CAPPED (guard + 5 slots) — THE PRIMARY ROW ====
+-- cost 0c per share each way --
+all                                n  1639  mean -0.089 [-0.22, +0.07]  win 34.4%  med -1.00  >=3R  4.6% (76)  >=5R  2.7% (45)  >=10R  1.0% (16)  sum -146
+era 2017-21                        n  1058  mean -0.002 [-0.20, +0.20]  win 36.1%  med -1.00  >=3R  5.2% (55)  >=5R  3.3% (35)  >=10R  1.1% (12)  sum -2
+era 2022-24                        n   581  mean -0.247 [-0.40, -0.05]  win 31.3%  med -1.00  >=3R  3.6% (21)  >=5R  1.7% (10)  >=10R  0.7% (4)  sum -144
+year 2017                          n   212  mean -0.059 [-0.34, +0.31]  win 38.7%  med -1.00  >=3R  4.2% (9)  >=5R  2.8% (6)  >=10R  0.9% (2)  sum -13
+year 2018                          n   209  mean -0.144 [-0.58, +0.39]  win 32.1%  med -1.00  >=3R  4.3% (9)  >=5R  2.9% (6)  >=10R  1.4% (3)  sum -30
+year 2019                          n   223  mean -0.184 [-0.48, +0.18]  win 33.2%  med -1.00  >=3R  4.5% (10)  >=5R  3.1% (7)  >=10R  0.4% (1)  sum -41
+year 2020                          n   194  mean +0.542 [+0.03, +1.14]  win 42.8%  med -1.00  >=3R  8.2% (16)  >=5R  6.2% (12)  >=10R  2.1% (4)  sum +105
+year 2021                          n   220  mean -0.109 [-0.39, +0.28]  win 34.5%  med -1.00  >=3R  5.0% (11)  >=5R  1.8% (4)  >=10R  0.9% (2)  sum -24
+year 2022                          n   248  mean -0.432 [-0.59, -0.25]  win 27.0%  med -1.00  >=3R  3.2% (8)  >=5R  1.2% (3)  >=10R  0.4% (1)  sum -107
+year 2023                          n   217  mean -0.106 [-0.41, +0.34]  win 33.6%  med -1.00  >=3R  3.7% (8)  >=5R  2.3% (5)  >=10R  0.9% (2)  sum -23
+year 2024                          n   116  mean -0.116 [-0.40, +0.19]  win 36.2%  med -1.00  >=3R  4.3% (5)  >=5R  1.7% (2)  >=10R  0.9% (1)  sum -13
+QQQ phase_on at D                  n   856  mean -0.094 [-0.30, +0.14]  win 34.9%  med -1.00  >=3R  4.2% (36)  >=5R  2.7% (23)  >=10R  0.9% (8)  sum -80
+QQQ phase_off at D                 n   783  mean -0.084 [-0.26, +0.11]  win 33.8%  med -1.00  >=3R  5.1% (40)  >=5R  2.8% (22)  >=10R  1.0% (8)  sum -66
+
+-- cost 2c per share each way --
+all                                n  1639  mean -0.245 [-0.38, -0.09]  win 33.1%  med -1.03  >=3R  4.6% (75)  >=5R  2.7% (44)  >=10R  0.9% (15)  sum -401   VERDICT FAIL (whole interval under +0.25R and the >= 3R share under the tail bar)
+era 2017-21                        n  1058  mean -0.153 [-0.34, +0.05]  win 34.8%  med -1.03  >=3R  5.1% (54)  >=5R  3.2% (34)  >=10R  1.0% (11)  sum -162   VERDICT FAIL (whole interval under +0.25R and the >= 3R share under the tail bar)
+era 2022-24                        n   581  mean -0.412 [-0.58, -0.21]  win 29.9%  med -1.04  >=3R  3.6% (21)  >=5R  1.7% (10)  >=10R  0.7% (4)  sum -239   VERDICT FAIL (whole interval under +0.25R and the >= 3R share under the tail bar)
+year 2017                          n   212  mean -0.223 [-0.49, +0.12]  win 36.8%  med -1.04  >=3R  4.2% (9)  >=5R  2.8% (6)  >=10R  0.9% (2)  sum -47
+year 2018                          n   209  mean -0.306 [-0.74, +0.25]  win 31.1%  med -1.04  >=3R  4.3% (9)  >=5R  2.9% (6)  >=10R  1.0% (2)  sum -64
+year 2019                          n   223  mean -0.405 [-0.70, -0.06]  win 31.4%  med -1.03  >=3R  4.5% (10)  >=5R  3.1% (7)  >=10R  0.4% (1)  sum -90
+year 2020                          n   194  mean +0.440 [-0.09, +1.05]  win 42.3%  med -1.02  >=3R  7.7% (15)  >=5R  6.2% (12)  >=10R  2.1% (4)  sum +85
+year 2021                          n   220  mean -0.210 [-0.50, +0.16]  win 33.2%  med -1.02  >=3R  5.0% (11)  >=5R  1.4% (3)  >=10R  0.9% (2)  sum -46
+year 2022                          n   248  mean -0.599 [-0.74, -0.45]  win 26.6%  med -1.04  >=3R  3.2% (8)  >=5R  1.2% (3)  >=10R  0.4% (1)  sum -148
+year 2023                          n   217  mean -0.294 [-0.62, +0.20]  win 30.9%  med -1.04  >=3R  3.7% (8)  >=5R  2.3% (5)  >=10R  0.9% (2)  sum -64
+year 2024                          n   116  mean -0.231 [-0.52, +0.07]  win 35.3%  med -1.02  >=3R  4.3% (5)  >=5R  1.7% (2)  >=10R  0.9% (1)  sum -27
+QQQ phase_on at D                  n   856  mean -0.245 [-0.45, -0.01]  win 33.2%  med -1.03  >=3R  4.2% (36)  >=5R  2.7% (23)  >=10R  0.8% (7)  sum -209
+QQQ phase_off at D                 n   783  mean -0.245 [-0.41, -0.04]  win 33.0%  med -1.03  >=3R  5.0% (39)  >=5R  2.7% (21)  >=10R  1.0% (8)  sum -192
+
+-- cost 5c per share each way --
+all                                n  1639  mean -0.479 [-0.63, -0.31]  win 29.8%  med -1.08  >=3R  4.5% (74)  >=5R  2.5% (41)  >=10R  0.9% (15)  sum -784
+era 2017-21                        n  1058  mean -0.380 [-0.57, -0.16]  win 31.5%  med -1.07  >=3R  5.1% (54)  >=5R  3.0% (32)  >=10R  1.0% (11)  sum -402
+era 2022-24                        n   581  mean -0.658 [-0.84, -0.46]  win 26.7%  med -1.09  >=3R  3.4% (20)  >=5R  1.5% (9)  >=10R  0.7% (4)  sum -382
+year 2017                          n   212  mean -0.469 [-0.75, -0.16]  win 33.5%  med -1.09  >=3R  4.2% (9)  >=5R  2.4% (5)  >=10R  0.9% (2)  sum -99
+year 2018                          n   209  mean -0.550 [-1.08, +0.03]  win 27.8%  med -1.11  >=3R  4.3% (9)  >=5R  2.9% (6)  >=10R  1.0% (2)  sum -115
+year 2019                          n   223  mean -0.736 [-1.01, -0.42]  win 26.5%  med -1.09  >=3R  4.5% (10)  >=5R  3.1% (7)  >=10R  0.4% (1)  sum -164
+year 2020                          n   194  mean +0.288 [-0.25, +0.90]  win 40.2%  med -1.05  >=3R  7.7% (15)  >=5R  5.7% (11)  >=10R  2.1% (4)  sum +56
+year 2021                          n   220  mean -0.361 [-0.64, +0.00]  win 30.5%  med -1.05  >=3R  5.0% (11)  >=5R  1.4% (3)  >=10R  0.9% (2)  sum -79
+year 2022                          n   248  mean -0.848 [-1.01, -0.70]  win 22.6%  med -1.09  >=3R  3.2% (8)  >=5R  0.8% (2)  >=10R  0.4% (1)  sum -210
+year 2023                          n   217  mean -0.577 [-0.94, -0.11]  win 28.1%  med -1.11  >=3R  3.2% (7)  >=5R  2.3% (5)  >=10R  0.9% (2)  sum -125
+year 2024                          n   116  mean -0.405 [-0.72, -0.05]  win 32.8%  med -1.06  >=3R  4.3% (5)  >=5R  1.7% (2)  >=10R  0.9% (1)  sum -47
+QQQ phase_on at D                  n   856  mean -0.471 [-0.69, -0.22]  win 30.0%  med -1.07  >=3R  4.1% (35)  >=5R  2.6% (22)  >=10R  0.8% (7)  sum -403
+QQQ phase_off at D                 n   783  mean -0.487 [-0.67, -0.27]  win 29.5%  med -1.08  >=3R  5.0% (39)  >=5R  2.4% (19)  >=10R  1.0% (8)  sum -381
+
+-- ADVERSE fill-minute ordering at 2c (beside) --
+all                                n  1639  mean -0.245 [-0.38, -0.09]  win 33.1%  med -1.03  >=3R  4.6% (75)  >=5R  2.7% (44)  >=10R  0.9% (15)  sum -401
+era 2017-21                        n  1058  mean -0.153 [-0.35, +0.05]  win 34.8%  med -1.03  >=3R  5.1% (54)  >=5R  3.2% (34)  >=10R  1.0% (11)  sum -162
+era 2022-24                        n   581  mean -0.412 [-0.57, -0.20]  win 29.9%  med -1.04  >=3R  3.6% (21)  >=5R  1.7% (10)  >=10R  0.7% (4)  sum -239
+year 2017                          n   212  mean -0.223 [-0.50, +0.14]  win 36.8%  med -1.04  >=3R  4.2% (9)  >=5R  2.8% (6)  >=10R  0.9% (2)  sum -47
+year 2018                          n   209  mean -0.307 [-0.77, +0.26]  win 31.1%  med -1.04  >=3R  4.3% (9)  >=5R  2.9% (6)  >=10R  1.0% (2)  sum -64
+year 2019                          n   223  mean -0.405 [-0.69, -0.06]  win 31.4%  med -1.03  >=3R  4.5% (10)  >=5R  3.1% (7)  >=10R  0.4% (1)  sum -90
+year 2020                          n   194  mean +0.440 [-0.10, +1.04]  win 42.3%  med -1.02  >=3R  7.7% (15)  >=5R  6.2% (12)  >=10R  2.1% (4)  sum +85
+year 2021                          n   220  mean -0.210 [-0.50, +0.18]  win 33.2%  med -1.02  >=3R  5.0% (11)  >=5R  1.4% (3)  >=10R  0.9% (2)  sum -46
+year 2022                          n   248  mean -0.599 [-0.76, -0.44]  win 26.6%  med -1.04  >=3R  3.2% (8)  >=5R  1.2% (3)  >=10R  0.4% (1)  sum -148
+year 2023                          n   217  mean -0.294 [-0.61, +0.18]  win 30.9%  med -1.04  >=3R  3.7% (8)  >=5R  2.3% (5)  >=10R  0.9% (2)  sum -64
+year 2024                          n   116  mean -0.231 [-0.53, +0.09]  win 35.3%  med -1.02  >=3R  4.3% (5)  >=5R  1.7% (2)  >=10R  0.9% (1)  sum -27
+QQQ phase_on at D                  n   856  mean -0.245 [-0.45, -0.02]  win 33.2%  med -1.03  >=3R  4.2% (36)  >=5R  2.7% (23)  >=10R  0.8% (7)  sum -209
+QQQ phase_off at D                 n   783  mean -0.245 [-0.42, -0.05]  win 33.0%  med -1.03  >=3R  5.0% (39)  >=5R  2.7% (21)  >=10R  1.0% (8)  sum -192
+
+==== LANE (guard + 5 slots + 2% daily loss + 10-loss breaker; the drawdown breaker not modelled) ====
+-- cost 0c per share each way --
+all                                n  1622  mean -0.084 [-0.22, +0.07]  win 34.4%  med -1.00  >=3R  4.7% (76)  >=5R  2.8% (45)  >=10R  1.0% (16)  sum -136
+era 2017-21                        n  1046  mean +0.005 [-0.19, +0.21]  win 36.0%  med -1.00  >=3R  5.3% (55)  >=5R  3.3% (35)  >=10R  1.1% (12)  sum +5
+era 2022-24                        n   576  mean -0.244 [-0.41, -0.05]  win 31.4%  med -1.00  >=3R  3.6% (21)  >=5R  1.7% (10)  >=10R  0.7% (4)  sum -141
+year 2017                          n   212  mean -0.059 [-0.34, +0.31]  win 38.7%  med -1.00  >=3R  4.2% (9)  >=5R  2.8% (6)  >=10R  0.9% (2)  sum -13
+year 2018                          n   210  mean -0.152 [-0.59, +0.40]  win 31.9%  med -1.00  >=3R  4.3% (9)  >=5R  2.9% (6)  >=10R  1.4% (3)  sum -32
+year 2019                          n   220  mean -0.166 [-0.46, +0.19]  win 32.7%  med -1.00  >=3R  4.5% (10)  >=5R  3.2% (7)  >=10R  0.5% (1)  sum -37
+year 2020                          n   192  mean +0.550 [+0.05, +1.18]  win 42.7%  med -1.00  >=3R  8.3% (16)  >=5R  6.2% (12)  >=10R  2.1% (4)  sum +106
+year 2021                          n   212  mean -0.092 [-0.38, +0.25]  win 34.9%  med -1.00  >=3R  5.2% (11)  >=5R  1.9% (4)  >=10R  0.9% (2)  sum -20
+year 2022                          n   245  mean -0.436 [-0.60, -0.26]  win 26.9%  med -1.00  >=3R  3.3% (8)  >=5R  1.2% (3)  >=10R  0.4% (1)  sum -107
+year 2023                          n   215  mean -0.086 [-0.40, +0.36]  win 34.4%  med -1.00  >=3R  3.7% (8)  >=5R  2.3% (5)  >=10R  0.9% (2)  sum -18
+year 2024                          n   116  mean -0.133 [-0.41, +0.19]  win 35.3%  med -1.00  >=3R  4.3% (5)  >=5R  1.7% (2)  >=10R  0.9% (1)  sum -15
+QQQ phase_on at D                  n   850  mean -0.086 [-0.28, +0.13]  win 34.9%  med -1.00  >=3R  4.2% (36)  >=5R  2.7% (23)  >=10R  0.9% (8)  sum -73
+QQQ phase_off at D                 n   772  mean -0.081 [-0.26, +0.12]  win 33.8%  med -1.00  >=3R  5.2% (40)  >=5R  2.8% (22)  >=10R  1.0% (8)  sum -63
+
+-- cost 2c per share each way --
+all                                n  1622  mean -0.242 [-0.38, -0.09]  win 33.1%  med -1.03  >=3R  4.6% (75)  >=5R  2.7% (44)  >=10R  0.9% (15)  sum -393   [beside: FAIL]
+era 2017-21                        n  1046  mean -0.146 [-0.32, +0.09]  win 34.8%  med -1.03  >=3R  5.2% (54)  >=5R  3.3% (34)  >=10R  1.1% (11)  sum -153   [beside: FAIL]
+era 2022-24                        n   576  mean -0.417 [-0.58, -0.22]  win 30.0%  med -1.04  >=3R  3.6% (21)  >=5R  1.7% (10)  >=10R  0.7% (4)  sum -240   [beside: FAIL]
+year 2017                          n   212  mean -0.223 [-0.50, +0.14]  win 36.8%  med -1.04  >=3R  4.2% (9)  >=5R  2.8% (6)  >=10R  0.9% (2)  sum -47
+year 2018                          n   210  mean -0.311 [-0.80, +0.24]  win 31.0%  med -1.04  >=3R  4.3% (9)  >=5R  2.9% (6)  >=10R  1.0% (2)  sum -65
+year 2019                          n   220  mean -0.387 [-0.65, -0.05]  win 31.4%  med -1.04  >=3R  4.5% (10)  >=5R  3.2% (7)  >=10R  0.5% (1)  sum -85
+year 2020                          n   192  mean +0.448 [-0.06, +1.07]  win 42.2%  med -1.02  >=3R  7.8% (15)  >=5R  6.2% (12)  >=10R  2.1% (4)  sum +86
+year 2021                          n   212  mean -0.195 [-0.48, +0.15]  win 33.5%  med -1.02  >=3R  5.2% (11)  >=5R  1.4% (3)  >=10R  0.9% (2)  sum -41
+year 2022                          n   245  mean -0.621 [-0.77, -0.45]  win 26.5%  med -1.04  >=3R  3.3% (8)  >=5R  1.2% (3)  >=10R  0.4% (1)  sum -152
+year 2023                          n   215  mean -0.275 [-0.60, +0.17]  win 31.6%  med -1.03  >=3R  3.7% (8)  >=5R  2.3% (5)  >=10R  0.9% (2)  sum -59
+year 2024                          n   116  mean -0.250 [-0.56, +0.08]  win 34.5%  med -1.03  >=3R  4.3% (5)  >=5R  1.7% (2)  >=10R  0.9% (1)  sum -29
+QQQ phase_on at D                  n   850  mean -0.238 [-0.43, -0.01]  win 33.2%  med -1.03  >=3R  4.2% (36)  >=5R  2.7% (23)  >=10R  0.8% (7)  sum -202
+QQQ phase_off at D                 n   772  mean -0.247 [-0.43, -0.05]  win 33.0%  med -1.03  >=3R  5.1% (39)  >=5R  2.7% (21)  >=10R  1.0% (8)  sum -191
+
+-- cost 5c per share each way --
+all                                n  1622  mean -0.481 [-0.63, -0.32]  win 29.9%  med -1.08  >=3R  4.6% (74)  >=5R  2.5% (41)  >=10R  0.9% (15)  sum -780
+era 2017-21                        n  1046  mean -0.373 [-0.57, -0.15]  win 31.6%  med -1.07  >=3R  5.2% (54)  >=5R  3.1% (32)  >=10R  1.1% (11)  sum -390
+era 2022-24                        n   576  mean -0.676 [-0.86, -0.48]  win 26.7%  med -1.10  >=3R  3.5% (20)  >=5R  1.6% (9)  >=10R  0.7% (4)  sum -389
+year 2017                          n   212  mean -0.469 [-0.77, -0.13]  win 33.5%  med -1.09  >=3R  4.2% (9)  >=5R  2.4% (5)  >=10R  0.9% (2)  sum -99
+year 2018                          n   210  mean -0.551 [-1.04, +0.05]  win 28.1%  med -1.09  >=3R  4.3% (9)  >=5R  2.9% (6)  >=10R  1.0% (2)  sum -116
+year 2019                          n   220  mean -0.718 [-0.98, -0.41]  win 26.4%  med -1.09  >=3R  4.5% (10)  >=5R  3.2% (7)  >=10R  0.5% (1)  sum -158
+year 2020                          n   192  mean +0.296 [-0.26, +0.94]  win 40.1%  med -1.05  >=3R  7.8% (15)  >=5R  5.7% (11)  >=10R  2.1% (4)  sum +57
+year 2021                          n   212  mean -0.349 [-0.61, +0.03]  win 31.1%  med -1.05  >=3R  5.2% (11)  >=5R  1.4% (3)  >=10R  0.9% (2)  sum -74
+year 2022                          n   245  mean -0.897 [-1.10, -0.71]  win 22.4%  med -1.10  >=3R  3.3% (8)  >=5R  0.8% (2)  >=10R  0.4% (1)  sum -220
+year 2023                          n   215  mean -0.559 [-0.92, -0.07]  win 28.8%  med -1.10  >=3R  3.3% (7)  >=5R  2.3% (5)  >=10R  0.9% (2)  sum -120
+year 2024                          n   116  mean -0.426 [-0.75, -0.10]  win 31.9%  med -1.08  >=3R  4.3% (5)  >=5R  1.7% (2)  >=10R  0.9% (1)  sum -49
+QQQ phase_on at D                  n   850  mean -0.467 [-0.68, -0.23]  win 30.1%  med -1.07  >=3R  4.1% (35)  >=5R  2.6% (22)  >=10R  0.8% (7)  sum -397
+QQQ phase_off at D                 n   772  mean -0.496 [-0.69, -0.28]  win 29.7%  med -1.08  >=3R  5.1% (39)  >=5R  2.5% (19)  >=10R  1.0% (8)  sum -383
+
+==== GUARD ONLY (no cap: the same-ticker guard on every fill) ====
+-- cost 0c per share each way --
+all                                n  4819  mean -0.002 [-0.12, +0.13]  win 35.3%  med -1.00  >=3R  5.2% (249)  >=5R  3.1% (151)  >=10R  1.3% (63)  sum -9
+era 2017-21                        n  3094  mean +0.089 [-0.08, +0.27]  win 36.8%  med -1.00  >=3R  5.6% (174)  >=5R  3.5% (109)  >=10R  1.6% (50)  sum +276
+era 2022-24                        n  1725  mean -0.165 [-0.25, -0.06]  win 32.6%  med -1.00  >=3R  4.3% (75)  >=5R  2.4% (42)  >=10R  0.8% (13)  sum -285
+year 2017                          n   474  mean +0.042 [-0.23, +0.39]  win 37.3%  med -1.00  >=3R  5.5% (26)  >=5R  4.2% (20)  >=10R  1.5% (7)  sum +20
+year 2018                          n   522  mean -0.183 [-0.48, +0.14]  win 33.0%  med -1.00  >=3R  4.0% (21)  >=5R  2.3% (12)  >=10R  1.1% (6)  sum -95
+year 2019                          n   562  mean -0.182 [-0.37, +0.03]  win 35.1%  med -1.00  >=3R  3.9% (22)  >=5R  2.3% (13)  >=10R  0.4% (2)  sum -102
+year 2020                          n   705  mean +0.647 [+0.30, +1.01]  win 40.9%  med -1.00  >=3R  8.5% (60)  >=5R  6.2% (44)  >=10R  3.5% (25)  sum +456
+year 2021                          n   831  mean -0.003 [-0.31, +0.39]  win 36.6%  med -1.00  >=3R  5.4% (45)  >=5R  2.4% (20)  >=10R  1.2% (10)  sum -3
+year 2022                          n   800  mean -0.228 [-0.33, -0.12]  win 31.9%  med -1.00  >=3R  4.0% (32)  >=5R  2.1% (17)  >=10R  0.6% (5)  sum -182
+year 2023                          n   641  mean -0.139 [-0.32, +0.09]  win 33.5%  med -1.00  >=3R  4.2% (27)  >=5R  2.7% (17)  >=10R  0.6% (4)  sum -89
+year 2024                          n   284  mean -0.050 [-0.28, +0.15]  win 32.4%  med -1.00  >=3R  5.6% (16)  >=5R  2.8% (8)  >=10R  1.4% (4)  sum -14
+QQQ phase_on at D                  n  2815  mean +0.024 [-0.14, +0.21]  win 35.7%  med -1.00  >=3R  5.0% (142)  >=5R  3.1% (86)  >=10R  1.3% (37)  sum +67
+QQQ phase_off at D                 n  2004  mean -0.038 [-0.18, +0.13]  win 34.7%  med -1.00  >=3R  5.3% (107)  >=5R  3.2% (65)  >=10R  1.3% (26)  sum -76
+
+-- cost 2c per share each way --
+all                                n  4819  mean -0.147 [-0.27, -0.02]  win 34.0%  med -1.03  >=3R  5.1% (245)  >=5R  3.1% (150)  >=10R  1.3% (61)  sum -708   [beside: FAIL]
+era 2017-21                        n  3094  mean -0.047 [-0.23, +0.14]  win 35.4%  med -1.03  >=3R  5.5% (171)  >=5R  3.5% (108)  >=10R  1.6% (48)  sum -146   [beside: FAIL]
+era 2022-24                        n  1725  mean -0.326 [-0.42, -0.22]  win 31.4%  med -1.04  >=3R  4.3% (74)  >=5R  2.4% (42)  >=10R  0.8% (13)  sum -562   [beside: FAIL]
+year 2017                          n   474  mean -0.119 [-0.38, +0.22]  win 35.7%  med -1.04  >=3R  5.5% (26)  >=5R  4.2% (20)  >=10R  1.5% (7)  sum -56
+year 2018                          n   522  mean -0.334 [-0.65, +0.03]  win 31.8%  med -1.03  >=3R  4.0% (21)  >=5R  2.3% (12)  >=10R  1.0% (5)  sum -174
+year 2019                          n   562  mean -0.385 [-0.56, -0.20]  win 33.1%  med -1.04  >=3R  3.9% (22)  >=5R  2.3% (13)  >=10R  0.4% (2)  sum -216
+year 2020                          n   705  mean +0.548 [+0.19, +0.91]  win 40.0%  med -1.02  >=3R  8.4% (59)  >=5R  6.2% (44)  >=10R  3.5% (25)  sum +387
+year 2021                          n   831  mean -0.103 [-0.41, +0.29]  win 35.3%  med -1.02  >=3R  5.2% (43)  >=5R  2.3% (19)  >=10R  1.1% (9)  sum -86
+year 2022                          n   800  mean -0.377 [-0.48, -0.27]  win 31.1%  med -1.04  >=3R  4.0% (32)  >=5R  2.1% (17)  >=10R  0.6% (5)  sum -301
+year 2023                          n   641  mean -0.323 [-0.53, -0.08]  win 31.7%  med -1.04  >=3R  4.1% (26)  >=5R  2.7% (17)  >=10R  0.6% (4)  sum -207
+year 2024                          n   284  mean -0.190 [-0.43, +0.03]  win 31.7%  med -1.03  >=3R  5.6% (16)  >=5R  2.8% (8)  >=10R  1.4% (4)  sum -54
+QQQ phase_on at D                  n  2815  mean -0.121 [-0.29, +0.07]  win 34.2%  med -1.03  >=3R  5.0% (141)  >=5R  3.1% (86)  >=10R  1.2% (35)  sum -339
+QQQ phase_off at D                 n  2004  mean -0.184 [-0.33, -0.03]  win 33.7%  med -1.03  >=3R  5.2% (104)  >=5R  3.2% (64)  >=10R  1.3% (26)  sum -369
+
+-- cost 5c per share each way --
+all                                n  4819  mean -0.365 [-0.50, -0.22]  win 30.9%  med -1.08  >=3R  4.9% (238)  >=5R  3.0% (145)  >=10R  1.2% (60)  sum -1757
+era 2017-21                        n  3094  mean -0.252 [-0.43, -0.06]  win 32.2%  med -1.07  >=3R  5.4% (167)  >=5R  3.4% (106)  >=10R  1.5% (47)  sum -778
+era 2022-24                        n  1725  mean -0.567 [-0.69, -0.43]  win 28.6%  med -1.09  >=3R  4.1% (71)  >=5R  2.3% (39)  >=10R  0.8% (13)  sum -978
+year 2017                          n   474  mean -0.360 [-0.62, -0.04]  win 33.1%  med -1.10  >=3R  5.5% (26)  >=5R  4.0% (19)  >=10R  1.5% (7)  sum -171
+year 2018                          n   522  mean -0.560 [-0.92, -0.17]  win 28.4%  med -1.08  >=3R  3.8% (20)  >=5R  2.3% (12)  >=10R  0.8% (4)  sum -292
+year 2019                          n   562  mean -0.689 [-0.85, -0.52]  win 27.9%  med -1.10  >=3R  3.7% (21)  >=5R  2.3% (13)  >=10R  0.4% (2)  sum -387
+year 2020                          n   705  mean +0.401 [+0.04, +0.79]  win 37.6%  med -1.05  >=3R  8.2% (58)  >=5R  6.1% (43)  >=10R  3.5% (25)  sum +282
+year 2021                          n   831  mean -0.253 [-0.54, +0.15]  win 32.4%  med -1.04  >=3R  5.1% (42)  >=5R  2.3% (19)  >=10R  1.1% (9)  sum -210
+year 2022                          n   800  mean -0.600 [-0.73, -0.46]  win 28.2%  med -1.09  >=3R  3.8% (30)  >=5R  2.0% (16)  >=10R  0.6% (5)  sum -480
+year 2023                          n   641  mean -0.600 [-0.88, -0.33]  win 29.0%  med -1.11  >=3R  3.9% (25)  >=5R  2.5% (16)  >=10R  0.6% (4)  sum -385
+year 2024                          n   284  mean -0.400 [-0.66, -0.14]  win 28.5%  med -1.08  >=3R  5.6% (16)  >=5R  2.5% (7)  >=10R  1.4% (4)  sum -114
+QQQ phase_on at D                  n  2815  mean -0.337 [-0.52, -0.15]  win 30.8%  med -1.07  >=3R  4.8% (135)  >=5R  3.0% (84)  >=10R  1.2% (35)  sum -949
+QQQ phase_off at D                 n  2004  mean -0.403 [-0.56, -0.24]  win 31.0%  med -1.08  >=3R  5.1% (103)  >=5R  3.0% (61)  >=10R  1.2% (25)  sum -808
+
+THE TAIL FIRST — the 15 biggest winners of the primary row (ticker, E, R, sessions held, exit)
+  NXH    2020-05-06   +60.27R  held  80  trail  fill 14.53 stop 13.59
+  NVDA   2023-05-16   +30.26R  held  31  trail  fill 29.11 stop 28.83
+  TBCH   2018-05-04   +28.96R  held  38  trail  fill 6.30 stop 5.98
+  AMC    2021-05-26   +19.86R  held  26  trail  fill 184.50 stop 172.60
+  OLED   2017-04-20   +17.03R  held  37  trail  fill 85.50 stop 84.05
+  SICP   2020-11-17   +13.64R  held  43  trail  fill 29.33 stop 27.64
+  SHOP   2017-04-13   +13.05R  held  40  trail  fill 7.01 stop 6.90
+  DAC    2020-12-10   +12.97R  held  32  trail  fill 15.00 stop 14.38
+  MLCO   2022-11-29   +12.87R  held  39  trail  fill 7.76 stop 7.47
+  CRC    2018-04-10   +12.87R  held  34  trail  fill 19.28 stop 18.61
+  BNTX   2021-07-16   +12.58R  held  25  trail  fill 228.39 stop 222.35
+  FSLY   2020-06-17   +12.36R  held  21  trail  fill 55.13 stop 53.76
+  CDLX   2019-10-10   +11.63R  held  44  trail  fill 354.50 stop 341.10
+  SG     2023-06-27   +11.33R  held  23  trail  fill 11.51 stop 11.27
+  MGNX   2024-01-19   +10.28R  held  35  trail  fill 11.18 stop 10.77
+
+ENTRY FUNNEL (every list name-day with minutes)
+  below_floor_raw                               81
+  entry_abstain                              26963
+  entry_cancelled                            11506
+  entry_filled                                6584
+  entry_never_placed                         15423
+  entry_sold_after_fill                          4
+  minute_daily_mismatch                        407
+  minutes_no_rows                               54
+  minutes_pending                               49
+  not filled: setup:stop_too_wide                                  28222
+  not filled: window:never_placed                                  15423
+  not filled: setup:breakout_volume_below_curve                     8116
+  not filled: window:breakout_unfilled_eod                          1163
+  not filled: setup:chase_cap_exceeded                               904
+  not filled: setup:zero_range                                        40
+  not filled: setup:no_opening_range_minutes                          24
+  fill-stop decisions: {'keep': 6578, 'lower': 6, 'sell_all': 4}
+  order kinds: {'limit': 826, 'stop_limit': 17268}
+  exits (decisive): {'day0_stop': 2373, 'stop': 2654, 'trail': 501, 'cut': 180, 'stop_gap': 307, 'day0_gap': 134, 'sold_after_fill': 4}
+  statuses (all filled): {'stopped_day0': 2661, 'stopped': 3165, 'trailed': 540, 'time_exit': 189, 'degraded': 29, 'sold_after_fill': 4}
+  book guard: admitted fills 5,141, blocked {'block:ticker_open_position': 3587}
+  book cap: admitted fills 1,740, blocked {'block:max_positions': 11808, 'block:ticker_open_position': 1260}
+  book lane: admitted fills 1,718, blocked {'block:max_positions': 11542, 'block:ticker_open_position': 1260, 'block:daily_loss': 282, 'block:circuit_breaker': 52}
+
+store B: {'raw_factor': 'bridge (pre_v2 raw / cb702 adjusted on the 2022-04..06 overlap, then the split list <= 2024-12-31) where the ticker is in both stores; else the split list <= 2024-12-31 only', 'splits_rows_skipped_sealed': 3090, 'bridge_tickers': 8518, 'bridge_unstable_fell_back': 224, 'split_list_only_tickers': 7184, 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+store A: {'raw_factor': 'pre_v2 daily_raw_close.csv.gz per bar (exact)', 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}

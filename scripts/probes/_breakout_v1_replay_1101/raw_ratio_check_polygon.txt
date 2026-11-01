@@ -1,0 +1,11 @@
+raw_src=2 rows 2072 missing a raw close 0 []
+tickers 192 with ratios on > 2 levels (drift = a different security or a dividend adjustment): 0
+ARIS 17 1.0 1.0
+TEN 14 1.0 1.0
+CNR 11 1.0 1.0
+CD 18 1.0 1.0
+SPWR 17 1.0 1.0
+SAVA 58 1.0 1.4
+OSG 3 1.0 1.0
+VIVO 4 1.0 1.0
+INBX 43 1.0 1.0
