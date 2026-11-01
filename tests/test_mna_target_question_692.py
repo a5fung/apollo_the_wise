@@ -1051,3 +1051,35 @@ def test_review_only_a_price_release_not_kept_blocked_marks_a_fired_row_released
                 {"ticker": "FS", "fire_day": d, "detail_full": '{"pin_release": {}}'}]
     kept = [{"ticker": "FS", "fire_day": d}]
     assert review._price_released_days(released, kept) == {("PD", str(d))}
+
+
+def test_the_accuracy_review_marks_a_same_day_release_on_read_only_rows(monkeypatch, capsys):
+    """2026-11-01: the monthly sweep's `mna_filter_accuracy_review` crashed — main() set
+    `_released_same_day` on the rows asyncpg returned, and a Record is read-only. It only bites once a
+    suppressed name is released by the 09:35 price the same day (the #692 timing ruling, live since
+    10-05), which is why the October sweep passed. The fake returns read-only mappings like a Record."""
+    import asyncio
+    import types
+    from datetime import date
+    from unittest.mock import MagicMock, AsyncMock
+    from scripts import mna_filter_accuracy_review as m
+    from agents.market_intelligence import db
+    from agents.market_intelligence.audit_events import MNA_FILTER_FIRED, MNA_FILTER_RELEASED
+
+    day = date(2026, 10, 20)
+    base = dict(ticker="XYZ", fire_day=day, detail="d", open_price=10.0, low_price=9.0, peak_high=13.0,
+                pk_vs_open=30.0, pk_vs_low=44.4)
+    fired = types.MappingProxyType(dict(base, detail_full='{"role": "target"}'))
+    released = types.MappingProxyType(dict(base, detail_full='{"pin_release": {"answer": {}}}'))
+
+    async def _fetch(sql, event_type, *a):
+        return {MNA_FILTER_FIRED: [fired], MNA_FILTER_RELEASED: [released]}.get(event_type, [])
+    conn = MagicMock(); conn.fetch = AsyncMock(side_effect=_fetch)
+    cm = MagicMock(); cm.__aenter__ = AsyncMock(return_value=conn); cm.__aexit__ = AsyncMock(return_value=None)
+    pool = MagicMock(); pool.acquire = MagicMock(return_value=cm)
+
+    async def _pool():
+        return pool
+    monkeypatch.setattr(db, "get_pool", _pool)
+    assert asyncio.run(m.main(35)) == 0
+    assert "RELEASED later that day" in capsys.readouterr().out

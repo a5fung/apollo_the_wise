@@ -43,7 +43,9 @@ async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int,
     # hygiene). A container restart re-fires the same audit event, and the prior
     # `DISTINCT ... , detail` kept each as a separate row (RGTI ×5 in the 6/20
     # smoke) → duplicate surfacing inflates the digest. Keep the most recent detail.
-    return await conn.fetch(f"""
+    # Plain dicts, not asyncpg Records: main() marks a suppression the 09:35 price released the same day
+    # (`_released_same_day`), and a Record is read-only — the 11-01 monthly sweep crashed on the first such row.
+    rows = await conn.fetch(f"""
         WITH fires AS (
             SELECT DISTINCT ON ({ticker_expr}, (created_at AT TIME ZONE 'America/New_York')::date)
                 {ticker_expr} AS ticker,
@@ -69,6 +71,7 @@ async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int,
         ) w ON true
         ORDER BY pk_vs_open DESC NULLS LAST
     """, event_type, str(lookback_days), summary_like)
+    return [dict(r) for r in rows]
 
 
 def _answer(detail_full) -> str:
