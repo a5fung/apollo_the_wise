@@ -531,3 +531,25 @@ async def test_funnel_4a_runs_before_4b_so_the_open_rule_names_the_refusal(monke
 def test_humanize_renders_the_new_reason():
     out = humanize(f"{SETUP_OPEN_BELOW_GAP_FLOOR}: 09:30 open $291.11 < floor $291.71")
     assert out.startswith("Opened below the gap floor (") and "setup:" not in out
+
+
+@pytest.mark.parametrize("call", ["state", "prev"])
+def test_the_db_readers_forward_the_bound_to_asyncpg(monkeypatch, call):
+    """Advisor, simplify review 2026-10-31: stage 4a hands `timeout=` to `db.get_safeguard_state` and
+    `db.get_prev_close`; this pins that both forward it to asyncpg's acquire AND query (#621). WOULD-FAIL-IF
+    either `timeout=timeout` were dropped — the pipeline tests above would stay green while the read ran
+    unbounded."""
+    from agents.market_intelligence import db
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetchrow = AsyncMock(return_value=None)
+
+    async def _pool():
+        return pool
+    monkeypatch.setattr(db, "get_pool", _pool)
+    if call == "state":
+        asyncio.run(db.get_safeguard_state("magna53_open_below_floor", "global", timeout=5.0))
+    else:
+        asyncio.run(db.get_prev_close("CEG", date(2026, 10, 6), timeout=5.0))
+    pool.acquire.assert_called_once_with(timeout=5.0)
+    assert conn.fetchrow.await_args.kwargs == {"timeout": 5.0}
