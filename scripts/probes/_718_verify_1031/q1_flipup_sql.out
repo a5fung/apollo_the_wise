@@ -1,0 +1,17 @@
+SET
+PREPARE
+== REGN 2026-10-30 (expect 1 row)
+created_at|summary|detail
+2026-10-30 13:35:03.175519+00|REGN rt 11.6% ≥9 > delayed 6.7% @ 09:35 ET|{"ticker": "REGN", "rt_gap": 11.65, "delayed_gap": 6.68, "tick_et": "09:35", "authoritative": true}
+(1 row)
+== REGN 2026-10-29 (expect 0 rows)
+created_at|summary|detail
+(0 rows)
+== CEG 2026-10-06 (a studied flip-up, expect 1 row)
+created_at|summary|detail
+2026-10-06 12:25:01.270937+00|CEG rt 9.2% ≥9 > delayed 7.5% @ 08:25 ET|{"ticker": "CEG", "rt_gap": 9.18, "delayed_gap": 7.47, "tick_et": "08:25", "authoritative": true}
+(1 row)
+== population cross-check: HIGH alerts since 2026-08-02 that the SQL marks flip-up admitted (the study read 51)
+count
+51
+(1 row)
