@@ -2744,3 +2744,10 @@ Rulings recorded: (1) the GKOS fix (#712) and breakout v1's nightly list deploy 
 > "that doesn't make sense, that means our buy point is below the 10% gap range which then defeats the 10% range" (2026-10-30, on REGN — the catch that opened #715)
 
 Rulings recorded: (1) breakout v1 — a decided session-3 third that did not sell is retried at the next close; a part-filled +2R order counts as the third; the after-hours stop lower ships unproven (SSoT `docs/setups/consolidation_breakout.md`). (2) EP — a real-time flip-up whose 09:30 open is below the gap floor is skipped (#718, built shadow-first per CHANGE_PROCESS; the flip to acting is his). (3) EP score — the float points stay for now (re-read 2026-11-21); neglect is no longer tested with price / volume bars. (4) #655's parent pass is left as it is (79 pairs read by eye, none missed).
+
+
+## 2026-11-01 — the way to learn breakouts: study thousands of big winners (operator, verbatim)
+
+> "Ok. We can also table looking at the biggest winners over that period, of which how many fit our criteria vs those that don't, and of those that do is there some common features, etc. At the end of the day we're doing what qullamaggie says to do, study 1000s of winners, patterns and internalize what big winners look like." (2026-11-01, after the breakout v1 paper-baseline replay read FAIL and two follow-up tests were proposed — the slot order and a minimum stop)
+
+Recorded: (1) his "Ok" to the two follow-up tests on the frozen 2017-2024 replay (fill the 5 slots by a different order than strongest-first; skip trades whose stop is under 10 cents below the buy), each rule chosen on 2017-21 and judged on 2022-24 only. (2) A NEW study: the biggest winners of 2017-2024 — how many fit breakout v1's criteria and how many do not (and which rule kept each one out), and what the ones that fit have in common. (3) The frame, Qullamaggie's own method: study thousands of winners and their patterns until what a big winner looks like is internalized — the work is learning from winners, not only scoring a rule set.
