@@ -129,3 +129,19 @@ def test_every_pending_review_would_be_evaluated():
         f"{len(dropped)} of {len(pending)} pending reviews would be silently dropped, including: "
         f"{', '.join(dropped[:5])}"
     )
+
+
+def test_a_deferred_review_is_due_on_its_own_deferral_date():
+    """2026-11-01: three deferred reviews hit their 11-01 date and the weekly review listed them ripe while
+    operator_asks (reading `pending` only) showed none. A deferral whose date has arrived is due work."""
+    from scripts.operator_asks import _due_deferred
+    reviews = [
+        {"review_id": "a", "status": "deferred", "deferred_until": "2026-11-01", "deferred_reason": "off the EP path"},
+        {"review_id": "b", "status": "deferred", "earliest_review_date": "2026-10-31"},   # no deferred_until
+        {"review_id": "c", "status": "deferred", "deferred_until": "2026-11-02"},          # not yet
+        {"review_id": "d", "status": "deferred"},                                          # undated: never due here
+        {"review_id": "e", "status": "pending", "deferred_until": "2026-10-01"},           # not deferred
+    ]
+    got = _due_deferred(reviews, "2026-11-01")
+    assert [line.split(":")[0] for line in got] == ["a", "b"]
+    assert "off the EP path" in got[0] and "DEFERRAL DATE REACHED (2026-11-01)" in got[0]

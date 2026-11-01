@@ -1,0 +1,32 @@
+SET
+count
+26
+(1 row)
+d|summary
+2026-08-03|L2 cooldowns_per_day
+2026-08-05|L2 9m_alerts_per_day
+2026-08-05|L2 cooldowns_per_day
+2026-08-06|L2 9m_alerts_per_day
+2026-08-06|L2 theme_count_active
+2026-08-07|L2 9m_alerts_per_day
+2026-08-07|L2 market_hours_boot_count
+2026-08-12|L2 cooldowns_per_day
+2026-08-17|L2 cooldowns_per_day
+2026-08-19|L2 9m_alerts_per_day
+2026-08-21|L2 cooldowns_per_day
+2026-08-21|L2 theme_count_active
+2026-08-24|L2 theme_count_active
+2026-08-25|L2 theme_count_active
+2026-08-26|L2 cooldowns_per_day
+2026-08-26|L2 theme_count_active
+2026-08-27|L2 theme_count_active
+2026-08-31|L2 cooldowns_per_day
+2026-09-01|L2 cooldowns_per_day
+2026-09-02|L2 cooldowns_per_day
+2026-09-08|L2 9m_alerts_per_day
+2026-09-09|L2 cooldowns_per_day
+2026-09-11|L2 cooldowns_per_day
+2026-10-05|L2 cooldowns_per_day
+2026-10-15|L2 cooldowns_per_day
+2026-10-21|L2 cooldowns_per_day
+(26 rows)

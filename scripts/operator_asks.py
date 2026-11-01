@@ -76,10 +76,11 @@ def _gated_reviews_ready() -> list[str]:
     # in the usual direction — toward a shorter list and a quieter morning.
     # Every pending review is evaluated now. `--audit` always did (it uses _load_reviews).
     pending = [r for r in d.get("reviews", []) if r.get("status") == "pending"]
-    if not pending:
-        return [], [], None
-
     today = _operator_today()
+    due_deferred = _due_deferred(d.get("reviews", []), today)
+    if not pending:
+        return due_deferred, [], None
+
     # ONE ssh + ONE psql for every predicate, not one per review (the capture-once cost rule).
     numbered = [(i, r) for i, r in enumerate(pending) if _has_predicate(r)]
     counts, err = _run_predicates(numbered)
@@ -131,7 +132,25 @@ def _gated_reviews_ready() -> list[str]:
         else:
             accruing.append(f"{rid}: NO predicate_sql and not a dated cadence review — it cannot "
                             f"become ready on its own. Give it a predicate or close it.")
-    return ready, accruing, err
+    return ready + due_deferred, accruing, err
+
+
+def _due_deferred(reviews: list, today: str) -> list[str]:
+    """A DEFERRED review whose own deferral date has arrived is due work too (2026-11-01: three of them —
+    catalyst_discovery_loop_sequencing, l2_baseline_window_trending_metrics, theme_clustering_coherence_guard —
+    hit their 11-01 date; the 11-01 weekly review listed them ripe while this tool, reading `pending` only, showed
+    none). The date is `deferred_until`, else `earliest_review_date`; an undated deferral is never due here.
+    Its first step is mine: re-check the deferral reason, then run it or re-park it with the reason."""
+    out = []
+    for r in reviews:
+        if r.get("status") != "deferred":
+            continue
+        until = str(r.get("deferred_until") or r.get("earliest_review_date") or "")
+        if until and until <= today:
+            out.append(f"{r.get('review_id')}: ⚠ DEFERRAL DATE REACHED ({until}) — re-check its deferral "
+                       f"reason, then RUN it or re-park it with the reason (my work; his only if the reason "
+                       f"names him). Reason: {str(r.get('deferred_reason') or '(none)').strip()[:90]}")
+    return out
 
 
 def _zero_line(rid: str, r: dict, got: int, thr, earliest: str, stale: int) -> str:

@@ -313,11 +313,11 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 17:55 ET (`scripts/probes/_bv1_first_night_1030/q1.out`): `breakout_v1_list_run` written, **27 names** on the list of a 4,097-name RS pool (2,814 listable, 2,801 with history), every stored row's gates all pass, the paper-chat message sent; 17:00 stored Polygon names for 13,257 of 14,202 security rows; funds kept 39, excluded 15 (leveraged / inverse 8, basket 4, two underlyings 2, no known underlying 1; 0 for a missing name); ZCSH listed (rank 2, rs 99.9). Gate fails: rs 2,654 · prior move 2,026 · surf 1,872 · breakdown 995 · tightening 960 · higher lows 791.
 ⚠ **THE EXPECT'S "about 4 names a night" WAS WRONG — corrected, not a defect of the build:** the 2020 check's ~3.7 a night counted FIRES (the watch night's gates AND the next session's level break on 1.2x volume); this table is the WATCH LIST — the setups that could break out next session — so it runs several times the fire count. A second, smaller push: ruling (a)'s pool carries ~1,500 rank-only funds/ETFs today (vs ~550 in the 2020 data), so stocks clear 98 slightly more easily. Re-read the count with the fires once the paper entry (phase 2) runs; the ceiling question goes to him only if the list is too long to grade.
 
-### 2026-10-29 — breakout v1 PHASE 2 BUILT (the paper buy + the pp exit) — MERGED to main 2026-10-31 (`c4ebc727`; deploy on his go, then this heading reads DEPLOYED) — his three rulings applied (the stop at the fill; only a third that FILLED counts; the unfilled +2R third cancelled and sold on session 3, the stop held until a third sells)
+### 2026-10-29 — breakout v1 PHASE 2 BUILT (the paper buy + the pp exit) — MERGED to main 2026-10-31 (`c4ebc727`) — DEPLOYED 2026-10-31 on his "Allow deploy" (server `17853040`, `both` then `execution`, DEPLOY OK x2, 0 tracebacks; #717, first paper buys Mon 11-02) — his three rulings applied (the stop at the fill; only a third that FILLED counts; the unfilled +2R third cancelled and sold on session 3, the stop held until a third sells)
 
 The two builders' entries follow as written (entry, then exit), after a four-lens review and one fix round (13,140 passed). Deploys only after the main loop's own read of the shared-code diffs.
 
-**HIS RULINGS 2026-10-29 ("Go with rec" — verbatim: `docs/methodology/operator_shared_notes.md`, the last entry), BUILT on the branch the same day (not deployed):**
+**HIS RULINGS 2026-10-29 ("Go with rec" — verbatim: `docs/methodology/operator_shared_notes.md`, the last entry), BUILT on the branch the same day — DEPLOYED 2026-10-31 with phase 2 (server `17853040`, #717):**
 
 **(1) THE STOP AT THE FILL** (answers reading 2 of part A). One minute after a fill — the first `breakout_v1_entry` tick whose last completed minute is the fill minute (the BROKER's fill time; the row's `filled_at` is the stream's clock) — the TRUE low of the day through the fill minute is read from the minute bars:
 - `cb._finish_entry`'s width rule fails on it — (fill − true low) > ADR20 × fill, on the raw low — → the WHOLE position is sold at once (paper, market: `order_manager.execute_full_exit`, reason `setup:stop_too_wide_after_fill`), paged paper-prefixed;
@@ -402,9 +402,9 @@ SELECT o.alpaca_order_id, o.side, o.order_type, o.stop_price, o.status, o.purpos
 ```
 (The broker side of the re-price check: the paper account's open orders for the ticker — one parent, its stop leg at the row's `stop_price`. The stop at the fill: one `breakout_v1_fill_stop_checked` row per filled trade in the audit query above; for a `lowered` one, `get_order(stop_order_id)` at the broker reads the row's `stop_price`, and the day's minute low through the fill minute (from the broker's `filled_at`) re-derives it.)
 
-Deploy scope: `execution` FIRST (broker/*, `trade_stream.py`, `scheduler.py`, `db.py` run on apollo-execution), then `both` (`db.py`, `agent.py`, `sell_discipline.py`, `strategies/adapters.py`). Ships with part B (the exit), never alone. Not deployed.
+Deploy scope: `execution` FIRST (broker/*, `trade_stream.py`, `scheduler.py`, `db.py` run on apollo-execution), then `both` (`db.py`, `agent.py`, `sell_discipline.py`, `strategies/adapters.py`). Ships with part B (the exit), never alone. DEPLOYED 2026-10-31 with part B in that order (server `17853040`, #717).
 
-### 2026-10-30 — Breakout v1 PAPER, phase 2 part B: the `pp` exit on the paper book (BUILT, not deployed)
+### 2026-10-30 — Breakout v1 PAPER, phase 2 part B: the `pp` exit on the paper book (BUILT; DEPLOYED 2026-10-31 with part A, server `17853040`, #717)
 
 **What.** Every `breakout_v1` row (stamped `exit_rule = 'breakout_pp'` at insert, part A) now runs his `pp` arm live, on the
 PAPER book only. No rule moved: the definition is `consolidation_breakout_pp.walk_pp` (arm `pp`), and the live decisions are
