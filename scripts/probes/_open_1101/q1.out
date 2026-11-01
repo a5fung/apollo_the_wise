@@ -1,0 +1,35 @@
+SET
+== 314 nightly runs since 10-24
+d|count|max
+2026-10-26|1|2026-10-26: armed 0, rejected 0, triggered 0, settled 0, closed 0, deferred 0, errors 0 (0 episode(s) open going in)
+2026-10-27|1|2026-10-27: armed 0, rejected 0, triggered 0, settled 0, closed 0, deferred 0, errors 0 (0 episode(s) open going in)
+2026-10-28|1|2026-10-28: armed 0, rejected 0, triggered 0, settled 0, closed 0, deferred 0, errors 0 (0 episode(s) open going in)
+2026-10-29|1|2026-10-29: armed 0, rejected 0, triggered 0, settled 0, closed 0, deferred 0, errors 0 (0 episode(s) open going in)
+2026-10-30|1|2026-10-30: armed 0, rejected 0, triggered 0, settled 0, closed 0, deferred 0, errors 0 (0 episode(s) open going in)
+(5 rows)
+== 314 errors / disabled since 10-24
+event_type|count
+(0 rows)
+== 314 candidates since 10-24 by stage
+scan_date|stage|count
+2026-10-26|unqualified|6
+2026-10-27|unqualified|8
+2026-10-28|unqualified|7
+2026-10-28|watch|1
+2026-10-29|unqualified|7
+2026-10-29|watch|1
+2026-10-30|unqualified|6
+2026-10-30|watch|1
+(8 rows)
+== 314 any climax ever since 10-17, and arm rows
+climax
+0
+(1 row)
+arm_rows
+0
+(1 row)
+== 482 counterfactual population
+ERROR:  column "fill_date" does not exist
+LINE 1: ...e_id) AS trades, COUNT(DISTINCT arm) AS arms, MIN(fill_date)...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "mi_live_fill_counterfactuals.fill_day".

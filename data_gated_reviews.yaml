@@ -1246,7 +1246,7 @@ reviews:
     # sat unnamed - #486) would decorate the dashboard with a number the ruling says cannot
     # stand. Parked behind the #486 theme-naming work like its sibling; not closed, because the
     # column is still wanted once the engine is fixed.
-    earliest_review_date: 2026-11-01
+    earliest_review_date: 2026-11-22   # re-checked 2026-11-01: the 09-07 ruling still holds (themes are not judged on returns while the engine is mid-repair; #655 / #644 open) -> re-dated, nothing built
     added_on: 2026-04-29
     action_when_ready: |
       FIRST check the 2026-09-07 ruling still holds (themes not judged on returns until the
@@ -6002,8 +6002,19 @@ reviews:
       engine that mislabeled the drone/software cohorts as theme-less. The CLEAN forward
       evidence is rows AFTER that fix promotes from shadow; pre-promotion rows carry
       contaminated theme labels. Data quality here is gated on the ADR-0007 promotion.
+    can_fire:
+      predicate_runs: "2026-11-01 (OPEN, operator_asks.py): the predicate runs against prod and reads 174 HIGH alerts with a
+        settled 10-day outcome since 2026-06-02."
+      nonzero_possible: "mi_ep_alerts (HIGH) joined to mi_ep_scan_outcomes.fwd_10d_pct; 174 rows on 2026-11-01."
+      lane_live: "MAGNA53 EP alerts accrue on every market day; outcomes settle 10 sessions later."
+      threshold_vs_observed: "40 against 174 - the count gate is long met; the binding gate is the date + the 09-07 ruling."
+      era_scoped: "Theme labels on these rows come from an engine mid-repair (#486 / #655 / #644); the split is only valid on
+        rows labelled by the repaired engine, which is why it is parked, not re-run."
+      population_actionable: "Not yet: a lift read on today's labels would be a baseline, never a weight change (and a
+        scoring weight is THE LINE either way)."
+      instrument_trusted: "The join is trusted; the theme membership it splits on is the instrument still changing."
     status: pending   # ⛔ RE-OPENED 2026-09-07 within the hour — the operator: "we are in middle of theme work, this is premature." He is right and this was my error twice in one day: his 2026-09-07 ruling is *"getting themes right and returns are separate things for now"*, and I ran a RETURNS judgement of themes while the theme engine is mid-repair, then marked the question closed. #486 measured the same day that we name a theme a median 30 sessions after its first signal and that 140 of 398 themes sat unnamed in a correlation cluster — so TODAY'S themed cohort is not the cohort a fixed engine would produce, and no returns verdict taken on it can stand. DO NOT RE-RUN until the theme naming work lands and a themed cohort exists that reflects it. The measurement below is kept as a BASELINE to compare against afterwards, not as an answer.
-    earliest_review_date: 2026-11-01   # parked behind the #486 theme-naming work (operator 2026-09-07)
+    earliest_review_date: 2026-11-22   # re-checked 2026-11-01: still parked — the 09-07 ruling holds (theme ecosystem work #655 / #644 open, no themed cohort reflecting the repaired engine yet); not re-run
     regated_on: 2026-08-06
     regate_kind: date
     regate_reason: >-
@@ -11436,7 +11447,7 @@ reviews:
       instrument_trusted: "mi_sell_discipline_records.peak_r (recorder-written from stored bars,
         the same source the 08-17 read used) joined to mi_live_trades.regime on trade_id.
         Verified 2026-09-19: 30 of 30 live magna53 records join, 30 carry a regime stamp."
-    earliest_review_date: 2026-09-15
+    earliest_review_date: 2026-12-01   # RECURRING: read 2026-10-31 (resolution_2026_10_31); next when the non-Bull cells have grown (~1 non-Bull winner a month) - it re-fired every session because this date never moved
     status: pending
     action_when_ready: |
       Re-run the per-regime tail comparison on the larger cohort, SEGMENTED BY EXIT
@@ -12989,6 +13000,10 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_11_01: >-
+      CHECKED 2026-11-01 (Sun OPEN, prod read-only, scripts/probes/_open_1101/q3.out): mi_alert_rank_shadow and mi_ep_alerts
+      both end 2026-10-30 - no new out-of-sample session since the 10-31 run (a weekend), so nothing can move. n = 32;
+      the 10-31 reading stands (does not validate by the registered rule). Next movement: the next session with a pool of 2+.
     resolution_2026_10_31: >-
       RAN 2026-10-31 (main loop, read-only, the pinned SQL unchanged from 10-29 + the same scorer,
       scripts/probes/_review_1031/alert_rank/verify_rank_shadow_2026-10-31.out, cells_2026-10-31.out). n = 32 sessions (new:
