@@ -1,0 +1,9 @@
+[ok] era A: ticker_facts == live per-name arithmetic on 11,801 sampled bars of 300 tickers (0 differences)
+[ok] era A night 2018-07-03: night_members == scan_members — 2832 members vs 2832 live, 0 member differences, count differences none
+[ok] era A night 2017-08-24: night_members == scan_members — 2552 members vs 2552 live, 0 member differences, count differences none
+[ok] era A night 2017-10-23: night_members == scan_members — 2594 members vs 2594 live, 0 member differences, count differences none
+[ok] era B: ticker_facts == live per-name arithmetic on 11,809 sampled bars of 300 tickers (0 differences)
+[ok] era B night 2023-06-22: night_members == scan_members — 3131 members vs 3131 live, 0 member differences, count differences none
+[ok] era B night 2023-09-06: night_members == scan_members — 2965 members vs 2965 live, 0 member differences, count differences none
+[ok] era B night 2023-12-04: night_members == scan_members — 3041 members vs 3041 live, 0 member differences, count differences none
+PARITY COMPLETE: 0 differences

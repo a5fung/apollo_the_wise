@@ -1,0 +1,42 @@
+[ok] fill at the level (ORH5 10.10 > list 10.00), stop = day low 9.90, kept
+[ok] never filled -> cancelled 15:55 window:breakout_unfilled_eod
+[ok] too wide at 09:35 -> abstain setup:stop_too_wide, no order
+[ok] a new low widens past ADR while resting -> cancelled setup:stop_too_wide at the next tick
+[ok] volume pace lapses (F1) while resting -> cancelled setup:breakout_volume_below_curve at the tick after minute 122 (minute 123)
+[ok] F1 never permits -> never placed (holds every tick)
+[ok] a flush inside the fill minute -> the stop LOWERED to the true low 9.80 one minute after
+[ok] the true low too wide -> the whole position sold at minute 8's open (setup:stop_too_wide_after_fill)
+[ok] #500: price already past the level when F1 first permits (tick 30) -> limit fallback at 10.32, refused by the 1.5x chase cap
+[ok] #500: the limit fallback (10.32) fills at the next bar's open 10.30 inside the chase cap; placed and filled at minute 30
+[ok] a new day low while resting re-prices the stop (9.90 -> 9.85) before the fill
+[ok] a bar opening between the level and the limit fills at its open (10.15)
+[ok] a bar opening above the limit 10.15 leaves the triggered limit resting; filled at the limit when a later low reaches it
+[ok] +2R third at the target on session 2, stop to the fill, one third ever, the trail sells the rest at session 7's open: R +0.800
+[ok] the session-3 third at the close (above the fill), then the stop rests at the fill and takes the rest on session 4: R +0.200
+[ok] session 3 closes under the fill: NO third (his rule), the 20-day trail (live from 3) sells all at session 4's open: R +0.400
+[ok] the stall cut: no high at fill + 1R by the close of session 3 -> all sold at that close: R +0.400
+[ok] a gap under the stop books the open (worse than -1R): R -1.500
+[ok] a bar touching the stop AND the target that opened under the target books the stop, no third: R -1.000
+[ok] the same bar opened above the target: the third at the open, then the stop: R +0.0667
+[ok] day 0: a +2R third on the minutes, then the stop at cost takes the rest the same day: R +0.667
+[ok] retry_decision returns 'retry_third' on a due flag with no third sold (live path exists), None once a third sold
+[ok] the 2c cost row: +0.800 -> +0.760 (2c on the entry and on each exit leg; the stop_to event carries no shares)
+[ok] the cap: 5 of 6 same-minute names admitted in rank order (a blocked name holds no slot); a cancel frees its slot the same day; an exit at today's open frees the slot before the first tick; 2 carried + 3 new = 5 admitted
+[ok] the cap: a 4th day-3 name (2 carried + 4 new) is the 6th slot -> blocked
+[ok] the ticker guard: a held name blocks its re-buy (01-06, 01-10 end-of-day) and frees on 01-13; a day-0 exit does not block the next day; a trail sale at the open frees before the first tick; 2/3 remaining still blocks
+[ok] a degraded / censored walk frees its slot at its last bar: the 6th name blocked on that day, admitted the day after
+[ok] a cancel at tick m frees the slot only for LOWER-ranked names placed at m (list order): rank 2 blocked, rank 7 admitted, rank 8 blocked
+[ok] a day-0 stop at minute 50 frees its slot from minute 51: the 6th name at tick 50 blocked, at tick 51 admitted
+[ok] the adverse fill-minute row: a fill bar low under the placed stop is flagged (case 5) and not otherwise (case 1); R -1.000/-1.133 (0c/2c) primary vs -1.000/-1.200 adverse at the placed stop; f = 0.2 x 2.97% = 0.0059
+[ok] risk fractions: 10%-wide stop -> 0.02 (the 2% cap), 3%-wide -> 0.006 (the 20% notional cap binds)
+[ok] the daily-loss limit: one full-size -1R stop (daily bar, from the first tick) blocks the rest of that day and not the next; a day-0 stop at minute 100 blocks tick 101 not tick 50; a 0.6%-risk loss trips nothing
+[ok] the breaker's cooldown is one SESSION of the calendar, not of the placement days: no placement on 2020-02-18, a placement on 2020-02-19 two sessions after the 10th loss's close is admitted
+[ok] the circuit breaker: 10 straight losses -> blocked on the 10th loss's day (2020-02-17) and the next session, admitted on 2020-02-19; a partial profit inside the window breaks the streak
+[ok] the coverage rule: held 2, unfetchable 1, missing 1 -> refuses twice (a missing row; 1 of 4 over the 2% bound); 100 unfetchable of 100 -> refuses on the bound
+[ok] the decisive cutoff: the last E whose 120-session walk plus the trail's next open fits before the data's end (index 78 of 200)
+[ok] the raw-close loader: a clean pull loads (2 rows); a row dated 2025 refuses; a sidecar naming another request refuses
+[ok] fuzz: 600 random day-0 + daily paths, the stepper == walk_pp event for event: {'stopped_day0': 314, 'stopped': 186, 'trailed': 46, 'time_exit': 47, 'degraded': 7}
+[ok] no look-ahead in the entry loop on random days: {'placement_checked': 41, 'cancel_checked': 11, 'cancelled': 11, 'abstain': 19, 'filled': 30}
+[ok] breakout_pp_rules.day0_facts == consolidation_breakout_pp.day0_facts on 200 random minute days
+[ok] calibration written: /Users/alvinfung/apollo_the_wise/scripts/probes/_breakout_v1_replay_1101/out/calibration.txt
+DRY RUN COMPLETE: 37 hand-computed cases, 0 failed
