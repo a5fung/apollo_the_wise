@@ -6102,7 +6102,7 @@ async def update_ep_alert_judge_result(
             rubric_version, judge_grade, judge_grade_reason, judge_tier_reason)
 
 
-async def get_safeguard_state(safeguard: str, account_mode: str) -> "Any | None":
+async def get_safeguard_state(safeguard: str, account_mode: str, timeout: float | None = None) -> "Any | None":
     """Generic `mi_safeguard_state` row read by (safeguard, account_mode) PK — #348.
     Returns the FULL row (every column: state, last_transition_at,
     last_evaluation_at, last_drawdown_pct, last_peak, last_peak_date, updated_at)
@@ -6116,11 +6116,14 @@ async def get_safeguard_state(safeguard: str, account_mode: str) -> "Any | None"
     at all — an uncaught propagate). Baking a direction in here would be WRONG
     for at least one of them; a raw DB error must surface to the caller exactly
     as a raw `conn.fetchrow()` call would."""
+    # `timeout` (2026-10-31, #718's 09:31 read): asyncpg's OWN bound on the acquire and the query — never an
+    # external asyncio.wait_for around a pooled call (#621, broker/order_manager.py's DB-timeout note). None
+    # (every existing caller) = no bound, exactly as before.
     pool = await get_pool()
-    async with pool.acquire() as conn:
+    async with pool.acquire(timeout=timeout) as conn:
         return await conn.fetchrow(
             "SELECT * FROM mi_safeguard_state WHERE safeguard = $1 AND account_mode = $2",
-            safeguard, account_mode)
+            safeguard, account_mode, timeout=timeout)
 
 
 async def get_all_safeguard_states(conn: Any = None) -> list[Any]:
@@ -6568,7 +6571,7 @@ async def get_runtime_toggle(name: str, env_var: str, default: bool = True) -> b
     return val
 
 
-async def get_prev_close(ticker: str, before_date) -> "float | None":
+async def get_prev_close(ticker: str, before_date, timeout: float | None = None) -> "float | None":
     """Settled previous close for `ticker` strictly BEFORE `before_date` (Polygon-sourced
     `mi_daily_closes`). None when we have no prior bar — callers MUST treat that as "cannot judge"
     and fail open, never as zero.
@@ -6582,13 +6585,14 @@ async def get_prev_close(ticker: str, before_date) -> "float | None":
     `trade_date < $2` (not `= last_trading_day`) so holidays and data gaps degrade to the most
     recent real bar instead of returning None.
     """
+    # `timeout`: asyncpg's own bound (see get_safeguard_state); None = unbounded, as before.
     pool = await get_pool()
-    async with pool.acquire() as conn:
+    async with pool.acquire(timeout=timeout) as conn:
         row = await conn.fetchrow("""
             SELECT close FROM mi_daily_closes
             WHERE ticker = $1 AND trade_date < $2 AND close > 0
             ORDER BY trade_date DESC LIMIT 1
-        """, ticker, before_date)
+        """, ticker, before_date, timeout=timeout)
     return float(row["close"]) if row and row["close"] is not None else None
 
 

@@ -314,7 +314,7 @@ OPEN_FLOOR_TOGGLE = "magna53_open_below_floor"
 OPEN_FLOOR_MODES = ("shadow", "on", "off")
 OPEN_FLOOR_DEFAULT_MODE = "shadow"
 # Each DB read on this stage is bounded (the #621 posture): the stage sits on the 09:31 money path.
-OPEN_FLOOR_READ_TIMEOUT_S = 5.0
+OPEN_FLOOR_READ_TIMEOUT_S = 5.0  # asyncpg's own timeout= on the acquire and the query (#621) — never asyncio.wait_for around a pooled call
 
 # "Admitted by the real-time flip-up" = the study's population test, VERBATIM
 # (`scripts/probes/_regn_1030/q3_flipups.sql`, re-run as `c1_population.sql` POPCOUNT): a
@@ -342,8 +342,7 @@ async def get_open_floor_mode() -> str:
     `scripts/live_rules.py::discover_runtime_toggles` sees the toggle. Flip SQL is in the SSoT."""
     try:
         from agents.market_intelligence.db import get_safeguard_state
-        row = await asyncio.wait_for(
-            get_safeguard_state("magna53_open_below_floor", "global"), OPEN_FLOOR_READ_TIMEOUT_S)
+        row = await get_safeguard_state("magna53_open_below_floor", "global", timeout=OPEN_FLOOR_READ_TIMEOUT_S)
     except Exception as e:  # loud-ok: fail toward shadow — never toward a block (see module note)
         logger.warning(f"{OPEN_FLOOR_TOGGLE} toggle read failed → '{OPEN_FLOOR_DEFAULT_MODE}': {e}")
         return OPEN_FLOOR_DEFAULT_MODE
@@ -360,12 +359,9 @@ async def find_flip_up_admission(ticker: str, alert_date: date) -> dict | None:
     was NOT admitted by the flip-up. Returns {tick_et, rt_gap, delayed_gap, authoritative,
     created_at} parsed from the row's JSON detail (each None when absent). Raises on a DB error or
     the timeout — the caller fails open."""
-    async def _read():
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            return await conn.fetchrow(FLIP_UP_ADMISSION_SQL, ticker, alert_date)
-
-    row = await asyncio.wait_for(_read(), OPEN_FLOOR_READ_TIMEOUT_S)
+    pool = await get_pool()
+    async with pool.acquire(timeout=OPEN_FLOOR_READ_TIMEOUT_S) as conn:
+        row = await conn.fetchrow(FLIP_UP_ADMISSION_SQL, ticker, alert_date, timeout=OPEN_FLOOR_READ_TIMEOUT_S)
     if not row:
         return None
     out = {"tick_et": None, "rt_gap": None, "delayed_gap": None, "authoritative": None,
@@ -418,12 +414,11 @@ async def check_flip_up_open_floor(
         if flip is None:
             return True, None      # not admitted by the flip-up — the rule is not read
         tick_et = flip.get("tick_et") or "?"
-        # Bounded like the two reads above it (review fix, 2026-10-31: this was the one read the
-        # SSoT called "bounded" that was not — `get_pool()` sets no acquire/command timeout, so a
-        # stalled Postgres held the 09:31 money path here for as long as it took). A TimeoutError
-        # is an Exception → the outer handler → the entry proceeds. The audit writes below are
-        # already 5 s-bounded and never raise (`db.log_audit_event`, #621).
-        prev_close = await asyncio.wait_for(get_prev_close(ticker, alert_date), OPEN_FLOOR_READ_TIMEOUT_S)
+        # Bounded like the two reads above it, by asyncpg's own acquire + query `timeout=` (#621 —
+        # never an external wait_for around a pooled call, which can hand a cancelled connection back
+        # to the pool). A TimeoutError is an Exception → the outer handler → the entry proceeds. The
+        # audit writes below are already 5 s-bounded and never raise (`db.log_audit_event`, #621).
+        prev_close = await get_prev_close(ticker, alert_date, timeout=OPEN_FLOOR_READ_TIMEOUT_S)
         open_px = None
         try:
             open_px = float(orb_bar["open"]) if orb_bar and orb_bar.get("open") is not None else None

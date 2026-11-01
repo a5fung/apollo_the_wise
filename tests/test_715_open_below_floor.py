@@ -71,7 +71,7 @@ def _wire_rule(monkeypatch, *, mode="shadow", flip=FLIP, prev_close=CEG["prev_cl
             raise RuntimeError("audit log down")
         return flip
 
-    async def _prev(ticker, before_date):
+    async def _prev(ticker, before_date, timeout=None):
         spies.prev += 1
         if prev_raises:
             raise RuntimeError("daily closes down")
@@ -299,26 +299,23 @@ def test_fails_open_when_any_read_raises(monkeypatch, kw):
     assert SETUP_OPEN_BELOW_GAP_FLOOR not in " ".join(_events(audit))
 
 
-def test_a_hanging_prev_close_read_is_cut_at_the_stage_timeout_and_fails_open(monkeypatch):
-    """Review fix 2026-10-31: the prev-close read was the one DB read in stage 4a NOT wrapped in
-    `asyncio.wait_for` while the SSoT said "each read is bounded (5 s)". WOULD-FAIL-IF the wrap were
-    missing: the stage would sit on the sleeper for its full 10 s, so the test's OWN 1 s bound
-    raises TimeoutError instead of the stage returning. With the wrap the stage returns (True, None)
-    in ~10 ms — the read was entered (spy = 1), nothing was skipped, no audit row was written (the
-    timeout lands in the outer handler, like any other exception)."""
+def test_the_prev_close_read_carries_the_stage_timeout_and_a_timeout_fails_open(monkeypatch):
+    """Simplify review 2026-10-31: the 4a reads are bounded by asyncpg's OWN `timeout=` (#621), never an
+    external asyncio.wait_for around a pooled call. The read is handed the stage's bound, and when that bound
+    fires (asyncpg raises TimeoutError) the stage fails open: (True, None), nothing skipped, no audit row."""
     audit, spies = _wire_rule(monkeypatch, mode="on")
+    seen = []
 
-    async def _hang(ticker, before_date):
+    async def _times_out(ticker, before_date, timeout=None):
         spies.prev += 1
-        await asyncio.sleep(10)
+        seen.append(timeout)
+        raise asyncio.TimeoutError
 
-    monkeypatch.setattr("agents.market_intelligence.db.get_prev_close", _hang)
-    monkeypatch.setattr(ep, "OPEN_FLOOR_READ_TIMEOUT_S", 0.01)
+    monkeypatch.setattr("agents.market_intelligence.db.get_prev_close", _times_out)
     ctx = {"ticker": CEG["ticker"], "alert_date": CEG["alert_date"], "gap_pct": 9.4}
-    result = asyncio.run(asyncio.wait_for(
-        ep.check_flip_up_open_floor(CEG["ticker"], ctx, _bar(CEG["open"]), FLOOR), 1.0))
+    result = asyncio.run(ep.check_flip_up_open_floor(CEG["ticker"], ctx, _bar(CEG["open"]), FLOOR))
     assert result == (True, None)
-    assert spies.prev == 1 and spies.flip == 1
+    assert seen == [ep.OPEN_FLOOR_READ_TIMEOUT_S] and spies.prev == 1 and spies.flip == 1
     assert _events(audit) == []
 
 
@@ -365,7 +362,7 @@ def test_an_iso_string_alert_date_from_the_wire_is_coerced(monkeypatch):
 def test_get_open_floor_mode(monkeypatch, row, expect):
     seen = []
 
-    async def _state(name, mode):
+    async def _state(name, mode, timeout=None):
         seen.append((name, mode))
         return row
 
@@ -375,16 +372,19 @@ def test_get_open_floor_mode(monkeypatch, row, expect):
 
 
 def test_get_open_floor_mode_fails_to_shadow_on_error_and_on_timeout(monkeypatch):
-    async def _boom(name, mode):
+    async def _boom(name, mode, timeout=None):
         raise RuntimeError("db down")
     monkeypatch.setattr("agents.market_intelligence.db.get_safeguard_state", _boom)
     assert asyncio.run(ep.get_open_floor_mode()) == "shadow"
 
-    async def _hang(name, mode):
-        await asyncio.sleep(10)
-    monkeypatch.setattr("agents.market_intelligence.db.get_safeguard_state", _hang)
-    monkeypatch.setattr(ep, "OPEN_FLOOR_READ_TIMEOUT_S", 0.01)
+    seen = []
+
+    async def _times_out(name, mode, timeout=None):     # asyncpg's own timeout firing (#621)
+        seen.append(timeout)
+        raise asyncio.TimeoutError
+    monkeypatch.setattr("agents.market_intelligence.db.get_safeguard_state", _times_out)
     assert asyncio.run(ep.get_open_floor_mode()) == "shadow"
+    assert seen == [ep.OPEN_FLOOR_READ_TIMEOUT_S]
 
 
 # ── the population test is the study's SQL, verbatim ──────────────────────────────────────────
@@ -418,10 +418,9 @@ def test_find_flip_up_admission_returns_none_when_not_a_flip_up_and_raises_on_ti
     monkeypatch.setattr(ep, "get_pool", AsyncMock(return_value=pool))
     assert asyncio.run(ep.find_flip_up_admission("XYZ", date(2026, 10, 6))) is None
 
-    async def _hang(*a):
-        await asyncio.sleep(10)
-    conn.fetchrow = _hang
-    monkeypatch.setattr(ep, "OPEN_FLOOR_READ_TIMEOUT_S", 0.01)
+    assert conn.fetchrow.await_args.kwargs == {"timeout": ep.OPEN_FLOOR_READ_TIMEOUT_S}   # asyncpg's own bound
+    pool.acquire.assert_called_with(timeout=ep.OPEN_FLOOR_READ_TIMEOUT_S)
+    conn.fetchrow = AsyncMock(side_effect=asyncio.TimeoutError)        # the bound firing
     with pytest.raises(asyncio.TimeoutError):
         asyncio.run(ep.find_flip_up_admission("XYZ", date(2026, 10, 6)))
 
