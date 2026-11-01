@@ -22,7 +22,7 @@ from datetime import date, datetime
 from functools import partial
 from typing import Awaitable, Callable
 
-from agents.market_intelligence.db import LOWCAP_PAPER_LANE_STRATEGY_ID, get_pool
+from agents.market_intelligence.db import BREAKOUT_V1_STRATEGY_ID, LOWCAP_PAPER_LANE_STRATEGY_ID, get_pool
 
 logger = logging.getLogger(__name__)
 
@@ -291,7 +291,7 @@ _ADAPTERS: dict[str, Callable[[int], Awaitable[list[OutcomeRow]]]] = {
     # replays (mi_lowcap_paper_lane_replays), not from here — this feeds the registry's counts.
     LOWCAP_PAPER_LANE_STRATEGY_ID: partial(_adapter_live_trades, signal_type=LOWCAP_PAPER_LANE_STRATEGY_ID),
     # Breakout v1 PAPER (2026-10-30): its paper fills (mi_live_trades, signal_type 'breakout_v1').
-    "breakout_v1":        partial(_adapter_live_trades, signal_type="breakout_v1"),
+    BREAKOUT_V1_STRATEGY_ID: partial(_adapter_live_trades, signal_type=BREAKOUT_V1_STRATEGY_ID),
     "parabolic_short":    _adapter_parabolic,
     "flag_continuation":  _adapter_flag_continuation,
 }

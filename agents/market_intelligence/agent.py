@@ -547,20 +547,14 @@ async def _why_score_block(pool, ticker: str, target_date, alert_score=None) -> 
     `alert_score`), else the day's best-scoring row; a row scored but with no stored parts says
     so. Every failure degrades to no section, never to a broken /why. Renderer + wording:
     `ep_score_math` (pure, tested without a DB)."""
-    from agents.market_intelligence.ep_score_math import score_math_lines, theme_read_lines
+    from agents.market_intelligence.ep_score_math import _breakdown_of, score_math_lines, theme_read_lines
     async with pool.acquire() as conn:
         row = await _why_score_row(conn, ticker, target_date, alert_score)
         if not row:
             return []
         out = score_math_lines(dict(row))
-        bd = row.get("score_breakdown")
-        if isinstance(bd, str):
-            import json as _json
-            try:
-                bd = _json.loads(bd)
-            except ValueError:
-                bd = None
-        if isinstance(bd, dict) and "theme_bonus" in bd and not (bd.get("theme_bonus") or 0):
+        bd = _breakdown_of(row.get("score_breakdown"))
+        if bd and "theme_bonus" in bd and not (bd.get("theme_bonus") or 0):
             try:
                 shadow = await conn.fetchrow("""
                     SELECT listed, best_theme, best_stage, best_corr, shortlist, fit_status,

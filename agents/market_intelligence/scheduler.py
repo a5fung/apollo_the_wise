@@ -28,7 +28,7 @@ from apscheduler.triggers.cron import CronTrigger
 from agents.market_intelligence.db import (
     purge_old_data, log_job_run, job_ran_today, upsert_fundamental_flags_batch,
     get_rs_leaders, update_sectors_batch, get_audit_log, get_pool, log_audit_event,
-    count_truncated_audit_rows,
+    count_truncated_audit_rows, BREAKOUT_V1_STRATEGY_ID,
 )
 from agents.market_intelligence.rs_engine import run_rs_engine, ingest_daily
 from agents.market_intelligence.regime import run_regime_engine
@@ -2960,7 +2960,7 @@ async def _orb_window_cleanup_job():
         # broker/breakout_v1_entry.py) — excluded by SIGNAL TYPE; the small-cap paper lane's
         # unfilled orders in the same paper book are still cancelled here.
         cancelled = await cancel_unfilled_entries(reason="ORB window unfilled",
-                                                  exclude_signal_types=("breakout_v1",))
+                                                  exclude_signal_types=(BREAKOUT_V1_STRATEGY_ID,))
         expired = await expire_stale_proposals()   # #436 — dead staged proposals, no broker calls
         logger.info(f"ORB window cleanup: {cancelled} cancelled, {expired} proposal(s) expired")
     except Exception as e:

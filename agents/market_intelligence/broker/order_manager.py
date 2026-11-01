@@ -46,6 +46,7 @@ from agents.market_intelligence.constants import (
     MAX_POSITION_PCT,
 )
 from agents.market_intelligence.db import (
+    BREAKOUT_V1_STRATEGY_ID,
     get_pool,
     log_audit_event,
     get_manual_halt_state,
@@ -1061,9 +1062,9 @@ async def note_partial_fill_close_failed(trade: dict, account_mode: str, filled_
     return True
 
 
-# Breakout v1 PAPER's signal type (= db.BREAKOUT_V1_STRATEGY_ID, test-pinned): check_fills leaves that strategy's planned
+# Breakout v1 PAPER's signal type (its strategy id, one source): check_fills leaves that strategy's planned
 # cancels to its own minute job and writes its other cancels compare-and-set (review fix 2026-10-30).
-BREAKOUT_V1_SIGNAL_TYPE = "breakout_v1"
+BREAKOUT_V1_SIGNAL_TYPE = BREAKOUT_V1_STRATEGY_ID
 
 
 async def check_fills() -> list[dict]:
@@ -6015,7 +6016,6 @@ async def _magna53_depth_exit_enabled(account_mode: str) -> bool:
 # The exit itself (the live mapping of `walk_pp`): broker/breakout_pp_rules.py (decisions) + breakout_pp_exit.py (inputs),
 # acted on by live_tracker's 15:45 / 16:45 branches, scan_profit_triggers (+2R) and run_breakout_pp_open_sales (19:02).
 BREAKOUT_PP_EXIT_RULE = "breakout_pp"
-_BREAKOUT_PP_STRATEGY = "breakout_v1"
 # The stamps whose 16:45 close decision is sold at the NEXT OPEN by `execute_depth_open_sale` (live: the
 # opening auction; paper: a DAY market order, #687 c). Part B (2026-10-30): the breakout `pp` arm's 20-day
 # trail sells "at the next open" too, on the paper book only — the same vehicle. Each rule has its own
@@ -6031,7 +6031,7 @@ async def resolve_exit_rule_stamp(signal_type: str, account_mode: str) -> str | 
 
     Breakout v1 (2026-10-30): a `breakout_v1` row is always stamped 'breakout_pp' (its own exit, no
     toggle); it never reads the depth toggle. Every other strategy is unchanged."""
-    if signal_type == _BREAKOUT_PP_STRATEGY:
+    if signal_type == BREAKOUT_V1_SIGNAL_TYPE:
         return BREAKOUT_PP_EXIT_RULE
     if signal_type not in _DEPTH_EXIT_STRATEGIES:
         return None

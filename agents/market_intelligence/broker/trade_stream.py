@@ -41,7 +41,7 @@ from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.broker.skip_reasons import humanize
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.constants import mode_prefix
-from agents.market_intelligence.db import get_pool, log_audit_event, _jsonb_param
+from agents.market_intelligence.db import BREAKOUT_V1_STRATEGY_ID, get_pool, log_audit_event, _jsonb_param
 
 logger = logging.getLogger(__name__)
 
@@ -1746,7 +1746,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
               AND status IN ('order_placed', 'submitting', 'pending_confirmation', 'confirmed')
         """, order_id, account_mode)
 
-    if (entry_trade and entry_trade["signal_type"] == "breakout_v1"
+    if (entry_trade and entry_trade["signal_type"] == BREAKOUT_V1_STRATEGY_ID
             and event_norm == "cancelled"
             and not float(getattr(order, "filled_qty", None) or 0)):
         # Breakout v1 PAPER (2026-10-30): its own minute job cancels an unfilled buy ON PURPOSE —
