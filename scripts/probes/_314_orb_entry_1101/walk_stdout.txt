@@ -1,0 +1,184 @@
+# #314 ORB-entry replay — THE WALK (run once) (2026-11-01)
+Guards: no network, no DB, no production server, nothing dated 2025-01-01 or later read from any bar file; the 10-28 helpers imported, never copied.
+- modules: orb_replay.py 1fa1cbbf0d0a4272 orb_goldens.py b36bed75e4921bb8 ps_common.py 6f99467e3a2bc5c3 ps_walk.py a4decccfebb4d49d
+- minute file bdadd36997913cd3; sidecar {'feed': 'sip', 'adjustment': 'raw', 'tz': 'America/New_York', 'request_sha256': '10ecab5db36c932d80523974659b5eff18a3f3809a5e5b9787934b8945f71b2d', 'source': 'alpaca v2 StockBarsRequest (TimeFrame.Minute), run in apollo-market by the main loop', 'pulled_at': '2026-11-01T16:08:59.544288+00:00'}; request 10ecab5db36c932d; climax list 53af1961b7b0a193
+
+## The population (the pinned climax list, the 10-28 exclusions re-applied; §1)
+  P1: climax rows 418 -> {'pre-walk population': 409, 'void_adjustment_event': 4, 'distribution': 1, 'open_at_seal': 4}; pre-walk population 409 (A 286, B 123), companies 299
+  P2: climax rows 243 -> {'pre-walk population': 237, 'open_at_seal': 4, 'void_adjustment_event': 2}; pre-walk population 237 (A 148, B 89), companies 199
+  P2small: climax rows 183 -> {'pre-walk population': 180, 'void_adjustment_event': 1, 'open_at_seal': 2}; pre-walk population 180 (A 114, B 66), companies 153
+
+## Loading (the frozen inputs only)
+  minute file: rows read 641431, wanted 635049, (ticker, session) pairs present 1819 of 1823
+  era A export: rows read 12005007, kept 406552 for 312 tickers (cut 2022-06-30)
+  era A raw close: rows read 12005007, kept 404917
+  era B export: rows read 13830569, kept 127177 for 178 tickers (cut 2024-12-31)
+
+## The pull's check (§6): minute RTH low / daily raw low in [0.9, 1.1] (basis); high / high and low / low each in [0.98, 1.02] (shape); more than 2% of the sessions checked outside -> the run refuses
+  sessions checked 1819; basis_mismatch 4; shape_mismatch 2; share 0.0033
+  minute / daily raw low: p0.5 0.9999 median 1.0000 p99.5 1.0014 (n 1819)
+  minute / daily raw high: p0.5 0.9991 median 1.0000 p99.5 1.0006 (n 1819)
+  minute / daily raw open: p0.5 0.9895 median 1.0000 p99.5 1.0111 (n 1819)
+  minute / daily raw close: p0.5 0.9654 median 0.9997 p99.5 1.0319 (n 1819)
+    ('AIRE', '2024-12-31', 'shape_mismatch', {'low': 1.0, 'high': 0.9792, 'open': 1.0, 'close': 0.9654})
+    ('HKIT', '2024-02-09', 'basis_mismatch', {'low': 0.3333, 'high': 0.3333, 'open': 0.3333, 'close': 0.3333})
+    ('HKIT', '2024-02-12', 'basis_mismatch', {'low': 0.3333, 'high': 0.3333, 'open': 0.3333, 'close': 0.3333})
+    ('HKIT', '2024-02-13', 'basis_mismatch', {'low': 0.3333, 'high': 0.3333, 'open': 0.3333, 'close': 0.3305})
+    ('HOUR', '2024-12-27', 'shape_mismatch', {'low': 1.0284, 'high': 1.0, 'open': 1.0, 'close': 1.0355})
+    ('NINE', '2022-03-08', 'basis_mismatch', {'low': 1.2261, 'high': 1.0, 'open': 1.0, 'close': 1.2261})
+
+## The walk (9 variants + the beside stop rule o5h3x; primary o5h3)
+  excluded at the walk (distinct (ticker, D0)): {'basis_mismatch': 2, 'shape_mismatch': 2}
+  split_in_walk: 0 []
+  minute_missing on the primary (ticker, D0): 1 e.g. [('INBX', '2022-10-04')]
+
+## Expectations fixed in the registration (§5; a miss is printed first and changes no rule) — the file-level ones
+  [held] minute_missing share era A under 25%: 0.001 (1 of 1209 (ticker, session) pairs)
+  [held] minute_missing share era B under 10%: 0.005 (3 of 614 (ticker, session) pairs)
+  [held] basis + shape mismatch under 2% of the sessions checked: 0.0033 (6 of 1819)
+
+## Rule (c) — one open episode per company key, from the primary walk's close dates, reused by every variant
+  P1: {'admitted': 399, 'episode_already_open': 10}
+  P2: {'admitted': 230, 'episode_already_open': 7}
+  P2small: {'admitted': 175, 'episode_already_open': 5}
+
+## The base verdict (primary o5h3: 5-minute range, 3 sessions, stop = the high before the entry bar + 1c; n = settled, admitted by rule (c))
+
+### P1: pre-walk 409, admitted 399; by status {'untriggered': 91, 'settled': 301, 'no_orb': 2, 'void_bad_geometry': 3, 'basis_mismatch': 1, 'minute_missing': 1}
+  10-28 primary beside: n 252, mean R +0.0767 [-0.0429, +0.1975], ADR P&L +0.2599, >= 3R 0 (CAN'T TELL)
+  [held] P1: triggered share of the pre-walk population in [0.40, 0.85]: 0.760 (311 of 409)
+  risk / entry on the triggered (admitted): median 0.080, quartiles 0.047 / 0.122 (the 10-28 median 0.360)
+  [held] P1: median risk / entry under 15%: 0.080
+  [held] P1: void_bad_geometry under 5% of the triggered: 3 of 304
+  ambiguous entry bars (the entry bar's high reached the stop; booked -1R): 0 of 304 triggered (0.0%)
+  [held] P1: win rate under the 10-28's 47.5%: 0.419
+  [held] P1: at least one settled short at >= 3R realized: 29
+  P1 pooled: n 301, mean R +0.3640 [+0.1012, +0.6313], ADR P&L +0.3396, tail >= 3R 29 trades / 29 companies / 19 months (pass), >= 2R beside 54 / 54 / 32 -> PASS
+  win rate 126/301 = 41.9%; reached 3R realized 29 (9.6%), MFE >= 3R 52 (17.3%)
+  P1 A: n 214, mean R +0.4110 [+0.1091, +0.7558], ADR P&L +0.4130, tail >= 3R 19 trades / 19 companies / 10 months (pass), >= 2R beside 39 / 39 / 20 -> PASS
+  P1 B: n 87, mean R +0.2482 [-0.1806, +0.6901], ADR P&L +0.1591, tail >= 3R 10 trades / 10 companies / 9 months (pass), >= 2R beside 15 / 15 / 12 -> CAN'T TELL
+  P1 at 0.1% exit slippage: n 301, mean R +0.3481 [+0.0943, +0.6231], ADR P&L +0.3294, tail >= 3R 29 trades / 29 companies / 19 months (pass), >= 2R beside 52 / 52 / 32 -> PASS
+  P1 at 0.2% exit slippage: n 301, mean R +0.3321 [+0.0781, +0.6080], ADR P&L +0.3192, tail >= 3R 29 trades / 29 companies / 19 months (pass), >= 2R beside 52 / 52 / 32 -> PASS
+  P1 at 1c entry AND cover slippage (R - 2k / risk): n 301, mean R +0.3403 [+0.0902, +0.6190], ADR P&L +0.3242, tail >= 3R 29 trades / 29 companies / 19 months (pass), >= 2R beside 52 / 52 / 32 -> PASS
+  P1 at 2c entry AND cover slippage (R - 2k / risk): n 301, mean R +0.3166 [+0.0711, +0.5819], ADR P&L +0.3087, tail >= 3R 29 trades / 29 companies / 19 months (pass), >= 2R beside 52 / 52 / 32 -> PASS
+  P1 at 5c entry AND cover slippage (R - 2k / risk): n 301, mean R +0.2454 [-0.0033, +0.5062], ADR P&L +0.2625, tail >= 3R 29 trades / 29 companies / 19 months (pass), >= 2R beside 51 / 51 / 31 -> CAN'T TELL
+  ended_mid_walk: 0 ({}); (b) at the last close -> PASS; (c) with the 1.25x haircut -> PASS; label: PASS
+  void_bad_geometry (stop under 1% above the entry): 3
+  the top 10 by R:
+  ticker  D0          era  entry        stop         R$         exit        reason     R        
+  AWH     2020-06-26  A    5.360000     5.427100     0.067100   3.700000    time_stop  24.739195
+  QFIN    2020-07-20  A    17.590000    18.000000    0.410000   13.620000   time_stop  9.682927 
+  DAC     2021-01-12  A    33.620000    34.380000    0.760000   28.790000   time_stop  6.355263 
+  DJT     2024-10-29  B    47.090000    49.880000    2.790000   30.550000   time_stop  5.928315 
+  BNTX    2021-05-03  A    206.288800   213.160000   6.871200   168.020000  time_stop  5.569449 
+  SMCI    2024-02-15  B    1025.190000  1077.880000  52.690000  733.090000  time_stop  5.543746 
+  SMR     2024-03-18  B    8.100000     8.750000     0.650000   4.560000    time_stop  5.446154 
+  VET     2020-06-08  A    6.890000     7.190000     0.300000   5.310000    time_stop  5.266667 
+  AIMC    2020-06-05  A    36.990000    37.880000    0.890000   32.310000   time_stop  5.258427 
+  LAC     2020-08-17  A    8.950000     9.180000     0.230000   7.750000    time_stop  5.217391 
+  the nine variants + the beside stop rule (pre-declared; the verdict is o5h3 only):
+  variant  n    mean R   95%                 ADR P&L  win    >=3R  verdict   
+  o1h1     339  +0.2302  [-0.0147, +0.5001]  +0.1318  32.2%  32    CAN'T TELL
+  o1h2     339  +0.3973  [+0.0987, +0.7543]  +0.2045  30.7%  48    PASS      
+  o1h3     339  +0.4453  [+0.1411, +0.7638]  +0.2233  27.7%  45    PASS      
+  o5h1     301  +0.1787  [+0.0128, +0.3708]  +0.1741  41.5%  12    PASS      
+  o5h2     301  +0.3069  [+0.1160, +0.4936]  +0.3174  45.5%  21    PASS      
+  o5h3     301  +0.3640  [+0.1063, +0.6538]  +0.3396  41.9%  29    PASS      
+  o15h1    260  +0.1689  [+0.0401, +0.3287]  +0.2281  50.4%  4     PASS      
+  o15h2    260  +0.2989  [+0.1443, +0.4658]  +0.3644  55.0%  7     PASS      
+  o15h3    260  +0.3540  [+0.1397, +0.5969]  +0.3983  52.7%  15    PASS      
+  o5h3x    301  +0.3640  [+0.1095, +0.6425]  +0.3396  41.9%  29    PASS      
+
+### P2: pre-walk 237, admitted 230; by status {'settled': 181, 'untriggered': 44, 'no_orb': 2, 'basis_mismatch': 1, 'shape_mismatch': 2}
+  10-28 primary beside: n 168, mean R -0.0670 [-0.1818, +0.0551], ADR P&L -0.3119, >= 3R 0 (CAN'T TELL)
+  [held] P2: triggered share of the pre-walk population in [0.40, 0.85]: 0.793 (188 of 237)
+  risk / entry on the triggered (admitted): median 0.116, quartiles 0.082 / 0.169 (the 10-28 median 0.360)
+  [held] P2: median risk / entry under 15%: 0.116
+  [held] P2: void_bad_geometry under 5% of the triggered: 0 of 181
+  ambiguous entry bars (the entry bar's high reached the stop; booked -1R): 0 of 181 triggered (0.0%)
+  [held] P2: win rate under the 10-28's 47.5%: 0.464
+  [held] P2: at least one settled short at >= 3R realized: 11
+  P2 pooled: n 181, mean R +0.0964 [-0.1485, +0.3281], ADR P&L +0.1332, tail >= 3R 11 trades / 11 companies / 10 months (pass), >= 2R beside 24 / 22 / 15 -> CAN'T TELL
+  win rate 84/181 = 46.4%; reached 3R realized 11 (6.1%), MFE >= 3R 20 (11.0%)
+  P2 A: n 115, mean R +0.2841 [-0.0424, +0.5695], ADR P&L +0.2384, tail >= 3R 9 trades / 9 companies / 8 months (pass), >= 2R beside 20 / 18 / 12 -> CAN'T TELL
+  P2 B: n 66, mean R -0.2305 [-0.5252, +0.0916], ADR P&L -0.0530, tail >= 3R 2 trades / 2 companies / 2 months (fail), >= 2R beside 4 / 4 / 3 -> CAN'T TELL
+  P2 at 0.1% exit slippage: n 181, mean R +0.0865 [-0.1718, +0.3157], ADR P&L +0.1247, tail >= 3R 11 trades / 11 companies / 10 months (pass), >= 2R beside 23 / 21 / 15 -> CAN'T TELL
+  P2 at 0.2% exit slippage: n 181, mean R +0.0765 [-0.1752, +0.3136], ADR P&L +0.1162, tail >= 3R 11 trades / 11 companies / 10 months (pass), >= 2R beside 23 / 21 / 15 -> CAN'T TELL
+  P2 at 1c entry AND cover slippage (R - 2k / risk): n 181, mean R +0.0111 [-0.2431, +0.2432], ADR P&L +0.0566, tail >= 3R 7 trades / 7 companies / 7 months (pass), >= 2R beside 22 / 20 / 15 -> CAN'T TELL
+  P2 at 2c entry AND cover slippage (R - 2k / risk): n 181, mean R -0.0743 [-0.3104, +0.1512], ADR P&L -0.0200, tail >= 3R 6 trades / 6 companies / 6 months (pass), >= 2R beside 21 / 19 / 15 -> CAN'T TELL
+  P2 at 5c entry AND cover slippage (R - 2k / risk): n 181, mean R -0.3304 [-0.5583, -0.1174], ADR P&L -0.2497, tail >= 3R 4 trades / 4 companies / 4 months (pass), >= 2R beside 14 / 13 / 12 -> FAIL
+  ended_mid_walk: 0 ({}); (b) at the last close -> CAN'T TELL; (c) with the 1.25x haircut -> CAN'T TELL; label: CAN'T TELL
+  void_bad_geometry (stop under 1% above the entry): 0
+  the top 10 by R:
+  ticker  D0          era  entry     stop      R$        exit      reason     R       
+  MMLP    2020-04-28  A    3.650000  3.960000  0.310000  2.209900  time_stop  4.645484
+  TOUR    2022-12-08  B    2.400000  2.529900  0.129900  1.820000  time_stop  4.464973
+  GLBS    2017-11-07  A    1.430000  1.535600  0.105600  1.060000  time_stop  3.503788
+  TGB     2020-09-18  A    1.240000  1.300000  0.060000  1.030000  time_stop  3.500000
+  USWS    2022-03-07  A    2.870000  3.340000  0.470000  1.245000  time_stop  3.457447
+  XELA    2021-07-13  A    4.890000  5.390000  0.500000  3.269300  time_stop  3.241400
+  BZFD    2023-01-27  B    3.340000  3.710000  0.370000  2.159900  time_stop  3.189459
+  SB      2021-02-16  A    3.070000  3.160000  0.090000  2.790000  time_stop  3.111111
+  MVIS    2020-05-05  A    1.250000  1.410000  0.160000  0.755000  time_stop  3.093750
+  YRIV    2019-08-12  A    1.300000  1.460000  0.160000  0.805300  time_stop  3.091875
+  the nine variants + the beside stop rule (pre-declared; the verdict is o5h3 only):
+  variant  n    mean R   95%                 ADR P&L  win    >=3R  verdict   
+  o1h1     195  +0.1613  [-0.1026, +0.4444]  +0.0883  42.6%  12    CAN'T TELL
+  o1h2     195  +0.3642  [-0.0028, +0.7455]  +0.1271  37.4%  26    CAN'T TELL
+  o1h3     195  +0.4490  [+0.0612, +0.8319]  +0.1864  38.5%  28    PASS      
+  o5h1     181  -0.0087  [-0.1457, +0.1490]  +0.0661  47.5%  0     CAN'T TELL
+  o5h2     181  +0.0479  [-0.1927, +0.2728]  +0.0903  44.8%  7     CAN'T TELL
+  o5h3     181  +0.0964  [-0.1667, +0.3367]  +0.1332  46.4%  11    CAN'T TELL
+  o15h1    152  +0.0957  [-0.0173, +0.2121]  +0.1206  56.6%  0     CAN'T TELL
+  o15h2    152  +0.1231  [-0.0950, +0.3243]  +0.1113  57.9%  1     CAN'T TELL
+  o15h3    152  +0.1591  [-0.1214, +0.4035]  +0.1649  57.9%  3     CAN'T TELL
+  o5h3x    181  +0.0964  [-0.1665, +0.3359]  +0.1332  46.4%  11    CAN'T TELL
+
+### P2small: pre-walk 180, admitted 175; by status {'settled': 139, 'untriggered': 32, 'no_orb': 1, 'basis_mismatch': 1, 'shape_mismatch': 2}
+  10-28 primary beside: n 133, mean R -0.0564 [-0.1641, +0.0685], ADR P&L -0.2724, >= 3R 0 (CAN'T TELL)
+  [held] P2small: triggered share of the pre-walk population in [0.40, 0.85]: 0.800 (144 of 180)
+  risk / entry on the triggered (admitted): median 0.119, quartiles 0.091 / 0.169 (the 10-28 median 0.360)
+  [held] P2small: median risk / entry under 15%: 0.119
+  [held] P2small: void_bad_geometry under 5% of the triggered: 0 of 139
+  ambiguous entry bars (the entry bar's high reached the stop; booked -1R): 0 of 139 triggered (0.0%)
+  [held] P2small: win rate under the 10-28's 47.5%: 0.432
+  P2small pooled: n 139, mean R +0.0085 [-0.2813, +0.3037], ADR P&L +0.0043, tail >= 3R 8 trades / 8 companies / 7 months (pass), >= 2R beside 18 / 17 / 11 -> CAN'T TELL
+  win rate 60/139 = 43.2%; reached 3R realized 8 (5.8%), MFE >= 3R 13 (9.4%)
+  P2small A: n 89, mean R +0.1406 [-0.2721, +0.4902], ADR P&L +0.0361, tail >= 3R 6 trades / 6 companies / 5 months (pass), >= 2R beside 14 / 13 / 8 -> CAN'T TELL
+  P2small B: n 50, mean R -0.2266 [-0.5794, +0.1417], ADR P&L -0.0533, tail >= 3R 2 trades / 2 companies / 2 months (fail), >= 2R beside 4 / 4 / 3 -> CAN'T TELL
+  P2small at 0.1% exit slippage: n 139, mean R -0.0007 [-0.2978, +0.2929], ADR P&L -0.0037, tail >= 3R 8 trades / 8 companies / 7 months (pass), >= 2R beside 17 / 16 / 11 -> CAN'T TELL
+  P2small at 0.2% exit slippage: n 139, mean R -0.0100 [-0.3094, +0.2900], ADR P&L -0.0116, tail >= 3R 8 trades / 8 companies / 7 months (pass), >= 2R beside 17 / 16 / 11 -> CAN'T TELL
+  P2small at 1c entry AND cover slippage (R - 2k / risk): n 139, mean R -0.0738 [-0.3642, +0.2048], ADR P&L -0.0687, tail >= 3R 4 trades / 4 companies / 4 months (pass), >= 2R beside 16 / 15 / 11 -> CAN'T TELL
+  P2small at 2c entry AND cover slippage (R - 2k / risk): n 139, mean R -0.1561 [-0.4502, +0.1283], ADR P&L -0.1416, tail >= 3R 4 trades / 4 companies / 4 months (pass), >= 2R beside 16 / 15 / 11 -> CAN'T TELL
+  P2small at 5c entry AND cover slippage (R - 2k / risk): n 139, mean R -0.4030 [-0.6805, -0.1123], ADR P&L -0.3606, tail >= 3R 3 trades / 3 companies / 3 months (pass), >= 2R beside 11 / 10 / 9 -> FAIL
+  ended_mid_walk: 0 ({}); (b) at the last close -> CAN'T TELL; (c) with the 1.25x haircut -> CAN'T TELL; label: CAN'T TELL
+  void_bad_geometry (stop under 1% above the entry): 0
+  the top 10 by R:
+  ticker  D0          era  entry     stop      R$        exit      reason     R       
+  MMLP    2020-04-28  A    3.650000  3.960000  0.310000  2.209900  time_stop  4.645484
+  TOUR    2022-12-08  B    2.400000  2.529900  0.129900  1.820000  time_stop  4.464973
+  XELA    2021-07-13  A    4.890000  5.390000  0.500000  3.269300  time_stop  3.241400
+  BZFD    2023-01-27  B    3.340000  3.710000  0.370000  2.159900  time_stop  3.189459
+  SB      2021-02-16  A    3.070000  3.160000  0.090000  2.790000  time_stop  3.111111
+  MVIS    2020-05-05  A    1.250000  1.410000  0.160000  0.755000  time_stop  3.093750
+  YRIV    2019-08-12  A    1.300000  1.460000  0.160000  0.805300  time_stop  3.091875
+  CWBR    2020-05-05  A    4.000000  4.260000  0.260000  3.210000  time_stop  3.038462
+  HTBX    2018-05-01  A    2.790000  3.380000  0.590000  1.250000  time_stop  2.610169
+  MVIS    2020-07-17  A    2.790000  3.000000  0.210000  2.264500  time_stop  2.502381
+  the nine variants + the beside stop rule (pre-declared; the verdict is o5h3 only):
+  variant  n    mean R   95%                 ADR P&L  win    >=3R  verdict   
+  o1h1     149  +0.1027  [-0.2275, +0.4734]  -0.0209  37.6%  11    CAN'T TELL
+  o1h2     149  +0.3101  [-0.1665, +0.8050]  -0.0068  32.9%  22    CAN'T TELL
+  o1h3     149  +0.4130  [-0.0918, +0.9370]  +0.0677  34.2%  24    CAN'T TELL
+  o5h1     139  -0.0998  [-0.2840, +0.0849]  -0.0420  41.7%  0     CAN'T TELL
+  o5h2     139  -0.0379  [-0.3137, +0.2585]  -0.0573  41.0%  4     CAN'T TELL
+  o5h3     139  +0.0085  [-0.3004, +0.3011]  +0.0043  43.2%  8     CAN'T TELL
+  o15h1    117  +0.0365  [-0.1155, +0.1897]  +0.0210  53.0%  0     CAN'T TELL
+  o15h2    117  +0.0548  [-0.2284, +0.3279]  -0.0555  55.6%  1     CAN'T TELL
+  o15h3    117  +0.0958  [-0.2102, +0.3995]  +0.0216  55.6%  3     CAN'T TELL
+  o5h3x    139  +0.0085  [-0.2916, +0.3132]  +0.0043  43.2%  8     CAN'T TELL
+
+## The consequence (§10): a reading about THIS version, with the 10-28 line beside; nothing live changes on any cell
+- P1: PASS; PASS
+- P2: CAN'T TELL; CAN'T TELL
+WALK COMPLETE

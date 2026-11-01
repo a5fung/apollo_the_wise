@@ -1,0 +1,8 @@
+dates 874 | pairs requested 1844 | pairs with bars 1840 | bars 641431 | date errors 0
+ERRORS
+
+MISSING (no bar in the session)
+TRNE 2020-12-10
+INBX 2022-10-05
+INBX 2022-10-06
+INBX 2022-10-07

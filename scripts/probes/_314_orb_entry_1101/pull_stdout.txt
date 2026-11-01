@@ -1,0 +1,10 @@
+0/874 dates, 288 bars, 1 pairs
+100/874 dates, 38775 bars, 118 pairs
+200/874 dates, 78443 bars, 238 pairs
+300/874 dates, 148838 bars, 442 pairs
+400/874 dates, 281152 bars, 808 pairs
+500/874 dates, 416389 bars, 1174 pairs
+600/874 dates, 469219 bars, 1323 pairs
+700/874 dates, 528428 bars, 1498 pairs
+800/874 dates, 581163 bars, 1660 pairs
+dates 874 | pairs requested 1844 | pairs with bars 1840 | bars 641431 | date errors 0

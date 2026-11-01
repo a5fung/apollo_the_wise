@@ -395,7 +395,10 @@ disclosed step the registration names in advance.
 <!-- FREEZE -->
 ## Freeze record (the main loop; pasted after the pre-pull commit and the pull, before `--walk`)
 
-- freeze_commit = (the hash of the commit on `main` that carried this document and the four pinned files, BEFORE the pull)
-- doc_body = (the sha256 `--print-pins` prints for `doc_body` at that commit)
-- minute_bars = (sha256 of `minute_bars.csv.gz` after the pull)
-- minute_bars_meta = (sha256 of `minute_bars.meta.json` after the pull)
+- freeze_commit = cda8e943f365f1abdf9edd2340c1e5b1b0d6e7ee
+- doc_body = 43f47d9e895c1124502ec1da8a3199dc32fff87db0cd069d2f24ea00cd7ce6fc
+- minute_bars = bdadd36997913cd3f584f069bb97a352359e73cfb6c7c83b48aa05ca4e510b9f
+- minute_bars_meta = cda8d4a7068acaf7d79402ffd5169b6cbff44190df4be47bcc0e43f44ab3e6b5
+- pull (2026-11-01, main loop, his "allow pull"): `scripts/probes/_314_orb_entry_1101/pull_minutes.py` in apollo-market, Alpaca SIP, raw, 1-minute; 874 dates, 1,840 of 1,844 (ticker, session) pairs with bars, 641,431 bars, 0 date errors; the 4 empty pairs are in `pull_log.txt` (counted exclusions per §5).
+- minute file location: kept OUT of git (7.8 MB), at `/Users/alvinfung/apollo_data/ps314/orb_1101/minute_bars.csv.gz` (and the probe folder), identified by the `minute_bars` pin above.
+- walk (2026-11-01, run ONCE): `scripts/probes/_314_orb_entry_1101/walk_stdout.txt` + `result.txt` — P1 o5h3 n 301, mean R +0.3640 [+0.1012, +0.6313], 29 trades >= 3R / 29 companies / 19 months -> PASS (holds at the 2c entry-and-cover row: +0.3166 PASS; 5c: CAN'T TELL); P1 era B alone CAN'T TELL; P2 CAN'T TELL. A blind recount and an adversarial trade audit run before it is reported.

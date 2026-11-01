@@ -1,0 +1,8 @@
+{
+  "feed": "sip",
+  "adjustment": "raw",
+  "tz": "America/New_York",
+  "request_sha256": "10ecab5db36c932d80523974659b5eff18a3f3809a5e5b9787934b8945f71b2d",
+  "source": "alpaca v2 StockBarsRequest (TimeFrame.Minute), run in apollo-market by the main loop",
+  "pulled_at": "2026-11-01T16:08:59.544288+00:00"
+}
