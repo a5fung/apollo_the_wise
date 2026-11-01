@@ -6,7 +6,19 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-10-29 (Thu) CLOSE — 🔴 RESUME HERE. Supersedes the 10-28 close below.
+## 2026-10-31 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 10-29 close below (Fri 10-30 had no CLOSE).
+
+**2026-10-31 (Sat): CLOSE run on his word ("Run close").** (This section mirrors the machine-local pickup memory.)
+
+- **Board 23 → 20** (closed #704, #711, #714, #715, #716; filed #717 and #718). **Server `193dec08`** (market-agent then execution, DEPLOY OK x2, 0 errors).
+- **Deployed Fri-Sat:** #712 (the GKOS opening-bar wait) + breakout v1 PHASE 1 (17:55 ET list + /bgrade) Fri noon; #716 (short /why); #717 breakout v1 PHASE 2 on PAPER (the orh5 buy, the day-low stop, the pp exit; first buys Mon); #718 (skip a flip-up MAGNA53 entry whose 09:30 open is below the gap floor) in SHADOW — the flip to `on` is his.
+- **Evening:** advisor review + simplify on Fri-Sat code: #718's 09:31 reads now bounded by asyncpg's own timeout (#621; ≤ 30 s the stage on a stalled Postgres, fail open), breakout v1's name in one constant, live-board tests skip on an empty board (synthetic probes keep the checks running). Skipped by judgment: narrowing the breakout minute job, bounding the fill-stop marker lookup, larger refactors.
+- **Mon 11-02 morning, in order:** (1) #706 — read the first skip morning where one ticker is evaluated twice, THE SAME DAY, before any deploy (a deploy wipes container logs); (2) #717 — the breakout entry job ticks 09:35-15:55 ET, paper orders only, capped by the 5 shared paper slots; (3) #718 — the `magna53_open_*` rows per its VERIFY-LIVE (compare the floor against `mi_ep_scan_log.prev_close`); (4) #712 GKOS-fix reads.
+- **Sun 11-01 due:** #482 (three follow-ups), #314 (parabolic-short entry study). Optional weekend builds: date his setups across his review streams (PRICE FIRST), the v1 replay 2017-24.
+- **His 10-31 rulings** are verbatim in `docs/methodology/operator_shared_notes.md` and the vault. #710 stays blocked on his 10-25 ruling (no reproduction of his trades yet).
+- **Ops:** subagent prod reads are refused by the classifier — do prod reads in the main loop; set `git config core.commentChar ";"` once per clone (a conflicted rebase strips `#<task>` subjects).
+
+## 2026-10-29 (Thu) CLOSE — (superseded by 10-31 above)
 
 **2026-10-29 (Thu): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.)
 
