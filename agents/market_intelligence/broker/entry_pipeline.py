@@ -418,7 +418,12 @@ async def check_flip_up_open_floor(
         if flip is None:
             return True, None      # not admitted by the flip-up — the rule is not read
         tick_et = flip.get("tick_et") or "?"
-        prev_close = await get_prev_close(ticker, alert_date)
+        # Bounded like the two reads above it (review fix, 2026-10-31: this was the one read the
+        # SSoT called "bounded" that was not — `get_pool()` sets no acquire/command timeout, so a
+        # stalled Postgres held the 09:31 money path here for as long as it took). A TimeoutError
+        # is an Exception → the outer handler → the entry proceeds. The audit writes below are
+        # already 5 s-bounded and never raise (`db.log_audit_event`, #621).
+        prev_close = await asyncio.wait_for(get_prev_close(ticker, alert_date), OPEN_FLOOR_READ_TIMEOUT_S)
         open_px = None
         try:
             open_px = float(orb_bar["open"]) if orb_bar and orb_bar.get("open") is not None else None

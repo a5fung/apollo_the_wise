@@ -299,6 +299,29 @@ def test_fails_open_when_any_read_raises(monkeypatch, kw):
     assert SETUP_OPEN_BELOW_GAP_FLOOR not in " ".join(_events(audit))
 
 
+def test_a_hanging_prev_close_read_is_cut_at_the_stage_timeout_and_fails_open(monkeypatch):
+    """Review fix 2026-10-31: the prev-close read was the one DB read in stage 4a NOT wrapped in
+    `asyncio.wait_for` while the SSoT said "each read is bounded (5 s)". WOULD-FAIL-IF the wrap were
+    missing: the stage would sit on the sleeper for its full 10 s, so the test's OWN 1 s bound
+    raises TimeoutError instead of the stage returning. With the wrap the stage returns (True, None)
+    in ~10 ms — the read was entered (spy = 1), nothing was skipped, no audit row was written (the
+    timeout lands in the outer handler, like any other exception)."""
+    audit, spies = _wire_rule(monkeypatch, mode="on")
+
+    async def _hang(ticker, before_date):
+        spies.prev += 1
+        await asyncio.sleep(10)
+
+    monkeypatch.setattr("agents.market_intelligence.db.get_prev_close", _hang)
+    monkeypatch.setattr(ep, "OPEN_FLOOR_READ_TIMEOUT_S", 0.01)
+    ctx = {"ticker": CEG["ticker"], "alert_date": CEG["alert_date"], "gap_pct": 9.4}
+    result = asyncio.run(asyncio.wait_for(
+        ep.check_flip_up_open_floor(CEG["ticker"], ctx, _bar(CEG["open"]), FLOOR), 1.0))
+    assert result == (True, None)
+    assert spies.prev == 1 and spies.flip == 1
+    assert _events(audit) == []
+
+
 @pytest.mark.parametrize("bad_prev", [None, 0.0, -5.0])
 def test_fails_open_without_a_usable_denominator_and_says_so(monkeypatch, bad_prev):
     audit, _ = _wire_rule(monkeypatch, mode="on", prev_close=bad_prev)
