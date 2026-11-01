@@ -94,12 +94,13 @@ def test_the_live_table_parses_to_something(monkeypatch=None):
     """End-to-end against the REAL PLAN.md: whatever the table currently holds, the count of rows
     naming a task must equal asks + settled. A silent drop shows up here as a mismatch.
 
-    A board whose standing section is gone, or holds no task rows, has nothing to parse: that
-    SKIPS (operator_asks.py itself prints "nothing to raise" for it) rather than fails — the row
-    selection is kept tested by `test_the_row_selection_finds_decorated_and_settled_rows`."""
-    rows = require_population(
-        _standing_task_rows((REPO / "PLAN.md").read_text(encoding="utf-8")) or [],
-        "task rows in the standing-ask table")
+    A standing table with NO task rows (every ask answered) has nothing to parse: that SKIPS rather
+    than fails, and `test_the_row_selection_finds_decorated_and_settled_rows` keeps the selection
+    tested. A MISSING section still FAILS: operator_asks.py would print "nothing to raise" for a
+    renamed heading and hide every open ask."""
+    rows = _standing_task_rows((REPO / "PLAN.md").read_text(encoding="utf-8"))
+    assert rows is not None, "the standing-ask section is gone from PLAN.md (renamed? operator_asks reads nothing)"
+    rows = require_population(rows, "task rows in the standing-ask table")
     asks = [l for l in rows if _is_ask(l)]
     settled = [l for l in rows if not _is_ask(l)]
     assert len(asks) + len(settled) == len(rows), "a row was classified as neither"

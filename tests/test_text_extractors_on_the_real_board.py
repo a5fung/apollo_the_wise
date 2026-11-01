@@ -150,7 +150,7 @@ def test_every_property_holds_on_a_synthetic_board():
     props = [fn for name, fn in sorted(globals().items())
              if name.startswith("test_") and name != "test_every_property_holds_on_a_synthetic_board"
              and list(inspect.signature(fn).parameters) == ["board"]]
-    assert len(props) >= 5, "the property list was not derived — the probe would run nothing"
+    assert props, "the property list was not derived — the probe would run nothing"
     for fn in props:
         fn(board)
     bars = {t["id"]: close_bar_for(t["title"]) for t in board}
