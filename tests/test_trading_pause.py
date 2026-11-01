@@ -26,7 +26,7 @@ def _mock_get_pool(fetchrow_return=None, fetchrow_raises=None):
         conn.fetchrow = AsyncMock(return_value=fetchrow_return)
 
     @asynccontextmanager
-    async def _acquire():
+    async def _acquire(**_kw):   # asyncpg accepts timeout= (db.get_safeguard_state passes it)
         yield conn
 
     pool = MagicMock()

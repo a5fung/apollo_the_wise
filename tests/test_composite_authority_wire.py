@@ -78,7 +78,7 @@ def test_composite_toggle_reads_on_row(monkeypatch):
             return False
 
     class _Pool:
-        def acquire(self):
+        def acquire(self, **_kw):   # asyncpg accepts timeout=
             return _Acq()
 
     async def _pool():
