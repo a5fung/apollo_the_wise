@@ -1,0 +1,4 @@
+SET
+ERROR:  invalid input syntax for type json
+DETAIL:  Token "'" is invalid.
+CONTEXT:  JSON data, line 1: {'...

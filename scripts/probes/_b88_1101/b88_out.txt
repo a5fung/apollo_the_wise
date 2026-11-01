@@ -1,0 +1,73 @@
+#88 M&A filter Path B re-evaluation — last 30d (post-2026-05-23 ship)
+  Total mna_filter_fired events: 59
+  polygon_news_insights_missing skips: 0
+
+====================================================================================================
+MATCH PATH DISTRIBUTION (last 30d)
+====================================================================================================
+  description+insights             25  (42%)
+  title                            17  (28%)
+  claude_deal_fields                9  (15%)
+  unknown                           6  (10%)
+  description+symbols               2  (3%)
+
+====================================================================================================
+TOP TICKERS BY FIRE COUNT (post-#89 dedup should keep this small)
+====================================================================================================
+TICKER    fires  paths
+--------------------------------------------------
+SYNA         16  description+insights:12, title:4
+CCC          11  title:10, claude_deal_fields:1
+PTC           6  description+insights:5, claude_deal_fields:1
+RXO           5  description+insights:5
+BMBL          4  unknown:4
+SLN           3  unknown:2, claude_deal_fields:1
+BRZE          3  description+insights:2, claude_deal_fields:1
+OPCH          2  claude_deal_fields:1, description+symbols:1
+PCRX          2  claude_deal_fields:1, description+insights:1
+MAT           1  title:1
+SGRY          1  claude_deal_fields:1
+CART          1  title:1
+RRC           1  title:1
+MFIC          1  claude_deal_fields:1
+LCII          1  claude_deal_fields:1
+
+====================================================================================================
+SAMPLE TITLES BY PATH (manual TP/FP classification needed)
+====================================================================================================
+
+>>> title matches (showing up to 10 unique titles):
+  • QUICK SPARK: Barbie Maker Mattel Eyes Best Day Since 1996 on Takeover Talks
+  • CCC Intelligent Solutions Agrees To Be Acquired By GTCR, Elliott Investment Mana
+  • $HAREHOLDER ALERT - The M&A Class Action Launches Legal Inquiry for the Merger —
+
+>>> description+insights matches (showing up to 10 unique titles):
+  • Stock Market Midday, Oct. 2: Stocks Rally as Weak Jobs Data Cools Fed Rate Hike 
+  • Why C.H. Robinson Stock Was Sliding Again Today
+  • PTC Inc. (PTC) Surges 33.5%: Is This an Indication of Further Gains?
+  • Why Braze Stock Soared This Week
+  • Viatris to Buy Pacira for $1.65B to Expand Non-Opioid Pain Portfolio
+
+====================================================================================================
+DECISION GATE — methodology drift detection
+====================================================================================================
+→ Polygon-news fires: 42 (title=17/40%, 
+  description+insights=25/59%)
+
+OPERATOR ACTION REQUIRED — manual TP/FP classification of the sample
+titles above. Score each fire:
+  - TP: article is genuinely about this ticker's M&A activity (target side)
+  - FP: article isn't about this ticker's M&A (multi-tag bleed, sympathy
+    move, name collision, acquirer direction-blindness, etc.)
+
+Compare TP rate to #88 ship baseline (2 TPs / 13 cases = 15% TP rate):
+  - If TP rate ≥30% AND insights_missing is low: filter is working well
+  - If TP rate <15%: FP rate has DRIFTED HIGHER — investigate which path
+    is leaking (likely Path B description+insights direction-blindness)
+  - If insights_missing > 20% of total: Path B is skipping too many 
+    articles (false-negative risk); investigate Polygon insights coverage
+
+Cross-references:
+  - #88: Path A + Path B fix ship (2026-05-23)
+  - #90: residual direction-blindness via descriptions (filed 2026-05-23)
+  - feedback_methodology_insights_need_periodic_revalidation.md
