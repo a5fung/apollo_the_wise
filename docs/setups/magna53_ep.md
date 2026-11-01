@@ -709,8 +709,8 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
   quarantines on its first step instead of retrying (F1's exact shape, one statement later). **Now:** `db.insert_shadow_trade(row,
   catch_up=…)` runs the INSERT … RETURNING id and the catch-up UPDATE inside ONE `conn.transaction()` on one connection; the UNIQUE
   conflict inserts nothing and applies nothing; without a catch-up the call is the plain INSERT it was. The UPDATE's shape is the exit
-  step's own (`SHADOW_TRADE_EXIT_STEP_UPDATE_SQL`, both the still-open and the closed-in-the-missed-sessions field sets), already prepared
-  at deploy — nothing new to register. The tracker issues no separate UPDATE on this path (`_insert_hour_row(..., catch_up=)`); a crash
+  step's own: the closed-in-the-missed-sessions set IS `SHADOW_TRADE_EXIT_STEP_UPDATE_SQL` (prepared at deploy) and the still-open set is
+  that statement minus `status` / `closed_at` — the same subset the nightly non-closing step already writes — so nothing new to register. The tracker issues no separate UPDATE on this path (`_insert_hour_row(..., catch_up=)`); a crash
   inside the combined write is the per-candidate error path — counted, nothing written, the candidate retried the next night. Tests:
   `tests/test_482_late_fill_transaction.py` (6: both statements inside one transaction on one connection; the UPDATE's exception leaves the
   transaction so asyncpg rolls the INSERT back — the fake proves the exception reaches the context exit, the rollback itself is asyncpg's,

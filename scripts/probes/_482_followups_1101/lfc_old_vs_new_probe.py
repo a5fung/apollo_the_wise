@@ -41,7 +41,7 @@ def _walks(day0, fill_day, sessions, tag):
         for sname, stop in stops.items():
             r = lfc.walk_arm(entry=base.ENTRY, stop=stop, target=base.TARGET, day0_bars=day0,
                              fill_idx=base.FILL_IDX_A, sessions=sessions, prior_closes=base.PRIOR_CLOSES,
-                             harvest=harvest, fill_day=fill_day)
+                             harvest=harvest, fill_day=fill_day, breakeven_at_r=None)   # the pre-#545 global stack, stated
             res[f"{tag}:{harvest}:{sname}"] = to_jsonable(r)
     r = lfc.walk_arm(entry=base.ENTRY, stop=base.LIVE_STOP, target=base.TARGET_8R, day0_bars=day0,
                      fill_idx=base.FILL_IDX_A, sessions=sessions, prior_closes=base.PRIOR_CLOSES,
@@ -50,7 +50,7 @@ def _walks(day0, fill_day, sessions, tag):
     # a trade bought BELOW its line (the CLS shape): prior closes far above the entry
     r = lfc.walk_arm(entry=base.ENTRY, stop=base.LIVE_STOP, target=None, day0_bars=day0,
                      fill_idx=base.FILL_IDX_A, sessions=sessions, prior_closes=[30.0] * 20,
-                     harvest="live_ladder", fill_day=fill_day)
+                     harvest="live_ladder", fill_day=fill_day, breakeven_at_r=None)
     res[f"{tag}:live_ladder:below_line"] = to_jsonable(r)
     return res
 
