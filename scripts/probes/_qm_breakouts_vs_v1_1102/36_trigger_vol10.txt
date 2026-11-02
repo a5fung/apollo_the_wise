@@ -1,0 +1,4 @@
+price only (no volume rule)              breakouts a day: median 65, mean 105.7 | QM buys firing on his day 213/245 | big 25/26
+volume >= 1.2x the 50-day (v1 today)     breakouts a day: median 20, mean 31.2 | QM buys firing on his day 116/245 | big 15/26
+volume >= 1.2x the last 10 days          breakouts a day: median 24, mean 38.1 | QM buys firing on his day 145/245 | big 21/26
+volume >= 1.5x the last 10 days          breakouts a day: median 13, mean 22.0 | QM buys firing on his day 107/245 | big 14/26

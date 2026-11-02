@@ -1,0 +1,11 @@
+bars: 12,005,007 rows / 12,532 tickers / 1635 sessions 2016-01-04..2022-06-30 (4s); 5,007 tickers have a missing session inside their span (211,391 holes)
+QM buys that did not fire on his day: 129 | price above the 5-day high but volume short: 97 | volume ok but no new 5-day high: 9 | both short: 23
+  of the no-new-5-day-high ones, still above the PRIOR day's high: 28 of 32
+  volume on his day vs the 50-day average, among the volume-short: median 0.80x
+  ALT test (high above the PRIOR day's high, volume >= 1.0x avg): his buys firing 154/245, big 20/26
+  ALT test (high above the PRIOR day's high, volume >= 0.8x avg): his buys firing 185/245, big 24/26
+
+volume on QM's buy day vs the average of the last N sessions (his 245 era-A buys):
+  vs 50-day: median 1.24x | at least 1.2x: 125 | at least 1.0x: 156 | new 5-day high AND >= 1.2x: 116 (big 15/26)
+  vs 20-day: median 1.21x | at least 1.2x: 124 | at least 1.0x: 155 | new 5-day high AND >= 1.2x: 120 (big 16/26)
+  vs 10-day: median 1.38x | at least 1.2x: 154 | at least 1.0x: 180 | new 5-day high AND >= 1.2x: 145 (big 21/26)
