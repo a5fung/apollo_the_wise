@@ -1,0 +1,29 @@
+ticker	his_entry_date	his_R	builder	blind	agree	reconciled	resolution
+APT	2020-02-21	48.98	LISTED NOT BOUGHT	NOT LISTED	0	NOT LISTED (rs)	Off the list the night before (strength 96.4); his day's high $5.77 never reached v1's level $5.98; the 3 listed nights were other days, each refused as stop too wide -> NOT LISTED (strength)
+NVAX	2020-02-26	5.91	BOUGHT, EXITED EARLY	BOUGHT, EXITED EARLY	1	BOUGHT, EXITED EARLY	
+PDD	2020-05-08	5.2	BOUGHT EARLIER OR LATER	NOT LISTED	0	NOT LISTED (rs)	v1's 06-02 buy came 16 sessions later, after his replayed sell (05-28), at $69.69 vs his $52.18: a new base, not his trade -> NOT LISTED (strength)
+SHOP	2020-06-15	7.28	BOUGHT EARLIER OR LATER	NOT LISTED	0	NOT LISTED (rs)	The builder's 05-22 buy was refused by the one-position-per-stock rule: v1 already held SHOP 05-05..05-27 (+0.2R), sold 13 sessions before his buy -> NOT LISTED (strength)
+APT	2020-06-17	7.92	BOUGHT EARLIER OR LATER	NOT LISTED	0	NOT LISTED (tightening)	v1's 07-08 buy came after his replayed sell (07-06), at $18.59 vs his $13.46 (+38%) -> NOT LISTED (tightening)
+SRNE	2020-06-24	6.22	BOUGHT EARLIER OR LATER	BOUGHT EARLIER OR LATER	1	BOUGHT EARLIER OR LATER	
+BLDP	2020-06-29	7.25	NOT LISTED	NOT LISTED	1	NOT LISTED (rs)	
+BE	2020-06-30	11.37	LISTED NOT BOUGHT	NOT LISTED	0	NOT LISTED (rs)	Off the list the night before (4 checks failed, strength 89); listed only 07-24/07-27 at about twice his price; his buy was a news gap, not a base breakout -> NOT LISTED, set aside as a news-gap buy
+VXRT	2020-07-13	8.69	BOUGHT EARLIER OR LATER	BOUGHT EARLIER OR LATER	1	BOUGHT EARLIER OR LATER	
+CODX	2020-07-16	12.8	BOUGHT EARLIER OR LATER	BOUGHT EARLIER OR LATER	1	BOUGHT EARLIER OR LATER	Same class; the reason differs: the bars show his day's high crossed v1's level and the day traded 0.63x its average volume, so volume (not price) kept the order off
+CODX	2020-07-21	6.96	BOUGHT EARLIER OR LATER	BOUGHT EARLIER OR LATER	1	BOUGHT EARLIER OR LATER	
+SRNE	2020-07-30	8.74	BOUGHT EARLIER OR LATER	BOUGHT EARLIER OR LATER	1	BOUGHT EARLIER OR LATER	
+BE	2020-08-13	8.27	LISTED NOT BOUGHT	NOT LISTED	0	NOT LISTED (rs)	Off the list the night before (strength 90.5); its listed nights were other days, refused as stop too wide or low volume -> NOT LISTED (strength)
+DOYU	2020-08-24	6.04	NOT LISTED	NOT LISTED	1	NOT LISTED (rs)	
+MDB	2020-09-21	5.78	NOT LISTED	NOT LISTED	1	NOT LISTED (rs)	
+NVDA	2020-09-25	5.3	NOT LISTED	NOT LISTED	1	NOT LISTED (rs)	
+NIO	2020-09-29	9.41	MATCHED	BOUGHT EARLIER OR LATER	0	BOUGHT EARLIER OR LATER	v1 bought 10-08 (stopped, -1.1R) and 10-14 at $24.39, 27% above him, for +16.5R; the full 5-slot book refused both -> BOUGHT LATER; a late re-entry the live book never took is not a match
+JMIA	2020-11-18	9.01	LISTED NOT BOUGHT	NOT LISTED	0	NOT LISTED (surf)	Off the list the night before (riding-the-average check failed, strength 99.1); its 3 listed nights were before, refused as stop too wide or low volume -> NOT LISTED (riding the average)
+PTON	2020-12-14	5.88	NOT LISTED	NOT LISTED	1	NOT LISTED (rs)	
+SKLZ	2021-01-05	5.06	LISTED NOT BOUGHT	NOT LISTED	0	NOT LISTED (rs)	Off the list the night before (strength 87.9); listed once (12-29), refused for low volume -> NOT LISTED (strength)
+APHA	2021-01-06	6.9	LISTED NOT BOUGHT	NOT LISTED	0	NOT LISTED (rs)	Off the list the night before (strength 85.3); listed once, 01-28, after his buy, refused for low volume -> NOT LISTED (strength)
+BE	2021-01-06	5.84	BOUGHT EARLIER OR LATER	NOT LISTED	0	NOT LISTED (rs)	v1's buys 12-07/12-08 came 19-20 sessions before his, both stopped out; off the list the night before (strength 95.8) -> NOT LISTED (strength)
+JMIA	2021-01-12	9.76	BOUGHT EARLIER OR LATER	BOUGHT EARLIER OR LATER	1	BOUGHT EARLIER OR LATER	
+OSTK	2021-01-22	10.73	NOT LISTED	NOT LISTED	1	NOT LISTED (rs)	
+SI	2021-01-22	10.51	BOUGHT EARLIER OR LATER	NOT LISTED	0	NOT LISTED (higher_lows)	The builder's 01-08 buy was refused by the one-position-per-stock rule: v1 held SI 11-17..01-21 for +13.7R and sold the day before his buy -> NOT LISTED (higher lows); v1 had already caught the previous leg
+TLRY	2021-02-02	5.26	LISTED NOT BOUGHT	NOT LISTED	0	NOT LISTED (tightening)	Off the list the night before (strength 98.9, tightening failed); its 2 listed nights were before, refused as stop too wide -> NOT LISTED (tightening)
+LCID	2021-10-25	26.91	BOUGHT EARLIER OR LATER	BOUGHT EARLIER OR LATER	1	BOUGHT EARLIER OR LATER	
+QS	2021-10-29	5.36	NOT LISTED	NOT LISTED	1	NOT LISTED (rs)	

@@ -1,0 +1,24 @@
+BLIND SECOND READ — the classification rule, written BEFORE any of the 28 trades was classified (2026-11-01).
+
+Population: Qullamaggie's replayed trades in the deciding arm (d3_p33_tspd = his rules, 3-session one-third partial,
+speed trail), deciding window 2020-01-27..2022-06-14, filled, R >= 5 (R = profit per share / risk per share, no
+slippage). 28 trades. The two EP-dated ones (BE 2020-06-30, VXRT 2020-07-13) are kept.
+v1 = breakout v1 as frozen in out/ (the live list with the strength rule at 98, the live entry, the pp exit).
+"Bought" = the entry simulation filled AND the one-position-per-stock guard admitted it (adm_guard). The 5-slot cap
+is a capacity limit, not a rule, so it is counted once in the header, not per row.
+
+Primary miss = the FIRST stage that fails on his breakout day E (watch night D = the session before E):
+ 1. NOT LISTED  — the name is not on v1's list for night D. The gate named = the first failing gate in the live order
+    (history, universe, rs, prior_move, higher_lows, surf, tightening, breakdown), from v1_gates run on that night's
+    bars with the strength value from that night's full cross-section; a name outside the strength pool is named by
+    the pool exclusion (below price/dollar-volume floors, short history, identity break, no 63-day return).
+    All failed gates go in the reason.
+ 2. LISTED NOT BOUGHT — on the list, the entry did not fill (the entry rule that stopped it named in plain words),
+    or no entry was simulated for a data reason (named as a data gap).
+ 3. BOUGHT EARLIER — filled, but the one-per-stock guard blocked it because v1 already held the stock.
+ 4. Filled and admitted, judged on v1's R at 0 cents: R <= 0 -> BOUGHT, STOPPED OUT; 0 < R < 5 -> BOUGHT, EXITED
+    EARLY; R >= 5 -> MATCHED. (Sign of R, not the exit's label: a trailing stop above the fill is "exited early".)
+ OVERRIDE: if stage 1 or 2 fails on his E but v1 filled (guard-admitted) the same stock between 10 sessions before
+    his E and his exit date -> BOUGHT EARLIER OR LATER, with v1's outcome in the reason.
+Reason also carries: whether the name would list with the strength rule at 90 (the template grid's list, not v1),
+and for every bought row his stop distance vs v1's day-low stop as a % of the fill.

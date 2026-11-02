@@ -1,0 +1,48 @@
+his 205: win5 28, loss 129, mid 48; EP/both setups 25
+on the 98 list the night before                            win5 4/28 (14%) | loss 30/129 (23%) | mid 8/48 (17%) | all 42/205 (20%)
+on the 90 list the night before                            win5 11/28 (39%) | loss 53/129 (41%) | mid 19/48 (40%) | all 83/205 (40%)
+strength >= 98                                             win5 11/28 (39%) | loss 49/129 (38%) | mid 13/48 (27%) | all 73/205 (36%)
+strength 90-98                                             win5 10/28 (36%) | loss 46/129 (36%) | mid 23/48 (48%) | all 79/205 (39%)
+strength 90-98 and strength the ONLY failure               win5 7/28 (25%) | loss 23/129 (18%) | mid 11/48 (23%) | all 41/205 (20%)
+strength < 90 (or not ranked)                              win5 7/28 (25%) | loss 34/129 (26%) | mid 12/48 (25%) | all 53/205 (26%)
+strength < 90 AND within 10% of 6-month high               win5 0/28 (0%) | loss 5/129 (4%) | mid 5/48 (10%) | all 10/205 (5%)
+fails universe                                             win5 0/28 (0%) | loss 0/129 (0%) | mid 0/48 (0%) | all 0/205 (0%)
+fails prior_move                                           win5 0/28 (0%) | loss 8/129 (6%) | mid 2/48 (4%) | all 10/205 (5%)
+fails higher_lows                                          win5 8/28 (29%) | loss 24/129 (19%) | mid 12/48 (25%) | all 44/205 (21%)
+fails surf                                                 win5 9/28 (32%) | loss 37/129 (29%) | mid 13/48 (27%) | all 59/205 (29%)
+fails tightening                                           win5 5/28 (18%) | loss 30/129 (23%) | mid 9/48 (19%) | all 44/205 (21%)
+fails breakdown                                            win5 2/28 (7%) | loss 7/129 (5%) | mid 2/48 (4%) | all 11/205 (5%)
+fails any shape gate                                       win5 15/28 (54%) | loss 62/129 (48%) | mid 21/48 (44%) | all 98/205 (48%)
+strength >= 98 but a shape gate fails                      win5 7/28 (25%) | loss 19/129 (15%) | mid 5/48 (10%) | all 31/205 (15%)
+fails ONLY surf (strength fine)                            win5 2/28 (7%) | loss 6/129 (5%) | mid 2/48 (4%) | all 10/205 (5%)
+fails ONLY higher_lows (strength fine)                     win5 1/28 (4%) | loss 1/129 (1%) | mid 1/48 (2%) | all 3/205 (1%)
+fails ONLY tightening (strength fine)                      win5 2/28 (7%) | loss 4/129 (3%) | mid 1/48 (2%) | all 7/205 (3%)
+would list without surf (all else passes, rs>=98)          win5 2/28 (7%) | loss 6/129 (5%) | mid 2/48 (4%) | all 10/205 (5%)
+would list without surf at rs>=90                          win5 10/28 (36%) | loss 36/129 (28%) | mid 13/48 (27%) | all 59/205 (29%)
+his day volume < 1.2x 50-day average                       win5 10/28 (36%) | loss 59/129 (46%) | mid 29/48 (60%) | all 98/205 (48%)
+his day volume < 1.0x                                      win5 6/28 (21%) | loss 46/129 (36%) | mid 21/48 (44%) | all 73/205 (36%)
+v1 5-day-high level > 3% above his pivot                   win5 12/28 (43%) | loss 36/129 (28%) | mid 15/48 (31%) | all 63/205 (31%)
+his fill below v1's 5-day-high level                       win5 16/28 (57%) | loss 50/129 (39%) | mid 27/48 (56%) | all 93/205 (45%)
+night before was a wide up day (range > 1 ADR)             win5 5/28 (18%) | loss 22/129 (17%) | mid 5/48 (10%) | all 32/205 (16%)
+  win5: median strength 96.9, median vol x 1.47, median level vs pivot 2.2%, median stop 3.3%
+  loss: median strength 96.5, median vol x 1.31, median level vs pivot 1.4%, median stop 3.1%
+
+v1 fills in his window (guard book, every listed day, mature): 1884; R_A>=5 67, R_A<=0 1192; R_C>=5 87, R_C<=0 1604
+buy-day volume < 1.2x (full day)                           win5A 18/67 (27%) | win5C 24/87 (28%) | lossA 576/1192 (48%) | all 795/1884 (42%)
+buy-day volume >= 2x                                       win5A 26/67 (39%) | win5C 34/87 (39%) | lossA 205/1192 (17%) | all 415/1884 (22%)
+5-day-high level > 3% above prior day's high               win5A 12/67 (18%) | win5C 17/87 (20%) | lossA 173/1192 (15%) | all 295/1884 (16%)
+level = prior day's high (within 0.1%)                     win5A 37/67 (55%) | win5C 41/87 (47%) | lossA 665/1192 (56%) | all 1022/1884 (54%)
+fill > 3% above prior day's high                           win5A 31/67 (46%) | win5C 40/87 (46%) | lossA 424/1192 (36%) | all 698/1884 (37%)
+night before was a wide up day (range > 1 ADR)             win5A 16/67 (24%) | win5C 23/87 (26%) | lossA 332/1192 (28%) | all 489/1884 (26%)
+night before up > 1 ADR close-to-close                     win5A 10/67 (15%) | win5C 12/87 (14%) | lossA 192/1192 (16%) | all 273/1884 (14%)
+strength >= 99.5                                           win5A 23/67 (34%) | win5C 32/87 (37%) | lossA 312/1192 (26%) | all 521/1884 (28%)
+sold a third at +2R then stopped at cost on day 0          win5A 0/67 (0%) | win5C 2/87 (2%) | lossA 2/1192 (0%) | all 77/1884 (4%)
+exit A stopped on day 0                                    win5A 0/67 (0%) | win5C 2/87 (2%) | lossA 627/1192 (53%) | all 702/1884 (37%)
+  v1 fills after a wide up day             : n 489, mean R_A -0.12, losers 68%, 5R+ A 16 C 23, mean R_C -0.20
+  v1 fills NOT after a wide up day         : n 1395, mean R_A +0.14, losers 62%, 5R+ A 51 C 64, mean R_C +0.10
+  v1 fills level > 3% above prior high     : n 295, mean R_A +0.29, losers 59%, 5R+ A 12 C 17, mean R_C +0.54
+  v1 fills level <= 3% above prior high    : n 1589, mean R_A +0.03, losers 64%, 5R+ A 55 C 70, mean R_C -0.08
+  v1 fills buy-day vol < 1.5x              : n 1119, mean R_A -0.22, losers 70%, 5R+ A 26 C 33, mean R_C -0.32
+  v1 fills buy-day vol >= 1.5x             : n 765, mean R_A +0.50, losers 53%, 5R+ A 41 C 54, mean R_C +0.52
+  third-then-cost on day 0: n 77; their exit C: mean -0.47, 5R+ 2, lost under C 74
+  all other fills:          n 1807; A mean +0.05, C mean +0.04

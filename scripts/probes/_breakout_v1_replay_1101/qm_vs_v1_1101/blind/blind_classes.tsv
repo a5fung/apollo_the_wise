@@ -1,0 +1,29 @@
+ticker	his_entry_date	class	reason
+APT	2020-02-21	NOT LISTED (rs)	his 49.0R, stop 3.2% below; failed: strength rank under 98; strength 96.4 (would list at 90)
+NVAX	2020-02-26	BOUGHT, EXITED EARLY	his 5.9R, stop 6.5% below; v1 bought 2020-02-26 at 8.89, stop 6.4% below, made +0.7R (template exit C +6.3R): sold a third at +2R on day 0, rest stopped the same day
+PDD	2020-05-08	NOT LISTED (rs)	his 5.2R, stop 2.8% below; failed: strength rank under 98; last 5 days dipped to or under the base low; strength 96.7
+SHOP	2020-06-15	NOT LISTED (rs)	his 7.3R, stop 2.5% below; failed: strength rank under 98; not riding the 10/20/50-day average for 5 days; strength 97.5
+APT	2020-06-17	NOT LISTED (tightening)	his 7.9R, stop 3.1% below; failed: last 5 days not tighter than the 5 before; strength 99.4
+SRNE	2020-06-24	BOUGHT EARLIER OR LATER	his 6.2R, stop 3.0% below; on his day: not listed (strength rank under 98); v1 bought 2020-06-25 at 6.52, stop 4.8% below, made +0.7R, 5-slot book was full (template exit C -1.0R); v1 bought 2020-07-10 at 8.00, stop 2.1% below, made +0.7R, 5-slot book was full (template exit C +0.0R)
+BLDP	2020-06-29	NOT LISTED (rs)	his 7.2R, stop 3.4% below; failed: strength rank under 98; strength 97.1 (would list at 90); template grid bought his day, exit C +9.6R
+BE	2020-06-30	NOT LISTED (rs)	his 11.4R, stop 4.7% below; EP-dated, not a breakout night; failed: strength rank under 98; last 5 days dipped to or under the base low; not riding the 10/20/50-day average for 5 days; closed under all three averages or made a 10-day low; strength 89.1
+VXRT	2020-07-13	BOUGHT EARLIER OR LATER	his 8.7R, stop 6.0% below; on his day: not listed (last 5 days dipped to or under the base low); v1 bought 2020-07-14 at 14.77, stop 11.5% below, made -1.0R (template exit C -1.0R)
+CODX	2020-07-16	BOUGHT EARLIER OR LATER	his 12.8R, stop 2.4% below; on his day: listed; entry rule: price never set up a buy order that day; v1 bought 2020-07-02 at 608.55, stop 6.1% below, made -1.0R, 5-slot book was full (template exit C -1.0R); v1 bought 2020-07-31 at 701.10, stop 4.2% below, made +1.0R (template exit C +1.3R)
+CODX	2020-07-21	BOUGHT EARLIER OR LATER	his 7.0R, stop 3.4% below; on his day: listed; entry rule: price already too far above the buy level (chase limit); v1 bought 2020-07-31 at 701.10, stop 4.2% below, made +1.0R (template exit C +1.3R)
+SRNE	2020-07-30	BOUGHT EARLIER OR LATER	his 8.7R, stop 7.1% below; on his day: listed; entry rule: day-low stop wider than one average daily range; v1 bought 2020-07-31 at 10.19, stop 6.7% below, made -1.0R, 5-slot book was full (template exit C -1.0R)
+BE	2020-08-13	NOT LISTED (rs)	his 8.3R, stop 2.6% below; failed: strength rank under 98; strength 90.5 (would list at 90); template grid bought his day, exit C +2.2R
+DOYU	2020-08-24	NOT LISTED (rs)	his 6.0R, stop 1.0% below; failed: strength rank under 98; strength 97.8 (would list at 90); template grid bought his day, exit C +0.0R
+MDB	2020-09-21	NOT LISTED (rs)	his 5.8R, stop 2.6% below; failed: strength rank under 98; last 5 days dipped to or under the base low; not riding the 10/20/50-day average for 5 days; strength 72.6
+NVDA	2020-09-25	NOT LISTED (rs)	his 5.3R, stop 1.9% below; failed: strength rank under 98; strength 91.1 (would list at 90); template grid bought his day, exit C +2.4R
+NIO	2020-09-29	BOUGHT EARLIER OR LATER	his 9.4R, stop 2.9% below; on his day: not listed (not riding the 10/20/50-day average for 5 days); v1 bought 2020-10-08 at 22.35, stop 3.0% below, made -1.0R, 5-slot book was full (template exit C -1.0R); v1 bought 2020-10-14 at 24.39, stop 2.7% below, made +16.6R, 5-slot book was full (template exit C +2.8R)
+JMIA	2020-11-18	NOT LISTED (surf)	his 9.0R, stop 5.4% below; failed: not riding the 10/20/50-day average for 5 days; strength 99.1
+PTON	2020-12-14	NOT LISTED (rs)	his 5.9R, stop 3.0% below; failed: strength rank under 98; last 5 days not tighter than the 5 before; strength 95.8
+SKLZ	2021-01-05	NOT LISTED (rs)	his 5.1R, stop 5.2% below (store symbol FIRY); failed: strength rank under 98; last 5 days dipped to or under the base low; strength 87.9
+APHA	2021-01-06	NOT LISTED (rs)	his 6.9R, stop 5.0% below; failed: strength rank under 98; last 5 days dipped to or under the base low; not riding the 10/20/50-day average for 5 days; strength 85.3
+BE	2021-01-06	NOT LISTED (rs)	his 5.8R, stop 3.0% below; failed: strength rank under 98; strength 95.8 (would list at 90); template grid bought his day, exit C +6.8R
+JMIA	2021-01-12	BOUGHT EARLIER OR LATER	his 9.8R, stop 5.1% below; on his day: not listed (last 5 days dipped to or under the base low); v1 bought 2021-01-22 at 48.00, stop 6.2% below, made +2.4R, 5-slot book was full (template exit C +5.5R)
+SI	2021-01-22	NOT LISTED (higher_lows)	his 10.5R, stop 6.2% below (store symbol SICP); failed: last 5 days dipped to or under the base low; not riding the 10/20/50-day average for 5 days; last 5 days not tighter than the 5 before; closed under all three averages or made a 10-day low; strength 98.8; v1 held SI 2020-11-17..2021-01-21 for +13.7R and sold the day before his buy
+OSTK	2021-01-22	NOT LISTED (rs)	his 10.7R, stop 4.1% below (store symbol NXH); failed: strength rank under 98; strength 35.9
+TLRY	2021-02-02	NOT LISTED (tightening)	his 5.3R, stop 7.6% below; failed: last 5 days not tighter than the 5 before; strength 98.9
+LCID	2021-10-25	BOUGHT EARLIER OR LATER	his 26.9R, stop 3.0% below; on his day: not listed (strength rank under 98); v1 bought 2021-11-17 at 565.80, stop 6.9% below, made -1.0R (template exit C -1.0R)
+QS	2021-10-29	NOT LISTED (rs)	his 5.4R, stop 5.5% below; failed: strength rank under 98; not riding the 10/20/50-day average for 5 days; last 5 days not tighter than the 5 before; strength 74.5
