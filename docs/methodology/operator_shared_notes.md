@@ -2836,3 +2836,7 @@ Recorded (letters -> `scripts/probes/_qm_breakouts_vs_v1_1102/24_move70_labels.t
 > "One key reason for no I see was wide and loose bases or run ups, can you check that" (2026-11-02, after the run-up size could not separate his labels)
 
 Checked on all 72 labels (31 ok-or-better, 41 no; `scripts/probes/_qm_breakouts_vs_v1_1102/27_loose_wide*.txt`): across the WHOLE base and run-up, width and looseness measured nine ways do not separate (depth, daily range, day-to-day swing, smoothness, deepest pullback: yes and no medians nearly equal). It shows in the LAST TWO WEEKS: the spread of the last 10 closes in daily ranges — yes median 1.5, no median 2.4; a random yes is tighter than a random no 78% of the time. Line at 3 daily ranges keeps 28/31 yes (drops TSLA 2018-08-07 ok, GOTU pick, SPLK ok) and removes 10/34 no.
+
+> "Yes, the chart should tighten leading to the breakout, not the full base" (2026-11-02, confirming the last-two-weeks tightness)
+
+Recorded as a RULE DIRECTION for breakout v1: tightness is read into the breakout (the last ~10 sessions), not across the whole base. Best measure on his 72 labels: the spread of the last 10 closes in daily ranges (a yes is tighter than a no 79% of the time; 7 and 15 sessions 77%; full-bar spreads 68-71%). At 3 daily ranges it keeps 28/31 of his yes and removes 17/41 no; it drops 29 of QM's 245 era-A buys (2 big winners) -> charts for his labels (`charts/tight3_drops_1..3.png`).

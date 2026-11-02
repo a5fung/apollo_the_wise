@@ -1,0 +1,18 @@
+labels joined: 31 yes, 41 no
+  close10  chance a yes is tighter than a no: 0.79
+  close7   chance a yes is tighter than a no: 0.77
+  close15  chance a yes is tighter than a no: 0.77
+  bar7     chance a yes is tighter than a no: 0.71
+  bar15    chance a yes is tighter than a no: 0.71
+  bar5     chance a yes is tighter than a no: 0.70
+  close5   chance a yes is tighter than a no: 0.69
+  bar10    chance a yes is tighter than a no: 0.68
+
+best: close10 (spread of the last 10 closes, in daily ranges)
+  within 2: his yes kept 23/31 | his no removed 26/41 | QM buys kept 152/245 | big 19/26 | names a night median 82
+  within 2.5: his yes kept 26/31 | his no removed 20/41 | QM buys kept 192/245 | big 20/26 | names a night median 123
+  within 3: his yes kept 28/31 | his no removed 14/41 | QM buys kept 216/245 | big 24/26 | names a night median 156
+  within 3.5: his yes kept 28/31 | his no removed 8/41 | QM buys kept 226/245 | big 24/26 | names a night median 178
+  within 4: his yes kept 30/31 | his no removed 6/41 | QM buys kept 230/245 | big 24/26 | names a night median 192
+  within 5: his yes kept 30/31 | his no removed 2/41 | QM buys kept 238/245 | big 26/26 | names a night median 206
+loosest yes on it: TSLA 2018-08-06 5.5, GOTU 2020-05-07 3.8, SPLK 2018-05-07 3.8, BNTX 2021-09-22 2.7, PDD 2020-05-07 2.6

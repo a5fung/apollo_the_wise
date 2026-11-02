@@ -1,0 +1,12 @@
+era-A nights 1322; current list (start + depth band + 32% pole run-up + EMA21 >= -0.63 + close >= SMA50): median 221, mean 336
+  + 6-month move >= 40%: median 202, mean 320
+  + 6-month move >= 50%: median 160, mean 283
+  + 6-month move >= 70%: median 99, mean 209
+  + 6-month move >= 8 daily ranges: median 216, mean 332
+  + 6-month move >= 10 daily ranges: median 207, mean 321
+  + 6-month move >= 12 daily ranges: median 186, mean 301
+  + last 10 closes within 3 daily ranges: median 156, mean 230
+  + last 10 closes within 3.5 daily ranges: median 178, mean 264
+  + last 10 closes within 4 daily ranges: median 192, mean 288
+  + last 10 closes within 5 daily ranges: median 206, mean 314
+  + 8 daily ranges run-up AND last 10 within 4: median 188, mean 284
