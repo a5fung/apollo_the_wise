@@ -1,0 +1,6 @@
+QM buy   n 253 | v1 run-up >= 70%: 149 | 6-month move >= 70%: 225 | >= 100%: 186
+his PICK n  10 | v1 run-up >= 70%:   9 | 6-month move >= 70%:  10 | >= 100%:   7
+his no   n  24 | v1 run-up >= 70%:   4 | 6-month move >= 70%:  11 | >= 100%:   6
+QM buys under 70% on v1's measure: 104; of those, 6-month move >= 70%: 76, >= 50%: 91; big winners among them 5
+his picks: GOTU v1 86% / 6m 227%, PDD v1 78% / 6m 107%, APT v1 487% / 6m 1200%, GPRE v1 91% / 6m 215%, EVRI v1 87% / 6m 413%, EAT v1 139% / 6m 361%, NEX v1 75% / 6m 87%, RES v1 70% / 6m 77%, SB v1 75% / 6m 148%, AR v1 95% / 6m 95%
+his no's:  COLD v1 56% / 6m 56%, GLNG v1 40% / 6m 66%, CSII v1 61% / 6m 67%, EXAS v1 128% / 6m 137%, HAE v1 81% / 6m 92%, ATVI v1 35% / 6m 48%, CVGW v1 38% / 6m 38%, EQX v1 35% / 6m 98%, PGR v1 33% / 6m 35%, ABR v1 63% / 6m 211%, GNRC v1 57% / 6m 91%, NUAN v1 32% / 6m 83%, FFG v1 53% / 6m 67%, FIRY v1 43% / 6m 46%, SCHN v1 35% / 6m 82%, INMD v1 47% / 6m 169%, RH v1 52% / 6m 264%, EDU v1 51% / 6m 52%, REKR v1 135% / 6m 135%, INDI v1 51% / 6m 59%, EVBG v1 34% / 6m 52%, GDS v1 35% / 6m 35%, MARA v1 118% / 6m 159%, RDW v1 35% / 6m 46%

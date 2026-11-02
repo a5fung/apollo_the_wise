@@ -1,0 +1,15 @@
+era A: QM buys on the current list 245, big winners 26; his picks 10, rejects 24; current list median 154 names a night
+6-month move >= 50%: QM buys kept 236/245 | big winners 26/26 | his picks 10/10 | his rejects removed 6/24 | names a night median 112 mean 186
+6-month move >= 60%: QM buys kept 230/245 | big winners 25/26 | his picks 10/10 | his rejects removed 10/24 | names a night median 88 mean 160
+6-month move >= 70%: QM buys kept 222/245 | big winners 25/26 | his picks 10/10 | his rejects removed 13/24 | names a night median 68 mean 137
+6-month move >= 80%: QM buys kept 214/245 | big winners 24/26 | his picks 9/10 | his rejects removed 13/24 | names a night median 53 mean 118
+QM buys under 70%: SINA 2017-10-02 56%, SRPT 2017-10-02 59%, ANET 2018-03-12 60%, SPLK 2018-05-08 48%, TSLA 2018-08-07 53%, EW 2019-08-16 42%, TDOC 2019-10-31 48%, STNE 2019-11-18 66%, AMD 2019-12-12 52%, SE 2019-12-19 69%, WORK 2020-03-05 50%, ZS 2020-03-24 66%, EXEL 2020-04-20 42%, FEAC 2020-11-30 46%, UAL 2021-03-11 64%, RCL 2021-03-15 66%, AMD 2021-08-23 69%, QS 2021-10-29 50% BIG, FCX 2021-12-07 43%, PFE 2021-12-13 36%, MU 2021-12-21 36%, FCX 2021-12-27 39%, MDB 2021-12-27 66%
+
+his ok-or-better labelled QM buys in era A checked too: 8
+6-month move >= 35%               : QM buys kept 245/245 | big 26/26 | his labelled-good QM buys 8/8 | his picks 10/10 | rejects removed 1/24 | names a night median 150
+6-month move >= 40%               : QM buys kept 242/245 | big 26/26 | his labelled-good QM buys 8/8 | his picks 10/10 | rejects removed 3/24 | names a night median 143
+6-month move >= 42%               : QM buys kept 241/245 | big 26/26 | his labelled-good QM buys 7/8 | his picks 10/10 | rejects removed 3/24 | names a night median 136
+6-month move >= 8 daily ranges    : QM buys kept 240/245 | big 26/26 | his labelled-good QM buys 8/8 | his picks 10/10 | rejects removed 4/24 | names a night median 151
+6-month move >= 10 daily ranges   : QM buys kept 235/245 | big 24/26 | his labelled-good QM buys 8/8 | his picks 10/10 | rejects removed 6/24 | names a night median 141
+6-month move >= 12 daily ranges   : QM buys kept 228/245 | big 23/26 | his labelled-good QM buys 8/8 | his picks 10/10 | rejects removed 8/24 | names a night median 128
+6-month move >= 14 daily ranges   : QM buys kept 218/245 | big 23/26 | his labelled-good QM buys 7/8 | his picks 9/10 | rejects removed 10/24 | names a night median 108

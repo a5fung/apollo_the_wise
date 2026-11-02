@@ -1,0 +1,22 @@
+current list median 249 names a night; labelled: 10 picks, 24 not picked
+                         measure dir  line (keeps all 10 picks)  rejects removed /24  QM buys dropped /263  QM big winners dropped  names a night
+                          run-up  >=                        0.7                   20                   109                       5             51
+               riding count best  >=                          6                   16                    88                      11            117
+                   riding 20-day  >=                          1                   15                    51                       7            150
+                   strength rank  >=                       93.3                   13                    89                       8            156
+                     daily range  >=                     0.0485                   12                    81                       0             92
+         close vs EMA10 (ranges)  >=                     -0.326                    9                    16                       1            212
+            recent 5-day range %  >=                     0.0389                    9                    63                       1            130
+                           price  <=                         50                    9                   127                       6            175
+         close vs EMA21 (ranges)  >=                     -0.308                    8                     7                       0            230
+                close vs SMA10 %  >=                    -0.0293                    8                    20                       3            224
+low vs prior 10-day low (ranges)  >=                      0.238                    8                    21                       4            223
+      close vs base low (ranges)  >=                       1.27                    7                    39                       5            207
+                tightening ratio  <=                       1.21                    7                    45                       3            188
+         close vs EMA21 (ranges)  <=                       1.64                    6                    28                       0            182
+                tightening ratio  >=                      0.848                    6                   111                       7            168
+            below the pole top %  >=                     0.0141                    5                     5                       0            170
+                close vs SMA50 %  >=                    0.00176                    4                     0                       0            246
+     close vs buy level (ranges)  >=                      -1.87                    4                     0                       0            230
+               riding count best  <=                         22                    4                    11                       3            242
+         EMA10 vs EMA21 (ranges)  <=                      0.857                    4                    16                       1            196

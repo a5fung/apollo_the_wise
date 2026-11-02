@@ -2824,3 +2824,7 @@ Recorded: GOOD = CODX 2020-04-06, BNTX 2021-09-23, MARA 2021-11-30; DECENT = DKN
 > His picks on BLIND sample night 2 (2026-11-02, `charts/sample_night2_blind.png`, 2020-09-24): "A - ok / D - ok / G - ok"
 
 Recorded: SETUPS (ok) = A GPRE, D EVRI, G EAT; not picked = B ABR, C GNRC, E NUAN, F FFG, H FIRY, I SCHN, K INMD, L RH, and J NVDA — Qullamaggie's own buy the next day (a big winner), NOT picked by him; it stays on the list as QM's trade (the scorecard), the disagreement noted. Key: `charts/sample_night2_KEY.json`. v1's "surf" count separates this night's picks perfectly but contradicts night 1 (PDD 6 vs EQX 12) and drops 5+ of QM's big winners at any useful line -> not used.
+
+> His picks on BLIND sample night 3 (2026-11-02, `charts/sample_night3_blind.png`, 2021-10-22): "C - ok / D - ok / F - ok / G - good"
+
+Recorded: SETUPS = C NEX (ok), D RES (ok), F SB (ok), G AR (good); not picked = A EDU, B REKR, E INDI, H EVBG, J GDS, K MARA, L RDW, and I LCID — Qullamaggie's own buy the next day, NOT picked by him (stays on the list as QM's trade). Key: `charts/sample_night3_KEY.json`.
