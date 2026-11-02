@@ -1,0 +1,18 @@
+labels: 31 ok-or-better, 41 no
+                        measure keep if  line (keeps every yes)  no's removed  no's measured  yes measured  yes median  no median
+                  base sessions      >=                       4             7             41            31          34         28
+            runup swing / trend      <=                    5.81             7             41            31        3.48       3.24
+            runup swing / trend      >=                    1.59             5             41            31        3.48       3.24
+                 runup sessions      >=                      15             5             41            31          56         51
+          runup smoothness (R2)      <=                   0.966             4             41            31       0.776      0.791
+                   base depth %      >=                  0.0952             3             34            31       0.236      0.194
+          runup smoothness (R2)      >=                  0.0737             3             41            31       0.776      0.791
+       runup deepest pullback %      >=                  0.0269             3             41            31       0.123      0.107
+        last 10 closes spread %      <=                   0.287             3             34            31       0.085      0.108
+      base range vs runup range      >=                   0.524             3             34            31        1.05      0.849
+            base depth (ranges)      >=                    1.57             3             34            31        3.99        4.3
+            base depth (ranges)      <=                     9.7             3             34            31        3.99        4.3
+ last 10 closes spread (ranges)      <=                     5.5             1             34            31        1.47       2.41
+      last 10 avg range vs base      >=                   0.476             1             34            31       0.955      0.942
+        runup avg daily range %      <=                    0.15             1             41            31       0.056      0.062
+runup deepest pullback (ranges)      <=                    6.99             1             41            31        2.35       2.25

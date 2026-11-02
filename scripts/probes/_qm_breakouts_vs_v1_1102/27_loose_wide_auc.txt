@@ -1,0 +1,28 @@
+chance a random ok-or-better scores LOWER than a random no (0.5 = no signal; 1.0 = perfect; below 0.5 = the yes side is higher)
+  last 10 closes spread (ranges)     0.78   (yes 31, no 34)
+  base range vs runup range          0.31   (yes 31, no 34)
+  last 10 closes spread %            0.61   (yes 31, no 34)
+  base sessions                      0.41   (yes 31, no 41)
+  base depth %                       0.41   (yes 31, no 34)
+  base avg daily range %             0.41   (yes 31, no 34)
+  runup sessions                     0.42   (yes 31, no 41)
+  runup avg daily range %            0.57   (yes 31, no 41)
+  runup smoothness (R2)              0.56   (yes 31, no 41)
+  runup deepest pullback %           0.45   (yes 31, no 41)
+  base close spread %                0.45   (yes 31, no 34)
+  base day-to-day swing %            0.47   (yes 31, no 34)
+  runup day-to-day swing %           0.48   (yes 31, no 41)
+  base depth (ranges)                0.48   (yes 31, no 34)
+  runup swing / trend                0.49   (yes 31, no 41)
+  runup deepest pullback (ranges)    0.50   (yes 31, no 41)
+  last 10 avg range vs base          0.50   (yes 31, no 34)
+last 10 closes within 2 daily ranges: yes kept 23/31 | no removed 21/34
+last 10 closes within 2.5 daily ranges: yes kept 26/31 | no removed 16/34
+last 10 closes within 3 daily ranges: yes kept 28/31 | no removed 10/34
+last 10 closes within 3.5 daily ranges: yes kept 28/31 | no removed 6/34
+last 10 closes within 4 daily ranges: yes kept 30/31 | no removed 4/34
+loosest yes:  sym          D label  last 10 closes spread (ranges)
+TSLA 2018-08-06    ok                        5.501380
+GOTU 2020-05-07  pick                        3.835055
+SPLK 2018-05-07    ok                        3.810081
+BNTX 2021-09-22  good                        2.655352

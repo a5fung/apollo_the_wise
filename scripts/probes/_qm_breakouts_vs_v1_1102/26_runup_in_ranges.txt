@@ -1,0 +1,80 @@
+       who  sym       date              label  move    adr  move_in_ranges
+  his pick  APT 2020-05-07               pick    12 0.0969             124
+    QM buy CODX 2020-04-06               good  24.3  0.218             112
+  his pick  EAT 2020-09-24               pick  3.61 0.0589            61.3
+  his pick EVRI 2020-09-24               pick  4.13 0.0679            60.8
+his reject   RH 2020-09-24                 no  2.64 0.0494            53.3
+his reject  ABR 2020-09-24                 no  2.11 0.0398            53.1
+    QM buy   SE 2020-09-14                 no   2.2 0.0537            40.9
+    QM buy MRNA 2021-11-29                 no  2.39 0.0588            40.6
+  his pick GPRE 2020-09-24               pick  2.15 0.0541            39.7
+    QM buy BNTX 2021-09-23               good  1.99 0.0524              38
+    QM buy  AMC 2021-02-22                 ok  9.66  0.258            37.5
+    QM buy DOCU 2020-12-15                 no  1.56  0.043            36.2
+    QM buy DOCU 2020-12-04                 no  1.56  0.047            33.2
+his reject INMD 2020-09-24                 no  1.69 0.0537            31.6
+  his pick GOTU 2020-05-07               pick  2.27 0.0749            30.2
+    QM buy AVLR 2020-07-29          likely no   1.3 0.0472            27.6
+his reject GNRC 2020-09-24                 no 0.911 0.0346            26.3
+his reject NUAN 2020-09-24                 no 0.828 0.0326            25.4
+his reject  FFG 2020-09-24                 no 0.665 0.0264            25.2
+his reject EXAS 2020-05-07                 no  1.37 0.0556            24.7
+  his pick   SB 2021-10-22               pick  1.48 0.0605            24.4
+    QM buy DKNG 2021-02-26             decent  1.33 0.0546            24.4
+his reject  HAE 2020-05-07                 no 0.921 0.0394            23.4
+    QM buy   SE 2019-12-19                 ok 0.689 0.0295            23.4
+  his pick  PDD 2020-05-07               pick  1.07 0.0485            22.1
+his reject MARA 2021-10-22                 no  1.59 0.0736            21.6
+    QM buy   EW 2019-08-16                 ok 0.417 0.0211            19.8
+his reject SCHN 2020-09-24                 no 0.824  0.044            18.7
+    QM buy  AMD 2019-12-12               good 0.524 0.0281            18.6
+his reject  EQX 2020-05-07                 no 0.983 0.0548            17.9
+    QM buy SINA 2017-10-02               good 0.556  0.031            17.9
+  his pick   AR 2021-10-22               pick 0.948 0.0537            17.7
+    QM buy  LRN 2020-08-05               good  1.45 0.0826            17.6
+  his pick  NEX 2021-10-22               pick 0.869 0.0524            16.6
+his reject EVBG 2021-10-22                 no 0.519 0.0334            15.5
+    QM buy  YPF 2019-04-17                 no 0.393 0.0256            15.4
+his reject REKR 2021-10-22                 no  1.35 0.0886            15.2
+    QM buy MARA 2021-11-30               good  1.78  0.117            15.2
+    QM buy SPLK 2018-05-08                 ok 0.476 0.0331            14.4
+    QM buy TSLA 2018-08-07                 ok 0.528 0.0372            14.2
+his reject COLD 2020-05-07                 no 0.557 0.0393            14.2
+    QM buy    W 2020-04-07      no (maybe EP)  2.52  0.179            14.1
+    QM buy STNE 2019-11-18                 no 0.662  0.047            14.1
+    QM buy TDOC 2019-10-31                 no 0.477 0.0342              14
+his reject ATVI 2020-05-07                 no 0.481 0.0348            13.8
+  his pick  RES 2021-10-22               pick 0.766 0.0558            13.7
+    QM buy  AMD 2021-08-23               good  0.69 0.0504            13.7
+    QM buy ANET 2018-03-12                 no 0.601 0.0445            13.5
+    QM buy  LAC 2021-09-30              okish 0.968  0.072            13.4
+his reject CSII 2020-05-07                 no 0.667 0.0522            12.8
+    QM buy SRPT 2017-10-02                 ok 0.594 0.0473            12.6
+    QM buy  UAL 2021-03-11               good 0.643 0.0532            12.1
+his reject INDI 2021-10-22                 no 0.587  0.051            11.5
+his reject  PGR 2020-05-07                 no 0.348 0.0322            10.8
+    QM buy  PFE 2021-12-13               good 0.361 0.0336            10.7
+    QM buy  RCL 2021-03-15               good 0.658 0.0614            10.7
+    QM buy   MU 2021-12-21     ok but EP look 0.356 0.0333            10.7
+    QM buy  MDB 2021-12-27                 no 0.657 0.0648            10.1
+    QM buy  SQM 2021-09-10                 no 0.364 0.0366            9.97
+    QM buy  FCX 2021-12-27                 no 0.386 0.0389            9.92
+    QM buy  FCX 2021-12-07                 no 0.426 0.0436            9.77
+his reject CVGW 2020-05-07                 no 0.375 0.0388            9.66
+    QM buy   QS 2021-10-29                 ok 0.503 0.0565            8.91
+his reject  GDS 2021-10-22                 no 0.353 0.0418            8.44
+    QM buy WORK 2020-03-05                 ok   0.5 0.0636            7.86
+    QM buy FEAC 2020-11-30                 no 0.463 0.0594            7.79
+    QM buy EXEL 2020-04-20 looks more like EP 0.424 0.0545            7.78
+    QM buy   ZS 2020-03-24                 no 0.661 0.0858            7.71
+his reject  EDU 2021-10-22                 no 0.524 0.0731            7.16
+his reject FIRY 2020-09-24                 no 0.463 0.0666            6.95
+his reject GLNG 2020-05-07                 no 0.663 0.0955            6.94
+his reject  RDW 2021-10-22                 no 0.462 0.0865            5.35
+
+lowest ok-or-better: ['WORK', '2020-03-05', np.float64(7.857659815081817)]
+move >= 7.86 daily ranges: his yes kept 30/31 | his no removed 7/41 | QM buys kept 240/245 | big 26/26 | names a night median 152
+move >= 8 daily ranges: his yes kept 30/31 | his no removed 7/41 | QM buys kept 240/245 | big 26/26 | names a night median 151
+move >= 10 daily ranges: his yes kept 29/31 | his no removed 12/41 | QM buys kept 235/245 | big 24/26 | names a night median 141
+move >= 12 daily ranges: his yes kept 26/31 | his no removed 15/41 | QM buys kept 228/245 | big 23/26 | names a night median 128
+big winners under 12 ranges: [('APT', '2020-02-21', 9.9), ('SKLZ', '2021-01-05', 10.4), ('QS', '2021-10-29', 8.9)]
