@@ -19,7 +19,7 @@ for era in ("A", "B"):
         for r in csv.DictReader(f, delimiter="\t"):
             pm[(r["scan_date"], r["ticker"])] = float(r["prior_move"])
 QM12 = (("CELH-1", "CELH", "2020-06-22"), ("CELH-3", "CELH", "2020-08-04"), ("CODX-1", "CODX", "2020-04-15"), ("LVGO-4", "LVGO", "2020-07-02"),
-        ("OPK-2", "OPK", "2020-07-16"), ("OSTK-2", "OSTK", "2020-06-22"), ("SRNE-2", "SRNE", "2020-07-30"), ("PRTS", "PRTS", "2020-07-07"),
+        ("OPK-2", "OPK", "2020-07-16"), ("OSTK-2", "NXH", "2020-06-22"), ("SRNE-2", "SRNE", "2020-07-30"), ("PRTS", "PRTS", "2020-07-07"),
         ("ARCT", "ARCT", "2020-07-10"), ("HL", "HL", "2020-08-03"), ("IBIO-1", "IBIO", "2020-07-14"), ("PENN-2", "PENN", "2020-06-22"))
 print("\n(1) prior move of the 12 of Qullamaggie's graded setups v1 catches (list row at the catching watch night):")
 vals = []

@@ -1,0 +1,48 @@
+Qullamaggie's 12 graded setups v1 catches (catching watch night D), EMA21 rise across the base:
+  CELH-1  D 2020-06-22  pole top 2020-05-26  rise +37.0%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  CELH-3  D 2020-08-04  pole top 2020-07-17  rise +13.9%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  CODX-1  D 2020-04-15  pole top 2020-02-28  rise +68.4%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  LVGO-4  D 2020-07-02  pole top 2020-06-17  rise +15.6%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  OPK-2   D 2020-07-16  pole top 2020-07-01  rise +27.8%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  OSTK-2  D 2020-06-22  pole top 2020-06-04  rise +20.2%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  SRNE-2  D 2020-07-30  pole top 2020-07-10  rise +17.4%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  PRTS    D 2020-07-07  pole top 2020-06-03  rise +43.9%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  ARCT    D 2020-07-10  pole top 2020-05-19  rise +16.8%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  HL      D 2020-08-03  pole top 2020-07-20  rise +26.4%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  IBIO-1  D 2020-07-14  pole top 2020-06-29  rise +21.0%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  PENN-2  D 2020-06-22  pole top 2020-06-05  rise +8.3%  3%:pass  4%:pass  5%:pass  6%:pass  7%:pass
+  kept at 3%: 12 of 12   (bar (b): >= 10)
+  kept at 4%: 12 of 12   (bar (b): >= 10)
+  kept at 5%: 12 of 12   (bar (b): >= 10)
+  kept at 6%: 12 of 12   (bar (b): >= 10)
+  kept at 7%: 12 of 12   (bar (b): >= 10)
+MTW 10-30 (his NO; pole top 10-06 as the live list row): rise +2.7%  3%:FAIL  4%:FAIL  5%:FAIL  6%:FAIL  7%:FAIL   (bar (a): FAIL wanted)
+parity {'pole_ok': 61071, 'cut_ok': 62}
+
+placed name-days 18094; floor-kept 14680; list rows passing 5%: 80%
+BASELINE floor only, 5-slot: 2017-21 n 983 mean -0.139; 2022-24 n 556 mean -0.340
+
+== G4 at 3% ==  orders removed 2351 of 14680 (16%)
+  (c2) no slot limit, pooled: kept n 4362 mean -0.112 | removed n 872 mean -0.124 -> PASS
+  2017-21: 5-slot n 899 mean -0.084 3R+ 5.1%  (c1 >= -0.139: PASS; c3 n>=100: PASS)  random median -0.101, random beats it in 32% (c4 < 25%: FAIL)
+  2022-24: 5-slot n 484 mean -0.173 3R+ 5.4%  (c1 >= -0.34: PASS; c3 n>=100: PASS)  random median -0.282, random beats it in 0% (c4 < 25%: PASS)
+
+== G4 at 4% ==  orders removed 2603 of 14680 (18%)
+  (c2) no slot limit, pooled: kept n 4264 mean -0.115 | removed n 970 mean -0.108 -> FAIL
+  2017-21: 5-slot n 895 mean -0.102 3R+ 5.0%  (c1 >= -0.139: PASS; c3 n>=100: PASS)  random median -0.111, random beats it in 40% (c4 < 25%: FAIL)
+  2022-24: 5-slot n 489 mean -0.183 3R+ 5.3%  (c1 >= -0.34: PASS; c3 n>=100: PASS)  random median -0.278, random beats it in 2% (c4 < 25%: PASS)
+
+== G4 at 5% ==  orders removed 2861 of 14680 (19%)
+  (c2) no slot limit, pooled: kept n 4165 mean -0.122 | removed n 1069 mean -0.081 -> FAIL
+  2017-21: 5-slot n 887 mean -0.090 3R+ 5.3%  (c1 >= -0.139: PASS; c3 n>=100: PASS)  random median -0.100, random beats it in 42% (c4 < 25%: FAIL)
+  2022-24: 5-slot n 489 mean -0.185 3R+ 4.9%  (c1 >= -0.34: PASS; c3 n>=100: PASS)  random median -0.272, random beats it in 2% (c4 < 25%: PASS)
+
+== G4 at 6% ==  orders removed 3193 of 14680 (22%)
+  (c2) no slot limit, pooled: kept n 4044 mean -0.117 | removed n 1190 mean -0.104 -> FAIL
+  2017-21: 5-slot n 895 mean -0.116 3R+ 5.3%  (c1 >= -0.139: PASS; c3 n>=100: PASS)  random median -0.094, random beats it in 68% (c4 < 25%: FAIL)
+  2022-24: 5-slot n 463 mean -0.127 3R+ 5.6%  (c1 >= -0.34: PASS; c3 n>=100: PASS)  random median -0.268, random beats it in 2% (c4 < 25%: PASS)
+
+== G4 at 7% ==  orders removed 3561 of 14680 (24%)
+  (c2) no slot limit, pooled: kept n 3913 mean -0.122 | removed n 1321 mean -0.090 -> FAIL
+  2017-21: 5-slot n 886 mean -0.134 3R+ 5.0%  (c1 >= -0.139: PASS; c3 n>=100: PASS)  random median -0.097, random beats it in 72% (c4 < 25%: FAIL)
+  2022-24: 5-slot n 463 mean -0.139 3R+ 5.4%  (c1 >= -0.34: PASS; c3 n>=100: PASS)  random median -0.269, random beats it in 1% (c4 < 25%: PASS)
