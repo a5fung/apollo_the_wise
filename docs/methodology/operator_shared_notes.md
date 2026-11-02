@@ -2771,3 +2771,13 @@ Recorded: a case study, iterated — Qullamaggie's own big winners (his replayed
 > "You also say we buy later, we may be buying a later stage base vs the first base, this is somewhat related to the neglect idea, buying newer bases vs buying late base" (2026-11-01, on the spot-check: v1 bought 8 of his 28 biggest trades on another day, mostly later and higher; LCID listed only after a 120% run)
 
 Recorded: a hypothesis for why v1 misses his big winners — BASE STAGE. He buys the first (early, neglected) base after a decline or a long flat stretch; v1's top-2% strength rule can only pass a stock that has already run, so it buys later-stage bases. Linked to the neglect idea (an early base is one the crowd has not found yet). The spot-check's numbers point the same way: his never-listed winners were down a median 42% into their low and sat at strength 79; v1's 5R+ fits had run +27% over 3 months. Added as a question to the next breakout block: the base stage of his picks (first base vs later) against v1's trades and same-day controls.
+
+## 2026-11-02 — first breakout v1 paper morning: his chart calls (operator, verbatim)
+
+> "bwmn is clearly a buyout candidate" (2026-11-02 ~07:00 PT, on BWMN's resting paper buy at $42.95 on a 7-cent stop — Bernhard Capital's $43 cash buyout, signed 2026-08-10)
+
+> "yes to both, and deploy at 12" then "both" (to: cancel BWMN's order [already cancelled 09:49 by its volume pace] + a daily-range floor on v1's list; then to: the 4.26% floor vs a 1%-only pinned-deal rule)
+
+> "mtw doesn't even look like a good setup" (2026-11-02, on MTW — breakout v1's FIRST paper buy, filled $23.98, stop $23.44, ADR20 4.06%)
+
+Recorded: (1) v1's list gains the named pinned-deal gate (ADR20 >= 1%) AND the 4.26% daily-range floor (his reverse-engineered pool) — shipped in the 11-02 12:00 ET deploy (`docs/setups/consolidation_breakout.md` change log 2026-11-02). (2) A LABEL: MTW on its 11-02 breakout is NOT a good setup in his eye — the first paper buy is one he would not take; the floor would have kept it off (4.06% < 4.26%). The paper position runs on its own rules (no money); his label is the selection-quality ground truth for the lane.
