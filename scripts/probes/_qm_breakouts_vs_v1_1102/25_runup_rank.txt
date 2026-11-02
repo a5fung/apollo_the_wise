@@ -1,0 +1,8 @@
+6-month move >= 12 daily ranges   : QM buys kept 228/245 | big 23/26 | his labelled-good QM buys 8/8 | his picks 10/10 | rejects removed 8/24 | names a night median 128
+6-month move >= 14 daily ranges   : QM buys kept 218/245 | big 23/26 | his labelled-good QM buys 7/8 | his picks 9/10 | rejects removed 10/24 | names a night median 108
+rank on its night by 6-month run-up (0% = biggest):
+  his 10 picks : [1, 8, 11, 14, 14, 29, 33, 38, 41, 47]
+  his rejects still on the list (18 of 24): [12, 17, 19, 29, 30, 41, 47, 68, 78, 79, 80, 84, 85, 86, 87, 93, 99, 99]
+  QM's 245 buys on the list: median 25% | top 10% 71 | top 20% 104 | top 30% 147
+  QM's big winners: median 17% | top 20% 15/26
+  a night's list median 221 names
