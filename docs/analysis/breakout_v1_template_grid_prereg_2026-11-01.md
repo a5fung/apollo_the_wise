@@ -396,8 +396,9 @@ after the run, the results.
 
 ## RESULTS (pasted after the one run; plain words; every cell against his benchmark row)
 
-- Step 1 — the exit: (pending)
-- Step 2 — the 15-cent floor on the pick: (pending)
-- Step 3 — the strength gate: (pending)
-- Step 4 — the slots and the 31: (pending)
-- What this read cannot say: (pending)
+- Step 1 — the exit (2017-21 capped 2c; pick by the registered rule): A today -0.153 (win 34.8%, average win +1.77R, 10R+ 1.0/100), B no partial 20-day -0.187 (win 8.3%, +8.47R, 2.3/100), C speed trail -0.158 (win 14.4%, +4.95R, 1.9/100), D -0.244 -> PICK C (a tie with A within 0.02R, the higher 10R+ count); judged 2022-24: C -0.438 [-0.63, -0.22] FAIL (A -0.412). Like for like (paired, uncapped) no exit beats today's beyond noise; B holds the biggest runs (+582R on today's 10R+ trades vs C's +70R).
+- Step 2 — the 15-cent floor on C: 2017-21 -0.109, 2022-24 -0.233 [-0.48, +0.06] FAIL (the floor's gain +0.05 / +0.20R confirmed).
+- Step 3 — the strength gate: 2017-21 98 / 95 / 90 = -0.109 / -0.159 / -0.085 -> PICK 90; judged 2022-24 -0.131 [-0.35, +0.11] FAIL. Recall of the 872 real big breakouts at 90: listed 620 (vs 380), 3R+ catches 82 (vs 47), 10R+ 31 (vs 17). The audit: the pick rests on ONE trade (TSLA 2019-12-10, +75.6R, strength 97.6); without it 90 reads -0.150 vs 98's -0.138; without the slot limit every new band is worse than the old names in 2022-24.
+- Step 4 — slots 5 / 8 / 10 on 2022-24: -0.131 / -0.187 / -0.153, all FAIL; the extra slots add worse trades (8 slots' additions -0.18 / -0.28R), not a modelling defect; of the 31 refused big winners 5 / 8 / 10 slots admit 4 / 6 / 7.
+- What this read cannot say: the entry and the day-low stop were held fixed (32% of the chain's trades exit on day 0); steps 3-4 are not independently recountable from the outputs (the new names' placed rows were not written); his 37% benchmark win rate is biased up (buys sold between two streams are missing).
+- VERIFIED (2026-11-01, Opus, before reporting): recount — steps 1-2 every number MATCHES, 12 hand-walked trades 0 differences; adversarial — FAIL holds and no pick could change it. THE GAP, measured on the term that holds under every exit: winners at 5R or better — his 13.7 per 100 vs ours 3.5 (A) to 4.8 (C); the 5-10R band carries ~53% of the 1.16R-a-trade gap, 10R+ ~19%, fewer losers ~17%, small winners ~11%; costs explain 0.07R; his own window (2020-01..2022-06) reads the same (-0.105). Under C our average win (+4.65R) matches his implied +4.45R — the win rate halves because the no-partial exits turn small winners into cost-exits (17-21% exit exactly at cost).
