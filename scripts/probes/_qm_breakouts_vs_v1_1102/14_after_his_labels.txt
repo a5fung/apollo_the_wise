@@ -1,0 +1,3 @@
+start (strength 35, range 2.1%, run-up rule as v1)         his buys 269/269 | big winners 26/26 | his GOOD labels kept 4/4 | his NO labels kept 6/6 | names a night median 543 mean 625 p90 1023
+backward result (range 2.8%, depth 1.70-8.98, run-up 32.1%) his buys 258/269 | big winners 26/26 | his GOOD labels kept 0/4 | his NO labels kept 0/6 | names a night median 364 mean 450 p90 790
+AFTER HIS LABELS (range 2.1%, depth 1.511-8.98, run-up 32.1%) his buys 263/269 | big winners 26/26 | his GOOD labels kept 4/4 | his NO labels kept 0/6 | names a night median 438 mean 520 p90 889
