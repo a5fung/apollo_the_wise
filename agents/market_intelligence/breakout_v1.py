@@ -69,7 +69,11 @@ MIN_BARS = DEEP + 1                  # 86 bars ending D, consecutive sessions (t
 # Backtest on the frozen replay (scripts/probes/_breakout_v1_replay_1101/adr_floor_1102/): removes 19% of orders, which
 # averaged -0.46R; the paper book improves in both eras (2017-21 -0.153 -> -0.139R, 2022-24 -0.412 -> -0.340R).
 ADR_MIN = 0.0426                     # ADR20 at D (mean of (h-l)/c over the 20 sessions ending D)
-GATES = ("history", "universe", "adr", "rs", "prior_move", "higher_lows", "surf", "tightening", "breakdown")
+# His "both" (2026-11-02): ALSO a named PINNED-DEAL rule, ADR20 >= 1% — the three deal targets on the 11-02 list sat
+# at 0.16% / 0.25% / 0.73%, the ordinary low-range names at 2.9-4.1%. It is contained in the 4.26% floor (the list is
+# the same), but it names WHY a name is out: a deal-pinned stock (`pinned`) vs a slow mover (`adr`).
+PINNED_ADR_MAX = 0.01
+GATES = ("history", "universe", "pinned", "adr", "rs", "prior_move", "higher_lows", "surf", "tightening", "breakdown")
 STOCK_SECURITY_TYPES = frozenset({"CS", "ADRC"})
 FUND_SECURITY_TYPE = "ETV"
 
@@ -249,8 +253,10 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
     g["universe"] = {"pass": bool(rc >= MIN_PRICE and dv20 >= MIN_DOLLAR_VOL),
                      "value": {"raw_close": _f(rc), "dollar_vol20": _f(dv20)}}
 
-    # adr — the daily-range floor (his 2026-11-02 ruling; ADR_MIN above)
+    # pinned + adr — the deal-pinned rule and the daily-range floor (his 2026-11-02 rulings; constants above)
     adr_d = adr20_at(rng, D)
+    adr_ok = adr_d is not None and math.isfinite(adr_d)
+    g["pinned"] = {"pass": bool(adr_ok and adr_d >= PINNED_ADR_MAX), "value": {"adr20": _f(adr_d), "min": PINNED_ADR_MAX}}
     g["adr"] = {"pass": bool(adr_d is not None and math.isfinite(adr_d) and adr_d >= ADR_MIN),
                 "value": {"adr20": _f(adr_d), "min": ADR_MIN}}
 

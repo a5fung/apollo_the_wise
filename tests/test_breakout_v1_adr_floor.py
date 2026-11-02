@@ -19,7 +19,8 @@ def _bars(n: int, daily_range_pct: float, close: float = 40.0) -> "cb.DailyBars"
 
 def test_the_floor_is_his_pool_value_and_a_named_gate():
     assert bv1.ADR_MIN == 0.0426
-    assert "adr" in bv1.GATES and bv1.GATES.index("adr") == bv1.GATES.index("universe") + 1
+    assert bv1.PINNED_ADR_MAX == 0.01
+    assert bv1.GATES.index("pinned") == bv1.GATES.index("universe") + 1 and bv1.GATES.index("adr") == bv1.GATES.index("pinned") + 1
 
 
 def test_a_pinned_deal_target_fails_the_floor_and_a_normal_mover_passes():
@@ -29,6 +30,11 @@ def test_a_pinned_deal_target_fails_the_floor_and_a_normal_mover_passes():
     assert pinned["gates"]["adr"]["pass"] is False and "adr" in pinned["failed"]
     assert abs(pinned["gates"]["adr"]["value"]["adr20"] - 0.0025) < 1e-9
     assert mover["gates"]["adr"]["pass"] is True and "adr" not in mover["failed"]
+    # his "both": a deal-pinned name fails BOTH rules; an ordinary slow mover (3%) fails only the floor
+    assert pinned["gates"]["pinned"]["pass"] is False and "pinned" in pinned["failed"]
+    slow = bv1.v1_gates(_bars(n, 0.03), n - 1, rs_best=99.0)
+    assert slow["gates"]["pinned"]["pass"] is True and slow["gates"]["adr"]["pass"] is False
+    assert mover["gates"]["pinned"]["pass"] is True
     above = bv1.v1_gates(_bars(n, 0.0427), n - 1, rs_best=99.0)         # just over the line passes
     below = bv1.v1_gates(_bars(n, 0.0425), n - 1, rs_best=99.0)         # just under fails
     assert above["gates"]["adr"]["pass"] is True and below["gates"]["adr"]["pass"] is False

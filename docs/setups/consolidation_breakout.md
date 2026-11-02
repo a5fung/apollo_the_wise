@@ -318,9 +318,11 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 **Anticipated effect**: the 17:55 ET list loses its pinned and low-volatility names (~19% fewer rows on history; ARX, BWMN-like names); the list audit row's per-gate fail counts carry an `adr` count; nothing else in the entry or exit changes.
 
+**His "both" (2026-11-02, after the list check below)**: ALSO a named PINNED-DEAL gate `pinned`, ADR20 >= 1% (`PINNED_ADR_MAX`), before `adr`. On the 11-02 list (scan 10-30, `scripts/probes/_verify_1102/q6_list_baseline.out`) 12 of 27 names sat under 4.26%: the three deal targets at 0.16% (BWMN) / 0.25% (ARX) / 0.73% (PCRX) and nine ordinary low-range names at 2.9-4.1% (incl. MTW, the first paper buy, 4.06%). The 4.26% floor contains the 1% rule, so the LIST is the same; the two gates name WHY a name is out (a deal-pinned stock vs a slow mover) in the per-gate counts.
+
 **Reversion-flag**: NEW.
 
-**Status**: shipped, awaiting field validation — deploy Mon 11-02 12:00-13:00 ET (market-agent, where the 17:55 list job runs; batched with the 11-01 simplify + the M&A sweep fix, then execution). VERIFY-LIVE: the 11-02 17:55 ET list's audit row shows an `adr` fail count > 0 and no listed name with ADR20 < 4.26%. WOULD-FAIL-IF: a listed name with ADR20 < 4.26%, or no `adr` key in the per-gate counts. ⚠ The frozen C replay and template grid pinned `breakout_v1.py`; they reproduce at their freeze commits (`e2c7938d`, `087e0908`), not on HEAD.
+**Status**: shipped, awaiting field validation — deploy Mon 11-02 12:00-13:00 ET (market-agent, where the 17:55 list job runs; batched with the 11-01 simplify + the M&A sweep fix, then execution). VERIFY-LIVE: the 11-02 17:55 ET list's audit row shows `pinned` and `adr` fail counts > 0 and no listed name with ADR20 < 4.26%. WOULD-FAIL-IF: a listed name with ADR20 < 4.26%, or no `pinned` / `adr` key in the per-gate counts. ⚠ The frozen C replay and template grid pinned `breakout_v1.py`; they reproduce at their freeze commits (`e2c7938d`, `087e0908`), not on HEAD.
 
 ### 2026-11-01 — breakout v1 studies on the frozen 2017-2024 replay: the paper baseline FAIL, the path to his template FAIL in every step, the spot-check of his 28 biggest buys (RESEARCH ONLY — no rule changed; any change is his call)
 
