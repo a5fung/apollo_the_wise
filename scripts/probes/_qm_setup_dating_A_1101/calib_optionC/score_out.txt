@@ -1,0 +1,105 @@
+reference rows 86 | agreed+dated 59 | primary A+B high/medium 24
+agree_kind among agreed: {'same': 57, 'within one session': 2}
+
+== AGREED (both daters same/one-session) rows: 45/59 within one session = 76%  | excluding tainted rows: 39/51 = 76%
+  MISS CELH-1     final 2020-06-23 (medium, tier A) | mine 2020-06-18 gap 3 | his: five-star
+  MISS CODX-2     final 2020-06-23 (low, tier B) | mine 2020-07-21 gap 19 | his: good one (traded)
+  MISS CWH-2      final 2020-05-06 (medium, tier A) | mine 2020-07-10 gap 45 | his: five-star ("where millions are made")
+  MISS FSLY/EXPI-this-one-too final 2020-07-30 (low, tier A) | mine none/undated gap None | his: very good setup
+  MISS FVRR-2     final 2020-04-20 (low, tier A) | mine 2020-06-25 gap 47 | his: five-star
+  MISS LVGO-3     final 2020-06-16 (low, tier C) | mine 2020-06-10 gap 4 | his: okay
+  MISS NVAX       final 2020-06-15 (high, tier A) | mine 2020-06-17 gap 2 | his: perfect setup
+  MISS PENN-3     final 2020-08-06 (medium, tier B) | mine 2020-07-15 gap 16 | his: decent (not obvious)
+  MISS RDFN-2     final 2020-08-07 (medium, tier C) | mine 2020-06-03 gap 46 | his: maybe setup
+  MISS SRNE-1     final 2020-06-24 (low, tier C) | mine 2020-07-20 gap 17 | his: not the five-star (sluggish)
+  MISS SVM-2      final 2020-07-08 (low, tier B) | mine 2020-06-30 gap 5 | his: good
+  MISS TTOO-mention1 final 2020-08-10 (low, tier C) | mine none/undated gap None | his: maybe
+  MISS QUMU-mention1 final 2020-08-10 (medium, tier A) | mine none/undated gap None | his: five-star
+  MISS VSLR       final 2020-08-05 (low, tier B) | mine none/undated gap None | his: decent
+
+== PRIMARY 24 good setups (A+B, high/medium): 20/24 within one session = 83%  | excluding tainted rows: 14/17 = 82%
+  MISS CELH-1     final 2020-06-23 (medium, tier A) | mine 2020-06-18 gap 3 | his: five-star
+  MISS CWH-2      final 2020-05-06 (medium, tier A) | mine 2020-07-10 gap 45 | his: five-star ("where millions are made")
+  MISS NVAX       final 2020-06-15 (high, tier A) | mine 2020-06-17 gap 2 | his: perfect setup
+  MISS PENN-3     final 2020-08-06 (medium, tier B) | mine 2020-07-15 gap 16 | his: decent (not obvious)
+
+== ALL dated reference rows (incl. disputed): 51/70 within one session = 73%  | excluding tainted rows: 41/53 = 77%
+  MISS CELH-1     final 2020-06-23 (medium, tier A) | mine 2020-06-18 gap 3 | his: five-star
+  MISS CODX-2     final 2020-06-23 (low, tier B) | mine 2020-07-21 gap 19 | his: good one (traded)
+  MISS CWH-2      final 2020-05-06 (medium, tier A) | mine 2020-07-10 gap 45 | his: five-star ("where millions are made")
+  MISS FSLY/EXPI-this-one-too final 2020-07-30 (low, tier A) | mine none/undated gap None | his: very good setup
+  MISS FVRR-2     final 2020-04-20 (low, tier A) | mine 2020-06-25 gap 47 | his: five-star
+  MISS IBIO-3     final 2020-07-17 (low, tier C) | mine 2020-07-07 gap 8 | his: secondary setup
+  MISS IDEX       final 2020-06-17 (low, tier C) | mine 2020-06-05 gap 8 | his: could have been
+  MISS LVGO-1     final 2020-04-23 (low, tier B) | mine 2020-04-07 gap 11 | his: good
+  MISS LVGO-3     final 2020-06-16 (low, tier C) | mine 2020-06-10 gap 4 | his: okay
+  MISS MARK       final 2020-05-22 (low, tier A) | mine 2020-04-28 gap 18 | his: really good
+  MISS NVAX       final 2020-06-15 (high, tier A) | mine 2020-06-17 gap 2 | his: perfect setup
+  MISS PENN-3     final 2020-08-06 (medium, tier B) | mine 2020-07-15 gap 16 | his: decent (not obvious)
+  MISS RDFN-2     final 2020-08-07 (medium, tier C) | mine 2020-06-03 gap 46 | his: maybe setup
+  MISS SRNE-1     final 2020-06-24 (low, tier C) | mine 2020-07-20 gap 17 | his: not the five-star (sluggish)
+  MISS SVM-2      final 2020-07-08 (low, tier B) | mine 2020-06-30 gap 5 | his: good
+  MISS TRVN       final 2020-07-15 (medium, tier B) | mine none/undated gap None | his: pretty decent
+  MISS TTOO-mention1 final 2020-08-10 (low, tier C) | mine none/undated gap None | his: maybe
+  MISS QUMU-mention1 final 2020-08-10 (medium, tier A) | mine none/undated gap None | his: five-star
+  MISS VSLR       final 2020-08-05 (low, tier B) | mine none/undated gap None | his: decent
+
+My dated rows unmatched by any reference row:
+  VIR-1 2020-05-18 (medium, B) there was a setup here
+  VIR-2 2020-06-22 (medium, C) this was a potential setup
+  KIRK-1 2020-07-22 (low, C) okay setup
+  KIRK-2 2020-06-03 (low, C) potential setup
+  FSLY-3 2020-08-20 (low, C) maybe later this week we could have a setup
+  PTON-1 2020-06-15 (low, B) this was a good setup
+  PTON-2 2020-08-28 (medium, C) maybe later this [week]
+  PDD-1 2020-07-31 (medium, B) it had a good setup on this day here
+  SHLL-1 2020-08-13 (medium, B) could be a good long setup
+  AN-1 2020-08-12 (medium, C) it's a good setup, don't get me wrong
+  SAVE-1 2020-08-10 (medium, C) thinking about doing one of them
+  UAL-1 2020-08-10 (medium, C) UAL looks really good
+  LRN-1 2020-08-05 (medium, C) (implied) if you missed it on Thursday
+  ALT-2 2020-06-26 (medium, A) five and a half star; such a good one; memorize th
+  CELH-1 2020-06-18 (medium, A) five-star; nice little high tight flag
+  CODX-3 2020-08-03 (low, C) another one I traded
+  CVNA-2 2020-08-04 (medium, B) here's another good setup
+  CZR-1 2020-04-27 (medium, A) really good setup; five-star; memorize
+  EXPI-1 2020-07-20 (low, A) very good setup
+  EXPI-2 2020-08-04 (low, A) this one too very good setup
+  FSLY-2 2020-08-03 (low, A) right here (again)
+  FVRR-2 2020-06-25 (medium, A) great setup; five star setup
+  IBIO-2 2020-06-26 (low, B) better setup; good setup right here
+  IBIO-3 2020-07-07 (medium, C) secondary setup
+  IDEX-1 2020-06-05 (medium, C) could have been a setup
+  INO-1 2020-03-03 (low, C) variation of a setup (traded)
+  LVGO-1 2020-04-07 (low, B) good setup
+  LVGO-3 2020-06-10 (low, C) okay setup
+  MARK-1 2020-04-28 (medium, A) really good setup
+  MIK-1 2020-05-27 (low, C) okay setup
+  NLS-1 2020-04-09 (medium, A) really good setups
+  NVAX-1 2020-06-17 (medium, A) perfect setup
+  PENN-3 2020-07-15 (medium, B) kind of a decent setup
+  RDFN-1 2020-04-29 (low, C) okay setup; not really that obvious
+  RDFN-2 2020-06-03 (medium, C) maybe setup
+  SRNE-1 2020-07-20 (medium, C) wasn't a five-star setup; sluggish
+  SVM-2 2020-06-30 (medium, B) good setup
+  VXRT-1 2020-08-11 (medium, C) potentially starting to build a setup
+  BILI-1 2020-08-24 (medium, B) could get a good setup in the next few days
+  RPAY-1 2020-06-08 (medium, B) here was a decent setup
+
+Reference undatable rows that I dated:
+  UNNAMED      final=undatable | mine: none
+  BLNK-now     final=undatable | mine: 2020-07-29
+  CVNA-2       final=undatable | mine: 2020-06-02, 2020-08-04
+  FSLY/EXPI-this-one final=undatable | mine: none
+  IBIO-2       final=undatable | mine: 2020-07-15, 2020-06-26, 2020-07-07
+  INO-1        final=undatable | mine: 2020-03-03, 2020-03-27, 2020-04-20, 2020-06-23, 2020-07-13
+  MCRB         final=undatable | mine: none
+  NLS-3        final=undatable | mine: 2020-04-09, 2020-06-01, 2020-08-03
+  OPK-4        final=undatable | mine: 2020-06-29, 2020-07-17, 2020-08-06
+  RDFN-1       final=undatable | mine: 2020-04-29, 2020-06-03
+  VXRT         final=undatable | mine: 2020-08-11
+  WKHS         final=undatable | mine: none
+  HG           final=undatable | mine: none
+  BILI         final=undatable | mine: 2020-08-24
+  ONTX         final=undatable | mine: none
+  AVNW         final=undatable | mine: none

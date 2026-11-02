@@ -1,0 +1,14 @@
+ONE-READER CALIBRATION on 2020-08-10 (reader = Fable, this session; captions = 438_cyYQ888 track = full_timed_text.txt; bars <= 2020-08-10)
+Bar stated before scoring: GO if >= 85% of the 59 agreed rows match within one session.
+RESULT: 39/59 = 66% (41/59 = 69% once the reference's two duplicate rows TTOO-mention1 / QUMU-mention1 — "one setup, counted once" by its own words — are credited to my single row). Clean (tainted rows removed): 31/51 = 61%.
+24 good setups (reference PRIMARY set, A+B, high/medium, both daters agree): 20/24 = 83%; clean 13/17 = 76%.
+=> NO-GO on the stated bar.
+MISSES on the 59 (18 real + 2 duplicate artifacts):
+ - row inventory (4): BLNK-past 7/29 (I read "could have been a potential" as forward only), TFFP 8/07 ("maybe set up on Friday" = past, I wrote no-setup), SPG 8/10 (I excluded it by his "not what I'm trying to teach"; the reference dated it tier C), FSLY/EXPI "this one too" 7/30 (I left it undatable as EXPI).
+ - picked the other candidate I had listed (5): PENN-2 (ref 6/23, mine 6/04), PLUG (6/23 vs 8/06), TTD (6/03 vs 8/03), FVRR-3 (8/03 vs 6/25), CELH-1 (6/23 vs 6/18, three sessions: my "first high clears the base high" vs their first close above the flag).
+ - a different read of a weak-cue setup (8): CAR (8/05 vs 5/26 — my candidate tool never listed 8/05: +11% on 0.94x without clearing the 10-session high; the daters read his "first bounce of the 50-day ... undercuts" as the 7/30-8/04 dip), CELH-2 (7/08 vs 7/22), CODX-2 (6/23 vs 7/21), CWH-2 (5/06 vs 4/27 — I kept his "back in April"; the reconcile notes the same conflict), PENN-4 (7/29 vs 8/06), RDFN-2 (8/07 vs 7/27), SVM-1 (6/04 vs 6/30), SVM-2 (7/08 vs 7/17), INO-5 (7/13 vs 2/27).
+ - 9 of the 18 real misses were rows I had marked LOW confidence; 4 medium, 1 high (CWH-2), 4 inventory.
+Automatic bar check on my 79 dated rows: 36 flagged (no_base_clear 17 — mostly the mechanical base rule putting the pole high inside the base; not_expansion 9; not_rising_vol 9; thin_base 3; word contradictions 4). Flags were NOT used to move dates (calibration honesty).
+Tool blind spot found: `cands` requires the high to clear the prior 10-session high; CAR 8/05 (range expansion off a 50-day undercut, no new 10-session high) was invisible. Fleet fix: also list range-expansion days (>= 1.3 ADR) after >= 3 tight sessions, regardless of the 10-session high.
+Untested here: the FORWARD path (first clearing session after the stream date, cap +15 sessions) — 241 of the fleet's 395 rows are in_base_at_ref. The 08-10 stream only exercised the backward path.
+TOKENS: the 08-10 read cost ~216k tokens of context growth (captions ~25k + ~191k of candidate listings, 11 bar views, prompt/tool writing) for 129 rows / 79 dated / ~50 graded names ≈ 3.5k per graded name on top of ~21k fixed per stream.
