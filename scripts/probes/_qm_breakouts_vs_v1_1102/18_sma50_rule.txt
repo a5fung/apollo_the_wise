@@ -1,0 +1,19 @@
+
+close vs 50-day SMA limit (4th smallest of QM's 162 2017-20 buys): +0.65%
+current (EMA21 loosened)       his buys 263/269 | big winners 26/26 | names a night median 308 mean 394 p90 724
++ close vs 50-day SMA rule     his buys 259/269 | big winners 25/26 | names a night median 241 mean 323 p90 593
+QM buys it drops: 4 TSLA 2020-04-14 (+0.6%), BNTX 2020-05-05 (+0.6%), MDB 2020-09-21 (+0.3%) BIG, TTD 2021-02-19 (+0.3%)
+  2020-05-07 A COLD  no    vs 50-day -1.7% -> removed
+  2020-05-07 B GLNG  no    vs 50-day -16.7% -> removed
+  2020-05-07 C CSII  no    vs 50-day +2.5% -> removed
+  2020-05-07 D GOTU  SETUP vs 50-day +7.6% -> kept
+  2020-05-07 E EXAS  no    vs 50-day +25.6% -> kept
+  2020-05-07 F HAE   no    vs 50-day +1.6% -> removed
+  2020-05-07 G ATVI  no    vs 50-day +19.3% -> kept
+  2020-05-07 H CVGW  no    vs 50-day -5.6% -> removed
+  2020-05-07 I EQX   no    vs 50-day +21.2% -> kept
+  2020-05-07 J PGR   no    vs 50-day -2.2% -> removed
+  2020-05-07 K PDD   SETUP vs 50-day +23.9% -> kept
+  2020-05-07 L APT   SETUP vs 50-day +0.4% -> removed
+
+PLAIN LINE close >= 50-day SMA: his buys 263/269 | big winners 26/26 | names a night median 249 mean 330 p90 609; QM buys dropped 0; 2020-05-07 his picks kept: A COLD removed, B GLNG removed, C CSII removed, D GOTU kept, E EXAS kept, F HAE removed, G ATVI kept, H CVGW removed, I EQX kept, J PGR removed, K PDD kept, L APT kept
