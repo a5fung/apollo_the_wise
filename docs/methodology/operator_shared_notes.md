@@ -2848,3 +2848,7 @@ Recorded (letters -> `scripts/probes/_qm_breakouts_vs_v1_1102/31_tight3_labels.t
 > "Yes" (2026-11-02, to: measure the breakout-day volume against the last 10 days instead of the 50-day average — his F1 volume rule of 10-29)
 
 Ruling recorded for the rebuilt breakout list (#717): the volume bar on the breakout day = 1.2x the average volume of the LAST 10 SESSIONS (the base), not the 50-day average (which carries the run-up's heavy volume). On QM's 245 era-A buys: 145 fire on his buy day (was 116), 21/26 big winners (was 15), ~24 breakouts a day on the rebuilt list (was ~20). Code + SSoT change ships with the rebuilt rules (paper is off until then).
+
+> "signd off. What's the effort to build? Can we break up into stages and start some this week?" (2026-11-02, on `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md`)
+
+Recorded: HE SIGNED OFF the rebuilt breakout spec (7 list rules, the order score, the buy with the 10-day volume bar). Staged build, started this week: stage 0 (Tue 11-03) the three free checks; stage 1 (build Tue-Wed, deploy Wed 11-04 21:15 ET, market-agent only, no orders) the list; stage 2 (Sat 11-07, execution) the buy job scaled to ~250 names a night + slots by the order score; stage 3 the paper switch on his word.
