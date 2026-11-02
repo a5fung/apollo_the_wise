@@ -1,0 +1,26 @@
+
+CODX-1 (QM good)  D 2020-04-15  ADR20 11.9%  pole top 2020-03-03 509.40  base 30 sessions  bottom 2020-03-10 167.10 (session 5 of 30)
+  base   : closes under EMA10 18/30, under EMA21 14/30, crosses of EMA21 8, worst low -3.00 ADR vs EMA21
+  last 10: closes under EMA10 5/10, under EMA21 5/10, crosses of EMA21 3, worst low -2.08 ADR vs EMA21
+  after the bottom: 25 sessions, closes all above the bottom: True, lowest close after it +33.9% over the bottom
+  swing lows in the base: 03-10 167.10  03-16 249.60  03-25 225.30  04-01 204.30  04-09 255.82
+  depth of base: bottom -67.2% under the pole top (5.7 ADR)
+
+PENN-2 (QM good)  D 2020-06-22  ADR20 9.5%  pole top 2020-06-05 40.14  base 11 sessions  bottom 2020-06-11 27.52 (session 4 of 11)
+  base   : closes under EMA10 5/11, under EMA21 1/11, crosses of EMA21 2, worst low -0.53 ADR vs EMA21
+  last 10: closes under EMA10 5/10, under EMA21 1/10, crosses of EMA21 2, worst low -0.53 ADR vs EMA21
+  after the bottom: 7 sessions, closes all above the bottom: True, lowest close after it +7.7% over the bottom
+  swing lows in the base: 06-11 27.52
+  depth of base: bottom -31.4% under the pole top (3.3 ADR)
+
+MTW 10-30 (his NO)  D 2026-10-30  ADR20 4.1%  pole top 2026-10-06 24.00  base 18 sessions  bottom 2026-10-20 21.05 (session 10 of 18)
+  base   : closes under EMA10 7/18, under EMA21 5/18, crosses of EMA21 4, worst low -1.00 ADR vs EMA21
+  last 10: closes under EMA10 2/10, under EMA21 1/10, crosses of EMA21 1, worst low -1.00 ADR vs EMA21
+  after the bottom: 8 sessions, closes all above the bottom: True, lowest close after it +5.2% over the bottom
+  swing lows in the base: 10-09 21.09  10-20 21.05  10-23 21.31
+  depth of base: bottom -12.3% under the pole top (3.0 ADR)
+
+slope of HIS averages across the base (pole top -> D), and the EMA10-over-EMA21 spread at D, in ADR units
+  CODX-1 (QM good)     EMA21 base +26.1% (+2.2 ADR), last 10 -0.1% (-0.0 ADR); EMA10 above EMA21 on 21/30 base days; spread at D +0.08 ADR
+  PENN-2 (QM good)     EMA21 base +8.3% (+0.9 ADR), last 10 +6.1% (+0.6 ADR); EMA10 above EMA21 on 11/11 base days; spread at D +0.48 ADR
+  MTW 10-30 (his NO)   EMA21 base +2.7% (+0.7 ADR), last 10 +2.2% (+0.5 ADR); EMA10 above EMA21 on 18/18 base days; spread at D +0.37 ADR
