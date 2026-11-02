@@ -308,6 +308,10 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
+### 2026-11-02 — PROPOSED (awaiting his sign-off; build Sat 11-07): breakout v1 rebuilt from Qullamaggie's trades — NOT LIVE
+
+The spec: `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md`. Scorecard = Qullamaggie's 269 dated breakout buys + 26 big winners (v1 today lists 60 and 4). Proposed: 7 list rules (263/269, 26/26, ~250 names a night), an order score (6-month run-up in daily ranges + tightness of the last 10 closes), the buy unchanged except his ruled volume bar (1.2x the last 10 sessions, "Yes" 11-02). Nothing below this line changes until the build ships.
+
 ### 2026-11-02 — breakout v1's list gains a DAILY-RANGE FLOOR: ADR20 >= 4.26% (OPERATOR-SIGNED "yes to both", 2026-11-02; paper only — no live order path)
 
 **Trigger**: his catch on the first paper morning — *"bwmn is clearly a buyout candidate"*: BWMN (Bernhard Capital's $43 cash buyout, signed 2026-08-10) traded $42.88-42.91 in its opening range and v1 placed a buy at $42.95 on a 7-cent stop (cancelled at 09:49 by its own volume pace). The same night's 27-name list also carried PCRX (Viatris deal; our EP M&A filter blocked it 10-29) and ARX (ADR20 0.25%; blocked by the M&A filter in August). v1 had no deal-target check of its own; a pinned deal target is not a breakout.
