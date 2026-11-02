@@ -2763,3 +2763,7 @@ Recorded: the TEMPLATE for breakout v1 is Qullamaggie's profile, not a higher wi
 > "Ok" then "Aligned" (2026-11-01, to the path-to-template grid and the exit table: A today's pp exit as the baseline; B no partial sale, the 20-day trail with a quick reclaim forgiven; C the speed trail, no partial — 20-day for slower stocks, 10-day for fast; D a third after day 3-5 only in profit, then the 20-day; E no partial, 10-day — my rec "B, C and D alongside A")
 
 Rulings recorded: the grid runs as proposed — one variable at a time on the frozen 2017-2024 replay, each pick made on 2017-21 and judged on 2022-24, scored against Qullamaggie's template (the average trade and the 10R+ rate, his 205 replayed trades: +1.06R, 2.9 per 100), the win rate allowed to fall; the exits tested are A (baseline), B, C and D (E dropped). Nothing live changes; any adopted rule is his call after the result.
+
+> "Can we spot check a handful of big winners which quallamaggie gets big R and we don't buy or fail to get similar return, keep iterating to see what we're missing, different" (2026-11-01, after the template grid read FAIL in every step and located the gap in the count of 5R+ winners)
+
+Recorded: a case study, iterated — Qullamaggie's own big winners (his replayed trades at 5R+) side by side with what breakout v1 did on each (listed? bought? when? stopped? exited?), the misses classified and read by a blind second reader, then the recurring patterns turned into the next testable rule changes.
