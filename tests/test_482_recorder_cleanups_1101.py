@@ -24,9 +24,27 @@ from tests.test_482_shadow_hour_lane import DAY, _Captured, _ms, _open_5m_row, _
 
 def test_the_2r_stop_is_one_formula_shared_by_both_recorders_and_equal_to_the_replays():
     import scripts.ep_replay as ep
+    from agents.market_intelligence.sustain_reject_replay import current_era_stop
     assert sot.two_r_stop is hbw.two_r_stop and bga.two_r_stop is hbw.two_r_stop
     for hi, lo in ((11.0, 9.5), (10.0, 9.5), (100.0, 97.25), (11.0, 5.0)):
         assert hbw.two_r_stop(hi, lo) == ep.RULESETS["era_c"].stop_price(hi, lo) == 2 * lo - hi
+        # simplify 2026-11-01: the third copy outside the recorders, pinned to the same formula
+        assert current_era_stop("entry_minus_2r", hi, lo) == hbw.two_r_stop(hi, lo)
+
+
+def test_the_exit_pass_skips_its_fetch_exactly_when_the_ladder_would_skip():
+    """simplify 2026-11-01: the exit pass decides whether to fetch today's bar with its own copy of the ladder's
+    first check (`exit_logic.py` is freeze-pinned, so the predicate cannot be exported). This pins the copy to
+    the ladder: the pass fetches iff `apply_daily_exit_step` would read a bar rather than `skip_pre_alert`."""
+    from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
+    for remaining in (0.0, 5.0):
+        for offset in (-1, 0, 1, 3):
+            row = _open_5m_row("AAA", DAY, remaining_shares=remaining)
+            state = sot._row_to_state(row)
+            today = DAY + timedelta(days=offset)
+            pass_fetches = state["remaining_shares"] > 0 and today > state["alert_date"]
+            ladder_skips = apply_daily_exit_step(state, None, today, integer_partial_shares=False).action == "skip_pre_alert"
+            assert pass_fetches == (not ladder_skips), (remaining, offset)
 
 
 def test_decide_with_daily_high_is_the_shared_second_half_of_the_gap_rule():
@@ -100,11 +118,12 @@ async def test_the_exit_pass_fetches_todays_bar_once_per_ticker_and_never_for_a_
     assert sorted(i for i, _ in cap.updates) == [1, 2, 8]                       # the skipped rows and BAD's [] row write nothing
 
 
-def test_both_inserts_build_the_one_row_shape_in_the_inserts_parameter_order():
+def test_both_inserts_build_the_one_row_shape_carrying_every_column_the_insert_reads():
+    # simplify 2026-11-01: the INSERT reads by key name, so the invariant is the key SET, not its order
     import agents.market_intelligence.db as db
     row = sot._shadow_row("AAA", DAY, 60, "magna53", None, "HIGH", status="open", entry_price=11.0, entry_shares=1.0)
     cols = db.SHADOW_TRADE_INSERT_SQL.split("(", 1)[1].split(")", 1)[0].replace("\n", " ").split(",")
-    assert list(row) == [c.strip() for c in cols]
+    assert set(row) == {c.strip() for c in cols}
     assert row["remaining_shares"] == 1.0 and sot._shadow_row("AAA", DAY, 5, "magna53", None, None, status="no_entry")["remaining_shares"] == 0
 
 

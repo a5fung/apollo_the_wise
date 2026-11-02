@@ -143,7 +143,6 @@ def classify_hour_entry(bars: list[dict], session_close: time,
             "reason": f"{walk['reason']}:session_high_at_or_above_hour_high"}
 
 
-
 def decide_with_daily_high(bars: list[dict], session_close: time, verdict: dict,
                            day0_daily_high: Optional[float], *, missing_reason: str) -> dict:
     """The second half of the DAY-0 GAP RULE, shared by both recorders (2026-11-01): a

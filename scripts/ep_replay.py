@@ -987,8 +987,8 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
         prior = [dbars[d]["c"] for d in sorted(dbars)
                  if d < leg_date and dbars[d]["c"] is not None]
         d0 = dbars.get(leg_date)
-        held = [d0["c"]] if d0 and d0.get("c") is not None else [last_close]
         entry_day_close = d0["c"] if d0 and d0.get("c") is not None else None   # the arming input (2026-11-01)
+        held = [entry_day_close] if entry_day_close is not None else [last_close]
         atr14 = atr14_abs(dbars, leg_date)
         state = seed_exit_state(
             alert_date=leg_date, entry_price=entry_px, hard_stop=stop,

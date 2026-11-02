@@ -41,7 +41,7 @@ _ASK_BLOCK = re.compile(
     r"^### Standing — waits on the operator.*?(?=^## |\Z)", re.M | re.S)
 
 
-def _gated_reviews_ready() -> list[str]:
+def _gated_reviews_ready() -> tuple[list[str], list[str], str | None]:
     """Asks that carry a real predicate live in data_gated_reviews.yaml — and this RUNS the
     predicates rather than asserting their answer.
 
@@ -139,13 +139,15 @@ def _due_deferred(reviews: list, today: str) -> list[str]:
     """A DEFERRED review whose own deferral date has arrived is due work too (2026-11-01: three of them —
     catalyst_discovery_loop_sequencing, l2_baseline_window_trending_metrics, theme_clustering_coherence_guard —
     hit their 11-01 date; the 11-01 weekly review listed them ripe while this tool, reading `pending` only, showed
-    none). The date is `deferred_until`, else `earliest_review_date`; an undated deferral is never due here.
+    none). The date is `earliest_review_date`, else `deferred_until`; an undated deferral is never due here.
     Its first step is mine: re-check the deferral reason, then run it or re-park it with the reason."""
     out = []
     for r in reviews:
         if r.get("status") != "deferred":
             continue
-        until = str(r.get("deferred_until") or r.get("earliest_review_date") or "")
+        # the registry's own date (data_gated_reviews.check_pending_reviews reads earliest_review_date), so the
+        # weekly review and this list never disagree; deferred_until only where an entry carries no earliest date
+        until = str(r.get("earliest_review_date") or r.get("deferred_until") or "")
         if until and until <= today:
             out.append(f"{r.get('review_id')}: ⚠ DEFERRAL DATE REACHED ({until}) — re-check its deferral "
                        f"reason, then RUN it or re-park it with the reason (my work; his only if the reason "

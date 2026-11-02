@@ -295,7 +295,7 @@ def _shadow_row(ticker: str, alert_date: date, bar_size_minutes: int, signal_typ
                 entry_shares: float | None = None, atr_14: float | None = None) -> dict[str, Any]:
     """The one `mi_orb_shadow_trades` row shape both lanes insert (2026-11-01) — the 5-minute lane's
     ORB bar or the hour lane's first-hour bar in `orb_high` / `orb_low`, `remaining_shares` only on
-    an `open` row. Key order is the INSERT's parameter order (`db.SHADOW_TRADE_INSERT_SQL`)."""
+    an `open` row. It carries every column `db.SHADOW_TRADE_INSERT_SQL` reads (the INSERT reads by key name)."""
     return {
         "ticker": ticker,
         "alert_date": alert_date,
@@ -687,13 +687,9 @@ async def update_shadow_positions(today: date) -> dict[str, int]:
     counts = {"closed": 0, "updated": 0, "no_data": 0, "error": 0,
               "quarantined_stale": 0}
     today_str = today.isoformat()
-    # 2026-11-01: today's bar is fetched ONCE per ticker (the 5-minute and 60-minute siblings share
-    # it) and not at all for a row the ladder skips before reading a bar — nothing left, or the
-    # alert day itself (`apply_daily_exit_step`'s own first check: `remaining <= 0 or today <=
-    # alert_date` → skip_pre_alert). Only a NON-EMPTY answer is cached: `get_index_history` never
-    # raises (a Polygon failure logs and returns []), so an empty answer may be a passing failure,
-    # and the next row of the same ticker makes its own attempt — exactly as each row fetched for
-    # itself before (the 2026-11-01 review: caching the [] made the 60-minute sibling skip a night).
+    # Today's bar is fetched ONCE per ticker (the 5- and 60-minute siblings share it) and not at all for a row
+    # the ladder skips before reading a bar (`apply_daily_exit_step`'s first check — pinned equal by a test).
+    # Only a NON-EMPTY answer is cached: `get_index_history` returns [] on a failure, so the next row retries.
     bars_by_ticker: dict[str, list] = {}
 
     for row in open_rows:
@@ -717,11 +713,9 @@ async def update_shadow_positions(today: date) -> dict[str, int]:
             state = _row_to_state(row)
             daily_bar = None
             if state["remaining_shares"] > 0 and today > state["alert_date"]:
-                bars = bars_by_ticker.get(row["ticker"])
-                if not bars:
-                    bars = await get_index_history(row["ticker"], today_str, today_str)
-                    if bars:
-                        bars_by_ticker[row["ticker"]] = bars
+                bars = bars_by_ticker.get(row["ticker"]) or await get_index_history(row["ticker"], today_str, today_str)
+                if bars:
+                    bars_by_ticker[row["ticker"]] = bars
                 daily_bar = bars[0] if bars else None
             step = apply_daily_exit_step(
                 state, daily_bar, today,
@@ -782,8 +776,7 @@ async def _persist_step(row: dict, step: Any, today: date) -> str:
         "stop_price": step.effective_stop,
     }
     if step.closed:
-        fields["status"] = "closed"
-        fields["closed_at"] = datetime.now(ET)
+        fields.update(_closed_fields())
 
     await update_shadow_trade(row["id"], fields)
     return "closed" if step.closed else "updated"

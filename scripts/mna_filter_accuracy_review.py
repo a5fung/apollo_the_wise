@@ -43,9 +43,7 @@ async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int,
     # hygiene). A container restart re-fires the same audit event, and the prior
     # `DISTINCT ... , detail` kept each as a separate row (RGTI ×5 in the 6/20
     # smoke) → duplicate surfacing inflates the digest. Keep the most recent detail.
-    # Plain dicts, not asyncpg Records: main() marks a suppression the 09:35 price released the same day
-    # (`_released_same_day`), and a Record is read-only — the 11-01 monthly sweep crashed on the first such row.
-    rows = await conn.fetch(f"""
+    return await conn.fetch(f"""
         WITH fires AS (
             SELECT DISTINCT ON ({ticker_expr}, (created_at AT TIME ZONE 'America/New_York')::date)
                 {ticker_expr} AS ticker,
@@ -71,7 +69,6 @@ async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int,
         ) w ON true
         ORDER BY pk_vs_open DESC NULLS LAST
     """, event_type, str(lookback_days), summary_like)
-    return [dict(r) for r in rows]
 
 
 def _answer(detail_full) -> str:
@@ -121,7 +118,10 @@ def _answer(detail_full) -> str:
     return ""
 
 
-def _print_section(title: str, rows, flag_material: bool):
+def _print_section(title: str, rows, flag_material: bool, released_days: frozenset = frozenset()):
+    """`released_days` = (ticker, day) pairs the 09:35 price released the same day (the day's verdict was a
+    release, not a block). Passed in rather than written onto the rows: the rows are read-only asyncpg Records
+    (the 11-01 monthly sweep crashed when main() wrote a flag onto one)."""
     print(f"\n=== {title} (n={len(rows)}) ===")
     if not rows:
         print("  (none)")
@@ -137,7 +137,7 @@ def _print_section(title: str, rows, flag_material: bool):
         po = f"{pk_open:+.1f}%" if pk_open is not None else "   n/a"
         pl = f"{r['pk_vs_low']:+.1f}%" if r["pk_vs_low"] is not None else "   n/a"
         ans = _answer(r["detail_full"])
-        if r.get("_released_same_day"):
+        if (r["ticker"], str(r["fire_day"])) in released_days:
             ans = (ans + "; " if ans else "") + "RELEASED later that day (price free at 09:35)"
             if flag:
                 material.pop()   # the day's verdict was a release, not a suppression
@@ -183,11 +183,7 @@ async def main(lookback_days: int) -> int:
     # 2026-10-03 timing ruling: a nominated name is blocked pre-market on the news and the 09:35
     # read may RELEASE it the same day — mark those fired rows so a suppression that was undone is
     # not read as a block (both rows exist; the release is the day's verdict).
-    released_days = _price_released_days(released, kept_blocked)
-    for r in suppressed:
-        if (r["ticker"], str(r["fire_day"])) in released_days:
-            r["detail_full"] = (r.get("detail_full") or "")
-            r["_released_same_day"] = True
+    released_days = frozenset(_price_released_days(released, kept_blocked))
 
     print(f"M&A FILTER ACCURACY REVIEW  (lookback {lookback_days}d)")
     print("Surfaces filter decisions + forward returns for OPERATOR judgment.")
@@ -196,7 +192,7 @@ async def main(lookback_days: int) -> int:
     # Direction 1 — over-fire: suppressed names that then ran (missed movers).
     _print_section(
         "SUPPRESSED by the M&A filter (verify none were missed movers)",
-        suppressed, flag_material=True)
+        suppressed, flag_material=True, released_days=released_days)
     # Direction 2 — under-fire: names the OLD rule would have blocked that the deal question
     # RELEASED (#692) — verify none was a genuine target of a signed deal.
     _print_section(
