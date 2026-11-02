@@ -1,0 +1,4 @@
+run-up only          his yes above his no 0.65 (yes 48, no 35 on the list) | QM buys in their night's top 10: 20, top 20: 36, top 30: 46, top 50: 71 of 245 | big winners top 20: 4, top 50: 8 of 26
+tightness only       his yes above his no 0.61 (yes 48, no 35 on the list) | QM buys in their night's top 10: 15, top 20: 37, top 30: 53, top 50: 74 of 245 | big winners top 20: 5, top 50: 8 of 26
+run-up + tightness   his yes above his no 0.70 (yes 48, no 35 on the list) | QM buys in their night's top 10: 30, top 20: 48, top 30: 61, top 50: 88 of 245 | big winners top 20: 6, top 50: 8 of 26
+era-A list: median 221 names a night

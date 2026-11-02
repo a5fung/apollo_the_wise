@@ -1,0 +1,22 @@
+labels: 48 yes, 47 no (SE 2020-09-14 was 'no' on the EMA21 sheet and 'ok' here — the newer label kept)
+
+c10: chance a yes is tighter than a no 0.62
+  within 3: yes kept 28/48 | no removed 20/47 | QM buys kept 216/245 | big 24/26 | era-A names a night median 156
+  within 4: yes kept 40/48 | no removed 12/47 | QM buys kept 230/245 | big 24/26 | era-A names a night median 192
+  within 5: yes kept 45/48 | no removed 5/47 | QM buys kept 238/245 | big 26/26 | era-A names a night median 206
+  within 6: yes kept 47/48 | no removed 3/47 | QM buys kept 242/245 | big 26/26 | era-A names a night median 213
+  loosest yes: MSTR 2021-10-08 6.1, INO 2020-04-22 5.9, TSLA 2018-08-06 5.5, MARA 2021-10-08 4.7
+
+c10min5: chance a yes is tighter than a no 0.57
+  within 3: yes kept 40/48 | no removed 7/47 | QM buys kept 233/245 | big 24/26 | era-A names a night median 196
+  within 4: yes kept 46/48 | no removed 3/47 | QM buys kept 241/245 | big 25/26 | era-A names a night median 212
+  within 5: yes kept 48/48 | no removed 0/47 | QM buys kept 245/245 | big 26/26 | era-A names a night median 218
+  within 6: yes kept 48/48 | no removed 0/47 | QM buys kept 245/245 | big 26/26 | era-A names a night median 220
+  loosest yes: TSLA 2020-09-18 4.4, MSTR 2021-08-04 4.3, ZM 2020-04-22 3.5, MARA 2021-10-08 3.4
+
+c10x2: chance a yes is tighter than a no 0.52
+  within 3: yes kept 30/48 | no removed 15/47 | QM buys kept 208/245 | big 20/26 | era-A names a night median 156
+  within 4: yes kept 39/48 | no removed 9/47 | QM buys kept 231/245 | big 24/26 | era-A names a night median 193
+  within 5: yes kept 46/48 | no removed 3/47 | QM buys kept 241/245 | big 26/26 | era-A names a night median 208
+  within 6: yes kept 48/48 | no removed 0/47 | QM buys kept 245/245 | big 26/26 | era-A names a night median 214
+  loosest yes: MSTR 2021-08-04 5.8, TSLA 2018-08-06 5.5, MSTR 2021-10-08 4.6, MARA 2021-11-29 4.5
