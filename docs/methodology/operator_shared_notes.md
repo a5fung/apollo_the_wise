@@ -2793,3 +2793,17 @@ Recorded as a LABEL with his reasons: MTW on 11-02 is NOT a breakout — (a) cho
 - CODX: a rising line under the base's lows from the 03-10 bottom (~$167 adjusted) through late April; the averages riding under price; a measure of +1,330% over 24 bars (the Jan–Feb run).
 
 Recorded as a LABEL with his reasons: both bases DO make higher lows and DO surf the 10/21 by his read. His read of "higher lows" = lows above a rising line drawn from the BASE'S BOTTOM (PENN 06-11 $27.52; CODX 03-10 $167.10), a shakeout allowed; "surfing" = price holding around the 10/21-day EMAs across the base. The 11-02 test rules (three back-to-back 5-day blocks; every close for 10 days above a 10/20-day SIMPLE average) do not encode that read and are void as definitions. Bars beside the test's values: `scripts/probes/_his_charts_1102/codx_penn_bars.out`.
+
+## 2026-11-02 — breakout v1's scorecard is Qullamaggie's own trades (operator, verbatim)
+
+> "MTW issue was not size, the problem is there's no setup, i don't see it, it looks nothing like qullamaggie breakouts. This is the problem, you refuse to internalize that we're trying to implement the breakout setup, we're not trying to buy random stocks and make it profitable. I don't care what you think is MTW's issue. I'm telling you, MTW doesn't fit breakout setup at all" (2026-11-02, to my "MTW's problem was size, not shape" + "resume paper?" — both retracted)
+
+> "you keep diverting from the goal of finding and implementing the breakout setup, and keep chasing around random stocks when we have all teh winner trades from qullamaggie already, it's proven, we need to trade those and that's it. After two weeks of work, the first trade is MTW is an absolute failure."
+
+> "if you don't trade his setups then it's a gap, if you don't include his big winners than it's a gap, stop citing how you can tweak random stuff to get better ariticial R, stick to the rules"
+
+> "we need to get as close as possible, that is the starting point and then work backwards from there to define our rules. If there's still gaps to the remaining few, I will review their charts manually"
+
+> "and if later you find his rules to introduce too many losers, I will review what they mean manually as well via looking at samples"
+
+Recorded as THE METHOD for breakout v1 (#717): (1) the scorecard is Qullamaggie's dated breakout buys (269 in `holdings_1024/entries.tsv`, 2017-2023) and his big winners — every one not on the list the night before is a GAP; (2) START from a list that holds as many of them as possible, then work BACKWARDS, adding only rules that keep his buys; (3) the buys still missed go to him as charts; (4) if the rules built from his trades let in many losers, samples go to him to judge what they mean — never a tightening on returns, never R / book means / random thinning as a rule test. First read (11-02): today's v1 lists 60 of the 269 (22%) and 4 of his 26 big winners (`scripts/probes/_qm_breakouts_vs_v1_1102/`).
