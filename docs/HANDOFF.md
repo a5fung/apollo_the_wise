@@ -6,7 +6,19 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-10-31 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 10-29 close below (Fri 10-30 had no CLOSE).
+## 2026-11-01 (Sun) CLOSE — 🔴 RESUME HERE. Supersedes the 10-31 close below.
+
+**2026-11-01 (Sun): CLOSE run on his word ("run close").** (This section mirrors the machine-local pickup memory.)
+
+- **Board 20 → 20.** No closes; #482 re-dated to its verify (Mon 11-02 18:04 ET), #314 to Sun 11-08 (event-gated shadow). **Server `1330bc75`** (#482's three follow-ups deployed on his "deploy").
+- **Studies today (all research, no rule changed; results in `docs/setups/consolidation_breakout.md` change log 2026-11-01 and the vault):** breakout v1 paper baseline 2017-24 FAIL (-0.245R a trade); the path-to-his-template grid FAIL in every step — exit C (speed trail, no partial) matches his average win but halves the win rate; the gap is the count of 5R+ winners (his 13.7 vs ours 3.5-4.8 per 100); the spot-check of his 28 biggest buys: 4 on v1's list on his night, 0 matched, and v1's gates look the same on his winners and losers. #314 Qullamaggie ORB-entry short: PASS on the main population, thin.
+- **His rulings / notes 11-01** (verbatim in `docs/methodology/operator_shared_notes.md` + vault): study thousands of big winners; catch the REAL big breakouts only; the template is Qullamaggie's low-win-rate, big-winner profile; exits A-D tested; base-stage hypothesis (v1 buys later-stage bases, he buys the first base).
+- **Mon 11-02, in order:** (1) #706 skip-morning read BEFORE any deploy; (2) #717 first breakout paper buys; #718 shadow rows; #712 reads; (3) 12:00-13:00 ET ONE batched deploy ON HIS GO — today's simplify (`85932639`, shadow tracker / hour walk, behaviour-neutral) + the monthly-sweep M&A review fix (`24c40190`): `deploy.sh market-agent` then `deploy.sh execution`; (4) after 18:04 ET: #482's verify against `scripts/probes/_482_deploy_1101/pre_deploy_lfc_dump.csv`.
+- **Next weekend Sat 11-07 / Sun 11-08 block (on the #717 line; pull forward if capacity allows):** base stage first, then group strength, his 14x exits, his buy point; task A (dating his graded setups) after, if selection is the gap (`scripts/probes/_qm_setup_dating_A_1101/README.md`).
+- **Capacity (dated 11-01):** Fable ~5% left — every card on Opus until the weekly reset Fri 11-06 8 PM PT.
+- **Ops:** prod reads that RUN a script in the container were refused once by the classifier (a psql read-only query was not); a server minute pull needs his "allow pull" each time; Alpaca maps reused tickers to their current owner — use Polygon (adjusted=false) for raw daily closes.
+
+## 2026-10-31 (Sat) CLOSE — (superseded by 11-01 above)
 
 **2026-10-31 (Sat): CLOSE run on his word ("Run close").** (This section mirrors the machine-local pickup memory.)
 
