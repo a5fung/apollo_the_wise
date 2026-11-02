@@ -1,0 +1,36 @@
+=== MTW, watch night 2026-10-30 (his read: NOT a breakout) ===
+parity with the live list row (pole 2026-10-06, base low 21.05, level 23.875, surf run10 10): pole 2026-10-06, base low 21.05, level 23.875, surf {'run10': 10, 'run20': 8, 'run50': 0, 'best': 10}, old shape gates failed: ['adr']
+  G1 riding FAIL [10d: closes under 1, lows too deep 4, worst 0.961 ADR | 20d: closes under 3, lows too deep 4, worst 1.177 ADR] ; G2 rising lows FAIL [21.28, 21.05, 21.99] ; G3 no failed attempt FAIL [ceiling 23.1138, last-5 high 23.875, close 23.03]
+  new gates MTW fails: ['riding', 'rising_lows', 'no_failed_attempt']  -> bar (a) PASS
+
+=== ZCSH (his positive example, 2026-10-29) ===
+  NOT in the stores: 0 rows in cb702_pre_v2/daily_closes_all.csv.gz and 0 in the sealed (< 2025) cb702 copy — a 2026 fund.
+  Not checked; bar (b) rests on the 12 alone.
+
+=== THE 12 of his 24 v1 already catches (each at its catching fire: E = the date shown, D = the session before) ===
+  CELH-1  D 2020-06-22 | all three FAIL | old shape gates failed [] | ADR20 7.38%
+          G1 riding PASS [10d: closes under 3, lows too deep 3, worst 0.81 ADR | 20d: closes under 0, lows too deep 0, worst 0.14 ADR] ; G2 rising lows PASS [2.837, 2.87, 3.002] ; G3 no failed attempt FAIL [ceiling 3.403, last-5 high 3.5, close 3.38]
+  CELH-3  D 2020-08-04 | all three FAIL | old shape gates failed [] | ADR20 5.71%
+          G1 riding PASS [10d: closes under 3, lows too deep 2, worst 0.871 ADR | 20d: closes under 0, lows too deep 0, worst 0.184 ADR] ; G2 rising lows FAIL [4.403, 4.4, 4.637] ; G3 no failed attempt PASS [ceiling 5.157, last-5 high 5.14, close 4.75]
+  CODX-1  D 2020-04-15 | all three FAIL | old shape gates failed [] | ADR20 11.86%
+          G1 riding FAIL [10d: closes under 3, lows too deep 2, worst 1.28 ADR | 20d: closes under 6, lows too deep 5, worst 1.869 ADR] ; G2 rising lows FAIL [225.0, 204.3, 255.82] ; G3 no failed attempt PASS [ceiling 540.0, last-5 high 317.4, close 285.0]
+  LVGO-4  D 2020-07-02 | all three PASS | old shape gates failed [] | ADR20 6.65%
+          G1 riding PASS [10d: closes under 2, lows too deep 0, worst 0.387 ADR | 20d: closes under 0, lows too deep 0, worst -0.773 ADR] ; G2 rising lows PASS [58.622, 68.82, 70.1] ; G3 no failed attempt PASS [ceiling 79.1, last-5 high 76.4, close 72.81]
+  OPK-2   D 2020-07-16 | all three PASS | old shape gates failed [] | ADR20 8.39%
+          G1 riding PASS [10d: closes under 0, lows too deep 0, worst 0.087 ADR | 20d: closes under 0, lows too deep 0, worst -1.612 ADR] ; G2 rising lows PASS [2.51, 3.32, 3.77] ; G3 no failed attempt PASS [ceiling 4.27, last-5 high 4.215, close 4.03]
+  OSTK-2  D 2020-06-22 | all three FAIL | old shape gates failed [] | ADR20 9.76%
+          G1 riding PASS [10d: closes under 2, lows too deep 3, worst 1.141 ADR | 20d: closes under 0, lows too deep 0, worst 0.288 ADR] ; G2 rising lows FAIL [19.42, 18.84, 21.7] ; G3 no failed attempt PASS [ceiling 24.23, last-5 high 27.55, close 27.38]
+  SRNE-2  D 2020-07-30 | all three PASS | old shape gates failed [] | ADR20 9.07%
+          G1 riding PASS [10d: closes under 3, lows too deep 1, worst 1.055 ADR | 20d: closes under 0, lows too deep 0, worst 0.027 ADR] ; G2 rising lows PASS [6.12, 6.62, 7.275] ; G3 no failed attempt PASS [ceiling 8.57, last-5 high 8.56, close 8.55]
+  PRTS    D 2020-07-07 | all three FAIL | old shape gates failed [] | ADR20 5.44%
+          G1 riding PASS [10d: closes under 6, lows too deep 1, worst 0.758 ADR | 20d: closes under 0, lows too deep 0, worst 0.389 ADR] ; G2 rising lows FAIL [84.0, 81.9, 84.4] ; G3 no failed attempt PASS [ceiling 92.1, last-5 high 89.45, close 87.4]
+  ARCT    D 2020-07-10 | all three PASS | old shape gates failed [] | ADR20 9.21%
+          G1 riding PASS [10d: closes under 1, lows too deep 1, worst 0.528 ADR | 20d: closes under 0, lows too deep 0, worst -0.483 ADR] ; G2 rising lows PASS [37.101, 43.18, 43.85] ; G3 no failed attempt PASS [ceiling 60.84, last-5 high 52.08, close 46.89]
+  HL      D 2020-08-03 | all three PASS | old shape gates failed [] | ADR20 6.89%
+          G1 riding PASS [10d: closes under 0, lows too deep 0, worst 0.127 ADR | 20d: closes under 0, lows too deep 0, worst -1.516 ADR] ; G2 rising lows PASS [3.765, 4.9, 5.19] ; G3 no failed attempt PASS [ceiling 5.68, last-5 high 5.64, close 5.59]
+  IBIO-1  D 2020-07-14 | all three PASS | old shape gates failed [] | ADR20 9.76%
+          G1 riding PASS [10d: closes under 0, lows too deep 0, worst 0.368 ADR | 20d: closes under 0, lows too deep 0, worst -0.934 ADR] ; G2 rising lows PASS [700.0, 925.0, 1055.0] ; G3 no failed attempt PASS [ceiling 1140.0, last-5 high 1225.0, close 1160.0]
+  PENN-2  D 2020-06-22 | all three FAIL | old shape gates failed [] | ADR20 9.55%
+          G1 riding FAIL [10d: closes under 8, lows too deep 5, worst 1.843 ADR | 20d: closes under 4, lows too deep 4, worst 0.927 ADR] ; G2 rising lows FAIL [30.65, 27.52, 30.36] ; G3 no failed attempt PASS [ceiling 36.75, last-5 high 34.66, close 31.43]
+
+kept of 12: G1 riding 10, G2 rising lows 7, G3 no failed attempt 11, all three 6   (bar (b): >= 10)

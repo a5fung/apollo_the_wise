@@ -1,0 +1,81 @@
+placed name-days 18094; floor-kept (ADR20 >= 4.26%) 14680 — every candidate below starts from these
+list rows (all, before the floor) passing each gate: riding 37095/61071 (61%), rising_lows 39344/61071 (64%), no_failed_attempt 47670/61071 (78%), all three 22163/61071 (36%)
+
+=== 5-slot paper book, 2c (the paper account) ===
+  floor only (BASELINE)    2017-21  n   983 mean -0.139 win 34.5% 3R+ 4.7% 10R+   9 sum -137
+  floor only (BASELINE)    2022-24  n   556 mean -0.340 win 31.8% 3R+ 4.1% 10R+   3 sum -189
+  floor only (BASELINE)    all      n  1539 mean -0.212 win 33.5% 3R+ 4.5% 10R+  12 sum -326
+  G1 riding                2017-21  n   818 mean -0.085 win 35.3% 3R+ 5.3% 10R+   8 sum -70
+  G1 riding                2022-24  n   444 mean -0.172 win 30.4% 3R+ 5.6% 10R+   4 sum -76
+  G1 riding                all      n  1262 mean -0.116 win 33.6% 3R+ 5.4% 10R+  12 sum -146
+  G2 rising lows           2017-21  n   847 mean -0.090 win 34.4% 3R+ 4.8% 10R+  10 sum -76
+  G2 rising lows           2022-24  n   469 mean -0.263 win 33.3% 3R+ 4.9% 10R+   2 sum -123
+  G2 rising lows           all      n  1316 mean -0.152 win 34.0% 3R+ 4.9% 10R+  12 sum -200
+  G3 no failed attempt     2017-21  n   986 mean -0.090 win 33.2% 3R+ 4.9% 10R+  11 sum -88
+  G3 no failed attempt     2022-24  n   537 mean -0.346 win 31.8% 3R+ 3.7% 10R+   4 sum -186
+  G3 no failed attempt     all      n  1523 mean -0.180 win 32.7% 3R+ 4.5% 10R+  15 sum -274
+  all three                2017-21  n   763 mean -0.129 win 33.2% 3R+ 5.2% 10R+  11 sum -98
+  all three                2022-24  n   408 mean -0.228 win 30.9% 3R+ 4.7% 10R+   2 sum -93
+  all three                all      n  1171 mean -0.163 win 32.4% 3R+ 5.0% 10R+  13 sum -191
+
+=== same-ticker guard only, no slot limit, 2c (adr_floor_effect's 'no slot limit' rows) ===
+  floor only (BASELINE)    2017-21  n  2551 mean +0.001 win 35.8% 3R+ 5.6% 10R+  41 sum +2
+  floor only (BASELINE)    2022-24  n  1478 mean -0.252 win 32.6% 3R+ 4.5% 10R+  11 sum -372
+  floor only (BASELINE)    all      n  4029 mean -0.092 win 34.6% 3R+ 5.2% 10R+  52 sum -370
+  G1 riding                2017-21  n  1631 mean -0.021 win 36.5% 3R+ 5.8% 10R+  24 sum -34
+  G1 riding                2022-24  n   896 mean -0.244 win 31.2% 3R+ 4.8% 10R+   6 sum -219
+  G1 riding                all      n  2527 mean -0.100 win 34.7% 3R+ 5.5% 10R+  30 sum -253
+  G2 rising lows           2017-21  n  1743 mean -0.019 win 35.7% 3R+ 5.6% 10R+  26 sum -33
+  G2 rising lows           2022-24  n   957 mean -0.227 win 32.9% 3R+ 4.6% 10R+   7 sum -217
+  G2 rising lows           all      n  2700 mean -0.093 win 34.7% 3R+ 5.2% 10R+  33 sum -250
+  G3 no failed attempt     2017-21  n  2342 mean -0.009 win 34.9% 3R+ 5.5% 10R+  39 sum -21
+  G3 no failed attempt     2022-24  n  1314 mean -0.289 win 31.5% 3R+ 4.3% 10R+   9 sum -380
+  G3 no failed attempt     all      n  3656 mean -0.110 win 33.7% 3R+ 5.0% 10R+  48 sum -401
+  all three                2017-21  n  1269 mean -0.086 win 34.8% 3R+ 5.5% 10R+  18 sum -109
+  all three                2022-24  n   647 mean -0.247 win 31.1% 3R+ 4.8% 10R+   4 sum -160
+  all three                all      n  1916 mean -0.140 win 33.5% 3R+ 5.3% 10R+  22 sum -268
+
+=== removed vs kept, no slot limit, 2c (filled + decisive trades, from the floor-kept set) ===
+  floor only (BASELINE)    kept    all      n  5234 mean -0.114 win 34.4% 3R+ 5.0% 10R+  64 sum -597
+  G1 riding                orders kept 9520, removed 5160 (35%)
+                           kept    2017-21  n  2183 mean -0.034 win 37.1% 3R+ 5.6% 10R+  30 sum -74
+                           removed 2017-21  n  1168 mean +0.032 win 34.9% 3R+ 4.9% 10R+  21 sum +37
+                           kept    2022-24  n  1149 mean -0.294 win 29.5% 3R+ 4.5% 10R+   7 sum -338
+                           removed 2022-24  n   734 mean -0.303 win 33.0% 3R+ 4.0% 10R+   6 sum -222
+                           kept    all      n  3332 mean -0.123 win 34.5% 3R+ 5.3% 10R+  37 sum -411
+                           removed all      n  1902 mean -0.098 win 34.2% 3R+ 4.5% 10R+  27 sum -186
+  G2 rising lows           orders kept 9857, removed 4823 (33%)
+                           kept    2017-21  n  2248 mean -0.029 win 36.5% 3R+ 5.4% 10R+  32 sum -65
+                           removed 2017-21  n  1103 mean +0.026 win 35.9% 3R+ 5.3% 10R+  19 sum +29
+                           kept    2022-24  n  1194 mean -0.264 win 31.5% 3R+ 4.4% 10R+   9 sum -316
+                           removed 2022-24  n   689 mean -0.355 win 29.8% 3R+ 4.2% 10R+   4 sum -245
+                           kept    all      n  3442 mean -0.111 win 34.8% 3R+ 5.0% 10R+  41 sum -381
+                           removed all      n  1792 mean -0.120 win 33.5% 3R+ 4.9% 10R+  23 sum -216
+  G3 no failed attempt     orders kept 12479, removed 2201 (15%)
+                           kept    2017-21  n  2966 mean -0.009 win 35.3% 3R+ 5.4% 10R+  48 sum -28
+                           removed 2017-21  n   385 mean -0.024 win 43.9% 3R+ 5.2% 10R+   3 sum -9
+                           kept    2022-24  n  1630 mean -0.327 win 29.8% 3R+ 4.0% 10R+  11 sum -534
+                           removed 2022-24  n   253 mean -0.104 win 37.9% 3R+ 5.9% 10R+   2 sum -26
+                           kept    all      n  4596 mean -0.122 win 33.4% 3R+ 4.9% 10R+  59 sum -561
+                           removed all      n   638 mean -0.055 win 41.5% 3R+ 5.5% 10R+   5 sum -35
+  all three                orders kept 6594, removed 8086 (55%)
+                           kept    2017-21  n  1581 mean -0.060 win 35.5% 3R+ 5.4% 10R+  23 sum -95
+                           removed 2017-21  n  1770 mean +0.033 win 37.1% 3R+ 5.3% 10R+  28 sum +59
+                           kept    2022-24  n   799 mean -0.290 win 29.4% 3R+ 4.5% 10R+   5 sum -232
+                           removed 2022-24  n  1084 mean -0.303 win 31.9% 3R+ 4.2% 10R+   8 sum -328
+                           kept    all      n  2380 mean -0.137 win 33.4% 3R+ 5.1% 10R+  28 sum -327
+                           removed all      n  2854 mean -0.094 win 35.1% 3R+ 4.9% 10R+  36 sum -270
+
+baseline reproduction of adr_floor_effect.txt (5 slots 983 @ -0.139, 556 @ -0.340; guard-only 4029 @ -0.092; floor-removed raw 919 @ -0.464): PASS
+
+=== bar (c) per candidate ===
+  G1 riding                c1 book >= baseline both eras: PASS (-0.085 / -0.172) | c2 removed below kept: FAIL (-0.098 vs -0.123) | c3 n >= 100 per era: PASS (818 / 444)
+  G2 rising lows           c1 book >= baseline both eras: PASS (-0.090 / -0.263) | c2 removed below kept: PASS (-0.120 vs -0.111) | c3 n >= 100 per era: PASS (847 / 469)
+  G3 no failed attempt     c1 book >= baseline both eras: FAIL (-0.090 / -0.346) | c2 removed below kept: FAIL (-0.055 vs -0.122) | c3 n >= 100 per era: PASS (986 / 537)
+  all three                c1 book >= baseline both eras: PASS (-0.129 / -0.228) | c2 removed below kept: FAIL (-0.094 vs -0.137) | c3 n >= 100 per era: PASS (763 / 408)
+
+=== POST-HOC DIAGNOSTIC (not part of the bar): the same share of orders removed AT RANDOM, 200 draws, 5-slot book ===
+  G1 riding                keep 65% | 2017-21: gate -0.085 vs random median -0.087 (5-95% -0.189..-0.001); random beats the gate in 46% of draws | 2022-24: gate -0.172 vs random median -0.240 (5-95% -0.344..-0.105); random beats the gate in 14% of draws
+  G2 rising lows           keep 67% | 2017-21: gate -0.090 vs random median -0.091 (5-95% -0.195..-0.004); random beats the gate in 50% of draws | 2022-24: gate -0.263 vs random median -0.242 (5-95% -0.340..-0.146); random beats the gate in 62% of draws
+  G3 no failed attempt     keep 85% | 2017-21: gate -0.090 vs random median -0.107 (5-95% -0.185..-0.044); random beats the gate in 33% of draws | 2022-24: gate -0.346 vs random median -0.285 (5-95% -0.361..-0.222); random beats the gate in 92% of draws
+  all three                keep 45% | 2017-21: gate -0.129 vs random median -0.092 (5-95% -0.202..+0.014); random beats the gate in 70% of draws | 2022-24: gate -0.228 vs random median -0.234 (5-95% -0.352..-0.097); random beats the gate in 46% of draws
