@@ -63,7 +63,13 @@ BREAKDOWN_LOW_SESSIONS = 10
 DEEP = BASE_MAX + POLE_LOOKBACK      # 85: the deepest look-back from D (the pole-low window of the oldest pole)
 MIN_BARS = DEEP + 1                  # 86 bars ending D, consecutive sessions (the data guard)
 
-GATES = ("history", "universe", "rs", "prior_move", "higher_lows", "surf", "tightening", "breakdown")
+# His ruling 2026-11-02 ("yes to both"): a DAILY-RANGE FLOOR. A pinned deal target (BWMN, a $43 cash buyout, traded
+# $42.88-42.91 at the open and was bought on a 7-cent stop; ARX ADR 0.25%; PCRX) is not a breakout; his own reverse-
+# engineered stock pool requires ADR20 >= 4.26% (docs/analysis/cb_reverse_engineer_his_rules_prereg_2026-10-24.md L814).
+# Backtest on the frozen replay (scripts/probes/_breakout_v1_replay_1101/adr_floor_1102/): removes 19% of orders, which
+# averaged -0.46R; the paper book improves in both eras (2017-21 -0.153 -> -0.139R, 2022-24 -0.412 -> -0.340R).
+ADR_MIN = 0.0426                     # ADR20 at D (mean of (h-l)/c over the 20 sessions ending D)
+GATES = ("history", "universe", "adr", "rs", "prior_move", "higher_lows", "surf", "tightening", "breakdown")
 STOCK_SECURITY_TYPES = frozenset({"CS", "ADRC"})
 FUND_SECURITY_TYPE = "ETV"
 
@@ -242,6 +248,11 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
     dv20 = cb._dollar_vol_median(bars, D)
     g["universe"] = {"pass": bool(rc >= MIN_PRICE and dv20 >= MIN_DOLLAR_VOL),
                      "value": {"raw_close": _f(rc), "dollar_vol20": _f(dv20)}}
+
+    # adr — the daily-range floor (his 2026-11-02 ruling; ADR_MIN above)
+    adr_d = adr20_at(rng, D)
+    g["adr"] = {"pass": bool(adr_d is not None and math.isfinite(adr_d) and adr_d >= ADR_MIN),
+                "value": {"adr20": _f(adr_d), "min": ADR_MIN}}
 
     # rs
     g["rs"] = {"pass": bool(rs_best is not None and rs_best >= RS_MIN), "value": {"rs_best": _f(rs_best)}}

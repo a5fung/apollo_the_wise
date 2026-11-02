@@ -1,0 +1,201 @@
+SET
+== A.
+unterminated quoted string
+== B. audit events 09:00-09:50 ET today (counts by type)
+event_type|count
+breakout_v1_entry_hold|19
+ep_rt_floor_flip_down|17
+breakout_v1_entry_abstain|14
+lowcap_paper_lane_tick|11
+ep_rt_universe_coverage|11
+order_status_reconciled|8
+ep_rt_universe_catch|7
+sdk_pool_rollup|5
+ep_catalyst_provenance|5
+ep_rt_sustain_reject|4
+entry_partial_fill|4
+ep_rt_declined_not_missed|3
+sizing_notional_cap_truncated|3
+ep_rt_sustain_undecidable|3
+breakout_v1_entry_order|3
+orb_bar_fetched|3
+exposure_family_checked|3
+orb_order_placed|3
+ep_filter_pm_rvol|3
+ep_rt_admit|3
+ep_rt_tick_quality_reject|2
+ep_rt_floor_flip_up|2
+ep_tinycap_observed|1
+evening_verify_heartbeat_ok|1
+ep_theme_fit_llm_proposed|1
+health_heartbeat_ok|1
+lowcap_lane_signal_recorded|1
+entry_rejection_watch_armed|1
+mna_pin_confirmed|1
+catalyst_earnings_revenue_weak_downgrade|1
+catalyst_earnings_boost|1
+breakout_v1_preflight_ok|1
+breakout_v1_planned_entry_cancel|1
+breakout_v1_entry_cancelled|1
+stop_refresh_ran|1
+trade_lifecycle_telegram_attempted|1
+unified_allocation_decided|1
+(37 rows)
+== C. the ORB / floor / skip rows (09:25-09:50 ET), in order
+ERROR:  column "signal_type" does not exist
+LINE 1: ...ECT alert_date, ticker, score_tier, LEFT(COALESCE(signal_typ...
+                                                             ^
+t|event_type|summary
+09:25:01|ep_rt_universe_coverage|RT snapshot coverage 3259/3259 (100.0%), 0 symbol(s) absent @ 09:25 ET
+09:25:01|ep_rt_sustain_undecidable|NX sustain rule UNAVAILABLE (too_few_bars) @ 09:25 ET — admitted on today's behaviour
+09:25:01|ep_rt_universe_catch|NX rt 10.3% ≥9 vs delayed n/a @ 09:25 ET
+09:28:00|unified_allocation_decided|empty queue for 2026-11-02
+09:30:03|ep_rt_universe_coverage|RT snapshot coverage 3259/3259 (100.0%), 0 symbol(s) absent @ 09:30 ET
+09:30:03|ep_rt_floor_flip_down|NAKA delayed 9.4% >=9 > rt 1.9% (stale false-admit REMOVED)
+09:30:03|ep_rt_floor_flip_down|PSQL delayed 10.7% >=9 > rt 8.0% (stale false-admit REMOVED)
+09:30:03|ep_rt_floor_flip_down|MFIN delayed 13.8% >=9 > rt 0.0% (stale false-admit REMOVED)
+09:31:01|ep_rt_universe_coverage|RT snapshot coverage 3259/3259 (100.0%), 0 symbol(s) absent @ 09:31 ET
+09:31:01|ep_rt_floor_flip_down|SKE delayed 9.2% >=9 > rt 2.5% (stale false-admit REMOVED)
+09:31:01|ep_rt_floor_flip_down|RZAI delayed 11.2% >=9 > rt 8.8% (stale false-admit REMOVED)
+09:31:01|ep_rt_floor_flip_down|PSQL delayed 10.7% >=9 > rt 7.1% (stale false-admit REMOVED)
+09:31:01|ep_rt_floor_flip_down|MFIN delayed 13.8% >=9 > rt -0.7% (stale false-admit REMOVED)
+09:31:01|ep_rt_floor_flip_down|NAKA delayed 9.4% >=9 > rt -1.6% (stale false-admit REMOVED)
+09:31:01|ep_rt_declined_not_missed|JXG rt 42.0% @ 09:31 ET — DECLINED by ep_rt_tick_quality_reject, not missed
+09:35:04|ep_rt_universe_coverage|RT snapshot coverage 3259/3259 (100.0%), 0 symbol(s) absent @ 09:35 ET
+09:35:04|ep_rt_tick_quality_reject|RTSN rt 10.0% REJECTED (no_bar_confirm) @ 09:35 ET
+09:35:04|ep_rt_floor_flip_down|SKE delayed 9.2% >=9 > rt 4.0% (stale false-admit REMOVED)
+09:35:04|ep_rt_admit|IDXX rt 16.6% and delayed 10.7% BOTH >=9 @ 09:35 ET — real-time AGREES with the admit
+09:35:04|ep_rt_floor_flip_down|NAKA delayed 9.4% >=9 > rt -0.5% (stale false-admit REMOVED)
+09:35:04|ep_rt_floor_flip_down|RZAI delayed 10.3% >=9 > rt 8.7% (stale false-admit REMOVED)
+09:35:04|ep_rt_floor_flip_down|PSQL delayed 9.9% >=9 > rt 4.9% (stale false-admit REMOVED)
+09:35:04|ep_rt_floor_flip_down|MFIN delayed 13.8% >=9 > rt -0.7% (stale false-admit REMOVED)
+09:35:04|ep_rt_declined_not_missed|RTSN rt 10.0% @ 09:35 ET — DECLINED by ep_rt_tick_quality_reject, not missed
+09:35:10|breakout_v1_entry_abstain|CYPH: setup:stop_too_wide: level $3.56 - day low $2.96 = 16.85% > ADR20 11.99%
+09:35:10|breakout_v1_entry_abstain|ZCSH: setup:stop_too_wide: level $37.22 - day low $33.43 = 10.17% > ADR20 6.01%
+09:35:10|breakout_v1_entry_hold|KOD: waiting — opening_range_not_settled
+09:35:10|breakout_v1_entry_hold|CAI: no buy yet — volume 36,312 by minute 4 < 172,222 (1.2x normal by this minute)
+09:35:10|breakout_v1_entry_abstain|OKTA: setup:stop_too_wide: level $228.72 - day low $196.20 = 14.22% > ADR20 5.78%
+09:35:10|breakout_v1_entry_abstain|IBTA: setup:stop_too_wide: level $50.29 - day low $47.99 = 4.57% > ADR20 4.27%
+09:35:10|breakout_v1_entry_hold|LIFE: no buy yet — volume 41,653 by minute 4 < 53,566 (1.2x normal by this minute)
+09:35:10|breakout_v1_entry_hold|PLSE: waiting — opening_range_not_settled
+09:35:11|breakout_v1_entry_hold|PCRX: no buy yet — volume 12,861 by minute 4 < 51,322 (1.2x normal by this minute)
+09:35:11|breakout_v1_entry_hold|BSP: no buy yet — volume 39,031 by minute 4 < 101,140 (1.2x normal by this minute)
+09:35:11|breakout_v1_entry_abstain|CRWD: setup:stop_too_wide: level $272.29 - day low $244.50 = 10.21% > ADR20 4.94%
+09:35:11|breakout_v1_entry_hold|NIQ: waiting — opening_range_not_settled
+09:35:11|breakout_v1_entry_hold|VSTM: no buy yet — volume 60,822 by minute 4 < 135,487 (1.2x normal by this minute)
+09:35:11|breakout_v1_entry_hold|AMC: no buy yet — volume 671,117 by minute 4 < 921,984 (1.2x normal by this minute)
+09:35:11|breakout_v1_entry_hold|ARX: waiting — opening_range_not_settled
+09:35:11|breakout_v1_entry_hold|HAE: waiting — opening_range_not_settled
+09:35:11|breakout_v1_preflight_ok|2026-11-02: paper account answered (equity $89,844)
+09:35:11|orb_bar_fetched|Breakout v1 (paper) MTW O=23.44 H=23.80 L=23.44 range=0.36
+09:35:11|orb_order_placed|Breakout v1 (paper) MTW entry=$23.88 stop=$23.44 shares=752 risk=$898 trade_id=440
+09:35:11|breakout_v1_entry_order|MTW → auto_entered trade_id=440 level=$23.88 stop=$23.44 vol 21,745 >= 14,857
+09:35:11|breakout_v1_entry_abstain|RDVT: setup:stop_too_wide: level $83.15 - day low $79.04 = 4.94% > ADR20 3.42%
+09:35:11|breakout_v1_entry_hold|TRAX: no buy yet — volume 7,433 by minute 4 < 33,054 (1.2x normal by this minute)
+09:35:12|breakout_v1_entry_hold|BWMN: waiting — opening_range_not_settled
+09:35:12|breakout_v1_entry_hold|LIND: no buy yet — volume 9,887 by minute 4 < 33,147 (1.2x normal by this minute)
+09:35:12|breakout_v1_entry_abstain|NTRA: setup:stop_too_wide: level $436.19 - day low $410.24 = 5.95% > ADR20 4.57%
+09:35:13|breakout_v1_entry_abstain|TEM: setup:stop_too_wide: level $78.40 - day low $70.30 = 10.33% > ADR20 8.19%
+09:35:13|orb_bar_fetched|Breakout v1 (paper) ACN O=255.70 H=256.70 L=253.68 range=3.02
+09:35:13|orb_order_placed|Breakout v1 (paper) ACN entry=$260.42 stop=$253.68 shares=68 risk=$898 trade_id=444
+09:35:13|breakout_v1_entry_order|ACN → auto_entered trade_id=444 level=$260.42 stop=$253.68 vol 272,853 >= 235,744
+09:35:13|breakout_v1_entry_hold|ANF: no buy yet — volume 29,697 by minute 4 < 64,417 (1.2x normal by this minute)
+09:35:13|breakout_v1_entry_hold|JILL: waiting — opening_range_not_settled
+09:35:13|breakout_v1_entry_abstain|DOCS: setup:stop_too_wide: level $34.80 - day low $32.87 = 5.55% > ADR20 3.94%
+09:36:10|breakout_v1_entry_hold|KOD: no buy yet — volume 11,497 by minute 5 < 83,549 (1.2x normal by this minute)
+09:36:10|breakout_v1_entry_abstain|PLSE: setup:stop_too_wide: level $56.51 - day low $51.52 = 8.83% > ADR20 6.27%
+09:36:10|breakout_v1_entry_abstain|NIQ: setup:stop_too_wide: level $20.56 - day low $19.83 = 3.55% > ADR20 3.15%
+09:36:10|breakout_v1_entry_abstain|ARX: setup:stop_too_wide: level $19.87 - day low $19.81 = 0.30% > ADR20 0.25%
+09:36:10|breakout_v1_entry_hold|HAE: no buy yet — volume 7,452 by minute 5 < 26,678 (1.2x normal by this minute)
+09:36:10|breakout_v1_entry_hold|BWMN: no buy yet — volume 12,494 by minute 5 < 13,923 (1.2x normal by this minute)
+09:36:11|breakout_v1_entry_abstain|JILL: setup:zero_range: stop $24.21 >= level $24.21
+09:39:10|breakout_v1_entry_abstain|CAI: setup:stop_too_wide: level $36.50 - day low $33.76 = 7.51% > ADR20 6.66%
+09:40:05|ep_rt_universe_coverage|RT snapshot coverage 3259/3259 (100.0%), 0 symbol(s) absent @ 09:40 ET
+09:40:06|ep_rt_universe_catch|RTSN rt 12.6% ≥9 vs delayed n/a @ 09:40 ET
+09:40:06|ep_rt_universe_catch|MF rt 16.4% ≥9 vs delayed n/a @ 09:40 ET
+09:40:06|ep_rt_universe_catch|RPGL rt 13.2% ≥9 vs delayed -1.8% @ 09:40 ET
+09:40:06|ep_rt_sustain_reject|ATEC rt 9.2% but the level did NOT hold 3 consecutive bars @ 09:40 ET — no catch
+09:40:06|ep_rt_floor_flip_down|MFIN delayed 13.8% >=9 > rt 0.1% (stale false-admit REMOVED)
+09:40:06|ep_rt_floor_flip_down|NAKA delayed 9.4% >=9 > rt -1.0% (stale false-admit REMOVED)
+09:40:06|ep_rt_floor_flip_down|NX delayed 10.3% >=9 > rt 3.3% (stale false-admit REMOVED)
+09:40:06|ep_rt_floor_flip_down|SKE delayed 9.2% >=9 > rt 3.5% (stale false-admit REMOVED)
+09:40:06|ep_rt_declined_not_missed|ATEC rt 9.2% @ 09:40 ET — DECLINED by ep_rt_sustain_reject, not missed
+09:41:10|breakout_v1_planned_entry_cancel|ACN: cancelling breakout v1 buy e18f234d on purpose (cancel: setup:breakout_volume_below_curve: 362,377 shares by minute 10 < 370,325 needed)
+09:41:10|breakout_v1_entry_cancelled|ACN: setup:breakout_volume_below_curve: 362,377 shares by minute 10 < 370,325 needed
+09:41:10|entry_rejection_watch_armed|ACN [paper] order e18f234d cancelled — buy-side, no tracked entry row (routine path already handled it, or genuinely untracked) — nothing new to capture
+09:43:10|orb_bar_fetched|Breakout v1 (paper) BWMN O=42.90 H=42.91 L=42.88 range=0.03
+09:43:10|orb_order_placed|Breakout v1 (paper) BWMN entry=$42.95 stop=$42.88 shares=418 risk=$898 trade_id=451
+09:43:10|breakout_v1_entry_order|BWMN → auto_entered trade_id=451 level=$42.95 stop=$42.88 vol 25,967 >= 22,000
+09:45:05|ep_rt_universe_coverage|RT snapshot coverage 3259/3259 (100.0%), 0 symbol(s) absent @ 09:45 ET
+09:45:05|ep_rt_sustain_reject|RTSN rt 12.1% but the level did NOT hold 3 consecutive bars @ 09:45 ET — no catch
+09:45:05|ep_rt_universe_catch|ULCC rt 11.0% ≥9 vs delayed 2.1% @ 09:45 ET
+09:45:05|ep_rt_sustain_reject|WING rt 9.2% but the level did NOT hold 3 consecutive bars @ 09:45 ET — no catch
+09:45:05|ep_rt_floor_flip_up|NXT rt 10.2% ≥9 > delayed 5.5% @ 09:45 ET
+09:46:02|entry_partial_fill|[paper] MTW partial_fill 684/752 (cum 684) @ $23.98 side=buy
+09:46:03|entry_partial_fill|[paper] MTW partial_fill 25/752 (cum 709) @ $23.98 side=buy
+09:46:04|entry_partial_fill|[paper] MTW partial_fill 40/752 (cum 749) @ $23.98 side=buy
+09:46:06|entry_partial_fill|[paper] MTW partial_fill 1/752 (cum 750) @ $23.98 side=buy
+(89 rows)
+== D. job runs 09:20-09:50 ET
+job_id|status|st
+9m_ep_scan|success|09:20:00
+ep_scan|success|09:20:00
+breakout_v1_entry|success|09:20:10
+breakout_v1_entry|success|09:21:10
+breakout_v1_entry|success|09:22:10
+breakout_v1_entry|success|09:23:10
+breakout_v1_entry|success|09:24:10
+9m_ep_scan|success|09:25:00
+ep_scan|success|09:25:00
+breakout_v1_entry|success|09:25:10
+breakout_v1_entry|success|09:26:10
+breakout_v1_entry|success|09:27:10
+unified_allocator_shadow|success|09:28:00
+breakout_v1_entry|success|09:28:10
+breakout_v1_entry|success|09:29:10
+ep_scan|success|09:30:00
+9m_ep_scan|success|09:30:00
+breakout_v1_entry|success|09:30:10
+ep_scan_open|success|09:31:00
+breakout_v1_entry|success|09:31:10
+breakout_v1_entry|success|09:32:10
+breakout_v1_entry|success|09:33:10
+breakout_v1_entry|success|09:34:10
+9m_ep_scan|success|09:35:00
+ep_scan|success|09:35:00
+breakout_v1_entry|success|09:35:10
+breakout_v1_entry|success|09:36:10
+breakout_v1_entry|success|09:37:10
+breakout_v1_entry|success|09:38:10
+breakout_v1_entry|success|09:39:10
+9m_ep_scan|success|09:40:00
+ep_scan|success|09:40:00
+breakout_v1_entry|success|09:40:10
+breakout_v1_entry|success|09:41:10
+breakout_v1_entry|success|09:42:10
+breakout_v1_entry|success|09:43:10
+breakout_v1_entry|success|09:44:10
+9m_ep_scan|success|09:45:00
+ep_scan|success|09:45:00
+breakout_v1_entry|success|09:45:10
+(40 rows)
+== E. trades created today
+id|ticker|signal_type|account_mode|status|t|entry_price|stop_price
+435|CYPH|breakout_v1|paper|skipped|09:35:10||
+436|ZCSH|breakout_v1|paper|skipped|09:35:10||
+437|OKTA|breakout_v1|paper|skipped|09:35:10||
+438|IBTA|breakout_v1|paper|skipped|09:35:10||
+439|CRWD|breakout_v1|paper|skipped|09:35:11||
+440|MTW|breakout_v1|paper|filled|09:35:11|23.98|23.44
+441|RDVT|breakout_v1|paper|skipped|09:35:11||
+442|NTRA|breakout_v1|paper|skipped|09:35:12||
+443|TEM|breakout_v1|paper|skipped|09:35:13||
+444|ACN|breakout_v1|paper|cancelled|09:35:13|260.42|253.68
+445|DOCS|breakout_v1|paper|skipped|09:35:13||
+446|PLSE|breakout_v1|paper|skipped|09:36:10||
+447|NIQ|breakout_v1|paper|skipped|09:36:10||
+448|ARX|breakout_v1|paper|skipped|09:36:10||
+449|JILL|breakout_v1|paper|skipped|09:36:11||
+450|CAI|breakout_v1|paper|skipped|09:39:10||
+451|BWMN|breakout_v1|paper|order_placed|09:43:10|42.95|42.88
+(17 rows)

@@ -1,0 +1,25 @@
+SET
+== A.
+unterminated quoted string
+ticker|score_tier|t
+(0 rows)
+== F. MTW / BWMN rows (stop leg, status)
+id|ticker|status|entry_price|stop_price|hard_stop|entry_shares|remaining_shares|has_stop_leg|account_mode
+440|MTW|filled|23.98|23.44|23.44|752|752|t|paper
+451|BWMN|order_placed|42.95|42.88|42.88|418|0|t|paper
+(2 rows)
+== G. breakout_v1 events since 09:45 ET
+t|event_type|left
+09:45:00|order_status_reconciled|BWMN order=ba6e6a76: new -> held (paper)
+09:45:00|order_status_reconciled|BWMN order=c8f4c7d2: pending_new -> new (paper)
+09:46:02|entry_partial_fill|[paper] MTW partial_fill 684/752 (cum 684) @ $23.98 side=buy
+09:46:03|entry_partial_fill|[paper] MTW partial_fill 25/752 (cum 709) @ $23.98 side=buy
+09:46:04|entry_partial_fill|[paper] MTW partial_fill 40/752 (cum 749) @ $23.98 side=buy
+09:46:06|entry_partial_fill|[paper] MTW partial_fill 1/752 (cum 750) @ $23.98 side=buy
+09:46:07|trade_lifecycle_telegram_attempted|fill MTW @$23.98 x752
+09:47:10|breakout_v1_fill_stop_checked|MTW #440: true low $23.44 is not under the placed stop — the stop is kept
+(8 rows)
+== H. any breakout order on the live account ever
+count
+0
+(1 row)

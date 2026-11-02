@@ -308,6 +308,20 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
+### 2026-11-02 — breakout v1's list gains a DAILY-RANGE FLOOR: ADR20 >= 4.26% (OPERATOR-SIGNED "yes to both", 2026-11-02; paper only — no live order path)
+
+**Trigger**: his catch on the first paper morning — *"bwmn is clearly a buyout candidate"*: BWMN (Bernhard Capital's $43 cash buyout, signed 2026-08-10) traded $42.88-42.91 in its opening range and v1 placed a buy at $42.95 on a 7-cent stop (cancelled at 09:49 by its own volume pace). The same night's 27-name list also carried PCRX (Viatris deal; our EP M&A filter blocked it 10-29) and ARX (ADR20 0.25%; blocked by the M&A filter in August). v1 had no deal-target check of its own; a pinned deal target is not a breakout.
+
+**The rule**: a new gate `adr` in `breakout_v1.v1_gates` (after `universe`): ADR20 at D (the mean of (high-low)/close over the 20 sessions ending D, v1's own `adr20_at`) must be >= `ADR_MIN` = 0.0426. The value is his own reverse-engineered stock pool (`docs/analysis/cb_reverse_engineer_his_rules_prereg_2026-10-24.md` L814: ADR20 >= 4.26%, not down > 5.8% over 60 sessions, a 52-week high within 233 sessions — the SELECT rule that PASSED on 2021-22). A pinned deal target sits far below it (ARX 0.25%).
+
+**Evidence**: backtest on the frozen 2017-2024 paper-baseline replay (`scripts/probes/_breakout_v1_replay_1101/adr_floor_1102/adr_floor_effect.txt`, before the code shipped): 3,414 of 18,094 placed name-days (19%) fall under the floor; their 919 decisive fills averaged -0.464R. With the floor, the paper book (5 slots, 2c): 2017-21 -0.153 -> -0.139R, 2022-24 -0.412 -> -0.340R; no slot limit: 2017-21 -0.047 -> +0.001R, 2022-24 -0.326 -> -0.252R. Cost: 9 of the 63 10R+ trades are below the floor. N >> 10, both eras the same direction. Tests `tests/test_breakout_v1_adr_floor.py` (the gate named and ordered, a pinned series fails, a mover passes, 4.25% fails / 4.27% passes); the v1 list / parity / entry / fund suites unchanged (131).
+
+**Anticipated effect**: the 17:55 ET list loses its pinned and low-volatility names (~19% fewer rows on history; ARX, BWMN-like names); the list audit row's per-gate fail counts carry an `adr` count; nothing else in the entry or exit changes.
+
+**Reversion-flag**: NEW.
+
+**Status**: shipped, awaiting field validation — deploy Mon 11-02 12:00-13:00 ET (market-agent, where the 17:55 list job runs; batched with the 11-01 simplify + the M&A sweep fix, then execution). VERIFY-LIVE: the 11-02 17:55 ET list's audit row shows an `adr` fail count > 0 and no listed name with ADR20 < 4.26%. WOULD-FAIL-IF: a listed name with ADR20 < 4.26%, or no `adr` key in the per-gate counts. ⚠ The frozen C replay and template grid pinned `breakout_v1.py`; they reproduce at their freeze commits (`e2c7938d`, `087e0908`), not on HEAD.
+
 ### 2026-11-01 — breakout v1 studies on the frozen 2017-2024 replay: the paper baseline FAIL, the path to his template FAIL in every step, the spot-check of his 28 biggest buys (RESEARCH ONLY — no rule changed; any change is his call)
 
 Moved here from the #717 PLAN line at the 11-01 CLOSE (the line keeps one pointer). Each study was registered and frozen before its data, run once and verified (a recount + an adversarial audit) before it was reported; vault `tests/717_paper_baseline_replay.md`, `tests/717_big_winners_and_book_fixes.md`, `tests/717_template_grid.md`, `tests/717_his_big_winners_vs_v1.md`.
