@@ -1,0 +1,6 @@
+store A: loaded in 9s; {'raw_factor': 'pre_v2 daily_raw_close.csv.gz per bar (exact)', 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+era A: 1322 nights, loaded in 13s
+era A: 2751494 rows (2081 a night) in 92s; gate errors 0
+store B: loaded in 8s; {'raw_factor': 'bridge (pre_v2 raw / cb702 adjusted on the 2022-04..06 overlap, then the split list <= 2024-12-31) where the ticker is in both stores; else the split list <= 2024-12-31 only', 'splits_rows_skipped_sealed': 3090, 'bridge_tickers': 8518, 'bridge_unstable_fell_back': 224, 'split_list_only_tickers': 7184, 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+era B: 690 nights, loaded in 11s
+era B: 1475946 rows (2139 a night) in 38s; gate errors 0

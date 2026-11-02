@@ -1,0 +1,13 @@
+feature rows 4,227,440 over 2012 nights (2101 listable names a night with strength >= 30)
+PARITY v1 (no floors) vs frozen list files: mine 61,071 frozen 61,071 both 61,071 only-mine 0 only-frozen 0
+his 269 buys found in the table: 269
+his buys: strength rank lowest 35.3; daily range lowest 2.11%
+
+lists (each row = the rules kept on; everything else off):
+  v1 today (strength 98 + floors + all shape rules)              his buys  60/269 | big winners 4/26 | names a night: median 22, mean 23, 90th pct 39
+  v1 rules without the two 11-02 floors                          his buys  60/269 | big winners 4/26 | names a night: median 29, mean 30, 90th pct 46
+  STARTING POINT: strength >= 35, range >= 2.1%, prior move kept his buys 269/269 | big winners 26/26 | names a night: median 543, mean 625, 90th pct 1023
+    + breakdown rule                                             his buys 262/269 | big winners 25/26 | names a night: median 366, mean 459, 90th pct 796
+    strength >= 70 instead of 35                                 his buys 257/269 | big winners 24/26 | names a night: median 462, mean 513, 90th pct 837
+    strength >= 90 instead of 35                                 his buys 206/269 | big winners 20/26 | names a night: median 313, mean 316, 90th pct 455
+    range >= 4.26% (today's floor) instead of 2.1%               his buys 219/269 | big winners 26/26 | names a night: median 248, mean 314, 90th pct 567
