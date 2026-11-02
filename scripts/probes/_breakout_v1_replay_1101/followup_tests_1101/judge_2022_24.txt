@@ -1,0 +1,21 @@
+JUDGING on 2022-24 — capped book at 2c, admitted + filled + decisive rows; the bar of the replay registration §6 (PASS: n>=100, lower end > 0, >=3R share >= 8%; FAIL: n>=100, upper end < +0.25R, share < 8%; else CAN'T TELL)
+chosen on 2017-21: slot order L (list rank 11+ before 1-10); stop floor c15 (stop under 15c skipped)
+
+-- era 2022-24 --  (THE JUDGED ERA)
+today (T, no floor)                n   581  mean -0.412 [-0.57, -0.22]  win 29.9%  med -1.04  >=3R  3.6% (21)  >=5R  1.7% (10)  >=10R  0.7% (4)  sum -239   VERDICT FAIL (whole interval under +0.25R and the >= 3R share under the tail bar)
+chosen order L                     n   540  mean -0.204 [-0.40, +0.01]  win 32.2%  med -1.03  >=3R  5.0% (27)  >=5R  3.3% (18)  >=10R  1.5% (8)  sum -110   VERDICT FAIL (whole interval under +0.25R and the >= 3R share under the tail bar)
+chosen floor c15                   n   520  mean -0.209 [-0.40, +0.01]  win 32.5%  med -1.03  >=3R  4.6% (24)  >=5R  2.9% (15)  >=10R  1.0% (5)  sum -109   VERDICT FAIL (whole interval under +0.25R and the >= 3R share under the tail bar)
+combined L + c15                   n   506  mean -0.075 [-0.30, +0.20]  win 34.6%  med -1.03  >=3R  4.9% (25)  >=5R  3.6% (18)  >=10R  1.8% (9)  sum -38   VERDICT FAIL (whole interval under +0.25R and the >= 3R share under the tail bar)
+random order, 20 seeds (reference) mean R min -0.307 / median -0.221 / max -0.079 (range width 0.228)
+
+-- era 2017-21 --  (the selection era: in-sample, context only)
+today (T, no floor)                n  1058  mean -0.153 [-0.34, +0.06]  win 34.8%  med -1.03  >=3R  5.1% (54)  >=5R  3.2% (34)  >=10R  1.0% (11)  sum -162
+chosen order L                     n  1071  mean -0.090 [-0.32, +0.14]  win 35.3%  med -1.03  >=3R  4.9% (52)  >=5R  3.2% (34)  >=10R  1.6% (17)  sum -97
+chosen floor c15                   n   986  mean +0.021 [-0.21, +0.26]  win 36.4%  med -1.02  >=3R  5.1% (50)  >=5R  3.3% (33)  >=10R  1.2% (12)  sum +21
+combined L + c15                   n  1003  mean +0.008 [-0.21, +0.26]  win 36.8%  med -1.02  >=3R  5.0% (50)  >=5R  3.1% (31)  >=10R  1.6% (16)  sum +8
+random order, 20 seeds (reference) mean R min -0.290 / median -0.179 / max -0.129 (range width 0.161)
+
+PRE-DECLARED READS (PREREG §7): 'beats today's' = the 2022-24 mean above today's by more than the random range width AND above today's on 2017-21 too
+  chosen order L               2022-24 -0.204 vs today -0.412 (diff +0.207; random width 0.228); 2017-21 diff +0.063 -> does NOT beat today beyond noise; verdict FAIL
+  chosen floor c15             2022-24 -0.209 vs today -0.412 (diff +0.202; random width 0.228); 2017-21 diff +0.175 -> does NOT beat today beyond noise; verdict FAIL
+  combined L + c15             2022-24 -0.075 vs today -0.412 (diff +0.336; random width 0.228); 2017-21 diff +0.161 -> BEATS today; verdict FAIL

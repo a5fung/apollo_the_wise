@@ -1,0 +1,35 @@
+parity: placed rows 18,094; admitted differs from the frozen adm_cap on 0 rows; blocked {'block:max_positions': 11808, 'block:ticker_open_position': 1260} (frozen: max_positions 11,808 / ticker_open_position 1,260)
+parity 2017-21: n 1058 mean -0.153 (frozen n 1058 mean -0.153)
+parity 2022-24: n 581 mean -0.412 (frozen n 581 mean -0.412)
+
+SELECTION on 2017-21 ONLY — capped book (guard + 5 slots) at 2c, admitted + filled + decisive rows (PREREG §6)
+
+TEST 1 — SLOT ORDER (within a placement tick; today's book otherwise)
+lever check: today's order through the synthetic rank = the frozen adm_cap on every placed row
+T: today's: strongest first (list  n  1058  mean -0.153 [-0.34, +0.06]  win 34.8%  med -1.03  >=3R  5.1% (54)  >=5R  3.2% (34)  >=10R  1.0% (11)  sum -162   admitted fills all years 1,740
+R: rs_best ascending (weakest RS f n  1028  mean -0.128 [-0.31, +0.08]  win 36.5%  med -1.03  >=3R  4.9% (50)  >=5R  3.1% (32)  >=10R  1.3% (13)  sum -131   admitted fills all years 1,604
+L: list rank 11+ before 1-10       n  1071  mean -0.090 [-0.32, +0.18]  win 35.3%  med -1.03  >=3R  4.9% (52)  >=5R  3.2% (34)  >=10R  1.6% (17)  sum -97   admitted fills all years 1,706
+P: volume pace at placement, highe n  1122  mean -0.203 [-0.35, -0.03]  win 34.0%  med -1.03  >=3R  4.5% (51)  >=5R  2.8% (31)  >=10R  1.2% (13)  sum -228   admitted fills all years 1,706
+W: tightest stop (share of price)  n  1146  mean -0.182 [-0.37, +0.06]  win 34.1%  med -1.03  >=3R  4.5% (52)  >=5R  2.7% (31)  >=10R  1.2% (14)  sum -208   admitted fills all years 1,810
+X: random order, 20 seeds — mean R min -0.290 / median -0.179 / max -0.129 (sd 0.042); n 1038..1106; >=3R share 3.9%..5.1%
+-> chosen slot order on 2017-21: L (list rank 11+ before 1-10), mean -0.090; today's T -0.153; outside the random range [-0.290, -0.129]
+
+TEST 2 — MINIMUM STOP (planned risk at placement = level - day-low stop; rows under the floor removed before the book; today's order)
+0: no floor (today)                n  1058  mean -0.153 [-0.34, +0.06]  win 34.8%  med -1.03  >=3R  5.1% (54)  >=5R  3.2% (34)  >=10R  1.0% (11)  sum -162   placed rows removed 0 of 18,094
+c5: stop under 5c skipped          n  1035  mean -0.088 [-0.28, +0.14]  win 35.9%  med -1.03  >=3R  5.2% (54)  >=5R  3.3% (34)  >=10R  1.1% (11)  sum -91   placed rows removed 373 of 18,094
+c10: stop under 10c skipped        n   989  mean -0.011 [-0.22, +0.21]  win 37.1%  med -1.02  >=3R  5.3% (52)  >=5R  3.4% (34)  >=10R  1.2% (12)  sum -11   placed rows removed 1,082 of 18,094
+c15: stop under 15c skipped        n   986  mean +0.021 [-0.20, +0.28]  win 36.4%  med -1.02  >=3R  5.1% (50)  >=5R  3.3% (33)  >=10R  1.2% (12)  sum +21   placed rows removed 1,911 of 18,094
+c20: stop under 20c skipped        n   971  mean -0.013 [-0.21, +0.21]  win 36.4%  med -1.02  >=3R  5.0% (49)  >=5R  3.7% (36)  >=10R  1.3% (13)  sum -13   placed rows removed 2,798 of 18,094
+p0.5: stop under 0.5% of price ski n  1045  mean -0.093 [-0.30, +0.13]  win 35.1%  med -1.03  >=3R  5.2% (54)  >=5R  3.3% (34)  >=10R  1.1% (12)  sum -97   placed rows removed 779 of 18,094
+p1.0: stop under 1.0% of price ski n  1010  mean -0.055 [-0.26, +0.17]  win 35.5%  med -1.02  >=3R  5.3% (54)  >=5R  3.4% (34)  >=10R  1.2% (12)  sum -56   placed rows removed 1,494 of 18,094
+p1.5: stop under 1.5% of price ski n   958  mean -0.100 [-0.28, +0.11]  win 35.7%  med -1.02  >=3R  5.0% (48)  >=5R  3.1% (30)  >=10R  1.3% (12)  sum -96   placed rows removed 2,615 of 18,094
+-> chosen stop floor on 2017-21: c15 (stop under 15c skipped), mean +0.021; today's (no floor) -0.153
+
+beside — on today's 1,639 admitted decisive trades: rows the literal (fill - stop) reading and the planned (level - stop at placement) reading classify differently
+  c5    literal under the floor   50; planned under the floor   54; differ on   4
+  c10   literal under the floor  121; planned under the floor  129; differ on   8
+  c15   literal under the floor  190; planned under the floor  218; differ on  28
+  c20   literal under the floor  277; planned under the floor  310; differ on  33
+  p0.5  literal under the floor   56; planned under the floor   58; differ on   2
+  p1.0  literal under the floor  107; planned under the floor  119; differ on  12
+  p1.5  literal under the floor  205; planned under the floor  245; differ on  40

@@ -1,0 +1,141 @@
+{
+ "+100%": {
+  "n": 1626,
+  "listed": 528,
+  "fired": 314,
+  "filled": 305,
+  "slot": 83,
+  "made_money": 144,
+  "ge3R": 45,
+  "ge10R": 19,
+  "still_in_s50": 90,
+  "any_fill_still_in_s50": 169,
+  "catch_r_2c_mean": 1.426083087449213,
+  "catch_r_2c_median": -1.001454545454542,
+  "never_listed": 1098,
+  "by_era": {
+   "2017-21": {
+    "n": 1184,
+    "listed": 341,
+    "filled": 205,
+    "made_money": 101
+   },
+   "2022-24": {
+    "n": 442,
+    "listed": 187,
+    "filled": 100,
+    "made_money": 43
+   }
+  },
+  "anchor_fail_share": {
+   "history": 0.0,
+   "universe": 0.014571948998178506,
+   "rs": 0.953551912568306,
+   "prior_move": 0.5336976320582878,
+   "higher_lows": 0.09380692167577413,
+   "surf": 0.3788706739526412,
+   "tightening": 0.2859744990892532,
+   "breakdown": 0.05373406193078324
+  },
+  "first_failed": {
+   "rs": 1031,
+   "universe": 16,
+   "surf": 13,
+   "prior_move": 12,
+   "higher_lows": 11,
+   "": 7,
+   "tightening": 7,
+   "breakdown": 1
+  },
+  "nearest_miss": {
+   "rs": 429,
+   "2 gates": 355,
+   "surf": 116,
+   "prior_move": 62,
+   "3 gates": 61,
+   "tightening": 32,
+   "4 gates": 21,
+   "5 gates": 13,
+   "higher_lows": 6,
+   "6 gates": 2
+  },
+  "groups": {
+   "never listed": 1098,
+   "listed, never fired": 172,
+   "filled: lost": 161,
+   "filled: made money": 144,
+   "listed, fired, not filled": 51
+  }
+ },
+ "+50%": {
+  "n": 7586,
+  "listed": 1270,
+  "fired": 636,
+  "filled": 627,
+  "slot": 179,
+  "made_money": 284,
+  "ge3R": 75,
+  "ge10R": 26,
+  "still_in_s50": 220,
+  "any_fill_still_in_s50": 350,
+  "catch_r_2c_mean": 0.889302075527379,
+  "catch_r_2c_median": -1.0114285714285771,
+  "never_listed": 6316,
+  "by_era": {
+   "2017-21": {
+    "n": 4971,
+    "listed": 827,
+    "filled": 418,
+    "made_money": 190
+   },
+   "2022-24": {
+    "n": 2615,
+    "listed": 443,
+    "filled": 209,
+    "made_money": 94
+   }
+  },
+  "anchor_fail_share": {
+   "history": 0.00031665611146295124,
+   "universe": 0.006174794173527549,
+   "rs": 0.9651678277390754,
+   "prior_move": 0.588188727042432,
+   "higher_lows": 0.11209626345788473,
+   "surf": 0.4200443318556048,
+   "tightening": 0.3122229259024699,
+   "breakdown": 0.07156428119062698
+  },
+  "first_failed": {
+   "rs": 6057,
+   "surf": 58,
+   "higher_lows": 53,
+   "prior_move": 51,
+   "universe": 39,
+   "": 32,
+   "tightening": 21,
+   "history": 2,
+   "not_in_store": 1,
+   "breakdown": 1,
+   "no_bar": 1
+  },
+  "nearest_miss": {
+   "rs": 2494,
+   "2 gates": 2484,
+   "3 gates": 483,
+   "surf": 291,
+   "4 gates": 186,
+   "prior_move": 146,
+   "tightening": 106,
+   "5 gates": 88,
+   "higher_lows": 18,
+   "6 gates": 13
+  },
+  "groups": {
+   "never listed": 6316,
+   "listed, never fired": 513,
+   "filled: lost": 343,
+   "filled: made money": 284,
+   "listed, fired, not filled": 130
+  }
+ }
+}

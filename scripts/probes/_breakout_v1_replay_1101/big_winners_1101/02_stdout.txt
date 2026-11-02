@@ -1,0 +1,25 @@
+episodes (kept): 9212 rows; by store x tag {('A', 'x150'): 5206, ('A', 'x200'): 1212, ('B', 'x150'): 2380, ('B', 'x200'): 414}
+list rows 61071 on 2012 nights
+bars: 12,005,007 rows / 12,532 tickers / 1635 sessions 2016-01-04..2022-06-30 (4s); 5,007 tickers have a missing session inside their span (211,391 holes)
+store A: loaded in 9s; {'raw_factor': 'pre_v2 daily_raw_close.csv.gz per bar (exact)', 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+bars: 8,619,626 rows / 15,702 tickers / 821 sessions 2021-09-27..2024-12-31 (4s); 4,178 tickers have a missing session inside their span (188,545 holes)
+store B: loaded in 8s; {'raw_factor': 'bridge (pre_v2 raw / cb702 adjusted on the 2022-04..06 overlap, then the split list <= 2024-12-31) where the ticker is in both stores; else the split list <= 2024-12-31 only', 'splits_rows_skipped_sealed': 3090, 'bridge_tickers': 8518, 'bridge_unstable_fell_back': 224, 'split_list_only_tickers': 7184, 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+(ticker, night) pairs to evaluate: 232394 over 2001 nights (A 1321, B 680)
+store A: facts for 12532 tickers in 3s
+  A night 0/1321 2017-01-03: pool 2675, gate calls so far 19 (0s)
+  A night 200/1321 2017-10-18: pool 2587, gate calls so far 8018 (4s)
+  A night 400/1321 2018-08-06: pool 2701, gate calls so far 21408 (8s)
+  A night 600/1321 2019-05-23: pool 2741, gate calls so far 33288 (13s)
+  A night 800/1321 2020-03-10: pool 3056, gate calls so far 45293 (17s)
+  A night 1000/1321 2020-12-22: pool 3195, gate calls so far 122660 (25s)
+  A night 1200/1321 2021-10-08: pool 3380, gate calls so far 150055 (31s)
+store A: 1321 nights, 159551 gate calls in 35s; parity {('nolist', 'fail'): 154085, ('list', 'pass'): 5466}
+store B: facts for 15702 tickers in 2s
+  B night 0/680 2022-04-01: pool 3452, gate calls so far 52 (0s)
+  B night 200/680 2023-01-19: pool 3099, gate calls so far 24117 (6s)
+  B night 400/680 2023-11-03: pool 2982, gate calls so far 40093 (12s)
+  B night 600/680 2024-08-22: pool 3215, gate calls so far 62897 (18s)
+store B: 680 nights, 72793 gate calls in 20s; parity {('nolist', 'fail'): 70207, ('list', 'pass'): 2586}
+wrote 232394 (ticker, night) rows; pool status {'in_pool': 230532, 'below_floors': 1718, 'no_r63': 66, 'not_in_store': 46, 'identity_break': 22, 'short_history': 6, 'no_bar': 4}
+PARITY: my call passes but the list lacks the name: 0; the list has it but my call fails: 0; agree pass 8052, agree fail 224292
+done in 88s

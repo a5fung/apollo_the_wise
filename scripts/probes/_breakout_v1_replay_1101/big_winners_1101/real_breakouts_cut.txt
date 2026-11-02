@@ -1,0 +1,16 @@
+== +100%: classes {'measurable_breakout': 872, 'late_base': 592, 'no_consolidation': 7, 'ep_gap': 150, 'other': 5}
+  ep_gap                   n   150 | listed   44 (29%) | filled   24 (16%) | made money   10 | 3R+   2 | 10R+   1 | 5-slot book took 7
+  late_base                n   592 | listed  100 (17%) | filled   47 (8%) | made money   18 | 3R+   3 | 10R+   1 | 5-slot book took 12
+  measurable_breakout      n   872 | listed  380 (44%) | filled  231 (26%) | made money  113 | 3R+  40 | 10R+  17 | 5-slot book took 63
+  no_consolidation         n     7 | listed    1 (14%) | filled    1 (14%) | made money    1 | 3R+   0 | 10R+   0 | 5-slot book took 1
+  other                    n     5 | listed    3 (60%) | filled    2 (40%) | made money    2 | 3R+   0 | 10R+   0 | 5-slot book took 0
+  [2017-21] breakout-born n 597 listed 252 (42%) filled 159 made money 80 3R+ 25
+  [2022-24] breakout-born n 275 listed 128 (47%) filled 72 made money 33 3R+ 15
+== +50%: classes {'measurable_breakout': 3432, 'late_base': 3629, 'ep_gap': 363, 'no_consolidation': 40, 'other': 122}
+  ep_gap                   n   363 | listed   65 (18%) | filled   31 (9%) | made money   12 | 3R+   2 | 10R+   1 | 5-slot book took 11
+  late_base                n  3629 | listed  377 (10%) | filled  182 (5%) | made money   74 | 3R+  11 | 10R+   1 | 5-slot book took 46
+  measurable_breakout      n  3432 | listed  797 (23%) | filled  399 (12%) | made money  186 | 3R+  61 | 10R+  24 | 5-slot book took 119
+  no_consolidation         n    40 | listed    6 (15%) | filled    3 (8%) | made money    3 | 3R+   1 | 10R+   0 | 5-slot book took 1
+  other                    n   122 | listed   25 (20%) | filled   12 (10%) | made money    9 | 3R+   0 | 10R+   0 | 5-slot book took 2
+  [2017-21] breakout-born n 2230 listed 541 (24%) filled 275 made money 127 3R+ 42
+  [2022-24] breakout-born n 1202 listed 256 (21%) filled 124 made money 59 3R+ 19

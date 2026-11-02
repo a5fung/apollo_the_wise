@@ -1,0 +1,9 @@
+== A
+  export /Users/alvinfung/apollo_data/cb702_pre_v2/daily_closes_all.csv.gz: 12,005,007 rows, kept 12,005,007 (cut None); dates 2016-01-04..2022-06-30; 12,532 tickers; 2s
+  calendar 1635 sessions (2016-01-04..2022-06-30); wide (1635, 12532)
+  era trough window 2017-01-03..2022-03-31 (idx 252..1572)
+  symbol_guard: 667 tickers with an identity break
+  raw close from daily_raw_close.csv.gz: 12,005,007 cells
+  tickers: 12532; ticker regex ok 12356; security type CS/ADRC/unknown and not a test symbol 9207
+  [x200] {'cand_tickers': 909, 'qualifying_sessions': 19567, 'episodes': 1235, 'window_cut': 0, 'artifact_jump': 18, 'identity_break': 13, 'split_flag': 0, 'extended': 436, 'ext_truncated': 13, 'trough_moved': 712, 'lower_close_univ_fail': 125, 'lower_close_pre10': 223, 'sectype_unknown': 7}; wrote /Users/alvinfung/apollo_the_wise/scripts/probes/_breakout_v1_replay_1101/big_winners_1101/out/wrecall_episodes_A_x200.tsv.gz: 1235 episodes, excluded 23, kept 1212; classes (primary, kept): {'measurable_breakout': 612, 'late_base': 485, 'ep_gap': 105, 'other': 5, 'no_consolidation': 5}; 2s
+  [x150] {'cand_tickers': 2275, 'qualifying_sessions': 112329, 'episodes': 5240, 'window_cut': 0, 'artifact_jump': 26, 'identity_break': 20, 'split_flag': 0, 'extended': 1777, 'ext_truncated': 44, 'trough_moved': 3589, 'lower_close_univ_fail': 401, 'lower_close_pre10': 672, 'sectype_unknown': 23}; wrote /Users/alvinfung/apollo_the_wise/scripts/probes/_breakout_v1_replay_1101/big_winners_1101/out/wrecall_episodes_A_x150.tsv.gz: 5240 episodes, excluded 34, kept 5206; classes (primary, kept): {'late_base': 2569, 'measurable_breakout': 2280, 'ep_gap': 231, 'other': 94, 'no_consolidation': 32}; 9s
