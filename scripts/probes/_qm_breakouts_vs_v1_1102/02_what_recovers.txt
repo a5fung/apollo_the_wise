@@ -1,0 +1,20 @@
+his 5R+ winners among the 269 dated breakout buys: 26 (of 28 5R+ trades in his replay; the rest are undated/EP buys)
+
+RS (strength rank) of his buys that the strength rule blocks:
+  >= 95: 69 of 175
+  >= 90: 112 of 175
+  >= 85: 135 of 175
+  >= 80: 150 of 175
+  >= 70: 163 of 175
+  no rank (not in the night's scored pool): 0
+
+daily range of his buys the 4.26% floor blocks: 2.8% 3.1% 3.6% 3.9% 4.1% (10/25/50/75/90th pct)
+
+his buys listed the night before under each rule set (all 269 | his 5R+ winners among them):
+  today's rules                                            60 of 269 (22%) | 4 of 26
+  strength cut 98 -> 90                                   106 of 269 (39%) | 11 of 26
+  strength cut 98 -> 80                                   118 of 269 (44%) | 11 of 26
+  floor 4.26% -> 3%                                        60 of 269 (22%) | 4 of 26
+  strength 90 + floor 3%                                  115 of 269 (43%) | 11 of 26
+  strength 90 + floor 3% + no surf rule                   142 of 269 (53%) | 14 of 26
+  strength 90 + floor 3% + no surf/tightening/higher-lows 196 of 269 (73%) | 19 of 26

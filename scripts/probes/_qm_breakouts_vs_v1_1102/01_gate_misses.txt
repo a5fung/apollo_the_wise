@@ -1,0 +1,17 @@
+Qullamaggie's dated breakout buys: 269; in the stores 269; not in store 0
+on v1's list the night before (D): 60 (22%); within the 5 nights before: 80 (30%)
+
+rule | his buys it blocks (any) | his buys blocked by this rule ALONE
+  history           0 (0%)   alone    0
+  universe          0 (0%)   alone    0
+  pinned            0 (0%)   alone    0
+  adr              50 (19%)   alone    0
+  rs              175 (65%)   alone   69
+  prior_move        0 (0%)   alone    0
+  higher_lows      47 (17%)   alone    2
+  surf             69 (26%)   alone   11
+  tightening       56 (21%)   alone    9
+  breakdown         7 (3%)   alone    0
+  security_type     0 (0%)   alone    0
+
+number of rules failing per buy: {0: 60, 1: 91, 2: 65, 3: 33, 4: 17, 5: 2, 6: 1}

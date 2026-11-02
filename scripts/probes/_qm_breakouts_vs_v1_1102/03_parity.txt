@@ -1,0 +1,5 @@
+list files span 2016-12-30..2024-12-30; his buys with D in span 269 of 269
+parity (my listed_D vs the frozen list file): {0: {0: 209, 1: 0}, 1: {0: 0, 1: 60}}
+Empty DataFrame
+Columns: [ticker, D, rs_best, failed, adr20]
+Index: []
