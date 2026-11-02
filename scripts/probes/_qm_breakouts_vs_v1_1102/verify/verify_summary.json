@@ -1,0 +1,40 @@
+{
+ "c1": [
+  true,
+  "S0 269/269 buys, 26/26 big, median 543 mean 625 p90 1023"
+ ],
+ "c2": [
+  true,
+  "all 18 builder candidate thresholds (mismatches: 0) vs my order statistics (s[3], s[158], band s[1]/s[160] of n=162 FIT); JSON adr20 0.028040536230329843 == mine; numpy default p2 would be 0.02805876"
+ ],
+ "c3": [
+  true,
+  "258/269 (FIT 155/162, CHECK 103/107), big 26/26, median 364, mean 449.824553, p90 790, min 120 max 1788, 905,047 rows; identical to my own greedy final list: True"
+ ],
+ "c4": [
+  true,
+  "order ['adr20 >= 0.0280405', '1.69996 <= base_depth_adr <= 8.97972', 'prior_move >= 0.321354'] = builder; step 1 adr20 >= 0.0280405: FIT 3/CHK 2/big 0, median 543->461 (15.1%) ; step 2 1.69996 <= base_depth_adr <= 8.97972: FIT 1/CHK 1/big 0, median 461->404 (12.3%) ; step 3 prior_move >= 0.321354: FIT 3/CHK 1/big 0, median 404->364 (10.0%); total dropped 11 < 26.9"
+ ],
+ "c5": [
+  true,
+  "6 qualify at step 1: adr20 >= 0.0280405 461 (15.1%), 1.69996 <= base_depth_adr <= 8.97972 482 (11.1%), prior_move >= 0.321354 488 (10.1%), below_52w_high >= 0.0241434 499 (8.1%), close_vs_e21_adr <= 2.59392 503 (7.4%), base_depth_adr <= 8.03502 515 (5.2%); bigger cuts that fail: universe.dollar_vol20 >= 1.58982e+07 (40.5%: no: drops 1 big winner(s)), close_vs_e21_adr >= -0.269583 (38.1%: no: CHECK drop 6 > 4), close_vs_e10_adr >= -0.368729 (35.5%: no: drops 1 big winner(s); CHECK drop 8 > 4)"
+ ],
+ "c6": [
+  true,
+  "all features from bars <= D: EMA recursive to D, hi252 trailing (min_periods=1, mis-named for <252-bar names), pole in [D-45,D-10], base/ADR/surf/tightening/dollar-vol windows end at D, RS from returns at D; security types are a 2026-10-28 label (not price data)"
+ ],
+ "c7": [
+  true,
+  "mine 11 vs file 11, same set True; per-row rule/value/era/big/eid/E/also_fails matched: True; also-fails: YPF 2019-04-16 -> 1.69996 <= base_depth_adr <= 8.97972 (value 9.74196)"
+ ],
+ "c8": [
+  true,
+  "MTW 10-30 FAIL only on prior_move 0.307895 < 0.321354 (on S0; depth 3.025 in band; adr20 0.0406); MRNA/INO 2020-08-07 PASS; CDE 08-05 FAIL band (1.69996 <= base_depth_adr <= 8.97972 (value 1.43567)), 08-06 FAIL band (1.69996 <= base_depth_adr <= 8.97972 (value 1.43815)); live v1_gates on the MTW file 11/11 spot values = prod row"
+ ],
+ "discrepancies": [],
+ "flags": [
+  "base depth is the one definition the design does not pin: the builder's (pole_high-base_low)/pole_high/adr20 follows its wording; normalising by close instead, (pole_high-base_low)/(adr20*close), changes step 2 to base_depth_adr >= 2.01655 dropping KOD 2019-12-23, LRN 2020-08-04, TWTR 2020-08-04 (instead of LRN 2020-08-04, MRNA 2021-11-26), final 257/269, median 358",
+  "extra candidates the design does not name were run (below_52w_high_adr, recent_low_vs_base_low_adr normalisation); none was added. v1's tightening.range_recent5/range_early5 values were NOT run by the builder; adding them changes nothing",
+  "hi252 uses min_periods=1: for a name with <252 bars it is the max of the bars that exist (causal; no 52-week rule was added)"
+ ]
+}

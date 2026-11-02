@@ -1,0 +1,319 @@
+== VERIFY — blind re-derivation of the backward step from Qullamaggie's 269 dated breakout buys
+table rows 4,227,440 over 2012 nights (2016-12-30 .. 2024-12-30); no gate_error column in either parquet
+column prior_move == prior_move.prior_move on every row: True
+his buys joined 269/269; duplicate (ticker, night) keys in the table: 0
+table E (next session) == his buy date E for all 269: True
+big-winner eids in the replay: 28; among the 269 buys: 26 | FIT 162 CHECK 107
+
+== CHECK 1 — S0 (history + universe + strength >= 35 + range >= 2.1% + prior move kept)
+S0: his buys 269/269 | big winners 26/26 | names a night median 543, mean 625, 90th pct 1023 | rows 1,256,661 | groupby route median 543 p90 1023
+CHECK 1 PASS
+
+== CHECK 2 — thresholds = order statistics of the 162 FIT buys (lower = 4th smallest, upper = 159th, band = 2nd/161st)
+   my derivation: 'the value 98% of his FIT buys pass' -> ceil(0.98*162) = 159 must pass -> x >= s[3] or x <= s[158]; band split 1%/1% -> ceil(0.99*162) = 161 per side -> [s[1], s[160]]
+   NaN on his buys: 0 total; NaN on S0 rows: 0 total ({})
+   feature                        mine lower   mine upper                     band   builder-printed match | numpy-default p2 / p98
+   rs_best                              66.6         99.9                            YES   | 66.6 / 99.9
+   adr20                           0.0280405      0.17071                            YES   | 0.0280588 / 0.169801
+   prior_move                       0.321354      9.08811                            YES   | 0.321501 / 9.08811
+   prior_move.base_len                    10           45                 [10, 45]   YES   | 10 / 45
+   base_depth_adr                    1.94555      8.03502       [1.69996, 8.97972]   YES   | 1.9949 / 7.96368
+   e21_rise_base                   -0.244239     0.504767                            YES   | -0.225029 / 0.499126
+   close_vs_e10_adr                -0.368729      2.01014                            YES   | -0.362815 / 2.00452
+   close_vs_e21_adr                -0.269583      2.59392                            YES   | -0.265162 / 2.47421
+   below_52w_high                  0.0241434      0.81682                            YES   | 0.0265641 / 0.812544
+   below_52w_high_adr               0.682311      10.5077                            YES   | 0.692852 / 10.4067
+   recent_low_vs_base_low_adr              0      6.93277                            YES   | 0 / 6.75506
+   surf.run10                              0           23                            YES   | 0 / 22.56
+   surf.run20                              0           21                            YES   | 0 / 20.78
+   surf.run50                              0           16                            YES   | 0 / 15.12
+   surf.best                               0           26                            YES   | 0.22 / 26
+   tightening.ratio                 0.504834      1.65377                            YES   | 0.506016 / 1.64598
+   universe.dollar_vol20         1.58982e+07  1.42106e+10                            YES   | 1.6443e+07 / 1.3809e+10
+   universe.raw_close                   7.34       800.51                            YES   | 7.4236 / 787.765
+   tightening.range_recent5        0.0226316     0.114125                            (not a builder candidate) | 0.0226588 / 0.113274
+   tightening.range_early5          0.023668      0.15522                            (not a builder candidate) | 0.0241021 / 0.151794
+   JSON added rules, exact float check:
+     step 1 adr20 >= 0.0280405                         mine 0.028040536230329843 | json 0.028040536230329843 | equal True
+     step 2 1.69996 <= base_depth_adr <= 8.97972       mine (np.float64(1.6999646285687464), np.float64(8.979719460898997)) | json (1.6999646285687464, 8.979719460898997) | equal True
+     step 3 prior_move >= 0.321354                     mine 0.3213536987121892 | json 0.3213536987121892 | equal True
+   definitions vs the design's wording:
+     base_depth_adr = (pole_high - base_low)/pole_high/adr20 [builder] — design 'base depth from the pole top in daily ranges'; matches; the design does not pin the normaliser (alt: /(adr20*close)) -> sensitivity run below
+     close_vs_e10/e21_adr = (close/EMA - 1)/adr20 — design 'close vs EMA10 and vs EMA21 in daily ranges': matches
+     below_52w_high = 1 - close/hi252 — design 'distance below the 52-week high': matches. below_52w_high_adr is an EXTRA variant the design does not list (not added). hi252 = trailing max with min_periods=1 (a <252-bar name gets the max of what exists)
+     recent_low_vs_base_low_adr = (recent_low/base_low - 1)/adr20 — a normalisation chosen for v1's higher-lows values: reasonable, not in the design text
+     e21_rise_base = e21[D]/e21[pole]-1 from the table (G4) — matches
+     NOT used by the builder: tightening.range_recent5 / range_early5 (also v1 tightening VALUES) -> run as extra candidates below
+     band percentiles: the design marks bands but gives no percentile; builder 1%/1% (2nd/161st) — consistent with 98% passing
+CHECK 2 PASS
+
+== MY GREEDY (builder's 18-feature candidate set; marginal drops on top of the current list; original denominators)
+-- step 1: current median 543, mean 625
+   rule                                                 FITdrop CHKdrop BIGdrop  median    cut   mean  verdict
+   rs_best >= 66.6                                            3       5       2     472  13.1%    530  no: drops 2 big winner(s); CHECK drop 5 > 4
+   rs_best <= 99.9                                            2       3       0     538   1.0%    620  no: median cut 1.0% < 5%
+   adr20 >= 0.0280405                                         3       2       0     461  15.1%    541  QUALIFIES
+   adr20 <= 0.17071                                           3       8       0     538   0.8%    621  no: median cut 0.8% < 5%; CHECK drop 8 > 4
+   prior_move >= 0.321354                                     3       1       0     488  10.1%    568  QUALIFIES
+   prior_move <= 9.08811                                      3       5       0     540   0.5%    623  no: median cut 0.5% < 5%; CHECK drop 5 > 4
+   prior_move.base_len >= 10                                  0       0       0     543   0.0%    625  no: median cut 0.0% < 5%
+   prior_move.base_len <= 45                                  0       0       0     543   0.0%    625  no: median cut 0.0% < 5%
+   10 <= prior_move.base_len <= 45                            0       0       0     543   0.0%    625  no: median cut 0.0% < 5%
+   base_depth_adr >= 1.94555                                  3       1       1     472  13.0%    551  no: drops 1 big winner(s)
+   base_depth_adr <= 8.03502                                  3       1       0     515   5.2%    602  QUALIFIES
+   1.69996 <= base_depth_adr <= 8.97972                       2       1       0     482  11.1%    560  QUALIFIES
+   e21_rise_base >= -0.244239                                 3       2       0     528   2.8%    612  no: median cut 2.8% < 5%
+   e21_rise_base <= 0.504767                                  3       5       0     538   1.0%    618  no: median cut 1.0% < 5%; CHECK drop 5 > 4
+   close_vs_e10_adr >= -0.368729                              3       8       1     350  35.5%    444  no: drops 1 big winner(s); CHECK drop 8 > 4
+   close_vs_e10_adr <= 2.01014                                3       3       0     523   3.7%    605  no: median cut 3.7% < 5%
+   close_vs_e21_adr >= -0.269583                              3       6       0     336  38.1%    426  no: CHECK drop 6 > 4
+   close_vs_e21_adr <= 2.59392                                3       4       0     503   7.4%    580  QUALIFIES
+   below_52w_high >= 0.0241434                                3       1       0     499   8.1%    581  QUALIFIES
+   below_52w_high <= 0.81682                                  3       1       0     536   1.3%    620  no: median cut 1.3% < 5%
+   below_52w_high_adr >= 0.682311                             3       6       0     498   8.3%    576  no: CHECK drop 6 > 4
+   below_52w_high_adr <= 10.5077                              3       4       2     500   8.0%    571  no: drops 2 big winner(s)
+   recent_low_vs_base_low_adr >= 0                            0       0       0     543   0.0%    625  no: median cut 0.0% < 5%
+   recent_low_vs_base_low_adr <= 6.93277                      3       1       0     533   1.8%    615  no: median cut 1.8% < 5%
+   surf.run10 >= 0                                            0       0       0     543   0.0%    625  no: median cut 0.0% < 5%
+   surf.run10 <= 23                                           2       3       2     535   1.5%    617  no: drops 2 big winner(s); median cut 1.5% < 5%
+   surf.run20 >= 0                                            0       0       0     543   0.0%    625  no: median cut 0.0% < 5%
+   surf.run20 <= 21                                           3       0       0     540   0.6%    622  no: median cut 0.6% < 5%
+   surf.run50 >= 0                                            0       0       0     543   0.0%    625  no: median cut 0.0% < 5%
+   surf.run50 <= 16                                           3       0       0     538   0.8%    621  no: median cut 0.8% < 5%
+   surf.best >= 0                                             0       0       0     543   0.0%    625  no: median cut 0.0% < 5%
+   surf.best <= 26                                            3       1       0     538   1.0%    619  no: median cut 1.0% < 5%
+   tightening.ratio >= 0.504834                               3       3       0     532   2.0%    614  no: median cut 2.0% < 5%
+   tightening.ratio <= 1.65377                                3       5       1     510   6.1%    591  no: drops 1 big winner(s); CHECK drop 5 > 4
+   universe.dollar_vol20 >= 1.58982e+07                       3       2       1     323  40.5%    390  no: drops 1 big winner(s)
+   universe.dollar_vol20 <= 1.42106e+10                       3       1       0     542   0.1%    624  no: median cut 0.1% < 5%
+   universe.raw_close >= 7.34                                 3       7       2     481  11.4%    559  no: drops 2 big winner(s); CHECK drop 7 > 4
+   universe.raw_close <= 800.51                               3       2       0     540   0.6%    622  no: median cut 0.6% < 5%
+   -> ADD adr20 >= 0.0280405 | dropped DINO 2018-07-30, EW 2019-08-15, YPF 2019-04-16, LMT 2022-04-04, LMT 2022-04-05
+-- step 2: current median 461, mean 541
+   rule                                                 FITdrop CHKdrop BIGdrop  median    cut   mean  verdict
+   rs_best >= 66.6                                            2       5       2     410  11.1%    460  no: drops 2 big winner(s); CHECK drop 5 > 4
+   rs_best <= 99.9                                            2       3       0     456   1.1%    537  no: median cut 1.1% < 5%
+   adr20 <= 0.17071                                           3       8       0     458   0.8%    537  no: median cut 0.8% < 5%; CHECK drop 8 > 4
+   prior_move >= 0.321354                                     3       1       0     420   8.9%    501  QUALIFIES
+   prior_move <= 9.08811                                      3       5       0     460   0.2%    539  no: median cut 0.2% < 5%; CHECK drop 5 > 4
+   prior_move.base_len >= 10                                  0       0       0     461   0.0%    541  no: median cut 0.0% < 5%
+   prior_move.base_len <= 45                                  0       0       0     461   0.0%    541  no: median cut 0.0% < 5%
+   10 <= prior_move.base_len <= 45                            0       0       0     461   0.0%    541  no: median cut 0.0% < 5%
+   base_depth_adr >= 1.94555                                  3       1       1     401  13.0%    477  no: drops 1 big winner(s)
+   base_depth_adr <= 8.03502                                  2       1       0     441   4.3%    523  no: median cut 4.3% < 5%
+   1.69996 <= base_depth_adr <= 8.97972                       1       1       0     404  12.3%    485  QUALIFIES
+   e21_rise_base >= -0.244239                                 3       2       0     448   2.7%    528  no: median cut 2.7% < 5%
+   e21_rise_base <= 0.504767                                  3       5       0     457   0.9%    534  no: median cut 0.9% < 5%; CHECK drop 5 > 4
+   close_vs_e10_adr >= -0.368729                              3       8       1     297  35.6%    384  no: drops 1 big winner(s); CHECK drop 8 > 4
+   close_vs_e10_adr <= 2.01014                                3       3       0     444   3.7%    524  no: median cut 3.7% < 5%
+   close_vs_e21_adr >= -0.269583                              3       6       0     283  38.6%    366  no: CHECK drop 6 > 4
+   close_vs_e21_adr <= 2.59392                                3       4       0     425   7.8%    503  QUALIFIES
+   below_52w_high >= 0.0241434                                2       1       0     429   6.9%    509  QUALIFIES
+   below_52w_high <= 0.81682                                  3       1       0     458   0.8%    537  no: median cut 0.8% < 5%
+   below_52w_high_adr >= 0.682311                             3       6       0     424   8.0%    501  no: CHECK drop 6 > 4
+   below_52w_high_adr <= 10.5077                              2       4       2     425   7.8%    497  no: drops 2 big winner(s)
+   recent_low_vs_base_low_adr >= 0                            0       0       0     461   0.0%    541  no: median cut 0.0% < 5%
+   recent_low_vs_base_low_adr <= 6.93277                      2       1       0     451   2.2%    532  no: median cut 2.2% < 5%
+   surf.run10 >= 0                                            0       0       0     461   0.0%    541  no: median cut 0.0% < 5%
+   surf.run10 <= 23                                           2       3       2     453   1.7%    535  no: drops 2 big winner(s); median cut 1.7% < 5%
+   surf.run20 >= 0                                            0       0       0     461   0.0%    541  no: median cut 0.0% < 5%
+   surf.run20 <= 21                                           3       0       0     458   0.8%    538  no: median cut 0.8% < 5%
+   surf.run50 >= 0                                            0       0       0     461   0.0%    541  no: median cut 0.0% < 5%
+   surf.run50 <= 16                                           3       0       0     457   0.9%    538  no: median cut 0.9% < 5%
+   surf.best >= 0                                             0       0       0     461   0.0%    541  no: median cut 0.0% < 5%
+   surf.best <= 26                                            3       1       0     455   1.3%    536  no: median cut 1.3% < 5%
+   tightening.ratio >= 0.504834                               3       3       0     452   2.0%    532  no: median cut 2.0% < 5%
+   tightening.ratio <= 1.65377                                3       5       1     432   6.2%    511  no: drops 1 big winner(s); CHECK drop 5 > 4
+   universe.dollar_vol20 >= 1.58982e+07                       3       2       1     278  39.7%    332  no: drops 1 big winner(s)
+   universe.dollar_vol20 <= 1.42106e+10                       3       1       0     459   0.4%    540  no: median cut 0.4% < 5%
+   universe.raw_close >= 7.34                                 3       7       2     399  13.4%    476  no: drops 2 big winner(s); CHECK drop 7 > 4
+   universe.raw_close <= 800.51                               3       2       0     459   0.4%    539  no: median cut 0.4% < 5%
+   -> ADD 1.69996 <= base_depth_adr <= 8.97972 | dropped LRN 2020-08-04, MRNA 2021-11-26
+-- step 3: current median 404, mean 485
+   rule                                                 FITdrop CHKdrop BIGdrop  median    cut   mean  verdict
+   rs_best >= 66.6                                            2       5       2     353  12.7%    408  no: drops 2 big winner(s); CHECK drop 5 > 4
+   rs_best <= 99.9                                            2       3       0     402   0.6%    482  no: median cut 0.6% < 5%
+   adr20 <= 0.17071                                           3       8       0     402   0.6%    482  no: median cut 0.6% < 5%; CHECK drop 8 > 4
+   prior_move >= 0.321354                                     3       1       0     364  10.0%    450  QUALIFIES
+   prior_move <= 9.08811                                      3       5       0     404   0.0%    484  no: median cut 0.0% < 5%; CHECK drop 5 > 4
+   prior_move.base_len >= 10                                  0       0       0     404   0.0%    485  no: median cut 0.0% < 5%
+   prior_move.base_len <= 45                                  0       0       0     404   0.0%    485  no: median cut 0.0% < 5%
+   10 <= prior_move.base_len <= 45                            0       0       0     404   0.0%    485  no: median cut 0.0% < 5%
+   base_depth_adr >= 1.94555                                  2       1       1     392   3.1%    469  no: drops 1 big winner(s); median cut 3.1% < 5%
+   base_depth_adr <= 8.03502                                  2       0       0     394   2.7%    475  no: median cut 2.7% < 5%
+   e21_rise_base >= -0.244239                                 3       1       0     393   2.8%    475  no: median cut 2.8% < 5%
+   e21_rise_base <= 0.504767                                  3       5       0     401   0.9%    480  no: median cut 0.9% < 5%; CHECK drop 5 > 4
+   close_vs_e10_adr >= -0.368729                              3       8       1     255  37.0%    335  no: drops 1 big winner(s); CHECK drop 8 > 4
+   close_vs_e10_adr <= 2.01014                                3       2       0     394   2.7%    471  no: median cut 2.7% < 5%
+   close_vs_e21_adr >= -0.269583                              3       6       0     241  40.4%    315  no: CHECK drop 6 > 4
+   close_vs_e21_adr <= 2.59392                                3       3       0     386   4.6%    459  no: median cut 4.6% < 5%
+   below_52w_high >= 0.0241434                                2       1       0     383   5.3%    461  QUALIFIES
+   below_52w_high <= 0.81682                                  3       1       0     401   0.9%    481  no: median cut 0.9% < 5%
+   below_52w_high_adr >= 0.682311                             3       6       0     378   6.4%    455  no: CHECK drop 6 > 4
+   below_52w_high_adr <= 10.5077                              2       4       2     376   7.0%    445  no: drops 2 big winner(s)
+   recent_low_vs_base_low_adr >= 0                            0       0       0     404   0.0%    485  no: median cut 0.0% < 5%
+   recent_low_vs_base_low_adr <= 6.93277                      2       1       0     397   1.9%    478  no: median cut 1.9% < 5%
+   surf.run10 >= 0                                            0       0       0     404   0.0%    485  no: median cut 0.0% < 5%
+   surf.run10 <= 23                                           2       3       2     399   1.4%    481  no: drops 2 big winner(s); median cut 1.4% < 5%
+   surf.run20 >= 0                                            0       0       0     404   0.0%    485  no: median cut 0.0% < 5%
+   surf.run20 <= 21                                           3       0       0     403   0.4%    483  no: median cut 0.4% < 5%
+   surf.run50 >= 0                                            0       0       0     404   0.0%    485  no: median cut 0.0% < 5%
+   surf.run50 <= 16                                           3       0       0     402   0.6%    483  no: median cut 0.6% < 5%
+   surf.best >= 0                                             0       0       0     404   0.0%    485  no: median cut 0.0% < 5%
+   surf.best <= 26                                            3       1       0     402   0.6%    482  no: median cut 0.6% < 5%
+   tightening.ratio >= 0.504834                               3       3       0     400   1.1%    477  no: median cut 1.1% < 5%
+   tightening.ratio <= 1.65377                                3       5       1     373   7.8%    459  no: drops 1 big winner(s); CHECK drop 5 > 4
+   universe.dollar_vol20 >= 1.58982e+07                       3       2       1     244  39.7%    297  no: drops 1 big winner(s)
+   universe.dollar_vol20 <= 1.42106e+10                       3       1       0     404   0.0%    485  no: median cut 0.0% < 5%
+   universe.raw_close >= 7.34                                 3       7       2     351  13.2%    427  no: drops 2 big winner(s); CHECK drop 7 > 4
+   universe.raw_close <= 800.51                               3       2       0     403   0.4%    484  no: median cut 0.4% < 5%
+   -> ADD prior_move >= 0.321354 | dropped W 2020-04-06, DOCU 2020-12-03, DOCU 2020-12-14, SQM 2021-09-09
+-- step 4: current median 364, mean 450
+   rule                                                 FITdrop CHKdrop BIGdrop  median    cut   mean  verdict
+   rs_best >= 66.6                                            2       5       2     324  10.9%    381  no: drops 2 big winner(s); CHECK drop 5 > 4
+   rs_best <= 99.9                                            2       3       0     362   0.5%    447  no: median cut 0.5% < 5%
+   adr20 <= 0.17071                                           2       8       0     363   0.3%    447  no: median cut 0.3% < 5%; CHECK drop 8 > 4
+   prior_move <= 9.08811                                      3       5       0     364   0.0%    448  no: median cut 0.0% < 5%; CHECK drop 5 > 4
+   prior_move.base_len >= 10                                  0       0       0     364   0.0%    450  no: median cut 0.0% < 5%
+   prior_move.base_len <= 45                                  0       0       0     364   0.0%    450  no: median cut 0.0% < 5%
+   10 <= prior_move.base_len <= 45                            0       0       0     364   0.0%    450  no: median cut 0.0% < 5%
+   base_depth_adr >= 1.94555                                  2       1       1     353   3.0%    435  no: drops 1 big winner(s); median cut 3.0% < 5%
+   base_depth_adr <= 8.03502                                  2       0       0     356   2.2%    441  no: median cut 2.2% < 5%
+   e21_rise_base >= -0.244239                                 2       1       0     356   2.3%    440  no: median cut 2.3% < 5%
+   e21_rise_base <= 0.504767                                  3       5       0     361   0.8%    445  no: median cut 0.8% < 5%; CHECK drop 5 > 4
+   close_vs_e10_adr >= -0.368729                              3       8       1     232  36.3%    310  no: drops 1 big winner(s); CHECK drop 8 > 4
+   close_vs_e10_adr <= 2.01014                                3       2       0     355   2.5%    437  no: median cut 2.5% < 5%
+   close_vs_e21_adr >= -0.269583                              3       6       0     219  39.8%    292  no: CHECK drop 6 > 4
+   close_vs_e21_adr <= 2.59392                                3       3       0     349   4.1%    425  no: median cut 4.1% < 5%
+   below_52w_high >= 0.0241434                                2       1       0     348   4.3%    428  no: median cut 4.3% < 5%
+   below_52w_high <= 0.81682                                  3       1       0     362   0.7%    446  no: median cut 0.7% < 5%
+   below_52w_high_adr >= 0.682311                             3       6       0     344   5.5%    422  no: CHECK drop 6 > 4
+   below_52w_high_adr <= 10.5077                              2       4       2     342   6.0%    413  no: drops 2 big winner(s)
+   recent_low_vs_base_low_adr >= 0                            0       0       0     364   0.0%    450  no: median cut 0.0% < 5%
+   recent_low_vs_base_low_adr <= 6.93277                      2       1       0     360   1.1%    443  no: median cut 1.1% < 5%
+   surf.run10 >= 0                                            0       0       0     364   0.0%    450  no: median cut 0.0% < 5%
+   surf.run10 <= 23                                           2       3       2     361   0.8%    445  no: drops 2 big winner(s); median cut 0.8% < 5%
+   surf.run20 >= 0                                            0       0       0     364   0.0%    450  no: median cut 0.0% < 5%
+   surf.run20 <= 21                                           3       0       0     362   0.4%    448  no: median cut 0.4% < 5%
+   surf.run50 >= 0                                            0       0       0     364   0.0%    450  no: median cut 0.0% < 5%
+   surf.run50 <= 16                                           3       0       0     363   0.3%    447  no: median cut 0.3% < 5%
+   surf.best >= 0                                             0       0       0     364   0.0%    450  no: median cut 0.0% < 5%
+   surf.best <= 26                                            3       1       0     362   0.5%    447  no: median cut 0.5% < 5%
+   tightening.ratio >= 0.504834                               3       3       0     360   1.0%    442  no: median cut 1.0% < 5%
+   tightening.ratio <= 1.65377                                2       5       1     344   5.6%    425  no: drops 1 big winner(s); CHECK drop 5 > 4
+   universe.dollar_vol20 >= 1.58982e+07                       3       2       1     223  38.7%    274  no: drops 1 big winner(s)
+   universe.dollar_vol20 <= 1.42106e+10                       3       1       0     364   0.1%    449  no: median cut 0.1% < 5%
+   universe.raw_close >= 7.34                                 3       7       2     316  13.2%    393  no: drops 2 big winner(s); CHECK drop 7 > 4
+   universe.raw_close <= 800.51                               3       2       0     364   0.1%    449  no: median cut 0.1% < 5%
+   -> none qualifies: STOP
+
+== builder's per-step candidate tables vs mine (every row: FIT/CHECK/BIG drops, median, mean, verdict)
+   rows compared 146, mismatches 0; builder printed 4 step tables, I have 4
+
+== CHECK 3 — re-apply 12_final_rules.json (my own feature code + JSON thresholds) on the S0 rows
+final list: his buys 258/269 (FIT 155/162, CHECK 103/107) | big winners 26/26 | names a night median 364, mean 449.8245526838966, 90th pct 790, min 120, max 1788 | rows 905,047 | nights >50 2012, >100 2012
+JSON result block: {'his_buys_kept': 258, 'fit_kept': 155, 'check_kept': 103, 'big_winners_kept': 26, 'names_a_night_median': 364.0, 'names_a_night_mean': 449.8245526838966, 'names_a_night_p90': 790.0}
+identical to my greedy's final list: True
+CHECK 3 PASS
+
+== CHECK 4 — every added rule met all 4 conditions at its step (builder's order recomputed)
+builder order: ['adr20 >= 0.0280405', '1.69996 <= base_depth_adr <= 8.97972', 'prior_move >= 0.321354']
+my order:      ['adr20 >= 0.0280405', '1.69996 <= base_depth_adr <= 8.97972', 'prior_move >= 0.321354']
+  step 1 adr20 >= 0.0280405                       (1) FIT drop 3 <= 3 True | (2) big drop 0 == 0 True | (3) median 543 -> 461 cut 15.1% >= 5% True | (4) CHECK drop 2 <= 4 True -> MET
+  step 2 1.69996 <= base_depth_adr <= 8.97972     (1) FIT drop 1 <= 3 True | (2) big drop 0 == 0 True | (3) median 461 -> 404 cut 12.3% >= 5% True | (4) CHECK drop 1 <= 4 True -> MET
+  step 3 prior_move >= 0.321354                   (1) FIT drop 3 <= 3 True | (2) big drop 0 == 0 True | (3) median 404 -> 364 cut 10.0% >= 5% True | (4) CHECK drop 1 <= 4 True -> MET
+  cumulative dropped 11 of 269 (4.1%) < 10% stop (26.9): the stop was 'no candidate qualifies' at step 4
+  the two rules rejected only on CHECK (step 4, on the final list): the CHECK buys they would drop
+    close_vs_e21_adr >= -0.269583: CHECK drops 6 (AMC 2021-02-19, DKNG 2021-02-25, BNTX 2021-09-22, LAC 2021-09-29, MARA 2021-11-29, TSLA 2022-04-20) | FIT drops 3 | big 0 | median 219 (39.8% cut)
+    below_52w_high_adr >= 0.682311: CHECK drops 6 (FUTU 2021-02-08, UAL 2021-03-10, BNTX 2021-07-20, VLO 2022-05-26, MDGL 2023-01-23, PDD 2023-01-04) | FIT drops 3 | big 0 | median 344 (5.5% cut)
+CHECK 4 PASS
+
+== CHECK 5 — step 1: the qualifying candidate with the largest median cut
+   qualifies: adr20 >= 0.0280405                         median 461 cut 15.1%  mean 541
+   qualifies: 1.69996 <= base_depth_adr <= 8.97972       median 482 cut 11.1%  mean 560
+   qualifies: prior_move >= 0.321354                     median 488 cut 10.1%  mean 568
+   qualifies: below_52w_high >= 0.0241434                median 499 cut 8.1%  mean 581
+   qualifies: close_vs_e21_adr <= 2.59392                median 503 cut 7.4%  mean 580
+   qualifies: base_depth_adr <= 8.03502                  median 515 cut 5.2%  mean 602
+   the six biggest cuts overall at step 1 (any verdict):
+     universe.dollar_vol20 >= 1.58982e+07       median 323 cut 40.5%  no: drops 1 big winner(s)
+     close_vs_e21_adr >= -0.269583              median 336 cut 38.1%  no: CHECK drop 6 > 4
+     close_vs_e10_adr >= -0.368729              median 350 cut 35.5%  no: drops 1 big winner(s); CHECK drop 8 > 4
+     adr20 >= 0.0280405                         median 461 cut 15.1%  QUALIFIES
+     rs_best >= 66.6                            median 472 cut 13.1%  no: drops 2 big winner(s); CHECK drop 5 > 4
+     base_depth_adr >= 1.94555                  median 472 cut 13.0%  no: drops 1 big winner(s)
+CHECK 5 PASS — first added adr20 >= 0.0280405; mine adr20 >= 0.0280405 (next best 1.69996 <= base_depth_adr <= 8.97972 at 482)
+
+== SENSITIVITY (not part of the fixed procedure; does any reasonable reading change the result?)
+(a) + tightening.range_recent5 / range_early5 as candidates: order ['adr20 >= 0.0280405', '1.69996 <= base_depth_adr <= 8.97972', 'prior_move >= 0.321354'] | final == builder's: True
+     step 1 tightening.range_recent5 >= 0.0226316        FIT 3 CHK 3 big 0 median 496 cut 8.7%  QUALIFIES
+     step 1 tightening.range_recent5 <= 0.114125         FIT 3 CHK 11 big 1 median 529 cut 2.6%  no: drops 1 big winner(s); median cut 2.6% < 5%; CHECK drop 11 > 4
+     step 1 tightening.range_early5 >= 0.023668          FIT 3 CHK 3 big 0 median 487 cut 10.3%  QUALIFIES
+     step 1 tightening.range_early5 <= 0.15522           FIT 3 CHK 8 big 0 median 536 cut 1.2%  no: median cut 1.2% < 5%; CHECK drop 8 > 4
+     step 2 tightening.range_recent5 >= 0.0226316        FIT 1 CHK 1 big 0 median 448 cut 2.7%  no: median cut 2.7% < 5%
+     step 2 tightening.range_recent5 <= 0.114125         FIT 3 CHK 11 big 1 median 448 cut 2.7%  no: drops 1 big winner(s); median cut 2.7% < 5%; CHECK drop 11 > 4
+     step 2 tightening.range_early5 >= 0.023668          FIT 1 CHK 1 big 0 median 447 cut 3.0%  no: median cut 3.0% < 5%
+     step 2 tightening.range_early5 <= 0.15522           FIT 3 CHK 8 big 0 median 456 cut 1.1%  no: median cut 1.1% < 5%; CHECK drop 8 > 4
+     step 3 tightening.range_recent5 >= 0.0226316        FIT 1 CHK 1 big 0 median 398 cut 1.7%  no: median cut 1.7% < 5%
+     step 3 tightening.range_recent5 <= 0.114125         FIT 3 CHK 11 big 1 median 395 cut 2.3%  no: drops 1 big winner(s); median cut 2.3% < 5%; CHECK drop 11 > 4
+     step 3 tightening.range_early5 >= 0.023668          FIT 1 CHK 1 big 0 median 396 cut 2.1%  no: median cut 2.1% < 5%
+     step 3 tightening.range_early5 <= 0.15522           FIT 3 CHK 8 big 0 median 401 cut 0.9%  no: median cut 0.9% < 5%; CHECK drop 8 > 4
+     step 4 tightening.range_recent5 >= 0.0226316        FIT 1 CHK 1 big 0 median 360 cut 1.1%  no: median cut 1.1% < 5%
+     step 4 tightening.range_recent5 <= 0.114125         FIT 2 CHK 11 big 1 median 356 cut 2.3%  no: drops 1 big winner(s); median cut 2.3% < 5%; CHECK drop 11 > 4
+     step 4 tightening.range_early5 >= 0.023668          FIT 1 CHK 1 big 0 median 358 cut 1.6%  no: median cut 1.6% < 5%
+     step 4 tightening.range_early5 <= 0.15522           FIT 2 CHK 8 big 0 median 362 cut 0.7%  no: median cut 0.7% < 5%; CHECK drop 8 > 4
+(b) base depth normalised by close instead of pole_high, (pole_high-base_low)/(adr20*close): order ['adr20 >= 0.0280405', 'base_depth_adr >= 2.01655', 'prior_move >= 0.321354'] | final == builder's: False | kept 257/269, big 26, median 358
+     adr20 >= 0.0280405: dropped DINO 2018-07-30, EW 2019-08-15, YPF 2019-04-16, LMT 2022-04-04, LMT 2022-04-05
+     base_depth_adr >= 2.01655: dropped KOD 2019-12-23, LRN 2020-08-04, TWTR 2020-08-04
+     prior_move >= 0.321354: dropped W 2020-04-06, DOCU 2020-12-03, DOCU 2020-12-14, SQM 2021-09-09
+(c) conditions 1/2/4 counted standalone on S0 instead of on top of the current list: order ['adr20 >= 0.0280405', '1.69996 <= base_depth_adr <= 8.97972', 'prior_move >= 0.321354'] | final == builder's: True
+
+== CHECK 6 — look-ahead (read from 10_feature_table.py, breakout_v1.v1_gates, consolidation_breakout helpers, v1_replay)
+   EMA10/EMA21: recursive from the ticker's first bar, value taken at index D (bars <= D) — causal
+   hi252: pandas rolling(252, min_periods=1).max() of highs, value at D (includes D's own high) — causal; <252 bars -> max of what exists
+   e21_rise_base: e21[D]/e21[D-base_len]-1, the pole index from v1_gates at D — causal
+   v1_gates(bars, D): adr20 = mean (h-l)/c over the 20 sessions ending D; pole top P in [D-45, D-10] via _pole_top (closes up to t <= D-10); pole_low over [P-40, P]; base_low = min low (P, D]; recent_low = last 5 sessions to D; surf/sma/tightening/breakdown windows end at D; dollar_vol = median close x volume ending D — all bars <= D
+   rs_best: cross-section of r21/r63/r126 = c[D]/c[D-h]-1 on the night's pool — causal
+   listable/universe: raw close at D and trailing dollar volume; the fund/security type list is the 2026-10-28 classification (a present-day label, not price data)
+   split-adjusted bars: adjustment factors include splits after D (<= 2024-12-31); every feature used is a ratio within one series, so scale-invariant
+   nothing in the table depends on E's bar (E is only a label); no column reads bars after D
+CHECK 6 PASS (no feature reads a bar after D)
+
+== CHECK 7 — 12_dropped_buys.tsv vs the buys my re-application drops
+mine 11, file 11, both 11, only-mine [], only-file []
+   DINO 2018-07-30    eid   101 FIT   big=no  adr20 >= 0.0280405                       value 0.0276114 | also fails: - | file row matches: True
+   DOCU 2020-12-03    eid  1048 FIT   big=no  prior_move >= 0.321354                   value 0.318306 | also fails: - | file row matches: True
+   DOCU 2020-12-14    eid  1072 FIT   big=no  prior_move >= 0.321354                   value 0.318306 | also fails: - | file row matches: True
+   EW 2019-08-15      eid   113 FIT   big=no  adr20 >= 0.0280405                       value 0.0210742 | also fails: - | file row matches: True
+   LMT 2022-04-04     eid  1773 CHECK big=no  adr20 >= 0.0280405                       value 0.0265411 | also fails: - | file row matches: True
+   LMT 2022-04-05     eid  1777 CHECK big=no  adr20 >= 0.0280405                       value 0.0256319 | also fails: - | file row matches: True
+   LRN 2020-08-04     eid   814 FIT   big=no  1.69996 <= base_depth_adr <= 8.97972     value 1.51138 | also fails: - | file row matches: True
+   MRNA 2021-11-26    eid  1644 CHECK big=no  1.69996 <= base_depth_adr <= 8.97972     value 9.18112 | also fails: - | file row matches: True
+   SQM 2021-09-09     eid  1520 CHECK big=no  prior_move >= 0.321354                   value 0.30359 | also fails: - | file row matches: True
+   W 2020-04-06       eid   468 FIT   big=no  prior_move >= 0.321354                   value 0.310266 | also fails: - | file row matches: True
+   YPF 2019-04-16     eid   117 FIT   big=no  adr20 >= 0.0280405                       value 0.0255582 | also fails: 1.69996 <= base_depth_adr <= 8.97972 (value 9.74196) | file row matches: True
+CHECK 7 PASS
+
+== CHECK 8 — secondary checks (stated, never deciding)
+   MRNA 2020-08-07: PASS | on S0 True | fails - | adr20 0.08058 prior_move 1.0639 base_depth_adr 3.73685 close_vs_e10_adr -0.355 close_vs_e21_adr -0.192
+   INO 2020-08-07: PASS | on S0 True | fails - | adr20 0.10330 prior_move 2.5456 base_depth_adr 4.42339 close_vs_e10_adr -0.386 close_vs_e21_adr -0.655
+   CDE 2020-08-05: FAIL | on S0 True | fails ['1.69996 <= base_depth_adr <= 8.97972 (value 1.43567)'] | adr20 0.06578 prior_move 0.8291 base_depth_adr 1.43567 close_vs_e10_adr 1.727 close_vs_e21_adr 3.418
+   CDE 2020-08-06: FAIL | on S0 True | fails ['1.69996 <= base_depth_adr <= 8.97972 (value 1.43815)'] | adr20 0.06567 prior_move 0.8291 base_depth_adr 1.43815 close_vs_e10_adr 1.133 close_vs_e21_adr 2.741
+   MTW 2026-10-30 from the prod row (q1.out): on S0 True (history 150 bars pass, universe pass, rs 98.6, adr20 0.04063, prior_move pass) | base_depth_adr 3.0255 (band [1.69996, 8.97972]) | adr20 >= 0.028041 True | final: FAIL: prior_move >= 0.321354 (value 0.307895)
+   MTW live v1_gates on mtw_bars.csv (97 bars, D = 2026-10-30): 11/11 spot values equal the prod row () | live ok=False failed=['adr']
+CHECK 8 PASS
+
+== SUMMARY
+  c1: PASS — S0 269/269 buys, 26/26 big, median 543 mean 625 p90 1023
+  c2: PASS — all 18 builder candidate thresholds (mismatches: 0) vs my order statistics (s[3], s[158], band s[1]/s[160] of n=162 FIT); JSON adr20 0.028040536230329843 == mine; numpy default p2 would be 0.02805876
+  c3: PASS — 258/269 (FIT 155/162, CHECK 103/107), big 26/26, median 364, mean 449.824553, p90 790, min 120 max 1788, 905,047 rows; identical to my own greedy final list: True
+  c4: PASS — order ['adr20 >= 0.0280405', '1.69996 <= base_depth_adr <= 8.97972', 'prior_move >= 0.321354'] = builder; step 1 adr20 >= 0.0280405: FIT 3/CHK 2/big 0, median 543->461 (15.1%) ; step 2 1.69996 <= base_depth_adr <= 8.97972: FIT 1/CHK 1/big 0, median 461->404 (12.3%) ; step 3 prior_move >= 0.321354: FIT 3/CHK 1/big 0, median 404->364 (10.0%); total dropped 11 < 26.9
+  c5: PASS — 6 qualify at step 1: adr20 >= 0.0280405 461 (15.1%), 1.69996 <= base_depth_adr <= 8.97972 482 (11.1%), prior_move >= 0.321354 488 (10.1%), below_52w_high >= 0.0241434 499 (8.1%), close_vs_e21_adr <= 2.59392 503 (7.4%), base_depth_adr <= 8.03502 515 (5.2%); bigger cuts that fail: universe.dollar_vol20 >= 1.58982e+07 (40.5%: no: drops 1 big winner(s)), close_vs_e21_adr >= -0.269583 (38.1%: no: CHECK drop 6 > 4), close_vs_e10_adr >= -0.368729 (35.5%: no: drops 1 big winner(s); CHECK drop 8 > 4)
+  c6: PASS — all features from bars <= D: EMA recursive to D, hi252 trailing (min_periods=1, mis-named for <252-bar names), pole in [D-45,D-10], base/ADR/surf/tightening/dollar-vol windows end at D, RS from returns at D; security types are a 2026-10-28 label (not price data)
+  c7: PASS — mine 11 vs file 11, same set True; per-row rule/value/era/big/eid/E/also_fails matched: True; also-fails: YPF 2019-04-16 -> 1.69996 <= base_depth_adr <= 8.97972 (value 9.74196)
+  c8: PASS — MTW 10-30 FAIL only on prior_move 0.307895 < 0.321354 (on S0; depth 3.025 in band; adr20 0.0406); MRNA/INO 2020-08-07 PASS; CDE 08-05 FAIL band (1.69996 <= base_depth_adr <= 8.97972 (value 1.43567)), 08-06 FAIL band (1.69996 <= base_depth_adr <= 8.97972 (value 1.43815)); live v1_gates on the MTW file 11/11 spot values = prod row
+  flags (not discrepancies):
+   * base depth is the one definition the design does not pin: the builder's (pole_high-base_low)/pole_high/adr20 follows its wording; normalising by close instead, (pole_high-base_low)/(adr20*close), changes step 2 to base_depth_adr >= 2.01655 dropping KOD 2019-12-23, LRN 2020-08-04, TWTR 2020-08-04 (instead of LRN 2020-08-04, MRNA 2021-11-26), final 257/269, median 358
+   * extra candidates the design does not name were run (below_52w_high_adr, recent_low_vs_base_low_adr normalisation); none was added. v1's tightening.range_recent5/range_early5 values were NOT run by the builder; adding them changes nothing
+   * hi252 uses min_periods=1: for a name with <252 bars it is the max of the bars that exist (causal; no 52-week rule was added)
+  discrepancies: 0

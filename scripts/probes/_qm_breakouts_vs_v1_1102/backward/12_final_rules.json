@@ -1,0 +1,87 @@
+{
+ "description": "Breakout list rebuilt backward from Qullamaggie's 269 dated breakout buys (12_backward.py). Apply to features_eraA/B.parquet (one row per name-night); a row is on the list when EVERY rule passes. NaN never passes. Feature expressions are pandas DataFrame.eval strings (backticks quote dotted column names); +-inf -> NaN.",
+ "tables": [
+  "/Users/alvinfung/apollo_data/qm_breakouts_1102/features_eraA.parquet",
+  "/Users/alvinfung/apollo_data/qm_breakouts_1102/features_eraB.parquet"
+ ],
+ "base_rules_S0": [
+  {
+   "feature": "pass_history",
+   "expr": "`pass_history`",
+   "op": "==",
+   "threshold": 1
+  },
+  {
+   "feature": "pass_universe",
+   "expr": "`pass_universe`",
+   "op": "==",
+   "threshold": 1
+  },
+  {
+   "feature": "rs_best",
+   "expr": "`rs_best`",
+   "op": ">=",
+   "threshold": 35.0
+  },
+  {
+   "feature": "adr20",
+   "expr": "`adr20`",
+   "op": ">=",
+   "threshold": 0.021
+  },
+  {
+   "feature": "pass_prior_move",
+   "expr": "`pass_prior_move`",
+   "op": "==",
+   "threshold": 1
+  }
+ ],
+ "added_rules": [
+  {
+   "step": 1,
+   "name": "adr20 >= 0.0280405",
+   "feature": "adr20",
+   "expr": "`adr20`",
+   "meaning": "daily range (ADR20, fraction of close)",
+   "op": ">=",
+   "threshold": 0.028040536230329843
+  },
+  {
+   "step": 2,
+   "name": "1.69996 <= base_depth_adr <= 8.97972",
+   "feature": "base_depth_adr",
+   "expr": "(`prior_move.pole_high` - `higher_lows.base_low`) / `prior_move.pole_high` / `adr20`",
+   "meaning": "base depth from the pole top in daily ranges",
+   "op": "band",
+   "lo": 1.6999646285687464,
+   "hi": 8.979719460898997
+  },
+  {
+   "step": 3,
+   "name": "prior_move >= 0.321354",
+   "feature": "prior_move",
+   "expr": "`prior_move`",
+   "meaning": "prior move size (pole high / pole low - 1)",
+   "op": ">=",
+   "threshold": 0.3213536987121892
+  }
+ ],
+ "threshold_definition": "lower = the 4th smallest of the 162 FIT buys' values (x >= t); upper = the 159th smallest (x <= t); band = [2nd, 161st smallest]; inclusive",
+ "result": {
+  "his_buys_kept": 258,
+  "fit_kept": 155,
+  "check_kept": 103,
+  "big_winners_kept": 26,
+  "names_a_night_median": 364.0,
+  "names_a_night_mean": 449.8245526838966,
+  "names_a_night_p90": 790.0
+ },
+ "stop_reason": "no candidate qualifies",
+ "secondary": {
+  "MTW 2026-10-30": "FAIL: prior_move >= 0.321354 (value 0.307895)",
+  "MRNA 2020-08-07": "PASS (on the final list)",
+  "INO 2020-08-07": "PASS (on the final list)",
+  "CDE 2020-08-05": "FAIL: 1.69996 <= base_depth_adr <= 8.97972 (value 1.43567)",
+  "CDE 2020-08-06": "FAIL: 1.69996 <= base_depth_adr <= 8.97972 (value 1.43815)"
+ }
+}
