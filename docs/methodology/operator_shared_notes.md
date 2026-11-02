@@ -2820,3 +2820,7 @@ Recorded as labels on 2020-05-07: SETUPS = D GOTU (decent), K PDD (decent — Qu
 > His labels (2026-11-02) on `charts/ema21_drops_9.png` — the 9 Qullamaggie buys the close-vs-21-day-EMA rule (>= -0.27 daily ranges) would drop: "CODX - good / AVLR - okish but likely no / SE - no / AMC - ok, but this was a very volatile meme stock back then / DKNG - looks decent / BNTX - good / LAC - okish / MARA - good / TSLA - ok"
 
 Recorded: GOOD = CODX 2020-04-06, BNTX 2021-09-23, MARA 2021-11-30; DECENT = DKNG 2021-02-26; OK = AMC 2021-02-22 (meme, very volatile), TSLA 2022-04-21; OKISH = LAC 2021-09-30; LIKELY NO = AVLR 2020-07-29; NO = SE 2020-09-14. Consequence: -0.27 is too tight (drops 7 of his ok-or-better); the limit loosens to keep them (TSLA, 'ok', sits lowest at -0.63).
+
+> His picks on BLIND sample night 2 (2026-11-02, `charts/sample_night2_blind.png`, 2020-09-24): "A - ok / D - ok / G - ok"
+
+Recorded: SETUPS (ok) = A GPRE, D EVRI, G EAT; not picked = B ABR, C GNRC, E NUAN, F FFG, H FIRY, I SCHN, K INMD, L RH, and J NVDA — Qullamaggie's own buy the next day (a big winner), NOT picked by him; it stays on the list as QM's trade (the scorecard), the disagreement noted. Key: `charts/sample_night2_KEY.json`. v1's "surf" count separates this night's picks perfectly but contradicts night 1 (PDD 6 vs EQX 12) and drops 5+ of QM's big winners at any useful line -> not used.
