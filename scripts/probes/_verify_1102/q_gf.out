@@ -1,0 +1,20 @@
+SET
+ERROR:  operator does not exist: text -> unknown
+LINE 1: SELECT detail->'gate_fails' FROM mi_audit_log WHERE event_ty...
+                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ticker|round|round
+KOD|0.0688|99.8
+PLSE|0.0616|99.7
+AMPL|0.0440|99.2
+APPN|0.0623|99.2
+TRAX|0.0829|99.2
+LIFE|0.0592|99.1
+BSP|0.0962|98.9
+VSTM|0.0864|98.9
+GLOB|0.0462|98.7
+(9 rows)
+SET
+?column?
+{"rs": 2646, "adr": 1957, "surf": 1842, "pinned": 39, "history": 14, "breakdown": 1005, "prior_move": 2038, "tightening": 1158, "higher_lows": 806}
+(1 row)
