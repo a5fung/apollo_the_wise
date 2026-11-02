@@ -647,7 +647,7 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
 
 ## Change log (newest first)
 
-### 2026-11-01 — #482 weekend follow-ups: (1) the replays model the 2026-10-28 trail-arming fix from the session it went live · (2) a LATE fill's open hour row and its catch-up are ONE transaction · (3) the deferred tidy-ups in the two hour-bar recorders, rows byte-identical (RECORD / REPLAY CODE ONLY — no live entry, exit, stop, size or safeguard change; BUILT on branch `482-followups`, NOT DEPLOYED)
+### 2026-11-01 — #482 weekend follow-ups: (1) the replays model the 2026-10-28 trail-arming fix from the session it went live · (2) a LATE fill's open hour row and its catch-up are ONE transaction · (3) the deferred tidy-ups in the two hour-bar recorders, rows byte-identical (RECORD / REPLAY CODE ONLY — no live entry, exit, stop, size or safeguard change; BUILT on branch `482-followups`; DEPLOYED 2026-11-01 on his "deploy" — server `1330bc75`, market-agent then execution, DEPLOY OK x2; VERIFY-LIVE the first 18:04 ET run, Mon 11-02, against `scripts/probes/_482_deploy_1101/pre_deploy_lfc_dump.csv`)
 
 - **(1) The trail-arming era switch (exit_discipline.md 2026-10-28 "Known divergence", closed).** Since the Thu 2026-10-29 12:00-12:06 ET deploy
   the live tracker's three ladder calls pass `trail_arm_on_close_above=True` (the line governs only once the trade was bought at or above
@@ -696,7 +696,7 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
   recorder and the book arms hand every walk the date and the alert day's close with the `pre` rows and the era stamp unchanged; ep_replay's
   rule sets carry the date only where live does and its forward walk agrees with the recorder's across the boundary). The 246 tests of the
   recorder / book-arm / depth-era / ep_replay / trail-arming / #631 / hour-lane suites pass unchanged.
-- **Deploy scope (when it ships — not this commit):** `exit_logic.py` is `broker/` + execution-loaded and `live_fill_counterfactuals.py` /
+- **Deploy scope (shipped 2026-11-01, server `1330bc75`):** `exit_logic.py` is `broker/` + execution-loaded and `live_fill_counterfactuals.py` /
   `book_geometry_arms.py` run in apollo-market (the 18:04 ET job) → `deploy.sh market-agent` then `deploy.sh execution`. `scripts/ep_replay.py`
   is offline. EXPECT (against the night before the deploy): the 18:04 ET run writes 0 `live_fill_counterfactual_error` /
   `book_geometry_arm_error` rows and the same arm counts it would have; a `live_replay` row written after the deploy on a fill still open
