@@ -1,0 +1,113 @@
+TEMPLATE GRID — written 2026-11-01 (registration breakout_v1_template_grid_prereg_2026-11-01.md); the walk runs once
+  re-walk day 0/1713 2017-01-03: 20 recs (9s)
+  re-walk day 200/1713 2017-12-21: 2236 recs (10s)
+  re-walk day 400/1713 2018-11-19: 4644 recs (11s)
+  re-walk day 600/1713 2019-10-29: 7244 recs (12s)
+  re-walk day 800/1713 2020-10-02: 10544 recs (15s)
+  re-walk day 1000/1713 2021-08-25: 14808 recs (18s)
+  re-walk day 1200/1713 2022-08-17: 18676 recs (20s)
+  re-walk day 1400/1713 2023-07-21: 22120 recs (22s)
+  re-walk day 1600/1713 2024-06-28: 24564 recs (23s)
+  re-walk: 6,588 fills x 4 exits; A == frozen on every fill (24s)
+recall parity (today's exit, 98, 5 slots): real big breakouts listed 380 / filled 231 / took a slot 63 (the study: 380 / 231 / 63)
+
+STEP 1 — EXITS (today's list and entry, no floor, 5 slots). Pick on 2017-21 by the pick rule; judged once on 2022-24.
+BENCHMARK his 205 trades under our rules       n   205  mean +1.060             win 37.0%  med -1.00                              10R+/100  2.9
+step1_A capped 5-slot book, 2c, 2017-21        n  1058  mean -0.153 [-0.34, +0.05]  win 34.8%  med -1.03  avg win +1.77 avg loss -1.18  10R+/100  1.0 (11)  5R+/100  3.2  3R+ 5.1%  sum -162
+  beside: no slot limit (guard only), 2c, 2017-21 n  3094  mean -0.047 [-0.21, +0.13]  win 35.4%  med -1.03  avg win +1.97 avg loss -1.15  10R+/100  1.6 (48)  5R+/100  3.5  3R+ 5.5%  sum -146
+step1_B capped 5-slot book, 2c, 2017-21        n   943  mean -0.187 [-0.49, +0.14]  win  8.3%  med -1.03  avg win +8.47 avg loss -0.97  10R+/100  2.3 (22)  5R+/100  4.3  3R+ 5.8%  sum -176
+  beside: no slot limit (guard only), 2c, 2017-21 n  3031  mean -0.014 [-0.28, +0.27]  win  8.9%  med -1.04  avg win +9.49 avg loss -0.94  10R+/100  2.6 (78)  5R+/100  4.5  3R+ 6.1%  sum -42
+  paired X - A on the same uncapped decisive trades, 2017-21: n 3,984 mean +0.002 [-0.10, +0.11] -> not beyond noise
+step1_C capped 5-slot book, 2c, 2017-21        n  1141  mean -0.158 [-0.39, +0.10]  win 14.4%  med -1.03  avg win +4.95 avg loss -1.02  10R+/100  1.9 (22)  5R+/100  4.5  3R+ 7.3%  sum -180
+  beside: no slot limit (guard only), 2c, 2017-21 n  3154  mean -0.079 [-0.29, +0.14]  win 13.7%  med -1.03  avg win +5.51 avg loss -0.96  10R+/100  2.0 (63)  5R+/100  4.4  3R+ 7.0%  sum -250
+  paired X - A on the same uncapped decisive trades, 2017-21: n 3,985 mean -0.051 [-0.14, +0.05] -> not beyond noise
+step1_D capped 5-slot book, 2c, 2017-21        n  1004  mean -0.244 [-0.45, +0.00]  win 23.7%  med -1.05  avg win +2.87 avg loss -1.21  10R+/100  1.7 (17)  5R+/100  4.1  3R+ 6.2%  sum -245
+  beside: no slot limit (guard only), 2c, 2017-21 n  3062  mean -0.076 [-0.29, +0.14]  win 26.6%  med -1.04  avg win +2.93 avg loss -1.17  10R+/100  1.9 (58)  5R+/100  4.4  3R+ 6.8%  sum -232
+  paired X - A on the same uncapped decisive trades, 2017-21: n 3,984 mean -0.026 [-0.07, +0.01] -> not beyond noise
+-> STEP 1 PICK on 2017-21: C (C no partial: the speed trail (10-day when ADR20 at D > 4.79%, else 20-day), first close below, stall cut)
+JUDGED on 2022-24 (the pick; the other exits beside, deciding nothing):
+step1_A capped 5-slot book, 2c, 2022-24        n   581  mean -0.412 [-0.58, -0.21]  win 29.9%  med -1.04  avg win +1.38 avg loss -1.18  10R+/100  0.7 (4)  5R+/100  1.7  3R+ 3.6%  sum -239
+  beside: no slot limit (guard only), 2c, 2022-24 n  1725  mean -0.326 [-0.42, -0.22]  win 31.4%  med -1.04  avg win +1.53 avg loss -1.17  10R+/100  0.8 (13)  5R+/100  2.4  3R+ 4.3%  sum -562
+step1_B capped 5-slot book, 2c, 2022-24        n   528  mean -0.575 [-0.80, -0.25]  win  5.3%  med -1.04  avg win +6.29 avg loss -0.96  10R+/100  0.9 (5)  5R+/100  2.1  3R+ 3.0%  sum -303
+  beside: no slot limit (guard only), 2c, 2022-24 n  1703  mean -0.457 [-0.60, -0.30]  win  6.9%  med -1.04  avg win +6.36 avg loss -0.96  10R+/100  1.2 (21)  5R+/100  2.6  3R+ 4.4%  sum -779
+  paired X - A, 2022-24: n 2,164 mean -0.139 [-0.19, -0.08] -> beyond noise
+step1_C capped 5-slot book, 2c, 2022-24        n   623  mean -0.438 [-0.63, -0.22]  win 10.6%  med -1.04  avg win +4.18 avg loss -0.99  10R+/100  1.3 (8)  5R+/100  2.9  3R+ 4.0%  sum -273   VERDICT FAIL (whole interval under +0.25R and under 2 per 100 at 10R+)
+  beside: no slot limit (guard only), 2c, 2022-24 n  1746  mean -0.348 [-0.49, -0.20]  win 11.8%  med -1.04  avg win +4.48 avg loss -0.99  10R+/100  1.3 (22)  5R+/100  3.1  3R+ 5.2%  sum -608
+  paired X - A, 2022-24: n 2,168 mean -0.021 [-0.08, +0.04] -> not beyond noise
+step1_D capped 5-slot book, 2c, 2022-24        n   556  mean -0.453 [-0.62, -0.24]  win 22.5%  med -1.05  avg win +2.02 avg loss -1.17  10R+/100  0.9 (5)  5R+/100  2.5  3R+ 5.2%  sum -252
+  beside: no slot limit (guard only), 2c, 2022-24 n  1714  mean -0.358 [-0.47, -0.24]  win 23.5%  med -1.05  avg win +2.35 avg loss -1.19  10R+/100  1.1 (19)  5R+/100  3.3  3R+ 5.5%  sum -613
+  paired X - A, 2022-24: n 2,168 mean -0.020 [-0.07, +0.04] -> not beyond noise
+
+STEP 2 — the 15-cent MINIMUM STOP on top of C (re-confirmed, not re-selected; carried forward regardless).
+step1_C capped 5-slot book, 2c, 2017-21        n  1141  mean -0.158 [-0.39, +0.10]  win 14.4%  med -1.03  avg win +4.95 avg loss -1.02  10R+/100  1.9 (22)  5R+/100  4.5  3R+ 7.3%  sum -180
+  beside: no slot limit (guard only), 2c, 2017-21 n  3154  mean -0.079 [-0.29, +0.14]  win 13.7%  med -1.03  avg win +5.51 avg loss -0.96  10R+/100  2.0 (63)  5R+/100  4.4  3R+ 7.0%  sum -250
+step2_C_floor15 capped 5-slot book, 2c, 2017-21 n  1087  mean -0.109 [-0.34, +0.13]  win 14.4%  med -1.03  avg win +4.72 avg loss -0.92  10R+/100  1.9 (21)  5R+/100  4.4  3R+ 7.1%  sum -119
+  beside: no slot limit (guard only), 2c, 2017-21 n  2775  mean -0.010 [-0.21, +0.21]  win 14.3%  med -1.03  avg win +5.28 avg loss -0.90  10R+/100  2.1 (57)  5R+/100  4.5  3R+ 7.2%  sum -28
+  the floor's effect, 2017-21: +0.048R a trade (helps); placed rows removed by the floor 1,911
+step1_C capped 5-slot book, 2c, 2022-24        n   623  mean -0.438 [-0.63, -0.22]  win 10.6%  med -1.04  avg win +4.18 avg loss -0.99  10R+/100  1.3 (8)  5R+/100  2.9  3R+ 4.0%  sum -273
+  beside: no slot limit (guard only), 2c, 2022-24 n  1746  mean -0.348 [-0.49, -0.20]  win 11.8%  med -1.04  avg win +4.48 avg loss -0.99  10R+/100  1.3 (22)  5R+/100  3.1  3R+ 5.2%  sum -608
+step2_C_floor15 capped 5-slot book, 2c, 2022-24 n   563  mean -0.233 [-0.48, +0.06]  win 12.8%  med -1.03  avg win +4.23 avg loss -0.89  10R+/100  1.2 (7)  5R+/100  3.7  3R+ 5.3%  sum -131   VERDICT FAIL (whole interval under +0.25R and under 2 per 100 at 10R+)
+  beside: no slot limit (guard only), 2c, 2022-24 n  1536  mean -0.250 [-0.40, -0.08]  win 12.5%  med -1.04  avg win +4.35 avg loss -0.91  10R+/100  1.2 (19)  5R+/100  3.1  3R+ 5.3%  sum -384
+  the floor's effect, 2022-24: +0.204R a trade (helps); placed rows removed by the floor 1,911
+
+STEP 3 — the strength gate at 98 (live) / 95 / 90, carrying C + the 15c floor, 5 slots. Both directions counted.
+  new-name day 0/2005 2017-01-03: 164 rows, {'entry_abstain': 98, 'entry_never_placed': 23, 'entry_cancelled': 28, 'entry_filled': 15, 'minute_daily_mismatch': 1} (0s)
+  new-name day 200/2005 2017-10-18: 9000 rows, {'entry_abstain': 4475, 'entry_never_placed': 2694, 'entry_cancelled': 1197, 'entry_filled': 633, 'minute_daily_mismatch': 14, 'minutes_pending': 8, 'entry_sold_after_fill': 1} (18s)
+  new-name day 400/2005 2018-08-06: 20555 rows, {'entry_abstain': 10118, 'entry_never_placed': 6300, 'entry_cancelled': 2715, 'entry_filled': 1421, 'minute_daily_mismatch': 73, 'minutes_pending': 16, 'entry_sold_after_fill': 1, 'minutes_no_rows': 2} (43s)
+  new-name day 600/2005 2019-05-24: 30541 rows, {'entry_abstain': 14899, 'entry_never_placed': 9556, 'entry_cancelled': 4021, 'entry_filled': 2064, 'minute_daily_mismatch': 76, 'minutes_pending': 21, 'entry_sold_after_fill': 1, 'minutes_no_rows': 6} (65s)
+  new-name day 800/2005 2020-03-11: 39692 rows, {'entry_abstain': 19625, 'entry_never_placed': 12143, 'entry_cancelled': 5223, 'entry_filled': 2700, 'minute_daily_mismatch': 90, 'minutes_pending': 26, 'entry_sold_after_fill': 1, 'minutes_no_rows': 6} (83s)
+  new-name day 1000/2005 2021-01-04: 59586 rows, {'entry_abstain': 28884, 'entry_never_placed': 18048, 'entry_cancelled': 8207, 'entry_filled': 4446, 'minute_daily_mismatch': 126, 'minutes_pending': 34, 'entry_sold_after_fill': 1, 'minutes_no_rows': 6} (130s)
+  new-name day 1200/2005 2021-10-19: 78808 rows, {'entry_abstain': 38436, 'entry_never_placed': 22900, 'entry_cancelled': 11252, 'entry_filled': 6219, 'minute_daily_mismatch': 181, 'minutes_pending': 43, 'entry_sold_after_fill': 1, 'minutes_no_rows': 6} (168s)
+  new-name day 1400/2005 2022-08-05: 91880 rows, {'entry_abstain': 44854, 'entry_never_placed': 26382, 'entry_cancelled': 13336, 'entry_filled': 7305, 'minute_daily_mismatch': 328, 'minutes_pending': 45, 'entry_sold_after_fill': 3, 'minutes_no_rows': 28} (194s)
+  new-name day 1600/2005 2023-05-23: 107123 rows, {'entry_abstain': 53147, 'entry_never_placed': 30267, 'entry_cancelled': 15311, 'entry_filled': 8393, 'minute_daily_mismatch': 528, 'minutes_pending': 47, 'entry_sold_after_fill': 5, 'minutes_no_rows': 50} (224s)
+  new-name day 1800/2005 2024-03-11: 118955 rows, {'entry_abstain': 59659, 'entry_never_placed': 33707, 'entry_cancelled': 16473, 'entry_filled': 9109, 'minute_daily_mismatch': 604, 'minutes_pending': 48, 'entry_sold_after_fill': 7, 'minutes_no_rows': 74} (248s)
+  new-name day 2000/2005 2024-12-24: 132770 rows, {'entry_abstain': 67027, 'entry_never_placed': 37868, 'entry_cancelled': 17959, 'entry_filled': 9908, 'minute_daily_mismatch': 712, 'minutes_pending': 52, 'entry_sold_after_fill': 8, 'minutes_no_rows': 74} (275s)
+new names walked: 133,972 list rows; exclusions {'entry_abstain': 67239, 'entry_never_placed': 37989, 'entry_cancelled': 17983, 'entry_filled': 9915, 'minute_daily_mismatch': 712, 'minutes_pending': 52, 'entry_sold_after_fill': 8, 'minutes_no_rows': 74}
+-- 2017-21 --
+step3_C_floor15_rs98 capped 5-slot book, 2c, 2017-21 n  1087  mean -0.109 [-0.33, +0.11]  win 14.4%  med -1.03  avg win +4.72 avg loss -0.92  10R+/100  1.9 (21)  5R+/100  4.4  3R+ 7.1%  sum -119
+  beside: no slot limit (guard only), 2c, 2017-21 n  2775  mean -0.010 [-0.21, +0.20]  win 14.3%  med -1.03  avg win +5.28 avg loss -0.90  10R+/100  2.1 (57)  5R+/100  4.5  3R+ 7.2%  sum -28
+step3_C_floor15_rs95 capped 5-slot book, 2c, 2017-21 n  1167  mean -0.159 [-0.35, +0.07]  win 14.9%  med -1.03  avg win +4.27 avg loss -0.93  10R+/100  1.5 (18)  5R+/100  3.9  3R+ 6.9%  sum -185
+  beside: no slot limit (guard only), 2c, 2017-21 n  5181  mean +0.020 [-0.15, +0.20]  win 14.2%  med -1.03  avg win +5.59 avg loss -0.90  10R+/100  2.0 (103)  5R+/100  4.8  3R+ 7.5%  sum +105
+step3_C_floor15_rs90 capped 5-slot book, 2c, 2017-21 n  1161  mean -0.085 [-0.31, +0.19]  win 15.3%  med -1.03  avg win +4.70 avg loss -0.95  10R+/100  1.8 (21)  5R+/100  4.0  3R+ 7.0%  sum -99
+  beside: no slot limit (guard only), 2c, 2017-21 n  7374  mean -0.010 [-0.17, +0.13]  win 14.3%  med -1.03  avg win +5.41 avg loss -0.91  10R+/100  2.0 (144)  5R+/100  4.8  3R+ 7.4%  sum -74
+-- 2022-24 --
+step3_C_floor15_rs98 capped 5-slot book, 2c, 2022-24 n   563  mean -0.233 [-0.48, +0.06]  win 12.8%  med -1.03  avg win +4.23 avg loss -0.89  10R+/100  1.2 (7)  5R+/100  3.7  3R+ 5.3%  sum -131
+  beside: no slot limit (guard only), 2c, 2022-24 n  1536  mean -0.250 [-0.40, -0.07]  win 12.5%  med -1.04  avg win +4.35 avg loss -0.91  10R+/100  1.2 (19)  5R+/100  3.1  3R+ 5.3%  sum -384
+step3_C_floor15_rs95 capped 5-slot book, 2c, 2022-24 n   585  mean -0.240 [-0.43, -0.02]  win 13.3%  med -1.03  avg win +3.95 avg loss -0.88  10R+/100  1.4 (8)  5R+/100  3.6  3R+ 4.3%  sum -141
+  beside: no slot limit (guard only), 2c, 2022-24 n  2752  mean -0.314 [-0.44, -0.17]  win 11.9%  med -1.03  avg win +4.20 avg loss -0.93  10R+/100  1.2 (33)  5R+/100  3.2  3R+ 4.9%  sum -864
+step3_C_floor15_rs90 capped 5-slot book, 2c, 2022-24 n   566  mean -0.131 [-0.35, +0.11]  win 14.1%  med -1.03  avg win +4.53 avg loss -0.90  10R+/100  1.6 (9)  5R+/100  4.6  3R+ 5.7%  sum -74
+  beside: no slot limit (guard only), 2c, 2022-24 n  3810  mean -0.311 [-0.44, -0.17]  win 11.8%  med -1.03  avg win +4.29 avg loss -0.93  10R+/100  1.3 (48)  5R+/100  3.4  3R+ 5.0%  sum -1187
+rs >= 98: list rows 61,071; real big breakouts (872): listed 380 / filled 229 / took a slot 71 / made money 74 / 3R+ 47 / 10R+ 17; capped decisive trades all years 1,650 (losers 1,422, 10R+ 28) -> vs 98: trades +0, losers +0, 10R+ +0, real big breakouts filled +0
+rs >= 95: list rows 124,989; real big breakouts (872): listed 539 / filled 326 / took a slot 65 / made money 110 / 3R+ 71 / 10R+ 29; capped decisive trades all years 1,752 (losers 1,500, 10R+ 26) -> vs 98: trades +102, losers +78, 10R+ -2, real big breakouts filled +97
+rs >= 90: list rows 195,043; real big breakouts (872): listed 620 / filled 398 / took a slot 59 / made money 123 / 3R+ 82 / 10R+ 31; capped decisive trades all years 1,727 (losers 1,469, 10R+ 30) -> vs 98: trades +77, losers +47, 10R+ +2, real big breakouts filled +169
+-> STEP 3 PICK on 2017-21: rs >= 90
+JUDGED on 2022-24:
+step3_C_floor15_rs90 capped 5-slot book, 2c, 2022-24 n   566  mean -0.131 [-0.35, +0.11]  win 14.1%  med -1.03  avg win +4.53 avg loss -0.90  10R+/100  1.6 (9)  5R+/100  4.6  3R+ 5.7%  sum -74   VERDICT FAIL (whole interval under +0.25R and under 2 per 100 at 10R+)
+  beside: no slot limit (guard only), 2c, 2022-24 n  3810  mean -0.311 [-0.44, -0.17]  win 11.8%  med -1.03  avg win +4.29 avg loss -0.93  10R+/100  1.3 (48)  5R+/100  3.4  3R+ 5.0%  sum -1187
+
+STEP 4 — SLOTS 5 (live) / 8 / 10, carrying C + 15c floor + rs >= 90. Information for him; no pick (the slot count is his).
+-- 2017-21 --
+step4_C_floor15_rs90_slots5 capped 5-slot book, 2c, 2017-21 n  1161  mean -0.085 [-0.31, +0.17]  win 15.3%  med -1.03  avg win +4.70 avg loss -0.95  10R+/100  1.8 (21)  5R+/100  4.0  3R+ 7.0%  sum -99
+  beside: no slot limit (guard only), 2c, 2017-21 n  7374  mean -0.010 [-0.17, +0.14]  win 14.3%  med -1.03  avg win +5.41 avg loss -0.91  10R+/100  2.0 (144)  5R+/100  4.8  3R+ 7.4%  sum -74
+step4_C_floor15_rs90_slots8 capped 8-slot book, 2c, 2017-21 n  1798  mean -0.106 [-0.30, +0.11]  win 14.7%  med -1.03  avg win +4.70 avg loss -0.94  10R+/100  1.7 (30)  5R+/100  3.9  3R+ 7.1%  sum -190
+  beside: no slot limit (guard only), 2c, 2017-21 n  7374  mean -0.010 [-0.17, +0.14]  win 14.3%  med -1.03  avg win +5.41 avg loss -0.91  10R+/100  2.0 (144)  5R+/100  4.8  3R+ 7.4%  sum -74
+step4_C_floor15_rs90_slots10 capped 10-slot book, 2c, 2017-21 n  2175  mean -0.067 [-0.25, +0.12]  win 15.0%  med -1.03  avg win +4.79 avg loss -0.93  10R+/100  1.8 (40)  5R+/100  4.2  3R+ 7.3%  sum -147
+  beside: no slot limit (guard only), 2c, 2017-21 n  7374  mean -0.010 [-0.17, +0.14]  win 14.3%  med -1.03  avg win +5.41 avg loss -0.91  10R+/100  2.0 (144)  5R+/100  4.8  3R+ 7.4%  sum -74
+-- 2022-24 --
+step4_C_floor15_rs90_slots5 capped 5-slot book, 2c, 2022-24 n   566  mean -0.131 [-0.35, +0.13]  win 14.1%  med -1.03  avg win +4.53 avg loss -0.90  10R+/100  1.6 (9)  5R+/100  4.6  3R+ 5.7%  sum -74   VERDICT FAIL (whole interval under +0.25R and under 2 per 100 at 10R+)
+  beside: no slot limit (guard only), 2c, 2022-24 n  3810  mean -0.311 [-0.44, -0.17]  win 11.8%  med -1.03  avg win +4.29 avg loss -0.93  10R+/100  1.3 (48)  5R+/100  3.4  3R+ 5.0%  sum -1187
+step4_C_floor15_rs90_slots8 capped 8-slot book, 2c, 2022-24 n   899  mean -0.187 [-0.35, -0.01]  win 14.1%  med -1.03  avg win +4.08 avg loss -0.89  10R+/100  1.2 (11)  5R+/100  4.2  3R+ 5.2%  sum -168   VERDICT FAIL (whole interval under +0.25R and under 2 per 100 at 10R+)
+  beside: no slot limit (guard only), 2c, 2022-24 n  3810  mean -0.311 [-0.44, -0.18]  win 11.8%  med -1.03  avg win +4.29 avg loss -0.93  10R+/100  1.3 (48)  5R+/100  3.4  3R+ 5.0%  sum -1187
+step4_C_floor15_rs90_slots10 capped 10-slot book, 2c, 2022-24 n  1104  mean -0.153 [-0.34, +0.04]  win 13.6%  med -1.03  avg win +4.51 avg loss -0.89  10R+/100  1.3 (14)  5R+/100  4.1  3R+ 5.3%  sum -169   VERDICT FAIL (whole interval under +0.25R and under 2 per 100 at 10R+)
+  beside: no slot limit (guard only), 2c, 2022-24 n  3810  mean -0.311 [-0.44, -0.17]  win 11.8%  med -1.03  avg win +4.29 avg loss -0.93  10R+/100  1.3 (48)  5R+/100  3.4  3R+ 5.0%  sum -1187
+-- all --
+step4_C_floor15_rs90_slots5 capped 5-slot book, 2c, all n  1727  mean -0.100 [-0.27, +0.10]  win 14.9%  med -1.03  avg win +4.65 avg loss -0.93  10R+/100  1.7 (30)  5R+/100  4.2  3R+ 6.5%  sum -173
+  beside: no slot limit (guard only), 2c, all  n 11184  mean -0.113 [-0.23, +0.01]  win 13.4%  med -1.03  avg win +5.07 avg loss -0.92  10R+/100  1.7 (192)  5R+/100  4.3  3R+ 6.6%  sum -1261
+step4_C_floor15_rs90_slots8 capped 8-slot book, 2c, all n  2697  mean -0.133 [-0.27, +0.02]  win 14.5%  med -1.03  avg win +4.50 avg loss -0.92  10R+/100  1.5 (41)  5R+/100  4.0  3R+ 6.5%  sum -358
+  beside: no slot limit (guard only), 2c, all  n 11184  mean -0.113 [-0.23, +0.00]  win 13.4%  med -1.03  avg win +5.07 avg loss -0.92  10R+/100  1.7 (192)  5R+/100  4.3  3R+ 6.6%  sum -1261
+step4_C_floor15_rs90_slots10 capped 10-slot book, 2c, all n  3279  mean -0.096 [-0.23, +0.04]  win 14.5%  med -1.03  avg win +4.71 avg loss -0.91  10R+/100  1.6 (54)  5R+/100  4.2  3R+ 6.6%  sum -316
+  beside: no slot limit (guard only), 2c, all  n 11184  mean -0.113 [-0.23, +0.00]  win 13.4%  med -1.03  avg win +5.07 avg loss -0.92  10R+/100  1.7 (192)  5R+/100  4.3  3R+ 6.6%  sum -1261
+the 31 refused >= 3R catches of the baseline (30 on the full slots, 1 on the ticker guard) under each slot count:
+  5 slots: admitted 4 of 31 (in the chain's placed rows: 30); their R under the chain's exit, admitted decisive ones: FOLD +9.4, TSLA +11.8, DAC +5.9, FLNA +12.9; admitted but open at the seal, never scored: none
+  8 slots: admitted 6 of 31 (in the chain's placed rows: 30); their R under the chain's exit, admitted decisive ones: FOLD +9.4, TSLA +11.8, GOTU +7.1, MARA +0.9, FLNA +12.9, QFIN +19.5; admitted but open at the seal, never scored: none
+  10 slots: admitted 7 of 31 (in the chain's placed rows: 30); their R under the chain's exit, admitted decisive ones: FOLD +9.4, TSLA +11.8, GOTU +7.1, MARA +0.9, FLNA +12.9, QFIN +19.5; admitted but open at the seal, never scored: BTDR 2024-12-04

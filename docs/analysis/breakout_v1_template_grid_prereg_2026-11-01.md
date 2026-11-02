@@ -388,11 +388,11 @@ after the run, the results.
 <!-- FREEZE -->
 ## Freeze record (the main loop; pasted after the pre-pull commit and the pull, before `walk`)
 
-- freeze_commit = (pending)
+- freeze_commit = 087e0908bbc8f8d9433a229a202bf29bbb56786e
 - doc_body = f6e88c7c812d742622519b4afe08005ed643115726ae68f5415838d8f9b17579
-- minutes_tgrid_1101 pull: (pending)
-- raw_close_tgrid_1101 pull (+ sidecar request_sha256): (pending)
-- coverage: (pending)
+- minutes_tgrid_1101 pull (2026-11-01, main loop, his "allow"): `fetch_minutes.py` in apollo-market, Alpaca SIP 1-min, Adjustment.SPLIT, the whole request — 97,829 pairs / 2,004 sessions, 97,761 with bars, 68 empty, 0 failed (264 MB, `apollo_data/cb702/minutes_tgrid_1101/`)
+- raw_close_tgrid_1101 pull (2026-11-01, his "allow"): `pull_raw_closes_polygon.py`, Polygon v2 daily adjusted=false — 245 tickers, 39,626 rows <= 2024-12-31, 0 empty, 0 errors; `raw_close_tgrid_1101.csv.gz` sha256 `7b345497b3a0516205ad17973d93b610bce013aa3c223b44daf9f1c1712b3f9b`, `.meta.json` sha256 `3a7ed2ffaf4bdf0076d82b4d303c348397440373047912617800283bfd7f8e89`, sidecar request_sha256 `e4559e75c9ac68c385e6e181a176217b876c7f2b32ea54a41dd0e12ce5b6de04` (= raw_close_request.tsv)
+- coverage (2026-11-01): `grid.py coverage` — 97,829 held, 0 missing, 0 unfetchable; 3,733 new raw_src=2 rows, 0 without a raw close: "coverage: no problem"
 
 ## RESULTS (pasted after the one run; plain words; every cell against his benchmark row)
 
