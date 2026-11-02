@@ -1,0 +1,10 @@
+SET
+== the list row (scan 10-30) with every gate value
+scan_date|ticker|level|adr20|rs_best|close|gates
+2026-10-30|MTW|23.875|0.0406|98.6|23.03|{"ok": true, "adr20": 0.04062754353973597, "close": 23.03, "gates": {"rs": {"pass": true, "value": {"rs_best": 98.6}}, "surf": {"pass": true, "value": {"best": 10, "run10": 10, "run20": 8, "run50": 0}}, "history": {"pass": true, "value": {"need": 86, "bars_to_d": 150, "consecutive": true}}, "universe": {"pass": true, "value": {"raw_close": 23.03, "dollar_vol20": 7525961.775}}, "breakdown": {"pass": true, "value": {"low": 22.63, "close": 23.03, "sma10": 22.588, "sma20": 22.443, "sma50": 21.563, "new_low": false, "below_all": false, "prior_low10": 21.05}}, "prior_move": {"pass": true, "value": {"base_len": 18, "pole_low": 18.3501, "pole_date": "2026-10-06", "pole_high": 24.0, "prior_move": 0.30789477986495983}}, "tightening": {"pass": true, "value": {"ratio": 0.9253227100755909, "range_early5": 0.04008312571694641, "range_recent5": 0.03708982651670546}}, "higher_lows": {"pass": true, "value": {"base_low": 21.05, "recent_low": 21.99}}}, "level": 23.875, "vol50": 396796.74, "failed": [], "vol_bar": 476156.088, "base_low": 21.05, "pole_date": "2026-10-06", "pole_high": 24.0, "prior_move": 0.30789477986495983, "watch_date": "2026-10-30"}
+(1 row)
+== daily bars since 2026-07-01
+ERROR:  column "close_price" does not exist
+LINE 1: ...CT trade_date, open_price, high_price, low_price, close_pric...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "mi_daily_closes.low_price".
