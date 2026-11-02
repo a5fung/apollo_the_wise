@@ -1,0 +1,35 @@
+{
+ "new_list_rows": 133972,
+ "request_rows": 97829,
+ "request_sessions": 2004,
+ "request_fill_possible": 46689,
+ "request_cap_occupancy_only": 51140,
+ "request_rows_rs_ge95": 47935,
+ "request_rows_rs_90_95": 49894,
+ "coverage": {
+  "fired_E": 11351,
+  "missing_fill_possible": 46689,
+  "missing_cap_occupancy_only": 51140,
+  "held_fill_possible": 24669,
+  "no_daily_bar_E": 52,
+  "held_cap_occupancy_only": 11422
+ },
+ "per_level": {
+  "rs>=95": {
+   "rows": 63888,
+   "missing": 47935,
+   "held": 15953
+  },
+  "rs>=90": {
+   "rows": 133920,
+   "missing": 97829,
+   "held": 36091
+  }
+ },
+ "new_raw_src2_rows": 3733,
+ "new_raw_src2_rows_covered_by_baseline_pull": 674,
+ "raw_close_request_tickers": 245,
+ "raw_close_request_list_rows": 3059,
+ "pull_dir": "/Users/alvinfung/apollo_data/cb702/minutes_tgrid_1101",
+ "raw_pull_file": "/Users/alvinfung/apollo_data/cb702/raw_close_tgrid_1101.csv.gz"
+}

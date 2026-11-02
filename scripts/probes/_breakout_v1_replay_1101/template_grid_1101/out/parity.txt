@@ -1,0 +1,20 @@
+  re-walk day 0/1713 2017-01-03: 5 recs (10s)
+  re-walk day 200/1713 2017-12-21: 559 recs (11s)
+  re-walk day 400/1713 2018-11-19: 1161 recs (12s)
+  re-walk day 600/1713 2019-10-29: 1811 recs (13s)
+  re-walk day 800/1713 2020-10-02: 2636 recs (16s)
+  re-walk day 1000/1713 2021-08-25: 3702 recs (20s)
+  re-walk day 1200/1713 2022-08-17: 4669 recs (29s)
+  re-walk day 1400/1713 2023-07-21: 5530 recs (31s)
+  re-walk day 1600/1713 2024-06-28: 6141 recs (32s)
+  re-walk: 6,588 fills x 1 exits; A == frozen on every fill (33s)
+book parity: the capped book re-run on the re-walked A rows differs from the frozen adm_cap on 0 of 18,094 placed rows; blocked {'block:max_positions': 11808, 'block:ticker_open_position': 1260} (frozen: max_positions 11,808 / ticker_open_position 1,260)
+book parity 2017-21: A re-walked, capped, 2c                        n  1058  mean -0.153 [-0.34, +0.06]  win 34.8%  med -1.03  avg win +1.77 avg loss -1.18  10R+/100  1.0 (11)  5R+/100  3.2  3R+ 5.1%  sum -162   (frozen n 1058 mean -0.153)
+book parity 2022-24: A re-walked, capped, 2c                        n   581  mean -0.412 [-0.58, -0.20]  win 29.9%  med -1.04  avg win +1.38 avg loss -1.18  10R+/100  0.7 (4)  5R+/100  1.7  3R+ 3.6%  sum -239   (frozen n 581 mean -0.412)
+width parity: the walk's placement width == the follow-up's `width_raw_cents` on 300 of 300 sampled placed rows (111 filled, 189 cancelled)
+PARITY COMPLETE: the A exit, the capped book and the placement width reproduce the frozen replay / follow-up on every row
+nesting parity: 90-list rows 195,043, of which rs >= 98: 61,071; frozen 98-list rows 61,071; EQUAL row for row
+  list rows at rs >= 98: 61,071 (30.4 a night); new over 98: 0
+  list rows at rs >= 95: 124,989 (62.1 a night); new over 98: 63,918
+  list rows at rs >= 90: 195,043 (96.9 a night); new over 98: 133,972
+NESTING COMPLETE: the 90-list holds the frozen 98-list row for row

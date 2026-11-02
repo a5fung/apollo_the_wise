@@ -1,0 +1,35 @@
+[ok] SMA20 arithmetic == ppr.sma_at_last on 50 random paths
+[ok] B reclaim forgiven: watch at 3, reclaim at 4, watch at 6, expiry at 8 -> trail at the open of 9 (-0.350R)
+[ok] C (slow, 20-day) on the same path: the first close under at 3 -> sold at the open of 4 (0.000R)
+[ok] D on the same path: session 3 closes under the fill (no third) and under the 20-day -> everything at the open of 4 (0.000R)
+[ok] B not reclaimed: under at 3, 4 (10.1 < 10.1125), 5 (10.1 < 10.1175) -> sold at the open of 6 (+0.700R)
+[ok] B: the stop keeps running inside the watch window -> stopped at session 4 (-1.000R)
+[ok] C fast (ADR 4.80% > cut): the 10-day; session 3 closes 10.7 < 11.02 -> sold at the open of 4 (+0.300R)
+[ok] C slow (ADR 4.79%, not above the cut): the 20-day; 10.7 >= 10.31 holds; stopped at session 5 (-1.000R)
+[ok] C's cut is the live constant (cb.TRAIL_SPEED_ADR_CUT == 0.0479) and the averages the live 10 / 20
+[ok] D: session 3 closes under the fill, session 4 above -> the third at 4's close (10.6), the stop to 10 from 5, stopped at 5 (+0.200R)
+[ok] D: none of sessions 3 / 4 / 5 closes above the fill -> no third ever (6 is outside the window); stopped at 7 at the day-low stop (-1.000R)
+[ok] D: session 3 closes above the fill -> the third at 3's close (10.5); one third only (4 and 5 take none); stopped at cost at 6 (+0.167R)
+[ok] D: sessions 3 and 4 close under the fill, session 5 above -> the third at 5's close (10.7), the stop to 10 from 6, stopped at cost at 6 (+0.233R)
+[ok] D == A (the live pp) on a path with no +2R touch and sessions 3-5 at or under the fill
+[ok] P0 tie: session 1 touches +2R and the stop -> the stop (-1.000R), no reach event
+[ok] P0 gap open above +2R, then the stop in the same bar: +2R reached (breakeven from the NEXT session), stopped at 9 (-1.000R); A takes the third at the open then the stop (+0.200R)
+[ok] P0: +2R reached at session 1 -> the stop at the fill from session 2; stopped at cost at 2 (0.000R)
+[ok] P0 stall cut: no high at 11 by session 3 -> cut at 3's close 10.4 (+0.400R)
+[ok] P0 stall cut: +1R reached on day 0 (peak 11.0) -> no cut; the trail then holds (censored at the path's end = degraded here)
+[ok] A's day 0: the third at 12.0 (minute 14, high 12.1 >= 12), the breakeven stop then hit at minute 20 -> stopped
+[ok] the no-partial day 0: not stopped (the low 9.8 is above 9.0), +2R reached (hit2r), peak 12.1
+[ok] A books day 0: +0.667R (a third at +2R, the rest at cost); B on the same day 0 rests the breakeven from session 1 and is gapped out at 9.9 (-0.100R)
+[ok] a day-0 stop under the no-partial walk: stopped_day0 at 9.0 (-1.000R), minute 11
+[ok] book fields on B's trail sale: freed at the open of session 9 (exit_at_open), one leg at 2c, R -0.350 -> -0.390 at 2c
+[ok] verdict: lower end > 0 and 2.0 per 100 at 10R+ -> TEMPLATE
+[ok] verdict: upper end < +0.25 and 1.9 per 100 -> FAIL
+[ok] verdict: tail present, lower end <= 0 -> CAN'T TELL (tail present)
+[ok] verdict: n 99 -> CAN'T TELL (n)
+[ok] pick: within 0.02R the higher 10R+ wins; beyond it the mean wins; A first on a full tie
+[ok] the floor reads the planned width at the placement tick (raw cents): 14.9c refused, 15.0c kept; a placed row without one is a defect
+[ok] a placed row without a placement width raises
+[ok] fuzz: 400 random day-0 + daily paths through A / B / C / D — statuses in the vocabulary, every share sold once, R == the events' arithmetic; D == A on 232 paths where neither takes a third; B == C(20-day) on 157 paths where C's exit is not a trail sale; {('A', 'stopped_day0'): 293, ('B', 'stopped'): 52, ('C', 'stopped'): 32, ('D', 'stopped'): 30, ('A', 'trailed'): 74, ('B', 'trailed'): 66, ('C', 'trailed'): 91, ('D', 'trailed'): 92, ('B', 'stopped_day0'): 263, ('C', 'stopped_day0'): 263, ('D', 'stopped_day0'): 263, ('A', 'stopped'): 21, ('A', 'time_exit'): 2, ('B', 'time_exit'): 2, ('C', 'time_exit'): 2, ('D', 'time_exit'): 2, ('A', 'degraded'): 10, ('B', 'degraded'): 17, ('C', 'degraded'): 12, ('D', 'degraded'): 13}
+[ok] fuzz, day-0 survivors: 400 of 400 paths that neither day-0 walk stops out — the same invariants; D == A on 235 paths where neither takes a third; B == C(20-day) on 146; D's third at session 3 / 4 / 5 on 151 / 2 / 0 paths; {('A', 'stopped'): 223, ('B', 'degraded'): 19, ('C', 'degraded'): 15, ('D', 'stopped'): 220, ('B', 'stopped'): 245, ('C', 'stopped'): 189, ('A', 'time_exit'): 72, ('B', 'time_exit'): 72, ('C', 'time_exit'): 72, ('D', 'time_exit'): 72, ('A', 'trailed'): 92, ('C', 'trailed'): 124, ('A', 'degraded'): 13, ('D', 'degraded'): 13, ('B', 'trailed'): 64, ('D', 'trailed'): 95}
+[ok] calibration written: /Users/alvinfung/apollo_the_wise/scripts/probes/_breakout_v1_replay_1101/template_grid_1101/out/calibration.txt
+DRY RUN COMPLETE: 31 hand-computed cases, 0 failed
