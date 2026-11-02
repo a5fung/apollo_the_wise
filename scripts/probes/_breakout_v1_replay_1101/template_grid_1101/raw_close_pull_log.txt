@@ -1,0 +1,5 @@
+tickers 245 | rows 39626 | empty 0 | errors 0
+EMPTY
+
+ERRORS
+
