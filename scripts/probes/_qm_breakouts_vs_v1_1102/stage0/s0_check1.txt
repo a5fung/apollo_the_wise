@@ -1,0 +1,52 @@
+====================================================================================================
+CHECK 1 — the intraday volume pace (live F1) on Qullamaggie's buy days
+  list level = the 5-day high to D from the daily store; equal to the feature table's v1 level on 269/269; E is the next stored session on 269/269
+  coverage in the named store minutes_rev_1024 (1,322 pairs fetched): 0 of his 269 buy days
+  coverage in the replay's sealed minute stores (v1_replay.MINUTE_DIRS, < 2025 only): 269 of 269 — cb702_pre_v2/minutes: 251, cb702/minutes: 18
+  minute rows: Counter({'ok': 269}); minute high/low off the daily bar by > 1% (excluded, as the replay's walk does): 0 (); replayed in 6s
+  regular-hours minute volume / the day's full daily volume: median 0.93 (the F1 curve's pooled end-of-day share is 0.80; no rescale)
+  REPLAYED: 269 of 269 buys (263 on the rebuilt list; 26 of the 26 big winners)
+
+  BOUGHT ON HIS BUY DAY E (live replay; bought = filled or sold-after-fill):
+    all his covered buys             n=269 | price only 197 | OLD 1.2x 50-day 146 | NEW 1.2x 10-day 157 || literal OLD 164, NEW 175 || daily-bar test OLD 128, NEW 160
+    his buys on the rebuilt list     n=263 | price only 193 | OLD 1.2x 50-day 143 | NEW 1.2x 10-day 154 || literal OLD 160, NEW 172 || daily-bar test OLD 124, NEW 156
+      era A on the list (36's 245)   n=245 | price only 177 | OLD 1.2x 50-day 131 | NEW 1.2x 10-day 141 || literal OLD 147, NEW 158 || daily-bar test OLD 116, NEW 145
+      era B on the list              n= 18 | price only  16 | OLD 1.2x 50-day  12 | NEW 1.2x 10-day  13 || literal OLD  13, NEW  14 || daily-bar test OLD   8, NEW  11
+    big winners                      n= 26 | price only  23 | OLD 1.2x 50-day  15 | NEW 1.2x 10-day  17 || literal OLD  21, NEW  20 || daily-bar test OLD  15, NEW  21
+
+  THE MINUTE OF THE BUY (live replay, clock ET):
+    price_only on the list  bought 193: median 09:43, quartiles 09:36-10:08, by 09:45 105, by 10:00 136, by 10:30 154, by 12:00 174, after 12:00 19
+    price_only big winners  bought  23: median 09:48, quartiles 09:37-10:56, by 09:45 10, by 10:00 14, by 10:30 16, by 12:00 19, after 12:00 4
+    OLD        on the list  bought 143: median 09:41, quartiles 09:36-09:54, by 09:45 89, by 10:00 111, by 10:30 119, by 12:00 131, after 12:00 12
+    OLD        big winners  bought  15: median 09:42, quartiles 09:37-10:54, by 09:45 8, by 10:00 10, by 10:30 10, by 12:00 12, after 12:00 3
+    NEW        on the list  bought 154: median 09:41, quartiles 09:36-09:55, by 09:45 96, by 10:00 120, by 10:30 133, by 12:00 143, after 12:00 11
+    NEW        big winners  bought  17: median 09:46, quartiles 09:37-10:42, by 09:45 8, by 10:00 10, by 10:30 12, by 12:00 14, after 12:00 3
+
+  WHY NOT BOUGHT (his buys on the rebuilt list):
+    price_only bought: 193 | day low to level wider than the daily range (stop too wide): 54 | placed, the high never reached the level = max(5-minute opening-range high, 5-day high): 16
+    OLD        bought: 143 | day low to level wider than the daily range (stop too wide): 51 | volume pace never met while the price setup held (never placed): 32 | order placed, volume pace lapsed before the price reached the level (cancelled): 25 | price already past the level when the pace was met (#500 fallback: chase cap / width): 9 | placed, the high never reached the level = max(5-minute opening-range high, 5-day high): 3
+    NEW        bought: 154 | day low to level wider than the daily range (stop too wide): 54 | order placed, volume pace lapsed before the price reached the level (cancelled): 25 | volume pace never met while the price setup held (never placed): 18 | price already past the level when the pace was met (#500 fallback: chase cap / width): 6 | placed, the high never reached the level = max(5-minute opening-range high, 5-day high): 6
+    price_only 'never reached': 16, of which the day's high cleared the 5-day high but not the 5-minute opening-range high: 4 (NVAX 2020-02-24, PLNT 2020-05-26, AMAT 2021-03-24, FREY 2022-11-15)
+    NEW, big winners: bought: 17 | order placed, volume pace lapsed before the price reached the level (cancelled): 3 | price already past the level when the pace was met (#500 fallback: chase cap / width): 2 | day low to level wider than the daily range (stop too wide): 2 | placed, the high never reached the level = max(5-minute opening-range high, 5-day high): 1 | volume pace never met while the price setup held (never placed): 1
+
+  NEW (1.2x the last 10 days): live intraday vs the daily-bar test, his buys on the rebuilt list:
+    on the list        both 110 | intraday only 44 | daily only 46 | neither 63
+    era A on the list  both 101 | intraday only 40 | daily only 44 | neither 60
+    big winners        both 16 | intraday only 1 | daily only 5 | neither 4
+    daily only, why the live replay did not buy: day low to level wider than the daily range (stop too wide): 30 | order placed, volume pace lapsed before the price reached the level (cancelled): 7 | price already past the level when the pace was met (#500 fallback: chase cap / width): 6 | placed, the high never reached the level = max(5-minute opening-range high, 5-day high): 3
+    daily only: SHOP 2017-08-01, UCTT 2017-08-29, OKTA 2018-07-27, ETSY 2018-08-07, TSLA 2018-08-07, BMA 2019-08-09, GGAL 2019-08-09, EW 2019-08-16, MIK 2019-10-22, TDOC 2019-10-31, ACMR 2020-02-10, NVAX 2020-02-24, TSLA 2020-04-30, FSLY 2020-05-07, APT 2020-05-14, UAL 2020-05-27, APT 2020-06-17 BIG, DKNG 2020-06-22, SRNE 2020-06-24 BIG, BNTX 2020-06-25, DXCM 2020-07-29, AVLR 2020-07-29, TDOC 2020-07-30, SRNE 2020-07-30 BIG, PINS 2020-07-31, JD 2020-08-17, TWTR 2020-08-19, ESTC 2020-09-16, SE 2020-09-25, JD 2020-10-29, BLDP 2020-11-16, TSLA 2020-11-18, FEAC 2020-11-30, SOLO 2021-01-11, SI 2021-01-22 BIG, CBAT 2021-01-22, TTD 2021-02-19, AMC 2021-02-25, AMAT 2021-03-24, CLF 2021-05-04, FUTU 2021-06-14, MSTR 2021-08-05, CCJ 2021-10-12, QS 2021-10-29 BIG, FREY 2022-11-15, GSIT 2023-06-01
+    intraday only, why the daily test did not fire: high not above the 5-day high 0 | full-day volume under 1.2x the 10-day 44 (median 0.96x)
+    intraday only: SINA 2017-10-02, SQM 2017-10-04, ANET 2018-03-12, MIK 2019-10-21, KOD 2019-12-24, LK 2020-02-18, BILI 2020-03-05, BLDP 2020-04-27, TTD 2020-05-22, BILI 2020-06-08, ACB 2020-06-08, TWLO 2020-06-10, MRNA 2020-06-15, OKTA 2020-06-17, JD 2020-07-02, LAKE 2020-07-28, SE 2020-09-14, TSLA 2020-10-12, CCL 2020-12-28, SNAP 2021-01-07, JMIA 2021-01-12 BIG, PDD 2021-02-02, SEDG 2021-02-08, W 2021-02-11, APHA 2021-03-02, TLRY 2021-03-02, FCX 2021-03-11, UAL 2021-03-11, RCL 2021-03-15, SOS 2021-03-15, MU 2021-03-16, APPS 2021-03-22, ETSY 2021-03-23, FCX 2021-04-06, SNAP 2021-04-29, SNAP 2021-08-23, AMC 2021-09-10, BTBT 2021-10-20, FCX 2021-12-07, PFE 2021-12-13, LHX 2022-04-05, LMT 2022-04-06, DKNG 2023-09-11, GME 2023-12-14
+    big winners not bought under NEW: APT 2020-02-21 (placed, the high never reached the level = max(5-minute opening-range high, 5-day high)); APT 2020-06-17 (price already past the level when the pace was met (#500 fallback: chase cap / width)); SRNE 2020-06-24 (price already past the level when the pace was met (#500 fallback: chase cap / width)); SRNE 2020-07-30 (order placed, volume pace lapsed before the price reached the level (cancelled)); DOYU 2020-08-24 (order placed, volume pace lapsed before the price reached the level (cancelled)); MDB 2020-09-21 (volume pace never met while the price setup held (never placed)); NVDA 2020-09-25 (order placed, volume pace lapsed before the price reached the level (cancelled)); SI 2021-01-22 (day low to level wider than the daily range (stop too wide)); QS 2021-10-29 (day low to level wider than the daily range (stop too wide))
+
+  AT HIS OWN BUY TIME (139 of his on-list buys have a first-sighting clock on E in his stream; he bought at or before it):
+    first sighting: median 10:06, by 10:00 55, before 09:35 (no tick yet) 8
+    OLD: volume pace met by the minute before his sighting 110/139 | our replay bought at or before his sighting 66, later the same day 16, not at all 57
+    NEW: volume pace met by the minute before his sighting 124/139 | our replay bought at or before his sighting 74, later the same day 16, not at all 49
+
+  SIMPLIFICATIONS (stated, per the task):
+    - broker mechanics are v1_replay.simulate_entry's re-implementation (stop-limit triggers on the first bar whose high >= level; the #500 fallback limit; cancel + re-place instantaneous; no partial fills; every minute bar published on time, so the 09:35 'wait for the 09:34 bar' never binds)
+    - one name alone: no 5-slot cap, no other strategy owning the ticker, no pre-flight, no sizing (the 'under 1 share' cancel is not modelled), switch on
+    - the list level / adr20 / volume averages come from the replay's daily stores (era A cb702_pre_v2, era B the sealed < 2025 cb702 copy), the live list reads mi_daily_closes; the minute bars are the replay's SIP minute stores on the same adjusted scale (checked: high/low within 1% of the daily bar)
+    - F1's curve (CUM_SHARE) is used unchanged with the NEW bar: the build changes only vol_bar to 1.2x the 10-session average
+    - his buy time is the first stream frame showing the position on E (an upper bound on when he bought), available for some buys only

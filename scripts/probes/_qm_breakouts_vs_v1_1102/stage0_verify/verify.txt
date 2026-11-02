@@ -1,0 +1,208 @@
+BLIND VERIFY of Stage 0 (Qullamaggie's 269 dated breakout buys are the scorecard; no returns; nothing >= 2025-01-01)
+feature rows 4,227,440; nights 2012 (A 1322, B 690); era of every row agrees with D<=2022-03-31: True
+Qullamaggie's buys joined to their night D in the table: 269/269
+thresholds re-derived: depth lo = LRN 2020-08-05 1.5114, hi 8.9797 (12_final_rules.json), run-up >= 0.3214, close vs EMA21 >= TSLA 2022-04-21 -0.6335 ranges, close >= 50-day SMA
+
+LIST (rules 1-7):
+  exact derived thresholds (builder's)         Qullamaggie's buys on the list 263/269 | big 26/26 | names a night median 249 mean 330 p90 609
+  spec's ROUNDED constants (1.5/9.0/32.1%/-0.63) Qullamaggie's buys on the list 262/269 | big 26/26 | names a night median 249 mean 331 p90 610
+  rounded constants drop 1 of Qullamaggie's on-list buys: TSLA 2022-04-21 (vs EMA21 -0.6335)
+  his 6 off the list: YPF 2019-04-17, W 2020-04-07, DOCU 2020-12-04, DOCU 2020-12-15, SQM 2021-09-10, MRNA 2021-11-29
+
+bar-feature sanity on 664,809 list rows: close(D) store vs table max |diff| 0.00e+00; 5-day high vs table level max |diff| 0.00e+00; ADR20 bars vs table max |diff| 2.22e-16; E = next stored session on 664,747 of 664,809 list rows
+Qullamaggie's 269: E is the next stored session 269/269; calendar gap D->E of exactly 1 session 269/269
+era-A parity vs the parent's caches (list rows 443,986): move126 0.00e+00, c10 0.00e+00, x10 0.00e+00, x50 0.00e+00; rows absent from the parent cache 0, NaN x10 there (no E bar) 30
+
+order score: list rows with no score 0
+
+CHECK 2 — era A: 1322 nights (2016-12-30 .. 2022-03-31)
+  list: names a night median 221, mean 335.8, p90 825 | Qullamaggie's buys on the list 245/251 | big 26/26
+  NEW 1.2x 10-day: breakouts a day median 24, mean 38.1, p90 86; days >5 1214 (92%), days 0 5 | his firing on E 145/245 | big 21/26
+  OLD 1.2x 50-day: breakouts a day median 20, mean 31.2, p90 67; days >5 1206 (91%), days 0 5 | his firing on E 116/245 | big 15/26
+  order score: yes-above-no 0.70 (yes 48, no 35) | his buys in their night's top 10 30, top 20 48, top 30 61, top 50 88 of 245 | big top 20 6, top 50 8
+
+CHECK 2 — era B: 690 nights (2022-04-01 .. 2024-12-30)
+  list: names a night median 310, mean 320.0, p90 509 | Qullamaggie's buys on the list 18/18 | big 0/0
+  NEW 1.2x 10-day: breakouts a day median 26, mean 36.3, p90 78; days >5 644 (93%), days 0 3 | his firing on E 11/18 | big 0/0
+  OLD 1.2x 50-day: breakouts a day median 23, mean 30.1, p90 60; days >5 636 (92%), days 0 2 | his firing on E 8/18 | big 0/0
+  order score: yes-above-no nan (yes 0, no 0) | his buys in their night's top 10 2, top 20 3, top 30 3, top 50 6 of 18 | big top 20 0, top 50 0
+
+CHECK 2 — era ALL: 2012 nights (2016-12-30 .. 2024-12-30)
+  list: names a night median 249, mean 330.4, p90 609 | Qullamaggie's buys on the list 263/269 | big 26/26
+  NEW 1.2x 10-day: breakouts a day median 25, mean 37.5, p90 82; days >5 1858 (92%), days 0 8 | his firing on E 156/263 | big 21/26
+  OLD 1.2x 50-day: breakouts a day median 21, mean 30.8, p90 64; days >5 1842 (92%), days 0 7 | his firing on E 124/263 | big 15/26
+  order score: yes-above-no 0.70 (yes 48, no 35) | his buys in their night's top 10 32, top 20 51, top 30 64, top 50 94 of 263 | big top 20 6, top 50 8
+
+  era-B buys one by one:
+    LHX   buy 2022-04-05 on list yes | NEW no  OLD no  | high>5d y x10 1.08 x50 0.76 | move126 39% = 14.0 ranges c10 1.6 | night rank 126 of 563
+    LMT   buy 2022-04-05 on list yes | NEW yes OLD no  | high>5d y x10 1.34 x50 0.83 | move126 45% = 17.1 ranges c10 1.4 | night rank 42 of 563
+    LMT   buy 2022-04-06 on list yes | NEW no  OLD no  | high>5d y x10 1.15 x50 0.72 | move126 45% = 17.7 ranges c10 1.5 | night rank 40 of 475
+    X     buy 2022-04-12 on list yes | NEW no  OLD no  | high>5d n x10 1.03 x50 0.63 | move126 118% = 25.3 ranges c10 1.3 | night rank 7 of 370
+    LAC   buy 2022-04-21 on list yes | NEW yes OLD yes | high>5d y x10 1.81 x50 2.12 | move126 113% = 13.7 ranges c10 1.8 | night rank 143 of 415
+    TSLA  buy 2022-04-21 on list yes | NEW yes OLD yes | high>5d y x10 1.66 x50 1.46 | move126 65% = 15.5 ranges c10 2.0 | night rank 118 of 415
+    FTNT  buy 2022-04-21 on list yes | NEW yes OLD no  | high>5d y x10 1.44 x50 0.97 | move126 34% = 10.2 ranges c10 1.2 | night rank 178 of 415
+    VLO   buy 2022-05-27 on list yes | NEW no  OLD no  | high>5d y x10 0.92 x50 0.95 | move126 65% = 15.3 ranges c10 1.0 | night rank 13 of 252
+    FREY  buy 2022-11-15 on list yes | NEW yes OLD no  | high>5d y x10 1.47 x50 0.96 | move126 156% = 22.5 ranges c10 3.2 | night rank 105 of 367
+    U     buy 2022-11-15 on list yes | NEW yes OLD yes | high>5d y x10 1.45 x50 2.38 | move126 102% = 12.4 ranges c10 6.4 | night rank 331 of 367
+    FCX   buy 2023-01-06 on list yes | NEW yes OLD yes | high>5d y x10 1.86 x50 1.25 | move126 58% = 18.9 ranges c10 1.9 | night rank 87 of 397
+    MDGL  buy 2023-01-24 on list yes | NEW no  OLD no  | high>5d y x10 0.94 x50 0.53 | move126 451% = 73.2 ranges c10 1.2 | night rank 1 of 641
+    PDD   buy 2023-01-05 on list yes | NEW yes OLD no  | high>5d y x10 1.76 x50 1.00 | move126 140% = 34.2 ranges c10 2.9 | night rank 111 of 453
+    AI    buy 2023-05-17 on list yes | NEW yes OLD yes | high>5d y x10 2.75 x50 1.96 | move126 231% = 32.1 ranges c10 5.2 | night rank 63 of 147
+    LI    buy 2023-04-17 on list yes | NEW yes OLD yes | high>5d y x10 1.78 x50 1.31 | move126 106% = 32.2 ranges c10 2.4 | night rank 47 of 237
+    GSIT  buy 2023-06-01 on list yes | NEW yes OLD yes | high>5d y x10 1.70 x50 2.21 | move126 403% = 21.0 ranges c10 2.3 | night rank 102 of 194
+    DKNG  buy 2023-09-11 on list yes | NEW no  OLD no  | high>5d y x10 0.89 x50 0.81 | move126 79% = 20.4 ranges c10 3.4 | night rank 140 of 227
+    GME   buy 2023-12-14 on list yes | NEW no  OLD yes | high>5d y x10 0.86 x50 1.69 | move126 69% = 8.6 ranges c10 2.1 | night rank 193 of 262
+era-B sealed (in memory): kept 8,619,626, dropped 5,210,943 (8s); calendar 2021-09-27..2024-12-31
+  (the builder's count uses index < 189, i.e. it also counts the night whose window starts exactly on the store's first bar)
+  era-B store starts 2021-09-27; nights whose 6-month move window (126 sessions + the 64-session low) reaches before it: 58 (to 2022-06-24)
+  era-B nights with fewer than 126 sessions of store history: 0
+
+CHECK 3 — firing name-days 75,451; with no score 0
+  era A: his firing 145 of 245 on the list -> top 5 51, top 10 74 (ties as min: 51/74) | big firing 21 -> top 5 8, top 10 10
+  era B: his firing 11 of 18 on the list -> top 5 1, top 10 4 (ties as min: 1/4) | big firing 0 -> top 5 0, top 10 0
+  era ALL: his firing 156 of 263 on the list -> top 5 52, top 10 78 (ties as min: 52/78) | big firing 21 -> top 5 8, top 10 10
+  his firing buys' rank: median 10, quartiles 4-25; their day's firing count median 58
+  big winners that fire (rank of firing): NVAX 2020-02-26 #1/10, PDD 2020-05-08 #12/46, SHOP 2020-06-15 #5/56, APT 2020-06-17 #53/83, SRNE 2020-06-24 #2/41, BLDP 2020-06-29 #6/35, CODX 2020-07-16 #2/92, CODX 2020-07-21 #1/174, SRNE 2020-07-30 #43/117, BE 2020-08-13 #12/29, NIO 2020-09-29 #2/24, JMIA 2020-11-18 #21/72, PTON 2020-12-14 #20/158, SKLZ 2021-01-05 #103/148, APHA 2021-01-06 #338/655, BE 2021-01-06 #137/655, SI 2021-01-22 #3/65, OSTK 2021-01-22 #10/65, TLRY 2021-02-02 #4/88, LCID 2021-10-25 #21/33, QS 2021-10-29 #47/60
+
+CHECK 1 — the intraday buy on Qullamaggie's buy day E (12s)
+  named store minutes_rev_1024 holds his (E, ticker) pairs: by ticker 0, by sym 0 of 269
+  covered through the sealed minute stores (precedence order): {'cb702_pre_v2/minutes': 251, 'cb702/minutes': 18}; key used: {'ticker': 269}
+  minute rows ok 269; minute-vs-daily high/low off by > 1%: 0 (max hi 0.0018, max lo 0.0032); level = table v1 level 269/269
+  regular-hours minute volume / full daily volume: median 0.93 (CUM_SHARE[389] = 0.8035)
+  all covered    n=269 | price only 197 | OLD 146 | NEW 157 || literal OLD 160, NEW 174 || daily OLD 128, NEW 160 || sold-after-fill NEW 0
+  on the list    n=263 | price only 193 | OLD 143 | NEW 154 || literal OLD 156, NEW 171 || daily OLD 124, NEW 156 || sold-after-fill NEW 0
+  era A on list  n=245 | price only 177 | OLD 131 | NEW 141 || literal OLD 144, NEW 158 || daily OLD 116, NEW 145 || sold-after-fill NEW 0
+  era B on list  n= 18 | price only 16 | OLD 12 | NEW 13 || literal OLD 12, NEW 13 || daily OLD 8, NEW 11 || sold-after-fill NEW 0
+  big winners    n= 26 | price only 23 | OLD 15 | NEW 17 || literal OLD 16, NEW 20 || daily OLD 15, NEW 21 || sold-after-fill NEW 0
+  px  on list  bought 193: median 09:43, quartiles 09:36-10:08, by 09:45 105, by 10:00 136, by 10:30 154, after 12:00 19
+  px  big      bought 23: median 09:48, quartiles 09:37-10:56, by 09:45 10, by 10:00 14, by 10:30 16, after 12:00 4
+  old on list  bought 143: median 09:41, quartiles 09:36-09:54, by 09:45 89, by 10:00 111, by 10:30 119, after 12:00 12
+  old big      bought 15: median 09:42, quartiles 09:37-10:54, by 09:45 8, by 10:00 10, by 10:30 10, after 12:00 3
+  new on list  bought 154: median 09:41, quartiles 09:36-09:55, by 09:45 96, by 10:00 120, by 10:30 133, after 12:00 11
+  new big      bought 17: median 09:46, quartiles 09:37-10:42, by 09:45 8, by 10:00 10, by 10:30 12, after 12:00 3
+  why not bought (px, on list): bought 193, stop too wide 54, never reached the level 16
+  why not bought (old, on list): bought 143, stop too wide 51, pace never met 32, pace lapsed, cancelled 25, #500 fallback chase cap / width 9, never reached the level 3
+  why not bought (new, on list): bought 154, stop too wide 54, pace lapsed, cancelled 25, pace never met 18, #500 fallback chase cap / width 6, never reached the level 6
+  why not bought (NEW, big): bought 17, pace lapsed, cancelled 3, #500 fallback chase cap / width 2, stop too wide 2, never reached the level 1, pace never met 1
+  NEW intraday vs NEW daily (on list): both 110, intraday only 44, daily only 46, neither 63
+    daily only, why not bought live: stop too wide 30, pace lapsed, cancelled 7, #500 fallback chase cap / width 6, never reached the level 3
+    intraday only: full-day volume under 1.2x the 10-day 44 of 44 (median 0.96x)
+  big NEW intraday vs daily: both 16, intraday only 1 (JMIA 2021-01-12), daily only 5, neither 4
+  big winners not bought under NEW: APT 2020-02-21 (never reached the level); APT 2020-06-17 (#500 fallback chase cap / width); SRNE 2020-06-24 (#500 fallback chase cap / width); SRNE 2020-07-30 (pace lapsed, cancelled); DOYU 2020-08-24 (pace lapsed, cancelled); MDB 2020-09-21 (pace never met); NVDA 2020-09-25 (pace lapsed, cancelled); SI 2021-01-22 (stop too wide); QS 2021-10-29 (stop too wide)
+  price-only 'never reached': 16, of which the 5-minute opening-range high sat above the 5-day level: 4 (NVAX 2020-02-24, PLNT 2020-05-26, AMAT 2021-03-24, FREY 2022-11-15)
+  re-prices (NEW): 46 buys re-priced at least once; re-price that changed the order kind or replaced a TRIGGERED stop-limit: 0 ()
+  NEW orders placed as the #500 limit (price already past the level at placement): 9
+  OLD bought via a stop-limit: 137; filled in the placement minute itself 35; the placement minute OPENED above the level (live's latest trade at the tick would read past the level -> #500 limit + chase cap, or a venue-killed stop if the last trade lagged the ask) 1: FCX 2023-01-06
+  NEW bought via a stop-limit: 148; filled in the placement minute itself 35; the placement minute OPENED above the level (live's latest trade at the tick would read past the level -> #500 limit + chase cap, or a venue-killed stop if the last trade lagged the ask) 2: SNAP 2021-04-29, FCX 2023-01-06
+  NEW #500-fallback misses on the list: 6; under price-only those were: {'bought': 6}; volume holds before placement (NEW): 6 placed after 09:35
+  price-only 'never reached' 16: daily high above the 5-day high 4
+  RTH minute volume / full daily volume on his 269 buy days: mean 0.908, median 0.927; era A median 0.927, era B median 0.931; share >= 0.8035 on 247/269
+
+  his buy time: 139 on-list buys with a first-sighting clock on E; median 10:06, by 10:00 55, before 09:35 8
+  old: volume pace (price ignored) met AT the minute before his sighting 105/139, met at ANY tick up to it 110/139
+  old: F1 permitted (with the price setup ok) at some tick reading through the minute before his sighting 95/139 | our replay bought at or before his sighting 66, later 16, not at all 57
+  new: volume pace (price ignored) met AT the minute before his sighting 118/139, met at ANY tick up to it 121/139
+  new: F1 permitted (with the price setup ok) at some tick reading through the minute before his sighting 104/139 | our replay bought at or before his sighting 74, later 16, not at all 49
+
+  PER-BUY SAMPLE (46 = 26 big winners + 20 random, seed 1103): OLD vs NEW decision and minute
+    BIG APT   2020-02-21 list y | OLD pace lapsed, cancelled          -     | NEW never reached the level         -     | daily OLD n NEW n
+    BIG NVAX  2020-02-26 list y | OLD bought                          09:39 | NEW bought                          09:39 | daily OLD y NEW y
+    BIG PDD   2020-05-08 list y | OLD bought                          09:37 | NEW bought                          09:37 | daily OLD n NEW y
+    BIG SHOP  2020-06-15 list y | OLD bought                          09:41 | NEW bought                          09:41 | daily OLD n NEW y
+    BIG APT   2020-06-17 list y | OLD #500 fallback chase cap / width -     | NEW #500 fallback chase cap / width -     | daily OLD y NEW y
+    BIG SRNE  2020-06-24 list y | OLD #500 fallback chase cap / width -     | NEW #500 fallback chase cap / width -     | daily OLD n NEW y
+    BIG BLDP  2020-06-29 list y | OLD bought                          09:42 | NEW bought                          09:42 | daily OLD y NEW y
+    BIG CODX  2020-07-16 list y | OLD pace never met                  -     | NEW bought                          14:38 | daily OLD n NEW y
+    BIG CODX  2020-07-21 list y | OLD #500 fallback chase cap / width -     | NEW bought                          10:15 | daily OLD y NEW y
+    BIG SRNE  2020-07-30 list y | OLD #500 fallback chase cap / width -     | NEW pace lapsed, cancelled          -     | daily OLD n NEW y
+    BIG BE    2020-08-13 list y | OLD bought                          09:37 | NEW bought                          09:37 | daily OLD y NEW y
+    BIG DOYU  2020-08-24 list y | OLD bought                          10:39 | NEW pace lapsed, cancelled          -     | daily OLD n NEW n
+    BIG MDB   2020-09-21 list y | OLD #500 fallback chase cap / width -     | NEW pace never met                  -     | daily OLD y NEW n
+    BIG NVDA  2020-09-25 list y | OLD bought                          13:41 | NEW pace lapsed, cancelled          -     | daily OLD n NEW n
+    BIG NIO   2020-09-29 list y | OLD pace lapsed, cancelled          -     | NEW bought                          10:11 | daily OLD y NEW y
+    BIG JMIA  2020-11-18 list y | OLD bought                          09:36 | NEW bought                          09:36 | daily OLD y NEW y
+    BIG PTON  2020-12-14 list y | OLD bought                          09:36 | NEW bought                          09:35 | daily OLD n NEW y
+    BIG SKLZ  2021-01-05 list y | OLD bought                          12:26 | NEW bought                          12:26 | daily OLD y NEW y
+    BIG APHA  2021-01-06 list y | OLD bought                          09:46 | NEW bought                          09:46 | daily OLD y NEW y
+    BIG BE    2021-01-06 list y | OLD bought                          09:37 | NEW bought                          09:37 | daily OLD n NEW y
+    BIG JMIA  2021-01-12 list y | OLD pace never met                  -     | NEW bought                          10:42 | daily OLD n NEW n
+    BIG SI    2021-01-22 list y | OLD stop too wide                   -     | NEW stop too wide                   -     | daily OLD y NEW y
+    BIG OSTK  2021-01-22 list y | OLD bought                          09:52 | NEW bought                          09:52 | daily OLD y NEW y
+    BIG TLRY  2021-02-02 list y | OLD bought                          12:32 | NEW bought                          12:32 | daily OLD y NEW y
+    BIG LCID  2021-10-25 list y | OLD bought                          11:10 | NEW bought                          11:10 | daily OLD y NEW y
+    BIG QS    2021-10-29 list y | OLD stop too wide                   -     | NEW stop too wide                   -     | daily OLD y NEW y
+        GGAL  2019-08-09 list y | OLD stop too wide                   -     | NEW stop too wide                   -     | daily OLD y NEW y
+        WORK  2020-03-05 list y | OLD bought                          09:43 | NEW bought                          09:43 | daily OLD y NEW y
+        TSLA  2020-04-14 list y | OLD bought                          09:42 | NEW bought                          09:42 | daily OLD y NEW y
+        APT   2020-04-23 list y | OLD pace never met                  -     | NEW pace lapsed, cancelled          -     | daily OLD n NEW n
+        TWTR  2020-07-20 list y | OLD bought                          09:35 | NEW pace never met                  -     | daily OLD n NEW n
+        ZM    2020-08-03 list y | OLD bought                          09:35 | NEW bought                          09:35 | daily OLD n NEW y
+        LRN   2020-08-05 list y | OLD bought                          10:30 | NEW bought                          10:30 | daily OLD y NEW y
+        TWTR  2020-08-19 list y | OLD pace never met                  -     | NEW #500 fallback chase cap / width -     | daily OLD n NEW y
+        LVGO  2020-09-25 list y | OLD stop too wide                   -     | NEW stop too wide                   -     | daily OLD n NEW n
+        TSLA  2020-09-30 list y | OLD pace never met                  -     | NEW pace never met                  -     | daily OLD n NEW n
+        TSLA  2020-11-09 list y | OLD #500 fallback chase cap / width -     | NEW bought                          09:45 | daily OLD n NEW y
+        MARA  2021-02-08 list y | OLD bought                          09:35 | NEW bought                          09:35 | daily OLD y NEW y
+        FUTU  2021-02-09 list y | OLD bought                          09:36 | NEW bought                          09:36 | daily OLD y NEW y
+        AMC   2021-02-25 list y | OLD stop too wide                   -     | NEW stop too wide                   -     | daily OLD y NEW y
+        PENN  2021-03-01 list y | OLD bought                          10:08 | NEW bought                          10:08 | daily OLD y NEW y
+        FCX   2021-03-11 list y | OLD bought                          09:35 | NEW bought                          09:36 | daily OLD n NEW n
+        AMC   2021-09-10 list y | OLD bought                          09:37 | NEW bought                          09:37 | daily OLD n NEW n
+        GME   2021-09-13 list y | OLD stop too wide                   -     | NEW stop too wide                   -     | daily OLD n NEW n
+        MRNA  2021-11-29 list n | OLD bought                          09:35 | NEW bought                          09:35 | daily OLD y NEW y
+        MDGL  2023-01-24 list y | OLD pace never met                  -     | NEW pace never met                  -     | daily OLD n NEW n
+
+CROSS-CHECK my live-path loop vs v1_replay.simulate_entry (same inputs): agree {('old', True): 269, ('new', True): 269, ('px', True): 269}
+
+CLAIMS vs MINE (stage0/s0.txt numbers; DIFF = a number that differs):
+  MATCH c1 store minutes_rev_1024 holds                      claimed 0 | mine 0
+  MATCH c1 covered pre_v2                                    claimed 251 | mine 251
+  MATCH c1 covered cb702                                     claimed 18 | mine 18
+  MATCH c1 mismatch excluded                                 claimed 0 | mine 0
+  MATCH c1 OLD on list                                       claimed 143 | mine 143
+  MATCH c1 NEW on list                                       claimed 154 | mine 154
+  MATCH c1 px on list                                        claimed 193 | mine 193
+  MATCH c1 OLD era A                                         claimed 131 | mine 131
+  MATCH c1 NEW era A                                         claimed 141 | mine 141
+  MATCH c1 OLD era B                                         claimed 12 | mine 12
+  MATCH c1 NEW era B                                         claimed 13 | mine 13
+  MATCH c1 OLD big                                           claimed 15 | mine 15
+  MATCH c1 NEW big                                           claimed 17 | mine 17
+  MATCH c1 px big                                            claimed 23 | mine 23
+  DIFF  c1 literal(no-lapse-cancel, #500 kept) OLD on list   claimed 160 | mine 156
+  DIFF  c1 literal(no-lapse-cancel, #500 kept) NEW on list   claimed 172 | mine 171
+  DIFF  c1 literal(no-lapse-cancel, #500 kept) OLD big       claimed 21 | mine 16
+  MATCH c1 literal(no-lapse-cancel, #500 kept) NEW big       claimed 20 | mine 20
+  MATCH c1 builder-literal reproduced OLD on list / era A / big claimed (160, 147, 21) | mine (160, 147, 21)
+  MATCH c1 builder-literal reproduced NEW on list / era A / big claimed (172, 158, 20) | mine (172, 158, 20)
+  MATCH c2 B list median                                     claimed 310 | mine 310.0
+  MATCH c2 B list mean                                       claimed 320 | mine 320
+  MATCH c2 B list p90                                        claimed 509 | mine 509
+  MATCH c2 B NEW median                                      claimed 26 | mine 26.0
+  MATCH c2 B NEW mean                                        claimed 36.3 | mine 36.3
+  MATCH c2 B NEW p90                                         claimed 78 | mine 78.0
+  MATCH c2 B NEW days>5                                      claimed 644 | mine 644
+  MATCH c2 B OLD median                                      claimed 23 | mine 23.0
+  MATCH c2 B OLD mean                                        claimed 30.1 | mine 30.1
+  MATCH c2 B on list                                         claimed 18 | mine 18
+  MATCH c2 B fire NEW                                        claimed 11 | mine 11
+  MATCH c2 B fire OLD                                        claimed 8 | mine 8
+  MATCH c2 B top10/20/30/50                                  claimed (2, 3, 3, 6) | mine (2, 3, 3, 6)
+  MATCH c2 ALL list med/mean/p90                             claimed (249, 330, 609) | mine (np.float64(249.0), 330, 609)
+  MATCH c2 ALL NEW med/mean/p90                              claimed (25, 37.5, 82) | mine (np.float64(25.0), np.float64(37.5), 82)
+  MATCH c2 ALL OLD med/mean                                  claimed (21, 30.8) | mine (np.float64(21.0), np.float64(30.8))
+  MATCH c2 ALL on list / fire NEW / fire OLD                 claimed (263, 156, 124) | mine (263, 156, 124)
+  MATCH c2 ALL big on / NEW / OLD                            claimed (26, 21, 15) | mine (26, 21, 15)
+  MATCH c2 ALL top10/20/50                                   claimed (32, 51, 94) | mine (32, 51, 94)
+  MATCH c2 A list med/mean                                   claimed (221, 336) | mine (np.float64(221.0), 336)
+  MATCH c2 A NEW med/mean                                    claimed (24, 38.1) | mine (np.float64(24.0), np.float64(38.1))
+  MATCH c2 A on list / fire NEW / big NEW                    claimed (245, 145, 21) | mine (245, 145, 21)
+  3 DIFF(s); the literal rows differ by DEFINITION (s0_check1.py's literal = buy at the first tick whose evaluate is ok + F1 permits and bar m's high >= level: a lapse may re-permit AND the #500 width / chase cap is not applied; mine = the live path with only the F1-lapse cancel removed)
+
+LOOK-AHEAD AUDIT (by construction in this script):
+  list rules + order score: the feature table (bars <= D, built by 10_feature_table.py with breakout_v1.v1_gates) + rolling windows ending at D
+  daily buy test: high(E) and volume(E) = the E bar itself (the trigger event); level/averages end at D
+  intraday: tick m reads bars <= m-1 (evaluate), a resting order fills on bar m; the stop at the fill reads bars <= fill minute
+  data filters that read E's full day (not decisions): the 1% minute-vs-daily high/low check; the RTH-volume share statistic
+  big-winner label: realized_r >= 5 (membership only, as 11_starting_point.py)
+done

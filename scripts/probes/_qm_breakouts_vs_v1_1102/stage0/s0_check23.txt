@@ -1,0 +1,61 @@
+====================================================================================================
+PARITY (stage 0 re-implementation vs the parent folder's printed numbers)
+  list (rules 1-7): Qullamaggie's buys on the list 263/269 | big winners 26/26 | names a night median 249 mean 330 p90 609   [18_sma50_rule.txt PLAIN LINE: 263/269, 26/26, 249/330/609]
+  thresholds: base depth 1.5114..8.9797 daily ranges, run-up >= 0.3214, close vs EMA21 >= -0.6335 daily ranges, close >= 50-day SMA
+  era-A bar features vs the parent's caches on 443,986 list rows: move126 max diff (0.0, 0), c10 (0.0, 0), x10 (0.0, 0), x50 (0.0, 0) (max |diff|, NaN-pattern mismatches); up equal True, E_bar equal True; cache rows = list rows True
+  era-A buy test, volume >= 1.2x the 50-day (OLD): breakouts a day: median 20, mean 31.2, 90th pct 67 | Qullamaggie's buys firing on his day 116/245 | big 15/26   [36: median 20, mean 31.2 | 116/245 | 15/26]
+  era-A buy test, volume >= 1.2x the last 10 days (NEW): breakouts a day: median 24, mean 38.1, 90th pct 86 | Qullamaggie's buys firing on his day 145/245 | big 21/26   [36: median 24, mean 38.1 | 145/245 | 21/26]
+  era-A order score: his yes above his no 0.70 (yes 48, no 35 on the list) | Qullamaggie's buys in their night's top 10: 30, top 20: 48, top 30: 61, top 50: 88 of 245 | big winners top 20: 6, top 50: 8 of 26   [33: 0.70 (48, 35) | 30, 48, 61, 88 of 245 | 6, 8 of 26]
+  era-A list median 221 names a night   [33: 221]
+
+====================================================================================================
+CHECK 2 — 2022-2024 (era B: nights 2022-04-01 .. 2024-12-30, the sealed < 2025 store), then 2017-2024 combined
+
+era A (nights 2016-12-30 .. 2022-03-31): 1322 nights
+  list: names a night median 221, mean 336, 90th pct 825 | Qullamaggie's buys on the list 245/251 | big winners on the list 26/26
+  buy test volume >= 1.2x the last 10 days (his ruling): breakouts a day: median 24, mean 38.1, 90th pct 86 | Qullamaggie's buys firing on his day 145/245 | big 21/26 | days with more than 5 firing 1214 (92%), with 0: 5
+  buy test volume >= 1.2x the 50-day (v1 today): breakouts a day: median 20, mean 31.2, 90th pct 67 | Qullamaggie's buys firing on his day 116/245 | big 15/26 | days with more than 5 firing 1206 (91%), with 0: 5
+  order score: his yes above his no 0.70 (yes 48, no 35 on the list) | Qullamaggie's buys in their night's top 10: 30, top 20: 48, top 30: 61, top 50: 88 of 245 | big winners top 20: 6, top 50: 8 of 26
+
+era B (nights 2022-04-01 .. 2024-12-30): 690 nights
+  list: names a night median 310, mean 320, 90th pct 509 | Qullamaggie's buys on the list 18/18 | big winners on the list 0/0
+  buy test volume >= 1.2x the last 10 days (his ruling): breakouts a day: median 26, mean 36.3, 90th pct 78 | Qullamaggie's buys firing on his day 11/18 | big 0/0 | days with more than 5 firing 644 (93%), with 0: 3
+  buy test volume >= 1.2x the 50-day (v1 today): breakouts a day: median 23, mean 30.1, 90th pct 60 | Qullamaggie's buys firing on his day 8/18 | big 0/0 | days with more than 5 firing 636 (92%), with 0: 2
+  order score: his yes above his no nan (yes 0, no 0 on the list) | Qullamaggie's buys in their night's top 10: 2, top 20: 3, top 30: 3, top 50: 6 of 18 | big winners top 20: 0, top 50: 0 of 0  (none of his 95 labels is an era-B night)
+
+COMBINED 2017-2024: 2012 nights
+  list: names a night median 249, mean 330, 90th pct 609 | Qullamaggie's buys on the list 263/269 | big winners on the list 26/26
+  buy test volume >= 1.2x the last 10 days (his ruling): breakouts a day: median 25, mean 37.5, 90th pct 82 | Qullamaggie's buys firing on his day 156/263 | big 21/26 | days with more than 5 firing 1858 (92%), with 0: 8
+  buy test volume >= 1.2x the 50-day (v1 today): breakouts a day: median 21, mean 30.8, 90th pct 64 | Qullamaggie's buys firing on his day 124/263 | big 15/26 | days with more than 5 firing 1842 (92%), with 0: 7
+  order score: his yes above his no 0.70 (yes 48, no 35 on the list) | Qullamaggie's buys in their night's top 10: 32, top 20: 51, top 30: 64, top 50: 94 of 263 | big winners top 20: 6, top 50: 8 of 26
+
+  era-B history note: the sealed era-B store starts 2021-09-27 (130 sessions before the first era-B night), so the 6-month move (126 sessions, each high against the lowest low of the 64 sessions before it) has a shortened low look-back on the first 59 era-B nights (to 2022-06-27); the 10-close spread and the 10/50-session volume averages are complete
+
+  era-B buys one by one (D >= 2022-04-01):
+    LHX   buy 2022-04-05  on list yes | fires NEW no  OLD no  | high vs 5-day high above, volume 1.08x 10-day, 0.76x 50-day | 6-month move 39% = 14.0 daily ranges, last-10-close spread 1.6 ranges | order rank 126 of 563
+    LMT   buy 2022-04-05  on list yes | fires NEW yes OLD no  | high vs 5-day high above, volume 1.34x 10-day, 0.83x 50-day | 6-month move 45% = 17.1 daily ranges, last-10-close spread 1.4 ranges | order rank 42 of 563
+    LMT   buy 2022-04-06  on list yes | fires NEW no  OLD no  | high vs 5-day high above, volume 1.15x 10-day, 0.72x 50-day | 6-month move 45% = 17.7 daily ranges, last-10-close spread 1.5 ranges | order rank 40 of 475
+    X     buy 2022-04-12  on list yes | fires NEW no  OLD no  | high vs 5-day high not above, volume 1.03x 10-day, 0.63x 50-day | 6-month move 118% = 25.3 daily ranges, last-10-close spread 1.3 ranges | order rank 7 of 370
+    LAC   buy 2022-04-21  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.81x 10-day, 2.12x 50-day | 6-month move 113% = 13.7 daily ranges, last-10-close spread 1.8 ranges | order rank 143 of 415
+    TSLA  buy 2022-04-21  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.66x 10-day, 1.46x 50-day | 6-month move 65% = 15.5 daily ranges, last-10-close spread 2.0 ranges | order rank 118 of 415
+    FTNT  buy 2022-04-21  on list yes | fires NEW yes OLD no  | high vs 5-day high above, volume 1.44x 10-day, 0.97x 50-day | 6-month move 34% = 10.2 daily ranges, last-10-close spread 1.2 ranges | order rank 178 of 415
+    VLO   buy 2022-05-27  on list yes | fires NEW no  OLD no  | high vs 5-day high above, volume 0.92x 10-day, 0.95x 50-day | 6-month move 65% = 15.3 daily ranges, last-10-close spread 1.0 ranges | order rank 13 of 252
+    FREY  buy 2022-11-15  on list yes | fires NEW yes OLD no  | high vs 5-day high above, volume 1.47x 10-day, 0.96x 50-day | 6-month move 156% = 22.5 daily ranges, last-10-close spread 3.2 ranges | order rank 105 of 367
+    U     buy 2022-11-15  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.45x 10-day, 2.38x 50-day | 6-month move 102% = 12.4 daily ranges, last-10-close spread 6.4 ranges | order rank 331 of 367
+    PDD   buy 2023-01-05  on list yes | fires NEW yes OLD no  | high vs 5-day high above, volume 1.76x 10-day, 1.00x 50-day | 6-month move 140% = 34.2 daily ranges, last-10-close spread 2.9 ranges | order rank 111 of 453
+    FCX   buy 2023-01-06  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.86x 10-day, 1.25x 50-day | 6-month move 58% = 18.9 daily ranges, last-10-close spread 1.9 ranges | order rank 87 of 397
+    MDGL  buy 2023-01-24  on list yes | fires NEW no  OLD no  | high vs 5-day high above, volume 0.94x 10-day, 0.53x 50-day | 6-month move 451% = 73.2 daily ranges, last-10-close spread 1.2 ranges | order rank 1 of 641
+    LI    buy 2023-04-17  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.78x 10-day, 1.31x 50-day | 6-month move 106% = 32.2 daily ranges, last-10-close spread 2.4 ranges | order rank 47 of 237
+    AI    buy 2023-05-17  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 2.75x 10-day, 1.96x 50-day | 6-month move 231% = 32.1 daily ranges, last-10-close spread 5.2 ranges | order rank 63 of 147
+    GSIT  buy 2023-06-01  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.70x 10-day, 2.21x 50-day | 6-month move 403% = 21.0 daily ranges, last-10-close spread 2.3 ranges | order rank 102 of 194
+    DKNG  buy 2023-09-11  on list yes | fires NEW no  OLD no  | high vs 5-day high above, volume 0.89x 10-day, 0.81x 50-day | 6-month move 79% = 20.4 daily ranges, last-10-close spread 3.4 ranges | order rank 140 of 227
+    GME   buy 2023-12-14  on list yes | fires NEW no  OLD yes | high vs 5-day high above, volume 0.86x 10-day, 1.69x 50-day | 6-month move 69% = 8.6 daily ranges, last-10-close spread 2.1 ranges | order rank 193 of 262
+
+====================================================================================================
+CHECK 3 — each day's names firing the daily buy test (NEW bar), ranked by the order score over the night's whole list
+  firing name-days 75,451; with no order score (fewer than 10/20 bars): 0 (ranked last)
+  era A 2017-22: his buys that fire 145 of 245 on the list -> in their day's top 5: 51, top 10: 74 | big winners firing 21 of 26 -> top 5: 8, top 10: 10 | days with more than 5 firing: 1214 of 1322 (92%); median 24 firing a day
+  era B 2022-24: his buys that fire 11 of 18 on the list -> in their day's top 5: 1, top 10: 4 | big winners firing 0 of 0 -> top 5: 0, top 10: 0 | days with more than 5 firing: 644 of 690 (93%); median 26 firing a day
+  ALL 2017-2024: his buys that fire 156 of 263 on the list -> in their day's top 5: 52, top 10: 78 | big winners firing 21 of 26 -> top 5: 8, top 10: 10 | days with more than 5 firing: 1858 of 2012 (92%); median 25 firing a day
+  big winners that fire: NVAX 2020-02-26 #1 of 10, PDD 2020-05-08 #12 of 46, SHOP 2020-06-15 #5 of 56, APT 2020-06-17 #53 of 83, SRNE 2020-06-24 #2 of 41, BLDP 2020-06-29 #6 of 35, CODX 2020-07-16 #2 of 92, CODX 2020-07-21 #1 of 174, SRNE 2020-07-30 #43 of 117, BE 2020-08-13 #12 of 29, NIO 2020-09-29 #2 of 24, JMIA 2020-11-18 #21 of 72, PTON 2020-12-14 #20 of 158, SKLZ 2021-01-05 #103 of 148, APHA 2021-01-06 #338 of 655, BE 2021-01-06 #137 of 655, SI 2021-01-22 #3 of 65, OSTK 2021-01-22 #10 of 65, TLRY 2021-02-02 #4 of 88, LCID 2021-10-25 #21 of 33, QS 2021-10-29 #47 of 60
+  his firing buys' rank among the day's firing names: median 10, quartiles 4-25; their day's firing count median 58

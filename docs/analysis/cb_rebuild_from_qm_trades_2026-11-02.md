@@ -38,7 +38,7 @@ Work folder (every number below is printed there): `scripts/probes/_qm_breakouts
 | 3 | Daily range (ADR20) **>= 2.1%** | his good EW 2.11%, LMT 2.6% | 4.26% floor + 1% pinned gate (11-02 ruling) — the floor would cut EW + LMT, so it is replaced; deal targets under 1% stay out |
 | 4 | Base depth from the pole top **1.5 to 9.0 daily ranges** | backward step; low end moved to his good LRN (1.51) | none |
 | 5 | Run-up into the pole (v1's measure) **>= 32.1%** | backward step; dropped only his NOs (W, DOCU x2, SQM) | >= 30% |
-| 6 | Close **no more than 0.63 daily ranges under the 21-day EMA** | his picks; loosened to keep the 7 buys he rated ok (TSLA 2022-04 lowest) | none |
+| 6 | Close **no more than 0.6335 daily ranges under the 21-day EMA** (pin -0.6335: TSLA 2022-04-21's value; -0.63 drops it — stage 0 verifier) | his picks; loosened to keep the 7 buys he rated ok (TSLA 2022-04 lowest) | none |
 | 7 | Close **at or above the 50-day SMA** | his picks; drops none of Qullamaggie's buys | none |
 | — | REMOVED: higher-lows, riding-an-average, tightening and breakdown as v1 wrote them | his CODX/PENN charts showed the old definitions misread his pattern | all on |
 
@@ -54,6 +54,12 @@ Work folder (every number below is printed there): `scripts/probes/_qm_breakouts
 - Volume: **1.2x the average of the last 10 sessions** (his ruling 11-02, "Yes"; was 1.2x the 50-day average, which carries the run-up's heavy volume). Live it stays the F1 intraday pace curve, against the new bar.
 - On daily bars (2017-22): **~24 breakouts a day**; **145 of Qullamaggie's 245 buys fire on his buy day** (was 116), **21 of 26 big winners** (was 15) (`36_trigger_vol10.txt`, `37_buy_level.txt`).
 - Stop and exit: unchanged (v1's stop at the day's low, the `pp` exit). Not part of this rebuild.
+
+## Stage 0 results (2026-11-02, Opus build + blind Opus recount; `scripts/probes/_qm_breakouts_vs_v1_1102/stage0/s0.txt`)
+- **Live entry replayed minute by minute on his buy days** (all 269 have minute bars in the sealed stores): the NEW volume bar buys **154 of his 263 listed buys** (OLD bar 143), **17 of 26 big winners** (OLD 15); median buy minute 09:41. What stops the rest under NEW: the stop too wide for the 1-daily-range width rule **54**, the pace lapsed and the order was cancelled **25**, the pace never met **18**, the chase cap **6**, the price never reached the level **6**. With no volume rule at all: 193.
+- **2022-24:** list median 310 a night; all 18 of his era-B buys on it; 11 fire. **2017-24 combined:** 249 names a night, ~25 breakouts a day (92% of days more than 5), 156 of 263 fire on his day (daily bars), 21 of 26 big winners.
+- **The 5 slots:** of his 156 firing buys, **52 rank in their day's top 5** by the order score (78 in the top 10); big winners 8 of 21. His buys rank a median 10th of ~58 firing names that day. The order score picks only a third of his firing buys.
+- These three are now his decisions (entry and sizing rules are his): the stop-width rule (54 of his buys), the pace-keep-live cancel (25), and the slot count or a better order.
 
 ## Open before the Saturday build (each is free, local data)
 1. **Intraday volume pace on his buy days** — ~90 of his buys fail the volume bar on FULL-DAY volume; he bought in the opening minutes, so the fair test is the F1 pace at his buy minute (minute bars `apollo_data/cb702/minutes_rev_1024/`). Decides whether the 1.2x bar holds.

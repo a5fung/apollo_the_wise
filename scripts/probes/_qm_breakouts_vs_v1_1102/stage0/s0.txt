@@ -1,0 +1,116 @@
+STAGE 0 — three free checks before the Saturday build (Qullamaggie's 269 dated breakout buys are the scorecard;
+scores = his buys caught and names a day; no returns read; nothing dated 2025-01-01 or later read)
+files: s0_lib.py s0_features.py s0_check1.py s0_check23.py | s0_rowfeat.parquet s0_buyfacts.tsv s0_check1_buys.tsv s0_check3_ranks.tsv
+====================================================================================================
+PARITY (stage 0 re-implementation vs the parent folder's printed numbers)
+  list (rules 1-7): Qullamaggie's buys on the list 263/269 | big winners 26/26 | names a night median 249 mean 330 p90 609   [18_sma50_rule.txt PLAIN LINE: 263/269, 26/26, 249/330/609]
+  thresholds: base depth 1.5114..8.9797 daily ranges, run-up >= 0.3214, close vs EMA21 >= -0.6335 daily ranges, close >= 50-day SMA
+  era-A bar features vs the parent's caches on 443,986 list rows: move126 max diff (0.0, 0), c10 (0.0, 0), x10 (0.0, 0), x50 (0.0, 0) (max |diff|, NaN-pattern mismatches); up equal True, E_bar equal True; cache rows = list rows True
+  era-A buy test, volume >= 1.2x the 50-day (OLD): breakouts a day: median 20, mean 31.2, 90th pct 67 | Qullamaggie's buys firing on his day 116/245 | big 15/26   [36: median 20, mean 31.2 | 116/245 | 15/26]
+  era-A buy test, volume >= 1.2x the last 10 days (NEW): breakouts a day: median 24, mean 38.1, 90th pct 86 | Qullamaggie's buys firing on his day 145/245 | big 21/26   [36: median 24, mean 38.1 | 145/245 | 21/26]
+  era-A order score: his yes above his no 0.70 (yes 48, no 35 on the list) | Qullamaggie's buys in their night's top 10: 30, top 20: 48, top 30: 61, top 50: 88 of 245 | big winners top 20: 6, top 50: 8 of 26   [33: 0.70 (48, 35) | 30, 48, 61, 88 of 245 | 6, 8 of 26]
+  era-A list median 221 names a night   [33: 221]
+
+====================================================================================================
+CHECK 2 — 2022-2024 (era B: nights 2022-04-01 .. 2024-12-30, the sealed < 2025 store), then 2017-2024 combined
+
+era A (nights 2016-12-30 .. 2022-03-31): 1322 nights
+  list: names a night median 221, mean 336, 90th pct 825 | Qullamaggie's buys on the list 245/251 | big winners on the list 26/26
+  buy test volume >= 1.2x the last 10 days (his ruling): breakouts a day: median 24, mean 38.1, 90th pct 86 | Qullamaggie's buys firing on his day 145/245 | big 21/26 | days with more than 5 firing 1214 (92%), with 0: 5
+  buy test volume >= 1.2x the 50-day (v1 today): breakouts a day: median 20, mean 31.2, 90th pct 67 | Qullamaggie's buys firing on his day 116/245 | big 15/26 | days with more than 5 firing 1206 (91%), with 0: 5
+  order score: his yes above his no 0.70 (yes 48, no 35 on the list) | Qullamaggie's buys in their night's top 10: 30, top 20: 48, top 30: 61, top 50: 88 of 245 | big winners top 20: 6, top 50: 8 of 26
+
+era B (nights 2022-04-01 .. 2024-12-30): 690 nights
+  list: names a night median 310, mean 320, 90th pct 509 | Qullamaggie's buys on the list 18/18 | big winners on the list 0/0
+  buy test volume >= 1.2x the last 10 days (his ruling): breakouts a day: median 26, mean 36.3, 90th pct 78 | Qullamaggie's buys firing on his day 11/18 | big 0/0 | days with more than 5 firing 644 (93%), with 0: 3
+  buy test volume >= 1.2x the 50-day (v1 today): breakouts a day: median 23, mean 30.1, 90th pct 60 | Qullamaggie's buys firing on his day 8/18 | big 0/0 | days with more than 5 firing 636 (92%), with 0: 2
+  order score: his yes above his no nan (yes 0, no 0 on the list) | Qullamaggie's buys in their night's top 10: 2, top 20: 3, top 30: 3, top 50: 6 of 18 | big winners top 20: 0, top 50: 0 of 0  (none of his 95 labels is an era-B night)
+
+COMBINED 2017-2024: 2012 nights
+  list: names a night median 249, mean 330, 90th pct 609 | Qullamaggie's buys on the list 263/269 | big winners on the list 26/26
+  buy test volume >= 1.2x the last 10 days (his ruling): breakouts a day: median 25, mean 37.5, 90th pct 82 | Qullamaggie's buys firing on his day 156/263 | big 21/26 | days with more than 5 firing 1858 (92%), with 0: 8
+  buy test volume >= 1.2x the 50-day (v1 today): breakouts a day: median 21, mean 30.8, 90th pct 64 | Qullamaggie's buys firing on his day 124/263 | big 15/26 | days with more than 5 firing 1842 (92%), with 0: 7
+  order score: his yes above his no 0.70 (yes 48, no 35 on the list) | Qullamaggie's buys in their night's top 10: 32, top 20: 51, top 30: 64, top 50: 94 of 263 | big winners top 20: 6, top 50: 8 of 26
+
+  era-B history note: the sealed era-B store starts 2021-09-27 (130 sessions before the first era-B night), so the 6-month move (126 sessions, each high against the lowest low of the 64 sessions before it) has a shortened low look-back on the first 59 era-B nights (to 2022-06-27); the 10-close spread and the 10/50-session volume averages are complete
+
+  era-B buys one by one (D >= 2022-04-01):
+    LHX   buy 2022-04-05  on list yes | fires NEW no  OLD no  | high vs 5-day high above, volume 1.08x 10-day, 0.76x 50-day | 6-month move 39% = 14.0 daily ranges, last-10-close spread 1.6 ranges | order rank 126 of 563
+    LMT   buy 2022-04-05  on list yes | fires NEW yes OLD no  | high vs 5-day high above, volume 1.34x 10-day, 0.83x 50-day | 6-month move 45% = 17.1 daily ranges, last-10-close spread 1.4 ranges | order rank 42 of 563
+    LMT   buy 2022-04-06  on list yes | fires NEW no  OLD no  | high vs 5-day high above, volume 1.15x 10-day, 0.72x 50-day | 6-month move 45% = 17.7 daily ranges, last-10-close spread 1.5 ranges | order rank 40 of 475
+    X     buy 2022-04-12  on list yes | fires NEW no  OLD no  | high vs 5-day high not above, volume 1.03x 10-day, 0.63x 50-day | 6-month move 118% = 25.3 daily ranges, last-10-close spread 1.3 ranges | order rank 7 of 370
+    LAC   buy 2022-04-21  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.81x 10-day, 2.12x 50-day | 6-month move 113% = 13.7 daily ranges, last-10-close spread 1.8 ranges | order rank 143 of 415
+    TSLA  buy 2022-04-21  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.66x 10-day, 1.46x 50-day | 6-month move 65% = 15.5 daily ranges, last-10-close spread 2.0 ranges | order rank 118 of 415
+    FTNT  buy 2022-04-21  on list yes | fires NEW yes OLD no  | high vs 5-day high above, volume 1.44x 10-day, 0.97x 50-day | 6-month move 34% = 10.2 daily ranges, last-10-close spread 1.2 ranges | order rank 178 of 415
+    VLO   buy 2022-05-27  on list yes | fires NEW no  OLD no  | high vs 5-day high above, volume 0.92x 10-day, 0.95x 50-day | 6-month move 65% = 15.3 daily ranges, last-10-close spread 1.0 ranges | order rank 13 of 252
+    FREY  buy 2022-11-15  on list yes | fires NEW yes OLD no  | high vs 5-day high above, volume 1.47x 10-day, 0.96x 50-day | 6-month move 156% = 22.5 daily ranges, last-10-close spread 3.2 ranges | order rank 105 of 367
+    U     buy 2022-11-15  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.45x 10-day, 2.38x 50-day | 6-month move 102% = 12.4 daily ranges, last-10-close spread 6.4 ranges | order rank 331 of 367
+    PDD   buy 2023-01-05  on list yes | fires NEW yes OLD no  | high vs 5-day high above, volume 1.76x 10-day, 1.00x 50-day | 6-month move 140% = 34.2 daily ranges, last-10-close spread 2.9 ranges | order rank 111 of 453
+    FCX   buy 2023-01-06  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.86x 10-day, 1.25x 50-day | 6-month move 58% = 18.9 daily ranges, last-10-close spread 1.9 ranges | order rank 87 of 397
+    MDGL  buy 2023-01-24  on list yes | fires NEW no  OLD no  | high vs 5-day high above, volume 0.94x 10-day, 0.53x 50-day | 6-month move 451% = 73.2 daily ranges, last-10-close spread 1.2 ranges | order rank 1 of 641
+    LI    buy 2023-04-17  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.78x 10-day, 1.31x 50-day | 6-month move 106% = 32.2 daily ranges, last-10-close spread 2.4 ranges | order rank 47 of 237
+    AI    buy 2023-05-17  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 2.75x 10-day, 1.96x 50-day | 6-month move 231% = 32.1 daily ranges, last-10-close spread 5.2 ranges | order rank 63 of 147
+    GSIT  buy 2023-06-01  on list yes | fires NEW yes OLD yes | high vs 5-day high above, volume 1.70x 10-day, 2.21x 50-day | 6-month move 403% = 21.0 daily ranges, last-10-close spread 2.3 ranges | order rank 102 of 194
+    DKNG  buy 2023-09-11  on list yes | fires NEW no  OLD no  | high vs 5-day high above, volume 0.89x 10-day, 0.81x 50-day | 6-month move 79% = 20.4 daily ranges, last-10-close spread 3.4 ranges | order rank 140 of 227
+    GME   buy 2023-12-14  on list yes | fires NEW no  OLD yes | high vs 5-day high above, volume 0.86x 10-day, 1.69x 50-day | 6-month move 69% = 8.6 daily ranges, last-10-close spread 2.1 ranges | order rank 193 of 262
+
+====================================================================================================
+CHECK 3 — each day's names firing the daily buy test (NEW bar), ranked by the order score over the night's whole list
+  firing name-days 75,451; with no order score (fewer than 10/20 bars): 0 (ranked last)
+  era A 2017-22: his buys that fire 145 of 245 on the list -> in their day's top 5: 51, top 10: 74 | big winners firing 21 of 26 -> top 5: 8, top 10: 10 | days with more than 5 firing: 1214 of 1322 (92%); median 24 firing a day
+  era B 2022-24: his buys that fire 11 of 18 on the list -> in their day's top 5: 1, top 10: 4 | big winners firing 0 of 0 -> top 5: 0, top 10: 0 | days with more than 5 firing: 644 of 690 (93%); median 26 firing a day
+  ALL 2017-2024: his buys that fire 156 of 263 on the list -> in their day's top 5: 52, top 10: 78 | big winners firing 21 of 26 -> top 5: 8, top 10: 10 | days with more than 5 firing: 1858 of 2012 (92%); median 25 firing a day
+  big winners that fire: NVAX 2020-02-26 #1 of 10, PDD 2020-05-08 #12 of 46, SHOP 2020-06-15 #5 of 56, APT 2020-06-17 #53 of 83, SRNE 2020-06-24 #2 of 41, BLDP 2020-06-29 #6 of 35, CODX 2020-07-16 #2 of 92, CODX 2020-07-21 #1 of 174, SRNE 2020-07-30 #43 of 117, BE 2020-08-13 #12 of 29, NIO 2020-09-29 #2 of 24, JMIA 2020-11-18 #21 of 72, PTON 2020-12-14 #20 of 158, SKLZ 2021-01-05 #103 of 148, APHA 2021-01-06 #338 of 655, BE 2021-01-06 #137 of 655, SI 2021-01-22 #3 of 65, OSTK 2021-01-22 #10 of 65, TLRY 2021-02-02 #4 of 88, LCID 2021-10-25 #21 of 33, QS 2021-10-29 #47 of 60
+  his firing buys' rank among the day's firing names: median 10, quartiles 4-25; their day's firing count median 58
+====================================================================================================
+CHECK 1 — the intraday volume pace (live F1) on Qullamaggie's buy days
+  list level = the 5-day high to D from the daily store; equal to the feature table's v1 level on 269/269; E is the next stored session on 269/269
+  coverage in the named store minutes_rev_1024 (1,322 pairs fetched): 0 of his 269 buy days
+  coverage in the replay's sealed minute stores (v1_replay.MINUTE_DIRS, < 2025 only): 269 of 269 — cb702_pre_v2/minutes: 251, cb702/minutes: 18
+  minute rows: Counter({'ok': 269}); minute high/low off the daily bar by > 1% (excluded, as the replay's walk does): 0 (); replayed in 6s
+  regular-hours minute volume / the day's full daily volume: median 0.93 (the F1 curve's pooled end-of-day share is 0.80; no rescale)
+  REPLAYED: 269 of 269 buys (263 on the rebuilt list; 26 of the 26 big winners)
+
+  BOUGHT ON HIS BUY DAY E (live replay; bought = filled or sold-after-fill):
+    all his covered buys             n=269 | price only 197 | OLD 1.2x 50-day 146 | NEW 1.2x 10-day 157 || literal OLD 164, NEW 175 || daily-bar test OLD 128, NEW 160
+    his buys on the rebuilt list     n=263 | price only 193 | OLD 1.2x 50-day 143 | NEW 1.2x 10-day 154 || literal OLD 160, NEW 172 || daily-bar test OLD 124, NEW 156
+      era A on the list (36's 245)   n=245 | price only 177 | OLD 1.2x 50-day 131 | NEW 1.2x 10-day 141 || literal OLD 147, NEW 158 || daily-bar test OLD 116, NEW 145
+      era B on the list              n= 18 | price only  16 | OLD 1.2x 50-day  12 | NEW 1.2x 10-day  13 || literal OLD  13, NEW  14 || daily-bar test OLD   8, NEW  11
+    big winners                      n= 26 | price only  23 | OLD 1.2x 50-day  15 | NEW 1.2x 10-day  17 || literal OLD  21, NEW  20 || daily-bar test OLD  15, NEW  21
+
+  THE MINUTE OF THE BUY (live replay, clock ET):
+    price_only on the list  bought 193: median 09:43, quartiles 09:36-10:08, by 09:45 105, by 10:00 136, by 10:30 154, by 12:00 174, after 12:00 19
+    price_only big winners  bought  23: median 09:48, quartiles 09:37-10:56, by 09:45 10, by 10:00 14, by 10:30 16, by 12:00 19, after 12:00 4
+    OLD        on the list  bought 143: median 09:41, quartiles 09:36-09:54, by 09:45 89, by 10:00 111, by 10:30 119, by 12:00 131, after 12:00 12
+    OLD        big winners  bought  15: median 09:42, quartiles 09:37-10:54, by 09:45 8, by 10:00 10, by 10:30 10, by 12:00 12, after 12:00 3
+    NEW        on the list  bought 154: median 09:41, quartiles 09:36-09:55, by 09:45 96, by 10:00 120, by 10:30 133, by 12:00 143, after 12:00 11
+    NEW        big winners  bought  17: median 09:46, quartiles 09:37-10:42, by 09:45 8, by 10:00 10, by 10:30 12, by 12:00 14, after 12:00 3
+
+  WHY NOT BOUGHT (his buys on the rebuilt list):
+    price_only bought: 193 | day low to level wider than the daily range (stop too wide): 54 | placed, the high never reached the level = max(5-minute opening-range high, 5-day high): 16
+    OLD        bought: 143 | day low to level wider than the daily range (stop too wide): 51 | volume pace never met while the price setup held (never placed): 32 | order placed, volume pace lapsed before the price reached the level (cancelled): 25 | price already past the level when the pace was met (#500 fallback: chase cap / width): 9 | placed, the high never reached the level = max(5-minute opening-range high, 5-day high): 3
+    NEW        bought: 154 | day low to level wider than the daily range (stop too wide): 54 | order placed, volume pace lapsed before the price reached the level (cancelled): 25 | volume pace never met while the price setup held (never placed): 18 | price already past the level when the pace was met (#500 fallback: chase cap / width): 6 | placed, the high never reached the level = max(5-minute opening-range high, 5-day high): 6
+    price_only 'never reached': 16, of which the day's high cleared the 5-day high but not the 5-minute opening-range high: 4 (NVAX 2020-02-24, PLNT 2020-05-26, AMAT 2021-03-24, FREY 2022-11-15)
+    NEW, big winners: bought: 17 | order placed, volume pace lapsed before the price reached the level (cancelled): 3 | price already past the level when the pace was met (#500 fallback: chase cap / width): 2 | day low to level wider than the daily range (stop too wide): 2 | placed, the high never reached the level = max(5-minute opening-range high, 5-day high): 1 | volume pace never met while the price setup held (never placed): 1
+
+  NEW (1.2x the last 10 days): live intraday vs the daily-bar test, his buys on the rebuilt list:
+    on the list        both 110 | intraday only 44 | daily only 46 | neither 63
+    era A on the list  both 101 | intraday only 40 | daily only 44 | neither 60
+    big winners        both 16 | intraday only 1 | daily only 5 | neither 4
+    daily only, why the live replay did not buy: day low to level wider than the daily range (stop too wide): 30 | order placed, volume pace lapsed before the price reached the level (cancelled): 7 | price already past the level when the pace was met (#500 fallback: chase cap / width): 6 | placed, the high never reached the level = max(5-minute opening-range high, 5-day high): 3
+    daily only: SHOP 2017-08-01, UCTT 2017-08-29, OKTA 2018-07-27, ETSY 2018-08-07, TSLA 2018-08-07, BMA 2019-08-09, GGAL 2019-08-09, EW 2019-08-16, MIK 2019-10-22, TDOC 2019-10-31, ACMR 2020-02-10, NVAX 2020-02-24, TSLA 2020-04-30, FSLY 2020-05-07, APT 2020-05-14, UAL 2020-05-27, APT 2020-06-17 BIG, DKNG 2020-06-22, SRNE 2020-06-24 BIG, BNTX 2020-06-25, DXCM 2020-07-29, AVLR 2020-07-29, TDOC 2020-07-30, SRNE 2020-07-30 BIG, PINS 2020-07-31, JD 2020-08-17, TWTR 2020-08-19, ESTC 2020-09-16, SE 2020-09-25, JD 2020-10-29, BLDP 2020-11-16, TSLA 2020-11-18, FEAC 2020-11-30, SOLO 2021-01-11, SI 2021-01-22 BIG, CBAT 2021-01-22, TTD 2021-02-19, AMC 2021-02-25, AMAT 2021-03-24, CLF 2021-05-04, FUTU 2021-06-14, MSTR 2021-08-05, CCJ 2021-10-12, QS 2021-10-29 BIG, FREY 2022-11-15, GSIT 2023-06-01
+    intraday only, why the daily test did not fire: high not above the 5-day high 0 | full-day volume under 1.2x the 10-day 44 (median 0.96x)
+    intraday only: SINA 2017-10-02, SQM 2017-10-04, ANET 2018-03-12, MIK 2019-10-21, KOD 2019-12-24, LK 2020-02-18, BILI 2020-03-05, BLDP 2020-04-27, TTD 2020-05-22, BILI 2020-06-08, ACB 2020-06-08, TWLO 2020-06-10, MRNA 2020-06-15, OKTA 2020-06-17, JD 2020-07-02, LAKE 2020-07-28, SE 2020-09-14, TSLA 2020-10-12, CCL 2020-12-28, SNAP 2021-01-07, JMIA 2021-01-12 BIG, PDD 2021-02-02, SEDG 2021-02-08, W 2021-02-11, APHA 2021-03-02, TLRY 2021-03-02, FCX 2021-03-11, UAL 2021-03-11, RCL 2021-03-15, SOS 2021-03-15, MU 2021-03-16, APPS 2021-03-22, ETSY 2021-03-23, FCX 2021-04-06, SNAP 2021-04-29, SNAP 2021-08-23, AMC 2021-09-10, BTBT 2021-10-20, FCX 2021-12-07, PFE 2021-12-13, LHX 2022-04-05, LMT 2022-04-06, DKNG 2023-09-11, GME 2023-12-14
+    big winners not bought under NEW: APT 2020-02-21 (placed, the high never reached the level = max(5-minute opening-range high, 5-day high)); APT 2020-06-17 (price already past the level when the pace was met (#500 fallback: chase cap / width)); SRNE 2020-06-24 (price already past the level when the pace was met (#500 fallback: chase cap / width)); SRNE 2020-07-30 (order placed, volume pace lapsed before the price reached the level (cancelled)); DOYU 2020-08-24 (order placed, volume pace lapsed before the price reached the level (cancelled)); MDB 2020-09-21 (volume pace never met while the price setup held (never placed)); NVDA 2020-09-25 (order placed, volume pace lapsed before the price reached the level (cancelled)); SI 2021-01-22 (day low to level wider than the daily range (stop too wide)); QS 2021-10-29 (day low to level wider than the daily range (stop too wide))
+
+  AT HIS OWN BUY TIME (139 of his on-list buys have a first-sighting clock on E in his stream; he bought at or before it):
+    first sighting: median 10:06, by 10:00 55, before 09:35 (no tick yet) 8
+    OLD: volume pace met by the minute before his sighting 110/139 | our replay bought at or before his sighting 66, later the same day 16, not at all 57
+    NEW: volume pace met by the minute before his sighting 124/139 | our replay bought at or before his sighting 74, later the same day 16, not at all 49
+
+  SIMPLIFICATIONS (stated, per the task):
+    - broker mechanics are v1_replay.simulate_entry's re-implementation (stop-limit triggers on the first bar whose high >= level; the #500 fallback limit; cancel + re-place instantaneous; no partial fills; every minute bar published on time, so the 09:35 'wait for the 09:34 bar' never binds)
+    - one name alone: no 5-slot cap, no other strategy owning the ticker, no pre-flight, no sizing (the 'under 1 share' cancel is not modelled), switch on
+    - the list level / adr20 / volume averages come from the replay's daily stores (era A cb702_pre_v2, era B the sealed < 2025 cb702 copy), the live list reads mi_daily_closes; the minute bars are the replay's SIP minute stores on the same adjusted scale (checked: high/low within 1% of the daily bar)
+    - F1's curve (CUM_SHARE) is used unchanged with the NEW bar: the build changes only vol_bar to 1.2x the 10-session average
+    - his buy time is the first stream frame showing the position on E (an upper bound on when he bought), available for some buys only
