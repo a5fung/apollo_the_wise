@@ -2812,3 +2812,7 @@ Recorded as THE METHOD for breakout v1 (#717): (1) the scorecard is Qullamaggie'
 > "HFC - looks like a bit late buy / YPF - no / EW - looks good / LMT - yes, good / LRN - yes, good / MRNA - no, maybe a different criteria / W - no, maybe EP / DOCU - no / SQM - no"
 
 Recorded as labels on QM's buys: GOOD setups = EW 2019-08-16, LMT 2022-04-05 + 04-06, LRN 2020-08-05; NOT setups = YPF 2019-04-17, MRNA 2021-11-29 ("maybe a different criteria"), W 2020-04-07 ("maybe EP"), DOCU 2020-12-04 + 12-15, SQM 2021-09-10; HFC 2018-07-31 = "a bit late buy". Consequence for the rules: the 2.8% daily-range floor and the 1.7-daily-range shallow-base limit dropped his GOOD ones (EW 2.1%, LMT 2.6-2.7%, LRN depth 1.5) -> both loosened to keep them; the 32% run-up rule dropped only "no"s (W, DOCU x2, SQM) -> kept.
+
+> His picks on the BLIND sample night (2026-11-02, `charts/sample_night_blind.png` — 12 names from the rebuilt list for 2020-05-07, lettered): "D - looks decent / K - looks decent / L - looks good"
+
+Recorded as labels on 2020-05-07: SETUPS = D GOTU (decent), K PDD (decent — Qullamaggie's own buy the next day, a big winner, picked blind), L APT (good); NOT setups (not picked) = A COLD, B GLNG, C CSII, E EXAS, F HAE, G ATVI, H CVGW, I EQX, J PGR. Key: `charts/sample_night_KEY.json`. The close-vs-21-day-EMA rule (>= -0.27 daily ranges) keeps all three and removes A B C F H J; it would drop 9 of QM's buys -> those 9 charts to him (`charts/ema21_drops_9.png`).
