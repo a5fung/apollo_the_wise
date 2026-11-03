@@ -6,7 +6,18 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-11-01 (Sun) CLOSE — 🔴 RESUME HERE. Supersedes the 10-31 close below.
+## 2026-11-02 (Mon) CLOSE — 🔴 RESUME HERE. Supersedes the 11-01 close below.
+
+**2026-11-02 (Mon): CLOSE run on his word ("Run close").** (This section mirrors the machine-local pickup memory.)
+
+- **Board 20 → 20.** Server **`a638666d`** (12:00 ET deploy, market-agent then execution: the breakout list's 4.26% daily-range floor + 1% pinned gate, the 11-01 simplify, the M&A sweep fix — the floors verified on the 17:55 list; #482's follow-ups verified on the 18:04 run).
+- **Breakout v1 (#717):** the first paper buy (MTW) was not a setup by his eye → paper PAUSED (`breakout_v1_paper` OFF; MTW closed +$150). His method (verbatim, `docs/methodology/operator_shared_notes.md` 11-02): the scorecard is Qullamaggie's 269 dated breakout buys + 26 big winners; start with them all on the list and work backwards; gaps and losers go to his eye; never judge a rule by R. The rebuilt spec is SIGNED OFF: `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md`.
+- **Stage 1 BUILT** on branch `breakout-v2-stage1` (`c9f584a8`; reviewed, all PASS). **Wed 11-04:** drop `d1349b3d` (main already fixed RULING_SESSIONS), rebase on main, merge, deploy 21:15 ET ON HIS GO — `deploy.sh market-agent` first, then `deploy.sh execution`. **Stage 2 Sat 11-07** (execution: the entry job at ~250 names + slots by the order score). Paper stays OFF until he says.
+- **#594:** sample 5 ruled outcome-blind; with his long-view re-reads (KOD good, ASPN bad) 8 of 8 match the 20-session result; the next sample needs a longer history + the gap day.
+- **Tue 11-03:** #718 / #712 / #706 / #312 wait on an EP-alert morning (0 EP alerts on 11-02).
+- **Capacity (dated 11-01):** Fable ~5% — Opus cards until the reset Fri 11-06 8 PM PT.
+
+## 2026-11-01 (Sun) CLOSE — (superseded by 11-02 above)
 
 **2026-11-01 (Sun): CLOSE run on his word ("run close").** (This section mirrors the machine-local pickup memory.)
 
