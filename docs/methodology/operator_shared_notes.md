@@ -2869,3 +2869,7 @@ Recorded: KOD 2026-09-28 -> GOOD_CHART in `must_not_trade_charts.py` (his first 
 > "I'd say apsn failed to clear a major gap down on Nov 6, longer time frame or looked poor" (2026-11-02, ASPN 2026-08-06 — #594 sample 5 card H, his first call "ok", -35% at 20 sessions)
 
 Recorded: ASPN 2026-08-06 -> BAD_CHART (his first word "ok" kept in operator_words). His reason: on the longer time frame the gap did NOT clear a major GAP DOWN from Nov 6 (2025) — overhead supply left above it ([[structure-is-a-supply-ladder]]). With KOD's re-read, both of sample 5's misses turned on what only a longer chart shows; on the long view his calls agree with the 20-session result on 8 of 8.
+
+> "Ok." then "i auth it" (2026-11-03, to: switch the open-below-the-gap-floor skip (#718) from shadow to on — "it's your own definition (the gap must exist at the open), and it only adds skips"); and his paste of the morning's ORB skip page: "• AEIS — Gap retreated below the entry floor before entry (rt 7.5% < 9% floor ...)" / "• FN — Gap retreated below the entry floor before entry (rt 5.6% < 9% floor ...)"
+
+Recorded: #718 ON from 2026-11-03 10:05 ET (`docs/setups/magna53_ep.md` 2026-11-03); #706's skip-page half passes (one line per ticker).
