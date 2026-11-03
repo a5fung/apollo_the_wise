@@ -1,0 +1,14 @@
+AGX   a: no crossing bar (max high 433.98 < floor 447.34)
+QCOM  a: no crossing bar (max high 183.49 < floor 183.93)
+SRRK  a: no crossing bar (max high 56.9 < floor 60.40)
+WOLF  a: crossing 09:30 h=35.94 l=34.06 -> never_crossed_orb_high
+WOLF  a_s2: crossing 09:30 -> re-check refuses (proxy 34.13 = 8.80%)
+MANE  a: crossing 09:39 h=118.69 l=118.1 submit 09:40 -> stop_limit 118.69@09:40 stop 117.51 risk 1.18 | settled R=-1.0  [d0 09:45 stop 117.51]
+MANE  a_s2: crossing 09:39 -> re-check refuses (proxy 118.1 = 8.53%)
+SPCX  a: crossing 09:31 h=162.77 l=159.91 submit 09:32 -> stop_limit 162.77@09:48 stop 157.05 risk 5.72 | settled R=-1.0  [d0 14:12 stop 157.05]
+SPCX  a_s2: crossing 09:31 h=162.77 l=159.91 submit 09:32 -> stop_limit 162.77@09:48 stop 157.05 risk 5.72 | settled R=-1.0  [d0 14:12 stop 157.05]
+INIO  a: no crossing bar (max high 17.53 < floor 18.13)
+AEIS not evaluable
+FN not evaluable
+a settled [('MANE', -1.0), ('SPCX', -1.0)] sum -2.0
+a_s2 settled [('SPCX', -1.0)] sum -1.0

@@ -1,0 +1,72 @@
+sections: POP=39 MIN=13615 DAILY=3822 COUNTS=[{'pop_ticker_days': '39', 'min_rows': '13615'}]
+
+=== POPULATION ===
+stored fates: [('cancelled', 'ORB window unfilled'), ('cancelled', 'setup:chase_cap_exceeded'), ('closed', ''), ('closed', 'block:r3_reentry_disabled'), ('filled', ''), ('skipped', 'infra:no_bar'), ('skipped', 'setup:gap_below_floor'), ('skipped', 'setup:size_too_small'), ('skipped', 'setup:stop_too_wide'), ('skipped', 'window:out_of_orb')]
+n=9: AGX 2026-09-03, QCOM 2026-09-08, SRRK 2026-09-14, WOLF 2026-10-08, MANE 2026-10-19, SPCX 2026-10-21, INIO 2026-10-27, AEIS 2026-11-03, FN 2026-11-03
+all live/magna53 lane: {'live'}
+flip-up rows: {'AGX': 1, 'QCOM': 0, 'SRRK': 1, 'WOLF': 0, 'MANE': 1, 'SPCX': 1, 'INIO': 1, 'AEIS': 1, 'FN': 1}
+first alert ET: {'AGX': '09:15', 'QCOM': '09:10', 'SRRK': '07:00', 'WOLF': '07:00', 'MANE': '08:40', 'SPCX': '08:40', 'INIO': '07:40', 'AEIS': '07:50', 'FN': '07:00'} all pre-open: True
+10-31 study rows: 51; overlap: ['AGX', 'SRRK', 'MANE', 'SPCX', 'INIO']
+MIN bars per pop name: {'AGX': 372, 'QCOM': 390, 'SRRK': 365, 'WOLF': 390, 'MANE': 324, 'SPCX': 390, 'INIO': 390, 'AEIS': 1, 'FN': 1}
+ticker-days with >1 trade row: []
+
+=== PER NAME ===
+AGX   2026-09-03 flip=1 pc scan/text/daily 410.4/410.4/410.4 floor 447.34 ORB O/H/L/C 427.27/427.27/419.32/422.86 stop 411.37 planned 15.90 live 422.86 rt_calc 3.04% (text 3.0) ATR14 27.700(25) range 7.95 vs 1.5xATR 41.55 bars 372 last 15:59
+   [main] never_crossed_orb_high
+   [proxy0930] never_crossed_orb_high
+   [main_from0931] never_crossed_orb_high
+   [proxy_from0931] never_crossed_orb_high
+QCOM  2026-09-08 flip=0 pc scan/text/daily 168.74/168.74/168.74 floor 183.93 ORB O/H/L/C 180.4/180.65/176.71/178.375 stop 172.77 planned 7.88 live 178.51 rt_calc 5.79% (text 5.8) ATR14 5.124(24) range 3.94 vs 1.5xATR 7.69 bars 390 last 15:59
+   [main] stop_limit fill 180.65 @ 09:35 lim 181.55  | BE lvl 192.47 8R 212.17 | 20s: settled R=-1.00 [d0 15:20 stop 172.77] amb=[] | 40s: settled -1.00 | no-arm: settled -1.00 | no-8R: settled | fixed: stop_first best +3.20R n=20
+   [proxy0930] stop_limit fill 180.65 @ 09:35 lim 181.55  | BE lvl 192.47 8R 212.17 | 20s: settled R=-1.00 [d0 15:20 stop 172.77] amb=[] | 40s: settled -1.00 | no-arm: settled -1.00 | no-8R: settled | fixed: stop_first best +3.20R n=20
+   [main_from0931] stop_limit fill 180.65 @ 09:35 lim 181.55  | BE lvl 192.47 8R 212.17 | 20s: settled R=-1.00 [d0 15:20 stop 172.77] amb=[] | 40s: settled -1.00 | no-arm: settled -1.00 | no-8R: settled | fixed: stop_first best +3.20R n=20
+   [proxy_from0931] stop_limit fill 180.65 @ 09:35 lim 181.55  | BE lvl 192.47 8R 212.17 | 20s: settled R=-1.00 [d0 15:20 stop 172.77] amb=[] | 40s: settled -1.00 | no-arm: settled -1.00 | no-8R: settled | fixed: stop_first best +3.20R n=20
+SRRK  2026-09-14 flip=1 pc scan/text/daily 55.41/55.41/55.41 floor 60.40 ORB O/H/L/C 56.5/56.9/55.0/55.51 stop 53.10 planned 3.80 live 55.51 rt_calc 0.18% (text 0.2) ATR14 2.419(24) range 1.90 vs 1.5xATR 3.63 bars 365 last 15:59
+   [main] never_crossed_orb_high
+   [proxy0930] never_crossed_orb_high
+   [main_from0931] never_crossed_orb_high
+   [proxy_from0931] never_crossed_orb_high
+WOLF  2026-10-08 flip=0 pc scan/text/daily 31.37/31.37/31.37 floor 34.19 ORB O/H/L/C 35.02/35.94/34.06/34.175 stop 32.18 planned 3.76 live 34.13 rt_calc 8.80% (text 8.8) ATR14 2.438(24) range 1.88 vs 1.5xATR 3.66 bars 390 last 15:59
+   [main] never_crossed_orb_high
+   [proxy0930] never_crossed_orb_high
+   [main_from0931] never_crossed_orb_high
+   [proxy_from0931] never_crossed_orb_high
+MANE  2026-10-19 flip=1 pc scan/text/daily 108.82/108.82/108.82 floor 118.61 ORB O/H/L/C 115.34/115.94/113.0/115.86 stop 110.06 planned 5.88 live 115.86 rt_calc 6.47% (text 6.5) ATR14 8.592(25) range 2.94 vs 1.5xATR 12.89 bars 324 last 15:59
+   [main] stop_limit fill 115.94 @ 09:34 lim 116.52  | BE lvl 124.76 8R 139.46 | 20s: abstain R=- [; s1 2026-10-20 BE trigger 124.76 and low 113.52 <= entry 115.94 same bar (o/h/l/c 120.62/130.11/113.52/127.11)] amb=[] | 40s: abstain - | no-arm: abstain - | no-8R: abstain | fixed: target_first best +5.21R n=10
+   [proxy0930] stop_limit fill 115.94 @ 09:34 lim 116.52  | BE lvl 124.76 8R 139.46 | 20s: abstain R=- [; s1 2026-10-20 BE trigger 124.76 and low 113.52 <= entry 115.94 same bar (o/h/l/c 120.62/130.11/113.52/127.11)] amb=[] | 40s: abstain - | no-arm: abstain - | no-8R: abstain | fixed: target_first best +5.21R n=10
+   [main_from0931] stop_limit fill 115.94 @ 09:31 lim 116.52  | BE lvl 124.76 8R 139.46 | 20s: abstain R=- [; s1 2026-10-20 BE trigger 124.76 and low 113.52 <= entry 115.94 same bar (o/h/l/c 120.62/130.11/113.52/127.11)] amb=[] | 40s: abstain - | no-arm: abstain - | no-8R: abstain | fixed: target_first best +5.21R n=10
+   [proxy_from0931] stop_limit fill 115.94 @ 09:31 lim 116.52  | BE lvl 124.76 8R 139.46 | 20s: abstain R=- [; s1 2026-10-20 BE trigger 124.76 and low 113.52 <= entry 115.94 same bar (o/h/l/c 120.62/130.11/113.52/127.11)] amb=[] | 40s: abstain - | no-arm: abstain - | no-8R: abstain | fixed: target_first best +5.21R n=10
+SPCX  2026-10-21 flip=1 pc scan/text/daily 147.79/147.79/147.79 floor 161.09 ORB O/H/L/C 160.555/160.67/158.78/160.135 stop 156.89 planned 3.78 live 160.85 rt_calc 8.84% (text 8.8) ATR14 7.500(25) range 1.89 vs 1.5xATR 11.25 bars 390 last 15:59
+   [main] limit fill 161.17 @ 09:32 lim 161.17 ratio 1.13x  | BE lvl 168.34 8R 180.29 | 20s: settled R=-1.84 [s1 2026-10-22 GAP stop at open 154.21 (rest 156.89)] amb=[] | 40s: settled -1.84 | no-arm: settled -1.84 | no-8R: settled | fixed: stop_first best +1.33R n=8
+   [proxy0930] stop_limit fill 161.47 @ 09:32 lim 161.47 opened above limit | BE lvl 169.54 8R 182.99 | 20s: settled R=-1.92 [s1 2026-10-22 GAP stop at open 154.21 (rest 156.89)] amb=[] | 40s: settled -1.92 | no-arm: settled -1.92 | no-8R: settled | fixed: stop_first best +1.25R n=8
+   [main_from0931] limit fill 160.13 @ 09:31 lim 161.17 ratio 1.13x  | BE lvl 164.20 8R 170.97 | 20s: settled R=0.00 [d0 09:59 BE armed (high 164.69); d0 13:20 stop 160.13 (BE)] amb=[] | 40s: settled 0.00 | no-arm: settled 0.00 | no-8R: settled | fixed: stop_first best +1.60R n=8
+   [proxy_from0931] stop_limit fill 160.67 @ 09:31 lim 161.47  | BE lvl 166.34 8R 175.79 | 20s: settled R=-1.71 [s1 2026-10-22 GAP stop at open 154.21 (rest 156.89)] amb=[] | 40s: settled -1.71 | no-arm: settled -1.71 | no-8R: settled | fixed: stop_first best +1.46R n=8
+INIO  2026-10-27 flip=1 pc scan/text/daily 16.63/16.63/16.63 floor 18.13 ORB O/H/L/C 17.05/17.4/16.8/17.13 stop 16.20 planned 1.20 live 17.13 rt_calc 3.01% (text 3.0) ATR14 1.399(25) range 0.60 vs 1.5xATR 2.10 bars 390 last 15:59
+   [main] stop_limit fill 17.40 @ 09:48 lim 17.49  | BE lvl 19.20 8R 22.20 | 20s: settled R=-1.00 [d0 10:13 stop 16.20] amb=[] | 40s: settled -1.00 | no-arm: settled -1.00 | no-8R: settled | fixed: stop_first best +1.12R n=4
+   [proxy0930] stop_limit fill 17.40 @ 09:48 lim 17.49  | BE lvl 19.20 8R 22.20 | 20s: settled R=-1.00 [d0 10:13 stop 16.20] amb=[] | 40s: settled -1.00 | no-arm: settled -1.00 | no-8R: settled | fixed: stop_first best +1.12R n=4
+   [main_from0931] stop_limit fill 17.40 @ 09:48 lim 17.49  | BE lvl 19.20 8R 22.20 | 20s: settled R=-1.00 [d0 10:13 stop 16.20] amb=[] | 40s: settled -1.00 | no-arm: settled -1.00 | no-8R: settled | fixed: stop_first best +1.12R n=4
+   [proxy_from0931] stop_limit fill 17.40 @ 09:48 lim 17.49  | BE lvl 19.20 8R 22.20 | 20s: settled R=-1.00 [d0 10:13 stop 16.20] amb=[] | 40s: settled -1.00 | no-arm: settled -1.00 | no-8R: settled | fixed: stop_first best +1.12R n=4
+AEIS  2026-11-03 flip=1 pc scan/text/daily 217.19/217.19/217.19 floor 236.74 ORB O/H/L/C 232.64/237.27/227.71/233.0142 stop 218.15 planned 19.12 live 233.43 rt_calc 7.48% (text 7.5) ATR14 15.682(25) range 9.56 vs 1.5xATR 23.52 bars 1 last 09:30
+      NOT EVALUABLE: 1 minute bar(s)
+FN    2026-11-03 flip=1 pc scan/text/daily 314.7/314.7/314.7 floor 343.02 ORB O/H/L/C 329.99/337.29/329.99/333.005 stop 322.69 planned 14.60 live 332.17 rt_calc 5.55% (text 5.6) ATR14 25.071(25) range 7.30 vs 1.5xATR 37.61 bars 1 last 09:30
+      NOT EVALUABLE: 1 minute bar(s)
+
+=== SUMS ===
+main: entered 4 ['QCOM', 'MANE', 'SPCX', 'INIO'] | settled 3 sum -3.84R [('QCOM', -1.0), ('SPCX', -1.84), ('INIO', -1.0)] wins 0 losses 3 big>=3R 0 | other [('MANE', 'abstain')]
+proxy0930: entered 4 ['QCOM', 'MANE', 'SPCX', 'INIO'] | settled 3 sum -3.92R [('QCOM', -1.0), ('SPCX', -1.92), ('INIO', -1.0)] wins 0 losses 3 big>=3R 0 | other [('MANE', 'abstain')]
+main_from0931: entered 4 ['QCOM', 'MANE', 'SPCX', 'INIO'] | settled 3 sum -2.00R [('QCOM', -1.0), ('SPCX', 0.0), ('INIO', -1.0)] wins 0 losses 2 big>=3R 0 | other [('MANE', 'abstain')]
+proxy_from0931: entered 4 ['QCOM', 'MANE', 'SPCX', 'INIO'] | settled 3 sum -3.71R [('QCOM', -1.0), ('SPCX', -1.71), ('INIO', -1.0)] wins 0 losses 3 big>=3R 0 | other [('MANE', 'abstain')]
+
+=== VERIFIER NOTES (written after own run; builder's retest.py read only afterwards) ===
+- SPCX day-0 low after fill 156.93 (14:12; daily low 156.9301) vs placed stop 156.89: 4 cents (0.03%). The -1.84R gap-through on 10-22 (open 154.21)
+  rests on that; a touch on day 0 would book -1.13R (sum -3.13R). Not flagged by the builder (its BORDERLINE_BAND only tests the chase cap).
+- SPCX limit fill booked at the limit 161.17 on the 09:32 bar (09:32 open 162.175 > limit, low 160.39). A marketable limit sent at 09:31 with last 160.85
+  would plausibly fill near 160.85 inside the 09:31 bar -> -1.76R (sum -3.76R). Convention inherited from the 10-31 study, conservative by 0.08R.
+- '1.13x the cap' in the claims: it is 1.13x the PLANNED risk ((161.17-156.89)/3.78); the cap is 1.5x.
+- +8R third (entry + 8 x (entry - ORB low)) is modelled; it only acts in MANE's best-order bracket (third sold 139.46 on 10-22): +2.87R with it, +2.31R without
+  (fractional third; share count / the 1-share-sells-nothing rule not modelled).
+- 09:31-bar sensitivity: same 4 entries; QCOM/INIO/MANE fills unchanged in price; only SPCX moves (see main_from0931 line: its 0.00R uses the 09:31 bar OPEN
+  160.135, which predates the 09:31 read -> artifact; at the read 160.85 it is -1.76R).
+- Post-hoc MANE bracket reproduced (mane_bracket.txt): worst 0.00R, best open marked +2.874R at 11-02, resting stop 126.38 < 11-02 low 128.94 so not hit,
+  close 129.53 < line 137.60 -> sale at the 11-03 open (not in the capture).
+- Sensitivity (a)/(a_s2) reproduced (arm_a.txt): a = MANE -1.00, SPCX -1.00 (sum -2.00); a_s2 = SPCX -1.00.

@@ -1,0 +1,205 @@
+====================================================================================================
+BLIND VERIFY — re-defined F3 (build_f3/F3_DEFINITION.md)
+====================================================================================================
+[pop] fixture rulings 61 · pairs.tsv A 61 · identical (keys+verdicts): True
+[pop] A yes 17 / no 37 / excluded 7
+[pop] labelled-EP doc rows 8 · pairs.tsv B(operator) 8 · identical: True
+[pop] shadow rows > 2026-08-16 63 · pairs.tsv C 63 · identical: True
+[pop] bar data max date: 2026-11-02
+
+[KOD] 2026-09-28 stated + 12 variants
+  stated        P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2025-12-24 31.18 (D-189)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +0.209/+0.657  ok held 1 into 1  ADR 5.5162 hist 1254
+  adr_mult=0.5  P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2025-12-24 31.18 (D-189)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +0.209/+0.657  ok held 1 into 0  ADR 5.5162 hist 1254
+  adr_mult=1.5  P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2025-12-24 31.18 (D-189)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +0.209/+0.657  ok held 1 into 1  ADR 5.5162 hist 1254
+  pb_win=20     P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2025-12-24 31.18 (D-189)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +0.209/+0.657  ok held 1 into 1  ADR 5.5162 hist 1254
+  pb_win=60     P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2025-12-24 31.18 (D-189)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +0.209/+0.657  ok held 1 into 1  ADR 5.5162 hist 1254
+  base_end=125  P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2025-12-24 31.18 (D-189)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +0.209/+0.657  ok held 1 into 1  ADR 5.5162 hist 1254
+  base_end=375  P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2025-12-24 31.18 (D-189)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +0.209/+0.657  ok held 1 into 1  ADR 5.5162 hist 1254
+  run_win=30    P 2026-04-22 47.84 (D-109)  S 2026-03-24 21.00 (D-129)  shelf 2026-01-22 29.49 (D-171)  run 128%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +1.259/+1.732  ok held 1 into 0  ADR 5.5162 hist 1254
+  run_win=90    P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2025-12-24 31.18 (D-189)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +0.209/+0.657  ok held 1 into 1  ADR 5.5162 hist 1254
+  shelf_win=22  P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2026-01-22 29.49 (D-171)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +1.259/+1.732  ok held 1 into 0  ADR 5.5162 hist 1254
+  shelf_win=68  P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2025-12-24 31.18 (D-189)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +0.209/+0.657  ok held 1 into 1  ADR 5.5162 hist 1254
+  run_min=0.15  P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2025-12-24 31.18 (D-189)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +0.209/+0.657  ok held 1 into 1  ADR 5.5162 hist 1254
+  run_min=0.45  P 2026-04-22 47.84 (D-109)  S 2026-02-05 20.88 (D-161)  shelf 2025-12-24 31.18 (D-189)  run 129%  lows 2026-09-18 31.54, 2026-09-11 32.31  d +0.209/+0.657  ok held 1 into 1  ADR 5.5162 hist 1254
+
+[diff] builder f3_features.tsv rows 158 · mine 158 · same keys: True
+[diff:stated as I read it: run P-59..P (60 incl), shelf S-44..S (45 incl)] pairs with any mismatch vs builder tsv: 30 of 158
+  ('RNG', '2026-07-24', 'A'): s_low 25.585 vs mine 26.32; s_date 2026-02-06 vs mine 2026-02-09
+  ('GDC', '2026-05-06', 'A'): d1_adr -4.0806 vs mine -4.6388; d2_adr -3.3531 vs mine -3.9812; shelf 987.5 vs mine 1092.5; s_low 685.0 vs mine 705.0; shelf_date 2025-05-12 vs mine 2025-07-14; s_date 2025-06-20 vs mine 2025-08-14
+  ('QTTB', '2026-07-13', 'A'): s_low 3.079 vs mine 3.1; s_date 2025-12-30 vs mine 2025-12-31
+  ('LPTH', '2026-08-14', 'A'): d1_adr -4.1512 vs mine -3.7964; d2_adr -3.6495 vs mine -3.271; shelf 14.41 vs mine 13.7599; shelf_date 2026-01-23 vs mine 2026-02-19
+  ('AEVA', '2026-08-06', 'A'): d1_adr -3.0244 vs mine -2.9284; d2_adr -1.5073 vs mine -1.3948; shelf 18.135 vs mine 17.94; shelf_date 2026-01-23 vs mine 2026-03-11
+  ('BLZE', '2026-08-04', 'A'): s_low 4.92 vs mine 5.13; s_date 2025-08-04 vs mine 2025-08-05
+  ('RUM', '2026-06-04', 'A'): d1_adr -5.8069 vs mine -5.783; d2_adr -4.1681 vs mine -4.1375; shelf 9.79 vs mine 9.75; shelf_date 2025-02-25 vs mine 2025-02-26
+  ('MAN', '2026-07-16', 'A'): d1_adr -8.1559 vs mine -7.9709; d2_adr -7.771 vs mine -7.5796; shelf 51.765 vs mine 50.93; shelf_date 2025-04-15 vs mine 2025-04-16
+  ('HURN', '2026-07-29', 'A'): s_low 145.31 vs mine 149.32; s_date 2025-10-17 vs mine 2025-10-20
+  ('ODD', '2026-09-09', 'A'): d1_adr -14.3149 vs mine -14.2861; d2_adr -14.2395 vs mine -14.2099; shelf 79.1804 vs mine 78.28; shelf_date 2025-06-03 vs mine 2025-06-05
+  ('GNRC', '2026-09-17', 'A'): s_low 184.41 vs mine 187.53; s_date 2026-03-30 vs mine 2026-03-31
+  ('PHVS', '2026-09-08', 'A'): d1_adr 1.1704 vs mine 0.8875; d2_adr 2.221 vs mine 1.9247; shelf 29.85 vs mine 30.235; s_low 26.53 vs mine 26.69; shelf_date 2026-04-01 vs mine 2026-04-22; s_date 2026-04-13 vs mine 2026-04-24
+  ('ASPN', '2026-08-06', 'A'): d1_adr -8.4491 vs mine -8.0894; d2_adr -6.753 vs mine -6.3212; shelf 8.125 vs mine 7.7936; s_low 5.2 vs mine 5.3119; shelf_date 2025-03-07 vs mine 2025-03-11; s_date 2025-05-12 vs mine 2025-05-13
+  ('AEHR', '2026-03-31', 'B'): s_low 12.19 vs mine 12.93; s_date 2025-07-09 vs mine 2025-07-14
+  ('PENG', '2026-10-07', 'B'): d1_adr 16.5432 vs mine 14.4662; d2_adr 16.9924 vs mine 14.8895; shelf 24.63 vs mine 26.14; s_low 22.8 vs mine 24.48; shelf_date 2026-04-13 vs mine 2026-04-14; s_date 2026-04-13 vs mine 2026-04-14
+  ('AMLX', '2026-08-18', 'C'): into 1 vs mine 0; d1_adr -0.0092 vs mine 0.705; d2_adr 0.3967 vs mine 1.13; shelf 16.53 vs mine 15.79; shelf_date 2026-01-23 vs mine 2026-01-27
+  ('BULL', '2026-08-20', 'C'): d1_adr -15.2774 vs mine -13.9048; d2_adr -15.1067 vs mine -13.7037; shelf 18.85 vs mine 16.0; s_low 11.91 vs mine 11.95; shelf_date 2025-05-09 vs mine 2025-05-12; s_date 2025-07-07 vs mine 2025-07-16; structure no_breakout(P<=shelf) vs mine ok
+  ('SCSC', '2026-08-20', 'C'): s_low 33.79 vs mine 34.31; s_date 2026-03-19 vs mine 2026-03-20
+  ('AGX', '2026-09-03', 'C'): s_low 547.3277 vs mine 560.0259; s_date 2026-04-02 vs mine 2026-04-07
+  ('ALAB', '2026-09-04', 'C'): s_low 101.5276 vs mine 114.8378; s_date 2026-04-02 vs mine 2026-04-07
+  ('PHVS', '2026-09-08', 'C'): d1_adr 1.1704 vs mine 0.8875; d2_adr 2.221 vs mine 1.9247; shelf 29.85 vs mine 30.235; s_low 26.53 vs mine 26.69; shelf_date 2026-04-01 vs mine 2026-04-22; s_date 2026-04-13 vs mine 2026-04-24
+  ('GNRC', '2026-09-17', 'C'): s_low 184.41 vs mine 187.53; s_date 2026-03-30 vs mine 2026-03-31
+  ('VICR', '2026-09-17', 'C'): s_low 147.0477 vs mine 151.2732; s_date 2026-04-02 vs mine 2026-04-07
+  ('INTC', '2026-09-21', 'C'): d1_adr 13.9538 vs mine 13.3103; d2_adr 15.4965 vs mine 14.8267; shelf 51.49 vs mine 52.385; s_low 46.04 vs mine 49.87; shelf_date 2026-02-03 vs mine 2026-04-06; s_date 2026-04-02 vs mine 2026-04-06
+  ('MSTR', '2026-09-21', 'C'): d1_adr -12.4731 vs mine -12.441; d2_adr -12.4526 vs mine -12.4203; shelf 424.0 vs mine 419.95; shelf_date 2025-07-23 vs mine 2025-07-24
+  ('ACN', '2026-10-01', 'C'): d1_adr -11.8198 vs mine -11.3496; d2_adr -10.4624 vs mine -9.9564; shelf 262.165 vs mine 255.44; s_low 233.6 vs mine 237.43; shelf_date 2025-08-22 vs mine 2025-10-29; s_date 2025-10-17 vs mine 2025-11-18
+  ('SNPS', '2026-10-01', 'C'): d1_adr -8.4649 vs mine -8.1266; d2_adr -7.5389 vs mine -7.184; shelf 525.04 vs mine 515.8; shelf_date 2026-01-22 vs mine 2026-01-28
+  ('PENG', '2026-10-07', 'C'): d1_adr 16.5432 vs mine 14.4662; d2_adr 16.9924 vs mine 14.8895; shelf 24.63 vs mine 26.14; s_low 22.8 vs mine 24.48; shelf_date 2026-04-13 vs mine 2026-04-14; s_date 2026-04-13 vs mine 2026-04-14
+  ('AAOI', '2026-10-09', 'C'): s_low 41.12 vs mine 42.56; s_date 2026-02-17 vs mine 2026-02-18
+  ('HUM', '2026-10-09', 'C'): d1_adr 22.2995 vs mine 19.2469; d2_adr 22.6325 vs mine 19.5604; shelf 210.585 vs mine 223.74; s_low 203.92 vs mine 211.68; shelf_date 2026-04-20 vs mine 2026-04-21; s_date 2026-04-20 vs mine 2026-04-24
+[diff:run P-60..P (61), shelf S-44..S (45)] pairs with any mismatch vs builder tsv: 9 of 158
+[diff:run P-59..P (60), shelf S-45..S (46)] pairs with any mismatch vs builder tsv: 22 of 158
+[diff:run P-60..P (61), shelf S-45..S (46)] pairs with any mismatch vs builder tsv: 0 of 158
+
+[A] held: P(yes>no) 0.6071 n 16/28  held=1 yes 8/16 no 8/28  90% CI (seed 20261103) [0.487, 0.728]  (seed 7) [0.491, 0.732]  qualifies>=0.65: False
+[A] into (structure-gated): P(yes>no) 0.4955  yes 1/16 no 2/28
+[A] into (UNgated by structure): P(yes>no) 0.4777  yes 1/16 no 3/28
+[A] dmin descriptive: P(yes>no) 0.6853  yes median -0.414 (n 16)  no median -3.400 (n 28)
+[A] NULLs: WYFI 2026-08-12 OKISH_CHART run_window_before_history(start -13); NVTX 2026-06-03 BAD_CHART history<250(184); MRLN 2026-06-05 BAD_CHART history<250(136); AVGU 2026-06-02 BAD_CHART history<250(222); CRWG 2026-06-01 BAD_CHART history<250(202); JLHL 2026-06-08 BAD_CHART history<250(238); RARE 2026-08-20 BAD_CHART swing_lows=1; FRMI 2026-08-11 BAD_CHART history<250(215); DFTX 2026-09-14 BAD_CHART history<250(165); EIKN 2026-08-19 BAD_CHART history<250(134)
+
+[A] boundary pairs (|d| near 1 ADR), full precision:
+   TBBB  2026-08-13 GOOD_CHART  d1 -1.03793 d2 -0.90583 ADR 3.96534 held 0 into 0 | with ADR rounded to 3.97: d1 -1.03671 d2 -0.90477 held 0 | ok lows 2026-07-23 38.44, 2026-07-29 38.65
+   CDNA  2026-07-16 GOOD_CHART  d1 -1.35522 d2 +0.56753 ADR 4.86653 held 0 into 0 | with ADR rounded to 4.87: d1 -1.35426 d2 +0.56713 held 0 | ok lows 2026-05-18 19.61, 2026-06-03 21.58
+   NVTS  2026-06-03 BAD_CHART   d1 -0.29981 d2 +3.88084 ADR 12.66638 held 1 into 0 | with ADR rounded to 12.67: d1 -0.29972 d2 +3.87973 held 1 | ok lows 2026-04-13 9.12, 2026-04-29 14.14
+   CAR   2026-04-22 BAD_CHART   d1 -0.99471 d2 -0.63145 ADR 16.43572 held 1 into 1 | with ADR rounded to 16.44: d1 -0.99445 d2 -0.63129 held 1 | ok lows 2026-02-24 85.96, 2026-03-03 92.10
+   CAR   2026-04-21 BAD_CHART   d1 -1.06202 d2 -0.67418 ADR 15.39399 held 0 into 0 | with ADR rounded to 15.39: d1 -1.06230 d2 -0.67436 held 0 | ok lows 2026-02-24 85.96, 2026-03-03 92.10
+   YOU   2026-08-05 BAD_CHART   d1 -0.41215 d2 -0.21445 ADR 4.61135 held 1 into 1 | with ADR rounded to 4.61: d1 -0.41227 d2 -0.21452 held 1 | ok lows 2026-06-15 49.50, 2026-06-18 49.96
+   QTTB  2026-07-13 BAD_CHART   d1 -1.42702 d2 +5.99565 ADR 10.94505 held 0 into 0 | with ADR rounded to 10.95: d1 -1.42637 d2 +5.99294 held 0 | ok lows 2026-05-21 5.38, 2026-06-25 10.55
+   IBTA  2026-08-04 BAD_CHART   d1 -0.17484 d2 +1.87419 ADR 6.50843 held 1 into 0 | with ADR rounded to 6.51: d1 -0.17480 d2 +1.87374 held 1 | ok lows 2026-07-23 24.76, 2026-06-18 28.10
+   PHVS  2026-09-08 BAD_CHART   d1 +0.88753 d2 +1.92473 ADR 4.75133 held 1 into 0 | with ADR rounded to 4.75: d1 +0.88778 d2 +1.92527 held 1 | ok lows 2026-08-03 31.51, 2026-08-12 33.00
+
+[A] per pair (mine): ticker date label held into d1 d2 shelf S P run structure/null
+   OMER  2026-07-27 OKISH_CHART    1    0   +6.04   +8.13 2025-10-06 4.72 | 2025-10-14 4.055 | 2025-12-24 17.65 | 335% ok
+   RNG   2026-07-24 GOOD_CHART     1    0   +1.33   +3.43 2025-12-12 31.36 | 2026-02-09 26.32 | 2026-05-05 48.57 | 85% ok
+   WYFI  2026-08-12 OKISH_CHART NULL NULL    NULL    NULL - - | - - | 2025-10-13 40.75 |  run_window_before_history(start -13)
+   AVAH  2026-08-13 GOOD_CHART     1    0  +12.06  +14.60 2025-06-10 5.8579 | 2025-08-01 3.73 | 2025-10-21 10.32 | 177% ok
+   NIQ   2026-08-11 OKISH_CHART    0    0   -8.85   -8.81 2023-04-12 12.89 | 2023-05-31 12.43 | 2025-09-17 18.7 | 50% ok
+   TBBB  2026-08-13 GOOD_CHART     0    0   -1.04   -0.91 2026-02-18 40.09 | 2026-03-20 32.26 | 2026-06-15 43.8 | 36% ok
+   MRVI  2026-08-19 OKISH_CHART    1    0   +7.43   +8.72 2026-03-04 3.91 | 2026-04-02 2.8 | 2026-06-22 5.325 | 90% ok
+   HAE   2026-08-18 GOOD_CHART     0    0   -1.99   -1.90 2025-08-05 76.84 | 2025-09-26 47.315 | 2025-12-10 87.32 | 85% ok
+   BLZE  2026-08-04 GOOD_CHART     1    0   +1.99   +3.44 2025-06-04 5.99 | 2025-08-05 5.13 | 2025-10-28 10.8579 | 112% ok
+   HPE   2026-06-02 OKISH_CHART    1    0   +2.19   +5.76 2025-07-10 21.72 | 2025-08-05 19.635 | 2025-10-08 26.44 | 35% ok
+   CDNA  2026-07-16 GOOD_CHART     0    0   -1.36   +0.57 2026-02-11 21.0 | 2026-04-10 15.56 | 2026-04-17 23.2399 | 49% ok
+   MAN   2026-07-16 GOOD_CHART     0    0   -7.97   -7.58 2025-04-16 50.93 | 2025-06-20 37.99 | 2025-07-17 47.335 | 25% no_run
+   KRO   2026-08-06 GOOD_CHART     0    0   -2.99   -2.65 2026-02-12 6.9 | 2026-03-12 4.813 | 2026-05-04 7.89 | 64% ok
+   LIFE  2026-08-04 OKISH_CHART    0    0   -2.77   -2.61 2026-01-29 19.0 | 2026-02-12 9.45 | 2026-05-07 32.4999 | 244% ok
+   KOD   2026-09-28 GOOD_CHART     1    1   +0.21   +0.66 2025-12-24 31.18 | 2026-02-05 20.88 | 2026-04-22 47.8417 | 129% ok
+   DCTH  2026-08-06 OKISH_CHART    0    0   -8.60   -8.18 2025-06-06 17.352 | 2025-08-08 9.87 | 2025-10-16 12.6999 | 29% no_run
+   ABCL  2026-08-10 OKISH_CHART    1    0   +3.98   +4.09 2026-03-02 3.835 | 2026-04-07 3.22 | 2026-06-01 6.79 | 111% ok
+   NVTX  2026-06-03 BAD_CHART   NULL NULL    NULL    NULL - - | - - | - - |  history<250(184)
+   NVTS  2026-06-03 BAD_CHART      1    0   -0.30   +3.88 2025-07-28 9.48 | 2025-09-05 5.44 | 2025-10-20 17.79 | 227% ok
+   MRLN  2026-06-05 BAD_CHART   NULL NULL    NULL    NULL - - | - - | - - |  history<250(136)
+   AVGU  2026-06-02 BAD_CHART   NULL NULL    NULL    NULL - - | - - | - - |  history<250(222)
+   CRWG  2026-06-01 BAD_CHART   NULL NULL    NULL    NULL - - | - - | - - |  history<250(202)
+   ABVX  2026-06-03 BAD_CHART      1    0   +2.73   +3.54 2025-09-05 92.91 | 2025-10-02 81.9 | 2025-12-24 148.83 | 82% ok
+   GDC   2026-05-06 BAD_CHART      0    0   -4.64   -3.98 2025-07-14 1092.5 | 2025-08-14 705.0 | 2025-09-16 2478.75 | 252% ok
+   CAR   2026-04-22 BAD_CHART      1    1   -0.99   -0.63 2025-05-08 102.76 | 2025-05-08 90.01 | 2025-07-29 212.81 | 136% ok
+   CAR   2026-04-21 BAD_CHART      0    0   -1.06   -0.67 2025-05-08 102.76 | 2025-05-08 90.01 | 2025-07-29 212.81 | 136% ok
+   ADVB  2026-07-24 BAD_CHART      0    0   -4.48   -4.44 2025-06-02 21.8 | 2025-08-05 7.416 | 2025-08-05 14.0 | 89% no_breakout
+   JLHL  2026-06-08 BAD_CHART   NULL NULL    NULL    NULL - - | - - | - - |  history<250(238)
+   IPCX  2026-07-29 BAD_CHART      0    0   +0.44   +0.48 2026-02-17 10.2 | 2026-02-24 10.16 | 2026-05-20 10.32 | 2% no_run
+   QH    2026-06-18 BAD_CHART      0    0   -3.86   -3.86 2025-04-07 142.2 | 2025-05-12 91.8 | 2025-07-21 169.074 | 84% ok
+   MRAM  2026-05-13 BAD_CHART      0    0   -2.97   -2.48 2025-10-03 12.2736 | 2025-11-21 7.35 | 2026-01-22 17.24 | 135% ok
+   YOU   2026-08-05 BAD_CHART      1    1   -0.41   -0.21 2026-02-26 50.459 | 2026-03-12 43.63 | 2026-05-26 62.73 | 44% ok
+   AEHR  2026-08-14 BAD_CHART      1    0   +2.79   +2.87 2026-03-04 46.95 | 2026-03-30 29.13 | 2026-06-15 126.62 | 335% ok
+   QTTB  2026-07-13 BAD_CHART      0    0   -1.43   +6.00 2025-12-01 6.3699 | 2025-12-31 3.1 | 2026-03-27 8.045 | 160% ok
+   RARE  2026-08-20 BAD_CHART   NULL NULL    NULL    NULL 2025-09-03 32.58 | 2025-09-25 27.75 | 2025-12-08 39.8899 | 44% swing_lows=1
+   BW    2026-08-11 BAD_CHART      0    0   -3.86   -2.25 2026-02-04 11.57 | 2026-03-03 7.95 | 2026-05-15 22.03 | 177% ok
+   LPTH  2026-08-14 BAD_CHART      0    0   -3.80   -3.27 2026-02-19 13.7599 | 2026-03-30 9.115 | 2026-05-28 18.94 | 108% ok
+   FRMI  2026-08-11 BAD_CHART   NULL NULL    NULL    NULL - - | - - | - - |  history<250(215)
+   AEVA  2026-08-06 BAD_CHART      0    0   -2.93   -1.39 2026-03-11 17.94 | 2026-03-30 11.4606 | 2026-05-27 29.82 | 160% ok
+   RUM   2026-06-04 BAD_CHART      0    0   -5.78   -4.14 2025-02-26 9.75 | 2025-04-30 7.435 | 2025-07-21 10.99 | 48% ok
+   IBTA  2026-08-04 BAD_CHART      1    0   -0.17   +1.87 2026-01-22 25.045 | 2026-02-12 19.985 | 2026-05-07 40.485 | 103% ok
+   HURN  2026-07-29 BAD_CHART      0    0   -9.83   -9.13 2025-10-08 153.66 | 2025-10-20 149.32 | 2026-01-14 186.775 | 25% no_run
+   ROIV  2026-09-08 BAD_CHART      1    0   +2.16   +2.52 2026-03-11 30.33 | 2026-04-24 27.06 | 2026-07-10 37.0 | 37% ok
+   AKAM  2026-09-25 BAD_CHART      0    0   -3.67   -3.36 2026-03-26 121.12 | 2026-04-14 88.5 | 2026-05-13 165.45 | 87% ok
+   ODD   2026-09-09 BAD_CHART      0    0  -14.29  -14.21 2025-06-05 78.28 | 2025-08-07 56.14 | 2025-09-15 64.23 | 14% no_run
+   GNRC  2026-09-17 BAD_CHART      0    0   -7.14   -6.08 2026-02-25 241.091 | 2026-03-31 187.53 | 2026-06-25 296.44 | 58% ok
+   DFTX  2026-09-14 BAD_CHART   NULL NULL    NULL    NULL - - | - - | - - |  history<250(165)
+   CCL   2026-09-29 BAD_CHART      0    0  -11.59  -11.22 2025-09-29 32.5 | 2025-11-24 24.6 | 2026-02-06 34.03 | 38% ok
+   PHVS  2026-09-08 BAD_CHART      1    0   +0.89   +1.92 2026-04-22 30.235 | 2026-04-24 26.69 | 2026-07-09 36.6 | 37% ok
+   SIG   2026-09-09 BAD_CHART      0    0   -3.13   -2.64 2025-07-23 88.51 | 2025-08-08 73.625 | 2025-10-22 110.2 | 50% ok
+   EIKN  2026-08-19 BAD_CHART   NULL NULL    NULL    NULL - - | - - | - - |  history<250(134)
+   NUAI  2026-09-21 BAD_CHART      0    0   -5.55   -4.75 2025-11-03 7.59 | 2025-12-30 2.01 | 2026-01-22 9.445 | 370% ok
+   AESI  2026-09-25 BAD_CHART      0    0   -4.35   -1.46 2026-01-29 12.42 | 2026-02-26 9.27 | 2026-05-21 20.13 | 117% ok
+   ASPN  2026-08-06 BAD_CHART      0    0   -8.09   -6.32 2025-03-11 7.7936 | 2025-05-13 5.3119 | 2025-08-07 9.78 | 84% ok
+
+[B] his 8 labelled EPs
+   HTFL  2026-08-14 held None into None d NULL shelf None None run  run_window_before_history(start -5)
+   PLTR  2026-08-04 held 0 into 0 d -9.73/-8.39 shelf 2025-08-12 190.0 run 46% ok
+   TEAM  2026-08-07 held 0 into 0 d -10.55/-10.25 shelf 2025-07-09 222.59 run 17% no_run
+   ABNB  2026-08-07 held 0 into 0 d -3.94/-1.58 shelf 2026-01-09 141.4 run 27% no_run
+   BFLY  2026-06-18 held 0 into 0 d -3.51/-2.32 shelf 2026-01-14 5.03 run 101% ok
+   MRNA  2026-08-19 held 0 into 0 d -2.02/-1.82 shelf 2026-03-04 59.55 run 55% ok
+   CHPT  2026-09-03 held 0 into 0 d -14.75/-14.31 shelf 2025-06-04 17.78 run 47% no_breakout
+   PENG  2026-10-07 held 1 into 0 d +14.47/+14.89 shelf 2026-04-14 26.14 run 267% ok
+[B] held=1 on 1 of 7 non-NULL (1 NULL)
+
+[coverage] NULL total 21: A 10 | B 1 | B2 2 | C 8
+   A: NVTX 2026-06-03 (history<250(184)); MRLN 2026-06-05 (history<250(136)); AVGU 2026-06-02 (history<250(222)); CRWG 2026-06-01 (history<250(202)); JLHL 2026-06-08 (history<250(238)); RARE 2026-08-20 (swing_lows=1); WYFI 2026-08-12 (run_window_before_history(start -13)); FRMI 2026-08-11 (history<250(215)); DFTX 2026-09-14 (history<250(165)); EIKN 2026-08-19 (history<250(134))
+   B: HTFL 2026-08-14 (run_window_before_history(start -5))
+   B2: TDIC 2026-05-12 (history<250(202)); FLY 2026-03-12 (history<250(149))
+   C: CBRS 2026-08-17 (history<250(64)); RARE 2026-08-20 (swing_lows=1); CHRN 2026-08-27 (history<250(79)); SOLS 2026-08-28 (history<250(207)); DFTX 2026-09-14 (history<250(165)); BSP 2026-10-14 (history<250(73)); MANE 2026-10-19 (history<250(177)); INIO 2026-10-27 (history<250(100))
+   structure among non-NULL: A: no_breakout=1, no_run=5, ok=45 | B: no_breakout=1, no_run=2, ok=4 | B2: ok=24 | C: no_breakout=1, no_run=6, ok=48
+
+[C] outcomes from bars vs running-read rows.psv: 63 rows compared, 0 mismatches (rows.psv holds 63)
+[C] held=1 vs held=0 (stated):
+  [5d] matured n=56 (NULL 7) | held=1 n=21 w 1 L 14 | held=0 n=28 w 1 L 17 -> LOSS | tails: KOD 2026-09-28 12.43x held=1, MRNA 2026-08-19 9.13x held=0
+  [20d] matured n=42 (NULL 5) | held=1 n=16 w 1 L 10 | held=0 n=21 w 2 L 14 -> MIXED | tails: KOD 2026-09-28 12.43x held=1, MRNA 2026-08-19 9.13x held=0, VICR 2026-09-17 9.50x held=0
+
+[plateau] P window end FIXED at 41 (D-base_end .. D-41), as the definition states · literal windows run 60 / shelf 45
+   stated        0.607 [0.49, 0.73] n 16/28 =1 8/16·8/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w17L/28 · C20 1w10L/16 vs 2w14L/21  qual False
+   adr_mult=0.5  0.625 [0.50, 0.74] n 16/28 =1 8/16·7/28  B=1 1/8  KOD 1  C5 1w13L/20 vs 1w18L/29 · C20 1w9L/15 vs 2w15L/22  qual False
+   adr_mult=1.5  0.634 [0.51, 0.76] n 16/28 =1 10/16·10/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w17L/28 · C20 1w10L/16 vs 2w14L/21  qual False
+   pb_win=20     0.632 [0.51, 0.76] n 16/25 =1 10/16·9/25  B=1 1/8  KOD 1  C5 1w13L/20 vs 1w13L/24 · C20 1w9L/15 vs 2w10L/17  qual False
+   pb_win=60     0.598 [0.47, 0.72] n 16/29 =1 7/16·7/29  B=1 1/8  KOD 1  C5 1w11L/17 vs 1w20L/33 · C20 1w8L/13 vs 2w16L/25  qual False
+   base_end=125  0.588 [0.47, 0.71] n 17/34 =1 8/17·10/34  B=1 1/8  KOD 1  C5 1w15L/21 vs 1w18L/30 · C20 1w10L/15 vs 2w16L/24  qual False
+   base_end=375  0.590 [0.47, 0.72] n 16/25 =1 8/16·8/25  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w16L/27 · C20 1w10L/16 vs 2w13L/20  qual False
+   run_win=30    0.585 [0.48, 0.70] n 16/28 =1 5/16·4/28  B=1 0/8  KOD 1  C5 1w6L/11 vs 1w25L/38 · C20 1w4L/9 vs 2w20L/28  qual False
+   run_win=90    0.572 [0.44, 0.70] n 16/27 =1 10/16·13/27  B=1 2/8  KOD 1  C5 2w18L/27 vs 0w12L/21 · C20 3w14L/22 vs 0w9L/14  qual False
+   shelf_win=22  0.701 [0.58, 0.82] n 16/28 =1 11/16·8/28  B=1 1/8  KOD 1  C5 1w15L/23 vs 1w16L/26 · C20 1w11L/17 vs 2w13L/20  qual True
+   shelf_win=68  0.625 [0.50, 0.75] n 16/28 =1 8/16·7/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w16L/27 · C20 1w10L/16 vs 2w13L/20  qual False
+   run_min=0.15  0.607 [0.49, 0.73] n 16/28 =1 8/16·8/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w17L/28 · C20 1w10L/16 vs 2w14L/21  qual False
+   run_min=0.45  0.629 [0.51, 0.75] n 16/28 =1 7/16·5/28  B=1 1/8  KOD 1  C5 1w13L/18 vs 1w18L/31 · C20 1w9L/13 vs 2w15L/24  qual False
+
+[plateau] P window end COUPLED to pb_win (D-base_end .. D-(pb_win+1)) · literal windows run 60 / shelf 45
+   stated        0.607 [0.49, 0.73] n 16/28 =1 8/16·8/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w17L/28 · C20 1w10L/16 vs 2w14L/21  qual False
+   adr_mult=0.5  0.625 [0.50, 0.74] n 16/28 =1 8/16·7/28  B=1 1/8  KOD 1  C5 1w13L/20 vs 1w18L/29 · C20 1w9L/15 vs 2w15L/22  qual False
+   adr_mult=1.5  0.634 [0.51, 0.76] n 16/28 =1 10/16·10/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w17L/28 · C20 1w10L/16 vs 2w14L/21  qual False
+   pb_win=20     0.644 [0.52, 0.76] n 17/25 =1 11/17·9/25  B=1 1/8  KOD 1  C5 1w13L/18 vs 1w13L/26 · C20 1w9L/13 vs 2w10L/19  qual False
+   pb_win=60     0.615 [0.49, 0.73] n 16/29 =1 7/16·6/29  B=1 3/8  KOD 1  C5 2w12L/18 vs 0w19L/32 · C20 2w9L/14 vs 1w15L/24  qual False
+   base_end=125  0.588 [0.47, 0.71] n 17/34 =1 8/17·10/34  B=1 1/8  KOD 1  C5 1w15L/21 vs 1w18L/30 · C20 1w10L/15 vs 2w16L/24  qual False
+   base_end=375  0.590 [0.47, 0.72] n 16/25 =1 8/16·8/25  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w16L/27 · C20 1w10L/16 vs 2w13L/20  qual False
+   run_win=30    0.585 [0.48, 0.70] n 16/28 =1 5/16·4/28  B=1 0/8  KOD 1  C5 1w6L/11 vs 1w25L/38 · C20 1w4L/9 vs 2w20L/28  qual False
+   run_win=90    0.572 [0.44, 0.70] n 16/27 =1 10/16·13/27  B=1 2/8  KOD 1  C5 2w18L/27 vs 0w12L/21 · C20 3w14L/22 vs 0w9L/14  qual False
+   shelf_win=22  0.701 [0.58, 0.82] n 16/28 =1 11/16·8/28  B=1 1/8  KOD 1  C5 1w15L/23 vs 1w16L/26 · C20 1w11L/17 vs 2w13L/20  qual True
+   shelf_win=68  0.625 [0.50, 0.75] n 16/28 =1 8/16·7/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w16L/27 · C20 1w10L/16 vs 2w13L/20  qual False
+   run_min=0.15  0.607 [0.49, 0.73] n 16/28 =1 8/16·8/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w17L/28 · C20 1w10L/16 vs 2w14L/21  qual False
+   run_min=0.45  0.629 [0.51, 0.75] n 16/28 =1 7/16·5/28  B=1 1/8  KOD 1  C5 1w13L/18 vs 1w18L/31 · C20 1w9L/13 vs 2w15L/24  qual False
+
+[plateau] P window end COUPLED to pb_win (D-base_end .. D-(pb_win+1)) · BUILDER windows run 61 / shelf 46
+   stated        0.607 [0.49, 0.73] n 16/28 =1 8/16·8/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w17L/28 · C20 1w10L/16 vs 2w14L/21  qual False
+   adr_mult=0.5  0.625 [0.50, 0.74] n 16/28 =1 8/16·7/28  B=1 1/8  KOD 1  C5 1w13L/20 vs 1w18L/29 · C20 1w9L/15 vs 2w15L/22  qual False
+   adr_mult=1.5  0.634 [0.51, 0.76] n 16/28 =1 10/16·10/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w17L/28 · C20 1w10L/16 vs 2w14L/21  qual False
+   pb_win=20     0.644 [0.52, 0.76] n 17/25 =1 11/17·9/25  B=1 1/8  KOD 1  C5 1w13L/18 vs 1w13L/26 · C20 1w9L/13 vs 2w10L/19  qual False
+   pb_win=60     0.615 [0.49, 0.73] n 16/29 =1 7/16·6/29  B=1 3/8  KOD 1  C5 2w12L/18 vs 0w19L/32 · C20 2w9L/14 vs 1w15L/24  qual False
+   base_end=125  0.588 [0.47, 0.71] n 17/34 =1 8/17·10/34  B=1 1/8  KOD 1  C5 1w15L/21 vs 1w18L/30 · C20 1w10L/15 vs 2w16L/24  qual False
+   base_end=375  0.590 [0.47, 0.72] n 16/25 =1 8/16·8/25  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w16L/27 · C20 1w10L/16 vs 2w13L/20  qual False
+   run_win=30    0.585 [0.48, 0.70] n 16/28 =1 5/16·4/28  B=1 0/8  KOD 1  C5 1w6L/11 vs 1w25L/38 · C20 1w4L/9 vs 2w20L/28  qual False
+   run_win=90    0.572 [0.44, 0.70] n 16/27 =1 10/16·13/27  B=1 2/8  KOD 1  C5 2w18L/27 vs 0w12L/21 · C20 3w14L/22 vs 0w9L/14  qual False
+   shelf_win=22  0.670 [0.54, 0.79] n 16/28 =1 10/16·8/28  B=1 1/8  KOD 1  C5 1w15L/23 vs 1w16L/26 · C20 1w11L/17 vs 2w13L/20  qual True
+   shelf_win=68  0.625 [0.50, 0.75] n 16/28 =1 8/16·7/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w16L/27 · C20 1w10L/16 vs 2w13L/20  qual False
+   run_min=0.15  0.607 [0.49, 0.73] n 16/28 =1 8/16·8/28  B=1 1/8  KOD 1  C5 1w14L/21 vs 1w17L/28 · C20 1w10L/16 vs 2w14L/21  qual False
+   run_min=0.45  0.629 [0.51, 0.75] n 16/28 =1 7/16·5/28  B=1 1/8  KOD 1  C5 1w13L/18 vs 1w18L/31 · C20 1w9L/13 vs 2w15L/24  qual False
+[conv] dmin descriptive under the builder windows: P(yes>no) 0.6875 yes median -0.414 no median -3.400
+
+[conv] run window as P-60..P (61 sessions): A 0.6071 n 16/28; WYFI run_window_before_history(start -14) held None; HTFL run_window_before_history(start -6) held None
+   WYFI stated: P 2025-10-13 at slice index 46 (ia 254) -> 60-incl window start -13; null run_window_before_history(start -13)
+   HTFL stated: P 2025-10-24 at slice index 54 (ia 255) -> 60-incl window start -5; null run_window_before_history(start -5)

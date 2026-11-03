@@ -1,0 +1,50 @@
+
+=== composite [stated: zones cleared alone (held < 0.65 does not enter)] features ['zones'] · F3 params {}
+  (i) literal 0.555 (n 17/37) · rankable-only 0.574 (n 12/22) -> FAIL
+  (ii) rankable 6 of 8 · top half 6 -> PASS
+  (iii) 5d vs c_eod: matured 56 | v2 top n=16 w 1 L 11 | old top n=7 w 0 L 4 -> MIXED · bar FAIL
+  (iii) 5d vs c_945: matured 56 | v2 top n=16 w 1 L 11 | old top n=8 w 0 L 5 -> MIXED · bar FAIL
+  (iii) 20d vs c_eod: matured 42 | v2 top n=12 w 1 L 8 | old top n=6 w 1 L 4 -> NO CHANGE · bar FAIL
+  (iii) 20d vs c_945: matured 42 | v2 top n=12 w 1 L 8 | old top n=6 w 1 L 4 -> NO CHANGE · bar FAIL
+  v2 NULL composite on 0 of 63 C rows
+  -> verdict FAIL
+
+=== composite [FORCED zones+held, literal windows] features ['zones', 'held'] · F3 params {}
+  (i) literal 0.532 (n 16/28) · rankable-only 0.566 (n 11/13) -> FAIL
+  (ii) rankable 5 of 8 · top half 5 -> PASS
+  (iii) 5d vs c_eod: matured 56 | v2 top n=3 w 0 L 2 | old top n=7 w 0 L 4 -> LOSS · bar FAIL
+  (iii) 5d vs c_945: matured 56 | v2 top n=3 w 0 L 2 | old top n=8 w 0 L 5 -> LOSS · bar FAIL
+  (iii) 20d vs c_eod: matured 42 | v2 top n=3 w 0 L 2 | old top n=6 w 1 L 4 -> LOSS · bar FAIL
+  (iii) 20d vs c_945: matured 42 | v2 top n=3 w 0 L 2 | old top n=6 w 1 L 4 -> LOSS · bar FAIL
+  v2 NULL composite on 8 of 63 C rows
+  -> verdict FAIL
+
+=== composite [FORCED zones+held, builder windows] features ['zones', 'held'] · F3 params {'run_incl': False, 'shelf_incl': False}
+  (i) literal 0.532 (n 16/28) · rankable-only 0.566 (n 11/13) -> FAIL
+  (ii) rankable 5 of 8 · top half 5 -> PASS
+  (iii) 5d vs c_eod: matured 56 | v2 top n=3 w 0 L 2 | old top n=7 w 0 L 4 -> LOSS · bar FAIL
+  (iii) 5d vs c_945: matured 56 | v2 top n=3 w 0 L 2 | old top n=8 w 0 L 5 -> LOSS · bar FAIL
+  (iii) 20d vs c_eod: matured 42 | v2 top n=3 w 0 L 2 | old top n=6 w 1 L 4 -> LOSS · bar FAIL
+  (iii) 20d vs c_945: matured 42 | v2 top n=3 w 0 L 2 | old top n=6 w 1 L 4 -> LOSS · bar FAIL
+  v2 NULL composite on 8 of 63 C rows
+  -> verdict FAIL
+
+=== composite [plateau shelf_win=22, literal windows (held 0.701 qualifies)] features ['zones', 'held'] · F3 params {'shelf_win': 22}
+  (i) literal 0.580 (n 16/28) · rankable-only 0.612 (n 11/13) -> FAIL
+  (ii) rankable 5 of 8 · top half 5 -> PASS
+  (iii) 5d vs c_eod: matured 56 | v2 top n=4 w 0 L 3 | old top n=7 w 0 L 4 -> LOSS · bar FAIL
+  (iii) 5d vs c_945: matured 56 | v2 top n=4 w 0 L 3 | old top n=8 w 0 L 5 -> LOSS · bar FAIL
+  (iii) 20d vs c_eod: matured 42 | v2 top n=4 w 0 L 3 | old top n=6 w 1 L 4 -> LOSS · bar FAIL
+  (iii) 20d vs c_945: matured 42 | v2 top n=4 w 0 L 3 | old top n=6 w 1 L 4 -> LOSS · bar FAIL
+  v2 NULL composite on 8 of 63 C rows
+  -> verdict FAIL
+
+=== composite [plateau shelf_win=22, builder windows (held 0.670 qualifies)] features ['zones', 'held'] · F3 params {'run_incl': False, 'shelf_incl': False, 'shelf_win': 22, 'couple': True}
+  (i) literal 0.537 (n 16/28) · rankable-only 0.580 (n 11/13) -> FAIL
+  (ii) rankable 5 of 8 · top half 5 -> PASS
+  (iii) 5d vs c_eod: matured 56 | v2 top n=4 w 0 L 3 | old top n=7 w 0 L 4 -> LOSS · bar FAIL
+  (iii) 5d vs c_945: matured 56 | v2 top n=4 w 0 L 3 | old top n=8 w 0 L 5 -> LOSS · bar FAIL
+  (iii) 20d vs c_eod: matured 42 | v2 top n=4 w 0 L 3 | old top n=6 w 1 L 4 -> LOSS · bar FAIL
+  (iii) 20d vs c_945: matured 42 | v2 top n=4 w 0 L 3 | old top n=6 w 1 L 4 -> LOSS · bar FAIL
+  v2 NULL composite on 8 of 63 C rows
+  -> verdict FAIL

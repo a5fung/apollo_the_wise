@@ -1,0 +1,296 @@
+====================================================================================================
+EP RANKING v2 — the pre-registered test (docs/analysis/ep_rank_v2_prereg_2026-11-03.md)
+====================================================================================================
+READINGS (decided before any outcome or label was scored; written here so they cannot drift):
+ R1  "4 features" = one composite-eligible term per feature: zones_cleared (F1), vol_ratio_252 (F2),
+     pullbacks_held (F3), tightness_eod (F4). The other named measures (zones_remaining, cleared_ath,
+     vol_highest_ever, tightness_asof0945) are scored on A as SUB-READS and are NOT composite-eligible.
+ R2  Feature 1 = the fixture-gated encoder's own preopen pass, CALLED unchanged
+     (_533_nbis_structure_encoder.encode(..., preopen=True)), the same three fields the supply-ladder
+     probe reads: n_cleared, n_uncleared, cls.startswith('BLUE_SKY'). Daily bars sliced to the 5
+     calendar years before D (data starts 2021-09-27, so most names have ~4.5-5y).
+ R3  Feature 3 swing low = a local min over +-2 sessions (mirror of the encoder's PIVOT_WING pivot
+     high), pivot inside the 40 sessions before D, both wings inside bars < D. "The 2 lowest swing
+     lows" = the two lowest-priced. Base high = max high of sessions 41..250 before D (index ia-250 ..
+     ia-41). "Held = both within 1 ADR above it or above it" is read as: each low >= base_high x
+     (1 - 1.0 x ADR20%/100) — within 1 ADR of the old base high, or above it. ADR20 = the encoder's
+     adr20_pct (shared with F1). NULL when < 2 swing lows or the base window is not fully in history.
+ R4  vol_ratio_252 = gap-day volume / max volume of the 252 sessions before D; NULL when fewer than
+     252 prior sessions exist (the window is not shrunk silently). vol_highest_ever = gap-day volume
+     > every prior day in the 5-year slice (available history; flagged when < 5y).
+ R5  Tightness EOD = (h-l)/h*100 on D from bars (the shadow's compute_tightness_pct); as-of-09:45
+     only where shadow_rows has it.
+ R6  A feature qualifies if max(auc, 1-auc) >= 0.65 on A, direction = the side A favours.
+ R7  Composite orientation = the old composite's: per-feature _pct_rank ascending (the shadow's own
+     function, copied), flipped (1-rank) where A says higher raw = yes, mean; LOW = GOOD; top quartile
+     = composite <= 0.25; "top half" = composite < 0.5 (strict; exact-0.5 counted separately).
+     NULL on any included feature -> the item leaves the day's pool (rank_day_pool's all-or-nothing).
+ R8  Day pool = that day's ep_alerts tickers (deduped) + the pair itself when it was not an alert
+     (inserted alone; non-alert pairs never enter each other's pools), restricted to tickers with
+     bars. bars.csv.gz holds only the 140 pair tickers, so A/B pools are PARTIAL — always reported as
+     alerts-that-day vs featured-here. A pool of one -> 0.5, unrankable.
+ R9  Bar (iii): candidate = v2's top quartile, baseline = the OLD composite's top quartile, same
+     matured rows, score_both_directions(candidate, baseline). PASS = more tail winners AND loser
+     rate no higher (the pre-reg's parenthetical), each horizon (5 and 20 sessions) separately.
+
+[0] DATA
+  pairs: 158 (A 61 · B his 8 · B2 R-picked 26 · C 63)
+  A labels: yes (GOOD/OKISH) 17 · no (BAD) 37 · other verdicts excluded 7: NO_SETUP_ON_THIS_DATE, OKISH_EARLIER, WRONG_DAY, WRONG_STAGE — CGEM 2026-06-08 WRONG_DAY AVAH 2026-06-02 WRONG_DAY CAR 2026-04-01 OKISH_EARLIER ARQQ 2026-06-15 WRONG_STAGE MXL 2026-04-21 WRONG_DAY VEEE 2026-07-08 NO_SETUP_ON_THIS_DATE RXT 2026-06-16 WRONG_DAY
+  bars: 140 tickers, 144580 rows; ep_alerts: 424 distinct (date,ticker) over 94 days, first 2026-05-11 (the task text said 2026-03-01 — the file starts later)
+  shadow_rows: 313 distinct (ticker,date) (3 duplicate rows dropped, first kept)
+  tightness cross-check: bars (h-l)/h*100 vs shadow tightness_pct_eod on 108 shared rows -> 0 differ by > 0.01pp
+
+[1] FEATURE COVERAGE (stated thresholds) — every pair
+  zones_cleared     [PRIMARY] NULL 0/158
+  vol_ratio         [PRIMARY] NULL 17/158 — A: 8 | B2: 2 | C: 7
+      A: NVTX 2026-06-03 (F2:history<252(184);F3:history<250(184)); MRLN 2026-06-05 (F2:history<252(136);F3:history<250(136)); AVGU 2026-06-02 (F2:history<252(222);F3:history<250(222)); CRWG 2026-06-01 (F2:history<252(202);F3:history<250(202)); JLHL 2026-06-08 (F2:history<252(238);F3:history<250(238)); FRMI 2026-08-11 (F2:history<252(215);F3:history<250(215)); DFTX 2026-09-14 (F2:history<252(165);F3:history<250(165)); EIKN 2026-08-19 (F2:history<252(134);F3:history<250(134))
+      B2: TDIC 2026-05-12 (F2:history<252(202);F3:history<250(202)); FLY 2026-03-12 (F2:history<252(149);F3:history<250(149))
+      C: CBRS 2026-08-17 (F2:history<252(64);F3:history<250(64)); CHRN 2026-08-27 (F2:history<252(79);F3:history<250(79)); SOLS 2026-08-28 (F2:history<252(207);F3:history<250(207)); DFTX 2026-09-14 (F2:history<252(165);F3:history<250(165)); BSP 2026-10-14 (F2:history<252(73);F3:history<250(73)); MANE 2026-10-19 (F2:history<252(177);F3:history<250(177)); INIO 2026-10-27 (F2:history<252(100);F3:history<250(100))
+  held              [PRIMARY] NULL 19/158 — A: 9 | B2: 2 | C: 8
+      A: NVTX 2026-06-03 (F2:history<252(184);F3:history<250(184)); MRLN 2026-06-05 (F2:history<252(136);F3:history<250(136)); AVGU 2026-06-02 (F2:history<252(222);F3:history<250(222)); CRWG 2026-06-01 (F2:history<252(202);F3:history<250(202)); JLHL 2026-06-08 (F2:history<252(238);F3:history<250(238)); RARE 2026-08-20 (F3:swing_lows=1); FRMI 2026-08-11 (F2:history<252(215);F3:history<250(215)); DFTX 2026-09-14 (F2:history<252(165);F3:history<250(165)); EIKN 2026-08-19 (F2:history<252(134);F3:history<250(134))
+      B2: TDIC 2026-05-12 (F2:history<252(202);F3:history<250(202)); FLY 2026-03-12 (F2:history<252(149);F3:history<250(149))
+      C: CBRS 2026-08-17 (F2:history<252(64);F3:history<250(64)); RARE 2026-08-20 (F3:swing_lows=1); CHRN 2026-08-27 (F2:history<252(79);F3:history<250(79)); SOLS 2026-08-28 (F2:history<252(207);F3:history<250(207)); DFTX 2026-09-14 (F2:history<252(165);F3:history<250(165)); BSP 2026-10-14 (F2:history<252(73);F3:history<250(73)); MANE 2026-10-19 (F2:history<252(177);F3:history<250(177)); INIO 2026-10-27 (F2:history<252(100);F3:history<250(100))
+  tight_eod         [PRIMARY] NULL 0/158
+  zones_remaining   [sub-read] NULL 0/158
+  cleared_ath       [sub-read] NULL 0/158
+  vol_highest_ever  [sub-read] NULL 0/158
+  tight_0945        [sub-read] NULL 69/158 — A: 40 | B: 3 | B2: 26
+  tight_0945 is NULL wherever the pair is not a shadow row (most A, all B2 pre-05-11) — by design.
+  5-year window: bars.csv.gz starts 2021-09-27, so every D before 2026-09-27 gets a window cut short by the FILE (81 pairs < 1200 sessions); genuinely short listing history (< 1000 sessions) = 46 pairs, < 252 = 17 (those are the F2/F3 NULLs above). cleared_ath / vol_highest_ever = 'above every bar in the window'.
+
+[2] POPULATION A — each feature's chance a yes (GOOD/OKISH) ranks above a no (BAD); 0.5 = nothing
+  feature           role      P(yes>no)  score direction    n yes/no  90% boot CI (P(yes>no))
+  zones_cleared     PRIMARY       0.672  0.672 higher=yes    17/37    [0.54, 0.81]  QUALIFIES
+  vol_ratio         PRIMARY       0.619  0.619 higher=yes    17/29    [0.47, 0.76]
+  held              PRIMARY       0.512  0.512 higher=yes    17/28    [0.46, 0.57]
+  tight_eod         PRIMARY       0.356  0.644 lower=yes     17/37    [0.23, 0.49]
+  zones_remaining   sub-read      0.558  0.558 higher=yes    17/37    [0.42, 0.69]
+  cleared_ath       sub-read      0.467  0.533 lower=yes     17/37    [0.37, 0.57]
+  vol_highest_ever  sub-read      0.593  0.593 higher=yes    17/37    [0.49, 0.69]
+  tight_0945        sub-read      0.681  0.681 higher=yes     7/13    [0.45, 0.90]  (>=0.65 but sub-read: not composite-eligible by R1)
+  descriptive (not eligible): F3's continuous lows — lower of the two pullback lows vs the base high, in ADR:
+      yes median -4.91 ADR (n=17) · no median -5.96 ADR (n=28) · P(yes>no)=0.624
+
+  per-pair values (A):
+    ticker date       label         zc  zr ath  vol_r vhe held   low1   low2  t_eod  t_945  cls
+    CDNA   2026-07-16 GOOD_CHART     9  14   0   0.28   0    0   -3.2   -1.5   12.1   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    MAN    2026-07-16 GOOD_CHART     9  45   0   0.59   0    0   -7.1   -6.7   11.7   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    RNG    2026-07-24 GOOD_CHART     4  44   0   0.58   0    0   -6.3   -5.0   19.6   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    BLZE   2026-08-04 GOOD_CHART     4   2   0   0.32   0    0   -3.8   -3.0   18.1   16.2  CLEARED_DECISIVE_NOHOLDDATA
+    KRO    2026-08-06 GOOD_CHART    10  64   0   1.76   1    0   -4.9   -4.6   18.5   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    AVAH   2026-08-13 GOOD_CHART     8   1   0   1.23   0    0   -5.1   -3.6   16.9   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    TBBB   2026-08-13 GOOD_CHART     5   0   1   0.50   0    0   -3.1   -3.0    9.8   NULL  BLUE_SKY_NOHOLDDATA
+    HAE    2026-08-18 GOOD_CHART     7   0   1   0.52   0    0   -5.4   -5.3    4.4   NULL  BLUE_SKY_NOHOLDDATA
+    KOD    2026-09-28 GOOD_CHART    18   8   0   2.94   1    0   -6.2   -5.9   36.8   18.9  CLEARED_DECISIVE_NOHOLDDATA
+    HPE    2026-06-02 OKISH_CHART    0   0   1   1.53   1    0   -2.2    0.8   16.8    3.5  BLUE_SKY_NOHOLDDATA
+    OMER   2026-07-27 OKISH_CHART    5  19   0   0.03   0    0   -8.9   -8.4    9.9   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    LIFE   2026-08-04 OKISH_CHART    0   1   0   1.07   1    0   -7.2   -7.1   14.9   13.1  NEVER_BREACHED
+    DCTH   2026-08-06 OKISH_CHART    5   9   0   0.82   0    0   -3.1   -2.5   10.4    9.3  CLEARED_DECISIVE_NOHOLDDATA
+    ABCL   2026-08-10 OKISH_CHART   14  25   0   2.69   1    0   -3.6   -3.5   16.1   13.8  CLEARED_DECISIVE_NOHOLDDATA
+    NIQ    2026-08-11 OKISH_CHART   11  14   0   1.41   0    0  -13.2  -13.2   18.4   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    WYFI   2026-08-12 OKISH_CHART    0  11   0   0.36   0    0   -4.2   -3.9    6.5    6.1  NEVER_BREACHED
+    MRVI   2026-08-19 OKISH_CHART    9  76   0   1.35   0    1    0.3    1.3   12.8   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    CAR    2026-04-21 BAD_CHART      0   0   1   1.71   0    0   -3.9   -3.7   25.7   NULL  BLUE_SKY_NOHOLDDATA
+    CAR    2026-04-22 BAD_CHART      0   0   1   0.99   0    0   -3.6   -3.5   49.5   NULL  BLUE_SKY_NOHOLDDATA
+    GDC    2026-05-06 BAD_CHART      5   4   0   1.42   0    0   -7.6   -7.3   85.5   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    MRAM   2026-05-13 BAD_CHART      0   0   1   0.55   0    0   -4.6   -4.2   19.8   NULL  BLUE_SKY_NOHOLDDATA
+    CRWG   2026-06-01 BAD_CHART      4  13   0   NULL   0 NULL   NULL   NULL   17.6   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    AVGU   2026-06-02 BAD_CHART      0   0   1   NULL   0 NULL   NULL   NULL    7.3   NULL  BLUE_SKY_NOHOLDDATA
+    NVTX   2026-06-03 BAD_CHART      1   2   0   NULL   1 NULL   NULL   NULL   21.0   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    NVTS   2026-06-03 BAD_CHART      0   1   0   0.70   0    0   -3.8   -1.6   13.1    3.4  NEVER_BREACHED
+    ABVX   2026-06-03 BAD_CHART      0   4   0   0.26   0    0   -5.6   -5.1   12.3   NULL  NEVER_BREACHED
+    RUM    2026-06-04 BAD_CHART      1  20   0   0.63   0    0   -6.4   -5.0   22.5    5.0  CLEARED_DECISIVE_NOHOLDDATA
+    MRLN   2026-06-05 BAD_CHART      2   4   0   NULL   1 NULL   NULL   NULL   18.9   13.8  CLEARED_DECISIVE_NOHOLDDATA
+    JLHL   2026-06-08 BAD_CHART      0   0   1   NULL   0 NULL   NULL   NULL   26.5   NULL  BLUE_SKY_NOHOLDDATA
+    QH     2026-06-18 BAD_CHART      3  45   0   0.01   0    0   -3.9   -3.9   27.2   NULL  CLEARED_MARGINAL_NOHOLDDATA
+    QTTB   2026-07-13 BAD_CHART      3  16   0   0.16   0    0   -3.0    2.8   23.2   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    ADVB   2026-07-24 BAD_CHART      3   9   0   0.09   0    0   -4.0   -3.9   33.1   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    IPCX   2026-07-29 BAD_CHART      0   0   0   0.05   0    1   -0.0    0.0   20.1   NULL  NO_LEVEL
+    HURN   2026-07-29 BAD_CHART      8  19   0   1.10   1    0  -12.0  -11.4   24.4   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    IBTA   2026-08-04 BAD_CHART      6  37   0   0.29   0    0   -6.0   -4.7   19.8   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    YOU    2026-08-05 BAD_CHART      7   0   1   0.42   0    0   -4.6   -4.4   19.2   NULL  BLUE_SKY_NOHOLDDATA
+    AEVA   2026-08-06 BAD_CHART      9  21   0   0.39   0    0   -6.5   -5.6   20.0   12.8  CLEARED_DECISIVE_NOHOLDDATA
+    ASPN   2026-08-06 BAD_CHART     16  75   0   1.02   0    0   -9.9   -8.5   20.9   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    BW     2026-08-11 BAD_CHART      4   9   0   0.69   0    0   -7.9   -7.0   25.5   18.7  CLEARED_DECISIVE_NOHOLDDATA
+    FRMI   2026-08-11 BAD_CHART      4  16   0   NULL   0 NULL   NULL   NULL    8.3    8.3  CLEARED_DECISIVE_NOHOLDDATA
+    AEHR   2026-08-14 BAD_CHART      0   0   1   0.25   0    0   -4.0   -4.0   11.0   NULL  BLUE_SKY_NOHOLDDATA
+    LPTH   2026-08-14 BAD_CHART      2   6   0   0.62   0    0   -5.9   -5.6   10.3    8.4  CLEARED_DECISIVE_NOHOLDDATA
+    EIKN   2026-08-19 BAD_CHART      2   5   0   NULL   0 NULL   NULL   NULL   19.1   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    RARE   2026-08-20 BAD_CHART      4  67   0   0.18   0 NULL   NULL   NULL   12.1    8.2  CLEARED_DECISIVE_NOHOLDDATA
+    ROIV   2026-09-08 BAD_CHART      5   0   1   0.62   0    0   -3.7   -3.4    9.6    5.4  BLUE_SKY_NOHOLDDATA
+    PHVS   2026-09-08 BAD_CHART      5   0   1   1.78   0    0   -2.9   -2.1   13.1    9.6  BLUE_SKY_NOHOLDDATA
+    ODD    2026-09-09 BAD_CHART      9  43   0   0.49   0    0  -13.7  -13.6   21.0   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    SIG    2026-09-09 BAD_CHART     13  18   0   1.12   0    0   -8.2   -7.9    8.4   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    DFTX   2026-09-14 BAD_CHART      1   7   0   NULL   0 NULL   NULL   NULL    9.8    5.3  CLEARED_DECISIVE_NOHOLDDATA
+    GNRC   2026-09-17 BAD_CHART     18  23   0   1.60   0    0  -10.9  -10.1   12.8    8.5  CLEARED_DECISIVE_NOHOLDDATA
+    NUAI   2026-09-21 BAD_CHART      5   6   0   0.11   0    0   -6.8   -6.1   15.0   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    AKAM   2026-09-25 BAD_CHART      8  10   0   1.50   1    0   -8.5   -8.3   11.4    6.7  CLEARED_DECISIVE_NOHOLDDATA
+    AESI   2026-09-25 BAD_CHART      2  45   0   0.54   0    0   -9.8   -8.1    8.2   NULL  CLEARED_MARGINAL_NOHOLDDATA
+    CCL    2026-09-29 BAD_CHART     11  24   0   0.74   0    0  -12.6  -12.2    5.1   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    VEEE   2026-07-08 NO_SETUP_ON_THIS_DATE   0 107   0   0.47   0    0   -8.9   -8.9   29.7   NULL  NEVER_BREACHED
+    CAR    2026-04-01 OKISH_EARLIER   0  33   0   0.51   0    0   -8.6   -8.1   13.8   NULL  NEVER_BREACHED
+    MXL    2026-04-21 WRONG_DAY      4  33   0   0.81   0    0   -4.9   -4.0   12.9   NULL  CLEARED_DECISIVE_NOHOLDDATA
+    AVAH   2026-06-02 WRONG_DAY      0  22   0   0.21   0    0   -8.3   -8.0   11.2   NULL  NEVER_BREACHED
+    CGEM   2026-06-08 WRONG_DAY      0  34   0   0.34   0    0   -3.9   -3.8   13.0   NULL  NEVER_BREACHED
+    RXT    2026-06-16 WRONG_DAY      5  20   0   0.15   0    0   -3.0    2.1   16.6    7.7  CLEARED_DECISIVE_NOHOLDDATA
+    ARQQ   2026-06-15 WRONG_STAGE    3  89   0   0.78   0    0   -8.0   -8.0   22.9   NULL  CLEARED_MARGINAL_NOHOLDDATA
+
+[3] THE v2 COMPOSITE
+  included (score >= 0.65 on A): zones_cleared (higher=yes)
+
+  BAR (i) — composite on A, chance a yes ranks above a no (needs >= 0.7)
+    LITERAL (every A yes/no with a composite; unrankable at the middle 0.5): 0.555 (n yes 17 / no 37) -> FAIL
+    RANKABLE-ONLY (pool of >= 2 featured here): 0.574 (n yes 12 / no 22) -> FAIL
+    ⚠ in-sample by construction: the features were selected on A, then the composite is scored on A.
+    A yes/no pool status: rankable=34 · unrankable:bars_gap=9 · unrankable:no_alerts_in_ep_alerts_that_day=3 · unrankable:no_alerts_that_day=6 · unrankable:one_alert_day=2
+      HPE    2026-06-02 OKISH_CHART  composite 0.500  ranks zones_cleared=0.50  | alerts that day 10 · with bars 3 · featured 3 · status rankable
+      CDNA   2026-07-16 GOOD_CHART   composite 0.500  ranks zones_cleared=0.50  | alerts that day 0 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:no_alerts_that_day
+      MAN    2026-07-16 GOOD_CHART   composite 0.500  ranks zones_cleared=0.50  | alerts that day 0 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:no_alerts_that_day
+      RNG    2026-07-24 GOOD_CHART   composite 0.500  ranks zones_cleared=0.50  | alerts that day 2 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:bars_gap(2_alerts,1_featured)
+      OMER   2026-07-27 OKISH_CHART  composite 0.250  ranks zones_cleared=0.25  | alerts that day 2 (+ this pair, not an alert) · with bars 2 · featured 2 · status rankable
+      BLZE   2026-08-04 GOOD_CHART   composite 0.500  ranks zones_cleared=0.50  | alerts that day 11 · with bars 3 · featured 3 · status rankable
+      LIFE   2026-08-04 OKISH_CHART  composite 0.833  ranks zones_cleared=0.83  | alerts that day 11 · with bars 3 · featured 3 · status rankable
+      KRO    2026-08-06 GOOD_CHART   composite 0.167  ranks zones_cleared=0.17  | alerts that day 11 (+ this pair, not an alert) · with bars 3 · featured 3 · status rankable
+      DCTH   2026-08-06 OKISH_CHART  composite 0.750  ranks zones_cleared=0.75  | alerts that day 11 · with bars 2 · featured 2 · status rankable
+      ABCL   2026-08-10 OKISH_CHART  composite 0.500  ranks zones_cleared=0.50  | alerts that day 5 · with bars 1 · featured 1 · status unrankable:bars_gap(5_alerts,1_featured)
+      NIQ    2026-08-11 OKISH_CHART  composite 0.167  ranks zones_cleared=0.17  | alerts that day 5 (+ this pair, not an alert) · with bars 3 · featured 3 · status rankable
+      WYFI   2026-08-12 OKISH_CHART  composite 0.667  ranks zones_cleared=0.67  | alerts that day 10 · with bars 3 · featured 3 · status rankable
+      AVAH   2026-08-13 GOOD_CHART   composite 0.167  ranks zones_cleared=0.17  | alerts that day 6 (+ this pair, not an alert) · with bars 3 · featured 3 · status rankable
+      TBBB   2026-08-13 GOOD_CHART   composite 0.333  ranks zones_cleared=0.33  | alerts that day 6 (+ this pair, not an alert) · with bars 3 · featured 3 · status rankable
+      HAE    2026-08-18 GOOD_CHART   composite 0.750  ranks zones_cleared=0.75  | alerts that day 1 (+ this pair, not an alert) · with bars 2 · featured 2 · status rankable
+      MRVI   2026-08-19 OKISH_CHART  composite 0.100  ranks zones_cleared=0.10  | alerts that day 4 (+ this pair, not an alert) · with bars 5 · featured 5 · status rankable
+      KOD    2026-09-28 GOOD_CHART   composite 0.500  ranks zones_cleared=0.50  | alerts that day 1 · with bars 1 · featured 1 · status unrankable:one_alert_day
+      CAR    2026-04-21 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 0 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+      CAR    2026-04-22 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 0 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+      GDC    2026-05-06 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 0 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+      MRAM   2026-05-13 BAD_CHART    composite 0.833  ranks zones_cleared=0.83  | alerts that day 15 (+ this pair, not an alert) · with bars 3 · featured 3 · status rankable
+      CRWG   2026-06-01 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 12 · with bars 1 · featured 1 · status unrankable:bars_gap(12_alerts,1_featured)
+      AVGU   2026-06-02 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 10 · with bars 3 · featured 3 · status rankable
+      NVTX   2026-06-03 BAD_CHART    composite 0.167  ranks zones_cleared=0.17  | alerts that day 5 · with bars 3 · featured 3 · status rankable
+      NVTS   2026-06-03 BAD_CHART    composite 0.667  ranks zones_cleared=0.67  | alerts that day 5 · with bars 3 · featured 3 · status rankable
+      ABVX   2026-06-03 BAD_CHART    composite 0.667  ranks zones_cleared=0.67  | alerts that day 5 · with bars 3 · featured 3 · status rankable
+      RUM    2026-06-04 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 2 · with bars 1 · featured 1 · status unrankable:bars_gap(2_alerts,1_featured)
+      MRLN   2026-06-05 BAD_CHART    composite 0.250  ranks zones_cleared=0.25  | alerts that day 5 · with bars 2 · featured 2 · status rankable
+      JLHL   2026-06-08 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 1 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:bars_gap(1_alerts,1_featured)
+      QH     2026-06-18 BAD_CHART    composite 0.750  ranks zones_cleared=0.75  | alerts that day 2 (+ this pair, not an alert) · with bars 2 · featured 2 · status rankable
+      QTTB   2026-07-13 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 0 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:no_alerts_that_day
+      ADVB   2026-07-24 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 2 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:bars_gap(2_alerts,1_featured)
+      IPCX   2026-07-29 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 2 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:bars_gap(2_alerts,1_featured)
+      HURN   2026-07-29 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 2 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:bars_gap(2_alerts,1_featured)
+      IBTA   2026-08-04 BAD_CHART    composite 0.375  ranks zones_cleared=0.38  | alerts that day 11 (+ this pair, not an alert) · with bars 4 · featured 4 · status rankable
+      YOU    2026-08-05 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 9 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:bars_gap(9_alerts,1_featured)
+      AEVA   2026-08-06 BAD_CHART    composite 0.250  ranks zones_cleared=0.25  | alerts that day 11 · with bars 2 · featured 2 · status rankable
+      ASPN   2026-08-06 BAD_CHART    composite 0.167  ranks zones_cleared=0.17  | alerts that day 11 (+ this pair, not an alert) · with bars 3 · featured 3 · status rankable
+      BW     2026-08-11 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 5 · with bars 2 · featured 2 · status rankable
+      FRMI   2026-08-11 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 5 · with bars 2 · featured 2 · status rankable
+      AEHR   2026-08-14 BAD_CHART    composite 0.833  ranks zones_cleared=0.83  | alerts that day 7 (+ this pair, not an alert) · with bars 3 · featured 3 · status rankable
+      LPTH   2026-08-14 BAD_CHART    composite 0.750  ranks zones_cleared=0.75  | alerts that day 7 · with bars 2 · featured 2 · status rankable
+      EIKN   2026-08-19 BAD_CHART    composite 0.600  ranks zones_cleared=0.60  | alerts that day 4 (+ this pair, not an alert) · with bars 5 · featured 5 · status rankable
+      RARE   2026-08-20 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 3 · with bars 3 · featured 3 · status rankable
+      ROIV   2026-09-08 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 6 · with bars 6 · featured 6 · status rankable
+      PHVS   2026-09-08 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 6 · with bars 6 · featured 6 · status rankable
+      ODD    2026-09-09 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 0 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:no_alerts_that_day
+      SIG    2026-09-09 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 0 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:no_alerts_that_day
+      DFTX   2026-09-14 BAD_CHART    composite 0.250  ranks zones_cleared=0.25  | alerts that day 2 · with bars 2 · featured 2 · status rankable
+      GNRC   2026-09-17 BAD_CHART    composite 0.250  ranks zones_cleared=0.25  | alerts that day 2 · with bars 2 · featured 2 · status rankable
+      NUAI   2026-09-21 BAD_CHART    composite 0.167  ranks zones_cleared=0.17  | alerts that day 2 (+ this pair, not an alert) · with bars 3 · featured 3 · status rankable
+      AKAM   2026-09-25 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 1 · with bars 1 · featured 1 · status unrankable:one_alert_day
+      AESI   2026-09-25 BAD_CHART    composite 0.750  ranks zones_cleared=0.75  | alerts that day 1 (+ this pair, not an alert) · with bars 2 · featured 2 · status rankable
+      CCL    2026-09-29 BAD_CHART    composite 0.500  ranks zones_cleared=0.50  | alerts that day 0 (+ this pair, not an alert) · with bars 1 · featured 1 · status unrankable:no_alerts_that_day
+
+  BAR (ii) — his 8 labelled EPs in the top half of their day (needs >= 80% of the rankable ones)
+    rankable 6 of 8 · top half (composite < 0.5) 6 · exactly 0.5 0 -> share 1.00 -> PASS
+      HTFL  2026-08-14 composite 0.250  ranks zones_cleared=0.25  | alerts that day 7 · with bars 2 · featured 2 · status rankable
+      PLTR  2026-08-04 composite 0.167  ranks zones_cleared=0.17  | alerts that day 11 · with bars 3 · featured 3 · status rankable
+      TEAM  2026-08-07 composite 0.500  ranks zones_cleared=0.50  | alerts that day 16 · with bars 1 · featured 1 · status unrankable:bars_gap(16_alerts,1_featured)
+      ABNB  2026-08-07 composite 0.250  ranks zones_cleared=0.25  | alerts that day 16 (+ this pair, not an alert) · with bars 2 · featured 2 · status rankable
+      BFLY  2026-06-18 composite 0.250  ranks zones_cleared=0.25  | alerts that day 2 (+ this pair, not an alert) · with bars 2 · featured 2 · status rankable
+      MRNA  2026-08-19 composite 0.125  ranks zones_cleared=0.12  | alerts that day 4 · with bars 4 · featured 4 · status rankable
+      CHPT  2026-09-03 composite 0.125  ranks zones_cleared=0.12  | alerts that day 3 (+ this pair, not an alert) · with bars 4 · featured 4 · status rankable
+      PENG  2026-10-07 composite 0.500  ranks zones_cleared=0.50  | alerts that day 1 · with bars 1 · featured 1 · status unrankable:one_alert_day
+
+  BAR (iii) — C, v2 top quartile vs the OLD composite's top quartile, tail >= 8.0xADR, both directions (v2 NULL composite on 0 of 63 C rows -> never in v2's top)
+    [5d · vs old c_eod] matured n=56 | v2 top n=16 winners 1 losers 11/16 | old top n=7 winners 0 losers 4/7
+        score_both_directions(v2_top, old_top): MIXED -- more winners but also more losers; report both numbers, do not net them into one verdict
+        pre-reg bar (more tail winners AND loser rate no higher): FAIL
+        v2's own top vs rest: LOSS -- same winners but MORE losers admitted
+        v2 top members: ARGX 2026-08-17(4.9x), MRNA 2026-08-19(9.1x), SCSC 2026-08-20(0.8x L), OKTA 2026-08-27(1.2x), SNOW 2026-09-03(0.5x L), QCOM 2026-09-08(1.8x L), SEI 2026-09-08(2.4x), DFTX 2026-09-14(0.1x L), GNRC 2026-09-17(0.3x L), MSTR 2026-09-21(0.6x L), ACN 2026-10-01(1.6x L), ITUB 2026-10-05(1.4x L), CEG 2026-10-06(1.8x L), HUM 2026-10-09(0.4x L), IRON 2026-10-19(2.8x), SMCI 2026-10-21(0.5x L)
+        tails: MRNA 2026-08-19 9.13x v2=0.125 old=0.875 pool=4, KOD 2026-09-28 12.43x v2=0.500 old=0.500 pool=1
+    [5d · vs old c_945] matured n=56 | v2 top n=16 winners 1 losers 11/16 | old top n=8 winners 0 losers 5/8
+        score_both_directions(v2_top, old_top): MIXED -- more winners but also more losers; report both numbers, do not net them into one verdict
+        pre-reg bar (more tail winners AND loser rate no higher): FAIL
+    [20d · vs old c_eod] matured n=42 | v2 top n=12 winners 1 losers 8/12 | old top n=6 winners 1 losers 4/6
+        score_both_directions(v2_top, old_top): NO CHANGE -- winners and loser rate both unchanged
+        pre-reg bar (more tail winners AND loser rate no higher): FAIL
+        v2's own top vs rest: LOSS -- fewer winners, losers admitted at the same rate
+        v2 top members: ARGX 2026-08-17(5.4x), MRNA 2026-08-19(9.1x), SCSC 2026-08-20(0.8x L), OKTA 2026-08-27(6.3x), SNOW 2026-09-03(0.5x L), QCOM 2026-09-08(4.8x L), SEI 2026-09-08(5.2x), DFTX 2026-09-14(0.1x L), GNRC 2026-09-17(0.3x L), MSTR 2026-09-21(0.6x L), ACN 2026-10-01(6.0x L), ITUB 2026-10-05(1.4x L)
+        tails: MRNA 2026-08-19 9.13x v2=0.125 old=0.875 pool=4, VICR 2026-09-17 9.50x v2=0.750 old=0.250 pool=2, KOD 2026-09-28 12.43x v2=0.500 old=0.500 pool=1
+    [20d · vs old c_945] matured n=42 | v2 top n=12 winners 1 losers 8/12 | old top n=6 winners 1 losers 4/6
+        score_both_directions(v2_top, old_top): NO CHANGE -- winners and loser rate both unchanged
+        pre-reg bar (more tail winners AND loser rate no higher): FAIL
+
+[4] PLATEAU — each pre-registered threshold at -50% / +50%, one at a time (others at stated)
+  variant          vol_ratio   held  n(held) | included | (i) literal / rankable | (ii) | (iii) 5d / 20d vs old EOD
+  stated                0.62   0.51  17/28   | zones_cleared | 0.55 / 0.57 | 6/6 | fail(1w) / fail(1w) | verdict FAIL
+  adr_mult=0.5          0.62   0.51  17/28   | zones_cleared | 0.55 / 0.57 | 6/6 | fail(1w) / fail(1w) | verdict FAIL
+  adr_mult=1.5          0.62   0.51  17/28   | zones_cleared | 0.55 / 0.57 | 6/6 | fail(1w) / fail(1w) | verdict FAIL
+  vol_win=126           0.63   0.51  17/28   | zones_cleared | 0.55 / 0.57 | 6/6 | fail(1w) / fail(1w) | verdict FAIL
+  vol_win=378           0.58   0.51  17/28   | zones_cleared | 0.55 / 0.57 | 6/6 | fail(1w) / fail(1w) | verdict FAIL
+  pb_win=20             0.62   0.54  17/25   | zones_cleared | 0.55 / 0.57 | 6/6 | fail(1w) / fail(1w) | verdict FAIL
+  pb_win=60             0.62   0.52  17/29   | zones_cleared | 0.55 / 0.57 | 6/6 | fail(1w) / fail(1w) | verdict FAIL
+  base_end=125          0.62   0.54  17/36   | zones_cleared | 0.55 / 0.57 | 6/6 | fail(1w) / fail(1w) | verdict FAIL
+  base_end=375          0.62   0.53  16/25   | zones_cleared | 0.55 / 0.57 | 6/6 | fail(1w) / fail(1w) | verdict FAIL
+  (feature 1 zones and feature 4 tightness carry no pre-registered threshold; their scores do not move.)
+
+[5] B2 — the 26 R-picked winners (evidence:winner_r_available...), NOT his labels; reported apart
+    MU    2026-04-08 zc=0 zr=4 ath=0 vol_r=0.65 vhe=0 held=0 t_eod=4.1 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    UMC   2026-04-17 zc=1 zr=2 ath=0 vol_r=0.78 vhe=0 held=0 t_eod=3.8 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    STRL  2026-04-08 zc=1 zr=7 ath=0 vol_r=0.07 vhe=0 held=0 t_eod=3.6 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    MRVL  2026-03-31 zc=2 zr=9 ath=0 vol_r=0.52 vhe=0 held=0 t_eod=6.5 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    ASX   2026-04-08 zc=2 zr=1 ath=0 vol_r=0.24 vhe=0 held=0 t_eod=2.8 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    SNDK  2026-04-08 zc=2 zr=0 ath=1 vol_r=0.39 vhe=0 held=0 t_eod=6.2 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    SNOW  2026-05-07 zc=8 zr=53 ath=0 vol_r=0.32 vhe=0 held=0 t_eod=4.3 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    ALGM  2026-04-08 zc=12 zr=15 ath=0 vol_r=0.29 vhe=0 held=0 t_eod=4.2 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    NBIS  2026-04-08 zc=2 zr=4 ath=0 vol_r=0.21 vhe=0 held=0 t_eod=6.6 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    AMKR  2026-04-08 zc=3 zr=2 ath=0 vol_r=0.25 vhe=0 held=0 t_eod=4.1 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    AEHR  2026-03-31 zc=3 zr=15 ath=0 vol_r=0.31 vhe=0 held=0 t_eod=12.0 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    TDIC  2026-05-12 zc=4 zr=6 ath=0 vol_r=NULL vhe=1 held=NULL t_eod=50.9 | composite 0.500 unrankable:bars_gap(16_alerts,1_featured)
+    UMC   2026-05-06 zc=0 zr=0 ath=1 vol_r=1.08 vhe=0 held=0 t_eod=4.9 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    FLY   2026-03-12 zc=4 zr=12 ath=0 vol_r=NULL vhe=0 held=NULL t_eod=9.0 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    BE    2026-04-08 zc=4 zr=7 ath=0 vol_r=0.27 vhe=0 held=0 t_eod=7.8 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    USAR  2026-04-08 zc=1 zr=12 ath=0 vol_r=0.12 vhe=0 held=0 t_eod=6.0 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    QCOM  2026-04-24 zc=6 zr=25 ath=0 vol_r=0.36 vhe=0 held=0 t_eod=5.3 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    QBTS  2026-04-08 zc=1 zr=23 ath=0 vol_r=0.07 vhe=0 held=0 t_eod=8.1 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    AMD   2026-04-24 zc=0 zr=0 ath=1 vol_r=0.33 vhe=0 held=0 t_eod=5.2 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    HUT   2026-04-08 zc=4 zr=10 ath=0 vol_r=0.49 vhe=0 held=0 t_eod=10.5 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    QURE  2026-05-29 zc=2 zr=8 ath=0 vol_r=0.05 vhe=0 held=0 t_eod=6.4 | composite 0.250 rankable
+    ARM   2026-05-06 zc=1 zr=0 ath=0 vol_r=0.72 vhe=0 held=0 t_eod=8.1 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    SMTC  2026-03-30 zc=2 zr=12 ath=0 vol_r=0.70 vhe=0 held=0 t_eod=11.9 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    IREN  2026-04-08 zc=0 zr=11 ath=0 vol_r=0.42 vhe=0 held=0 t_eod=7.8 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    APLD  2026-04-08 zc=2 zr=12 ath=0 vol_r=0.15 vhe=0 held=0 t_eod=6.9 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+    INTC  2026-04-24 zc=1 zr=0 ath=1 vol_r=0.53 vhe=0 held=0 t_eod=6.6 | composite 0.500 unrankable:no_alerts_in_ep_alerts_that_day(file starts 2026-05-11)
+  B2 status: rankable=1 · unrankable:bars_gap=1 · unrankable:no_alerts_in_ep_alerts_that_day=24
+    zones_cleared  B2 median 2.00 (n=26) | A-yes median 7 | A-no median 3
+    vol_ratio      B2 median 0.32 (n=24) | A-yes median 0.82 | A-no median 0.62
+    held           B2 median 0.00 (n=24) | A-yes median 0 | A-no median 0.00
+    tight_eod      B2 median 6.47 (n=26) | A-yes median 14.87 | A-no median 19.08
+
+[6] VERDICT (the pre-registration's own words)
+  composite: zones_cleared (higher=yes)
+  (i) FAIL · (ii) PASS · (iii) FAIL -> FAIL
+  plateau: verdict unchanged at every +-50% variant — but VACUOUSLY: the four thresholds touch only F2 (vol_ratio 0.58-0.63) and F3 (held 0.51-0.54), which never reach 0.65 at any setting, so the composite (zones_cleared alone) never moves.
+
+  READINGS THE PASS/FAIL LINES DO NOT CARRY
+  - (i) fails on feature strength, not the pool gap: raw zones_cleared is 0.672 on A — under 0.70 before any within-day ranking — so pulling the missing pool bars cannot lift (i) to 0.70.
+  - (ii) is thin: ranked against HTFL 1 other(s) of 6, PLTR 2 other(s) of 10, ABNB 1 other(s) of 16, BFLY 1 other(s) of 2, MRNA 3 other(s) of 3, CHPT 3 other(s) of 3 — only the ones whose whole day has bars are ranked over the full day.
+  - (iii) mechanics: v2's top quartile holds 16 rows vs the old's 7 at 5 sessions — a one-feature composite gives the better of any two-alert day exactly 0.25, so v2 admits more of everything. v2 moves MRNA 08-19 from 0.875 to 0.125 and VICR 09-17 from 0.25 to 0.75; KOD 09-28 is a one-alert day under both rankings and can never reach either top quartile.
+  - F3 never fires on his examples: the pre-registered base high (max high of sessions 41-250) on KOD is the 2026-04-22 $47.84 peak; KOD's September lows sat at $29.81-33, the Dec-Feb shelf he pointed at. All 8 of his labelled EPs read held=0; A-yes and A-no medians are both 0. Any new definition is a new pre-registration.
+  - tight_0945 (sub-read) scores 0.68 but with WIDER 09:45 range = yes, opposite to EOD, on only 7/13 pairs.
+
+[7] NOT THE PRE-REGISTERED BAR — his 11-03 'keep tightness' read literally as forced inclusion
+  (the pre-registration admits tightness only if it scores >= 0.65 on A; it scored 0.644, tighter = yes, and missed. This section shows what forcing it in reads; it changes nothing above.)
+  (i) literal 0.607 · rankable-only 0.642 (needs 0.70) -> FAIL
+  (ii) 1 of 6 rankable labelled EPs in the top half -> FAIL. Their gap-day ranges (tightness_eod, % of high): HTFL 16% (pool rank 0.75), PLTR 13% (pool rank 0.17), ABNB 8% (pool rank 0.75), BFLY 21% (pool rank 0.75), MRNA 35% (pool rank 0.88), CHPT 28% (pool rank 0.88)
+  (iii) 5d: forced top n=8 winners 0 losers 7/8 vs old top n=7 winners 0 losers 4/7 -> LOSS -- same winners but MORE losers admitted
+  (iii) 20d: forced top n=6 winners 0 losers 5/6 vs old top n=6 winners 1 losers 4/6 -> LOSS -- fewer winners AND more losers admitted
+  READ: 5 of 6 of his rankable labelled EPs sit in the WIDER half of their day on gap-day range (pool rank > 0.5 = wider than the middle) — on the gap day, tightness runs against his own EPs, so forcing it in fails every bar.

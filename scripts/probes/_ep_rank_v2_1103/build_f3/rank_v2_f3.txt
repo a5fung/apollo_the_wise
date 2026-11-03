@@ -1,0 +1,171 @@
+====================================================================================================
+EP RANKING v2 — FEATURE 3 RE-DEFINED (build_f3/F3_DEFINITION.md), scored as the 11-03 pre-registration
+====================================================================================================
+  P = highest high of sessions 41-250 before D · S = lowest low of the 60 sessions before P · shelf = highest
+  high of the 45 sessions ending at S · run >= 30% and P > shelf, else held = 0 · the 2 lowest swing lows of
+  the last 40 sessions (R3) each >= shelf - 1 ADR20 -> held = 1. Sub-reads: into (|d| <= 1 ADR both),
+  held_old (the 11-03 feature). KOD 2026-09-28 is the only calibration (kod_check.txt: shelf 2025-12-24 $31.18).
+
+[0] REPRODUCTION — the untouched features must read exactly as the 11-03 run (rank_v2.txt [2])
+  zones_cleared  P(yes>no) 0.672 n 17/37  (11-03: 0.672 n 17/37)  same
+  vol_ratio      P(yes>no) 0.619 n 17/29  (11-03: 0.619 n 17/29)  same
+  tight_eod      P(yes>no) 0.356 n 17/37  (11-03: 0.356 n 17/37)  same
+  held_old       P(yes>no) 0.512 n 17/28  (11-03: 0.512 n 17/28)  same
+  -> REPRODUCED
+
+[1] COVERAGE of the new feature (stated thresholds) — every pair
+  held NULL 21/158: A 10 | B 1 | B2 2 | C 8
+      A: NVTX 2026-06-03 (history<250(184)); MRLN 2026-06-05 (history<250(136)); AVGU 2026-06-02 (history<250(222)); CRWG 2026-06-01 (history<250(202)); JLHL 2026-06-08 (history<250(238)); RARE 2026-08-20 (swing_lows=1); WYFI 2026-08-12 (run_window_before_history(P-60<0)); FRMI 2026-08-11 (history<250(215)); DFTX 2026-09-14 (history<250(165)); EIKN 2026-08-19 (history<250(134))
+      B: HTFL 2026-08-14 (run_window_before_history(P-60<0))
+      B2: TDIC 2026-05-12 (history<250(202)); FLY 2026-03-12 (history<250(149))
+      C: CBRS 2026-08-17 (history<250(64)); RARE 2026-08-20 (swing_lows=1); CHRN 2026-08-27 (history<250(79)); SOLS 2026-08-28 (history<250(207)); DFTX 2026-09-14 (history<250(165)); BSP 2026-10-14 (history<250(73)); MANE 2026-10-19 (history<250(177)); INIO 2026-10-27 (history<250(100))
+  structure among non-NULL: A: no_breakout=1, no_run=5, ok=45 | B: no_breakout=1, no_run=2, ok=4 | B2: ok=24 | C: no_breakout=2, no_run=6, ok=47
+
+[2] POPULATION A — each feature's chance a yes (GOOD/OKISH) ranks above a no (BAD); 0.5 = nothing
+  feature           role      P(yes>no)  score direction    n yes/no  90% boot CI
+  zones_cleared     PRIMARY       0.672  0.672 higher=yes    17/37    [0.54, 0.81]  QUALIFIES
+  vol_ratio         PRIMARY       0.619  0.619 higher=yes    17/29    [0.47, 0.76]
+  held (NEW F3)     PRIMARY       0.607  0.607 higher=yes    16/28    [0.49, 0.73]
+  tight_eod         PRIMARY       0.356  0.644 lower=yes     17/37    [0.23, 0.49]
+  zones_remaining   sub-read      0.558  0.558 higher=yes    17/37    [0.42, 0.69]
+  cleared_ath       sub-read      0.467  0.533 lower=yes     17/37    [0.37, 0.57]
+  vol_highest_ever  sub-read      0.593  0.593 higher=yes    17/37    [0.49, 0.69]
+  tight_0945        sub-read      0.681  0.681 higher=yes     7/13    [0.45, 0.90]  (>=0.65, sub-read: not eligible)
+  held_old          sub-read      0.512  0.512 higher=yes    17/28    [0.46, 0.57]
+  into              sub-read      0.496  0.504 lower=yes     16/28    [0.43, 0.56]
+  held = 1 on: yes 8/16 (50%) · no 8/28 (29%)
+  into = 1 on: yes 1/16 (6%) · no 2/28 (7%)
+  descriptive (not eligible): lower pullback low vs the NEW shelf, in ADR — yes median -0.41 (n=16) · no median -3.40 (n=28) · P(yes>no) 0.688
+
+  per-pair (A):
+    ticker date       label        old NEW into     d1     d2  shelf                S (run start)        P (peak)               run  structure / null
+    CDNA   2026-07-16 GOOD_CHART     0   0    0   -1.4    0.6  2026-02-11 21.00     2026-04-10 15.56     2026-04-17 23.24       49%  ok
+    MAN    2026-07-16 GOOD_CHART     0   0    0   -8.2   -7.8  2025-04-15 51.77     2025-06-20 37.99     2025-07-17 47.34       25%  no_run(<30%)
+    RNG    2026-07-24 GOOD_CHART     0   1    0    1.3    3.4  2025-12-12 31.36     2026-02-06 25.59     2026-05-05 48.57       90%  ok
+    BLZE   2026-08-04 GOOD_CHART     0   1    0    2.0    3.4  2025-06-04 5.99      2025-08-04 4.92      2025-10-28 10.86      121%  ok
+    KRO    2026-08-06 GOOD_CHART     0   0    0   -3.0   -2.6  2026-02-12 6.90      2026-03-12 4.81      2026-05-04 7.89        64%  ok
+    AVAH   2026-08-13 GOOD_CHART     0   1    0   12.1   14.6  2025-06-10 5.86      2025-08-01 3.73      2025-10-21 10.32      177%  ok
+    TBBB   2026-08-13 GOOD_CHART     0   0    0   -1.0   -0.9  2026-02-18 40.09     2026-03-20 32.26     2026-06-15 43.80       36%  ok
+    HAE    2026-08-18 GOOD_CHART     0   0    0   -2.0   -1.9  2025-08-05 76.84     2025-09-26 47.31     2025-12-10 87.32       85%  ok
+    KOD    2026-09-28 GOOD_CHART     0   1    1    0.2    0.7  2025-12-24 31.18     2026-02-05 20.88     2026-04-22 47.84      129%  ok
+    HPE    2026-06-02 OKISH_CHART    0   1    0    2.2    5.8  2025-07-10 21.72     2025-08-05 19.64     2025-10-08 26.44       35%  ok
+    OMER   2026-07-27 OKISH_CHART    0   1    0    6.0    8.1  2025-10-06 4.72      2025-10-14 4.05      2025-12-24 17.65      335%  ok
+    LIFE   2026-08-04 OKISH_CHART    0   0    0   -2.8   -2.6  2026-01-29 19.00     2026-02-12 9.45      2026-05-07 32.50      244%  ok
+    DCTH   2026-08-06 OKISH_CHART    0   0    0   -8.6   -8.2  2025-06-06 17.35     2025-08-08 9.87      2025-10-16 12.70       29%  no_run(<30%)
+    ABCL   2026-08-10 OKISH_CHART    0   1    0    4.0    4.1  2026-03-02 3.83      2026-04-07 3.22      2026-06-01 6.79       111%  ok
+    NIQ    2026-08-11 OKISH_CHART    0   0    0   -8.8   -8.8  2023-04-12 12.89     2023-05-31 12.43     2025-09-17 18.70       50%  ok
+    WYFI   2026-08-12 OKISH_CHART    0 NULL NULL   NULL   NULL  -                    -                    2025-10-13 40.75         -   NULL:run_window_before_history(P-60<0)
+    MRVI   2026-08-19 OKISH_CHART    1   1    0    7.4    8.7  2026-03-04 3.91      2026-04-02 2.80      2026-06-22 5.33        90%  ok
+    CAR    2026-04-21 BAD_CHART      0   0    0   -1.1   -0.7  2025-05-08 102.76    2025-05-08 90.01     2025-07-29 212.81     136%  ok
+    CAR    2026-04-22 BAD_CHART      0   1    1   -1.0   -0.6  2025-05-08 102.76    2025-05-08 90.01     2025-07-29 212.81     136%  ok
+    GDC    2026-05-06 BAD_CHART      0   0    0   -4.1   -3.4  2025-05-12 987.50    2025-06-20 685.00    2025-09-16 2478.75    262%  ok
+    MRAM   2026-05-13 BAD_CHART      0   0    0   -3.0   -2.5  2025-10-03 12.27     2025-11-21 7.35      2026-01-22 17.24      135%  ok
+    CRWG   2026-06-01 BAD_CHART    NULL NULL NULL   NULL   NULL  -                    -                    -                        -   NULL:history<250(202)
+    AVGU   2026-06-02 BAD_CHART    NULL NULL NULL   NULL   NULL  -                    -                    -                        -   NULL:history<250(222)
+    NVTX   2026-06-03 BAD_CHART    NULL NULL NULL   NULL   NULL  -                    -                    -                        -   NULL:history<250(184)
+    NVTS   2026-06-03 BAD_CHART      0   1    0   -0.3    3.9  2025-07-28 9.48      2025-09-05 5.44      2025-10-20 17.79      227%  ok
+    ABVX   2026-06-03 BAD_CHART      0   1    0    2.7    3.5  2025-09-05 92.91     2025-10-02 81.90     2025-12-24 148.83      82%  ok
+    RUM    2026-06-04 BAD_CHART      0   0    0   -5.8   -4.2  2025-02-25 9.79      2025-04-30 7.43      2025-07-21 10.99       48%  ok
+    MRLN   2026-06-05 BAD_CHART    NULL NULL NULL   NULL   NULL  -                    -                    -                        -   NULL:history<250(136)
+    JLHL   2026-06-08 BAD_CHART    NULL NULL NULL   NULL   NULL  -                    -                    -                        -   NULL:history<250(238)
+    QH     2026-06-18 BAD_CHART      0   0    0   -3.9   -3.9  2025-04-07 142.20    2025-05-12 91.80     2025-07-21 169.07      84%  ok
+    QTTB   2026-07-13 BAD_CHART      0   0    0   -1.4    6.0  2025-12-01 6.37      2025-12-30 3.08      2026-03-27 8.04       161%  ok
+    ADVB   2026-07-24 BAD_CHART      0   0    0   -4.5   -4.4  2025-06-02 21.80     2025-08-05 7.42      2025-08-05 14.00       89%  no_breakout(P<=shelf)
+    IPCX   2026-07-29 BAD_CHART      1   0    0    0.4    0.5  2026-02-17 10.20     2026-02-24 10.16     2026-05-20 10.32        2%  no_run(<30%)
+    HURN   2026-07-29 BAD_CHART      0   0    0   -9.8   -9.1  2025-10-08 153.66    2025-10-17 145.31    2026-01-14 186.78      29%  no_run(<30%)
+    IBTA   2026-08-04 BAD_CHART      0   1    0   -0.2    1.9  2026-01-22 25.05     2026-02-12 19.98     2026-05-07 40.48      103%  ok
+    YOU    2026-08-05 BAD_CHART      0   1    1   -0.4   -0.2  2026-02-26 50.46     2026-03-12 43.63     2026-05-26 62.73       44%  ok
+    AEVA   2026-08-06 BAD_CHART      0   0    0   -3.0   -1.5  2026-01-23 18.14     2026-03-30 11.46     2026-05-27 29.82      160%  ok
+    ASPN   2026-08-06 BAD_CHART      0   0    0   -8.4   -6.8  2025-03-07 8.12      2025-05-12 5.20      2025-08-07 9.78        88%  ok
+    BW     2026-08-11 BAD_CHART      0   0    0   -3.9   -2.2  2026-02-04 11.57     2026-03-03 7.95      2026-05-15 22.03      177%  ok
+    FRMI   2026-08-11 BAD_CHART    NULL NULL NULL   NULL   NULL  -                    -                    -                        -   NULL:history<250(215)
+    AEHR   2026-08-14 BAD_CHART      0   1    0    2.8    2.9  2026-03-04 46.95     2026-03-30 29.13     2026-06-15 126.62     335%  ok
+    LPTH   2026-08-14 BAD_CHART      0   0    0   -4.2   -3.6  2026-01-23 14.41     2026-03-30 9.12      2026-05-28 18.94      108%  ok
+    EIKN   2026-08-19 BAD_CHART    NULL NULL NULL   NULL   NULL  -                    -                    -                        -   NULL:history<250(134)
+    RARE   2026-08-20 BAD_CHART    NULL NULL NULL   NULL   NULL  2025-09-03 32.58     2025-09-25 27.75     2025-12-08 39.89       44%   NULL:swing_lows=1
+    ROIV   2026-09-08 BAD_CHART      0   1    0    2.2    2.5  2026-03-11 30.33     2026-04-24 27.06     2026-07-10 37.00       37%  ok
+    PHVS   2026-09-08 BAD_CHART      0   1    0    1.2    2.2  2026-04-01 29.85     2026-04-13 26.53     2026-07-09 36.60       38%  ok
+    ODD    2026-09-09 BAD_CHART      0   0    0  -14.3  -14.2  2025-06-03 79.18     2025-08-07 56.14     2025-09-15 64.23       14%  no_run(<30%)
+    SIG    2026-09-09 BAD_CHART      0   0    0   -3.1   -2.6  2025-07-23 88.51     2025-08-08 73.62     2025-10-22 110.20      50%  ok
+    DFTX   2026-09-14 BAD_CHART    NULL NULL NULL   NULL   NULL  -                    -                    -                        -   NULL:history<250(165)
+    GNRC   2026-09-17 BAD_CHART      0   0    0   -7.1   -6.1  2026-02-25 241.09    2026-03-30 184.41    2026-06-25 296.44      61%  ok
+    NUAI   2026-09-21 BAD_CHART      0   0    0   -5.6   -4.7  2025-11-03 7.59      2025-12-30 2.01      2026-01-22 9.45       370%  ok
+    AKAM   2026-09-25 BAD_CHART      0   0    0   -3.7   -3.4  2026-03-26 121.12    2026-04-14 88.50     2026-05-13 165.45      87%  ok
+    AESI   2026-09-25 BAD_CHART      0   0    0   -4.3   -1.5  2026-01-29 12.42     2026-02-26 9.27      2026-05-21 20.13      117%  ok
+    CCL    2026-09-29 BAD_CHART      0   0    0  -11.6  -11.2  2025-09-29 32.50     2025-11-24 24.60     2026-02-06 34.03       38%  ok
+
+[3] POPULATION B — his 8 labelled real EPs (all 8 read held = 0 under the 11-03 definition)
+    HTFL  2026-08-14  held_old 0 · NEW held NULL · into NULL · d NULL/NULL ADR · shelf - · run - ·  NULL:run_window_before_history(P-60<0)
+    PLTR  2026-08-04  held_old 0 · NEW held 0 · into 0 · d -9.7/-8.4 ADR · shelf 2025-08-12 $190.00 · run 46% · ok
+    TEAM  2026-08-07  held_old 0 · NEW held 0 · into 0 · d -10.5/-10.3 ADR · shelf 2025-07-09 $222.59 · run 17% · no_run(<30%)
+    ABNB  2026-08-07  held_old 0 · NEW held 0 · into 0 · d -3.9/-1.6 ADR · shelf 2026-01-09 $141.40 · run 27% · no_run(<30%)
+    BFLY  2026-06-18  held_old 0 · NEW held 0 · into 0 · d -3.5/-2.3 ADR · shelf 2026-01-14 $5.03 · run 101% · ok
+    MRNA  2026-08-19  held_old 0 · NEW held 0 · into 0 · d -2.0/-1.8 ADR · shelf 2026-03-04 $59.55 · run 55% · ok
+    CHPT  2026-09-03  held_old 0 · NEW held 0 · into 0 · d -14.7/-14.3 ADR · shelf 2025-06-04 $17.78 · run 47% · no_breakout(P<=shelf)
+    PENG  2026-10-07  held_old 0 · NEW held 1 · into 0 · d 16.5/17.0 ADR · shelf 2026-04-13 $24.63 · run 294% · ok
+  NEW held = 1 on 1 of 7 non-NULL (1 NULL)
+
+[4] POPULATION C — the feature alone on the shadow tail: held = 1 vs held = 0 (matured rows, >= 8 x ADR)
+  [5d] matured n=56 (NULL 7) | held=1 n=21 tail winners 1/21 (5%) losers 14/21 (67%) | held=0 n=28 winners 1/28 (4%) losers 17/28 (61%)
+        score_both_directions(held=1, held=0): LOSS -- same winners but MORE losers admitted
+        tails: MRNA 2026-08-19 9.13x held=0, KOD 2026-09-28 12.43x held=1
+  [20d] matured n=42 (NULL 5) | held=1 n=16 tail winners 1/16 (6%) losers 10/16 (62%) | held=0 n=21 winners 2/21 (10%) losers 14/21 (67%)
+        score_both_directions(held=1, held=0): MIXED -- fewer winners but fewer losers too; report both numbers, do not net them into one verdict
+        tails: MRNA 2026-08-19 9.13x held=0, VICR 2026-09-17 9.50x held=0, KOD 2026-09-28 12.43x held=1
+
+[5] THE v2 COMPOSITE (the 11-03 rule: features >= 0.65 on A enter)
+  included: zones_cleared (higher=yes)
+  the NEW feature 3 scores 0.607 on A (< 0.65) -> it does NOT enter; the composite is the 11-03 one (zones cleared alone) and the bars below must equal rank_v2.txt [3].
+
+  BAR (i) — composite on A, chance a yes ranks above a no (needs >= 0.7)
+    LITERAL (every A yes/no with a composite; unrankable at the middle 0.5): 0.555 (n yes 17 / no 37) -> FAIL
+    RANKABLE-ONLY (pool of >= 2 featured here): 0.574 (n yes 12 / no 22) -> FAIL
+    ⚠ in-sample by construction: the features were selected on A, then the composite is scored on A.
+
+  BAR (ii) — his 8 labelled EPs in the top half of their day (needs >= 80% of the rankable ones)
+    rankable 6 of 8 · top half (composite < 0.5) 6 · exactly 0.5 0 -> share 1.00 -> PASS
+
+  BAR (iii) — C, v2 top quartile vs the OLD composite's top quartile, tail >= 8.0xADR, both directions (v2 NULL composite on 0 of 63 C rows -> never in v2's top)
+    [5d · vs old c_eod] matured n=56 | v2 top n=16 winners 1 losers 11/16 | old top n=7 winners 0 losers 4/7
+        score_both_directions(v2_top, old_top): MIXED -- more winners but also more losers; report both numbers, do not net them into one verdict
+        pre-reg bar (more tail winners AND loser rate no higher): FAIL
+    [5d · vs old c_945] matured n=56 | v2 top n=16 winners 1 losers 11/16 | old top n=8 winners 0 losers 5/8
+        score_both_directions(v2_top, old_top): MIXED -- more winners but also more losers; report both numbers, do not net them into one verdict
+        pre-reg bar (more tail winners AND loser rate no higher): FAIL
+    [20d · vs old c_eod] matured n=42 | v2 top n=12 winners 1 losers 8/12 | old top n=6 winners 1 losers 4/6
+        score_both_directions(v2_top, old_top): NO CHANGE -- winners and loser rate both unchanged
+        pre-reg bar (more tail winners AND loser rate no higher): FAIL
+    [20d · vs old c_945] matured n=42 | v2 top n=12 winners 1 losers 8/12 | old top n=6 winners 1 losers 4/6
+        score_both_directions(v2_top, old_top): NO CHANGE -- winners and loser rate both unchanged
+        pre-reg bar (more tail winners AND loser rate no higher): FAIL
+  -> (i) FAIL · (ii) PASS · (iii) FAIL -> FAIL
+
+[6] PLATEAU — each F3 threshold at -50% / +50%, one at a time (others stated)
+  variant          held A CI90            n y/n   =1 yes/no  into A   B=1  KOD | included | (i) lit/rank | (ii) | (iii) 5d/20d | C held=1 vs 0 (5d · 20d) | verdict
+  stated            0.607 [0.49, 0.73]   16/28  8/16·8/28    0.496   1/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 1w14L/21 vs 1w17L/28 · 1w10L/16 vs 2w14L/21 | FAIL
+  adr_mult=0.5      0.625 [0.50, 0.74]   16/28  8/16·7/28    0.482   1/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 1w13L/20 vs 1w18L/29 · 1w9L/15 vs 2w15L/22 | FAIL
+  adr_mult=1.5      0.634 [0.51, 0.76]   16/28  10/16·10/28    0.540   1/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 1w14L/21 vs 1w17L/28 · 1w10L/16 vs 2w14L/21 | FAIL
+  pb_win=20         0.644 [0.52, 0.76]   17/25  11/17·9/25    0.499   1/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 1w13L/18 vs 1w13L/26 · 1w9L/13 vs 2w10L/19 | FAIL
+  pb_win=60         0.615 [0.49, 0.73]   16/29  7/16·6/29    0.514   3/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 2w12L/18 vs 0w19L/32 · 2w9L/14 vs 1w15L/24 | FAIL
+  base_end=125      0.588 [0.47, 0.71]   17/34  8/17·10/34    0.515   1/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 1w15L/21 vs 1w18L/30 · 1w10L/15 vs 2w16L/24 | FAIL
+  base_end=375      0.590 [0.47, 0.72]   16/25  8/16·8/25    0.491   1/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 1w14L/21 vs 1w16L/27 · 1w10L/16 vs 2w13L/20 | FAIL
+  run_win=30        0.585 [0.48, 0.70]   16/28  5/16·4/28    0.496   0/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 1w6L/11 vs 1w25L/38 · 1w4L/9 vs 2w20L/28 | FAIL
+  run_win=90        0.572 [0.44, 0.70]   16/27  10/16·13/27    0.525   2/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 2w18L/27 vs 0w12L/21 · 3w14L/22 vs 0w9L/14 | FAIL
+  shelf_win=22      0.670 [0.54, 0.79]   16/28  10/16·8/28    0.464   1/8    1 | zones_cleared+held | 0.54/0.58 | 5/5 | fail/fail | 1w15L/23 vs 1w16L/26 · 1w11L/17 vs 2w13L/20 | FAIL
+  shelf_win=68      0.625 [0.50, 0.75]   16/28  8/16·7/28    0.527   1/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 1w14L/21 vs 1w16L/27 · 1w10L/16 vs 2w13L/20 | FAIL
+  run_min=0.15      0.607 [0.49, 0.73]   16/28  8/16·8/28    0.496   1/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 1w14L/21 vs 1w17L/28 · 1w10L/16 vs 2w14L/21 | FAIL
+  run_min=0.45      0.629 [0.51, 0.75]   16/28  7/16·5/28    0.513   1/8    1 | zones_cleared | 0.55/0.57 | 6/6 | fail/fail | 1w13L/18 vs 1w18L/31 · 1w9L/13 vs 2w15L/24 | FAIL
+  held's score on A ranges 0.572 - 0.670 across the 13 settings (best shelf_win=22); qualifies (>= 0.65) at: shelf_win=22
+
+[7] NOT THE PRE-REGISTERED BAR — the new feature FORCED into the composite beside zones cleared
+  (shown only to say what his chart read would do to the ranking if it were let in; changes nothing above)
+  included: zones_cleared (higher=yes), held (higher=yes)
+  (i) literal 0.532 (n 16/28) · rankable-only 0.566 (n 11/13) — needs 0.70
+  (ii) 5 of 5 rankable labelled EPs in the top half (needs 80%)
+  (iii) 5d: forced top n=3 winners 0 losers 2/3 vs old top n=7 winners 0 losers 4/7 -> LOSS -- same winners but MORE losers admitted
+  (iii) 20d: forced top n=3 winners 0 losers 2/3 vs old top n=6 winners 1 losers 4/6 -> LOSS -- fewer winners, losers admitted at the same rate
+  forced verdict (not binding): FAIL
+
+[8] VERDICT (the pre-registration's own words)
+  NEW feature 3 on A: 0.607 (n 16 yes / 28 no) -> does not reach 0.65 — does not enter
+  v2 composite: zones_cleared · (i) FAIL · (ii) PASS · (iii) FAIL -> FAIL

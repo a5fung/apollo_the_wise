@@ -1,0 +1,12 @@
+[shelf_win=22] pairs whose held differs, literal (60/45) vs builder (61/46) windows:
+   TBBB 2026-08-13 GOOD_CHART: literal held 1 shelf 2026-02-19 38.8302 d -0.25/-0.12 S 2026-03-20 | builder held 0 shelf 2026-02-18 40.09 d -1.04/-0.91 S 2026-03-20
+[stated] pairs whose held/into differs literal vs builder windows (all 158):
+   AMLX 2026-08-18 C: held 1/1 into 0/1
+   -> 1 differ
+[KOD] variants under builder windows:
+   stated: S 2026-02-05 20.88 shelf 2025-12-24 31.18 d +0.21/+0.66 held 1 into 1
+   run_win=30: S 2026-03-24 21.0 shelf 2026-01-22 29.492 d +1.26/+1.73 held 1 into 0
+   shelf_win=22: S 2026-02-05 20.88 shelf 2026-01-22 29.492 d +1.26/+1.73 held 1 into 0
+   run_win=90: S 2026-02-05 20.88 shelf 2025-12-24 31.18 d +0.21/+0.66 held 1 into 1
+   shelf_win=68: S 2026-02-05 20.88 shelf 2025-12-24 31.18 d +0.21/+0.66 held 1 into 1
+[held_old] P(yes>no) 0.512 n 17/28 =1 1/1

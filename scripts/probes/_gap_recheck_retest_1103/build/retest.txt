@@ -1,0 +1,153 @@
+=== STUDY 1 — the 09:31 gap re-check retested on the live cohort since 2026-08-28 — method fixed before the OUTCOMES marker ===
+reused from scripts/probes/_715_study_1031/s2_replay.py (sha256 82aeff94a57d6576…): read_sections, f, d_, t_, hhmm_dt, minute_after, tstr, r2, atr14_like_live, pre_rows, bar_at, bar_before, limit_walk, replay_entry, fixed_horizon + constants CHASE_CAP=1.5, LIMIT_MULT=1.002, TARGET_R=8.0, BREAKEVEN_R=3.0, ATR_MULT=1.5, ATR_LOOKBACK_CAL=35, ATR_MIN_ROWS=10, PRIOR_CLOSES_CAL=40, ADR_LOOKBACK_CAL=60, WINDOW_END=09:45:00, CANCEL_AT=10:00:00, H_DECISION=20, H_RUNNER=40, BORDERLINE_BAND=0.002
+replay_entry reads row['floor_price'] once (the gap re-check, asserted) → the main arm passes floor_price=0.0
+TRAIL_ARM_LIVE_FROM (exit_logic) = 2026-10-29
+capture sections: POP=39, MIN=13615, DAILY=3822, COUNTS=1; field-count mismatches skipped: none
+MIN rows 13615 (= COUNTS) over 38 ticker-days; DAILY 3822 rows, 98 sessions 2026-06-15..2026-11-02 (session calendar = union of DAILY dates; 06-15..11-02 has 98 NYSE sessions → complete)
+last settled session = 2026-11-02; the 11-03 minute bars stop where the capture ran (~11:03 ET)
+
+=== §1 COMPOSITION (no outcome) ===
+the 39 HIGH ticker-days since 08-28, stored fate: chase_cap_skip=2 filled=14 gap_below_floor=9 infra=1 out_of_window=8 size_too_small=1 stop_too_wide=1 unfilled_cancel=3
+POPULATION = stored skip_reason starts 'setup:gap_below_floor': n=9 — AGX 2026-09-03, QCOM 2026-09-08, SRRK 2026-09-14, WOLF 2026-10-08, MANE 2026-10-19, SPCX 2026-10-21, INIO 2026-10-27, AEIS 2026-11-03, FN 2026-11-03
+  flip-up admits (an ep_rt_floor_flip_up row that day): 7 — AGX, SRRK, MANE, SPCX, INIO, AEIS, FN; not flip-ups (delayed read crossed, faded by 09:31): QCOM, WOLF
+  overlap with the 10-31 study's 51: AGX, SRRK, MANE, SPCX, INIO
+  every population alert is pre-open (first alert before 09:30): True → submit 09:31, walk from 09:32, alert-minute 09:30
+
+per name: ticker date | flip-up | prev close (scan / skip text / prior DAILY close) | floor px | 09:30 bar O/H/L/C | open>=floor | ORB high>=floor | stored live read at 09:31 (rt% text vs recomputed) | first RTH bar whose high reached the floor | ATR14 (n rows) | ORB range vs 1.5xATR | bars 09:30-10:00 | forward sessions to 11-02 (cap 20)
+  AGX   2026-09-03 | yes | 410.40 / 410.40 / 410.40 | 447.34 | 427.27/427.27/419.32/422.86 | 0 | 0 | $422.86 (text 3.0% / calc 3.04%) | never in RTH | 27.700 (25) | 7.95 vs 41.55 | 29/30 | 20
+  QCOM  2026-09-08 | no  | 168.74 / 168.74 / 168.74 | 183.93 | 180.40/180.65/176.71/178.38 | 0 | 0 | $178.51 (text 5.8% / calc 5.79%) | never in RTH | 5.124 (24) | 3.94 vs 7.69 | 30/30 | 20
+  SRRK  2026-09-14 | yes | 55.41 / 55.41 / 55.41 | 60.40 | 56.50/56.90/55.00/55.51 | 0 | 0 | $55.51 (text 0.2% / calc 0.18%) | never in RTH | 2.419 (24) | 1.90 vs 3.63 | 30/30 | 20
+  WOLF  2026-10-08 | no  | 31.37 / 31.37 / 31.37 | 34.19 | 35.02/35.94/34.06/34.17 | 1 | 1 | $34.13 (text 8.8% / calc 8.80%) | 09:30 | 2.438 (24) | 1.88 vs 3.66 | 30/30 | 17
+  MANE  2026-10-19 | yes | 108.82 / 108.82 / 108.82 | 118.61 | 115.34/115.94/113.00/115.86 | 0 | 0 | $115.86 (text 6.5% / calc 6.47%) | 09:39 | 8.592 (25) | 2.94 vs 12.89 | 30/30 | 10
+  SPCX  2026-10-21 | yes | 147.79 / 147.79 / 147.79 | 161.09 | 160.56/160.67/158.78/160.13 | 0 | 0 | $160.85 (text 8.8% / calc 8.84%) | 09:31 | 7.500 (25) | 1.89 vs 11.25 | 30/30 | 8
+  INIO  2026-10-27 | yes | 16.63 / 16.63 / 16.63 | 18.13 | 17.05/17.40/16.80/17.13 | 0 | 0 | $17.13 (text 3.0% / calc 3.01%) | never in RTH | 1.399 (25) | 0.60 vs 2.10 | 30/30 | 4
+  AEIS  2026-11-03 | yes | 217.19 / 217.19 / 217.19 | 236.74 | 232.64/237.27/227.71/233.01 | 0 | 1 | $233.43 (text 7.5% / calc 7.48%) | 09:30 | 15.682 (25) | 9.56 vs 23.52 | 1/30 | 0
+  FN    2026-11-03 | yes | 314.70 / 314.70 / 314.70 | 343.02 | 329.99/337.29/329.99/333.00 | 0 | 0 | $332.17 (text 5.6% / calc 5.55%) | never in RTH | 25.071 (25) | 7.30 vs 37.61 | 1/30 | 0
+  4a context (option (b) of the 10-31 study, built 10-31 and running in SHADOW — not acting): the flip-up names whose 09:30 OPEN was below the floor would ALSO be refused by 4a if it were switched on: AGX, SRRK, MANE, SPCX, INIO, AEIS, FN
+  NOT EVALUABLE (minute bars stop at 09:30 — the capture stored one bar for the day): AEIS 2026-11-03 (1 bar), FN 2026-11-03 (1 bar) → entered = unknown; kept in the count, out of every sum
+  orientation disclosure: the POP section prints the ENTERED names' stored exits (exits_json); they were seen while orienting. Nothing in the capture discloses the population's counterfactual, which the marker protects.
+
+=== §2 CALIBRATION (decided before any population outcome) ===
+C1 prev close: scan-log = skip text = prior DAILY close on 9 of 9
+C2 the skip text's 'rt X%' = (live read − prev close)/prev close on 9 of 9
+C3 today's rule WITH the re-check refuses the name: on the stored live read 9 of 9; on the 09:30-close proxy 9 of 9
+C4 live read at 09:31 vs the 09:30-bar close (the 10-31 study's calibrated proxy): AGX 0.00%, QCOM 0.08%, SRRK 0.00%, WOLF 0.13%, MANE 0.00%, SPCX 0.44%, INIO 0.00%, AEIS 0.18%, FN 0.25% | median 0.076%
+   PRIMARY proxy = the stored live read (it IS the 09:31 price the live decision used); SENSITIVITY = the 09:30 close
+C5 stored 09:30 bar = the trade row's orb_high/orb_low on 19 of 19 trade rows carrying them
+C6 ATR14 replica: ROIV 09-08 text 'ORB range $1.90 > 1.5x ATR $1.82' → replica range 1.90, 1.5xATR 1.82; replay path stop_too_wide → PASS
+   GNRC 09-17 'size_too_small: $12 risk / $17.77 per-share' → 2R planned risk from the bar = 17.77/sh (sizing reads the planned 2R risk; the day's risk budget was $12) — the size gate is NOT modelled (no budget in the capture); per-share risk is shown per name
+C7 today's rule (WITH the re-check, 09:30/alert-minute close proxy) vs the stored fate, the 30 non-population rows:
+  SOLS  2026-08-28 | filled | replay stop_limit (stop-limit fill 66.75 @ 09:34) fill 66.75 vs live 66.7700 (0.03%) | match
+  HOOD  2026-09-03 | filled | replay limit (limit fill 118.42 @ 09:36 (1.44x planned)) fill 118.42 vs live 118.3700 (0.04%) | match
+  SNOW  2026-09-03 | unfilled_cancel | replay stoplimit_no_entry (never_crossed_orb_high)  | match
+  IONQ  2026-09-08 | chase_cap_skip | replay chase_cap_skip (setup:chase_cap_exceeded: limit 44.33 risk 3.22/sh vs planned 1.84/sh (1.75x))  | match
+  PHVS  2026-09-08 | filled | replay stop_limit (stop-limit fill 42.00 @ 09:32) fill 42.00 vs live 42.0000 (0.00%) | match
+  ROIV  2026-09-08 | stop_too_wide | replay stop_too_wide (setup:stop_too_wide: range 1.90 > 1.5x ATR 1.21)  | match
+  SEI   2026-09-08 | filled | replay stop_limit (stop-limit fill 62.78 @ 09:35) fill 62.78 vs live 62.8078 (0.04%) | match
+  DFTX  2026-09-14 | filled | replay stop_limit (stop-limit fill 43.61 @ 09:33) fill 43.61 vs live 43.7600 (0.34%) | match
+  GNRC  2026-09-17 | size_too_small (setup:size_too_small: $12 risk / $17.77 per-s) | replay stoplimit_no_entry | non-modelled live stop (listed)
+  VICR  2026-09-17 | filled | replay stop_limit (stop-limit fill 211.97 @ 09:32) fill 211.97 vs live 211.5000 (0.22%) | match
+  ONON  2026-09-22 | out_of_window | replay out_of_window (window:out_of_orb: submit 09:45)  | match
+  AKAM  2026-09-25 | unfilled_cancel | replay stoplimit_no_entry (never_crossed_orb_high)  | match
+  KOD   2026-09-28 | filled | replay stoplimit_no_entry (triggered_above_limit_never_filled)  | MISMATCH
+  ACN   2026-10-01 | out_of_window | replay out_of_window (window:out_of_orb: submit 09:50)  | match
+  SNPS  2026-10-01 | out_of_window | replay out_of_window (window:out_of_orb: submit 09:45)  | match
+  CEG   2026-10-06 | filled | replay stop_limit (stop-limit fill 302.21 @ 09:32) fill 302.21 vs live 300.9400 (0.42%) | match
+  TLN   2026-10-06 | out_of_window | replay out_of_window (window:out_of_orb: submit 09:55)  | match
+  VST   2026-10-06 | out_of_window | replay out_of_window (window:out_of_orb: submit 09:55)  | match
+  PENG  2026-10-07 | filled | replay limit (limit fill 72.22 @ 09:36 (1.43x planned)) fill 72.22 vs live 72.2100 (0.01%) | match
+  HUM   2026-10-09 | filled | replay stop_limit (stop-limit fill 450.70 @ 09:40) fill 450.70 vs live 452.0000 (0.29%) | match
+  IRON  2026-10-19 | filled | replay stop_limit (stop-limit fill 73.99 @ 09:33) fill 73.99 vs live 73.9100 (0.10%) | match
+  SMCI  2026-10-21 | filled | replay stop_limit (stop-limit fill 36.70 @ 09:36) fill 36.70 vs live 36.5387 (0.44%) | match
+  CLS   2026-10-27 | filled | replay stop_limit (stop-limit fill 272.74 @ 09:36) fill 272.74 vs live 272.0050 (0.27%) | match
+  SOFI  2026-10-27 | out_of_window | replay out_of_window (window:out_of_orb: submit 09:55)  | match
+  GMAB  2026-10-28 | out_of_window | replay out_of_window (window:out_of_orb: submit 09:45)  | match
+  VRT   2026-10-28 | unfilled_cancel | replay stoplimit_no_entry (never_crossed_orb_high)  | match
+  GKOS  2026-10-29 | infra (infra:no_bar: 3 retries exhausted) | replay stop_limit | non-modelled live stop (listed)
+  REGN  2026-10-30 | chase_cap_skip | replay chase_cap_skip (setup:chase_cap_exceeded: limit 925.38 risk 107.88/sh vs planned 52.38/sh (2.06x))  | match
+  AEHR  2026-11-03 | filled | replay gap_below_floor (setup:gap_below_floor: rt 6.8% < 9% (proxy 54.96))  | MISMATCH
+  LSCC  2026-11-03 | out_of_window | no minute bars stored → not replayed (listed)
+C7 tally: matched 25, mismatched 2, non-modelled / no bars 3  (information for the scale column; the population's verdict rests on C1-C3 + C6 + C8, which are pass/fail)
+C8 the depth walk vs the three depth-era live trades that settled or are deciding (stored fill, placed stop 2·ORB low − ORB high):
+  SMCI 2026-10-21 fill 36.5387 @ 09:36 stop 35.28 | today-rule: settled stop_hit s0 last leg 35.280 @ 2026-10-21 11:32 | as-live (arm from 10-29): settled stop_hit s0 last leg 35.280 @ 2026-10-21 11:32 | s2 exact: settled stop_hit s0 last leg 35.280 @ 2026-10-21 11:32
+      live: stop_hit day 0 (10-21 11:32 ET) at $35.272 vs stop $35.28
+  CLS 2026-10-27 fill 272.005 @ 09:36 stop 250.26 | today-rule: settled stop_hit s3 last leg 267.930 @ 2026-10-30T16:00 GAP | as-live (arm from 10-29): settled sma_trail_stop s2 last leg 290.650 @ 2026-10-29 | s2 exact: settled sma_trail_stop s2 last leg 290.650 @ 2026-10-29
+      live: stop_hit at the 10-30 open, $265.635 (gap-through); the 10-28 depth sale the old code marked was cleared by hand
+  IRON 2026-10-19 fill 73.91 @ 09:33 stop 66.01 | today-rule: pending depth_next_open_not_yet_settled s10 | as-live (arm from 10-29): pending depth_next_open_not_yet_settled s10 | s2 exact: pending depth_next_open_not_yet_settled s10
+      live: sma_trail_stop decided on the 11-02 close, sold 3 sh at the 11-03 open $79.41
+C8 pre-set bars (today-rule walk): SMCI day-0 stop → PASS; CLS stop at the 10-30 open within 0.5% of $265.635 → FAIL; IRON depth sale decided on the last stored close, fill at the 11-03 open not stored → PASS
+   CLS price bar FAILS as pre-set; the MECHANISM matches (added after reading C8, non-population): the today-rule walk stops at the 10-30 open with a gap-through, at the stored daily open $267.93 — live's market fill was $265.635 (0.86% apart). The two old-code walks (as-live / s2 exact) instead sell at the 10-29 open on the 10-28 depth sale he cleared by hand. Caveat carried: an at-the-open stop is booked at the daily open print, not the live fill
+calibration: C1, C2, C3, C6, C8 (SMCI, IRON) pass
+
+=== §3 ENTRIES WITH THE RE-CHECK ABSENT (fills only; no bar after an entry minute read) ===
+ticker date | MAIN (live read proxy) | sensitivity: 09:30-close proxy | (a) crossing-bar anchor, re-check absent | (a) as s2 (re-check at its own submit)
+  AGX   2026-09-03 | stoplimit_no_entry — never_crossed_orb_high | stoplimit_no_entry — never_crossed_orb_high | a_no_crossing_bar — no RTH bar reached the floor price | a_no_crossing_bar — no RTH bar reached the floor price
+  QCOM  2026-09-08 | stop_limit 180.65@09:35 stop 172.77 (risk 7.88/sh) | stop_limit 180.65@09:35 stop 172.77 (risk 7.88/sh) | a_no_crossing_bar — no RTH bar reached the floor price | a_no_crossing_bar — no RTH bar reached the floor price
+  SRRK  2026-09-14 | stoplimit_no_entry — never_crossed_orb_high | stoplimit_no_entry — never_crossed_orb_high | a_no_crossing_bar — no RTH bar reached the floor price | a_no_crossing_bar — no RTH bar reached the floor price
+  WOLF  2026-10-08 | stoplimit_no_entry — never_crossed_orb_high | stoplimit_no_entry — never_crossed_orb_high | stoplimit_no_entry — never_crossed_orb_high | gap_below_floor — setup:gap_below_floor: rt 8.8% < 9% (proxy 34.13)
+        (a): crossing bar = 09:30 bar → identical to the main arm
+  MANE  2026-10-19 | stop_limit 115.94@09:34 stop 110.06 (risk 5.88/sh) | stop_limit 115.94@09:34 stop 110.06 (risk 5.88/sh) | stop_limit 118.69@09:40 stop 117.51 (risk 1.18/sh) | gap_below_floor — setup:gap_below_floor: rt 8.5% < 9% (proxy 118.10)
+        (a): crossing bar 09:39 h=118.69 l=118.10 submit 09:40
+  SPCX  2026-10-21 | limit 161.17@09:32 stop 156.89 (risk 3.78/sh) | stop_limit 161.47@09:32 stop 156.89 (risk 3.78/sh) | stop_limit 162.77@09:48 stop 157.05 (risk 5.72/sh) | stop_limit 162.77@09:48 stop 157.05 (risk 5.72/sh)
+        main: limit 161.17 (live read 160.85 > ORB high 160.67), cap ratio 1.13x
+        (a): crossing bar 09:31 h=162.77 l=159.91 submit 09:32
+  INIO  2026-10-27 | stop_limit 17.40@09:48 stop 16.20 (risk 1.20/sh) | stop_limit 17.40@09:48 stop 16.20 (risk 1.20/sh) | a_no_crossing_bar — no RTH bar reached the floor price | a_no_crossing_bar — no RTH bar reached the floor price
+  AEIS  2026-11-03 | stoplimit_abstain — entry_window_gaps:28_of_28 | stoplimit_abstain — entry_window_gaps:28_of_28 | stoplimit_abstain — entry_window_gaps:28_of_28 | gap_below_floor — setup:gap_below_floor: rt 7.5% < 9% (proxy 233.43)
+        (a): crossing bar = 09:30 bar → identical to the main arm
+  FN    2026-11-03 | stoplimit_abstain — entry_window_gaps:28_of_28 | stoplimit_abstain — entry_window_gaps:28_of_28 | a_no_crossing_bar — no RTH bar reached the floor price | a_no_crossing_bar — no RTH bar reached the floor price
+main: enters 4 of 9
+proxy: enters 4 of 9
+a: enters 2 of 9
+a_s2: enters 1 of 9
+cross-check vs the 10-31 run's (a) on the shared names: AGX 10-31 a_no_crossing_bar - / here a_no_crossing_bar - → same; SRRK 10-31 a_no_crossing_bar - / here a_no_crossing_bar - → same; MANE 10-31 gap_below_floor - / here gap_below_floor - → same; SPCX 10-31 stop_limit 162.77 / here stop_limit 162.77 → same; INIO 10-31 a_no_crossing_bar - / here a_no_crossing_bar - → same
+size gate (not modelled): per-share planned risk of every entry above — QCOM 7.88, MANE 5.88, SPCX 3.78, INIO 1.20 — each under the $12 budget GNRC shows on 09-17, the smallest budget visible in the capture → none would be size-refused at that budget
+
+=== OUTCOMES BELOW === (everything above was written without reading a population bar after an entry minute)
+
+=== §4 PER NAME — MAIN ARM (re-check absent; live read at 09:31; today's entry + depth exit with trail arming; 20 sessions; budget-R = profit per share ÷ (ORB high − placed stop)) ===
+ticker date | entered? why | 20-session result | s2-exact exit (no trail arming) | 40 sessions | fixed check: +3R before the stop? best high R
+  AGX   2026-09-03 | not entered: never_crossed_orb_high
+  QCOM  2026-09-08 | entered stop-limit fill 180.65 @ 09:35 stop 172.77 | settled -1.00R (stop_hit s0) | settled -1.00R (stop_hit s0) | settled -1.00R (stop_hit s0) | stop_first +3.20 (n=20 sessions)
+  SRRK  2026-09-14 | not entered: never_crossed_orb_high
+  WOLF  2026-10-08 | not entered: never_crossed_orb_high
+  MANE  2026-10-19 | entered stop-limit fill 115.94 @ 09:34 stop 110.06 | abstain (fwd_stop_and_breakeven_same_day:2026-10-20) | abstain (fwd_stop_and_breakeven_same_day:2026-10-20) | abstain (fwd_stop_and_breakeven_same_day:2026-10-20) | target_first +5.21 (n=10 sessions)
+  SPCX  2026-10-21 | entered limit fill 161.17 @ 09:32 (1.13x planned) stop 156.89 | settled -1.84R (stop_hit s1 GAP) | settled -1.84R (stop_hit s1 GAP) | settled -1.84R (stop_hit s1 GAP) | stop_first +1.33 (n=8 sessions)
+  INIO  2026-10-27 | entered stop-limit fill 17.40 @ 09:48 stop 16.20 | settled -1.00R (stop_hit s0) | settled -1.00R (stop_hit s0) | settled -1.00R (stop_hit s0) | stop_first +1.12 (n=4 sessions)
+  AEIS  2026-11-03 | not entered: UNKNOWN — only the 09:30 bar is stored for the day (and no forward session: alert day is today)
+  FN    2026-11-03 | not entered: UNKNOWN — only the 09:30 bar is stored for the day (and no forward session: alert day is today)
+
+=== §5 SUMMARY (the 9 names the re-check refused) ===
+MAIN — re-check absent, live read proxy: entered 4 of 9 | settled 3: sum -3.84R, wins 0, losses 3, flat 0, big winners >=+3R 0 [none], worst SPCX -1.84 | still open, marked: 0 [none] (up 0, down 0, marked >=+3R 0, marked sum +0.00) | other [('MANE', 'abstain')]
+sensitivity — 09:30-close proxy: entered 4 of 9 | settled 3: sum -3.92R, wins 0, losses 3, flat 0, big winners >=+3R 0 [none], worst SPCX -1.92 | still open, marked: 0 [none] (up 0, down 0, marked >=+3R 0, marked sum +0.00) | other [('MANE', 'abstain')]
+sensitivity (a) — crossing-bar anchor, re-check absent: entered 2 of 9 | settled 2: sum -2.00R, wins 0, losses 2, flat 0, big winners >=+3R 0 [none], worst MANE -1.00 | still open, marked: 0 [none] (up 0, down 0, marked >=+3R 0, marked sum +0.00) | other none
+s2's exact (a) — re-check at its own submit: entered 1 of 9 | settled 1: sum -1.00R, wins 0, losses 1, flat 0, big winners >=+3R 0 [none], worst SPCX -1.00 | still open, marked: 0 [none] (up 0, down 0, marked >=+3R 0, marked sum +0.00) | other none
+MAIN with s2's exact exit (no trail arming): entered 4 of 9 | settled 3: sum -3.84R, wins 0, losses 3, flat 0, big winners >=+3R 0 [none], worst SPCX -1.84 | still open, marked: 0 [none] (up 0, down 0, marked >=+3R 0, marked sum +0.00) | other [('MANE', 'abstain')]
+  note: main MANE walk abstain (fwd_stop_and_breakeven_same_day:2026-10-20) — not scored
+  note: proxy MANE walk abstain (fwd_stop_and_breakeven_same_day:2026-10-20) — not scored
+
+=== POST-HOC BRACKET for unresolved walks (added after the marker; stated for honesty) ===
+  MANE 2026-10-19 fill 115.94 stop 110.06 breakeven trigger 124.76 | 2026-10-20 bar o/h/l/c 120.62/130.11/113.52/127.11 — low above the stop 110.06: True
+    worst ordering (armed, then stopped at entry on 2026-10-20): +0.00R | best ordering (dip first, then armed): still open (depth_next_open_not_yet_settled), marked +2.87R at 2026-11-02 | fixed check (harness-free): target_first best high +5.21R
+
+=== §6 SCALE — the same-period ENTERED names (the 39's filled rows) ===
+STORED R = the live trade's realised P&L ÷ (shares × (ORB high − (2·ORB low − ORB high))) from exits_json — each trade's OWN era's live exit (the depth exit only from 10-13); REPLAYED R = the same harness as the main arm (today's rule WITH the re-check, the 09:30/alert-minute close proxy, today's depth exit with trail arming), shown only where the replay reproduces the live fill within 0.5%
+  SOLS  2026-08-28 | stored -1.01R (pre-depth exit, 12 sh) | replayed settled -1.00R (stop_hit s1)
+  HOOD  2026-09-03 | stored -1.20R (pre-depth exit, 4 sh) | replayed settled -1.44R (stop_hit s7)
+  PHVS  2026-09-08 | stored -1.06R (pre-depth exit, 3 sh) | replayed settled -1.04R (stop_hit s0)
+  SEI   2026-09-08 | stored +0.41R (pre-depth exit, 2 sh) | replayed settled +0.00R (stop_hit s4)
+  DFTX  2026-09-14 | stored -1.06R (pre-depth exit, 7 sh) | replayed settled -1.00R (stop_hit s0)
+  VICR  2026-09-17 | stored +6.99R (pre-depth exit, 1 sh) | replayed settled +5.22R (sma_trail_stop s15)
+  KOD   2026-09-28 | stored +6.18R (pre-depth exit, 5 sh) | replayed replay stoplimit_no_entry (not reproduced)
+  CEG   2026-10-06 | stored -1.01R (pre-depth exit, 3 sh) | replayed settled -1.08R (stop_hit s2)
+  PENG  2026-10-07 | stored -1.17R (pre-depth exit, 10 sh) | replayed settled -1.26R (stop_hit s6)
+  HUM   2026-10-09 | stored -1.05R (pre-depth exit, 1 sh) | replayed settled -1.00R (stop_hit s2)
+  IRON  2026-10-19 | stored +0.69R (depth exit, 3 sh) | replayed still open (depth_next_open_not_yet_settled), marked +0.58R at 2026-11-02
+  SMCI  2026-10-21 | stored -1.02R (depth exit, 27 sh) | replayed settled -1.15R (stop_hit s0)
+  CLS   2026-10-27 | stored -0.28R (depth exit, 2 sh) | replayed settled -0.21R (stop_hit s3 GAP)
+  AEHR  2026-11-03 | stored OPEN (no stored exit) (depth exit, 0 sh) | replayed replay gap_below_floor (not reproduced)
+STORED: 13 closed — sum +5.41R, wins 4, losses 9, big >=+3R 2 [VICR +6.99, KOD +6.18], worst HOOD -1.20
+REPLAYED: 11 settled — sum -3.95R, wins 1, losses 9, big >=+3R 1 [VICR +5.22], worst HOOD -1.44; marked open IRON +0.58
+
+=== §7 VERDICT (rule fixed before the run: winners vs losers among the MAIN arm's SETTLED rows decide; marked-open rows are stated beside, not counted; n is stated) ===
+On this live cohort the re-check removed 4 entries (of 9 refused names; 2 not evaluable): settled 3 → 0 winners / 3 losers / 0 flat, sum -3.84R, 0 big winner(s) — i.e. it removed MORE LOSERS than winners on the settled rows; 0 still open (marked 0 up / 0 down, +0.00R). n is tiny (3 settled) — a direction, not a finding. No rule recommendation (his call).
+POST-HOC addendum (the bracket above): unresolved MANE +0.00R to +2.87R → the removed entries sum -3.84R to -0.97R; winners 0 to 1, losers 3; big winners 0 to 0

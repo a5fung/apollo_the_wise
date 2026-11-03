@@ -1,0 +1,5 @@
+[zones_cleared] A P(yes>no) 0.672 n 17/37
+[KOD] D-11 2026-09-11 low 32.31
+[KOD] D-6 2026-09-18 low 31.54
+[KOD] D-2 2026-09-24 low 29.8101
+[KOD] June-mid July lowest low (29.21, '2026-06-09', 76) (D-offset) · 40-session pivot window starts 2026-07-31

@@ -52,3 +52,7 @@ selection). Returns are read only as the tail test the running read already uses
 - **Tightness, both ways:** on his rulings tighter gap days lean yes (0.64), but his labelled real EPs had WIDE gap days (MRNA 35%, CHPT 28%, BFLY 21%, HTFL 16%); forcing tightness in fails every bar by more.
 - **Feature 3 misdefined:** 'the previous base high' as the highest high of sessions 41-250 picked KOD's April $47.84 peak; his read was the Dec-Feb ~$30 shelf. It read 0 on all 8 of his EPs — needs a new definition and a new pre-registration.
 - **Coverage, stated:** the bars were pulled for the labelled names only, so many of A's day pools are partial; the raw feature (0.67) is under 0.70 before any ranking, so more bars cannot pass bar (i).
+
+## RESULT 2 — feature 3 re-defined as the shelf before the run (2026-11-03, his "Yes"; `scripts/probes/_ep_rank_v2_1103/build_f3/`, blind recount `build_f3_verify/`)
+
+**FAIL as pre-registered.** The definition (`build_f3/F3_DEFINITION.md`, written before any score; KOD the only calibration — it finds his Dec-2025 ~$31.18 shelf and reads held) scores **0.607** on his rulings (16 yes / 28 no), under the 0.65 entry line; the composite is unchanged (zones cleared alone: (i) 0.555 FAIL, (ii) 6 of 6, (iii) FAIL). Plateau 0.57-0.67 (0.65 at one setting only — fragile). **A lead, not a result:** the continuous distance of the lower pullback low from the shelf reads 0.688 (his yes median -0.4 daily ranges, no median -3.4) — declared ineligible in advance; it needs its own pre-registration on labels not yet seen.

@@ -1,0 +1,16 @@
+prior closes n=28 first 2026-09-09 last 2026-10-16 ADR20=0.0675 entry line(prior)=117.233
+entry-day close 122.38 line incl it 117.584 -> armed at entry day: True
+d0 after fill: max high 123.93 min low 113.6447 (stop 110.06, BE 124.76)
+  s1 2026-10-20 o/h/l/c 120.62/130.11/113.52/127.11 line 118.06 armed True eff 118.06 -> rest 115.94
+  s2 2026-10-21 o/h/l/c 127.5/139.1213/127.14/136.66 line 120.83 armed True eff 120.83 -> rest 115.94
+  s3 2026-10-22 8R third at 139.46 (high 141.75)
+  s3 2026-10-22 o/h/l/c 136.0/141.75/135.14/138.49 line 123.58 armed True eff 123.58 -> rest 115.94
+  s4 2026-10-23 o/h/l/c 139.44/139.925/134.49/138.78 line 124.80 armed True eff 124.80 -> rest 116.38
+  s5 2026-10-26 o/h/l/c 136.74/140.7999/135.61/137.39 line 125.45 armed True eff 125.45 -> rest 116.98
+  s6 2026-10-27 o/h/l/c 136.84/141.08/136.76/140.72 line 127.28 armed True eff 127.28 -> rest 118.69
+  s7 2026-10-28 o/h/l/c 139.17/144.26/137.66/143.83 line 130.03 armed True eff 130.03 -> rest 121.25
+  s8 2026-10-29 o/h/l/c 141.955/146.575/140.19/143.85 line 133.07 armed True eff 133.07 -> rest 124.09
+  s9 2026-10-30 o/h/l/c 141.79/145.41/138.3304/139.69 line 135.53 armed True eff 135.53 -> rest 126.38
+  s10 2026-11-02 close 129.53 < eff 137.60 -> sell next open
+best-order: realized +1.333R, remaining 0.667; mark at last close 129.53: +2.874R
+worst-order (s1 high first -> BE armed -> low 113.52 <= entry): exit at entry = +0.00R (stop at entry, booked at entry 115.94)
