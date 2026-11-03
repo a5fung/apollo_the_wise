@@ -744,6 +744,66 @@ CHART_RULINGS: list[ChartRuling] = [
         gap_open_pct=14.9, ret_5d=None,
         prior_runup_note='WE SKIPPED IT: best score 48.8, catalyst=routine. 20 sessions later +9%. Volume 6.4x. Ruled outcome-blind.',
     ),
+    # ── #594 sample #5 (2026-11-02), ruled OUTCOME-BLIND (page `scripts/probes/_594_sample5_1102/sample5_blind.png`, each chart ending
+    #    the session before the gap). Drawn from the read's RIGHT calls: 4 HIGH alerts with the biggest 20-session gain + 4 below-
+    #    the-bar names with the biggest loss. His caveat on the whole page, verbatim: "a caveat is day before may look poor but also
+    #    depends how much of a EP it is, if gap up through all the choppy areas, it may be good". ──
+    ChartRuling(
+        ticker='LIFE', alert_date='2026-08-04', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-11-02",
+        operator_words='ok',
+        gap_open_pct=19.7, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 80.0, catalyst=game_changer. 20 sessions later +28%. Volume 8.3x. Ruled outcome-blind (sample 5, card A).',
+    ),
+    ChartRuling(
+        ticker='KOD', alert_date='2026-09-28', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-02",
+        operator_words='poor',
+        gap_open_pct=90.7, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 90.0, catalyst=game_changer. 20 sessions later +45%. Volume 45.1x. Ruled outcome-blind (sample 5, card B).',
+    ),
+    ChartRuling(
+        ticker='EIKN', alert_date='2026-08-19', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-02",
+        operator_words='poor',
+        gap_open_pct=9.6, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 42.0, catalyst=routine. 20 sessions later -33%. Volume 3.8x. Ruled outcome-blind (sample 5, card C).',
+    ),
+    ChartRuling(
+        ticker='DCTH', alert_date='2026-08-06', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-11-02",
+        operator_words='ok',
+        gap_open_pct=11.1, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 54.0, catalyst=routine. 20 sessions later +17%. Volume 8.2x. Ruled outcome-blind (sample 5, card D).',
+    ),
+    ChartRuling(
+        ticker='NUAI', alert_date='2026-09-21', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-02",
+        operator_words='poor',
+        gap_open_pct=17.2, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 33.8, catalyst=routine. 20 sessions later -57%. Volume 4.2x. Ruled outcome-blind (sample 5, card E).',
+    ),
+    ChartRuling(
+        ticker='AESI', alert_date='2026-09-25', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-02",
+        operator_words='really poor',
+        gap_open_pct=11.9, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 46.2, catalyst=strong. 20 sessions later -30%. Volume 4.0x. Ruled outcome-blind (sample 5, card F).',
+    ),
+    ChartRuling(
+        ticker='ABCL', alert_date='2026-08-10', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-11-02",
+        operator_words='ok',
+        gap_open_pct=26.4, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 96.0, catalyst=game_changer. 20 sessions later +31%. Volume 9.5x. Ruled outcome-blind (sample 5, card G).',
+    ),
+    ChartRuling(
+        ticker='ASPN', alert_date='2026-08-06', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-11-02",
+        operator_words='ok',
+        gap_open_pct=45.7, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 48.0, catalyst=routine. 20 sessions later -35%. Volume 15.6x. Ruled outcome-blind (sample 5, card H).',
+    ),
 ]
 
 
