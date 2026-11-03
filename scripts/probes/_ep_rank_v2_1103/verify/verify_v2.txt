@@ -1,0 +1,211 @@
+================================================================================================
+POPULATION CHECKS
+A: fixture rulings=61 pairs.tsv A rows=61 exact (ticker,date,verdict) match=True
+A yes(GOOD+OKISH)=17 no(BAD)=37 excluded other verdicts=7
+B: fixture members=34 pairs.tsv B rows=34 exact match=True
+B operator rows=8 == operator_labelled_eps.md table (8): True
+B2 (R-picked evidence rows, NOT his labels)=26 labels=['evidence:winner_r_available_2026-08-16']
+C: pairs.tsv C=63 rows.psv=63 same set=True; sessions=32; min date=2026-08-17
+shadow_rows duplicates dropped (first kept)=3
+ep_alerts: first date=2026-05-11 last=2026-11-03 days=94 distinct (date,ticker)=424
+C pool check (rows.psv day count == pool_size_eod == ep_alerts count): mismatching days=0
+------------------------------------------------------------------------------------------------
+[PRIMARY (as pre-registered)]
+  feature A scores (P(yes ranks above no), ties half; max of the two directions):
+    zones_cleared         0.672 more=yes  n yes/no=17/37  <- composite-eligible
+    tightness_eod         0.644 less=yes  n yes/no=17/37  <- composite-eligible
+    vol_ratio_252         0.619 more=yes  n yes/no=17/29  <- composite-eligible
+    pullbacks_held        0.529 more=yes  n yes/no=17/29  <- composite-eligible
+    pb_min_dist_adr       0.649 more=yes  n yes/no=17/29
+    zones_remaining       0.558 more=yes  n yes/no=17/37
+    cleared_ath           0.533 less=yes  n yes/no=17/37
+    vol_highest_ever      0.593 more=yes  n yes/no=17/37
+    tightness_asof0945    0.681 more=yes  n yes/no=7/13
+  qualifying (>=0.65): ['zones_cleared']
+  (i)  composite on A (rankable: featured pool>=2): 0.574 n yes/no=12/22  bar 0.70 -> FAIL
+  (ii) his labelled EPs ranked (featured pool>=2): 6; top half (<=0.5): 6; strictly above middle (<0.5): 6  bar 80% -> inclusive PASS / strict PASS
+       ABNB  2026-08-07 comp=0.250 featured=2 alerts_that_day=16 pair_is_an_alert=False
+       BFLY  2026-06-18 comp=0.250 featured=2 alerts_that_day=2 pair_is_an_alert=False
+       CHPT  2026-09-03 comp=0.125 featured=4 alerts_that_day=3 pair_is_an_alert=False
+       HTFL  2026-08-14 comp=0.250 featured=2 alerts_that_day=7 pair_is_an_alert=True
+       MRNA  2026-08-19 comp=0.125 featured=4 alerts_that_day=4 pair_is_an_alert=True
+       PENG  2026-10-07 comp=0.500 featured=1 alerts_that_day=1 pair_is_an_alert=True
+       PLTR  2026-08-04 comp=0.167 featured=3 alerts_that_day=11 pair_is_an_alert=True
+       TEAM  2026-08-07 comp=0.500 featured=1 alerts_that_day=16 pair_is_an_alert=True
+  (iii) 5d: pop=56 v2 top=CohortRead(n=16, winners_admitted=1, losers_admitted=11) | old EOD top=CohortRead(n=7, winners_admitted=0, losers_admitted=4) | old 09:45 top=CohortRead(n=8, winners_admitted=0, losers_admitted=5)
+         v2-top vs old-top: MIXED -- more winners but also more losers; report both numbers, do not net them into one verdict  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- same winners but MORE losers admitted
+         v2 top-quartile members: [('ARGX', '2026-08-17', 4.87), ('MRNA', '2026-08-19', 9.13), ('SCSC', '2026-08-20', 0.84), ('OKTA', '2026-08-27', 1.17), ('SNOW', '2026-09-03', 0.53), ('QCOM', '2026-09-08', 1.83), ('SEI', '2026-09-08', 2.38), ('DFTX', '2026-09-14', 0.12), ('GNRC', '2026-09-17', 0.28), ('MSTR', '2026-09-21', 0.63), ('ACN', '2026-10-01', 1.6), ('ITUB', '2026-10-05', 1.42), ('CEG', '2026-10-06', 1.78), ('HUM', '2026-10-09', 0.4), ('IRON', '2026-10-19', 2.77), ('SMCI', '2026-10-21', 0.52)]
+  (iii) 20d: pop=42 v2 top=CohortRead(n=12, winners_admitted=1, losers_admitted=8) | old EOD top=CohortRead(n=6, winners_admitted=1, losers_admitted=4) | old 09:45 top=CohortRead(n=6, winners_admitted=1, losers_admitted=4)
+         v2-top vs old-top: NO CHANGE -- winners and loser rate both unchanged  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- fewer winners, losers admitted at the same rate
+         v2 top-quartile members: [('ARGX', '2026-08-17', 5.39), ('MRNA', '2026-08-19', 9.13), ('SCSC', '2026-08-20', 0.84), ('OKTA', '2026-08-27', 6.25), ('SNOW', '2026-09-03', 0.53), ('QCOM', '2026-09-08', 4.83), ('SEI', '2026-09-08', 5.18), ('DFTX', '2026-09-14', 0.12), ('GNRC', '2026-09-17', 0.28), ('MSTR', '2026-09-21', 0.63), ('ACN', '2026-10-01', 5.97), ('ITUB', '2026-10-05', 1.42)]
+  VERDICT: (i) False (ii) True (iii) False -> FAIL
+------------------------------------------------------------------------------------------------
+tightness EOD bars vs shadow (all featured (t,d) with a shadow row): 89/89 match
+pair features computed: 149; errors: []
+  NULL zones_cleared       : 0
+  NULL zones_remaining     : 0
+  NULL cleared_ath         : 0
+  NULL vol_highest_ever    : 0
+  NULL tightness_eod       : 0
+  NULL vol_ratio_252       : 16
+  NULL pullbacks_held      : 16
+  NULL tightness_asof0945  : 69
+  pairs with < 2 swing lows: []
+------------------------------------------------------------------------------------------------
+A yes/no rankability (primary):
+  {"day had alerts but only the pair has bars": 8, "rankable": 34, "one-alert day": 3, "day has no alerts": 9}
+  no-alert-day pairs: [('CAR', '2026-04-21'), ('CAR', '2026-04-22'), ('CCL', '2026-09-29'), ('CDNA', '2026-07-16'), ('GDC', '2026-05-06'), ('MAN', '2026-07-16'), ('ODD', '2026-09-09'), ('QTTB', '2026-07-13'), ('SIG', '2026-09-09')]
+------------------------------------------------------------------------------------------------
+B2 (R-picked evidence rows, NOT his labels) under the primary composite:
+  rankable 1 of 26; top half 1; no-alert-day 24
+================================================================================================
+VARIANTS
+------------------------------------------------------------------------------------------------
+[FORCED: zones_cleared + tightness_eod (his 'keep tightness')]
+  feature A scores (P(yes ranks above no), ties half; max of the two directions):
+    zones_cleared         0.672 more=yes  n yes/no=17/37  <- composite-eligible
+    tightness_eod         0.644 less=yes  n yes/no=17/37  <- composite-eligible
+    vol_ratio_252         0.619 more=yes  n yes/no=17/29  <- composite-eligible
+    pullbacks_held        0.529 more=yes  n yes/no=17/29  <- composite-eligible
+    pb_min_dist_adr       0.649 more=yes  n yes/no=17/29
+    zones_remaining       0.558 more=yes  n yes/no=17/37
+    cleared_ath           0.533 less=yes  n yes/no=17/37
+    vol_highest_ever      0.593 more=yes  n yes/no=17/37
+    tightness_asof0945    0.681 more=yes  n yes/no=7/13
+  qualifying (>=0.65): ['zones_cleared', 'tightness_eod']
+  (i)  composite on A (rankable: featured pool>=2): 0.642 n yes/no=12/22  bar 0.70 -> FAIL
+  (ii) his labelled EPs ranked (featured pool>=2): 6; top half (<=0.5): 6; strictly above middle (<0.5): 1  bar 80% -> inclusive PASS / strict FAIL
+       ABNB  2026-08-07 comp=0.500 featured=2 alerts_that_day=16 pair_is_an_alert=False
+       BFLY  2026-06-18 comp=0.500 featured=2 alerts_that_day=2 pair_is_an_alert=False
+       CHPT  2026-09-03 comp=0.500 featured=4 alerts_that_day=3 pair_is_an_alert=False
+       HTFL  2026-08-14 comp=0.500 featured=2 alerts_that_day=7 pair_is_an_alert=True
+       MRNA  2026-08-19 comp=0.500 featured=4 alerts_that_day=4 pair_is_an_alert=True
+       PENG  2026-10-07 comp=0.500 featured=1 alerts_that_day=1 pair_is_an_alert=True
+       PLTR  2026-08-04 comp=0.167 featured=3 alerts_that_day=11 pair_is_an_alert=True
+       TEAM  2026-08-07 comp=0.500 featured=1 alerts_that_day=16 pair_is_an_alert=True
+  (iii) 5d: pop=56 v2 top=CohortRead(n=8, winners_admitted=0, losers_admitted=7) | old EOD top=CohortRead(n=7, winners_admitted=0, losers_admitted=4) | old 09:45 top=CohortRead(n=8, winners_admitted=0, losers_admitted=5)
+         v2-top vs old-top: LOSS -- same winners but MORE losers admitted  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- fewer winners AND more losers admitted
+         v2 top-quartile members: [('ARGX', '2026-08-17', 4.87), ('DG', '2026-08-27', 1.93), ('SNOW', '2026-09-03', 0.53), ('QCOM', '2026-09-08', 1.83), ('MSTR', '2026-09-21', 0.63), ('ITUB', '2026-10-05', 1.42), ('CEG', '2026-10-06', 1.78), ('HUM', '2026-10-09', 0.4)]
+  (iii) 20d: pop=42 v2 top=CohortRead(n=6, winners_admitted=0, losers_admitted=5) | old EOD top=CohortRead(n=6, winners_admitted=1, losers_admitted=4) | old 09:45 top=CohortRead(n=6, winners_admitted=1, losers_admitted=4)
+         v2-top vs old-top: LOSS -- fewer winners AND more losers admitted  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- fewer winners AND more losers admitted
+         v2 top-quartile members: [('ARGX', '2026-08-17', 5.39), ('DG', '2026-08-27', 1.93), ('SNOW', '2026-09-03', 0.53), ('QCOM', '2026-09-08', 4.83), ('MSTR', '2026-09-21', 0.63), ('ITUB', '2026-10-05', 1.42)]
+  VERDICT: (i) False (ii) True (iii) False -> FAIL
+------------------------------------------------------------------------------------------------
+[LETTER: every feature-4 column eligible (adds tightness_asof0945)]
+  feature A scores (P(yes ranks above no), ties half; max of the two directions):
+    zones_cleared         0.672 more=yes  n yes/no=17/37  <- composite-eligible
+    tightness_eod         0.644 less=yes  n yes/no=17/37  <- composite-eligible
+    vol_ratio_252         0.619 more=yes  n yes/no=17/29  <- composite-eligible
+    pullbacks_held        0.529 more=yes  n yes/no=17/29  <- composite-eligible
+    pb_min_dist_adr       0.649 more=yes  n yes/no=17/29
+    zones_remaining       0.558 more=yes  n yes/no=17/37
+    cleared_ath           0.533 less=yes  n yes/no=17/37
+    vol_highest_ever      0.593 more=yes  n yes/no=17/37
+    tightness_asof0945    0.681 more=yes  n yes/no=7/13
+  qualifying (>=0.65): ['zones_cleared', 'tightness_asof0945']
+  (i)  composite on A (rankable: featured pool>=2): 0.310 n yes/no=5/10  bar 0.70 -> FAIL
+  (ii) his labelled EPs ranked (featured pool>=2): 3; top half (<=0.5): 3; strictly above middle (<0.5): 2  bar 80% -> inclusive PASS / strict FAIL
+       ABNB  2026-08-07 comp=   NA featured=1 alerts_that_day=16 pair_is_an_alert=False
+       BFLY  2026-06-18 comp=   NA featured=1 alerts_that_day=2 pair_is_an_alert=False
+       CHPT  2026-09-03 comp=   NA featured=3 alerts_that_day=3 pair_is_an_alert=False
+       HTFL  2026-08-14 comp=0.250 featured=2 alerts_that_day=7 pair_is_an_alert=True
+       MRNA  2026-08-19 comp=0.125 featured=4 alerts_that_day=4 pair_is_an_alert=True
+       PENG  2026-10-07 comp=0.500 featured=1 alerts_that_day=1 pair_is_an_alert=True
+       PLTR  2026-08-04 comp=0.500 featured=3 alerts_that_day=11 pair_is_an_alert=True
+       TEAM  2026-08-07 comp=0.500 featured=1 alerts_that_day=16 pair_is_an_alert=True
+  (iii) 5d: pop=56 v2 top=CohortRead(n=9, winners_admitted=1, losers_admitted=7) | old EOD top=CohortRead(n=7, winners_admitted=0, losers_admitted=4) | old 09:45 top=CohortRead(n=8, winners_admitted=0, losers_admitted=5)
+         v2-top vs old-top: MIXED -- more winners but also more losers; report both numbers, do not net them into one verdict  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- same winners but MORE losers admitted
+         v2 top-quartile members: [('MRNA', '2026-08-19', 9.13), ('QCOM', '2026-09-08', 1.83), ('GNRC', '2026-09-17', 0.28), ('ACN', '2026-10-01', 1.6), ('ITUB', '2026-10-05', 1.42), ('CEG', '2026-10-06', 1.78), ('HUM', '2026-10-09', 0.4), ('IRON', '2026-10-19', 2.77), ('SMCI', '2026-10-21', 0.52)]
+  (iii) 20d: pop=42 v2 top=CohortRead(n=5, winners_admitted=1, losers_admitted=4) | old EOD top=CohortRead(n=6, winners_admitted=1, losers_admitted=4) | old 09:45 top=CohortRead(n=6, winners_admitted=1, losers_admitted=4)
+         v2-top vs old-top: LOSS -- same winners but MORE losers admitted  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- fewer winners AND more losers admitted
+         v2 top-quartile members: [('MRNA', '2026-08-19', 9.13), ('QCOM', '2026-09-08', 4.83), ('GNRC', '2026-09-17', 0.28), ('ACN', '2026-10-01', 5.97), ('ITUB', '2026-10-05', 1.42)]
+  VERDICT: (i) False (ii) True (iii) False -> FAIL
+------------------------------------------------------------------------------------------------
+[zones_cleared + tightness_asof0945 + tightness_eod]
+  feature A scores (P(yes ranks above no), ties half; max of the two directions):
+    zones_cleared         0.672 more=yes  n yes/no=17/37  <- composite-eligible
+    tightness_eod         0.644 less=yes  n yes/no=17/37  <- composite-eligible
+    vol_ratio_252         0.619 more=yes  n yes/no=17/29  <- composite-eligible
+    pullbacks_held        0.529 more=yes  n yes/no=17/29  <- composite-eligible
+    pb_min_dist_adr       0.649 more=yes  n yes/no=17/29
+    zones_remaining       0.558 more=yes  n yes/no=17/37
+    cleared_ath           0.533 less=yes  n yes/no=17/37
+    vol_highest_ever      0.593 more=yes  n yes/no=17/37
+    tightness_asof0945    0.681 more=yes  n yes/no=7/13
+  qualifying (>=0.65): ['zones_cleared', 'tightness_asof0945', 'tightness_eod']
+  (i)  composite on A (rankable: featured pool>=2): 0.400 n yes/no=5/10  bar 0.70 -> FAIL
+  (ii) his labelled EPs ranked (featured pool>=2): 3; top half (<=0.5): 3; strictly above middle (<0.5): 3  bar 80% -> inclusive PASS / strict PASS
+  (iii) 5d: pop=56 v2 top=CohortRead(n=4, winners_admitted=0, losers_admitted=4) | old EOD top=CohortRead(n=7, winners_admitted=0, losers_admitted=4) | old 09:45 top=CohortRead(n=8, winners_admitted=0, losers_admitted=5)
+         v2-top vs old-top: LOSS -- same winners but MORE losers admitted  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- fewer winners AND more losers admitted
+  (iii) 20d: pop=42 v2 top=CohortRead(n=2, winners_admitted=0, losers_admitted=2) | old EOD top=CohortRead(n=6, winners_admitted=1, losers_admitted=4) | old 09:45 top=CohortRead(n=6, winners_admitted=1, losers_admitted=4)
+         v2-top vs old-top: LOSS -- fewer winners AND more losers admitted  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- fewer winners AND more losers admitted
+  VERDICT: (i) False (ii) True (iii) False -> FAIL
+------------------------------------------------------------------------------------------------
+[FULL HISTORY (no 5-year trim)]
+  feature A scores (P(yes ranks above no), ties half; max of the two directions):
+    zones_cleared         0.672 more=yes  n yes/no=17/37  <- composite-eligible
+    tightness_eod         0.644 less=yes  n yes/no=17/37  <- composite-eligible
+    vol_ratio_252         0.619 more=yes  n yes/no=17/29  <- composite-eligible
+    pullbacks_held        0.529 more=yes  n yes/no=17/29  <- composite-eligible
+    pb_min_dist_adr       0.649 more=yes  n yes/no=17/29
+    zones_remaining       0.558 more=yes  n yes/no=17/37
+    cleared_ath           0.533 less=yes  n yes/no=17/37
+    vol_highest_ever      0.593 more=yes  n yes/no=17/37
+    tightness_asof0945    0.681 more=yes  n yes/no=7/13
+  qualifying (>=0.65): ['zones_cleared']
+  (i)  composite on A (rankable: featured pool>=2): 0.574 n yes/no=12/22  bar 0.70 -> FAIL
+  (ii) his labelled EPs ranked (featured pool>=2): 6; top half (<=0.5): 6; strictly above middle (<0.5): 6  bar 80% -> inclusive PASS / strict PASS
+  (iii) 5d: pop=56 v2 top=CohortRead(n=16, winners_admitted=1, losers_admitted=11) | old EOD top=CohortRead(n=7, winners_admitted=0, losers_admitted=4) | old 09:45 top=CohortRead(n=8, winners_admitted=0, losers_admitted=5)
+         v2-top vs old-top: MIXED -- more winners but also more losers; report both numbers, do not net them into one verdict  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- same winners but MORE losers admitted
+  (iii) 20d: pop=42 v2 top=CohortRead(n=12, winners_admitted=1, losers_admitted=8) | old EOD top=CohortRead(n=6, winners_admitted=1, losers_admitted=4) | old 09:45 top=CohortRead(n=6, winners_admitted=1, losers_admitted=4)
+         v2-top vs old-top: NO CHANGE -- winners and loser rate both unchanged  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- fewer winners, losers admitted at the same rate
+  VERDICT: (i) False (ii) True (iii) False -> FAIL
+------------------------------------------------------------------------------------------------
+NULL CHECK (ii): a ranking that knows nothing puts 6/6 of his EPs at <=0.5 (inclusive reading) and 0/6 at <0.5 (strict reading)
+------------------------------------------------------------------------------------------------
+[pullbacks scored CONTINUOUS (min distance) instead of the binary held flag]
+  feature A scores (P(yes ranks above no), ties half; max of the two directions):
+    zones_cleared         0.672 more=yes  n yes/no=17/37  <- composite-eligible
+    tightness_eod         0.644 less=yes  n yes/no=17/37  <- composite-eligible
+    vol_ratio_252         0.619 more=yes  n yes/no=17/29  <- composite-eligible
+    pullbacks_held        0.529 more=yes  n yes/no=17/29  <- composite-eligible
+    pb_min_dist_adr       0.649 more=yes  n yes/no=17/29
+    zones_remaining       0.558 more=yes  n yes/no=17/37
+    cleared_ath           0.533 less=yes  n yes/no=17/37
+    vol_highest_ever      0.593 more=yes  n yes/no=17/37
+    tightness_asof0945    0.681 more=yes  n yes/no=7/13
+  qualifying (>=0.65): ['zones_cleared']
+  (i)  composite on A (rankable: featured pool>=2): 0.574 n yes/no=12/22  bar 0.70 -> FAIL
+  (ii) his labelled EPs ranked (featured pool>=2): 6; top half (<=0.5): 6; strictly above middle (<0.5): 6  bar 80% -> inclusive PASS / strict PASS
+  (iii) 5d: pop=56 v2 top=CohortRead(n=16, winners_admitted=1, losers_admitted=11) | old EOD top=CohortRead(n=7, winners_admitted=0, losers_admitted=4) | old 09:45 top=CohortRead(n=8, winners_admitted=0, losers_admitted=5)
+         v2-top vs old-top: MIXED -- more winners but also more losers; report both numbers, do not net them into one verdict  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- same winners but MORE losers admitted
+  (iii) 20d: pop=42 v2 top=CohortRead(n=12, winners_admitted=1, losers_admitted=8) | old EOD top=CohortRead(n=6, winners_admitted=1, losers_admitted=4) | old 09:45 top=CohortRead(n=6, winners_admitted=1, losers_admitted=4)
+         v2-top vs old-top: NO CHANGE -- winners and loser rate both unchanged  -> prereg (more winners, loser rate no higher): FAIL
+         v2-top vs v2-rest: LOSS -- fewer winners, losers admitted at the same rate
+  VERDICT: (i) False (ii) True (iii) False -> FAIL
+------------------------------------------------------------------------------------------------
+pullbacks continuous (pb_min_dist_adr) A score: (0.6490872210953347, 'more=yes', 17, 29)
+================================================================================================
+PLATEAU (+-50% on 1 ADR, 252 sessions, 40 / 41-250 windows)
+  ADR 0.5                zones=0.672 vol=0.619(17/29) pb=0.529(17/29) pbcont=0.649 qual=['zones_cleared'] (i)=0.574 (ii)=6(<6)/6 (iii)5d=False 20d=False -> FAIL
+  ADR 1.5                zones=0.672 vol=0.619(17/29) pb=0.529(17/29) pbcont=0.649 qual=['zones_cleared'] (i)=0.574 (ii)=6(<6)/6 (iii)5d=False 20d=False -> FAIL
+  VOL 126                zones=0.672 vol=0.634(17/37) pb=0.529(17/29) pbcont=0.649 qual=['zones_cleared'] (i)=0.574 (ii)=6(<6)/6 (iii)5d=False 20d=False -> FAIL
+  VOL 378                zones=0.672 vol=0.582(16/26) pb=0.529(17/29) pbcont=0.649 qual=['zones_cleared'] (i)=0.574 (ii)=6(<6)/6 (iii)5d=False 20d=False -> FAIL
+  SW 20 / base 21-250    zones=0.672 vol=0.619(17/29) pb=0.559(17/27) pbcont=0.636 qual=['zones_cleared'] (i)=0.574 (ii)=6(<6)/6 (iii)5d=False 20d=False -> FAIL
+  SW 60 / base 61-250    zones=0.672 vol=0.619(17/29) pb=0.500(17/29) pbcont=0.505 qual=['zones_cleared'] (i)=0.574 (ii)=6(<6)/6 (iii)5d=False 20d=False -> FAIL
+  base end 125           zones=0.672 vol=0.619(17/29) pb=0.559(17/37) pbcont=0.617 qual=['zones_cleared'] (i)=0.574 (ii)=6(<6)/6 (iii)5d=False 20d=False -> FAIL
+  base end 375           zones=0.672 vol=0.619(17/29) pb=0.531(16/26) pbcont=0.596 qual=['zones_cleared'] (i)=0.574 (ii)=6(<6)/6 (iii)5d=False 20d=False -> FAIL
+================================================================================================
+SAMPLE: 17 A-yes + random.Random(1103).sample(sorted(rest of 132 distinct pairs), 8) = 25
+sample keys: ABCL 2026-08-10, AVAH 2026-08-13, BLZE 2026-08-04, CDNA 2026-07-16, DCTH 2026-08-06, HAE 2026-08-18, HPE 2026-06-02, KOD 2026-09-28, KRO 2026-08-06, LIFE 2026-08-04, MAN 2026-07-16, MRVI 2026-08-19, NIQ 2026-08-11, OMER 2026-07-27, RNG 2026-07-24, TBBB 2026-08-13, WYFI 2026-08-12, ASPN 2026-08-06, CHPT 2026-09-03, DFTX 2026-09-14, GKOS 2026-10-29, RXT 2026-06-16, SCSC 2026-08-20, TLN 2026-10-06, UMC 2026-04-17

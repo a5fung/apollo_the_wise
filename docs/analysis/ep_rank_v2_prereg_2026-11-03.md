@@ -45,3 +45,10 @@ selection). Returns are read only as the tail test the running read already uses
 
 ## What this does not answer
 - Whether the ranking makes money; how to enter or exit; any population before 2026-08-17 for C.
+
+## RESULT — 2026-11-03 (Opus build + blind Opus recount; `scripts/probes/_ep_rank_v2_1103/build/rank_v2.txt`, `verify/verify_v2.txt`)
+
+**FAIL as pre-registered.** On his rulings (17 yes / 37 no): zones cleared 0.67 (the only feature over 0.65); EOD tightness 0.64 (tighter = yes, just under); volume vs its own year 0.62; pullbacks-held 0.51. The composite (zones cleared alone) reads 0.56 within the day (bar 0.70); his 6 rankable labelled EPs all land in the top half (bar met, thin); on the shadow tail it does not beat the old ranking (5 sessions: more winners and more losers; 20: no change). Verifier: every number reproduces; population A/B/C correct; no look-ahead.
+- **Tightness, both ways:** on his rulings tighter gap days lean yes (0.64), but his labelled real EPs had WIDE gap days (MRNA 35%, CHPT 28%, BFLY 21%, HTFL 16%); forcing tightness in fails every bar by more.
+- **Feature 3 misdefined:** 'the previous base high' as the highest high of sessions 41-250 picked KOD's April $47.84 peak; his read was the Dec-Feb ~$30 shelf. It read 0 on all 8 of his EPs — needs a new definition and a new pre-registration.
+- **Coverage, stated:** the bars were pulled for the labelled names only, so many of A's day pools are partial; the raw feature (0.67) is under 0.70 before any ranking, so more bars cannot pass bar (i).

@@ -1,0 +1,4 @@
+gap% (bigger) on A: P(yes > no) = 0.539 (n 17/37)
+Spearman(zones_cleared, gap%) on the 54 A pairs = 0.30
+bar (ii) ranked by raw gap% alone: 4/6 strictly in the top half: ABNB 0.750(pool 2), BFLY 0.250(pool 2), CHPT 0.125(pool 4), HTFL 0.250(pool 2), MRNA 0.125(pool 4), PLTR 0.833(pool 3)
+bar (i) analogue, gap% ranked within day on rankable A: 0.504 (n 12/22)

@@ -1,0 +1,30 @@
+SAMPLE-25 (25 pairs): zones_cleared 25/25 | zones_remaining 25/25 | cleared_ath 25/25 | vol_ratio_252 25/25 | vol_highest_ever 25/25 | tightness_eod 25/25 | tightness_asof0945 25/25 | pullbacks_held 25/25 | history 25/25
+ALL (149 pairs): zones_cleared 149/149 | zones_remaining 149/149 | cleared_ath 149/149 | vol_ratio_252 149/149 | vol_highest_ever 149/149 | tightness_eod 149/149 | tightness_asof0945 149/149 | pullbacks_held 147/149 | history 149/149
+   DIFF IPCX 2026-07-29 pullbacks_held: mine=0.0 builder=1.0
+   DIFF RARE 2026-08-20 pullbacks_held: mine=0.0 builder=None
+pullback lows (sample, mine min-dist vs builder low1/low2 ADR):
+   ABCL  2026-08-10 mine_min=-3.554 n_sw=6 | builder low1=-3.5548 low2=-3.4959 n_sw=5 zc m/b=14/14 zr m/b=25/25
+   ASPN  2026-08-06 mine_min=-9.880 n_sw=7 | builder low1=-9.8806 low2=-8.4716 n_sw=7 zc m/b=16/16 zr m/b=75/75
+   AVAH  2026-08-13 mine_min=-5.075 n_sw=6 | builder low1=-5.0757 low2=-3.6331 n_sw=6 zc m/b=8/8 zr m/b=1/1
+   BLZE  2026-08-04 mine_min=-3.844 n_sw=5 | builder low1=-3.8444 low2=-3.0426 n_sw=5 zc m/b=4/4 zr m/b=2/2
+   CDNA  2026-07-16 mine_min=-3.205 n_sw=6 | builder low1=-3.2051 low2=-1.4677 n_sw=6 zc m/b=9/9 zr m/b=14/14
+   CHPT  2026-09-03 mine_min=-12.33 n_sw=4 | builder low1=-12.3305 low2=-11.7168 n_sw=4 zc m/b=13/13 zr m/b=110/110
+   DCTH  2026-08-06 mine_min=-3.091 n_sw=7 | builder low1=-3.0913 low2=-2.5139 n_sw=7 zc m/b=5/5 zr m/b=9/9
+   DFTX  2026-09-14 mine_min=None n_sw=None | builder low1= low2= n_sw= zc m/b=1/1 zr m/b=7/7
+   GKOS  2026-10-29 mine_min=-5.416 n_sw=3 | builder low1=-5.4167 low2=-4.8629 n_sw=3 zc m/b=5/5 zr m/b=0/0
+   HAE   2026-08-18 mine_min=-5.400 n_sw=6 | builder low1=-5.4000 low2=-5.3200 n_sw=6 zc m/b=7/7 zr m/b=0/0
+   HPE   2026-06-02 mine_min=-2.171 n_sw=6 | builder low1=-2.1719 low2=0.7619 n_sw=6 zc m/b=0/0 zr m/b=0/0
+   KOD   2026-09-28 mine_min=-6.832 n_sw=7 | builder low1=-6.1771 low2=-5.8853 n_sw=6 zc m/b=18/18 zr m/b=8/8
+   KRO   2026-08-06 mine_min=-4.913 n_sw=5 | builder low1=-4.9134 low2=-4.6084 n_sw=5 zc m/b=10/10 zr m/b=64/64
+   LIFE  2026-08-04 mine_min=-7.238 n_sw=7 | builder low1=-7.2386 low2=-7.1470 n_sw=7 zc m/b=0/0 zr m/b=1/1
+   MAN   2026-07-16 mine_min=-7.099 n_sw=4 | builder low1=-7.0997 low2=-6.6786 n_sw=4 zc m/b=9/9 zr m/b=45/45
+   MRVI  2026-08-19 mine_min=0.3092 n_sw=4 | builder low1=0.3093 low2=1.2553 n_sw=4 zc m/b=9/9 zr m/b=76/76
+   NIQ   2026-08-11 mine_min=-13.24 n_sw=7 | builder low1=-13.2458 low2=-13.2212 n_sw=7 zc m/b=11/11 zr m/b=14/14
+   OMER  2026-07-27 mine_min=-8.919 n_sw=6 | builder low1=-8.9195 low2=-8.3592 n_sw=6 zc m/b=5/5 zr m/b=19/19
+   RNG   2026-07-24 mine_min=-6.325 n_sw=6 | builder low1=-6.3252 low2=-4.9704 n_sw=6 zc m/b=4/4 zr m/b=44/44
+   RXT   2026-06-16 mine_min=-2.979 n_sw=3 | builder low1=-2.9795 low2=2.1218 n_sw=3 zc m/b=5/5 zr m/b=20/20
+   SCSC  2026-08-20 mine_min=-0.678 n_sw=6 | builder low1=-0.6789 low2=-0.2828 n_sw=6 zc m/b=9/9 zr m/b=0/0
+   TBBB  2026-08-13 mine_min=-3.086 n_sw=7 | builder low1=-3.0861 low2=-2.9652 n_sw=7 zc m/b=5/5 zr m/b=0/0
+   TLN   2026-10-06 mine_min=-9.366 n_sw=4 | builder low1=-9.3665 low2=-9.0427 n_sw=4 zc m/b=3/3 zr m/b=16/16
+   UMC   2026-04-17 mine_min=-13.98 n_sw=6 | builder low1=-13.9866 low2=-13.0308 n_sw=6 zc m/b=1/1 zr m/b=2/2
+   WYFI  2026-08-12 mine_min=-4.230 n_sw=6 | builder low1=-4.2307 low2=-3.8861 n_sw=5 zc m/b=0/0 zr m/b=11/11
