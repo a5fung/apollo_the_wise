@@ -1,0 +1,10 @@
+#594 sample #5 key: page letter -> arm and outcome. NOT shown to him (outcome-blind, his 10-10 ruling).
+RULE: window 2026-08-01..CURRENT_DATE-30, gap >= 9% at the open, volume >= 3x, 20 sessions settled, never ruled, and the TICKER never named in his labelled-EP list or his shared notes (a first draw held MRNA 08-19 and TEAM 08-07, both his own references — not blind); ARM_C = the 4 HIGH alerts with the BIGGEST 20-session gain; ARM_D = the 4 below-the-bar names (best score of the day < 50, never alerted) with the BIGGEST 20-session loss — the read's RIGHT calls, the cells sample 4 did not show. Ties by ticker. Shuffled, seed 1102.
+A|LIFE|2026-08-04|ARM_C|score 80.0|game_changer|20d +28%
+B|KOD|2026-09-28|ARM_C|score 90.0|game_changer|20d +45%
+C|EIKN|2026-08-19|ARM_D|score 42.0|routine|20d -33%
+D|DCTH|2026-08-06|ARM_C|score 54.0|routine|20d +17%
+E|NUAI|2026-09-21|ARM_D|score 33.8|routine|20d -57%
+F|AESI|2026-09-25|ARM_D|score 46.2|strong|20d -30%
+G|ABCL|2026-08-10|ARM_C|score 96.0|game_changer|20d +31%
+H|ASPN|2026-08-06|ARM_D|score 48.0|routine|20d -35%

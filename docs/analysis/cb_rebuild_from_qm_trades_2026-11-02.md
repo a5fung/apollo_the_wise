@@ -42,7 +42,7 @@ Work folder (every number below is printed there): `scripts/probes/_qm_breakouts
 | 7 | Close **at or above the 50-day SMA** | his picks; drops none of Qullamaggie's buys | none |
 | — | REMOVED: higher-lows, riding-an-average, tightening and breakdown as v1 wrote them | his CODX/PENN charts showed the old definitions misread his pattern | all on |
 
-**Effect:** 263 of the 269 kept (the 6 out are exactly his 6 NOs), **26 of 26 big winners**; the list holds **~250 names a night** (median, 2017-2024; ~220 in 2017-22). MTW 2026-10-30 is off (run-up 30.8%). Known miss: MRNA and INO on 2020-08-07 (his "breaking down") still pass.
+**Effect:** 263 of the 269 kept (the 6 out are exactly his 6 NOs), **26 of 26 big winners**. Of the 263, **16 are buys he labelled no or EP-like** and the list still keeps — ANET 2018-03-12, TDOC 2019-10-31, STNE 2019-11-18, ZS 2020-03-24, EXEL 2020-04-20, SHOP 2020-04-20, NVAX 2020-05-12, PLNT 2020-05-26, UAL 2020-05-27, JMIA 2020-11-18, FEAC 2020-11-30, UPST 2021-08-12, FCX 2021-12-07, MU 2021-12-21, FCX 2021-12-27, MDB 2021-12-27: known non-setups, the committed negatives for the next rule (`his_label` in the scorecard fixture); the list holds **~250 names a night** (median, 2017-2024; ~220 in 2017-22). MTW 2026-10-30 is off (run-up 30.8%). Known miss: MRNA and INO on 2020-08-07 (his "breaking down") still pass.
 
 ## 2. The order inside the list (who gets the 5 paper slots first)
 - Score = the mean of two within-night ranks: the **6-month run-up in daily ranges** (bigger first) and the **spread of the last 10 closes in daily ranges** (tighter first — his ruling: *"the chart should tighten leading to the breakout, not the full base"*).
@@ -68,7 +68,8 @@ Work folder (every number below is printed there): `scripts/probes/_qm_breakouts
 
 ## Build plan — Sat 2026-11-07 (weekend: deploy windows open)
 - `agents/market_intelligence/breakout_v1.py`: the 7 list rules (constants + gates), the removed gates, the order score; `breakout_v1_list.py` writes the score; `broker/breakout_v1_entry.py`: the F1 bar = 1.2x the last 10 sessions (an `execution` deploy).
-- Tests: every constant pinned; a scorecard test — Qullamaggie's 263 on the list on their nights, 26/26 big winners (fixtures from this folder); MTW 10-30 off.
+- Tests: every constant pinned; the **scorecard test on `tests/fixtures/qm_breakout_scorecard/`** (built 11-02: his 269 buys' bars from 300 sessions before D through E + rs_best and raw close at D + his label; `41_check_fixture.py` already reproduces 263/269 from the bars alone, 0 mismatches) — 263 on the list, 26/26 big winners, the 16 known non-setups named; MTW 10-30 off.
+- Stage-1 items found by the 11-02 review (all in the same build): (a) the order score needs a column on `mi_breakout_v1_list` -> a migration + the deploy's gate-5 statement registration; (b) the 10-day volume bar rides the market-agent deploy but changes F1's meaning in the entry — `breakout_v1_entry.py`'s docstring (f1_permits) and any test pinning "50-day" change in the same commit, and the SSoT's entry section; (c) the nightly Telegram AND `/bgrade`'s ungraded list at ~250 names (top 10 by score + the count); (d) CHANGE_PROCESS step 3 — the change-log entry REVERSES the 11-02 morning 4.26% floor: quote that entry and say why it was wrong (his good EW 2.11%, LMT 2.6% sit under it), citing his spec sign-off; (e) the paper switch must stay OFF until stage 2 ships — verified 11-02: the entry tick returns on the switch before its per-name minute-bar loop, so the ~250-name list costs no broker calls while off.
 - SSoT change log + CHANGE_PROCESS fields; deploy market-agent, then execution, one at a time, polling the box.
 - The paper switch `breakout_v1_paper` stays **off**; it turns on only on his word.
 
