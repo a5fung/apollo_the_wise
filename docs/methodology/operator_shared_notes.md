@@ -2877,3 +2877,7 @@ Recorded: #718 ON from 2026-11-03 10:05 ET (`docs/setups/magna53_ep.md` 2026-11-
 > "how do we rank again? can it be the ranking is flawed?" then "yes, we should keep tightness as i think it may still be relevant" (2026-11-03, after the EP alert ranking's decision-grade read failed: its top quarter held 0 of the big winners at 5 sessions; answered: it ranks smaller gaps, tighter gap days and less extension higher, and the gap-day extension IS the event on his reference EP)
 
 Recorded: a v2 ranking built from his reads — zones the gap clears, volume against the stock's own history, pullbacks holding an old base high — WITH tightness kept; pre-registered in `docs/analysis/ep_rank_v2_prereg_2026-11-03.md` (#594), scored on his outcome-blind rulings first.
+
+> "Yes" (2026-11-03, to two free tests: re-test the existing 09:31 gap re-check on live data since late August, and redo the ranking test's "old base high" as the shelf the stock broke out of)
+
+Recorded: both running — `scripts/probes/_gap_recheck_retest_1103/` (the 9 HIGH alerts the re-check skipped since 08-28, replayed without it) and `scripts/probes/_ep_rank_v2_1103/build_f3/` (feature 3 re-defined, calibrated only on his KOD read).
