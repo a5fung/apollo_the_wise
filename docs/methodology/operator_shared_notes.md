@@ -2865,3 +2865,7 @@ Recorded: his re-read of KOD 2026-09-28 on a LONGER chart than the page showed (
 > "Yes" (2026-11-02, to: should KOD 2026-09-28 now count as a good chart?)
 
 Recorded: KOD 2026-09-28 -> GOOD_CHART in `must_not_trade_charts.py` (his first word "poor" and the long-chart re-read both kept in operator_words). Sample 5 now agrees with the 20-session result on 7 of 8 (ASPN "ok", -35%, is the one miss).
+
+> "I'd say apsn failed to clear a major gap down on Nov 6, longer time frame or looked poor" (2026-11-02, ASPN 2026-08-06 — #594 sample 5 card H, his first call "ok", -35% at 20 sessions)
+
+Recorded: ASPN 2026-08-06 -> BAD_CHART (his first word "ok" kept in operator_words). His reason: on the longer time frame the gap did NOT clear a major GAP DOWN from Nov 6 (2025) — overhead supply left above it ([[structure-is-a-supply-ladder]]). With KOD's re-read, both of sample 5's misses turned on what only a longer chart shows; on the long view his calls agree with the 20-session result on 8 of 8.

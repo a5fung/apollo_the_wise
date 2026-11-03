@@ -798,9 +798,9 @@ CHART_RULINGS: list[ChartRuling] = [
         prior_runup_note='WE ALERTED HIGH: score 96.0, catalyst=game_changer. 20 sessions later +31%. Volume 9.5x. Ruled outcome-blind (sample 5, card G).',
     ),
     ChartRuling(
-        ticker='ASPN', alert_date='2026-08-06', verdict=OKISH_CHART,
+        ticker='ASPN', alert_date='2026-08-06', verdict=BAD_CHART,
         label_source="operator", ruling_date="2026-11-02",
-        operator_words='ok',
+        operator_words="ok — then, the same day, on a longer time frame: \"I'd say apsn failed to clear a major gap down on Nov 6, longer time frame or looked poor\"",
         gap_open_pct=45.7, ret_5d=None,
         prior_runup_note='WE SKIPPED IT: best score 48.0, catalyst=routine. 20 sessions later -35%. Volume 15.6x. Ruled outcome-blind (sample 5, card H).',
     ),
