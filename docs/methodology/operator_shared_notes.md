@@ -2861,3 +2861,7 @@ Recorded in `tests/fixtures/must_not_trade_charts.py` (ruling date 2026-11-02, h
 > "which letter was the KOD chart btw" then, told it was B (his "poor", +45% at 20 sessions): "on looking at longer period, it lookeed better. 1) the two pull back is into the previous base high (around end of Dec '25) 2) the gap up cleared all time high, but more importantly, clear the congestion areas 3) volume is higest ever" (2026-11-02, KOD 2026-09-28, #594 sample 5 card B)
 
 Recorded: his re-read of KOD 2026-09-28 on a LONGER chart than the page showed (the page: ~6 months, ending the session before the gap). What made it better, his three reasons: (1) both pullbacks held the PREVIOUS BASE HIGH (end of Dec 2025) — old resistance acting as support; (2) the gap cleared the all-time high and, more important, the congestion areas ([[structure-is-a-supply-ladder]]); (3) the gap day's volume was the highest ever. Consequence for the review pages (#594): show a longer history (to the prior base and the all-time high) AND the gap day itself — two of his three reasons live on the gap day, which the page hid. The verdict field stays his "poor" until he says how KOD counts now (asked).
+
+> "Yes" (2026-11-02, to: should KOD 2026-09-28 now count as a good chart?)
+
+Recorded: KOD 2026-09-28 -> GOOD_CHART in `must_not_trade_charts.py` (his first word "poor" and the long-chart re-read both kept in operator_words). Sample 5 now agrees with the 20-session result on 7 of 8 (ASPN "ok", -35%, is the one miss).

@@ -756,9 +756,9 @@ CHART_RULINGS: list[ChartRuling] = [
         prior_runup_note='WE ALERTED HIGH: score 80.0, catalyst=game_changer. 20 sessions later +28%. Volume 8.3x. Ruled outcome-blind (sample 5, card A).',
     ),
     ChartRuling(
-        ticker='KOD', alert_date='2026-09-28', verdict=BAD_CHART,
+        ticker='KOD', alert_date='2026-09-28', verdict=GOOD_CHART,
         label_source="operator", ruling_date="2026-11-02",
-        operator_words="poor — then, the same day, on a LONGER chart: \"it lookeed better. 1) the two pull back is into the previous base high (around end of Dec '25) 2) the gap up cleared all time high, but more importantly, clear the congestion areas 3) volume is higest ever\" (verdict kept at his first word until he restates it)",
+        operator_words="poor — then, the same day, on a LONGER chart: \"it lookeed better. 1) the two pull back is into the previous base high (around end of Dec '25) 2) the gap up cleared all time high, but more importantly, clear the congestion areas 3) volume is higest ever\" — asked whether KOD now counts as a good chart: \"Yes\" (2026-11-02)",
         gap_open_pct=90.7, ret_5d=None,
         prior_runup_note='WE ALERTED HIGH: score 90.0, catalyst=game_changer. 20 sessions later +45%. Volume 45.1x. Ruled outcome-blind (sample 5, card B).',
     ),
