@@ -1,0 +1,15 @@
+SET
+== depth sale audit rows
+id|et|event_type|left
+65672|2026-11-02 19:01:00.626986|depth_open_sale_placed|{"trade_id": 422, "ticker": "IRON", "account_mode": "live", "vehicle": "opg", "order_id": "afd43e36-0582-4af4-a5f6-461eb0c92a74", "qty": 3, "reason": "sma_trail_stop", "cancelled_stop_id": "6b11fe29-c731-4861-a721-1f863a1a9ad1", "stop_price": 73.28, "held_by_resting": 0, "decided_on": "2026-11-02"}
+(1 row)
+== depth marks / pending
+et|event_type|left
+2026-11-02 16:45:00.302954|depth_close_below_line|{"trade_id": 422, "ticker": "IRON", "account_mode": "live", "close": 78.62, "line": 78.808, "resting_stop": 73.28, "decided_on": "2026-11-02"}
+2026-11-02 19:01:00.626986|depth_open_sale_placed|{"trade_id": 422, "ticker": "IRON", "account_mode": "live", "vehicle": "opg", "order_id": "afd43e36-0582-4af4-a5f6-461eb0c92a74", "qty": 3, "reason": "sma_trail_stop", "cancelled_stop_id": "6b11fe29-c731-4861-a721-1f863a1a9ad1", "stop_price": 73.28, "held_by_resting": 0, "decided_on": "2026-11-02"}
+(2 rows)
+== the trades named
+ERROR:  column "shares" does not exist
+LINE 1: ...er, account_mode, signal_type, status, exit_rule, shares, re...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "mi_live_trades.status".

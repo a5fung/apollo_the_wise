@@ -1,0 +1,31 @@
+SET
+== 312 allocator shadow today
+et|event_type|left
+(0 rows)
+== 312 open positions (live) now
+account_mode|count
+live|1
+(1 row)
+== 624 lowcap heartbeats last 10 days
+d|left
+2026-10-22|2026-10-22 quiet: 192 screened by the live scan, 0 turned away only by the $500M floor, 0 graded by the lane, 0 HIGH, 0 
+2026-10-23|2026-10-23 quiet: 252 screened by the live scan, 0 turned away only by the $500M floor, 0 graded by the lane, 0 HIGH, 0 
+2026-10-26|2026-10-26 ran: 293 screened by the live scan, 3 turned away only by the $500M floor, 3 graded by the lane, 0 HIGH, 0 pa
+2026-10-27|2026-10-27 ran: 420 screened by the live scan, 4 turned away only by the $500M floor, 4 graded by the lane, 0 HIGH, 0 pa
+2026-10-28|2026-10-28 ran: 339 screened by the live scan, 1 turned away only by the $500M floor, 1 graded by the lane, 0 HIGH, 0 pa
+2026-10-29|2026-10-29 ran: 270 screened by the live scan, 3 turned away only by the $500M floor, 3 graded by the lane, 0 HIGH, 0 pa
+2026-10-30|2026-10-30 ran: 224 screened by the live scan, 3 turned away only by the $500M floor, 3 graded by the lane, 0 HIGH, 0 pa
+2026-11-02|2026-11-02 ran: 465 screened by the live scan, 5 turned away only by the $500M floor, 5 graded by the lane, 0 HIGH, 0 pa
+(8 rows)
+== 624 lane rows in mi_ep_alerts (must be 0)
+count
+0
+(1 row)
+lane_rows|min|max
+35|2026-10-12|2026-11-03
+(1 row)
+== 706 skip telegram rows
+et|event_type|left
+09:31:01|magna53_open_below_floor_would_skip|ORB FN 09:30 open $329.99 < floor $343.02 (prev close $314.70 × 1.09; gap at open +4.86% vs 9%; flip-up tick 07:40 ET) — SHADOW: would skip setup:open_below_gap_floor, entry proceeds exactly as today
+09:31:30|trade_lifecycle_telegram_attempted|fill AEHR @$57.49 x3
+(2 rows)

@@ -1,0 +1,60 @@
+SET
+Expanded display is on.
+id|422
+ticker|IRON
+alert_date|2026-10-19
+ep_score|90
+catalyst_quality|game_changer
+gap_pct|25.97
+regime|Crisis
+status|closed
+orb_high|73.987
+orb_low|70
+atr_14|2.8210714285714285
+entry_price|73.91
+entry_shares|3
+stop_price|73.28
+hard_stop|66.013
+position_size|221.96
+risk_dollars|24.82
+entry_order_id|173ddf4d-4636-4963-98d2-75980747c2b6
+stop_order_id|
+exits|[{"pnl": 16.5, "time": "2026-11-03T14:30:01.075358+00:00", "price": 79.41, "reason": "sma_trail_stop", "shares": 3, "order_id": "afd43e36-0582-4af4-a5f6-461eb0c92a74"}]
+remaining_shares|0
+total_pnl|16.5
+hold_days|14
+partial_taken|f
+breakeven_active|f
+running_closes|[79.48, 76.0, 75.03, 74.51, 77.66, 79.9, 83.2, 82.84, 80.84, 78.62]
+proposed_at|2026-10-19 13:31:00.691826+00
+confirmed_at|2026-10-19 13:31:00.691826+00
+skip_reason|
+created_at|2026-10-19 13:31:00.691826+00
+filled_at|2026-10-19 13:31:07.220309+00
+closed_at|2026-11-03 14:30:01.075748+00
+entry_attempt|1
+signal_type|magna53
+account_mode|live
+lowest_price_seen|69.9800000000000039790393202565610408782958984375
+highest_price_seen|85
+pnl_attribution|
+risk_dollars_actual|23.92
+dead_stop_price|73.28
+dead_stop_order_id|6b11fe29-c731-4861-a721-1f863a1a9ad1
+dead_stop_status|OrderStatus.CANCELED
+dead_stop_recorded_at|2026-11-03 00:01:00.166+00
+exit_rule|depth
+depth_sell_pending_on|
+breakout_day0_pp|
+Expanded display is off.
+== audit for trade 422 since yesterday 16:00 ET
+et|event_type|left
+2026-11-02 16:45:00.302954|depth_close_below_line|{"trade_id": 422, "ticker": "IRON", "account_mode": "live", "close": 78.62, "line": 78.808, "resting_stop": 73.28, "decided_on": "2026-11-02"}
+2026-11-02 17:31:07.921561|theme_correctness_check|{"n_board": 135, "g1": {"pass": 699, "n": 730, "rate_pct": 95.8, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 18, "n": 730, "rate_pct": 2.5, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands", "Post-Acute & Home-Based Healthcare Services"], ["LH", "AI-Driven Diagnostics & Imaging Re-Rating", "Virtual Care & Home/Community Healthcare Delivery Rebound"], ["ACHC", "Behavioral Health & Transplant/MSK Care Delivery Re-Rating", "Hos
+2026-11-02 19:01:00.084778|planned_sale_stop_cancel|{"trade_id": 422, "ticker": "IRON", "stop_order_id": "6b11fe29-c731-4861-a721-1f863a1a9ad1", "reason": "sma_trail_stop", "account_mode": "live", "site": "execute_depth_open_sale"}
+2026-11-02 19:01:00.626986|depth_open_sale_placed|{"trade_id": 422, "ticker": "IRON", "account_mode": "live", "vehicle": "opg", "order_id": "afd43e36-0582-4af4-a5f6-461eb0c92a74", "qty": 3, "reason": "sma_trail_stop", "cancelled_stop_id": "6b11fe29-c731-4861-a721-1f863a1a9ad1", "stop_price": 73.28, "held_by_resting": 0, "decided_on": "2026-11-02"}
+2026-11-02 19:01:03.204003|stop_cancel_by_planned_sale_silent|{"trade_id": 422, "ticker": "IRON", "account_mode": "live", "cancelled_order_id": "6b11fe29-c731-4861-a721-1f863a1a9ad1", "event_norm": "cancelled"}
+2026-11-02 21:00:00.090749|stop_remediation_skipped_pending_exit|{"trade_id": 422, "ticker": "IRON", "remaining_shares": 3.0, "pending_exit_qty": 3}
+2026-11-03 09:00:00.134622|stop_ack_broker_covered|{"trade_id": 422, "ticker": "IRON", "account_mode": "live", "remaining_shares": 3.0, "broker_covered": 3.0, "synced_stop_order_id": null, "open_sell_orders": [{"id": "afd43e36-0582-4af4-a5f6-461eb0c92a74", "type": "market", "qty": 3.0, "stop_price": null}]}
+2026-11-03 09:30:01.079173|full_exit_committed|{"trade_id": 422, "ticker": "IRON", "shares": 3, "fill_price": 79.41, "pnl": 16.5, "total_pnl": 16.5, "reason": "sma_trail_stop", "order_id": "afd43e36-0582-4af4-a5f6-461eb0c92a74", "new_remaining": 0}
+(8 rows)

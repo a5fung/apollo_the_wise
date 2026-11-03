@@ -1,0 +1,25 @@
+SET
+et|event_type|left
+09:31:00.104|orb_triggered|[bar_stream] 3 alerts: ['AEIS', 'FN', 'AEHR']
+09:31:01.520|orb_bar_stream_used|ORB FN attempt 1 — O=329.99 H=337.29 L=329.99 waited=0.0s
+09:31:01.522|orb_bar_fetched|ORB FN O=329.99 H=337.29 L=329.99 range=7.30
+09:31:01.534|magna53_open_floor_checked|ORB FN 09:30 open $329.99 < floor $343.02 (prev close $314.70 × 1.09; gap at open +4.86% vs 9%; flip-up tick 07:40 ET) — mode=shadow, verdict=would_skip
+09:31:01.536|magna53_open_below_floor_would_skip|ORB FN 09:30 open $329.99 < floor $343.02 (prev close $314.70 × 1.09; gap at open +4.86% vs 9%; flip-up tick 07:40 ET) — SHADOW: would skip setup:open_below_gap_floor, entry proceeds exactly as today
+09:31:01.583|orb_gap_below_floor|ORB FN — setup:gap_below_floor: rt 5.6% < 9% floor (alert said 11.0%, last $332.17 vs prev close $314.70)
+09:31:02.127|orb_bar_miss|ORB AEIS attempt 1/6 — bar not available, retry 10s
+09:31:02.549|orb_bar_miss|ORB AEHR attempt 1/6 — bar not available, retry 10s
+09:31:10.519|orb_triggered|[cron_9_31] 3 alerts: ['AEIS', 'FN', 'AEHR']
+09:31:11.206|orb_bar_miss|ORB AEHR attempt 1/6 — bar not available, retry 10s
+09:31:11.231|orb_bar_miss|ORB AEIS attempt 1/6 — bar not available, retry 10s
+09:31:12.804|orb_bar_miss|ORB AEIS attempt 2/6 — bar not available, retry 10s
+09:31:13.200|orb_bar_miss|ORB AEHR attempt 2/6 — bar not available, retry 10s
+09:31:21.819|orb_bar_fetched|ORB AEHR O=57.20 H=57.20 L=54.01 range=3.19
+09:31:21.823|orb_bar_fetched|ORB AEIS O=232.64 H=237.27 L=227.71 range=9.56
+09:31:21.841|orb_gap_below_floor|ORB AEIS — setup:gap_below_floor: rt 7.5% < 9% floor (alert said 10.3%, last $233.43 vs prev close $217.19)
+09:31:21.967|orb_order_placed|ORB AEHR entry=$57.20 stop=$50.82 shares=3 risk=$25 trade_id=455
+09:31:23.405|orb_bar_fetched|ORB AEIS O=232.64 H=237.27 L=227.71 range=9.56
+09:31:23.420|orb_gap_below_floor|ORB AEIS — setup:gap_below_floor: rt 7.5% < 9% floor (alert said 10.3%, last $233.43 vs prev close $217.19)
+09:31:23.824|orb_bar_fetched|ORB AEHR O=57.20 H=57.20 L=54.01 range=3.19
+09:31:24.406|orb_triggered|[bar_stream] 3 alerts: ['AEIS', 'FN', 'AEHR']
+09:31:24.456|orb_triggered|[bar_stream] 3 alerts: ['AEIS', 'FN', 'AEHR']
+(22 rows)

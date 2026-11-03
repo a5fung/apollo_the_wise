@@ -1,0 +1,19 @@
+SET
+== EP alerts today
+ticker|score_tier|round|alert_date|et
+FN|HIGH|67.5|2026-11-03|2026-11-03 07:00:29.007075
+AEHR|HIGH|90.0|2026-11-03|2026-11-03 07:01:04.489864
+AEIS|HIGH|65.0|2026-11-03|2026-11-03 07:50:47.807033
+(3 rows)
+== key audit events this morning
+event_type|count
+ep_rt_floor_flip_up|11
+orb_bar_miss|6
+orb_bar_fetched|5
+orb_triggered|4
+orb_gap_below_floor|3
+orb_order_placed|1
+orb_bar_stream_used|1
+magna53_open_below_floor_would_skip|1
+magna53_open_floor_checked|1
+(9 rows)

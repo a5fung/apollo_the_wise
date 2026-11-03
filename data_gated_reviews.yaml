@@ -16318,7 +16318,16 @@ reviews:
     zero_verdict: "2026-10-30 WAITING — a tripwire: 0 since its clock started; it fires on the first real event, by design."
     discriminates_on: []
     earliest_review_date: 2026-10-30
-    status: pending
+    status: done
+    closed_on: 2026-11-03
+    outcome: >-
+      FIRED AND PASSED 2026-11-03 (read same morning, scripts/probes/_687_first_sale_1103/q1.out + q2.out): the first
+      depth sale was LIVE — IRON trade 422 (3 sh, entry 73.91). 11-02 16:45 depth_close_below_line (close 78.62 under
+      the armed line 78.808); 19:01 planned_sale_stop_cancel + depth_open_sale_placed (vehicle='opg', market, qty 3,
+      order afd43e36); 21:00 stop remediation skipped (pending exit covers it); 09:00 stop_ack_broker_covered by the open
+      sell; 09:30:01 full_exit_committed at 79.41 in the opening auction (+$16.50), exits[] carries reason
+      sma_trail_stop and the same order id; remaining 0, status closed. The paper-vehicle (DAY market) arm has
+      still not fired; it is the same writer with vehicle chosen by account mode (unit-tested).
     kind: tripwire
     added_on: 2026-10-30
     can_fire:

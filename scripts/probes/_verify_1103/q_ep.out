@@ -1,0 +1,63 @@
+SET
+et|event_type|left
+2026-11-03 08:10:01.562787|ep_rt_floor_flip_up|{"ticker": "GPK", "rt_gap": 9.22, "delayed_gap": 8.47, "tick_et": "08:10", "authoritative": true}
+2026-11-03 08:15:01.401718|ep_rt_floor_flip_up|{"ticker": "FISV", "rt_gap": 9.28, "delayed_gap": 7.64, "tick_et": "08:15", "authoritative": true}
+2026-11-03 08:30:01.50971|ep_rt_floor_flip_up|{"ticker": "NBIX", "rt_gap": 9.05, "delayed_gap": 6.65, "tick_et": "08:30", "authoritative": true}
+2026-11-03 08:35:01.328415|ep_rt_floor_flip_up|{"ticker": "CMPS", "rt_gap": 10.58, "delayed_gap": 6.74, "tick_et": "08:35", "authoritative": true}
+2026-11-03 08:45:01.220791|ep_rt_floor_flip_up|{"ticker": "BETA", "rt_gap": 9.08, "delayed_gap": 6.79, "tick_et": "08:45", "authoritative": true}
+2026-11-03 08:45:01.221889|ep_rt_floor_flip_up|{"ticker": "LIFE", "rt_gap": 9.05, "delayed_gap": 8.89, "tick_et": "08:45", "authoritative": true}
+2026-11-03 09:00:02.145902|ep_rt_floor_flip_up|{"ticker": "EVER", "rt_gap": 9.15, "delayed_gap": 8.91, "tick_et": "09:00", "authoritative": true}
+2026-11-03 09:00:02.147568|ep_rt_floor_flip_up|{"ticker": "SRAD", "rt_gap": 9.95, "delayed_gap": 7.23, "tick_et": "09:00", "authoritative": true}
+2026-11-03 09:25:01.803861|ep_rt_floor_flip_up|{"ticker": "BRUN", "rt_gap": 10.7, "delayed_gap": 6.24, "tick_et": "09:25", "authoritative": true}
+2026-11-03 09:31:00.104432|orb_triggered|
+2026-11-03 09:31:01.520429|orb_bar_stream_used|
+2026-11-03 09:31:01.522508|orb_bar_fetched|
+2026-11-03 09:31:01.534646|magna53_open_floor_checked|{"ticker": "FN", "alert_date": "2026-11-03", "mode": "shadow", "verdict": "would_skip", "open": 329.99, "floor_price": 343.023, "prev_close": 314.7, "floor_pct": 9.0, "gap_at_open_pct": 4.8586, "flip_up_tick_et": "07:40", "flip_up_rt_gap": 9.63, "flip_up_delayed_gap": 8.67, "flip_up_authoritative": true}
+2026-11-03 09:31:01.536107|magna53_open_below_floor_would_skip|{"ticker": "FN", "alert_date": "2026-11-03", "mode": "shadow", "verdict": "would_skip", "open": 329.99, "floor_price": 343.023, "prev_close": 314.7, "floor_pct": 9.0, "gap_at_open_pct": 4.8586, "flip_up_tick_et": "07:40", "flip_up_rt_gap": 9.63, "flip_up_delayed_gap": 8.67, "flip_up_authoritative": true}
+2026-11-03 09:31:01.583775|orb_gap_below_floor|
+2026-11-03 09:31:02.127108|orb_bar_miss|
+2026-11-03 09:31:02.549988|orb_bar_miss|
+2026-11-03 09:31:10.519106|orb_triggered|
+2026-11-03 09:31:11.206585|orb_bar_miss|
+2026-11-03 09:31:11.231537|orb_bar_miss|
+2026-11-03 09:31:12.804179|orb_bar_miss|
+2026-11-03 09:31:13.200604|orb_bar_miss|
+2026-11-03 09:31:21.819171|orb_bar_fetched|
+2026-11-03 09:31:21.823538|orb_bar_fetched|
+2026-11-03 09:31:21.841548|orb_gap_below_floor|
+2026-11-03 09:31:21.967121|orb_order_placed|
+2026-11-03 09:31:23.405563|orb_bar_fetched|
+2026-11-03 09:31:23.420672|orb_gap_below_floor|
+2026-11-03 09:31:23.824577|orb_bar_fetched|
+2026-11-03 09:31:24.406803|orb_triggered|
+2026-11-03 09:31:24.456649|orb_triggered|
+2026-11-03 09:35:07.387102|ep_rt_floor_flip_up|{"ticker": "BE", "rt_gap": 9.11, "delayed_gap": 7.77, "tick_et": "09:35", "authoritative": true}
+2026-11-03 09:40:06.922333|ep_rt_floor_flip_up|{"ticker": "SHAZ", "rt_gap": 10.84, "delayed_gap": 5.06, "tick_et": "09:40", "authoritative": true}
+2026-11-03 09:45:10.461275|ep_rt_floor_flip_up|{"ticker": "AEIS", "rt_gap": 10.96, "delayed_gap": 7.05, "tick_et": "09:45", "authoritative": true}
+2026-11-03 09:45:10.462223|ep_rt_floor_flip_up|{"ticker": "NPO", "rt_gap": 9.63, "delayed_gap": 6.33, "tick_et": "09:45", "authoritative": true}
+2026-11-03 09:45:10.464568|ep_rt_floor_flip_up|{"ticker": "HLF", "rt_gap": 10.47, "delayed_gap": 5.95, "tick_et": "09:45", "authoritative": true}
+2026-11-03 09:45:10.465441|ep_rt_floor_flip_up|{"ticker": "ARQQ", "rt_gap": 9.96, "delayed_gap": 6.46, "tick_et": "09:45", "authoritative": true}
+(37 rows)
+== trades today
+id|ticker|account_mode|signal_type|status|entry_price|stop_price|et
+453|FN|live|magna53|skipped|||2026-11-03 09:31:01.580703
+454|AEIS|live|magna53|skipped|||2026-11-03 09:31:21.839567
+455|AEHR|live|magna53|filled|57.49|50.81999999999999|2026-11-03 09:31:21.887168
+(3 rows)
+== scan log prev_close for the would-skip names
+ticker|scan_date|prev_close
+AEHR|2026-11-03|51.47
+AEIS|2026-11-03|217.19
+FN|2026-11-03|314.7
+(3 rows)
+SET
+et|left
+07:50:01|{"ticker": "RVTY", "rt_gap": 9.56, "delayed_gap": 7.18, "tick_et": "07:50", "authoritative": true}
+07:40:01|{"ticker": "FN", "rt_gap": 9.63, "delayed_gap": 8.67, "tick_et": "07:40", "authoritative": true}
+07:20:01|{"ticker": "AHCO", "rt_gap": 10.83, "delayed_gap": 6.6, "tick_et": "07:20", "authoritative": true}
+(3 rows)
+id|ticker|status|skip_reason|has_order
+453|FN|skipped|setup:gap_below_floor: rt 5.6% < 9% floor (alert said 11.0%, last $332.17 vs prev close $314.70)|f
+454|AEIS|skipped|setup:gap_below_floor: rt 7.5% < 9% floor (alert said 10.3%, last $233.43 vs prev close $217.19)|f
+455|AEHR|filled||t
+(3 rows)
