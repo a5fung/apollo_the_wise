@@ -1,0 +1,47 @@
+# EP alert ranking v2 — built from his chart reads (PRE-REGISTERED 2026-11-03, before any data is read)
+
+**Why.** The shadow ranking (`agents/market_intelligence/alert_rank_shadow.py`: the mean of three within-day
+percentile ranks — smaller gap, tighter gap-day range, less MA-distance extension) reached decision grade on
+2026-11-03 (32 out-of-sample sessions, `scripts/probes/_rank_shadow_running_read_1103/score.txt`) and does not
+pick the tail: its top quartile held 0 of the ≥ 8×ADR winners at 5 sessions, 1 of 3 at 20. Two of its three
+features score his best EPs as defects — MRNA 2026-08-19 (his reference EP; the gap-day extension IS the event,
+#569) sat near the bottom of its day. His words (operator_shared_notes 2026-11-03): *"yes, we should keep
+tightness as i think it may still be relevant"* — and on 11-02, KOD 2026-09-28 (his "good" on the long chart):
+*"1) the two pull back is into the previous base high ... 2) the gap up cleared all time high, but more
+importantly, clear the congestion areas 3) volume is higest ever"*; ASPN 2026-08-06 (bad): *"failed to clear a
+major gap down"*.
+
+**What this is NOT.** No live change; the ranking stays a recorded shadow. Any use of it is his call (THE LINE:
+selection). Returns are read only as the tail test the running read already uses; his labels come first.
+
+## The features (exact definitions, all from bars ≤ the gap day D; daily bars, up to 5 years before D)
+1. **Zones cleared** — the supply-ladder count (`docs/methodology/structure_model.md`; code
+   `scripts/probes/_533_supply_ladder_probe.py`, reused, not rewritten): congestion zones whose price band lies
+   between the prior close and the gap-day OPEN (cleared by the gap), and the zones left between the open and
+   the 5-year high (remaining overhead). Plus `cleared_ath` = the open is above every prior high.
+2. **Volume against its own history** — gap-day volume ÷ the highest daily volume of the 252 sessions before D,
+   and `vol_highest_ever` = gap-day volume above every prior day in the 5 years.
+3. **Pullbacks held an old base high** — the 2 lowest swing lows of the 40 sessions before D, each measured in
+   ADR20 against the highest high of the prior base (the 41st-250th sessions before D); held = both within
+   1 ADR above it or above it. (His KOD reason 1; the definition is fixed here and judged on the labels.)
+4. **Tightness (kept, his 11-03)** — the shadow's own `tightness_pct_eod` and `tightness_pct_asof0945`, unchanged.
+
+## Populations (labels before outcomes)
+- **A. His outcome-blind chart rulings** — `tests/fixtures/must_not_trade_charts.py`: GOOD_CHART / OKISH_CHART
+  = yes, BAD_CHART = no (other verdicts excluded and counted).
+- **B. His labelled real EPs** — `docs/methodology/operator_labelled_eps.md` (yes; no negatives in it).
+- **C. The shadow population** — every `mi_alert_rank_shadow` row since 2026-08-17 (63 rows, 32 sessions on
+  11-03), scored by the running read's own tail test (≥ 8×ADR at 5 and 20 sessions, both directions).
+
+## The bar (fixed now)
+- Each feature: the chance a yes ranks above a no on A (0.5 = nothing); reported with n.
+- The v2 composite = the mean of the within-day percentile ranks of the features that score ≥ 0.65 on A
+  (direction as A says). It must: (i) score ≥ 0.70 on A; (ii) rank ≥ 80% of B's EPs in the top half of their
+  day (where the day has ≥ 2 alerts); (iii) on C, beat the old composite on the tail in BOTH directions
+  (`score_both_directions`: more tail winners in the top quartile, losers admitted no higher). Failing (iii)
+  with (i)-(ii) passing is reported as "his eye, not the tail" — never tuned until it passes.
+- Plateau: each threshold above (1 ADR, 252 sessions, the 40/41-250 windows) is re-run at ±50%; a result that
+  holds only at the stated value is reported as fragile.
+
+## What this does not answer
+- Whether the ranking makes money; how to enter or exit; any population before 2026-08-17 for C.

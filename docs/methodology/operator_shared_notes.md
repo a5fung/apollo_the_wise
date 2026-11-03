@@ -2873,3 +2873,7 @@ Recorded: ASPN 2026-08-06 -> BAD_CHART (his first word "ok" kept in operator_wor
 > "Ok." then "i auth it" (2026-11-03, to: switch the open-below-the-gap-floor skip (#718) from shadow to on — "it's your own definition (the gap must exist at the open), and it only adds skips"); and his paste of the morning's ORB skip page: "• AEIS — Gap retreated below the entry floor before entry (rt 7.5% < 9% floor ...)" / "• FN — Gap retreated below the entry floor before entry (rt 5.6% < 9% floor ...)"
 
 Recorded: #718 ON from 2026-11-03 10:05 ET (`docs/setups/magna53_ep.md` 2026-11-03); #706's skip-page half passes (one line per ticker).
+
+> "how do we rank again? can it be the ranking is flawed?" then "yes, we should keep tightness as i think it may still be relevant" (2026-11-03, after the EP alert ranking's decision-grade read failed: its top quarter held 0 of the big winners at 5 sessions; answered: it ranks smaller gaps, tighter gap days and less extension higher, and the gap-day extension IS the event on his reference EP)
+
+Recorded: a v2 ranking built from his reads — zones the gap clears, volume against the stock's own history, pullbacks holding an old base high — WITH tightness kept; pre-registered in `docs/analysis/ep_rank_v2_prereg_2026-11-03.md` (#594), scored on his outcome-blind rulings first.
