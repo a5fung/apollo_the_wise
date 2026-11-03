@@ -1,0 +1,47 @@
+1. kept+dropped walk R vs full walk R: 132+62 trades x 26 arms; mismatches 0 []
+
+2. DROPPED SET
+   filled: dropped 62 of 194; kept 132
+   scored (control R not None): dropped 58 of 185; kept 127
+   control status, dropped filled: {'settled': 57, 'abstain': 4, 'data_end': 1}; kept filled: {'settled': 116, 'abstain': 5, 'data_end': 11}
+   dropped acct (build_trades on the dropped rows): {'never_triggered': 23, 'no_bars:degenerate_orb': 1, 'no_bars:no_bars_after_orb': 4, 'filled': 62}; kept acct: {'never_triggered': 62, 'no_bars:degenerate_orb': 3, 'no_bars:no_bars_after_orb': 8, 'filled': 132}
+   control +4R winners dropped: 5 of 10 -> [('AOSL', '2026-04-14'), ('FTK', '2026-08-03'), ('IONQ', '2026-04-14'), ('SGML', '2026-04-13'), ('STM', '2026-04-23')]
+   Frame A engaged (scored, reached +8 ORB-R): 29; dropped 10 -> [('AOSL', '2026-04-14'), ('ARGX', '2026-08-17'), ('FTK', '2026-08-03'), ('IONQ', '2026-04-14'), ('MANE', '2026-07-15'), ('NOW', '2026-05-29'), ('P', '2026-05-11'), ('SGML', '2026-04-13'), ('SMR', '2026-04-14'), ('STM', '2026-04-23')]
+   dropped scored carried: control +32.03R of +44.27R; primary +25.13R; paired diff -6.89R
+   dropped control n 58 total +32.03 mean +0.552 median -0.381 win 25.9% drop-best-2 +1.73
+
+3. TABLE COMPARISONS (my own measures + my own formatter vs the printed cells)
+[10-16 doc, full population] table rows compared: 26; cell mismatches: 0
+[1103 claims, kept rows] table rows compared: 26; cell mismatches: 0
+
+   claims' PER ARM tables vs mine:
+   [kept] PER-ARM rows compared 26; mismatching rows 0
+   [full] PER-ARM rows compared 26; mismatching rows 0
+
+4. 95% SEPARATION (week-block p < 0.05 AND week-bootstrap 95% CI of the per-trade paired difference excludes 0)
+   full: sep95 YES = [('A|gb25_be', 19.72, 0.0178, 0.031, 0.211)]; p<0.05 = ['A|gb25_be']
+   kept: sep95 YES = [('A|t3_be', 14.44, 0.0336, 0.023, 0.221), ('A|atr1_be', 14.9, 0.018, 0.034, 0.205), ('A|atr2_be', 7.81, 0.017, 0.018, 0.11), ('B|atr2_be', 17.01, 0.045, 0.017, 0.281)]; p<0.05 = ['A|t3_be', 'A|atr1_be', 'A|atr2_be', 'B|atr2_be']
+   seed sensitivity (seeds 1..50, same draws): share of seeds where sep95 holds / p<0.05 holds; p range; CI-lo range
+     kept A|t3_be    sep95 50/50  p<0.05 50/50  p [0.0308, 0.0428]  CI-lo [+0.020, +0.025]  CI-hi [+0.216, +0.224]
+     kept A|atr1_be  sep95 50/50  p<0.05 50/50  p [0.0134, 0.0224]  CI-lo [+0.030, +0.035]  CI-hi [+0.200, +0.206]
+     kept A|atr2_be  sep95 50/50  p<0.05 50/50  p [0.0164, 0.0248]  CI-lo [+0.017, +0.020]  CI-hi [+0.109, +0.113]
+     kept B|atr2_be  sep95 49/50  p<0.05 49/50  p [0.0398, 0.0502]  CI-lo [+0.013, +0.019]  CI-hi [+0.275, +0.284]
+     kept A|gb25_be  sep95 0/50  p<0.05 0/50  p [0.0662, 0.0780]  CI-lo [+0.002, +0.008]  CI-hi [+0.253, +0.265]
+     kept B|t5_be    sep95 0/50  p<0.05 0/50  p [0.0694, 0.0866]  CI-lo [+0.007, +0.015]  CI-hi [+0.504, +0.524]
+     full A|gb25_be  sep95 50/50  p<0.05 50/50  p [0.0144, 0.0214]  CI-lo [+0.029, +0.033]  CI-hi [+0.204, +0.216]
+   exact week-block sign-flip p by full enumeration of 2^blocks sign patterns (no RNG):
+     kept A|t3_be    blocks 19  exact two-sided p = 0.0352
+     kept A|atr1_be  blocks 19  exact two-sided p = 0.0176
+     kept A|atr2_be  blocks 19  exact two-sided p = 0.0195
+     kept B|atr2_be  blocks 19  exact two-sided p = 0.0443
+     kept A|t20_be   blocks 19  exact two-sided p = 0.7031
+     full A|gb25_be  blocks 19  exact two-sided p = 0.0171
+     full A|t20_be   blocks 19  exact two-sided p = 0.8984
+
+5. PRE-REGISTERED BAR ON THE PRIMARY (A|t20_be)
+   full: P1 True (differ 16, weeks 8) | P2 False (d +6.69, p 0.9024) | P3 False (-13.15) | P4 False (H1 -6.19 n=120 / H2 +12.88) | P5 False (9 vs 10) | P6(F>=entry) True -> STANDS; tail lost [('SGML', '2026-04-13'), ('TXN', '2026-04-23'), ('FTK', '2026-08-03')] gained [('DOCN', '2026-05-05'), ('MSFT', '2026-07-30')]; CI [-0.096, +0.275]
+   full: exploratory arms meeting P1,P3,P4,P5 + p<0.05 + positive total: []
+   kept: P1 True (differ 11, weeks 7) | P2 False (d +13.59, p 0.6993) | P3 False (-6.25) | P4 False (H1 -3.03 n=71 / H2 +16.62) | P5 True (6 vs 5) | P6(F>=entry) True -> STANDS; tail lost [('TXN', '2026-04-23')] gained [('DOCN', '2026-05-05'), ('MSFT', '2026-07-30')]; CI [-0.063, +0.415]
+   kept: exploratory arms meeting P1,P3,P4,P5 + p<0.05 + positive total: [(17.01, 'B|atr2_be'), (14.9, 'A|atr1_be')]
+
+   kept control: n 127 total +12.24 mean +0.0964 median -0.773 win 29.1% +4R 5 [('BABA', '2026-07-08'), ('BE', '2026-04-14'), ('RKLB', '2026-05-08'), ('TEAM', '2026-08-07'), ('TXN', '2026-04-23')] open-at-end 11

@@ -1,0 +1,11 @@
+rows 295; dropped 90; kept 205
+open source: Counter({'bar': 295})
+admission-row open on the same side of the floor: 295 of 295; value differs (>1e-9) on 55
+prev_close == daily capture's prior close (1e-9): 295 of 295
+exact ties open == floor: []
+seed arms (gap_open>=9, gap_scan>=9): all Counter({(True, True): 189, (False, True): 90, (True, False): 16}); dropped Counter({(False, True): 90}); kept Counter({(True, True): 189, (True, False): 16})
+gap_open of kept rows min 9.019; of dropped max 8.986
+bar-open gap >= 9.0 exactly matches 'not dropped' on 295 of 295
+dropped within 0.10% under the floor (open/floor - 1): [('SANM', '2026-04-28', -0.013, -0.014), ('NOW', '2026-05-29', -0.03, -0.033), ('DHI', '2026-04-21', -0.096, -0.105)]
+kept within 0.10% above the floor: [('EOSE', '2026-04-15', 0.017), ('MXL', '2026-05-13', 0.03), ('WOLF', '2026-08-12', 0.053), ('FUTU', '2026-05-26', 0.063)]
+dropped list: GPRE 04-13, SGML 04-13, AOSL 04-14, BNAI 04-14, IONQ 04-14, IRDM 04-14, PRAX 04-14, SMR 04-14, USAR 04-20, DHI 04-21, BSX 04-22, GEV 04-22, MSTR 04-22, RDW 04-22, APLD 04-23, HAS 04-23, MOH 04-23, STM 04-23, ARM 04-24, QCOM 04-24, RMBS 04-24, WOLF 04-24, CLF 04-27, SANM 04-28, TEVA 04-29, BAX 04-30, MUSA 04-30, SFM 04-30, TER 04-30, MRNA 05-01, MTZ 05-01, ROKU 05-01, EBAY 05-04, LWLG 05-04, FSLY 05-05, GFS 05-05, LXU 05-05, ALB 05-07, CGNX 05-07, DASH 05-07, HWM 05-07, MKSI 05-07, FORM 05-11, P 05-11, FCEL 05-12, VG 05-12, VSH 05-13, LGN 05-14, POET 05-18, ROIV 05-20, CRML 05-21, WDAY 05-22, BB 05-26, POWI 05-27, SMTC 05-27, BBY 05-28, EXPD 05-29, NOW 05-29, SOFI 05-29, IBM 06-01, MCHP 06-02, DGXX 06-03, AGX 06-05, SHAZ 06-12, LII 06-15, SYRE 06-22, ZETA 06-23, SNX 06-25, RDW 06-30, SEDG 06-30, UMAC 06-30, KLAR 07-01, WCC 07-02, MANE 07-15, CORZ 07-28, FTNT 07-30, NBIS 07-31, FTK 08-03, CIEN 08-04, COMP 08-05, U 08-06, AKAM 08-07, SEI 08-07, TE 08-07, ARGX 08-17, MRCY 08-17, FUTU 08-20, MSTR 08-20, RARE 08-20, UMC 08-28

@@ -1,0 +1,15 @@
+dropped rows: 90
+   76  ALSO skipped by today's 09:31 gap re-check (09:30 close under the floor)  | control R of its filled rows: +28.13
+   14  ONLY the new open rule removes it (09:30 close back at/above the floor)  | control R of its filled rows: +3.89
+the ones ONLY the new rule removes (filled, control R):
+  ARGX 2026-08-17 +3.89R  reached +8 ORB-R
+  SANM 2026-04-28 +1.43R
+  MOH 2026-04-23 +1.17R
+  SFM 2026-04-30 +0.57R
+  TER 2026-04-30 +0.40R
+  USAR 2026-04-20 +0.00R
+  TEVA 2026-04-29 -0.03R
+  GEV 2026-04-22 -0.53R
+  APLD 2026-04-23 -1.00R
+  WOLF 2026-04-24 -1.00R
+  MKSI 2026-05-07 -1.00R

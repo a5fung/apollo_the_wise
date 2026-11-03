@@ -1,0 +1,332 @@
+==============================================================================================================
+RUNNER RE-CUT UNDER THE OPEN-FLOOR ADMISSION RULE (#718) — code: pinned 8fca6649; python 3.14.6
+==============================================================================================================
+code: git archive 8fca6649 -> temp dir; blobs verified {'agents/market_intelligence/live_fill_counterfactuals.py': 'e9098c36', 'agents/market_intelligence/broker/exit_logic.py': 'd5597612', 'scripts/probes/_bt_replay.py': '727d5f84'}; walker modules loaded from the temp tree (asserted for every agents.* / shared.* module)
+10-16 code sha256 prefixes verified: {'recut.py': '24b2e70aa29e6427', 'walker_cand.py': '3a9e693c0db1ceb4', 'make_walker.py': '840cbf1de9e58cc0', 'run.out': 'a781524088bd3dd4'}
+
+STEP 1 — REPRODUCE THE 10-16 RUN
+  gates on the full population: ALL PASS
+  stdout vs _runner_recut_1017/run.out: 165 vs 165 lines; lines that differ after mapping the dump path: 0
+  run_rows.tsv byte-identical to the 10-16 dump: True
+  run_results.json byte-identical to the 10-16 dump: True
+  10-16 doc table rows regenerated from the reproduced results and found verbatim in the doc: 26 of 26
+  REPRODUCTION: PASS (the 10-16 table, stdout and per-trade dumps reproduce exactly)
+
+STEP 2 — DROP EVERY RUN-U ROW WHOSE 09:30 OPEN < round(prev_close x 1.09, 6)
+  source of the open: the 09:30 minute bar's open in bt_out_bars (what live stage 4a reads, orb_bar['open']); rows with no 09:30 bar: 0 (they fall back to the admission row's 'open')
+  cross-checks: the admission row's own 'open' lands on the same side of the floor on 295 of 295 rows (09:30-bar open differs in value on 55 rows: [(('CRDO', '2026-04-14'), 154.11, 154.23), (('PRAX', '2026-04-14'), 326.92, 325.95), (('HAS', '2026-04-23'), 95.11, 95.175), (('STX', '2026-04-29'), 669.0, 667.98), (('TER', '2026-04-30'), 326.76, 327.0)]); the row's prev_close equals the daily capture's prior close on 295 of 295
+  DROPPED: 90 of 295 Run-U rows; kept 205
+  seeding arm of the dropped rows (opened>=9%, premarket tick>=9%): {(False, True): 90}; whole population: {(True, True): 189, (False, True): 90, (True, False): 16}
+  fate of the dropped rows under the fill model: {'filled': 62, 'never_triggered': 23, 'no_bars:degenerate_orb': 1, 'no_bars:no_bars_after_orb': 4}
+  of the 194 filled: 62 dropped; of the 185 scored: 58 dropped (control status of the dropped filled: {'settled': 57, 'abstain': 4, 'data_end': 1})
+  what the dropped scored trades carried in the 10-16 run: control +32.03R of +44.27R; primary +25.13R of +50.96R; paired difference -6.89R of +6.69R
+  the dropped scored trades under the control (descriptive): n 58, total +32.03R, mean +0.552R, median -0.381R, win 25.9%, without its two best [('AOSL', '2026-04-14', 17.84), ('STM', '2026-04-23', 12.46)] +1.73R
+  control +4R winners dropped: 5 of 10 -> [('AOSL', '2026-04-14'), ('FTK', '2026-08-03'), ('IONQ', '2026-04-14'), ('SGML', '2026-04-13'), ('STM', '2026-04-23')]
+  Frame A engaged (reached the +8 ORB-R partial) trades dropped: 10 of 29 -> [('AOSL', '2026-04-14'), ('ARGX', '2026-08-17'), ('FTK', '2026-08-03'), ('IONQ', '2026-04-14'), ('MANE', '2026-07-15'), ('NOW', '2026-05-29'), ('P', '2026-05-11'), ('SGML', '2026-04-13'), ('SMR', '2026-04-14'), ('STM', '2026-04-23')]
+  dropped rows within 0.10% under the line (descriptive; the rule is strictly below): [('DHI', '2026-04-21', -0.096, 'never_triggered'), ('NOW', '2026-05-29', -0.03, 'filled'), ('SANM', '2026-04-28', -0.013, 'filled')]
+  the full dropped list (ticker, date):
+    GPRE 04-13, SGML 04-13, AOSL 04-14, BNAI 04-14, IONQ 04-14, IRDM 04-14, PRAX 04-14, SMR 04-14, USAR 04-20, DHI 04-21, BSX 04-22, GEV 04-22
+    MSTR 04-22, RDW 04-22, APLD 04-23, HAS 04-23, MOH 04-23, STM 04-23, ARM 04-24, QCOM 04-24, RMBS 04-24, WOLF 04-24, CLF 04-27, SANM 04-28
+    TEVA 04-29, BAX 04-30, MUSA 04-30, SFM 04-30, TER 04-30, MRNA 05-01, MTZ 05-01, ROKU 05-01, EBAY 05-04, LWLG 05-04, FSLY 05-05, GFS 05-05
+    LXU 05-05, ALB 05-07, CGNX 05-07, DASH 05-07, HWM 05-07, MKSI 05-07, FORM 05-11, P 05-11, FCEL 05-12, VG 05-12, VSH 05-13, LGN 05-14
+    POET 05-18, ROIV 05-20, CRML 05-21, WDAY 05-22, BB 05-26, POWI 05-27, SMTC 05-27, BBY 05-28, EXPD 05-29, NOW 05-29, SOFI 05-29, IBM 06-01
+    MCHP 06-02, DGXX 06-03, AGX 06-05, SHAZ 06-12, LII 06-15, SYRE 06-22, ZETA 06-23, SNX 06-25, RDW 06-30, SEDG 06-30, UMAC 06-30, KLAR 07-01
+    WCC 07-02, MANE 07-15, CORZ 07-28, FTNT 07-30, NBIS 07-31, FTK 08-03, CIEN 08-04, COMP 08-05, U 08-06, AKAM 08-07, SEI 08-07, TE 08-07
+    ARGX 08-17, MRCY 08-17, FUTU 08-20, MSTR 08-20, RARE 08-20, UMC 08-28
+  per-row detail (open, floor, fate, R): /Users/alvinfung/apollo_the_wise/scripts/probes/_runner_recut_1103/dropped_rows.tsv
+
+STEP 3 — THE IDENTICAL SWEEP ON THE KEPT ROWS (recut.run_gates + recut.do_run, unchanged)
+  kept population: 205 Run-U rows on 180 tickers -> {'never_triggered': 62, 'no_bars:degenerate_orb': 3, 'no_bars:no_bars_after_orb': 8, 'filled': 132}
+  (recut.do_run's own header line below still prints 'population: <n> Run-U replayable rows' for the KEPT set)
+  check: every kept trade's R under every arm equals its R in the full run: True (132 trades x 26 walks; differ [])
+
+  | gates (re-run immediately before the run):
+  | G0       PASS  decompressed capture hashes match the pinned prefixes (7 files)
+  | G2       PASS  frozen copy with no rule == live walk_arm on all 132 filled rows (status, reason, pending_at, every exit leg to 1e-9)
+  | G2b      PASS  ADR20 None on 0 of 132 rows [] | sessions where the resting stop = line x (1-ADR20) AND raised the stop: 112 | close-below sales: 31, of which priced at a next open that differs from the deciding close: 31 | stop-hit sales above entry (depth-bound stop): 3
+  |            example stop: BE 2026-04-14 session 11 (2026-04-29) line 230.4610 ADR20 0.0927 floor 208.97 -> depth stop 209.09 (was 208.97)
+  |            example sale:  BE 2026-04-14 sold session 18: deciding close 258.6400, next open 271.2200
+  | G3       PASS  3168 candidate/reference x trade walks equal the control on every trade whose trigger never fired, and match it up to the trigger bar where it did (Frame A fired on 19 trades, Frame B on 50)
+  | G-ext    NOT RUN  the optional prod pull (pre-registration step 3) was REFUSED by the permission system; no extension attached, the capture alone is the read of record (pull_daily_ext.REFUSED.txt). Positions still open at 2026-08-28 are marked at their last stored close and counted per arm.
+  | 
+  | ====================================================================================================
+  | RUNNER RE-CUT - THE RUN (read of record = the capture alone; extension pull REFUSED)
+  | ====================================================================================================
+  | population: 205 Run-U replayable rows on 180 tickers; {'never_triggered': 62, 'no_bars:degenerate_orb': 3, 'no_bars:no_bars_after_orb': 8, 'filled': 132}
+  | control walk status over 132 filled trades: {'settled': 116, 'abstain': 5, 'data_end': 11}   (settled = sold; horizon = marked at the 40th close; data_end = still open at 2026-08-28, marked at the last stored close; gap = a session missing INSIDE the capture, unscoreable; abstain = same-bar order unknowable)
+  | control scored n=127; Frame A trigger (the +8 ORB-R partial) fired on 19; Frame B trigger (the +3 ORB-R arm) fired on 50; control R>=+4.0 on 5; R>=+1.5 on 20
+  | 
+  | CONTROL  n=127 +4R=5 (3.9%) +1.5R=20 p90=+2.369 total=+12.24 mean=+0.0964 drop-best-2=-2.66 median=-0.773 win=29.1% best=('RKLB', '2026-05-08') +7.82R worst=('GLW', '2026-07-09') -1.20R losses<-1.5R=0 give-backs=18 open(h/e)=0/11
+  |   control +4R names: [('BABA', '2026-07-08'), ('BE', '2026-04-14'), ('RKLB', '2026-05-08'), ('TEAM', '2026-08-07'), ('TXN', '2026-04-23')]
+  | 
+  | --- PRIMARY ---
+  | A  t20_be (PRIMARY)  n=127  eng=19   diff=11   4R=6(4.7%) 1.5R=15 p90=+1.91 tot=+25.83 mean=+0.2034 dTot=+13.59 dEx2=-6.25 drop2=-3.88 H1/H2=-3.03/+16.62 p=0.6993 med=-0.773 win=29.1% open(h/e)=0/12
+  | 
+  | --- the other 21 arms (EXPLORATORY: cannot produce a proposal) ---
+  | A  t3_be             n=127  eng=19   diff=17   4R=8(6.3%) 1.5R=22 p90=+3.06 tot=+26.68 mean=+0.2101 dTot=+14.44 dEx2=+7.45 drop2=+12.76 H1/H2=+15.46/-1.02 p=0.0336 med=-0.773 win=29.1% open(h/e)=0/8
+  | A  t5_be             n=127  eng=19   diff=14   4R=7(5.5%) 1.5R=19 p90=+2.40 tot=+21.59 mean=+0.1700 dTot=+9.35 dEx2=+2.36 drop2=+1.82 H1/H2=+4.76/+4.59 p=0.1412 med=-0.773 win=29.1% open(h/e)=0/8
+  | A  t10_be            n=127  eng=19   diff=11   4R=5(3.9%) 1.5R=18 p90=+2.42 tot=+17.51 mean=+0.1379 dTot=+5.27 dEx2=+2.40 drop2=-0.27 H1/H2=+4.54/+0.73 p=0.1372 med=-0.773 win=29.1% open(h/e)=0/11
+  | A  close_only        n=127  eng=19   diff=1    4R=5(3.9%) 1.5R=20 p90=+2.37 tot=+11.98 mean=+0.0943 dTot=-0.27 dEx2=-0.27 drop2=-2.66 H1/H2=-0.27/+0.00 p=1.0000 med=-0.773 win=29.1% open(h/e)=0/11
+  | A  sma10_depth       n=127  eng=19   diff=0    4R=5(3.9%) 1.5R=20 p90=+2.37 tot=+12.24 mean=+0.0964 dTot=+0.00 dEx2=+0.00 drop2=-2.66 H1/H2=+0.00/+0.00 p=1.0000 med=-0.773 win=29.1% open(h/e)=0/11
+  | A  sma20_depth       n=127  eng=19   diff=10   4R=5(3.9%) 1.5R=18 p90=+2.38 tot=+19.07 mean=+0.1501 dTot=+6.83 dEx2=-4.32 drop2=-2.39 H1/H2=-3.24/+10.07 p=0.8632 med=-0.773 win=29.1% open(h/e)=0/12
+  | A  atr1_be           n=127  eng=19   diff=19   4R=8(6.3%) 1.5R=24 p90=+3.23 tot=+27.15 mean=+0.2138 dTot=+14.90 dEx2=+9.80 drop2=+10.40 H1/H2=+13.35/+1.56 p=0.0180 med=-0.773 win=29.1% open(h/e)=0/8
+  | A  atr2_be           n=127  eng=19   diff=16   4R=4(3.1%) 1.5R=22 p90=+2.98 tot=+20.05 mean=+0.1579 dTot=+7.81 dEx2=+3.70 drop2=+4.90 H1/H2=+6.90/+0.91 p=0.0170 med=-0.773 win=29.1% open(h/e)=0/9
+  | A  gb25_be           n=127  eng=19   diff=18   4R=4(3.1%) 1.5R=24 p90=+2.82 tot=+26.61 mean=+0.2095 dTot=+14.37 dEx2=+4.74 drop2=+5.17 H1/H2=+9.65/+4.71 p=0.0724 med=-0.773 win=29.1% open(h/e)=0/8
+  | A  gb50_be           n=127  eng=19   diff=13   4R=5(3.9%) 1.5R=23 p90=+2.44 tot=+15.67 mean=+0.1234 dTot=+3.43 dEx2=+0.74 drop2=+1.59 H1/H2=+0.24/+3.18 p=0.3791 med=-0.773 win=29.1% open(h/e)=0/11
+  | B  t3_be             n=127  eng=50   diff=34   4R=10(7.9%) 1.5R=25 p90=+3.37 tot=+34.63 mean=+0.2727 dTot=+22.39 dEx2=+13.38 drop2=+20.68 H1/H2=+12.02/+10.37 p=0.1238 med=-0.773 win=29.9% open(h/e)=0/4
+  | B  t5_be             n=127  eng=50   diff=32   4R=8(6.3%) 1.5R=28 p90=+2.68 tot=+42.18 mean=+0.3322 dTot=+29.94 dEx2=+16.98 drop2=+21.67 H1/H2=+7.32/+22.63 p=0.0820 med=-0.773 win=29.1% open(h/e)=0/4
+  | B  t10_be            n=127  eng=50   diff=24   4R=7(5.5%) 1.5R=19 p90=+2.48 tot=+25.36 mean=+0.1997 dTot=+13.12 dEx2=+2.04 drop2=+4.80 H1/H2=-1.74/+14.86 p=0.3875 med=-0.773 win=26.0% open(h/e)=0/9
+  | B  t20_be            n=127  eng=50   diff=22   4R=6(4.7%) 1.5R=19 p90=+2.83 tot=+41.10 mean=+0.3236 dTot=+28.86 dEx2=+5.67 drop2=+9.48 H1/H2=+1.01/+27.85 p=0.1976 med=-0.773 win=26.0% open(h/e)=0/13
+  | B  close_only        n=127  eng=50   diff=3    4R=5(3.9%) 1.5R=20 p90=+2.37 tot=+10.30 mean=+0.0811 dTot=-1.94 dEx2=-1.94 drop2=-4.34 H1/H2=-1.94/+0.00 p=0.5075 med=-0.773 win=28.3% open(h/e)=0/11
+  | B  sma10_depth       n=127  eng=50   diff=0    4R=5(3.9%) 1.5R=20 p90=+2.37 tot=+12.24 mean=+0.0964 dTot=+0.00 dEx2=+0.00 drop2=-2.66 H1/H2=+0.00/+0.00 p=1.0000 med=-0.773 win=29.1% open(h/e)=0/11
+  | B  sma20_depth       n=127  eng=50   diff=19   4R=5(3.9%) 1.5R=20 p90=+2.48 tot=+21.70 mean=+0.1709 dTot=+9.46 dEx2=-1.69 drop2=+0.24 H1/H2=-1.95/+11.41 p=0.4479 med=-0.773 win=26.0% open(h/e)=0/15
+  | B  atr1_be           n=127  eng=50   diff=39   4R=8(6.3%) 1.5R=24 p90=+2.61 tot=+32.03 mean=+0.2522 dTot=+19.79 dEx2=+9.70 drop2=+15.28 H1/H2=+11.41/+8.38 p=0.2414 med=-0.773 win=33.1% open(h/e)=0/4
+  | B  atr2_be           n=127  eng=50   diff=29   4R=6(4.7%) 1.5R=22 p90=+3.18 tot=+29.25 mean=+0.2303 dTot=+17.01 dEx2=+8.06 drop2=+14.10 H1/H2=+6.07/+10.94 p=0.0450 med=-0.773 win=29.9% open(h/e)=0/9
+  | B  gb25_be           n=127  eng=50   diff=35   4R=6(4.7%) 1.5R=25 p90=+2.84 tot=+33.81 mean=+0.2662 dTot=+21.57 dEx2=+10.18 drop2=+12.37 H1/H2=+11.89/+9.67 p=0.1912 med=-0.773 win=31.5% open(h/e)=0/4
+  | B  gb50_be           n=127  eng=50   diff=28   4R=6(4.7%) 1.5R=23 p90=+2.44 tot=+21.89 mean=+0.1724 dTot=+9.65 dEx2=+0.09 drop2=+6.94 H1/H2=-1.39/+11.04 p=0.6785 med=-0.773 win=31.5% open(h/e)=0/11
+  | 
+  | --- reference rows (never candidates) ---
+  | A  t20_entry_ref     n=127  eng=19   diff=11   4R=6(4.7%) 1.5R=15 p90=+1.91 tot=+27.18 mean=+0.2141 dTot=+14.94 dEx2=-4.89 drop2=-2.52 H1/H2=-1.67/+16.62 p=0.5881 med=-0.773 win=29.1% open(h/e)=0/12
+  | -  era_d             n=127  eng=-    diff=41   4R=3(2.4%) 1.5R=19 p90=+2.22 tot=+16.35 mean=+0.1288 dTot=+4.11 dEx2=-0.08 drop2=-2.74 H1/H2=+1.44/+2.67 p=0.6041 med=-0.731 win=33.1% open(h/e)=0/10
+  | -  control_at_close  n=127  eng=-    diff=31   4R=4(3.1%) 1.5R=20 p90=+2.34 tot=+17.18 mean=+0.1353 dTot=+4.94 dEx2=+2.57 drop2=+0.87 H1/H2=+1.02/+3.92 p=0.2484 med=-0.773 win=30.7% open(h/e)=0/11
+  | 
+  | --- PRIMARY IN FULL (Frame A t20_be) ---
+  |   paired_n         127
+  |   engaged_n        19
+  |   differ_n         11
+  |   differ_weeks     7
+  |   n_blocks         19
+  |   n_tail           6
+  |   n_tail_ctrl      5
+  |   n_be             15
+  |   n_be_ctrl        20
+  |   p90              1.9141655540720968
+  |   total            25.82836813845149
+  |   ctrl_total       12.241585271409717
+  |   mean             0.20337297746812197
+  |   median           -0.7733990147783248
+  |   win              0.29133858267716534
+  |   delta_total      13.586782867041773
+  |   delta_mean       0.10698254226017144
+  |   delta_ex_top2    -6.251103289227178
+  |   drop_best2       -3.879704669663205
+  |   h1               -3.0286768830483055
+  |   h1_n             71
+  |   h2               16.61545975009008
+  |   h2_n             56
+  |   p_weekblock      0.6992601479704059
+  |   boot_lo          -0.06271062635779595
+  |   boot_hi          0.4153056074894127
+  |   top5_share       1.6133548974649619
+  |   capture          0.5130369154580777
+  |   capture_n        19
+  |   loss_beyond_1p5  0
+  |   giveback         18
+  |   open_horizon     0
+  |   open_data_end    12
+  |   F_above_entry    1
+  |   F_median_R       0.0
+  |   F_min_R          0.0
+  |   best             (('BABA', '2026-07-08'), 22.66666666666687)
+  |   worst            (('GLW', '2026-07-09'), -1.1972222222222215)
+  |   tail_lost        [('TXN', '2026-04-23')]
+  |   tail_gained      [('DOCN', '2026-05-05'), ('MSFT', '2026-07-30')]
+  |   top2_contrib     [(('BABA', '2026-07-08'), 15.577777777777918), (('DOCN', '2026-05-05'), 4.260108378491035)]
+  |   top5             [(('BABA', '2026-07-08'), 15.577777777777918), (('DOCN', '2026-05-05'), 4.260108378491035), (('MSFT', '2026-07-30'), 1.2125453602903042), (('BE', '2026-04-14'), 0.8698711627756239)]
+  |   by_month         {'2026-04': (-2.152, 22), '2026-05': (-0.876, 40), '2026-06': (0.0, 9), '2026-07': (16.615, 21), '2026-08': (0.0, 35)}
+  | 
+  | --- THE PRE-REGISTERED BAR, APPLIED MECHANICALLY TO THE PRIMARY ---
+  |   P1 >=10 trades differ AND >=6 distinct entry weeks : True  (differ n=11, weeks=7)
+  |   P2 paired total > 0 AND week-block p < 0.05        : False  (delta total=+13.587, p=0.6993)
+  |   P3 ahead without its two largest contributors      : False  (delta ex top 2=-6.251)
+  |   P4 ahead in BOTH halves                            : False  (H1=-3.029 n=71, H2=+16.615 n=56)
+  |   P5 +4R count no lower than the control's           : True  (arm 6 vs control 5)
+  |   P6 orderable live (F>=entry at every trigger; resting stop never stepped down in 2904 walks): True
+  |   RESULT WORD: STANDS
+  | 
+  | --- EXPLORATORY: arms meeting P1,P3,P4,P5 with unadjusted p<0.05 and a positive total: [(17.01153330994463, 'B|atr2_be'), (14.90483427307362, 'A|atr1_be')]
+  |     registered as the next primary: B|atr2_be
+  | --- FRAME B EXPECTATION (wrong if any Frame B rule gains > +0.2R a trade with p<0.01 and ahead in both halves): holds (none does)
+  | 
+  | --- MARKS PER ARM (positions still open: horizon = marked at the 40th close; data_end = open at 2026-08-28, marked at the last stored close) ---
+  |   control: horizon 0, data_end 11, of 127 scored
+  |   A|t20_be           horizon 0, data_end 12, of 127 paired
+  |   A|t3_be            horizon 0, data_end 8, of 127 paired
+  |   A|t5_be            horizon 0, data_end 8, of 127 paired
+  |   A|t10_be           horizon 0, data_end 11, of 127 paired
+  |   A|close_only       horizon 0, data_end 11, of 127 paired
+  |   A|sma10_depth      horizon 0, data_end 11, of 127 paired
+  |   A|sma20_depth      horizon 0, data_end 12, of 127 paired
+  |   A|atr1_be          horizon 0, data_end 8, of 127 paired
+  |   A|atr2_be          horizon 0, data_end 9, of 127 paired
+  |   A|gb25_be          horizon 0, data_end 8, of 127 paired
+  |   A|gb50_be          horizon 0, data_end 11, of 127 paired
+  |   B|t3_be            horizon 0, data_end 4, of 127 paired
+  |   B|t5_be            horizon 0, data_end 4, of 127 paired
+  |   B|t10_be           horizon 0, data_end 9, of 127 paired
+  |   B|t20_be           horizon 0, data_end 13, of 127 paired
+  |   B|close_only       horizon 0, data_end 11, of 127 paired
+  |   B|sma10_depth      horizon 0, data_end 11, of 127 paired
+  |   B|sma20_depth      horizon 0, data_end 15, of 127 paired
+  |   B|atr1_be          horizon 0, data_end 4, of 127 paired
+  |   B|atr2_be          horizon 0, data_end 9, of 127 paired
+  |   B|gb25_be          horizon 0, data_end 4, of 127 paired
+  |   B|gb50_be          horizon 0, data_end 11, of 127 paired
+  |   t20_entry_ref      horizon 0, data_end 12, of 127 paired
+  |   era_d              horizon 0, data_end 10, of 127 paired
+  |   control_at_close   horizon 0, data_end 11, of 127 paired
+  | 
+  | --- UNSCORED PER ARM (abstain / gap) ---
+  |   control: {'abstain': 5}
+  |   A|t3_be        {'abstain': 5}
+  |   A|t5_be        {'abstain': 5}
+  |   A|t10_be       {'abstain': 5}
+  |   A|t20_be       {'abstain': 5}
+  |   A|close_only   {'abstain': 5}
+  |   A|sma10_depth  {'abstain': 5}
+  |   A|sma20_depth  {'abstain': 5}
+  |   A|atr1_be      {'abstain': 5}
+  |   A|atr2_be      {'abstain': 5}
+  |   A|gb25_be      {'abstain': 5}
+  |   A|gb50_be      {'abstain': 5}
+  |   B|t3_be        {'abstain': 5}
+  |   B|t5_be        {'abstain': 5}
+  |   B|t10_be       {'abstain': 5}
+  |   B|t20_be       {'abstain': 5}
+  |   B|close_only   {'abstain': 5}
+  |   B|sma10_depth  {'abstain': 5}
+  |   B|sma20_depth  {'abstain': 5}
+  |   B|atr1_be      {'abstain': 5}
+  |   B|atr2_be      {'abstain': 5}
+  |   B|gb25_be      {'abstain': 5}
+  |   B|gb50_be      {'abstain': 5}
+  |   t20_entry_ref  {'abstain': 5}
+  |   era_d          {'abstain': 5}
+  |   control_at_close {'abstain': 5}
+  | 
+  | wrote /Users/alvinfung/apollo_the_wise/scripts/probes/_runner_recut_1103/kept/run_rows.tsv and /Users/alvinfung/apollo_the_wise/scripts/probes/_runner_recut_1103/kept/run_results.json
+
+  THE 10-16 TABLE LAYOUT, KEPT ROWS (same formatter as the 10-16 doc):
+  | frame | rule | paired n | engaged n | differ n | +4R trades (share of n) | +1.5R trades | p90 R | total R | mean R | delta vs control | delta without top 2 | drop-best-2 | H1 / H2 delta | p (week-block) | median R | win % | open at end |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | - | control (depth), n = 127 | 127 | - | - | 5 (3.9%) | 20 | +2.37 | +12.24 | +0.096 | - | - | -2.66 | - | - | -0.773 | 29.1% | 11 |
+  | A | **t20_be (PRIMARY)** | 127 | 19 | 11 | 6 (4.7%) | 15 | +1.91 | +25.83 | +0.203 | +13.59 | -6.25 | -3.88 | -3.03 / +16.62 | 0.699 | -0.773 | 29.1% | 12 |
+  | A | t3_be | 127 | 19 | 17 | 8 (6.3%) | 22 | +3.06 | +26.68 | +0.210 | +14.44 | +7.45 | +12.76 | +15.46 / -1.02 | 0.034 | -0.773 | 29.1% | 8 |
+  | A | t5_be | 127 | 19 | 14 | 7 (5.5%) | 19 | +2.40 | +21.59 | +0.170 | +9.35 | +2.36 | +1.82 | +4.76 / +4.59 | 0.141 | -0.773 | 29.1% | 8 |
+  | A | t10_be | 127 | 19 | 11 | 5 (3.9%) | 18 | +2.42 | +17.51 | +0.138 | +5.27 | +2.40 | -0.27 | +4.54 / +0.73 | 0.137 | -0.773 | 29.1% | 11 |
+  | A | close_only | 127 | 19 | 1 | 5 (3.9%) | 20 | +2.37 | +11.98 | +0.094 | -0.27 | -0.27 | -2.66 | -0.27 / +0.00 | 1.000 | -0.773 | 29.1% | 11 |
+  | A | sma10_depth | 127 | 19 | 0 | 5 (3.9%) | 20 | +2.37 | +12.24 | +0.096 | +0.00 | +0.00 | -2.66 | +0.00 / +0.00 | 1.000 | -0.773 | 29.1% | 11 |
+  | A | sma20_depth | 127 | 19 | 10 | 5 (3.9%) | 18 | +2.38 | +19.07 | +0.150 | +6.83 | -4.32 | -2.39 | -3.24 / +10.07 | 0.863 | -0.773 | 29.1% | 12 |
+  | A | atr1_be | 127 | 19 | 19 | 8 (6.3%) | 24 | +3.23 | +27.15 | +0.214 | +14.90 | +9.80 | +10.40 | +13.35 / +1.56 | 0.018 | -0.773 | 29.1% | 8 |
+  | A | atr2_be | 127 | 19 | 16 | 4 (3.1%) | 22 | +2.98 | +20.05 | +0.158 | +7.81 | +3.70 | +4.90 | +6.90 / +0.91 | 0.017 | -0.773 | 29.1% | 9 |
+  | A | gb25_be | 127 | 19 | 18 | 4 (3.1%) | 24 | +2.82 | +26.61 | +0.210 | +14.37 | +4.74 | +5.17 | +9.65 / +4.71 | 0.072 | -0.773 | 29.1% | 8 |
+  | A | gb50_be | 127 | 19 | 13 | 5 (3.9%) | 23 | +2.44 | +15.67 | +0.123 | +3.43 | +0.74 | +1.59 | +0.24 / +3.18 | 0.379 | -0.773 | 29.1% | 11 |
+  | B | t3_be | 127 | 50 | 34 | 10 (7.9%) | 25 | +3.37 | +34.63 | +0.273 | +22.39 | +13.38 | +20.68 | +12.02 / +10.37 | 0.124 | -0.773 | 29.9% | 4 |
+  | B | t5_be | 127 | 50 | 32 | 8 (6.3%) | 28 | +2.68 | +42.18 | +0.332 | +29.94 | +16.98 | +21.67 | +7.32 / +22.63 | 0.082 | -0.773 | 29.1% | 4 |
+  | B | t10_be | 127 | 50 | 24 | 7 (5.5%) | 19 | +2.48 | +25.36 | +0.200 | +13.12 | +2.04 | +4.80 | -1.74 / +14.86 | 0.388 | -0.773 | 26.0% | 9 |
+  | B | t20_be | 127 | 50 | 22 | 6 (4.7%) | 19 | +2.83 | +41.10 | +0.324 | +28.86 | +5.67 | +9.48 | +1.01 / +27.85 | 0.198 | -0.773 | 26.0% | 13 |
+  | B | close_only | 127 | 50 | 3 | 5 (3.9%) | 20 | +2.37 | +10.30 | +0.081 | -1.94 | -1.94 | -4.34 | -1.94 / +0.00 | 0.507 | -0.773 | 28.3% | 11 |
+  | B | sma10_depth | 127 | 50 | 0 | 5 (3.9%) | 20 | +2.37 | +12.24 | +0.096 | +0.00 | +0.00 | -2.66 | +0.00 / +0.00 | 1.000 | -0.773 | 29.1% | 11 |
+  | B | sma20_depth | 127 | 50 | 19 | 5 (3.9%) | 20 | +2.48 | +21.70 | +0.171 | +9.46 | -1.69 | +0.24 | -1.95 / +11.41 | 0.448 | -0.773 | 26.0% | 15 |
+  | B | atr1_be | 127 | 50 | 39 | 8 (6.3%) | 24 | +2.61 | +32.03 | +0.252 | +19.79 | +9.70 | +15.28 | +11.41 / +8.38 | 0.241 | -0.773 | 33.1% | 4 |
+  | B | atr2_be | 127 | 50 | 29 | 6 (4.7%) | 22 | +3.18 | +29.25 | +0.230 | +17.01 | +8.06 | +14.10 | +6.07 / +10.94 | 0.045 | -0.773 | 29.9% | 9 |
+  | B | gb25_be | 127 | 50 | 35 | 6 (4.7%) | 25 | +2.84 | +33.81 | +0.266 | +21.57 | +10.18 | +12.37 | +11.89 / +9.67 | 0.191 | -0.773 | 31.5% | 4 |
+  | B | gb50_be | 127 | 50 | 28 | 6 (4.7%) | 23 | +2.44 | +21.89 | +0.172 | +9.65 | +0.09 | +6.94 | -1.39 / +11.04 | 0.678 | -0.773 | 31.5% | 11 |
+  | ref | t20_entry_ref | 127 | 19 | 11 | 6 (4.7%) | 15 | +1.91 | +27.18 | +0.214 | +14.94 | - | - | - | - | -0.773 | 29.1% | 12 |
+  | ref | era_d | 127 | - | 41 | 3 (2.4%) | 19 | +2.22 | +16.35 | +0.129 | +4.11 | - | - | - | - | -0.731 | 33.1% | 10 |
+  | ref | control_at_close | 127 | - | 31 | 4 (3.1%) | 20 | +2.34 | +17.18 | +0.135 | +4.94 | - | - | - | - | -0.773 | 30.7% | 11 |
+
+  PER ARM, KEPT ROWS — n, mean, median, win, concentration, separation:
+  frame|rule                n   mean R  median R  win %  total R  +4R own top2 own top5   d tot  d/trade    95% week-boot CI   p wk d ex top2 d top5 share  sep95
+  control (depth)         127   +0.096    -0.773   29.1   +12.24    5     122%     235%
+  A|t20_be                127   +0.203    -0.773   29.1   +25.83    6     115%     178%  +13.59   +0.107    [-0.063, +0.415]  0.699     -6.25         161%  no
+  A|t3_be                 127   +0.210    -0.773   29.1   +26.68    8      52%     113%  +14.44   +0.114    [+0.023, +0.221]  0.034     +7.45          94%  YES
+  A|t5_be                 127   +0.170    -0.773   29.1   +21.59    7      92%     157%   +9.35   +0.074    [-0.007, +0.196]  0.141     +2.36         105%  no
+  A|t10_be                127   +0.138    -0.773   29.1   +17.51    5     102%     190%   +5.27   +0.042    [-0.005, +0.091]  0.137     +2.40         109%  no
+  A|close_only            127   +0.094    -0.773   29.1   +11.98    5     122%     238%   -0.27   -0.002    [-0.006, +0.000]  1.000     -0.27          n/a  no
+  A|sma10_depth           127   +0.096    -0.773   29.1   +12.24    5     122%     235%   +0.00   +0.000    [+0.000, +0.000]  1.000     +0.00          n/a  no
+  A|sma20_depth           127   +0.150    -0.773   29.1   +19.07    5     113%     195%   +6.83   +0.054    [-0.040, +0.231]  0.863     -4.32         186%  no
+  A|atr1_be               127   +0.214    -0.773   29.1   +27.15    8      62%     110%  +14.90   +0.117    [+0.034, +0.205]  0.018     +9.80          70%  YES
+  A|atr2_be               127   +0.158    -0.773   29.1   +20.05    4      76%     142%   +7.81   +0.061    [+0.018, +0.110]  0.017     +3.70         103%  YES
+  A|gb25_be               127   +0.210    -0.773   29.1   +26.61    4      81%     127%  +14.37   +0.113    [+0.006, +0.263]  0.072     +4.74         101%  no
+  A|gb50_be               127   +0.123    -0.773   29.1   +15.67    5      90%     183%   +3.43   +0.027    [-0.031, +0.081]  0.379     +0.74         172%  no
+  B|t3_be                 127   +0.273    -0.773   29.9   +34.63   10      40%      86%  +22.39   +0.176    [-0.012, +0.383]  0.124    +13.38          80%  no
+  B|t5_be                 127   +0.332    -0.773   29.1   +42.18    8      49%      92%  +29.94   +0.236    [+0.011, +0.515]  0.082    +16.98          78%  no
+  B|t10_be                127   +0.200    -0.773   26.0   +25.36    7      81%     151%  +13.12   +0.103    [-0.057, +0.307]  0.388     +2.04         137%  no
+  B|t20_be                127   +0.324    -0.773   26.0   +41.10    6      77%     119%  +28.86   +0.227    [-0.022, +0.577]  0.198     +5.67         118%  no
+  B|close_only            127   +0.081    -0.773   28.3   +10.30    5     142%     277%   -1.94   -0.015    [-0.044, +0.000]  0.507     -1.94          n/a  no
+  B|sma10_depth           127   +0.096    -0.773   29.1   +12.24    5     122%     235%   +0.00   +0.000    [+0.000, +0.000]  1.000     +0.00          n/a  no
+  B|sma20_depth           127   +0.171    -0.773   26.0   +21.70    5      99%     171%   +9.46   +0.074    [-0.041, +0.257]  0.448     -1.69         174%  no
+  B|atr1_be               127   +0.252    -0.773   33.1   +32.03    8      52%     102%  +19.79   +0.156    [-0.065, +0.390]  0.241     +9.70          87%  no
+  B|atr2_be               127   +0.230    -0.773   29.9   +29.25    6      52%     105%  +17.01   +0.134    [+0.017, +0.281]  0.045     +8.06          85%  YES
+  B|gb25_be               127   +0.266    -0.773   31.5   +33.81    6      63%     106%  +21.57   +0.170    [-0.059, +0.404]  0.191    +10.18          97%  no
+  B|gb50_be               127   +0.172    -0.773   31.5   +21.89    6      68%     142%   +9.65   +0.076    [-0.077, +0.289]  0.678     +0.09         146%  no
+  ref|t20_entry_ref       127   +0.214    -0.773   29.1   +27.18    6     109%     169%  +14.94   +0.118    [-0.044, +0.425]  0.588     -4.89         147%  no
+  ref|era_d               127   +0.129    -0.731   33.1   +16.35    3     117%     185%   +4.11   +0.032    [-0.084, +0.146]  0.604     -0.08         167%  no
+  ref|control_at_close    127   +0.135    -0.773   30.7   +17.18    4      95%     173%   +4.94   +0.039    [-0.016, +0.101]  0.248     +2.57          92%  no
+  control: its top 5 trades = [('RKLB', '05-08', 7.82), ('BABA', '07-08', 7.09), ('TEAM', '08-07', 5.38), ('TXN', '04-23', 4.31), ('BE', '04-14', 4.22)]
+  A|t3_be: paired d +14.44R = +15.27R on 116 both-settled pairs + -0.83R on 11 pairs with a mark on either side (the marked pairs that differ: [('TEAM', '08-07', -1.77, 'data_end', 'settled'), ('MRNA', '08-19', 0.06, 'data_end', 'settled'), ('TEM', '08-19', 0.89, 'data_end', 'settled')]); both-settled d without its two largest gains +8.27R (those: [('NVTS', 3.95), ('WDC', 3.05)])
+  A|atr1_be: paired d +14.90R = +16.25R on 116 both-settled pairs + -1.35R on 11 pairs with a mark on either side (the marked pairs that differ: [('TEAM', '08-07', -2.11, 'data_end', 'settled'), ('MRNA', '08-19', -0.32, 'data_end', 'settled'), ('TEM', '08-19', 1.08, 'data_end', 'settled')]); both-settled d without its two largest gains +11.14R (those: [('NVTS', 3.18), ('BABA', 1.93)])
+  A|atr2_be: paired d +7.81R = +7.69R on 116 both-settled pairs + +0.12R on 11 pairs with a mark on either side (the marked pairs that differ: [('MRNA', '08-19', -0.32, 'data_end', 'settled'), ('TEM', '08-19', 0.44, 'data_end', 'settled')]); both-settled d without its two largest gains +3.57R (those: [('NVTS', 2.2), ('OKTA', 1.91)])
+  B|atr2_be: paired d +17.01R = +14.75R on 115 both-settled pairs + +2.26R on 12 pairs with a mark on either side (the marked pairs that differ: [('PLTR', '08-04', 1.47, 'settled', 'data_end'), ('AMLX', '08-18', 0.67, 'data_end', 'settled'), ('MRNA', '08-19', -0.32, 'data_end', 'settled'), ('TEM', '08-19', 0.44, 'data_end', 'settled')]); both-settled d without its two largest gains +5.81R (those: [('COHR', 4.81), ('LITE', 4.14)])
+  own top2 / top5 = share of the arm's OWN total R carried by its 2 / 5 best trades; d top5 share = the 5 largest positive paired gains / the paired total (the 10-16 'top-five share'); sep95 = week-block p < 0.05 AND the week-bootstrap 95% CI of the per-trade paired difference excludes 0.
+
+  PER ARM, FULL 10-16 POPULATION (for side-by-side; same code):
+  frame|rule                n   mean R  median R  win %  total R  +4R own top2 own top5   d tot  d/trade    95% week-boot CI   p wk d ex top2 d top5 share  sep95
+  control (depth)         185   +0.239    -0.530   28.1   +44.27   10      68%     114%
+  A|t20_be                185   +0.275    -0.530   28.1   +50.96    9      75%     125%   +6.69   +0.036    [-0.096, +0.275]  0.902    -13.15         382%  no
+  A|t3_be                 185   +0.256    -0.530   28.1   +47.44   13      39%      81%   +3.17   +0.017    [-0.060, +0.096]  0.670     -3.83         466%  no
+  A|t5_be                 185   +0.266    -0.530   28.1   +49.25   12      61%     104%   +4.98   +0.027    [-0.085, +0.140]  0.667     -2.96         247%  no
+  A|t10_be                185   +0.227    -0.530   28.1   +41.94    9      66%     118%   -2.33   -0.013    [-0.079, +0.054]  0.741     -5.20          n/a  no
+  A|close_only            185   +0.217    -0.530   28.1   +40.14    9      69%     119%   -4.13   -0.022    [-0.054, +0.000]  0.258     -4.13          n/a  no
+  A|sma10_depth           185   +0.239    -0.530   28.1   +44.27   10      68%     114%   +0.00   +0.000    [+0.000, +0.000]  1.000     +0.00          n/a  no
+  A|sma20_depth           185   +0.251    -0.530   28.1   +46.50    8      66%     119%   +2.23   +0.012    [-0.084, +0.154]  0.852     -8.92         741%  no
+  A|atr1_be               185   +0.278    -0.530   28.1   +51.46   11      51%      87%   +7.19   +0.039    [-0.046, +0.121]  0.392     +1.64         157%  no
+  A|atr2_be               185   +0.275    -0.530   28.1   +50.94    9      60%      97%   +6.67   +0.036    [-0.057, +0.125]  0.488     +0.40         169%  no
+  A|gb25_be               185   +0.346    -0.530   28.1   +63.98    9      53%      94%  +19.72   +0.107    [+0.031, +0.211]  0.018    +10.08          81%  YES
+  A|gb50_be               185   +0.259    -0.530   28.1   +47.85    8      63%     110%   +3.58   +0.019    [-0.030, +0.071]  0.507     -2.70         281%  no
+  B|t3_be                 185   +0.298    -0.530   29.7   +55.04   15      32%      67%  +10.77   +0.058    [-0.156, +0.268]  0.618     +1.77         167%  no
+  B|t5_be                 185   +0.410    -0.530   29.2   +75.87   13      40%      72%  +31.61   +0.171    [-0.029, +0.392]  0.144    +18.64          81%  no
+  B|t10_be                185   +0.256    -0.530   25.9   +47.39   11      63%     109%   +3.13   +0.017    [-0.140, +0.205]  0.823     -7.95         575%  no
+  B|t20_be                185   +0.366    -0.530   25.9   +67.69   10      60%      95%  +23.43   +0.127    [-0.065, +0.408]  0.353     +0.23         148%  no
+  B|close_only            185   +0.210    -0.530   27.6   +38.86    9      71%     123%   -5.40   -0.029    [-0.063, +0.000]  0.198     -5.80          n/a  no
+  B|sma10_depth           185   +0.239    -0.530   28.1   +44.27   10      68%     114%   +0.00   +0.000    [+0.000, +0.000]  1.000     +0.00          n/a  no
+  B|sma20_depth           185   +0.269    -0.530   25.9   +49.73    8      62%     111%   +5.46   +0.030    [-0.075, +0.172]  0.689     -5.68         316%  no
+  B|atr1_be               185   +0.319    -0.530   32.4   +59.09   10      44%      79%  +14.82   +0.080    [-0.126, +0.293]  0.496     +4.73         122%  no
+  B|atr2_be               185   +0.337    -0.530   30.3   +62.36   11      49%      79%  +18.10   +0.098    [-0.059, +0.246]  0.257     +9.15          95%  no
+  B|gb25_be               185   +0.349    -0.530   31.4   +64.64   10      52%      82%  +20.37   +0.110    [-0.081, +0.311]  0.302     +8.98         103%  no
+  B|gb50_be               185   +0.303    -0.530   31.4   +56.15    9      53%      95%  +11.88   +0.064    [-0.041, +0.220]  0.498     +2.11         146%  no
+  ref|t20_entry_ref       185   +0.283    -0.530   28.1   +52.32    9      74%     122%   +8.05   +0.044    [-0.084, +0.280]  0.902    -11.79         318%  no
+  ref|era_d               185   +0.235    -0.496   32.4   +43.45    7      61%     106%   -0.82   -0.004    [-0.135, +0.115]  0.948     -5.01          n/a  no
+  ref|control_at_close    185   +0.263    -0.585   30.3   +48.72    9      59%     103%   +4.45   +0.024    [-0.021, +0.074]  0.361     +2.08         102%  no
+  control: its top 5 trades = [('AOSL', '04-14', 17.84), ('STM', '04-23', 12.46), ('RKLB', '05-08', 7.82), ('BABA', '07-08', 7.09), ('TEAM', '08-07', 5.38)]
+  A|gb25_be: paired d +19.72R = +22.25R on 173 both-settled pairs + -2.54R on 12 pairs with a mark on either side (the marked pairs that differ: [('TEAM', '08-07', -2.64, 'data_end', 'settled'), ('ARGX', '08-17', -0.09, 'data_end', 'settled'), ('MRNA', '08-19', -0.32, 'data_end', 'settled'), ('TEM', '08-19', 0.51, 'data_end', 'settled')]); both-settled d without its two largest gains +12.62R (those: [('BABA', 6.8), ('NVTS', 2.83)])
+  own top2 / top5 = share of the arm's OWN total R carried by its 2 / 5 best trades; d top5 share = the 5 largest positive paired gains / the paired total (the 10-16 'top-five share'); sep95 = week-block p < 0.05 AND the week-bootstrap 95% CI of the per-trade paired difference excludes 0.
+
+  arms at week-block p < 0.05 — full: [('A|gb25_be', 19.72, 0.0178, 0.031, 0.211)]; kept: [('A|t3_be', 14.44, 0.0336, 0.023, 0.221), ('A|atr1_be', 14.9, 0.018, 0.034, 0.205), ('A|atr2_be', 7.81, 0.017, 0.018, 0.11), ('B|atr2_be', 17.01, 0.045, 0.017, 0.281)]
+
+STEP 4 — THE 10-16 BAR (pre-registration §5), APPLIED MECHANICALLY TO THE PRIMARY
+      full (10-16)                                kept (open floor)                           
+  P1  True (differ 16, weeks 8)                   True (differ 11, weeks 7)                   
+  P2  False (d +6.69R, p 0.902)                   False (d +13.59R, p 0.699)                  
+  P3  False (ex top 2 -13.15R)                    False (ex top 2 -6.25R)                     
+  P4  False (H1 -6.19 / H2 +12.88)                False (H1 -3.03 / H2 +16.62)                
+  P5  False (+4R 9 vs 10)                         True (+4R 6 vs 5)                           
+  P6  True                                        True                                        
+  WORD  STANDS                                    STANDS                                      
+  next exploratory primary registered — full: none; kept: B|atr2_be
+  Frame B expectation wrong? — full: no; kept: no
+  marks (full): control 12 positions open at 2026-08-28 carry +22.52R of +44.27R (settled trades alone +21.75R); primary 13 marks carry +27.73R of +50.96R
+  marks (kept): control 11 positions open at 2026-08-28 carry +18.63R of +12.24R (settled trades alone -6.39R); primary 12 marks carry +23.84R of +25.83R
+  control, kept: n 127, total +12.24R, mean +0.096R, median -0.773R, win 29.1%, +4R 5, open at data end 11
+  primary, kept: total +25.83R, mean +0.203R, median -0.773R, d +13.59R (+0.107R/trade, CI [-0.063, +0.415]), p 0.699, top-5 gains [(('BABA', '2026-07-08'), 15.577777777777918), (('DOCN', '2026-05-05'), 4.260108378491035), (('MSFT', '2026-07-30'), 1.2125453602903042), (('BE', '2026-04-14'), 0.8698711627756239)]
+
+LIMITATIONS (stated, not modelled):
+  - Live, #718 refuses only names ADMITTED BY THE REAL-TIME FLIP-UP whose open is below the floor; a name admitted by the delayed read is entered even if it opened below. The capture cannot tell the two apart, so this cut drops EVERY opened-below row: an upper bound on what the rule removes. A row that opened at/above 9% is unaffected either way.
+  - Every dropped row is a premarket-tick seed (opened < 9%, a premarket tick >= 9%); every kept row opened >= 9%.
+  - Exit stack: the control is the 10-16 era-E depth exit. The live exit has since changed (2026-10-28 'the trailing line governs only after the trade was above it', live from the 10-29 session; exit_discipline.md). This re-cut does NOT model it (one change only).
+  - Run U's fill model does not apply the #490 09:31 live-price gap re-check (stage 4b, on since 2026-08-02), which already refuses a name trading under the 9% floor at submission; many dropped rows (e.g. AOSL opened +1.2%, SGML +3.6%) were likely refused by it before #718 existed. The dropped rows' money is money in rows Run U admitted that today's pipeline would not enter, NOT the cost of the 11-03 flip.
+  - HEAD's replay code (which carries the 10-28 trail-arming fix) gives byte-identical output (recut_open_floor_head.txt): the fix is session-gated from 2026-10-29, so it is neutral on this Apr-Aug population by construction, not by measurement.
+  - 'registered as the next primary' is the 10-16 exploratory rule applied mechanically; nothing is registered here (the 10-16 doc says this window is not re-cut again; registration and any proposal are the operator's). The 22 arms walk the same engaged trades (19 in Frame A, 50 in Frame B): correlated arms on one population, not 21 independent tests.
+  - Every row's median is the same (-0.773R kept, -0.530R full): the median trade never reaches a trigger, so no exit rule can move it.
+  - Inherited from 10-16: Run U's 2026-08-29 admission manifest (over-admits), daily bars after day 0, positions open at 2026-08-28 marked at their last close (the refused extension), no portfolio effects.
