@@ -8,8 +8,10 @@ name on LAST NIGHT's list (`mi_breakout_v1_list`, scan_date = the previous sessi
     (`consolidation_breakout._entry_one`'s `orh5`); no bar at all in those five minutes = the named abstain
     `no_opening_range_minutes`;
   * F1 (RULED): the buy is only PLACED, and only KEPT live, while the volume so far (through the last completed
-    minute) >= the list's volume bar (1.2 x the 50-day average) x the share of a day's volume normally done by that
-    minute (`breakout_v1_volume_curve.CUM_SHARE`, ONE pooled curve for every stock). Before it permits there is no
+    minute) >= the list's volume bar (1.2 x the average FULL daily volume of the last 10 sessions to the list night —
+    his ruling 2026-11-02, read from the list row's `vol_bar`; it was the 50-day average before) x the share of a
+    day's volume normally done by that minute (`breakout_v1_volume_curve.CUM_SHARE`, ONE pooled curve for every
+    stock; its unit, the full daily volume, is the same for both averages). Before it permits there is no
     order; once an order is live and it stops permitting, the order is cancelled
     (`setup:breakout_volume_below_curve`) — terminal for the day (one trade per list name per day);
   * the order: a stop-limit buy at `level` (limit `stop_limit_buy_price(level)`), DAY, OTO with the protective stop at
@@ -175,7 +177,8 @@ def stop_from_low(low: float) -> float:
 
 def f1_permits(cum_volume: float, vol_bar: float, last_completed: int) -> tuple[bool, float]:
     """F1 (his ruling 2026-10-29): volume so far >= 1.2x the stock's normal volume BY THAT MINUTE.
-    `vol_bar` is the list's 1.2 x the 50-day average volume, so the bar is vol_bar x the curve's share at the last
+    `vol_bar` is the list's 1.2 x the average full daily volume of the last 10 sessions (his ruling 2026-11-02; the
+    50-day before — this function only reads the row's value), so the bar is vol_bar x the curve's share at the last
     completed minute. -> (permits, the volume the minute needs)."""
     m = max(0, min(int(last_completed), N_SESSION_MINUTES - 1))
     need = float(vol_bar) * CUM_SHARE[m]

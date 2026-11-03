@@ -1,6 +1,6 @@
 # Breakout v1 rebuilt from Qullamaggie's trades — the spec for his sign-off (2026-11-02)
 
-**Status: PROPOSED — waiting on his sign-off. Build: Sat 2026-11-07 (his "Yes", 11-02). Paper stays OFF until he turns it on.**
+**Status: SIGNED OFF 2026-11-02 (his "signd off"). Staged build: stage 1 (the list) BUILT on branch `breakout-v2-stage1`, not deployed. Paper stays OFF until he turns it on.**
 Owner when shipped: `docs/setups/consolidation_breakout.md` (this file is the finding; the SSoT gets the change-log entry with the code).
 Work folder (every number below is printed there): `scripts/probes/_qm_breakouts_vs_v1_1102/`.
 

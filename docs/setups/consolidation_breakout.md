@@ -62,6 +62,39 @@ approved plan, not by the article · **T** = telemetry only, never gates.
 | Phase (alternative) | SPY and QQQ both close above their 50-day (cell C7) | **B** | `phase_spy_qqq_50` |
 | Breakout volume, trigger-bar tightness, pole length, base depth, ATR14 slope | recorded | **T** — never gate | features |
 
+## Breakout v1 — the nightly LIST rules (the PAPER setup; REBUILT 2026-11-02 on his spec sign-off)
+
+The table above is the forward SHADOW's (`cb`). Breakout v1 — the paper setup's 17:55 ET list (`breakout_v1.py`,
+`breakout_v1_list.py`, table `mi_breakout_v1_list`) — has its OWN rules and constants (it reads `cb`'s helpers, never
+moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
+`docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md`, "signd off"), at the watch night D on bars <= D:
+
+| # | Rule | Value | Source | Code |
+|---|---|---|---|---|
+| 1 | universe + history | raw close >= $2, 20-session median dollar volume >= $5M, >= 86 consecutive sessions | v1 (2026-10-28), unchanged | `universe`, `history`; `MIN_PRICE`, `MIN_DOLLAR_VOL`, `MIN_BARS` |
+| — | pinned deal | ADR20 >= 1% (inside rule 3; kept so the counts name a deal target) | his "both", 2026-11-02 | `pinned`; `PINNED_ADR_MAX` |
+| 3 | daily range | ADR20 >= 2.1% | his good EW 2.11%, LMT 2.6% | `adr`; `ADR_MIN` |
+| 2 | strength | rs_best (best of the 21/63/126-session percentiles) >= 35 | Qullamaggie's 269 buys' lowest, 35.3 | `rs`; `RS_MIN` (the list's own; `cb.RS_BEST_PRIMARY` 98 is the shadow's) |
+| 5 | run-up into the pole | high(P) / min low[P-40, P] - 1 >= 0.3213536987121892 (P = the pole top in [D-45, D-10]) | backward step 3 (dropped only his NOs) | `prior_move`; `PRIOR_MOVE_MIN` (the list's own; `cb.PRIOR_MOVE_MIN` 0.30 stays) |
+| 4 | base depth | (high(P) - the lowest low of P+1..D) / high(P) / ADR20 in [1.511376833908041, 8.979719460898997], inclusive | backward step 2; low end = his good LRN 2020-08-05 | `base_depth`; `BASE_DEPTH_ADR_MIN/MAX` |
+| 6 | close vs the 21-day EMA | (close / EMA21 - 1) / ADR20 >= -0.6335 (EMA seeded at the series' first bar) | his labels on 9 EMA-dropped buys; pinned at TSLA 2022-04-21 (-0.63349) | `ema21`; `EMA21_ADR_MIN`, `ema_at` |
+| 7 | close vs the 50-day SMA | close >= the mean of the 50 closes ending D | his picks; drops none of Qullamaggie's buys | `sma50`; `SMA_SESSIONS` |
+| — | REMOVED | higher lows, surf (riding an average), tightening, the breakdown check | his CODX / PENN charts (11-02): the definitions misread his pattern | — |
+
+- **The level and the volume bar (for the next session):** level = the highest high of D-4..D (strict break); the
+  volume bar = **1.2 x the mean volume of the last 10 sessions D-9..D** (his ruling 2026-11-02; was the 50-day; `vol50`
+  is kept on the row as telemetry only). Live, the entry reads it as the F1 intraday pace against this bar.
+- **The ORDER inside the list (spec §2; `breakout_v1.order_inputs` + `breakout_v1_list.rank_rows`):** per name,
+  `runup6m` = max over j in [D-125, D] of high(j) / min low[j-63, j] - 1, `runup6m_adr` = it / ADR20, and
+  `spread10_adr` = (max / min - 1 of the closes D-9..D) / ADR20; per NIGHT over the whole passing list,
+  order_score = the mean of the within-night percentile of `runup6m_adr` (bigger first) and of `spread10_adr`
+  (tighter first), pandas `rank(pct=True)` average-tie semantics; list_rank 1 = the highest score, ties by ticker; a
+  name missing an input has no score and ranks last. The score ORDERS, it never removes. Stored as `order_score`,
+  `runup6m_adr`, `spread10_adr` on `mi_breakout_v1_list` (comparable only inside one night).
+- **The message and `/bgrade`:** the 17:55 Telegram shows the top 10 by the score + the night's count; bare `/bgrade`
+  shows the newest night's top 10 ungraded + the total and per-night ungraded counts.
+- **Acceptance:** `tests/test_breakout_v2_stage1.py` on `tests/fixtures/qm_breakout_scorecard/` (the scorecard below).
+
 ## Cells (post-hoc flags on one watch row; the 8 deciding cells strict → loose)
 
 C0 baseline (universe + prior move + base + a pivot + close ≥ SMA50 + the deal-pin guards) · **C1 Qullamaggie + the forwarded
@@ -305,12 +338,98 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   (holdout trades under the same key: C3 100, C4 285, C5 86, C7 63) accrue 2–9 times faster and are read beside C1; whether the
   bar or the cell is the right thing to wait on is the operator's call, not this file's.
 - The minute feed (the row's `feed` column) and thin-SIC effects above bias the first weeks; the read states them.
+- **Breakout v1's rebuilt list (2026-11-02) — known limits, carried in the open:** (a) it keeps **16 of Qullamaggie's buys
+  he labelled no / EP-like** (named in the change log; pinned ON in `tests/test_breakout_v2_stage1.py` as the committed
+  negatives the next rule is judged on) and MRNA / INO 2020-08-07 ("breaking down") still pass; (b) it holds **~250 names a
+  night** and the order score separates his yes from his no only 70% of the time — of his firing buys only 52 of 156 rank in
+  their day's top 5 (stage 0), so the 5 paper slots are an open question (his: the slot count or a better order); (c) the
+  entry job reads one name's minute bars at a time every minute — fine at ~25 names, not at ~250 (stage 2, Sat 11-07,
+  batches it and fills the slots by the score; the paper switch stays off until then); (d) two rules sit on knife edges by
+  design — rule 6 at TSLA 2022-04-21's own value (1.3e-5 daily ranges inside) and rule 4's low end AT LRN 2020-08-05's
+  depth — so a change in how ADR20, the EMA or the depth is computed can drop his own "ok"/"good" buys (the scorecard test
+  catches it); (e) the order inputs read up to 189 sessions (the list job loads 200; a name with less history gets a
+  shortened 6-month look-back, as the research's era-B store did on its first 59 nights).
 
 ## Change log
 
-### 2026-11-02 — PROPOSED (awaiting his sign-off; build Sat 11-07): breakout v1 rebuilt from Qullamaggie's trades — NOT LIVE
+### 2026-11-02 — breakout v1's list REBUILT from Qullamaggie's own trades: the 7 list rules, the order score, the 10-day volume bar (OPERATOR-SIGNED: his spec sign-off "signd off", 2026-11-02; stage 1 = the list) — BUILT on branch `breakout-v2-stage1`, NOT deployed
 
-The spec: `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md`. Scorecard = Qullamaggie's 269 dated breakout buys + 26 big winners (v1 today lists 60 and 4). Proposed: 7 list rules (263/269, 26/26, ~250 names a night), an order score (6-month run-up in daily ranges + tightness of the last 10 closes), the buy unchanged except his ruled volume bar (1.2x the last 10 sessions, "Yes" 11-02). Nothing below this line changes until the build ships.
+**Trigger**: v1's first paper buy (MTW, 11-02) was not a setup by his read — *"the problem is there's no setup ... we're trying
+to implement the breakout setup, we're not trying to buy random stocks and make it profitable"* — and his method the same
+day: *"we have all the winner trades from qullamaggie already, it's proven, we need to trade those and that's it"*, *"get as
+close as possible, that is the starting point and then work backwards from there to define our rules"*
+(`docs/methodology/operator_shared_notes.md` 2026-11-02). v1 then listed **60 of Qullamaggie's 269** dated breakout buys the
+night before (22%) and **4 of his 26 big winners**. The spec he signed off: `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md`
+(*"signd off. What's the effort to build? Can we break up into stages and start some this week?"*, 2026-11-02).
+
+**The change (stage 1, the nightly list — market-agent code; the entry job's per-name loop / slots are stage 2, the stop
+and exit unchanged):** the rules in the "Breakout v1 — the nightly LIST rules" block above — strength >= 35 (was 98), the
+daily-range floor 2.1% (was 4.26%; the 1% pinned gate kept), the run-up >= 32.1% (was 30%), NEW base depth 1.511-8.980
+daily ranges, NEW close >= -0.6335 daily ranges vs the 21-day EMA, NEW close >= the 50-day SMA; REMOVED higher lows,
+surf, tightening and the breakdown check; the volume bar 1.2x the LAST 10 sessions (was the 50-day); the list ranked by
+the ORDER SCORE (was rs_best); three new columns `order_score`, `runup6m_adr`, `spread10_adr` (`ALTER TABLE ... ADD COLUMN
+IF NOT EXISTS`, the deploy's prepare gate registers the changed INSERT and the bare-`/bgrade` SELECT); the 17:55 message
+and bare `/bgrade` show the top 10 by the score + the count; the list job loads 200 sessions (was 150 — the 6-month move
+needs 189). `broker/breakout_v1_entry.py`: docstrings only (F1 reads `vol_bar` from the row, so the 10-day bar reaches it
+through the list).
+
+**Evidence** (every number printed in `scripts/probes/_qm_breakouts_vs_v1_1102/`; no R, P&L or win rate decided any rule):
+- **The scorecard, re-run on the LIVE code** (`tests/test_breakout_v2_stage1.py`, fixture `tests/fixtures/qm_breakout_scorecard/`,
+  his 269 buys' own bars): **263 of 269 on the list, 26 of 26 big winners, 0 mismatches** with the research result row by row;
+  the 6 off are exactly his 6 NOs (YPF 2019-04-17 and MRNA 2021-11-29 on base depth; W 2020-04-07, DOCU 2020-12-04 + 12-15,
+  SQM 2021-09-10 on the run-up). The **16 buys he labelled no / EP-like that the list still keeps** are pinned ON as the
+  known negatives (ANET 2018-03-12, TDOC 2019-10-31, STNE 2019-11-18, ZS 2020-03-24, EXEL 2020-04-20, SHOP 2020-04-20,
+  NVAX 2020-05-12, PLNT 2020-05-26, UAL 2020-05-27, JMIA 2020-11-18, FEAC 2020-11-30, UPST 2021-08-12, FCX 2021-12-07,
+  MU 2021-12-21, FCX 2021-12-27, MDB 2021-12-27). **MTW 2026-10-30 is OFF** — on the run-up alone (30.8% < 32.1%).
+- **His labels behind the rules** (95 name-nights, 48 ok-or-better / 47 no, never sampled on outcomes): the 11 backward-dropped
+  buys, 3 blind sample nights, the 9 EMA21 drops, the 23 sub-70% run-ups, the 29 loose buys (operator_shared_notes 2026-11-02).
+  The order score puts his yes above his no 70% of the time (83 labelled names on the list).
+- **The order inputs equal the research formula** on all 269 series (the 6-month move bit for bit; the two daily-range
+  measures to 1e-12), and the 18 era-B buys read exactly as stage 0 printed them (`stage0/s0.txt`), 11 of 18 firing on the
+  10-day bar.
+- **Knife edges, stated:** rule 6 sits 1.3e-5 daily ranges under TSLA 2022-04-21's value (-0.6334871); rule 4's low end IS
+  LRN 2020-08-05's depth (equality, inclusive). Both are his "ok"/"good" buys and are pinned ON.
+- **Stage 0** (2026-11-02, Opus build + blind recount): the live entry replayed on his buy days buys 154 of his 263 listed
+  buys with the 10-day bar (143 with the 50-day), 17 of 26 big winners; 2017-24 the list runs a median 249 names a night,
+  ~25 breakouts a day.
+
+**Reversion-flag**: **REVERSAL of the 2026-11-02 morning daily-range floor** — that entry (below) read: *"a new gate `adr`
+in `breakout_v1.v1_gates` (after `universe`): ADR20 at D ... must be >= `ADR_MIN` = 0.0426. The value is his own
+reverse-engineered stock pool (... ADR20 >= 4.26% ...). A pinned deal target sits far below it (ARX 0.25%)"*, with the
+evidence *"3,414 of 18,094 placed name-days (19%) fall under the floor; their 919 decisive fills averaged -0.464R"*. **Why it
+was wrong (not just incomplete):** it rested on two things — a SELECT rule fitted to a reverse-engineered stock POOL, and
+the paper book's R — and neither is the target. His ruling the same day is that a rule is judged on whether the list holds
+Qullamaggie's setups, never on returns; and on Qullamaggie's own buys the 4.26% line cuts setups he called GOOD (EW
+2019-08-16 at 2.11%, LMT 2022-04-05 / 04-06 at 2.6%). The problem the floor was shipped for — a pinned deal target like
+BWMN (0.16%) — is caught by the 1% `pinned` gate his "both" named, which STAYS. **Also a REVERSAL of the 2026-10-29
+breakdown check (his "yes" that day) and a REFINEMENT of the 2026-10-28 "v1 FINAL" starting values** (strength 98, the
+30% run-up, higher lows / surf / tightening, the 50-day volume): those were *"starting values, refined on paper fills and his
+grades"*, fitted to 24 setups of one stream (12 of 24 caught), and the breakdown check to one example (ODD 09-08,
+single-case). Wrong as DEFINITIONS: his CODX / PENN drawn charts (11-02) read "higher lows" as lows above a rising line from
+the base's bottom (a shakeout allowed) and "surfing" as holding around the 10/21-day EMAs across the base — not v1's
+last-5-low and SMA-band counts — and on the scorecard the old set left 209 of his 269 buys off (each rule's share: strength 98 175, surf 69, tightening 56, the 4.26% floor 50, higher lows 47, breakdown 7; `01_gate_misses.txt`). His
+ODD 09-08 "no setup" reading is KEPT: the rebuilt ema21 and sma50 rules reject it (`tests/test_breakout_v1_parity.py`).
+The 10-day volume bar is his own ruling ("Yes", 11-02).
+
+**Anticipated effect**: the 17:55 ET list goes from ~9-30 names a night (9 on 11-02 under the 4.26% floor; 22-30 before it)
+to **~150-350** (median ~250 on 2017-24 history; ~310 on 2022-24); each row carries the order score and its two inputs;
+the per-gate fail counts in the `breakout_v1_list_run` audit row carry `base_depth`, `ema21`, `sma50` and no longer
+`higher_lows` / `surf` / `tightening` / `breakdown`; 0 listed names under 2.1% daily range; MTW-like slow run-ups (< 32%)
+absent; the message shows 10 lines + the count. The paper switch `breakout_v1_paper` stays OFF (no order) — the entry
+tick returns on the switch before its per-name loop (verified 11-02), so the longer list costs no broker calls; with the
+switch on, today's entry job could not keep up with ~250 names a minute (stage 2, Sat 11-07, batches it and fills the 5
+slots by the score). Known miss carried: MRNA and INO 2020-08-07 (his "breaking down") still pass.
+
+**EXPECT** (declared before it ships; BASELINE the 11-02 list: 9 names, none under 4.26%): the 17:55 ET list holds ~150-350
+names; each row carries the order score; 0 names under 2.1% daily range; MTW-like slow movers (run-up < 32%) absent.
+UNINTENDED, declared: the list now carries names he will call non-setups (the 16 known negatives' kind) — the score orders
+them, it does not remove them; bare `/bgrade` can no longer show every ungraded name (top 10 + counts).
+**DONE-WHEN:** 5 trading nights of lists with the counts in range and his spot check of one night's top 12 by the order score.
+**WOULD-FAIL-IF:** the list stays ~22-30 a night (the old gates still running), or any name under 2.1% daily range appears.
+
+**Status**: BUILT on branch `breakout-v2-stage1` (not merged, not deployed). Deploy plan (the main session's): the list job
+is market-agent; `db.py` (the DDL + the INSERT) is also on `scripts/exec_loaded_modules.txt`, so the scope is the main
+session's call. The paper switch stays off until his word (stage 3).
 
 ### 2026-11-02 — breakout v1's list gains a DAILY-RANGE FLOOR: ADR20 >= 4.26% (OPERATOR-SIGNED "yes to both", 2026-11-02; paper only — no live order path)
 
@@ -327,6 +446,7 @@ The spec: `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md`. Scorecard = Q
 **Reversion-flag**: NEW.
 
 **Status**: shipped, awaiting field validation — deploy Mon 11-02 12:00-13:00 ET (market-agent, where the 17:55 list job runs; batched with the 11-01 simplify + the M&A sweep fix, then execution). VERIFY-LIVE: the 11-02 17:55 ET list's audit row shows `pinned` and `adr` fail counts > 0 and no listed name with ADR20 < 4.26%. WOULD-FAIL-IF: a listed name with ADR20 < 4.26%, or no `pinned` / `adr` key in the per-gate counts. ⚠ The frozen C replay and template grid pinned `breakout_v1.py`; they reproduce at their freeze commits (`e2c7938d`, `087e0908`), not on HEAD.
+⚠ **REVERSED the same day by the rebuild entry above** (the floor becomes 2.1%; the 1% `pinned` gate stays) — that change is BUILT on a branch, not deployed: until it deploys, production runs THIS entry's 4.26% floor.
 
 ### 2026-11-01 — breakout v1 studies on the frozen 2017-2024 replay: the paper baseline FAIL, the path to his template FAIL in every step, the spot-check of his 28 biggest buys (RESEARCH ONLY — no rule changed; any change is his call)
 

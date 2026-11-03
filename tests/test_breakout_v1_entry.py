@@ -115,7 +115,8 @@ def test_f1_is_volume_so_far_against_the_volume_bar_times_the_curve_at_the_last_
 
 
 def test_the_curve_is_390_monotone_minutes_in_the_unit_of_the_full_day_volume_bar_with_its_source_stated():
-    """F1's units (review fix 2026-10-30): `vol_bar` is 1.2 x the 50-session mean of FULL daily volume
+    """F1's units (review fix 2026-10-30): `vol_bar` is 1.2 x the mean FULL daily volume of the list's window (the last
+    10 sessions since his 2026-11-02 ruling; the 50 sessions before — the unit is the same)
     (`mi_daily_closes`, extended hours + the 16:00 closing cross included), while the live numerator is regular-hours
     minute volume only. So the curve must be regular-hours volume through m / the FULL day's volume: it ends BELOW 1.0
     at 15:59 (the regular-hours share of a day, ~0.8). The first build divided by regular-hours volume and ended at
@@ -130,13 +131,14 @@ def test_the_curve_is_390_monotone_minutes_in_the_unit_of_the_full_day_volume_ba
 
 
 def test_f1_admits_a_day_at_his_1_2x_full_day_volume_running_at_a_normal_intraday_pace():
-    """A name whose day runs at exactly 1.2x its 50-day FULL-day volume, with a typical intraday profile (regular-hours
-    volume through m = 1.2 x the 50-day average x CUM_SHARE[m]), is admitted at every minute; 2% under it is not. With
-    the old regular-hours denominator the same day failed at every minute (it needed ~1.25x more volume)."""
-    adv50 = 1_000_000.0
-    vol_bar = 1.2 * adv50
+    """A name whose day runs at exactly 1.2x its average FULL-day volume (the list's last-10-session average since
+    2026-11-02), with a typical intraday profile (regular-hours volume through m = 1.2 x that average x CUM_SHARE[m]),
+    is admitted at every minute; 2% under it is not. With the old regular-hours denominator the same day failed at
+    every minute (it needed ~1.25x more volume)."""
+    adv = 1_000_000.0
+    vol_bar = 1.2 * adv
     for m in (4, 9, 29, 119, 239, 389):
-        on_pace = 1.2 * adv50 * CUM_SHARE[m]
+        on_pace = 1.2 * adv * CUM_SHARE[m]
         assert be.f1_permits(on_pace, vol_bar, m)[0] is True
         assert be.f1_permits(0.98 * on_pace, vol_bar, m)[0] is False
 

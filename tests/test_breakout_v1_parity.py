@@ -1,18 +1,20 @@
-"""Breakout v1 (B1) — the pure rules reproduce the reference that his 12-of-24 result came from.
+"""Breakout v1 (B1) — the ported arithmetic still matches the reference it came from, on the pieces the 2026-11-02
+rebuild KEPT; and the operator's live examples read as recorded under the rebuilt rules.
 
-THE ACCEPTANCE BAR (docs/design/breakout_v1_build_spec_2026-10-29.md B1): `breakout_v1.v1_gates` + `breakout_triggered`,
-re-scanning every watch night of his 28 dated setups' tickers (2019-01-02..2020-08-10, the reference's span and data
-guard), classify the 24 primary setups exactly as `scripts/probes/_qm_0810_review/v1_check_variant_rs.txt`'s
-"V3 + RSbest" column — HIT 10 | LATE 2 | EARLY 1 | MISS 11, 12 of 24 caught — and the 4 secondary ones as its
-secondary table. A mismatch is a defect in the port, never a reason to move a threshold.
+HISTORY. The first acceptance bar (docs/design/breakout_v1_build_spec_2026-10-29.md B1) was the 2020-08-10 review's
+"V3 + RSbest" classification — HIT 10 | LATE 2 | EARLY 1 | MISS 11, 12 of his 24 dated good setups caught — on the
+v1 gates higher-lows / surf / tightening / breakdown / RS >= 98. His spec sign-off of 2026-11-02
+(`docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md`, "signd off") REMOVED those gates (his CODX / PENN charts
+showed the definitions misread his pattern) and replaced the bar with the SCORECARD — Qullamaggie's own 269 dated
+breakout buys (`tests/test_breakout_v2_stage1.py`). The 12-of-24 classification reproduces at main `456d4ff1` and
+earlier (the commit before the rebuild), not on HEAD — the same note the SSoT carries for the frozen replays.
 
-The fixture (`tests/fixtures/breakout_v1_parity/`, CI has no apollo_data) was built ONCE by
-`scripts/probes/_breakout_v1_build/build_parity_fixture.py` from the reference code itself (v1_check + v1_check_variant
-imported): the bars, the session calendar, the precomputed rs_best per (ticker, D) over the reference's $2/$5M pool,
-and the reference's own per-night gate vector — so a mismatch names the gate and the night, not just a bucket.
-
-WITH the breakdown check (his "yes" 2026-10-29) the measured classification is asserted per row too: it changed NO row
-of the 28 (the builder's report; universe-wide it removed 3 of 486 fire-days, 3.71 -> 3.69 names a night).
+WHAT STAYS PINNED HERE. The fixture (`tests/fixtures/breakout_v1_parity/`, built ONCE by
+`scripts/probes/_breakout_v1_build/build_parity_fixture.py` from the reference code itself) carries the reference's
+own per-night gate vector on every evaluated night of his 23 names; the axes the rebuilt list still computes — the
+universe floors, the prior-move VALUE (read at the reference's 0.30), the level (last-5 high) and the 50-day volume
+(kept as `vol50` telemetry) — must match it night by night. A mismatch is a defect in the port, never a reason to move a
+threshold.
 """
 from __future__ import annotations
 
@@ -32,33 +34,14 @@ from agents.market_intelligence import consolidation_breakout as cb
 
 FIX = Path(__file__).parent / "fixtures" / "breakout_v1_parity"
 
-# v1_check_variant_rs.txt, "V3 + RSbest" column — transcribed by hand from the committed text (not from the fixture)
+# v1_check_variant_rs.txt, "V3 + RSbest" column — transcribed by hand from the committed text (not from the fixture).
+# Kept as the fixture's KEY LIST (the 28 setups it was built for); the classification itself is retired (docstring).
 RS_TXT = {
     "CELH-1": "HIT", "CELH-3": "HIT", "CODX-1": "HIT", "CVNA-1": "MISS", "CWH-2": "MISS", "LVGO-4": "HIT",
     "NVAX": "MISS", "OPK-2": "HIT", "OSTK-2": "LATE+2", "PLUG": "MISS", "SRNE-2": "LATE+1", "PRTS": "HIT",
     "DFS": "MISS", "QUMU": "MISS(8/10)", "ARCT": "HIT", "HL": "HIT", "IBIO-1": "HIT", "OPK-1": "MISS",
     "OPK-3": "MISS", "PENN-2": "HIT", "PENN-3": "EARLY-31", "RUN": "MISS", "TTOO": "MISS(8/10)", "NAIL": "MISS(8/10)",
     "CLSK": "HIT", "INO-3": "MISS", "INO-4": "HIT", "TRVN": "MISS"}
-# MEASURED at the build (2026-10-29) with the breakdown check added: identical on every row.
-WITH_BREAKDOWN = dict(RS_TXT)
-
-
-def _bucket(c: str) -> str:
-    return c.split("(")[0].split("+")[0].split("-")[0]
-
-
-def _classify(n_bars: int, E: int, F: list, Pstar: int) -> str:
-    """v1_check_variant.classify: HIT > LATE+1/+2 > EARLY (after his pole top P, before his day) > MISS;
-    MISS(8/10) when his day is the file's last bar (a LATE fire cannot be observed)."""
-    if E in F:
-        return "HIT"
-    for k in (1, 2):
-        if E + k in F:
-            return f"LATE+{k}"
-    early = [f for f in F if Pstar < f < E]
-    if early:
-        return f"EARLY-{E - max(early)}"
-    return "MISS(8/10)" if E == n_bars - 1 else "MISS"
 
 
 @pytest.fixture(scope="module")
@@ -103,28 +86,6 @@ def scan(fixture):
     return out
 
 
-def _fires(nights, *, breakdown: bool) -> list:
-    out = []
-    for D, _, g, trig in nights:
-        G = g["gates"]
-        shape = all(G[k]["pass"] for k in ("history", "universe", "rs", "prior_move", "higher_lows", "surf",
-                                            "tightening")) and trig["level_pass"] and trig["volume_pass"]
-        if shape and (not breakdown or G["breakdown"]["pass"]):
-            out.append(D + 1)
-    return out
-
-
-def _classifications(fixture, scan, *, breakdown: bool) -> dict:
-    meta, series = fixture
-    res = {}
-    for s in meta["setups"]:
-        bars = series[s["t"]][0]
-        E = next(i for i, d in enumerate(bars.dates) if d.isoformat() == s["e"])
-        Pstar = cb._pole_top(bars.h, bars.c, E - 1 - bv.BASE_MAX, E - 1 - bv.BASE_MIN)
-        res[s["key"]] = _classify(len(bars), E, _fires(scan[s["t"]], breakdown=breakdown), Pstar)
-    return res
-
-
 def test_the_fixture_is_compact_and_complete(fixture):
     meta, series = fixture
     size = sum(p.stat().st_size for p in FIX.iterdir())
@@ -136,62 +97,35 @@ def test_the_fixture_is_compact_and_complete(fixture):
         assert bars.dates[0] >= date(2019, 1, 2) and bars.dates[-1] <= date(2020, 8, 10)
 
 
-def test_every_night_matches_the_reference_gate_vector(fixture, scan):
-    """Gate by gate, on every evaluated night of his 23 names (the reference's V3 axes: universe $2/$5M, prior move,
-    higher lows, surf, tightening, level = last-5 high, volume)."""
-    meta, _ = fixture
+# the reference axes the rebuilt list no longer computes (removed 2026-11-02 on his spec sign-off)
+REMOVED_AXES = frozenset({"higher_lows", "surf", "tightening"})
+
+
+def test_every_night_matches_the_reference_on_the_axes_the_rebuild_kept(fixture, scan):
+    """Axis by axis, on every evaluated night of his 23 names: the universe floors ($2 / $5M), the prior-move VALUE at
+    the reference's own 0.30 line (`cb.PRIOR_MOVE_MIN`; the list's gate now reads 0.3214), the level (last-5 high,
+    strict) and the reference's 50-day volume bar (`vol50` telemetry; the list's bar is now the 10-day)."""
+    meta, series = fixture
     order = meta["ref_gate_order"]
+    assert REMOVED_AXES < set(order)                     # the reference still names them; they are skipped, not lost
+    assert sorted(k for k in order if k not in REMOVED_AXES) == ["level_k5", "prior_move", "universe_loose", "volume"]
     seen, bad = 0, []
     for t, nights in scan.items():
+        bars = series[t][0]
         for D, dd, g, trig in nights:
             G = g["gates"]
-            mine = {"universe_loose": G["universe"]["pass"], "prior_move": G["prior_move"]["pass"],
-                    "higher_lows": G["higher_lows"]["pass"], "surf": G["surf"]["pass"],
-                    "tightening": G["tightening"]["pass"], "level_k5": trig["level_pass"],
-                    "volume": trig["volume_pass"]}
-            bits = "".join("1" if mine[k] else "0" for k in order)
+            mine = {"universe_loose": G["universe"]["pass"],
+                    "prior_move": g["prior_move"] is not None and g["prior_move"] >= cb.PRIOR_MOVE_MIN,
+                    "level_k5": trig["level_pass"],
+                    "volume": float(bars.v[D + 1]) >= bv.VOL_X * g["vol50"]}
             ref = meta["ref_gates"][f"{t}|{dd}"]
             seen += 1
-            if bits != ref:
-                bad.append((t, dd, {k: (ref[i], bits[i]) for i, k in enumerate(order) if ref[i] != bits[i]}))
+            diff = {k: (ref[i], "1" if mine[k] else "0") for i, k in enumerate(order)
+                    if k in mine and ref[i] != ("1" if mine[k] else "0")}
+            if diff:
+                bad.append((t, dd, diff))
     assert seen == len(meta["ref_gates"]) == 2879
     assert not bad, bad[:10]
-
-
-def test_v3_rsbest_reproduces_his_12_of_24(fixture, scan):
-    got = _classifications(fixture, scan, breakdown=False)
-    assert got == RS_TXT
-    prim = [s["key"] for s in fixture[0]["setups"] if s["group"] == "prim"]
-    tally = defaultdict(int)
-    for k in prim:
-        tally[_bucket(got[k])] += 1
-    assert dict(tally) == {"HIT": 10, "LATE": 2, "EARLY": 1, "MISS": 11}
-    assert tally["HIT"] + tally["LATE"] == 12
-
-
-def test_with_the_breakdown_check_the_measured_result(fixture, scan):
-    """v1 as built (the breakdown check in): MEASURED identical to the reference on every one of the 28 rows —
-    HIT 10 | LATE 2 | EARLY 1 | MISS 11, 12 of 24 caught. Pinned per row, not just the count."""
-    got = _classifications(fixture, scan, breakdown=True)
-    assert got == WITH_BREAKDOWN
-    assert got == fixture[0]["expected_with_breakdown"]
-    changed = {k: (RS_TXT[k], got[k]) for k in RS_TXT if got[k] != RS_TXT[k]}
-    assert changed == {}
-
-
-def test_the_12_caught_fires_pass_the_breakdown_check_at_their_own_watch_night(fixture, scan):
-    """v1_breakdown_gate_check.txt: G1 (not below all of the 10/20/50-day) and G2 (no new 10-session low) pass at
-    the watch night of every caught fire — the values printed there, re-read here."""
-    printed = {"CELH-1": ("2020-06-23", 3.38, 2.87), "OSTK-2": ("2020-06-23", 27.38, 18.84),
-               "SRNE-2": ("2020-07-31", 8.55, 6.12), "PENN-2": ("2020-06-23", 31.43, 27.52)}
-    meta, series = fixture
-    t_of = {s["key"]: s["t"] for s in meta["setups"]}
-    for key, (fire_e, close_d, low10) in printed.items():
-        night = next(n for n in scan[t_of[key]] if n[0] + 1 == next(
-            i for i, d in enumerate(series[t_of[key]][0].dates) if d.isoformat() == fire_e))
-        b = night[2]["gates"]["breakdown"]
-        assert b["pass"] is True
-        assert round(b["value"]["close"], 2) == close_d and round(b["value"]["prior_low10"], 2) == low10
 
 
 # ── the operator's two live examples (mi_daily_closes pulls committed under scripts/probes/) ────────────────────
@@ -205,48 +139,49 @@ def _at(bars, iso):
     return next(i for i, d in enumerate(bars.dates) if d.isoformat() == iso)
 
 
-def test_odd_0908_is_rejected_by_the_breakdown_check_only_besides_rs():
-    """His 'there's no setup on Sept 8': close 13.02 under the 10/20/50-day 14.20/13.53/14.94, low 12.99 under the
-    10-session low 13.07 (v1_breakdown_gate_check.txt) — every SHAPE rule passes, the breakdown check fails."""
+def test_odd_0908_is_still_rejected_now_by_the_ema21_and_50_day_rules():
+    """His 'there's no setup on Sept 8' (2026-10-29; the breakdown check he ruled in that day was REMOVED in the
+    2026-11-02 rebuild): the rebuilt rules still reject it — the close 13.02 sits 1.11 daily ranges under the 21-day EMA
+    (the line is -0.6335) and under the 50-day SMA 14.94 — and every other rebuilt rule passes."""
     b = _example("ODD")
     g = bv.v1_gates(b, _at(b, "2026-09-08"), rs_best=99.0)
-    assert g["failed"] == ["breakdown"]
-    v = g["gates"]["breakdown"]["value"]
-    assert (round(v["sma10"], 2), round(v["sma20"], 2), round(v["sma50"], 2)) == (14.20, 13.53, 14.94)
-    assert v["below_all"] is True and v["new_low"] is True and v["low"] == 12.99 and v["prior_low10"] == 13.07
+    assert g["failed"] == ["ema21", "sma50"]
+    assert round(g["gates"]["ema21"]["value"]["vs_ema21_adr"], 2) == -1.11
+    assert round(g["gates"]["sma50"]["value"]["sma50"], 2) == 14.94 and round(g["close"], 2) == 13.03
 
 
-def test_odd_1009_misses_on_volume_as_recorded():
-    """v1_gates_odd_1009.txt: setup at the 10-08 close passes every shape rule and the breakdown check (strength
-    96.6 fails RS); E = 10-09 clears the level 20.68 but volume 767,079 < 1.2x the 50-day 1,460,436."""
+def test_odd_1009_his_better_date_is_listed_now_and_still_misses_on_volume():
+    """v1_gates_odd_1009.txt: setup at the 10-08 close; strength 96.6 failed the old 98 and passes the rebuilt 35, so
+    ODD is ON the rebuilt list that night (prior move +71%). E = 10-09 clears the level 20.68 but its volume 767,079 is
+    under the rebuilt bar too — 1.2x the last 10 sessions = 883,641 (the old 50-day bar was 1,460,436)."""
     b = _example("ODD")
     D = _at(b, "2026-10-08")
     g = bv.v1_gates(b, D, rs_best=96.6)
-    assert g["failed"] == ["rs"]
-    assert round(g["prior_move"], 2) == 0.71 and g["gates"]["surf"]["value"]["best"] == 16
-    assert round(g["gates"]["tightening"]["value"]["ratio"], 2) == 0.80
-    assert round(g["level"], 2) == 20.68 and round(g["vol_bar"]) == 1_460_436
+    assert g["ok"] is True and g["failed"] == []
+    assert round(g["prior_move"], 2) == 0.71
+    assert round(g["level"], 2) == 20.68 and round(g["vol_bar"]) == 883_641 and round(1.2 * g["vol50"]) == 1_460_436
     t = bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)
     assert t["level_pass"] is True and t["volume_pass"] is False and t["fired"] is False
 
 
-def test_zcsh_1028_passes_every_shape_rule_as_recorded():
-    """v1_gates_at_1028.txt: prior +337% (pole 09-23 at 43.91, 25-session base), surf 7, tightening 0.56, level
-    35.13, volume bar 1,922,869 shares; universe $34.63 / $41.3M."""
+def test_zcsh_1028_passes_every_rebuilt_rule():
+    """v1_gates_at_1028.txt: prior +337% (pole 09-23 at 43.91, 25-session base), level 35.13; under the rebuilt rules
+    the base is 5.50 daily ranges deep (band 1.51-8.98), the close 0.64 ranges ABOVE the 21-day EMA and above the
+    50-day; the volume bar is 1.2x the last 10 sessions = 1,556,012 shares (the old 50-day bar 1,922,869)."""
     b = _example("ZCSH")
     g = bv.v1_gates(b, _at(b, "2026-10-28"), rs_best=99.0)
     assert g["ok"] is True and g["failed"] == []
     assert round(g["prior_move"], 2) == 3.37 and g["pole_date"] == "2026-09-23"
     assert g["gates"]["prior_move"]["value"]["base_len"] == 25
-    assert g["gates"]["surf"]["value"]["best"] == 7
-    assert round(g["gates"]["tightening"]["value"]["ratio"], 2) == 0.56
-    assert round(g["level"], 2) == 35.13 and round(g["vol_bar"]) == 1_922_869
+    assert round(g["gates"]["base_depth"]["value"]["depth_adr"], 2) == 5.50
+    assert round(g["gates"]["ema21"]["value"]["vs_ema21_adr"], 2) == 0.64
+    assert round(g["level"], 2) == 35.13 and round(g["vol_bar"]) == 1_556_012 and round(1.2 * g["vol50"]) == 1_922_869
 
 
 def test_history_gate_short_and_holed_series():
     b = _example("ZCSH")
     g = bv.v1_gates(b, bv.DEEP - 1, rs_best=99.0)
-    assert g["ok"] is False and g["failed"] == ["history"] and g["gates"]["surf"]["pass"] is None
+    assert g["ok"] is False and g["failed"] == ["history"] and g["gates"]["sma50"]["pass"] is None
     D = len(b) - 1
     cidx = np.arange(len(b))
     cidx[D - 30:] += 1                                  # one missing session inside the 86-bar window
@@ -258,8 +193,8 @@ def test_rs_gate_reads_none_as_a_fail():
     b = _example("ZCSH")
     g = bv.v1_gates(b, _at(b, "2026-10-28"), rs_best=None)
     assert g["failed"] == ["rs"]
-    assert bv.v1_gates(b, _at(b, "2026-10-28"), rs_best=98.0)["ok"] is True        # >= 98 inclusive
-    assert bv.v1_gates(b, _at(b, "2026-10-28"), rs_best=97.9)["failed"] == ["rs"]
+    assert bv.v1_gates(b, _at(b, "2026-10-28"), rs_best=35.0)["ok"] is True        # >= 35 inclusive (the rebuilt line)
+    assert bv.v1_gates(b, _at(b, "2026-10-28"), rs_best=34.9)["failed"] == ["rs"]
 
 
 def test_breakout_triggered_is_strict_on_level_inclusive_on_volume():

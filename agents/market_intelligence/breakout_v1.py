@@ -1,27 +1,41 @@
 """Breakout v1 — the operator's PAPER rule set for Qullamaggie's breakout, as PURE functions (no I/O).
 
-Owner of the rules: `docs/setups/consolidation_breakout.md` (change log 2026-10-28 "v1 FINAL" + "his PAPER GO", and the
-2026-10-29 rulings: single-asset funds join the universe, the breakdown check is in v1). Build plan:
-`docs/design/breakout_v1_build_spec_2026-10-29.md` (component B1). This module DECIDES nothing on its own — the nightly
-list (`breakout_v1_list.py`) calls it, and the parity test (`tests/test_breakout_v1_parity.py`) pins it to the
-reference arithmetic it was ported from (`scripts/probes/_qm_0810_review/v1_check.py` + `v1_check_variant.py`, variant
-V3 + the best-of-three RS gate: 12 of his 24 dated good setups caught).
+Owner of the rules: `docs/setups/consolidation_breakout.md` (change log 2026-11-02 "breakout v1's list REBUILT from
+Qullamaggie's own trades"; the earlier v1 entries 2026-10-28 / 10-29 are history). The rules are the spec he signed off
+2026-11-02 ("signd off"): `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md` §1-§3, reproduced from the research
+in `scripts/probes/_qm_breakouts_vs_v1_1102/` (14_ / 15_ / 17_ / 18_ the rules, 23_ the 6-month move, 28_ / 32_ the
+last-10-close spread, 33_ the order score, backward/12_final_rules.json the backward thresholds). This module DECIDES
+nothing on its own — the nightly list (`breakout_v1_list.py`) calls it. The acceptance bar is the SCORECARD test
+(`tests/test_breakout_v2_stage1.py` on `tests/fixtures/qm_breakout_scorecard/`): 263 of Qullamaggie's 269 dated
+breakout buys on the list the night before, 26 of 26 big winners, the 6 off exactly his 6 NOs.
 
-THE RULES, at the watch night D (every measure on bars <= D; the breakout day is E = D + 1):
+THE LIST RULES, at the watch night D (every measure on bars <= D; the breakout day is E = D + 1):
+  history    >= 86 consecutive sessions ending D (the data guard, unchanged)
   universe   RAW close(D) >= $2 and the 20-session median dollar volume ending D >= $5M (adjusted close x volume,
              `cb._dollar_vol_median`); the security type is decided upstream (`security_admitted`)
-  rs         rs_best(D) >= 98 — the best of the 21 / 63 / 126-session return percentiles over the night's v1 universe
-             (`cb.cross_section_one_date`; computed by the caller, this module only reads it)
-  prior_move P = the pole top in [D-45, D-10] (`cb._pole_top`, the #592 walk); high(P) / min low[P-40, P] - 1 >= 0.30
-  higher_lows the lowest low of D-4..D is above the base low (the lowest low of P+1..D), strict
-  surf       >= 5 sessions in a row ending at D whose LOW is within 1.0 x ADR20(s) x close(s) of ONE of the 10 / 20 / 50-day
-             (each session's own ADR20 — the mean of (h-l)/c over the 20 sessions ending s — and its own close; inclusive)
-  tightening mean (h-l)/c of D-4..D <= 1.1 x the mean of D-9..D-5 (inclusive)
-  breakdown  (his "yes" 2026-10-29) close(D) NOT below ALL of the 10 / 20 / 50-day AND low(D) NOT below the lowest low of
-             the 10 sessions D-10..D-1
-  NO base anchor (a close above an earlier peak no longer ends the base).
+  pinned     ADR20(D) >= 1% — a deal-pinned stock (his "both", 2026-11-02; inside the 2.1% floor, kept so the reason
+             a deal target is out stays visible in the per-gate counts)
+  adr        ADR20(D) >= 2.1% (the mean of (h-l)/c over the 20 sessions ending D) — his good EW 2.11%, LMT 2.6%
+  rs         rs_best(D) >= 35 — the best of the 21 / 63 / 126-session return percentiles over the night's pool
+             (`cb.cross_section_one_date`; computed by the caller, this module only reads it). The LIST's own
+             constant: the shadow's `cb.RS_BEST_PRIMARY` (98) is not touched
+  prior_move P = the pole top in [D-45, D-10] (`cb._pole_top`, the #592 walk); high(P) / min low[P-40, P] - 1
+             >= 0.3213536987121892 (the backward step; the list's own constant, `cb.PRIOR_MOVE_MIN` stays 0.30)
+  base_depth (high(P) - the base low) / high(P) / ADR20(D) inside [1.511376833908041, 8.979719460898997] daily
+             ranges, inclusive; the base low = the lowest low of P+1..D
+  ema21      (close(D) / EMA21(D) - 1) / ADR20(D) >= -0.6335 — the close no more than 0.6335 daily ranges under the
+             21-day EMA (EMA seeded at the series' first bar, as the research)
+  sma50      close(D) >= the 50-day SMA (the mean of the 50 closes ending D)
+  REMOVED 2026-11-02: higher lows, surf (riding an average), tightening and the breakdown check — his CODX / PENN
+  charts showed those definitions misread his pattern. NO base anchor (unchanged).
 And on E (`breakout_triggered`): high(E) > the LEVEL = the highest high of D-4..D (strict) and volume(E) >= the VOLUME
-BAR = 1.2 x the mean volume of D-49..D (inclusive).
+BAR = 1.2 x the mean volume of D-9..D — the LAST 10 SESSIONS (his ruling 2026-11-02, "Yes"; was the 50-day).
+
+THE ORDER INPUTS (`order_inputs`, per name, bars <= D; the night's ranking is `breakout_v1_list.rank_rows`):
+  runup6m      the biggest gain from a low to a later high inside the 126 sessions to D, the low no more than 63
+               sessions before the high: max over j in [D-125, D] of high(j) / min low[j-63, j] - 1
+  runup6m_adr  runup6m / ADR20(D) — the 6-month run-up in daily ranges (bigger first)
+  spread10_adr (max close / min close - 1) / ADR20(D) over the 10 sessions D-9..D (tighter first)
 
 Fund rule (his ruling 2026-10-29, "yes, single asset makes sense"): common stock (CS) and ADRs (ADRC) are in; of the
 exchange-traded vehicles (ETV) only SINGLE-ASSET funds — one coin, one metal, one commodity, one currency — decided from
@@ -40,40 +54,52 @@ import numpy as np
 
 from agents.market_intelligence import consolidation_breakout as cb
 
-# ── v1 constants (the SSoT's "v1 FINAL" table) ──────────────────────────────────────────────────────────────
-MIN_PRICE = 2.0                      # RAW close at D
-MIN_DOLLAR_VOL = 5_000_000.0         # 20-session median of close x volume ending D
+# ── the list's constants (the signed-off spec §1, 2026-11-02; each cites its source) ─────────────────────────
+MIN_PRICE = 2.0                      # RAW close at D (v1, unchanged)
+MIN_DOLLAR_VOL = 5_000_000.0         # 20-session median of close x volume ending D (v1, unchanged)
 DOLLAR_VOL_WINDOW = cb.DOLLAR_VOL_WINDOW
-RS_MIN = cb.RS_BEST_PRIMARY          # 98.0, best of the 21/63/126-session percentiles
+# rule 2: strength rank >= 35 — Qullamaggie's 269 buys' lowest is 35.3 (was 98, which blocked 175 of the 269). The
+# LIST's own constant; `cb.RS_BEST_PRIMARY` (98) is the forward shadow's and is not touched.
+RS_MIN = 35.0
 RS_HORIZONS = cb.RS_HORIZONS         # (21, 63, 126)
-PRIOR_MOVE_MIN = cb.PRIOR_MOVE_MIN   # 0.30
+# rule 5: the run-up into the pole (v1's prior move) >= 32.1% — backward/12_final_rules.json step 3 (the 4th smallest
+# of the 162 fit buys); it dropped only his NOs (W, DOCU x2, SQM). The list's own; `cb.PRIOR_MOVE_MIN` (0.30) stays.
+PRIOR_MOVE_MIN = 0.3213536987121892
 POLE_LOOKBACK = cb.POLE_LOOKBACK     # 40: pole low = min low over [P-40, P]
 BASE_MIN = cb.BASE_MIN_SESSIONS      # 10
 BASE_MAX = cb.BASE_MAX_SESSIONS      # 45
-RECENT = 5                           # the last-5-session windows (higher lows, tightening, level)
-SURF_SESSIONS = 5
-SURF_ADR_K = 1.0
-SURF_SMAS = (10, 20, 50)
+RECENT = 5                           # the level = the highest high of the last 5 sessions
 ADR_WINDOW = 20
-TIGHT_MAX = 1.1
 VOL_X = 1.2
-VOL_WINDOW = 50
-BREAKDOWN_SMAS = (10, 20, 50)
-BREAKDOWN_LOW_SESSIONS = 10
+# His ruling 2026-11-02 ("Yes"): the volume bar = 1.2 x the mean volume of the LAST 10 SESSIONS (the base), not the
+# 50-day (which carries the run-up's heavy volume): 145 of Qullamaggie's 245 era-A buys fire on his day (was 116),
+# 21/26 big winners (was 15) — `scripts/probes/_qm_breakouts_vs_v1_1102/36_trigger_vol10.txt`.
+VOL_WINDOW = 10
+VOL_WINDOW_50 = 50                   # telemetry only (`vol50` on the row): the old bar's base, never a gate
 DEEP = BASE_MAX + POLE_LOOKBACK      # 85: the deepest look-back from D (the pole-low window of the oldest pole)
 MIN_BARS = DEEP + 1                  # 86 bars ending D, consecutive sessions (the data guard)
 
-# His ruling 2026-11-02 ("yes to both"): a DAILY-RANGE FLOOR. A pinned deal target (BWMN, a $43 cash buyout, traded
-# $42.88-42.91 at the open and was bought on a 7-cent stop; ARX ADR 0.25%; PCRX) is not a breakout; his own reverse-
-# engineered stock pool requires ADR20 >= 4.26% (docs/analysis/cb_reverse_engineer_his_rules_prereg_2026-10-24.md L814).
-# Backtest on the frozen replay (scripts/probes/_breakout_v1_replay_1101/adr_floor_1102/): removes 19% of orders, which
-# averaged -0.46R; the paper book improves in both eras (2017-21 -0.153 -> -0.139R, 2022-24 -0.412 -> -0.340R).
-ADR_MIN = 0.0426                     # ADR20 at D (mean of (h-l)/c over the 20 sessions ending D)
-# His "both" (2026-11-02): ALSO a named PINNED-DEAL rule, ADR20 >= 1% — the three deal targets on the 11-02 list sat
-# at 0.16% / 0.25% / 0.73%, the ordinary low-range names at 2.9-4.1%. It is contained in the 4.26% floor (the list is
-# the same), but it names WHY a name is out: a deal-pinned stock (`pinned`) vs a slow mover (`adr`).
+# rule 3 (2026-11-02, his spec sign-off): a DAILY-RANGE FLOOR ADR20 >= 2.1% — his good EW 2.11% and LMT 2.6% sit under
+# the 11-02 morning 4.26% floor, which is REPLACED (the SSoT's change log says why it was wrong).
+ADR_MIN = 0.021
+# His "both" (2026-11-02): a named PINNED-DEAL rule, ADR20 >= 1% (the deal targets BWMN 0.16% / ARX 0.25% / PCRX
+# 0.73%). Inside the 2.1% floor (the list is the same) — kept so the per-gate counts name WHY a deal target is out.
 PINNED_ADR_MAX = 0.01
-GATES = ("history", "universe", "pinned", "adr", "rs", "prior_move", "higher_lows", "surf", "tightening", "breakdown")
+# rule 4: base depth from the pole top in daily ranges, inclusive band — the backward step (12_final_rules.json
+# step 2, upper end 8.98) with the low end moved to his good LRN 2020-08-05 (1.511; 14_after_his_labels.py).
+BASE_DEPTH_ADR_MIN = 1.511376833908041
+BASE_DEPTH_ADR_MAX = 8.979719460898997
+# rule 6: close no more than 0.6335 daily ranges under the 21-day EMA — loosened to keep the 7 buys he rated ok or
+# better (17_ema21_loosened.py); pinned at TSLA 2022-04-21's value (-0.63349 on the research EMA; -0.63 drops it).
+EMA_SPAN = 21
+EMA21_ADR_MIN = -0.6335
+# rule 7: close at or above the 50-day SMA (18_sma50_rule.py's plain line; drops none of Qullamaggie's buys).
+SMA_SESSIONS = 50
+# The order inputs (spec §2; 23_move126_rule.py, 32_tight_recently.py, 33_rank_topn.py).
+RUNUP6M_SESSIONS = 126               # the highs: the 126 sessions ending D
+RUNUP6M_LOW_SESSIONS = 63            # each high's low: the 64 sessions j-63..j (the low no more than 63 before)
+SPREAD_SESSIONS = 10                 # the last-10-close spread
+GATES = ("history", "universe", "pinned", "adr", "rs", "prior_move", "base_depth", "ema21", "sma50")
 STOCK_SECURITY_TYPES = frozenset({"CS", "ADRC"})
 FUND_SECURITY_TYPE = "ETV"
 
@@ -187,21 +213,18 @@ def adr20_at(rng: np.ndarray, s: int) -> Optional[float]:
     return float(rng[s - ADR_WINDOW + 1:s + 1].mean())
 
 
-def surf_run(bars: "cb.DailyBars", rng: np.ndarray, D: int, n: int) -> int:
-    """Sessions in a row ending at D whose low sits within SURF_ADR_K x ADR20(s) x close(s) of SMA n at s."""
-    run = 0
-    s = D
-    while s >= 0:
-        sma = cb._sma_at(bars, s, n)
-        adr = adr20_at(rng, s)
-        if sma is None or adr is None:
-            break
-        band = SURF_ADR_K * adr * float(bars.c[s])
-        if not (math.isfinite(sma) and math.isfinite(band) and abs(float(bars.l[s]) - sma) <= band):
-            break
-        run += 1
-        s -= 1
-    return run
+def ema_at(c: np.ndarray, D: int, span: int = EMA_SPAN) -> Optional[float]:
+    """The `span`-session EMA of the closes at session D, SEEDED AT THE SERIES' FIRST BAR (ema[0] = c[0], then
+    ema[i] = a x c[i] + (1 - a) x ema[i-1], a = 2 / (span + 1)) — the research's `ema()` (10_feature_table.py), on
+    bars <= D only. With the list job's 200 bars the seed's weight at D is ~1e-8. None on a non-finite close."""
+    x = np.asarray(c[:D + 1], dtype=float)
+    if x.size == 0 or not np.isfinite(x).all():
+        return None
+    a = 2.0 / (span + 1)
+    e = float(x[0])
+    for xi in x[1:]:
+        e = a * float(xi) + (1.0 - a) * e
+    return e
 
 
 def history_ok(D: int, cidx: Optional[Sequence[int]] = None) -> bool:
@@ -223,10 +246,11 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
     fails); `raw_close` = the RAW close at D for the $2 floor (default: the stored close, which IS the raw close on
     the latest night); `cidx` = the calendar index of each bar (None = no hole check).
 
-    Returns {"ok", "failed", "gates": {name: {"pass", "value"}}, "level", "vol_bar", "adr20", "close", "pole_idx",
-    "pole_date", "pole_high", "prior_move", "base_low", "watch_date"}. "ok" = every gate in `GATES` passes — the
-    name goes on tonight's list. Every gate is evaluated (no short-circuit) so a night's per-gate fail counts are
-    complete; only a failed `history` gate leaves the rest unevaluated (None)."""
+    Returns {"ok", "failed", "gates": {name: {"pass", "value"}}, "level", "vol_bar", "vol10", "vol50", "adr20", "close",
+    "pole_idx", "pole_date", "pole_high", "prior_move", "base_low", "watch_date"}. "ok" = every gate in `GATES` passes
+    — the name goes on tonight's list. Every gate is evaluated (no short-circuit) so a night's per-gate fail counts
+    are complete; only a failed `history` gate leaves the rest unevaluated (None). A value that cannot be computed
+    (a non-finite ADR, a zero low) FAILS its gate (the research's "NaN never passes")."""
     n = len(bars)
     if not (0 <= D < n):
         raise IndexError(f"v1_gates: D={D} outside 0..{n - 1}")
@@ -253,57 +277,93 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
     g["universe"] = {"pass": bool(rc >= MIN_PRICE and dv20 >= MIN_DOLLAR_VOL),
                      "value": {"raw_close": _f(rc), "dollar_vol20": _f(dv20)}}
 
-    # pinned + adr — the deal-pinned rule and the daily-range floor (his 2026-11-02 rulings; constants above)
-    adr_d = adr20_at(rng, D)
-    adr_ok = adr_d is not None and math.isfinite(adr_d)
-    g["pinned"] = {"pass": bool(adr_ok and adr_d >= PINNED_ADR_MAX), "value": {"adr20": _f(adr_d), "min": PINNED_ADR_MAX}}
-    g["adr"] = {"pass": bool(adr_d is not None and math.isfinite(adr_d) and adr_d >= ADR_MIN),
-                "value": {"adr20": _f(adr_d), "min": ADR_MIN}}
+    # pinned + adr — the deal-pinned rule (1%) and the daily-range floor (2.1%); constants above
+    adr_d = _f(adr20_at(rng, D))
+    g["pinned"] = {"pass": bool(adr_d is not None and adr_d >= PINNED_ADR_MAX),
+                   "value": {"adr20": adr_d, "min": PINNED_ADR_MAX}}
+    g["adr"] = {"pass": bool(adr_d is not None and adr_d >= ADR_MIN), "value": {"adr20": adr_d, "min": ADR_MIN}}
+    adr_pos = adr_d is not None and adr_d > 0
 
-    # rs
-    g["rs"] = {"pass": bool(rs_best is not None and rs_best >= RS_MIN), "value": {"rs_best": _f(rs_best)}}
+    # rs (the list's own 35)
+    g["rs"] = {"pass": bool(rs_best is not None and rs_best >= RS_MIN), "value": {"rs_best": _f(rs_best), "min": RS_MIN}}
 
-    # prior move + higher lows (v1_check.structure, the module's pole top)
+    # prior move (the run-up into the pole, the module's pole top) and the base low
     P = cb._pole_top(h, c, D - BASE_MAX, D - BASE_MIN)
     pole_high = float(h[P])
     pole_low = float(l[P - POLE_LOOKBACK:P + 1].min())
     prior = pole_high / pole_low - 1.0 if pole_low > 0 else -1.0
     base_low = float(l[P + 1:D + 1].min())
-    recent_low = float(l[D - RECENT + 1:D + 1].min())
-    g["prior_move"] = {"pass": bool(prior >= PRIOR_MOVE_MIN),
+    g["prior_move"] = {"pass": bool(math.isfinite(prior) and prior >= PRIOR_MOVE_MIN),
                        "value": {"prior_move": _f(prior), "pole_high": pole_high, "pole_low": pole_low,
-                                 "pole_date": str(bars.dates[P]), "base_len": D - P}}
-    g["higher_lows"] = {"pass": bool(recent_low > base_low), "value": {"recent_low": recent_low, "base_low": base_low}}
+                                 "pole_date": str(bars.dates[P]), "base_len": D - P, "min": PRIOR_MOVE_MIN}}
 
-    # surf (one of the 10/20/50-day, each session's own ADR20 and close)
-    runs = {f"run{k}": surf_run(bars, rng, D, k) for k in SURF_SMAS}
-    best = max(runs.values())
-    g["surf"] = {"pass": bool(best >= SURF_SESSIONS), "value": dict(runs, best=best)}
+    # base depth from the pole top, in daily ranges (inclusive band)
+    depth = _f((pole_high - base_low) / pole_high / adr_d) if (adr_pos and pole_high > 0) else None
+    g["base_depth"] = {"pass": bool(depth is not None and BASE_DEPTH_ADR_MIN <= depth <= BASE_DEPTH_ADR_MAX),
+                       "value": {"depth_adr": depth, "pole_high": pole_high, "base_low": base_low,
+                                 "min": BASE_DEPTH_ADR_MIN, "max": BASE_DEPTH_ADR_MAX}}
 
-    # tightening
-    r_recent = float(rng[D - RECENT + 1:D + 1].mean())
-    r_early = float(rng[D - 2 * RECENT + 1:D - RECENT + 1].mean())
-    with np.errstate(invalid="ignore", divide="ignore"):
-        tight = float(np.float64(r_recent) / np.float64(r_early))
-    g["tightening"] = {"pass": bool(math.isfinite(tight) and tight <= TIGHT_MAX),
-                       "value": {"ratio": _f(tight), "range_recent5": _f(r_recent), "range_early5": _f(r_early)}}
-
-    # breakdown (his ODD reading, 2026-10-29)
-    smas = {f"sma{k}": cb._sma_at(bars, D, k) for k in BREAKDOWN_SMAS}
+    # the close vs the 21-day EMA, in daily ranges
     close_d = float(c[D])
-    below_all = all(s is not None and close_d < s for s in smas.values())
-    prior_low10 = float(l[D - BREAKDOWN_LOW_SESSIONS:D].min())
-    new_low = bool(float(l[D]) < prior_low10)
-    g["breakdown"] = {"pass": bool(not below_all and not new_low),
-                      "value": dict({k: _f(s) for k, s in smas.items()}, close=close_d, below_all=below_all,
-                                    low=float(l[D]), prior_low10=prior_low10, new_low=new_low)}
+    e21 = ema_at(c, D, EMA_SPAN)
+    vs21 = _f((close_d / e21 - 1.0) / adr_d) if (adr_pos and e21 is not None and e21 > 0) else None
+    g["ema21"] = {"pass": bool(vs21 is not None and vs21 >= EMA21_ADR_MIN),
+                  "value": {"ema21": _f(e21), "close": _f(close_d), "vs_ema21_adr": vs21, "min": EMA21_ADR_MIN}}
 
-    v50 = float(v[D - VOL_WINDOW + 1:D + 1].mean())
-    out.update(level=float(h[D - RECENT + 1:D + 1].max()), vol_bar=VOL_X * v50, vol50=v50,
-               adr20=_f(adr20_at(rng, D)), pole_idx=int(P), pole_date=str(bars.dates[P]), pole_high=pole_high,
+    # the close at or above the 50-day SMA
+    s50 = cb._sma_at(bars, D, SMA_SESSIONS)
+    g["sma50"] = {"pass": bool(s50 is not None and math.isfinite(s50) and close_d >= s50),
+                  "value": {"sma50": _f(s50), "close": _f(close_d)}}
+
+    v10 = float(v[D - VOL_WINDOW + 1:D + 1].mean())
+    v50 = float(v[D - VOL_WINDOW_50 + 1:D + 1].mean())
+    out.update(level=float(h[D - RECENT + 1:D + 1].max()), vol_bar=VOL_X * v10, vol10=v10, vol50=v50,
+               adr20=adr_d, pole_idx=int(P), pole_date=str(bars.dates[P]), pole_high=pole_high,
                prior_move=_f(prior), base_low=base_low)
     out["failed"] = [k for k in GATES if not g[k]["pass"]]
     out["ok"] = not out["failed"]
+    return out
+
+
+def runup6m_at(bars: "cb.DailyBars", D: int) -> Optional[float]:
+    """The 6-month move at D (spec §2; `23_move126_rule.py` / `stage0/s0_lib.bar_features`): the biggest gain from a
+    low to a LATER-or-same high inside the 126 sessions ending D, the low no more than 63 sessions before the high —
+    max over j in [D-125, D] of high(j) / min(low[j-63 .. j]) - 1, each window clipped at the first bar (the
+    research's rolling(..., min_periods=1)). Bars <= D only. None when no window has a finite positive low."""
+    h = np.asarray(bars.h[:D + 1], dtype=float)
+    lo = np.asarray(bars.l[:D + 1], dtype=float)
+    best: Optional[float] = None
+    for j in range(max(0, D - RUNUP6M_SESSIONS + 1), D + 1):
+        w = lo[max(0, j - RUNUP6M_LOW_SESSIONS):j + 1]
+        w = w[np.isfinite(w)]
+        if not w.size or not math.isfinite(h[j]):
+            continue
+        m_low = float(w.min())
+        if m_low <= 0:
+            continue
+        m = float(h[j]) / m_low - 1.0
+        if best is None or m > best:
+            best = m
+    return best
+
+
+def order_inputs(bars: "cb.DailyBars", D: int, adr20: Optional[float]) -> dict:
+    """The two per-name inputs of the night's ORDER SCORE (spec §2), bars <= D, `adr20` = ADR20 at D (`v1_gates`):
+    {"runup6m": the 6-month move (a fraction), "runup6m_adr": it in daily ranges (bigger ranks first),
+     "spread10_adr": (max close / min close - 1) / ADR20 over the 10 sessions D-9..D (tighter ranks first)}.
+    A value that cannot be computed is None (the name is ranked after every scored name). The ranking itself is
+    over the night's whole passing list: `breakout_v1_list.rank_rows`."""
+    adr = _f(adr20)
+    mv = runup6m_at(bars, D)
+    out = {"runup6m": _f(mv), "runup6m_adr": None, "spread10_adr": None}
+    if adr is None or adr <= 0:
+        return out
+    if mv is not None:
+        out["runup6m_adr"] = _f(mv / adr)
+    if D - SPREAD_SESSIONS + 1 >= 0:
+        cw = np.asarray(bars.c[D - SPREAD_SESSIONS + 1:D + 1], dtype=float)
+        if np.isfinite(cw).all() and float(cw.min()) > 0:
+            out["spread10_adr"] = _f((float(cw.max()) / float(cw.min()) - 1.0) / adr)
     return out
 
 
@@ -316,7 +376,7 @@ def _bar_get(bar: Mapping, *keys):
 
 def breakout_triggered(bar_E: Mapping, gates: dict) -> dict:
     """The breakout on E = D + 1 for the night-D result `gates` (`v1_gates`): high(E) > level (strict) and
-    volume(E) >= the volume bar (1.2x the 50-session mean to D, inclusive). `bar_E` carries the session's high and
+    volume(E) >= the volume bar (1.2x the mean volume of the last 10 sessions to D, inclusive; his ruling 2026-11-02). `bar_E` carries the session's high and
     volume ("h"/"v" or "high"/"volume"). `fired` = the setup passed at D AND both hold on E. The caller owns that E
     is the NEXT session after D (a hole between them is not a breakout of that list)."""
     hi = _bar_get(bar_E, "h", "high")

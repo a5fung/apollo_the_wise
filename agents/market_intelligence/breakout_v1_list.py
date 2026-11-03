@@ -12,10 +12,13 @@ The rules are `breakout_v1.py` (PURE); this module is the plumbing around them f
      rs_best. His ruling 2026-10-29 ("Ok a"): the pool the approved 12-of-24 check ranked against; the TYPE rule decides
      only who may be LISTED (a pool-only member is ranked, never given the gates);
   4. `breakout_v1.v1_gates` per member with the 86-session consecutive history; every name passing every gate is a row
-     of `mi_breakout_v1_list` (the night's rows replaced whole — idempotent), ranked by rs_best;
+     of `mi_breakout_v1_list` (the night's rows replaced whole — idempotent), carrying its two order inputs
+     (`breakout_v1.order_inputs`) and ranked by the ORDER SCORE over the night's whole list (`rank_rows`; the rebuilt
+     rules his spec sign-off of 2026-11-02 named, `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md` §2);
   5. ONE audit row `breakout_v1_list_run` (universe size, funds kept / excluded and why, names passing, per-gate fail
      counts, the message's fate);
-  6. ONE paper-prefixed Telegram message naming tonight's list (ticker, level, rs_best) — ONLY when the list is
+  6. ONE paper-prefixed Telegram message: tonight's TOP 10 by the order score (ticker, level, score, rs_best) and
+     the night's total count (the rebuilt list holds ~250 names a night — never 250 lines) — ONLY when the list is
      non-empty (an alert that says no action is noise). A failed send is logged and counted in the audit row.
 
 THE LINE. A LIST and a GRADE only: this module writes `mi_breakout_v1_list` and `mi_audit_log` (through
@@ -24,7 +27,8 @@ order. No entry / sizing / order / safeguard path reads the list in phase 1.
 
 Fails OPEN under `BUDGET_S` (a `breakout_v1_list_error` audit row, no raise; the next night rebuilds its own list);
 a crash is re-raised AFTER the audit row so `audit_wrap`'s `notify_job_failure` is the one page.
-Owner doc: docs/setups/consolidation_breakout.md (2026-10-29 "breakout v1 PHASE 1 BUILT").
+Owner doc: docs/setups/consolidation_breakout.md (2026-10-29 "breakout v1 PHASE 1 BUILT"; 2026-11-02 the rebuilt
+rules + the order score).
 """
 from __future__ import annotations
 
@@ -54,12 +58,15 @@ JOB_ID = "breakout_v1_list"
 AUDIT_RUN_EVENT = "breakout_v1_list_run"
 AUDIT_ERROR_EVENT = "breakout_v1_list_error"
 BUDGET_S = 600                        # fail open past this (the shadow's pattern; a night is ~1 minute of work)
-HISTORY_SESSIONS = 150                # bars loaded per name: >= 127 (the 126-session return) + margin
+# Bars loaded per name: the 6-month move reads 126 highs, each against the lowest low of the 64 sessions up to it, so
+# 189 sessions are needed for the research's full look-back (`breakout_v1.runup6m_at`; 150 shortened it), + margin.
+# The EMA21 is seeded at the first loaded bar (its weight at D after 200 bars is ~1e-8).
+HISTORY_SESSIONS = 200
 CALENDAR_SESSIONS = 400
 PREFILTER_DOLLAR_VOL = 0.7 * bv.MIN_DOLLAR_VOL
 SCAN_CHUNK = 250                      # tickers per to_thread slice: cancellation lands between slices
 FUND_EXCLUDED_LIST_MAX = 60           # fund tickers named in the audit row, per reason
-MESSAGE_MAX_NAMES = 40
+MESSAGE_TOP_N = 10                    # the nightly message and bare /bgrade show the top 10 by the order score
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -135,36 +142,78 @@ def evaluate_members(members: list, rs_best: list, today: date) -> tuple:
             fails[k] += 1
         if not g["ok"]:
             continue
+        oi = bv.order_inputs(bars, D, g["adr20"])        # the two order-score inputs, bars <= D (passing names only)
         gates = {k: v for k, v in g.items() if k != "pole_idx"}
+        gates["order_inputs"] = oi
         rows.append({"scan_date": today, "ticker": m["ticker"], "level": float(g["level"]),
                      "vol_bar": float(g["vol_bar"]), "adr20": g["adr20"], "rs_best": float(rb), "close": g["close"],
-                     "security_type": m["security_type"], "gates": _json_safe(gates)})
+                     "security_type": m["security_type"], "runup6m_adr": oi["runup6m_adr"],
+                     "spread10_adr": oi["spread10_adr"], "gates": _json_safe(gates)})
     return rows, fails, n_eval
 
 
+def pct_rank(values: list, *, ascending: bool = True) -> list:
+    """pandas `Series.rank(pct=True)` (method 'average') over the non-None values: rank 1..n (tied values share the
+    mean of their positions) / n, where n = the count of non-None values; None stays None. `ascending=False` gives
+    the LARGEST value rank 1, so its pct is 1/n and the smallest value's is 1.0 — the research's
+    `rank(pct=True, ascending=False)` (33_rank_topn.py)."""
+    idx = [i for i, x in enumerate(values) if x is not None]
+    n = len(idx)
+    out: list = [None] * len(values)
+    if not n:
+        return out
+    order = sorted(idx, key=lambda i: values[i], reverse=not ascending)
+    k = 0
+    while k < n:
+        j = k
+        while j + 1 < n and values[order[j + 1]] == values[order[k]]:
+            j += 1
+        avg = float(sum(range(k + 1, j + 2))) / (j - k + 1)        # the 1-based positions k+1..j+1, averaged
+        for t in range(k, j + 1):
+            out[order[t]] = avg / n
+        k = j + 1
+    return out
+
+
 def rank_rows(rows: list) -> list:
-    """list_rank 1 = the highest rs_best (ties: ticker order), in place; returns the ranked list."""
-    rows.sort(key=lambda r: (-r["rs_best"], r["ticker"]))
+    """The night's ORDER (spec §2, `33_rank_topn.py`), in place over the night's WHOLE passing list; returns it ranked.
+    p_run = the within-night percentile of `runup6m_adr` (bigger first), p_tight = of `spread10_adr` (tighter first),
+    order_score = (p_run + p_tight) / 2; list_rank 1 = the highest score, ties by ticker (the research's
+    method='first' on ticker-sorted rows). A row missing an input has no score and ranks after every scored row (by
+    ticker). The score ORDERS the list; it never removes a name (his spec: as a cut it would lose most of
+    Qullamaggie's buys). It is comparable only inside one night."""
+    p_run = pct_rank([r.get("runup6m_adr") for r in rows], ascending=True)
+    p_tight = pct_rank([r.get("spread10_adr") for r in rows], ascending=False)
+    for r, a, b in zip(rows, p_run, p_tight):
+        r["order_score"] = (a + b) / 2 if (a is not None and b is not None) else None
+    rows.sort(key=lambda r: (r["order_score"] is None, -(r["order_score"] or 0.0), r["ticker"]))
     for k, r in enumerate(rows, 1):
         r["list_rank"] = k
     return rows
 
 
+def _score_str(x) -> str:
+    return "-" if x is None else f"{float(x):.2f}"
+
+
 def format_list_message(today: date, rows: list) -> Optional[str]:
-    """The ONE Telegram message for a night's list, paper-prefixed (the paper chat); None for an empty list."""
+    """The ONE Telegram message for a night's list, paper-prefixed (the paper chat); None for an empty list. Shows the
+    TOP `MESSAGE_TOP_N` by the order score (`rows` ranked by `rank_rows`) and the night's total count — the rebuilt
+    list holds ~250 names a night, so the full list lives in `mi_breakout_v1_list`, never in the chat."""
     if not rows:
         return None
     from agents.market_intelligence.constants import mode_prefix
-    shown = rows[:MESSAGE_MAX_NAMES]
-    lines = [f"{'TICKER':6s} {'LEVEL':>10s} {'RS':>5s}"]
+    shown = sorted(rows, key=lambda r: r.get("list_rank") or 10 ** 9)[:MESSAGE_TOP_N]
+    lines = [f"{'#':>3s} {'TICKER':6s} {'LEVEL':>10s} {'SCORE':>5s} {'RS':>5s}"]
     for r in shown:
-        lines.append(f"{r['ticker']:6s} {r['level']:>10.2f} {r['rs_best']:>5.1f}")
-    more = f"\n…and {len(rows) - len(shown)} more (mi_breakout_v1_list)" if len(rows) > len(shown) else ""
+        lines.append(f"{r.get('list_rank') or 0:>3d} {r['ticker']:6s} {r['level']:>10.2f} "
+                     f"{_score_str(r.get('order_score')):>5s} {r['rs_best']:>5.1f}")
     n = len(rows)
+    more = f"\n…and {n - len(shown)} more (mi_breakout_v1_list)" if n > len(shown) else ""
     return (f"{mode_prefix('paper')}*Breakout v1 — watch list for the next session* ({today.isoformat()}, "
-            f"{n} name{'s' if n != 1 else ''})\n"
-            f"A name breaks out when it trades above its level on at least 1.2× its 50-day volume. "
-            f"No orders are placed (list and grades only).\n"
+            f"{n} name{'s' if n != 1 else ''}; the top {len(shown)} by the order score)\n"
+            f"A name breaks out when it trades above its level on at least 1.2× its average volume of the last "
+            f"10 sessions. No orders are placed (list and grades only).\n"
             "```\n" + "\n".join(lines) + "\n```" + more +
             "\nGrade one: `/bgrade TICKER A+|A|B|C|skip [note]` · `/bgrade` lists the ungraded")
 
@@ -294,7 +343,8 @@ UNGRADED_NIGHTS = 5
 BGRADE_USAGE = ("Usage: `/bgrade TICKER A+|A|B|C|skip [note]`\n"
                 "Grades a name on the breakout v1 list (the latest night that listed it). "
                 "A grade is a label — it never blocks or places anything.\n"
-                "Bare `/bgrade` lists the ungraded names of the last 5 list nights.")
+                "Bare `/bgrade` shows the top 10 ungraded names by the order score (newest list night first) "
+                "and how many of the last 5 list nights' names are ungraded.")
 
 
 def parse_bgrade(text: str) -> Optional[dict]:
@@ -316,13 +366,26 @@ def parse_bgrade(text: str) -> Optional[dict]:
 
 
 def format_ungraded(rows: list) -> str:
-    """The bare `/bgrade` reply: ungraded list names of the last 5 list nights, newest night first."""
+    """The bare `/bgrade` reply. `rows` = every ungraded list name of the last 5 list nights, newest night first and
+    by list_rank inside a night (`db.bv1_ungraded`). At ~250 names a night that is ~1,250 rows, so the reply shows
+    the TOP `MESSAGE_TOP_N`: the newest night's best-scored ungraded names (spilling to the night before when the
+    newest has fewer than 10 left) plus the total ungraded count and the count per night. The order score compares
+    names only within one night, so the newest night is read first."""
     if not rows:
         return f"_No ungraded breakout v1 names in the last {UNGRADED_NIGHTS} list nights._"
-    lines = [f"{'NIGHT':10s} {'TICKER':6s} {'LEVEL':>10s} {'RS':>5s}"]
+
+    def _d(r):
+        return r["scan_date"].isoformat() if hasattr(r["scan_date"], "isoformat") else str(r["scan_date"])
+    per_night: dict = {}
     for r in rows:
-        d = r["scan_date"].isoformat() if hasattr(r["scan_date"], "isoformat") else str(r["scan_date"])
-        lines.append(f"{d:10s} {r['ticker']:6s} {float(r['level']):>10.2f} {float(r['rs_best']):>5.1f}")
-    return (f"*Breakout v1 — {len(rows)} ungraded name{'s' if len(rows) != 1 else ''}* "
-            f"(last {UNGRADED_NIGHTS} list nights)\n```\n" + "\n".join(lines) + "\n```\n"
+        per_night[_d(r)] = per_night.get(_d(r), 0) + 1
+    shown = rows[:MESSAGE_TOP_N]
+    lines = [f"{'NIGHT':10s} {'#':>3s} {'TICKER':6s} {'LEVEL':>10s} {'SCORE':>5s} {'RS':>5s}"]
+    for r in shown:
+        lines.append(f"{_d(r):10s} {int(r.get('list_rank') or 0):>3d} {r['ticker']:6s} {float(r['level']):>10.2f} "
+                     f"{_score_str(r.get('order_score')):>5s} {float(r['rs_best']):>5.1f}")
+    n = len(rows)
+    nights = ", ".join(f"{d} {k}" for d, k in sorted(per_night.items(), reverse=True))
+    return (f"*Breakout v1 — {n} ungraded name{'s' if n != 1 else ''}* (last {UNGRADED_NIGHTS} list nights: "
+            f"{nights}); the top {len(shown)} by the order score:\n```\n" + "\n".join(lines) + "\n```\n"
             "`/bgrade TICKER A+|A|B|C|skip [note]`")

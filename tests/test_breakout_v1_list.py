@@ -1,7 +1,7 @@
 """Breakout v1 PAPER phase 1 — the nightly list job (B2), its one Telegram message and /bgrade (B3).
 
 The job runs against in-memory fakes of its five DB reads/writes and the sender (no database, no network). The market:
-the operator's ZCSH bars (stored mi_daily_closes pull, 2026-03-02..2026-10-28; v1 passes every shape rule at 10-28),
+the operator's ZCSH bars (stored mi_daily_closes pull, 2026-03-02..2026-10-28; it passes every rebuilt rule at 10-28),
 two copies of them wearing a leveraged fund's name and NO name, plus 60 common-stock fillers whose returns sit below
 ZCSH's so ZCSH tops the night's RS cross-section. THE LINE is pinned at the end: no broker import beyond the pure
 exit math `cb` already carries, nothing loaded by the execution image, no trade table in the module's SQL.
@@ -110,10 +110,16 @@ def test_the_night_lists_zcsh_only_and_keeps_out_the_leveraged_and_unnamed_funds
     rows = f.lists[TODAY]
     assert [r["ticker"] for r in rows] == ["ZCSH"]
     r = rows[0]
-    assert r["list_rank"] == 1 and r["security_type"] == "ETV" and r["rs_best"] >= 98
-    assert round(r["level"], 2) == 35.13 and round(r["vol_bar"]) == 1_922_869
+    assert r["list_rank"] == 1 and r["security_type"] == "ETV" and r["rs_best"] >= bv.RS_MIN
+    assert round(r["level"], 2) == 35.13 and round(r["vol_bar"]) == 1_556_012        # 1.2x the last 10 sessions
+    # the order score: alone on the night, ZCSH is the top of both within-night ranks
+    assert r["order_score"] == 1.0
+    assert round(r["runup6m_adr"], 2) == 70.67 and round(r["spread10_adr"], 2) == 3.46
     g = r["gates"]
     assert g["ok"] is True and g["failed"] == [] and all(v["pass"] for v in g["gates"].values())
+    assert set(g["gates"]) == set(bv.GATES)
+    assert g["order_inputs"] == {"runup6m": pytest.approx(4.4542484), "runup6m_adr": r["runup6m_adr"],
+                                 "spread10_adr": r["spread10_adr"]}
     json.dumps(g, allow_nan=False)
     assert out["funds_kept"] == 1 and out["funds_excluded"] == 2 and out["funds_excluded_no_name"] == 1
     assert out["fund_excluded_tickers"] == {"fund_leveraged_or_inverse": ["ZLEV"], "fund_no_name": ["ZNON"]}
@@ -212,11 +218,18 @@ def test_the_rs_ranking_pool_is_every_security_at_the_floors_and_only_admitted_t
     assert {r["ticker"] for r in rows}.isdisjoint({"ETFX", "LEVF"}) and n_eval <= len(listable)
 
 
-def test_format_list_message_caps_and_is_none_when_empty():
+def test_format_list_message_shows_the_top_10_by_score_and_the_count_and_is_none_when_empty():
+    """The rebuilt list holds ~250 names a night: the message carries the top 10 by the order score + the count,
+    never 250 lines, in one monospace block (no pipe table)."""
     assert bl.format_list_message(TODAY, []) is None
-    rows = bl.rank_rows([{"ticker": f"T{k:02d}"[:5], "level": 10.0 + k, "rs_best": 98.0 + k / 100} for k in range(45)])
+    rows = bl.rank_rows([{"ticker": f"T{k:03d}", "level": 10.0 + k, "rs_best": 50.0,
+                          "runup6m_adr": float(k), "spread10_adr": 1.0} for k in range(250)])
     msg = bl.format_list_message(TODAY, rows)
-    assert "45 names" in msg and "and 5 more" in msg and rows[0]["rs_best"] == max(r["rs_best"] for r in rows)
+    assert "250 names" in msg and "the top 10 by the order score" in msg and "and 240 more" in msg
+    block = msg.split("```")[1]
+    shown = [ln.split()[1] for ln in block.strip().splitlines()[1:]]
+    assert shown == [f"T{k:03d}" for k in range(249, 239, -1)]          # the biggest run-up first (spread tied)
+    assert "|" not in block and "last 10 sessions" in msg and "50-day" not in msg      # no pipe table
 
 
 # ── /bgrade ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -266,12 +279,30 @@ def test_bare_bgrade_lists_the_ungraded(monkeypatch):
 
     async def ungraded(n):
         asked["n"] = n
-        return [{"scan_date": date(2026, 10, 28), "ticker": "ZCSH", "level": 35.13, "rs_best": 99.1, "list_rank": 1}]
+        return [{"scan_date": date(2026, 10, 28), "ticker": "ZCSH", "level": 35.13, "rs_best": 99.1, "list_rank": 1,
+                 "order_score": 0.97}]
     monkeypatch.setattr(db, "bv1_ungraded", ungraded)
     req = MagicMock()
     req.task = "/bgrade"
     out = asyncio.run(MarketIntelligenceAgent._handle_bgrade_command(_fake_agent(), req))
-    assert asked["n"] == 5 and "ZCSH" in out and "1 ungraded name" in out
+    assert asked["n"] == 5 and "ZCSH" in out and "1 ungraded name" in out and "0.97" in out
+
+
+def test_bare_bgrade_at_250_a_night_shows_the_newest_nights_top_10_and_the_counts():
+    """~250 names a night x 5 nights: the reply is the top 10 (the newest night by list_rank, i.e. the order score)
+    plus the total and per-night ungraded counts — never ~1,250 lines."""
+    rows = []
+    for night, n in ((date(2026, 11, 4), 248), (date(2026, 11, 3), 251)):
+        rows += [{"scan_date": night, "ticker": f"N{k:03d}", "level": 10.0, "rs_best": 60.0, "list_rank": k + 1,
+                  "order_score": 1.0 - k / 1000} for k in range(n)]
+    out = bl.format_ungraded(rows)
+    assert "499 ungraded names" in out and "2026-11-04 248" in out and "2026-11-03 251" in out
+    block = out.split("```")[1].strip().splitlines()
+    assert len(block) == 1 + 10 and all(ln.startswith("2026-11-04") for ln in block[1:])
+    assert [ln.split()[2] for ln in block[1:]] == [f"N{k:03d}" for k in range(10)]
+    old = [{"scan_date": date(2026, 10, 30), "ticker": "MTW", "level": 23.875, "rs_best": 98.6, "list_rank": 1,
+            "order_score": None}]                                  # a pre-change row: no score, shown as '-'
+    assert " - " in bl.format_ungraded(old)
 
 
 def test_bgrade_is_in_all_three_places():
@@ -348,4 +379,9 @@ def test_the_ddl_is_idempotent_and_writes_only_its_own_tables():
     assert "ADD COLUMN IF NOT EXISTS name TEXT" in ddl
     assert not re.search(r"\bDROP\b|\bTRUNCATE\b", ddl)
     assert "mi_breakout_v1_list" in db.BV1_LIST_INSERT_SQL and "$9::jsonb" in db.BV1_LIST_INSERT_SQL
+    for col in ("order_score", "runup6m_adr", "spread10_adr"):         # the 2026-11-02 order score + its two inputs
+        assert f"ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS {col} DOUBLE PRECISION" in ddl
+        assert col in db.BV1_LIST_COLS and col in db.BV1_LIST_INSERT_SQL
+    assert db.BV1_LIST_COLS.index("gates") == 8                         # $9 stays the jsonb param
+    assert "order_score" in db.BV1_UNGRADED_SQL
     assert "COALESCE(EXCLUDED.name, mi_security_types.name)" in db.SECURITY_TYPES_UPSERT_SQL

@@ -19900,13 +19900,17 @@ _BREAKOUT_V1_DDL = """
         scan_date   DATE NOT NULL,                      -- the watch night D (plain DATE: liveness is keyed on it)
         ticker      TEXT NOT NULL,
         level       DOUBLE PRECISION NOT NULL,          -- the highest high of the last 5 sessions ending D (break: high > it)
-        vol_bar     DOUBLE PRECISION NOT NULL,          -- 1.2 x the mean volume of the 50 sessions ending D (shares)
+        vol_bar     DOUBLE PRECISION NOT NULL,          -- 1.2 x the mean volume of the 10 sessions ending D (shares;
+                                                        -- the 50 sessions before his 2026-11-02 ruling)
         adr20       DOUBLE PRECISION,                   -- ADR20 at D as a FRACTION of the close
         rs_best     DOUBLE PRECISION NOT NULL,          -- best of the 21/63/126-session percentiles over the night's v1 universe
         close       DOUBLE PRECISION,
         security_type TEXT,                             -- CS / ADRC / ETV (a kept single-asset fund) / '' (unknown)
         gates       JSONB NOT NULL,                     -- breakout_v1.v1_gates: every gate's pass + value
-        list_rank   INT NOT NULL,                       -- 1 = the highest rs_best that night
+        list_rank   INT NOT NULL,                       -- 1 = the highest order_score that night (rs_best before 2026-11-02)
+        order_score DOUBLE PRECISION,                   -- the night's order score (2026-11-02; see the ALTERs below)
+        runup6m_adr DOUBLE PRECISION,                   -- its input: the 6-month run-up in daily ranges
+        spread10_adr DOUBLE PRECISION,                  -- its input: the last-10-close spread in daily ranges
         created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         PRIMARY KEY (scan_date, ticker)
     );
@@ -19921,10 +19925,17 @@ _BREAKOUT_V1_DDL = """
     );
     -- Polygon's reference `name`, persisted by the security-type refresh: the single-asset fund rule reads it.
     ALTER TABLE mi_security_types ADD COLUMN IF NOT EXISTS name TEXT;
+    -- The rebuilt list's ORDER (his spec sign-off 2026-11-02, docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md §2):
+    -- order_score = the mean of two WITHIN-NIGHT percentiles (comparable only inside one scan_date) of the 6-month
+    -- run-up in daily ranges (bigger first) and the last-10-close spread in daily ranges (tighter first). NULL on
+    -- the rows written before the change (and on a name missing an input, ranked last).
+    ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS order_score DOUBLE PRECISION;
+    ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS runup6m_adr DOUBLE PRECISION;
+    ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS spread10_adr DOUBLE PRECISION;
 """
 
 BV1_LIST_COLS = ("scan_date", "ticker", "level", "vol_bar", "adr20", "rs_best", "close", "security_type", "gates",
-                 "list_rank")
+                 "list_rank", "order_score", "runup6m_adr", "spread10_adr")
 _BV1_LIST_JSONB = frozenset({"gates"})
 BV1_LIST_INSERT_SQL = (
     f"INSERT INTO mi_breakout_v1_list ({', '.join(BV1_LIST_COLS)}) VALUES ("
@@ -19937,6 +19948,16 @@ BV1_GRADE_UPSERT_SQL = (
     "INSERT INTO mi_breakout_v1_grades (scan_date, ticker, grade, note) VALUES ($1, $2, $3, $4) "
     "ON CONFLICT (scan_date, ticker) DO UPDATE SET grade = EXCLUDED.grade, note = EXCLUDED.note, graded_at = NOW()"
 )
+# Bare /bgrade's read (registered in scripts/preflight_db_updates.py: it reads the 2026-11-02 order_score column, so a
+# deploy whose schema lacks it fails at the gate instead of on his first bare /bgrade).
+BV1_UNGRADED_SQL = """
+    WITH n AS (SELECT DISTINCT scan_date FROM mi_breakout_v1_list ORDER BY scan_date DESC LIMIT $1)
+    SELECT l.scan_date, l.ticker, l.level, l.rs_best, l.list_rank, l.order_score
+      FROM mi_breakout_v1_list l JOIN n ON n.scan_date = l.scan_date
+     WHERE NOT EXISTS (SELECT 1 FROM mi_breakout_v1_grades g
+                        WHERE g.scan_date = l.scan_date AND g.ticker = l.ticker)
+     ORDER BY l.scan_date DESC, l.list_rank
+"""
 
 
 async def bv1_get_security_types_named(tickers: list[str]) -> dict[str, tuple]:
@@ -19994,16 +20015,9 @@ async def bv1_upsert_grade(scan_date: date, ticker: str, grade: str, note: Optio
 
 
 async def bv1_ungraded(nights: int = 5) -> list[dict]:
-    """List names of the last `nights` list nights that carry no grade yet, newest night first."""
+    """List names of the last `nights` list nights that carry no grade yet, newest night first, by list_rank (the
+    order score since 2026-11-02) inside a night. Every row is returned; the reply shows the top 10 + the counts."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            WITH n AS (SELECT DISTINCT scan_date FROM mi_breakout_v1_list ORDER BY scan_date DESC LIMIT $1)
-            SELECT l.scan_date, l.ticker, l.level, l.rs_best, l.list_rank
-              FROM mi_breakout_v1_list l JOIN n ON n.scan_date = l.scan_date
-             WHERE NOT EXISTS (SELECT 1 FROM mi_breakout_v1_grades g
-                                WHERE g.scan_date = l.scan_date AND g.ticker = l.ticker)
-             ORDER BY l.scan_date DESC, l.list_rank
-            """, int(nights))
+        rows = await conn.fetch(BV1_UNGRADED_SQL, int(nights))
     return [dict(r) for r in rows]
