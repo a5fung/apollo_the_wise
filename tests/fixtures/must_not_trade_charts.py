@@ -107,7 +107,7 @@ RULING_DATE = "2026-08-25"          # session 1 — the original eleven
 # review sample #1 (ten names where our score and the outcome disagreed). Every member
 # carries its own `ruling_date`; this set is what a test may check membership against, so
 # a typo cannot invent a session that never happened.
-RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06", "2026-09-23", "2026-10-05", "2026-10-29"})
+RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06", "2026-09-23", "2026-10-05", "2026-10-29", "2026-11-02"})
 # The eleven BAD_CHART members of session 1 are the population the v3 backtest measured.
 # Later BAD_CHART rulings are NOT in it — the doc's numbers are against these only.
 V3_MEASURED_POPULATION_SIZE = 11
