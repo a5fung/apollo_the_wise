@@ -82,3 +82,18 @@ def test_equity_and_its_date_come_from_the_same_ordering():
     assert len(re.findall(
         r"ORDER BY e\.snapshot_date DESC, e\.created_at DESC LIMIT 1", code)) == 2
     assert len(re.findall(r"e\.account_mode\s*=\s*mi_live_trades\.account_mode", code)) == 2
+
+
+def test_side_is_the_original_stops_geometry_in_the_two_values_the_dashboard_reads():
+    """side: the original stop (hard_stop, else orb_low) below the entry = 'long', above = 'short', otherwise NULL.
+    The dashboard's normalize_side accepts only 'long' / 'short', so a flipped comparison or any other literal would
+    silently dash (or invert) every Stop % - the regex tests above never looked at the CASE itself."""
+    assert re.search(
+        r"CASE\s+WHEN\s+COALESCE\(hard_stop,\s*orb_low\)\s*<\s*entry_price\s+THEN\s+'long'\s+"
+        r"WHEN\s+COALESCE\(hard_stop,\s*orb_low\)\s*>\s*entry_price\s+THEN\s+'short'\s+END\s+AS\s+side\b", _code())
+
+
+def test_every_close_read_is_for_open_rows_only():
+    """current_price, current_price_date and market_value are OPEN-row inputs: each of the three mi_daily_closes
+    reads sits under CASE WHEN status = 'filled' (closed rows get NULL, never a later close)."""
+    assert len(re.findall(r"CASE WHEN status = 'filled' THEN \(\s*\(?SELECT d\.", _code())) == 3
