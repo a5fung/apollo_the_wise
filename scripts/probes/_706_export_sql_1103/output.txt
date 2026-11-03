@@ -1,0 +1,15 @@
+ET date 2026-11-03 | 6 rows (the paper row is excluded)
+{'ticker': 'LONGA', 'status': 'open', 'side': 'long', 'current_price': 24, 'current_price_date': '2026-11-03', 'market_value': 48, 'account_equity': 5000, 'account_equity_date': '2026-11-02'}
+{'ticker': 'SHORTB', 'status': 'open', 'side': 'short', 'current_price': 38, 'current_price_date': '2026-11-01', 'market_value': 3800, 'account_equity': 5000, 'account_equity_date': '2026-11-02'}
+{'ticker': 'NOSIDE', 'status': 'open', 'side': None, 'current_price': 9.5, 'current_price_date': '2026-11-03', 'market_value': 47.5, 'account_equity': 5000, 'account_equity_date': '2026-11-02'}
+{'ticker': 'FLATC', 'status': 'open', 'side': None, 'current_price': 10.5, 'current_price_date': '2026-11-03', 'market_value': 52.5, 'account_equity': 5000, 'account_equity_date': '2026-11-02'}
+{'ticker': 'NOPX', 'status': 'open', 'side': 'long', 'current_price': None, 'current_price_date': None, 'market_value': None, 'account_equity': 5000, 'account_equity_date': '2026-11-02'}
+{'ticker': 'CLOSEDD', 'status': 'closed', 'side': 'long', 'current_price': None, 'current_price_date': None, 'market_value': None, 'account_equity': 5000, 'account_equity_date': '2026-11-02'}
+
+new-only keys: ['account_equity_date'] | dropped keys: []
+LONGA {'current_price': (99, 24), 'current_price_date': ('2026-11-08', '2026-11-03'), 'market_value': (198, 48)}
+SHORTB identical on every pre-existing column
+NOSIDE identical on every pre-existing column
+FLATC identical on every pre-existing column
+NOPX identical on every pre-existing column
+CLOSEDD identical on every pre-existing column
