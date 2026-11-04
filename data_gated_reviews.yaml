@@ -315,13 +315,16 @@ reviews:
                  WHERE account_mode IN ('live', 'global')
                    AND safeguard NOT IN ('drawdown_breaker', 'kill_scale_band', 'manual_trading_halt',
                                          'breakout_v1_paper')
-                   AND last_transition_at >= DATE '2026-10-13');
+                   -- ANSWERED-THROUGH: the 11-03 #718 flip (magna53_open_below_floor ON 15:05:28 UTC) was answered
+                   -- the same day (the re-cut below), so the rule arm counts only LATER transitions; the trade arm
+                   -- keeps the exit-era literal the 631 test pins.
+                   AND last_transition_at > TIMESTAMPTZ '2026-11-03 15:05:29+00');
     # 🔔 FIRED 2026-11-03 at 43 = 3 era-E live closes + 40 x `breakout_v1_paper|global` (OFF 11-02, the
     # breakout PAPER lane's switch — it acts on no live MAGNA53 exit or admission: a FALSE fire, the
     # 09-29 class; excluded above). The same morning a REAL rule change landed: `magna53_open_below_floor|global`
     # ON 2026-11-03 10:05 ET (#718, a LIVE admission rule) -> the predicate reads 43 again, correctly. ACTION
     # TAKEN 11-03: the Run-U sweep re-cut offline from the 10-17 captures with the new admission applied
-    # (drop names whose 09:30 open < prev close x 1.09) — `scripts/probes/_runner_recut_1103/`.
+    # (drop names whose 09:30 open < prev close x 1.09) — `scripts/probes/_runner_recut_1103/`: the new rule's own effect is 14 Apr-Aug rows, net +3.9R removed (76 more the existing 09:31 gap re-check already skips — `bridge_gap_recheck.txt`); the primary exit arm still does not separate. ANSWERED 11-03 -> the rule arm now counts transitions after 15:05:29 UTC 11-03 (the predicate reads the 3 era-E closes, under 40).
     # ⚠ FALSE FIRE 2026-09-29, predicate fixed the same day: it read 43 = 3 era-D closes + 40 x the
     # drawdown_breaker returning to OK on 2026-09-21. A breaker's STATE (and the kill/scale band's, and
     # the manual halt) moves with P&L and is not a rule change — it cannot void an exit read. The
