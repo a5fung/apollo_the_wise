@@ -1,0 +1,15 @@
+SET
+at_et|event_type|ticker|mode|ev|sig|broker_reason|src|skip_reason|secs_after_submit
+(0 rows)
+id|ticker|alert_date|account_mode|signal_type|status|skip_reason|has_capture_row
+(0 rows)
+k|mode|n|latest
+heartbeat||13|2026-11-02 12:05:39.205229
+trades:filled|live|1|2026-11-03
+trades:cancelled|paper|3|2026-11-02
+trades:skipped|live|11|2026-11-04
+trades:skipped|paper|14|2026-11-02
+trades:closed|live|2|2026-10-27
+trades:cancelled|live|2|2026-10-30
+trades:closed|paper|1|2026-11-02
+(8 rows)

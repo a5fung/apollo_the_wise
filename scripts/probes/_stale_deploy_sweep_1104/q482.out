@@ -1,0 +1,15 @@
+SET
+account_mode|fills|recorded|unrecorded|last_fill_et
+live|19|19||2026-11-03
+(1 row)
+id|ticker|fill_et|orig_arms|has_live_actual
+(0 rows)
+exit_era|trades|live_actual_settled
+era_c|7|7
+era_d|8|8
+era_e|4|3
+|19|18
+(4 rows)
+closed_live_magna53_since_0817
+18
+(1 row)
