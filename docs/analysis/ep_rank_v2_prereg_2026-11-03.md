@@ -64,3 +64,7 @@ selection). Returns are read only as the tail test the running read already uses
 - **Statistic:** the chance a yes's `dmin` is above a no's (ties 0.5), over the 35 pairs; a NULL `dmin` (missing structure data) is dropped and counted. Also shown: `held`, `into`, `structure` per chart.
 - **The bar:** ≥ 0.65 → the lead holds on fresh labels (DIRECTIONAL ONLY: 12 charts, 35 pairs); < 0.65 → it does not replicate, and it is reported as a failed lead, not re-tuned. No threshold is fitted, so there is no plateau.
 - **What this does not answer:** whether a ranking that uses it picks the tail; anything about returns (his eye is the label); n is far too small for a verdict either way.
+
+## RESULT 3 — the shelf-distance lead on sample 6 (2026-11-04; `scripts/probes/_594_shelf_lead_1104/score_shelf_lead.py` → `score_shelf_lead.txt`)
+
+**HOLDS on fresh labels, as pre-registered — DIRECTIONAL ONLY.** On his 12 sample-6 rulings (5 yes / 7 no, 35 pairs, none dropped) the chance a yes's lower pullback low sits closer to (or above) the shelf than a no's is **0.829** (bar 0.65); median yes −2.5 daily ranges from the shelf, no −7.1 (RESULT 2 on the older labels: 0.688, −0.4 vs −3.4). It is the first chart-read measure in this series to hold on labels it was not found on. Only NTRA reads `held` = 1 (the 1-range band is tighter than the separation), so the continuous distance, not the yes/no flag, carries it. n = 12 is far from a verdict; it earns a place as a candidate, re-scored on each new sample, never a filter on its own.

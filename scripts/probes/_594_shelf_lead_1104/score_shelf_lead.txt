@@ -1,0 +1,18 @@
+ticker|date|verdict|yes|dmin_adr|held|into|structure|null|shelf_date|shelf|adr20_pct
+IOT|2026-09-04|BAD_CHART|False|-4.994|0|0|ok||2025-11-03|41.270|4.755
+NTRA|2026-08-07|GOOD_CHART|True|3.645|1|0|ok||2025-09-19|181.850|4.065
+PAGS|2026-10-05|BAD_CHART|False|-7.114|0|0|ok||2025-09-19|11.160|3.451
+CDRE|2026-08-06|BAD_CHART|False|-9.188|0|0|no_run(<30%)||2026-01-22|46.114|4.542
+KMT|2026-08-05|GOOD_CHART|True|-6.796|0|0|no_run(<30%)||2026-03-04|42.030|3.469
+ONON|2026-09-22|BAD_CHART|False|-15.193|0|0|ok||2025-09-23|46.640|2.861
+BLMN|2026-08-05|GOOD_CHART|True|-2.039|0|0|ok||2026-01-23|7.760|4.646
+RSKD|2026-08-12|OKISH_CHART|True|-4.135|0|0|no_run(<30%)||2025-05-15|5.410|2.622
+WGS|2026-08-04|BAD_CHART|False|-8.572|0|0|ok||2025-09-08|136.000|7.247
+NESR|2026-08-10|GOOD_CHART|True|-2.531|0|0|ok||2026-02-25|26.850|4.841
+DORM|2026-08-04|BAD_CHART|False|-2.460|0|0|ok||2025-05-30|130.540|3.607
+HLIT|2026-08-13|BAD_CHART|False|-3.466|0|0|ok||2026-02-20|12.180|4.097
+
+yes n=5 no n=7 pairs=35 dropped(NULL)=[]
+P(yes dmin > no dmin) = 0.829  (bar >= 0.65; directional only)
+VERDICT: HOLDS on fresh labels (directional)
+median dmin: yes -2.53 ADR, no -7.11 ADR
