@@ -6,7 +6,17 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-11-02 (Mon) CLOSE — 🔴 RESUME HERE. Supersedes the 11-01 close below.
+## 2026-11-03 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the 11-02 close below.
+
+**2026-11-03 (Tue): CLOSE run on his word ("run close").** (Mirrors the machine-local pickup memory.)
+
+- **Board 20 → 19** (#706 closed: `/trades` and the dashboard read against the broker on AEHR + his "yes i see it"; skip page one line per ticker). Server **`a638666d`** (no deploy today).
+- **Live today:** the first LIVE depth sale (IRON 422, opening-auction sell 79.41, +$16.50) — review done; **#718 FLIPPED ON** (open below the 9% gap floor = skip; his "Ok." + "i auth it", 10:05 ET; SSoT `docs/setups/magna53_ep.md` 2026-11-03); #712's late-bar fix proven (AEHR served at +21.8 s); #312 Step A met on the first busy morning.
+- **Studies (all $0, pre-registered, blind-recounted):** the EP alert ranking's decision-grade read FAILS the tail; ranking v2 from his reads FAILS twice (zones cleared 0.67 best; a lead: pullback distance to the shelf 0.688, needs fresh labels); the 09:31 gap re-check retest on live data removes losers (keep); the runner re-cut under #718 — the new rule's own effect is small (14 rows, +3.9R), the existing re-check's Apr-Aug +28R finding sits on #482.
+- **Wed 11-04, in order:** send #594 sample 6 (`scripts/probes/_594_sample6_1104/sample6_blind.png`); #624 grading-strictness check; #312 his six 10-15 readings as one table with recs; #718 'on' verify; **21:15 ET deploy ON HIS GO** — stage 1 + #706's export SQL are ON MAIN: `deploy.sh market-agent` FIRST, then `deploy.sh execution`, poll the box; portfolio-app2 `706-open-stats` pushed on his go. **Stage 2 Sat 11-07.** Paper OFF.
+- **Capacity (dated 11-01):** Fable ~5% — Opus cards until the reset Fri 11-06 8 PM PT.
+
+## 2026-11-02 (Mon) CLOSE — (superseded by 11-03 above)
 
 **2026-11-02 (Mon): CLOSE run on his word ("Run close").** (This section mirrors the machine-local pickup memory.)
 
