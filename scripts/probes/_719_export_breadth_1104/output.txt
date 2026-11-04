@@ -1,0 +1,67 @@
+postgres 16.14 | fixture rows 1133199 | sessions in fixture 368
+export ran in 0.74s inside a READ ONLY transaction | 76,211 bytes
+  version: 1
+  generated_at: 2026-11-04T17:40:18 ET
+  as_of: 2026-11-03
+  prev_session: 2026-11-02
+  prior_year_end: 2025-12-31
+  score_date: 2026-11-03
+  theme_membership: today
+  universe: {'n': 3037}
+  highs_lows: {'eligible_n': 3032, 'new_highs': 228, 'new_lows': 224}
+  adv_dec: {'advances': 1493, 'declines': 1540, 'unchanged': 3, 'no_prior': 1}
+  stages: {'1': 310, '2': 1238, '3': 276, '4': 1209, 'unstaged': 4}
+  stages sum to universe: True
+  theme {'idx': 0, 'name': 'Alpha', 'stage': 'Accelerating', 'e_code': None, 'theme_date': '2026-11-03', 'n_members': 6, 'ret_1d': 0.06, 'n_1d': 5, 'ret_5d': 1.24, 'n_5d': 5, 'ret_21d': 4.68, 'n_21d': 5, 'ret_ytd': 12.29, 'n_ytd': 4} members ['ETF1', 'IPO26', 'NOBARS', 'PENNY', 'R0001', 'R0002']
+  theme {'idx': 1, 'name': 'Delta', 'stage': 'Nascent', 'e_code': None, 'theme_date': '2026-11-04', 'n_members': 3, 'ret_1d': 0.6, 'n_1d': 3, 'ret_5d': -1.96, 'n_5d': 3, 'ret_21d': 2.96, 'n_21d': 3, 'ret_ytd': 55.18, 'n_ytd': 3} members ['NEWHI', 'R0007', 'R0008']
+  theme {'idx': 2, 'name': 'Epsilon', 'stage': 'Nascent', 'e_code': None, 'theme_date': '2026-11-03', 'n_members': 0, 'ret_1d': None, 'n_1d': 0, 'ret_5d': None, 'n_5d': 0, 'ret_21d': None, 'n_21d': 0, 'ret_ytd': None, 'n_ytd': 0} members []
+  theme {'idx': 3, 'name': 'Zeta', 'stage': 'Mainstream', 'e_code': 'E07', 'theme_date': '2026-11-03', 'n_members': 3, 'ret_1d': 0.18, 'n_1d': 3, 'ret_5d': 0.34, 'n_5d': 3, 'ret_21d': 2.7, 'n_21d': 3, 'ret_ytd': 20.96, 'n_ytd': 3} members ['R0001', 'S2UP', 'S4DN']
+  stock NEWHI: [2, 4, [1]]
+  stock NEWLO: [4, 5, []]
+  stock NULLLO: [4, 7, []]
+  stock ZEROLO: [4, None, []]
+  stock ZEROHIST: [4, None, []]
+  stock SHORTH: [None, None, []]
+  stock GAPPY: [None, 2, []]
+  stock NOPRIOR: [None, 6, []]
+  stock UNCH: [3, None, []]
+  stock PENNY: [1, 8, [0]]
+  stock ETF1: [3, 1, [0]]
+  stock IPO26: [None, 3, [0]]
+  stock S2UP: [2, None, [3]]
+  stock S4DN: [4, None, [3]]
+  stock S3TOP: [3, None, []]
+  stock S1BASE: [1, None, []]
+  stock NOBARS: [None, None, [0]]
+  stock NOTYPE: (absent)
+  stock R0001: [1, 10, [0, 3]]
+  definitions keys: ['advances_declines', 'as_of', 'new_highs_lows', 'not_claimed', 'session', 'stage', 'stocks', 'theme_membership', 'theme_returns', 'themes', 'universe']
+  ok  as_of skips the 2,900-row trailing day
+  ok  score_date skips the one-row stray day
+  ok  Beta not resurrected from its older row
+  ok  Gamma (9 days old) excluded
+  ok  Delta carries its post-as_of membership
+  ok  Alpha dedups R0002, keeps NOBARS as a member
+  ok  Epsilon (no members) has null returns
+  ok  Zeta carries its e_code
+  ok  S2UP stage 2
+  ok  S4DN stage 4
+  ok  S3TOP stage 3
+  ok  S1BASE stage 1
+  ok  SHORTH unstaged
+  ok  GAPPY unstaged
+  ok  PENNY / ETF1 in stocks (members) but not the universe
+  ok  NOTYPE absent (not CS/ADRC, not a member)
+  ok  NOBARS present with stage null
+  ok  no session -> the export returns zero rows
+  ok  removing NEWHI moves exactly {'eligible_n': -1, 'new_highs': -1, 'advances': -1, 'stage_2': -1}
+  ok  removing NEWLO moves exactly {'eligible_n': -1, 'new_lows': -1, 'declines': -1, 'stage_4': -1}
+  ok  removing NULLLO moves exactly {'declines': -1, 'stage_4': -1}
+  ok  removing ZEROLO moves exactly {'declines': -1, 'stage_4': -1}
+  ok  removing ZEROHIST moves exactly {'eligible_n': -1, 'new_lows': -1, 'declines': -1, 'stage_4': -1}
+  ok  removing GAPPY moves exactly {'advances': -1, 'stage_unstaged': -1}
+  ok  removing SHORTH moves exactly {'advances': -1, 'stage_unstaged': -1}
+  ok  removing NOPRIOR moves exactly {'eligible_n': -1, 'new_highs': -1, 'no_prior': -1, 'stage_unstaged': -1}
+  ok  removing UNCH moves exactly {'eligible_n': -1, 'new_highs': -1, 'unchanged': -1, 'stage_3': -1}
+
+RESULT: PASS — SQL matches the independent recompute on every field

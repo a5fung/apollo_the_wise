@@ -90,6 +90,7 @@ setup's criteria, change log and findings.
 | Dual-account (paper/live routing) | `docs/architecture/dual_account.md` |
 | **Cross-strategy allocator (SHADOW)** — ranks the day's queued EP candidates for the position cap's free slots: when it runs (09:28 ET), which book it counts (pre-entry, live), the audit row, who reads it, the Step B bar (#312) | `docs/architecture/cross_strategy_allocator.md` |
 | Trade-state ownership | `docs/architecture/trade-state-ownership.md` |
+| **Market breadth snapshot (#719)** — the nightly read-only export behind the dashboard's Market Breadth page: the session / universe rules, new 52-week highs and lows, advances and declines, the Weinstein stage split, the theme tracker's returns (and their survivorship caveat), the JSON contract, the guarded run in `auto_export_snapshots.sh` | `docs/architecture/market_breadth_snapshot.md` |
 | Market agent build & ops how-to (run locally · add a tool · add a Telegram command · `execute_task` routing · ticker extraction · env vars · pre-commit hooks · the monthly backward-check sweep: verdict-phrase contract, roster, `/audit <check>`) | `docs/architecture/market_agent_reference.md` |
 | Model selection | `docs/model_selection_baseline.md` |
 
