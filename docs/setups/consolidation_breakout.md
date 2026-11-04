@@ -427,7 +427,7 @@ them, it does not remove them; bare `/bgrade` can no longer show every ungraded 
 **DONE-WHEN:** 5 trading nights of lists with the counts in range and his spot check of one night's top 12 by the order score.
 **WOULD-FAIL-IF:** the list stays ~22-30 a night (the old gates still running), or any name under 2.1% daily range appears.
 
-**Status**: BUILT on branch `breakout-v2-stage1` (not merged, not deployed). Deploy plan (the main session's): the list job
+**Status**: BUILT, reviewed, MERGED to main 2026-11-03 (`246996c9`; cherry-picked from branch `breakout-v2-stage1`), NOT deployed — deploy Wed 2026-11-04 21:15 ET on his go. Deploy plan (the main session's): the list job
 is market-agent; `db.py` (the DDL + the INSERT) is also on `scripts/exec_loaded_modules.txt`, so the scope is the main
 session's call. The paper switch stays off until his word (stage 3).
 
