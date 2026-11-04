@@ -178,6 +178,7 @@ Weekdays carry builds this week (no money path, no rule change): one heavy card 
 
 
 ## Apollo Trades dashboard (portfolio-app2)
+- #719 | 2026-11-05 | pending | 📊 **DAILY MARKET BREADTH TAB on the dashboard (his idea 2026-11-04, with another app's screenshot: `docs/methodology/operator_shared_charts/2026-11-04_daily_breadth_dash_example/`).** His words: *"build a market breath and theme dash like this for a daily view to complement the longer term views we have and the alerts I get. This can be a separate tab for market breadth."* Four panels from Apollo's nightly data: (1) new 52-week highs vs new lows (counts + % highs), (2) advances vs declines (counts + %), (3) stage analysis — counts and % of stocks in stage 1/2/3/4 as one stacked bar, (4) a theme tracker — each theme's return as tiles with a Today / 1W / 1M / YTD toggle. Scope (11-04, Opus scout workflow): which data exists, the Apollo → portfolio-app2 export path, the app's tab layout. No money path. DoD: the tab is live on the deployed dashboard, and one night's numbers match a prod read made independently — highs + lows and advances + declines from `mi_daily_closes` for that date, stage counts summing to the stated universe, and three themes' Today / 1W / 1M / YTD returns reproduced by hand; he sees it on his phone. WOULD-FAIL-IF: the counts do not match the independent read, the stages do not sum to the universe, or the tab shows a date other than the last trading day.
 
 
 ## Apollo Themes (portfolio-app2)
