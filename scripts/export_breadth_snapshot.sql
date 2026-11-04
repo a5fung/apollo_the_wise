@@ -22,13 +22,15 @@
 -- Every window below is counted in those sessions by index (0 = as_of, 1 = the session
 -- before it, ...), never by calendar arithmetic.
 --
--- PERFORMANCE: mi_daily_closes is ~13.6M rows. Only two range reads touch it — the session
--- calendar (the last 500 calendar days, ~344 sessions) and the price window (the newest 273
--- sessions, restricted to the universe plus theme members) — both bounded on trade_date, the
--- leading column of its primary key. Every per-ticker number is one FILTERed aggregate over
+-- PERFORMANCE: mi_daily_closes is ~13.6M rows. Two reads touch it — the session calendar (the
+-- last 500 calendar days; the planner runs it as a parallel scan, since the subquery bound is not
+-- index-usable) and the price window (the newest 273 sessions, restricted to the universe plus
+-- theme members). Measured on prod 2026-11-04: 15 s wall, 174 KB. Every per-ticker number is one FILTERed aggregate over
 -- that window: no per-row correlated subquery, no 252-row window frame.
 WITH latest AS (
+    -- bounded by today's ET date: one stray future-dated row must not move the calendar window
     SELECT max(trade_date) AS d FROM mi_daily_closes
+     WHERE trade_date <= (now() AT TIME ZONE 'America/New_York')::date
 ),
 cal AS (
     SELECT c.trade_date
@@ -123,17 +125,19 @@ px AS (
       JOIN win w ON w.trade_date = d.trade_date
      CROSS JOIN k
      WHERE d.trade_date BETWEEN k.win_start AND k.as_of
-       AND d.close > 0
+       AND d.close > 0 AND d.close <> 'NaN'
        AND d.ticker IN (SELECT ticker FROM interest)
      GROUP BY d.ticker
 ),
--- Weinstein stage on the 30-week (150-session) SMA of close. Needs a bar on every one of the
--- 210 sessions ending as_of (150 + the 60-session look-back), else unstaged.
+-- Weinstein stage on the 30-week (150-session) SMA of close. Needs a bar on at least 203 of the
+-- 210 sessions ending as_of (150 + the 60-session look-back; up to 7 missing, the same slack as
+-- the 245-of-252 high/low rule), else unstaged. Relaxed 2026-11-04 from 'all 210' after the first
+-- prod run: 169 of 5,035 names had 1-7 missing bars; 439 are listed under 210 sessions (stay unstaged).
 st AS (
     SELECT p.*,
            (p.h0 IS NOT NULL AND p.l0 IS NOT NULL AND p.n_hl_252 >= 245) AS hl_eligible,
            CASE
-             WHEN p.c0 IS NULL OR p.n_210 < 210 OR NULLIF(p.sma_20, 0) IS NULL THEN NULL
+             WHEN p.c0 IS NULL OR p.n_210 < 203 OR NULLIF(p.sma_20, 0) IS NULL THEN NULL
              WHEN p.sma_now / p.sma_20 - 1 > 0.01
                THEN CASE WHEN p.c0 >= p.sma_now THEN 2 ELSE 3 END
              WHEN p.sma_now / p.sma_20 - 1 < -0.01
@@ -261,7 +265,7 @@ SELECT json_build_object(
         'advances_declines',
             'A universe stock advances if its as_of close is above its close on the previous session, declines if below, unchanged if equal. A stock with no bar on the previous session is counted in no_prior, not in the three.',
         'stage',
-            'Weinstein stage on the 30-week line: the average close of the 150 sessions ending as_of. Its slope compares it with the same average ending 20 sessions earlier: rising if more than 1% higher, falling if more than 1% lower, flat otherwise. Rising: stage 2 if the as_of close is at or above the line, else stage 3. Falling: stage 4 if the close is at or below the line, else stage 1. Flat: stage 3 if the line is above where it stood 60 sessions earlier (it came from an advance), else stage 1. A stock without a bar on every one of the 210 sessions ending as_of is unstaged. Stages 1-4 plus unstaged add up to the universe.',
+            'Weinstein stage on the 30-week line: the average close of the 150 sessions ending as_of. Its slope compares it with the same average ending 20 sessions earlier: rising if more than 1% higher, falling if more than 1% lower, flat otherwise. Rising: stage 2 if the as_of close is at or above the line, else stage 3. Falling: stage 4 if the close is at or below the line, else stage 1. Flat: stage 3 if the line is above where it stood 60 sessions earlier (it came from an advance), else stage 1. A stock missing more than 7 of the 210 sessions ending as_of (or listed for fewer) is unstaged. Stages 1-4 plus unstaged add up to the universe.',
         'themes',
             'The active themes: each name''s newest theme row dated no earlier than 7 days before as_of (a row dated after as_of counts), dropped if that newest row is Retired.',
         'theme_returns',

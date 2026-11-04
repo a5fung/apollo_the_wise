@@ -85,7 +85,10 @@ def test_dates_come_from_the_data_never_the_clock():
     """The cron also runs Saturday and Sunday: as_of is the newest 3,000-row session, never the calendar date."""
     code = _code()
     assert not re.search(r"(?i)\bcurrent_date\b", code), "as_of / windows must never read the clock"
-    assert len(re.findall(r"(?i)\bnow\(\)", code)) == 1, "now() is for generated_at only"
+    # now() twice: generated_at, and a CEILING on the newest stored date (review 2026-11-04: one stray
+    # future-dated row must not move the calendar window). Neither picks as_of — the data does.
+    assert len(re.findall(r"(?i)\bnow\(\)", code)) == 2, "now() is for generated_at and the future-date ceiling only"
+    assert re.search(r"(?i)WHERE trade_date <= \(now\(\) AT TIME ZONE 'America/New_York'\)::date", code)
     assert re.search(r"(?i)'generated_at',\s*to_char\(now\(\) AT TIME ZONE 'America/New_York'", code)
 
 
@@ -203,7 +206,7 @@ def test_stage_smas_use_the_pinned_session_offsets():
 
 def test_stage_thresholds_and_mapping():
     st = _norm(_cte("st"))
-    assert "WHEN p.c0 IS NULL OR p.n_210 < 210 OR NULLIF(p.sma_20, 0) IS NULL THEN NULL" in st
+    assert "WHEN p.c0 IS NULL OR p.n_210 < 203 OR NULLIF(p.sma_20, 0) IS NULL THEN NULL" in st
     assert "WHEN p.sma_now / p.sma_20 - 1 > 0.01 THEN CASE WHEN p.c0 >= p.sma_now THEN 2 ELSE 3 END" in st
     assert "WHEN p.sma_now / p.sma_20 - 1 < -0.01 THEN CASE WHEN p.c0 <= p.sma_now THEN 4 ELSE 1 END" in st
     assert "WHEN p.sma_now > p.sma_60 THEN 3 ELSE 1 END AS stage" in st
@@ -380,6 +383,15 @@ def test_breadth_psql_stops_on_a_sql_error(rig, tmp_path):
     assert run(FAKE_NONCE="h").returncode == 0
     calls = (tmp_path / "docker.log").read_text().splitlines()
     assert calls and all("-v ON_ERROR_STOP=1" in c for c in calls), calls
+
+
+def test_breadth_psql_carries_a_statement_timeout(rig, tmp_path):
+    """A hung breadth query must end (non-zero exit, handled by the guard) instead of holding up the
+    other three snapshots, which commit after it (review 2026-11-04: a lock on mi_daily_closes hung it)."""
+    run, _, _, _ = rig
+    assert run(FAKE_NONCE="t").returncode == 0
+    calls = (tmp_path / "docker.log").read_text().splitlines()
+    assert calls and all("statement_timeout=" in c for c in calls), calls
 
 
 def test_a_truncated_breadth_export_is_not_published(rig):
