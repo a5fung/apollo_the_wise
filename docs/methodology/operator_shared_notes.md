@@ -2881,3 +2881,5 @@ Recorded: a v2 ranking built from his reads — zones the gap clears, volume aga
 > "Yes" (2026-11-03, to two free tests: re-test the existing 09:31 gap re-check on live data since late August, and redo the ranking test's "old base high" as the shelf the stock broke out of)
 
 Recorded: both running — `scripts/probes/_gap_recheck_retest_1103/` (the 9 HIGH alerts the re-check skipped since 08-28, replayed without it) and `scripts/probes/_ep_rank_v2_1103/build_f3/` (feature 3 re-defined, calibrated only on his KOD read).
+
+> "yes i see it" (2026-11-03, the Apollo Trades dashboard shows AEHR Size 3.9% / Stop 21.9% — #706 closed on it); "let's do the blind sample tmr" (#594 sample 6 -> Wed 11-04); "yes, let's check grading tmr as well" (#624: the low-cap lane graded 35 names, 0 HIGH — check whether its grading is too strict, Wed 11-04)
