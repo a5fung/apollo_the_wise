@@ -66,10 +66,11 @@ in `no_prior` instead, so `advances + declines + unchanged + no_prior = universe
 
 - **sma_now** — the mean close over sessions 0-149. **sma_20** — the same mean ending 20 sessions
   earlier (sessions 20-169). **sma_60** — ending 60 sessions earlier (sessions 60-209).
-- **Needs a bar on every one of the 210 sessions 0-209** (150 + the 60-session look-back), else
-  `unstaged`. In a 210-session span the most bars possible is 210, so "≥ 210 bars" means no gap at
-  all; a single missing bar (a halt, a data gap) makes the stock unstaged. This is the strict
-  reading of the pinned rule — every SMA averages exactly 150 real closes.
+- **Needs a bar on at least 203 of the 210 sessions 0-209** (150 + the 60-session look-back; up
+  to 7 missing, the same slack as the 245-of-252 high/low rule), else `unstaged`. Relaxed 2026-11-04
+  from "all 210" after the first prod run: of 5,035 universe names, 169 had 1-7 missing bars (now
+  staged), 209 have 8+ missing and 439 are listed under 210 sessions (both stay unstaged). Each SMA
+  averages the real closes present in its window.
 - **Slope** = `sma_now / sma_20 − 1`: **rising** if > +0.01, **falling** if < −0.01, else **flat**.
 - **Rising**: close ≥ sma_now → **2**, else **3**. **Falling**: close ≤ sma_now → **4**, else **1**.
   **Flat**: sma_now > sma_60 (it came from an advance) → **3**, else → **1**.

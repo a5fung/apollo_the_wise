@@ -44,7 +44,10 @@ done
 BREADTH=apollo_breadth_snapshot.json
 BREADTH_OK=0
 rm -f "$BREADTH.tmp"
-if docker exec -i "$PG" psql -U apollo -d apollo -A -t -X -v ON_ERROR_STOP=1 -f - \
+# statement_timeout: a hung breadth query (a lock from a boot-time ALTER, a cold-cache plan) must
+# not hold up the other three, which commit after it — it ends as a non-zero exit the guard handles.
+# Measured on prod 2026-11-04: 15 s; the 300 s cap leaves ~20x headroom.
+if docker exec -i -e PGOPTIONS="-c statement_timeout=300s" "$PG" psql -U apollo -d apollo -A -t -X -v ON_ERROR_STOP=1 -f - \
      < "$APOLLO/scripts/export_breadth_snapshot.sql" > "$BREADTH.tmp" \
    && [ "$(wc -c < "$BREADTH.tmp")" -ge 200 ]; then
   mv -f "$BREADTH.tmp" "$BREADTH"
