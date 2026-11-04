@@ -1,0 +1,14 @@
+#594 sample #6 key: page letter -> arm and outcome. NOT shown to him (outcome-blind, his 10-10 ruling).
+RULE: gap days 2026-08-01..CURRENT_DATE-30 (open >= 9%, volume >= 3x, 20 sessions settled), both arms (HIGH alerts; below-the-bar, never alerted), never ruled, ticker never in his notes or labelled EPs; 12 drawn AT RANDOM (seed 1104) — not by outcome. NEW PAGE (his 11-02 ask): ~2 years of history AND the gap day itself (the gap day is the last bar; nothing after it).
+A|IOT|2026-09-04|BELOW_BAR|score 40.0|routine|20d -6%
+B|NTRA|2026-08-07|BELOW_BAR|score 18.0|routine|20d 2%
+C|PAGS|2026-10-05|BELOW_BAR|score 33.8|routine|20d -23%
+D|CDRE|2026-08-06|BELOW_BAR|score 42.0|routine|20d -14%
+E|KMT|2026-08-05|HIGH_ALERT|score 72.0|game_changer|20d -27%
+F|ONON|2026-09-22|HIGH_ALERT|score 65.0|strong|20d 17%
+G|BLMN|2026-08-05|BELOW_BAR|score 48.0|routine|20d -18%
+H|RSKD|2026-08-12|BELOW_BAR|score 36.0|routine|20d -1%
+I|WGS|2026-08-04|BELOW_BAR|score 10.0|routine|20d 12%
+J|NESR|2026-08-10|HIGH_ALERT|score 53.3|strong|20d 7%
+K|DORM|2026-08-04|BELOW_BAR|score 37.0|routine|20d -11%
+L|HLIT|2026-08-13|HIGH_ALERT|score 96.0|game_changer|20d -17%
