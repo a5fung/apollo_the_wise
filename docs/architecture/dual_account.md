@@ -31,8 +31,10 @@ computes the four signed M1f demotion triggers (6 consecutive losses · trailing
 trigger's value, threshold and `would_demote`. **It cannot move a phase**: the module has no
 `update_strategy`, no UPDATE on `mi_strategies`, no sizing/toggle/order path and no Telegram —
 there is no act step to switch on (`tests/test_ladder_watchdog.py` spies the DB layer). The act
-step (step down one rung + page + mandatory review before re-promotion) is the operator's
-sign-off (THE LINE). Checking a night: `SELECT created_at, summary FROM mi_audit_log WHERE
+step is HIS explicit action, never automatic (ruled 2026-11-04, ADR 0022 §1): a breach sends one
+Telegram with the strategy's stats and two buttons — **Demote** (one rung down via `update_strategy`, the
+`/strategy <id> demote` path) or **No action** (audit row only). Not built yet; until it is, the
+manual `/strategy <id> demote` is the only way down. Checking a night: `SELECT created_at, summary FROM mi_audit_log WHERE
 event_type = 'ladder_demotion_shadow' ORDER BY created_at DESC LIMIT 3;` — `detail` is JSON
 (`evaluated[]`, `skipped{}`, `would_demote_count`, `acted: false`). **A night is verified by the
 ROW, not the ledger:** `mi_job_runs` `success` AND a `ladder_demotion_shadow` row whose `detail`
