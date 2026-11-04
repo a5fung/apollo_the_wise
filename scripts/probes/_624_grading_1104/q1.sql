@@ -1,0 +1,2 @@
+SET default_transaction_read_only = on;
+SELECT alert_date, ticker, score_tier, round(ep_score::numeric,1) AS score, baseline_floor_tier, grade_engine_authority, reject_stage, left(coalesce(reject_reason,''),70) AS reject, catalyst_quality, llm_catalyst_quality, round(gap_pct::numeric,1) gap, round(rel_volume::numeric,1) rvol, round((market_cap/1e6)::numeric) AS mcap_m, judge_grade, judge_tier FROM mi_lowcap_paper_lane_alerts ORDER BY alert_date, ticker;

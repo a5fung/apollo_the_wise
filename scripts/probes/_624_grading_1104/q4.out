@@ -1,0 +1,10 @@
+SET
+entry_status|outcome|count|sum_r|r3plus
+abstain|unscoreable|2|0.00|
+filled|open|2|0.00|
+filled|settled|13|-4.67|0
+filled|unscoreable|1|0.00|
+no_entry|no_trade|3|0.00|
+orb_invalid|no_trade|2|0.00|
+window_out_of_orb|no_trade|4|0.00|
+(7 rows)
