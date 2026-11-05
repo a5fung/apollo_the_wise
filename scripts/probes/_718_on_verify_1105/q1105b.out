@@ -1,0 +1,41 @@
+SET
+id|ticker|account_mode|signal_type|status|skip|entry_order_id
+462|APPN|live|magna53|filled||9324f04c-02c3-46e1-ae71-dc95359fa66a
+463|CHYM|live|magna53|skipped|setup:open_below_gap_floor: 09:30 open $32.05 < floor $32.56 (+7.3% vs 9% floor, prev close $29.87; admitted by the real-time flip-up at 08:|
+465|U|live|magna53|order_placed||9fba674c-6ab6-49ec-b307-eddcd6553b77
+(3 rows)
+alpaca_order_id|status|side|ticker
+44d821ba-df3d-4556-991c-17810741a9fe|new|sell|APPN
+9324f04c-02c3-46e1-ae71-dc95359fa66a|filled|buy|APPN
+ffaa40f2-64f2-4b69-8c86-4ca8ad741e20|held|sell|U
+9fba674c-6ab6-49ec-b307-eddcd6553b77|new|buy|U
+(4 rows)
+ticker|prev_close|et
+CHYM|29.87|2026-11-05 09:40:09.276614
+CHYM|29.87|2026-11-05 09:35:09.889766
+(2 rows)
+left
+{"ticker": "CHYM", "alert_date": "2026-11-05", "mode": "on", "verdict": "skip", "open": 32.05, "floor_price": 32.5583, "prev_close": 29.87, "floor_pct": 9.0, "gap_at_open_pct": 7.2983, "flip_up_tick_et": "08:25", "flip_up_rt_gap": 9.11, "flip_up_delayed_gap": 7.16, "flip_up_authoritative": true}
+(1 row)
+id|event_type|et|left
+68595|orb_triggered|2026-11-05 09:31:00.115891|[bar_stream] 2 alerts: ['APPN', 'CHYM']
+68596|exposure_family_checked|2026-11-05 09:31:00.812654|APPN (live/ORB): 0 same-family open(s), breach=False
+68597|orb_bar_stream_used|2026-11-05 09:31:00.814289|ORB APPN attempt 1 — O=54.59 H=56.00 L=54.11 waited=0.0s
+68598|orb_bar_fetched|2026-11-05 09:31:00.815204|ORB APPN O=54.59 H=56.00 L=54.11 range=1.89
+68599|exposure_family_checked|2026-11-05 09:31:00.829195|CHYM (live/ORB): no theme membership — nothing to compare
+68600|sizing_notional_cap_truncated|2026-11-05 09:31:00.864707|APPN 2026-11-05 account_mode=live: 20% notional cap truncated 19->17 shares (entry=$56.00 equity=$4927 max_position=$985) — risk $73.91 intended -> $64.26 actua
+68601|orb_order_placed|2026-11-05 09:31:00.947104|ORB APPN entry=$56.00 stop=$52.22 shares=17 risk=$74 trade_id=462
+68602|orb_bar_miss|2026-11-05 09:31:00.992169|ORB CHYM attempt 1/6 — bar not available, retry 10s
+68620|orb_triggered|2026-11-05 09:31:08.686015|[cron_9_31] 2 alerts: ['APPN', 'CHYM']
+68621|exposure_family_checked|2026-11-05 09:31:08.722446|CHYM (live/ORB): no theme membership — nothing to compare
+68622|orb_bar_fetched|2026-11-05 09:31:08.828312|ORB CHYM O=32.05 H=32.19 L=31.70 range=0.49
+68623|magna53_open_floor_checked|2026-11-05 09:31:08.832736|ORB CHYM 09:30 open $32.05 < floor $32.56 (prev close $29.87 × 1.09; gap at open +7.30% vs 9%; flip-up tick 08:25 ET) — mode=on, verdict=skip
+68624|orb_open_below_gap_floor|2026-11-05 09:31:08.835119|ORB CHYM — setup:open_below_gap_floor: 09:30 open $32.05 < floor $32.56 (+7.3% vs 9% floor, prev close $29.87; admitted by the real-time flip-up at 08:25 ET)
+68626|orb_bar_fetched|2026-11-05 09:31:11.167951|ORB CHYM O=32.05 H=32.19 L=31.70 range=0.49
+68627|magna53_open_floor_checked|2026-11-05 09:31:11.1722|ORB CHYM 09:30 open $32.05 < floor $32.56 (prev close $29.87 × 1.09; gap at open +7.30% vs 9%; flip-up tick 08:25 ET) — mode=on, verdict=skip
+68628|orb_open_below_gap_floor|2026-11-05 09:31:11.173721|ORB CHYM — setup:open_below_gap_floor: 09:30 open $32.05 < floor $32.56 (+7.3% vs 9% floor, prev close $29.87; admitted by the real-time flip-up at 08:25 ET)
+68629|orb_triggered|2026-11-05 09:31:11.245767|[bar_stream] 2 alerts: ['APPN', 'CHYM']
+68650|trade_lifecycle_telegram_attempted|2026-11-05 09:31:42.892947|fill APPN @$56.28 x17
+68655|order_status_reconciled|2026-11-05 09:32:00.024102|APPN order=9324f04c: pending_new -> filled (live)
+68659|stop_refresh_ran|2026-11-05 09:35:00.035615|Morning: examined 1, placed 0, already-covered 1, skipped 0 (none), same-day excluded 1 (APPN)
+(20 rows)

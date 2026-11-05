@@ -1,0 +1,7 @@
+SET
+event_type|et|left
+ep_rt_floor_flip_up|2026-11-05 08:25:01.279417|CHYM rt 9.1% ≥9 > delayed 7.2% @ 08:25 ET
+(1 row)
+checked_rows_today|count
+2|1
+(1 row)
