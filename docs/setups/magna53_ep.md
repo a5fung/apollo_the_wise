@@ -747,6 +747,11 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
   2 → 2; rows and counts identical. Tests: `tests/test_482_recorder_cleanups_1101.py` (7). Deploy scope when it ships: `broker/*` + the book
   module → `deploy.sh market-agent` then `deploy.sh execution`.
 
+### 2026-11-05 — the ORB high is the OFFICIAL round-lot bar high; odd lots stay out (OPERATOR RULING: "keep it for now" — no code change)
+
+- **Question (his, APPN 2026-11-05):** his chart's first 1-minute bar high was $56.28; Apollo bought off $56.00. Cause: the only $56.28 prints in 09:30:00-09:31:00 were three odd-lot trades (5 / 9 / 10 shares, condition `I`), which the consolidated tape excludes from a bar's high/low — Apollo's SIP bars and Yahoo both read $56.00 (`docs/methodology/operator_shared_notes.md` 2026-11-05).
+- **Ruling:** keep the official bars (round lots only) as the ORB high and low, as today. Recorded so a future chart mismatch is read as this, not a bug. Revisit only on his word. **Reversion-flag:** none (no change made).
+
 ### 2026-11-03 — #718: the open-below-the-gap-floor rule FLIPPED shadow → ON (OPERATOR-SIGNED: his "Ok." to "Switch it on? I recommend yes", then "i auth it" for the write; a LIVE-MONEY ENTRY RULE — THE LINE)
 
 - **Trigger:** the first flip-up morning read as the 2026-10-31 EXPECT (`scripts/probes/_verify_1103/q_ep.out`, `q_orb.out`): FN (flip-up 07:40, rt 9.63%) got `magna53_open_floor_checked` + `magna53_open_below_floor_would_skip` at 09:31:01 — open $329.99 = the bar's `O=`, floor $343.023 / 1.09 = $314.70 = `mi_ep_scan_log.prev_close`; the entry proceeded as today and the existing `setup:gap_below_floor` skipped it (rt 5.6% at 09:31); no shadow-caused skip; AEHR / AEIS were not flip-up admitted at ORB time.
