@@ -13041,6 +13041,12 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_11_05: >-
+      RAN 2026-11-05 (main loop, read-only, the same recipe: scripts/probes/_rank_shadow_running_read_1105/). n = 34
+      sessions (new: 11-04 ANET / EXPE / NXT / PCOR, a pool of 4, unmatured). A NEW 5-day tail winner matured: GMAB
+      10-28 at 8.82x ADR — NOT traded, composite 0.58 in a pool of 2, so in the rest, not the top quartile. Cells: 5-day
+      8x top 0 of 7 vs rest 3 of 54 (MRNA, KOD, GMAB); 20-day top 1 of 6 (VICR) vs rest 2 of 40. Conclusion UNCHANGED:
+      the ranking does not pick the tail. Next movement: the next session with a pool of 2+.
     resolution_2026_11_04: >-
       RAN 2026-11-04 (main loop, read-only, the 11-03 recipe unchanged: scripts/probes/_rank_shadow_running_read_1104/
       q.sql + score.py, rows.psv, score.txt; the 11-03 run beside it in _rank_shadow_running_read_1103/). n = 33 sessions
