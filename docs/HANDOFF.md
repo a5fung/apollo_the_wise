@@ -6,7 +6,19 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-11-03 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the 11-02 close below.
+## 2026-11-04 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 11-03 close below.
+
+**2026-11-04 (Wed): CLOSE run on his word ("Run close").** (Mirrors the machine-local pickup memory.)
+
+- **Board 19 → 19** (#540 closed as unexercised on his "Go with rec"; #719 opened — a daily Market Breadth tab, his idea). Server **`35c646ff`**: breakout stage 1 + the #706 export SQL DEPLOYED 21:16-21:27 ET (`deploy.sh market-agent` then `deploy.sh execution`, both OK; `breakout_v1_paper` still OFF).
+- **Rulings today:** #312 — demotion is HIS one-click Demote / No action on a stats page, never automatic (ADR 0022 §1 amended; build Sun 11-08, orchestrator scope); the four stale tasks — #540 closed, #491 closes Fri after nights 9-10, #644 read → 11-28, #655 item 7 carried by its review.
+- **#594:** sample 6 ruled (12 of 12, his three reasons: choppy base, gap into congestion, weak gap under the 200-day); the shelf-distance lead HELD on these fresh labels as pre-registered (0.829, bar 0.65, directional only — `docs/analysis/ep_rank_v2_prereg_2026-11-03.md` RESULT 3).
+- **#719 (breadth):** the Apollo export is built, reviewed, fixed and VERIFIED on prod data on branch `worktree-wf_10fb8bc3-cd0-1` (pushed, NOT merged — rebase on main first); the dashboard page is a WIP on portfolio-app2 branch `market-breadth-1104`. Weekend, on his go.
+- **Thu 11-05:** after 17:55 ET read the first new-rule breakout list against EXPECT-STAGE1 (PLAN #717). #718 verifies on the first flip-up HIGH that opens below the floor inside the ORB window.
+- **Weekend:** stage 2 (Sat), #719 page + merge + deploy, #312 demote button (Sun).
+- **Capacity (dated 11-01):** Fable ~5% — Opus cards until the reset Fri 11-06 8 PM PT; he asked to conserve.
+
+## 2026-11-03 (Tue) CLOSE — (superseded by 11-04 above)
 
 **2026-11-03 (Tue): CLOSE run on his word ("run close").** (Mirrors the machine-local pickup memory.)
 
