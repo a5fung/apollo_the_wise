@@ -13632,6 +13632,15 @@ reviews:
   # ═══════════════════════════════════════════════════════════════════════════════════
 
   - review_id: bracket_geometry_variants_parked
+    resolution_2026_11_06: >-
+      FIRED 2026-11-05 (20 closed live MAGNA53 since 08-17) and RAN 2026-11-06 as pre-registered
+      (scripts/probes/_482_read_1106/PREREG.md, committed before any outcome was read; blind recount MATCHES):
+      eras C 7 / D 8 / E 5, never pooled. NO geometry variant earns a live arm — all 13 recorder arms are
+      NOT A CANDIDATE (each lost at least one readable era; four won era D only). 4 of 20 fills failed the
+      replay-fidelity check (OKTA, VICR, KOD, CLS — incl. the only two big winners), so no arm was tested on a
+      big winner. The 'disappoints' condition reads TRUE for era E (5 trades, capped-dollar sum -1.25, no +4R),
+      put to him 11-06 with the rec: do not re-open geometry on 5 trades; the era-E exit read
+      live_fill_counterfactuals_first_read_482 (20 paired era-E fills) carries it. docs/analysis/482_cross_arm_read_2026-11-06.md.
     title: "PARKED — bracket/geometry variants (5-min basis, ATR ladder, established-low entry, mechanical re-entry): none earned a live arm on era A/B"
     question: >-
       Three reads this week (bracket_geometry_read_482_2026-08-18.md,

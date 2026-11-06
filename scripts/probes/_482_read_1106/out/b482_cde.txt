@@ -1,0 +1,104 @@
+E2: closed (not quarantined) shadow rows in the capture: 16
+====================================================================================================
+#482 BRACKET-GEOMETRY READ — 5-min ORB shadow vs live 1-min bracket (cde copy, capture 2026-11-06, read-only)
+====================================================================================================
+shadow closed (NOT quarantined): 16  (usable after R computation: 16; reconstructed via replay: 0; open still accruing: 1)
+live closed: 20 usable (0 excluded for non-NULL pnl_attribution: [])
+UNIT NOTE: the position-size cap binds on 6/36 rows (actual $risk < planned risk_dollars; median actual/planned 0.98). Planned-risk R understates outcomes non-uniformly, so the PRIMARY unit below is per-share stop-distance R = (pnl/share)/(entry-hard_stop); planned-risk R is shown as the secondary, system-convention unit.
+ADR coverage: 36/36 rows have a 20-day ADR (missing: none)
+
+----------------------------------------------------------------------------------------------------
+1. PAIRED COMPARISON (PRIMARY) — same ticker, same day, both lanes closed
+----------------------------------------------------------------------------------------------------
+
+  magna53 (the stop-geometry contrast): paired n=8
+    AMLX   2026-08-18  era=C  R(1m)= +1.26 R(5m)= +1.12 dR= -0.14   ADR(1m)= +1.99 ADR(5m)= +2.35 dADR= +0.37   [accrued/live]
+    CRWD   2026-08-27  era=C  R(1m)= +0.40 R(5m)= +0.16 dR= -0.24   ADR(1m)= +0.52 ADR(5m)= +0.37 dADR= -0.14   [accrued/live]
+    SOLS   2026-08-28  era=C  R(1m)= -1.00 R(5m)= -1.00 dR= +0.00   ADR(1m)= -1.86 ADR(5m)= -1.98 dADR= -0.11   [accrued/live]
+    SEI    2026-09-08  era=D  R(1m)= +0.41 R(5m)= +0.08 dR= -0.33   ADR(1m)= +0.57 ADR(5m)= +0.11 dADR= -0.45   [accrued/live]
+    VICR   2026-09-17  era=D  R(1m)= +7.30 R(5m)= +4.72 dR= -2.59   ADR(1m)= +5.65 ADR(5m)= +3.81 dADR= -1.84   [accrued/live]
+    HUM    2026-10-09  era=D  R(1m)= -1.01 R(5m)= -1.00 dR= +0.01   ADR(1m)= -2.25 ADR(5m)= -2.51 dADR= -0.26   [accrued/live]
+    CLS    2026-10-27  era=E  R(1m)= -0.29 R(5m)= -1.00 dR= -0.71   ADR(1m)= -0.40 ADR(5m)= -1.59 dADR= -1.20   [accrued/live]
+    AEHR   2026-11-03  era=E  R(1m)= -0.98 R(5m)= -1.00 dR= -0.02   ADR(1m)= -1.21 ADR(5m)= -2.22 dADR= -1.01   [accrued/live]
+    SUM R:   1m +6.09  vs 5m +2.08   (paired delta sum -4.00)
+    MEDIAN:  1m +0.05  vs 5m -0.46   median pair-delta -0.19
+    ADR SUM: 1m +2.99  vs 5m -1.65
+    (planned-risk unit, system convention: 1m sum +5.48 med +0.04  vs 5m sum +1.98 med -0.45)
+    5m better on 0, worse on 5, ~tied on 3 of 8 pairs (|dR|<=0.05 = tie)
+
+  9m_day2 (SAME stop both lanes — entry-level contrast only): paired n=0
+
+  Shadow-closed rows with NO closed live twin: 8 (live never filled / skipped / still open that name-day)
+
+----------------------------------------------------------------------------------------------------
+2. BY EXIT ERA (era = live-side exit-rule regime; alert_date basis)
+   C 08-17..09-05: entry-2R stop, +2R partial | D >= 09-06: +8R partial, breakeven armed at +3R | E: depth exit (live row stamp; shadow row >= 10-13)
+----------------------------------------------------------------------------------------------------
+
+  era C — realized R:
+  live 1-min magna53                           n=7   sum=  +2.31  med= +0.40  mean= +0.33  p90= +1.36  max= +2.08  win=4/7  >=+1:3  >=+2:1
+  shadow 5-min magna53                         n=4   sum=  +0.38  med= +0.13  mean= +0.10  p90= +1.12  max= +1.12  win=3/4  >=+1:1  >=+2:0
+  paired magna53 in era C: n=3 — not readable
+
+  era D — realized R:
+  live 1-min magna53                           n=8   sum=  +8.73  med= -0.91  mean= +1.09  p90= +5.87  max= +7.30  win=3/8  >=+1:2  >=+2:2
+  shadow 5-min magna53                         n=4   sum=  +2.80  med= -0.46  mean= +0.70  p90= +4.72  max= +4.72  win=2/4  >=+1:1  >=+2:1
+  paired magna53 in era D: n=3 — not readable
+
+  era E — realized R:
+  live 1-min magna53                           n=5   sum=  -2.51  med= -0.93  mean= -0.50  p90= +0.70  max= +0.70  win=1/5  >=+1:0  >=+2:0
+  shadow 5-min magna53                         n=8   sum=  -4.52  med= -1.00  mean= -0.56  p90= -1.00  max= +2.48  win=1/8  >=+1:1  >=+2:1
+  paired magna53 in era E: n=2 — not readable
+
+----------------------------------------------------------------------------------------------------
+3. COHORT vs COHORT (SECONDARY — different populations, different gates; labelled as such)
+----------------------------------------------------------------------------------------------------
+
+  realized R (PRIMARY: per-share stop-distance units):
+  live 1-min magna53 (all eras)                n=20  sum=  +8.52  med= -0.83  mean= +0.43  p90= +2.08  max= +7.30  win=8/20  >=+1:5  >=+2:3
+  shadow 5-min magna53 (all eras)              n=16  sum=  -1.33  med= -1.00  mean= -0.08  p90= +2.48  max= +4.72  win=6/16  >=+1:3  >=+2:2
+  live 1-min 9m_day2                           n=0   — not readable
+  shadow 5-min 9m_day2                         n=0   — not readable
+
+  realized R (secondary: pnl / planned risk_dollars — system convention):
+  live 1-min magna53 (all eras)                n=20  sum=  +7.99  med= -0.68  mean= +0.40  p90= +1.82  max= +6.18  win=8/20  >=+1:5  >=+2:2
+  shadow 5-min magna53 (all eras)              n=16  sum=  -1.36  med= -0.98  mean= -0.08  p90= +2.46  max= +4.56  win=6/16  >=+1:3  >=+2:2
+  live 1-min 9m_day2                           n=0   — not readable
+  shadow 5-min 9m_day2                         n=0   — not readable
+
+  ADR units (per-share pnl / stock's own 20-day average daily range):
+  live 1-min magna53 (all eras)                n=20  sum=  +8.63  med= -0.65  mean= +0.43  p90= +3.28  max= +8.54  win=8/20  >=+1:6  >=+2:4
+  shadow 5-min magna53 (all eras)              n=16  sum= -10.00  med= -1.48  mean= -0.63  p90= +2.35  max= +3.81  win=6/16  >=+1:3  >=+2:3
+  live 1-min 9m_day2                           n=0   — not readable
+  shadow 5-min 9m_day2                         n=0   — not readable
+
+  stop distance as % of entry (the geometry itself):
+  live 1-min magna53                           n=20  med= 7.80%  mean= 7.94%  max=13.86%
+  shadow 5-min magna53                         n=16  med= 8.26%  mean= 9.17%  max=20.89%
+
+----------------------------------------------------------------------------------------------------
+4. MECHANISM 5 — does the wider 5-min R unit push the +2R partial above where price went?
+   For every magna53 row in each lane: +2R target in the lane's own unit vs max daily high over the hold window.
+   (Daily-bar granularity — 'reached' is optimistic for both lanes equally; sequencing vs the stop is not resolvable from daily bars.)
+----------------------------------------------------------------------------------------------------
+  live 1-min     +2R (own unit) reached within hold: 10/20  (50%)
+  shadow 5-min   +2R (own unit) reached within hold: 3/16  (19%)
+
+  Paired head-to-head (same name-day, each lane's own +2R target):
+    CRWD   2026-08-27  1m +2R target 227.72 REACHED (hi 233.88) but 5m +2R target 259.95 NOT — the wider unit destroyed the partial here
+    SEI    2026-09-08  1m +2R target 67.82 REACHED (hi 71.90) but 5m +2R target 72.80 NOT — the wider unit destroyed the partial here
+    CLS    2026-10-27  1m +2R target 293.01 REACHED (hi 308.21) but 5m +2R target 326.00 NOT — the wider unit destroyed the partial here
+    AEHR   2026-11-03  1m +2R target 64.45 REACHED (hi 66.21) but 5m +2R target 85.51 NOT — the wider unit destroyed the partial here
+    pairs where 1m's +2R was touched but 5m's was not: 4/8
+
+----------------------------------------------------------------------------------------------------
+5. RECONSTRUCTED vs LIVED — same lane, split by provenance (shadow magna53)
+----------------------------------------------------------------------------------------------------
+  shadow 5m magna53 — replayed (daily-bar sim) n=0   — not readable
+  shadow 5m magna53 — accrued in real time     n=16  sum=  -1.33  med= -1.00  mean= -0.08  p90= +2.48  max= +4.72  win=6/16  >=+1:3  >=+2:2
+  (Both are DAILY-BAR simulations at exit; 'accrued' rows differ only in being stepped one real day at a time. NO shadow row is a real fill. Live rows are actual Alpaca fills — paper account before the cutover, real money after.)
+  live rows account_mode present: ['live']; real-money closed magna53: 20
+
+====================================================================================================
+END OF PROBE OUTPUT — interpretation lives in docs/analysis/bracket_geometry_read_482_2026-08-18.md
+====================================================================================================

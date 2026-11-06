@@ -1,0 +1,561 @@
+
+====================================================================================================
+POPULATION (prereg §Population)
+====================================================================================================
+captured live MAGNA53 rows filled >= 2026-08-16 ET: 20; status closed: 20 (expected 20)
+not closed (excluded from cohort): []
+own-row era == recorder exit_era on every trade: True
+excluded, non-NULL pnl_attribution: none
+kept + flagged, entry_attempt=2: none
+cohort fills with no recorder rows at all: none
+era C: 7 fills  AMLX(372), MRVL(373), MRNA(374), CRWD(383), OKTA(382), SOLS(388), HOOD(392)
+     admission_era adm_pre_2026-08-20: 3
+     admission_era adm_2026-08-26_rt_universe_authoritative: 2
+     admission_era adm_2026-08-28_rubric_v4_rt_gap_authority: 1
+     admission_era adm_2026-08-31_extension_cap_50_slot_rank_rs: 1
+era D: 8 fills  PHVS(394), SEI(396), DFTX(399), VICR(400), KOD(404), CEG(409), PENG(414), HUM(419)
+     admission_era adm_2026-08-31_extension_cap_50_slot_rank_rs: 8
+era E: 5 fills  IRON(422), SMCI(424), CLS(429), AEHR(455), APPN(462)
+     admission_era adm_2026-08-31_extension_cap_50_slot_rank_rs: 5
+sanity: live_actual stop_price == live_stop on every fill: True 
+
+====================================================================================================
+R_cap PARITY: independent re-implementation vs prod book_geometry_arms.capped_dollar_r
+====================================================================================================
+settled rows checked: 258; max |mine - prod| = 0.00e+00  -> identical
+
+====================================================================================================
+FIDELITY (both controls settled AND |live_replay R - live_actual R| <= 0.25R)
+====================================================================================================
+ trade tkr    era    act_R    rep_R    |dR| pass   act_Rcap  rep_Rcap  |dRcap| pass_cap
+   372 AMLX   C      1.260    1.256   0.004 True      1.320     1.315    0.004 True    
+   373 MRVL   C     -0.953   -1.000   0.047 True     -0.896    -0.940    0.044 True    
+   374 MRNA   C      2.082    1.847   0.235 True      2.204     1.955    0.249 True    
+   383 CRWD   C      0.399    0.399   0.000 True      0.374     0.374    0.000 True    
+   382 OKTA   C      1.361   -0.079   1.440 False     1.020    -0.060    1.080 False   
+   388 SOLS   C     -1.005   -1.000   0.005 True     -1.010    -1.005    0.005 True    
+   392 HOOD   C     -0.836   -0.845   0.008 True     -0.599    -0.605    0.006 True    
+   394 PHVS   D     -1.023   -1.000   0.023 True     -0.794    -0.777    0.018 True    
+   396 SEI    D      0.411    0.430   0.019 True      0.310     0.325    0.014 True    
+   399 DFTX   D     -1.012   -1.000   0.012 True     -0.530    -0.523    0.006 True    
+   400 VICR   D      7.303    6.191   1.112 False     1.747     1.481    0.266 False   
+   404 KOD    D      5.872    5.582   0.290 False     3.090     2.937    0.153 True    
+   409 CEG    D     -1.000   -1.000   0.000 True     -0.653    -0.653    0.000 True    
+   414 PENG   D     -0.815   -0.801   0.014 True     -0.874    -0.859    0.016 True    
+   419 HUM    D     -1.006   -1.000   0.006 True     -0.523    -0.520    0.003 True    
+   422 IRON   E      0.696    0.696   0.000 True      0.172     0.172    0.000 True    
+   424 SMCI   E     -1.006   -1.000   0.006 True     -0.347    -0.345    0.002 True    
+   429 CLS    E     -0.293    0.857   1.150 False    -0.142     0.415    0.556 False   
+   455 AEHR   E     -0.982   -1.000   0.018 True     -0.257    -0.261    0.005 True    
+   462 APPN   E     -0.930   -1.000   0.070 True     -0.674    -0.725    0.051 True    
+era C: fidelity FAILS (R_own reading) [(382, 'OKTA')]  | (R_cap reading) [(382, 'OKTA')]
+era D: fidelity FAILS (R_own reading) [(400, 'VICR'), (404, 'KOD')]  | (R_cap reading) [(400, 'VICR')]
+era E: fidelity FAILS (R_own reading) [(429, 'CLS')]  | (R_cap reading) [(429, 'CLS')]
+
+====================================================================================================
+HORIZON
+====================================================================================================
+rows with outcome 'horizon' in the capture: 0. The two label passes (marks excluded / marks at mark_r) are identical by construction; UNRESOLVED (horizon) cannot occur in this read.
+
+====================================================================================================
+TIER 1 — PRIMARY READING, per arm per era (paired = live_actual settled + fidelity pass + arm scoreable)
+====================================================================================================
+PRIMARY reading: no_entry -> 0 on BOTH hour arms (BOOK_ARMS vocabulary); readable n on R_cap-paired fills;
+engine over paired fills where arm+live_replay settled; fidelity in R_own; marks excluded (none exist);
+a settled arm row whose sizing frame is invalid (capped_dollar_r None: trigger at/below the arm stop) is left out
+of the R_cap sums only (n_cap < n_own) and kept in R_own.
+Tails in R_own on the arm's R_own-paired fills, live counted on the same fills. dropbest = sum - max(delta).
+
+--- stop_orb_low
+  era C: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 1 >=4R 0 max +3.502 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -0.733 med +0.239 b/w/t (4, 2, 0) dropbest -1.881
+     dR_own  sum -0.844 med -0.021 b/w/t (2, 2, 2) dropbest -2.264
+     tailclip 0/1  rescues 0/2  engine sum(arm-replay) R_cap -0.435 on n=6 sign_agrees=True
+     pct dsum -14.343 med +0.495 | adr dsum -1.729 med +0.101
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  era D: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=2
+     tail R_own  arm >=2R 0 >=4R 0 max +0.856 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum +0.463 med +0.061 b/w/t (3, 1, 2) dropbest +0.124
+     dR_own  sum +0.012 med +0.009 b/w/t (1, 2, 3) dropbest -0.433
+     tailclip 0/0  rescues 0/4  engine sum(arm-replay) R_cap +0.406 on n=6 sign_agrees=True
+     pct dsum +15.027 med +3.357 | adr dsum +3.705 med +0.832
+     readable=True WON=True
+  era E: n_cap=4 n_own=4  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max -1.000 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.696 <=-1.5R 0
+     dR_cap  sum +0.025 med +0.078 b/w/t (2, 1, 1) dropbest -0.262
+     dR_own  sum -1.778 med -0.044 b/w/t (0, 2, 2) dropbest -1.785
+     tailclip 0/0  rescues 0/3  engine sum(arm-replay) R_cap +0.078 on n=4 sign_agrees=True
+     pct dsum -2.821 med +2.286 | adr dsum -1.574 med +0.384
+     readable=True WON=False  fails: ['Rown>0', 'dropbest>0']
+  LABEL: NOT A CANDIDATE
+--- stop_adr_050
+  era C: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +1.033 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -3.674 med +0.090 b/w/t (4, 2, 0) dropbest -4.354
+     dR_own  sum -4.914 med -0.105 b/w/t (1, 3, 2) dropbest -5.548
+     tailclip 1/1  rescues 0/2  engine sum(arm-replay) R_cap -3.376 on n=6 sign_agrees=True
+     pct dsum -29.010 med +0.558 | adr dsum -4.061 med +0.083
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0', 'tailclip=0']
+  era D: n_cap=4 n_own=5  excluded/flagged: excluded:abstain=1, fidelity_fail=2, rcap_undefined_invalid_frame=1
+     tail R_own  arm >=2R 0 >=4R 0 max -1.000 <=-1.5R 1 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum -0.191 med +0.188 b/w/t (3, 1, 0) dropbest -0.509
+     dR_own  sum -2.495 med -0.185 b/w/t (0, 3, 2) dropbest -2.518
+     tailclip 0/0  rescues 0/3  engine sum(arm-replay) R_cap -0.229 on n=4 sign_agrees=True
+     pct dsum +17.238 med +5.471 | adr dsum +3.962 med +1.202
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  era E: n_cap=3 n_own=3  excluded/flagged: excluded:abstain=1, fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max -1.000 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.696 <=-1.5R 0
+     dR_cap  sum +0.041 med +0.073 b/w/t (2, 1, 0) dropbest -0.318
+     dR_own  sum -1.760 med -0.070 b/w/t (0, 2, 1) dropbest -1.767
+     tailclip 0/0  rescues 0/2  engine sum(arm-replay) R_cap +0.090 on n=3 sign_agrees=True
+     pct dsum -5.326 med +0.729 | adr dsum -1.499 med +0.133
+     readable=True WON=False  fails: ['Rown>0', 'dropbest>0']
+  LABEL: NOT A CANDIDATE
+--- stop_adr_075
+  era C: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 1 >=4R 0 max +3.885 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -1.046 med -0.010 b/w/t (3, 3, 0) dropbest -2.194
+     dR_own  sum -0.679 med -0.021 b/w/t (2, 2, 2) dropbest -2.482
+     tailclip 0/1  rescues 0/2  engine sum(arm-replay) R_cap -0.748 on n=6 sign_agrees=True
+     pct dsum -15.971 med -0.284 | adr dsum -1.877 med -0.042
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  era D: n_cap=4 n_own=5  excluded/flagged: excluded:abstain=1, fidelity_fail=2, rcap_undefined_invalid_frame=1
+     tail R_own  arm >=2R 0 >=4R 0 max +0.792 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum +0.648 med +0.185 b/w/t (3, 0, 1) dropbest +0.344
+     dR_own  sum -0.058 med +0.012 b/w/t (1, 2, 2) dropbest -0.439
+     tailclip 0/0  rescues 0/3  engine sum(arm-replay) R_cap +0.609 on n=4 sign_agrees=True
+     pct dsum +19.916 med +4.334 | adr dsum +4.306 med +0.952
+     readable=True WON=False  fails: ['Rown>0']
+  era E: n_cap=3 n_own=3  excluded/flagged: excluded:abstain=1, fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max -0.999 <=-1.5R 0 | live >=2R 0 >=4R 0 max -0.930 <=-1.5R 0
+     dR_cap  sum -0.036 med -0.012 b/w/t (1, 1, 1) dropbest -0.238
+     dR_own  sum -0.473 med -0.070 b/w/t (0, 2, 1) dropbest -0.456
+     tailclip 0/0  rescues 0/3  engine sum(arm-replay) R_cap +0.017 on n=3 sign_agrees=False
+     pct dsum +4.104 med +2.005 | adr dsum +0.371 med +0.320
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0', 'engine_sign']
+  LABEL: NOT A CANDIDATE
+--- stop_orb_3r
+  era C: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +1.167 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -1.428 med -0.144 b/w/t (1, 4, 1) dropbest -1.771
+     dR_own  sum -1.189 med -0.112 b/w/t (1, 3, 2) dropbest -1.593
+     tailclip 1/1  rescues 0/2  engine sum(arm-replay) R_cap -1.130 on n=6 sign_agrees=True
+     pct dsum -7.843 med -1.090 | adr dsum -1.699 med -0.191
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0', 'tailclip=0']
+  era D: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=2
+     tail R_own  arm >=2R 0 >=4R 0 max +0.285 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum +0.671 med +0.064 b/w/t (3, 1, 2) dropbest +0.160
+     dR_own  sum +0.794 med +0.137 b/w/t (4, 1, 1) dropbest +0.389
+     tailclip 0/0  rescues 0/4  engine sum(arm-replay) R_cap +0.613 on n=6 sign_agrees=True
+     pct dsum -10.397 med -1.775 | adr dsum -2.502 med -0.506
+     readable=True WON=True
+  era E: n_cap=3 n_own=3  excluded/flagged: excluded:missing=1, fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +0.469 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.696 <=-1.5R 0
+     dR_cap  sum -0.260 med -0.056 b/w/t (0, 2, 1) dropbest -0.260
+     dR_own  sum -0.329 med -0.084 b/w/t (0, 2, 1) dropbest -0.311
+     tailclip 0/0  rescues 0/2  engine sum(arm-replay) R_cap -0.258 on n=3 sign_agrees=True
+     pct dsum -9.016 med -2.250 | adr dsum -1.131 med -0.411
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  LABEL: NOT A CANDIDATE
+--- stop_low_of_day
+  era C: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 1 >=4R 0 max +3.201 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -0.733 med +0.239 b/w/t (4, 2, 0) dropbest -1.881
+     dR_own  sum -1.145 med -0.021 b/w/t (2, 2, 2) dropbest -2.264
+     tailclip 0/1  rescues 0/2  engine sum(arm-replay) R_cap -0.435 on n=6 sign_agrees=True
+     pct dsum -14.343 med +0.495 | adr dsum -1.729 med +0.101
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  era D: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=2
+     tail R_own  arm >=2R 0 >=4R 0 max +0.856 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum +0.463 med +0.061 b/w/t (3, 1, 2) dropbest +0.124
+     dR_own  sum +0.012 med +0.009 b/w/t (1, 2, 3) dropbest -0.433
+     tailclip 0/0  rescues 0/4  engine sum(arm-replay) R_cap +0.406 on n=6 sign_agrees=True
+     pct dsum +15.027 med +3.357 | adr dsum +3.705 med +0.832
+     readable=True WON=True
+  era E: n_cap=4 n_own=4  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max -1.000 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.696 <=-1.5R 0
+     dR_cap  sum +0.025 med +0.078 b/w/t (2, 1, 1) dropbest -0.262
+     dR_own  sum -1.778 med -0.044 b/w/t (0, 2, 2) dropbest -1.785
+     tailclip 0/0  rescues 0/3  engine sum(arm-replay) R_cap +0.078 on n=4 sign_agrees=True
+     pct dsum -2.821 med +2.286 | adr dsum -1.574 med +0.384
+     readable=True WON=False  fails: ['Rown>0', 'dropbest>0']
+  LABEL: NOT A CANDIDATE
+--- entry_first_hour_bar
+  era C: n_cap=6 n_own=4  excluded/flagged: fidelity_fail=1, no_entry_scored_0=2
+     tail R_own  arm >=2R 0 >=4R 0 max +0.544 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -1.626 med -0.185 b/w/t (3, 3, 0) dropbest -2.636
+     dR_own  sum -3.529 med -0.762 b/w/t (1, 3, 0) dropbest -3.789
+     tailclip 1/1  rescues 0/0  engine sum(arm-replay) R_cap -3.273 on n=4 sign_agrees=True
+     pct dsum -31.847 med -1.697 | adr dsum -8.055 med -1.466
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0', 'tailclip=0']
+  era D: n_cap=6 n_own=1  excluded/flagged: fidelity_fail=2, no_entry_scored_0=5
+     tail R_own  arm >=2R 0 >=4R 0 max -0.926 <=-1.5R 0 | live >=2R 0 >=4R 0 max -1.000 <=-1.5R 0
+     dR_cap  sum +2.370 med +0.526 b/w/t (4, 1, 1) dropbest +1.496
+     dR_own  sum +0.074 med +0.074 b/w/t (1, 0, 0) dropbest +0.000
+     tailclip 0/0  rescues 0/1  engine sum(arm-replay) R_cap -0.041 on n=1 sign_agrees=False
+     pct dsum +27.368 med +7.672 | adr dsum -1.254 med -1.254
+     readable=True WON=False  fails: ['engine_sign']
+  era E: n_cap=2 n_own=1  excluded/flagged: excluded:missing=2, fidelity_fail=1, no_entry_scored_0=1
+     tail R_own  arm >=2R 0 >=4R 0 max +0.075 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.696 <=-1.5R 0
+     dR_cap  sum +0.193 med +0.097 b/w/t (1, 1, 0) dropbest -0.154
+     dR_own  sum -0.621 med -0.621 b/w/t (0, 1, 0) dropbest +0.000
+     tailclip 0/0  rescues 0/0  engine sum(arm-replay) R_cap -0.154 on n=1 sign_agrees=False
+     pct dsum -2.401 med -1.201 | adr dsum -1.342 med -1.342
+     readable=False WON=False  fails: ['Rown>0', 'dropbest>0', 'engine_sign']
+  LABEL: NOT A CANDIDATE
+--- book_first_hour_low_of_day
+  era C: n_cap=6 n_own=4  excluded/flagged: fidelity_fail=1, no_entry_scored_0=2
+     tail R_own  arm >=2R 0 >=4R 0 max +1.087 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -1.800 med -0.075 b/w/t (3, 3, 0) dropbest -2.810
+     dR_own  sum -4.034 med -0.706 b/w/t (0, 4, 0) dropbest -3.861
+     tailclip 1/1  rescues 0/0  engine sum(arm-replay) R_cap -3.447 on n=4 sign_agrees=True
+     pct dsum -30.844 med -1.196 | adr dsum -7.850 med -1.363
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0', 'tailclip=0']
+  era D: n_cap=6 n_own=1  excluded/flagged: fidelity_fail=2, no_entry_scored_0=5
+     tail R_own  arm >=2R 0 >=4R 0 max -1.031 <=-1.5R 0 | live >=2R 0 >=4R 0 max -1.000 <=-1.5R 0
+     dR_cap  sum +2.449 med +0.526 b/w/t (4, 1, 1) dropbest +1.575
+     dR_own  sum -0.031 med -0.031 b/w/t (0, 0, 1) dropbest +0.000
+     tailclip 0/0  rescues 0/1  engine sum(arm-replay) R_cap +0.038 on n=1 sign_agrees=True
+     pct dsum +32.273 med +7.672 | adr dsum +0.103 med +0.103
+     readable=True WON=False  fails: ['Rown>0']
+  era E: n_cap=3 n_own=2  excluded/flagged: excluded:missing=1, fidelity_fail=1, no_entry_scored_0=1
+     tail R_own  arm >=2R 0 >=4R 0 max +0.150 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.696 <=-1.5R 0
+     dR_cap  sum +0.219 med +0.007 b/w/t (1, 1, 1) dropbest -0.128
+     dR_own  sum -0.564 med -0.282 b/w/t (0, 1, 1) dropbest -0.546
+     tailclip 0/0  rescues 0/1  engine sum(arm-replay) R_cap -0.124 on n=2 sign_agrees=False
+     pct dsum -8.525 med -5.868 | adr dsum -1.993 med -0.997
+     readable=True WON=False  fails: ['Rown>0', 'dropbest>0', 'engine_sign']
+  LABEL: NOT A CANDIDATE
+--- harvest_no_breakeven
+  era C: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +1.847 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -0.483 med -0.025 b/w/t (0, 2, 4) dropbest -0.488
+     dR_own  sum -0.487 med -0.027 b/w/t (0, 2, 4) dropbest -0.492
+     tailclip 0/1  rescues 0/2  engine sum(arm-replay) R_cap -0.185 on n=6 sign_agrees=True
+     pct dsum -3.528 med -0.138 | adr dsum -0.668 med -0.022
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  era D: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=2
+     tail R_own  arm >=2R 0 >=4R 0 max +0.622 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum +0.202 med +0.011 b/w/t (1, 0, 5) dropbest +0.043
+     dR_own  sum +0.266 med +0.013 b/w/t (1, 0, 5) dropbest +0.056
+     tailclip 0/0  rescues 0/4  engine sum(arm-replay) R_cap +0.145 on n=6 sign_agrees=True
+     pct dsum +2.204 med +0.141 | adr dsum +0.404 med +0.030
+     readable=True WON=True
+  era E: n_cap=4 n_own=4  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +0.728 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.696 <=-1.5R 0
+     dR_cap  sum +0.132 med +0.005 b/w/t (1, 1, 2) dropbest -0.041
+     dR_own  sum +0.631 med +0.019 b/w/t (1, 1, 2) dropbest -0.033
+     tailclip 0/0  rescues 0/3  engine sum(arm-replay) R_cap +0.186 on n=4 sign_agrees=True
+     pct dsum +7.544 med +0.178 | adr dsum +0.818 med +0.040
+     readable=True WON=False  fails: ['dropbest>0']
+  LABEL: NOT A CANDIDATE
+--- harvest_trail_only
+  era C: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 1 >=4R 0 max +2.243 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -0.420 med -0.000 b/w/t (2, 1, 3) dropbest -0.591
+     dR_own  sum -0.484 med -0.002 b/w/t (2, 1, 3) dropbest -0.645
+     tailclip 0/1  rescues 0/2  engine sum(arm-replay) R_cap -0.122 on n=6 sign_agrees=True
+     pct dsum -1.676 med -0.013 | adr dsum -0.522 med -0.001
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  era D: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=2
+     tail R_own  arm >=2R 0 >=4R 0 max +0.430 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum +0.057 med +0.010 b/w/t (0, 0, 6) dropbest +0.039
+     dR_own  sum +0.075 med +0.013 b/w/t (0, 0, 6) dropbest +0.052
+     tailclip 0/0  rescues 0/4  engine sum(arm-replay) R_cap +0.000 on n=6 sign_agrees=False
+     pct dsum +0.681 med +0.121 | adr dsum +0.140 med +0.023
+     readable=True WON=False  fails: ['engine_sign']
+  era E: n_cap=4 n_own=4  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +0.596 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.696 <=-1.5R 0
+     dR_cap  sum -0.078 med -0.015 b/w/t (0, 1, 3) dropbest -0.080
+     dR_own  sum -0.182 med -0.044 b/w/t (0, 2, 2) dropbest -0.188
+     tailclip 0/0  rescues 0/3  engine sum(arm-replay) R_cap -0.025 on n=4 sign_agrees=True
+     pct dsum -1.762 med -0.357 | adr dsum -0.343 med -0.051
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  LABEL: NOT A CANDIDATE
+--- harvest_t3
+  era C: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 1 >=4R 0 max +2.153 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum +0.325 med -0.000 b/w/t (2, 1, 3) dropbest -0.610
+     dR_own  sum +0.320 med -0.002 b/w/t (2, 1, 3) dropbest -0.573
+     tailclip 1/1  rescues 0/2  engine sum(arm-replay) R_cap +0.623 on n=6 sign_agrees=True
+     pct dsum +3.926 med -0.013 | adr dsum +0.519 med -0.001
+     readable=True WON=False  fails: ['dropbest>0', 'tailclip=0']
+  era D: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=2
+     tail R_own  arm >=2R 0 >=4R 0 max +0.108 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum -0.186 med +0.005 b/w/t (0, 1, 5) dropbest -0.204
+     dR_own  sum -0.247 med +0.009 b/w/t (0, 1, 5) dropbest -0.270
+     tailclip 0/0  rescues 0/4  engine sum(arm-replay) R_cap -0.243 on n=6 sign_agrees=True
+     pct dsum -1.876 med +0.070 | adr dsum -0.305 med +0.017
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  era E: n_cap=4 n_own=4  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +0.728 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.696 <=-1.5R 0
+     dR_cap  sum +0.132 med +0.005 b/w/t (1, 1, 2) dropbest -0.041
+     dR_own  sum +0.631 med +0.019 b/w/t (1, 1, 2) dropbest -0.033
+     tailclip 0/0  rescues 0/3  engine sum(arm-replay) R_cap +0.186 on n=4 sign_agrees=True
+     pct dsum +7.544 med +0.178 | adr dsum +0.818 med +0.040
+     readable=True WON=False  fails: ['dropbest>0']
+  LABEL: NOT A CANDIDATE
+--- harvest_legacy_2r
+  era C: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +1.847 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -0.298 med -0.005 b/w/t (0, 1, 5) dropbest -0.303
+     dR_own  sum -0.289 med -0.006 b/w/t (0, 1, 5) dropbest -0.294
+     tailclip 0/1  rescues 0/2  engine sum(arm-replay) R_cap +0.000 on n=6 sign_agrees=False
+     pct dsum -2.411 med -0.050 | adr dsum -0.412 med -0.009
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0', 'engine_sign']
+  era D: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=2
+     tail R_own  arm >=2R 0 >=4R 0 max +0.335 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum -0.015 med +0.005 b/w/t (0, 1, 5) dropbest -0.032
+     dR_own  sum -0.021 med +0.009 b/w/t (0, 1, 5) dropbest -0.043
+     tailclip 0/0  rescues 0/4  engine sum(arm-replay) R_cap -0.072 on n=6 sign_agrees=True
+     pct dsum -0.074 med +0.070 | adr dsum +0.008 med +0.017
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  era E: n_cap=4 n_own=4  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +0.728 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.696 <=-1.5R 0
+     dR_cap  sum +0.307 med +0.005 b/w/t (1, 1, 2) dropbest -0.041
+     dR_own  sum +1.297 med +0.019 b/w/t (1, 1, 2) dropbest -0.033
+     tailclip 0/0  rescues 1/3  engine sum(arm-replay) R_cap +0.360 on n=4 sign_agrees=True
+     pct dsum +15.279 med +0.178 | adr dsum +1.641 med +0.040
+     readable=True WON=False  fails: ['dropbest>0']
+  LABEL: NOT A CANDIDATE
+--- trail_pivot_swing
+  era C: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +1.121 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -1.508 med -0.081 b/w/t (0, 3, 3) dropbest -1.513
+     dR_own  sum -1.487 med -0.105 b/w/t (0, 3, 3) dropbest -1.491
+     tailclip 1/1  rescues 0/2  engine sum(arm-replay) R_cap -1.210 on n=6 sign_agrees=True
+     pct dsum -13.305 med -0.676 | adr dsum -2.275 med -0.132
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0', 'tailclip=0']
+  era D: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=2
+     tail R_own  arm >=2R 0 >=4R 0 max +1.476 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum +0.632 med +0.005 b/w/t (1, 1, 4) dropbest -0.171
+     dR_own  sum +0.921 med +0.009 b/w/t (1, 1, 4) dropbest -0.144
+     tailclip 0/0  rescues 0/4  engine sum(arm-replay) R_cap +0.575 on n=6 sign_agrees=True
+     pct dsum +6.223 med +0.070 | adr dsum +1.048 med +0.017
+     readable=True WON=False  fails: ['dropbest>0']
+  era E: n_cap=3 n_own=3  excluded/flagged: excluded:missing=1, fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max -1.000 <=-1.5R 0 | live >=2R 0 >=4R 0 max -0.930 <=-1.5R 0
+     dR_cap  sum -0.053 med -0.005 b/w/t (0, 1, 2) dropbest -0.056
+     dR_own  sum -0.082 med -0.018 b/w/t (0, 1, 2) dropbest -0.088
+     tailclip 0/0  rescues 0/3  engine sum(arm-replay) R_cap -0.000 on n=3 sign_agrees=True
+     pct dsum -0.693 med -0.209 | adr dsum -0.099 med -0.022
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  LABEL: NOT A CANDIDATE
+--- trail_character_ma
+  era C: n_cap=1 n_own=1  excluded/flagged: excluded:unscoreable=5, fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max -1.000 <=-1.5R 0 | live >=2R 0 >=4R 0 max -0.953 <=-1.5R 0
+     dR_cap  sum -0.044 med -0.044 b/w/t (0, 0, 1) dropbest +0.000
+     dR_own  sum -0.047 med -0.047 b/w/t (0, 0, 1) dropbest +0.000
+     tailclip 0/0  rescues 0/1  engine sum(arm-replay) R_cap +0.000 on n=1 sign_agrees=False
+     pct dsum -0.219 med -0.219 | adr dsum -0.033 med -0.033
+     readable=False WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0', 'engine_sign']
+  era D: n_cap=4 n_own=4  excluded/flagged: excluded:unscoreable=2, fidelity_fail=2
+     tail R_own  arm >=2R 0 >=4R 0 max +0.000 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum -0.491 med -0.099 b/w/t (0, 2, 2) dropbest -0.509
+     dR_own  sum -0.573 med -0.092 b/w/t (0, 2, 2) dropbest -0.596
+     tailclip 0/0  rescues 0/2  engine sum(arm-replay) R_cap -0.538 on n=4 sign_agrees=True
+     pct dsum -5.639 med -1.281 | adr dsum -1.026 med -0.249
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0']
+  era E: n_cap=1 n_own=1  excluded/flagged: excluded:unscoreable=3, fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max -1.000 <=-1.5R 0 | live >=2R 0 >=4R 0 max -0.930 <=-1.5R 0
+     dR_cap  sum -0.051 med -0.051 b/w/t (0, 1, 0) dropbest +0.000
+     dR_own  sum -0.070 med -0.070 b/w/t (0, 1, 0) dropbest +0.000
+     tailclip 0/0  rescues 0/1  engine sum(arm-replay) R_cap +0.000 on n=1 sign_agrees=False
+     pct dsum -0.506 med -0.506 | adr dsum -0.081 med -0.081
+     readable=False WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0', 'engine_sign']
+  LABEL: UNREADABLE
+--- live_replay
+  era C: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +1.847 <=-1.5R 0 | live >=2R 1 >=4R 0 max +2.082 <=-1.5R 0
+     dR_cap  sum -0.298 med -0.005 b/w/t (0, 1, 5) dropbest -0.303
+     dR_own  sum -0.289 med -0.006 b/w/t (0, 1, 5) dropbest -0.294
+     tailclip 0/1  rescues 0/2  engine sum(arm-replay) R_cap +0.000 on n=6 sign_agrees=False
+     pct dsum -2.411 med -0.050 | adr dsum -0.412 med -0.009
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0', 'engine_sign']
+  era D: n_cap=6 n_own=6  excluded/flagged: fidelity_fail=2
+     tail R_own  arm >=2R 0 >=4R 0 max +0.430 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.411 <=-1.5R 0
+     dR_cap  sum +0.057 med +0.010 b/w/t (0, 0, 6) dropbest +0.039
+     dR_own  sum +0.075 med +0.013 b/w/t (0, 0, 6) dropbest +0.052
+     tailclip 0/0  rescues 0/4  engine sum(arm-replay) R_cap +0.000 on n=6 sign_agrees=False
+     pct dsum +0.681 med +0.121 | adr dsum +0.140 med +0.023
+     readable=True WON=False  fails: ['engine_sign']
+  era E: n_cap=4 n_own=4  excluded/flagged: fidelity_fail=1
+     tail R_own  arm >=2R 0 >=4R 0 max +0.696 <=-1.5R 0 | live >=2R 0 >=4R 0 max +0.696 <=-1.5R 0
+     dR_cap  sum -0.053 med -0.002 b/w/t (0, 1, 3) dropbest -0.056
+     dR_own  sum -0.082 med -0.009 b/w/t (0, 1, 3) dropbest -0.088
+     tailclip 0/0  rescues 0/3  engine sum(arm-replay) R_cap +0.000 on n=4 sign_agrees=False
+     pct dsum -0.693 med -0.104 | adr dsum -0.099 med -0.011
+     readable=True WON=False  fails: ['Rcap>0', 'Rown>0', 'dropbest>0', 'engine_sign']
+  LABEL: NOT A CANDIDATE
+
+====================================================================================================
+TIER 1 — paired-fill detail (PRIMARY): arm R_own / R_cap vs live_actual R_own / R_cap
+====================================================================================================
+stop_orb_low                 C: AMLX -1.00/-1.08 v +1.26/+1.32; MRVL -1.00/-0.47 v -0.95/-0.90; MRNA +3.50/+3.35 v +2.08/+2.20; CRWD +0.67/+0.46 v +0.40/+0.37; SOLS -1.00/-0.61 v -1.00/-1.01; HOOD -1.07/-0.98 v -0.84/-0.60
+stop_orb_low                 D: PHVS -1.00/-0.80 v -1.02/-0.79; SEI +0.86/+0.65 v +0.41/+0.31; DFTX -1.00/-0.55 v -1.01/-0.53; CEG -1.06/-0.35 v -1.00/-0.65; PENG -1.23/-1.16 v -0.82/-0.87; HUM -1.00/-0.39 v -1.01/-0.52
+stop_orb_low                 E: IRON -1.00/-0.25 v +0.70/+0.17; SMCI -1.00/-0.17 v -1.01/-0.35; AEHR -1.00/-0.27 v -0.98/-0.26; APPN -1.00/-0.39 v -0.93/-0.67
+stop_adr_050                 C: AMLX -1.00/-0.66 v +1.26/+1.32; MRVL -1.00/-0.67 v -0.95/-0.90; MRNA -1.00/-0.58 v +2.08/+2.20; CRWD +1.03/+0.46 v +0.40/+0.37; SOLS -1.00/-0.33 v -1.00/-1.01; HOOD -1.00/-0.50 v -0.84/-0.60
+stop_adr_050                 D: PHVS -1.00/-0.48 v -1.02/-0.79; SEI -1.00/-0.58 v +0.41/+0.31; DFTX -1.00/-0.46 v -1.01/-0.53; CEG -1.93/-0.35 v -1.00/-0.65; PENG -1.00/undef v -0.82/-0.87
+stop_adr_050                 E: IRON -1.00/-0.22 v +0.70/+0.17; SMCI -1.00/-0.27 v -1.01/-0.35; APPN -1.00/-0.32 v -0.93/-0.67
+stop_adr_075                 C: AMLX -1.00/-0.99 v +1.26/+1.32; MRVL -1.00/-1.00 v -0.95/-0.90; MRNA +3.88/+3.35 v +2.08/+2.20; CRWD +0.69/+0.46 v +0.40/+0.37; SOLS -1.00/-0.49 v -1.00/-1.01; HOOD -1.31/-0.98 v -0.84/-0.60
+stop_adr_075                 D: PHVS -1.00/-0.71 v -1.02/-0.79; SEI +0.79/+0.60 v +0.41/+0.31; DFTX -1.00/-0.56 v -1.01/-0.53; CEG -1.29/-0.35 v -1.00/-0.65; PENG -1.00/undef v -0.82/-0.87
+stop_adr_075                 E: SMCI -1.39/-0.57 v -1.01/-0.35; AEHR -1.00/-0.27 v -0.98/-0.26; APPN -1.00/-0.47 v -0.93/-0.67
+stop_orb_3r                  C: AMLX +0.80/+0.82 v +1.26/+1.32; MRVL -1.00/-1.00 v -0.95/-0.90; MRNA +1.17/+1.21 v +2.08/+2.20; CRWD +0.22/+0.19 v +0.40/+0.37; SOLS -1.00/-1.00 v -1.00/-1.01; HOOD -0.43/-0.26 v -0.84/-0.60
+stop_orb_3r                  D: PHVS -0.89/-0.68 v -1.02/-0.79; SEI +0.29/+0.21 v +0.41/+0.31; DFTX -1.00/-0.51 v -1.01/-0.53; CEG -0.86/-0.65 v -1.00/-0.65; PENG -0.41/-0.36 v -0.82/-0.87; HUM -0.78/-0.40 v -1.01/-0.52
+stop_orb_3r                  E: IRON +0.47/+0.12 v +0.70/+0.17; SMCI -1.09/-0.55 v -1.01/-0.35; AEHR -1.00/-0.26 v -0.98/-0.26
+stop_low_of_day              C: AMLX -1.00/-1.08 v +1.26/+1.32; MRVL -1.00/-0.47 v -0.95/-0.90; MRNA +3.20/+3.35 v +2.08/+2.20; CRWD +0.67/+0.46 v +0.40/+0.37; SOLS -1.00/-0.61 v -1.00/-1.01; HOOD -1.07/-0.98 v -0.84/-0.60
+stop_low_of_day              D: PHVS -1.00/-0.80 v -1.02/-0.79; SEI +0.86/+0.65 v +0.41/+0.31; DFTX -1.00/-0.55 v -1.01/-0.53; CEG -1.06/-0.35 v -1.00/-0.65; PENG -1.23/-1.16 v -0.82/-0.87; HUM -1.00/-0.39 v -1.01/-0.52
+stop_low_of_day              E: IRON -1.00/-0.25 v +0.70/+0.17; SMCI -1.00/-0.17 v -1.01/-0.35; AEHR -1.00/-0.27 v -0.98/-0.26; APPN -1.00/-0.39 v -0.93/-0.67
+entry_first_hour_bar         C: AMLX +0.54/+0.54 v +1.26/+1.32; MRVL NE/+0.00 v -0.95/-0.90; MRNA -0.18/-0.18 v +2.08/+2.20; CRWD -0.41/-0.31 v +0.40/+0.37; SOLS NE/+0.00 v -1.00/-1.01; HOOD -0.58/-0.29 v -0.84/-0.60
+entry_first_hour_bar         D: PHVS NE/+0.00 v -1.02/-0.79; SEI NE/+0.00 v +0.41/+0.31; DFTX NE/+0.00 v -1.01/-0.53; CEG -0.93/-0.69 v -1.00/-0.65; PENG NE/+0.00 v -0.82/-0.87; HUM NE/+0.00 v -1.01/-0.52
+entry_first_hour_bar         E: IRON +0.08/+0.02 v +0.70/+0.17; SMCI NE/+0.00 v -1.01/-0.35
+book_first_hour_low_of_day   C: AMLX +1.09/+1.09 v +1.26/+1.32; MRVL NE/+0.00 v -0.95/-0.90; MRNA -0.37/-0.37 v +2.08/+2.20; CRWD -0.82/-0.61 v +0.40/+0.37; SOLS NE/+0.00 v -1.00/-1.01; HOOD -1.03/-0.52 v -0.84/-0.60
+book_first_hour_low_of_day   D: PHVS NE/+0.00 v -1.02/-0.79; SEI NE/+0.00 v +0.41/+0.31; DFTX NE/+0.00 v -1.01/-0.53; CEG -1.03/-0.62 v -1.00/-0.65; PENG NE/+0.00 v -0.82/-0.87; HUM NE/+0.00 v -1.01/-0.52
+book_first_hour_low_of_day   E: IRON +0.15/+0.04 v +0.70/+0.17; SMCI NE/+0.00 v -1.01/-0.35; AEHR -1.00/-0.25 v -0.98/-0.26
+harvest_no_breakeven         C: AMLX +1.26/+1.32 v +1.26/+1.32; MRVL -1.00/-0.94 v -0.95/-0.90; MRNA +1.85/+1.95 v +2.08/+2.20; CRWD +0.20/+0.19 v +0.40/+0.37; SOLS -1.00/-1.00 v -1.00/-1.01; HOOD -0.84/-0.60 v -0.84/-0.60
+harvest_no_breakeven         D: PHVS -1.00/-0.78 v -1.02/-0.79; SEI +0.62/+0.47 v +0.41/+0.31; DFTX -1.00/-0.52 v -1.01/-0.53; CEG -1.00/-0.65 v -1.00/-0.65; PENG -0.80/-0.86 v -0.82/-0.87; HUM -1.00/-0.52 v -1.01/-0.52
+harvest_no_breakeven         E: IRON +0.73/+0.18 v +0.70/+0.17; SMCI -1.00/-0.34 v -1.01/-0.35; AEHR -0.32/-0.08 v -0.98/-0.26; APPN -1.00/-0.73 v -0.93/-0.67
+harvest_trail_only           C: AMLX +1.36/+1.43 v +1.26/+1.32; MRVL -1.00/-0.94 v -0.95/-0.90; MRNA +2.24/+2.37 v +2.08/+2.20; CRWD -0.30/-0.28 v +0.40/+0.37; SOLS -1.00/-1.00 v -1.00/-1.01; HOOD -0.84/-0.60 v -0.84/-0.60
+harvest_trail_only           D: PHVS -1.00/-0.78 v -1.02/-0.79; SEI +0.43/+0.32 v +0.41/+0.31; DFTX -1.00/-0.52 v -1.01/-0.53; CEG -1.00/-0.65 v -1.00/-0.65; PENG -0.80/-0.86 v -0.82/-0.87; HUM -1.00/-0.52 v -1.01/-0.52
+harvest_trail_only           E: IRON +0.60/+0.15 v +0.70/+0.17; SMCI -1.00/-0.34 v -1.01/-0.35; AEHR -1.00/-0.26 v -0.98/-0.26; APPN -1.00/-0.73 v -0.93/-0.67
+harvest_t3                   C: AMLX +2.15/+2.26 v +1.26/+1.32; MRVL -1.00/-0.94 v -0.95/-0.90; MRNA +1.46/+1.55 v +2.08/+2.20; CRWD +0.50/+0.47 v +0.40/+0.37; SOLS -1.00/-1.00 v -1.00/-1.01; HOOD -0.84/-0.60 v -0.84/-0.60
+harvest_t3                   D: PHVS -1.00/-0.78 v -1.02/-0.79; SEI +0.11/+0.08 v +0.41/+0.31; DFTX -1.00/-0.52 v -1.01/-0.53; CEG -1.00/-0.65 v -1.00/-0.65; PENG -0.80/-0.86 v -0.82/-0.87; HUM -1.00/-0.52 v -1.01/-0.52
+harvest_t3                   E: IRON +0.73/+0.18 v +0.70/+0.17; SMCI -1.00/-0.34 v -1.01/-0.35; AEHR -0.32/-0.08 v -0.98/-0.26; APPN -1.00/-0.73 v -0.93/-0.67
+harvest_legacy_2r            C: AMLX +1.26/+1.32 v +1.26/+1.32; MRVL -1.00/-0.94 v -0.95/-0.90; MRNA +1.85/+1.95 v +2.08/+2.20; CRWD +0.40/+0.37 v +0.40/+0.37; SOLS -1.00/-1.00 v -1.00/-1.01; HOOD -0.84/-0.60 v -0.84/-0.60
+harvest_legacy_2r            D: PHVS -1.00/-0.78 v -1.02/-0.79; SEI +0.34/+0.25 v +0.41/+0.31; DFTX -1.00/-0.52 v -1.01/-0.53; CEG -1.00/-0.65 v -1.00/-0.65; PENG -0.80/-0.86 v -0.82/-0.87; HUM -1.00/-0.52 v -1.01/-0.52
+harvest_legacy_2r            E: IRON +0.73/+0.18 v +0.70/+0.17; SMCI -1.00/-0.34 v -1.01/-0.35; AEHR +0.35/+0.09 v -0.98/-0.26; APPN -1.00/-0.73 v -0.93/-0.67
+trail_pivot_swing            C: AMLX +0.94/+0.98 v +1.26/+1.32; MRVL -1.00/-0.94 v -0.95/-0.90; MRNA +1.12/+1.19 v +2.08/+2.20; CRWD +0.40/+0.37 v +0.40/+0.37; SOLS -1.00/-1.00 v -1.00/-1.01; HOOD -1.00/-0.72 v -0.84/-0.60
+trail_pivot_swing            D: PHVS -1.00/-0.78 v -1.02/-0.79; SEI +1.48/+1.11 v +0.41/+0.31; DFTX -1.00/-0.52 v -1.01/-0.53; CEG -1.00/-0.65 v -1.00/-0.65; PENG -1.00/-1.07 v -0.82/-0.87; HUM -1.00/-0.52 v -1.01/-0.52
+trail_pivot_swing            E: SMCI -1.00/-0.34 v -1.01/-0.35; AEHR -1.00/-0.26 v -0.98/-0.26; APPN -1.00/-0.73 v -0.93/-0.67
+trail_character_ma           C: MRVL -1.00/-0.94 v -0.95/-0.90
+trail_character_ma           D: PHVS -1.00/-0.78 v -1.02/-0.79; SEI +0.00/+0.00 v +0.41/+0.31; CEG -1.00/-0.65 v -1.00/-0.65; PENG -1.00/-1.07 v -0.82/-0.87
+trail_character_ma           E: APPN -1.00/-0.73 v -0.93/-0.67
+
+====================================================================================================
+LABELS ACROSS READINGS (a label that changes across admissible readings is flagged FLIP)
+====================================================================================================
+arm                          PRIMARY                | a:noentry=arm_kind_boo | b:readable_n=R_own_n   | c:engine=all_era_both_ | f:fidelity_in_R_cap    | h:marks_counted        | i:invalid_frame_Rcap=0 | j:invalid_frame_drop_f | g:precedence=not_won_f
+stop_orb_low                 NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE       
+stop_adr_050                 NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE       
+stop_adr_075                 NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE       
+stop_orb_3r                  NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE       
+stop_low_of_day              NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE       
+entry_first_hour_bar         NOT A CANDIDATE        | UNREADABLE             | UNREADABLE             | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE         FLIP
+book_first_hour_low_of_day   NOT A CANDIDATE        | NOT A CANDIDATE        | UNREADABLE             | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE         FLIP
+harvest_no_breakeven         NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE       
+harvest_trail_only           NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE       
+harvest_t3                   NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE       
+harvest_legacy_2r            NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE       
+trail_pivot_swing            NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE        | NOT A CANDIDATE       
+trail_character_ma           UNREADABLE             | UNREADABLE             | UNREADABLE             | UNREADABLE             | UNREADABLE             | UNREADABLE             | UNREADABLE             | UNREADABLE             | NOT A CANDIDATE         FLIP
+
+per-era WON / readable under each reading (R=readable, W=won):
+  stop_orb_low                 PRIMARY[C:R-6 D:RW6 E:R-4]  a[C:R-6 D:RW6 E:R-4]  b[C:R-6 D:RW6 E:R-4]  c[C:R-6 D:RW6 E:R-4]  f[C:R-6 D:RW7 E:R-4]  h[C:R-6 D:RW6 E:R-4]  i[C:R-6 D:RW6 E:R-4]  j[C:R-6 D:RW6 E:R-4]
+  stop_adr_050                 PRIMARY[C:R-6 D:R-4 E:R-3]  a[C:R-6 D:R-4 E:R-3]  b[C:R-6 D:R-5 E:R-3]  c[C:R-6 D:R-4 E:R-3]  f[C:R-6 D:R-5 E:R-3]  h[C:R-6 D:R-4 E:R-3]  i[C:R-6 D:R-5 E:R-3]  j[C:R-6 D:R-4 E:R-3]
+  stop_adr_075                 PRIMARY[C:R-6 D:R-4 E:R-3]  a[C:R-6 D:R-4 E:R-3]  b[C:R-6 D:R-5 E:R-3]  c[C:R-6 D:R-4 E:R-3]  f[C:R-6 D:RW5 E:R-3]  h[C:R-6 D:R-4 E:R-3]  i[C:R-6 D:R-5 E:R-3]  j[C:R-6 D:RW4 E:R-3]
+  stop_orb_3r                  PRIMARY[C:R-6 D:RW6 E:R-3]  a[C:R-6 D:RW6 E:R-3]  b[C:R-6 D:RW6 E:R-3]  c[C:R-6 D:R-6 E:R-3]  f[C:R-6 D:R-7 E:R-3]  h[C:R-6 D:RW6 E:R-3]  i[C:R-6 D:RW6 E:R-3]  j[C:R-6 D:RW6 E:R-3]
+  stop_low_of_day              PRIMARY[C:R-6 D:RW6 E:R-4]  a[C:R-6 D:RW6 E:R-4]  b[C:R-6 D:RW6 E:R-4]  c[C:R-6 D:RW6 E:R-4]  f[C:R-6 D:RW7 E:R-4]  h[C:R-6 D:RW6 E:R-4]  i[C:R-6 D:RW6 E:R-4]  j[C:R-6 D:RW6 E:R-4]
+  entry_first_hour_bar         PRIMARY[C:R-6 D:R-6 E:--2]  a[C:R-4 D:--1 E:--1]  b[C:R-4 D:--1 E:--1]  c[C:R-6 D:R-6 E:--2]  f[C:R-6 D:R-7 E:--2]  h[C:R-6 D:R-6 E:--2]  i[C:R-6 D:R-6 E:--2]  j[C:R-6 D:R-6 E:--2]
+  book_first_hour_low_of_day   PRIMARY[C:R-6 D:R-6 E:R-3]  a[C:R-6 D:R-6 E:R-3]  b[C:R-4 D:--1 E:--2]  c[C:R-6 D:R-6 E:R-3]  f[C:R-6 D:R-7 E:R-3]  h[C:R-6 D:R-6 E:R-3]  i[C:R-6 D:R-6 E:R-3]  j[C:R-6 D:R-6 E:R-3]
+  harvest_no_breakeven         PRIMARY[C:R-6 D:RW6 E:R-4]  a[C:R-6 D:RW6 E:R-4]  b[C:R-6 D:RW6 E:R-4]  c[C:R-6 D:R-6 E:R-4]  f[C:R-6 D:R-7 E:R-4]  h[C:R-6 D:RW6 E:R-4]  i[C:R-6 D:RW6 E:R-4]  j[C:R-6 D:RW6 E:R-4]
+  harvest_trail_only           PRIMARY[C:R-6 D:R-6 E:R-4]  a[C:R-6 D:R-6 E:R-4]  b[C:R-6 D:R-6 E:R-4]  c[C:R-6 D:RW6 E:R-4]  f[C:R-6 D:RW7 E:R-4]  h[C:R-6 D:R-6 E:R-4]  i[C:R-6 D:R-6 E:R-4]  j[C:R-6 D:R-6 E:R-4]
+  harvest_t3                   PRIMARY[C:R-6 D:R-6 E:R-4]  a[C:R-6 D:R-6 E:R-4]  b[C:R-6 D:R-6 E:R-4]  c[C:R-6 D:R-6 E:R-4]  f[C:R-6 D:R-7 E:R-4]  h[C:R-6 D:R-6 E:R-4]  i[C:R-6 D:R-6 E:R-4]  j[C:R-6 D:R-6 E:R-4]
+  harvest_legacy_2r            PRIMARY[C:R-6 D:R-6 E:R-4]  a[C:R-6 D:R-6 E:R-4]  b[C:R-6 D:R-6 E:R-4]  c[C:R-6 D:R-6 E:R-4]  f[C:R-6 D:R-7 E:R-4]  h[C:R-6 D:R-6 E:R-4]  i[C:R-6 D:R-6 E:R-4]  j[C:R-6 D:R-6 E:R-4]
+  trail_pivot_swing            PRIMARY[C:R-6 D:R-6 E:R-3]  a[C:R-6 D:R-6 E:R-3]  b[C:R-6 D:R-6 E:R-3]  c[C:R-6 D:R-6 E:R-3]  f[C:R-6 D:R-7 E:R-3]  h[C:R-6 D:R-6 E:R-3]  i[C:R-6 D:R-6 E:R-3]  j[C:R-6 D:R-6 E:R-3]
+  trail_character_ma           PRIMARY[C:--1 D:R-4 E:--1]  a[C:--1 D:R-4 E:--1]  b[C:--1 D:R-4 E:--1]  c[C:--1 D:R-4 E:--1]  f[C:--1 D:R-4 E:--1]  h[C:--1 D:R-4 E:--1]  i[C:--1 D:R-4 E:--1]  j[C:--1 D:R-4 E:--1]
+
+====================================================================================================
+DISAPPOINTS per era (live_actual R_cap sum < 0 AND no fill >= +4R)
+====================================================================================================
+era C [all era fills         ] n=7 live R_cap sum +2.413  fills >=+4R 0  -> DISAPPOINTS=False
+era C [fidelity-passing fills] n=6 live R_cap sum +1.392  fills >=+4R 0  -> DISAPPOINTS=False
+era D [all era fills         ] n=8 live R_cap sum +1.771  fills >=+4R 2  -> DISAPPOINTS=False
+era D [fidelity-passing fills] n=6 live R_cap sum -3.065  fills >=+4R 0  -> DISAPPOINTS=True
+era E [all era fills         ] n=5 live R_cap sum -1.247  fills >=+4R 0  -> DISAPPOINTS=True
+era E [fidelity-passing fills] n=4 live R_cap sum -1.105  fills >=+4R 0  -> DISAPPOINTS=True
+
+====================================================================================================
+RECORDER CHECKS (reported; do not stop the read)
+====================================================================================================
+follows-live target_r/breakeven_arm_r disagreements (want C 2/NULL, D/E 8/3): 11 rows
+  HOOD(392) era C got (8.0, 3.0) on 11 arms; fidelity pass=True -> stays
+era C harvest_legacy_2r == live_replay: 7/7  
+stop_low_of_day identical to stop_orb_low on 09:31 ET fills: 11/11
+  (all fills, identical realized_r: 18/20)
+hour-bar arms (entry_first_hour_bar, book_first_hour_low_of_day) only see fills where the 1-minute ORB high filled (selection effect).
+
+====================================================================================================
+FILL FACTS (descriptive, from fill_facts rows)
+====================================================================================================
+era C: fill_vs_trigger_pct median +0.470 max +2.131 count>+1% 2 | real_risk_vs_trigger_risk median 1.047 max 1.432  (n=7)
+era D: fill_vs_trigger_pct median +0.287 max +4.350 count>+1% 1 | real_risk_vs_trigger_risk median 1.038 max 1.430  (n=8)
+era E: fill_vs_trigger_pct median +0.051 max +0.507 count>+1% 0 | real_risk_vs_trigger_risk median 1.015 max 1.074  (n=5)
+
+====================================================================================================
+SUMMARY TABLE (PRIMARY): arm | era | n_cap n_own | arm>=2 >=4 <=-1.5 | live>=2 >=4 <=-1.5 | dRown sum | dRcap sum | WON
+====================================================================================================
+stop_orb_low                 C |  6  6 | 1 0 0 | 1 0 0 |   -0.844 |   -0.733 | -R
+stop_orb_low                 D |  6  6 | 0 0 0 | 0 0 0 |   +0.012 |   +0.463 | WR
+stop_orb_low                 E |  4  4 | 0 0 0 | 0 0 0 |   -1.778 |   +0.025 | -R
+                               LABEL NOT A CANDIDATE
+stop_adr_050                 C |  6  6 | 0 0 0 | 1 0 0 |   -4.914 |   -3.674 | -R
+stop_adr_050                 D |  4  5 | 0 0 1 | 0 0 0 |   -2.495 |   -0.191 | -R
+stop_adr_050                 E |  3  3 | 0 0 0 | 0 0 0 |   -1.760 |   +0.041 | -R
+                               LABEL NOT A CANDIDATE
+stop_adr_075                 C |  6  6 | 1 0 0 | 1 0 0 |   -0.679 |   -1.046 | -R
+stop_adr_075                 D |  4  5 | 0 0 0 | 0 0 0 |   -0.058 |   +0.648 | -R
+stop_adr_075                 E |  3  3 | 0 0 0 | 0 0 0 |   -0.473 |   -0.036 | -R
+                               LABEL NOT A CANDIDATE
+stop_orb_3r                  C |  6  6 | 0 0 0 | 1 0 0 |   -1.189 |   -1.428 | -R
+stop_orb_3r                  D |  6  6 | 0 0 0 | 0 0 0 |   +0.794 |   +0.671 | WR
+stop_orb_3r                  E |  3  3 | 0 0 0 | 0 0 0 |   -0.329 |   -0.260 | -R
+                               LABEL NOT A CANDIDATE
+stop_low_of_day              C |  6  6 | 1 0 0 | 1 0 0 |   -1.145 |   -0.733 | -R
+stop_low_of_day              D |  6  6 | 0 0 0 | 0 0 0 |   +0.012 |   +0.463 | WR
+stop_low_of_day              E |  4  4 | 0 0 0 | 0 0 0 |   -1.778 |   +0.025 | -R
+                               LABEL NOT A CANDIDATE
+entry_first_hour_bar         C |  6  4 | 0 0 0 | 1 0 0 |   -3.529 |   -1.626 | -R
+entry_first_hour_bar         D |  6  1 | 0 0 0 | 0 0 0 |   +0.074 |   +2.370 | -R
+entry_first_hour_bar         E |  2  1 | 0 0 0 | 0 0 0 |   -0.621 |   +0.193 | -u
+                               LABEL NOT A CANDIDATE
+book_first_hour_low_of_day   C |  6  4 | 0 0 0 | 1 0 0 |   -4.034 |   -1.800 | -R
+book_first_hour_low_of_day   D |  6  1 | 0 0 0 | 0 0 0 |   -0.031 |   +2.449 | -R
+book_first_hour_low_of_day   E |  3  2 | 0 0 0 | 0 0 0 |   -0.564 |   +0.219 | -R
+                               LABEL NOT A CANDIDATE
+harvest_no_breakeven         C |  6  6 | 0 0 0 | 1 0 0 |   -0.487 |   -0.483 | -R
+harvest_no_breakeven         D |  6  6 | 0 0 0 | 0 0 0 |   +0.266 |   +0.202 | WR
+harvest_no_breakeven         E |  4  4 | 0 0 0 | 0 0 0 |   +0.631 |   +0.132 | -R
+                               LABEL NOT A CANDIDATE
+harvest_trail_only           C |  6  6 | 1 0 0 | 1 0 0 |   -0.484 |   -0.420 | -R
+harvest_trail_only           D |  6  6 | 0 0 0 | 0 0 0 |   +0.075 |   +0.057 | -R
+harvest_trail_only           E |  4  4 | 0 0 0 | 0 0 0 |   -0.182 |   -0.078 | -R
+                               LABEL NOT A CANDIDATE
+harvest_t3                   C |  6  6 | 1 0 0 | 1 0 0 |   +0.320 |   +0.325 | -R
+harvest_t3                   D |  6  6 | 0 0 0 | 0 0 0 |   -0.247 |   -0.186 | -R
+harvest_t3                   E |  4  4 | 0 0 0 | 0 0 0 |   +0.631 |   +0.132 | -R
+                               LABEL NOT A CANDIDATE
+harvest_legacy_2r            C |  6  6 | 0 0 0 | 1 0 0 |   -0.289 |   -0.298 | -R
+harvest_legacy_2r            D |  6  6 | 0 0 0 | 0 0 0 |   -0.021 |   -0.015 | -R
+harvest_legacy_2r            E |  4  4 | 0 0 0 | 0 0 0 |   +1.297 |   +0.307 | -R
+                               LABEL NOT A CANDIDATE
+trail_pivot_swing            C |  6  6 | 0 0 0 | 1 0 0 |   -1.487 |   -1.508 | -R
+trail_pivot_swing            D |  6  6 | 0 0 0 | 0 0 0 |   +0.921 |   +0.632 | -R
+trail_pivot_swing            E |  3  3 | 0 0 0 | 0 0 0 |   -0.082 |   -0.053 | -R
+                               LABEL NOT A CANDIDATE
+trail_character_ma           C |  1  1 | 0 0 0 | 0 0 0 |   -0.047 |   -0.044 | -u
+trail_character_ma           D |  4  4 | 0 0 0 | 0 0 0 |   -0.573 |   -0.491 | -R
+trail_character_ma           E |  1  1 | 0 0 0 | 0 0 0 |   -0.070 |   -0.051 | -u
+                               LABEL UNREADABLE
+live_replay                  C |  6  6 | 0 0 0 | 1 0 0 |   -0.289 |   -0.298 | -R
+live_replay                  D |  6  6 | 0 0 0 | 0 0 0 |   +0.075 |   +0.057 | -R
+live_replay                  E |  4  4 | 0 0 0 | 0 0 0 |   -0.082 |   -0.053 | -R
+
+
+====================================================================================================
+FLIPS
+====================================================================================================
+3 arm(s) whose label changes across admissible readings:
+  entry_first_hour_bar: PRIMARY=NOT A CANDIDATE; a:noentry=arm_kind_book_only=UNREADABLE; b:readable_n=R_own_n=UNREADABLE; c:engine=all_era_both_settled=NOT A CANDIDATE; f:fidelity_in_R_cap=NOT A CANDIDATE; h:marks_counted=NOT A CANDIDATE; i:invalid_frame_Rcap=0=NOT A CANDIDATE; j:invalid_frame_drop_fill=NOT A CANDIDATE; g:precedence=not_won_first=NOT A CANDIDATE
+  book_first_hour_low_of_day: PRIMARY=NOT A CANDIDATE; a:noentry=arm_kind_book_only=NOT A CANDIDATE; b:readable_n=R_own_n=UNREADABLE; c:engine=all_era_both_settled=NOT A CANDIDATE; f:fidelity_in_R_cap=NOT A CANDIDATE; h:marks_counted=NOT A CANDIDATE; i:invalid_frame_Rcap=0=NOT A CANDIDATE; j:invalid_frame_drop_fill=NOT A CANDIDATE; g:precedence=not_won_first=NOT A CANDIDATE
+  trail_character_ma: PRIMARY=UNREADABLE; a:noentry=arm_kind_book_only=UNREADABLE; b:readable_n=R_own_n=UNREADABLE; c:engine=all_era_both_settled=UNREADABLE; f:fidelity_in_R_cap=UNREADABLE; h:marks_counted=UNREADABLE; i:invalid_frame_Rcap=0=UNREADABLE; j:invalid_frame_drop_fill=UNREADABLE; g:precedence=not_won_first=NOT A CANDIDATE

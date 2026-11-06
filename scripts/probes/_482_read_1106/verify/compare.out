@@ -1,0 +1,42 @@
+fields compared: 1209; arms 13; mismatches: 20
+  MISMATCH entry_first_hour_bar         C rescue_base  read_482=2  recount=0
+  MISMATCH entry_first_hour_bar         C adr_sum      read_482=-5.53  recount=-8.055
+  MISMATCH entry_first_hour_bar         C adr_med      read_482=-0.36  recount=-1.4658
+  MISMATCH entry_first_hour_bar         D lmax         read_482=+0.41  recount=-1.0
+  MISMATCH entry_first_hour_bar         D rescue_base  read_482=4  recount=1
+  MISMATCH entry_first_hour_bar         D adr_sum      read_482=+6.12  recount=-1.2543
+  MISMATCH entry_first_hour_bar         D adr_med      read_482=+1.75  recount=-1.2543
+  MISMATCH entry_first_hour_bar         E rescue_base  read_482=1  recount=0
+  MISMATCH entry_first_hour_bar         E adr_sum      read_482=-0.71  recount=-1.3418
+  MISMATCH entry_first_hour_bar         E adr_med      read_482=-0.35  recount=-1.3418
+  MISMATCH book_first_hour_low_of_day   C rescue_base  read_482=2  recount=0
+  MISMATCH book_first_hour_low_of_day   C adr_sum      read_482=-5.32  recount=-7.8503
+  MISMATCH book_first_hour_low_of_day   C adr_med      read_482=-0.26  recount=-1.3635
+  MISMATCH book_first_hour_low_of_day   D lmax         read_482=+0.41  recount=-1.0
+  MISMATCH book_first_hour_low_of_day   D rescue_base  read_482=4  recount=1
+  MISMATCH book_first_hour_low_of_day   D adr_sum      read_482=+7.47  recount=0.1031
+  MISMATCH book_first_hour_low_of_day   D adr_med      read_482=+1.75  recount=0.1031
+  MISMATCH book_first_hour_low_of_day   E rescue_base  read_482=2  recount=1
+  MISMATCH book_first_hour_low_of_day   E adr_sum      read_482=-1.36  recount=-1.9933
+  MISMATCH book_first_hour_low_of_day   E adr_med      read_482=-0.65  recount=-0.9966
+
+labels: read_482 FINAL vs recount PRIMARY (unreadable-first) / recount precedence=not_won_first
+  stop_orb_low                 NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  stop_adr_050                 NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  stop_adr_075                 NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  stop_orb_3r                  NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  stop_low_of_day              NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  entry_first_hour_bar         NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  book_first_hour_low_of_day   NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  harvest_no_breakeven         NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  harvest_trail_only           NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  harvest_t3                   NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  harvest_legacy_2r            NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  trail_pivot_swing            NOT A CANDIDATE    | NOT A CANDIDATE    | NOT A CANDIDATE
+  trail_character_ma           NOT A CANDIDATE    | UNREADABLE         | NOT A CANDIDATE  (= recount under not_won_first precedence)
+
+PART 2 — PREREG.md '## RESULT' tables vs recount PRIMARY (tolerance 0.006 on 2-dp cells, 0.00006 on engine)
+  per-arm-per-era table: 39 rows, 507 cells; mismatches 0
+   label differs from recount's unreadable-first precedence only: trail_character_ma RESULT=NOT A CANDIDATE recount=UNREADABLE (I1, disclosed)
+  labels table: 13 arms; mismatches vs recount under I1 precedence: 0
+  population bullets: paired C6/D6/E4 = True | pending 6 = True | abstain 4 = True | fidelity diffs quoted: {'OKTA': True, 'VICR': True, 'KOD': True, 'CLS': True}

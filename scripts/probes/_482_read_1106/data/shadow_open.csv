@@ -1,0 +1,2 @@
+id,ticker,alert_date,bar_size_minutes,signal_type,entry_price,hard_stop,status,quarantined,replayed_at,created_at
+489,MRNA,2026-11-06,5,magna53,257.06999999999999317878973670303821563720703125,221.52060000000000172803993336856365203857421875,open,f,,2026-11-06 15:00:00.201245+00

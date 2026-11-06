@@ -100,3 +100,125 @@ For each era: `fill_vs_trigger_pct` (median, max, count above +1%) and `real_ris
 - **The book's primary entry** (the first 5-minute bar) on the live ladder: it is recorded nowhere today.
 - **The 08-18 ideas that were never tested:** a first entry on a later day, the pivot ladder, proximity, and the 620 trigger. The delayed-entry lanes own those.
 - **Anything pooled across eras.**
+
+---
+
+## RESULT — 2026-11-06
+
+Run by `read_482.py`; output captured once in `read_482.out`. Every number below is printed there. The full write-up is `docs/analysis/482_cross_arm_read_2026-11-06.md`. **The independent recount (plan step 7) RAN and MATCHES** (`verify/recount.out`, `verify/compare.out`: every field feeding a label matches on all 39 arm-era cells; 20 context-only field differences explained there; `trail_character_ma` is UNREADABLE rather than NOT A CANDIDATE under the other tie-break — neither is a watch-list label).
+
+**Answer:** none of the 13 arms beat the live bracket in every period it could be read in, so every label is **NOT A CANDIDATE**. Four (`stop_orb_low`, `stop_orb_3r`, `stop_low_of_day`, `harvest_no_breakeven`) won the September-October period (era D) only and lost the other two. The current rule stays the best answer.
+
+### Population (first)
+- **Cohort:** 20 closed live MAGNA53 fills; the predicate count is also 20, as expected.
+- **Eras:** C 7 / D 8 / E 5. The derived era matched the recorder's `exit_era` on every row (0 mismatches).
+- **Fidelity failures (excluded from all arm-vs-live numbers):**
+  - OKTA (C, −1.4402R);
+  - VICR (D, −1.1119R);
+  - KOD (D, −0.2902R);
+  - CLS (E, +1.1504R).
+- **Paired fills:** C 6 / D 6 / E 4.
+- ⚠ **The only ≥ +4R live fills, VICR (+7.3029R) and KOD (+5.8721R), both failed fidelity.** No paired table holds a big winner, so live's ≥ +4R count is 0 everywhere.
+- **Exclusions:**
+  - `pnl_attribution`: none. `entry_attempt = 2`: none.
+  - Pending rows: 6.
+  - Abstain rows: 4 (HUM ADR arms in D; IRON `stop_adr_075` and AEHR `stop_adr_050` in E).
+  - `trail_character_ma` is unscoreable (no profile) on most fills.
+  - PENG's two ADR arms have no R_cap, because their stop sits above the trigger (I4 below).
+- **Recorder checks:**
+  - HOOD (era C) walked 8/3 on all 11 follows-live rows. It passes fidelity, so it stays.
+  - Era C `harvest_legacy_2r` = `live_replay` on 7 of 7 fills.
+  - `stop_low_of_day` = `stop_orb_low` on 18 of 20 fills, so the two count as one confirmation.
+- **Admission mix:** era C spans four admission eras; D and E are one each. Not split.
+- **Era E sub-change:** era E holds the 2026-10-29 trail-arming change. Not split.
+
+### Per arm per era (tail first; deltas are arm − live_actual; n = paired fills on the R_cap set)
+| Arm | Era | n | arm ≥+2R / ≥+4R | live ≥+2R / ≥+4R | R_cap Δ sum | R_cap drop-best | R_own Δ sum | tail-clip | engine sign | era result |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `stop_orb_low` | C | 6 | 1 / 0 | 1 / 0 | -0.73 | -1.88 | -0.84 | 0 | agrees (-0.4353) | LOST |
+| `stop_orb_low` | D | 6 | 0 / 0 | 0 / 0 | +0.46 | +0.12 | +0.01 | 0 | agrees (+0.4056) | WON |
+| `stop_orb_low` | E | 4 | 0 / 0 | 0 / 0 | +0.02 | -0.26 | -1.78 | 0 | agrees (+0.0783) | LOST |
+| `stop_adr_050` | C | 6 | 0 / 0 | 1 / 0 | -3.67 | -4.35 | -4.91 | 1 | agrees (-3.3763) | LOST |
+| `stop_adr_050` | D | 4 | 0 / 0 | 0 / 0 | -0.19 | -0.51 | -2.50 | 0 | agrees (-0.2290) | LOST |
+| `stop_adr_050` | E | 3 | 0 / 0 | 0 / 0 | +0.04 | -0.32 | -1.76 | 0 | agrees (+0.0898) | LOST |
+| `stop_adr_075` | C | 6 | 1 / 0 | 1 / 0 | -1.05 | -2.19 | -0.68 | 0 | agrees (-0.7481) | LOST |
+| `stop_adr_075` | D | 4 | 0 / 0 | 0 / 0 | +0.65 | +0.34 | -0.06 | 0 | agrees (+0.6093) | LOST |
+| `stop_adr_075` | E | 3 | 0 / 0 | 0 / 0 | -0.04 | -0.24 | -0.47 | 0 | disagrees (+0.0173) | LOST |
+| `stop_orb_3r` | C | 6 | 0 / 0 | 1 / 0 | -1.43 | -1.77 | -1.19 | 1 | agrees (-1.1303) | LOST |
+| `stop_orb_3r` | D | 6 | 0 / 0 | 0 / 0 | +0.67 | +0.16 | +0.79 | 0 | agrees (+0.6135) | WON |
+| `stop_orb_3r` | E | 3 | 0 / 0 | 0 / 0 | -0.26 | -0.26 | -0.33 | 0 | agrees (-0.2575) | LOST |
+| `stop_low_of_day` | C | 6 | 1 / 0 | 1 / 0 | -0.73 | -1.88 | -1.14 | 0 | agrees (-0.4353) | LOST |
+| `stop_low_of_day` | D | 6 | 0 / 0 | 0 / 0 | +0.46 | +0.12 | +0.01 | 0 | agrees (+0.4056) | WON |
+| `stop_low_of_day` | E | 4 | 0 / 0 | 0 / 0 | +0.02 | -0.26 | -1.78 | 0 | agrees (+0.0783) | LOST |
+| `entry_first_hour_bar` | C | 6 (2 no-entry) | 0 / 0 | 1 / 0 | -1.63 | -2.64 | -3.53 | 1 | agrees (-3.2730) | LOST |
+| `entry_first_hour_bar` | D | 6 (5 no-entry) | 0 / 0 | 0 / 0 | +2.37 | +1.50 | +0.07 | 0 | disagrees (-0.0413) | LOST |
+| `entry_first_hour_bar` | E | 2 (1 no-entry) | 0 / 0 | 0 / 0 | +0.19 | -0.15 | -0.62 | 0 | disagrees (-0.1537) | not readable |
+| `book_first_hour_low_of_day` | C | 6 (2 no-entry) | 0 / 0 | 1 / 0 | -1.80 | -2.81 | -4.03 | 1 | agrees (-3.4469) | LOST |
+| `book_first_hour_low_of_day` | D | 6 (5 no-entry) | 0 / 0 | 0 / 0 | +2.45 | +1.57 | -0.03 | 0 | agrees (+0.0377) | LOST |
+| `book_first_hour_low_of_day` | E | 3 (1 no-entry) | 0 / 0 | 0 / 0 | +0.22 | -0.13 | -0.56 | 0 | disagrees (-0.1236) | LOST |
+| `harvest_no_breakeven` | C | 6 | 0 / 0 | 1 / 0 | -0.48 | -0.49 | -0.49 | 0 | agrees (-0.1853) | LOST |
+| `harvest_no_breakeven` | D | 6 | 0 / 0 | 0 / 0 | +0.20 | +0.04 | +0.27 | 0 | agrees (+0.1446) | WON |
+| `harvest_no_breakeven` | E | 4 | 0 / 0 | 0 / 0 | +0.13 | -0.04 | +0.63 | 0 | agrees (+0.1858) | LOST |
+| `harvest_trail_only` | C | 6 | 1 / 0 | 1 / 0 | -0.42 | -0.59 | -0.48 | 0 | agrees (-0.1224) | LOST |
+| `harvest_trail_only` | D | 6 | 0 / 0 | 0 / 0 | +0.06 | +0.04 | +0.07 | 0 | disagrees (+0.0000) | LOST |
+| `harvest_trail_only` | E | 4 | 0 / 0 | 0 / 0 | -0.08 | -0.08 | -0.18 | 0 | agrees (-0.0248) | LOST |
+| `harvest_t3` | C | 6 | 1 / 0 | 1 / 0 | +0.32 | -0.61 | +0.32 | 1 | agrees (+0.6228) | LOST |
+| `harvest_t3` | D | 6 | 0 / 0 | 0 / 0 | -0.19 | -0.20 | -0.25 | 0 | agrees (-0.2429) | LOST |
+| `harvest_t3` | E | 4 | 0 / 0 | 0 / 0 | +0.13 | -0.04 | +0.63 | 0 | agrees (+0.1858) | LOST |
+| `harvest_legacy_2r` | C | 6 | 0 / 0 | 1 / 0 | -0.30 | -0.30 | -0.29 | 0 | disagrees (+0.0000) | LOST |
+| `harvest_legacy_2r` | D | 6 | 0 / 0 | 0 / 0 | -0.01 | -0.03 | -0.02 | 0 | agrees (-0.0717) | LOST |
+| `harvest_legacy_2r` | E | 4 | 0 / 0 | 0 / 0 | +0.31 | -0.04 | +1.30 | 0 | agrees (+0.3600) | LOST |
+| `trail_pivot_swing` | C | 6 | 0 / 0 | 1 / 0 | -1.51 | -1.51 | -1.49 | 1 | agrees (-1.2105) | LOST |
+| `trail_pivot_swing` | D | 6 | 0 / 0 | 0 / 0 | +0.63 | -0.17 | +0.92 | 0 | agrees (+0.5750) | LOST |
+| `trail_pivot_swing` | E | 3 | 0 / 0 | 0 / 0 | -0.05 | -0.06 | -0.08 | 0 | agrees (-0.0000) | LOST |
+| `trail_character_ma` | C | 1 | 0 / 0 | 0 / 0 | -0.04 | +0.00 | -0.05 | 0 | disagrees (+0.0000) | not readable |
+| `trail_character_ma` | D | 4 | 0 / 0 | 0 / 0 | -0.49 | -0.51 | -0.57 | 0 | agrees (-0.5383) | LOST |
+| `trail_character_ma` | E | 1 | 0 / 0 | 0 / 0 | -0.05 | +0.00 | -0.07 | 0 | disagrees (+0.0000) | not readable |
+
+### Labels (mechanical; marks excluded = marks counted, because there are no horizon rows)
+| Arm | Label | Readable eras | Per-era result (n) |
+|---|---|---|---|
+| `stop_orb_low` | NOT A CANDIDATE | 3 | C LOST (n6) · D WON (n6) · E LOST (n4) |
+| `stop_adr_050` | NOT A CANDIDATE | 3 | C LOST (n6) · D LOST (n4) · E LOST (n3) |
+| `stop_adr_075` | NOT A CANDIDATE | 3 | C LOST (n6) · D LOST (n4) · E LOST (n3) |
+| `stop_orb_3r` | NOT A CANDIDATE | 3 | C LOST (n6) · D WON (n6) · E LOST (n3) |
+| `stop_low_of_day` | NOT A CANDIDATE | 3 | C LOST (n6) · D WON (n6) · E LOST (n4) |
+| `entry_first_hour_bar` | NOT A CANDIDATE | 2 | C LOST (n6) · D LOST (n6) · E unreadable (n2) |
+| `book_first_hour_low_of_day` | NOT A CANDIDATE | 3 | C LOST (n6) · D LOST (n6) · E LOST (n3) |
+| `harvest_no_breakeven` | NOT A CANDIDATE | 3 | C LOST (n6) · D WON (n6) · E LOST (n4) |
+| `harvest_trail_only` | NOT A CANDIDATE | 3 | C LOST (n6) · D LOST (n6) · E LOST (n4) |
+| `harvest_t3` | NOT A CANDIDATE | 3 | C LOST (n6) · D LOST (n6) · E LOST (n4) |
+| `harvest_legacy_2r` | NOT A CANDIDATE | 3 | C LOST (n6) · D LOST (n6) · E LOST (n4) |
+| `trail_pivot_swing` | NOT A CANDIDATE | 3 | C LOST (n6) · D LOST (n6) · E LOST (n3) |
+| `trail_character_ma` | NOT A CANDIDATE | 1 | C unreadable (n1) · D LOST (n4) · E unreadable (n1) |
+
+**"Disappoints" (on all cohort fills; I2):**
+
+| Era | Live R_cap sum | Fills ≥ +4R | Disappoints? |
+|---|---|---|---|
+| C | +2.41 | 0 | no |
+| D | +1.77 | 2 | no (yes on fidelity-passing fills only: -3.06) |
+| E | -1.25 | 0 | **yes** |
+
+**Tier 2 (the 5-minute ORB lane):** nothing nominated. The 5-minute lane does not beat live in either eligible era (C, D). The 08-18 finding stands.
+
+**Tier 3 (the sweep):** nothing nominated.
+- W beats B2 only in era D (+1.38 R, +4.74 ADR). It loses in C and E.
+- Re-entry (A_cons, Apdl_c) is eligible only in era C and loses there (-2.82 R and -5.57 R).
+
+### Interpretations pinned before any arm number was computed (the prereg is silent)
+- **I1** — A lost readable era makes the arm NOT A CANDIDATE, even when it is the only readable era. This changes only `trail_character_ma` (UNREADABLE under the opposite rule).
+- **I2** — "Disappoints" uses all cohort fills.
+- **I3** — On the book arms, a no-entry fill is 0 in R_cap, is left out of R_own, and counts as 0 for the tail and rescue counts.
+- **I4** — A settled row with no computable R_cap is its own counted class, `rcap_uncomputable`.
+- **I5** — Drop-best in Tiers 2 and 3 is applied in both units.
+- **I6** — The engine check uses only fills where both rows are settled. Scoring no-entry at 0 instead flips only `entry_first_hour_bar` era D, and its label does not change.
+- **I7** — A no-entry fill is 0 in adr too.
+- **I8** — An era is readable when the R_cap set holds ≥ 3 fills.
+
+### Plain words
+- None of the 13 alternative stops, entries, profit-takes or trails beat what we trade now in every period it could be read in; four won the September-October period only and lost the other two.
+- Every one lost in at least one period, so nothing goes on a watch-list.
+- Four of the 20 trades could not be replayed faithfully. They include the only two big winners, so the comparison never got to test how an alternative handles a big winner.
+- The newest period (the depth exit, 5 trades) lost money with no big winner. That is the parked review's "disappoints" fact; re-opening geometry work is his call.
+- The wider 5-minute opening range, waiting for an established intraday low, and re-entering after a stop-out all nominate nothing.

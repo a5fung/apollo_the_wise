@@ -1,0 +1,993 @@
+
+========================================================================================================
+#482 FIRST CROSS-ARM READ — run as pre-registered (PREREG.md, commit 392ab704). Read-only, $0.
+========================================================================================================
+Inputs (captured once from prod 2026-11-06; line 1 of each must be its header):
+  live_all.csv             header ok, 20 data rows
+  lfc_arms.csv             header ok, 314 data rows
+  shadow_closed.csv        header ok, 16 data rows
+  shadow_open.csv          header ok, 1 data rows
+  adr.csv                  header ok, 29 data rows
+  daily_bars.csv           header ok, 4539 data rows
+  minute_bars_cohort.csv   header ok, 7769 data rows
+  live_all captured_at: ['2026-11-06 15:12:51']
+
+========================================================================================================
+SECTION 0 — POPULATION (printed before any arm number)
+========================================================================================================
+(a) predicate count (closed live MAGNA53, alert_date >= 2026-08-17): 20
+    cohort count   (closed live MAGNA53, filled on/after 2026-08-16 ET): 20   [prereg expectation: 20 -> as expected]
+    captured live MAGNA53 fills not closed (open/other): 0
+
+    id   ticker alert_date fill_day   fill_ET exit_rule era status  entry_attempt
+    372  AMLX   2026-08-18 2026-08-18 09:32   NULL      C   closed  1
+    373  MRVL   2026-08-19 2026-08-19 09:32   NULL      C   closed  1
+    374  MRNA   2026-08-19 2026-08-19 09:33   NULL      C   closed  1
+    383  CRWD   2026-08-27 2026-08-27 09:31   NULL      C   closed  1
+    382  OKTA   2026-08-27 2026-08-27 09:49   NULL      C   closed  1
+    388  SOLS   2026-08-28 2026-08-28 09:34   NULL      C   closed  1
+    392  HOOD   2026-09-03 2026-09-03 09:36   NULL      C   closed  1
+    394  PHVS   2026-09-08 2026-09-08 09:31   NULL      D   closed  1
+    396  SEI    2026-09-08 2026-09-08 09:35   NULL      D   closed  1
+    399  DFTX   2026-09-14 2026-09-14 09:33   NULL      D   closed  1
+    400  VICR   2026-09-17 2026-09-17 09:31   NULL      D   closed  1
+    404  KOD    2026-09-28 2026-09-28 09:31   NULL      D   closed  1
+    409  CEG    2026-10-06 2026-10-06 09:31   NULL      D   closed  1
+    414  PENG   2026-10-07 2026-10-07 09:35   NULL      D   closed  1
+    419  HUM    2026-10-09 2026-10-09 09:31   NULL      D   closed  1
+    422  IRON   2026-10-19 2026-10-19 09:31   depth     E   closed  1
+    424  SMCI   2026-10-21 2026-10-21 09:31   depth     E   closed  1
+    429  CLS    2026-10-27 2026-10-27 09:31   depth     E   closed  1
+    455  AEHR   2026-11-03 2026-11-03 09:31   depth     E   closed  1
+    462  APPN   2026-11-05 2026-11-05 09:31   depth     E   closed  1
+    by exit era: C 7 / D 8 / E 5   (prereg expected about C 7 / D 8 / E 5)
+
+(b) derived era vs the recorder's exit_era, every row of every cohort trade:
+    mismatches: 0   cohort trades with no recorder row: none   recorder trade_ids outside the cohort: none
+    -> every row agrees; the read proceeds.
+
+(c) recorder rows by arm and outcome class (cohort fills); pending = no row yet:
+    expected per fill: 15 walked arms + fill_facts
+    era C (7 fills):
+      live_actual                  settled=7
+      live_replay                  settled=7
+      stop_orb_low                 settled=7
+      stop_adr_050                 settled=7
+      stop_adr_075                 settled=7
+      stop_orb_3r                  settled=7
+      stop_low_of_day              settled=7
+      entry_first_hour_bar         settled=5  unscoreable:no_entry:never_crossed_hour_high=2
+      book_first_hour_low_of_day   settled=5  unscoreable:no_entry:never_crossed_hour_high=2
+      harvest_no_breakeven         settled=7
+      harvest_trail_only           settled=7
+      harvest_t3                   settled=7
+      harvest_legacy_2r            settled=7
+      trail_pivot_swing            settled=7
+      trail_character_ma           settled=1  unscoreable:no_character_profile:207_bars=1  unscoreable:no_character_profile:260_bars=5
+      fill_facts                   unscoreable:fill_facts_only=7
+    era D (8 fills):
+      live_actual                  settled=8
+      live_replay                  settled=8
+      stop_orb_low                 settled=8
+      stop_adr_050                 abstain:day0_fill_bar_straddles_stop=1  settled=7
+      stop_adr_075                 abstain:day0_fill_bar_straddles_stop=1  settled=7
+      stop_orb_3r                  settled=8
+      stop_low_of_day              settled=8
+      entry_first_hour_bar         settled=3  unscoreable:no_entry:never_crossed_hour_high=4  unscoreable:no_entry:never_crossed_hour_high:proven_by_daily_high=1
+      book_first_hour_low_of_day   settled=3  unscoreable:no_entry:never_crossed_hour_high=4  unscoreable:no_entry:never_crossed_hour_high:proven_by_daily_high=1
+      harvest_no_breakeven         settled=8
+      harvest_trail_only           settled=8
+      harvest_t3                   settled=8
+      harvest_legacy_2r            settled=8
+      trail_pivot_swing            settled=8
+      trail_character_ma           PENDING=1  settled=5  unscoreable:no_character_profile:165_bars=1  unscoreable:no_character_profile:260_bars=1
+      fill_facts                   unscoreable:fill_facts_only=8
+    era E (5 fills):
+      live_actual                  settled=5
+      live_replay                  settled=5
+      stop_orb_low                 settled=5
+      stop_adr_050                 abstain:day0_fill_bar_straddles_stop=1  settled=4
+      stop_adr_075                 abstain:day0_fill_bar_straddles_stop=1  settled=4
+      stop_orb_3r                  PENDING=1  settled=4
+      stop_low_of_day              settled=5
+      entry_first_hour_bar         PENDING=2  settled=1  unscoreable:no_entry:never_crossed_hour_high=2
+      book_first_hour_low_of_day   PENDING=1  settled=2  unscoreable:no_entry:never_crossed_hour_high=2
+      harvest_no_breakeven         settled=5
+      harvest_trail_only           settled=5
+      harvest_t3                   settled=5
+      harvest_legacy_2r            settled=5
+      trail_pivot_swing            PENDING=1  settled=4
+      trail_character_ma           settled=1  unscoreable:no_character_profile:260_bars=4
+      fill_facts                   unscoreable:fill_facts_only=5
+    pending (no row yet) — excluded and counted: 6: KOD(D) trail_character_ma, IRON(E) trail_pivot_swing, AEHR(E) entry_first_hour_bar, APPN(E) stop_orb_3r, APPN(E) entry_first_hour_bar, APPN(E) book_first_hour_low_of_day
+    abstain rows: [('HUM', 'D', 'stop_adr_050', 'day0_fill_bar_straddles_stop'), ('HUM', 'D', 'stop_adr_075', 'day0_fill_bar_straddles_stop'), ('IRON', 'E', 'stop_adr_075', 'day0_fill_bar_straddles_stop'), ('AEHR', 'E', 'stop_adr_050', 'day0_fill_bar_straddles_stop')]
+
+(d) follows-live rows: target_r / breakeven_arm_r vs the era expectation (C 2/NULL, D and E 8/3):
+    disagreeing rows: 11 on 1 fill(s)
+      HOOD (trade 392, era C) walked 8/3 on 11 follows-live rows: ['book_first_hour_low_of_day', 'entry_first_hour_bar', 'live_actual', 'live_replay', 'stop_adr_050', 'stop_adr_075', 'stop_low_of_day', 'stop_orb_3r', 'stop_orb_low', 'trail_character_ma', 'trail_pivot_swing']
+    -> per the prereg the fidelity check (below) decides whether such a fill stays.
+
+(e) excluded — non-NULL pnl_attribution: trade rows none; recorder rows none
+    flagged (kept) — entry_attempt = 2: none
+
+(f) admission_era mix per exit era (reported, not split):
+    era C: adm_2026-08-26_rt_universe_authoritative x2; adm_2026-08-28_rubric_v4_rt_gap_authority x1; adm_2026-08-31_extension_cap_50_slot_rank_rs x1; adm_pre_2026-08-20 x3
+    era D: adm_2026-08-31_extension_cap_50_slot_rank_rs x8
+    era E: adm_2026-08-31_extension_cap_50_slot_rank_rs x5
+    era E sub-change (exit_logic.TRAIL_ARM_LIVE_FROM = 2026-10-29): filled before it ['IRON', 'SMCI', 'CLS'], on/after it ['AEHR', 'APPN'] — the recorder models it; not split.
+
+(g) recorder checks:
+    era C AMLX   harvest_legacy_2r R_own  +1.2557 vs live_replay  +1.2557 -> EQUAL
+    era C MRVL   harvest_legacy_2r R_own  -1.0000 vs live_replay  -1.0000 -> EQUAL
+    era C MRNA   harvest_legacy_2r R_own  +1.8472 vs live_replay  +1.8472 -> EQUAL
+    era C CRWD   harvest_legacy_2r R_own  +0.3995 vs live_replay  +0.3995 -> EQUAL
+    era C OKTA   harvest_legacy_2r R_own  -0.0794 vs live_replay  -0.0794 -> EQUAL
+    era C SOLS   harvest_legacy_2r R_own  -1.0000 vs live_replay  -1.0000 -> EQUAL
+    era C HOOD   harvest_legacy_2r R_own  -0.8446 vs live_replay  -0.8446 -> EQUAL
+    stop_low_of_day identical to stop_orb_low (same stop, same R, same outcome): 18 of 20 fills; on 09:31 fills 11 of 11. Where identical, the two arms are ONE confirmation, not two.
+    hour-bar arms (entry_first_hour_bar, book_first_hour_low_of_day): SELECTION EFFECT — they see only fills whose 1-minute ORB high filled; an alert that never took the 1-minute high is invisible to them.
+
+========================================================================================================
+SECTION 1 — R_cap (capped-dollar R, book_geometry_arms.capped_dollar_r imported offline)
+========================================================================================================
+  stored realized_r_capped == recomputed on 39 of 39 book-module rows (tolerance 1e-9).
+  sizing frame per fill (live_actual row): regime -> multiplier, fill-day risk %:
+    AMLX   era C regime Bull        mult 1.00 risk% 1
+    MRVL   era C regime Bull        mult 1.00 risk% 1
+    MRNA   era C regime Bull        mult 1.00 risk% 1
+    CRWD   era C regime Choppy      mult 0.75 risk% 1
+    OKTA   era C regime Choppy      mult 0.75 risk% 1
+    SOLS   era C regime Bull        mult 1.00 risk% 1
+    HOOD   era C regime Correcting  mult 0.50 risk% 1
+    PHVS   era D regime Choppy      mult 0.75 risk% 1
+    SEI    era D regime Choppy      mult 0.75 risk% 1
+    DFTX   era D regime Correcting  mult 0.50 risk% 1
+    VICR   era D regime Crisis      mult 0.25 risk% 1
+    KOD    era D regime Correcting  mult 0.50 risk% 1
+    CEG    era D regime Choppy      mult 0.75 risk% 2
+    PENG   era D regime Choppy      mult 0.75 risk% 2
+    HUM    era D regime Correcting  mult 0.50 risk% 2
+    IRON   era E regime Crisis      mult 0.25 risk% 2
+    SMCI   era E regime Correcting  mult 0.50 risk% 2
+    CLS    era E regime Correcting  mult 0.50 risk% 2
+    AEHR   era E regime Crisis      mult 0.25 risk% 2
+    APPN   era E regime Choppy      mult 0.75 risk% 2
+  settled rows whose R_cap cannot be computed (I4: stop at/above the trigger -> invalid sizing frame): 2: PENG (era D) stop_adr_050 stop 70.35006 vs trigger 69.2; PENG (era D) stop_adr_075 stop 69.42010 vs trigger 69.2
+
+========================================================================================================
+SECTION 2 — FIDELITY (live_replay vs live_actual, own R; pass when both settled and |diff| <= 0.25R)
+========================================================================================================
+  era C:
+    AMLX   live_actual  +1.2599  live_replay  +1.2557  replay-actual  -0.0042  -> PASS
+    MRVL   live_actual  -0.9533  live_replay  -1.0000  replay-actual  -0.0467  -> PASS
+    MRNA   live_actual  +2.0824  live_replay  +1.8472  replay-actual  -0.2352  -> PASS
+    CRWD   live_actual  +0.3992  live_replay  +0.3995  replay-actual  +0.0002  -> PASS
+    OKTA   live_actual  +1.3607  live_replay  -0.0794  replay-actual  -1.4402  -> FAIL
+    SOLS   live_actual  -1.0049  live_replay  -1.0000  replay-actual  +0.0049  -> PASS
+    HOOD   live_actual  -0.8364  live_replay  -0.8446  replay-actual  -0.0082  -> PASS
+    era C: 6 of 7 fills pass; failures excluded from every arm-vs-live number: ['OKTA']
+  era D:
+    PHVS   live_actual  -1.0229  live_replay  -1.0000  replay-actual  +0.0229  -> PASS
+    SEI    live_actual  +0.4114  live_replay  +0.4303  replay-actual  +0.0188  -> PASS
+    DFTX   live_actual  -1.0119  live_replay  -1.0000  replay-actual  +0.0119  -> PASS
+    VICR   live_actual  +7.3029  live_replay  +6.1910  replay-actual  -1.1119  -> FAIL
+    KOD    live_actual  +5.8721  live_replay  +5.5819  replay-actual  -0.2902  -> FAIL
+    CEG    live_actual  -1.0000  live_replay  -1.0000  replay-actual  +0.0000  -> PASS
+    PENG   live_actual  -0.8152  live_replay  -0.8007  replay-actual  +0.0145  -> PASS
+    HUM    live_actual  -1.0064  live_replay  -1.0000  replay-actual  +0.0064  -> PASS
+    era D: 6 of 8 fills pass; failures excluded from every arm-vs-live number: ['VICR', 'KOD']
+  era E:
+    IRON   live_actual  +0.6965  live_replay  +0.6965  replay-actual  +0.0000  -> PASS
+    SMCI   live_actual  -1.0064  live_replay  -1.0000  replay-actual  +0.0064  -> PASS
+    CLS    live_actual  -0.2929  live_replay  +0.8574  replay-actual  +1.1504  -> FAIL
+    AEHR   live_actual  -0.9820  live_replay  -1.0000  replay-actual  -0.0180  -> PASS
+    APPN   live_actual  -0.9299  live_replay  -1.0000  replay-actual  -0.0701  -> PASS
+    era E: 4 of 5 fills pass; failures excluded from every arm-vs-live number: ['CLS']
+  era C: live fills that reached >= +4R: none; of those, failing fidelity (so absent from every paired table): none
+  era D: live fills that reached >= +4R: ['VICR', 'KOD']; of those, failing fidelity (so absent from every paired table): ['VICR', 'KOD']
+  era E: live fills that reached >= +4R: none; of those, failing fidelity (so absent from every paired table): none
+
+========================================================================================================
+SECTION 3 — TIER 1: EACH ARM, EACH ERA, ON PAIRED FILLS (tail first). Deltas are arm - live_actual.
+========================================================================================================
+  Units: R_cap = capped-dollar R (the decision unit) · R_own = the arm's own realized R · pct = realized % · adr = P&L in ADR units.
+  Sets: P_all = paired fills where the arm is settled or a book no-entry; P_cap = P_all minus rcap_uncomputable (R_cap metrics, readable count);
+        P_own = P_all minus no-entry (R_own deltas). Tie = |delta| <= 0.05.
+
+--------------------------------------------------------------------------------------------------------
+ARM stop_orb_low
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 1  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 1/0, live 1/0)
+          max R_own: arm   +3.50  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.73  median   +0.24  better/worse/tie 4/2/0  drop-best   -1.88
+    R_own delta: sum   -0.84  median   -0.02  better/worse/tie 2/2/2  drop-best   -2.26
+    tail-clip 0 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.4353 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.4353 on 6 -> agrees]
+    context: pct delta sum  -14.34 median   +0.49 (n 6)  | adr delta sum   -1.73 median   +0.10 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   -1.00   -2.26 |   +1.32   -1.08   -2.40 |   +1.32
+               MRVL     settled             -0.95   -1.00   -0.05 |   -0.90   -0.47   +0.43 |   -0.94
+               MRNA     settled             +2.08   +3.50   +1.42 |   +2.20   +3.35   +1.15 |   +1.95
+               CRWD     settled             +0.40   +0.67   +0.27 |   +0.37   +0.46   +0.08 |   +0.37
+               SOLS     settled             -1.00   -1.00   +0.00 |   -1.01   -0.61   +0.40 |   -1.00
+               HOOD     settled             -0.84   -1.07   -0.23 |   -0.60   -0.98   -0.38 |   -0.60
+  era D: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 2}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.86  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.46  median   +0.06  better/worse/tie 3/1/2  drop-best   +0.12
+    R_own delta: sum   +0.01  median   +0.01  better/worse/tie 1/2/3  drop-best   -0.43
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 4 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.4056 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.4056 on 6 -> agrees]
+    context: pct delta sum  +15.03 median   +3.36 (n 6)  | adr delta sum   +3.71 median   +0.83 (n 6)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=Y  dropbest_rcap_pos=Y  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> WON
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     settled             -1.02   -1.00   +0.02 |   -0.79   -0.80   -0.01 |   -0.78
+               SEI      settled             +0.41   +0.86   +0.44 |   +0.31   +0.65   +0.34 |   +0.32
+               DFTX     settled             -1.01   -1.00   +0.01 |   -0.53   -0.55   -0.02 |   -0.52
+               CEG      settled             -1.00   -1.06   -0.06 |   -0.65   -0.35   +0.30 |   -0.65
+               PENG     settled             -0.82   -1.23   -0.42 |   -0.87   -1.16   -0.28 |   -0.86
+               HUM      settled             -1.01   -1.00   +0.01 |   -0.52   -0.39   +0.13 |   -0.52
+  era E: paired n (R_cap set) = 4  | R_own set n = 4  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   -1.00  live   +0.70  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.02  median   +0.08  better/worse/tie 2/1/1  drop-best   -0.26
+    R_own delta: sum   -1.78  median   -0.04  better/worse/tie 0/2/2  drop-best   -1.78
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 3 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.0783 on 4 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.0783 on 4 -> agrees]
+    context: pct delta sum   -2.82 median   +2.29 (n 4)  | adr delta sum   -1.57 median   +0.38 (n 4)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               IRON     settled             +0.70   -1.00   -1.70 |   +0.17   -0.25   -0.42 |   +0.17
+               SMCI     settled             -1.01   -1.00   +0.01 |   -0.35   -0.17   +0.17 |   -0.34
+               AEHR     settled             -0.98   -1.00   -0.02 |   -0.26   -0.27   -0.02 |   -0.26
+               APPN     settled             -0.93   -1.00   -0.07 |   -0.67   -0.39   +0.29 |   -0.73
+
+--------------------------------------------------------------------------------------------------------
+ARM stop_adr_050
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 0/0, live 1/0)
+          max R_own: arm   +1.03  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -3.67  median   +0.09  better/worse/tie 4/2/0  drop-best   -4.35
+    R_own delta: sum   -4.91  median   -0.11  better/worse/tie 1/3/2  drop-best   -5.55
+    tail-clip 1 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -3.3763 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -3.3763 on 6 -> agrees]
+    context: pct delta sum  -29.01 median   +0.56 (n 6)  | adr delta sum   -4.06 median   +0.08 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=n  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   -1.00   -2.26 |   +1.32   -0.66   -1.98 |   +1.32
+               MRVL     settled             -0.95   -1.00   -0.05 |   -0.90   -0.67   +0.22 |   -0.94
+               MRNA     settled             +2.08   -1.00   -3.08 |   +2.20   -0.58   -2.78 |   +1.95
+               CRWD     settled             +0.40   +1.03   +0.63 |   +0.37   +0.46   +0.08 |   +0.37
+               SOLS     settled             -1.00   -1.00   +0.00 |   -1.01   -0.33   +0.68 |   -1.00
+               HOOD     settled             -0.84   -1.00   -0.16 |   -0.60   -0.50   +0.10 |   -0.60
+  era D: paired n (R_cap set) = 4  | R_own set n = 5  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 1  | excluded: {'fidelity_fail': 2, 'abstain': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   -1.00  live   +0.41  | <= -1.5R: arm 1  live 0
+    R_cap delta: sum   -0.19  median   +0.19  better/worse/tie 3/1/0  drop-best   -0.51
+    R_own delta: sum   -2.50  median   -0.18  better/worse/tie 0/3/2  drop-best   -2.52
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 3 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.2290 on 4 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.2290 on 4 -> agrees]
+    context: pct delta sum  +17.24 median   +5.47 (n 5)  | adr delta sum   +3.96 median   +1.20 (n 5)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     settled             -1.02   -1.00   +0.02 |   -0.79   -0.48   +0.32 |   -0.78
+               SEI      settled             +0.41   -1.00   -1.41 |   +0.31   -0.58   -0.89 |   +0.32
+               DFTX     settled             -1.01   -1.00   +0.01 |   -0.53   -0.46   +0.07 |   -0.52
+               CEG      settled             -1.00   -1.93   -0.93 |   -0.65   -0.35   +0.30 |   -0.65
+               PENG     rcap_uncomputable   -0.82   -1.00   -0.18 |   -0.87     n/a     n/a |   -0.86
+  era E: paired n (R_cap set) = 3  | R_own set n = 3  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1, 'abstain': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   -1.00  live   +0.70  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.04  median   +0.07  better/worse/tie 2/1/0  drop-best   -0.32
+    R_own delta: sum   -1.76  median   -0.07  better/worse/tie 0/2/1  drop-best   -1.77
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.0898 on 3 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.0898 on 3 -> agrees]
+    context: pct delta sum   -5.33 median   +0.73 (n 3)  | adr delta sum   -1.50 median   +0.13 (n 3)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               IRON     settled             +0.70   -1.00   -1.70 |   +0.17   -0.22   -0.39 |   +0.17
+               SMCI     settled             -1.01   -1.00   +0.01 |   -0.35   -0.27   +0.07 |   -0.34
+               APPN     settled             -0.93   -1.00   -0.07 |   -0.67   -0.32   +0.36 |   -0.73
+
+--------------------------------------------------------------------------------------------------------
+ARM stop_adr_075
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 1  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 1/0, live 1/0)
+          max R_own: arm   +3.88  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -1.05  median   -0.01  better/worse/tie 3/3/0  drop-best   -2.19
+    R_own delta: sum   -0.68  median   -0.02  better/worse/tie 2/2/2  drop-best   -2.48
+    tail-clip 0 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.7481 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.7481 on 6 -> agrees]
+    context: pct delta sum  -15.97 median   -0.28 (n 6)  | adr delta sum   -1.88 median   -0.04 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   -1.00   -2.26 |   +1.32   -0.99   -2.31 |   +1.32
+               MRVL     settled             -0.95   -1.00   -0.05 |   -0.90   -1.00   -0.10 |   -0.94
+               MRNA     settled             +2.08   +3.88   +1.80 |   +2.20   +3.35   +1.15 |   +1.95
+               CRWD     settled             +0.40   +0.69   +0.29 |   +0.37   +0.46   +0.08 |   +0.37
+               SOLS     settled             -1.00   -1.00   +0.00 |   -1.01   -0.49   +0.52 |   -1.00
+               HOOD     settled             -0.84   -1.31   -0.47 |   -0.60   -0.98   -0.38 |   -0.60
+  era D: paired n (R_cap set) = 4  | R_own set n = 5  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 1  | excluded: {'fidelity_fail': 2, 'abstain': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.79  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.65  median   +0.18  better/worse/tie 3/0/1  drop-best   +0.34
+    R_own delta: sum   -0.06  median   +0.01  better/worse/tie 1/2/2  drop-best   -0.44
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 3 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.6093 on 4 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.6093 on 4 -> agrees]
+    context: pct delta sum  +19.92 median   +4.33 (n 5)  | adr delta sum   +4.31 median   +0.95 (n 5)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=n  dropbest_rcap_pos=Y  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     settled             -1.02   -1.00   +0.02 |   -0.79   -0.71   +0.08 |   -0.78
+               SEI      settled             +0.41   +0.79   +0.38 |   +0.31   +0.60   +0.29 |   +0.32
+               DFTX     settled             -1.01   -1.00   +0.01 |   -0.53   -0.56   -0.03 |   -0.52
+               CEG      settled             -1.00   -1.29   -0.29 |   -0.65   -0.35   +0.30 |   -0.65
+               PENG     rcap_uncomputable   -0.82   -1.00   -0.18 |   -0.87     n/a     n/a |   -0.86
+  era E: paired n (R_cap set) = 3  | R_own set n = 3  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'abstain': 1, 'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   -1.00  live   -0.93  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.04  median   -0.01  better/worse/tie 1/1/1  drop-best   -0.24
+    R_own delta: sum   -0.47  median   -0.07  better/worse/tie 0/2/1  drop-best   -0.46
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 3 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.0173 on 3 both-settled fills -> sign DISAGREES   [I6 variant, no-entry at 0:  +0.0173 on 3 -> disagrees]
+    context: pct delta sum   +4.10 median   +2.00 (n 3)  | adr delta sum   +0.37 median   +0.32 (n 3)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=n  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               SMCI     settled             -1.01   -1.39   -0.39 |   -0.35   -0.57   -0.23 |   -0.34
+               AEHR     settled             -0.98   -1.00   -0.02 |   -0.26   -0.27   -0.01 |   -0.26
+               APPN     settled             -0.93   -1.00   -0.07 |   -0.67   -0.47   +0.20 |   -0.73
+
+--------------------------------------------------------------------------------------------------------
+ARM stop_orb_3r
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 0/0, live 1/0)
+          max R_own: arm   +1.17  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -1.43  median   -0.14  better/worse/tie 1/4/1  drop-best   -1.77
+    R_own delta: sum   -1.19  median   -0.11  better/worse/tie 1/3/2  drop-best   -1.59
+    tail-clip 1 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -1.1303 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -1.1303 on 6 -> agrees]
+    context: pct delta sum   -7.84 median   -1.09 (n 6)  | adr delta sum   -1.70 median   -0.19 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=n  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   +0.80   -0.46 |   +1.32   +0.82   -0.49 |   +1.32
+               MRVL     settled             -0.95   -1.00   -0.05 |   -0.90   -1.00   -0.10 |   -0.94
+               MRNA     settled             +2.08   +1.17   -0.92 |   +2.20   +1.21   -0.99 |   +1.95
+               CRWD     settled             +0.40   +0.22   -0.18 |   +0.37   +0.19   -0.19 |   +0.37
+               SOLS     settled             -1.00   -1.00   +0.00 |   -1.01   -1.00   +0.01 |   -1.00
+               HOOD     settled             -0.84   -0.43   +0.40 |   -0.60   -0.26   +0.34 |   -0.60
+  era D: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 2}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.29  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.67  median   +0.06  better/worse/tie 3/1/2  drop-best   +0.16
+    R_own delta: sum   +0.79  median   +0.14  better/worse/tie 4/1/1  drop-best   +0.39
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 4 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.6135 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.6135 on 6 -> agrees]
+    context: pct delta sum  -10.40 median   -1.77 (n 6)  | adr delta sum   -2.50 median   -0.51 (n 6)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=Y  dropbest_rcap_pos=Y  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> WON
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     settled             -1.02   -0.89   +0.14 |   -0.79   -0.68   +0.11 |   -0.78
+               SEI      settled             +0.41   +0.29   -0.13 |   +0.31   +0.21   -0.10 |   +0.32
+               DFTX     settled             -1.01   -1.00   +0.01 |   -0.53   -0.51   +0.01 |   -0.52
+               CEG      settled             -1.00   -0.86   +0.14 |   -0.65   -0.65   +0.00 |   -0.65
+               PENG     settled             -0.82   -0.41   +0.40 |   -0.87   -0.36   +0.51 |   -0.86
+               HUM      settled             -1.01   -0.78   +0.23 |   -0.52   -0.40   +0.12 |   -0.52
+  era E: paired n (R_cap set) = 3  | R_own set n = 3  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1, 'pending': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.47  live   +0.70  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.26  median   -0.06  better/worse/tie 0/2/1  drop-best   -0.26
+    R_own delta: sum   -0.33  median   -0.08  better/worse/tie 0/2/1  drop-best   -0.31
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.2575 on 3 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.2575 on 3 -> agrees]
+    context: pct delta sum   -9.02 median   -2.25 (n 3)  | adr delta sum   -1.13 median   -0.41 (n 3)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               IRON     settled             +0.70   +0.47   -0.23 |   +0.17   +0.12   -0.06 |   +0.17
+               SMCI     settled             -1.01   -1.09   -0.08 |   -0.35   -0.55   -0.20 |   -0.34
+               AEHR     settled             -0.98   -1.00   -0.02 |   -0.26   -0.26   -0.00 |   -0.26
+
+--------------------------------------------------------------------------------------------------------
+ARM stop_low_of_day
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 1  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 1/0, live 1/0)
+          max R_own: arm   +3.20  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.73  median   +0.24  better/worse/tie 4/2/0  drop-best   -1.88
+    R_own delta: sum   -1.14  median   -0.02  better/worse/tie 2/2/2  drop-best   -2.26
+    tail-clip 0 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.4353 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.4353 on 6 -> agrees]
+    context: pct delta sum  -14.34 median   +0.49 (n 6)  | adr delta sum   -1.73 median   +0.10 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   -1.00   -2.26 |   +1.32   -1.08   -2.40 |   +1.32
+               MRVL     settled             -0.95   -1.00   -0.05 |   -0.90   -0.47   +0.43 |   -0.94
+               MRNA     settled             +2.08   +3.20   +1.12 |   +2.20   +3.35   +1.15 |   +1.95
+               CRWD     settled             +0.40   +0.67   +0.27 |   +0.37   +0.46   +0.08 |   +0.37
+               SOLS     settled             -1.00   -1.00   +0.00 |   -1.01   -0.61   +0.40 |   -1.00
+               HOOD     settled             -0.84   -1.07   -0.23 |   -0.60   -0.98   -0.38 |   -0.60
+  era D: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 2}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.86  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.46  median   +0.06  better/worse/tie 3/1/2  drop-best   +0.12
+    R_own delta: sum   +0.01  median   +0.01  better/worse/tie 1/2/3  drop-best   -0.43
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 4 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.4056 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.4056 on 6 -> agrees]
+    context: pct delta sum  +15.03 median   +3.36 (n 6)  | adr delta sum   +3.71 median   +0.83 (n 6)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=Y  dropbest_rcap_pos=Y  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> WON
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     settled             -1.02   -1.00   +0.02 |   -0.79   -0.80   -0.01 |   -0.78
+               SEI      settled             +0.41   +0.86   +0.44 |   +0.31   +0.65   +0.34 |   +0.32
+               DFTX     settled             -1.01   -1.00   +0.01 |   -0.53   -0.55   -0.02 |   -0.52
+               CEG      settled             -1.00   -1.06   -0.06 |   -0.65   -0.35   +0.30 |   -0.65
+               PENG     settled             -0.82   -1.23   -0.42 |   -0.87   -1.16   -0.28 |   -0.86
+               HUM      settled             -1.01   -1.00   +0.01 |   -0.52   -0.39   +0.13 |   -0.52
+  era E: paired n (R_cap set) = 4  | R_own set n = 4  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   -1.00  live   +0.70  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.02  median   +0.08  better/worse/tie 2/1/1  drop-best   -0.26
+    R_own delta: sum   -1.78  median   -0.04  better/worse/tie 0/2/2  drop-best   -1.78
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 3 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.0783 on 4 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.0783 on 4 -> agrees]
+    context: pct delta sum   -2.82 median   +2.29 (n 4)  | adr delta sum   -1.57 median   +0.38 (n 4)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               IRON     settled             +0.70   -1.00   -1.70 |   +0.17   -0.25   -0.42 |   +0.17
+               SMCI     settled             -1.01   -1.00   +0.01 |   -0.35   -0.17   +0.17 |   -0.34
+               AEHR     settled             -0.98   -1.00   -0.02 |   -0.26   -0.27   -0.02 |   -0.26
+               APPN     settled             -0.93   -1.00   -0.07 |   -0.67   -0.39   +0.29 |   -0.73
+
+--------------------------------------------------------------------------------------------------------
+ARM entry_first_hour_bar
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 4  | no-entry (0 in R_cap) = 2  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 0/0, live 1/0)
+          max R_own: arm   +0.54  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -1.63  median   -0.18  better/worse/tie 3/3/0  drop-best   -2.64
+    R_own delta: sum   -3.53  median   -0.76  better/worse/tie 1/3/0  drop-best   -3.79
+    tail-clip 1 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 2)
+    engine check: sum(arm - live_replay) R_cap  -3.2730 on 4 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -1.3282 on 6 -> agrees]
+    context: pct delta sum  -31.85 median   -1.70 (n 6)  | adr delta sum   -5.53 median   -0.36 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=n  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   +0.54   -0.72 |   +1.32   +0.54   -0.78 |   +1.32
+               MRVL     no_entry            -0.95     n/a     n/a |   -0.90   +0.00   +0.90 |   -0.94
+               MRNA     settled             +2.08   -0.18   -2.27 |   +2.20   -0.18   -2.39 |   +1.95
+               CRWD     settled             +0.40   -0.41   -0.81 |   +0.37   -0.31   -0.68 |   +0.37
+               SOLS     no_entry            -1.00     n/a     n/a |   -1.01   +0.00   +1.01 |   -1.00
+               HOOD     settled             -0.84   -0.58   +0.26 |   -0.60   -0.29   +0.31 |   -0.60
+  era D: paired n (R_cap set) = 6  | R_own set n = 1  | no-entry (0 in R_cap) = 5  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 2}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   -0.93  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +2.37  median   +0.53  better/worse/tie 4/1/1  drop-best   +1.50
+    R_own delta: sum   +0.07  median   +0.07  better/worse/tie 1/0/0  drop-best   +0.00
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 4 live losers <= -0.9R; no-entry on a live loser: 3)
+    engine check: sum(arm - live_replay) R_cap  -0.0413 on 1 both-settled fills -> sign DISAGREES   [I6 variant, no-entry at 0:  +2.3128 on 6 -> agrees]
+    context: pct delta sum  +27.37 median   +7.67 (n 6)  | adr delta sum   +6.12 median   +1.75 (n 6)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=Y  dropbest_rcap_pos=Y  engine_sign_agrees=n  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     no_entry            -1.02     n/a     n/a |   -0.79   +0.00   +0.79 |   -0.78
+               SEI      no_entry            +0.41     n/a     n/a |   +0.31   +0.00   -0.31 |   +0.32
+               DFTX     no_entry            -1.01     n/a     n/a |   -0.53   +0.00   +0.53 |   -0.52
+               CEG      settled             -1.00   -0.93   +0.07 |   -0.65   -0.69   -0.04 |   -0.65
+               PENG     no_entry            -0.82     n/a     n/a |   -0.87   +0.00   +0.87 |   -0.86
+               HUM      no_entry            -1.01     n/a     n/a |   -0.52   +0.00   +0.52 |   -0.52
+  era E: paired n (R_cap set) = 2  | R_own set n = 1  | no-entry (0 in R_cap) = 1  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1, 'pending': 2}  -> not readable (< 3)
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.08  live   +0.70  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.19  median   +0.10  better/worse/tie 1/1/0  drop-best   -0.15
+    R_own delta: sum   -0.62  median   -0.62  better/worse/tie 0/1/0  drop-best   +0.00
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 1 live losers <= -0.9R; no-entry on a live loser: 1)
+    engine check: sum(arm - live_replay) R_cap  -0.1537 on 1 both-settled fills -> sign DISAGREES   [I6 variant, no-entry at 0:  +0.1910 on 2 -> agrees]
+    context: pct delta sum   -2.40 median   -1.20 (n 2)  | adr delta sum   -0.71 median   -0.35 (n 2)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=n  tailclip_zero=Y  ge4_at_least_live=Y  -> n/a (not readable)
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               IRON     settled             +0.70   +0.08   -0.62 |   +0.17   +0.02   -0.15 |   +0.17
+               SMCI     no_entry            -1.01     n/a     n/a |   -0.35   +0.00   +0.35 |   -0.34
+
+--------------------------------------------------------------------------------------------------------
+ARM book_first_hour_low_of_day
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 4  | no-entry (0 in R_cap) = 2  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 0/0, live 1/0)
+          max R_own: arm   +1.09  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -1.80  median   -0.08  better/worse/tie 3/3/0  drop-best   -2.81
+    R_own delta: sum   -4.03  median   -0.71  better/worse/tie 0/4/0  drop-best   -3.86
+    tail-clip 1 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 2)
+    engine check: sum(arm - live_replay) R_cap  -3.4469 on 4 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -1.5021 on 6 -> agrees]
+    context: pct delta sum  -30.84 median   -1.20 (n 6)  | adr delta sum   -5.32 median   -0.26 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=n  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   +1.09   -0.17 |   +1.32   +1.09   -0.23 |   +1.32
+               MRVL     no_entry            -0.95     n/a     n/a |   -0.90   +0.00   +0.90 |   -0.94
+               MRNA     settled             +2.08   -0.37   -2.45 |   +2.20   -0.37   -2.57 |   +1.95
+               CRWD     settled             +0.40   -0.82   -1.21 |   +0.37   -0.61   -0.99 |   +0.37
+               SOLS     no_entry            -1.00     n/a     n/a |   -1.01   +0.00   +1.01 |   -1.00
+               HOOD     settled             -0.84   -1.03   -0.20 |   -0.60   -0.52   +0.08 |   -0.60
+  era D: paired n (R_cap set) = 6  | R_own set n = 1  | no-entry (0 in R_cap) = 5  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 2}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   -1.03  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +2.45  median   +0.53  better/worse/tie 4/1/1  drop-best   +1.57
+    R_own delta: sum   -0.03  median   -0.03  better/worse/tie 0/0/1  drop-best   +0.00
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 4 live losers <= -0.9R; no-entry on a live loser: 3)
+    engine check: sum(arm - live_replay) R_cap  +0.0377 on 1 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +2.3918 on 6 -> agrees]
+    context: pct delta sum  +32.27 median   +7.67 (n 6)  | adr delta sum   +7.47 median   +1.75 (n 6)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=n  dropbest_rcap_pos=Y  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     no_entry            -1.02     n/a     n/a |   -0.79   +0.00   +0.79 |   -0.78
+               SEI      no_entry            +0.41     n/a     n/a |   +0.31   +0.00   -0.31 |   +0.32
+               DFTX     no_entry            -1.01     n/a     n/a |   -0.53   +0.00   +0.53 |   -0.52
+               CEG      settled             -1.00   -1.03   -0.03 |   -0.65   -0.62   +0.04 |   -0.65
+               PENG     no_entry            -0.82     n/a     n/a |   -0.87   +0.00   +0.87 |   -0.86
+               HUM      no_entry            -1.01     n/a     n/a |   -0.52   +0.00   +0.52 |   -0.52
+  era E: paired n (R_cap set) = 3  | R_own set n = 2  | no-entry (0 in R_cap) = 1  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1, 'pending': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.15  live   +0.70  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.22  median   +0.01  better/worse/tie 1/1/1  drop-best   -0.13
+    R_own delta: sum   -0.56  median   -0.28  better/worse/tie 0/1/1  drop-best   -0.55
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 1)
+    engine check: sum(arm - live_replay) R_cap  -0.1236 on 2 both-settled fills -> sign DISAGREES   [I6 variant, no-entry at 0:  +0.2211 on 3 -> agrees]
+    context: pct delta sum   -8.52 median   -5.87 (n 3)  | adr delta sum   -1.36 median   -0.65 (n 3)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=n  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               IRON     settled             +0.70   +0.15   -0.55 |   +0.17   +0.04   -0.13 |   +0.17
+               SMCI     no_entry            -1.01     n/a     n/a |   -0.35   +0.00   +0.35 |   -0.34
+               AEHR     settled             -0.98   -1.00   -0.02 |   -0.26   -0.25   +0.01 |   -0.26
+
+--------------------------------------------------------------------------------------------------------
+ARM harvest_no_breakeven
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 0/0, live 1/0)
+          max R_own: arm   +1.85  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.48  median   -0.02  better/worse/tie 0/2/4  drop-best   -0.49
+    R_own delta: sum   -0.49  median   -0.03  better/worse/tie 0/2/4  drop-best   -0.49
+    tail-clip 0 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.1853 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.1853 on 6 -> agrees]
+    context: pct delta sum   -3.53 median   -0.14 (n 6)  | adr delta sum   -0.67 median   -0.02 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   +1.26   -0.00 |   +1.32   +1.32   -0.00 |   +1.32
+               MRVL     settled             -0.95   -1.00   -0.05 |   -0.90   -0.94   -0.04 |   -0.94
+               MRNA     settled             +2.08   +1.85   -0.24 |   +2.20   +1.95   -0.25 |   +1.95
+               CRWD     settled             +0.40   +0.20   -0.20 |   +0.37   +0.19   -0.19 |   +0.37
+               SOLS     settled             -1.00   -1.00   +0.00 |   -1.01   -1.00   +0.00 |   -1.00
+               HOOD     settled             -0.84   -0.84   -0.01 |   -0.60   -0.60   -0.01 |   -0.60
+  era D: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 2}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.62  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.20  median   +0.01  better/worse/tie 1/0/5  drop-best   +0.04
+    R_own delta: sum   +0.27  median   +0.01  better/worse/tie 1/0/5  drop-best   +0.06
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 4 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.1446 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.1446 on 6 -> agrees]
+    context: pct delta sum   +2.20 median   +0.14 (n 6)  | adr delta sum   +0.40 median   +0.03 (n 6)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=Y  dropbest_rcap_pos=Y  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> WON
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     settled             -1.02   -1.00   +0.02 |   -0.79   -0.78   +0.02 |   -0.78
+               SEI      settled             +0.41   +0.62   +0.21 |   +0.31   +0.47   +0.16 |   +0.32
+               DFTX     settled             -1.01   -1.00   +0.01 |   -0.53   -0.52   +0.01 |   -0.52
+               CEG      settled             -1.00   -1.00   +0.00 |   -0.65   -0.65   +0.00 |   -0.65
+               PENG     settled             -0.82   -0.80   +0.01 |   -0.87   -0.86   +0.02 |   -0.86
+               HUM      settled             -1.01   -1.00   +0.01 |   -0.52   -0.52   +0.00 |   -0.52
+  era E: paired n (R_cap set) = 4  | R_own set n = 4  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.73  live   +0.70  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.13  median   +0.00  better/worse/tie 1/1/2  drop-best   -0.04
+    R_own delta: sum   +0.63  median   +0.02  better/worse/tie 1/1/2  drop-best   -0.03
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 3 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.1858 on 4 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.1858 on 4 -> agrees]
+    context: pct delta sum   +7.54 median   +0.18 (n 4)  | adr delta sum   +0.82 median   +0.04 (n 4)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=Y  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               IRON     settled             +0.70   +0.73   +0.03 |   +0.17   +0.18   +0.01 |   +0.17
+               SMCI     settled             -1.01   -1.00   +0.01 |   -0.35   -0.34   +0.00 |   -0.34
+               AEHR     settled             -0.98   -0.32   +0.66 |   -0.26   -0.08   +0.17 |   -0.26
+               APPN     settled             -0.93   -1.00   -0.07 |   -0.67   -0.73   -0.05 |   -0.73
+
+--------------------------------------------------------------------------------------------------------
+ARM harvest_trail_only
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 1  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 1/0, live 1/0)
+          max R_own: arm   +2.24  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.42  median   -0.00  better/worse/tie 2/1/3  drop-best   -0.59
+    R_own delta: sum   -0.48  median   -0.00  better/worse/tie 2/1/3  drop-best   -0.65
+    tail-clip 0 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.1224 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.1224 on 6 -> agrees]
+    context: pct delta sum   -1.68 median   -0.01 (n 6)  | adr delta sum   -0.52 median   -0.00 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   +1.36   +0.10 |   +1.32   +1.43   +0.11 |   +1.32
+               MRVL     settled             -0.95   -1.00   -0.05 |   -0.90   -0.94   -0.04 |   -0.94
+               MRNA     settled             +2.08   +2.24   +0.16 |   +2.20   +2.37   +0.17 |   +1.95
+               CRWD     settled             +0.40   -0.30   -0.70 |   +0.37   -0.28   -0.65 |   +0.37
+               SOLS     settled             -1.00   -1.00   +0.00 |   -1.01   -1.00   +0.00 |   -1.00
+               HOOD     settled             -0.84   -0.84   -0.01 |   -0.60   -0.60   -0.01 |   -0.60
+  era D: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 2}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.43  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.06  median   +0.01  better/worse/tie 0/0/6  drop-best   +0.04
+    R_own delta: sum   +0.07  median   +0.01  better/worse/tie 0/0/6  drop-best   +0.05
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 4 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.0000 on 6 both-settled fills -> sign DISAGREES   [I6 variant, no-entry at 0:  +0.0000 on 6 -> disagrees]
+    context: pct delta sum   +0.68 median   +0.12 (n 6)  | adr delta sum   +0.14 median   +0.02 (n 6)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=Y  dropbest_rcap_pos=Y  engine_sign_agrees=n  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     settled             -1.02   -1.00   +0.02 |   -0.79   -0.78   +0.02 |   -0.78
+               SEI      settled             +0.41   +0.43   +0.02 |   +0.31   +0.32   +0.01 |   +0.32
+               DFTX     settled             -1.01   -1.00   +0.01 |   -0.53   -0.52   +0.01 |   -0.52
+               CEG      settled             -1.00   -1.00   +0.00 |   -0.65   -0.65   +0.00 |   -0.65
+               PENG     settled             -0.82   -0.80   +0.01 |   -0.87   -0.86   +0.02 |   -0.86
+               HUM      settled             -1.01   -1.00   +0.01 |   -0.52   -0.52   +0.00 |   -0.52
+  era E: paired n (R_cap set) = 4  | R_own set n = 4  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.60  live   +0.70  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.08  median   -0.01  better/worse/tie 0/1/3  drop-best   -0.08
+    R_own delta: sum   -0.18  median   -0.04  better/worse/tie 0/2/2  drop-best   -0.19
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 3 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.0248 on 4 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.0248 on 4 -> agrees]
+    context: pct delta sum   -1.76 median   -0.36 (n 4)  | adr delta sum   -0.34 median   -0.05 (n 4)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               IRON     settled             +0.70   +0.60   -0.10 |   +0.17   +0.15   -0.02 |   +0.17
+               SMCI     settled             -1.01   -1.00   +0.01 |   -0.35   -0.34   +0.00 |   -0.34
+               AEHR     settled             -0.98   -1.00   -0.02 |   -0.26   -0.26   -0.00 |   -0.26
+               APPN     settled             -0.93   -1.00   -0.07 |   -0.67   -0.73   -0.05 |   -0.73
+
+--------------------------------------------------------------------------------------------------------
+ARM harvest_t3
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 1  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 1/0, live 1/0)
+          max R_own: arm   +2.15  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.32  median   -0.00  better/worse/tie 2/1/3  drop-best   -0.61
+    R_own delta: sum   +0.32  median   -0.00  better/worse/tie 2/1/3  drop-best   -0.57
+    tail-clip 1 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.6228 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.6228 on 6 -> agrees]
+    context: pct delta sum   +3.93 median   -0.01 (n 6)  | adr delta sum   +0.52 median   -0.00 (n 6)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=Y  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=n  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   +2.15   +0.89 |   +1.32   +2.26   +0.94 |   +1.32
+               MRVL     settled             -0.95   -1.00   -0.05 |   -0.90   -0.94   -0.04 |   -0.94
+               MRNA     settled             +2.08   +1.46   -0.62 |   +2.20   +1.55   -0.66 |   +1.95
+               CRWD     settled             +0.40   +0.50   +0.10 |   +0.37   +0.47   +0.09 |   +0.37
+               SOLS     settled             -1.00   -1.00   +0.00 |   -1.01   -1.00   +0.00 |   -1.00
+               HOOD     settled             -0.84   -0.84   -0.01 |   -0.60   -0.60   -0.01 |   -0.60
+  era D: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 2}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.11  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.19  median   +0.00  better/worse/tie 0/1/5  drop-best   -0.20
+    R_own delta: sum   -0.25  median   +0.01  better/worse/tie 0/1/5  drop-best   -0.27
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 4 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.2429 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.2429 on 6 -> agrees]
+    context: pct delta sum   -1.88 median   +0.07 (n 6)  | adr delta sum   -0.31 median   +0.02 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     settled             -1.02   -1.00   +0.02 |   -0.79   -0.78   +0.02 |   -0.78
+               SEI      settled             +0.41   +0.11   -0.30 |   +0.31   +0.08   -0.23 |   +0.32
+               DFTX     settled             -1.01   -1.00   +0.01 |   -0.53   -0.52   +0.01 |   -0.52
+               CEG      settled             -1.00   -1.00   +0.00 |   -0.65   -0.65   +0.00 |   -0.65
+               PENG     settled             -0.82   -0.80   +0.01 |   -0.87   -0.86   +0.02 |   -0.86
+               HUM      settled             -1.01   -1.00   +0.01 |   -0.52   -0.52   +0.00 |   -0.52
+  era E: paired n (R_cap set) = 4  | R_own set n = 4  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.73  live   +0.70  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.13  median   +0.00  better/worse/tie 1/1/2  drop-best   -0.04
+    R_own delta: sum   +0.63  median   +0.02  better/worse/tie 1/1/2  drop-best   -0.03
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 3 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.1858 on 4 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.1858 on 4 -> agrees]
+    context: pct delta sum   +7.54 median   +0.18 (n 4)  | adr delta sum   +0.82 median   +0.04 (n 4)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=Y  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               IRON     settled             +0.70   +0.73   +0.03 |   +0.17   +0.18   +0.01 |   +0.17
+               SMCI     settled             -1.01   -1.00   +0.01 |   -0.35   -0.34   +0.00 |   -0.34
+               AEHR     settled             -0.98   -0.32   +0.66 |   -0.26   -0.08   +0.17 |   -0.26
+               APPN     settled             -0.93   -1.00   -0.07 |   -0.67   -0.73   -0.05 |   -0.73
+
+--------------------------------------------------------------------------------------------------------
+ARM harvest_legacy_2r
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 0/0, live 1/0)
+          max R_own: arm   +1.85  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.30  median   -0.01  better/worse/tie 0/1/5  drop-best   -0.30
+    R_own delta: sum   -0.29  median   -0.01  better/worse/tie 0/1/5  drop-best   -0.29
+    tail-clip 0 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.0000 on 6 both-settled fills -> sign DISAGREES   [I6 variant, no-entry at 0:  +0.0000 on 6 -> disagrees]
+    context: pct delta sum   -2.41 median   -0.05 (n 6)  | adr delta sum   -0.41 median   -0.01 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=n  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   +1.26   -0.00 |   +1.32   +1.32   -0.00 |   +1.32
+               MRVL     settled             -0.95   -1.00   -0.05 |   -0.90   -0.94   -0.04 |   -0.94
+               MRNA     settled             +2.08   +1.85   -0.24 |   +2.20   +1.95   -0.25 |   +1.95
+               CRWD     settled             +0.40   +0.40   +0.00 |   +0.37   +0.37   +0.00 |   +0.37
+               SOLS     settled             -1.00   -1.00   +0.00 |   -1.01   -1.00   +0.00 |   -1.00
+               HOOD     settled             -0.84   -0.84   -0.01 |   -0.60   -0.60   -0.01 |   -0.60
+  era D: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 2}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.34  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.01  median   +0.00  better/worse/tie 0/1/5  drop-best   -0.03
+    R_own delta: sum   -0.02  median   +0.01  better/worse/tie 0/1/5  drop-best   -0.04
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 4 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.0717 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.0717 on 6 -> agrees]
+    context: pct delta sum   -0.07 median   +0.07 (n 6)  | adr delta sum   +0.01 median   +0.02 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     settled             -1.02   -1.00   +0.02 |   -0.79   -0.78   +0.02 |   -0.78
+               SEI      settled             +0.41   +0.34   -0.08 |   +0.31   +0.25   -0.06 |   +0.32
+               DFTX     settled             -1.01   -1.00   +0.01 |   -0.53   -0.52   +0.01 |   -0.52
+               CEG      settled             -1.00   -1.00   +0.00 |   -0.65   -0.65   +0.00 |   -0.65
+               PENG     settled             -0.82   -0.80   +0.01 |   -0.87   -0.86   +0.02 |   -0.86
+               HUM      settled             -1.01   -1.00   +0.01 |   -0.52   -0.52   +0.00 |   -0.52
+  era E: paired n (R_cap set) = 4  | R_own set n = 4  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.73  live   +0.70  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.31  median   +0.00  better/worse/tie 1/1/2  drop-best   -0.04
+    R_own delta: sum   +1.30  median   +0.02  better/worse/tie 1/1/2  drop-best   -0.03
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 1 (of 3 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.3600 on 4 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.3600 on 4 -> agrees]
+    context: pct delta sum  +15.28 median   +0.18 (n 4)  | adr delta sum   +1.64 median   +0.04 (n 4)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=Y  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               IRON     settled             +0.70   +0.73   +0.03 |   +0.17   +0.18   +0.01 |   +0.17
+               SMCI     settled             -1.01   -1.00   +0.01 |   -0.35   -0.34   +0.00 |   -0.34
+               AEHR     settled             -0.98   +0.35   +1.33 |   -0.26   +0.09   +0.35 |   -0.26
+               APPN     settled             -0.93   -1.00   -0.07 |   -0.67   -0.73   -0.05 |   -0.73
+
+--------------------------------------------------------------------------------------------------------
+ARM trail_pivot_swing
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 1  >=+4R 0   (entered-only: arm 0/0, live 1/0)
+          max R_own: arm   +1.12  live   +2.08  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -1.51  median   -0.08  better/worse/tie 0/3/3  drop-best   -1.51
+    R_own delta: sum   -1.49  median   -0.11  better/worse/tie 0/3/3  drop-best   -1.49
+    tail-clip 1 (of 1 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -1.2105 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -1.2105 on 6 -> agrees]
+    context: pct delta sum  -13.30 median   -0.68 (n 6)  | adr delta sum   -2.27 median   -0.13 (n 6)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=n  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               AMLX     settled             +1.26   +0.94   -0.32 |   +1.32   +0.98   -0.34 |   +1.32
+               MRVL     settled             -0.95   -1.00   -0.05 |   -0.90   -0.94   -0.04 |   -0.94
+               MRNA     settled             +2.08   +1.12   -0.96 |   +2.20   +1.19   -1.02 |   +1.95
+               CRWD     settled             +0.40   +0.40   +0.00 |   +0.37   +0.37   +0.00 |   +0.37
+               SOLS     settled             -1.00   -1.00   +0.00 |   -1.01   -1.00   +0.00 |   -1.00
+               HOOD     settled             -0.84   -1.00   -0.16 |   -0.60   -0.72   -0.12 |   -0.60
+  era D: paired n (R_cap set) = 6  | R_own set n = 6  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'fidelity_fail': 2}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +1.48  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   +0.63  median   +0.00  better/worse/tie 1/1/4  drop-best   -0.17
+    R_own delta: sum   +0.92  median   +0.01  better/worse/tie 1/1/4  drop-best   -0.14
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 4 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.5750 on 6 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  +0.5750 on 6 -> agrees]
+    context: pct delta sum   +6.22 median   +0.07 (n 6)  | adr delta sum   +1.05 median   +0.02 (n 6)
+    WON test: rcap_sum_pos=Y  rown_sum_pos=Y  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     settled             -1.02   -1.00   +0.02 |   -0.79   -0.78   +0.02 |   -0.78
+               SEI      settled             +0.41   +1.48   +1.06 |   +0.31   +1.11   +0.80 |   +0.32
+               DFTX     settled             -1.01   -1.00   +0.01 |   -0.53   -0.52   +0.01 |   -0.52
+               CEG      settled             -1.00   -1.00   +0.00 |   -0.65   -0.65   +0.00 |   -0.65
+               PENG     settled             -0.82   -1.00   -0.18 |   -0.87   -1.07   -0.20 |   -0.86
+               HUM      settled             -1.01   -1.00   +0.01 |   -0.52   -0.52   +0.00 |   -0.52
+  era E: paired n (R_cap set) = 3  | R_own set n = 3  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'pending': 1, 'fidelity_fail': 1}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   -1.00  live   -0.93  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.05  median   -0.00  better/worse/tie 0/1/2  drop-best   -0.06
+    R_own delta: sum   -0.08  median   -0.02  better/worse/tie 0/1/2  drop-best   -0.09
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 3 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.0000 on 3 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.0000 on 3 -> agrees]
+    context: pct delta sum   -0.69 median   -0.21 (n 3)  | adr delta sum   -0.10 median   -0.02 (n 3)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               SMCI     settled             -1.01   -1.00   +0.01 |   -0.35   -0.34   +0.00 |   -0.34
+               AEHR     settled             -0.98   -1.00   -0.02 |   -0.26   -0.26   -0.00 |   -0.26
+               APPN     settled             -0.93   -1.00   -0.07 |   -0.67   -0.73   -0.05 |   -0.73
+
+--------------------------------------------------------------------------------------------------------
+ARM trail_character_ma
+--------------------------------------------------------------------------------------------------------
+  era C: paired n (R_cap set) = 1  | R_own set n = 1  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'unscoreable': 5, 'fidelity_fail': 1}  -> not readable (< 3)
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   -1.00  live   -0.95  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.04  median   -0.04  better/worse/tie 0/0/1  drop-best   +0.00
+    R_own delta: sum   -0.05  median   -0.05  better/worse/tie 0/0/1  drop-best   +0.00
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 1 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.0000 on 1 both-settled fills -> sign DISAGREES   [I6 variant, no-entry at 0:  +0.0000 on 1 -> disagrees]
+    context: pct delta sum   -0.22 median   -0.22 (n 1)  | adr delta sum   -0.03 median   -0.03 (n 1)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=n  tailclip_zero=Y  ge4_at_least_live=Y  -> n/a (not readable)
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               MRVL     settled             -0.95   -1.00   -0.05 |   -0.90   -0.94   -0.04 |   -0.94
+  era D: paired n (R_cap set) = 4  | R_own set n = 4  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'unscoreable': 2, 'fidelity_fail': 2}  -> READABLE
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   +0.00  live   +0.41  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.49  median   -0.10  better/worse/tie 0/2/2  drop-best   -0.51
+    R_own delta: sum   -0.57  median   -0.09  better/worse/tie 0/2/2  drop-best   -0.60
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 2 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  -0.5383 on 4 both-settled fills -> sign AGREES   [I6 variant, no-entry at 0:  -0.5383 on 4 -> agrees]
+    context: pct delta sum   -5.64 median   -1.28 (n 4)  | adr delta sum   -1.03 median   -0.25 (n 4)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=Y  tailclip_zero=Y  ge4_at_least_live=Y  -> LOST
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               PHVS     settled             -1.02   -1.00   +0.02 |   -0.79   -0.78   +0.02 |   -0.78
+               SEI      settled             +0.41   +0.00   -0.41 |   +0.31   +0.00   -0.31 |   +0.32
+               CEG      settled             -1.00   -1.00   +0.00 |   -0.65   -0.65   +0.00 |   -0.65
+               PENG     settled             -0.82   -1.00   -0.18 |   -0.87   -1.07   -0.20 |   -0.86
+  era E: paired n (R_cap set) = 1  | R_own set n = 1  | no-entry (0 in R_cap) = 0  | rcap_uncomputable = 0  | excluded: {'unscoreable': 3, 'fidelity_fail': 1}  -> not readable (< 3)
+    TAIL  arm >=+2R 0  >=+4R 0  | live >=+2R 0  >=+4R 0   (entered-only: arm 0/0, live 0/0)
+          max R_own: arm   -1.00  live   -0.93  | <= -1.5R: arm 0  live 0
+    R_cap delta: sum   -0.05  median   -0.05  better/worse/tie 0/1/0  drop-best   +0.00
+    R_own delta: sum   -0.07  median   -0.07  better/worse/tie 0/1/0  drop-best   +0.00
+    tail-clip 0 (of 0 fills with live >= +2R)  | rescues 0 (of 1 live losers <= -0.9R; no-entry on a live loser: 0)
+    engine check: sum(arm - live_replay) R_cap  +0.0000 on 1 both-settled fills -> sign DISAGREES   [I6 variant, no-entry at 0:  +0.0000 on 1 -> disagrees]
+    context: pct delta sum   -0.51 median   -0.51 (n 1)  | adr delta sum   -0.08 median   -0.08 (n 1)
+    WON test: rcap_sum_pos=n  rown_sum_pos=n  dropbest_rcap_pos=n  engine_sign_agrees=n  tailclip_zero=Y  ge4_at_least_live=Y  -> n/a (not readable)
+    per fill:  ticker   cls          live_own  arm_own  d_own  | live_cap  arm_cap  d_cap  | replay_cap
+               APPN     settled             -0.93   -1.00   -0.07 |   -0.67   -0.73   -0.05 |   -0.73
+
+========================================================================================================
+SECTION 4 — HORIZON ROWS (marks, never returns)
+========================================================================================================
+  horizon rows in the cohort: 0 
+  -> no marks exist, so the two label passes below (marks excluded / marks counted) are computed on identical rows and cannot differ.
+
+========================================================================================================
+SECTION 5 — PRE-REGISTERED LABELS (mechanical; computed twice — marks excluded / marks counted)
+========================================================================================================
+  arm                          marks excluded               marks counted                readable eras -> per-era result
+  stop_orb_low                 NOT A CANDIDATE              NOT A CANDIDATE              3 -> C:LOST(n6)  D:WON(n6)  E:LOST(n4)
+  stop_adr_050                 NOT A CANDIDATE              NOT A CANDIDATE              3 -> C:LOST(n6)  D:LOST(n4)  E:LOST(n3)
+  stop_adr_075                 NOT A CANDIDATE              NOT A CANDIDATE              3 -> C:LOST(n6)  D:LOST(n4)  E:LOST(n3)
+  stop_orb_3r                  NOT A CANDIDATE              NOT A CANDIDATE              3 -> C:LOST(n6)  D:WON(n6)  E:LOST(n3)
+  stop_low_of_day              NOT A CANDIDATE              NOT A CANDIDATE              3 -> C:LOST(n6)  D:WON(n6)  E:LOST(n4)
+  entry_first_hour_bar         NOT A CANDIDATE              NOT A CANDIDATE              2 -> C:LOST(n6)  D:LOST(n6)  E:unreadable(n2)
+  book_first_hour_low_of_day   NOT A CANDIDATE              NOT A CANDIDATE              3 -> C:LOST(n6)  D:LOST(n6)  E:LOST(n3)
+  harvest_no_breakeven         NOT A CANDIDATE              NOT A CANDIDATE              3 -> C:LOST(n6)  D:WON(n6)  E:LOST(n4)
+  harvest_trail_only           NOT A CANDIDATE              NOT A CANDIDATE              3 -> C:LOST(n6)  D:LOST(n6)  E:LOST(n4)
+  harvest_t3                   NOT A CANDIDATE              NOT A CANDIDATE              3 -> C:LOST(n6)  D:LOST(n6)  E:LOST(n4)
+  harvest_legacy_2r            NOT A CANDIDATE              NOT A CANDIDATE              3 -> C:LOST(n6)  D:LOST(n6)  E:LOST(n4)
+  trail_pivot_swing            NOT A CANDIDATE              NOT A CANDIDATE              3 -> C:LOST(n6)  D:LOST(n6)  E:LOST(n3)
+  trail_character_ma           NOT A CANDIDATE              NOT A CANDIDATE              1 -> C:unreadable(n1)  D:LOST(n4)  E:unreadable(n1)
+
+  FINAL LABEL per arm:
+    stop_orb_low                 NOT A CANDIDATE
+    stop_adr_050                 NOT A CANDIDATE
+    stop_adr_075                 NOT A CANDIDATE
+    stop_orb_3r                  NOT A CANDIDATE
+    stop_low_of_day              NOT A CANDIDATE
+    entry_first_hour_bar         NOT A CANDIDATE
+    book_first_hour_low_of_day   NOT A CANDIDATE
+    harvest_no_breakeven         NOT A CANDIDATE
+    harvest_trail_only           NOT A CANDIDATE
+    harvest_t3                   NOT A CANDIDATE
+    harvest_legacy_2r            NOT A CANDIDATE
+    trail_pivot_swing            NOT A CANDIDATE
+    trail_character_ma           NOT A CANDIDATE
+
+  I6 sensitivity — eras whose WON/LOST would change if the engine check scored no-entry at 0: [('entry_first_hour_bar', 'D')]
+    entry_first_hour_bar era D: label unchanged by it? YES — still lost in ['C']
+  I1 sensitivity — arms whose label would read UNREADABLE (not NOT A CANDIDATE) if fewer-than-2-readable took precedence over a lost era: [('trail_character_ma', 1, 'UNREADABLE')]
+  harvest_* and trail_* labels are for completeness only; their decision belongs to live_fill_counterfactuals_first_read_482 (era E, 20 paired fills), which this read does not satisfy.
+
+========================================================================================================
+SECTION 6 — 'DISAPPOINTS' PER ERA (live_actual R_cap sum < 0 AND no fill >= +4R) and FILL FACTS
+========================================================================================================
+  era C — ALL cohort fills (I2, the fact): n 7  live_actual R_cap sum   +2.41  fills >= +4R 0  -> does not disappoint
+           fidelity-passing fills only (beside it): n 6  R_cap sum   +1.39  fills >= +4R 0  -> does not disappoint
+  era D — ALL cohort fills (I2, the fact): n 8  live_actual R_cap sum   +1.77  fills >= +4R 2  -> does not disappoint
+           fidelity-passing fills only (beside it): n 6  R_cap sum   -3.06  fills >= +4R 0  -> disappoints
+  era E — ALL cohort fills (I2, the fact): n 5  live_actual R_cap sum   -1.25  fills >= +4R 0  -> DISAPPOINTS
+           fidelity-passing fills only (beside it): n 4  R_cap sum   -1.11  fills >= +4R 0  -> disappoints
+
+  fill facts (fill_facts rows, every cohort fill; descriptive, no threshold):
+    era C: n 7  fill_vs_trigger_pct median   +0.47% max   +2.13% count above +1% 2 ['CRWD', 'HOOD']  | real_risk_vs_trigger_risk median 1.047 max 1.432
+    era D: n 8  fill_vs_trigger_pct median   +0.29% max   +4.35% count above +1% 1 ['PENG']  | real_risk_vs_trigger_risk median 1.038 max 1.430
+    era E: n 5  fill_vs_trigger_pct median   +0.05% max   +0.51% count above +1% 0 []  | real_risk_vs_trigger_risk median 1.015 max 1.074
+
+========================================================================================================
+SECTION 7 — TIER 2: 5-MINUTE ORB SHADOW LANE vs the live twin (DESCRIPTIVE; can only nominate)
+========================================================================================================
+  copies run: out/b482_cde.txt, out/s572_cde.txt (their pooled sections are not read).
+  CONFOUND: the 5-minute lane exits on a daily-bar ladder (day-3/5 partial, no +8R partial, no price-armed breakeven, no depth rule) — entry, stop AND exit all differ from live in every era.
+  The recorder's fidelity check does not apply here: both sides are real rows (live actual vs the shadow lane).
+  shadow closed rows: 16; paired to a cohort fill: 8; era taken from the live twin.
+  era C: pairs n = 3
+    AMLX   2026-08-18  R live   +1.26  R 5m   +1.12  dR   -0.14   ADR live   +1.99  ADR 5m   +2.35  dADR   +0.37   stop% live 10.33 5m 13.75
+    CRWD   2026-08-27  R live   +0.40  R 5m   +0.16  dR   -0.24   ADR live   +0.52  ADR 5m   +0.37  dADR   -0.14   stop% live 5.64 5m 9.93
+    SOLS   2026-08-28  R live   -1.00  R 5m   -1.00  dR   +0.00   ADR live   -1.86  ADR 5m   -1.98  dADR   -0.11   stop% live 6.11 5m 6.52
+    sums: R live   +0.65  5m   +0.29  delta   -0.37 drop-best   -0.37  | ADR live   +0.64  5m   +0.75  delta   +0.11 drop-best   -0.26
+    era with >= 3 pairs -> 5m beats live in both units and survives drop-best (I5): NO
+  era D: pairs n = 3
+    SEI    2026-09-08  R live   +0.41  R 5m   +0.08  dR   -0.33   ADR live   +0.57  ADR 5m   +0.11  dADR   -0.45   stop% live 7.94 5m 7.96
+    VICR   2026-09-17  R live   +7.30  R 5m   +4.72  dR   -2.59   ADR live   +5.65  ADR 5m   +3.81  dADR   -1.84   stop% live 4.90 5m 5.12
+    HUM    2026-10-09  R live   -1.01  R 5m   -1.00  dR   +0.01   ADR live   -2.25  ADR 5m   -2.51  dADR   -0.26   stop% live 7.55 5m 8.47
+    sums: R live   +6.71  5m   +3.80  delta   -2.91 drop-best   -2.91  | ADR live   +3.96  5m   +1.41  delta   -2.55 drop-best   -2.29
+    era with >= 3 pairs -> 5m beats live in both units and survives drop-best (I5): NO
+  era E: pairs n = 2
+    CLS    2026-10-27  R live   -0.29  R 5m   -1.00  dR   -0.71   ADR live   -0.40  ADR 5m   -1.59  dADR   -1.20   stop% live 7.99 5m 9.40
+    AEHR   2026-11-03  R live   -0.98  R 5m   -1.00  dR   -0.02   ADR live   -1.21  ADR 5m   -2.22  dADR   -1.01   stop% live 11.60 5m 20.89
+    sums: R live   -1.27  5m   -2.00  delta   -0.73 drop-best   -0.71  | ADR live   -1.61  5m   -3.81  delta   -2.21 drop-best   -1.20
+  NOMINATE RULE: eras with >= 3 pairs ['C', 'D']; beaten in [] -> NOTHING NOMINATED — the 08-18 finding stands: widening the opening-range bar does not help
+
+========================================================================================================
+SECTION 8 — TIER 3: SWEEP COPY (DESCRIPTIVE; can only nominate a recorder arm)
+========================================================================================================
+  EXIT: the sweep's single policy in every era (half off at +2R own unit -> breakeven -> SMA trail -> 20 days); not the live ladder in D/E, so era slices separate populations, not exits.
+  CONTROL for W is B2 (the live stop inside this engine), never B0. Re-entry is scored as the increment over B0 on days a re-entry fired; conservative sequencing decides, optimistic shown.
+  excluded lists: thin none; no bars none; odd fills (entry <= ORB low) none; CPDL invalid none
+  horizon (closed by the 20-day / data-end stop, marked to last close) per lane per era:
+    era C: A_cons=0  A_opt=0  Apdl_c=0  Apdl_o=0  B0=0  B2=0  C05=0  C10=0  CPDL=0  W=0
+    era D: A_cons=0  A_opt=0  Apdl_c=0  Apdl_o=0  B0=0  B2=0  C05=0  C10=0  CPDL=0  W=0
+    era E: A_cons=0  A_opt=0  Apdl_c=0  Apdl_o=0  B0=0  B2=0  C05=0  C10=0  CPDL=1  W=0
+  W no-entry (scored 0) in era C: 2 ['MRVL', 'SOLS']
+  W no-entry (scored 0) in era D: 5 ['PHVS', 'SEI', 'DFTX', 'PENG', 'HUM']
+  W no-entry (scored 0) in era E: 3 ['SMCI', 'CLS', 'APPN']
+
+  W (established intraday low) vs B2, every full-session day, W no-entry = 0:
+    era C: n = 7
+      AMLX   W R   +1.39            B2 R   +1.19  dR   +0.19  | W ADR   +2.66  B2 ADR   +1.97  dADR   +0.69
+      MRVL   W R   +0.00 (no entry) B2 R   -1.00  dR   +1.00  | W ADR   +0.00  B2 ADR   -0.70  dADR   +0.70
+      MRNA   W R   +0.18            B2 R   +1.58  dR   -1.40  | W ADR   +0.69  B2 ADR   +2.63  dADR   -1.93
+      CRWD   W R   -1.00            B2 R   +0.50  dR   -1.50  | W ADR   -1.68  B2 ADR   +0.77  dADR   -2.45
+      OKTA   W R   -0.17            B2 R   -0.08  dR   -0.09  | W ADR   -0.27  B2 ADR   -0.18  dADR   -0.08
+      SOLS   W R   +0.00 (no entry) B2 R   -1.00  dR   +1.00  | W ADR   +0.00  B2 ADR   -1.86  dADR   +1.86
+      HOOD   W R   -1.04            B2 R   -1.00  dR   -0.04  | W ADR   -1.64  B2 ADR   -1.84  dADR   +0.20
+      sums: W R   -0.64  B2 R   +0.19  dR   -0.83 drop-best   -1.83  | dADR   -1.02 drop-best   -2.88
+    era D: n = 8
+      PHVS   W R   +0.00 (no entry) B2 R   -1.00  dR   +1.00  | W ADR   +0.00  B2 ADR   -1.81  dADR   +1.81
+      SEI    W R   +0.00 (no entry) B2 R   +0.50  dR   -0.50  | W ADR   +0.00  B2 ADR   +0.69  dADR   -0.69
+      DFTX   W R   +0.00 (no entry) B2 R   -1.00  dR   +1.00  | W ADR   +0.00  B2 ADR   -1.76  dADR   +1.76
+      VICR   W R   +5.34            B2 R   +4.10  dR   +1.24  | W ADR   +3.14  B2 ADR   +3.03  dADR   +0.11
+      KOD    W R   +0.50            B2 R   +3.18  dR   -2.68  | W ADR   +2.97  B2 ADR   +4.85  dADR   -1.88
+      CEG    W R   -1.03            B2 R   -1.00  dR   -0.03  | W ADR   -1.75  B2 ADR   -1.83  dADR   +0.08
+      PENG   W R   +0.00 (no entry) B2 R   -0.35  dR   +0.35  | W ADR   +0.00  B2 ADR   -1.24  dADR   +1.24
+      HUM    W R   +0.00 (no entry) B2 R   -1.00  dR   +1.00  | W ADR   +0.00  B2 ADR   -2.32  dADR   +2.32
+      sums: W R   +4.81  B2 R   +3.42  dR   +1.38 drop-best   +0.14  | dADR   +4.74 drop-best   +2.42
+    era E: n = 5
+      IRON   W R   +0.23            B2 R   +0.80  dR   -0.57  | W ADR   +0.50  B2 ADR   +1.94  dADR   -1.44
+      SMCI   W R   +0.00 (no entry) B2 R   -1.00  dR   +1.00  | W ADR   +0.00  B2 ADR   -0.64  dADR   +0.64
+      CLS    W R   +0.00 (no entry) B2 R   +1.16  dR   -1.16  | W ADR   +0.00  B2 ADR   +1.52  dADR   -1.52
+      AEHR   W R   -0.28            B2 R   +0.50  dR   -0.78  | W ADR   -0.48  B2 ADR   +0.64  dADR   -1.13
+      APPN   W R   +0.00 (no entry) B2 R   -1.00  dR   +1.00  | W ADR   +0.00  B2 ADR   -1.23  dADR   +1.23
+      sums: W R   -0.04  B2 R   +0.46  dR   -0.51 drop-best   -1.51  | dADR   -2.21 drop-best   -3.44
+  NOMINATE RULE W vs B2: eras with >= 3 rows ['C', 'D', 'E']; beaten in both units + drop-best in ['D'] -> not nominated
+
+  A_cons - B0 on days A_cons fired a re-entry (conservative decides; A_opt shown):
+    era C: re-entry days n = 4
+      AMLX   increment R   +2.34  ADR   +1.93   | A_opt: increment R   +2.34 (attempts 2)
+      MRVL   increment R   -3.93  ADR   -1.37   | A_opt: increment R   -3.93 (attempts 3)
+      OKTA   increment R   -0.16  ADR   -0.18   | A_opt: increment R   -0.16 (attempts 2)
+      HOOD   increment R   -1.07  ADR   -0.99   | A_opt: increment R   -1.07 (attempts 3)
+      sums: R   -2.82 drop-best   -5.16  | ADR   -0.61 drop-best   -2.54
+    era D: re-entry days n = 2
+      PHVS   increment R   -0.93  ADR   -0.85   | A_opt: increment R   -0.93 (attempts 2)
+      CEG    increment R   -1.95  ADR   -1.79   | A_opt: increment R   -1.95 (attempts 3)
+      sums: R   -2.89 drop-best   -1.95  | ADR   -2.63 drop-best   -1.79
+    era E: re-entry days n = 2
+      IRON   increment R   +1.61  ADR   +1.95   | A_opt: increment R   +1.61 (attempts 2)
+      SMCI   increment R   -0.97  ADR   -0.31   | A_opt: increment R   -0.97 (attempts 2)
+      sums: R   +0.64 drop-best   -0.97  | ADR   +1.64 drop-best   -0.31
+  NOMINATE RULE A_cons (re-entry): eras with >= 3 rows ['C']; beaten in both units + drop-best in [] -> not nominated
+
+  Apdl_c - B0 on days Apdl_c fired a re-entry (conservative decides; Apdl_o shown):
+    era C: re-entry days n = 4
+      AMLX   increment R   +2.34  ADR   +1.93   | Apdl_o: increment R   +2.34 (attempts 2)
+      MRVL   increment R   -6.10  ADR   -2.12   | Apdl_o: increment R   -6.10 (attempts 3)
+      OKTA   increment R   -0.16  ADR   -0.18   | Apdl_o: increment R   -0.16 (attempts 2)
+      HOOD   increment R   -1.66  ADR   -1.52   | Apdl_o: increment R   -1.66 (attempts 3)
+      sums: R   -5.57 drop-best   -7.92  | ADR   -1.90 drop-best   -3.83
+    era D: re-entry days n = 2
+      PHVS   increment R   -0.93  ADR   -0.85   | Apdl_o: increment R   -0.93 (attempts 2)
+      CEG    increment R   -3.51  ADR   -3.21   | Apdl_o: increment R   -3.51 (attempts 3)
+      sums: R   -4.44 drop-best   -3.51  | ADR   -4.05 drop-best   -3.21
+    era E: re-entry days n = 2
+      IRON   increment R   +1.61  ADR   +1.95   | Apdl_o: increment R   +1.61 (attempts 2)
+      SMCI   increment R   -0.97  ADR   -0.31   | Apdl_o: increment R   -0.97 (attempts 2)
+      sums: R   +0.64 drop-best   -0.97  | ADR   +1.64 drop-best   -0.31
+  NOMINATE RULE Apdl_c (re-entry): eras with >= 3 rows ['C']; beaten in both units + drop-best in [] -> not nominated
+
+  C05 / C10 / CPDL: printed by the copy (out/s572_cde.txt), NOT read — the recorder's ADR and ORB stop arms answer that question on the live ladder.
+
+========================================================================================================
+END — no line above pools eras. Interpretation: PREREG.md '## RESULT — 2026-11-06' and docs/analysis/482_cross_arm_read_2026-11-06.md
+========================================================================================================
