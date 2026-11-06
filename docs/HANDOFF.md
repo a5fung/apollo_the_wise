@@ -6,7 +6,19 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-11-04 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 11-03 close below.
+## 2026-11-05 (Thu) CLOSE — 🔴 RESUME HERE. Supersedes the 11-04 close below.
+
+**2026-11-05 (Thu): CLOSE run on his word ("Advisor review then close").** (Mirrors the machine-local pickup memory.)
+
+- **Board 19 → 18** (#718 closed, verified live: CHYM opened $32.05 under its $32.56 gap floor and was skipped with no order; APPN and U unaffected). Server **`35c646ff`** (no deploy).
+- **His rulings:** the ORB high stays the OFFICIAL round-lot bar high — odd lots out (APPN: his chart's $56.28 = three odd-lot prints; `docs/setups/magna53_ep.md` 2026-11-05); breakout-list grading moves to CHART SHEETS in chat, not Telegram /bgrade.
+- **#717:** the first new-rule breakout list meets EXPECT-STAGE1 (150 names, none under 2.1%, scores on every row, 6.3 s, 0 paper trades; the Telegram top 10 matches the DB, his paste). Fri 11-06's list completes the DONE-WHEN. The EXPECT's '/bgrade shows the top 10' half is moot by his chart-sheet ruling.
+- **#491:** night 9 clean (0 bounces); night 10 Fri → the close (quote the DoD; clause 3 'answered by his 10-03 ruling (3), not met literally'; record the trim/hold share once).
+- **Detectors-quiet page (flag breaks / HTF shadow silent 15 d):** NOT a detector fault — `flag_break_scan` runs 84/day, all success; the nightly flag board has held 0-3 live-stage names since ~10-07 (6-20 a week Jul-Sep), the same pole-starved tape that put 150 (not ~250) names on the breakout list. It becomes a detector question only if the board stays at 0-3 while breadth recovers.
+- **Weekend:** stage 2 (+ the 12-chart grading sheet, the /bgrade line dropped), #719 breadth page + merge (rebase the branch) + deploy on his go, #312 demote button (Sun, orchestrator scope).
+- **Capacity:** Fable resets Fri 11-06 8 PM PT — then delete the dated low-capacity memory.
+
+## 2026-11-04 (Wed) CLOSE — (superseded by 11-05 above)
 
 **2026-11-04 (Wed): CLOSE run on his word ("Run close").** (Mirrors the machine-local pickup memory.)
 

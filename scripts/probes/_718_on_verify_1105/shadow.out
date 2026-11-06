@@ -1,0 +1,7 @@
+SET
+id|et|left
+65906|2026-11-03 09:31:01.534646|ORB FN 09:30 open $329.99 < floor $343.02 (prev close $314.70 × 1.09; gap at open +4.86% vs 9%; flip-up tick 07:40 ET) — mode=shadow, verdict=would_skip
+(1 row)
+shadow_would_skip|shadow_rows
+1|1
+(1 row)
