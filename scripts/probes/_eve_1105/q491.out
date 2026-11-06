@@ -1,0 +1,65 @@
+SET
+== A. bounces: re-homed name back in a shadow_promoted row named exactly its from-theme, post-fix nights (expect 0)
+tk|frm|moved|theme_date
+(0 rows)
+== B. DONE-WHEN 1: skip rows since the fix, with the matching re-home (non-null rehomed_at + path=cooldown = met)
+et|tk|theme|path|held|rehomed_at
+2026-10-26 17:08:44.172539|SHOE|Recreational Vehicle & Outdoor Leisure Cyclicals|cooldown|true|
+2026-10-26 17:08:44.173841|ROL|Recreational Vehicle & Outdoor Leisure Cyclicals|cooldown|true|
+2026-10-30 17:10:06.478805|DRS|Defense Electronics & Aircraft Aftermarket Services|cooldown|true|2026-10-30 17:05:01.831581
+2026-10-30 17:10:06.480285|NOW|Enterprise Network & Application Delivery Security Infrastructure|cooldown|true|
+2026-10-30 17:10:06.481516|EVR|Fintech Lending & Mortgage Platforms Rebound|cooldown|true|
+2026-10-30 17:10:06.482624|MIR|Fire Safety, Access Control & Building Security Systems|cooldown|true|
+2026-10-30 17:10:06.483825|PRI|Life & Supplemental Health Insurers|cooldown|true|2026-10-30 17:05:01.816742
+2026-10-30 17:10:06.484899|GL|Life & Supplemental Health Insurers|cooldown|true|2026-10-30 17:05:01.823318
+2026-11-03 17:06:08.521678|PII|Footwear & Golf Leisure Consumer Brands|cooldown|true|2026-11-03 17:01:24.68978
+2026-11-04 17:10:05.375156|BLDR|Building Materials, Distribution & Security Products for Construction|cooldown|true|2026-11-04 17:04:47.805533
+2026-11-04 17:10:05.376122|PII|Footwear & Golf Leisure Consumer Brands|cooldown|true|2026-11-03 17:01:24.68978
+2026-11-04 17:10:05.377036|JMKE|Timeshare, Casino Gaming & Leisure Venue Operators|cooldown|true|
+2026-11-04 17:10:05.377923|AXGN|Virtual Care & Home/Community Healthcare Delivery Rebound|cooldown|true|
+2026-11-05 17:06:09.313349|AEHR|AI data-center power buildout|cooldown|false|
+2026-11-05 17:06:09.314279|FN|AI data-center power buildout|cooldown|false|
+2026-11-05 17:06:09.315124|LSCC|AI data-center power buildout|cooldown|false|
+2026-11-05 17:06:09.316|BLDR|Building Materials, Distribution & Security Products for Construction|cooldown|true|2026-11-04 17:04:47.805533
+2026-11-05 17:06:09.317069|PII|Footwear & Golf Leisure Consumer Brands|cooldown|true|2026-11-03 17:01:24.68978
+2026-11-05 17:06:09.317971|SBSW|South African & Andean Gold/Silver Miners (SBSW, ARIS, AGI, BVN)|cooldown|true|2026-11-05 17:01:54.253472
+2026-11-05 17:06:09.318743|AGI|South African & Andean Gold/Silver Miners (SBSW, ARIS, AGI, BVN)|cooldown|true|2026-11-05 17:01:54.247713
+2026-11-05 17:06:09.319556|BVN|South African & Andean Gold/Silver Miners (SBSW, ARIS, AGI, BVN)|cooldown|true|2026-11-05 17:01:54.264971
+2026-11-05 17:06:09.320358|JMKE|Timeshare, Casino Gaming & Leisure Venue Operators|cooldown|true|
+2026-11-05 17:06:09.321283|AXGN|Virtual Care & Home/Community Healthcare Delivery Rebound|cooldown|true|
+(23 rows)
+== C. per ET night since 10-26: heartbeat, promotion row, failures, skips, moves
+d|hb|promo|fail|skips|moves
+2026-10-26|1|1|0|2|1
+2026-10-27|1|1|0|0|6
+2026-10-28|1|1|0|0|1
+2026-10-29|1|1|0|0|0
+2026-10-30|1|1|0|6|3
+2026-11-02|1|1|0|0|4
+2026-11-03|1|1|0|1|4
+2026-11-04|1|1|0|4|1
+2026-11-05|1|1|0|10|6
+(9 rows)
+== D. trim/hold share + promoted names (detail is a text repr, NOT json, never cast)
+et|summ|det
+2026-10-26 17:08:46.102399|Graduated 2 shadow cohort(s) into live mi_themes (2 new) — 8 held at the birth gate — 1 held under the member floor after a cooldown/exclusion strip|promoted=['Agency & Commercial Mortgage REIT Rate-Sensitive Cohort', 'Apartment REITs (Sunbelt & Coastal Multifamily)', 'Brazil Equity Rally: Financials, Energy & Sanitation', 'Brazil & Latin America Equities Rally (Energy, Fintech, E-Commerce)', 'Computational Drug Discovery & Genomics Research Too
+2026-10-27 17:06:44.836447|Graduated 7 shadow cohort(s) into live mi_themes (5 new) — 12 held at the birth gate|promoted=['Agency & Commercial Mortgage REIT Rate-Sensitive Cohort', 'Mortgage REITs (Agency & Commercial MBS)', 'AI data-center power buildout', 'Apartment REITs Sunbelt Multifamily Laggards', 'Auto & Recreational Vehicle Retail/Manufacturing Rebound', 'Brazil & Latin America Equities Rally (Energy
+2026-10-28 17:09:58.130117|Graduated 5 shadow cohort(s) into live mi_themes (4 new) — 14 held at the birth gate|promoted=['Agency & Commercial Mortgage REIT Rate-Sensitive Cohort', 'Agency & Hybrid Mortgage REIT Rate-Sensitive Cohort', 'AI data-center power buildout', 'Apartment REITs Sunbelt Multifamily Laggards', 'Apartment REITs (Sunbelt & Multifamily Residential)', 'Auto & Recreational Vehicle Retail/Manu
+2026-10-29 17:06:03.412351|Graduated 11 shadow cohort(s) into live mi_themes (10 new) — 19 held at the birth gate|promoted=['Agency & Commercial Mortgage REIT Rate-Sensitive Cohort', 'Agency & Hybrid Mortgage REIT Rate-Sensitive Cohort', 'AI data-center power buildout', 'Alternative Consumer Finance: BNPL & Rent-to-Own', 'Apartment REITs Sunbelt Multifamily Laggards', 'Apartment REITs (Sunbelt & Multifamily Res
+2026-10-30 17:10:10.867198|Graduated 7 shadow cohort(s) into live mi_themes (7 new) — 14 held at the birth gate — 5 held under the member floor after a cooldown/exclusion strip|promoted=['Aerospace & Industrial Motion Components Suppliers', 'Agency & Commercial Mortgage REITs (mREITs)', 'Agency & Hybrid Mortgage REIT Rate-Sensitive Cohort', 'Agricultural & Construction Heavy Equipment OEMs', 'AI data-center power buildout', 'Alternative Consumer Finance: BNPL & Rent-to-Own
+2026-11-02 17:10:07.097292|Graduated 6 shadow cohort(s) into live mi_themes (6 new) — 8 held at the birth gate|promoted=['Aerospace & Industrial Motion Components Suppliers', 'Mortgage REITs (Agency & Commercial MBS)', 'Agricultural & Construction Heavy Equipment OEMs', 'Biotech & Specialty Healthcare Drug Delivery/Immunology Leaders', 'Brazil Energy, Logistics & Consumer Platform Equities', 'Cement, Aggrega
+2026-11-03 17:06:11.527944|Graduated 7 shadow cohort(s) into live mi_themes (6 new) — 6 held at the birth gate — 1 held under the member floor after a cooldown/exclusion strip|promoted=['AI data-center power buildout', 'Apartment REIT Multifamily Laggard Basket', 'Biotech & Specialty Healthcare Drug Delivery/Immunology Leaders', 'Brazil Energy, Logistics & Consumer Platform Equities', 'Building Materials, Distribution & Security Products for Construction', 'Cement, Aggreg
+2026-11-04 17:10:08.971471|Graduated 9 shadow cohort(s) into live mi_themes (7 new) — 9 held at the birth gate — 4 held under the member floor after a cooldown/exclusion strip|promoted=['AI data-center power buildout', 'Alternative Asset Managers & Hedge Fund Platforms (Small/Mid Cap)', 'Apartment REIT Multifamily Laggard Basket', 'Biotech & Specialty Healthcare Drug Delivery/Immunology Leaders', 'Brazil Energy, Logistics & Consumer Platform Equities', 'Brazil-Listed ADRs
+2026-11-05 17:06:14.284551|Graduated 12 shadow cohort(s) into live mi_themes (10 new) — 10 held at the birth gate — 5 held under the member floor after a cooldown/exclusion strip|promoted=['AI data-center power buildout', 'AI-native software platform adoption', 'Airline & Leisure Air Travel Rebound', 'Alternative Asset Managers & Hedge Fund Platforms (Small/Mid Cap)', 'Apartment REIT Multifamily Laggard Basket', 'Biotech & Specialty Healthcare Drug Delivery/Immunology Leader
+(9 rows)
+== E. DoD cohort clause: live homes of the eight (get_active_themes shape, 7-day recency, ET date)
+tk|homes
+APLD|
+CIFR|
+CLSK|
+CORZ|
+CRWV|
+HUT|
+IREN|
+WULF|
+(8 rows)

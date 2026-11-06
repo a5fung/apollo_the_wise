@@ -1,0 +1,26 @@
+SET
+scan_date|names|min_adr_pct|under_2_1|null_score|null_inputs
+2026-11-03|8|4.52|0|8|8
+2026-11-04|8|4.55|0|8|8
+2026-11-05|150|2.47|0|0|0
+(3 rows)
+ticker|list_rank|score
+DOCS|1|0.937
+TRAX|2|0.913
+MANE|3|0.910
+(3 rows)
+max_score_ticker
+DOCS
+(1 row)
+et|event_type|left
+2026-11-05 17:55:06.34072|breakout_v1_list_run|2026-11-05: 150 name(s) on the list of 4103 universe name(s) (2801 evaluated); funds kept 39, excluded 15 (0 with no stored name); message sent; 6.3s
+(1 row)
+breakout_trades_today
+0
+(1 row)
+state
+off
+(1 row)
+status|count
+success|421
+(1 row)
