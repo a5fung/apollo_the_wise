@@ -2895,3 +2895,7 @@ Recorded in `tests/fixtures/must_not_trade_charts.py` (ruling date 2026-11-04, h
 > "i didn't see 1min orb high in APPN, how did it enter?" then "i don't see it, i see first min bar high 56.28" then, to "keep the official bars, or count odd lots as your chart does?": "keep it for now" (2026-11-05)
 
 Recorded: APPN 2026-11-05's first 1-minute bar — his chart shows a high of $56.28; the official consolidated bars (Apollo's Alpaca SIP feed, Yahoo) show $56.00, because the only $56.28 prints in 09:30:00-09:31:00 were three ODD-LOT trades (5, 9, 10 shares, condition 'I', 09:30:00.086-.589), which by tape rules do not set a bar's high or low (Alpaca trades read, 612 trades in the minute). The buy stop at $56.00 triggered at 09:31:42 on a round-lot print and filled $56.28. HIS RULING: the ORB high stays the official round-lot bar high ("keep it for now" — revisit on his word).
+
+> "on your stop & buy point question, this should just be part of normal periodic review and we review trades to find areas to improve on in our setup and strategy which should be comprehensive and includes buy/stop/partial analysis." (2026-11-06, after the #482 cross-arm read: no bracket variant earns a live arm; era E 'disappoints' on 5 trades)
+
+Recorded: no separate "re-open geometry?" decision. Buy point, stop, partials and exits are reviewed together in ONE periodic, comprehensive trade review (PLAN #720) that looks for improvement areas in the setup and the strategy; the per-mechanism gated reviews feed it. #482 closes on its own DONE-WHEN.

@@ -24,10 +24,6 @@
     "status": "blocked"
   },
   {
-    "id": 482,
-    "status": "deployed"
-  },
-  {
     "id": 491,
     "status": "deployed"
   },
@@ -70,5 +66,9 @@
   {
     "id": 719,
     "status": "in_progress"
+  },
+  {
+    "id": 720,
+    "status": "pending"
   }
 ]
