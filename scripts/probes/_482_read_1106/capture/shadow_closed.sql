@@ -1,0 +1,3 @@
+SET default_transaction_read_only = on;
+SET TIME ZONE 'UTC';
+\copy (SELECT s.id, s.ticker, s.alert_date, s.bar_size_minutes, s.signal_type, s.shape_tag, s.score_tier, s.orb_high, s.orb_low, s.atr_14, s.trigger_minute_et, s.entry_price, s.stop_price, s.hard_stop, s.risk_dollars, s.entry_shares, s.status, s.skip_reason, s.exits::text AS exits, s.remaining_shares, s.partial_taken, s.breakeven_active, s.total_pnl, s.hold_days, s.quarantined, s.replayed_at, s.created_at, s.closed_at FROM mi_orb_shadow_trades s WHERE s.bar_size_minutes = 5 AND s.status = 'closed' AND NOT s.quarantined AND s.signal_type = 'magna53' AND s.alert_date >= DATE '2026-08-17' ORDER BY s.alert_date, s.ticker) TO STDOUT WITH CSV HEADER
