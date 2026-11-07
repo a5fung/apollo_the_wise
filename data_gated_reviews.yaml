@@ -13041,6 +13041,10 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_11_07: >-
+      RAN 2026-11-07 (scripts/probes/_rank_shadow_running_read_1107/). n = 36 sessions (new: 11-06, a pool of 11 —
+      ALAB, AMAT, BE, CIEN, COHR, LRCX, MRNA (HIGH), NBIS, ONTO, SIMO, STX — unmatured). Three more rows matured, all in
+      the rest, no new 8x. Cells: 5-day 8x top 0 of 7 vs rest 3 of 56; 20-day top 1 of 6 vs rest 2 of 43. UNCHANGED.
     resolution_2026_11_06: >-
       RAN 2026-11-06 (scripts/probes/_rank_shadow_running_read_1106/). n = 35 sessions (new: 11-05 APPN / CHYM / U,
       a pool of 3, unmatured; CHYM sat in the top quartile and was the #718 skip). Two more rows matured, both in the
@@ -13632,6 +13636,8 @@ reviews:
   # ═══════════════════════════════════════════════════════════════════════════════════
 
   - review_id: bracket_geometry_variants_parked
+    resolution_2026_11_07: >-
+      DONE 2026-11-07 (OPEN sweep): this review keeps reading READY because its predicate only counts trades; its question was answered 11-06 (no variant earns a live arm) and his 11-06 ruling folds every buy / stop / partial question into ONE monthly trade review — PLAN #720 (first Sun 11-29), which reads this recorder. status -> done.
     resolution_2026_11_06: >-
       FIRED 2026-11-05 (20 closed live MAGNA53 since 08-17) and RAN 2026-11-06 as pre-registered
       (scripts/probes/_482_read_1106/PREREG.md, committed before any outcome was read; blind recount MATCHES):
@@ -13667,7 +13673,7 @@ reviews:
         AND status = 'closed' AND alert_date >= DATE '2026-08-17'
     threshold: 20
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
-    status: pending
+    status: done
     kind: accrual
     can_fire:
       predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 8 closed live
