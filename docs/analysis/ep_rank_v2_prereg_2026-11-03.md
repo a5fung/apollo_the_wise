@@ -76,3 +76,9 @@ selection). Returns are read only as the tail test the running read already uses
 - **The bar:** ≥ 0.65 → holds again (DIRECTIONAL ONLY); < 0.65 → it does not replicate on this sample, reported as such, not re-tuned. Also reported: the pooled figure over samples 6 + 7 (24 charts) beside it, as a description, not a second test.
 - **What this does not answer:** whether a ranking using it picks the tail; anything about returns; n is far too small for a verdict.
 
+
+## RESULT 4 — the shelf-distance lead on sample 7 (2026-11-07; `scripts/probes/_594_shelf_lead_1107/score_shelf_lead.py` → `score_shelf_lead.txt`)
+
+**HOLDS again, as pre-registered (34e02d42) — DIRECTIONAL ONLY.** On his 12 sample-7 rulings (7 yes / 5 no, 35 pairs, none dropped) the chance a yes's lower pullback low sits closer to (or above) the shelf than a no's is **0.686** (bar 0.65), weaker than sample 6's 0.829; median yes +0.25 daily ranges from the shelf, no −7.83. Pooled over samples 6 + 7 (24 charts, 144 pairs, description only): 0.750.
+- Against the lead: SAIC (bad, "choppy") held the shelf (+2.6); MED (good) and BULL (ok) sat far below it (−10.2, −15.3) — a choppy base can hold a shelf, and two of his yes calls had no clean run or breakout for the shelf to come from (`structure` = no_run / no_breakout).
+- **What this does not answer:** unchanged from PRE-REGISTRATION 4 — the tail, returns, and any verdict on 24 charts.
