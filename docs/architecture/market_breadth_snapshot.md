@@ -107,7 +107,7 @@ in `no_prior` instead, so `advances + declines + unchanged + no_prior = universe
 universe — an ETF, a sub-$1 name, a name with no bars — are included so the theme drill-down
 resolves): `[stage, rs_rank, theme_indexes]`.
 
-- `stage` — 1-4, or null when unstaged. Computed for any listed ticker with the 210 bars; only universe stocks are counted in `stages`.
+- `stage` — 1-4, or null when unstaged. Computed for any listed ticker with a bar on at least 203 of the 210 sessions; only universe stocks are counted in `stages`.
 - `rs_rank` — from `mi_stock_scores` on the newest **usable** score date: the theme export's
   `usable_score_date` rule verbatim (the newest date holding at least half the median row count of
   the last 10 scored dates — never `max(score_date)`, which a one-row on-demand lookup can capture).

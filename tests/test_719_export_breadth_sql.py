@@ -92,6 +92,21 @@ def test_dates_come_from_the_data_never_the_clock():
     assert len(re.findall(r"(?i)\bnow\(\)", code)) == 2, "now() is for generated_at and the future-date ceiling only"
     assert re.search(r"(?i)WHERE trade_date <= \(now\(\) AT TIME ZONE 'America/New_York'\)::date", code)
     assert re.search(r"(?i)'generated_at',\s*to_char\(now\(\) AT TIME ZONE 'America/New_York'", code)
+    # review 2026-11-07: the ceiling also caps the calendar itself, not only where its window starts —
+    # a future-dated day with 3,000+ rows must never become as_of.
+    assert re.search(r"(?i)AND c\.trade_date <= \(SELECT d FROM latest\)", code)
+
+
+def test_a_nan_price_never_enters_the_universe_or_a_high_low_test():
+    """Postgres orders NaN ABOVE every number, so `close >= 1.00` and `high_price > 0` are TRUE for NaN. A NaN close
+    would join the universe yet fall in none of advances / declines / unchanged / no_prior (their sum would miss the
+    universe); a NaN high would always read as a new high. Review 2026-11-07."""
+    code = _code()
+    assert re.search(r"(?i)d\.close >= 1\.00 AND d\.close <> 'NaN'", code), "universe"
+    for col in ("high_price", "low_price"):
+        guarded = re.findall(rf"(?i)d\.{col} > 0 AND d\.{col} <> 'NaN'", code)
+        assert len(guarded) == 2, f"{col}: the as_of value and the 252-session extreme both need the NaN guard"
+    assert re.search(r"(?i)AND d\.high_price <> 'NaN' AND d\.low_price <> 'NaN'\)\s+AS n_hl_252", code), "n_hl_252"
 
 
 # ----------------------------------------------------------------------------------------------------- the JSON contract
@@ -179,8 +194,8 @@ def test_every_high_and_low_read_is_guarded_above_zero():
 def test_the_252_session_lookback_excludes_as_of_and_needs_245_bars():
     px = _norm(_cte("px"))
     assert px.count("w.idx BETWEEN 1 AND 252") == 3, "hmax, lmin and the eligibility count all read idx 1..252"
-    assert "max(d.high_price) FILTER (WHERE w.idx = 0 AND d.high_price > 0) AS h0" in px
-    assert "max(d.low_price) FILTER (WHERE w.idx = 0 AND d.low_price > 0) AS l0" in px
+    assert "max(d.high_price) FILTER (WHERE w.idx = 0 AND d.high_price > 0 AND d.high_price <> 'NaN') AS h0" in px
+    assert "max(d.low_price) FILTER (WHERE w.idx = 0 AND d.low_price > 0 AND d.low_price <> 'NaN') AS l0" in px
     st = _norm(_cte("st"))
     assert "(p.h0 IS NOT NULL AND p.l0 IS NOT NULL AND p.n_hl_252 >= 245) AS hl_eligible" in st
     code = _norm(_code())

@@ -37,6 +37,7 @@ cal AS (
       FROM mi_daily_closes c
       JOIN mi_security_types t ON t.ticker = c.ticker
      WHERE c.trade_date >= (SELECT d FROM latest) - 500
+       AND c.trade_date <= (SELECT d FROM latest)
        AND t.security_type IN ('CS', 'ADRC')
      GROUP BY c.trade_date
     HAVING count(*) >= 3000
@@ -67,7 +68,7 @@ universe AS (
       JOIN mi_security_types t ON t.ticker = d.ticker
      WHERE d.trade_date = (SELECT as_of FROM k)
        AND t.security_type IN ('CS', 'ADRC')
-       AND d.close >= 1.00
+       AND d.close >= 1.00 AND d.close <> 'NaN'
 ),
 -- Active themes exactly as db.get_active_themes defines them, anchored on as_of instead of
 -- the clock: the LATEST row per name inside the 7-day window FIRST, then drop names whose
@@ -111,12 +112,13 @@ px AS (
            max(d.close) FILTER (WHERE w.idx = 5)  AS c5,
            max(d.close) FILTER (WHERE w.idx = 21) AS c21,
            (array_agg(d.close ORDER BY w.idx) FILTER (WHERE w.idx >= k.pye_idx))[1] AS c_ytd,
-           max(d.high_price) FILTER (WHERE w.idx = 0 AND d.high_price > 0) AS h0,
-           max(d.low_price)  FILTER (WHERE w.idx = 0 AND d.low_price > 0)  AS l0,
-           max(d.high_price) FILTER (WHERE w.idx BETWEEN 1 AND 252 AND d.high_price > 0) AS hmax_252,
-           min(d.low_price)  FILTER (WHERE w.idx BETWEEN 1 AND 252 AND d.low_price > 0)  AS lmin_252,
+           max(d.high_price) FILTER (WHERE w.idx = 0 AND d.high_price > 0 AND d.high_price <> 'NaN') AS h0,
+           max(d.low_price)  FILTER (WHERE w.idx = 0 AND d.low_price > 0 AND d.low_price <> 'NaN')  AS l0,
+           max(d.high_price) FILTER (WHERE w.idx BETWEEN 1 AND 252 AND d.high_price > 0 AND d.high_price <> 'NaN') AS hmax_252,
+           min(d.low_price)  FILTER (WHERE w.idx BETWEEN 1 AND 252 AND d.low_price > 0 AND d.low_price <> 'NaN')  AS lmin_252,
            count(*) FILTER (WHERE w.idx BETWEEN 1 AND 252
-                              AND d.high_price > 0 AND d.low_price > 0)                 AS n_hl_252,
+                              AND d.high_price > 0 AND d.low_price > 0
+                              AND d.high_price <> 'NaN' AND d.low_price <> 'NaN')       AS n_hl_252,
            avg(d.close) FILTER (WHERE w.idx BETWEEN 0 AND 149)  AS sma_now,
            avg(d.close) FILTER (WHERE w.idx BETWEEN 20 AND 169) AS sma_20,
            avg(d.close) FILTER (WHERE w.idx BETWEEN 60 AND 209) AS sma_60,
