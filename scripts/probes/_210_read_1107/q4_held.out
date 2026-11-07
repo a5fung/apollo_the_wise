@@ -1,0 +1,18 @@
+SET
+ticker|alert_date|raw_grade|kw|alpaca_hit|fmp_hit|pplx_hit|polygon_hit
+ALAB|2026-11-06|routine|relief|f|f|f|f
+BSP|2026-10-14|routine|330|f|f|f|
+BSP|2026-10-14|routine|stake|f|f|f|
+LSCC|2026-11-03|game_changer|price target|t|f|f|f
+NBIS|2026-11-06|routine|Leverage Shares|f|f|f|
+REGN|2026-10-30|game_changer|quarter|t|f|f|t
+REGN|2026-10-30|game_changer|guidance|f|f|f|f
+RRC|2026-10-26|strong|EQT|t|f|t|
+(8 rows)
+pplx|n_alpaca|n_fmp|captured_at
+Assuming you mean Bending Spoons (Nasdaq: BSP), the latest reported sharp gap-up was driven mainly by enthusiasm around financing for its planned Miro acquisition—not by a confirmed new announcement on the day of the jump.
+
+The company closed add-ons to its term loans: $1.25 billion and €395 million, due in 2031. Investors viewed the financing, along with credit-rating upgrades from Moody’s and S&P, as reducing uncertainty about funding the Miro deal and supporting further acquisitions. The stock surged about 24% in that session.
+
+There was also a momentum and rebound element after earlier wea|2|0|2026-10-14 13:15:13.428188+00
+(1 row)

@@ -1,0 +1,48 @@
+SET
+post_fix|tv_status|n|readable|reaches|first_day|last_day
+f|ok|11|3|0|2026-09-04|2026-10-09
+t|ok|36|27|27|2026-10-14|2026-11-06
+(2 rows)
+false_zero
+1
+(1 row)
+untagged
+50
+(1 row)
+our_acting_grade|raw_grade|readable|strict_before_grade|loose_before_grade|strict_repoll|rolled_with_confirmed_unmatched
+game_changer|game_changer|3|2|2|1|3
+game_changer|routine|1|0|0|1|0
+routine|strong|0|0|0|0|1
+strong|game_changer|5|2|3|2|3
+strong|routine|13|5|7|2|0
+strong|strong|5|2|2|2|2
+(6 rows)
+ticker|alert_date|our_acting_grade|catalyst_quality|our_corpus_source|tv_items_before_grade|tv_items_in_repoll_window|tv_items_after_cutoff|n_missed|missed
+BSP|2026-10-14|strong|routine|grade_corpus|2|3|2|5|repoll_window:none:Berkshire raises Bending Spoons stake to 4% with fresh $330 million bet || repoll_window:none:Bending Spoons stock soars after Berkshire Hathaway boosts stake to 4% || repoll_window:none:Berkshire Hathaway Builds 4% Stake in Bending Spoons || before_grade:none:Bending Spoons (BSP) Gets $330M From Berkshire, Lifts Stake To 4% || before_grade:none:Berkshire Hathaway invests further $330 million in Bending Spoons following $600 million I
+IRON|2026-10-19|game_changer|routine|grade_corpus|3|4|0|2|repoll_window:none:Disc Medicine's rare disease drug succeeds in late-stage trial || repoll_window:none:Disc Medicine surges on late-stage trial win for lead asset developed with Roche
+MANE|2026-10-19|strong|game_changer|grade_corpus|5|1|0|1|before_grade:class:Veradermics Is Maintained at Buy by Needham
+SBAC|2026-10-23|strong|routine|grade_corpus|0|0|0|0|
+RRC|2026-10-26|strong|strong|grade_corpus|14|8|0|19|repoll_window:none:Mergers and acquisitions || repoll_window:none:Natural Gas Is Feeding AI Data Centers. A $50 Billion Deal Proves It. — Barrons.com || repoll_window:class:Range Resources to Merge With EQT in Stock Deal, Giving Range Holders 27% of Combined Comp || repoll_window:class:Range Resources Files 8K - Entry Into Definitive Agreement >RRC || repoll_window:none:Range Resources Files 8K - Regulation FD >RRC || repoll_window:class:EQT to Buy Range Resources in $13 Billion Stock Swap — Update || repoll_window:none:RRC Q3'26 Earnings: EPS estimate is 0.76 USD || before_grade:class:Weekly Recap: EQT $12.8B all-stock deal and largest U.S. gas merger || before_grade:class:EQT to Buy Range Resources in $13 Billion Stock Swap || before_grade:class:EQT Projects $325M in Synergies From Range Resources Acquisition — Company Talk || before_grade:none:EQT-Range Resources Deal Creates $50B Appalachian Gas Giant — Company Talk || before_grade:none:EQT: Combined Company Would Have Pro Forma Enterprise Value Topping $50 Billion >EQT || before_grade:none:EQT Corp to Issue 0.987 Shares for Each Range Share >EQT RRC || before_grade:none:EQT Shareholders to Own About 73% of Combined Company, Range's Holders to Own About 27% >E || before_grade:class:EQT to buy Range Resources in $13 billion deal to create top US gas producer || before_grade:class:EQT to Buy Range Resources in Stock Swap >EQT RRC || before_grade:none:RRC: All-stock tie-up targets a >9 Bcfe/d natural gas leader with decades of inventory || before_grade:class:EQT Announces Strategic Acquisition Of Range Resources, Creating America's Undisputed Natu || before_grade:class:EQT Announces Strategic Acquisition of Range Resources, Creating America's Undisputed Natu
+INIO|2026-10-27|game_changer|game_changer|grade_corpus|9|2|1|3|before_grade:none:INNIO Files 8K - Operations And Financial Condition >INIO || before_grade:none:INNIO Files 8K - Regulation FD >INIO || before_grade:none:INNIO Has Equipment Order Backlog of $8B >INIO
+GMAB|2026-10-28|game_changer|game_changer|grade_corpus|4|0|0|3|before_grade:none:Genmab A/S (GMAB) Phase 3 Shows 50% Lower Death Risk in 1L HNSCC || before_grade:none:Genmab Announces Statistically Significant, Clinically Meaningful Improvement in Overall S || before_grade:none:Genmab Announces Statistically Significant, Clinically Meaningful Improvement in Overall S
+REGN|2026-10-30|strong|game_changer|grade_corpus|23|0|1|3|before_grade:none:Regeneron Pharma Now Sees 2026 Capital Spending $1.05B-$1.1B; Had Seen $1.03B-$1.1B >REGN || before_grade:none:Regeneron Pharma Raises 2026 Adjusted R&D View to $6.05B-$6.15B >REGN || before_grade:none:Regeneron Pharma Now Sees 2026 Adjusted Gross Margin About 86%; Had Seen 84%-85% >REGN
+AEHR|2026-11-03|game_changer|game_changer|grade_corpus|13|1|0|1|repoll_window:none:Aehr Stock Surges As CEO Says AI Chip Complexity Is Accelerating Burn-In Demand
+AEIS|2026-11-03|strong|game_changer|grade_corpus|17|1|0|1|repoll_window:class:Advanced Energy Industries, Inc. Stock 12‑Month Price Target Cut to $388.17, Implies 79% U
+LSCC|2026-11-03|strong|game_changer|grade_corpus|16|5|0|5|repoll_window:none:Lattice Semiconductor Is Maintained at Buy by Stifel || repoll_window:none:Stifel maintains Lattice Semiconductor at Buy, raises price target to $175 from $165 || repoll_window:none:Lattice Semiconductor Price Target Raised to $200.00/Share From $175.00 by Rosenblatt || repoll_window:none:Rosenblatt maintains Lattice Semiconductor at Buy, raises price target to $200 from $175 || before_grade:none:Lattice Semiconductor Corporation Stock 12‑Month Price Target Raised to $160.77, Implies 6
+EXPE|2026-11-04|strong|routine|grade_corpus|0|0|0|0|
+NXT|2026-11-04|strong|strong|grade_corpus|0|0|1|0|
+PCOR|2026-11-04|strong|strong|grade_corpus|8|1|0|0|
+APPN|2026-11-05|strong|strong|grade_corpus|9|6|0|1|repoll_window:none:Appian Sees 2026 Rev $873M-$877M >APPN
+CHYM|2026-11-05|strong|strong|grade_corpus|17|0|0|2|before_grade:none:Chime Financial, Inc. Stock 12‑Month Price Target Raised to $40.65, Implies 36% Upside || before_grade:none:Chime Financial Sees FY Rev $2.79B-$2.8B >CHYM
+U|2026-11-05|strong|game_changer|grade_corpus|9|8|0|1|repoll_window:none:Unity Software Finds an Ad Machine Hiding Inside Video Games — Barrons.com
+ALAB|2026-11-06|strong|routine|grade_corpus|1|0|0|1|before_grade:none:Chip, Cloud-Computing Stocks Stage Relief Rally Premarket after Asia Rout
+AMAT|2026-11-06|strong|routine|grade_corpus|2|0|0|2|before_grade:none:Momentum ETF suffers biggest five-day selloff since COVID-19 crash || before_grade:none:China's top flash memory chipmaker targets more homegrown tools for new factory, sources s
+BE|2026-11-06|strong|routine|grade_corpus|0|0|0|0|
+CIEN|2026-11-06|strong|routine|grade_corpus|1|0|0|0|
+COHR|2026-11-06|strong|routine|grade_corpus|1|0|0|1|before_grade:class:Optics Tech's Unit Signs Indium Phosphide Substrate Supply Deal
+LRCX|2026-11-06|strong|routine|grade_corpus|6|1|1|7|repoll_window:none:Lam Research Unleashes $25 Billion Stock Buyback || before_grade:none:China's top flash memory chipmaker targets more homegrown tools for new factory, sources s || before_grade:none:Lam Research declares $0.33 dividend || before_grade:none:Lam Research announces $25B share buyback and quarterly dividend || before_grade:none:Lam Research Corporation (LRCX) Authorizes Up to $25B in Buybacks || before_grade:none:Lam Research Corporation Announces $25 Billion Share Repurchase Authorization And Declares || before_grade:none:Lam Research Corporation Announces $25 Billion Share Repurchase Authorization and Declares
+NBIS|2026-11-06|strong|routine|grade_corpus|2|0|0|1|before_grade:none:REG - Leverage Shares PLC LS 3X LONG NEBIUS $ LS 3X NBIS ETP £ - Intraday Rebalance Notice
+ONTO|2026-11-06|strong|routine|grade_corpus|1|0|0|1|before_grade:class:ONTO Q3'26 Earnings: EPS estimate is 2.30 USD
+SIMO|2026-11-06|strong|routine|grade_corpus|0|0|0|0|
+STX|2026-11-06|strong|routine|grade_corpus|0|0|0|0|
+(27 rows)

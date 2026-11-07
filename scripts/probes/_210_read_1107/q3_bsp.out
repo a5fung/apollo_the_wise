@@ -1,0 +1,14 @@
+SET
+column_name
+raw_json
+raw_polygon_news_json
+raw_alpaca_news_json
+raw_fmp_news_json
+raw_perplexity_text
+raw_claude_analysis_text
+(6 rows)
+ticker|alert_date|polygon_hit|alpaca_hit|pplx_hit
+(0 rows)
+ERROR:  column "catalyst_summary" does not exist
+LINE 1: SELECT ticker, alert_date, catalyst_quality, left(catalyst_s...
+                                                          ^

@@ -1,0 +1,19 @@
+SET
+ticker|raw_grade|kw|alpaca_hit|fmp_hit|pplx_hit|polygon_hit|sec_title
+CLS|game_changer|earnings|t|f|f|t|8-K filed 2026-10-26, items 2.02,9.01
+FN|strong|repurchase|t|f|t|f|8-K filed 2026-11-02, items 2.02,9.01
+MRNA|game_changer|8.1|f|f|f|f|8-K filed 2026-11-06, items 2.02,9.01
+MRNA|game_changer|cash|f|f|f|t|8-K filed 2026-11-06, items 2.02,9.01
+SOFI|strong|5.04|t|f|t|f|8-K filed 2026-10-27, items 2.02,9.01
+SOFI|strong|6.4|t|f|t|f|8-K filed 2026-10-27, items 2.02,9.01
+SOFI|strong|guid|t|f|t|f|8-K filed 2026-10-27, items 2.02,9.01
+SPCX|game_changer|merger|t|f|t|f|8-K filed 2026-10-20, items 2.02,9.01
+SPCX|game_changer|Tesla|t|f|t|t|8-K filed 2026-10-20, items 2.02,9.01
+VRT|game_changer|margin|f|f|t|t|8-K filed 2026-10-28, items 2.02,7.01,9.01
+(10 rows)
+ticker|left
+SPCX|SPCX’s gap-up was driven by a strong Q3 earnings report and fresh news that SpaceX and Tesla are considering a merger. In premarket trading Wednesday, October 21, shares were up about 9%.
+
+The earnings were the main fundamental catalyst: revenue rose 161% year over year to $14.58 billion, beating the roughly $12.72 billion consensus, and SpaceX reported its first quarterly profit since its IPO, with net income of $4.4 billion. Its AI business sur
+MRNA|MRNA’s latest gap-up was driven mainly by two pipeline updates announced around November 4: early Phase 1/2 data for its experimental multiple-myeloma therapy mRNA-2808 showed confirmed responses in 4 of 11 evaluable, heavily pretreated patients, and WHO advisers recommended advancing its Bundibugyo Ebola vaccine candidate, mRNA-1469, into a Phase 2/3 study in the DRC. The myeloma results are preliminary, and the Ebola vaccine still needs testing
+(2 rows)

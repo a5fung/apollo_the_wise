@@ -1,0 +1,39 @@
+SET
+ticker|alert_date|our_acting_grade|catalyst_quality|reaches|unseen_min|before_n|unmatched
+SMCI|2026-10-21|strong|game_changer|f|322|9|repoll_window:none:SMCI Teams Up With Nokia, Nvidia To Bring AI Computing To 5G Networks — Eyes AI-Native 6G Expansion || repoll_window:none:Supermicro Brings Nvidia Aerial Ran Computer Solutions To The Network Edge With Nokia To Enable Low-Latency Ai || repoll_window:none:Nutanix, Supermicro Expand Collaboration For Engineered AI Infrastructure Solution || repoll_window:none:Super Micro Is Maintained at Buy by Rosenblatt || repoll_window:none:Rosenblatt maintains Buy rating on Super Micro Computer, $57 price target || repoll_window:none:Super Micro Computer, Inc. (SMCI) Partners With Nokia to Deploy NVIDIA AI-RAN at the Edge || repoll_window:none:Super Micro Computer, Inc. (SMCI) Partners With Nokia, NVIDIA to Deploy AI-RAN at Network Edge || repoll_window:none:Supermicro Brings NVIDIA Aerial RAN Computer Solutions to the Network Edge with Nokia to Enable Low-latency AI
+SPCX|2026-10-21|strong|game_changer|f|932|12|repoll_window:none:SpaceX's Wireless Ambitions Batter Telecom Stocks — WSJ || repoll_window:none:SpaceX Lifts All Boats: Chip Stocks Claw Back $274 Billion After a $1.6 Trillion Rout || repoll_window:class:SpaceX Price Target Raised to $176.00/Share From $173.00 by Susquehanna || repoll_window:none:Musk Is Setting the Stage to Make M&A History — WSJ || before_grade:class:SpaceX Is Maintained at Buy by TD Cowen || before_grade:none:Palantir, Tesla, SpaceX Lead This Investor's Big Bets || before_grade:none:SpaceX is stuck in a difficult adolescence || before_grade:none:SpaceX Saves the AI Trade, Meta Can Reignite It — Barrons.com || before_grade:none:Musk says he's exploring a SpaceX-Tesla megamerger. What would a combined company be worth?
+CLS|2026-10-27|game_changer|game_changer|f|27|16|repoll_window:none:Bright Signs for the Economy Ahead of Vital Day — Barrons.com || repoll_window:none:Celestica Files 8K - Regulation FD >CLS || before_grade:none:Whirlpool, JetBlue and Celestica Lead After-Hours Stock Moves
+SOFI|2026-10-27|routine|strong|f|900|16|repoll_window:none:SoFi Technologies May Finally Have Silenced Its Skeptics — Barrons.com || before_grade:none:SoFi Technologies Sees 2026 Rev $5.04B >SOFI || before_grade:none:SoFi Technologies Sees 2027 Rev $6.4B >SOFI
+VRT|2026-10-28|game_changer|game_changer|f|835|19|before_grade:none:Vertiv Holdings Files 8K - Operations And Financial Condition >VRT || before_grade:none:Vertiv Holdings Files 8K - Regulation FD >VRT || before_grade:none:Vertiv Holdings Sees 2026 Adjusted Operating Margin 23.5%-24.5% >VRT
+GKOS|2026-10-29|strong|strong|f|5|18|repoll_window:class:Glaukos Price Target Raised to $240.00/Share From $195.00 by Piper Sandler || repoll_window:class:Piper Sandler maintains Glaukos at Overweight, raises price target to $240 from $195 || repoll_window:class:Glaukos Is Maintained at Buy by Stifel || repoll_window:class:Stifel maintains Glaukos at Buy, raises price target to $225 from $190 || repoll_window:class:Glaukos Price Target Raised to $234.00/Share From $205.00 by BTIG || repoll_window:class:BTIG maintains Glaukos at Buy, raises price target to $234 from $205 || before_grade:class:Glaukos Corporation Stock 12‑Month Price Target Raised to $220.62, Implies 22% Upside
+FN|2026-11-03|strong|strong|f|15|22|repoll_window:class:Fabrinet Price Target Cut to $600.00/Share From $750.00 by Rosenblatt || repoll_window:class:Rosenblatt maintains Fabrinet at Buy, lowers price target to $600 from $750 || before_grade:class:Fabrinet Stock 12‑Month Price Target Cut to $594.4, Implies 89% Upside || before_grade:none:Fabrinet, Clorox, Apple and Palantir Lead After-Hours Stock Moves || before_grade:none:Fabrinet Files 8K - Operations And Financial Condition >FN || before_grade:none:Fabrinet (FN) Expands Repurchase Authorization by $103.0M
+ANET|2026-11-04|game_changer|game_changer|f|30|15|repoll_window:none:Amphenol, Apple among tech stocks to own after 'blue tsunami,' Evercore says || repoll_window:none:Arista Networks Price Target Raised to $230.00/Share From $220.00 by Morgan Stanley || repoll_window:none:Morgan Stanley maintains Arista Networks at Overweight, raises price target to $230 from $220 || repoll_window:none:Arista Networks Is Maintained at Buy by Rosenblatt || repoll_window:none:Arista Networks Price Target Maintained With a $260.00/Share by Needham || repoll_window:none:Rosenblatt maintains Arista Networks at Buy, keeps price target at $280 || repoll_window:none:Needham maintains Arista Networks at Buy, keeps price target at $260
+MRNA|2026-11-06|strong|game_changer|f|885|17|before_grade:none:Moderna Now Expects Year-End 2026 Cash and Investments of About $8.1B-$8.3B Vs Prior View $4.7B-$5.2B >MRNA || before_grade:none:Moderna Now Sees 2026 Research & Development Expenses of About $2.7B Vs Prior View About $2.9B >MRNA || before_grade:none:Moderna Sees 2026 Capital Spending of About $200M Vs Prior View $200M-$300M >MRNA
+(9 rows)
+alert_days|with_shadow_row
+36|36
+(1 row)
+ticker|alert_date
+(0 rows)
+ticker|kw|alpaca_hit|fmp_hit|pplx_hit|polygon_hit
+CHYM|2.79|t|f|t|f
+CHYM|2.8 b|f|f|f|f
+CHYM|2.8b|f|f|f|f
+CHYM|guid|t|f|t|f
+CHYM|outlook|t|f|t|t
+INIO|8B|t|f|f|f
+INIO|8 billion|f|f|f|f
+INIO|backlog|f|f|t|f
+(8 rows)
+ticker|left
+INIO|INIO’s gap up on October 27 was driven by a strong Q3 earnings report and raised 2026 guidance—not a broad-market move. Shares were reported up about 9% in premarket trading.
+
+INNIO posted adjusted EPS of $0.15 versus the $0.12 consensus and record revenue of about $1.17 billion, up 57% year over year and above the roughly $1.05 billion estimate. Data-center equipment revenue jumped 86% to $777.6 million, reflecting strong AI-infrastructure demand.
+
+The company also raised its 2026 revenue outlook to $3.9–$4.0 billion from $3.8–$3.9 billion and adjusted EBITDA guidance to $780–$800 million from $720–$740 million. Its equipment backlog reached a record $8.0 billion, up 142% year over year, re
+CHYM|CHYM’s gap up is being driven by Chime’s Q3 earnings release on November 4 and the stronger outlook that came with it. Revenue rose 32% year over year to $718 million, above analysts’ estimates, while adjusted EBITDA reached $137 million and Chime posted its third consecutive quarter of GAAP profit.
+
+The bigger catalyst was the “beat and raise”: Chime lifted its 2026 revenue outlook to $2.792–$2.802 billion and adjusted EBITDA outlook to $519–$524 million, and forecast Q4 revenue above consensus. Faster growth in members and traction in Chime Prime, MyPay, and lending products helped support the results. Wells Fargo also raised its price target to $42 from $39 after the report.
+
+In short, in
+(2 rows)

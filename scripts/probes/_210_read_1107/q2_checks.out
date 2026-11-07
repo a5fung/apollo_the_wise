@@ -1,0 +1,19 @@
+SET
+post_fix|ticker|alert_date|tv_coverage_reaches_period_start|n_missed
+f|ERO|2026-09-08||0
+(1 row)
+post_fix|untagged_items
+f|50
+(1 row)
+ticker|alert_date|raw_grade|sec_title|alpaca_hit|fmp_hit|pplx_hit|kw
+AMAT|2026-11-06|routine||f|f|f|flash
+BSP|2026-10-14|routine||f|f|f|Berkshire
+CHYM|2026-11-05|strong|8-K filed 2026-11-04, items 2.02,9.01|t|t|t|Rev
+GMAB|2026-10-28|game_changer|6-K filed 2026-10-28, items |t|f|t|Phase 3
+GMAB|2026-10-28|game_changer|6-K filed 2026-10-28, items |t|f|t|overall surviv
+INIO|2026-10-27|game_changer|8-K filed 2026-10-27, items 2.02,7.01,9.01|f|f|t|backlog
+IRON|2026-10-19|routine||t|f|t|trial
+LRCX|2026-11-06|routine|8-K filed 2026-11-05, items 5.07,8.01,9.01|t|f|t|buyback
+LRCX|2026-11-06|routine|8-K filed 2026-11-05, items 5.07,8.01,9.01|t|f|t|repurchase
+REGN|2026-10-30|game_changer|8-K filed 2026-10-30, items 2.02,9.01|f|f|f|R&D
+(10 rows)
