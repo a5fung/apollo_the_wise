@@ -1,0 +1,6 @@
+feed: DataFeed.SIP
+11-06 list (184 expected): names=184 requests=8 seconds=3.1 bars=62200 absent=0 empty=0 absent_list=[] empty_list=[]
+11-05 U 11-06 lists: names=206 requests=9 seconds=3.3 bars=69987 absent=0 empty=0 absent_list=[] empty_list=[]
+parity SRZN: batch=101 per_name=101
+parity YSWY: batch=107 per_name=107
+parity VEON: batch=114 per_name=114
