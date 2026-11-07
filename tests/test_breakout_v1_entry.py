@@ -554,6 +554,38 @@ async def test_disabled_row_is_the_switch_off_quietly(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_an_unreadable_strategy_row_takes_no_action_that_tick_and_the_next_tick_proceeds(monkeypatch):
+    """#312 re-review 2026-11-07 finding 2: ONE failed fresh read of the strategy row (a timeout at 10:05) must not
+    cancel the day's resting buys. Before: the read failure answered like a refused phase, the tick took the
+    switch-off branch, the broker order was cancelled and the row became `cancelled` under `block:strategy_disabled`
+    for good — a name lost for the day to a database blip. Now the read failure is its own THIRD state: that tick
+    returns early (`strategy_unreadable`) — no new order, no re-price, NO cancel — and the next tick, the read
+    answered, proceeds with the buy still resting. The cancel stays for a real disable or a phase other than paper.
+    The read-failure page has its own once-a-day key: a morning blip must not silence a real refusal page later."""
+    from agents.market_intelligence.strategies import registry
+    bars = _flat_bars(40, low=9.80, high=9.95, vol=60_000.0)         # the pace holds, the low never moves: a buy RESTS
+    w = World(monkeypatch, rows=[_placed_row()], orders=[_order()], bars={"BRKO": bars})
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(side_effect=[
+        asyncio.TimeoutError("pool acquire timed out"),              # 10:05 — the read fails
+        _strategy(),                                                 # 10:06 — it answers: paper, enabled
+        _strategy(phase="live"),                                     # 10:07 — a REAL refusal (wrong rung)
+    ]))
+    out = await w.tick(at=(10, 5))
+    assert out["skipped"] == "strategy_unreadable" and not w.funnel.await_count
+    assert ("cancel", "ord-1") not in w.events and w.rows["BRKO"]["status"] == "order_placed"   # the buy is left alone
+    assert w.ev("breakout_v1_strategy_unreadable") and not w.ev("breakout_v1_refused")
+    assert len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER")
+
+    out = await w.tick(at=(10, 6))                                   # the next tick proceeds
+    assert out["skipped"] is None and out["actions"]["BRKO"] == "resting"
+    assert ("cancel", "ord-1") not in w.events and w.rows["BRKO"]["status"] == "order_placed"
+
+    out = await w.tick(at=(10, 7))                                   # a real refusal the same day still pages
+    assert out["skipped"] == "switched_off" and w.ev("breakout_v1_refused")
+    assert len(w.pages) == 2 and ("cancel", "ord-1") in w.events     # and the cancel is still the refusal's
+
+
+@pytest.mark.asyncio
 async def test_live_trading_disabled_stops_the_job(monkeypatch):
     w = World(monkeypatch)
     monkeypatch.setattr(be, "LIVE_TRADING_ENABLED", False)

@@ -23,7 +23,7 @@ from fastapi import FastAPI
 # Load .env before importing anything that reads env vars
 load_dotenv()
 
-from channels.telegram import TelegramChannel
+from channels.telegram import TelegramChannel, set_webhook_or_fail
 from channels.webhooks import app as webhook_app, configure as configure_webhooks
 from core.memory import initialize_schema
 from core.notifications import notify_startup
@@ -98,11 +98,18 @@ async def lifespan(app: FastAPI):
     webhook_url = os.environ.get("WEBHOOK_BASE_URL")
     if webhook_url:
         full_url = f"{webhook_url.rstrip('/')}/telegram/webhook"
-        try:
-            await _telegram_channel.set_webhook(full_url)
-            logger.info(f"Telegram webhook set: {full_url}")
-        except Exception as e:
-            logger.error(f"Failed to set Telegram webhook: {e}")
+        # #312 re-review 2026-11-07, finding 3. `channels/webhooks.py` now drops (403) every update that
+        # lacks the secret header `set_webhook` registers, so a FAILED set_webhook here is no longer
+        # harmless: Telegram would keep posting to the OLD, secret-less registration and the bot would
+        # be deaf — `/pause` and the ladder's Demote button included (before the secret check the old
+        # registration kept working). So: retry (3 attempts, 2 s / 5 s apart) and, if Telegram still
+        # refuses, FAIL THE BOOT loudly — the exception leaves the lifespan, uvicorn exits non-zero and
+        # compose restarts the container, which is visible — rather than run deaf. No swallow here.
+        # INERT IN PROD TODAY: the server runs POLLING mode (WEBHOOK_BASE_URL is unset in its .env,
+        # checked read-only 2026-11-07), so this branch never runs there; it is made safe for the day
+        # it does. `channels/telegram.set_webhook_or_fail`, tested in tests/test_telegram_webhook_secret.py.
+        await set_webhook_or_fail(_telegram_channel, full_url)
+        logger.info(f"Telegram webhook set: {full_url}")
     else:
         # Polling mode — no domain/SSL needed
         import asyncio

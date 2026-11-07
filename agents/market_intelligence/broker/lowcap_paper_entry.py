@@ -109,6 +109,20 @@ async def _page(text: str) -> None:
         logger.error(f"#624 paper lane page failed: {e}")
 
 
+_paged: set[tuple[str, date]] = set()   # (kind, ET day) already paged — in-memory, a restart may page again
+
+
+async def _page_once(kind: str, today: date, text: str) -> None:
+    """`_page`, at most once per (kind, ET day) — the lane detector's own pattern (`lowcap_paper_lane._page_once`).
+    For a failure the order step meets on EVERY call while it lasts (#312 re-review 2026-11-07 finding 4: with the
+    database down, every lane tick in the 09:31-09:45 window refused AND paged). The audit row is still written per
+    call; only the Telegram page is deduplicated."""
+    if (kind, today) in _paged:
+        return
+    _paged.add((kind, today))
+    await _page(text)
+
+
 async def paper_account_preflight(today: date) -> bool:
     """True when the paper account answered today (cached per ET day after the first success).
     On failure: log + audit + page, return False — the caller submits nothing."""
@@ -145,11 +159,11 @@ async def _strategy_paper_or_refuse(today: date):
     from agents.market_intelligence.strategies.registry import get_strategy_fresh
     try:
         strategy = await get_strategy_fresh(STRATEGY_ID)
-    except Exception as e:  # loud-ok: fail CLOSED — refused below with audit + page, no orders
+    except Exception as e:  # loud-ok: fail CLOSED — refused with an audit row per call, paged once a day, no orders
         msg = (f"{STRATEGY_ID}: the strategy row could not be read fresh ({type(e).__name__}: "
                f"{str(e)[:160]}) — the small-cap lane orders only on a row it can read; refused")
         await log_audit_event("lowcap_paper_lane_refused", f"{today.isoformat()}: {msg}")
-        await _page(f"🚨 Small-cap paper lane refused to order: {msg}")
+        await _page_once("strategy_unreadable", today, f"🚨 Small-cap paper lane refused to order: {msg}")
         return None
     if strategy is None or not strategy.enabled:
         return None

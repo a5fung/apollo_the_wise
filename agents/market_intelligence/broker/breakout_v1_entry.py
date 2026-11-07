@@ -93,7 +93,10 @@ cancel the broker refused while the order should die, an unknown order in the fa
 STOP SWITCH. The runtime toggle `breakout_v1_paper` (mi_safeguard_state, account_mode='global', default ON) and
 `mi_strategies.enabled`: either OFF -> no new order, no re-price, and every resting unfilled breakout buy is
 cancelled (`block:strategy_disabled`). LIVE_TRADING_ENABLED=false stops the job outright. `/pause` does NOT (the
-manual halt is checked on the live path only — the same as the #624 lane).
+manual halt is checked on the live path only — the same as the #624 lane). The strategy row is read FRESH every
+minute (#312: his Demote press commits in the market agent and must stop the next tick here without a restart); a
+row that cannot be READ (a database blip, the 5 s bound) is neither the switch nor a refusal: that minute returns
+`strategy_unreadable` — no new order, no re-price, no cancel — and the next minute re-reads (paged once a day).
 """
 from __future__ import annotations
 
@@ -695,24 +698,40 @@ async def paper_account_preflight(today: date) -> bool:
 
 _SWITCHED_OFF_WHY = "strategy row missing or disabled"
 
+# The four answers of `_strategy_state` (wall 2). The tick acts on the STATE, never on the text of `why`:
+#   OK           — enabled, phase 'paper', resolves to paper: the minute runs.
+#   SWITCHED_OFF — the toggle is off, or the row is missing / disabled: quiet; the stop at the fill still runs; every
+#                  resting unfilled buy is cancelled (`block:strategy_disabled`).
+#   REFUSED      — any other phase (a demote to shadow, a promote to live): audit + page; the resting buys cancelled.
+#   UNREADABLE   — the row could not be READ this minute (a database blip, the 5 s bound): the tick returns with no
+#                  new order, no re-price and NO cancel — a resting buy is left exactly as it is and the next minute
+#                  re-reads (#312 re-review 2026-11-07 finding 2: one failed read used to take the switch-off branch
+#                  and cancel the day's resting buys for good — breakout v1's own rule for an unreadable broker is
+#                  "take no action", and this is the same rule). Audited every such minute, paged once a day.
+STATE_OK = "ok"
+STATE_SWITCHED_OFF = "switched_off"
+STATE_REFUSED = "refused"
+STATE_UNREADABLE = "unreadable"
 
-async def _strategy_state(today: date) -> tuple[bool, str]:
-    """(may order, why not). Wall 2: the strategy row must be enabled, phase 'paper', and resolve to 'paper'. A
-    missing / disabled row is the switch OFF (quiet); any other phase is REFUSED (audit + page). Read FRESH
-    (#312 review, 2026-11-07): a demote or disable committed in the market agent must stop the NEXT tick here
-    without an apollo-execution restart; a row that cannot be read is refused the same way — never a cached
-    phase."""
+
+async def _strategy_state(today: date) -> tuple[str, str]:
+    """(state, why) — one of the `STATE_*` answers above. Wall 2: the strategy row must be enabled, phase 'paper',
+    and resolve to 'paper'. A missing / disabled row is the switch OFF (quiet); any other phase is REFUSED (audit +
+    page). Read FRESH (#312 review, 2026-11-07): a demote or disable committed in the market agent must stop the
+    NEXT tick here without an apollo-execution restart — never a cached phase. A row that cannot be read is
+    UNREADABLE: its own state, its own audit row and its own once-a-day page key (never the refusal's, so a morning
+    blip cannot silence a real refusal page later that day)."""
     from agents.market_intelligence.strategies.registry import get_strategy_fresh
     try:
         strategy = await get_strategy_fresh(STRATEGY_ID)
-    except Exception as e:  # loud-ok: fail CLOSED — refused below with audit + page, no orders
+    except Exception as e:  # loud-ok: fail CLOSED for NEW orders — the tick takes no action this minute (audit + page)
         msg = (f"{STRATEGY_ID}: the strategy row could not be read fresh ({type(e).__name__}: {str(e)[:160]}) — "
-               f"breakout v1 orders only on a row it can read; refused")
-        await log_audit_event("breakout_v1_refused", f"{today.isoformat()}: {msg}")
-        await _page_once(("refused", today), f"🚨 Breakout v1 refused to order: {msg}")
-        return False, msg
+               f"breakout v1 takes no action this minute (no new order, no re-price, no cancel); it re-reads next minute")
+        await log_audit_event("breakout_v1_strategy_unreadable", f"{today.isoformat()}: {msg}")
+        await _page_once(("strategy_unreadable", today), f"⚠️ Breakout v1: {msg}")
+        return STATE_UNREADABLE, msg
     if strategy is None or not strategy.enabled:
-        return False, _SWITCHED_OFF_WHY
+        return STATE_SWITCHED_OFF, _SWITCHED_OFF_WHY
     try:
         mode = resolve_account_mode_for_strategy(strategy) if strategy.phase == "paper" else None  # mode-ok: breakout v1's own phase guard — refuses anything but paper
     except Exception:  # loud-ok: an unresolvable phase is refused below
@@ -722,8 +741,8 @@ async def _strategy_state(today: date) -> tuple[bool, str]:
                f"refused")
         await log_audit_event("breakout_v1_refused", f"{today.isoformat()}: {msg}")
         await _page_once(("refused", today), f"🚨 Breakout v1 refused to order: {msg}")
-        return False, msg
-    return True, ""
+        return STATE_REFUSED, msg
+    return STATE_OK, ""
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -1651,8 +1670,17 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
     await _cancel_orphans(today, family, rows)
 
     switch_on = await get_runtime_toggle(TOGGLE, TOGGLE_ENV, default=True)
-    may_order, why = await _strategy_state(today) if switch_on else (False, f"toggle {TOGGLE} off")
-    if not may_order and (not switch_on or why == _SWITCHED_OFF_WHY):
+    state, why = await _strategy_state(today) if switch_on else (STATE_SWITCHED_OFF, f"toggle {TOGGLE} off")
+    if state == STATE_UNREADABLE:
+        # the strategy row could not be READ this minute (re-review 2026-11-07 finding 2): no new order, no re-price
+        # and NO cancel — a resting buy is left as it is, exactly as an unreadable broker leaves it (`broker_unreadable`
+        # above); the next minute re-reads. The cancel below is for a real disable or a phase other than paper only.
+        # A filled row's stop-at-the-fill check waits one minute too: `_fill_checked` is marked only after a decision,
+        # so the next readable minute runs it — delayed, never dropped.
+        out["skipped"] = "strategy_unreadable"
+        return out
+    may_order = state == STATE_OK
+    if not may_order and state == STATE_SWITCHED_OFF:
         # THE STOP AT THE FILL is part of a filled position's stop, not a new order: it still runs when the switch is
         # off (like the pp exit's jobs) — never on a refused phase (wall 2: nothing is touched then).
         for r in rows.values():

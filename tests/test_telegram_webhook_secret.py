@@ -79,3 +79,30 @@ def test_the_secret_is_derived_from_the_internal_api_secret_unless_overridden(mo
     assert Secrets().telegram_webhook_secret_token != a                 # bound to the secret, not a constant
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "explicit_override-1")
     assert Secrets().telegram_webhook_secret_token == "explicit_override-1"
+
+
+# ── Re-review 2026-11-07 finding 3: a failed set_webhook at boot must not leave the bot deaf ──────────────────────
+# With the secret check above, a set_webhook that FAILS at boot leaves Telegram posting to the OLD, secret-less
+# registration and every update is dropped (/pause and the Demote button included) — before the check the old
+# registration kept working. Prod runs POLLING (WEBHOOK_BASE_URL unset on the server, checked read-only 11-07), where
+# this path never runs; in webhook mode the boot now retries and, still refused, FAILS LOUDLY instead of running deaf.
+
+@pytest.mark.asyncio
+async def test_boot_retries_set_webhook_and_a_later_success_is_enough(monkeypatch):
+    from channels import telegram as tg
+    monkeypatch.setattr(tg, "SET_WEBHOOK_RETRY_DELAYS", (0.0, 0.0), raising=False)
+    channel = SimpleNamespace(set_webhook=AsyncMock(side_effect=[RuntimeError("telegram 502"),
+                                                                 RuntimeError("telegram 502"), None]))
+    await tg.set_webhook_or_fail(channel, "https://apollo.example/telegram/webhook")
+    assert channel.set_webhook.await_count == 3
+    assert all(c.args == ("https://apollo.example/telegram/webhook",) for c in channel.set_webhook.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_boot_fails_loudly_when_telegram_keeps_refusing_the_webhook(monkeypatch):
+    from channels import telegram as tg
+    monkeypatch.setattr(tg, "SET_WEBHOOK_RETRY_DELAYS", (0.0, 0.0), raising=False)
+    channel = SimpleNamespace(set_webhook=AsyncMock(side_effect=RuntimeError("telegram 502")))
+    with pytest.raises(RuntimeError, match="502"):
+        await tg.set_webhook_or_fail(channel, "https://apollo.example/telegram/webhook")
+    assert channel.set_webhook.await_count == tg.SET_WEBHOOK_ATTEMPTS == 3

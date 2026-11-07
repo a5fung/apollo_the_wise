@@ -20,6 +20,7 @@ guard, the literal rulings and the live_tracker filter did not exist). Parts:
 """
 from __future__ import annotations
 
+import asyncio
 import subprocess
 import sys
 from datetime import date, datetime
@@ -212,6 +213,7 @@ def _wire_order_step(monkeypatch, *, phase="paper", account=None, at=(9, 33), hi
                         AsyncMock(return_value=[dict(_HIGH)] if highs is None else highs))
     monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(return_value=_strategy(phase=phase)))   # the lane reads FRESH (#312 review)
     monkeypatch.setattr(lpe, "_preflight_ok_date", None)
+    monkeypatch.setattr(lpe, "_paged", set(), raising=False)        # the once-a-day page keys (re-review finding 4)
     get_account = AsyncMock(return_value=account if account is not None
                             else {"equity": 100_000.0, "trading_blocked": False, "account_blocked": False})
     monkeypatch.setattr(lpe.alpaca, "get_account", get_account)
@@ -264,6 +266,22 @@ async def test_order_step_refuses_any_phase_but_paper_and_pages(monkeypatch, pha
     assert out == [] and not w.submit.await_count and not w.get_account.await_count
     assert any(ev == "lowcap_paper_lane_refused" for ev, _ in w.audits)
     assert len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER")
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_strategy_row_refuses_every_call_but_pages_once_a_day(monkeypatch):
+    """#312 re-review 2026-11-07 finding 4: the lane's order step runs after every lane tick in the 09:31-09:45
+    window; with the database down it refused AND paged on every call. The refusal is unchanged (fail-closed, an
+    audit row per call, nothing submitted, the pre-flight never asked) — the page now carries a once-per-day key,
+    like breakout v1's. A timeout is the same read failure as any other error (finding 5)."""
+    from agents.market_intelligence.strategies import registry
+    w = _wire_order_step(monkeypatch)
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(side_effect=asyncio.TimeoutError("acquire timed out")))
+    for _ in range(3):
+        assert await lpe.process_lowcap_paper_alerts(today=date(2026, 10, 12)) == []
+    assert not w.submit.await_count and not w.get_account.await_count
+    assert sum(ev == "lowcap_paper_lane_refused" for ev, _ in w.audits) == 3
+    assert len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER") and "could not be read" in w.pages[0]
 
 
 @pytest.mark.asyncio

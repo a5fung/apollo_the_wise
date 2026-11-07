@@ -201,6 +201,10 @@ async def get_strategy(strategy_id: str) -> Strategy | None:
 # The one-row read `get_strategy_fresh` makes — the same column list the cache is built from,
 # so a fresh row and a cached row are the same shape.
 _SELECT_ONE_SQL = f"SELECT {_STRATEGY_COLUMNS} FROM mi_strategies WHERE strategy_id = $1"
+# asyncpg's own `timeout=` on the fresh read's acquire AND its SELECT (re-review 2026-11-07 finding 5): the same 5 s
+# bound `log_audit_event` (#621) and the funnel's open-floor read carry. A primary-key SELECT answers in milliseconds;
+# at 09:31 a database that cannot answer in 5 s must make the entry SKIP fail-closed, not hang in front of the order.
+FRESH_READ_TIMEOUT_S = 5.0
 
 
 async def get_strategy_fresh(strategy_id: str) -> Strategy | None:
@@ -211,12 +215,19 @@ async def get_strategy_fresh(strategy_id: str) -> Strategy | None:
     Returns None for an unregistered id (the same fail-open the cached read gives a pre-seed
     strategy). RAISES on a DB error — deliberately no fallback to the cache or to a process
     default: the caller decides what a missing answer means (the entry funnel skips
-    `infra:strategy_unreadable` and pages; the paper lanes refuse to order; the label resolver
-    says "mode unknown"). Reads the cache for nothing and writes it with nothing.
+    `infra:strategy_unreadable` and pages; the small-cap lane refuses to order, paged once a day;
+    breakout v1 skips that tick without touching a resting buy; the label resolver says "mode
+    unknown"). Reads the cache for nothing and writes it with nothing.
+
+    BOUNDED (re-review 2026-11-07 finding 5): asyncpg's own `timeout=` on the acquire and on the
+    SELECT (`FRESH_READ_TIMEOUT_S`, the #621 path — never `asyncio.wait_for` around a pooled call).
+    This read sits in front of every entry at 09:31; a hung database must make the entry SKIP
+    fail-closed, not hang. A fired bound raises `asyncio.TimeoutError`, an Exception, so every
+    caller's read-error branch already treats it the same way.
     """
     pool = await get_pool()
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(_SELECT_ONE_SQL, strategy_id)
+    async with pool.acquire(timeout=FRESH_READ_TIMEOUT_S) as conn:
+        row = await conn.fetchrow(_SELECT_ONE_SQL, strategy_id, timeout=FRESH_READ_TIMEOUT_S)
     return _row_to_strategy(row) if row else None
 
 

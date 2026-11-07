@@ -43,6 +43,35 @@ logger = logging.getLogger(__name__)
 # How long (seconds) to wait between "typing..." indicator updates
 TYPING_INTERVAL = 4
 
+# ── Webhook registration at boot (#312 re-review 2026-11-07, finding 3) ──────
+# `channels/webhooks.py` drops every update without the secret header that `set_webhook` registers.
+# So in WEBHOOK mode a `set_webhook` that fails at boot is no longer harmless: Telegram keeps posting
+# to the OLD, secret-less registration and the bot is deaf — `/pause` and the ladder's Demote button
+# included. `main.py` therefore retries, and if Telegram still refuses it FAILS THE BOOT (the lifespan
+# raises, the container exits non-zero, compose restarts it — visible) rather than run deaf. INERT IN
+# PROD: the server runs POLLING mode (WEBHOOK_BASE_URL unset in its .env, checked read-only 11-07).
+SET_WEBHOOK_ATTEMPTS = 3
+SET_WEBHOOK_RETRY_DELAYS = (2.0, 5.0)     # seconds between attempts 1→2 and 2→3
+
+
+async def set_webhook_or_fail(channel, webhook_url: str, *, attempts: int = SET_WEBHOOK_ATTEMPTS,
+                              delays: tuple[float, ...] | None = None) -> None:
+    """`channel.set_webhook(webhook_url)` with `attempts` tries; re-raises the LAST error once they
+    are spent (the caller — the boot — must not swallow it). `delays` defaults to the module's
+    `SET_WEBHOOK_RETRY_DELAYS` at call time (tests zero it)."""
+    delays = SET_WEBHOOK_RETRY_DELAYS if delays is None else delays
+    for attempt in range(1, attempts + 1):
+        try:
+            await channel.set_webhook(webhook_url)
+            return
+        except Exception as e:
+            if attempt >= attempts:
+                logger.error(f"Telegram set_webhook failed {attempts}x ({e}) — refusing to boot deaf")
+                raise
+            pause = delays[min(attempt - 1, len(delays) - 1)] if delays else 0.0
+            logger.warning(f"Telegram set_webhook attempt {attempt}/{attempts} failed ({e}); retrying in {pause:g}s")
+            await asyncio.sleep(pause)
+
 # ── Polling-health heartbeat (#153) ──────────────────────────────────────────
 # A persistent NetworkError can wedge PTB's long-poll loop silently — updates
 # stop arriving with no error surfaced (the 2026-05-22→05-29 7-day outage). The

@@ -832,6 +832,68 @@ def test_a_demote_committed_in_the_market_agent_is_seen_by_the_execution_process
     assert asyncio.run(execution.get_strategy_fresh("no_such_strategy")) is None   # unregistered: fail-open None
 
 
+def test_the_fresh_read_is_bounded_on_the_acquire_and_on_the_query(monkeypatch):
+    """Re-review 2026-11-07 finding 5: `get_strategy_fresh` runs at 09:31 in front of EVERY entry (the funnel, both
+    paper lanes, the batch's dedup book), and it had no timeout on the acquire or the SELECT — a hung database made
+    the entry HANG rather than skip fail-closed. The bound is asyncpg's own `timeout=` on both (the #621 path, as
+    `log_audit_event` and the open-floor read do — never `asyncio.wait_for` around a pooled call). RED before the
+    fix: neither call carried the kwarg."""
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
+    conn.fetchrow = AsyncMock(return_value=strategy_row("magna53", "paper", live_real=True))
+    monkeypatch.setattr(registry, "get_pool", AsyncMock(return_value=pool))
+    assert asyncio.run(registry.get_strategy_fresh("magna53")).phase == "paper"
+    assert pool.acquire.call_args.kwargs.get("timeout") == registry.FRESH_READ_TIMEOUT_S
+    assert conn.fetchrow.call_args.kwargs.get("timeout") == registry.FRESH_READ_TIMEOUT_S
+    assert 0 < registry.FRESH_READ_TIMEOUT_S <= 10                   # bounded, and short enough for the 09:31 open
+
+
+@pytest.mark.asyncio
+async def test_a_fresh_read_timeout_is_the_same_fail_closed_skip_and_page_as_any_read_error(monkeypatch):
+    """Finding 5, the behaviour the bound buys: asyncpg answers a fired `timeout=` with `asyncio.TimeoutError`, an
+    `Exception` — so the funnel's one read path treats it exactly like a connection error: the entry is SKIPPED
+    `infra:strategy_unreadable` before the dedup SELECT, the safeguards and the builder, and paged (infra pages even
+    for a batching caller). Nothing is routed on the stale process cache (LIVE here). This pins the contract the
+    timeout joins; it held before the fix too (a timeout was already an Exception) — the red-first test for the
+    finding is the kwargs one above."""
+    from agents.market_intelligence.broker import entry_pipeline as ep
+    from agents.market_intelligence.broker import live_tracker as lt
+    from tests.conftest import make_mock_pool
+
+    monkeypatch.setattr(registry, "_CACHE", {"magna53": _live_strategy()})     # the stale cache: never consulted
+    reg_pool, reg_conn = make_mock_pool()
+    reg_conn.fetchrow = AsyncMock(side_effect=asyncio.TimeoutError("statement timeout"))
+    monkeypatch.setattr(registry, "get_pool", AsyncMock(return_value=reg_pool))
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(side_effect=AssertionError("the dedup SELECT must not run after a failed read"))
+    conn.execute = AsyncMock()
+    monkeypatch.setattr(ep, "get_pool", AsyncMock(return_value=pool))
+    audits = []
+
+    async def _audit(ev, summary, detail="", **kw):
+        audits.append(ev)
+        return True
+    monkeypatch.setattr(ep, "log_audit_event", _audit)
+    sent = AsyncMock(return_value=True)
+    monkeypatch.setattr(ep, "send_telegram_message", sent)
+    monkeypatch.setattr(ep, "current_account_mode", lambda: "paper")
+    monkeypatch.setattr(lt, "_insert_skipped_trade", AsyncMock())
+    safeguards = AsyncMock(side_effect=AssertionError("the safeguards must not run after a failed read"))
+    monkeypatch.setattr(lt, "_check_safeguards", safeguards)
+
+    async def _spec_builder(*_a, **_k):
+        raise AssertionError("skipped at the read; the builder must not run")
+
+    out = await ep.submit_trade_entry(
+        alert_context={"ticker": "OKTA", "ep_score": 80, "catalyst_quality": "strong", "gap_pct": 12.0},
+        spec_builder=_spec_builder, regime_record=None, strategy_label="ORB", signal_type="magna53",
+        today=dt.date(2026, 11, 9), aggregate_skips=True)
+    assert out["action"] == ep.ACTION_SKIPPED
+    assert out["reason"].startswith("infra:strategy_unreadable") and "TimeoutError" in out["reason"]
+    assert safeguards.await_count == 0 and conn.fetchval.await_count == 0
+    assert "strategy_mode_resolve_error" in audits and sent.await_count == 1   # loud: the audit row and the page
+
+
 @pytest.mark.asyncio
 async def test_the_entry_funnel_routes_on_the_committed_phase_not_the_process_cache(monkeypatch):
     """Finding 1 at the entry funnel: the process cache says LIVE (apollo-execution's copy, never

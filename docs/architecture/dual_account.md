@@ -95,8 +95,15 @@ next restart (a LIVE bracket could go in the morning after a live→paper demote
 cache: `broker/entry_pipeline.submit_trade_entry` reads it ONCE before its first step (the dedup
 book, the phase gate, the safeguards' account, the sizing knob and `live_real_enabled` all come
 from that one row), and so do the two paper lanes (`lowcap_paper_entry`, `breakout_v1_entry`) and
-`constants.resolve_strategy_mode_nonfatal` (the ORB batch's dedup book). A read that FAILS skips
-fail-closed (`infra:strategy_unreadable`, an immediate page; the lanes refuse to order) — never a
+`constants.resolve_strategy_mode_nonfatal` (the ORB batch's dedup book). The read is BOUNDED —
+asyncpg's own 5 s `timeout=` on the acquire and the SELECT (`registry.FRESH_READ_TIMEOUT_S`, the
+#621 path), so a hung database at 09:31 makes the entry skip, not hang; a fired bound is the same
+read failure as any other. A read that FAILS skips fail-closed (`infra:strategy_unreadable`, an
+immediate page; the small-cap lane refuses to order with an audit row per call and ONE page a day;
+breakout v1 takes no action THAT MINUTE — `strategy_unreadable`: no new order, no re-price and no
+cancel of a resting buy, the next minute re-reads, audited per minute and paged once a day — the
+cancel of resting buys stays for a real disable or a phase other than paper; re-review 2026-11-07
+findings 2, 4, 5) — never a
 cached phase, never a process-mode guess of which account trades (before, that guess decided only
 a label, because the phase gate re-read the row). An entry already past its read when the press
 commits still submits on the old phase — inherent; the press's answer says so. The cached

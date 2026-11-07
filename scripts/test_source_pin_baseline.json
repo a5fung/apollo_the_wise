@@ -152,6 +152,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 433,
+  "total": 434,
   "unescaped": 359
 }
