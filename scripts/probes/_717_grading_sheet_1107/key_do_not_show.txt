@@ -1,0 +1,14 @@
+#717 breakout list grading sheet (his 11-05 ruling: grade on charts in chat): 12 names from the Fri 2026-11-06 list (184 names), stratified by rank — 4 from ranks 1-20, 4 from 21-100, 4 from 101-184, drawn at random (seed 1107), shuffled. The chart ends on 11-06 (the list night); the dashed line is the name's level (the highest high of the last 5 sessions). NOT shown to him: ticker, rank, score.
+letter|ticker|list_rank|level|order_score|adr20_pct
+A|IAG|145|18.79|0.326|4.34
+B|SIG|73|129.26|0.568|3.67
+C|VFC|134|21.22|0.367|4.19
+D|PAYS|5|15.88|0.916|6.02
+E|APPN|14|56.38|0.821|6.65
+F|HAE|17|132.0|0.815|3.14
+G|PAY|30|35.26|0.75|4.57
+H|FNKO|21|6.76|0.793|5.5
+I|PAR|152|21.05|0.299|5.04
+J|RSKD|41|8.98|0.668|5.06
+K|PLSE|11|58.17|0.867|7.12
+L|BHC|174|8.46|0.177|5.27
