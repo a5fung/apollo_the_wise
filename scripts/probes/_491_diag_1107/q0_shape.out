@@ -1,0 +1,17 @@
+SET
+detail
+{"theme": "Value-Based Senior & Primary Care Delivery", "ticker": "VCEL", "reason": "cooldown", "source": "shadow_v2", "kept": 1, "path": "cooldown", "floor": 3, "held_below_floor": true}
+{"theme": "Value-Based Senior & Primary Care Delivery", "ticker": "WRBY", "reason": "cooldown", "source": "shadow_v2", "kept": 1, "path": "cooldown", "floor": 3, "held_below_floor": true}
+(2 rows)
+column_name|data_type
+id|integer
+ticker|text
+theme_name|text
+removed_at|timestamp with time zone
+cooldown_until|timestamp with time zone
+removal_reason|text
+removal_count|integer
+bypassed|boolean
+bypassed_at|timestamp with time zone
+bypassed_reason|text
+(10 rows)

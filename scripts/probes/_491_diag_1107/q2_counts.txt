@@ -1,0 +1,27 @@
+2026-10-05 {'promoted': 27, 'new': 9, 'gated': 25}
+2026-10-06 {'promoted': 30, 'new': 7, 'gated': 23}
+2026-10-07 {'promoted': 44, 'new': 8, 'gated': 33}
+2026-10-08 {'promoted': 58, 'new': 7, 'gated': 44}
+2026-10-09 {'promoted': 58, 'new': 11, 'gated': 41}
+2026-10-12 {'promoted': 28, 'new': 8, 'gated': 19}
+2026-10-13 {'promoted': 21, 'new': 6, 'gated': 17}
+2026-10-14 {'promoted': 31, 'new': 6, 'gated': 20}
+2026-10-15 {'promoted': 42, 'new': 7, 'gated': 29}
+2026-10-16 {'promoted': 42, 'new': 8, 'gated': 35}
+2026-10-19 {'promoted': 24, 'new': 5, 'gated': 24}
+2026-10-20 {'promoted': 21, 'new': 8, 'gated': 19}
+2026-10-21 {'promoted': 32, 'new': 10, 'gated': 22}
+2026-10-22 {'promoted': 43, 'new': 8, 'gated': 31}
+2026-10-23 {'promoted': 45, 'new': 4, 'gated': 36}
+2026-10-26 {'promoted': 16, 'new': 2, 'gated': 12}
+2026-10-27 {'promoted': 21, 'new': 5, 'gated': 19}
+2026-10-28 {'promoted': 27, 'new': 4, 'gated': 23}
+2026-10-29 {'promoted': 41, 'new': 10, 'gated': 36}
+2026-10-30 {'promoted': 35, 'new': 7, 'gated': 26}
+2026-11-02 {'promoted': 16, 'new': 6, 'gated': 14}
+2026-11-03 {'promoted': 20, 'new': 6, 'gated': 16}
+2026-11-04 {'promoted': 26, 'new': 7, 'gated': 21}
+2026-11-05 {'promoted': 36, 'new': 10, 'gated': 27}
+2026-11-06 {'promoted': 36, 'new': 6, 'gated': 26}
+promoted pre(10-05..10-23) median 32 post(10-26..11-06) median 26.5 post min 16
+new pre(10-05..10-23) median 8 post(10-26..11-06) median 6.0 post min 2

@@ -1,0 +1,40 @@
+SET
+ticker|theme|removed_et|removal_count|kind|until_et
+AEHR|AI data-center power buildout|2026-11-05|1|validation|2026-11-19
+AGI|South African & Andean Gold/Silver Miners (SBSW, ARIS, AGI, BVN)|2026-11-05|1|rehome|2026-11-19
+AXGN|Virtual Care & Home/Community Healthcare Delivery Rebound|2026-11-04|1|validation|2026-11-18
+BETA|Airline & Leisure Air Travel Rebound|2026-11-06|1|validation|2026-11-20
+BLDR|Building Materials, Distribution & Security Products for Construction|2026-11-04|1|rehome|2026-11-18
+BVN|South African & Andean Gold/Silver Miners (SBSW, ARIS, AGI, BVN)|2026-11-05|1|rehome|2026-11-19
+DRS|Defense Electronics & Aircraft Aftermarket Services|2026-10-30|1|rehome|2026-11-13
+EVR|Fintech Lending & Mortgage Platforms Rebound|2026-10-30|1|validation|2026-11-13
+FN|AI data-center power buildout|2026-11-05|1|validation|2026-11-19
+GGG|Pawn Lending & Specialty Metals Small-Cap Laggards|2026-11-06|1|validation|2026-11-20
+GL|Life & Supplemental Health Insurers|2026-10-30|1|rehome|2026-11-13
+JMKE|Timeshare, Casino Gaming & Leisure Venue Operators|2026-11-04|1|validation|2026-11-18
+LINE|Self-Storage REIT Re-Rating|2026-11-06|1|validation|2026-11-20
+LSCC|AI data-center power buildout|2026-11-05|1|validation|2026-11-19
+MIR|Fire Safety, Access Control & Building Security Systems|2026-10-30|1|validation|2026-11-13
+NOW|Enterprise Network & Application Delivery Security Infrastructure|2026-10-30|1|validation|2026-11-13
+PII|Footwear & Golf Leisure Consumer Brands|2026-11-03|2|rehome|2026-11-17
+PRI|Life & Supplemental Health Insurers|2026-10-30|1|rehome|2026-11-13
+PS|Alternative Asset Managers & Hedge Fund Platforms (Small/Mid Cap)|2026-11-06|1|validation|2026-11-20
+ROL|Recreational Vehicle & Outdoor Leisure Cyclicals|2026-10-26|1|validation|2026-11-09
+SBSW|South African & Andean Gold/Silver Miners (SBSW, ARIS, AGI, BVN)|2026-11-05|1|rehome|2026-11-19
+SHOE|Recreational Vehicle & Outdoor Leisure Cyclicals|2026-10-26|1|validation|2026-11-09
+TPR|Sporting Goods & Specialty Apparel Retail Strength|2026-11-06|1|validation|2026-11-20
+VCEL|Value-Based Senior & Primary Care Delivery|2026-11-06|1|validation|2026-11-20
+WRBY|Value-Based Senior & Primary Care Delivery|2026-11-06|1|validation|2026-11-20
+(25 rows)
+wk|rehome|validation
+2026-08-31|0|32
+2026-09-07|0|43
+2026-09-14|0|29
+2026-09-21|0|32
+2026-09-28|0|36
+2026-10-05|10|69
+2026-10-12|13|54
+2026-10-19|8|74
+2026-10-26|7|35
+2026-11-02|13|48
+(10 rows)
