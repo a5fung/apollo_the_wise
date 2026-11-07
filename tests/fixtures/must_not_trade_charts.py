@@ -107,7 +107,7 @@ RULING_DATE = "2026-08-25"          # session 1 — the original eleven
 # review sample #1 (ten names where our score and the outcome disagreed). Every member
 # carries its own `ruling_date`; this set is what a test may check membership against, so
 # a typo cannot invent a session that never happened.
-RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06", "2026-09-23", "2026-10-05", "2026-10-29", "2026-11-02", "2026-11-04"})
+RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06", "2026-09-23", "2026-10-05", "2026-10-29", "2026-11-02", "2026-11-04", "2026-11-07"})
 # The eleven BAD_CHART members of session 1 are the population the v3 backtest measured.
 # Later BAD_CHART rulings are NOT in it — the doc's numbers are against these only.
 V3_MEASURED_POPULATION_SIZE = 11
@@ -890,6 +890,94 @@ CHART_RULINGS: list[ChartRuling] = [
         operator_words="bad",
         gap_open_pct=20.7, ret_5d=None,
         prior_runup_note='WE ALERTED HIGH: score 96.0, catalyst=game_changer. 20 sessions later -17%. Volume 5.0x. Ruled outcome-blind (sample 6, card L).',
+    ),
+    # ── #594 sample #7 (2026-11-07), ruled OUTCOME-BLIND on the 2-year page (`scripts/probes/_594_sample7_1107/sample7_blind.png`,
+    #    the gap day the last bar). Drawn AT RANDOM (seed 1107) from both arms; every ruled (ticker, date) and every ticker in his
+    #    notes excluded. "ok" is filed OKISH_CHART (the middle grade); "choppy" is filed BAD_CHART as in sample 6 ("bad, too choopy").
+    #    Card I: he wrote "L - good" between H and J — read as I (the sheet's second L line is L - ok). ──
+    ChartRuling(
+        ticker='NX', alert_date='2026-09-04', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="good",
+        gap_open_pct=10.0, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 33.8, catalyst=routine. 20 sessions later -8%. Volume 7.1x. Ruled outcome-blind (sample 7, card A).',
+    ),
+    ChartRuling(
+        ticker='AFYA', alert_date='2026-10-05', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="bad",
+        gap_open_pct=9.3, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 40.0, catalyst=routine. 20 sessions later -20%. Volume 4.7x. Ruled outcome-blind (sample 7, card B).',
+    ),
+    ChartRuling(
+        ticker='PLAB', alert_date='2026-08-26', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="bad",
+        gap_open_pct=27.1, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 27.5, catalyst=routine. 20 sessions later -20%. Volume 9.4x. Ruled outcome-blind (sample 7, card C).',
+    ),
+    ChartRuling(
+        ticker='SNOW', alert_date='2026-09-03', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="ok",
+        gap_open_pct=23.3, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 77.5, catalyst=strong. 20 sessions later -10%. Volume 5.1x. Ruled outcome-blind (sample 7, card D).',
+    ),
+    ChartRuling(
+        ticker='MGNI', alert_date='2026-08-06', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="good",
+        gap_open_pct=11.3, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 24.0, catalyst=routine. 20 sessions later +7%. Volume 4.7x. Ruled outcome-blind (sample 7, card E).',
+    ),
+    ChartRuling(
+        ticker='AMLX', alert_date='2026-08-18', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="good",
+        gap_open_pct=39.6, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 96.0, catalyst=game_changer. 20 sessions later +9%. Volume 11.9x. Ruled outcome-blind (sample 7, card F).',
+    ),
+    ChartRuling(
+        ticker='SAIC', alert_date='2026-08-31', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="choppy",
+        gap_open_pct=11.5, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 42.5, catalyst=routine. 20 sessions later -9%. Volume 4.6x. Ruled outcome-blind (sample 7, card G).',
+    ),
+    ChartRuling(
+        ticker='MED', alert_date='2026-08-04', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="good",
+        gap_open_pct=23.5, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 42.0, catalyst=routine. 20 sessions later 0%. Volume 5.6x. Ruled outcome-blind (sample 7, card H).',
+    ),
+    ChartRuling(
+        ticker='CODI', alert_date='2026-08-11', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="good",
+        gap_open_pct=10.5, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 38.4, catalyst=routine. 20 sessions later -8%. Volume 4.3x. Ruled outcome-blind (sample 7, card I).',
+    ),
+    ChartRuling(
+        ticker='KODK', alert_date='2026-08-05', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="bad",
+        gap_open_pct=12.3, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 54.7, catalyst=strong. 20 sessions later -8%. Volume 3.4x. Ruled outcome-blind (sample 7, card J).',
+    ),
+    ChartRuling(
+        ticker='BIRK', alert_date='2026-08-13', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="bad",
+        gap_open_pct=17.2, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 38.4, catalyst=routine. 20 sessions later -28%. Volume 3.3x. Ruled outcome-blind (sample 7, card K).',
+    ),
+    ChartRuling(
+        ticker='BULL', alert_date='2026-08-20', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-11-07",
+        operator_words="ok",
+        gap_open_pct=15.0, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 100.8, catalyst=strong. 20 sessions later -17%. Volume 5.3x. Ruled outcome-blind (sample 7, card L).',
     ),
 ]
 
