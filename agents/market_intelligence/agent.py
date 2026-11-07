@@ -5767,6 +5767,26 @@ class MarketIntelligenceAgent(BaseAgent):
             return self._error(request, f"Promote failed: {e}")
         return self._ok(request, result=_render_promote_result(res, name))
 
+    async def _handle_ladder_press(self, request: AgentRequest) -> AgentResponse:
+        """`/ladder_press <demote|noaction> <page id>` — the #312 ladder breach page's two buttons
+        (ADR 0022 §1: demotion is HIS one click). Internal-only dispatch key, never a user-typed or
+        registered command — only `channels/telegram.py`'s `ladder:` callback sends it, after the
+        shared authorization gate, carrying the pressing user's id as `request.user_id`. The whole
+        decision (lock the page, compare the phase it showed with the row, move one rung through
+        `update_strategy` or record No action, audit) is `ladder_press.handle_ladder_press`; this
+        is delivery only."""
+        import re as _re
+        from agents.market_intelligence.ladder_press import handle_ladder_press
+        m = _re.match(r'^\s*/?ladder_press\s+([a-z_]+)\s+(\d+)\s*$', request.task or '', _re.IGNORECASE)
+        if not m:
+            return self._ok(request, result="Malformed ladder press — expected `<demote|noaction> <page id>`.")
+        try:
+            text = await handle_ladder_press(m.group(1).lower(), int(m.group(2)), user_id=request.user_id)
+        except Exception as e:
+            logger.exception(f"ladder press failed: {e}")
+            return self._error(request, f"Ladder press failed: {e}")
+        return self._ok(request, result=text)
+
     async def _handle_theme_lookup(self, request: AgentRequest) -> AgentResponse:
         """Two-way theme lookup. `/themes TICKER` → the themes it's in; `/themes <name>` → the
         stocks in matching themes. Searches BOTH lanes — live mi_themes AND the #167 narrative
@@ -6304,6 +6324,9 @@ class MarketIntelligenceAgent(BaseAgent):
             "/themes":         self._handle_theme_query,
             "/promotetheme":   self._handle_promotetheme,
             "/promotetheme_id": self._handle_promotetheme_id,
+            # #312 (2026-11-07) — the ladder breach page's two buttons (internal-only, never a menu
+            # command; channels/telegram.py's `ladder:` callback is the only sender)
+            "/ladder_press":   self._handle_ladder_press,
             # #471 ADR 0032 Phase 3 — veto / retire an auto-promoted ecosystem
             "/vetoecosystem":  self._handle_vetoecosystem,
             "/clusters":       self._handle_correlation_clusters,

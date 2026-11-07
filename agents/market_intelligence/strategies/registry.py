@@ -100,38 +100,39 @@ def invalidate_cache() -> None:
     _CACHE = None
 
 
+# The ONE column list a Strategy is built from — the SELECT in `_load_all` and the RETURNING of
+# `update_strategy` both use it, so the row a writer hands back is the row a reader would load.
+_STRATEGY_COLUMNS = ("strategy_id, name, family, phase, enabled, signal_type, outcomes_table, "
+                     "promotion_model, promotion_thresholds, notes, live_real_enabled, "
+                     "position_size_multiplier")
+
+
+def _row_to_strategy(r) -> Strategy:
+    thresholds = r["promotion_thresholds"]
+    if isinstance(thresholds, str):
+        thresholds = json.loads(thresholds)
+    return Strategy(
+        strategy_id=r["strategy_id"],
+        name=r["name"],
+        family=r["family"],
+        phase=r["phase"],
+        enabled=r["enabled"],
+        signal_type=r["signal_type"],
+        outcomes_table=r["outcomes_table"],
+        promotion_model=r["promotion_model"],
+        promotion_thresholds=thresholds or {},
+        notes=r["notes"],
+        live_real_enabled=r["live_real_enabled"],
+        position_size_multiplier=_coerce_position_size_multiplier(
+            r["position_size_multiplier"], r["strategy_id"]),
+    )
+
+
 async def _load_all() -> dict[str, Strategy]:
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT strategy_id, name, family, phase, enabled, signal_type,
-                   outcomes_table, promotion_model, promotion_thresholds, notes,
-                   live_real_enabled, position_size_multiplier
-            FROM mi_strategies
-            """
-        )
-    out: dict[str, Strategy] = {}
-    for r in rows:
-        thresholds = r["promotion_thresholds"]
-        if isinstance(thresholds, str):
-            thresholds = json.loads(thresholds)
-        out[r["strategy_id"]] = Strategy(
-            strategy_id=r["strategy_id"],
-            name=r["name"],
-            family=r["family"],
-            phase=r["phase"],
-            enabled=r["enabled"],
-            signal_type=r["signal_type"],
-            outcomes_table=r["outcomes_table"],
-            promotion_model=r["promotion_model"],
-            promotion_thresholds=thresholds or {},
-            notes=r["notes"],
-            live_real_enabled=r["live_real_enabled"],
-            position_size_multiplier=_coerce_position_size_multiplier(
-                r["position_size_multiplier"], r["strategy_id"]),
-        )
-    return out
+        rows = await conn.fetch(f"SELECT {_STRATEGY_COLUMNS} FROM mi_strategies")
+    return {r["strategy_id"]: _row_to_strategy(r) for r in rows}
 
 
 def assert_no_deprecated_but_enabled(strategies: dict) -> None:
@@ -199,9 +200,23 @@ async def update_strategy(
     enabled: bool | None = None,
     live_real_enabled: bool | None = None,
     promotion_thresholds: dict | None = None,
+    expect_phase: str | None = None,
+    conn=None,
 ) -> Strategy | None:
-    """Mutate a registered strategy. Invalidates cache and returns the
-    fresh row. Returns None if strategy_id doesn't exist.
+    """Mutate a registered strategy — THE one phase writer. Invalidates the process cache and
+    returns the fresh row (from the UPDATE's own RETURNING, so no second read is needed).
+    Returns None if `strategy_id` doesn't exist — or, with `expect_phase`, if the row's phase
+    is no longer the one the caller saw.
+
+    `expect_phase` (#312, 2026-11-07) — a compare-and-set: `... AND phase = <expect_phase>` on
+    the WHERE, so a press on the ladder's breach page moves the strategy only from the rung
+    the page SHOWED. A typed `/strategy <id> promote|demote` passes none and behaves as before.
+
+    `conn` — a caller that ALREADY HOLDS a connection inside its own transaction (the ladder
+    press locks its page row, reads the phase, writes the phase and records the decision as
+    ONE unit) hands it over instead of asking the pool for a second one (the 2026-09-17
+    nested-acquire deadlock class). The cache is still invalidated; the fresh row comes from
+    RETURNING on that same connection, never from a second acquire.
     """
     sets: list[str] = []
     args: list[Any] = []
@@ -226,14 +241,18 @@ async def update_strategy(
         raise ValueError("update_strategy requires at least one field to mutate")
     sets.append("updated_at = NOW()")
     args.append(strategy_id)
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            f"UPDATE mi_strategies SET {', '.join(sets)} "
-            f"WHERE strategy_id = ${len(args)} RETURNING strategy_id",
-            *args,
-        )
+    where = f"WHERE strategy_id = ${len(args)}"
+    if expect_phase is not None:
+        args.append(expect_phase)
+        where += f" AND phase = ${len(args)}"
+    sql = f"UPDATE mi_strategies SET {', '.join(sets)} {where} RETURNING {_STRATEGY_COLUMNS}"
+    if conn is not None:
+        row = await conn.fetchrow(sql, *args)
+    else:
+        pool = await get_pool()
+        async with pool.acquire() as c:
+            row = await c.fetchrow(sql, *args)
     if not row:
         return None
     invalidate_cache()
-    return await get_strategy(strategy_id)
+    return _row_to_strategy(row)

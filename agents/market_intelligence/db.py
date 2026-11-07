@@ -5557,6 +5557,10 @@ async def initialize_schema() -> None:
         # single-asset fund rule. Idempotent (`_BREAKOUT_V1_DDL`, end of this file).
         await conn.execute(_BREAKOUT_V1_DDL)
 
+        # #312 (2026-11-07) — the ladder's breach pages + episodes (his one-click Demote / No action). Idempotent
+        # (`_LADDER_DDL`, end of this file). Owner doc: docs/architecture/dual_account.md §Demotion.
+        await conn.execute(_LADDER_DDL)
+
         # ── One-time cleanup: delete auto-generated descriptions for tickers ──
         # that now have authoritative static entries in universe.py.
         # These corrupted rows were created by _ensure_descriptions when
@@ -20037,3 +20041,38 @@ async def bv1_ungraded(nights: int = 5) -> list[dict]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(BV1_UNGRADED_SQL, int(nights))
     return [dict(r) for r in rows]
+
+
+# ── #312 ladder act step (2026-11-07) — the breach PAGES and their EPISODES ──────────────────────────────────────
+# Owner doc: docs/architecture/dual_account.md §Demotion; ADR 0022 §1. The nightly `ladder_watchdog` writes a page
+# row when it sends him a breach page and opens an episode; `ladder_press` (his button) decides a page. Neither
+# table is read by any entry / sizing / order / safeguard path — a page is a question to him, never a gate.
+# The episode is keyed on the strategy AND the rung it was breached at: a demote (his press or the typed command)
+# ends it, because the rung below is a different book and a fresh question.
+_LADDER_DDL = """
+    CREATE TABLE IF NOT EXISTS mi_ladder_episodes (
+        strategy_id TEXT NOT NULL,
+        opened_on   DATE NOT NULL,                 -- the first would-demote night
+        phase       TEXT NOT NULL,                 -- the rung the breach was read on
+        closed_on   DATE,                          -- NULL = open
+        closed_by   TEXT CHECK (closed_by IN ('cleared', 'demote', 'phase_moved')),
+        PRIMARY KEY (strategy_id, opened_on)
+    );
+    CREATE TABLE IF NOT EXISTS mi_ladder_pages (
+        id            SERIAL PRIMARY KEY,
+        strategy_id   TEXT NOT NULL,
+        episode_on    DATE NOT NULL,               -- mi_ladder_episodes.opened_on
+        as_of         DATE NOT NULL,               -- the night that paged
+        phase_at_page TEXT NOT NULL,               -- the rung the page showed; the press compares against it
+        demote_to     TEXT NOT NULL,               -- the rung the Demote button steps to
+        breached      JSONB NOT NULL,              -- the limits breached at the page (a NEW one re-pages)
+        stats         JSONB NOT NULL,              -- what the page showed (the evaluated dict)
+        sent_at       TIMESTAMPTZ,                 -- NULL = the send failed; the episode is not paged
+        decision      TEXT CHECK (decision IN ('demote', 'no_action', 'stale')),
+        decided_at    TIMESTAMPTZ,
+        decided_by    BIGINT,                      -- the Telegram user id of the press
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (strategy_id, as_of)                -- one page per strategy per night
+    );
+    CREATE INDEX IF NOT EXISTS idx_ladder_pages_open_episode ON mi_ladder_pages (strategy_id, episode_on, as_of);
+"""

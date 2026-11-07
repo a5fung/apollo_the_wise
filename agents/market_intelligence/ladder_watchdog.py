@@ -1,8 +1,7 @@
-"""Ladder watchdog — ADR 0022 §1 auto-DEMOTION, built DARK (#312, 2026-10-15).
+"""Ladder watchdog — ADR 0022 §1 demotion: the nightly READ, and on a breach HIS page (#312).
 
-WHAT IT IS. The nightly `ladder_watchdog` step the ADR specifies, built as the operator asked on
-2026-10-12: *"ships dark; any live flip is his sign-off."* Every night it computes the four signed
-M1f triggers (ADR 0022 §7, operator-signed 2026-07-05: 6 consecutive losses · trailing-20
+WHAT IT IS. The nightly `ladder_watchdog` step the ADR specifies. Every night it computes the four
+signed M1f triggers (ADR 0022 §7, operator-signed 2026-07-05: 6 consecutive losses · trailing-20
 expectancy < −0.3R · drawdown −10R from the cumulative-R peak · 1 harmful auto-action) for every
 ENABLED strategy on a rung that HAS a rung below it (phase 'paper' or 'live'), against the ONE
 book that strategy's phase resolves to (`resolve_account_mode_for_strategy` — dual-account
@@ -10,20 +9,41 @@ invariant 3: `account_mode` on every trade query), and writes ONE `mi_audit_log`
 (`ladder_demotion_shadow`) listing, per strategy, each trigger's value, its threshold and
 `would_demote`. One row per night: see `_summary_prefix`.
 
-WHAT IT IS NOT — and this is structural, not a flag. This module has NO act step:
-  * it never writes `mi_strategies` (no UPDATE statement; the only phase writer stays
-    `strategies/registry.update_strategy`, reached today only by the operator's
-    `/strategy <id> promote|demote`);
-  * it touches no sizing (`position_size_multiplier`), no toggle, no order path;
-  * it sends NO Telegram — a would-demote is an audit row the weekly review can read; the only
-    page this job can ever produce is `audit_run`'s `record_job_failure` (one deduped page plus
-    a durable `job_failed_error` row) when the job itself crashes, which carries no verdict;
-  * there is no "live mode" switch a typo could enable — the act step does not exist yet.
-Pinned by `tests/test_ladder_watchdog.py` (a spied DB layer sees exactly one write, the audit
-INSERT; an AST test pins the absence of any act-step name). Building the act step is a later,
-operator-signed build (THE LINE) — it also needs the L1 pieces this dark build does not: a
-`demotion_triggers` column (the thresholds below are code constants with their provenance),
-`phase_history`, and the mandatory review-before-re-promotion.
+THE ACT STEP IS HIS PRESS (ruled 2026-11-04: *"i want explicit action from me to demote, so i review
+stats present to me and a one-click demote or no action"*; it replaced the 07-05 "automatic"). On a
+breach this module sends him ONE Telegram page — the strategy and its rung, each limit's value
+against its bar, closed trades, cumulative R, open positions (count + tickers) — with two buttons:
+**Demote to <the rung below>** and **No action**. The press travels `channels/telegram.py`
+(`ladder:` callback, behind the shared authorization gate) → the market agent's internal
+`/ladder_press` → `ladder_press.handle_ladder_press`, which is the ONLY place a page moves a phase:
+one rung down, through the one writer `strategies/registry.update_strategy`, compare-and-set on the
+rung the page SHOWED, in one transaction with the page's decision, writing `strategy_phase_change`
+(the same event the typed `/strategy <id> demote` writes). No action writes an audit row and moves
+nothing. Shadow is the bottom rung — never evaluated, never paged, and the keyboard builder draws no
+Demote button for a rung with nothing below.
+
+PAGING CADENCE — the default, written here and in the SSoT as a decision HE can override:
+ONE page per strategy per breach EPISODE. An episode opens on the first would-demote night on a
+rung and closes on the first night with no limit breached (or when the rung changes — his Demote
+press or the typed command — because the rung below is a different book and a fresh question).
+Inside an episode a second breach night sends nothing (the first page's buttons are still live).
+After No action there is no re-page in the same episode UNLESS a limit that was not breached at the
+last page newly breaches — then one more page, same episode, listing what is new. The state lives
+in the DB (`mi_ladder_episodes`, `mi_ladder_pages`), never in process memory, so a restart cannot
+re-page. A page whose send failed does not count (`sent_at` stays NULL, `ladder_page_send_error`
+is written, the next night retries). A #672 recovery re-run NEVER pages: every Telegram it sends is
+held at the httpx layer and reports success without reaching him, so the re-run records what it
+would have paged and leaves the episode unpaged for the next live night.
+
+WHAT IT IS NOT — and this is structural, not a flag. This module has NO phase writer:
+  * it never calls `update_strategy`, never names `mi_strategies` (it reads the registry through
+    `registry._load_all`), touches no sizing (`position_size_multiplier`), no toggle, no order path;
+  * the only writes it makes are the audit rows and its own page / episode rows;
+  * there is no "auto mode" switch a typo could enable — the phase moves only in `ladder_press.py`,
+    only on his press.
+Pinned by `tests/test_ladder_watchdog.py` (a spied DB layer) and `tests/test_312_ladder_act_step.py`
+(every `update_strategy(phase=…)` call in the codebase, derived by AST: the typed promote, the typed
+demote and the button — nothing else).
 
 WHAT COUNTS AS R. `kill_scale_bands.risk_placed` — the ONE realised-R denominator (#586: the
 risk AT the placed stop, after the 20% notional cap), over `status='closed'` methodology trades
@@ -62,15 +82,20 @@ from agents.market_intelligence.kill_scale_bands import (
 )
 from agents.market_intelligence.rule_eras import era_split_sentence, split_current_vs_older
 from shared.dates import _ET
+from shared.telegram_format import b, esc, pre
 
 logger = logging.getLogger(__name__)
 
-AUDIT_EVENT = "ladder_demotion_shadow"
+AUDIT_EVENT = "ladder_demotion_shadow"      # the nightly row (the name predates the act step; kept for continuity)
+PAGED_EVENT = "ladder_breach_paged"         # one per page that reached Telegram
+CLEARED_EVENT = "ladder_breach_cleared"     # an open episode closed by a night with nothing breached
+SEND_ERROR_EVENT = "ladder_page_send_error" # the page did not send — the nightly error sweep shows it
 JOB_ID = "ladder_watchdog"
+CALLBACK_PREFIX = "ladder:"                 # channels/telegram.py routes `ladder:<demote|noaction>:<page id>`
 
 # ADR 0022 §7 M1f — operator-signed 2026-07-05 ("Signed.", the recommendations as written).
-# Code constants with provenance; the registry column (`demotion_triggers JSONB`, L1) lands with
-# the act step, when a row value would govern something. Change ONLY via CHANGE_PROCESS.
+# Code constants with provenance; the registry column (`demotion_triggers JSONB`, L1) lands when a
+# row value would govern something. Change ONLY via CHANGE_PROCESS.
 M1F_DEMOTION_TRIGGERS: dict[str, float | int] = {
     "consec_losses": 6,              # current losing streak ≥ 6
     "trailing20_expectancy_r": -0.3,  # mean R of the last 20 closed trades < −0.3R
@@ -80,11 +105,18 @@ M1F_DEMOTION_TRIGGERS: dict[str, float | int] = {
 TRAILING_WINDOW = 20
 MIN_CLOSED_TRADES = 6
 R_TRIGGERS = ("consec_losses", "trailing20_expectancy_r", "dd_from_peak_r")
+# Plain words on the page (operator: every number carries its meaning).
+TRIGGER_LABELS = {
+    "consec_losses": "losing streak",
+    "trailing20_expectancy_r": "mean R, last 20 trades",
+    "dd_from_peak_r": "drawdown from the peak",
+    "harmful_auto_action": "harmful auto-action",
+}
 
-# The rung a breach WOULD step down to. Must equal `strategies/telegram._DEMOTE_BACK` (the
-# operator's manual `/strategy <id> demote`) — pinned by the test so the dark row can never
-# name a rung the real command would not step to. 'shadow' / 'deprecated' have no rung below
-# and are not evaluated (shadow is the bottom; deprecated is terminal, ADR 0022 §1).
+# The rung a breach steps down to. Must equal `strategies/telegram._DEMOTE_BACK` (the operator's
+# manual `/strategy <id> demote`) — pinned by the test so a page can never name a rung the real
+# command would not step to. 'shadow' / 'deprecated' have no rung below and are not evaluated
+# (shadow is the bottom; deprecated is terminal, ADR 0022 §1).
 DEMOTE_TO = {"live": "paper", "paper": "shadow"}
 
 HARMFUL_NOT_MEASURABLE = (
@@ -103,10 +135,51 @@ _CLOSED_TRADES_SQL = """
     ORDER BY alert_date ASC, id ASC
 """
 
-# Is tonight's row already there? Keyed on the summary prefix — see `_summary_prefix`.
-_NIGHT_ROW_EXISTS_SQL = """
-    SELECT 1 FROM mi_audit_log WHERE event_type = $1 AND summary LIKE $2 LIMIT 1
+# The strategy's open positions on ITS book (the page names them; their stops and exits read the
+# trade row's own account_mode, so a demote never moves them — tests/test_312_ladder_act_step.py §C).
+_OPEN_POSITIONS_SQL = """
+    SELECT ticker FROM mi_live_trades
+    WHERE status = 'filled' AND remaining_shares > 0
+      AND signal_type = $1 AND account_mode = $2
+    ORDER BY ticker
 """
+
+# Is tonight's row already there? Keyed on the summary prefix — see `_summary_prefix`. Two
+# patterns: tonight's prefix and the pre-act-step "(DARK)" spelling, so a re-run of a night
+# written before 2026-11-07 still finds its row.
+_NIGHT_ROW_EXISTS_SQL = """
+    SELECT 1 FROM mi_audit_log
+    WHERE event_type = $1 AND (summary LIKE $2 OR summary LIKE $3) LIMIT 1
+"""
+
+# ── The paging cadence's state (mi_ladder_episodes / mi_ladder_pages — DDL in db._LADDER_DDL) ──
+_OPEN_EPISODE_SQL = """
+    SELECT strategy_id, opened_on, phase, closed_on, closed_by
+    FROM mi_ladder_episodes
+    WHERE strategy_id = $1 AND closed_on IS NULL
+    ORDER BY opened_on DESC LIMIT 1
+"""
+_LAST_SENT_PAGE_SQL = """
+    SELECT id, as_of, breached, decision
+    FROM mi_ladder_pages
+    WHERE strategy_id = $1 AND episode_on = $2 AND sent_at IS NOT NULL
+    ORDER BY as_of DESC, id DESC LIMIT 1
+"""
+_CLOSE_EPISODE_SQL = """
+    UPDATE mi_ladder_episodes SET closed_on = $1, closed_by = $2
+    WHERE strategy_id = $3 AND opened_on = $4 AND closed_on IS NULL
+"""
+_OPEN_EPISODE_INSERT_SQL = """
+    INSERT INTO mi_ladder_episodes (strategy_id, opened_on, phase) VALUES ($1, $2, $3)
+    ON CONFLICT (strategy_id, opened_on) DO NOTHING
+"""
+_INSERT_PAGE_SQL = """
+    INSERT INTO mi_ladder_pages (strategy_id, episode_on, as_of, phase_at_page, demote_to, breached, stats)
+    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)
+    ON CONFLICT (strategy_id, as_of) DO NOTHING
+    RETURNING id
+"""
+_MARK_PAGE_SENT_SQL = "UPDATE mi_ladder_pages SET sent_at = NOW() WHERE id = $1"
 
 
 # ── Pure core ───────────────────────────────────────────────────────────────────────────────
@@ -170,6 +243,100 @@ def evaluate_demotion_triggers(realized_rs, thresholds: dict | None = None) -> d
             "reasons": reasons, "cum_r": cum_r, "max_dd_r": max_dd_r}
 
 
+def breached_names(triggers: dict) -> list[str]:
+    """The limits breached, in the page's order."""
+    return [name for name in TRIGGER_LABELS if triggers.get(name, {}).get("breached")]
+
+
+def decide_page(*, would_demote: bool, breached_now: list[str], phase: str,
+                open_episode: dict | None, last_page: dict | None) -> tuple[str, str]:
+    """Pure: the paging cadence. → (action, reason), action in {'page', 'skip', 'close', 'none'}.
+
+    `open_episode` is the strategy's open episode row ({opened_on, phase}) or None; `last_page`
+    the newest DELIVERED page of that episode ({id, breached}) or None."""
+    if not would_demote:
+        if open_episode is None:
+            return "none", "no limit breached, no open episode"
+        return "close", "no limit breached tonight"
+    if open_episode is None:
+        return "page", "new episode"
+    if open_episode["phase"] != phase:
+        return "page", f"new episode (the rung changed: {open_episode['phase']} → {phase})"
+    if last_page is None:
+        return "page", "episode has no delivered page yet"
+    newly = sorted(set(breached_now) - set(last_page["breached"] or []))
+    if newly:
+        return "page", f"newly breached since page #{last_page['id']}: {', '.join(newly)}"
+    return "skip", f"already paged this episode (page #{last_page['id']}, nothing newly breached)"
+
+
+def _fmt_r(v) -> str:
+    return "n/a" if v is None else f"{float(v):+.2f}R"
+
+
+def _limit_rows(triggers: dict) -> list[tuple[str, str, str, str]]:
+    rows = []
+    for name, label in TRIGGER_LABELS.items():
+        t = triggers.get(name)
+        if t is None:
+            continue
+        if name == "consec_losses":
+            value, bar = ("n/a" if t["value"] is None else str(t["value"])), str(t["threshold"])
+        elif name == "harmful_auto_action":
+            value, bar = "n/a", str(t["threshold"])
+        else:
+            value, bar = _fmt_r(t["value"]), _fmt_r(t["threshold"])
+        if t["breached"]:
+            state = "BREACHED"
+        elif t["status"] == "evaluated":
+            state = "ok"
+        elif t["status"].startswith("not measurable yet"):
+            state = "not measurable yet"
+        else:
+            state = t["status"]
+        rows.append((label, value, bar, state))
+    return rows
+
+
+def format_breach_page(e: dict, *, page_id: int, as_of: date) -> str:
+    """The page body, as Telegram HTML (shared helpers; a monospace block, never a pipe table).
+    The book tag (#699: the tag picks the chat) is prepended by the sender, `page_breaches`, from
+    the strategy's RESOLVED mode — the function that tags is the function that sends."""
+    sid, phase, below = e["strategy_id"], e["phase"], e["would_demote_to"]
+    rows = _limit_rows(e["triggers"])
+    w0 = max(len(r[0]) for r in rows) + 2
+    w1 = max(len("value"), *(len(r[1]) for r in rows)) + 2
+    w2 = max(len("bar"), *(len(r[2]) for r in rows)) + 2
+    table = [f"{'limit':<{w0}}{'value':<{w1}}{'bar':<{w2}}"]
+    table += [f"{lbl:<{w0}}{val:<{w1}}{bar:<{w2}}{state}" for lbl, val, bar, state in rows]
+    pos = e.get("open_positions") or {"count": 0, "tickers": []}
+    open_line = f"open positions {pos['count']}"
+    if pos["count"]:
+        open_line += (f" — {esc(', '.join(pos['tickers']))} (their stops and exits stay on the "
+                      f"{esc(e['account_mode'])} book)")
+    lines = [
+        f"🪜 {b(f'Ladder breach — {sid} ({phase})')}",
+        f"Your call: {b(f'Demote to {below}')} or {b('No action')}. Nothing moves until you press.",
+        pre("\n".join(table)),
+        (f"closed trades {e['n_closed']} · cumulative R {_fmt_r(e['cum_r'])} · "
+         f"worst drawdown ever {_fmt_r(e['max_dd_r'])}"),
+        open_line,
+        f"Page #{page_id} · night {as_of.isoformat()} · the nightly ladder read (ADR 0022 §1)",
+    ]
+    return "\n".join(lines)
+
+
+def build_ladder_keyboard(page_id: int, phase: str) -> dict:
+    """The two buttons. A rung with nothing below (shadow) gets no Demote button — the bottom
+    rung cannot be demoted, so the page cannot offer it."""
+    row = []
+    below = DEMOTE_TO.get(phase)
+    if below:
+        row.append({"text": f"⬇️ Demote to {below}", "callback_data": f"{CALLBACK_PREFIX}demote:{page_id}"})
+    row.append({"text": "No action", "callback_data": f"{CALLBACK_PREFIX}noaction:{page_id}"})
+    return {"inline_keyboard": [row]}
+
+
 # ── Data (DB-sourced; read-only) ────────────────────────────────────────────────────────────
 
 
@@ -199,6 +366,13 @@ async def fetch_closed_r_series(conn, signal_type: str, account_mode: str, *, to
     }
 
 
+async def fetch_open_positions(conn, signal_type: str, account_mode: str) -> dict:
+    """The strategy's open positions on ITS book: {count, tickers}."""
+    rows = await conn.fetch(_OPEN_POSITIONS_SQL, signal_type, account_mode)
+    tickers = [r["ticker"] for r in rows]
+    return {"count": len(tickers), "tickers": tickers}
+
+
 # ── The nightly step ────────────────────────────────────────────────────────────────────────
 
 
@@ -211,29 +385,141 @@ def _summary_prefix(as_of: date) -> str:
     could have seen — entered on or before `as_of` AND closed (ET date of `closed_at`, falling
     back to `alert_date` for a row with no `closed_at`) on or before `as_of` — so a late re-run
     does not score trades that closed afterwards; (2) when a row for that `as_of` already
-    exists the write is skipped (`row_already_written` on the returned dict), so a manual or
-    recovery re-run cannot stack a second row (the first stands; to recompute, delete it). The
-    key is the SUMMARY prefix, not `detail`: `detail` is a TEXT column whose JSON
-    `_fit_audit_detail` may wrap in a truncation envelope, so a SQL cast of it is unsafe and a
-    key inside it can vanish. NOT a lock — `max_instances=1` plus `jobs_in_flight()` already
-    keep two runs of the job from overlapping."""
+    exists the write AND the paging are skipped (`row_already_written` on the returned dict),
+    so a manual or recovery re-run cannot stack a second row or a second page (the first
+    stands; to recompute, delete it). The key is the SUMMARY prefix, not `detail`: `detail` is a
+    TEXT column whose JSON `_fit_audit_detail` may wrap in a truncation envelope, so a SQL cast
+    of it is unsafe and a key inside it can vanish. NOT a lock — `max_instances=1` plus
+    `jobs_in_flight()` already keep two runs of the job from overlapping."""
+    return f"ladder watchdog {as_of.isoformat()}:"
+
+
+def _legacy_summary_prefix(as_of: date) -> str:
+    """The spelling every row before the act step (2026-11-07) carries."""
     return f"ladder watchdog (DARK) {as_of.isoformat()}:"
 
 
-def _summary(as_of: date, evaluated: list[dict]) -> str:
+def _summary(as_of: date, evaluated: list[dict], paged: list[dict]) -> str:
     who = ", ".join(f"{e['strategy_id']}/{e['account_mode']}" for e in evaluated) or "none"
     n_would = sum(1 for e in evaluated if e["would_demote"])
+    sent = ", ".join(p["strategy_id"] for p in paged if p["action"] == "paged") or "none"
     return (f"{_summary_prefix(as_of)} {len(evaluated)} evaluated ({who}) · "
-            f"{n_would} would demote · acted: none")
+            f"{n_would} would demote · paged: {sent} · acted: none (a phase moves only on his press)")
+
+
+async def page_breaches(as_of: date, evaluated: list[dict]) -> list[dict]:
+    """The act step's SEND half: for each evaluated strategy, apply the paging cadence
+    (`decide_page`) against the DB state, send the page where it says so, persist the page and
+    the episode. Returns one record per strategy that produced an event — `action` in
+    {paged, skipped, episode closed, held, send failed} — for the nightly row; a strategy with
+    no breach and no open episode produces none.
+
+    Telegram is never called while a pool connection is held; every audit row written inside a
+    connection block hands that connection over (`log_audit_event(conn=...)` — never a second
+    acquire). Writes nothing but audit rows and its own two tables."""
+    from agents.market_intelligence.briefing import send_telegram_message
+    from agents.market_intelligence.constants import strategy_mode_prefix
+    from agents.market_intelligence.db import _jsonb_list_param, _jsonb_param, get_pool, log_audit_event
+    from shared.dates import recovery_pin
+
+    pool = await get_pool()
+    out: list[dict] = []
+    for e in evaluated:
+        sid, phase, mode = e["strategy_id"], e["phase"], e["account_mode"]
+        breached_now = breached_names(e["triggers"])
+        async with pool.acquire() as conn:
+            ep = await conn.fetchrow(_OPEN_EPISODE_SQL, sid)
+            ep = dict(ep) if ep else None
+            last = await conn.fetchrow(_LAST_SENT_PAGE_SQL, sid, ep["opened_on"]) if ep else None
+            last = dict(last) if last else None
+        if last is not None and isinstance(last.get("breached"), str):
+            last["breached"] = json.loads(last["breached"])
+        action, reason = decide_page(would_demote=e["would_demote"], breached_now=breached_now,
+                                     phase=phase, open_episode=ep, last_page=last)
+        rec = {"strategy_id": sid, "action": None, "reason": reason, "page_id": None}
+        if action == "none":
+            continue
+        if action == "close":
+            closed_by = "cleared" if ep["phase"] == phase else "phase_moved"
+            async with pool.acquire() as conn:
+                await conn.execute(_CLOSE_EPISODE_SQL, as_of, closed_by, sid, ep["opened_on"])
+                await log_audit_event(
+                    CLEARED_EVENT,
+                    f"{sid}/{mode}: the breach episode opened {ep['opened_on']} closed on "
+                    f"{as_of.isoformat()} ({closed_by}) — no limit breached tonight",
+                    json.dumps({"strategy_id": sid, "phase": phase, "episode_on": ep["opened_on"],
+                                "closed_on": as_of, "closed_by": closed_by}, default=str),
+                    conn=conn)
+            rec["action"] = "episode closed"
+            out.append(rec)
+            continue
+        if action == "skip":
+            rec.update(action="skipped", page_id=last["id"])
+            out.append(rec)
+            continue
+        # action == "page"
+        if recovery_pin() is not None:
+            rec.update(action="held", reason=(f"recovery re-run: a held Telegram reports success without "
+                                              f"reaching him, so the episode stays unpaged for the next "
+                                              f"live night — {reason}"))
+            out.append(rec)
+            continue
+        if ep is not None and ep["phase"] != phase:
+            async with pool.acquire() as conn:
+                await conn.execute(_CLOSE_EPISODE_SQL, as_of, "phase_moved", sid, ep["opened_on"])
+            ep = None
+        episode_on = ep["opened_on"] if ep else as_of
+        async with pool.acquire() as conn:
+            page_id = await conn.fetchval(
+                _INSERT_PAGE_SQL, sid, episode_on, as_of, phase, e["would_demote_to"],
+                _jsonb_list_param(breached_now), _jsonb_param(e))
+        if page_id is None:
+            # One page per strategy per night (UNIQUE): a same-night re-run whose first pass wrote
+            # its page but lost its audit row (log_audit_event never raises) must not page twice.
+            rec.update(action="skipped", reason="a page for tonight already exists (same-night re-run)")
+            out.append(rec)
+            continue
+        # The book tag picks the chat (#699): a paper lane's breach goes to the paper chat, a
+        # live strategy's to the main chat. From the RESOLVED mode — never the process default.
+        text = strategy_mode_prefix(mode) + format_breach_page(e, page_id=page_id, as_of=as_of)
+        ok = await send_telegram_message(text, parse_mode="HTML",
+                                         reply_markup=build_ladder_keyboard(page_id, phase))
+        if not ok:
+            logger.error(f"ladder watchdog: breach page #{page_id} for {sid} did not send")
+            await log_audit_event(
+                SEND_ERROR_EVENT,
+                f"{sid}/{mode}: breach page #{page_id} did not send — the episode is NOT paged; "
+                f"the next breach night retries",
+                json.dumps({"strategy_id": sid, "phase": phase, "page_id": page_id, "as_of": as_of,
+                            "breached": breached_now}, default=str))
+            rec.update(action="send failed", page_id=page_id)
+            out.append(rec)
+            continue
+        async with pool.acquire() as conn:
+            await conn.execute(_MARK_PAGE_SENT_SQL, page_id)
+            if ep is None:
+                await conn.execute(_OPEN_EPISODE_INSERT_SQL, sid, episode_on, phase)
+            await log_audit_event(
+                PAGED_EVENT,
+                f"{sid}/{mode}: breach page #{page_id} sent ({reason}) — breached: "
+                f"{', '.join(breached_now)}; Demote → {e['would_demote_to']} or No action is his press",
+                json.dumps({"strategy_id": sid, "phase": phase, "page_id": page_id, "as_of": as_of,
+                            "episode_on": episode_on, "breached": breached_now, "reason": reason},
+                           default=str),
+                conn=conn)
+        rec.update(action="paged", page_id=page_id)
+        out.append(rec)
+    return out
 
 
 async def run_ladder_watchdog(*, today: date | None = None) -> dict:
-    """One nightly pass → ONE `ladder_demotion_shadow` audit row. Returns the row's detail.
+    """One nightly pass → ONE `ladder_demotion_shadow` audit row, plus a breach page per the
+    cadence above. Returns the row's detail.
 
-    Reads the registry and `mi_live_trades`; writes `mi_audit_log` only. A crash propagates to
-    `audit_wrap` (run 'failed', `job_failed_error` row, one deduped page). A re-run of a night
-    that already has its row skips the write and returns `row_already_written: True` — see
-    `_summary_prefix`."""
+    Reads the registry and `mi_live_trades`; writes `mi_audit_log` and its own page / episode
+    rows. A crash propagates to `audit_wrap` (run 'failed', `job_failed_error` row, one deduped
+    page). A re-run of a night that already has its row skips the write AND the paging and
+    returns `row_already_written: True` — see `_summary_prefix`."""
     from agents.market_intelligence.constants import resolve_account_mode_for_strategy
     from agents.market_intelligence.db import get_pool, log_audit_event
     from agents.market_intelligence.strategies.registry import _load_all
@@ -259,7 +545,8 @@ async def run_ladder_watchdog(*, today: date | None = None) -> dict:
     pool = await get_pool()
     async with pool.acquire() as conn:
         already_written = bool(await conn.fetchval(
-            _NIGHT_ROW_EXISTS_SQL, AUDIT_EVENT, _summary_prefix(as_of) + "%"))
+            _NIGHT_ROW_EXISTS_SQL, AUDIT_EVENT, _summary_prefix(as_of) + "%",
+            _legacy_summary_prefix(as_of) + "%"))
         for s in targets:
             mode = resolve_account_mode_for_strategy(s)
             data = await fetch_closed_r_series(conn, s.signal_type, mode, today=as_of)
@@ -272,28 +559,33 @@ async def run_ladder_watchdog(*, today: date | None = None) -> dict:
                 "cum_r": v["cum_r"], "max_dd_r": v["max_dd_r"],
                 "triggers": v["triggers"], "would_demote": v["would_demote"],
                 "reasons": v["reasons"],
+                "open_positions": await fetch_open_positions(conn, s.signal_type, mode),
             })
-    # The connection is RELEASED before the audit write below — holding one while asking the
-    # pool for a second is the 2026-09-17 deadlock class (tests/test_no_nested_pool_acquire).
+    # The connection is RELEASED before the paging and the audit write below — holding one
+    # while asking the pool for a second is the 2026-09-17 deadlock class
+    # (tests/test_no_nested_pool_acquire), and a Telegram send must never sit on a connection.
+
+    paged = [] if already_written else await page_breaches(as_of, evaluated)
 
     detail = {
         "as_of": as_of.isoformat(),
         "ran_at_et": datetime.now(_ET).isoformat(timespec="seconds"),
-        "mode": "dark",
+        "mode": "page",
         "thresholds": dict(M1F_DEMOTION_TRIGGERS),
         "min_closed_trades": MIN_CLOSED_TRADES,
         "evaluated": evaluated,
         "skipped": skipped,
         "would_demote_count": sum(1 for e in evaluated if e["would_demote"]),
+        "paged": paged,
         "acted": False,
-        "note": ("DARK — this module has no phase/sizing/order path; a would-demote is this "
-                 "row, nothing else. Any live flip is operator sign-off (THE LINE)."),
+        "note": ("This job has no phase/sizing/order path: a breach is a PAGE to the operator "
+                 "(Demote / No action); only his press moves a phase (ladder_press.py, THE LINE)."),
     }
     if already_written:
         logger.info(f"ladder watchdog: a row for {as_of.isoformat()} already exists — "
-                    f"write skipped")
+                    f"write and paging skipped")
         detail["row_already_written"] = True   # on the RETURNED dict only; the stored row stands
     else:
-        await log_audit_event(AUDIT_EVENT, _summary(as_of, evaluated),
+        await log_audit_event(AUDIT_EVENT, _summary(as_of, evaluated, paged),
                               json.dumps(detail, default=str))
     return detail

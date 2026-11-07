@@ -205,7 +205,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "evening_briefing", "friday_watchlist", "hud_refresh",
     "sugar_babies_cohort_refresh", "position_mgmt_judge",
     "chart_axis_shadow", "chart_axis_shadow_weekly_digest", "kill_scale_band_eval",
-    "ladder_watchdog",  # #312 ADR 0022 L2 (2026-10-15) — DARK nightly demotion-trigger read per paper/live strategy; registry + mi_live_trades READ, ONE audit row, no phase/sizing/order write, no broker, SILENT (no Telegram) — same DB-only shape as kill_scale_band_eval
+    "ladder_watchdog",  # #312 ADR 0022 L2 (2026-10-15; act step 2026-11-07) — nightly demotion-trigger read per paper/live strategy; registry + mi_live_trades READ, ONE audit row + its own page/episode rows, no phase/sizing/order write, no broker; on a breach ONE Telegram page with Demote / No action buttons (his press moves the phase, in ladder_press.py, never this job)
     "breakout_v1_list",  # breakout v1 PAPER phase 1 (2026-10-29) — the nightly list (mi_daily_closes + mi_security_types READ, mi_breakout_v1_list + ONE audit row WRITTEN) and ONE paper-chat Telegram naming tonight's names (only when the list is non-empty); no phase/sizing/order write, no strategy row, no broker import
     "consolidation_breakout_shadow",  # #702 P6 (2026-10-17) — Consolidation Breakout forward SHADOW; mi_daily_closes + Alpaca minute-bar READ, four shadow tables + ONE audit row WRITTEN, no phase/sizing/order write, no broker import (gate 5j), SILENT (no Telegram on a normal night) — same DB-only shape as ladder_watchdog
     # data / RS / regime / crypto
@@ -5517,12 +5517,14 @@ async def _book_concentration_job():
 
 
 async def _ladder_watchdog_job():
-    """16:17 ET mon-fri — the DARK ladder demotion watchdog (#312, ADR 0022 §1): one audit row,
-    no act step (`ladder_watchdog.py`). A crash propagates to `audit_wrap`."""
+    """16:17 ET mon-fri — the ladder demotion watchdog (#312, ADR 0022 §1): one audit row, and on a
+    breach ONE page to the operator with Demote / No action buttons (`ladder_watchdog.py`; the press
+    is `ladder_press.py`). The job itself moves no phase. A crash propagates to `audit_wrap`."""
     from agents.market_intelligence.ladder_watchdog import run_ladder_watchdog
     res = await run_ladder_watchdog()
-    logger.info(f"ladder watchdog (dark): {len(res['evaluated'])} evaluated, "
-                f"{res['would_demote_count']} would demote, acted: none")
+    paged = [p["strategy_id"] for p in res.get("paged", []) if p["action"] == "paged"]
+    logger.info(f"ladder watchdog: {len(res['evaluated'])} evaluated, "
+                f"{res['would_demote_count']} would demote, paged: {paged or 'none'}, acted: none")
 
 
 async def _consolidation_breakout_shadow_job():

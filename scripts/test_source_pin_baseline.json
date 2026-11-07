@@ -3,6 +3,7 @@
     "tests/test_184_terminal_without_reason.py": 4,
     "tests/test_216_jsonb_encoding_guard.py": 2,
     "tests/test_216_jsonb_repair.py": 1,
+    "tests/test_312_ladder_act_step.py": 1,
     "tests/test_347_live_enriched_flip.py": 6,
     "tests/test_414_submit_window_variant.py": 1,
     "tests/test_448_rubric_pass_telemetry.py": 5,

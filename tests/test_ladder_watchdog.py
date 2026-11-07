@@ -1,28 +1,35 @@
-"""ADR 0022 L2 — the ladder demotion watchdog, built DARK (#312, 2026-10-15).
+"""ADR 0022 L2 — the ladder demotion watchdog (#312): the nightly read, built DARK 2026-10-15;
+the act step — HIS page with Demote / No action — added 2026-11-07.
 
 ADR §6's L2 plan reads "synthetic breach → demotion + alert + history row; no-breach → zero
-writes". Adapted to the dark build the operator asked for (2026-10-12: "ships dark; any live
-flip is his sign-off"), the bar is:
+writes". As the operator ruled it (2026-10-12: "ships dark; any live flip is his sign-off";
+2026-11-04: demotion is his one click on a stats page), the bar here is:
 
   * a synthetic breach of EACH trigger → `would_demote: true` (the pure evaluator, one test per
     trigger), and a synthetic STREAK breach through the real run → `would_demote: true` IN THE
-    AUDIT ROW with the spied DB layer seeing exactly one write — the audit INSERT — never
-    `mi_strategies`, never an order or sizing path, never a Telegram;
-  * no breach → `would_demote: false`, still one row (the row existing is the liveness proof);
+    AUDIT ROW, exactly ONE Telegram page with both buttons, and the spied DB layer seeing only
+    the audit INSERTs and the ladder's own page / episode rows — never `mi_strategies`, never an
+    order or sizing path, never `update_strategy`;
+  * no breach → `would_demote: false`, still one row (the row existing is the liveness proof),
+    no page;
   * too few trades → "not enough data" on every trigger, never a breach.
 
-The orchestrator tests run the REAL `run_ladder_watchdog` over `tests.conftest.make_mock_pool`
-(the same harness the kill/scale band tests use), so the query wiring, the account-mode threading
-and the audit write are exercised, not re-described. The mock DB interprets ONLY the clauses
-the watchdog's own SQL declares — its ORDER BY, the as-of bound and the "tonight's row exists"
-lookup — so a change to that SQL changes what the run sees (there is no Postgres in the test
-environment to execute it). The one source scan at the bottom checks the NON-existence of an act
-step, which no call can exercise — it carries the reviewed escape.
+The page's CADENCE and the PRESS (what each button does) are `tests/test_312_ladder_act_step.py`.
+
+The orchestrator tests run the REAL `run_ladder_watchdog` over `tests._ladder_fake_db.LadderFakeDb`
+(shared with the act-step tests), so the query wiring, the account-mode threading and the audit
+write are exercised, not re-described. The fake interprets ONLY the statements the watchdog's own
+SQL declares — the trade read's ORDER BY and as-of bounds, the open-positions read, the episode /
+page rows and the "tonight's row exists" lookup — so a change to that SQL changes what the run
+sees (there is no Postgres in the test environment to execute it). The source scan at the bottom
+checks the NON-existence of a phase / sizing / order path in this module, which no call can
+exercise — it carries the reviewed escape.
 """
 from __future__ import annotations
 
 import ast
 import asyncio
+import dataclasses
 import datetime as dt
 import json
 from pathlib import Path
@@ -35,6 +42,7 @@ from agents.market_intelligence import ladder_watchdog as lw
 from agents.market_intelligence.strategies import registry
 from agents.market_intelligence.strategies.registry import Strategy
 from tests._audit_emitters import TELEGRAM_SENDERS
+from tests._ladder_fake_db import LadderFakeDb
 
 _TODAY = dt.date(2026, 10, 15)
 
@@ -218,80 +226,44 @@ def _closed_rows(rs, *, exit_rule=None, first_id=1):
                      exit_rule=exit_rule) for i, r in enumerate(rs)]
 
 
-def _order_key(cols):
-    return lambda row: tuple(row[c] for c in cols)
-
-
 class _Spy:
-    """Every statement the watchdog sent to the DB, by verb, plus the senders it must never
-    reach. Wires `db.get_pool` (used by both the watchdog's read and `log_audit_event`) so the
-    REAL audit write is observed, not mocked away.
+    """Every statement the watchdog sent to the DB, by verb, every page it sent, and the paths it
+    must never reach. Built on `tests._ladder_fake_db.LadderFakeDb` (wired into `db.get_pool`, so
+    the REAL audit write is observed, not mocked away; `registry._load_all` answers from the
+    fake's rows — fresh, never the process cache — and `briefing.send_telegram_message` is
+    RECORDED). Stored trade rows are served REVERSED, so a read with no ORDER BY — or the wrong
+    one — hands the evaluator a different series. Edit the SQL and the fake follows what it says.
 
-    There is no Postgres in the test environment, so the mock DB INTERPRETS the clauses the
-    watchdog's SQL declares — and only those: the trade read's ORDER BY, its `alert_date <= $3`
-    and `COALESCE(<closed_at ET date>, alert_date) <= $3` bounds, and the "tonight's row exists"
-    lookup over the audit rows it has seen (pre-seeded via `prior_audit` and appended to by every
-    audit INSERT). Stored rows are served REVERSED, so a read with no ORDER BY — or the wrong one
-    — hands the evaluator a different series. Edit the SQL and the mock follows what it says."""
+    The nightly pass must never move a phase or page through a failure channel: `update_strategy`,
+    `notify_owner` and `notify_job_failure` raise if reached. (The breach PAGE itself goes through
+    `send_telegram_message`, recorded in `sends` — since 2026-11-07 that is the act step's send
+    half; the press that may move a phase is `ladder_press.py`, tested in test_312.)"""
 
-    def __init__(self, monkeypatch, strategies, rows_by_key, prior_audit=()):
-        from tests.conftest import make_mock_pool
-        self.calls: list[tuple[str, str, tuple]] = []
-        self.audit_seen: list[tuple[str, str]] = list(prior_audit)   # (event_type, summary)
-        pool, conn = make_mock_pool()
+    def __init__(self, monkeypatch, strategies, rows_by_key, prior_audit=(), open_positions=None):
+        self.db = LadderFakeDb(
+            strategies=[dataclasses.asdict(s) for s in strategies],
+            closed_rows=rows_by_key, open_positions=open_positions, prior_audit=prior_audit,
+        ).wire(monkeypatch)
 
-        async def fetch(sql, *args, **kw):
-            self.calls.append(("fetch", sql, args))
-            rows = list(reversed(rows_by_key.get(tuple(args[:2]), [])))
-            as_of = args[2] if len(args) > 2 else None
-            if "alert_date <= $3" in sql:
-                rows = [r for r in rows if r["alert_date"] <= as_of]
-            if "COALESCE((closed_at AT TIME ZONE 'America/New_York')::date, alert_date) <= $3" in sql:
-                rows = [r for r in rows if (r.get("closed_on_et") or r["alert_date"]) <= as_of]
-            if "ORDER BY" in sql:
-                cols = [c.split()[0] for c in sql.split("ORDER BY", 1)[1].split(",")]
-                rows = sorted(rows, key=_order_key(cols))
-            return rows
-
-        async def fetchval(sql, *args, **kw):
-            self.calls.append(("fetchval", sql, args))
-            assert sql == lw._NIGHT_ROW_EXISTS_SQL, f"unexpected fetchval: {sql}"
-            event_type, pattern = args
-            assert pattern.endswith("%") and "%" not in pattern[:-1] and "_" not in pattern
-            return 1 if any(e == event_type and m.startswith(pattern[:-1])
-                            for e, m in self.audit_seen) else None
-
-        async def execute(sql, *args, **kw):
-            self.calls.append(("execute", sql, args))
-            if sql == dbmod._AUDIT_INSERT_SQL:
-                self.audit_seen.append((args[0], args[1]))
-            return "INSERT 0 1"
-
-        conn.fetch = fetch
-        conn.fetchval = fetchval
-        conn.execute = execute
-        conn.fetchrow = AsyncMock(side_effect=AssertionError("unexpected fetchrow"))
-        conn.executemany = AsyncMock(side_effect=AssertionError("unexpected executemany"))
-        monkeypatch.setattr(dbmod, "get_pool", AsyncMock(return_value=pool))
-        # The watchdog reads the rows FRESH (`registry._load_all`, a plain SELECT), never the
-        # process cache — a hand-UPDATE of a phase the same day must land in tonight's row.
-        monkeypatch.setattr(registry, "_load_all",
-                            AsyncMock(return_value={s.strategy_id: s for s in strategies}))
-        monkeypatch.setattr(registry, "load_strategies",
-                            AsyncMock(side_effect=AssertionError(
-                                "the watchdog must read the registry fresh, not the cache")))
-
-        # The act step must not exist: if anything in the pass reaches a phase writer, a sizing
-        # knob or a Telegram sender, the test fails loudly rather than recording a "write".
         async def _forbidden(*a, **k):
-            raise AssertionError(f"DARK watchdog reached a forbidden path: {a} {k}")
+            raise AssertionError(f"the nightly pass reached a forbidden path: {a} {k}")
 
         monkeypatch.setattr(registry, "update_strategy", _forbidden)
-        from agents.market_intelligence import briefing
         from core import notifications
-        monkeypatch.setattr(briefing, "send_telegram_message", _forbidden)
         monkeypatch.setattr(notifications, "notify_owner", _forbidden)
         monkeypatch.setattr(notifications, "notify_job_failure", _forbidden)
+
+    @property
+    def calls(self):
+        return self.db.statements
+
+    @property
+    def sends(self):
+        return self.db.sends
+
+    @property
+    def trade_reads(self):
+        return [c for c in self.calls if c[0] == "fetch" and c[1] == lw._CLOSED_TRADES_SQL]
 
     @property
     def writes(self):
@@ -312,9 +284,10 @@ def _row_detail(spy, event=lw.AUDIT_EVENT):
     return rows[0][2][1], json.loads(rows[0][2][2])
 
 
-def test_breach_writes_would_demote_true_and_touches_nothing_else(monkeypatch):
-    """ADR §6 L2, dark: synthetic breach → the row says would_demote, and the DB layer saw ONE
-    write — the audit INSERT. No UPDATE, no mi_strategies, no order/sizing table, no Telegram."""
+def test_breach_writes_would_demote_true_pages_once_and_moves_nothing(monkeypatch):
+    """ADR §6 L2 as ruled: synthetic breach → the row says would_demote, ONE page with both buttons
+    went to him, and the DB layer saw only the audit INSERTs and the ladder's own page / episode
+    rows. No mi_strategies, no order/sizing table, no phase writer, no delete."""
     strategies = [_strategy("magna53", "live", live_real=True),
                   _strategy("magna53_smallcap", "paper")]
     spy = _Spy(monkeypatch, strategies, {
@@ -331,15 +304,27 @@ def test_breach_writes_would_demote_true_and_touches_nothing_else(monkeypatch):
     assert by_id["magna53"]["triggers"]["consec_losses"] == {
         "value": 6, "threshold": 6, "breached": True, "status": "evaluated"}
     assert by_id["magna53_smallcap"]["would_demote"] is False
-    assert row["would_demote_count"] == 1 and row["acted"] is False and row["mode"] == "dark"
-    assert "1 would demote" in summary and "acted: none" in summary
+    assert row["would_demote_count"] == 1 and row["acted"] is False and row["mode"] == "page"
+    assert "1 would demote" in summary and "paged: magna53" in summary and "acted: none" in summary
 
-    # ZERO writes anywhere but the audit log.
-    assert len(spy.writes) == 1 and spy.writes[0][1] == dbmod._AUDIT_INSERT_SQL
+    # ONE page, both buttons, for the breaching strategy only.
+    assert len(spy.sends) == 1
+    btns = [b for r in spy.sends[0]["reply_markup"]["inline_keyboard"] for b in r]
+    assert [b["callback_data"] for b in btns] == [f"ladder:demote:{row['paged'][0]['page_id']}",
+                                                  f"ladder:noaction:{row['paged'][0]['page_id']}"]
+    assert "magna53" in spy.sends[0]["text"] and "magna53_smallcap" not in spy.sends[0]["text"]
+
+    # The writes: audit INSERTs plus the ladder's own two tables — nothing else, and no phase.
+    ladder_tables = {"mi_ladder_pages", "mi_ladder_episodes"}
+    for verb, sql, _ in spy.writes:
+        assert sql == dbmod._AUDIT_INSERT_SQL or any(t in sql for t in ladder_tables), (verb, sql)
     for verb, sql, _ in spy.calls:
         up = sql.upper()
-        assert "UPDATE" not in up and "MI_STRATEGIES" not in up and "DELETE" not in up, (verb, sql)
+        assert "MI_STRATEGIES" not in up and "DELETE" not in up, (verb, sql)
         assert "ORDER" not in up.replace("ORDER BY", "") and "POSITION_SIZE" not in up
+        if "UPDATE" in up:
+            assert any(t.upper() in up for t in ladder_tables), (verb, sql)
+    assert spy.db.phase_writes == []
 
 
 def test_each_strategy_is_read_on_its_own_book(monkeypatch):
@@ -349,12 +334,16 @@ def test_each_strategy_is_read_on_its_own_book(monkeypatch):
                   _strategy("magna53_smallcap", "paper")]
     spy = _Spy(monkeypatch, strategies, {})
     _run()
-    reads = [c[2] for c in spy.calls if c[0] == "fetch"]
+    reads = [c[2] for c in spy.trade_reads]
     assert sorted(r[:2] for r in reads) == [("magna53", "live"), ("magna53_smallcap", "paper")]
     assert all(r[2] == _TODAY for r in reads)   # the night being scored rides as $3
-    for _, sql, _ in [c for c in spy.calls if c[0] == "fetch"]:
+    for _, sql, _ in spy.trade_reads:
         assert "account_mode = $2" in sql and "pnl_attribution IS NULL" in sql
         assert "status = 'closed'" in sql
+    # The open-positions read (the page's count + tickers) carries the SAME (signal, book) pair.
+    pos_reads = [c[2] for c in spy.calls if c[0] == "fetch" and c[1] == lw._OPEN_POSITIONS_SQL]
+    assert sorted(pos_reads) == [("magna53", "live"), ("magna53_smallcap", "paper")]
+    assert "account_mode = $2" in lw._OPEN_POSITIONS_SQL
 
 
 def test_no_breach_still_writes_one_row_with_would_demote_false(monkeypatch):
@@ -394,7 +383,7 @@ def test_shadow_deprecated_and_disabled_are_skipped_with_a_reason(monkeypatch):
     assert "no rung below" in row["skipped"]["9m_day2"]
     assert row["skipped"]["paused_lane"].startswith("disabled")
     # only the evaluated strategy was read
-    assert [c[2][:2] for c in spy.calls if c[0] == "fetch"] == [("magna53", "live")]
+    assert [c[2][:2] for c in spy.trade_reads] == [("magna53", "live")]
 
 
 def test_rows_without_an_r_frame_are_excluded_and_counted(monkeypatch):
@@ -494,7 +483,7 @@ def test_the_trade_read_carries_both_as_of_bounds(monkeypatch):
     """The SQL itself names both bounds on the night being scored ($3)."""
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)], {})
     _run()
-    (_, sql, args), = [c for c in spy.calls if c[0] == "fetch"]
+    (_, sql, args), = spy.trade_reads
     assert "alert_date <= $3" in sql
     assert "COALESCE((closed_at AT TIME ZONE 'America/New_York')::date, alert_date) <= $3" in sql
     assert args == ("magna53", "live", _TODAY)
@@ -511,15 +500,17 @@ def test_a_rerun_of_the_same_night_writes_no_second_row(monkeypatch):
     assert "row_already_written" not in first
     assert second["row_already_written"] is True
     assert second["would_demote_count"] == first["would_demote_count"] == 1   # still evaluated
-    assert len(spy.audit_rows) == 1 and len(spy.writes) == 1
+    nightly = [c for c in spy.audit_rows if c[2][0] == lw.AUDIT_EVENT]
+    assert len(nightly) == 1
+    assert len(spy.sends) == 1 and second["paged"] == []      # …and no second page either
 
 
 def test_an_existing_row_for_another_night_does_not_suppress_tonights(monkeypatch):
     """The existence key is the night AND the event type: yesterday's row (here pre-seeded) and
     the same night's row of another event type do not stop tonight's `ladder_demotion_shadow`."""
     yesterday = _TODAY - dt.timedelta(days=1)
-    prior = [(lw.AUDIT_EVENT, lw._summary(yesterday, [])),
-             ("some_other_event", lw._summary(_TODAY, []))]
+    prior = [(lw.AUDIT_EVENT, lw._summary(yesterday, [], [])),
+             ("some_other_event", lw._summary(_TODAY, [], []))]
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)], {}, prior_audit=prior)
     detail = _run()
     assert "row_already_written" not in detail
@@ -528,6 +519,15 @@ def test_an_existing_row_for_another_night_does_not_suppress_tonights(monkeypatc
     # …and the next evening writes its own row again
     _run(today=_TODAY + dt.timedelta(days=1))
     assert len(spy.audit_rows) == 2
+
+
+def test_a_row_written_before_the_act_step_still_counts_as_tonights(monkeypatch):
+    """Every row before 2026-11-07 reads `ladder watchdog (DARK) <date>:` — a re-run of such a
+    night must find it (the lookup carries both spellings), or it would stack a second row."""
+    prior = [(lw.AUDIT_EVENT, lw._legacy_summary_prefix(_TODAY) + " 2 evaluated …")]
+    spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)], {}, prior_audit=prior)
+    detail = _run()
+    assert detail["row_already_written"] is True and spy.audit_rows == []
 
 
 # ─── 2b. The scheduler job: a crash must reach the run ledger, not be swallowed ────────────
@@ -584,20 +584,25 @@ def test_ladder_watchdog_is_registered_intelligence_owned_after_the_close(monkey
     assert jobs[lw.JOB_ID].misfire_grace_time == 600
 
 
-# ─── 4. The act step does not exist — a structural check, not a flag ───────────────────────
+# ─── 4. The nightly pass has no phase / sizing / order path — a structural check, not a flag ──
 
 
-def test_the_module_has_no_phase_sizing_order_or_telegram_path():
-    # source-pin-ok: the NON-existence of an act step cannot be exercised by calling anything;
-    # the runtime tests above prove no write happened on a breach, this proves there is no code
-    # path that could — no "live mode" flag a typo could flip.
+def test_the_module_has_no_phase_sizing_or_order_path():
+    # source-pin-ok: the NON-existence of a phase writer cannot be exercised by calling anything;
+    # the runtime tests above prove no phase write happened on a breach, this proves there is no
+    # code path that could — no "auto mode" flag a typo could flip. Since 2026-11-07 the module
+    # DOES send the breach page (`send_telegram_message`, the act step's send half); the failure
+    # channels (`notify_owner` / `notify_job_failure` / `record_job_failure`) stay forbidden, and
+    # the phase writer stays forbidden — the only caller of `update_strategy` with a phase outside
+    # the typed commands is `ladder_press.py`, pinned across the codebase in test_312.
     src = Path(lw.__file__).read_text(encoding="utf-8")
     tree = ast.parse(src)
     names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
     attrs = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
     imported = {a.name for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)
                 for a in n.names}
-    forbidden = TELEGRAM_SENDERS | {
+    assert "send_telegram_message" in imported | names      # the page IS sent from here
+    forbidden = (TELEGRAM_SENDERS - {"send_telegram_message"}) | {
         "update_strategy", "submit_trade_entry", "place_stop_order", "replace_order",
         "claim_safeguard_state_transition", "set_safeguard_state"}
     assert not forbidden & (names | attrs | imported), forbidden & (names | attrs | imported)
@@ -611,8 +616,12 @@ def test_the_module_has_no_phase_sizing_order_or_telegram_path():
                 docstrings.add(id(first.value))
     strings = [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant)
                and isinstance(n.value, str) and id(n) not in docstrings]
+    # The module may UPDATE only its own two tables (a page marked sent, an episode closed);
+    # any mention of mi_strategies, or an UPDATE on anything else, is a phase/sizing path.
+    own_tables = ("mi_ladder_pages", "mi_ladder_episodes")
     sql_like = [s for s in strings if "mi_strategies" in s.lower()
-                or ("update " in s.lower() and " set " in s.lower())]
+                or ("update " in s.lower() and " set " in s.lower()
+                    and not any(t in s for t in own_tables))]
     assert not sql_like, sql_like
     body = src.split('"""', 2)[2]   # after the module docstring
     assert "position_size_multiplier" not in body and "live_mode" not in body.lower()
