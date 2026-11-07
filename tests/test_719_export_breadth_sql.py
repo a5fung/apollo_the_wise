@@ -14,6 +14,7 @@ captured output sits beside the script).
 """
 from __future__ import annotations
 
+import functools
 import os
 import re
 import shutil
@@ -36,6 +37,7 @@ def _strip_comments(sql: str) -> str:
     return re.sub(r"--[^\n]*", "", sql)
 
 
+@functools.cache
 def _code() -> str:
     """The SQL with every `--` comment removed."""
     return _strip_comments(SQL_PATH.read_text())
@@ -343,16 +345,6 @@ def rig(tmp_path):
     return run, published, seed_breadth, dest
 
 
-def test_first_breadth_publish_is_seen_and_committed(rig):
-    """The breadth file's first publish is UNTRACKED: change detection must see it (git diff --quiet would not)."""
-    run, published, _, _ = rig
-    r = run(FAKE_NONCE="a", FAKE_BREADTH="ok")
-    assert r.returncode == 0, r.stderr
-    assert '"breadth": "a"' in (published(BREADTH) or "")
-    for f in THREE:
-        assert '"a"' in published(f)
-
-
 def test_a_new_breadth_file_alone_is_a_change(rig):
     """The three unchanged + breadth published for the first time: only an UNTRACKED file differs. `git diff --quiet`
     would report 'no change' here and the breadth page would never get its first file."""
@@ -377,21 +369,17 @@ def test_a_failing_breadth_export_never_blocks_the_three(rig):
     assert not (dest / f"{BREADTH}.tmp").exists()
 
 
-def test_breadth_psql_stops_on_a_sql_error(rig, tmp_path):
-    """Without ON_ERROR_STOP, psql exits 0 on a SQL error with empty output; the flag makes the failure an exit code."""
+def test_breadth_psql_stops_on_a_sql_error_and_carries_a_statement_timeout(rig, tmp_path):
+    """Without ON_ERROR_STOP, psql exits 0 on a SQL error with empty output; the flag makes the failure an exit code.
+    The statement timeout makes a hung breadth query end (non-zero exit, handled by the guard) instead of holding up
+    the other three snapshots, which commit after it (review 2026-11-04: a lock on mi_daily_closes hung it)."""
     run, _, _, _ = rig
     assert run(FAKE_NONCE="h").returncode == 0
     calls = (tmp_path / "docker.log").read_text().splitlines()
-    assert calls and all("-v ON_ERROR_STOP=1" in c for c in calls), calls
-
-
-def test_breadth_psql_carries_a_statement_timeout(rig, tmp_path):
-    """A hung breadth query must end (non-zero exit, handled by the guard) instead of holding up the
-    other three snapshots, which commit after it (review 2026-11-04: a lock on mi_daily_closes hung it)."""
-    run, _, _, _ = rig
-    assert run(FAKE_NONCE="t").returncode == 0
-    calls = (tmp_path / "docker.log").read_text().splitlines()
-    assert calls and all("statement_timeout=" in c for c in calls), calls
+    assert calls, "the breadth export was never called"
+    for c in calls:
+        assert "-v ON_ERROR_STOP=1" in c, c
+        assert "statement_timeout=" in c, c
 
 
 def test_a_truncated_breadth_export_is_not_published(rig):
