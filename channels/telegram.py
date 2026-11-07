@@ -1676,24 +1676,29 @@ class TelegramChannel:
             await query.message.reply_text(to_plain(html))
 
     async def _handle_ladder_callback(self, query, callback_data: str) -> None:
-        """ladder:<demote|noaction>:<page id> — the #312 ladder breach page's two buttons (ADR 0022
-        §1, ruled 2026-11-04: demotion is HIS one click). Same shape as `tpromo:` above: this is
-        delivery only. Authorization is the shared gate in `_handle_callback_query` (this method is
-        reached only after that check passes); the decision itself — lock the page, compare the
-        rung it showed with the registry, move ONE rung through `strategies/registry.update_strategy`
-        or record No action, audit — runs in the market agent (`/ladder_press`, `ladder_press.py`),
-        which also re-checks the pressing user against the allowlist. The press is forwarded with
-        the pressing user's id so the audit row names who pressed. Replies with a NEW message
-        (mirrors the tpromo path) so the page and its stats stay readable above the answer; a
-        second press on a decided page is refused by the market agent, not by hiding the buttons."""
+        """ladder:<demote|noaction>:<page id>:<token> — the #312 ladder breach page's two buttons
+        (ADR 0022 §1, ruled 2026-11-04: demotion is HIS one click). Same shape as `tpromo:` above:
+        this is delivery only. Authorization is the shared gate in `_handle_callback_query` (this
+        method is reached only after that check passes); the decision itself — lock the page,
+        check the page's own TOKEN (#312 review: the button data is the only thing that carries it,
+        so a `/ladder_press` typed by the orchestrator's LLM or anyone else is refused), compare
+        the rung it showed with the registry, move ONE rung through
+        `strategies/registry.update_strategy` or record No action, audit — runs in the market agent
+        (`/ladder_press`, `ladder_press.py`), which also re-checks the pressing user against the
+        allowlist. The press is forwarded with the pressing user's id so the audit row names who
+        pressed. Replies with a NEW message (mirrors the tpromo path) so the page and its stats stay
+        readable above the answer; a second press on a decided page is refused by the market agent,
+        not by hiding the buttons."""
         parts = callback_data.split(":")
-        if len(parts) != 3 or parts[1] not in ("demote", "noaction") or not parts[2].isdigit():
+        token = parts[3] if len(parts) == 4 else ""
+        token_ok = 8 <= len(token) <= 64 and token.replace("-", "").replace("_", "").isalnum()
+        if len(parts) != 4 or parts[1] not in ("demote", "noaction") or not parts[2].isdigit() or not token_ok:
             logger.warning(f"ladder callback: malformed button data {callback_data!r}")
             await query.message.reply_text("Malformed ladder button — nothing was changed.")
             return
         user_id = query.from_user.id if query.from_user else 0
         try:
-            result = await self._post_market_task(f"/ladder_press {parts[1]} {parts[2]}", user_id)
+            result = await self._post_market_task(f"/ladder_press {parts[1]} {parts[2]} {token}", user_id)
         except Exception as e:
             logger.error(f"Ladder press callback failed: {e}")
             result = f"Error: {e}"
@@ -1877,6 +1882,10 @@ class TelegramChannel:
         await self._app.bot.set_webhook(
             url=webhook_url,
             allowed_updates=["message", "callback_query"],
+            # #312 review (2026-11-07): Telegram echoes this in X-Telegram-Bot-Api-Secret-Token on
+            # every POST; channels/webhooks.py drops any update without it (a forged callback_query
+            # from inside the compose network used to pass both allowlist gates).
+            secret_token=self._secrets.telegram_webhook_secret_token,
         )
         await self._register_commands()
         logger.info(f"Telegram webhook set to: {webhook_url}")

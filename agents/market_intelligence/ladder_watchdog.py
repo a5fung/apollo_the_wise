@@ -31,9 +31,28 @@ After No action there is no re-page in the same episode UNLESS a limit that was 
 last page newly breaches — then one more page, same episode, listing what is new. The state lives
 in the DB (`mi_ladder_episodes`, `mi_ladder_pages`), never in process memory, so a restart cannot
 re-page. A page whose send failed does not count (`sent_at` stays NULL, `ladder_page_send_error`
-is written, the next night retries). A #672 recovery re-run NEVER pages: every Telegram it sends is
-held at the httpx layer and reports success without reaching him, so the re-run records what it
-would have paged and leaves the episode unpaged for the next live night.
+is written, the next night retries) — the send itself is tried `1 + len(SEND_RETRY_DELAYS)` times
+inside the run, so one Telegram blip does not cost a trading day. A #672 recovery re-run NEVER
+pages: every Telegram it sends is held at the httpx layer and reports success without reaching
+him, so the re-run records what it would have paged and leaves the episode unpaged for the next
+live night.
+
+A STRATEGY THAT LEAVES THE LADDER ENDS ITS EPISODE (#312 review, 2026-11-07). A strategy demoted
+to shadow (his press on a paper page, or the typed command) or disabled is skipped by the nightly
+read and would never reach the close path, so its episode stayed open and its page stayed
+pressable on stale numbers — and when he promoted it back, the pooled series still breached the
+same limits, the old episode read as "already paged", and NOTHING was sent (the DoD's own
+WOULD-FAIL-IF). Now every skipped strategy's open episode is closed (`phase_moved`) and its
+undecided pages are marked `stale`, so the return pages afresh. The same stale-marking applies
+when a rung change closes an episode in the paging pass. And the rung is RE-READ (one primary-key
+read of the committed row, `registry.get_strategy_fresh`) right before a page is inserted: a press
+or a typed command that lands between the registry read at the top of the run and the page would
+otherwise page a rung the strategy has already left.
+
+THE PAGE'S OWN TOKEN. Each page carries a random token (`mi_ladder_pages.token`, 32 url-safe
+chars) and both buttons carry it (`ladder:<action>:<page id>:<token>`); the press refuses without
+it. The button data is the only thing that holds the token, so a `/ladder_press` arriving by any
+other route — the orchestrator's LLM, a typed message — moves nothing (`ladder_press.py`).
 
 WHAT IT IS NOT — and this is structural, not a flag. This module has NO phase writer:
   * it never calls `update_strategy`, never names `mi_strategies` (it reads the registry through
@@ -70,8 +89,10 @@ authority, so nothing auto-executes and nothing can be labelled harmful. The row
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import secrets as _secrets
 from datetime import date, datetime
 from typing import Any
 
@@ -91,7 +112,11 @@ PAGED_EVENT = "ladder_breach_paged"         # one per page that reached Telegram
 CLEARED_EVENT = "ladder_breach_cleared"     # an open episode closed by a night with nothing breached
 SEND_ERROR_EVENT = "ladder_page_send_error" # the page did not send — the nightly error sweep shows it
 JOB_ID = "ladder_watchdog"
-CALLBACK_PREFIX = "ladder:"                 # channels/telegram.py routes `ladder:<demote|noaction>:<page id>`
+CALLBACK_PREFIX = "ladder:"                 # channels/telegram.py routes `ladder:<demote|noaction>:<page id>:<token>`
+# The page send is retried inside the run after these pauses (seconds) — one Telegram blip must not
+# cost a trading day (#312 review, finding 6). Tests set it to () to skip the sleeps.
+SEND_RETRY_DELAYS: tuple[float, ...] = (2.0, 5.0)
+TOKEN_BYTES = 24                            # secrets.token_urlsafe(24) → 32 chars; the button data stays under 64 bytes
 
 # ADR 0022 §7 M1f — operator-signed 2026-07-05 ("Signed.", the recommendations as written).
 # Code constants with provenance; the registry column (`demotion_triggers JSONB`, L1) lands when a
@@ -174,12 +199,18 @@ _OPEN_EPISODE_INSERT_SQL = """
     ON CONFLICT (strategy_id, opened_on) DO NOTHING
 """
 _INSERT_PAGE_SQL = """
-    INSERT INTO mi_ladder_pages (strategy_id, episode_on, as_of, phase_at_page, demote_to, breached, stats)
-    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)
+    INSERT INTO mi_ladder_pages (strategy_id, episode_on, as_of, phase_at_page, demote_to, breached, stats, token)
+    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8)
     ON CONFLICT (strategy_id, as_of) DO NOTHING
     RETURNING id
 """
 _MARK_PAGE_SENT_SQL = "UPDATE mi_ladder_pages SET sent_at = NOW() WHERE id = $1"
+# A closed episode's undecided pages are stale: the press refuses them, and `decided_by` NULL says
+# the nightly read — not a person — decided it.
+_STALE_OPEN_PAGES_SQL = """
+    UPDATE mi_ladder_pages SET decision = 'stale', decided_at = NOW()
+    WHERE strategy_id = $1 AND episode_on = $2 AND decision IS NULL
+"""
 
 
 # ── Pure core ───────────────────────────────────────────────────────────────────────────────
@@ -326,14 +357,16 @@ def format_breach_page(e: dict, *, page_id: int, as_of: date) -> str:
     return "\n".join(lines)
 
 
-def build_ladder_keyboard(page_id: int, phase: str) -> dict:
-    """The two buttons. A rung with nothing below (shadow) gets no Demote button — the bottom
-    rung cannot be demoted, so the page cannot offer it."""
+def build_ladder_keyboard(page_id: int, phase: str, token: str) -> dict:
+    """The two buttons, each carrying the page id AND the page's own token (the press refuses
+    without it). A rung with nothing below (shadow) gets no Demote button — the bottom rung
+    cannot be demoted, so the page cannot offer it."""
     row = []
     below = DEMOTE_TO.get(phase)
     if below:
-        row.append({"text": f"⬇️ Demote to {below}", "callback_data": f"{CALLBACK_PREFIX}demote:{page_id}"})
-    row.append({"text": "No action", "callback_data": f"{CALLBACK_PREFIX}noaction:{page_id}"})
+        row.append({"text": f"⬇️ Demote to {below}",
+                    "callback_data": f"{CALLBACK_PREFIX}demote:{page_id}:{token}"})
+    row.append({"text": "No action", "callback_data": f"{CALLBACK_PREFIX}noaction:{page_id}:{token}"})
     return {"inline_keyboard": [row]}
 
 
@@ -420,6 +453,7 @@ async def page_breaches(as_of: date, evaluated: list[dict]) -> list[dict]:
     from agents.market_intelligence.briefing import send_telegram_message
     from agents.market_intelligence.constants import strategy_mode_prefix
     from agents.market_intelligence.db import _jsonb_list_param, _jsonb_param, get_pool, log_audit_event
+    from agents.market_intelligence.strategies.registry import get_strategy_fresh
     from shared.dates import recovery_pin
 
     pool = await get_pool()
@@ -443,6 +477,8 @@ async def page_breaches(as_of: date, evaluated: list[dict]) -> list[dict]:
             closed_by = "cleared" if ep["phase"] == phase else "phase_moved"
             async with pool.acquire() as conn:
                 await conn.execute(_CLOSE_EPISODE_SQL, as_of, closed_by, sid, ep["opened_on"])
+                if closed_by == "phase_moved":
+                    await conn.execute(_STALE_OPEN_PAGES_SQL, sid, ep["opened_on"])
                 await log_audit_event(
                     CLEARED_EVENT,
                     f"{sid}/{mode}: the breach episode opened {ep['opened_on']} closed on "
@@ -464,15 +500,30 @@ async def page_breaches(as_of: date, evaluated: list[dict]) -> list[dict]:
                                               f"live night — {reason}"))
             out.append(rec)
             continue
+        # The rung NOW (#312 review, finding 7): a press or a typed command between the registry
+        # read at the top of the run and this insert would page a rung the strategy has left (a
+        # "live" page, and a live episode, for a strategy now at paper). One primary-key read of
+        # the committed row — never the process cache; a mismatch skips tonight's page and the
+        # next night reads the new rung afresh.
+        fresh = await get_strategy_fresh(sid)
+        live_phase = fresh.phase if fresh is not None else None
+        if live_phase != phase:
+            rec.update(action="skipped",
+                       reason=(f"the rung moved during the run ({phase} → {live_phase}); tonight's "
+                               f"read is stale — the next night reads the new rung"))
+            out.append(rec)
+            continue
         if ep is not None and ep["phase"] != phase:
             async with pool.acquire() as conn:
                 await conn.execute(_CLOSE_EPISODE_SQL, as_of, "phase_moved", sid, ep["opened_on"])
+                await conn.execute(_STALE_OPEN_PAGES_SQL, sid, ep["opened_on"])
             ep = None
         episode_on = ep["opened_on"] if ep else as_of
+        token = _secrets.token_urlsafe(TOKEN_BYTES)
         async with pool.acquire() as conn:
             page_id = await conn.fetchval(
                 _INSERT_PAGE_SQL, sid, episode_on, as_of, phase, e["would_demote_to"],
-                _jsonb_list_param(breached_now), _jsonb_param(e))
+                _jsonb_list_param(breached_now), _jsonb_param(e), token)
         if page_id is None:
             # One page per strategy per night (UNIQUE): a same-night re-run whose first pass wrote
             # its page but lost its audit row (log_audit_event never raises) must not page twice.
@@ -482,16 +533,26 @@ async def page_breaches(as_of: date, evaluated: list[dict]) -> list[dict]:
         # The book tag picks the chat (#699): a paper lane's breach goes to the paper chat, a
         # live strategy's to the main chat. From the RESOLVED mode — never the process default.
         text = strategy_mode_prefix(mode) + format_breach_page(e, page_id=page_id, as_of=as_of)
-        ok = await send_telegram_message(text, parse_mode="HTML",
-                                         reply_markup=build_ladder_keyboard(page_id, phase))
+        keyboard = build_ladder_keyboard(page_id, phase, token)
+        attempts = 1 + len(SEND_RETRY_DELAYS)
+        ok = False
+        for attempt, pause in enumerate((0.0, *SEND_RETRY_DELAYS), start=1):
+            if pause:
+                await asyncio.sleep(pause)
+            ok = await send_telegram_message(text, parse_mode="HTML", reply_markup=keyboard)
+            if ok:
+                break
+            logger.warning(f"ladder watchdog: breach page #{page_id} for {sid} did not send "
+                           f"(attempt {attempt} of {attempts})")
         if not ok:
-            logger.error(f"ladder watchdog: breach page #{page_id} for {sid} did not send")
+            logger.error(f"ladder watchdog: breach page #{page_id} for {sid} did not send after "
+                         f"{attempts} attempts")
             await log_audit_event(
                 SEND_ERROR_EVENT,
-                f"{sid}/{mode}: breach page #{page_id} did not send — the episode is NOT paged; "
-                f"the next breach night retries",
+                f"{sid}/{mode}: breach page #{page_id} did not send after {attempts} attempts — the "
+                f"episode is NOT paged; the next breach night retries",
                 json.dumps({"strategy_id": sid, "phase": phase, "page_id": page_id, "as_of": as_of,
-                            "breached": breached_now}, default=str))
+                            "breached": breached_now, "attempts": attempts}, default=str))
             rec.update(action="send failed", page_id=page_id)
             out.append(rec)
             continue
@@ -512,6 +573,41 @@ async def page_breaches(as_of: date, evaluated: list[dict]) -> list[dict]:
     return out
 
 
+async def end_episodes_of_skipped(conn, as_of: date, skipped: dict[str, str]) -> list[dict]:
+    """A strategy that LEFT the ladder ends its breach episode (#312 review, finding 4).
+
+    A strategy skipped by the nightly read — demoted to shadow (his press on a paper page, or the
+    typed command) or disabled — never reaches `decide_page`'s close path, so its episode stayed
+    open and its undecided page stayed pressable on stale numbers. Worse, promoted back later the
+    pooled R series still breaches the same limits, `decide_page` reads the old episode as "already
+    paged" and sends NOTHING — the DoD's own WOULD-FAIL-IF. So every skipped strategy's open episode
+    is closed (`phase_moved`) and its undecided pages are marked stale, on the HELD connection (no
+    second acquire). Idempotent: a re-run finds no open episode and writes nothing. Returns one
+    record per episode ended, for the nightly row."""
+    from agents.market_intelligence.db import log_audit_event
+    out: list[dict] = []
+    for sid in sorted(skipped):
+        ep = await conn.fetchrow(_OPEN_EPISODE_SQL, sid)
+        if ep is None:
+            continue
+        ep = dict(ep)
+        await conn.execute(_CLOSE_EPISODE_SQL, as_of, "phase_moved", sid, ep["opened_on"])
+        await conn.execute(_STALE_OPEN_PAGES_SQL, sid, ep["opened_on"])
+        await log_audit_event(
+            CLEARED_EVENT,
+            f"{sid}: the breach episode opened {ep['opened_on']} (rung {ep['phase']}) closed on "
+            f"{as_of.isoformat()} (phase_moved) — the strategy left the ladder ({skipped[sid]}); its "
+            f"undecided pages are stale, a return to the ladder pages afresh",
+            json.dumps({"strategy_id": sid, "phase": ep["phase"], "episode_on": ep["opened_on"],
+                        "closed_on": as_of, "closed_by": "phase_moved", "skipped": skipped[sid]},
+                       default=str),
+            conn=conn)
+        out.append({"strategy_id": sid, "action": "episode closed",
+                    "reason": f"left the ladder ({skipped[sid]}); undecided pages marked stale",
+                    "page_id": None})
+    return out
+
+
 async def run_ladder_watchdog(*, today: date | None = None) -> dict:
     """One nightly pass → ONE `ladder_demotion_shadow` audit row, plus a breach page per the
     cadence above. Returns the row's detail.
@@ -519,7 +615,8 @@ async def run_ladder_watchdog(*, today: date | None = None) -> dict:
     Reads the registry and `mi_live_trades`; writes `mi_audit_log` and its own page / episode
     rows. A crash propagates to `audit_wrap` (run 'failed', `job_failed_error` row, one deduped
     page). A re-run of a night that already has its row skips the write AND the paging and
-    returns `row_already_written: True` — see `_summary_prefix`."""
+    returns `row_already_written: True` — see `_summary_prefix`. A skipped strategy's open
+    episode is always ended (`end_episodes_of_skipped`, idempotent)."""
     from agents.market_intelligence.constants import resolve_account_mode_for_strategy
     from agents.market_intelligence.db import get_pool, log_audit_event
     from agents.market_intelligence.strategies.registry import _load_all
@@ -561,11 +658,14 @@ async def run_ladder_watchdog(*, today: date | None = None) -> dict:
                 "reasons": v["reasons"],
                 "open_positions": await fetch_open_positions(conn, s.signal_type, mode),
             })
+        # A strategy that left the ladder (shadow / disabled) ends its open episode — on this held
+        # connection, idempotent, so a re-run of the night writes nothing here.
+        ended = await end_episodes_of_skipped(conn, as_of, skipped)
     # The connection is RELEASED before the paging and the audit write below — holding one
     # while asking the pool for a second is the 2026-09-17 deadlock class
     # (tests/test_no_nested_pool_acquire), and a Telegram send must never sit on a connection.
 
-    paged = [] if already_written else await page_breaches(as_of, evaluated)
+    paged = [] if already_written else ended + await page_breaches(as_of, evaluated)
 
     detail = {
         "as_of": as_of.isoformat(),

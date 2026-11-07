@@ -286,7 +286,7 @@ def _wire_cap_plus_one(monkeypatch, *, strategy_mode_raises: bool = False):
         position_size_multiplier=1.0, strategy_id="magna53",
     )
     import agents.market_intelligence.strategies.registry as registry
-    monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=strategy))
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(return_value=strategy))   # the funnel reads FRESH (#312 review)
     monkeypatch.setattr(
         lt, "_check_safeguards",
         AsyncMock(return_value=(False, f"{BLOCK_MAX_POSITIONS}: 5/5 (mode=live)", 0.0)),

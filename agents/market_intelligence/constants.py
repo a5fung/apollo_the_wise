@@ -280,11 +280,16 @@ async def resolve_strategy_mode_nonfatal(strategy_id: str) -> "str | None":
     LOUD without aborting: failure emits `strategy_mode_resolve_error` (the
     `_error` suffix lands it in the morning-brief error banner), replacing the
     silent container-log-only downgrade the review flagged — a live-money alert
-    mislabeled as paper should not fail invisibly. Callers memoize per tick."""
+    mislabeled as paper should not fail invisibly. Callers memoize per tick.
+
+    FRESH since the #312 review (2026-11-07): `live_tracker.process_new_alerts_live` picks the
+    batch's dedup book from this answer, and the process cache in apollo-execution never learns
+    of a demote committed in the market agent — so this reads the committed row, not the cache.
+    A failed read still answers None (label miss, never an abort)."""
     import logging
     try:
-        from agents.market_intelligence.strategies.registry import get_strategy
-        strategy = await get_strategy(strategy_id)
+        from agents.market_intelligence.strategies.registry import get_strategy_fresh
+        strategy = await get_strategy_fresh(strategy_id)
         return get_strategy_account_mode(strategy)
     except Exception as e:
         logging.getLogger(__name__).warning(

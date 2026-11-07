@@ -47,6 +47,7 @@ from agents.market_intelligence.ladder_watchdog import (
     _INSERT_PAGE_SQL as _LADDER_INSERT_PAGE_SQL,
     _MARK_PAGE_SENT_SQL as _LADDER_MARK_PAGE_SENT_SQL,
     _OPEN_EPISODE_INSERT_SQL as _LADDER_OPEN_EPISODE_INSERT_SQL,
+    _STALE_OPEN_PAGES_SQL as _LADDER_STALE_OPEN_PAGES_SQL,
 )
 
 logger = logging.getLogger(__name__)
@@ -312,6 +313,8 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
     ("ladder_watchdog.page_breaches: the breach episode opened", _LADDER_OPEN_EPISODE_INSERT_SQL),
     ("ladder_watchdog.page_breaches / ladder_press: the episode closed", _LADDER_CLOSE_EPISODE_SQL),
     ("ladder_press.handle_ladder_press: the page's decision (demote / no_action / stale)", _LADDER_DECIDE_PAGE_SQL),
+    # #312 review (2026-11-07): the nightly read marks a closed episode's undecided pages stale.
+    ("ladder_watchdog: a closed episode's undecided pages marked stale", _LADDER_STALE_OPEN_PAGES_SQL),
 ]
 
 

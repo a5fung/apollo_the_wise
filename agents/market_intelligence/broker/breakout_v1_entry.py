@@ -698,9 +698,19 @@ _SWITCHED_OFF_WHY = "strategy row missing or disabled"
 
 async def _strategy_state(today: date) -> tuple[bool, str]:
     """(may order, why not). Wall 2: the strategy row must be enabled, phase 'paper', and resolve to 'paper'. A
-    missing / disabled row is the switch OFF (quiet); any other phase is REFUSED (audit + page)."""
-    from agents.market_intelligence.strategies.registry import get_strategy
-    strategy = await get_strategy(STRATEGY_ID)
+    missing / disabled row is the switch OFF (quiet); any other phase is REFUSED (audit + page). Read FRESH
+    (#312 review, 2026-11-07): a demote or disable committed in the market agent must stop the NEXT tick here
+    without an apollo-execution restart; a row that cannot be read is refused the same way — never a cached
+    phase."""
+    from agents.market_intelligence.strategies.registry import get_strategy_fresh
+    try:
+        strategy = await get_strategy_fresh(STRATEGY_ID)
+    except Exception as e:  # loud-ok: fail CLOSED — refused below with audit + page, no orders
+        msg = (f"{STRATEGY_ID}: the strategy row could not be read fresh ({type(e).__name__}: {str(e)[:160]}) — "
+               f"breakout v1 orders only on a row it can read; refused")
+        await log_audit_event("breakout_v1_refused", f"{today.isoformat()}: {msg}")
+        await _page_once(("refused", today), f"🚨 Breakout v1 refused to order: {msg}")
+        return False, msg
     if strategy is None or not strategy.enabled:
         return False, _SWITCHED_OFF_WHY
     try:

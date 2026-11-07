@@ -15,6 +15,18 @@ The registry cache invalidates automatically on `update_strategy()`;
 direct DB edits to `mi_strategies` won't be seen until process restart
 or `invalidate_cache()`. Phase / enable changes from Telegram go through
 `update_strategy()`.
+
+⚠ THE CACHE IS PER PROCESS (#312 review, 2026-11-07). `update_strategy` runs in
+the market agent (his Demote press, the typed `/strategy <id> demote|disable`)
+and invalidates THAT process's cache; apollo-execution — the container that
+submits orders — never sees the invalidation, so `get_strategy()` there served
+the OLD phase / enabled flag / sizing knob to NEW entries until its next restart.
+Every money-path read therefore uses `get_strategy_fresh()` — one primary-key
+SELECT of the committed row, never the cache: the entry funnel
+(`broker/entry_pipeline.py`, before its first step), the two paper lanes
+(`lowcap_paper_entry`, `breakout_v1_entry`) and the label/dedup resolver
+(`constants.resolve_strategy_mode_nonfatal`). `get_strategy()` / `should_run()`
+stay the cached read for the scan-side enable flags.
 """
 from __future__ import annotations
 
@@ -173,13 +185,39 @@ async def load_strategies(force: bool = False) -> dict[str, Strategy]:
 
 
 async def get_strategy(strategy_id: str) -> Strategy | None:
-    """Fetch a single strategy. Returns None if not registered.
+    """Fetch a single strategy FROM THE PROCESS CACHE. Returns None if not registered.
 
     Callers gating behavior on phase/enabled should treat None as
     fail-open (strategy not registered yet — pre-framework code path).
+
+    ⚠ Not for a money-path decision: the cache is invalidated only by THIS process's
+    `update_strategy`, and the phase writers run in the market agent, not in
+    apollo-execution. An entry, a dedup book or a sizing read uses `get_strategy_fresh`.
     """
     by_id = await load_strategies()
     return by_id.get(strategy_id)
+
+
+# The one-row read `get_strategy_fresh` makes — the same column list the cache is built from,
+# so a fresh row and a cached row are the same shape.
+_SELECT_ONE_SQL = f"SELECT {_STRATEGY_COLUMNS} FROM mi_strategies WHERE strategy_id = $1"
+
+
+async def get_strategy_fresh(strategy_id: str) -> Strategy | None:
+    """The strategy row AS COMMITTED NOW — one primary-key SELECT, never the process cache
+    (#312 review, 2026-11-07: his Demote press commits in the market agent; apollo-execution's
+    cache never learns of it, so a cached read at 09:31 would route a NEW entry on the OLD phase).
+
+    Returns None for an unregistered id (the same fail-open the cached read gives a pre-seed
+    strategy). RAISES on a DB error — deliberately no fallback to the cache or to a process
+    default: the caller decides what a missing answer means (the entry funnel skips
+    `infra:strategy_unreadable` and pages; the paper lanes refuse to order; the label resolver
+    says "mode unknown"). Reads the cache for nothing and writes it with nothing.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(_SELECT_ONE_SQL, strategy_id)
+    return _row_to_strategy(row) if row else None
 
 
 async def should_run(strategy_id: str) -> bool:

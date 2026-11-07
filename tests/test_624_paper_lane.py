@@ -210,7 +210,7 @@ def _wire_order_step(monkeypatch, *, phase="paper", account=None, at=(9, 33), hi
     monkeypatch.setattr(lpe, "get_runtime_toggle", AsyncMock(return_value=True))
     monkeypatch.setattr(lpe, "get_lowcap_paper_lane_highs",
                         AsyncMock(return_value=[dict(_HIGH)] if highs is None else highs))
-    monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=_strategy(phase=phase)))
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(return_value=_strategy(phase=phase)))   # the lane reads FRESH (#312 review)
     monkeypatch.setattr(lpe, "_preflight_ok_date", None)
     get_account = AsyncMock(return_value=account if account is not None
                             else {"equity": 100_000.0, "trading_blocked": False, "account_blocked": False})

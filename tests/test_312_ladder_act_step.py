@@ -100,9 +100,13 @@ def _buttons(send):
     return [btn for row in rows for btn in row]
 
 
-def _press(action, page_id, user_id=OPERATOR):
+def _press(db, action, page_id, user_id=OPERATOR, token="page"):
+    """`token="page"` (the default) = the page's own button token, what a real button press carries
+    (#312 review: a press without it is refused). Anything else is passed as given."""
     from agents.market_intelligence.ladder_press import handle_ladder_press
-    return asyncio.run(handle_ladder_press(action, page_id, user_id=user_id))
+    if token == "page":
+        token = db.pages[page_id]["token"] if page_id in db.pages else None
+    return asyncio.run(handle_ladder_press(action, page_id, user_id=user_id, token=token))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -135,7 +139,9 @@ def test_a_forced_breach_sends_exactly_one_page_with_every_stat_and_both_buttons
     # the two buttons, carrying the page id
     page_id = detail["paged"][0]["page_id"]
     btns = _buttons(send)
-    assert [b["callback_data"] for b in btns] == [f"ladder:demote:{page_id}", f"ladder:noaction:{page_id}"]
+    token = db.token_of(page_id)
+    assert [b["callback_data"] for b in btns] == [f"ladder:demote:{page_id}:{token}",
+                                                  f"ladder:noaction:{page_id}:{token}"]
     assert "Demote to paper" in btns[0]["text"] and "No action" in btns[1]["text"]
     assert all(len(b["callback_data"].encode()) <= 64 for b in btns)
     # persisted: the page (sent), the episode (open), the audit row
@@ -178,7 +184,7 @@ def test_a_new_limit_breaching_after_no_action_re_pages(monkeypatch):
     the last-20 mean and the drawdown → a second page in the same episode."""
     db = _db(monkeypatch)
     detail1 = _run(_NIGHT1)
-    assert "already decided" not in _press("noaction", detail1["paged"][0]["page_id"])
+    assert "already decided" not in _press(db, "noaction", detail1["paged"][0]["page_id"])
     db.closed_rows[("magna53", "live")] = _closed_rows(TRIPLE_BREACH)
     detail2 = _run(_NIGHT2)
     assert len(db.sends) == 2
@@ -194,7 +200,7 @@ def test_a_new_limit_breaching_after_no_action_re_pages(monkeypatch):
 def test_the_same_limits_after_no_action_do_not_re_page(monkeypatch):
     db = _db(monkeypatch)
     detail1 = _run(_NIGHT1)
-    _press("noaction", detail1["paged"][0]["page_id"])
+    _press(db, "noaction", detail1["paged"][0]["page_id"])
     detail2 = _run(_NIGHT2)
     assert len(db.sends) == 1 and detail2["paged"][0]["action"] == "skipped"
 
@@ -276,11 +282,11 @@ def test_bottom_rung_shadow_gets_no_page_and_no_demote_button(monkeypatch):
     detail = _run()
     assert db.sends == [] and detail["paged"] == []
     assert "no rung below" in detail["skipped"]["shadow_orb_5m"]
-    kb = lw.build_ladder_keyboard(7, "shadow")
-    assert [b["callback_data"] for row in kb["inline_keyboard"] for b in row] == ["ladder:noaction:7"]
-    assert [b["text"] for row in lw.build_ladder_keyboard(7, "paper")["inline_keyboard"] for b in row][0] \
+    kb = lw.build_ladder_keyboard(7, "shadow", "tok")
+    assert [b["callback_data"] for row in kb["inline_keyboard"] for b in row] == ["ladder:noaction:7:tok"]
+    assert [b["text"] for row in lw.build_ladder_keyboard(7, "paper", "tok")["inline_keyboard"] for b in row][0] \
         == "⬇️ Demote to shadow"
-    assert [b["text"] for row in lw.build_ladder_keyboard(7, "live")["inline_keyboard"] for b in row][0] \
+    assert [b["text"] for row in lw.build_ladder_keyboard(7, "live", "tok")["inline_keyboard"] for b in row][0] \
         == "⬇️ Demote to paper"
 
 
@@ -316,7 +322,7 @@ def _paged(monkeypatch, **kw):
 
 def test_demote_press_moves_one_rung_and_writes_strategy_phase_change(monkeypatch):
     db, page_id = _paged(monkeypatch)
-    answer = _press("demote", page_id)
+    answer = _press(db, "demote", page_id)
     assert db.strategies["magna53"]["phase"] == "paper"
     assert db.phase_writes == [("phase_write", "magna53", ("paper",))]
     rows = db.audit_rows("strategy_phase_change")
@@ -336,8 +342,8 @@ def test_demote_press_moves_one_rung_and_writes_strategy_phase_change(monkeypatc
 
 def test_double_press_moves_one_rung_total(monkeypatch):
     db, page_id = _paged(monkeypatch)
-    first = _press("demote", page_id)
-    second = _press("demote", page_id)
+    first = _press(db, "demote", page_id)
+    second = _press(db, "demote", page_id)
     assert db.strategies["magna53"]["phase"] == "paper", "a second press must not take it to shadow"
     assert len(db.phase_writes) == 1
     assert "already decided" in second and "demote" in second
@@ -352,7 +358,7 @@ def test_stale_press_refuses_when_the_strategy_moved_since_the_page(monkeypatch)
     says `paper` — the press must move nothing (it would otherwise take it to shadow)."""
     db, page_id = _paged(monkeypatch)
     db.strategies["magna53"]["phase"] = "paper"
-    answer = _press("demote", page_id)
+    answer = _press(db, "demote", page_id)
     assert db.strategies["magna53"]["phase"] == "paper"
     assert db.phase_writes == []
     assert "moved" in answer and "live" in answer and "paper" in answer
@@ -368,7 +374,7 @@ def test_a_concurrent_move_between_the_read_and_the_write_is_refused_by_the_cas(
     db, page_id = _paged(monkeypatch)
     db.current_phase_override["magna53"] = "live"
     db.strategies["magna53"]["phase"] = "paper"
-    answer = _press("demote", page_id)
+    answer = _press(db, "demote", page_id)
     assert db.strategies["magna53"]["phase"] == "paper" and db.phase_writes == []
     assert "moved" in answer and db.pages[page_id]["decision"] == "stale"
 
@@ -376,7 +382,7 @@ def test_a_concurrent_move_between_the_read_and_the_write_is_refused_by_the_cas(
 def test_no_action_press_moves_nothing_and_audits(monkeypatch):
     from agents.market_intelligence import ladder_press as lp
     db, page_id = _paged(monkeypatch)
-    answer = _press("noaction", page_id)
+    answer = _press(db, "noaction", page_id)
     assert db.strategies["magna53"]["phase"] == "live" and db.phase_writes == []
     assert db.pages[page_id]["decision"] == "no_action" and db.pages[page_id]["decided_by"] == OPERATOR
     rows = db.audit_rows(lp.NO_ACTION_EVENT)
@@ -389,8 +395,8 @@ def test_no_action_press_moves_nothing_and_audits(monkeypatch):
 
 def test_no_action_then_demote_on_the_same_page_is_refused(monkeypatch):
     db, page_id = _paged(monkeypatch)
-    _press("noaction", page_id)
-    answer = _press("demote", page_id)
+    _press(db, "noaction", page_id)
+    answer = _press(db, "demote", page_id)
     assert db.strategies["magna53"]["phase"] == "live" and db.phase_writes == []
     assert "already decided" in answer
 
@@ -400,7 +406,7 @@ def test_an_unauthorized_press_is_refused_by_the_market_agent_too(monkeypatch):
     against the same allowlist the pages are sent to."""
     from agents.market_intelligence import ladder_press as lp
     db, page_id = _paged(monkeypatch)
-    answer = _press("demote", page_id, user_id=999)
+    answer = _press(db, "demote", page_id, user_id=999)
     assert db.strategies["magna53"]["phase"] == "live" and db.phase_writes == []
     assert db.pages[page_id]["decision"] is None          # the page stays pressable by him
     assert "not authorized" in answer.lower()
@@ -409,8 +415,8 @@ def test_an_unauthorized_press_is_refused_by_the_market_agent_too(monkeypatch):
 
 def test_an_unknown_page_or_action_refuses(monkeypatch):
     db, page_id = _paged(monkeypatch)
-    assert "no such page" in _press("demote", page_id + 500).lower()
-    assert "unknown action" in _press("promote", page_id).lower()
+    assert "no such page" in _press(db, "demote", page_id + 500).lower()
+    assert "unknown action" in _press(db, "promote", page_id).lower()
     assert db.phase_writes == []
 
 
@@ -452,7 +458,7 @@ async def test_an_unauthorized_press_is_refused_at_the_channel_gate():
     refused before the market agent is ever reached."""
     channel = _make_channel()
     channel._handle_ladder_callback = AsyncMock()
-    update = _cb_update("ladder:demote:17", user_id=999)
+    update = _cb_update("ladder:demote:17:abcdefgh1234", user_id=999)
     await channel._handle_callback_query(update, None)
     channel._handle_ladder_callback.assert_not_awaited()
     update.callback_query.answer.assert_awaited_once_with("Unauthorized")
@@ -462,10 +468,10 @@ async def test_an_unauthorized_press_is_refused_at_the_channel_gate():
 async def test_an_authorized_press_dispatches_to_the_ladder_callback():
     channel = _make_channel()
     channel._handle_ladder_callback = AsyncMock()
-    update = _cb_update("ladder:noaction:17")
+    update = _cb_update("ladder:noaction:17:abcdefgh1234")
     await channel._handle_callback_query(update, None)
     channel._handle_ladder_callback.assert_awaited_once()
-    assert channel._handle_ladder_callback.await_args.args[1] == "ladder:noaction:17"
+    assert channel._handle_ladder_callback.await_args.args[1] == "ladder:noaction:17:abcdefgh1234"
 
 
 @pytest.mark.asyncio
@@ -480,23 +486,27 @@ async def test_the_ladder_callback_posts_the_press_to_the_market_agent_and_repli
     })
     monkeypatch.setattr(httpx, "AsyncClient", fake_client)
     channel = _make_channel()
-    query = SimpleNamespace(data="ladder:demote:17", from_user=SimpleNamespace(id=OPERATOR),
+    query = SimpleNamespace(data="ladder:demote:17:abcdefgh1234", from_user=SimpleNamespace(id=OPERATOR),
                             message=SimpleNamespace(reply_text=AsyncMock()))
-    await channel._handle_ladder_callback(query, "ladder:demote:17")
+    await channel._handle_ladder_callback(query, "ladder:demote:17:abcdefgh1234")
     posted = fake_client.last_post["kwargs"]["json"]
-    assert posted["task"] == "/ladder_press demote 17" and posted["user_id"] == OPERATOR
+    assert posted["task"] == "/ladder_press demote 17 abcdefgh1234" and posted["user_id"] == OPERATOR
     query.message.reply_text.assert_awaited_once()
     assert query.message.reply_text.await_args.kwargs["parse_mode"] == "HTML"
     assert "magna53" in query.message.reply_text.await_args.args[0]
 
 
 @pytest.mark.asyncio
-async def test_a_malformed_ladder_button_never_reaches_the_market_agent(monkeypatch):
+@pytest.mark.parametrize("data", ["ladder:demote:abc:abcdefgh1234", "ladder:demote:17", "ladder:demote:17:x",
+                                  "ladder:demote:17:bad token!"])
+async def test_a_malformed_ladder_button_never_reaches_the_market_agent(monkeypatch, data):
+    """Including a button WITHOUT the page's token (#312 review): the channel drops it before the
+    market agent is asked."""
     channel = _make_channel()
     channel._post_market_task = AsyncMock()
-    query = SimpleNamespace(data="ladder:demote:abc", from_user=SimpleNamespace(id=OPERATOR),
+    query = SimpleNamespace(data=data, from_user=SimpleNamespace(id=OPERATOR),
                             message=SimpleNamespace(reply_text=AsyncMock()))
-    await channel._handle_ladder_callback(query, "ladder:demote:abc")
+    await channel._handle_ladder_callback(query, data)
     channel._post_market_task.assert_not_awaited()
     query.message.reply_text.assert_awaited_once()
 
@@ -511,7 +521,7 @@ async def test_the_market_agent_dispatches_ladder_press_not_unknown_command():
     agent = MarketIntelligenceAgent()
     sentinel = object()
     with patch.object(agent, "_handle_ladder_press", new=AsyncMock(return_value=sentinel)) as h:
-        resp = await agent._handle_slash_command(_request("/ladder_press demote 17"))
+        resp = await agent._handle_slash_command(_request("/ladder_press demote 17 abcdefgh1234"))
     assert resp is sentinel
     h.assert_awaited_once()
 
@@ -524,11 +534,17 @@ async def test_the_market_agent_handler_passes_the_pressing_user_and_page(monkey
     monkeypatch.setattr(lp, "handle_ladder_press", handle)
     agent = SimpleNamespace(_ok=lambda req, *, result: SimpleNamespace(success=True, result=result),
                             _error=lambda req, err: SimpleNamespace(success=False, error=err))
-    resp = await MarketIntelligenceAgent._handle_ladder_press(agent, _request("/ladder_press noaction 17", 42))
+    resp = await MarketIntelligenceAgent._handle_ladder_press(
+        agent, _request("/ladder_press noaction 17 abcdefgh1234", 42))
     assert resp.result == "done"
-    assert handle.await_args.args == ("noaction", 17) and handle.await_args.kwargs == {"user_id": 42}
+    assert handle.await_args.args == ("noaction", 17)
+    assert handle.await_args.kwargs == {"user_id": 42, "token": "abcdefgh1234"}
+    # A press WITHOUT a token is handed over with token=None — the press handler refuses and audits
+    # it (the refusal is the record), rather than this layer answering "malformed" silently.
+    await MarketIntelligenceAgent._handle_ladder_press(agent, _request("/ladder_press noaction 17", 42))
+    assert handle.await_args.kwargs == {"user_id": 42, "token": None} and handle.await_count == 2
     bad = await MarketIntelligenceAgent._handle_ladder_press(agent, _request("/ladder_press 17"))
-    assert "Malformed" in bad.result and handle.await_count == 1
+    assert "Malformed" in bad.result and handle.await_count == 2
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -766,3 +782,290 @@ def test_the_ddl_is_applied_at_schema_init_and_names_both_tables():
     assert "UNIQUE (strategy_id, as_of)" in ddl
     src = Path(dbmod.__file__).read_text(encoding="utf-8")
     assert "await conn.execute(_LADDER_DDL)" in src
+    assert "token" in ddl and "ADD COLUMN IF NOT EXISTS token" in ddl     # the page's own button token (#312 review)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# E — the #312 review's findings (2026-11-07), each red on the pre-review build fa36a4fd
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+#
+#   1. his Demote did not stop NEW entries until apollo-execution restarted (a per-process cache);
+#   2. `/ladder_press` was reachable from the orchestrator's LLM with his user id (THE LINE);
+#   3. the press could answer "Demoted" when the transaction had silently rolled back;
+#   4. a strategy that left the ladder kept its episode open, so its return never paged;
+#   5. a press on an ended episode still demoted on stale numbers;
+#   6. one Telegram blip cost a trading day (no retry inside the run); an unsent page was "no such page";
+#   7. a press racing the nightly run paged the rung the strategy had just left.
+# (8, the webhook secret, is tests/test_telegram_webhook_secret.py.)
+
+
+def _live_strategy(**over):
+    base = dict(strategy_row("magna53", "live", live_real=True))
+    base.update(over)
+    return registry.Strategy(**base)
+
+
+def test_a_demote_committed_in_the_market_agent_is_seen_by_the_execution_processs_next_read(monkeypatch):
+    """Finding 1 at the registry: two processes, two caches, ONE database. Process B (apollo-execution,
+    a second copy of the registry module with its own `_CACHE`, warmed at its boot) never learns of
+    the demote process A (the market agent, his press) commits — `get_strategy` there still says live.
+    The money path therefore reads `get_strategy_fresh`, which answers from the committed row."""
+    import importlib.util
+    import sys
+    db = LadderFakeDb(strategies=[strategy_row("magna53", "live", live_real=True)]).wire(monkeypatch)
+    spec = importlib.util.spec_from_file_location("registry_in_apollo_execution", registry.__file__)
+    execution = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, spec.name, execution)      # dataclasses resolves annotations by module name
+    spec.loader.exec_module(execution)
+    execution.get_pool = AsyncMock(return_value=db.pool)                      # the same database
+    assert asyncio.run(execution.get_strategy("magna53")).phase == "live"     # warmed at its boot
+
+    # process A — his press commits paper (the compare-and-set writer, as the press calls it)
+    assert asyncio.run(registry.update_strategy("magna53", phase="paper", expect_phase="live")).phase == "paper"
+    assert db.strategies["magna53"]["phase"] == "paper"
+
+    # process B — the hole the review named: its cache still serves live to a new entry
+    assert asyncio.run(execution.get_strategy("magna53")).phase == "live"
+    # the fix: the fresh read is the committed row, no restart
+    fresh = asyncio.run(execution.get_strategy_fresh("magna53"))
+    assert fresh.phase == "paper" and fresh.strategy_id == "magna53"
+    assert asyncio.run(execution.get_strategy_fresh("no_such_strategy")) is None   # unregistered: fail-open None
+
+
+@pytest.mark.asyncio
+async def test_the_entry_funnel_routes_on_the_committed_phase_not_the_process_cache(monkeypatch):
+    """Finding 1 at the entry funnel: the process cache says LIVE (apollo-execution's copy, never
+    invalidated by a press in the market agent), the committed row says PAPER. The funnel's dedup
+    book and the safeguards' account must be PAPER — on fa36a4fd both read the cache and were live."""
+    from agents.market_intelligence.broker import entry_pipeline as ep
+    from agents.market_intelligence.broker import live_tracker as lt
+    from tests.conftest import make_mock_pool
+
+    monkeypatch.setattr(registry, "_CACHE", {"magna53": _live_strategy()})     # the stale cache
+    reg_pool, reg_conn = make_mock_pool()
+    reg_conn.fetchrow = AsyncMock(return_value=strategy_row("magna53", "paper", live_real=True))   # the committed row
+    monkeypatch.setattr(registry, "get_pool", AsyncMock(return_value=reg_pool))
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(side_effect=[False, None])                       # no duplicate, no open position
+    conn.execute = AsyncMock()
+    monkeypatch.setattr(ep, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ep, "log_audit_event", AsyncMock())
+    monkeypatch.setattr(ep, "send_telegram_message", AsyncMock(return_value=True))
+    monkeypatch.setattr(ep, "current_account_mode", lambda: "paper")
+    monkeypatch.setattr(lt, "_insert_skipped_trade", AsyncMock())
+    safeguards = AsyncMock(return_value=(False, "block:max_positions: 5/5 (mode=paper)", 0.0))
+    monkeypatch.setattr(lt, "_check_safeguards", safeguards)
+
+    async def _spec_builder(*_a, **_k):
+        raise AssertionError("blocked at the safeguards; the builder must not run")
+
+    out = await ep.submit_trade_entry(
+        alert_context={"ticker": "OKTA", "ep_score": 80, "catalyst_quality": "strong", "gap_pct": 12.0},
+        spec_builder=_spec_builder, regime_record=None, strategy_label="ORB", signal_type="magna53",
+        today=dt.date(2026, 11, 9), aggregate_skips=True)
+    assert out["action"] == "blocked"
+    assert safeguards.await_args.kwargs["account_mode"] == "paper"            # fa36a4fd: "live"
+    assert conn.fetchval.await_args_list[0].args[-1] == "paper"               # the dedup book too
+    assert reg_conn.fetchrow.await_count == 1                                  # one fresh read, before step 1
+
+
+def test_a_press_without_the_pages_token_moves_nothing_and_leaves_the_buttons_live(monkeypatch):
+    """Finding 2 (THE LINE): the button data is the only thing that carries the page's token, so a
+    `/ladder_press demote <id>` arriving any other way — the orchestrator's LLM, a typed message —
+    with his user id and no token (or a guessed one) is refused and audited, the page stays
+    undecided (his real buttons still work), and the phase does not move."""
+    from agents.market_intelligence import ladder_press as lp
+    db, page_id = _paged(monkeypatch)
+    for bad in (None, "", "not-the-pages-token-000000000000"):
+        answer = _press(db, "demote", page_id, token=bad)
+        assert answer.startswith("Not done") and "token" in answer
+    assert db.strategies["magna53"]["phase"] == "live" and db.phase_writes == []
+    assert db.pages[page_id]["decision"] is None                       # the real buttons stay pressable
+    refused = db.audit_rows(lp.REFUSED_EVENT)
+    assert len(refused) == 3 and all(json.loads(d)["reason"] == "bad_token" for _, d in refused)
+    assert db.audit_rows("strategy_phase_change") == []
+    # the page's own button, afterwards: the real press
+    assert "Demoted" in _press(db, "demote", page_id)
+    assert db.strategies["magna53"]["phase"] == "paper"
+
+
+def test_the_token_rides_in_the_button_data_and_nowhere_else(monkeypatch):
+    db, page_id = _paged(monkeypatch)
+    token = db.token_of(page_id)
+    send = db.sends[0]
+    assert len(token) >= 32 and token not in send["text"]              # the text never carries it
+    assert [b["callback_data"] for b in _buttons(send)] == [f"ladder:demote:{page_id}:{token}",
+                                                             f"ladder:noaction:{page_id}:{token}"]
+    assert all(len(b["callback_data"].encode()) <= 64 for b in _buttons(send))
+    # a second page gets its own token
+    db.closed_rows[("magna53", "live")] = _closed_rows(TRIPLE_BREACH)
+    _press(db, "noaction", page_id)
+    detail2 = _run(_NIGHT2)
+    assert db.token_of(detail2["paged"][0]["page_id"]) != token
+
+
+def test_the_orchestrators_llm_tool_cannot_press_a_ladder_page(monkeypatch):
+    """Finding 2, end to end: `call_market_agent("/ladder_press demote <id>")` — the orchestrator's
+    LLM tool, forwarding free text with HIS user id — reaches the real market agent's slash
+    dispatch and the real press handler over the fake DB, and moves nothing. On fa36a4fd this
+    demoted magna53."""
+    from core import orchestrator as orch
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+    db, page_id = _paged(monkeypatch)
+    agent = MarketIntelligenceAgent()
+
+    async def _route(agent_name, request, **kw):
+        return await agent.execute_task(request)
+
+    monkeypatch.setattr(orch, "call_agent", _route)
+    monkeypatch.setattr(orch, "log_action", AsyncMock())
+    apollo = object.__new__(orch.Apollo)
+    out = asyncio.run(apollo._dispatch_tool(OPERATOR, "conv-1", "call_market_agent",
+                                            {"task": f"/ladder_press demote {page_id}"}))
+    assert db.strategies["magna53"]["phase"] == "live" and db.phase_writes == []
+    assert db.pages[page_id]["decision"] is None
+    assert "Not done" in out and "token" in out
+
+
+@pytest.mark.asyncio
+async def test_ladder_press_is_not_advertised_in_the_unknown_command_reply():
+    """Finding 2: the Unknown-command reply lists the dispatch keys, and that reply reaches the LLM."""
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+    from shared.models import AgentRequest
+    resp = await MarketIntelligenceAgent()._handle_slash_command(
+        AgentRequest(task="/nosuchcommand", user_id=OPERATOR, conversation_id="c"))
+    assert "Unknown command" in resp.result
+    assert "/ladder_press" not in resp.result and "/strategy" in resp.result
+
+
+def test_a_failed_audit_write_inside_the_press_never_answers_demoted(monkeypatch):
+    """Finding 3: the `strategy_phase_change` INSERT — the last statement of a demote — fails (a 5 s
+    timeout). On fa36a4fd `log_audit_event` swallowed it, the transaction was left aborted, Postgres
+    turned the COMMIT into a ROLLBACK without an error, and his screen said "Demoted" while the phase
+    was unchanged. Now the write raises, the transaction rolls back loudly, and the answer says so."""
+    db, page_id = _paged(monkeypatch)
+    db.fail_audit_events = {"strategy_phase_change"}
+    answer = _press(db, "demote", page_id)
+    assert db.strategies["magna53"]["phase"] == "live"
+    assert db.pages[page_id]["decision"] is None
+    assert db.episodes[("magna53", _NIGHT1)]["closed_on"] is None
+    assert db.audit_rows("strategy_phase_change") == []
+    assert "Demoted" not in answer and answer.startswith("Not done") and "nothing was changed" in answer
+    assert db.txn[-1] == "rollback"
+    # the real button still works once the DB answers again
+    db.fail_audit_events = set()
+    assert "Demoted" in _press(db, "demote", page_id) and db.strategies["magna53"]["phase"] == "paper"
+
+
+def test_the_press_answer_comes_from_the_committed_state_not_the_intent(monkeypatch):
+    """Finding 3, the other half: even when every statement 'succeeds', the answer is built from a
+    re-read of the committed phase and page decision. A COMMIT that was really a ROLLBACK (the fake
+    discards the writes on exit, raising nothing) answers "Not done", never "Demoted"."""
+    from agents.market_intelligence import ladder_press as lp
+    db, page_id = _paged(monkeypatch)
+    db.silent_rollback_on_commit = True
+    answer = _press(db, "demote", page_id)
+    assert db.strategies["magna53"]["phase"] == "live" and db.pages[page_id]["decision"] is None
+    assert "Demoted" not in answer and "did not commit" in answer and "/strategy magna53 demote" in answer
+    assert any(json.loads(d)["reason"] == "not_committed" for _, d in db.audit_rows(lp.REFUSED_EVENT))
+    # No action is held to the same bar
+    db.silent_rollback_on_commit = True
+    answer = _press(db, "noaction", page_id)
+    assert "No action recorded" not in answer and "did not commit" in answer
+
+
+@pytest.mark.parametrize("leave,come_back,why", [
+    (dict(phase="shadow"), dict(phase="paper"), "no rung below"),       # the typed demote (or his press on a paper page)
+    (dict(enabled=False), dict(enabled=True), "disabled"),              # /strategy magna53 disable
+])
+def test_a_strategy_that_left_the_ladder_closes_its_episode_so_its_return_pages_again(monkeypatch, leave, come_back, why):
+    """Finding 4 (the DoD's own WOULD-FAIL-IF): a paper strategy is paged, then leaves the ladder
+    (shadow / disabled) — skipped by the nightly read, so on fa36a4fd its episode stayed open and
+    its page stayed pressable. Promoted back with the same breach, the old episode read "already
+    paged" and NOTHING was sent. Now the skipped night ends the episode and marks the page stale,
+    and the return pages afresh."""
+    db = _db(monkeypatch, phase="paper")
+    d1 = _run(_NIGHT1)
+    page1 = d1["paged"][0]["page_id"]
+    assert db.pages[page1]["phase_at_page"] == "paper"
+
+    db.strategies["magna53"].update(leave)
+    d2 = _run(_NIGHT2)
+    assert why in d2["skipped"]["magna53"]
+    assert db.episodes[("magna53", _NIGHT1)]["closed_by"] == "phase_moved"
+    assert db.episodes[("magna53", _NIGHT1)]["closed_on"] == _NIGHT2
+    assert db.pages[page1]["decision"] == "stale" and db.pages[page1]["decided_by"] is None
+    assert d2["paged"] == [{"strategy_id": "magna53", "action": "episode closed",
+                            "reason": f"left the ladder ({d2['skipped']['magna53']}); undecided pages marked stale",
+                            "page_id": None}]
+    assert len(db.audit_rows(lw.CLEARED_EVENT)) == 1
+
+    db.strategies["magna53"].update(come_back)
+    d3 = _run(_NIGHT3)
+    assert len(db.sends) == 2                                          # fa36a4fd: 1 — "already paged"
+    assert d3["paged"][0]["action"] == "paged" and d3["paged"][0]["reason"] == "new episode"
+    assert db.episodes[("magna53", _NIGHT3)]["closed_on"] is None
+    # the old page cannot be pressed any more, and says who decided it
+    monkeypatch.setattr(registry, "update_strategy", _ORIGINAL_UPDATE_STRATEGY)
+    answer = _press(db, "demote", page1)
+    assert "already decided: stale" in answer and "the nightly ladder read" in answer
+    assert db.strategies["magna53"]["phase"] == "paper" and db.phase_writes == []
+
+
+def test_a_press_on_an_ended_episode_is_refused(monkeypatch):
+    """Finding 5: the page's breach CLEARED the next night (the episode closed), and he presses the
+    old page later. On fa36a4fd the phase compare passed and it demoted on stale numbers. Now the
+    press reads the page's episode, refuses with when and why it ended, and marks the page stale."""
+    db, page_id = _paged(monkeypatch)
+    db.closed_rows[("magna53", "live")] = _closed_rows(CLEAR)
+    _run(_NIGHT2)
+    assert db.episodes[("magna53", _NIGHT1)]["closed_by"] == "cleared"
+    answer = _press(db, "demote", page_id)
+    assert db.strategies["magna53"]["phase"] == "live" and db.phase_writes == []
+    assert answer.startswith("Not done") and "ended on 2026-10-16" in answer and "cleared" in answer
+    assert "/strategy magna53 demote" in answer
+    assert db.pages[page_id]["decision"] == "stale"
+    assert db.audit_rows("strategy_phase_change") == []
+
+
+def test_a_send_that_blips_is_retried_within_the_run(monkeypatch):
+    """Finding 6: the first send fails, the second succeeds — ONE page, delivered tonight, not on
+    the next breach night."""
+    db = _db(monkeypatch)
+    db.send_ok = [False, True]
+    detail = _run()
+    assert detail["paged"][0]["action"] == "paged" and len(db.sends) == 2
+    assert db.pages[1]["sent_at"] is not None and db.audit_rows(lw.SEND_ERROR_EVENT) == []
+    assert db.episodes[("magna53", _NIGHT1)]["closed_on"] is None
+    assert len(lw.SEND_RETRY_DELAYS) == 2                              # the fake zeroes the pauses, not the count
+
+
+def test_a_page_that_never_confirmed_sending_cannot_be_pressed(monkeypatch):
+    """Finding 6, the other half: every attempt failed, so `sent_at` is NULL — the press answers
+    that the page was never confirmed sent (not "no such page"), and moves nothing."""
+    db = _db(monkeypatch)
+    db.send_ok = False
+    detail = _run()
+    assert detail["paged"][0]["action"] == "send failed" and len(db.sends) == 3     # 1 + 2 retries
+    assert "after 3 attempts" in db.audit_rows(lw.SEND_ERROR_EVENT)[0][0]
+    monkeypatch.setattr(registry, "update_strategy", _ORIGINAL_UPDATE_STRATEGY)
+    answer = _press(db, "demote", 1)
+    assert "never confirmed as sent" in answer and db.strategies["magna53"]["phase"] == "live"
+
+
+def test_a_rung_that_moves_during_the_run_is_not_paged_on_the_old_rung(monkeypatch):
+    """Finding 7: his press (or a typed command) lands between the nightly's registry read and its
+    page insert. On fa36a4fd that produced a "live" page and a live episode for a strategy now at
+    paper. Now the rung is re-read fresh right before the insert and a moved rung is not paged."""
+    db = _db(monkeypatch)
+    db.fresh_read_hook = lambda: db.strategies["magna53"].update(phase="paper")
+    detail = _run()
+    assert db.sends == [] and db.pages == {} and db.episodes == {}
+    assert detail["paged"] == [{"strategy_id": "magna53", "action": "skipped",
+                                "reason": ("the rung moved during the run (live → paper); tonight's read "
+                                           "is stale — the next night reads the new rung"),
+                                "page_id": None}]
+    # the next night reads the new rung and pages it
+    db.closed_rows[("magna53", "paper")] = _closed_rows(STREAK_BREACH)
+    detail2 = _run(_NIGHT2)
+    assert detail2["paged"][0]["action"] == "paged" and db.pages[1]["phase_at_page"] == "paper"

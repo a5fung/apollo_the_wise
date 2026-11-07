@@ -310,8 +310,9 @@ def test_breach_writes_would_demote_true_pages_once_and_moves_nothing(monkeypatc
     # ONE page, both buttons, for the breaching strategy only.
     assert len(spy.sends) == 1
     btns = [b for r in spy.sends[0]["reply_markup"]["inline_keyboard"] for b in r]
-    assert [b["callback_data"] for b in btns] == [f"ladder:demote:{row['paged'][0]['page_id']}",
-                                                  f"ladder:noaction:{row['paged'][0]['page_id']}"]
+    pid = row["paged"][0]["page_id"]
+    token = spy.db.token_of(pid)                      # the page's own button token (#312 review)
+    assert [b["callback_data"] for b in btns] == [f"ladder:demote:{pid}:{token}", f"ladder:noaction:{pid}:{token}"]
     assert "magna53" in spy.sends[0]["text"] and "magna53_smallcap" not in spy.sends[0]["text"]
 
     # The writes: audit INSERTs plus the ladder's own two tables — nothing else, and no phase.
@@ -320,7 +321,13 @@ def test_breach_writes_would_demote_true_pages_once_and_moves_nothing(monkeypatc
         assert sql == dbmod._AUDIT_INSERT_SQL or any(t in sql for t in ladder_tables), (verb, sql)
     for verb, sql, _ in spy.calls:
         up = sql.upper()
-        assert "MI_STRATEGIES" not in up and "DELETE" not in up, (verb, sql)
+        assert "DELETE" not in up, (verb, sql)
+        if "MI_STRATEGIES" in up:
+            # The module READS the registry (the nightly load, and since the #312 review one fresh
+            # primary-key read of the rung right before a page) — it never WRITES it. The row
+            # carries the sizing knob, so a read names the column; a write would be an UPDATE.
+            assert verb in ("fetch", "fetchrow") and up.lstrip().startswith("SELECT"), (verb, sql)
+            continue
         assert "ORDER" not in up.replace("ORDER BY", "") and "POSITION_SIZE" not in up
         if "UPDATE" in up:
             assert any(t.upper() in up for t in ladder_tables), (verb, sql)

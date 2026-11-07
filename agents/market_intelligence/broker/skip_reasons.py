@@ -93,6 +93,7 @@ INFRA_SUBSCRIBE_TIMEOUT   = "infra:subscribe_timeout"
 INFRA_SUBSCRIBE_FAILED    = "infra:subscribe_failed"
 INFRA_ORDER_SUBMIT_FAILED = "infra:order_submit_failed"
 INFRA_HALT_STATE_UNREADABLE = "infra:halt_state_unreadable"  # #345 fail-SAFE block when the halt flag can't be read
+INFRA_STRATEGY_UNREADABLE = "infra:strategy_unreadable"  # #312 (2026-11-07) fail-SAFE skip when the strategy row can't be read FRESH (never a cached phase)
 
 # ── window: timing gates ─────────────────────────────────────────────────────
 WINDOW_OUT_OF_ORB   = "window:out_of_orb"
@@ -158,6 +159,7 @@ _HUMAN_LABELS: dict[str, str] = {
     INFRA_SUBSCRIBE_FAILED:     "Bar subscribe failed",
     INFRA_ORDER_SUBMIT_FAILED:  "Order submission to Alpaca failed",
     INFRA_HALT_STATE_UNREADABLE: "Halt-state unreadable — blocked (failing safe)",
+    INFRA_STRATEGY_UNREADABLE: "Strategy row unreadable — skipped (failing safe: which account to trade could not be read fresh)",
     WINDOW_OUT_OF_ORB:          "Arrived after ORB window closed",
     WINDOW_DUPLICATE:           "Duplicate — trade already exists",
     WINDOW_PROPOSAL_EXPIRED:    "Staged proposal expired — ORB day passed unconfirmed",

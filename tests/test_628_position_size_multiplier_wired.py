@@ -228,7 +228,7 @@ def _row(strategy_id: str, multiplier) -> dict:
 
 def _register(monkeypatch, strategy) -> None:
     """Replace the #461 harness's SimpleNamespace strategy with ours (or None = unregistered)."""
-    monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=strategy))
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(return_value=strategy))   # the funnel reads FRESH (#312 review)
 
 
 def _spec(shares: int):

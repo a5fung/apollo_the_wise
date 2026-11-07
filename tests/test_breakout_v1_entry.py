@@ -447,7 +447,7 @@ class World:
         monkeypatch.setattr(trading_calendar, "get_market_status",
                             lambda d: trading_calendar.MarketStatus(True, "test"))
         monkeypatch.setattr(be, "get_runtime_toggle", AsyncMock(return_value=toggle))
-        monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=_strategy(phase=phase)))
+        monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(return_value=_strategy(phase=phase)))   # the lane reads FRESH (#312 review)
         monkeypatch.setattr(be, "LIVE_TRADING_ENABLED", True)
         monkeypatch.setattr(be, "alpaca", fake)
         monkeypatch.setattr(be, "submit_trade_entry", self.funnel)
@@ -548,7 +548,7 @@ async def test_the_switch_off_frees_a_row_that_never_got_its_order(monkeypatch):
 async def test_disabled_row_is_the_switch_off_quietly(monkeypatch):
     w = World(monkeypatch)
     from agents.market_intelligence.strategies import registry
-    monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=_strategy(enabled=False)))
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(return_value=_strategy(enabled=False)))
     out = await w.tick()
     assert out["skipped"] == "switched_off" and not w.funnel.await_count and w.pages == []
 

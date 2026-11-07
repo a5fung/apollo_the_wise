@@ -15709,7 +15709,8 @@ async def count_truncated_audit_rows(since_hours: float = 26.0) -> int:
 _AUDIT_INSERT_SQL = "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ($1, $2, $3)"
 
 
-async def log_audit_event(event_type: str, summary: str, detail: str = "", *, conn=None) -> bool:
+async def log_audit_event(event_type: str, summary: str, detail: str = "", *, conn=None,
+                          strict: bool = False) -> bool:
     """
     Write a critical event to the audit log. Never raises — safe to call from anywhere.
     event_type: 'advisor_call' | 'theme_discovered' | 'theme_retired' |
@@ -15719,6 +15720,14 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "", *, co
     always). Almost every caller ignores it; a caller whose own correctness rests on the row EXISTING (the breakout
     v1 hold notes that the 15:55 missed-by-slots record reads back, re-review 2026-11-07 finding 4) reads it and
     retries later rather than assuming the write landed.
+
+    `strict=True` (#312 review, 2026-11-07) — the one exception to "never raises", for a write
+    INSIDE A CALLER'S TRANSACTION (`conn=` from `conn.transaction()`): a swallowed failure there
+    leaves the transaction ABORTED, and Postgres answers the COMMIT of an aborted transaction with
+    a silent ROLLBACK — so the caller's "done" would describe a write that never happened (the
+    ladder press's "Demoted" with the phase unchanged). With strict the INSERT's failure propagates
+    and the caller's transaction rolls back LOUDLY. Redaction, the detail budget and the 5 s bound
+    apply unchanged.
 
     #621 (2026-09-05): `pool.acquire()` and the INSERT are timeout-bounded at 5s.
     Found while closing the reprotect-floor DB-timeout gap: `_apply_reprotect_floor`
@@ -15759,6 +15768,8 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "", *, co
             await conn.execute(*args, timeout=5.0)
         return True
     except Exception as e:
+        if strict:
+            raise
         logger.warning(f"audit log write failed ({event_type}): {e}")
         return False
 
@@ -20067,12 +20078,14 @@ _LADDER_DDL = """
         demote_to     TEXT NOT NULL,               -- the rung the Demote button steps to
         breached      JSONB NOT NULL,              -- the limits breached at the page (a NEW one re-pages)
         stats         JSONB NOT NULL,              -- what the page showed (the evaluated dict)
+        token         TEXT,                        -- the page's own random button token (#312 review): a press without it is refused
         sent_at       TIMESTAMPTZ,                 -- NULL = the send failed; the episode is not paged
         decision      TEXT CHECK (decision IN ('demote', 'no_action', 'stale')),
         decided_at    TIMESTAMPTZ,
-        decided_by    BIGINT,                      -- the Telegram user id of the press
+        decided_by    BIGINT,                      -- the Telegram user id of the press (NULL = the nightly read marked it stale)
         created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         UNIQUE (strategy_id, as_of)                -- one page per strategy per night
     );
+    ALTER TABLE mi_ladder_pages ADD COLUMN IF NOT EXISTS token TEXT;
     CREATE INDEX IF NOT EXISTS idx_ladder_pages_open_episode ON mi_ladder_pages (strategy_id, episode_on, as_of);
 """

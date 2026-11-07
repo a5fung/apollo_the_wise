@@ -127,6 +127,15 @@ class ScreenerRequest(BaseModel):
     max_results: int = 20
 
 
+# Dispatch keys that exist only for a button's callback and are never a command anyone types — kept
+# OUT of the "Available:" list the Unknown-command reply prints, because that reply reaches the
+# orchestrator's LLM (its `call_market_agent` tool forwards free text here) and would advertise them
+# (#312 review, 2026-11-07: `/ladder_press` is the ladder breach page's Demote / No action; the press
+# itself is additionally gated by the page's own token, so advertising it would move nothing — but a
+# key that cannot be used by anyone reading the list has no business on it).
+_INTERNAL_ONLY_COMMANDS = frozenset({"/ladder_press"})
+
+
 def _normalize_slash_cmd(token: str) -> str:
     """Normalize a raw slash-command token to its canonical dispatch key.
 
@@ -5777,11 +5786,17 @@ class MarketIntelligenceAgent(BaseAgent):
         is delivery only."""
         import re as _re
         from agents.market_intelligence.ladder_press import handle_ladder_press
-        m = _re.match(r'^\s*/?ladder_press\s+([a-z_]+)\s+(\d+)\s*$', request.task or '', _re.IGNORECASE)
+        # The third field is the page's own button TOKEN (#312 review): optional in the grammar so a
+        # tokenless press (the orchestrator's LLM reaching this key through `call_market_agent`, or
+        # anyone typing it) is REFUSED and audited by the press handler rather than answered
+        # "malformed" — the refusal is the record.
+        m = _re.match(r'^\s*/?ladder_press\s+([a-z_]+)\s+(\d+)(?:\s+([A-Za-z0-9_\-]+))?\s*$',
+                      request.task or '', _re.IGNORECASE)
         if not m:
-            return self._ok(request, result="Malformed ladder press — expected `<demote|noaction> <page id>`.")
+            return self._ok(request, result="Malformed ladder press — expected `<demote|noaction> <page id> <token>`.")
         try:
-            text = await handle_ladder_press(m.group(1).lower(), int(m.group(2)), user_id=request.user_id)
+            text = await handle_ladder_press(m.group(1).lower(), int(m.group(2)), user_id=request.user_id,
+                                             token=m.group(3))
         except Exception as e:
             logger.exception(f"ladder press failed: {e}")
             return self._error(request, f"Ladder press failed: {e}")
@@ -6392,7 +6407,8 @@ class MarketIntelligenceAgent(BaseAgent):
         handler = dispatch.get(cmd)
         if handler:
             return await handler(request)
-        available = "  ".join(sorted(k for k in dispatch if not k.endswith("_detail")))
+        available = "  ".join(sorted(k for k in dispatch
+                                     if not k.endswith("_detail") and k not in _INTERNAL_ONLY_COMMANDS))
         return self._ok(request, result=f"Unknown command: `{cmd}`\n\nAvailable:\n`{available}`")
 
     async def _handle_why_query(self, request: AgentRequest) -> AgentResponse:

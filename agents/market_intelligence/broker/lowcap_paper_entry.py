@@ -138,9 +138,19 @@ async def paper_account_preflight(today: date) -> bool:
 async def _strategy_paper_or_refuse(today: date):
     """The lane's strategy row, ONLY when it is enabled, phase 'paper' and resolves to 'paper'.
     Disabled / missing → None quietly (the switch is off). Any other phase → None + audit + page:
-    a lane that would route anywhere but paper is refused outright."""
-    from agents.market_intelligence.strategies.registry import get_strategy
-    strategy = await get_strategy(STRATEGY_ID)
+    a lane that would route anywhere but paper is refused outright. Read FRESH (#312 review,
+    2026-11-07): a demote or disable committed in the market agent must stop this lane's NEXT
+    tick without an apollo-execution restart; a row that cannot be read is refused the same way
+    (audit + page, no orders) — never a cached phase."""
+    from agents.market_intelligence.strategies.registry import get_strategy_fresh
+    try:
+        strategy = await get_strategy_fresh(STRATEGY_ID)
+    except Exception as e:  # loud-ok: fail CLOSED — refused below with audit + page, no orders
+        msg = (f"{STRATEGY_ID}: the strategy row could not be read fresh ({type(e).__name__}: "
+               f"{str(e)[:160]}) — the small-cap lane orders only on a row it can read; refused")
+        await log_audit_event("lowcap_paper_lane_refused", f"{today.isoformat()}: {msg}")
+        await _page(f"🚨 Small-cap paper lane refused to order: {msg}")
+        return None
     if strategy is None or not strategy.enabled:
         return None
     try:
