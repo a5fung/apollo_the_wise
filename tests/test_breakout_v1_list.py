@@ -131,7 +131,8 @@ def test_the_night_lists_zcsh_only_and_keeps_out_the_leveraged_and_unnamed_funds
     assert len(f.sent) == 1 and out["message"] == "sent"
     from agents.market_intelligence.constants import is_paper_message, mode_prefix
     assert f.sent[0].startswith(mode_prefix("paper")) and is_paper_message(f.sent[0])
-    assert "ZCSH" in f.sent[0] and "35.13" in f.sent[0] and "/bgrade" in f.sent[0]
+    assert "ZCSH" in f.sent[0] and "35.13" in f.sent[0]
+    assert "/bgrade" not in f.sent[0]        # #717 stage 2 (his 2026-11-05 word): the message no longer names the command
 
 
 def test_a_rerun_is_idempotent(monkeypatch):
@@ -230,6 +231,11 @@ def test_format_list_message_shows_the_top_10_by_score_and_the_count_and_is_none
     shown = [ln.split()[1] for ln in block.strip().splitlines()[1:]]
     assert shown == [f"T{k:03d}" for k in range(249, 239, -1)]          # the biggest run-up first (spread tied)
     assert "|" not in block and "last 10 sessions" in msg and "50-day" not in msg      # no pipe table
+    # #717 stage 2: the message no longer names /bgrade (grades come from chart sheets in chat, his 2026-11-05 word);
+    # the command itself stays — `test_bgrade_is_in_all_three_places` and the bare-/bgrade tests below pin it
+    assert "/bgrade" not in msg and "bgrade" not in msg
+    # review 2026-11-07: the stale "(list and grades only)" clause is gone — the message says nothing about grading
+    assert "grade" not in msg.lower() and "No order is placed from this message" in msg
 
 
 # ── /bgrade ─────────────────────────────────────────────────────────────────────────────────────────────────

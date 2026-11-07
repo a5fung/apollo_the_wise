@@ -199,7 +199,9 @@ def _score_str(x) -> str:
 def format_list_message(today: date, rows: list) -> Optional[str]:
     """The ONE Telegram message for a night's list, paper-prefixed (the paper chat); None for an empty list. Shows the
     TOP `MESSAGE_TOP_N` by the order score (`rows` ranked by `rank_rows`) and the night's total count — the rebuilt
-    list holds ~250 names a night, so the full list lives in `mi_breakout_v1_list`, never in the chat."""
+    list holds ~250 names a night, so the full list lives in `mi_breakout_v1_list`, never in the chat. It no longer
+    names `/bgrade` (his word 2026-11-05: grades come from chart sheets shown in chat, not Telegram; #717 stage 2) —
+    the command itself stays, as the catch-up path."""
     if not rows:
         return None
     from agents.market_intelligence.constants import mode_prefix
@@ -213,9 +215,8 @@ def format_list_message(today: date, rows: list) -> Optional[str]:
     return (f"{mode_prefix('paper')}*Breakout v1 — watch list for the next session* ({today.isoformat()}, "
             f"{n} name{'s' if n != 1 else ''}; the top {len(shown)} by the order score)\n"
             f"A name breaks out when it trades above its level on at least 1.2× its average volume of the last "
-            f"10 sessions. No orders are placed (list and grades only).\n"
-            "```\n" + "\n".join(lines) + "\n```" + more +
-            "\nGrade one: `/bgrade TICKER A+|A|B|C|skip [note]` · `/bgrade` lists the ungraded")
+            f"10 sessions. No order is placed from this message.\n"
+            "```\n" + "\n".join(lines) + "\n```" + more)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════

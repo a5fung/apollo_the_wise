@@ -249,12 +249,13 @@ def _strategy(phase="paper", enabled=True) -> Strategy:
 
 
 _LIST = {"scan_date": PREV, "ticker": "BRKO", "level": 10.00, "vol_bar": 1_200_000.0, "adr20": 0.06,
-         "rs_best": 99.1, "close": 9.80, "security_type": "CS", "list_rank": 1}
+         "rs_best": 99.1, "close": 9.80, "security_type": "CS", "list_rank": 1, "order_score": 0.95}
 
 
 class World:
     def __init__(self, monkeypatch, *, at=(9, 35), phase="paper", toggle=True, list_rows=None, bars=None,
-                 rows=None, orders=None, cancel_outcome="dead", latest=None):
+                 rows=None, orders=None, cancel_outcome="dead", latest=None, open_count=None, bars_unreadable=(),
+                 strat_cap=None):
         self.now = datetime(TODAY.year, TODAY.month, TODAY.day, *at, 10, tzinfo=_ET)
         self.rows = {r["ticker"]: dict(r) for r in (rows or [])}
         self.orders = {o["id"]: dict(o) for o in (orders or [])}
@@ -263,6 +264,12 @@ class World:
         self.events: list[tuple] = []
         self.sql: list[str] = []
         self.skips: list[tuple] = []
+        self.batch_calls: list[tuple] = []          # (tickers, last_completed) per `get_minute_bars_range_batch` call
+        self.range_calls: list[str] = []            # tickers of the per-name `get_minute_bars_range` calls
+        self.count_calls: list[tuple] = []          # (account_mode, signal_type) per `count_open_positions` call
+        self.bars_unreadable = set(bars_unreadable)  # names whose bars request "failed": absent from the batch dict
+        self.batch_in_flight = False                # True: the previous tick's bars page is still on its thread -> None
+        self.audit_fail: list[tuple] = []           # (event_type, needle in the summary): that ONE write fails (False, no row)
         self.cancel_outcome = cancel_outcome
         self.latest = latest
         self.bars = bars if bars is not None else {"BRKO": _flat_bars(5, low=9.80, high=9.95, vol=60_000.0)}
@@ -297,6 +304,14 @@ class World:
 
         async def fetchval(sql, *a):
             w.sql.append(sql)
+            if "SELECT COUNT(*) FROM mi_live_trades" in sql:                           # live_tracker.count_open_positions
+                mode, statuses = a[0], a[-1]
+                sig = a[1] if len(a) == 3 else None                                     # the per-strategy variant (#65)
+                return sum(1 for r in w.rows.values() if r["account_mode"] == mode and r["status"] in statuses
+                           and (sig is None or r["signal_type"] == sig))
+            if "SELECT max_concurrent_positions FROM mi_strategies" in sql:           # the breakout row's own cap
+                assert a == (SID,)
+                return strat_cap
             row = next((r for r in w.rows.values() if r["id"] == a[0]), None)
             if "SET stop_order_id = $2, stop_price = $3, hard_stop = $3" in sql:     # _record_stop_lowered (CAS)
                 ok = (row is not None and row["status"] == "filled" and (row["signal_type"], row["account_mode"])
@@ -335,7 +350,13 @@ class World:
         self.pool = pool
 
         async def audit(ev, summary, detail=""):
+            # `db.log_audit_event`'s contract: never raises; True = the row is durable, False = the write was swallowed
+            for i, (fev, needle) in enumerate(w.audit_fail):
+                if ev == fev and needle in summary:
+                    w.audit_fail.pop(i)
+                    return False
             w.audits.append((ev, summary, detail))
+            return True
 
         async def tg(msg, *a, **k):
             w.pages.append(msg)
@@ -348,7 +369,17 @@ class World:
             return [dict(o) for o in w.orders.values() if be._classify(o) == "open"]
 
         async def get_minute_bars_range(ticker, start, end):
+            w.range_calls.append(ticker)
             return list(w.bars.get(ticker, []))
+
+        async def get_minute_bars_range_batch(tickers, start, end, *, last_completed=None, chunk_max=200):
+            # the real function's contract: a name whose request answered is PRESENT ([] when it has no bars);
+            # a name whose request raised is ABSENT
+            assert start == datetime(TODAY.year, TODAY.month, TODAY.day, 9, 30, tzinfo=_ET) and end == w.now
+            w.batch_calls.append((list(tickers), last_completed))
+            if w.batch_in_flight:                    # the previous call's page is still on the batch thread: SKIPPED
+                return None
+            return {t: list(w.bars.get(t, [])) for t in tickers if t not in w.bars_unreadable}
 
         async def get_order(oid, account_mode=None, timeout=None):
             assert account_mode == "paper"
@@ -375,9 +406,21 @@ class World:
             return w.latest
 
         fake.get_open_orders, fake.get_minute_bars_range = get_open_orders, get_minute_bars_range
+        fake.get_minute_bars_range_batch = get_minute_bars_range_batch
         fake.get_order, fake.cancel_order, fake.get_account = get_order, cancel_order, get_account
         fake.get_latest_trade = get_latest_trade
         self.alpaca = fake
+
+        real_count = lt.count_open_positions
+
+        async def count_open(conn, account_mode, signal_type=None):
+            # the funnel's own SQL (`live_tracker.count_open_positions`), recorded; `open_count=` overrides the number
+            w.count_calls.append((account_mode, signal_type))
+            if open_count is not None:
+                return open_count
+            return await real_count(conn, account_mode, signal_type)
+
+        monkeypatch.setattr(lt, "count_open_positions", count_open)
 
         async def submit_entry(trade_id):
             row = next(r for r in w.rows.values() if r["id"] == trade_id)
@@ -415,6 +458,7 @@ class World:
         monkeypatch.setattr(be, "_paged", set())
         monkeypatch.setattr(be, "_noted", {})
         monkeypatch.setattr(be, "_snapshot_fails", 0)
+        monkeypatch.setattr(be, "_bars_unread_ticks", 0, raising=False)
         monkeypatch.setattr(be, "_fill_checked", set())
 
         async def ins(ticker, today, alert, regime, reason, signal_type=None, account_mode=None):
@@ -1656,3 +1700,788 @@ async def test_the_evening_pass_sells_a_too_wide_fill_and_touches_no_other_row(m
     for bad in (_filled_row(signal_type="magna53"), _filled_row(account_mode="live"), _filled_row(status="closed")):
         assert await be.check_stop_at_fill_after_close(bad, now_et=EVENING) == "untouched"
     assert w.full_exit.await_count == 1 and len(_marker(w)) == 1
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 9. #717 STAGE 2 (2026-11-07; design docs/design/717_stage2_design_2026-11-06.md; his rulings 2026-11-06 "Go with rec,
+#    track what we miss"): ONE batched bars read per tick; the slots by list rank, hold-only, the overflow waits;
+#    the missed-by-slots record; the switch-off path makes no bars request; nothing writes the paper switch.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+import time  # noqa: E402
+
+from agents.market_intelligence.broker import alpaca_client as ac  # noqa: E402
+
+
+def _ranked(n: int, *, prefix: str = "R", start: int = 1, **over) -> list[dict]:
+    """`n` list rows ranked `start`..`start+n-1`, tickers R1.., every one eligible on `_eligible_bars()`."""
+    return [dict(_LIST, ticker=f"{prefix}{k}", list_rank=k, order_score=round(1 - k / 1000, 3), **over)
+            for k in range(start, start + n)]
+
+
+def _eligible_bars(tickers, n: int = 5) -> dict:
+    return {t: _flat_bars(n, low=9.80, high=9.95, vol=60_000.0) for t in tickers}
+
+
+def _breaking_bars(tickers, break_at: int | None, n: int = 20) -> dict:
+    """Bars eligible on the opening range (ORH5 9.95 < the list level 10.00, stop 9.80, the pace met) that trade ABOVE
+    the level ONCE, in minute `break_at` (high 10.05; its low 9.85 leaves the day low at 9.80); None = never."""
+    out = {}
+    for t in tickers:
+        bars = _flat_bars(n, low=9.80, high=9.95, vol=60_000.0)
+        if break_at is not None:
+            bars[break_at] = _bar(break_at, 9.90, 10.05, 9.85, 10.02, 60_000.0)
+        out[t] = bars
+    return out
+
+
+def _missed(w):
+    return [json.loads(a[2]) for a in w.ev(be.MISSED_BY_SLOTS)]
+
+
+def _lane_row(ticker: str, tid: int, status: str = "filled") -> dict:
+    """A small-cap paper lane row: counts against the shared cap of 5 (his F2), never touched by this job."""
+    return dict(_placed_row(ticker=ticker, tid=tid, status=status, oid=f"lane-{tid}"), signal_type="magna53_smallcap")
+
+
+def _held(w):
+    return [json.loads(a[2]) for a in w.ev(be.HOLD_EVENT) if json.loads(a[2]).get("state") == be.SLOTS_FULL_STATE]
+
+
+def _funnel_tickers(w):
+    return [c.kwargs["alert_context"]["ticker"] for c in w.funnel.await_args_list]
+
+
+# ── the batched read ──
+@pytest.mark.asyncio
+async def test_a_350_name_tick_is_one_batched_bars_call_and_never_a_per_name_call(monkeypatch):
+    """T1 (tick level): 350 list names at 09:35 -> ONE `get_minute_bars_range_batch` call naming all 350 with
+    last_completed 4, ZERO per-name calls, an action for every name, and the slots taken by rank (5 to the funnel,
+    345 held). Network latency is NOT measured here (the D8 probe does); the tick's own CPU time is bounded."""
+    rows = _ranked(350)
+    w = World(monkeypatch, list_rows=list(reversed(rows)), bars=_eligible_bars(r["ticker"] for r in rows))
+    t0 = time.process_time()
+    out = await w.tick()
+    assert time.process_time() - t0 < 5.0
+    assert len(w.batch_calls) == 1 and w.range_calls == []
+    named, last_completed = w.batch_calls[0]
+    assert sorted(named) == sorted(r["ticker"] for r in rows) and last_completed == 4
+    assert len(out["actions"]) == 350
+    assert _funnel_tickers(w) == ["R1", "R2", "R3", "R4", "R5"]                  # by LIST RANK, not list order
+    assert sum(1 for a in out["actions"].values() if a == "held_slots_full") == 345
+    assert w.skips == []                                                          # no terminal skipped row for a hold
+    # 15:55 with no rows: no name needs bars, so no request at all
+    w2 = World(monkeypatch, list_rows=rows, bars={})
+    out2 = await w2.tick(at=(15, 55))
+    assert w2.batch_calls == [] and set(out2["actions"].values()) == {"never_placed"}
+
+
+class _StubBar:
+    def __init__(self, ts, o, h, l, c, v, vwap=None):
+        self.timestamp, self.open, self.high, self.low, self.close, self.volume, self.vwap = ts, o, h, l, c, v, vwap
+
+
+class _StubDataClient:
+    """A stand-in for alpaca-py's StockHistoricalDataClient: records each request's symbols; `raise_on` = the 1-based
+    chunk index that raises (a failed HTTP page); `bars_for` = {symbol: [bars]} (a symbol not in it has no bars)."""
+    def __init__(self, bars_for=None, raise_on=()):
+        self.requests: list[list[str]] = []
+        self.bars_for = bars_for or {}
+        self.raise_on = set(raise_on)
+
+    def get_stock_bars(self, request):
+        syms = request.symbol_or_symbols if isinstance(request.symbol_or_symbols, list) else [request.symbol_or_symbols]
+        self.requests.append(list(syms))
+        if len(self.requests) in self.raise_on:
+            raise RuntimeError("HTTP 500 on the bars page")
+        return SimpleNamespace(data={s: list(self.bars_for.get(s, [])) for s in syms if s in self.bars_for})
+
+
+def _stub_bars(n: int, d: date = TODAY):
+    ts0 = datetime(d.year, d.month, d.day, 14, 30, tzinfo=ZoneInfo("UTC"))             # 09:30 ET in UTC, as the SDK gives
+    return [_StubBar(ts0 + timedelta(minutes=m), 9.9, 10.0, 9.8, 9.9, 10_000, 9.9) for m in range(n)]
+
+
+def _stub_sdk(monkeypatch, stub: _StubDataClient) -> None:
+    """The conftest stubs alpaca-py whole (a MagicMock `StockBarsRequest` keeps no fields): give the module a request
+    class that carries its kwargs, and the stub client."""
+    monkeypatch.setattr(ac, "StockBarsRequest", lambda **kw: SimpleNamespace(**kw))
+    monkeypatch.setattr(ac, "_get_data_client", lambda: stub)
+
+
+def test_the_chunk_is_one_page_two_requests_at_0935_fourteen_at_1555_for_350_names():
+    """T1 (arithmetic, PURE): symbols per request = min(200, 10,000 // (bars so far + the minute in progress))."""
+    assert ac.bars_batch_chunk_size(350, 4, 200) == 200          # 09:35: 5 bars each -> the 200 cap -> 2 requests
+    assert ac.bars_batch_chunk_size(350, 384, 200) == 25         # 15:55: 386 bars each -> 25 symbols -> 14 requests
+    assert ac.bars_batch_chunk_size(350, None, 200) == 200
+    assert ac.bars_batch_chunk_size(3, 384, 200) == 3 and ac.bars_batch_chunk_size(1, 20_000, 200) == 1
+    assert ac.bars_batch_chunk_size(0, 4, 200) == 1               # never a zero step
+
+
+@pytest.mark.asyncio
+async def test_the_batch_sends_one_page_per_request_and_returns_every_name_in_the_per_name_shape(monkeypatch):
+    stub = _StubDataClient(bars_for={f"N{k:03d}": _stub_bars(5) for k in range(0, 350, 2)})
+    _stub_sdk(monkeypatch, stub)
+    names = [f"N{k:03d}" for k in range(350)]
+    start, end = be.session_open(TODAY), be.session_open(TODAY) + timedelta(minutes=5)
+    got = await ac.get_minute_bars_range_batch(names, start, end, last_completed=4)
+    assert [len(r) for r in stub.requests] == [200, 150] and [s for r in stub.requests for s in r] == names
+    assert set(got) == set(names)                                                 # every name of an answered chunk
+    assert got["N001"] == [] and len(got["N000"]) == 5                             # no bars -> [], never absent
+    assert set(got["N000"][0]) == {"t_et", "open", "high", "low", "close", "volume", "vwap"}
+    assert got["N000"][0]["t_et"] == datetime(2026, 11, 2, 9, 30, tzinfo=_ET)      # ET-aware
+    stub.requests.clear()
+    await ac.get_minute_bars_range_batch(names, start, be.session_open(TODAY) + timedelta(minutes=385),
+                                         last_completed=384)
+    assert len(stub.requests) == 14 and {len(r) for r in stub.requests[:-1]} == {25}
+    # duplicates and blanks are dropped; an empty list makes no request
+    stub.requests.clear()
+    await ac.get_minute_bars_range_batch(["N000", "N000", ""], start, end, last_completed=4)
+    assert stub.requests == [["N000"]]
+    assert await ac.get_minute_bars_range_batch([], start, end, last_completed=4) == {} and len(stub.requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_raised_chunk_leaves_its_names_absent_and_the_other_chunks_answer(monkeypatch):
+    """T7 (function level): chunk 2 of 3 raises -> its names are ABSENT (the caller reads 'unreadable'); the others are
+    present; nothing raises out of the call."""
+    stub = _StubDataClient(bars_for={"A": _stub_bars(3)}, raise_on={2})
+    _stub_sdk(monkeypatch, stub)
+    got = await ac.get_minute_bars_range_batch(list("ABCDEF"), be.session_open(TODAY),
+                                               be.session_open(TODAY) + timedelta(minutes=3),
+                                               last_completed=2, chunk_max=2)
+    assert stub.requests == [["A", "B"], ["C", "D"], ["E", "F"]]
+    assert set(got) == {"A", "B", "E", "F"} and len(got["A"]) == 3 and got["B"] == []
+    # the data client itself unavailable: nothing raised, every name absent
+    monkeypatch.setattr(ac, "_get_data_client", lambda: (_ for _ in ()).throw(RuntimeError("no keys")))
+    assert await ac.get_minute_bars_range_batch(["A"], be.session_open(TODAY), be.session_open(TODAY)) == {}
+
+
+@pytest.mark.asyncio
+async def test_a_hung_chunk_ends_the_batch_for_the_tick_so_at_most_one_pool_thread_is_tied_up(monkeypatch):
+    """Review 2026-11-07 finding 4: a chunk that HANGS (its page budget fires; the batch thread stays inside
+    alpaca-py) STOPS the chunk loop for this tick — the remaining chunks are never sent, their names are absent
+    (unread this minute), and at most ONE thread (the batch's own, since the re-review) is tied up. A chunk that fails
+    FAST (an HTTP error) still lets the next chunk run."""
+    stub = _StubDataClient(bars_for={"A": _stub_bars(3), "E": _stub_bars(3)})
+    _stub_sdk(monkeypatch, stub)
+    timeouts = []
+
+    async def page(fn, *a, timeout=None, **kw):
+        timeouts.append(timeout)
+        res = fn(*a, **kw)                                  # the request went out (the thread is the one that hangs)
+        if len(timeouts) == 2:
+            raise TimeoutError("hung past the chunk budget")
+        return res
+    monkeypatch.setattr(ac, "_run_bars_page", page)
+    start, end = be.session_open(TODAY), be.session_open(TODAY) + timedelta(minutes=3)
+    got = await ac.get_minute_bars_range_batch(list("ABCDEF"), start, end, last_completed=2, chunk_max=2)
+    assert stub.requests == [["A", "B"], ["C", "D"]]                  # chunk 3 never sent: one hung thread at most
+    assert set(got) == {"A", "B"} and len(got["A"]) == 3
+    assert timeouts == [ac.BARS_BATCH_CHUNK_TIMEOUT_S] * 2
+    # a FAST failure on chunk 2 still lets chunk 3 run (the existing contract)
+    stub2 = _StubDataClient(bars_for={"A": _stub_bars(3), "E": _stub_bars(3)}, raise_on={2})
+    _stub_sdk(monkeypatch, stub2)
+    monkeypatch.setattr(ac, "_run_bars_page", lambda fn, *a, timeout=None, **kw: _ret(fn(*a, **kw)))
+    got = await ac.get_minute_bars_range_batch(list("ABCDEF"), start, end, last_completed=2, chunk_max=2)
+    assert stub2.requests == [["A", "B"], ["C", "D"], ["E", "F"]] and set(got) == {"A", "B", "E", "F"}
+
+
+async def _ret(x):
+    return x
+
+
+@pytest.mark.asyncio
+async def test_a_hung_bars_page_holds_only_its_own_thread_and_the_next_call_is_skipped_while_it_is_in_flight(monkeypatch):
+    """Re-review 2026-11-07 finding 2: a hung page used to keep ONE thread of the ~7-thread pool every broker call in
+    apollo-execution shares, and a hang every minute would fill that pool in 7-14 minutes. Now the batch runs on its
+    OWN single-thread executor (never `_sdk` / the shared pool), and a call that finds the previous page still on that
+    thread is SKIPPED (-> None, nothing submitted) until the thread returns — a stuck page can never hold more than
+    one thread, and never a shared one."""
+    import threading
+    release = threading.Event()
+    threads: list[str] = []
+    shared: list = []
+
+    class _Blocking(_StubDataClient):
+        def get_stock_bars(self, request):
+            threads.append(threading.current_thread().name)
+            if not self.requests:
+                self.requests.append(list(request.symbol_or_symbols))
+                release.wait(5)                                  # the FIRST page hangs (alpaca-py sets no HTTP timeout)
+                return SimpleNamespace(data={})
+            return super().get_stock_bars(request)
+
+    async def shared_pool(fn, *a, timeout=None, **kw):           # the shared executor: must never carry the batch
+        shared.append(getattr(fn, "__name__", str(fn)))
+        return fn(*a, **kw)
+    stub = _Blocking(bars_for={"A": _stub_bars(3), "C": _stub_bars(3)})
+    _stub_sdk(monkeypatch, stub)
+    monkeypatch.setattr(ac, "_sdk", shared_pool)
+    monkeypatch.setattr(ac, "BARS_BATCH_CHUNK_TIMEOUT_S", 0.05)
+    start, end = be.session_open(TODAY), be.session_open(TODAY) + timedelta(minutes=3)
+    try:
+        got = await ac.get_minute_bars_range_batch(list("ABCD"), start, end, last_completed=2, chunk_max=2)
+        assert got == {} and stub.requests == [["A", "B"]]       # the hang ended the call; chunk 2 never sent
+        assert ac.bars_batch_in_flight() is True                 # the thread is still inside alpaca-py
+        # the next tick's call: SKIPPED — nothing submitted, no second thread, no queue behind the stuck page
+        assert await ac.get_minute_bars_range_batch(list("ABCD"), start, end, last_completed=2, chunk_max=2) is None
+        assert stub.requests == [["A", "B"]] and len(threads) == 1
+    finally:
+        release.set()                                            # let the stuck thread return (never leave it hung)
+    for _ in range(200):
+        if not ac.bars_batch_in_flight():
+            break
+        await asyncio.sleep(0.01)
+    assert ac.bars_batch_in_flight() is False                    # self-heals the moment the page returns
+    got = await ac.get_minute_bars_range_batch(list("ABCD"), start, end, last_completed=2, chunk_max=2)
+    assert set(got) == set("ABCD") and len(got["A"]) == 3 and stub.requests[1:] == [["A", "B"], ["C", "D"]]
+    assert shared == []                                          # the shared pool never carried a bars page
+    assert threads and all(t.startswith(ac.BARS_BATCH_THREAD_PREFIX) for t in threads)
+
+
+@pytest.mark.asyncio
+async def test_the_batch_dict_judges_a_name_exactly_as_the_per_name_read_did(monkeypatch):
+    """T8 (shape parity): the same stub answers the batch and the per-name call; `bars_by_minute` + `evaluate` reach
+    the same state from either."""
+    bars_for = {"A": _stub_bars(6), "B": _stub_bars(6)[:3], "C": []}
+    stub = _StubDataClient(bars_for=bars_for)
+    _stub_sdk(monkeypatch, stub)
+    start, end = be.session_open(TODAY), be.session_open(TODAY) + timedelta(minutes=6)
+    batch = await ac.get_minute_bars_range_batch(["A", "B", "C"], start, end, last_completed=5)
+    for t in ("A", "B", "C"):
+        single = await ac.get_minute_bars_range(t, start, end)
+        assert batch[t] == single
+        s1 = be.evaluate(be.bars_by_minute(batch[t], TODAY, 5), list_level=10.0, adr20=0.06, vol_bar=1e5, last_completed=5)
+        s2 = be.evaluate(be.bars_by_minute(single, TODAY, 5), list_level=10.0, adr20=0.06, vol_bar=1e5, last_completed=5)
+        assert s1 == s2
+    assert be.evaluate(be.bars_by_minute(batch["A"], TODAY, 5), list_level=10.0, adr20=0.06, vol_bar=1e5,
+                       last_completed=5)["status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_a_failed_bars_request_leaves_its_names_to_the_next_minute_and_a_resting_buy_untouched(monkeypatch):
+    """T7 (tick level): a name absent from the batch answer is 'bars_unreadable' this minute (no abstain, no skipped
+    row), ONE audit row names the unread names, a resting buy under such a name is neither cancelled nor re-priced,
+    and the names that answered proceed."""
+    rows = _ranked(3)
+    w = World(monkeypatch, list_rows=rows, bars=_eligible_bars(["R1", "R2", "R3"]), bars_unreadable={"R2", "R3"},
+              rows=[_placed_row(ticker="R3", tid=31, oid="o-3")], orders=[_order(oid="o-3", ticker="R3")])
+    out = await w.tick(at=(9, 40))
+    assert out["actions"] == {"R1": ep.ACTION_AUTO_ENTERED, "R2": "bars_unreadable", "R3": "held"}
+    assert w.skips == [] and not [e for e in w.events if e[0] == "cancel"] and w.pages == []
+    ev = w.ev("breakout_v1_bars_unreadable")
+    assert len(ev) == 1 and json.loads(ev[0][2])["unread"] == ["R2", "R3"] and "R2" in ev[0][1]
+    # the next minute answers: R2 enters, R3's resting buy is judged again
+    w.bars_unreadable.clear()
+    out = await w.tick(at=(9, 41))
+    assert out["actions"]["R2"] == ep.ACTION_AUTO_ENTERED and out["actions"]["R3"] == "resting"
+
+
+@pytest.mark.asyncio
+async def test_three_straight_minutes_of_unread_bars_page_once_and_a_minute_that_answers_resets_the_count(monkeypatch):
+    """Review 2026-11-07 finding 5: a chunk that keeps failing wrote an audit row a minute and never paged — one bad
+    symbol could blind up to 200 names all day unseen. Now 3 straight ticks with unread names page ONCE (paper-prefixed,
+    naming the names), a 4th does not page again, and a tick where every request answered resets the count."""
+    w = World(monkeypatch, list_rows=_ranked(3), bars={}, bars_unreadable={"R2"})
+    for mm in (40, 41):
+        out = await w.tick(at=(9, mm))
+        assert out["actions"]["R2"] == "bars_unreadable" and w.pages == []
+    await w.tick(at=(9, 42))
+    assert len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER") and "R2" in w.pages[0] and "3 minutes" in w.pages[0]
+    assert len(w.ev("breakout_v1_bars_unreadable")) == 3
+    await w.tick(at=(9, 43))
+    assert len(w.pages) == 1                                                       # once per day
+    w.bars_unreadable.clear()
+    await w.tick(at=(9, 44))
+    assert be._bars_unread_ticks == 0                                              # every request answered: reset
+
+
+@pytest.mark.asyncio
+async def test_a_tick_whose_bars_batch_is_still_in_flight_reads_nothing_and_counts_toward_the_page(monkeypatch):
+    """Re-review 2026-11-07 finding 2 (tick level): the batch answers None while the previous page is still on its
+    thread -> every name is unread this minute (no abstain, no skipped row, a resting buy untouched), ONE
+    `breakout_v1_bars_batch_in_flight` row ('bars batch still in flight'), and the minute counts toward the same
+    3-straight page as a failed request; the tick after the thread returns reads normally."""
+    w = World(monkeypatch, list_rows=_ranked(3), bars=_eligible_bars(["R1", "R2", "R3"]),
+              rows=[_placed_row(ticker="R3", tid=31, oid="o-3")], orders=[_order(oid="o-3", ticker="R3")])
+    w.batch_in_flight = True
+    out = await w.tick(at=(9, 40))
+    assert out["actions"] == {"R1": "bars_unreadable", "R2": "bars_unreadable", "R3": "held"}
+    assert w.skips == [] and not [e for e in w.events if e[0] == "cancel"] and not w.funnel.await_count
+    ev = w.ev("breakout_v1_bars_batch_in_flight")
+    assert len(ev) == 1 and "bars batch still in flight" in ev[0][1] and json.loads(ev[0][2])["need"] == 3
+    assert w.ev("breakout_v1_bars_unreadable") == [] and be._bars_unread_ticks == 1 and w.pages == []
+    await w.tick(at=(9, 41))
+    assert w.pages == []
+    await w.tick(at=(9, 42))                                                        # the 3rd straight minute pages once
+    assert len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER") and "3 minutes" in w.pages[0]
+    assert len(w.ev("breakout_v1_bars_batch_in_flight")) == 3
+    w.batch_in_flight = False                                                       # the page returned
+    out = await w.tick(at=(9, 43))
+    assert out["actions"]["R1"] == ep.ACTION_AUTO_ENTERED and out["actions"]["R3"] == "resting"
+    assert be._bars_unread_ticks == 0 and len(w.pages) == 1
+
+
+@pytest.mark.asyncio
+async def test_the_switch_off_makes_zero_bars_requests(monkeypatch):
+    """T9: with the switch off the tick returns before any bars read — the ~250-name list costs no data calls while
+    paper is off (read 11-02, now pinned), the resting buy is still cancelled."""
+    w = World(monkeypatch, toggle=False, list_rows=[dict(_LIST)] + _ranked(40, start=2), rows=[_placed_row()],
+              orders=[_order()])
+    out = await w.tick(at=(10, 5))
+    assert out["skipped"] == "switched_off" and w.batch_calls == [] and w.range_calls == []
+    assert w.rows["BRKO"]["status"] == "cancelled" and w.count_calls == []
+
+
+def test_nothing_in_stage_2_writes_the_paper_switch():  # source-pin-ok: the absence of a writer of a runtime toggle is not exercisable behaviour — a scan of the two modules stage 2 touched plus the tree is the only pin (D4)
+    """T10: `breakout_v1_paper` stays OFF on his word; stage 2 adds no writer anywhere. The only references outside
+    tests are the constants (db.py) and the entry tick's READ."""
+    tree = sorted((p for d in ("agents", "channels", "core", "shared", "scripts") for p in (_REPO / d).rglob("*.py")
+                   if "probes" not in p.parts))
+    refs = {str(p.relative_to(_REPO)) for p in tree
+            if "breakout_v1_paper" in p.read_text() or "BREAKOUT_V1_PAPER_TOGGLE" in p.read_text()}
+    assert refs == {"agents/market_intelligence/db.py", "agents/market_intelligence/broker/breakout_v1_entry.py"}
+    for mod in ("agents/market_intelligence/broker/breakout_v1_entry.py", "agents/market_intelligence/broker/alpaca_client.py"):
+        src = (_REPO / mod).read_text()
+        assert "set_safeguard_state" not in src and "UPDATE mi_safeguard_state" not in src \
+            and "INSERT INTO mi_safeguard_state" not in src
+    import inspect
+    assert "set_runtime_toggle" not in inspect.getsource(be) and "set_runtime_toggle" not in dir(db)
+
+
+# ── the slots ──
+@pytest.mark.asyncio
+async def test_slots_go_to_the_highest_ranked_eligible_names_and_the_overflow_is_held_not_skipped(monkeypatch):
+    """T2: 7 eligible names, 3 lane rows open (free = 2): the funnel sees ranks 1 and 2 only; ranks 3-7 are HELD —
+    a `slots_full` hold row each, NO skipped row, no `block:max_positions` anywhere, no cancel."""
+    rows = _ranked(7)
+    random.Random(7).shuffle(rows)                                                 # the list arrives in any order
+    w = World(monkeypatch, list_rows=rows, bars=_eligible_bars(f"R{k}" for k in range(1, 8)),
+              rows=[_lane_row("L1", 101), _lane_row("L2", 102, "order_placed"), _lane_row("L3", 103, "confirmed")])
+    out = await w.tick(at=(9, 40))
+    assert _funnel_tickers(w) == ["R1", "R2"]
+    assert {t: a for t, a in out["actions"].items() if t.startswith("R")} == {
+        "R1": ep.ACTION_AUTO_ENTERED, "R2": ep.ACTION_AUTO_ENTERED,
+        **{f"R{k}": "held_slots_full" for k in range(3, 8)}}
+    held = _held(w)
+    assert [h["ticker"] for h in held] == ["R3", "R4", "R5", "R6", "R7"]
+    # the hold row carries the free count AT THE HOLD (0 — the 2 free went to ranks 1-2 this minute), never the
+    # tick-start count (review 2026-11-07: that overstated the free slots on the race path)
+    assert all(h["free_slots"] == 0 and h["seated_this_minute"] == 2 and h["minute"] == 10 and h["level"] == 10.0
+               and h["stop"] == 9.80 and h["list_rank"] == int(h["ticker"][1:]) and h["day"] == TODAY.isoformat()
+               and h["count_unreadable"] is False for h in held)
+    assert w.skips == [] and not [e for e in w.events if e[0] == "cancel"]
+    assert not any("max_positions" in str(a) for a in w.audits)
+    # the next minute, still full: no second hold row (one per name per state), the funnel sees ranks 1-2 again
+    await w.tick(at=(9, 41))
+    assert len(_held(w)) == 5
+
+
+@pytest.mark.asyncio
+async def test_a_held_name_is_not_terminal_it_enters_once_a_slot_frees(monkeypatch):
+    """T3: the overflow WAITS (his ruling 2): the next tick with one lane row closed, rank 3 enters; ranks 4-7 still held."""
+    rows = _ranked(7)
+    w = World(monkeypatch, list_rows=rows, bars=_eligible_bars(f"R{k}" for k in range(1, 8)),
+              rows=[_lane_row("L1", 101), _lane_row("L2", 102), _lane_row("L3", 103)])
+    await w.tick(at=(9, 40))
+    assert _funnel_tickers(w) == ["R1", "R2"]
+    # ranks 1-2 now rest (rows + open orders); lane L3 closed -> 4 of 5 slots taken
+    for k, tid in ((1, 21), (2, 22)):
+        w.rows[f"R{k}"] = _placed_row(ticker=f"R{k}", tid=tid, oid=f"o-{k}")
+        w.orders[f"o-{k}"] = _order(oid=f"o-{k}", ticker=f"R{k}")
+    w.rows["L3"]["status"] = "closed"
+    out = await w.tick(at=(9, 41))
+    assert _funnel_tickers(w) == ["R1", "R2", "R3"]
+    assert out["actions"]["R1"] == "resting" and out["actions"]["R3"] == ep.ACTION_AUTO_ENTERED
+    assert [t for t, a in out["actions"].items() if a == "held_slots_full"] == ["R4", "R5", "R6", "R7"]
+
+
+@pytest.mark.asyncio
+async def test_hold_only_a_resting_lower_ranked_buy_is_never_cancelled_to_seat_a_higher_rank(monkeypatch):
+    """T4 (his ruling 1, PINNED): a RESTING rank-9 breakout buy + a newly eligible rank 2 + a full book -> no cancel,
+    rank 2 held, rank 9 rests on. Displacement is a one-function add on his word, not today's behaviour."""
+    rows = [dict(_LIST, ticker="R9", list_rank=9), dict(_LIST, ticker="R2", list_rank=2)]
+    w = World(monkeypatch, list_rows=rows, bars=_eligible_bars(["R9", "R2"], n=12),
+              rows=[_lane_row(f"L{k}", 100 + k) for k in range(1, 5)] + [_placed_row(ticker="R9", tid=9, oid="o-9")],
+              orders=[_order(oid="o-9", ticker="R9")])
+    out = await w.tick(at=(9, 42))
+    assert out["actions"] == {"R9": "resting", "R2": "held_slots_full"}
+    assert not [e for e in w.events if e[0] == "cancel"] and not w.funnel.await_count
+    assert w.rows["R9"]["status"] == "order_placed" and not w.ev(be.PLANNED_ENTRY_CANCEL)
+
+
+@pytest.mark.asyncio
+async def test_lane_rows_count_against_the_slots_and_are_never_touched(monkeypatch):
+    """T5 (his F2): a small-cap lane `order_placed` row holds a slot; the tick never cancels its order; a filled
+    breakout row is left to the fill check; the free count is 5 minus every paper row."""
+    lane_order = dict(_order(oid="lane-101", ticker="L1"), client_order_id="apollo_paper_magna53_smallcap_L1_1")
+    w = World(monkeypatch, list_rows=_ranked(4), bars=_eligible_bars(["R1", "R2", "R3", "R4"]),
+              rows=[_lane_row("L1", 101, "order_placed"), _filled_row(ticker="R1", id=12, entry_order_id="e-12")],
+              orders=[lane_order])
+    w.audits.append((be.FILL_STOP_CHECKED, "x", json.dumps({"trade_id": 12})))      # already decided: left alone
+    out = await w.tick(at=(9, 40))
+    assert out["actions"]["R1"] == "fill_checked"
+    assert _funnel_tickers(w) == ["R2", "R3", "R4"]                                  # free = 5 - (1 lane + 1 filled)
+    assert w.events == [] and w.orders["lane-101"]["status"] == "new"
+
+
+@pytest.mark.asyncio
+async def test_the_free_slot_count_is_the_funnels_own_sql_once_per_tick(monkeypatch):
+    """T6: `_free_slots` calls `live_tracker.count_open_positions(conn, 'paper')` — no `signal_type` (the shared cap,
+    not a per-strategy one) — once per tick that has an eligible name, and not at all on a tick without one."""
+    w = World(monkeypatch, list_rows=_ranked(3), bars=_eligible_bars(["R1", "R2", "R3"]))
+    await w.tick(at=(9, 40))
+    assert w.count_calls == [("paper", None)]
+    sql = [s for s in w.sql if "SELECT COUNT(*) FROM mi_live_trades" in s]
+    assert len(sql) == 1 and "signal_type" not in sql[0]
+    w2 = World(monkeypatch, list_rows=_ranked(3), bars={})                            # nothing eligible: waits
+    await w2.tick(at=(9, 40))
+    assert w2.count_calls == []
+    # the count is the SAME function the funnel's cap gate uses, with the open-position vocabulary
+    assert be.MAX_CONCURRENT_LIVE_POSITIONS == 5 and tuple(db.OPEN_POSITION_STATUSES) == ("filled", "order_placed", "confirmed")
+    w3 = World(monkeypatch, list_rows=_ranked(3), bars=_eligible_bars(["R1", "R2", "R3"]), open_count=4)
+    out = await w3.tick(at=(9, 40))
+    assert _funnel_tickers(w3) == ["R1"] and out["actions"]["R2"] == "held_slots_full"
+
+
+@pytest.mark.asyncio
+async def test_a_funnel_max_positions_block_holds_the_rest_of_the_minute(monkeypatch):
+    """The disclosed race (a same-moment entry elsewhere): the funnel's locked recount blocks rank 1 on
+    `block:max_positions` -> the other six are HELD this minute, not each sent to a terminal skip — and the BLOCKED
+    name gets a hold row too (review 2026-11-07 finding 3), so 15:55 records it when it breaks out and never seats."""
+    names = [f"R{k}" for k in range(1, 8)]
+    w = World(monkeypatch, list_rows=_ranked(7), bars=_breaking_bars(names, break_at=12))
+    w.funnel = AsyncMock(return_value={"ticker": "R1", "action": ep.ACTION_BLOCKED,
+                                       "reason": "block:max_positions: 5/5 (mode=paper)"})
+    monkeypatch.setattr(be, "submit_trade_entry", w.funnel)
+    out = await w.tick(at=(9, 40))
+    assert _funnel_tickers(w) == ["R1"] and out["actions"]["R1"] == ep.ACTION_BLOCKED
+    assert [t for t, a in out["actions"].items() if a == "held_slots_full"] == names[1:]
+    held = _held(w)
+    assert [h["ticker"] for h in held] == names                                    # R1's hold row too
+    assert all(h["free_slots"] == 0 and h["seated_this_minute"] == 0 and h["minute"] == 10 for h in held)
+    assert w.skips == []
+    # 15:55: every one of the seven broke out at 09:42 and none ever got a slot (the funnel wrote no row) -> seven
+    # records, R1's among them, each at the BREAK minute
+    out = await w.tick(at=(15, 55))
+    rec = _missed(w)
+    assert out["missed_by_slots"] == 7 and [r["ticker"] for r in rec] == names
+    assert [(r["ticker"], r["hold_minute"], r["minute"]) for r in rec][0] == ("R1", 10, 12)
+    # an ordinary funnel skip (the width rule at the fill) does NOT consume the slot: the next rank takes it
+    w = World(monkeypatch, list_rows=_ranked(3), bars=_eligible_bars(["R1", "R2", "R3"]), open_count=4)
+    w.funnel = AsyncMock(side_effect=[{"ticker": "R1", "action": "skipped", "reason": "setup:stop_too_wide: x"},
+                                      {"ticker": "R2", "action": ep.ACTION_AUTO_ENTERED, "trade_id": 2}])
+    monkeypatch.setattr(be, "submit_trade_entry", w.funnel)
+    out = await w.tick(at=(9, 40))
+    assert _funnel_tickers(w) == ["R1", "R2"] and out["actions"]["R3"] == "held_slots_full"
+
+
+@pytest.mark.asyncio
+async def test_a_breakout_cap_on_the_strategy_row_takes_the_smaller_of_the_two_caps_and_its_block_holds_the_rest(monkeypatch):
+    """Review 2026-11-07 finding 5: `mi_strategies.max_concurrent_positions` is NULL on the breakout row today (F2:
+    the shared 5), but if he ever sets it the funnel enforces it (#65) — so `_free_slots` takes the SMALLER of the
+    shared free count and the strategy's own, and a funnel `block:strategy_position_cap` holds the rest of the minute
+    like `block:max_positions` does (otherwise every overflow name would get a terminal skipped row)."""
+    # the book: 1 lane row + 1 breakout row (an off-list name) -> shared free 3, the breakout cap 2 - 1 own = 1
+    w = World(monkeypatch, list_rows=_ranked(4), bars=_eligible_bars(["R1", "R2", "R3", "R4"]), strat_cap=2,
+              rows=[_lane_row("L1", 101), _placed_row(ticker="X1", tid=201, oid="x-1")])
+    out = await w.tick(at=(9, 40))
+    assert _funnel_tickers(w) == ["R1"] and [t for t, a in out["actions"].items() if a == "held_slots_full"] == ["R2", "R3", "R4"]
+    assert w.count_calls == [("paper", None), ("paper", SID)]                    # the shared count, then its own
+    # the strategy-cap block from the funnel's locked recount: the rest held, the blocked name held too, no skip
+    w = World(monkeypatch, list_rows=_ranked(3), bars=_eligible_bars(["R1", "R2", "R3"]), strat_cap=2)
+    w.funnel = AsyncMock(return_value={"ticker": "R1", "action": ep.ACTION_BLOCKED,
+                                       "reason": "block:strategy_position_cap: breakout_v1 2/2 (mode=paper)"})
+    monkeypatch.setattr(be, "submit_trade_entry", w.funnel)
+    out = await w.tick(at=(9, 40))
+    assert _funnel_tickers(w) == ["R1"] and [h["ticker"] for h in _held(w)] == ["R1", "R2", "R3"] and w.skips == []
+    assert out["actions"]["R2"] == "held_slots_full"
+
+
+@pytest.mark.asyncio
+async def test_the_entry_ticks_list_read_is_registered_for_the_deploy_prepare_gate(monkeypatch):
+    """Review 2026-11-07 finding 5: `bv1_get_list` reads `order_score` since stage 2 — registered in
+    `scripts/preflight_db_updates.py` like `bv1_ungraded`, so a schema without the column fails the deploy gate, not
+    the first 09:35 tick. The statement the tick SENDS is the registered copy."""
+    import scripts.preflight_db_updates as pf
+    assert db.BV1_LIST_SELECT_SQL in dict(pf.SHADOW_WRITER_STATEMENTS).values() and "order_score" in db.BV1_LIST_SELECT_SQL
+    w = World(monkeypatch, list_rows=_ranked(1), bars={})
+    await w.tick(at=(9, 40))
+    assert any(_norm(s) == _norm(db.BV1_LIST_SELECT_SQL) for s in w.sql)
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_open_count_holds_every_eligible_name_and_the_preflight_runs_once(monkeypatch):
+    """An unreadable open count holds every eligible name — under its OWN state (`slots_count_unreadable`, review
+    2026-11-07 finding 5), so a database blip is never a missed-by-slots record: 15:55 reads `slots_full` holds only."""
+    names = ["R1", "R2", "R3", "R4"]
+    w = World(monkeypatch, list_rows=_ranked(4), bars=_breaking_bars(names, break_at=12))
+    monkeypatch.setattr(lt, "count_open_positions", AsyncMock(side_effect=RuntimeError("pool exhausted")))
+    out = await w.tick(at=(9, 40))
+    assert set(out["actions"].values()) == {"held_count_unreadable"} and not w.funnel.await_count
+    blips = [json.loads(a[2]) for a in w.ev(be.HOLD_EVENT) if json.loads(a[2])["state"] == be.SLOTS_UNREADABLE_STATE]
+    assert w.ev("breakout_v1_slots_unreadable") and [h["ticker"] for h in blips] == names
+    assert all(h["free_slots"] == 0 and h["count_unreadable"] is True for h in blips) and _held(w) == []
+    out = await w.tick(at=(15, 55))                       # all four broke out at 09:42 — still NOT a missed record
+    assert out["missed_by_slots"] == 0 and w.ev(be.MISSED_BY_SLOTS) == []
+    # a blip followed by a readable FULL book: the `slots_full` hold at 09:41 is the record's first hold
+    w = World(monkeypatch, list_rows=_ranked(1), bars=_breaking_bars(["R1"], break_at=12))
+    monkeypatch.setattr(lt, "count_open_positions", AsyncMock(side_effect=[RuntimeError("blip"), 5]))
+    await w.tick(at=(9, 40))
+    await w.tick(at=(9, 41))
+    holds = [json.loads(a[2]) for a in w.ev(be.HOLD_EVENT)]
+    assert [(h["state"], h["minute"]) for h in holds] == [(be.SLOTS_UNREADABLE_STATE, 10), (be.SLOTS_FULL_STATE, 11)]
+    out = await w.tick(at=(15, 55))
+    assert out["missed_by_slots"] == 1 and [(r["ticker"], r["hold_minute"], r["minute"]) for r in _missed(w)] == [("R1", 11, 12)]
+    # the pre-flight is asked once per tick for the whole eligible set, not once per name
+    w = World(monkeypatch, list_rows=_ranked(4), bars=_eligible_bars(["R1", "R2", "R3", "R4"]))
+    w.alpaca.get_account = AsyncMock(side_effect=RuntimeError("paper 401"))
+    out = await w.tick(at=(9, 40))
+    assert set(out["actions"].values()) == {"preflight_failed"} and w.alpaca.get_account.await_count == 1
+    assert _held(w) == [] and w.count_calls == []
+
+
+# ── track what we miss ──
+def test_the_break_is_the_first_bar_at_or_after_the_hold_whose_high_reaches_the_level():
+    """PURE (review 2026-11-07 finding 2 — his ruling: a name that BROKE OUT, with the FIRST BREAK MINUTE): the first
+    minute at/after the first hold minute whose bar high >= the level; a high at the level before the hold does not
+    count (no order rested then); the stop it would have carried = the day's low through the break minute, on the
+    cent (the resting buy was re-priced to each new low until the fill); never traded at the level -> None."""
+    bars = _flat_bars(20, low=9.80, high=9.95, vol=1.0)
+    bars[3] = _bar(3, 9.9, 10.00, 9.80, 9.9, 1.0)                           # at the level BEFORE the hold: ignored
+    bars[12] = _bar(12, 9.9, 10.05, 9.85, 10.02, 1.0)
+    bars[15] = _bar(15, 9.9, 10.30, 9.70, 10.2, 1.0)                        # a later, bigger bar: not the first
+    mins = be.bars_by_minute(bars, TODAY, 384)
+    # vol_bar 1.0 with 1 share a minute: the pace holds at every minute (the pace half has its own test below)
+    assert be.first_break(mins, level=10.0, vol_bar=1.0, from_minute=10) == {
+        "minute": 12, "high": 10.05, "stop": 9.80, "width": pytest.approx(0.02),
+        "cum_volume": 12.0, "need_volume": pytest.approx(CUM_SHARE[11])}
+    assert be.first_break(mins, level=10.0, vol_bar=1.0, from_minute=3)["minute"] == 3   # at the hold minute itself
+    assert be.first_break(mins, level=10.0, vol_bar=1.0, from_minute=13) == {
+        "minute": 15, "high": 10.30, "stop": 9.70, "width": pytest.approx(0.03),
+        "cum_volume": 15.0, "need_volume": pytest.approx(CUM_SHARE[14])}
+    assert be.first_break(mins, level=10.06, vol_bar=1.0, from_minute=10)["minute"] == 15
+    assert be.first_break(mins, level=10.31, vol_bar=1.0, from_minute=10) is None   # never traded at its level
+    assert be.first_break({}, level=10.0, vol_bar=1.0, from_minute=10) is None
+
+
+def test_the_break_needs_the_volume_pace_at_that_minute_exactly_as_the_live_tick_applies_it():
+    """PURE (re-review 2026-11-07 finding 1 — his ruling: a name that 'met the break (LEVEL + VOLUME PACE)'): a bar at
+    the level counts as the break at minute k only when `f1_permits(volume of minutes <= k-1, vol_bar, k-1)` — the
+    check the live tick makes with last_completed = k-1 before it places or keeps the buy that would have filled in
+    minute k. A touch of the level on lapsed volume is not a break (a seated buy would have been cancelled before it
+    filled); a later touch back on pace is; the break minute's OWN volume never counts (it is not complete yet)."""
+    bars = _flat_bars(20, low=9.80, high=9.95, vol=1.0)                      # 1 share a minute: cum through k-1 = k
+    bars[12] = _bar(12, 9.9, 10.05, 9.85, 10.02, 1000.0)                     # at the level, a huge bar of its own
+    bars[15] = _bar(15, 9.9, 10.30, 9.70, 10.2, 1.0)
+    mins = be.bars_by_minute(bars, TODAY, 384)
+    # vol_bar 240: minute 12 needs 240 x CUM_SHARE[11] = 12.43 > the 12 shares done by minute 11 (its own 1000 do
+    # not count) -> not a break; minute 15 needs 14.33 <= 1014 -> the break
+    assert be.f1_permits(12, 240.0, 11) == (False, pytest.approx(240.0 * CUM_SHARE[11]))
+    assert be.f1_permits(1014, 240.0, 14)[0] is True
+    assert be.first_break(mins, level=10.0, vol_bar=240.0, from_minute=10) == {
+        "minute": 15, "high": 10.30, "stop": 9.70, "width": pytest.approx(0.03),
+        "cum_volume": 1014.0, "need_volume": pytest.approx(240.0 * CUM_SHARE[14])}
+    assert be.first_break(mins, level=10.0, vol_bar=1.0, from_minute=10)["minute"] == 12    # on pace: the first touch
+    # the pace lapsed for good: every touch of the level is on lapsed volume -> never a break
+    dry = [dict(b, volume=0.0) if m >= 10 else b for m, b in enumerate(bars)]
+    assert be.first_break(be.bars_by_minute(dry, TODAY, 384), level=10.0, vol_bar=240.0, from_minute=10) is None
+    # a MISSING minute before the break (IEX sparsity — the common case): the pace is judged on the bars that printed
+    # against the curve at k-1, exactly as the live tick does at last_completed = k-1 whether or not that bar printed
+    gappy = be.bars_by_minute([b for m, b in enumerate(bars) if m != 11], TODAY, 384)
+    assert 11 not in gappy
+    assert be.first_break(gappy, level=10.0, vol_bar=1.0, from_minute=10) == {
+        "minute": 12, "high": 10.05, "stop": 9.80, "width": pytest.approx(0.02),
+        "cum_volume": 11.0, "need_volume": pytest.approx(CUM_SHARE[11])}
+    assert be.first_break(gappy, level=10.0, vol_bar=240.0, from_minute=10)["minute"] == 15    # 11 < 12.43 at 12
+    with pytest.raises(TypeError):                                            # the volume half cannot be left off
+        be.first_break(mins, level=10.0, from_minute=10)
+
+
+@pytest.mark.asyncio
+async def test_a_held_name_whose_volume_lapsed_at_its_break_is_not_recorded_and_one_on_pace_is(monkeypatch):
+    """Re-review 2026-11-07 finding 1 (the reviewer's repro): R3 is held at 09:40 on the pace, then its volume dries up
+    (~100 shares a minute); at 15:20 it trades above the level with ~634,000 shares done against the ~743,000 the
+    curve needs by then — the live tick would have cancelled a seated buy for volume long before, so it is NOT a
+    missed trade and writes nothing. R4, on pace all day, breaks at the same minute and IS recorded with that minute
+    and the level as the break price — and the record now carries the list row's `adr20` (#720's width filter
+    without a join)."""
+    rows = _ranked(4)
+    lapsed = _flat_bars(386, low=9.80, high=9.95, vol=60_000.0)
+    for m in range(10, 386):
+        lapsed[m] = _bar(m, 9.90, 9.95, 9.80, 9.90, 100.0)
+    lapsed[350] = _bar(350, 9.90, 10.05, 9.85, 10.02, 100.0)                 # 15:20: above the level on dry volume
+    on_pace = _flat_bars(386, low=9.80, high=9.95, vol=60_000.0)
+    on_pace[350] = _bar(350, 9.90, 10.05, 9.85, 10.02, 60_000.0)
+    bars = {**_eligible_bars(["R1", "R2"]), "R3": lapsed, "R4": on_pace}
+    w = World(monkeypatch, list_rows=rows, bars=bars,
+              rows=[_lane_row("L1", 101), _lane_row("L2", 102), _lane_row("L3", 103)])
+    await w.tick(at=(9, 40))
+    assert _funnel_tickers(w) == ["R1", "R2"] and [h["ticker"] for h in _held(w)] == ["R3", "R4"]
+    cum_349 = 10 * 60_000.0 + 340 * 100.0
+    assert cum_349 == 634_000.0 and not be.f1_permits(cum_349, 1_200_000.0, 349)[0]   # the reviewer's numbers
+    out = await w.tick(at=(15, 55))
+    rec = _missed(w)
+    assert out["missed_by_slots"] == 1 and [r["ticker"] for r in rec] == ["R4"]
+    assert rec[0]["minute"] == 350 and rec[0]["clock_et"] == "15:20" and rec[0]["break_price"] == 10.0
+    assert rec[0]["break_high"] == 10.05 and rec[0]["stop"] == 9.80 and rec[0]["adr20"] == 0.06
+    assert "R3" in w.batch_calls[-1][0]                                        # R3 was read and judged, not skipped
+
+
+@pytest.mark.asyncio
+async def test_a_7_name_break_day_with_5_free_slots_records_exactly_the_2_lowest_ranked_names_once_each(monkeypatch):
+    """His test (ruling 2026-11-06): 7 names BREAK OUT (trade above the level on the pace), 5 slots free -> at 15:55
+    exactly the 2 lowest-ranked names get ONE `breakout_v1_missed_by_slots` row each, carrying ticker / day / the
+    FIRST BREAK MINUTE (not the hold minute — review 2026-11-07 finding 2) / list rank / order score / the break price
+    / the stop / reason slots_full. An 8th name that was eligible and held but NEVER traded at its level is NOT
+    recorded. A re-run of the 15:55 minute writes nothing more."""
+    rows = _ranked(8)
+    bars = {**_breaking_bars([f"R{k}" for k in range(1, 7)], break_at=12), **_breaking_bars(["R7"], break_at=15),
+            **_breaking_bars(["R8"], break_at=None)}
+    w = World(monkeypatch, list_rows=rows, bars=bars)
+    await w.tick(at=(9, 40))
+    assert _funnel_tickers(w) == ["R1", "R2", "R3", "R4", "R5"] and [h["ticker"] for h in _held(w)] == ["R6", "R7", "R8"]
+    assert w.ev(be.MISSED_BY_SLOTS) == []                                            # nothing before the session's end
+    await w.tick(at=(10, 30))                                                        # still held, still nothing
+    assert w.ev(be.MISSED_BY_SLOTS) == [] and len(w.batch_calls) == 2
+    out = await w.tick(at=(15, 55))
+    # the held-never-seated names were ADDED to the 15:55 bars read (no row -> not otherwise fetched at 15:55)
+    assert len(w.batch_calls) == 3 and sorted(w.batch_calls[-1][0]) == ["R6", "R7", "R8"]
+    rec = _missed(w)
+    assert out["missed_by_slots"] == 2 and [(r["ticker"], r["minute"]) for r in rec] == [("R6", 12), ("R7", 15)]
+    r6 = rec[0]
+    assert r6 == {"ticker": "R6", "day": TODAY.isoformat(), "minute": 12, "clock_et": "09:42", "break_price": 10.0,
+                  "break_high": 10.05, "stop": 9.80, "width": pytest.approx(0.02),
+                  "break_cum_volume": 720_000.0, "break_need_volume": pytest.approx(1_200_000.0 * CUM_SHARE[11]),
+                  "hold_minute": 10, "hold_clock_et": "09:40", "stop_at_hold": 9.80, "list_rank": 6, "order_score": 0.994,
+                  "cum_volume": 600_000.0, "need_volume": pytest.approx(1_200_000.0 * CUM_SHARE[9]),
+                  "vol_bar": 1_200_000.0, "adr20": 0.06,
+                  "reason": "slots_full", "row_status": None, "account_mode": "paper"}
+    assert rec[1]["clock_et"] == "09:45" and rec[1]["list_rank"] == 7
+    summary = w.ev(be.MISSED_BY_SLOTS)[0][1]
+    assert "R6" in summary and "$10.00" in summary and "09:42" in summary and "$9.80" in summary
+    out = await w.tick(at=(15, 55))                                                  # the minute re-run: idempotent
+    assert out["missed_by_slots"] == 0 and len(w.ev(be.MISSED_BY_SLOTS)) == 2
+    assert w.pages == []
+
+
+@pytest.mark.asyncio
+async def test_a_held_name_that_later_got_a_slot_is_not_recorded_and_a_skipped_only_name_is(monkeypatch):
+    """'Never got a slot that day' = no trade row today, or only a 'skipped' one (no order was ever placed) — and it
+    broke out while held."""
+    w = World(monkeypatch, list_rows=_ranked(4), bars=_breaking_bars(["R1", "R2", "R3", "R4"], break_at=12),
+              rows=[_lane_row("L1", 101), _lane_row("L2", 102), _lane_row("L3", 103)])
+    await w.tick(at=(9, 40))
+    assert [h["ticker"] for h in _held(w)] == ["R3", "R4"]
+    # R3 got a slot at 10:00 (a row + an order; cancelled by the 15:55 sweep below); R4 only ever got a skipped row
+    # (the funnel race's terminal `block:max_positions`, or an abstain after the hold)
+    w.rows["R3"] = _placed_row(ticker="R3", tid=33, oid="o-3")
+    w.orders["o-3"] = _order(oid="o-3", ticker="R3")
+    w.rows["R4"] = dict(_placed_row(ticker="R4", tid=34, oid=None, status="skipped"), skip_reason="block:max_positions: 5/5")
+    out = await w.tick(at=(15, 55))
+    assert w.rows["R3"]["status"] == "cancelled" and out["actions"]["R3"] == "cancelled"
+    assert [(r["ticker"], r["row_status"], r["minute"]) for r in _missed(w)] == [("R4", "skipped", 12)]
+    assert "R4" in w.batch_calls[-1][0] and "R3" in w.batch_calls[-1][0]           # R3 for its resting buy, R4 for the record
+
+
+@pytest.mark.asyncio
+async def test_the_missed_records_survive_a_restart_and_an_unreadable_log_is_paged_not_silent(monkeypatch):
+    """The facts are read back from the first `slots_full` hold row (durable), not from memory: a restart between
+    the hold and 15:55 loses no name, and a second hold row after the restart does not move the first hold minute."""
+    names = [f"R{k}" for k in range(1, 8)]
+    w = World(monkeypatch, list_rows=_ranked(7), bars=_breaking_bars(names, break_at=12))
+    await w.tick(at=(9, 40))
+    monkeypatch.setattr(be, "_noted", {})                                            # the restart: memory gone
+    await w.tick(at=(10, 0))
+    assert [h["ticker"] for h in _held(w)] == ["R6", "R7", "R6", "R7"]              # a second hold row each
+    monkeypatch.setattr(be, "_noted", {})
+    out = await w.tick(at=(15, 55))
+    assert out["missed_by_slots"] == 2
+    assert [(r["ticker"], r["hold_minute"], r["minute"]) for r in _missed(w)] == [("R6", 10, 12), ("R7", 10, 12)]
+    # the held names' bars unreadable at 15:55 (their chunk failed): no record (an absent answer is not "never
+    # broke"), one audit row naming them, one paper-prefixed page
+    w = World(monkeypatch, list_rows=_ranked(7), bars=_breaking_bars(names, break_at=12))
+    await w.tick(at=(9, 40))
+    w.bars_unreadable.update({"R6", "R7"})
+    out = await w.tick(at=(15, 55))
+    assert out["missed_by_slots"] == 0 and w.ev(be.MISSED_BY_SLOTS) == []
+    ev = w.ev("breakout_v1_missed_unreadable")
+    assert len(ev) == 1 and "R6" in ev[0][1] and "R7" in ev[0][1]
+    assert len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER") and "NOT written" in w.pages[0]
+    # the log unreadable at 15:55: no record (never a guess), one audit row, one paper-prefixed page
+    w = World(monkeypatch, list_rows=_ranked(7), bars=_breaking_bars(names, break_at=12))
+    await w.tick(at=(9, 40))
+    conn = w.pool.acquire.return_value.__aenter__.return_value
+    real_fetch = conn.fetch
+
+    async def fetch(sql, *a):
+        if "FROM mi_audit_log" in sql and a and a[0] == be.HOLD_EVENT:
+            raise RuntimeError("db down")
+        return await real_fetch(sql, *a)
+    conn.fetch = fetch
+    out = await w.tick(at=(15, 55))
+    assert out["missed_by_slots"] is None and w.ev(be.MISSED_BY_SLOTS) == []
+    assert w.ev("breakout_v1_missed_unreadable") and len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER")
+    assert "NOT written" in w.pages[0]
+
+
+@pytest.mark.asyncio
+async def test_a_hold_row_whose_write_failed_is_retried_next_tick_and_the_name_is_still_recorded_at_1555(monkeypatch):
+    """Re-review 2026-11-07 finding 4: `_note` marked a name noted BEFORE its audit write, and `log_audit_event`
+    swallows its own failures — a hold whose first write timed out dropped out of the 15:55 record for good, silently.
+    Now the name is marked noted only once the write reports success (`log_audit_event` -> True); a failed write is
+    retried on the next tick, and the record's first hold is the first hold WRITTEN."""
+    w = World(monkeypatch, list_rows=_ranked(1), bars=_breaking_bars(["R1"], break_at=12), open_count=5)
+    w.audit_fail.append((be.HOLD_EVENT, "R1"))                                 # the 09:40 hold write is swallowed
+    out = await w.tick(at=(9, 40))
+    assert out["actions"]["R1"] == "held_slots_full" and _held(w) == [] and (TODAY, "R1") not in be._noted
+    out = await w.tick(at=(9, 41))                                              # retried: written this minute
+    assert out["actions"]["R1"] == "held_slots_full" and [h["minute"] for h in _held(w)] == [11]
+    assert be._noted[(TODAY, "R1")] == be.SLOTS_FULL_STATE
+    await w.tick(at=(9, 42))
+    assert len(_held(w)) == 1                                                   # noted now: no third row
+    out = await w.tick(at=(15, 55))
+    assert out["missed_by_slots"] == 1
+    assert [(r["ticker"], r["hold_minute"], r["minute"]) for r in _missed(w)] == [("R1", 11, 12)]
+
+
+@pytest.mark.asyncio
+async def test_only_a_slots_full_note_is_retried_when_its_write_fails(monkeypatch):
+    """Final review 2026-11-07 finding 2: 15:55 reads back only `slots_full`, so only it is retried — any other state
+    is marked noted even when its write was swallowed, or a slow audit log would re-write ~350 `wait` notes a tick."""
+    calls = []
+
+    async def _swallowed(event, summary, detail):
+        calls.append(json.loads(detail)["state"])
+        return False
+
+    monkeypatch.setattr(be, "log_audit_event", _swallowed)
+    be._noted.clear()
+    for _ in range(2):
+        await be._note(TODAY, "W1", "wait", "waiting")
+        await be._note(TODAY, "S1", be.SLOTS_FULL_STATE, "held")
+    assert calls == ["wait", be.SLOTS_FULL_STATE, be.SLOTS_FULL_STATE]
+    assert be._noted.get((TODAY, "W1")) == "wait" and (TODAY, "S1") not in be._noted
+
+
+@pytest.mark.asyncio
+async def test_the_1555_count_counts_only_the_missed_records_that_were_written(monkeypatch):
+    """Re-review 2026-11-07 finding 4 (the count): a missed-by-slots write the audit log swallowed is not counted —
+    `missed_by_slots` is the number of rows that exist, and a swallowed one is not re-written that tick (the next
+    15:55 re-run, inside the misfire grace, writes it: it is not in the log)."""
+    w = World(monkeypatch, list_rows=_ranked(7), bars=_breaking_bars([f"R{k}" for k in range(1, 8)], break_at=12))
+    await w.tick(at=(9, 40))
+    assert [h["ticker"] for h in _held(w)] == ["R6", "R7"]
+    w.audit_fail.append((be.MISSED_BY_SLOTS, "R7"))
+    out = await w.tick(at=(15, 55))
+    assert out["missed_by_slots"] == 1 and [r["ticker"] for r in _missed(w)] == ["R6"]
+    out = await w.tick(at=(15, 55))                                             # the re-run writes the one that failed
+    assert out["missed_by_slots"] == 1 and [r["ticker"] for r in _missed(w)] == ["R6", "R7"]
+
+
+@pytest.mark.asyncio
+async def test_a_day_with_fewer_eligible_names_than_free_slots_records_nothing(monkeypatch):
+    w = World(monkeypatch, list_rows=_ranked(3), bars=_eligible_bars(["R1", "R2", "R3"]))
+    await w.tick(at=(9, 40))
+    out = await w.tick(at=(15, 55))
+    assert _held(w) == [] and out["missed_by_slots"] == 0 and w.ev(be.MISSED_BY_SLOTS) == []

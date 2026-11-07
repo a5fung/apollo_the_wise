@@ -19,6 +19,7 @@ always present per boot bootstrap).
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import logging
 import os
 import time
@@ -1039,6 +1040,130 @@ async def get_minute_bars_range(ticker: str, start: datetime, end: datetime) -> 
     except Exception as e:
         logger.error(f"Failed to get minute-bar range for {ticker} [{start}..{end}]: {e}")
         return []
+
+
+BARS_PAGE_LIMIT = 10_000            # alpaca-py 0.43: `get_stock_bars` pages at 10,000 bars per HTTP request, all symbols
+BARS_BATCH_CHUNK_TIMEOUT_S = 60.0   # per chunk (one page): a hang breaker, not a latency budget
+BARS_BATCH_THREAD_PREFIX = "alpaca-bars-batch"
+
+# The batch's pages run on THIS executor — ONE thread of its own, never the ~7-thread default pool that `_sdk` and
+# every broker call in apollo-execution share (re-review 2026-11-07 finding 2). alpaca-py sets no HTTP timeout, so a
+# hung page keeps its thread until the socket gives up; on the shared pool a hang a minute would have filled that pool
+# in 7-14 minutes, with live EP orders, cancels and stop placements queued behind it. Here the worst case is this one
+# thread stuck — and `get_minute_bars_range_batch` SKIPS (-> None) while it is, so nothing queues behind the stuck
+# page either. `_pool_telemetry` (#664) measures the shared pool and no longer sees these calls: correct, they are
+# not in it.
+_BARS_BATCH_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix=BARS_BATCH_THREAD_PREFIX)
+# ⚠ SINGLE-CALLER: the flag tracks only the LAST page submitted, so "skip while in flight / never a queue of stale
+# pages" holds while ONE caller uses the batch at a time — today the breakout v1 tick (scheduler max_instances=1,
+# coalesce=True, no await between the check and the first submit). A second concurrent caller needs a set of
+# outstanding pages or a lock (final review 2026-11-07 finding 1).
+_bars_batch_page: concurrent.futures.Future | None = None   # the LAST page submitted; not done = the thread is still inside alpaca-py
+
+
+def bars_batch_in_flight() -> bool:
+    """True while the last bars page submitted has not returned from alpaca-py — its `wait_for` budget may have fired
+    long ago; the THREAD is what is busy. Clears by itself the moment the page returns (or fails)."""
+    page = _bars_batch_page
+    return page is not None and not page.done()
+
+
+async def _run_bars_page(fn, *args, timeout: float):
+    """ONE bars page on the dedicated thread, bounded by `timeout`. A timeout raises to the caller and leaves the thread
+    busy (`wait_for` cancels only the awaiting side; a running `concurrent.futures.Future` cannot be cancelled), and
+    `bars_batch_in_flight()` reports it until alpaca-py returns — the caller never submits behind it."""
+    global _bars_batch_page
+    _bars_batch_page = page = _BARS_BATCH_EXECUTOR.submit(fn, *args)
+    return await asyncio.wait_for(asyncio.wrap_future(page), timeout)
+
+
+def bars_batch_chunk_size(n_tickers: int, last_completed: int | None, chunk_max: int) -> int:
+    """Symbols per request so that ONE request is ONE page: the bars each symbol has so far (minutes 0..last_completed)
+    plus the minute in progress must fit `BARS_PAGE_LIMIT` across the chunk. PURE. `last_completed=None` -> `chunk_max`."""
+    if last_completed is None:
+        per = chunk_max
+    else:
+        per = min(chunk_max, BARS_PAGE_LIMIT // (max(0, int(last_completed)) + 2))
+    return max(1, min(per, max(1, n_tickers)))
+
+
+async def get_minute_bars_range_batch(tickers: list[str], start: datetime, end: datetime, *,
+                                      last_completed: int | None = None,
+                                      chunk_max: int = 200) -> dict[str, list[dict]] | None:
+    """ONE batched fetch of 1-minute bars for many tickers over [start, end] (tz-aware ET) — the breakout v1 entry
+    tick's read (#717 stage 2, 2026-11-07): a 150-350-name list every minute was one REST call per name
+    (`get_minute_bars_range`); here it is ceil(N x bars-so-far / 10,000) calls, one page each.
+
+    The symbols are split into chunks of `bars_batch_chunk_size(...)` (so a chunk is one page; the SDK's own paging is
+    the safety net if one spills) and fetched SEQUENTIALLY on the batch's OWN single-thread executor
+    (`_run_bars_page` — never `_sdk`'s shared pool, never the event loop), each page bounded by
+    `BARS_BATCH_CHUNK_TIMEOUT_S`. A chunk that FAILS fast (an HTTP error) costs its names one minute and the next
+    chunk still runs. A chunk that HANGS (its budget fires; alpaca-py sets no HTTP timeout, so the thread stays inside
+    the call) ENDS THE LOOP FOR THIS CALL: the chunks after it are not sent, their names are absent (unread this
+    minute, retried next tick) — review 2026-11-07 finding 4. And while that page is STILL on the thread, the NEXT
+    call is SKIPPED outright (-> None, nothing submitted): a hanging bars endpoint can never hold more than this one
+    thread, never a thread of the shared pool, and never a queue of stale pages behind the stuck one (re-review
+    2026-11-07 finding 2). Disclosed in the breakout v1 SSoT.
+
+    -> {ticker: [bar dicts]} in exactly `get_minute_bars_range`'s per-bar shape (`t_et, open, high, low, close, volume,
+    vwap`). CONTRACT the caller reads: a symbol whose chunk ANSWERED is present — `[]` when Alpaca returned no bars for
+    it (the caller's `wait`); a symbol whose chunk RAISED, or whose chunk came after a hung one, is ABSENT (logged here;
+    the caller reports it as unreadable). None = the whole call was skipped because the previous page is still in
+    flight (`bars_batch_in_flight()`; the caller audits it as such). Never raises.
+    """
+    out: dict[str, list[dict]] = {}
+    names = list(dict.fromkeys(t for t in tickers if t))
+    if not names:
+        return out
+    if bars_batch_in_flight():
+        logger.error(f"minute-bar batch SKIPPED: the previous page is still on the batch thread (alpaca-py has not "
+                     f"returned it) — {len(names)} name(s) unread this minute, nothing submitted behind it")
+        return None
+    from zoneinfo import ZoneInfo
+    et = ZoneInfo("America/New_York")
+    size = bars_batch_chunk_size(len(names), last_completed, chunk_max)
+    try:
+        client = _get_data_client()
+    except Exception as e:  # loud-ok: logged; every name reads unreadable this minute (absent), the next tick retries
+        logger.error(f"minute-bar batch: data client unavailable ({type(e).__name__}: {e}) — {len(names)} name(s) unread")
+        return out
+    for i in range(0, len(names), size):
+        chunk = names[i:i + size]
+        try:
+            request = StockBarsRequest(
+                symbol_or_symbols=chunk,
+                timeframe=TimeFrame.Minute,
+                start=start,
+                end=end,
+                feed=get_data_feed(),
+            )
+            bars = await _run_bars_page(client.get_stock_bars, request, timeout=BARS_BATCH_CHUNK_TIMEOUT_S)
+            bar_data = bars.data if hasattr(bars, "data") else bars
+            for t in chunk:
+                out[t] = [
+                    {
+                        "t_et": b.timestamp.astimezone(et),
+                        "open": float(b.open),
+                        "high": float(b.high),
+                        "low": float(b.low),
+                        "close": float(b.close),
+                        "volume": int(b.volume),
+                        "vwap": float(b.vwap) if getattr(b, "vwap", None) is not None else None,
+                    }
+                    for b in (bar_data.get(t, []) or [])
+                    if b.timestamp is not None
+                ]
+        except (asyncio.TimeoutError, TimeoutError):  # loud-ok: a HUNG chunk ends this call — its own thread is still busy
+            left = len(names) - i - len(chunk)
+            logger.error(f"minute-bar batch chunk {i // size + 1} ({len(chunk)} symbols, {chunk[0]}..{chunk[-1]}) HUNG "
+                         f"past {BARS_BATCH_CHUNK_TIMEOUT_S:.0f}s [{start}..{end}] — the loop stops here: these and "
+                         f"the {left} name(s) after them are unread this minute; the batch thread stays busy until "
+                         f"alpaca-py returns and every call until then is skipped (never the shared pool)")
+            break
+        except Exception as e:  # loud-ok: logged with the chunk; its names are ABSENT (the caller audits), next tick retries
+            logger.error(f"minute-bar batch chunk {i // size + 1} ({len(chunk)} symbols, {chunk[0]}..{chunk[-1]}) "
+                         f"failed [{start}..{end}]: {type(e).__name__}: {e}")
+    return out
 
 
 async def persist_intraday_bars(ticker: str, bars: list[dict]) -> None:

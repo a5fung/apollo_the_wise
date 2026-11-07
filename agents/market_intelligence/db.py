@@ -15705,11 +15705,16 @@ async def count_truncated_audit_rows(since_hours: float = 26.0) -> int:
 _AUDIT_INSERT_SQL = "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ($1, $2, $3)"
 
 
-async def log_audit_event(event_type: str, summary: str, detail: str = "", *, conn=None) -> None:
+async def log_audit_event(event_type: str, summary: str, detail: str = "", *, conn=None) -> bool:
     """
     Write a critical event to the audit log. Never raises — safe to call from anywhere.
     event_type: 'advisor_call' | 'theme_discovered' | 'theme_retired' |
                 'stage_change' | 'theme_excluded' | 'ep_alert'
+
+    -> True when the row was written, False when the write was swallowed (a timeout, a pool error — logged, as
+    always). Almost every caller ignores it; a caller whose own correctness rests on the row EXISTING (the breakout
+    v1 hold notes that the 15:55 missed-by-slots record reads back, re-review 2026-11-07 finding 4) reads it and
+    retries later rather than assuming the write landed.
 
     #621 (2026-09-05): `pool.acquire()` and the INSERT are timeout-bounded at 5s.
     Found while closing the reprotect-floor DB-timeout gap: `_apply_reprotect_floor`
@@ -15744,12 +15749,14 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "", *, co
         # pattern. Gated by tests/test_no_nested_pool_acquire.py.
         if conn is not None:
             await conn.execute(*args, timeout=5.0)
-            return
+            return True
         pool = await get_pool()
         async with pool.acquire(timeout=5.0) as conn:
             await conn.execute(*args, timeout=5.0)
+        return True
     except Exception as e:
         logger.warning(f"audit log write failed ({event_type}): {e}")
+        return False
 
 
 # ── Model-resolution history (traceability for auto-tracked LLM models) ──────
@@ -19992,12 +19999,21 @@ async def bv1_replace_list(scan_date: date, rows: list[dict]) -> int:
     return len(rows)
 
 
+# The entry tick's one list read (every minute 09:35-15:55 ET). Registered in scripts/preflight_db_updates.py like
+# BV1_UNGRADED_SQL: it reads the 2026-11-02 order_score column (since #717 stage 2), so a deploy whose schema lacks it
+# fails at the gate instead of at the first 09:35 tick.
+BV1_LIST_SELECT_SQL = """
+    SELECT scan_date, ticker, level, vol_bar, adr20, rs_best, close, security_type, list_rank, order_score
+      FROM mi_breakout_v1_list WHERE scan_date = $1 ORDER BY list_rank
+"""
+
+
 async def bv1_get_list(scan_date: date) -> list[dict]:
+    """The night's list in rank order (the entry tick's one read; `order_score` rides along since #717 stage 2 for the
+    missed-by-slots record — the column exists since the 2026-11-02 rebuild, NULL on rows written before it)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT scan_date, ticker, level, vol_bar, adr20, rs_best, close, security_type, list_rank "
-            "FROM mi_breakout_v1_list WHERE scan_date = $1 ORDER BY list_rank", scan_date)
+        rows = await conn.fetch(BV1_LIST_SELECT_SQL, scan_date)
     return [dict(r) for r in rows]
 
 
