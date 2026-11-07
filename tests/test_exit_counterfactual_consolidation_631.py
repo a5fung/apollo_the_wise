@@ -62,10 +62,12 @@ CLOSED_BY_RULING = "giveback_shadow_review"
 KEPT: tuple[str, ...] = (
     "exit_tune_cohort_review", "exit_tune_bull_regime_read",      # the wide-grid offline forensic
     "runner_rule_sweep_recut",                                     # a backtest population (Run-U)
-    "bracket_geometry_variants_parked",                            # ENTRY geometry
     "delayed_entry_adr_stop_variant_616",                          # a different signal's recorder
     "delayed_entry_adr_stop_variant_025_545",
 )
+# ENTRY geometry: answered 2026-11-06 and closed 2026-11-07 into the ONE periodic trade review (#720),
+# his 11-06 ruling — buy / stop / partial questions are not one-off reviews.
+CLOSED_INTO_PERIODIC_REVIEW = "bracket_geometry_variants_parked"
 
 
 def _registry() -> dict:
@@ -147,6 +149,12 @@ def test_each_kept_review_is_still_pending(review_id):
     assert e["status"] == "pending", f"{review_id} is a different instrument or population — it stays"
 
 
+def test_geometry_review_closed_into_the_periodic_review():
+    e = _registry()[CLOSED_INTO_PERIODIC_REVIEW]
+    assert e["status"] == "done"
+    assert "#720" in e["resolution_2026_11_07"]
+
+
 def test_the_kept_forensic_names_the_one_read_as_primary_evidence():
     e = _registry()["exit_tune_cohort_review"]
     assert ONE_READ in e["notes"] and "different instrument" in e["notes"]
@@ -154,7 +162,7 @@ def test_the_kept_forensic_names_the_one_read_as_primary_evidence():
 
 def test_no_review_id_was_deleted():
     reg = _registry()
-    for rid in (*FOLDED, CLOSED_BY_RULING, *KEPT, ONE_READ):
+    for rid in (*FOLDED, CLOSED_BY_RULING, CLOSED_INTO_PERIODIC_REVIEW, *KEPT, ONE_READ):
         assert rid in reg, f"{rid} disappeared from the registry"
 
 

@@ -42,7 +42,11 @@ def _load_registry() -> dict:
 
 
 PARKED_IDS = [
-    "bracket_geometry_variants_parked",
+    # "bracket_geometry_variants_parked" — CLOSED 2026-11-07 (OPEN sweep): its question ran 11-06
+    # as pre-registered (no geometry variant earns a live arm) and his 11-06 ruling folds every
+    # buy / stop / partial question into ONE monthly trade review, PLAN #720.
+    # tests/test_exit_counterfactual_consolidation_631.py::test_geometry_review_closed_into_the_periodic_review
+    # pins the pointer, so it is a deliberate close, never a silent delete.
     # "floor_timing_never_alerted_crossers_parked" — CLOSED 2026-09-16 on its OWN action, the
     # same deliberate exit the #631 fold and the 09-15 capture close used. It asked to re-run both
     # probes on the matured windows and "state plainly whether the '0 reached the tail' / '1.6%
