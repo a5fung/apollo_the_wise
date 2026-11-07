@@ -6,7 +6,20 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-11-05 (Thu) CLOSE — 🔴 RESUME HERE. Supersedes the 11-04 close below.
+## 2026-11-06 (Fri) CLOSE — 🔴 RESUME HERE. Supersedes the 11-05 close below.
+
+**2026-11-06 (Fri): CLOSE run on his word ("Run close").** (Mirrors the machine-local pickup memory.)
+
+- **Board 18 → 18** (#482 closed on its DONE-WHEN; #720 opened — ONE monthly comprehensive trade review, his ruling). Server **`35c646ff`** (no deploy).
+- **Verified live:** #717 breakout stage 1 — Thu 150 + Fri 184 names, both meet EXPECT-STAGE1 (DONE-WHEN met; status stays `deployed` through stage 2).
+- **Not closed:** #491 — 10 of 10 nights clean (0 bounces) but its own '≤ 10% holds' bound is breached (24 held vs 74 graduated, partly the same cohorts re-held) → Sun 11-08 diagnosis. #146 — no flag TRIGGERED since 10-12 (a pole-starved tape), reported per its DoD, weekly re-read 11-13. #210 — its n blocker cleared (20 readable rows): the read is owed Sat.
+- **His rulings:** buy / stop / partial questions go to ONE periodic review (#720, first Sun 11-29) — no one-off forks; breakout stage 2 slots: HOLD-ONLY, the overflow WAITS for a slot the same session, and every name that broke out but never got a slot is recorded ("track what we miss").
+- **#482 read** (pre-registered, blind recount matches): no bracket variant earns a live arm (13 of 13 NOT A CANDIDATE, eras C/D/E never pooled); 4 fills failed replay fidelity (VICR / KOD the two big winners — whole-share sales) → a fairer fidelity test goes into #720.
+- **Stage 2 design** (Fable, read-only): `docs/design/717_stage2_design_2026-11-06.md` — build-ready for Saturday (batched minute bars, slots by order score, hold-only, the missed-by-slots record, '/bgrade' line dropped, EXPECT-STAGE2 drafted).
+- **#719 breadth:** branch `worktree-wf_10fb8bc3-cd0-1` gained the simplify commit `fe39f895` (still not merged); after Saturday's deploy check the host crontab calls `$APOLLO_DIR/scripts/auto_export_snapshots.sh`.
+- **Weekend:** the WEEKEND PLAN section at the top of PLAN.md (Sat: stage 2, his chart session, #719, #210; Sun: #312 demote button, #491 diagnosis). Deploys and the paper switch on his go.
+
+## 2026-11-05 (Thu) CLOSE — (superseded by 11-06 above)
 
 **2026-11-05 (Thu): CLOSE run on his word ("Advisor review then close").** (Mirrors the machine-local pickup memory.)
 
