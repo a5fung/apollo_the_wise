@@ -2899,3 +2899,7 @@ Recorded: APPN 2026-11-05's first 1-minute bar — his chart shows a high of $56
 > "on your stop & buy point question, this should just be part of normal periodic review and we review trades to find areas to improve on in our setup and strategy which should be comprehensive and includes buy/stop/partial analysis." (2026-11-06, after the #482 cross-arm read: no bracket variant earns a live arm; era E 'disappoints' on 5 trades)
 
 Recorded: no separate "re-open geometry?" decision. Buy point, stop, partials and exits are reviewed together in ONE periodic, comprehensive trade review (PLAN #720) that looks for improvement areas in the setup and the strategy; the per-mechanism gated reviews feed it. #482 closes on its own DONE-WHEN.
+
+> "Go with rec, track what we miss" (2026-11-06, to breakout v1 stage 2's two paper-slot questions: when all 5 slots are full and a better-ranked name breaks out, keep the resting buy or cancel it to seat the better name — rec: keep it (hold-only); and should a name the full book turns away wait for a slot the same session instead of being dropped for the day — rec: wait)
+
+Recorded: hold-only, and the overflow waits for a slot the same session; plus a record of every list name that broke out but never got a slot, read for outcomes in the monthly trade review (#720).
