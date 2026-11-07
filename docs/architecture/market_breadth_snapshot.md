@@ -18,10 +18,10 @@
 |---|---|
 | Query | `scripts/export_breadth_snapshot.sql` — ONE read-only SELECT emitting ONE JSON object (`psql -A -t -X`) |
 | Run by | `scripts/auto_export_snapshots.sh` on the prod host, the same nightly host cron as the themes / trades / funnel snapshots (#194) |
-| Guard | Unlike the other three (all-or-nothing: any one failing aborts the push), the breadth export runs **guarded**: `psql -v ON_ERROR_STOP=1` into `apollo_breadth_snapshot.json.tmp`; if it exits non-zero or the output is under 200 bytes, the script logs to stderr, deletes the temp file, leaves the last published breadth file untouched, and commits the other three without it. Change detection uses `git status --porcelain` on the snapshot files, because the breadth file's first publish is a new, untracked file that `git diff --quiet` does not see |
+| Guard | Unlike the other three (all-or-nothing: any one failing aborts the push), the breadth export runs **guarded**: `psql -v ON_ERROR_STOP=1` with a **300 s `statement_timeout`** (`PGOPTIONS`; a hung query ends as a non-zero exit instead of holding up the other three) into `apollo_breadth_snapshot.json.tmp`; if it exits non-zero or the output is under 200 bytes, the script logs to stderr, deletes the temp file, leaves the last published breadth file untouched, and commits the other three without it. The snapshot files live in one bash array (`SNAPSHOTS`; the breadth file is appended only on success); change detection stages them (`git add`) and tests `git diff --cached --quiet`, because the breadth file's first publish is a new, untracked file that a plain `git diff --quiet` does not see |
 | Output | `apollo_breadth_snapshot.json` in the portfolio-app2 repo (pushed with the others) |
 | Consumer | portfolio-app2's Market Breadth page (#719's dashboard half — NOT built in this repo). Four panels: highs vs lows, advances vs declines, the stage 1-4 stacked bar, the theme tracker with a Today / 1W / 1M / YTD toggle |
-| Cost | Read-only. Measured on an embedded Postgres 16 with a prod-sized synthetic table (14.3M rows, 11,000 tickers, both `mi_daily_closes` indexes): **~4 s**, 310 KB for ~9,900 tickers in `stocks`. Prod timing is not yet measured; prod's universe is smaller (~5-6k), so the file should be smaller too |
+| Cost | Read-only. Measured on prod 2026-11-04: **15 s** on the first run, **11 s** after the review fixes, **174 KB**. The 300 s `statement_timeout` leaves ~20x headroom over the first run |
 | Verified | `scripts/probes/_719_export_breadth_1104/` — the SQL on a real Postgres against a synthetic fixture, every number recomputed independently in Python from the written rules (PASS), plus removal deltas for each hand-made case (`output.txt`), and the prod-sized timing run (`scale_output.txt`, `scale_plan.txt`) |
 | Static tests | `tests/test_719_export_breadth_sql.py` — one read-only statement, every contract key, each pinned rule, and the shell's guard RUN against a fake `docker` and a real local git remote |
 
@@ -34,6 +34,8 @@ calendar date is not a trading day.
   `mi_security_types` as `CS` or `ADRC`. This guards a partial ingest (an on-demand fetch stamped
   with the calendar date). The calendar is read over the last 500 calendar days before the newest
   `trade_date` in the table (~344 sessions; 273 are needed).
+- **Future-date ceiling** — the newest `trade_date` that anchors that calendar is the newest one **at
+  or before today's ET date**, so one stray future-dated row cannot move the calendar window.
 - **Session index** — 0 = as_of, 1 = the session before it, and so on. Every window below is
   counted in session indexes, never by calendar arithmetic. The price window is the newest 273
   sessions (as_of + 272 prior).
@@ -44,6 +46,9 @@ calendar date is not a trading day.
   definitions text alone would carry an all-null object past the floor and publish it.
 - **Bar** — a `mi_daily_closes` row on a session with `close > 0`. Rows on non-session dates are
   ignored.
+- **NaN-close exclusion** — a row whose `close` is NaN is not a bar: it is dropped from the price
+  window before any per-ticker number, so it reaches no close, return, high / low or stage average
+  (Postgres orders NaN above every number, so `close > 0` alone would let it through).
 - **Universe** — `security_type IN ('CS', 'ADRC')` with a close **≥ 1.00** on as_of. Its count is
   `universe.n`.
 

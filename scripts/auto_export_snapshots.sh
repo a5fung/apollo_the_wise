@@ -21,15 +21,19 @@ BR="$(git rev-parse --abbrev-ref HEAD)"
 git fetch -q origin
 git reset -q --hard "origin/$BR"
 
-# Regenerate both snapshots (read-only; the theme SQL carries the #194 e_code ecosystem join).
+# The snapshot files this run publishes: the sanity loop checks them and the commit stages them. The
+# breadth file (#719) is appended further down only when its guarded export succeeds.
+SNAPSHOTS=(apollo_themes_snapshot.json apollo_trades_paper.json apollo_funnel_snapshot.json)
+
+# Regenerate the three snapshots (read-only; the theme SQL carries the #194 e_code ecosystem join).
 docker exec -i "$PG" psql -U apollo -d apollo -A -t -X -f - < "$APOLLO/scripts/export_theme_snapshot.sql"  > apollo_themes_snapshot.json
 docker exec -i "$PG" psql -U apollo -d apollo -A -t -X -f - < "$APOLLO/scripts/export_trades_snapshot.sql" > apollo_trades_paper.json
 # #589 (2026-09-07): the funnel page's snapshot was hand-made and uncommitted — the same
 # ad-hoc-then-silently-stale failure export_trades_snapshot.sql exists to prevent. Joined here.
 docker exec -i "$PG" psql -U apollo -d apollo -A -t -X -f - < "$APOLLO/scripts/export_funnel_snapshot.sql" > apollo_funnel_snapshot.json
 
-# Sanity: both must be non-trivial JSON, else abort WITHOUT pushing (never publish a truncated/empty snapshot).
-for f in apollo_themes_snapshot.json apollo_trades_paper.json apollo_funnel_snapshot.json; do
+# Sanity: each must be non-trivial JSON, else abort WITHOUT pushing (never publish a truncated/empty snapshot).
+for f in "${SNAPSHOTS[@]}"; do
   if [ ! -s "$f" ] || [ "$(wc -c < "$f")" -lt 200 ]; then
     echo "auto-export: ABORT — $f is empty/truncated ($(wc -c < "$f") bytes); not pushing." >&2
     git checkout -q -- . ; exit 1
@@ -42,33 +46,26 @@ done
 # none yet) is left exactly as it was and is not committed. ON_ERROR_STOP makes a SQL error a
 # non-zero exit (without it psql exits 0 with empty output; the size floor catches that too).
 BREADTH=apollo_breadth_snapshot.json
-BREADTH_OK=0
-rm -f "$BREADTH.tmp"
 # statement_timeout: a hung breadth query (a lock from a boot-time ALTER, a cold-cache plan) must
 # not hold up the other three, which commit after it — it ends as a non-zero exit the guard handles.
-# Measured on prod 2026-11-04: 15 s; the 300 s cap leaves ~20x headroom.
+# Prod timing and the headroom this cap leaves: docs/architecture/market_breadth_snapshot.md (Cost).
 if docker exec -i -e PGOPTIONS="-c statement_timeout=300s" "$PG" psql -U apollo -d apollo -A -t -X -v ON_ERROR_STOP=1 -f - \
      < "$APOLLO/scripts/export_breadth_snapshot.sql" > "$BREADTH.tmp" \
    && [ "$(wc -c < "$BREADTH.tmp")" -ge 200 ]; then
   mv -f "$BREADTH.tmp" "$BREADTH"
-  BREADTH_OK=1
+  SNAPSHOTS+=("$BREADTH")
 else
   echo "auto-export: breadth export FAILED or truncated ($(wc -c < "$BREADTH.tmp" 2>/dev/null || echo 0) bytes);" \
        "keeping the last published $BREADTH — the other three snapshots continue." >&2
   rm -f "$BREADTH.tmp"
 fi
 
-SNAPSHOTS="apollo_themes_snapshot.json apollo_trades_paper.json apollo_funnel_snapshot.json"
-if [ "$BREADTH_OK" = 1 ]; then SNAPSHOTS="$SNAPSHOTS $BREADTH"; fi
-
-# `git status --porcelain`, not `git diff --quiet`: the breadth file's FIRST publish is a new,
-# untracked file, which `git diff` does not see.
-# shellcheck disable=SC2086  # SNAPSHOTS is a space-separated list of fixed names
-if [ -z "$(git status --porcelain -- $SNAPSHOTS)" ]; then
+# Stage first, then ask the index: `git diff --cached` sees the breadth file's FIRST publish (a new
+# file), which a plain `git diff --quiet` would not.
+git add -- "${SNAPSHOTS[@]}"
+if git diff --cached --quiet; then
   echo "auto-export: no snapshot change — nothing to push."
 else
-  # shellcheck disable=SC2086
-  git add $SNAPSHOTS
   git commit -q -m "auto-export dashboard snapshots $(date -u +%Y-%m-%dT%H:%MZ)"
   git push -q origin "$BR"
   echo "auto-export: pushed updated snapshots to $BR."

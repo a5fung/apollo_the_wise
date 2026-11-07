@@ -25,7 +25,7 @@
 -- PERFORMANCE: mi_daily_closes is ~13.6M rows. Two reads touch it — the session calendar (the
 -- last 500 calendar days; the planner runs it as a parallel scan, since the subquery bound is not
 -- index-usable) and the price window (the newest 273 sessions, restricted to the universe plus
--- theme members). Measured on prod 2026-11-04: 15 s wall, 174 KB. Every per-ticker number is one FILTERed aggregate over
+-- theme members). Prod timing and file size: the SSoT's Cost line. Every per-ticker number is one FILTERed aggregate over
 -- that window: no per-row correlated subquery, no 252-row window frame.
 WITH latest AS (
     -- bounded by today's ET date: one stray future-dated row must not move the calendar window
