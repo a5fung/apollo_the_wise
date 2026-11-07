@@ -68,3 +68,11 @@ selection). Returns are read only as the tail test the running read already uses
 ## RESULT 3 — the shelf-distance lead on sample 6 (2026-11-04; `scripts/probes/_594_shelf_lead_1104/score_shelf_lead.py` → `score_shelf_lead.txt`)
 
 **HOLDS on fresh labels, as pre-registered — DIRECTIONAL ONLY.** On his 12 sample-6 rulings (5 yes / 7 no, 35 pairs, none dropped) the chance a yes's lower pullback low sits closer to (or above) the shelf than a no's is **0.829** (bar 0.65); median yes −2.5 daily ranges from the shelf, no −7.1 (RESULT 2 on the older labels: 0.688, −0.4 vs −3.4). It is the first chart-read measure in this series to hold on labels it was not found on. Only NTRA reads `held` = 1 (the 1-range band is tighter than the separation), so the continuous distance, not the yes/no flag, carries it. n = 12 is far from a verdict; it earns a place as a candidate, re-scored on each new sample, never a filter on its own.
+
+## PRE-REGISTRATION 4 — the shelf-distance lead on sample 7 (written 2026-11-07, BEFORE it is computed on them)
+
+- **The lead and the statistic: unchanged from PRE-REGISTRATION 3** — `dmin` from `f3_def.py::f3_new` with `STATED`, imported not copied; ADR20 from `_533_nbis_structure_encoder.adr20_pct`; the chance a yes's `dmin` is above a no's (ties 0.5); a NULL `dmin` dropped and counted.
+- **Fresh labels:** his #594 sample 7 rulings (2026-11-07, outcome-blind, `tests/fixtures/must_not_trade_charts.py` ruling_date 2026-11-07) — drawn at random, none in RESULT 2 or 3's population. yes = GOOD_CHART / OKISH_CHART (7: NX, MGNI, AMLX, MED, CODI, SNOW, BULL); no = BAD_CHART (5: AFYA, PLAB, SAIC, KODK, BIRK) → 35 pairs. Bars: `scripts/probes/_594_sample7_1107/q2_bars.out` (pulled before the grades, the gap day the last bar).
+- **The bar:** ≥ 0.65 → holds again (DIRECTIONAL ONLY); < 0.65 → it does not replicate on this sample, reported as such, not re-tuned. Also reported: the pooled figure over samples 6 + 7 (24 charts) beside it, as a description, not a second test.
+- **What this does not answer:** whether a ranking using it picks the tail; anything about returns; n is far too small for a verdict.
+
