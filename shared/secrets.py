@@ -2,6 +2,8 @@
 Centralized secret loading.
 All secrets come from environment variables — never hardcoded.
 """
+import hashlib
+import hmac
 import os
 from functools import lru_cache
 from typing import Optional
@@ -43,6 +45,21 @@ class Secrets:
     def telegram_allowed_user_ids(self) -> list[int]:
         raw = _require("TELEGRAM_ALLOWED_USER_IDS")
         return [int(uid.strip()) for uid in raw.split(",") if uid.strip()]
+
+    @property
+    def telegram_webhook_secret_token(self) -> str:
+        """The `secret_token` registered with Telegram's `set_webhook` and echoed back as the
+        `X-Telegram-Bot-Api-Secret-Token` header on every webhook POST; `channels/webhooks.py`
+        drops any POST without it (#312 review, 2026-11-07 — before that, any process that could
+        reach orchestrator:8000 could post a forged callback_query carrying his user id).
+        DERIVED from INTERNAL_API_SECRET (HMAC-SHA256 → 64 hex chars; Telegram allows 1-256 of
+        [A-Za-z0-9_-]) so there is no new secret to provision or rotate; TELEGRAM_WEBHOOK_SECRET
+        overrides it if one is ever wanted."""
+        explicit = _optional("TELEGRAM_WEBHOOK_SECRET")
+        if explicit:
+            return explicit
+        return hmac.new(self.internal_api_secret.encode(), b"apollo-telegram-webhook",
+                        hashlib.sha256).hexdigest()
 
     # Anthropic
     @property
