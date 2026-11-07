@@ -34,6 +34,32 @@ name on LAST NIGHT's list (`mi_breakout_v1_list`, scan_date = the previous sessi
   * every row is stamped `exit_rule = 'breakout_pp'` at insert (`order_manager.resolve_exit_rule_stamp`); the exit
     (the `pp` arm) is `broker/breakout_pp_rules.py` + `breakout_pp_exit.py`, run by the 15:45 / 16:45 / 19:02 jobs.
 
+THE LIST AT 150-350 NAMES (#717 stage 2, 2026-11-07; design `docs/design/717_stage2_design_2026-11-06.md`):
+  * ONE batched minute-bar read per tick (`alpaca.get_minute_bars_range_batch`: the whole day so far for every name the
+    minute must judge, chunked so each request is one 10,000-bar page — ~2 requests at 09:35, ~14 at 15:55 for 350
+    names; it was one request per name per minute). A name whose request failed is judged next minute
+    (`breakout_v1_bars_unreadable`, one row per tick); its resting buy, if any, is left as it is.
+  * THE SLOTS (his rulings 2026-11-06, "Go with rec, track what we miss"): the 5 paper slots are shared with every paper
+    strategy (F2). Each minute, after the existing rows are managed, the names whose state permits a buy are taken in
+    LIST RANK order (the night's order score, rank 1 first): the first `free` = 5 - the funnel's own open count
+    (`live_tracker.count_open_positions`, every paper strategy's filled / order_placed / confirmed rows; the smaller of
+    that and the breakout row's own `max_concurrent_positions` when one is set — NULL today) go to the funnel (whose
+    advisory-locked recount still rules); the rest are HELD — one `breakout_v1_entry_hold` row (state `slots_full`)
+    and NO trade row, so they are retried every minute until a slot frees, judged at THAT minute's price by the
+    existing width rule. HOLD-ONLY: a resting lower-ranked buy keeps its slot (no displacement — a one-function add on
+    his word). A funnel `block:max_positions` / `block:strategy_position_cap` on one name (a same-moment entry
+    elsewhere, the disclosed race) holds the rest of the minute's names instead of sending each to a terminal skip,
+    and holds that name too (its skipped row is terminal, so only a hold row lets 15:55 record it). An open count that
+    cannot be READ holds every eligible name under its own state (`slots_count_unreadable`) — never a missed record.
+  * TRACK WHAT WE MISS (his ruling: "every name that met the break but never got a slot", with the first break minute):
+    at 15:55 ET one `breakout_v1_missed_by_slots` audit row per list name that was held (`slots_full`) at least once
+    today, never got a slot (no trade row today, or only a 'skipped' one — no order was ever placed) AND BROKE OUT after
+    the hold — the held names are added to the 15:55 bars read and `first_break` finds the first minute at/after the
+    first hold whose high reached the level; a held name that never traded at its level writes nothing. The record:
+    ticker, day, the BREAK minute, the break price (the level), the stop it would have carried (the day low through
+    the break minute), the first hold's minute and stop, list rank, order score, the pace at the hold, reason
+    `slots_full`. The holds are read back from the audit log (restart-safe); #720's monthly review joins daily bars on it.
+
 RESTART-SAFE. Every tick reconciles from the BROKER (the paper account's open orders, filtered to the
 `apollo_paper_breakout_v1_` order-id family, and `get_order` on each row's entry order) and from today's trade rows —
 never from memory. A filled (or partly filled) order is never cancelled or re-placed by this job. A planned cancel
@@ -80,7 +106,9 @@ from agents.market_intelligence.broker.entry_pipeline import (
 )
 from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_ACCOUNT_MODE_MISMATCH,
+    BLOCK_MAX_POSITIONS,
     BLOCK_STRATEGY_DISABLED,
+    BLOCK_STRATEGY_POSITION_CAP,
     SETUP_ACCOUNT_FETCH_FAILED,
     SETUP_BREAKOUT_VOLUME_BELOW_CURVE,
     SETUP_NO_OPENING_RANGE_MINUTES,
@@ -94,6 +122,7 @@ from agents.market_intelligence.broker.skip_reasons import (
 )
 from agents.market_intelligence.constants import (
     LIVE_TRADING_ENABLED,
+    MAX_CONCURRENT_LIVE_POSITIONS,
     MAX_POSITION_PCT,
     RISK_PCT,
     mode_prefix,
@@ -132,6 +161,14 @@ SNAPSHOT_FAILS_BEFORE_PAGE = 3
 
 PLANNED_ENTRY_CANCEL = "breakout_v1_planned_entry_cancel"   # the marker the trade stream reads
 
+# #717 stage 2 (2026-11-07): the batched bars read and the slots
+BARS_CHUNK_MAX = 200                                        # symbols per bars request at most (`alpaca.bars_batch_chunk_size`)
+BARS_FAILS_BEFORE_PAGE = 3                                  # straight ticks with unread names before ONE page a day
+HOLD_EVENT = "breakout_v1_entry_hold"                       # one row per (name, state) change a day (`_note`)
+SLOTS_FULL_STATE = "slots_full"                             # the hold state: eligible, the paper book full, retried next minute
+SLOTS_UNREADABLE_STATE = "slots_count_unreadable"           # held because the open count could not be READ: never a missed record
+MISSED_BY_SLOTS = "breakout_v1_missed_by_slots"             # 15:55 ET: one row per name that BROKE OUT while held and never got a slot
+
 _FILLED_STATUSES = frozenset({"filled", "partially_filled"})
 _ROWS_THAT_OWN_NO_ORDER = frozenset({"cancelled", "skipped"})   # an open order under such a row is an orphan
 _DEAD_UNFILLED_STATUSES = frozenset({"canceled", "cancelled", "expired", "rejected", "done_for_day", "replaced"})
@@ -141,6 +178,7 @@ _preflight_ok_date: date | None = None
 _paged: set[tuple] = set()
 _noted: dict[tuple, str] = {}
 _snapshot_fails = 0
+_bars_unread_ticks = 0           # straight ticks with at least one name's bars unread (a failed / hung chunk); pages at 3
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -359,13 +397,201 @@ async def _page_once(key: tuple, text: str) -> None:
 
 
 async def _note(today: date, ticker: str, state: str, summary: str, detail: dict | None = None) -> None:
-    """One audit row per (name, state) change in a day — a volume hold is not re-recorded every minute."""
+    """One audit row per (name, state) change in a day — a volume hold is not re-recorded every minute. The detail
+    carries `ticker`, `state` and `day` (the 15:55 missed-by-slots step reads the `slots_full` rows back by them)."""
     key = (today, ticker)
     if _noted.get(key) == state:
         return
     _noted[key] = state
-    await log_audit_event("breakout_v1_entry_hold", f"{ticker}: {summary}",
-                          json.dumps(dict(detail or {}, ticker=ticker, state=state), default=str))
+    await log_audit_event(HOLD_EVENT, f"{ticker}: {summary}",
+                          json.dumps(dict(detail or {}, ticker=ticker, state=state, day=today.isoformat()), default=str))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 3b. THE SLOTS (#717 stage 2; his rulings 2026-11-06 — hold-only, the overflow waits, track what we miss)
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+async def _free_slots() -> int | None:
+    """The paper book's free slots this minute = the shared cap (`MAX_CONCURRENT_LIVE_POSITIONS`, 5) minus the funnel's
+    OWN open count (`live_tracker.count_open_positions(conn, 'paper')`: every paper strategy's filled / order_placed /
+    confirmed rows — the small-cap lane's included, his F2; no `signal_type`) — and, when the breakout row carries its
+    own `mi_strategies.max_concurrent_positions` (NULL today, F2; the funnel enforces it when set, #65), the SMALLER of
+    that and the strategy's own free count. ADVISORY: the funnel's advisory-locked recount at the insert still rules.
+    -> None when the count could not be READ (audited): the caller holds every eligible name under its own state
+    (`slots_count_unreadable` — a hold is retryable, a wrong entry is not — and never a missed-by-slots record)."""
+    from agents.market_intelligence.broker.live_tracker import count_open_positions
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            free = int(MAX_CONCURRENT_LIVE_POSITIONS) - int(await count_open_positions(conn, ACCOUNT_MODE))
+            cap = await conn.fetchval(
+                "SELECT max_concurrent_positions FROM mi_strategies WHERE strategy_id = $1", STRATEGY_ID)
+            if cap is not None:
+                own = int(await count_open_positions(conn, ACCOUNT_MODE, STRATEGY_ID))
+                free = min(free, int(cap) - own)
+    except Exception as e:  # loud-ok: logged + audited; the caller holds every name this minute, the next tick re-reads
+        logger.warning(f"breakout v1: the paper book's open count is unreadable ({type(e).__name__}: {e}) — holding")
+        await log_audit_event("breakout_v1_slots_unreadable",
+                              f"open-position count unreadable ({type(e).__name__}: {str(e)[:200]}) — every eligible "
+                              f"name held this minute (not a missed-by-slots record)")
+        return None
+    return max(0, free)
+
+
+async def _hold_for_slot(today: date, lrow: dict, st: dict, m: int, free: int, seated: int,
+                         count_unreadable: bool = False) -> None:
+    """A name whose state permits a buy while the paper book is full: HELD — one hold row (state `slots_full`; the
+    first such row's facts are the missed-by-slots record's hold facts), no trade row, no funnel call; retried next
+    minute. `free` is the free count AT THIS HOLD (0 — the book is full; never the tick-start count, which overstated it
+    on the funnel-block path) and `seated` how many names took a slot this minute before it. `count_unreadable`: the
+    open count could not be read — the row's state is `slots_count_unreadable` instead, which 15:55 never records."""
+    clock = (session_open(today) + timedelta(minutes=m)).strftime("%H:%M")
+    rank, score = lrow.get("list_rank"), lrow.get("order_score")
+    state = SLOTS_UNREADABLE_STATE if count_unreadable else SLOTS_FULL_STATE
+    why = ("the paper book's open count could not be read" if count_unreadable
+           else f"the paper book is full ({seated} name(s) seated this minute ahead of it)")
+    await _note(today, lrow["ticker"], state,
+                f"held at {clock} ET — {why}, ranked #{rank}; retried every minute, judged at that minute's price",
+                {"minute": m, "last_completed": st["last_completed"], "clock_et": clock, "list_rank": rank,
+                 "order_score": score, "level": st["level"], "stop": st["stop"], "width": st["width"],
+                 "cum_volume": st["cum_volume"], "need_volume": st["need_volume"], "free_slots": int(free),
+                 "seated_this_minute": int(seated), "count_unreadable": bool(count_unreadable), "reason": state})
+
+
+def first_break(mins: dict[int, dict], *, level: float, from_minute: int) -> dict | None:
+    """THE BREAK a held name made (his ruling 2026-11-06: record the names that BROKE OUT, with the first break
+    minute): the first minute >= `from_minute` (the first hold's tick minute — a buy seated then would have rested
+    from that minute) whose bar HIGH reaches the level the buy would have rested at. PURE. -> {minute, high, stop
+    (the day's low through the break minute on the cent — the resting buy was re-priced to each new low until the
+    fill, so this is the stop it would have carried), width ((level - stop) / level)}; None = never traded at the
+    level from the hold on."""
+    if not mins or level is None:
+        return None
+    lvl = float(level)
+    for k in sorted(mins):
+        if k < int(from_minute):
+            continue
+        if float(mins[k]["high"]) >= lvl:
+            low = min(float(mins[j]["low"]) for j in mins if j <= k)
+            stop = stop_from_low(low)
+            return {"minute": k, "high": float(mins[k]["high"]), "stop": stop, "width": (lvl - stop) / lvl}
+    return None
+
+
+async def _todays_details(event_type: str, today: date) -> list[dict] | None:
+    """The parsed `detail` of every `event_type` audit row written for `today` (the detail's own `day` field — the rows
+    of the last day are read, matched in Python; detail is TEXT). None = the log could not be read."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT event_type, detail FROM mi_audit_log WHERE event_type = $1 "
+                "AND created_at > NOW() - INTERVAL '1 day' ORDER BY created_at DESC", event_type)
+    except Exception as e:  # loud-ok: the caller audits + pages; nothing is written on a read it cannot trust
+        logger.warning(f"breakout v1: today's {event_type} rows are unreadable ({type(e).__name__}: {e})")
+        return None
+    out = []
+    for r in rows or []:
+        if r["event_type"] != event_type:
+            continue
+        try:
+            d = json.loads(r["detail"])
+        except Exception:  # loud-ok: one malformed row is skipped, never the read
+            continue
+        if isinstance(d, dict) and d.get("day") == today.isoformat() and d.get("ticker"):
+            out.append(d)
+    return out
+
+
+async def _first_holds_today(today: date) -> dict[str, dict] | None:
+    """{ticker: the EARLIEST `slots_full` hold row's detail today} from the audit log (durable: a restart mid-session
+    loses no name, and a second hold row written after a restart is folded by minute). None = unreadable."""
+    details = await _todays_details(HOLD_EVENT, today)
+    if details is None:
+        return None
+    first: dict[str, dict] = {}
+    for d in details:
+        if d.get("state") != SLOTS_FULL_STATE:
+            continue
+        cur = first.get(d["ticker"])
+        if cur is None or int(d.get("minute") or 0) < int(cur.get("minute") or 0):
+            first[d["ticker"]] = d
+    return first
+
+
+def _never_seated(first: dict[str, dict] | None, rows: dict[str, dict]) -> list[str]:
+    """The names held for `slots_full` today that never got a slot: no trade row today, or only a 'skipped' one (no
+    order was ever placed; a cancelled / order_placed / filled row means it had a slot at some point). In list-rank
+    order. These are the 15:55 missed-by-slots CANDIDATES — the tick adds them to its bars read so the break can be judged."""
+    if not first:
+        return []
+    return [t for t, d in sorted(first.items(), key=lambda kv: (kv[1].get("list_rank") or 10 ** 9, kv[0]))
+            if rows.get(t) is None or rows[t].get("status") == "skipped"]
+
+
+async def _record_missed_by_slots(today: date, rows: dict[str, dict], first: dict[str, dict] | None,
+                                  bars_by_ticker: dict[str, list[dict]], last_completed: int) -> int | None:
+    """TRACK WHAT WE MISS (his ruling 2026-11-06: "every name that met the break but never got a slot", with the first
+    break minute). At 15:55 ET: one `breakout_v1_missed_by_slots` row per list name HELD for `slots_full` at least
+    once today (`first` = the earliest such hold per name, read back from the audit log by the tick BEFORE its bars
+    read), that never got a slot (`_never_seated`), AND that BROKE OUT after the hold — `first_break` on today's bars
+    (`bars_by_ticker`, the tick's one batched read, the held names added to it): the first minute at/after the first
+    hold whose high reached the level. A name held that never traded at its level is NOT a miss (nothing would have
+    filled) and writes nothing. The record: ticker, day, `minute` + `clock_et` = THE BREAK, `break_high`, `break_price`
+    (the level the buy would have rested at), `stop` (the day low through the break minute — the stop it would have
+    carried) + `width`, `hold_minute` / `hold_clock_et` / `stop_at_hold` (the first hold), list rank, order score, the
+    pace at the hold, reason `slots_full`, the row status. Once per name per day: the step runs on the one 15:55 tick,
+    and a name already recorded today (a re-run of that minute after a restart inside the misfire grace) is not written
+    again. A candidate whose bars were NOT read at 15:55 (its chunk failed) is never judged "never broke" on an absence:
+    audited `breakout_v1_missed_unreadable` naming it + paged once, nothing written for it. -> the count written; None =
+    the hold log was unreadable (audited + paged, nothing written)."""
+    done = await _todays_details(MISSED_BY_SLOTS, today) if first else []
+    if first is None or done is None:
+        await log_audit_event("breakout_v1_missed_unreadable",
+                              f"{today.isoformat()}: today's hold rows could not be read — no missed-by-slots records")
+        await _page_once(("missed_unreadable", today),
+                         f"⚠️ Breakout v1: the names held for a paper slot today could not be read back at 15:55 ET — "
+                         f"today's missed-by-slots records were NOT written")
+        return None
+    already = {d["ticker"] for d in done}
+    n, unread = 0, []
+    for ticker in _never_seated(first, rows):
+        if ticker in already:
+            continue                                   # recorded already (the 15:55 minute re-run)
+        d, row = first[ticker], rows.get(ticker)
+        if ticker not in bars_by_ticker:
+            unread.append(ticker)
+            continue
+        mins = bars_by_minute(bars_by_ticker[ticker], today, last_completed)
+        brk = first_break(mins, level=d.get("level"), from_minute=int(d.get("minute") or 0))
+        if brk is None:
+            continue                                   # held, but it never traded at its level: nothing was missed
+        clock = (session_open(today) + timedelta(minutes=brk["minute"])).strftime("%H:%M")
+        rec = {"ticker": ticker, "day": today.isoformat(), "minute": brk["minute"], "clock_et": clock,
+               "break_price": d.get("level"), "break_high": brk["high"], "stop": brk["stop"], "width": brk["width"],
+               "hold_minute": d.get("minute"), "hold_clock_et": d.get("clock_et"), "stop_at_hold": d.get("stop"),
+               "list_rank": d.get("list_rank"), "order_score": d.get("order_score"),
+               "cum_volume": d.get("cum_volume"), "need_volume": d.get("need_volume"),
+               "reason": SLOTS_FULL_STATE, "row_status": (row or {}).get("status"), "account_mode": ACCOUNT_MODE}
+        try:
+            await log_audit_event(
+                MISSED_BY_SLOTS,
+                f"{ticker}: broke out at {clock} ET (#{d.get('list_rank')}, score {d.get('order_score')}; held for a "
+                f"slot since {d.get('clock_et')} ET) but never got a paper slot today — would have bought "
+                f"${float(d.get('level')):.2f} with the stop at ${float(brk['stop']):.2f} ({SLOTS_FULL_STATE})",
+                json.dumps(rec, default=str))
+            n += 1
+        except Exception as e:  # loud-ok: one failed write is logged; the other names' records still go out
+            logger.error(f"breakout v1 {ticker}: the missed-by-slots record failed ({type(e).__name__}: {e})")
+    if unread:
+        await log_audit_event("breakout_v1_missed_unreadable",
+                              f"{today.isoformat()}: {len(unread)} held name(s) had no minute bars at 15:55 (a bars "
+                              f"request failed) — their missed-by-slots records were NOT written: {', '.join(unread)}",
+                              json.dumps({"unread": unread, "written": n}))
+        await _page_once(("missed_bars_unreadable", today),
+                         f"⚠️ Breakout v1: the minute bars of {len(unread)} name(s) held for a paper slot today could "
+                         f"not be read at 15:55 ET ({', '.join(unread[:5])}{'…' if len(unread) > 5 else ''}) — their "
+                         f"missed-by-slots records were NOT written")
+    return n
 
 
 async def paper_account_preflight(today: date) -> bool:
@@ -1354,6 +1580,52 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
 
     regime_record: dict | None = None
     last_completed = min(m - 1, N_SESSION_MINUTES - 1)
+
+    # 15:55: the names held for a slot today are read back from the audit log BEFORE the bars read, so the ones that
+    # never got a slot can be judged on today's bars (did they break out after the hold?) — TRACK WHAT WE MISS below
+    first_holds: dict[str, dict] | None = None
+    missed_candidates: list[str] = []
+    if m >= EOD_MINUTE:
+        first_holds = await _first_holds_today(today)
+        listed = set(tickers)
+        missed_candidates = [t for t in _never_seated(first_holds, rows) if t in listed]
+
+    # ONE batched bars read (#717 stage 2) for every name this minute must judge: a name with no row today (before
+    # 15:55) or with a resting / unsubmitted breakout row — and at 15:55 the held-never-seated names for the missed
+    # record. A filled row reads its own bars in the fill check; a settled row and a name another strategy holds read none.
+    need = [t for t in tickers
+            if (rows.get(t) is None and m < EOD_MINUTE)
+            or (rows.get(t) is not None and rows[t].get("signal_type") == STRATEGY_ID
+                and rows[t]["status"] in ("order_placed", "confirmed"))]
+    need += [t for t in missed_candidates if t not in need]
+    bars_by_ticker: dict[str, list[dict]] = {}
+    global _bars_unread_ticks
+    if need:
+        bars_by_ticker = await alpaca.get_minute_bars_range_batch(
+            need, session_open(today), now_et, last_completed=last_completed, chunk_max=BARS_CHUNK_MAX)
+        unread = [t for t in need if t not in bars_by_ticker]
+        if unread:
+            _bars_unread_ticks += 1
+            await log_audit_event("breakout_v1_bars_unreadable",
+                                  f"minute {m}: {len(unread)} of {len(need)} name(s) have no minute bars this minute "
+                                  f"(a bars request failed) — judged next minute: {', '.join(unread[:20])}"
+                                  + (" …" if len(unread) > 20 else ""),
+                                  json.dumps({"minute": m, "need": len(need), "unread": unread,
+                                              "straight_ticks": _bars_unread_ticks}))
+            if _bars_unread_ticks >= BARS_FAILS_BEFORE_PAGE:
+                # a chunk that keeps failing (one bad symbol can blind up to 200 names) pages ONCE a day — an audit
+                # row a minute is not a signal anyone reads (review 2026-11-07)
+                await _page_once(("bars_unreadable", today),
+                                 f"⚠️ Breakout v1: the minute bars of {len(unread)} of {len(need)} list name(s) could "
+                                 f"not be read for {_bars_unread_ticks} minutes running "
+                                 f"({', '.join(unread[:5])}{'…' if len(unread) > 5 else ''}) — those names are not "
+                                 f"being judged, and a resting buy under one is left exactly as it is")
+        else:
+            _bars_unread_ticks = 0
+
+    # PASS 1 — every name's state; the rows that exist are managed NOW (a cancel this minute frees its slot this
+    # minute); the names whose state permits a buy are collected for the slots below.
+    eligible: list[tuple[dict, dict]] = []
     for lrow in lrows:
         ticker = lrow["ticker"]
         try:
@@ -1369,17 +1641,20 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
                 out["actions"][ticker] = f"row_{row['status']}"
                 continue
             st = None
-            if not (row is None and m >= EOD_MINUTE):
-                bars = await alpaca.get_minute_bars_range(ticker, session_open(today), now_et)
-                mins = bars_by_minute(bars, today, last_completed)
+            if ticker in bars_by_ticker:
+                mins = bars_by_minute(bars_by_ticker[ticker], today, last_completed)
                 st = evaluate(mins, list_level=float(lrow["level"]), adr20=lrow.get("adr20"),
                               vol_bar=float(lrow["vol_bar"]), last_completed=last_completed)
             if row is not None:
+                # no bars this minute (st None): a resting buy is held as it is, never cancelled or re-priced on nothing
                 out["actions"][ticker] = await _manage(row, lrow, st, m, open_by_id)
                 continue
             # no row today
             if m >= EOD_MINUTE:
                 out["actions"][ticker] = "never_placed"
+                continue
+            if st is None:
+                out["actions"][ticker] = "bars_unreadable"                     # its bars request failed: next minute
                 continue
             if st["status"] == "wait":
                 await _note(today, ticker, "wait", f"waiting — {st['reason']}")
@@ -1402,13 +1677,7 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
                              "minute": last_completed})
                 out["actions"][ticker] = "volume_hold"
                 continue
-            if not await paper_account_preflight(today):
-                out["actions"][ticker] = "preflight_failed"
-                continue
-            if regime_record is None:
-                regime_record = await _regime(today)
-            r = await _enter(today, lrow, st, regime_record)
-            out["actions"][ticker] = r.get("action")
+            eligible.append((lrow, st))
         except Exception as e:  # loud-ok: one name's crash is audited + paged; the other names still run
             logger.exception(f"breakout v1 {ticker}: tick crashed")
             await log_audit_event("breakout_v1_entry_crash", f"{ticker} — {type(e).__name__}: {str(e)[:300]}")
@@ -1416,12 +1685,60 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
                              f"🚨 *{ticker}* breakout v1 paper order step crashed — {type(e).__name__}: {str(e)[:160]}")
             out["actions"][ticker] = "crashed"
 
+    # PASS 2 — THE SLOTS (his rulings 2026-11-06): the eligible names in LIST RANK order; the first `free` go to the
+    # funnel, the rest are HELD (no trade row, retried next minute at that minute's price). HOLD-ONLY: a resting
+    # lower-ranked buy is never cancelled to seat a higher-ranked name.
+    if eligible:
+        eligible.sort(key=lambda e: (e[0].get("list_rank") is None, e[0].get("list_rank") or 0, e[0]["ticker"]))
+        if not await paper_account_preflight(today):
+            for lrow, _st in eligible:
+                out["actions"][lrow["ticker"]] = "preflight_failed"
+        else:
+            free = await _free_slots()
+            count_unreadable = free is None                     # the count could not be read: hold all, own state
+            free = 0 if count_unreadable else free
+            seated = 0
+            for lrow, st in eligible:
+                ticker = lrow["ticker"]
+                try:
+                    if free <= 0:
+                        await _hold_for_slot(today, lrow, st, m, free, seated, count_unreadable)
+                        out["actions"][ticker] = "held_count_unreadable" if count_unreadable else "held_slots_full"
+                        continue
+                    if regime_record is None:
+                        regime_record = await _regime(today)
+                    r = await _enter(today, lrow, st, regime_record)
+                    out["actions"][ticker] = r.get("action")
+                    reason = str(r.get("reason", ""))
+                    if r.get("action") == ACTION_AUTO_ENTERED:
+                        free -= 1
+                        seated += 1
+                    elif r.get("action") == ACTION_BLOCKED and (reason.startswith(BLOCK_MAX_POSITIONS)
+                                                                or reason.startswith(BLOCK_STRATEGY_POSITION_CAP)):
+                        # the funnel's locked recount says the book is full (a same-moment entry elsewhere — the
+                        # disclosed race; or the strategy's own cap, when set): hold the rest of this minute's names
+                        # rather than send each to a terminal skip — and hold THIS name too (its skipped row is
+                        # terminal for the day), so 15:55 can record it if it breaks out and never seats
+                        free = 0
+                        await _hold_for_slot(today, lrow, st, m, 0, seated)
+                except Exception as e:  # loud-ok: one name's crash is audited + paged; the other names still run
+                    logger.exception(f"breakout v1 {ticker}: tick crashed (slots)")
+                    await log_audit_event("breakout_v1_entry_crash", f"{ticker} — {type(e).__name__}: {str(e)[:300]}")
+                    await _page_once(("crash", today, ticker),
+                                     f"🚨 *{ticker}* breakout v1 paper order step crashed — {type(e).__name__}: "
+                                     f"{str(e)[:160]}")
+                    out["actions"][ticker] = "crashed"
+
     if m >= EOD_MINUTE:
+        # TRACK WHAT WE MISS (his ruling 2026-11-06): the names that broke out while held and never got a slot, once each
+        out["missed_by_slots"] = await _record_missed_by_slots(today, rows, first_holds, bars_by_ticker, last_completed)
         await log_audit_event("breakout_v1_entry_day", f"{today.isoformat()}: {len(lrows)} list name(s) — "
                               + ", ".join(f"{t} {a}" for t, a in out["actions"].items()),
                               json.dumps(out, default=str))
     entered = sum(1 for a in out["actions"].values() if a == ACTION_AUTO_ENTERED)
     failed = sum(1 for a in out["actions"].values() if a in (ACTION_AUTO_ENTER_FAILED, "crashed"))
-    if entered or failed:
-        logger.info(f"breakout v1 minute {m}: {entered} paper order(s) placed, {failed} failed, {len(lrows)} name(s)")
+    held = sum(1 for a in out["actions"].values() if a in ("held_slots_full", "held_count_unreadable"))
+    if entered or failed or held:
+        logger.info(f"breakout v1 minute {m}: {entered} paper order(s) placed, {held} held for a slot, {failed} failed, "
+                    f"{len(lrows)} name(s)")
     return out

@@ -1041,6 +1041,93 @@ async def get_minute_bars_range(ticker: str, start: datetime, end: datetime) -> 
         return []
 
 
+BARS_PAGE_LIMIT = 10_000            # alpaca-py 0.43: `get_stock_bars` pages at 10,000 bars per HTTP request, all symbols
+BARS_BATCH_CHUNK_TIMEOUT_S = 60.0   # per chunk (one page): a hang breaker, not a latency budget
+
+
+def bars_batch_chunk_size(n_tickers: int, last_completed: int | None, chunk_max: int) -> int:
+    """Symbols per request so that ONE request is ONE page: the bars each symbol has so far (minutes 0..last_completed)
+    plus the minute in progress must fit `BARS_PAGE_LIMIT` across the chunk. PURE. `last_completed=None` -> `chunk_max`."""
+    if last_completed is None:
+        per = chunk_max
+    else:
+        per = min(chunk_max, BARS_PAGE_LIMIT // (max(0, int(last_completed)) + 2))
+    return max(1, min(per, max(1, n_tickers)))
+
+
+async def get_minute_bars_range_batch(tickers: list[str], start: datetime, end: datetime, *,
+                                      last_completed: int | None = None,
+                                      chunk_max: int = 200) -> dict[str, list[dict]]:
+    """ONE batched fetch of 1-minute bars for many tickers over [start, end] (tz-aware ET) — the breakout v1 entry
+    tick's read (#717 stage 2, 2026-11-07): a 150-350-name list every minute was one REST call per name
+    (`get_minute_bars_range`); here it is ceil(N x bars-so-far / 10,000) calls, one page each.
+
+    The symbols are split into chunks of `bars_batch_chunk_size(...)` (so a chunk is one page; the SDK's own paging is
+    the safety net if one spills) and fetched SEQUENTIALLY (one worker thread; `_sdk`-bounded per chunk, never the
+    event loop). A chunk that FAILS fast (an HTTP error) costs its names one minute and the next chunk still runs. A
+    chunk that HANGS (its `BARS_BATCH_CHUNK_TIMEOUT_S` fires — the worker thread keeps its slot in the 7-thread pool
+    every broker call in this process shares, alpaca-py sets no HTTP timeout) ENDS THE LOOP FOR THIS CALL: the chunks
+    after it are not sent, their names are absent (unread this minute, retried next tick), so a hanging bars endpoint
+    ties up AT MOST ONE pool thread per tick and holds the tick for at most ~60 s — never the 14 threads x 60 s a
+    350-name afternoon would otherwise cost (review 2026-11-07 finding 4; the per-name code it replaced tied up one
+    thread per hang too). Disclosed in the breakout v1 SSoT.
+
+    -> {ticker: [bar dicts]} in exactly `get_minute_bars_range`'s per-bar shape (`t_et, open, high, low, close, volume,
+    vwap`). CONTRACT the caller reads: a symbol whose chunk ANSWERED is present — `[]` when Alpaca returned no bars for
+    it (the caller's `wait`); a symbol whose chunk RAISED, or whose chunk came after a hung one, is ABSENT (logged here;
+    the caller reports it as unreadable). Never raises.
+    """
+    out: dict[str, list[dict]] = {}
+    names = list(dict.fromkeys(t for t in tickers if t))
+    if not names:
+        return out
+    from zoneinfo import ZoneInfo
+    et = ZoneInfo("America/New_York")
+    size = bars_batch_chunk_size(len(names), last_completed, chunk_max)
+    try:
+        client = _get_data_client()
+    except Exception as e:  # loud-ok: logged; every name reads unreadable this minute (absent), the next tick retries
+        logger.error(f"minute-bar batch: data client unavailable ({type(e).__name__}: {e}) — {len(names)} name(s) unread")
+        return out
+    for i in range(0, len(names), size):
+        chunk = names[i:i + size]
+        try:
+            request = StockBarsRequest(
+                symbol_or_symbols=chunk,
+                timeframe=TimeFrame.Minute,
+                start=start,
+                end=end,
+                feed=get_data_feed(),
+            )
+            bars = await _sdk(client.get_stock_bars, request, timeout=BARS_BATCH_CHUNK_TIMEOUT_S)
+            bar_data = bars.data if hasattr(bars, "data") else bars
+            for t in chunk:
+                out[t] = [
+                    {
+                        "t_et": b.timestamp.astimezone(et),
+                        "open": float(b.open),
+                        "high": float(b.high),
+                        "low": float(b.low),
+                        "close": float(b.close),
+                        "volume": int(b.volume),
+                        "vwap": float(b.vwap) if getattr(b, "vwap", None) is not None else None,
+                    }
+                    for b in (bar_data.get(t, []) or [])
+                    if b.timestamp is not None
+                ]
+        except (asyncio.TimeoutError, TimeoutError):  # loud-ok: a HUNG chunk ends this call — its thread is still busy
+            left = len(names) - i - len(chunk)
+            logger.error(f"minute-bar batch chunk {i // size + 1} ({len(chunk)} symbols, {chunk[0]}..{chunk[-1]}) HUNG "
+                         f"past {BARS_BATCH_CHUNK_TIMEOUT_S:.0f}s [{start}..{end}] — the loop stops here: these and "
+                         f"the {left} name(s) after them are unread this minute (one pool thread tied up, not one per "
+                         f"chunk)")
+            break
+        except Exception as e:  # loud-ok: logged with the chunk; its names are ABSENT (the caller audits), next tick retries
+            logger.error(f"minute-bar batch chunk {i // size + 1} ({len(chunk)} symbols, {chunk[0]}..{chunk[-1]}) "
+                         f"failed [{start}..{end}]: {type(e).__name__}: {e}")
+    return out
+
+
 async def persist_intraday_bars(ticker: str, bars: list[dict]) -> None:
     """Batch upsert 1-minute bars (from `get_minute_bars_range`) into
     `mi_intraday_bars` (#306 intraday path recorder).

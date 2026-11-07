@@ -47,6 +47,7 @@
     "tests/test_asis_windows_v2.py": 2,
     "tests/test_audit_detail_json_safe_truncation.py": 4,
     "tests/test_breakeven_at_broker_548.py": 3,
+    "tests/test_breakout_v1_entry.py": 1,
     "tests/test_brief_composer.py": 3,
     "tests/test_brief_dry_run.py": 3,
     "tests/test_broker_reject_reason_540.py": 8,
@@ -150,6 +151,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 432,
+  "total": 433,
   "unescaped": 359
 }
