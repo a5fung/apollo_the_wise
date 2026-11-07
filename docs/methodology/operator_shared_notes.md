@@ -2915,3 +2915,7 @@ Recorded in `tests/fixtures/must_not_trade_charts.py` (ruling date 2026-11-07, h
 > "Close it" (2026-11-07, to the #312 review finding: the chat assistant's market-agent tool can pass a free-text "/strategy <id> promote|demote|enable|disable" — or the plain-text "strategy <id> demote" form — so a chat message could move a strategy's rung, an eligible promote reaching LIVE; rec: close the chat route, keep his typed command and the Demote button)
 
 Recorded: a strategy's phase or enabled state moves ONLY by his typed /strategy command or his tokenized Demote / No action button — never through the chat assistant relaying a request. Built with #312 (the next fix round, after round 2), with a test that drives the real chat dispatch and moves nothing.
+
+> "Ok but let's put it for tmr" (2026-11-07, to the #312 final-review finding that the chat assistant can still send /resume, /partialnow, /timestop and /pause through its market-agent tool; rec: close resume, partial-sell and time-stop to the chat route, keep pause open as the safe direction)
+
+Recorded: CLOSE /resume, /partialnow and /timestop to the chat route (his typed command only, the same origin gate as /strategy); KEEP /pause open to the chat. Built Sun 11-08 with #312's last fix round (the final review's lows + the EXPECT block), before #312's deploy.
