@@ -699,13 +699,30 @@ def _raw_phase_updates(tree):
                 yield flat
 
 
+def _called_names(fn: ast.AST) -> set[str]:
+    out = set()
+    for n in ast.walk(fn):
+        if isinstance(n, ast.Call):
+            f = n.func
+            out.add(f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None)
+    out.discard(None)
+    return out
+
+
 def test_only_the_operators_three_paths_write_a_phase():
     """DERIVED over every production module: a call to the one phase writer carrying `phase=`
     exists in exactly three functions — the typed promote, the typed demote and the Demote
     button's handler — all three reached only by his message or his press. A raw phase UPDATE
     handed to a DB verb exists in the writer itself and in db.py's boot migration — which may
     only converge a retired row to the TERMINAL 'deprecated' phase (#424; dual_account.md names
-    it), never to shadow / paper / live."""
+    it), never to shadow / paper / live.
+
+    And the typed ones sit behind the origin gate (#312 round 3, his ruling 2026-11-07 "Close it"):
+    every function in `strategies/telegram.py` that calls `update_strategy` at all — the two phase
+    writers AND the enabled-flag writer, derived, not listed — is called from exactly one place,
+    `handle_strategy_action`, whose `origin` parameter is keyword-only with a default that refuses
+    (a caller that forgets it cannot move anything). The behavioural proof that the gate acts is
+    `tests/test_312_strategy_command_origin.py`; this proves nothing stands beside it."""
     # source-pin-ok: the NON-existence of a fourth phase writer anywhere in the codebase cannot be
     # exercised by calling anything — the population of callers is only decidable from the source.
     found = set()
@@ -741,6 +758,17 @@ def test_only_the_operators_three_paths_write_a_phase():
         assert "set phase = 'deprecated'" in flat, f"db.py writes a non-terminal phase raw: {flat}"
     reg = (REPO / "agents/market_intelligence/strategies/registry.py").read_text(encoding="utf-8")
     assert "UPDATE mi_strategies SET" in reg and "expect_phase" in reg
+    # the typed writers behind the one gated dispatcher (round 3)
+    tree = ast.parse((REPO / "agents/market_intelligence/strategies/telegram.py").read_text(encoding="utf-8"))
+    fns = {n.name: n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    writers = {name for name, fn in fns.items() if "update_strategy" in _called_names(fn)}
+    assert writers == {"_do_enable_disable", "_do_promote", "_do_demote"}, writers
+    for w in writers:
+        callers = {name for name, fn in fns.items() if w in _called_names(fn)}
+        assert callers == {"handle_strategy_action"}, (w, callers)
+    gate = fns["handle_strategy_action"]
+    kw = {a.arg: d for a, d in zip(gate.args.kwonlyargs, gate.args.kw_defaults)}
+    assert "origin" in kw and isinstance(kw["origin"], ast.Constant) and kw["origin"].value is None, kw
 
 
 def test_the_watchdog_module_still_cannot_move_a_phase():

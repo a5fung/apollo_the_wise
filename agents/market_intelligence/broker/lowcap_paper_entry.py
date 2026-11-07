@@ -175,7 +175,10 @@ async def _strategy_paper_or_refuse(today: date):
         msg = (f"{STRATEGY_ID} phase={strategy.phase!r} resolves to {mode!r} — the small-cap "
                f"lane orders on PAPER only; refused")
         await log_audit_event("lowcap_paper_lane_refused", f"{today.isoformat()}: {msg}")
-        await _page(f"🚨 Small-cap paper lane refused to order: {msg}")
+        # once a day (#312 re-review 2026-11-07): his Demote press lands this lane on 'shadow', and the order
+        # step runs after every lane tick 09:31-09:45 — a page per call made one press a page a minute every
+        # morning until he also disabled it. Its own key, so the read-failure page above is not silenced.
+        await _page_once("refused", today, f"🚨 Small-cap paper lane refused to order: {msg}")
         return None
     return strategy
 

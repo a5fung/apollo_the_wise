@@ -30,6 +30,8 @@ from core.router import auth_headers, call_agent, get_orchestrator_tools
 from shared.audit import log_action
 from shared.output_ceilings import max_tokens_for
 from shared.models import (
+    ORIGIN_CHAT_TOOL,
+    REQUEST_ORIGIN_KEY,
     AgentName,
     AgentRequest,
     ConversationMessage,
@@ -348,7 +350,16 @@ class Apollo:
         task: str,
         context: dict[str, Any],
     ) -> str:
-        """Call a sub-agent via the router and return its result as a string."""
+        """Call a sub-agent via the router and return its result as a string.
+
+        The request is stamped `context.origin = "chat_tool"` — ALWAYS, over whatever the
+        LLM put there (#312 round 3, his ruling 2026-11-07 "Close it"): `context` is an
+        argument the model writes itself, so a forged `"operator_command"` must never reach
+        a handler that moves a strategy's phase or switch. Only the typed CommandHandler path
+        in `channels/telegram.py` carries the operator marker. A non-dict context (the model
+        can send anything) is replaced, not trusted.
+        """
+        context = {**(context if isinstance(context, dict) else {}), REQUEST_ORIGIN_KEY: ORIGIN_CHAT_TOOL}
         request = AgentRequest(
             task=task,
             context=context,

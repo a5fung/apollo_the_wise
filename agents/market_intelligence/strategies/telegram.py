@@ -11,6 +11,19 @@ Commands:
 Every state change writes an `mi_audit_log` row so phase transitions are
 auditable. `promote` is gated on `check_promotion_eligibility` — the
 dispatcher refuses if blocking reasons remain.
+
+WHO MAY MOVE ONE (#312 round 3, his ruling 2026-11-07, verbatim "Close it"): a strategy's
+phase or enabled state moves ONLY by his TYPED `/strategy` command (the CommandHandler in
+`channels/telegram.py`, which bypasses the LLM) or his tokenized Demote button
+(`ladder_press.py`) — never through the chat assistant. The orchestrator's `call_market_agent`
+tool forwards free text with HIS user id, and `agent.py` routes `/strategy <id> promote` and
+the plain-text `strategy <id> demote` forms here, so without a gate a chat message could move
+a rung (an eligible promote reaching LIVE). The gate is `handle_strategy_action`'s `origin`:
+the typed path stamps `context.origin = "operator_command"`; the orchestrator's tool path
+ALWAYS overwrites it to `"chat_tool"`; every writer below sits behind that one check, and a
+missing origin is refused like a wrong one (default deny) — nothing moves, the answer says so
+in plain words, a `strategy_command_refused` row is written. The read-only list and detail
+views stay open to every route.
 """
 from __future__ import annotations
 
@@ -18,6 +31,7 @@ import json
 import logging
 from datetime import date, timedelta
 
+from agents.market_intelligence.audit_events import STRATEGY_COMMAND_REFUSED
 from agents.market_intelligence.db import log_audit_event
 from agents.market_intelligence.strategies.adapters import get_outcomes
 from agents.market_intelligence.strategies.promotion import (
@@ -30,11 +44,14 @@ from agents.market_intelligence.strategies.registry import (
     load_strategies,
     update_strategy,
 )
+from shared.models import ORIGIN_OPERATOR_COMMAND
 
 logger = logging.getLogger(__name__)
 
 _DEMOTE_BACK = {"live": "paper", "paper": "shadow"}
 _VALID_ACTIONS = {"enable", "disable", "promote", "demote"}
+REFUSAL_TEXT = ("Not done — strategy changes need your typed /strategy command or the page button. "
+                "The chat assistant cannot move a strategy's phase or switch; nothing was changed.")
 
 
 # ── Formatters ──────────────────────────────────────────────────────────────
@@ -214,10 +231,27 @@ async def handle_strategies_command() -> str:
     return await render_strategies_table()
 
 
-async def handle_strategy_action(body: str) -> str:
+async def _refuse_mutation(strategy_id: str, action: str, origin: str | None, user_id: int | None) -> str:
+    """The gate's answer: nothing moved, a plain reason, an audit row naming what was asked and by which route."""
+    await log_audit_event(
+        STRATEGY_COMMAND_REFUSED,
+        f"/strategy {strategy_id} {action} refused — not his typed command "
+        f"(origin {origin or 'missing'}); nothing moved",
+        detail=json.dumps({"strategy_id": strategy_id, "action": action, "origin": origin,
+                           "user_id": user_id, "required_origin": ORIGIN_OPERATOR_COMMAND}),
+    )
+    logger.warning(f"/strategy {strategy_id} {action} refused: origin={origin!r} (user {user_id})")
+    return REFUSAL_TEXT
+
+
+async def handle_strategy_action(body: str, *, origin: str | None = None, user_id: int | None = None) -> str:
     """Parse `<id> [action]` and dispatch.
 
-    Empty body → list. `<id>` alone → detail. `<id> <action>` → mutation.
+    Empty body → list. `<id>` alone → detail. `<id> <action>` → mutation — ONLY when
+    `origin` is the typed-command marker (`shared.models.ORIGIN_OPERATOR_COMMAND`, stamped
+    by `channels/telegram.py::_dispatch_market_slash`). Any other origin, and NO origin
+    (a caller that forgets), is refused before the action is even parsed: default deny.
+    `user_id` is recorded on the refusal row only.
     """
     body = (body or "").strip()
     if not body:
@@ -227,6 +261,8 @@ async def handle_strategy_action(body: str) -> str:
     if len(parts) == 1:
         return await render_strategy_detail(strategy_id)
     action = parts[1].lower()
+    if origin != ORIGIN_OPERATOR_COMMAND:
+        return await _refuse_mutation(strategy_id, action, origin, user_id)
     if action not in _VALID_ACTIONS:
         return (
             f"Unknown action `{action}`. Valid: {', '.join(sorted(_VALID_ACTIONS))}.\n"

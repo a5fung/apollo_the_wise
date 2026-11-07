@@ -285,6 +285,26 @@ async def test_an_unreadable_strategy_row_refuses_every_call_but_pages_once_a_da
 
 
 @pytest.mark.asyncio
+async def test_a_refused_phase_pages_once_a_day_and_audits_every_call(monkeypatch):
+    """#312 re-review 2026-11-07 LOW: his Demote press on `magna53_smallcap` lands it on 'shadow' (`DEMOTE_TO`), and
+    the order step runs after every lane tick 09:31-09:45 — on 9f9347a3 each call refused AND paged, so one press
+    bought a page a minute every morning until he also disabled the lane. The refusal is unchanged (fail-closed, an
+    audit row per call, nothing submitted, the pre-flight never asked); the page now carries its own once-a-day key
+    (`refused`), distinct from the read-failure's, so neither silences the other."""
+    w = _wire_order_step(monkeypatch, phase="shadow")
+    for _ in range(3):
+        assert await lpe.process_lowcap_paper_alerts(today=date(2026, 10, 12)) == []
+    assert not w.submit.await_count and not w.get_account.await_count
+    assert sum(ev == "lowcap_paper_lane_refused" for ev, _ in w.audits) == 3
+    assert len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER") and "PAPER only" in w.pages[0]
+    # the read-failure page has its own key: a refusal earlier that day does not silence it
+    from agents.market_intelligence.strategies import registry
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(side_effect=asyncio.TimeoutError("acquire timed out")))
+    assert await lpe.process_lowcap_paper_alerts(today=date(2026, 10, 12)) == []
+    assert len(w.pages) == 2 and "could not be read" in w.pages[1]
+
+
+@pytest.mark.asyncio
 async def test_preflight_failure_submits_nothing_pages_and_retries_next_call(monkeypatch):
     w = _wire_order_step(monkeypatch)
     w.get_account.side_effect = RuntimeError("paper account 401")

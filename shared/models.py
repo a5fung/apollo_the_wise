@@ -42,6 +42,33 @@ class AgentRequest(BaseModel):
     conversation_id: str                # Ties back to the conversation
 
 
+# ── Request origin — WHO sent an AgentRequest (#312 round 3, his ruling 2026-11-07 "Close it") ──
+# Carried in `AgentRequest.context[REQUEST_ORIGIN_KEY]`. The typed slash-command path
+# (`channels/telegram.py::_dispatch_market_slash`, a CommandHandler that bypasses the LLM) stamps
+# ORIGIN_OPERATOR_COMMAND; the orchestrator's tool path (`core/orchestrator.py::_call_sub_agent`)
+# ALWAYS stamps ORIGIN_CHAT_TOOL over whatever the LLM put in `context` — the LLM writes that
+# object itself, so a value it supplies is never trusted. A handler that moves money-path state
+# (a strategy's phase or enabled flag: `strategies/telegram.py::handle_strategy_action`) acts
+# only on the operator marker; a missing marker is refused (default deny).
+REQUEST_ORIGIN_KEY = "origin"
+ORIGIN_OPERATOR_COMMAND = "operator_command"
+ORIGIN_CHAT_TOOL = "chat_tool"
+
+
+def request_origin(context: Any) -> Optional[str]:
+    """The origin marker on a request's context — None when absent, not a string, or the
+    context is not a dict (the LLM can hand the tool anything)."""
+    if not isinstance(context, dict):
+        return None
+    value = context.get(REQUEST_ORIGIN_KEY)
+    return value if isinstance(value, str) else None
+
+
+def is_operator_command(context: Any) -> bool:
+    """True only for a request the typed CommandHandler path stamped."""
+    return request_origin(context) == ORIGIN_OPERATOR_COMMAND
+
+
 class AgentResponse(BaseModel):
     """What a sub-agent returns to Apollo."""
     request_id: str

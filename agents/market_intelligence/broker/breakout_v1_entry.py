@@ -1671,7 +1671,7 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
 
     switch_on = await get_runtime_toggle(TOGGLE, TOGGLE_ENV, default=True)
     state, why = await _strategy_state(today) if switch_on else (STATE_SWITCHED_OFF, f"toggle {TOGGLE} off")
-    if state == STATE_UNREADABLE:
+    if state == STATE_UNREADABLE and m < EOD_MINUTE:
         # the strategy row could not be READ this minute (re-review 2026-11-07 finding 2): no new order, no re-price
         # and NO cancel — a resting buy is left as it is, exactly as an unreadable broker leaves it (`broker_unreadable`
         # above); the next minute re-reads. The cancel below is for a real disable or a phase other than paper only.
@@ -1679,7 +1679,15 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
         # so the next readable minute runs it — delayed, never dropped.
         out["skipped"] = "strategy_unreadable"
         return out
-    may_order = state == STATE_OK
+    if state == STATE_UNREADABLE:
+        # 15:55 and unreadable (re-review 2026-11-07, the LOW): there is no next minute, and the last tick places
+        # nothing new whatever the row says (a name without a row is `never_placed` in PASS 1, before the slots) —
+        # but three things must run without the row: the cancel of the resting DAY buys (`_manage`, else one can
+        # fill between 15:55 and 16:00), the missed-by-slots record and the day row. So this minute runs as a normal
+        # one, and ONLY the switch-off cancel below (a real disable / wrong rung) is skipped — a read failure must
+        # never mark a row `block:strategy_disabled`.
+        out["strategy_unreadable"] = True
+    may_order = state in (STATE_OK, STATE_UNREADABLE)     # UNREADABLE reaches here at 15:55 only: nothing is placed
     if not may_order and state == STATE_SWITCHED_OFF:
         # THE STOP AT THE FILL is part of a filled position's stop, not a new order: it still runs when the switch is
         # off (like the pp exit's jobs) — never on a refused phase (wall 2: nothing is touched then).

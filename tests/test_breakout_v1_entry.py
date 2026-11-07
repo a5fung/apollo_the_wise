@@ -586,6 +586,33 @@ async def test_an_unreadable_strategy_row_takes_no_action_that_tick_and_the_next
 
 
 @pytest.mark.asyncio
+async def test_an_unreadable_strategy_row_at_1555_still_runs_the_end_of_day_work(monkeypatch):
+    """#312 re-review 2026-11-07 LOW: the no-action rule for an unreadable strategy row is for the minutes a NEW
+    order could be placed. At 15:55 nothing new is placed whatever the row says, and three things must run without
+    it: the cancel of the resting DAY buys (`window:breakout_unfilled_eod` — else one can fill 15:55-16:00), the
+    missed-by-slots record and the `breakout_v1_entry_day` row. On 9f9347a3 an unreadable 15:55 skipped all three
+    (`strategy_unreadable`). One minute earlier (15:54) the early return still holds: no cancel, no order. The
+    switch-off cancel (`block:strategy_disabled`) is NOT what runs — that stays for a real disable or a wrong rung."""
+    from agents.market_intelligence.strategies import registry
+    w = World(monkeypatch, rows=[_placed_row()], orders=[_order()],
+              list_rows=[dict(_LIST), dict(_LIST, ticker="NEWB", list_rank=2)],
+              bars={"BRKO": _flat_bars(385, vol=60_000.0), "NEWB": _flat_bars(385, vol=60_000.0)})
+    monkeypatch.setattr(registry, "get_strategy_fresh",
+                        AsyncMock(side_effect=asyncio.TimeoutError("pool acquire timed out")))
+    out = await w.tick(at=(15, 54))
+    assert out["skipped"] == "strategy_unreadable" and ("cancel", "ord-1") not in w.events
+    assert w.rows["BRKO"]["status"] == "order_placed"
+    out = await w.tick(at=(15, 55))
+    assert out["skipped"] is None and out["strategy_unreadable"] is True
+    assert ("cancel", "ord-1") in w.events
+    assert w.rows["BRKO"]["skip_reason"].startswith("window:breakout_unfilled_eod")
+    assert out["actions"]["NEWB"] == "never_placed" and not w.funnel.await_count
+    assert "missed_by_slots" in out and w.ev("breakout_v1_entry_day")
+    assert w.ev("breakout_v1_strategy_unreadable") and not w.ev("breakout_v1_refused")
+    assert len(w.pages) == 1                                         # the read-failure page, once a day
+
+
+@pytest.mark.asyncio
 async def test_live_trading_disabled_stops_the_job(monkeypatch):
     w = World(monkeypatch)
     monkeypatch.setattr(be, "LIVE_TRADING_ENABLED", False)

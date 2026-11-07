@@ -1969,11 +1969,22 @@ class MarketIntelligenceAgent(BaseAgent):
 
         Actions: enable, disable, promote, demote. Promote enforces
         verdict.eligible — see strategies/telegram.py.
+
+        A MUTATION ACTS ONLY ON HIS TYPED COMMAND (#312 round 3, his ruling 2026-11-07
+        "Close it"). This handler is reached by the slash dispatch AND the plain-text route
+        (`strategy <id> demote`, `strategy: <id> enable`), and both are reachable from the
+        orchestrator's `call_market_agent` tool with his user id — so the request's origin
+        marker decides, not the text or the user: the typed CommandHandler stamps
+        `context.origin = "operator_command"`, the orchestrator's tool path always overwrites
+        it to `"chat_tool"`, and `handle_strategy_action` refuses anything else (a missing
+        marker included), moving nothing and writing `strategy_command_refused`. The list
+        and detail views answer every route.
         """
         from agents.market_intelligence.strategies.telegram import (
             handle_strategies_command,
             handle_strategy_action,
         )
+        from shared.models import request_origin
         import re as _re
         raw = request.task.strip()
         # Strip leading `/strategy` or `strategy` (colon or whitespace) and dispatch on body.
@@ -1982,7 +1993,8 @@ class MarketIntelligenceAgent(BaseAgent):
         try:
             if not body:
                 return self._ok(request, result=await handle_strategies_command())
-            return self._ok(request, result=await handle_strategy_action(body))
+            return self._ok(request, result=await handle_strategy_action(
+                body, origin=request_origin(request.context), user_id=request.user_id))
         except Exception as e:
             logger.exception(f"Strategy command failed: {e}")
             return self._error(request, f"Strategy command failed: {e}")

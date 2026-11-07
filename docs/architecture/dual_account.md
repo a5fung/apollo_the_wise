@@ -20,6 +20,24 @@ promote`; down is `/strategy <id> demote` (`strategies/telegram.py::_DEMOTE_BACK
 shadow). Both go through the ONE phase writer, `strategies/registry.update_strategy`, and write
 a `strategy_phase_change` audit row — that row trail is the phase history today. `deprecated`
 is terminal (#424) and is set only by the boot migration in `db._seed_strategies_registry`.
+**Who can move one (his ruling 2026-11-07, verbatim "Close it"; built #312 round 3):** ONLY his
+TYPED `/strategy <id> promote|demote|enable|disable` or his tokenized Demote button (§Demotion
+below) — never the chat assistant. Mechanism: the typed path is a `CommandHandler`
+(`channels/telegram.py::_dispatch_market_slash`, which bypasses the LLM) and stamps the request
+`context.origin = "operator_command"` (`shared.models.ORIGIN_OPERATOR_COMMAND`); the
+orchestrator's `call_market_agent` tool (`core/orchestrator.py::_call_sub_agent`) ALWAYS
+overwrites the origin to `"chat_tool"` — the LLM writes `context` itself, so a value it supplies
+(a forged operator marker included) is never trusted; and `strategies/telegram.py::
+handle_strategy_action`, the only entry to the three writers (`_do_promote`, `_do_demote`,
+`_do_enable_disable`), refuses every mutation whose origin is not the operator marker — a missing
+marker is refused too (default deny): nothing moves, the answer is "strategy changes need your
+typed /strategy command or the page button", and a `strategy_command_refused` audit row is written
+(strategy, action, origin, user). The read-only `/strategy` and `/strategy <id>` views stay open
+to the chat route. So a plain "demote magna53" typed to the bot — which goes through the LLM —
+is now refused; the same words as `/strategy magna53 demote` move it. Pinned by
+`tests/test_312_strategy_command_origin.py` (the real `_dispatch_tool` → `execute_task` path,
+every action the module knows, in all three text forms, a forged marker included; the typed
+CommandHandler path still moving; the writers and their callers DERIVED by AST).
 
 **Demotion — the ladder's downward direction (ADR 0022 §1 L2, #312: the nightly read built DARK
 2026-10-15, HIS act step built 2026-11-07).** `agents/market_intelligence/ladder_watchdog.py`, job

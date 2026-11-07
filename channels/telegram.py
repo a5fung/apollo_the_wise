@@ -872,9 +872,12 @@ class TelegramChannel:
     # source now; callers keep their own site-specific defaults/timeouts/error
     # text, only the POST + the Markdown->plain fallback are shared.
     async def _post_market_task(
-        self, task: str, user_id: int, timeout: float = 30
+        self, task: str, user_id: int, timeout: float = 30, context: Optional[dict] = None,
     ) -> Optional[str]:
         """POST an AgentRequest to the market agent, return the result text.
+        `context` rides on the request as-is; the typed slash-command path passes the
+        operator origin marker through it (`_dispatch_market_slash`, #312 round 3) and
+        nothing else needs to.
         Delegates the actual POST + error handling to `core.router.call_agent`
         (simplify GROUP 3, 2026-07-03 — this used to hand-roll its own
         POST {url}/task + headers, duplicating what call_agent already does for
@@ -891,7 +894,8 @@ class TelegramChannel:
         if not get_agent_url("market_intelligence"):
             return None
 
-        req = AgentRequest(task=task, user_id=user_id, conversation_id=str(user_id))
+        req = AgentRequest(task=task, context=dict(context or {}), user_id=user_id,
+                           conversation_id=str(user_id))
         resp = await call_agent(AgentName.MARKET_INTELLIGENCE, req, timeout=timeout)
         if not resp.success:
             raise RuntimeError(resp.error or "market agent call failed")
@@ -973,8 +977,16 @@ class TelegramChannel:
         args = parts[1] if len(parts) > 1 else ""
         task = (cmd + " " + args).strip() if args else cmd
 
+        # THE OPERATOR MARKER (#312 round 3, his ruling 2026-11-07 "Close it"): this handler is
+        # reached only by a slash command HE TYPED (a CommandHandler, never the LLM — the chat
+        # path is `_handle_message` → the orchestrator, whose tool call stamps "chat_tool" over
+        # any origin). A market-agent handler that moves a strategy's phase or switch acts on
+        # this marker alone and refuses everything else, so `/strategy <id> promote` typed here
+        # still moves and the same text from the chat assistant does not.
+        from shared.models import ORIGIN_OPERATOR_COMMAND, REQUEST_ORIGIN_KEY
         try:
-            result = await self._post_market_task(task, update.effective_user.id)
+            result = await self._post_market_task(
+                task, update.effective_user.id, context={REQUEST_ORIGIN_KEY: ORIGIN_OPERATOR_COMMAND})
         except Exception as e:
             logger.error(f"{cmd} failed: {e}")
             result = f"Error: {e}"
