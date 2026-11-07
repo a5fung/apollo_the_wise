@@ -406,8 +406,8 @@ async def _page_once(key: tuple, text: str) -> None:
 async def _note(today: date, ticker: str, state: str, summary: str, detail: dict | None = None) -> None:
     """One audit row per (name, state) change in a day — a volume hold is not re-recorded every minute. The detail
     carries `ticker`, `state` and `day` (the 15:55 missed-by-slots step reads the `slots_full` rows back by them).
-    The name is marked noted ONLY once the write reports success (`log_audit_event` -> True): a write the audit log
-    swallowed (a timeout, a pool error) is retried on the next tick, so a hold is never lost to the 15:55 record
+    A `slots_full` note is marked noted ONLY once the write reports success (`log_audit_event` -> True): a write the
+    audit log swallowed (a timeout, a pool error) is retried on the next tick, so a hold is never lost to the 15:55 record
     silently — its recorded first hold is then the first hold WRITTEN (re-review 2026-11-07 finding 4)."""
     key = (today, ticker)
     if _noted.get(key) == state:
@@ -415,11 +415,14 @@ async def _note(today: date, ticker: str, state: str, summary: str, detail: dict
     ok = await log_audit_event(HOLD_EVENT, f"{ticker}: {summary}",
                                json.dumps(dict(detail or {}, ticker=ticker, state=state, day=today.isoformat()),
                                           default=str))
-    if ok:
+    # Only `slots_full` is read back (by 15:55), so only it is retried; any other state is marked noted whether or
+    # not the write landed, as before — a slow audit log must not make every tick re-write ~350 `wait` notes
+    # (final review 2026-11-07 finding 2).
+    if ok or state != SLOTS_FULL_STATE:
         _noted[key] = state
-    else:
-        logger.warning(f"breakout v1 {ticker}: the '{state}' note was not written (the audit log swallowed it) — "
-                       f"retried next tick")
+    if not ok:
+        logger.warning(f"breakout v1 {ticker}: the '{state}' note was not written (the audit log swallowed it)"
+                       + (" — retried next tick" if state == SLOTS_FULL_STATE else ""))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -483,7 +486,9 @@ def first_break(mins: dict[int, dict], *, level: float, vol_bar: float, from_min
     -> {minute, high, stop (the day's low through the break minute on the cent — the resting buy was re-priced to
     each new low until the fill, so this is the stop it would have carried), width ((level - stop) / level),
     cum_volume / need_volume (the pace at the break: through k-1, against the curve at k-1)}; None = never broke out
-    from the hold on."""
+    from the hold on. ⚠ An UPPER BOUND on the trades we missed: it replays the pace at each minute, not the volume
+    CANCEL — a seated buy whose pace lapsed was cancelled for the day, while a held name that lapsed, recovered and
+    then touched its level is recorded (final review 2026-11-07 finding 3)."""
     if not mins or level is None:
         return None
     lvl = float(level)
@@ -621,7 +626,7 @@ async def _record_missed_by_slots(today: date, rows: dict[str, dict], first: dic
             n += 1                                     # counted only when the row exists (re-review 2026-11-07)
         else:
             logger.error(f"breakout v1 {ticker}: the missed-by-slots record was NOT written (the audit log swallowed "
-                         f"it) — a re-run of the 15:55 minute writes it")
+                         f"it) — lost unless a restart inside the misfire grace re-runs the 15:55 minute (there is no later tick)")
     if unread:
         await log_audit_event("breakout_v1_missed_unreadable",
                               f"{today.isoformat()}: {len(unread)} held name(s) could not be judged at 15:55 (no "
@@ -629,8 +634,8 @@ async def _record_missed_by_slots(today: date, rows: dict[str, dict], first: dic
                               f"missed-by-slots records were NOT written: {', '.join(unread)}",
                               json.dumps({"unread": unread, "written": n}))
         await _page_once(("missed_bars_unreadable", today),
-                         f"⚠️ Breakout v1: the minute bars of {len(unread)} name(s) held for a paper slot today could "
-                         f"not be read at 15:55 ET ({', '.join(unread[:5])}{'…' if len(unread) > 5 else ''}) — their "
+                         f"⚠️ Breakout v1: {len(unread)} name(s) held for a paper slot today could not be judged "
+                         f"at 15:55 ET (no minute bars or no list row) ({', '.join(unread[:5])}{'…' if len(unread) > 5 else ''}) — their "
                          f"missed-by-slots records were NOT written")
     return n
 

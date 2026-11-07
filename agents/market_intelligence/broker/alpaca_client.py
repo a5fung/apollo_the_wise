@@ -1054,6 +1054,10 @@ BARS_BATCH_THREAD_PREFIX = "alpaca-bars-batch"
 # page either. `_pool_telemetry` (#664) measures the shared pool and no longer sees these calls: correct, they are
 # not in it.
 _BARS_BATCH_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix=BARS_BATCH_THREAD_PREFIX)
+# ⚠ SINGLE-CALLER: the flag tracks only the LAST page submitted, so "skip while in flight / never a queue of stale
+# pages" holds while ONE caller uses the batch at a time — today the breakout v1 tick (scheduler max_instances=1,
+# coalesce=True, no await between the check and the first submit). A second concurrent caller needs a set of
+# outstanding pages or a lock (final review 2026-11-07 finding 1).
 _bars_batch_page: concurrent.futures.Future | None = None   # the LAST page submitted; not done = the thread is still inside alpaca-py
 
 

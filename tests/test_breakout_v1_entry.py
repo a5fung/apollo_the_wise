@@ -2446,6 +2446,25 @@ async def test_a_hold_row_whose_write_failed_is_retried_next_tick_and_the_name_i
 
 
 @pytest.mark.asyncio
+async def test_only_a_slots_full_note_is_retried_when_its_write_fails(monkeypatch):
+    """Final review 2026-11-07 finding 2: 15:55 reads back only `slots_full`, so only it is retried — any other state
+    is marked noted even when its write was swallowed, or a slow audit log would re-write ~350 `wait` notes a tick."""
+    calls = []
+
+    async def _swallowed(event, summary, detail):
+        calls.append(json.loads(detail)["state"])
+        return False
+
+    monkeypatch.setattr(be, "log_audit_event", _swallowed)
+    be._noted.clear()
+    for _ in range(2):
+        await be._note(TODAY, "W1", "wait", "waiting")
+        await be._note(TODAY, "S1", be.SLOTS_FULL_STATE, "held")
+    assert calls == ["wait", be.SLOTS_FULL_STATE, be.SLOTS_FULL_STATE]
+    assert be._noted.get((TODAY, "W1")) == "wait" and (TODAY, "S1") not in be._noted
+
+
+@pytest.mark.asyncio
 async def test_the_1555_count_counts_only_the_missed_records_that_were_written(monkeypatch):
     """Re-review 2026-11-07 finding 4 (the count): a missed-by-slots write the audit log swallowed is not counted —
     `missed_by_slots` is the number of rows that exist, and a swallowed one is not re-written that tick (the next
