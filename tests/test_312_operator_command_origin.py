@@ -159,7 +159,7 @@ def test_his_typed_timestop_exits_the_position(monkeypatch):
 # C — /pause stays open to the chat route (the safe direction)
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-@pytest.mark.parametrize("task", ["/pause", "pause"])
+@pytest.mark.parametrize("task", ["/pause", "pause", "/\u200bpause", "/pause@apollo_bot"])
 def test_pause_through_the_chat_tool_still_halts(monkeypatch, task):
     """Halting can only STOP real money moving, so the chat assistant keeps it (his ruling: keep /pause)."""
     w = _wire(monkeypatch, halt="off")

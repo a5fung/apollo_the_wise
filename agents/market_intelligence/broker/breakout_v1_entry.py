@@ -739,6 +739,13 @@ async def _strategy_state(today: date) -> tuple[str, str]:
     if mode != ACCOUNT_MODE:
         msg = (f"{STRATEGY_ID} phase={strategy.phase!r} resolves to {mode!r} — breakout v1 orders on PAPER only; "
                f"refused")
+        if strategy.phase in ("shadow", "deprecated"):
+            # His OFF rungs (where his Demote press lands it): no money anywhere, so ONE audit row a day and no
+            # page — the small-cap lane's rule (final review 2026-11-08 F6; was a row every minute + a daily page).
+            if ("off_rung", today) not in _paged:
+                _paged.add(("off_rung", today))
+                await log_audit_event("breakout_v1_refused", f"{today.isoformat()}: {msg}")
+            return STATE_REFUSED, msg
         await log_audit_event("breakout_v1_refused", f"{today.isoformat()}: {msg}")
         await _page_once(("refused", today), f"🚨 Breakout v1 refused to order: {msg}")
         return STATE_REFUSED, msg

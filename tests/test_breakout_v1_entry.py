@@ -517,14 +517,26 @@ async def test_wall_1_the_tick_reads_its_own_list_table_and_never_the_live_alert
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("phase", ["live", "shadow"])
-async def test_wall_2_any_phase_but_paper_is_refused_and_paged(monkeypatch, phase):
-    w = World(monkeypatch, phase=phase)
+async def test_wall_2_a_live_phase_is_refused_and_paged(monkeypatch):
+    w = World(monkeypatch, phase="live")
     out = await w.tick()
     assert out["skipped"] == "switched_off" and not w.funnel.await_count
     assert w.ev("breakout_v1_refused") and len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER")
     await w.tick()
     assert len(w.pages) == 1                                                          # paged once, not every minute
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("phase", ["shadow", "deprecated"])
+async def test_wall_2_an_off_rung_is_refused_with_one_audit_row_a_day_and_no_page(monkeypatch, phase):
+    """Final review 2026-11-08 F6: his Demote lands the strategy on 'shadow' — no money anywhere, so one
+    `breakout_v1_refused` row a day and no page (was a row every minute and a daily page)."""
+    w = World(monkeypatch, phase=phase)
+    out = await w.tick()
+    assert out["skipped"] == "switched_off" and not w.funnel.await_count
+    assert len(w.ev("breakout_v1_refused")) == 1 and w.pages == []
+    await w.tick(); await w.tick()
+    assert len(w.ev("breakout_v1_refused")) == 1 and w.pages == []
 
 
 @pytest.mark.asyncio

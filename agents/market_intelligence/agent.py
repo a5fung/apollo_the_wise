@@ -2042,8 +2042,9 @@ class MarketIntelligenceAgent(BaseAgent):
         `/pause` stays open to every route: halting is the safe direction.
         """
         from agents.market_intelligence.db import set_trading_halted, get_manual_halt_state
-        task = request.task.strip().lower().lstrip("/")
-        want_halt = task.startswith("pause")
+        # The same normalizer the dispatch uses (a hidden character after the slash must not flip pause into
+        # resume — final review 2026-11-08 F1).
+        want_halt = _normalize_slash_cmd((request.task.split() or [""])[0]) == "/pause"
         if not want_halt:
             refused = await _refuse_unless_typed(request, "/resume", "lift the real-money trading halt")
             if refused:
