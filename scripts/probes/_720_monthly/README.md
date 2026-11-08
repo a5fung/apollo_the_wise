@@ -11,9 +11,11 @@ Run day (first: Sun 2026-11-29):
    `docker exec -i apollo-postgres psql -q -X -v ON_ERROR_STOP=1 -U <user> -d <db> < capture/<name>.sql > runs/<date>/data/<name>.csv`
    (every file starts `SET default_transaction_read_only = on`; `predicates.sql` is a server-side multi-line COPY,
    the rest one-line `\copy`). Run each ONCE.
-2. `python run_review.py --manifest runs/<date>` — row counts + md5 + capture timestamp.
+2. `python run_review.py --manifest runs/<date>` — row counts + md5 + capture timestamp; a `NOT CAPTURED` line for
+   every `capture/*.sql` whose CSV is missing (re-capture it before step 3 — the page will name it otherwise).
 3. `python run_review.py --report runs/<date> --run-date <date> [--prev-capture <date>]` — reads the CSVs only;
-   writes `review.md` (the one page + the per-trade appendix) and `review.out` (every cell).
+   writes `review.md` (the one page + the per-trade appendix) and `review.out` (every cell). A missing capture file
+   prints NOT CAPTURED on the page and line 1 leads with "capture incomplete"; it is never read as an empty month.
 
 No database connection is opened by `run_review.py`. Tests: `tests/test_720_monthly_review.py` (invented fixtures
 in the units prod writes; `RUN_REVIEW_720_PATH=<file>` runs them against another runner —

@@ -3353,9 +3353,9 @@ reviews:
     #    — verify the missed-outcomes refresh). Defer ~8/8 for N>=10; decide on realized-R (not
     #    forward return — the filter is an R:R gate), operator's call (THE LINE).
     action_when_ready: |
-      RUNS INSIDE PLAN #720's monthly trade review (docs/analysis/720_monthly_review_plan_2026-11-08.md §7; first run Sun 2026-11-29; pointer set 2026-11-08, his 11-06 ruling): the numbers this action asks for are computed there every month at whatever n exists, verdicts from the plan's ladder, and nothing below is put to him as a one-off fork. This entry keeps its own predicate and bar for what stays OUTSIDE the monthly review (plan §7, last column).
+      RUNS INSIDE PLAN #720's monthly trade review (docs/analysis/720_monthly_review_plan_2026-11-08.md §7; first run Sun 2026-11-29; pointer set 2026-11-08, his 11-06 ruling): the numbers this action asks for are computed there every month at whatever n exists, verdicts from the plan's ladder, and nothing below is put to him as a one-off fork. Nothing stays outside (plan §7, last column): this review IS its monthly run — the predicate count below is printed on the page for the record and the threshold is a pointer. Step 1 below is REPLACED by #720 §3 Stop (c) (set 2026-11-08, re-challenge finding 9): both cohorts are scored on the SAME raw daily bars (`mfe_5d_pct`, MFE over d+1..d+5 from the gap-day open), the ADMITTED control is the entered magna53 rows (`admitted_magna53.sql`), and `mi_ep_missed_outcomes` is NOT read — kept here as history only.
 
-      1. Pull the cohort with forward outcomes via mi_ep_missed_outcomes
+      1. [REPLACED by #720 §3 Stop (c) — history only; mi_ep_missed_outcomes is NOT read] Pull the cohort with forward outcomes via mi_ep_missed_outcomes
          (which joins mi_live_trades rejections to mi_daily_closes):
            SELECT lt.ticker, lt.alert_date, lt.ep_score, lt.skip_reason,
                   mo.ret_5d, mo.ret_20d, mo.max_high_5d, mo.max_high_20d

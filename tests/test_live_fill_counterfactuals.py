@@ -1088,6 +1088,11 @@ def test_admission_era_is_the_first_acting_session_not_the_flip_day():
     assert rule_eras.admission_era_as_of(date(2026, 8, 28)) == "adm_2026-08-28_rubric_v4_rt_gap_authority"
     assert rule_eras.admission_era_as_of(date(2026, 8, 30)) == "adm_2026-08-28_rubric_v4_rt_gap_authority"
     assert rule_eras.admission_era_as_of(date(2026, 9, 3)) == "adm_2026-08-31_extension_cap_50_slot_rank_rs"
+    # #718 (2026-11-03): the open-below-the-gap-floor rule flipped ON at 10:05 ET, after that day's ORB window —
+    # the 11-03 fills were admitted by the old stack; the first acting session is Wed 11-04 (#720 re-challenge, finding 3)
+    assert rule_eras.admission_era_as_of(date(2026, 11, 3)) == "adm_2026-08-31_extension_cap_50_slot_rank_rs"
+    assert rule_eras.admission_era_as_of(date(2026, 11, 4)) == "adm_2026-11-04_open_below_floor"
+    assert rule_eras.admission_era_as_of(date(2026, 11, 5)) == "adm_2026-11-04_open_below_floor"
     dates = [d for d, *_ in rule_eras.ADMISSION_SWITCHES]
     assert dates == sorted(dates) and len(set(dates)) == len(dates)
     from agents.market_intelligence.trading_calendar import get_market_status

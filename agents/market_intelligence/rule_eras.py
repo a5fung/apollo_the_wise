@@ -273,6 +273,13 @@ ADMISSION_SWITCHES: tuple[tuple[date, str, str, date], ...] = (
      "MAX_EXTENSION_PCT reverted 75% -> 50% (Sat 2026-08-29) and within-day slot ranking "
      "flipped from alphabetical to prior-day RS (Sun 2026-08-30, #533) — one acting session",
      date(2026, 8, 29)),
+    (date(2026, 11, 4), "open_below_floor",
+     "the open-below-the-gap-floor rule flipped shadow -> ON at 2026-11-03 15:05:28 UTC (10:05 ET, "
+     "after that day's ORB window): a flip-up-admitted name whose 09:30 open is under prev close "
+     "x 1.09 is refused at entry (#718/#715, operator-signed) — the fills of 11-03 were admitted by "
+     "the old stack; row added 2026-11-08 (#720 re-challenge), so recorder rows stamped 11-04..11-07 "
+     "carry the 08-31 label and readers re-derive the label for fills on/after 11-04",
+     date(2026, 11, 3)),
 )
 # ⚠ #624 (2026-09-04) — the LOW-CAP LANE SHADOW deliberately has NO row here, and this is
 # the "check by eye" note the maintenance rule above asks for. Its magna53_ep.md change-log

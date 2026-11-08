@@ -76,9 +76,15 @@ L2 and L3 get the stop / partials / exits lenses from the trade row, its `exits`
   ladder (§2) reads the exit-era cell, and a PROPOSE is quoted only when ONE admission era carries n ≥ 10 AND
   wins on its own — mechanical in `arm_lens` (a pooled PROPOSE is demoted to WATCH with the per-admission-era n
   printed in its reason; tested). **The #718 open-below-floor change** (flipped ON 2026-11-03 15:05:28 UTC, after that day's ORB; first
-  acting session **2026-11-04**) has no `ADMISSION_SWITCHES` row, so the stamp cannot split it: every era-E
-  lens line prints **n before / after 2026-11-04** (`OPEN_FLOOR_FIRST_SESSION`, derived in the tests through
-  `rule_eras.first_acting_session_after`). Era E's trail-arming change (10-29) is not split (no admission change).
+  acting session **2026-11-04**) is an admission change: `rule_eras.ADMISSION_SWITCHES` carries its row
+  (`adm_2026-11-04_open_below_floor`, added 2026-11-08 under the module's maintenance rule), and every admission
+  cell is keyed on **(admission era, before / after 2026-11-04)** — `admission_cell_key`; a PROPOSE needs ONE such
+  cell with n ≥ 10 that wins (re-challenge finding 3: the 11-06 cells pooled the two sides of #718 because the
+  stamp did not split them). Every era-E lens line also prints **n before / after 2026-11-04**
+  (`OPEN_FLOOR_FIRST_SESSION`, derived in the tests through `rule_eras.first_acting_session_after`). ⚠ The recorder
+  rows written 11-04..11-07 were stamped BEFORE the row existed and carry the 08-31 label — **I16 (§8): a fill
+  alerted on/after 11-04 takes the DERIVED label for its cell; the stamp prints beside it and every stamp-vs-derived
+  disagreement is listed in `review.out`.** Era E's trail-arming change (10-29) is not split (no admission change).
 - **Monthly window vs eras — pinned now:** a month slices an era thin forever, so every per-era lens table is
   **CUMULATIVE from the era's start** (one exit rule = one population; that is not pooling), with the trades new
   in this window flagged and counted separately. "Every trade accounted for" is judged on the WINDOW list.
@@ -95,8 +101,18 @@ L2 and L3 get the stop / partials / exits lenses from the trade row, its `exits`
   never a return), book-arm `no_entry:` (scores 0 in R_cap, excluded from R_own — interpretation I3 of 11-06),
   `rcap_uncomputable` (I4). Each class is counted beside every number it was removed from.
 - **Recorder coverage, per era (a dead recorder must not read as a thin era):** fills · fills with any recorder
-  row · settled control pairs (`live_actual` + `live_replay`), and the NAME of every closed fill older than
-  `live_fill_counterfactuals.GAP_RETRY_SESSIONS` (5) sessions with no rows — printed on the page as a recorder gap.
+  row · settled control pairs (`live_actual` + `live_replay`), the NAME of every closed fill older than
+  `live_fill_counterfactuals.GAP_RETRY_SESSIONS` (5) sessions with no rows (a recorder gap) AND the NAME of every
+  closed fill that old WITH rows but no settled control pair (unsettled — finding 10) — both on the page, both
+  counted into line 1's "recorder gap on N fills". **The recorder's heartbeat** (`audit_recorder.sql`: the nightly
+  `live_fill_counterfactual_recorded` row the 18:04 ET job writes mon–fri, and every `_error` row) is printed as
+  "ran N of M sessions in the window; sessions with no row: …; error rows E" — so a month with no older closes can
+  still show a dead recorder.
+- **A capture that is not whole is not an empty month (finding 2).** `build_report` checks every `capture/*.sql`
+  against the run's CSVs (`REQUIRED_CAPTURES`, derived from the folder, never typed); each missing file prints
+  **NOT CAPTURED** at the top of the page and in `MANIFEST.txt`, every number that reads it is `n/a — not captured`
+  (the five folded rows are always rendered), the absence sentence makes no claim, and line 1 leads with "capture
+  incomplete". A missing `trades.csv` stops the read.
 
 ### 1.5 Units (the shared formulas — imported, never re-typed)
 
@@ -152,10 +168,10 @@ and a finding off fewer than 3 trades is always labelled "under 3 trades".
 
 | Lens | Exact metric | Source table · column | What is tested (→ ladder) | Min n |
 |---|---|---|---|---|
-| **Selection** | What we did with HIS labels: for each operator-labelled EP (`shared/operator_labelled_eps.OPERATOR_LABELLED_EPS`, ticker + alert_date) in the window: traded / skipped (`skip_reason`) / **alerted, no trade row** (an `mi_ep_alerts` row exists) / never alerted (no alert row). The **declared abstentions** (`tests/fixtures/must_not_miss_eps.py` members with `excluded=True` and `label_source="operator"` — CHPT 09-03, ABNB 08-07) are listed as abstentions and never a miss. L3: his **chart-sheet grade** (`tests/fixtures/breakout_list_grades.py`, his 11-05 ruling; vocabulary good / ok / no / conditional; the latest `list_date` strictly before the breakout day; none = ungraded) on every traded breakout name with the trade's R and peak_r | `mi_live_trades` (status, skip_reason) · `mi_ep_alerts` (`ep_alerts.sql`) · `shared/operator_labelled_eps.py` · the two fixtures | L1: the labelled real EPs we skipped / never alerted / alerted without a row are the finding (the list carries the fix path per name; no returns test): **under 3 missed = CAN'T TELL with the rows still listed ("under 3 trades")**, 3+ = WATCH, never PROPOSE (labels carry no returns), 0 missed = NOTHING. L3: "his **no** names lose, his **good** names carry the winners": every graded `no` trade finished ≤ 0R AND at least one `good` trade reached ≥ +2R | labels: 3 missed for WATCH; the L3 test needs ≥ 3 graded `no` trades (WATCH) and ≥ 10 graded trades (PROPOSE) |
+| **Selection** | What we did with HIS labels: for each operator-labelled EP (`shared/operator_labelled_eps.OPERATOR_LABELLED_EPS`, ticker + alert_date) in the window: traded / skipped (`skip_reason`) / **alerted, no trade row** (an `mi_ep_alerts` row exists) / never alerted (no alert row). The **declared abstentions** (`tests/fixtures/must_not_miss_eps.py` members with `excluded=True` and `label_source="operator"` — CHPT 09-03, ABNB 08-07) are listed as abstentions and never a miss. L3: his **chart-sheet grade** (`tests/fixtures/breakout_list_grades.py`, his 11-05 ruling; vocabulary good / ok / no / conditional; the latest `list_date` strictly before the breakout day; none = ungraded) on every traded breakout name with the trade's R and peak_r | `mi_live_trades` (status, skip_reason) · `mi_ep_alerts` (`ep_alerts.sql`) · `shared/operator_labelled_eps.py` · the two fixtures | L1: the labelled real EPs we skipped / never alerted / alerted without a row are the finding (the list carries the fix path per name; no returns test): **under 3 missed = CAN'T TELL with the rows still listed ("under 3 trades")**, 3+ = WATCH, never PROPOSE (labels carry no returns), 0 missed = NOTHING. L3: "his **no** names lose, his **good** names carry the winners": every graded `no` trade finished ≤ 0R AND at least one `good` trade reached ≥ +2R | labels: 3 missed for WATCH, never PROPOSE; the L3 test needs ≥ 3 graded `no` trades and is CAPPED AT WATCH — **charts support, never decide** (finding 7: a grade filter is the one thing the standing rule rules out; his EP labels carry the same cap) |
 | **Buy point** | (a) fill vs trigger: `fill_vs_trigger_pct` median / max / count > +1% **with a NULL counted apart** (never a ≤ 1% fill); `real_risk_vs_trigger_risk` median / max; the **fill-minute histogram** (ET, from `filled_at`). (b) the entry arms `entry_first_hour_bar`, `book_first_hour_low_of_day` vs `live_actual` in R_cap. L3: fill vs the list `level` (%), the `breakout_v1_fill_stop_checked` **decision mix** (keep / lower / sell_all / unchecked = I10) and the **thirds mix** (a `partial_profit` leg at ≥ ~+2R = the +2R third; below it = the session-3 third; none) | recorder `fill_facts` row · `mi_live_trades.filled_at, exits` · recorder entry/book arms · `mi_breakout_v1_list.level` · `mi_audit_log` event `breakout_v1_fill_stop_checked` | (a) slippage: the fills > +1% over the trigger (n ≥ 3) have an R_cap sum < 0 while the ≤ +1% fills' sum is > 0 in the CURRENT era (→ a fill cap is an ENTRY change; PROPOSE needs ≥ 10 fills); other eras printed as context (D1). (b) the arm ladder (the hour-bar arms see only fills whose 1-min ORB high filled — stated beside them). L3: descriptive | 3 / 10 |
-| **Stop** | (a) the five stop arms `stop_orb_low`, `stop_adr_050`, `stop_adr_075`, `stop_orb_3r`, `stop_low_of_day` vs `live_actual` in R_cap, paired per era. (b) descriptive: live `stop_pct` / `stop_per_adr` **medians per era**; count stopped out (a final `stop_hit` leg — the only stop reason the writers produce) and, of those, how many then printed a daily high ≥ entry + 2R within 5 sessions ("stopped, then ran"). (c) the **stop-too-wide skips** sub-table: `skip_reason LIKE 'setup:stop_too_wide%'`, magna53, both modes (no position → mode-independent), since 05-05, vs the **ADMITTED control = entered magna53 rows over the same dates** (the YAML's words: no `skip_reason`, status not cancelled/skipped — with "entered" pinned to a FILL, `filled_at IS NOT NULL`, because `mi_live_trades` also holds `order_placed` / `expired` rows that never filled; `admitted_magna53.sql`; its account-mode and admission-era split printed beside the rate). **Both cohorts scored the same way — MFE over d+1..d+5 from the gap-day open on the same raw daily bars (`mfe_5d_pct`)**, NEVER `mi_ep_missed_outcomes.max_high_5d` (a FRACTION from the gap-day open whose window includes the gap day itself; read as a price it made every rejected name −99.9%). Hit-rate ≥ +10%, median MFE, both n, **two-sided Fisher p** | recorder stop arms · `mi_sell_discipline_records.stop_pct, stop_per_adr` · `mi_live_trades.exits` · `mi_daily_closes` | (a) the arm ladder. (b) descriptive only. (c) the matrix pre-registered in `data_gated_reviews.yaml::stop_too_wide_outcome_cohort` verbatim: REVISIT (rejected hit-rate ≥ admitted AND median MFE ≥ admitted) · KEEP (below on both, p < 0.10) · CANNOT TELL (else) — REVISIT maps to WATCH (<10 rejected) / PROPOSE (≥ 10 rejected AND ≥ 10 admitted). **D2: the p is the YAML's TWO-SIDED Fisher** — on its own 09-16 numbers (4 of 11 vs 17 of 25) that is 0.141 = CANNOT TELL, the reading it published; a one-sided test gives 0.080 and would have said KEEP | 3 / 10 |
-| **Partials** | (a) the harvest arms `harvest_no_breakeven`, `harvest_trail_only`, `harvest_t3`, `harvest_legacy_2r` (= the retired +2R rule, forever) vs `live_actual`. (b) descriptive per era: partial fired rate (`partial_taken`); median `capture_pct`, median `giveback_r`; **the two runner shapes, counted apart** — *partial then breakeven* (era C's: a `partial_profit` leg, then the rest stopped within 0.05R of entry, **both sides** — a stop filled at +5R is a trailed winner, not a give-back) and *armed then breakeven* (eras D/E's: no partial needed — the sell-discipline `peak_price` reached the breakeven arm, `entry + breakeven_arm_r × (entry − orb_low)` in the ORB frame the arm is set in (the row's own `breakeven_arm_r`, `rule_eras.BREAKEVEN_ARM_R_VALUE` as the fallback), and the position then stopped within 0.05R of entry); the count of positions with `entry_shares` ≤ 2 (where the +8R third sells 1 share or nothing — `order_manager.plus8r_partial_shares`). L3: thirds sold at +2R / at session 3 / none (the buy-point row above) | recorder harvest arms · `mi_sell_discipline_records.capture_pct, giveback_r, peak_r, peak_price, partial_taken` · `mi_live_trades.exits, entry_shares, orb_low` | (a) the arm ladder. (b) descriptive; the runner-shape counts are quoted with n as the fact behind `runner_rule_sweep_recut` | 3 / 10 |
+| **Stop** | (a) the five stop arms `stop_orb_low`, `stop_adr_050`, `stop_adr_075`, `stop_orb_3r`, `stop_low_of_day` vs `live_actual` in R_cap, paired per era. (b) descriptive: live `stop_pct` / `stop_per_adr` **medians per era**; count stopped out (a final `stop_hit` leg — the only stop reason the writers produce) and, of those, how many then printed a daily high ≥ entry + 2R within 5 sessions ("stopped, then ran"). (c) the **stop-too-wide skips** sub-table: `skip_reason LIKE 'setup:stop_too_wide%'`, magna53, both modes (no position → mode-independent), since 05-05, vs the **ADMITTED control = entered magna53 rows over the same dates** (the YAML's words: no `skip_reason`, status not cancelled/skipped — with "entered" pinned to a FILL, `filled_at IS NOT NULL`, because `mi_live_trades` also holds `order_placed` / `expired` rows that never filled; `admitted_magna53.sql`; its account-mode and admission-era split printed beside the rate). **Both cohorts scored the same way — MFE over d+1..d+5 from the gap-day open on the same raw daily bars (`mfe_5d_pct`)**, NEVER `mi_ep_missed_outcomes.max_high_5d` (a FRACTION from the gap-day open whose window includes the gap day itself; read as a price it made every rejected name −99.9%). Hit-rate ≥ +10%, median MFE, both n, **two-sided Fisher p** | recorder stop arms · `mi_sell_discipline_records.stop_pct, stop_per_adr` · `mi_live_trades.exits` · `mi_daily_closes` | (a) the arm ladder. (b) descriptive only. (c) the matrix pre-registered in `data_gated_reviews.yaml::stop_too_wide_outcome_cohort` verbatim: REVISIT (rejected hit-rate ≥ admitted AND median MFE ≥ admitted) · KEEP (below on both, p < 0.10) · CANNOT TELL (else) — REVISIT maps to WATCH (<10 rejected) / PROPOSE (≥ 10 rejected AND ≥ 10 admitted); KEEP maps to NOTHING (the current filter is right); **CANNOT TELL maps to the ladder's CAN'T TELL, never NOTHING** (finding 6: the 09-16 reading said it could not tell, and NOTHING reads as "the current rule is best"). **D2: the p is the YAML's TWO-SIDED Fisher** — on its own 09-16 numbers (4 of 11 vs 17 of 25) that is 0.141 = CANNOT TELL, the reading it published; a one-sided test gives 0.080 and would have said KEEP | 3 / 10 |
+| **Partials** | (a) the harvest arms `harvest_no_breakeven`, `harvest_trail_only`, `harvest_t3`, `harvest_legacy_2r` (= the retired +2R rule, forever) vs `live_actual`. (b) descriptive per era: partial fired rate (`partial_taken`); median `capture_pct`, median `giveback_r`; **the two runner shapes, counted apart** — *partial then breakeven* (era C's: a `partial_profit` leg, then the rest stopped within 0.05R of entry, **both sides** — a stop filled at +5R is a trailed winner, not a give-back) and *armed then breakeven* (eras D/E's: no partial needed — the sell-discipline `peak_price` reached the breakeven arm, `entry + breakeven_arm_r × (entry − orb_low)` in the ORB frame the arm is set in — the arm is the recorder row's own `breakeven_arm_r` where a row exists, else the ROW's era through `rule_eras.exit_rules_as_of(alert_date, signal_type, exit_rule=row)["breakeven_at_r"]`; **None (era C, every breakout row) = the armed shape does not apply and the trade is counted "n/a"**, never given a 3R arm (finding 4) — and the position then stopped within 0.05R of entry); the count of positions with `entry_shares` ≤ 2 (where the +8R third sells 1 share or nothing — `order_manager.plus8r_partial_shares`). L3: thirds sold at +2R / at session 3 / none (the buy-point row above) | recorder harvest arms · `mi_sell_discipline_records.capture_pct, giveback_r, peak_r, peak_price, partial_taken` · `mi_live_trades.exits, entry_shares, orb_low` | (a) the arm ladder. (b) descriptive; the runner-shape counts are quoted with n as the fact behind `runner_rule_sweep_recut` | 3 / 10 |
 | **Exits** | (a) the trail arms `trail_pivot_swing`, `trail_character_ma` vs `live_actual` (abstention rate of `trail_character_ma` stated). (b) descriptive per era: final reason mix in the writers' vocabulary (§1.5), median `hold_trading_days`, `peak_r` vs realized R, the **tail-clip** count (an arm exits earlier than live on a fill live rode further). (c) era E / L2 **depth sales** = `exit_rule='depth'` AND a final `sma_trail_stop` leg (the depth sale books its leg as `sma_trail_stop`, `execute_depth_open_sale`'s default; `depth_sell_pending_on` is cleared after the sale so it is not a signature): count, and the **cost of selling at the open** = the sale leg's price vs the prior session's close, in R. (d) the "disappoints" fact per era: **live `live_actual` R_cap sum < 0** (capped-dollar R, the 11-06 unit — never the trade's own R) AND no fill ≥ +4R (the parked review's word; a fact, never a decision); n/a for L2/L3 (no recorder) | recorder trail arms · `mi_sell_discipline_records.hold_trading_days, peak_r, realized_r` · `mi_live_trades.exits, exit_rule` · `mi_daily_closes.close` | (a) the arm ladder; an arm that clips the tail LOSES regardless of its mean. (b)–(d) descriptive | 3 / 10 |
 
 Every lens prints, beside every number: the era, n, the count of each excluded class, whether the trades
@@ -263,7 +279,12 @@ HALF at +8R, a 1-share position sells nothing).
   `breakout_v1_paper` toggle state AND the `mi_strategies` row for `breakout_v1` (`enabled`, `phase`) — the env
   default is a third on/off source that lives in no table and is stated as "not captured". So 0 reads as "the
   lane did not run", "the recorder did not run", "no name was ever held", "held but none broke out (N unreadable)",
-  or "missed: 0 of N held", each a different sentence. **D7: which sentence the first run prints is the run's.**
+  or "missed: 0 of N held", each a different sentence. The sentence is given the RAW record count beside the
+  readable one (finding 5): when records were written and none is readable it says so — "N written, none readable —
+  X dropped by the width rule, Y malformed (no day / break price / stop), Z unreadable JSON" — and never "none broke
+  out while held"; the drop counts ride on every other sentence too. When `audit_breakout`, `breakout_list`,
+  `strategy_toggles` or `strategies` was NOT CAPTURED the sentence names the file and makes no claim (finding 2).
+  **D7: which sentence the first run prints is the run's.**
 
 ---
 
@@ -279,8 +300,15 @@ HALF at +8R, a 1-share position sells nothing).
 
 **Pointer edits — MADE 2026-11-08 (D6), in the same branch as this plan:** each of the five YAML entries'
 `action_when_ready` now opens with *"RUNS INSIDE PLAN #720's monthly trade review (this file §7)"*, its predicate
-and bar kept intact for what stays outside (the last column); the 482 read's *"quote nothing from a fill where they
-disagree by more than 0.25R"* is replaced by this plan's §5 bar. `tests/test_720_monthly_review.py` pins both.
+and bar kept intact for what stays outside (the last column) — except `stop_too_wide_outcome_cohort`, whose entry
+says *nothing stays outside* and marks its step 1 (the pull from `mi_ep_missed_outcomes`, the source this plan bans)
+REPLACED by §3 Stop (c) (finding 9); the 482 read's *"quote nothing from a fill where they
+disagree by more than 0.25R"* is replaced by this plan's §5 bar. `tests/test_720_monthly_review.py` pins all of it.
+**The five rows are ALWAYS rendered** (a review absent from `predicates.csv`, or the file missing, prints
+`n/a — not captured`, finding 2), and each row's verdict reads EVERY lens the review asked about (`FOLD_MAP`, finding
+8): 482 → stop + partials + exits; `bracket_geometry_variants_parked` → stop + buy point; `exit_tune` → partials;
+`runner_rule_sweep_recut` → descriptive (its fact is the two runner shapes; no arm answers it); `stop_too_wide` → its
+own matrix verdict. The highest rung any mapped arm reached is the row's verdict.
 **The predicate counts on the page are the YAML's `predicate_sql` VERBATIM:** `capture/predicates.sql` is
 generated from the YAML by `run_review.py --emit-predicates` (a server-side `COPY (…) TO STDOUT`, so multi-line
 predicates with comments survive; only each predicate's trailing semicolon is dropped) and a test pins the
@@ -310,6 +338,23 @@ gate and `runner_rule_sweep_recut`'s `+40 ×` safeguard arm.
 - **D7 — the breakout absence sentence and the VICR / KOD / OKTA / CLS fidelity outcomes are reported by the
   run, not decided now.**
 
+**Decided 2026-11-08 against the re-challenge (findings 1–10; the plan's design held, three runner defects would
+have made the 11-29 page say something false):**
+
+- **D8 — line 1 never says "Nothing beats what we run" unless an ARM lens on the current era actually read
+  NOTHING.** In order: a capture that is not whole ("capture incomplete — N file(s) NOT CAPTURED"); a PROPOSE;
+  "recorder gap on N fills" (no rows, or rows with no settled control pair, past the retry window); "Nothing beats
+  what we run" (an arm read NOTHING; arms on WATCH counted beside it); "N arm(s) on watch, nothing proposed, nothing
+  read as beaten"; else **"too few trades to read yet"** with the closed-fill and settled-pair counts. A count lens
+  reading NOTHING (none of his labels missed) is not an arm reading NOTHING. Changes: `answer_line` (finding 1).
+- **D9 — the #718 change is an admission change with its own `ADMISSION_SWITCHES` row**, and admission cells are
+  keyed on (admission era, before / after 11-04) (§1.3; findings 3). The row was added on this branch rather than
+  main because the runner is the first reader that needs it; the recorder stamps it from the next nightly run.
+- **D10 — "charts support, never decide" caps every chart- or label-based test at WATCH** (his breakout grades,
+  his EP labels); the armed runner shape applies only where the row's era had a price-armed breakeven; the stop-
+  too-wide CANNOT TELL is CAN'T TELL; the folded rows read every lens their review asked about and are always five
+  (findings 4, 6, 7, 8); the recorder's heartbeat is captured (finding 10).
+
 **Interpretations.** The 11-06 read pinned eight (I1–I8) where its prereg was silent; they carry over unchanged.
 Any new case the data raises on run day is pinned here, numbered I16+, with the rule chosen BEFORE the affected
 number is computed and the alternative's effect stated. Template: `I<n> — <case> → <rule>. Changes: <which labels>.`
@@ -329,6 +374,10 @@ Known silences settled now:
   the fill fails with its classified miss; no substitute weighting is invented.
 - **I14 —** the admitted control's `mfe_5d_pct` needs the gap-day open and five forward sessions on the captured
   bars; an unscored row is COUNTED beside the matrix, never filled from another column.
+- **I16 —** a fill alerted on/after 2026-11-04 whose recorder `admission_era` stamp predates the #718 row (the
+  08-31 label, written 11-04..11-07) takes the DERIVED label `adm_2026-11-04_open_below_floor` for its admission
+  cell; the stamp prints beside it (I12) and the disagreement is listed in `review.out`. Changes: the admission
+  cells of the 11-04..11-07 fills; nothing before 11-04.
 - **I15 —** an exit leg whose reason is outside the enumerated vocabulary prints as `other:<reason>` and is
   not a stop, a partial or a depth sale for any count. The five writers are complete; the REASON set flows from
   their callers (`execute_full_exit(trade_id, reason)` is also reachable from one-off operator closes — MTW's
@@ -342,10 +391,14 @@ Known silences settled now:
 Plain words. Tables. n on every number. No acronyms without their plain name once. The first line is the
 answer.
 
-1. **Line 1 — the answer.** e.g. *"Nothing beats what we run; the tail says X; action: none."*
+1. **Line 1 — the answer** (D8). e.g. *"too few trades to read yet (3 closed live fills, 0 with a settled replay
+   pair that passes); big winners 0, bad losers 1; action: none."* — or *"recorder gap on 2 fills …"*, or
+   *"Nothing beats what we run; 1 arm on watch …"* only when an arm lens read NOTHING. Under it, one **NOT
+   CAPTURED: <file>.csv** line per missing capture file (finding 2).
 2. **Population table:** lane × era → closed trades in the window · carried from the era start · excluded
    (ticker list) · the pre-window closes count · recorder coverage per era (fills / with rows / settled pairs,
-   gaps named) · fidelity pass / fail (L1; stored vs re-weighted; classes).
+   gaps and unsettled fills named) · the recorder heartbeat (ran N of M sessions; missing sessions; error rows) ·
+   fidelity pass / fail (L1; stored vs re-weighted; classes).
 3. **Lens table:** lens · lane/era · n · the reading in one phrase (with the era-E before / after 11-04 split) ·
    verdict (CAN'T TELL / NOTHING / WATCH / PROPOSE; "context" on non-current eras).
 4. **Tail table:** the ≥ +4R and ≤ −1.5R trades, one row each (§4 fields), then the one-sentence read per trade.
@@ -384,13 +437,18 @@ units prod writes).
   `skips_stop_too_wide.sql` + `admitted_magna53.sql` (the control; `mi_ep_missed_outcomes` columns are captured
   for the record and NOT read) · `breakout_list.sql` · `audit_breakout.sql` (missed-by-slots, holds, entry_day,
   unreadable, fill-stop markers, session-third events) · `strategy_toggles.sql` + `strategies.sql` ·
-  `safeguard_transitions.sql` · `predicates.sql` (generated from the YAML, §7). Grades come from the fixture (D4);
-  there is no grades query.
+  `safeguard_transitions.sql` · `predicates.sql` (generated from the YAML, §7) · `audit_recorder.sql` (the
+  recorder's nightly `live_fill_counterfactual_recorded` / `_error` rows, finding 10). Grades come from the fixture
+  (D4); there is no grades query. **The required set is every `capture/*.sql`** (`REQUIRED_CAPTURES`, derived from
+  the folder): `--manifest` writes `NOT CAPTURED` for a missing CSV and `--report` prints it on the page and reads
+  nothing from it (finding 2).
 - **Pure functions** over CSV dicts, each unit-tested on invented rows: `lane_of`, `era_of` (refuses
   `breakout_pp` through the magna53 function), `admission_era_of`, `post_open_floor`, `in_window`,
   `recorder_gaps`, `reason_bucket` / `final_reason` / `is_depth_sale` / `partial_fraction`, `reweight_replay_r`,
   `fidelity`, `classify_fidelity_miss`, `era_cell` (the six conditions, baseline-aware), `verdict` (the ladder,
-  D1), `admission_cells`, `regime_table`, `runner_shapes`, `stopped_then_ran`, `post_exit_high_r`,
+  D1), `admission_cell_key` / `admission_cells` (finding 3), `regime_table`, `runner_shapes` / `breakeven_arm_for`
+  (finding 4), `recorder_runs` / `recorder_gap_count` (finding 10), `missing_captures` / `folded_rows` (findings 2,
+  8), `answer_line` (D8), `stopped_then_ran`, `post_exit_high_r`,
   `depth_sale_cost_r`, `slippage_test`, `fill_minute_histogram`, `tails` / `trade_row`, `missed_records`,
   `width_ok`, `missed_proxy_walk`, `missed_vs_seated`, `absence_observables`, `breakout_buy_point`,
   `fisher_exact_two_sided`, `stop_too_wide_matrix`, `mfe_5d_pct`, `selection_labels` / `selection_verdict` /

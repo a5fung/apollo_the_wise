@@ -43,7 +43,7 @@ if str(_REPO) not in sys.path:
 from agents.market_intelligence.book_geometry_arms import capped_dollar_r  # noqa: E402
 from agents.market_intelligence.live_fill_counterfactuals import GAP_RETRY_SESSIONS  # noqa: E402
 from agents.market_intelligence.rule_eras import (  # noqa: E402
-    BREAKEVEN_ARM_R_VALUE, admission_era_as_of, exit_era_label, exit_era_start)
+    BREAKEVEN_ARM_R_VALUE, admission_era_as_of, exit_era_label, exit_era_start, exit_rules_as_of)
 from agents.market_intelligence.sell_discipline import trade_realized_r, trade_risk_per_share  # noqa: E402
 
 try:  # the recorder's own calendar; weekdays-only when it cannot load (stated on the page)
@@ -73,9 +73,22 @@ MISSED_WALK_SESSIONS = 10
 STOPPED_THEN_RAN_SESSIONS = 5
 POST_EXIT_HIGH_SESSIONS = 10               # the tail's "what the chart did after our exit"
 BREAKEVEN_TOL_R = 0.05                     # |stop fill − entry| <= 0.05 R = "at breakeven" (hard-stop frame)
-RECORDER_GAP_SESSIONS = GAP_RETRY_SESSIONS  # a closed fill older than this with no recorder rows = a recorder gap
+RECORDER_GAP_SESSIONS = GAP_RETRY_SESSIONS  # a closed fill older than this with no recorder rows (or no settled
+#                                             control pair) = a recorder gap, named on the page (finding 10, re-challenge)
 BREAKOUT_ERA = "bp1"                       # the pp exit as deployed 2026-10-31
 OPEN_FLOOR_FIRST_SESSION = date(2026, 11, 4)  # #718 flipped ON 2026-11-03 15:05:28 UTC (after the ORB) -> first acting session (D5)
+PRE_1104, POST_1104 = "pre-11-04", "post-11-04"   # the second half of every admission-cell key (finding 3)
+
+# the recorder's own nightly audit rows (live_fill_counterfactuals.py, one `_recorded` row per run, `_error` per
+# failure) — captured so a month with no older closes can still show a dead recorder (finding 10)
+RECORDER_RUN_EVENT = "live_fill_counterfactual_recorded"
+RECORDER_ERROR_EVENT = "live_fill_counterfactual_error"
+RECORDER_JOB_WEEKDAYS_ONLY = True          # scheduler: CronTrigger(hour=18, minute=4, day_of_week="mon-fri")
+
+# the full capture set = every capture/*.sql next to this file; build_report reports each one whose CSV is
+# missing as NOT CAPTURED instead of reading an empty month (finding 2). Derived, never a typed list.
+REQUIRED_CAPTURES: tuple[str, ...] = tuple(sorted(p.stem for p in (_HERE / "capture").glob("*.sql")))
+NOT_CAPTURED = "n/a — not captured"
 
 # runner_rule_sweep_recut's safeguard arm, VERBATIM from its predicate_sql (reused for the void check, §7)
 SAFEGUARD_VOID_EXCLUDED = ("drawdown_breaker", "kill_scale_band", "manual_trading_halt", "breakout_v1_paper")
@@ -230,10 +243,34 @@ def admission_era_of(trade: dict, stamp_row: Optional[dict] = None) -> tuple[Opt
 
 
 def post_open_floor(trade: dict) -> bool:
-    """D5: alerted on/after the #718 open-below-floor rule's first acting session (not an ADMISSION_SWITCHES row,
-    so the recorder stamp cannot split it — this flag does)."""
+    """D5: alerted on/after the #718 open-below-floor rule's first acting session. rule_eras.ADMISSION_SWITCHES
+    carries the row since 2026-11-08, but the recorder rows written 11-04..11-07 were stamped BEFORE it existed
+    (the 08-31 label), so the stamp alone cannot split era E — this flag does, on every lens line."""
     ad = d(trade.get("alert_date"))
     return bool(ad and ad >= OPEN_FLOOR_FIRST_SESSION)
+
+
+def admission_cell_key(trade: dict, stamp_row: Optional[dict] = None) -> tuple[str, str]:
+    """The admission cell a fill belongs to: (admission-era label, pre/post 11-04) — finding 3 of the re-challenge.
+    I16: a fill alerted on/after 2026-11-04 takes the DERIVED label (rule_eras.admission_era_as_of), because the
+    recorder stamped the 11-04..11-07 rows before the #718 row existed; the stamp still prints beside it (I12) and
+    the disagreement is listed in review.out. Before 11-04 the stamp wins (the recorder saw the trade)."""
+    if lane_of(trade) == "L3":
+        return "n/a", PRE_1104
+    post = post_open_floor(trade)
+    if post:
+        ad = d(trade.get("alert_date"))
+        return (admission_era_as_of(ad) if ad else "unknown"), POST_1104
+    label, _src = admission_era_of(trade, stamp_row)
+    return (label or "unknown"), PRE_1104
+
+
+def _cell_key_of(fl: dict) -> tuple[str, str]:
+    """A fill dict's admission cell (`admission_cell` when build_report set it; else from its label + flag)."""
+    key = fl.get("admission_cell")
+    if key:
+        return tuple(key)  # type: ignore[return-value]
+    return str(fl.get("admission_era") or "unknown"), (POST_1104 if fl.get("post_1104") else PRE_1104)
 
 
 def in_window(trade: dict, start: date, end: date) -> bool:
@@ -293,7 +330,9 @@ def era_mismatches(trades: list[dict], cf_rows: list[dict]) -> list[str]:
 
 def recorder_gaps(trades: list[dict], cf_rows: list[dict], run_date: date) -> dict:
     """A dead recorder must not read as a thin era. Per era (L1): fills / fills with any recorder row / settled
-    control pairs, and the NAME of every closed fill older than RECORDER_GAP_SESSIONS sessions with no rows."""
+    control pairs, the NAME of every closed fill older than RECORDER_GAP_SESSIONS sessions with no rows (`gaps`),
+    and the NAME of every closed fill that old WITH rows but no settled control pair (`unsettled` — the recorder
+    wrote something and never settled live_actual + live_replay; finding 10 of the re-challenge)."""
     rows_by_tid: dict[str, list[dict]] = defaultdict(list)
     for r in cf_rows:
         rows_by_tid[str(r["trade_id"])].append(r)
@@ -302,18 +341,45 @@ def recorder_gaps(trades: list[dict], cf_rows: list[dict], run_date: date) -> di
         if lane_of(t) != "L1":
             continue
         era = era_of(t)
-        cell = out.setdefault(era, {"fills": 0, "with_rows": 0, "settled_pairs": 0, "gaps": []})
+        cell = out.setdefault(era, {"fills": 0, "with_rows": 0, "settled_pairs": 0, "gaps": [], "unsettled": []})
         cell["fills"] += 1
         rows = rows_by_tid.get(str(t["id"]), [])
+        cd = et_date(t.get("closed_at"))
+        old_close = (t.get("status") or "") == "closed" and cd is not None and sessions_after(cd, run_date) > RECORDER_GAP_SESSIONS
+        name = f"{t.get('ticker')} (trade {t.get('id')}, closed {cd})"
         if rows:
             cell["with_rows"] += 1
             if all(any(r["arm"] == c and r.get("outcome") == "settled" for r in rows) for c in CONTROLS):
                 cell["settled_pairs"] += 1
-        else:
-            cd = et_date(t.get("closed_at"))
-            if (t.get("status") or "") == "closed" and cd and sessions_after(cd, run_date) > RECORDER_GAP_SESSIONS:
-                cell["gaps"].append(f"{t.get('ticker')} (trade {t.get('id')}, closed {cd})")
+            elif old_close:
+                cell["unsettled"].append(name)
+        elif old_close:
+            cell["gaps"].append(name)
     return out
+
+
+def recorder_gap_count(gaps: dict) -> int:
+    """Every named fill the recorder owes us: no rows, or rows but no settled control pair, past the retry window."""
+    return sum(len(c.get("gaps", [])) + len(c.get("unsettled", [])) for c in gaps.values())
+
+
+def recorder_runs(audit_rows: list[dict], start: date, end: date) -> dict:
+    """The recorder's own heartbeat (finding 10): the sessions in [start, end] the 18:04 ET job should have run
+    (weekdays that are trading days), the ET dates with a `_recorded` row, the sessions with none (NAMED), the
+    `_error` rows (count + the first few summaries). `ran 0 of N` is a dead recorder even in a month with no
+    older closes."""
+    ran_days = {et_date(r.get("created_at")) for r in audit_rows if r.get("event_type") == RECORDER_RUN_EVENT}
+    ran_days.discard(None)
+    errors = [r for r in audit_rows if r.get("event_type") == RECORDER_ERROR_EVENT]
+    sessions, cur = [], start
+    while cur <= end:
+        if is_trading_day(cur) and (cur.weekday() < 5 or not RECORDER_JOB_WEEKDAYS_ONLY):
+            sessions.append(cur)
+        cur += timedelta(days=1)
+    missing = [s for s in sessions if s not in ran_days]
+    return {"sessions": len(sessions), "ran": len([s for s in sessions if s in ran_days]), "missing": missing,
+            "last_run": max(ran_days) if ran_days else None, "error_rows": len(errors),
+            "error_samples": [str(r.get("summary") or "")[:120] for r in errors[:3]]}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -615,34 +681,36 @@ def arm_lens(lens: str, fills_by_era: dict[str, list[dict]], arm_rows: dict[tupl
             cells[era] = era_cell(arm, era, per)
         v, why = verdict(cells, current_era)
         if v == "PROPOSE":
-            # §1.3 / D5: a PROPOSE is quoted only when ONE admission era carries n >= 10 and WON on its own —
-            # the exit-era cell pools admission eras, and the 482 YAML says never pool to reach a number.
-            by_adm: dict[str, list[dict]] = defaultdict(list)
+            # §1.3 / D5: a PROPOSE is quoted only when ONE admission cell — (admission era, pre/post 11-04), the
+            # #718 change being an admission change (finding 3) — carries n >= 10 and WON on its own; the exit-era
+            # cell pools them, and the 482 YAML says never pool to reach a number.
+            by_adm: dict[tuple[str, str], list[dict]] = defaultdict(list)
             for fl in fills_by_era.get(current_era, []):
-                by_adm[str(fl.get("admission_era") or "unknown")].append(fl)
-            adm_cells = {adm: era_cell(arm, current_era, [dict(fl, arm_row=arm_rows.get((str(fl["trade_id"]), arm))) for fl in fls])
-                         for adm, fls in by_adm.items()}
+                by_adm[_cell_key_of(fl)].append(fl)
+            adm_cells = {key: era_cell(arm, current_era, [dict(fl, arm_row=arm_rows.get((str(fl["trade_id"]), arm))) for fl in fls])
+                         for key, fls in by_adm.items()}
             if not any(c.n >= PROPOSE_MIN and c.won for c in adm_cells.values()):
                 v = "WATCH"
-                why += "; demoted: no one admission era holds " + str(PROPOSE_MIN) + " and wins (" + ", ".join(
-                    f"{adm} n {c.n} {'won' if c.won else 'lost' if c.won is False else 'unreadable'}" for adm, c in sorted(adm_cells.items())) + ")"
+                why += "; demoted: no one admission cell (admission era x pre/post 11-04) holds " + str(PROPOSE_MIN) + " and wins (" + ", ".join(
+                    f"{adm} {side} n {c.n} {'won' if c.won else 'lost' if c.won is False else 'unreadable'}"
+                    for (adm, side), c in sorted(adm_cells.items())) + ")"
         out[arm] = {"cells": cells, "verdict": v, "why": why}
     return out
 
 
 def admission_cells(lens: str, fills_by_era: dict[str, list[dict]], arm_rows: dict[tuple[str, str], dict]) -> list[dict]:
-    """D5 / the 482 YAML: SEGMENT FIRST by admission era, never pooled — every (arm, exit era, admission era) cell
-    with its n and result, for review.out. The ladder reads the exit-era cell; these say whether one admission era
-    carries it."""
+    """D5 / the 482 YAML: SEGMENT FIRST by admission era, never pooled — every (arm, exit era, admission era,
+    pre/post 11-04) cell with its n and result, for review.out. The ladder reads the exit-era cell; these say
+    whether one admission cell carries it (finding 3: the two sides of #718 are two admission populations)."""
     out = []
     for arm in LENS_ARMS[lens]:
         for era, fills in sorted(fills_by_era.items()):
-            by_adm: dict[str, list[dict]] = defaultdict(list)
+            by_adm: dict[tuple[str, str], list[dict]] = defaultdict(list)
             for fl in fills:
-                by_adm[str(fl.get("admission_era") or "unknown")].append(fl)
-            for adm, fls in sorted(by_adm.items()):
+                by_adm[_cell_key_of(fl)].append(fl)
+            for (adm, side), fls in sorted(by_adm.items()):
                 c = era_cell(arm, era, [dict(fl, arm_row=arm_rows.get((str(fl["trade_id"]), arm))) for fl in fls])
-                out.append({"arm": arm, "era": era, "admission_era": adm, "n": c.n, "won": c.won,
+                out.append({"arm": arm, "era": era, "admission_era": adm, "side": side, "n": c.n, "won": c.won,
                             "rcap_delta_sum": c.rcap_delta_sum, "pre_1104": c.n_pre_1104, "post_1104": c.n_post_1104})
     return out
 
@@ -678,22 +746,37 @@ def breakeven_stop_leg(trade: dict) -> bool:
     return reason_bucket(last.get("reason")) == REASON_STOP and px is not None and abs(px - entry) <= BREAKEVEN_TOL_R * risk
 
 
+def breakeven_arm_for(trade: dict) -> Optional[float]:
+    """The price-armed breakeven multiple the ROW's own era ran: rule_eras.exit_rules_as_of(alert_date,
+    signal_type, exit_rule=row)['breakeven_at_r'] — 3.0 for magna53 / magna53_smallcap from the 09-06 flip, None
+    in era C and for every strategy the flip never touched (breakout rows). None = the armed shape does not apply
+    (finding 4: the old 3R fallback counted an era-C trade as both shapes)."""
+    ad = d(trade.get("alert_date"))
+    if ad is None:
+        return None
+    rules = exit_rules_as_of(ad, trade.get("signal_type") or None, exit_rule=(trade.get("exit_rule") or None))
+    return f(rules.get("breakeven_at_r"))
+
+
 def runner_shapes(trade: dict, sd_rec: Optional[dict] = None, live_actual_row: Optional[dict] = None) -> dict:
     """The two give-back shapes behind `runner_rule_sweep_recut`, counted APART:
     partial_breakeven (era C): a partial_profit leg, then the rest stopped at breakeven.
     armed_breakeven (eras D/E): the peak reached the breakeven arm — peak_price >= entry + arm_r x (entry − ORB low),
     the ORB frame the arm is set in (sell_discipline's peak_r is in the hard-stop frame, 2x wider under the entry−2R
-    stop, so it is NOT compared with 3) — and the position then stopped at breakeven, partial or not."""
+    stop, so it is NOT compared with 3) — and the position then stopped at breakeven, partial or not.
+    arm_r = the recorder row's own `breakeven_arm_r` stamp where present, else the row's era through
+    rule_eras.exit_rules_as_of; None (era C, breakout) = the armed shape does not apply (`arm_r` None, never 3)."""
     be = breakeven_stop_leg(trade)
     legs = exits_legs(trade)
     saw_partial = any(lg.get("reason") == REASON_PARTIAL for lg in legs[:-1]) if legs else False
-    out = {"partial_breakeven": be and saw_partial, "armed_breakeven": False, "arm_price": None}
+    out = {"partial_breakeven": be and saw_partial, "armed_breakeven": False, "arm_price": None, "arm_r": None}
     entry, orb_low = f(trade.get("entry_price")), f(trade.get("orb_low"))
     peak = f((sd_rec or {}).get("peak_price"))
     arm_r = f((live_actual_row or {}).get("breakeven_arm_r"))
     if arm_r is None:
-        arm_r = BREAKEVEN_ARM_R_VALUE
-    if entry is not None and orb_low is not None and entry > orb_low:
+        arm_r = breakeven_arm_for(trade)
+    out["arm_r"] = arm_r
+    if arm_r is not None and entry is not None and orb_low is not None and entry > orb_low:
         out["arm_price"] = entry + arm_r * (entry - orb_low)
         out["armed_breakeven"] = be and peak is not None and peak >= out["arm_price"]
     return out
@@ -759,6 +842,7 @@ def partial_descriptives(trades: list[dict], sd: dict[str, dict], la_rows: Optio
             "giveback_r_median": median(f(r.get("giveback_r")) for r in recs),
             "runner_shape_partial": sum(s["partial_breakeven"] for s in shapes),
             "runner_shape_armed": sum(s["armed_breakeven"] for s in shapes),
+            "armed_na": sum(s["arm_r"] is None for s in shapes),          # no price-armed breakeven in this row's era
             "shares_le_2": sum((f(t.get("entry_shares")) or 0) <= 2 for t in trades)}
 
 
@@ -967,17 +1051,41 @@ def absence_observables(audit_rows: list[dict], seated_n: int, list_nights: int,
             "env_default": "not captured"}
 
 
-def absence_sentence(obs: dict, missed_n: int) -> str:
+ABSENCE_CAPTURES = ("audit_breakout", "breakout_list", "strategy_toggles", "strategies")   # what the sentence reads
+
+
+def absence_sentence(obs: dict, missed_n: int, raw_n: Optional[int] = None, width_dropped: int = 0, malformed: int = 0,
+                     bad_json: int = 0, not_captured: Iterable[str] = ()) -> str:
+    """The sentence beside a missed count. `missed_n` is the READABLE count (width kept, day / price / stop present);
+    `raw_n` is every missed-by-slots row written. Finding 5: when rows were written and none is readable, the page
+    says what dropped them — never 'none broke out while held'. Finding 2: a missing capture file is NOT an empty
+    month — the sentence names it and makes no claim."""
+    missing = [n for n in not_captured if n in ABSENCE_CAPTURES]
+    if missing:
+        return "NOT CAPTURED: " + ", ".join(f"{n}.csv" for n in missing) + " — the absence check cannot be made (not 'nothing missed')"
+    if raw_n is None:
+        raw_n = missed_n
+    drops = []
+    if width_dropped:
+        drops.append(f"{width_dropped} dropped by the width rule")
+    if malformed:
+        drops.append(f"{malformed} malformed (no day / break price / stop)")
+    if bad_json:
+        drops.append(f"{bad_json} unreadable JSON")
+    drop_s = ("; " + ", ".join(drops)) if drops else ""
     if obs["list_nights"] == 0 or (obs["toggle"] not in (None, "on") and obs["seated_trades"] == 0 and obs["hold_rows"] == 0):
-        return "the breakout paper lane did not run in this window"
-    if obs.get("entry_day_rows", 0) == 0 and missed_n == 0:
+        return "the breakout paper lane did not run in this window" + drop_s
+    if obs.get("entry_day_rows", 0) == 0 and raw_n == 0:
         return "the 15:55 missed-by-slots step left no entry_day row — the recorder did not run (not 'nothing missed')"
+    if raw_n > 0 and missed_n == 0:
+        return (f"{raw_n} missed-by-slots record(s) written, none readable — " + ", ".join(drops)
+                + " (not 'none broke out while held')")
     if obs["slots_full_holds"] == 0:
-        return "no name was ever held for a full paper book"
+        return "no name was ever held for a full paper book" + drop_s
     if missed_n == 0:
         return f"{obs['slots_full_holds']} hold rows, none broke out while held" + (
-            f" ({obs['unreadable_rows']} unreadable row(s) — some names were never judged)" if obs.get("unreadable_rows") else "")
-    return f"missed {missed_n} of {obs['slots_full_holds']} held rows"
+            f" ({obs['unreadable_rows']} unreadable row(s) — some names were never judged)" if obs.get("unreadable_rows") else "") + drop_s
+    return f"missed {missed_n} of {obs['slots_full_holds']} held rows" + drop_s
 
 
 def breakout_buy_point(l3_trades: list[dict], blist: list[dict], audit_rows: list[dict]) -> dict:
@@ -1055,8 +1163,11 @@ def stop_too_wide_matrix(rejected_mfe: list[float], admitted_mfe: list[float]) -
         matrix = "KEEP"
     else:
         matrix = "CANNOT TELL"
+    # the YAML's three answers map one-to-one onto the ladder: REVISIT -> WATCH / PROPOSE, KEEP -> NOTHING (the
+    # current filter is right), CANNOT TELL -> CAN'T TELL — never NOTHING (finding 6: the 09-16 reading said it
+    # could not tell, and "nothing" would read as "the current rule is best")
     v = ("PROPOSE" if (matrix == "REVISIT" and rn >= PROPOSE_MIN and an >= PROPOSE_MIN)
-         else "WATCH" if matrix == "REVISIT" else "NOTHING")
+         else "WATCH" if matrix == "REVISIT" else "NOTHING" if matrix == "KEEP" else "CAN'T TELL")
     return {"rejected_n": rn, "admitted_n": an, "matrix": matrix, "p": p, "rejected_rate": r_rate,
             "admitted_rate": a_rate, "rejected_median": r_med, "admitted_median": a_med, "verdict": v}
 
@@ -1175,7 +1286,9 @@ def breakout_grade_for(ticker: str, alert_date: date, grades: list[dict]) -> Opt
 
 def breakout_selection(l3_trades: list[dict], grades: list[dict]) -> dict:
     """'his NO names lose, his GOOD names carry the winners': every graded `no` trade <= 0R AND >= 1 `good` trade
-    >= +2R. CAN'T TELL under 3 graded `no` trades; WATCH to 9 graded; PROPOSE at >= 10 graded."""
+    >= +2R. CAN'T TELL under 3 graded `no` trades; met -> WATCH (NEVER PROPOSE: charts support, never decide — a
+    grade filter is the one thing the standing rule rules out, and his EP labels are capped the same way; finding
+    7); not met -> NOTHING."""
     rows = []
     for t in l3_trades:
         if (t.get("status") or "") != "closed" or (t.get("pnl_attribution") or ""):
@@ -1186,7 +1299,7 @@ def breakout_selection(l3_trades: list[dict], grades: list[dict]) -> dict:
     low = [x for x in graded if x["grade"] == GRADE_LOW]
     high = [x for x in graded if x["grade"] == GRADE_HIGH]
     met = len(low) >= READABLE_MIN and all(x["r"] <= 0 for x in low) and any(x["r"] >= 2.0 for x in high)
-    v = count_verdict(len(graded), met) if len(low) >= READABLE_MIN else "CAN'T TELL"
+    v = ("WATCH" if met else "NOTHING") if len(low) >= READABLE_MIN else "CAN'T TELL"
     return {"n": len(rows), "graded": len(graded), "ungraded": len(rows) - len(graded), "low_n": len(low), "high_n": len(high),
             "by_grade": Counter(x["grade"] or "ungraded" for x in rows), "verdict": v, "rows": rows}
 
@@ -1273,9 +1386,13 @@ def _legs_str(legs: list[dict]) -> str:
 def render(report: dict) -> str:
     """The one page: line 1 = the answer; population, lens, tail, missed, folded, action; then the per-trade list."""
     lines = [f"# #720 monthly trade review — {report['run_date']}", "",
-             f"**{report['answer']}**", "",
-             f"Window: trades closed {report['window_start']} to {report['window_end']} (ET). "
-             f"Eras are cumulative from each era's start; nothing is pooled across eras or lanes.", ""]
+             f"**{report['answer']}**", ""]
+    for name in report.get("not_captured", []):
+        lines.append(f"**NOT CAPTURED: {name}.csv** — every number that reads it is n/a on this page.")
+    if report.get("not_captured"):
+        lines.append("")
+    lines += [f"Window: trades closed {report['window_start']} to {report['window_end']} (ET). "
+              f"Eras are cumulative from each era's start; nothing is pooled across eras or lanes.", ""]
     lines += ["## Population", "", "| Lane | Era | closed in window | carried from era start | still open | excluded | no R frame | re-entries |",
               "|---|---|---|---|---|---|---|---|"]
     for (lane, era), c in sorted(report["population"].items()):
@@ -1289,7 +1406,19 @@ def render(report: dict) -> str:
     if report.get("recorder_gaps"):
         lines += ["", "Recorder coverage (L1): " + "; ".join(
             f"{era}: {c['fills']} fills, {c['with_rows']} with recorder rows, {c['settled_pairs']} settled control pairs"
-            + (f", GAP: {', '.join(c['gaps'])}" if c["gaps"] else "") for era, c in sorted(report["recorder_gaps"].items())) + "."]
+            + (f", GAP (no rows past the retry window): {', '.join(c['gaps'])}" if c["gaps"] else "")
+            + (f", UNSETTLED (rows but no settled control pair past the retry window): {', '.join(c.get('unsettled', []))}" if c.get("unsettled") else "")
+            for era, c in sorted(report["recorder_gaps"].items())) + "."]
+    rr_ = report.get("recorder_runs")
+    if rr_ is not None:
+        if rr_ == NOT_CAPTURED:
+            lines.append(f"Recorder heartbeat: {NOT_CAPTURED} (audit_recorder.csv).")
+        else:
+            miss = [s.isoformat() for s in rr_["missing"]]
+            lines.append(f"Recorder heartbeat: the 18:04 ET job wrote its nightly row on {rr_['ran']} of {rr_['sessions']} sessions in the window"
+                         + (f" (last {rr_['last_run']})" if rr_["last_run"] else " (never)")
+                         + (f"; sessions with no row: {', '.join(miss[:10])}{' …' if len(miss) > 10 else ''}" if miss else "")
+                         + f"; error rows {rr_['error_rows']}" + (f" ({'; '.join(rr_['error_samples'])})" if rr_["error_samples"] else "") + ".")
     if report.get("fidelity"):
         fd = report["fidelity"]
         lines += ["", f"Replay fidelity (§5: within max(0.25R, 10% of the real R); the replay's partial re-weighted to the shares the "
@@ -1333,6 +1462,8 @@ def render(report: dict) -> str:
         sv = report["safeguard_voids"]
         lines.append("\nLive/global safeguard transitions since the current era start (each one = the 08-29 runner read is void): "
                      + ("; ".join(sv) if sv else "none") + ".")
+    elif "safeguard_transitions" in report.get("not_captured", []):
+        lines.append(f"\nLive/global safeguard transitions since the current era start: {NOT_CAPTURED}.")
     lines += ["", f"**Action: {report['action']}**", ""]
     wl = report.get("window_trades", [])
     lines += ["## Every closed trade in the window (the forensic fields; the classification is written by inspection on run day)", "",
@@ -1353,6 +1484,38 @@ def render(report: dict) -> str:
     return "\n".join(lines)
 
 
+# §7: which lens verdicts each folded review's row reads (finding 8). 482 asked stop + harvest + trail; the parked
+# geometry review asked stop level + entry; exit_tune's sweep is the partial; runner_rule's fact is the two runner
+# shapes (descriptive — no arm answers it); stop_too_wide has its own matrix verdict.
+FOLD_MAP: dict[str, Any] = {"bracket_geometry_variants_parked": ("stop", "buy_point"),
+                            "live_fill_counterfactuals_first_read_482": ("stop", "partials", "exits"),
+                            "exit_tune_cohort_review": ("partials",),
+                            "runner_rule_sweep_recut": "descriptive",
+                            "stop_too_wide_outcome_cohort": "stop_too_wide"}
+_LADDER_RANK = {v: i for i, v in enumerate(VERDICTS)}
+
+
+def folded_rows(predicates: list[dict], arm_results: dict[str, dict], stw_verdict: str) -> list[dict]:
+    """ALWAYS the five rows in FOLDED_REVIEWS order (finding 2): a review missing from predicates.csv — or a
+    missing file — prints its count as NOT CAPTURED instead of vanishing. Verdict = the highest ladder rung any
+    mapped arm reached (an arm on WATCH in the stop lens shows on the 482 row even when the trail arms are
+    unreadable)."""
+    counts = {p.get("review"): p.get("n") for p in predicates}
+    out = []
+    for rid in FOLDED_REVIEWS:
+        spec = FOLD_MAP[rid]
+        if spec == "descriptive":
+            v = "descriptive"
+        elif spec == "stop_too_wide":
+            v = stw_verdict
+        else:
+            vs = [r["verdict"] for lens in spec for r in arm_results.get(lens, {}).values()]
+            v = max(vs, key=lambda x: _LADDER_RANK.get(x, -1)) if vs else "CAN'T TELL"
+        out.append({"review": rid, "n": counts.get(rid, NOT_CAPTURED) if counts.get(rid) not in (None, "") else NOT_CAPTURED,
+                    "verdict": v})
+    return out
+
+
 def action_line(lens_rows: list[dict]) -> str:
     props = [r for r in lens_rows if r["verdict"] == "PROPOSE"]
     if not props:
@@ -1361,29 +1524,70 @@ def action_line(lens_rows: list[dict]) -> str:
                      f"and your sign-off" for r in props)
 
 
-def answer_line(lens_rows: list[dict], tails_: dict) -> str:
+def _is_arm_row(row: dict) -> bool:
+    """An arm-vs-live lens row (not a count lens, not a descriptive): build_report tags them; a bare row is read
+    from its name ('<lens>: <arm>')."""
+    if "kind" in row:
+        return row["kind"] == "arm"
+    name = row.get("lens", "")
+    return ": " in name and name.split(": ", 1)[1] in ALL_ARMS
+
+
+def answer_line(lens_rows: list[dict], tails_: dict, recorder_gaps_: Optional[dict] = None, fidelity_: Optional[dict] = None,
+                not_captured: Iterable[str] = ()) -> str:
+    """Line 1 (finding 1). In order: a capture that is not whole; a PROPOSE; a recorder that owes fills; then — ONLY
+    when an arm lens on the current era actually read NOTHING — 'Nothing beats what we run'. Arms that only WATCH
+    say so; no readable arm lens says 'too few trades to read yet'. The old line printed 'Nothing beats' on an empty
+    capture and on three fills with no recorder rows."""
+    nc = list(not_captured)
     props = [r for r in lens_rows if r["verdict"] == "PROPOSE"]
-    watches = [r for r in lens_rows if r["verdict"] == "WATCH"]
-    head = (f"{len(props)} lens(es) worth a CHANGE_PROCESS proposal" if props
-            else "Nothing beats what we run" + (f"; {len(watches)} on watch" if watches else ""))
+    arm_rows_ = [r for r in lens_rows if _is_arm_row(r)]
+    nothings = [r for r in arm_rows_ if r["verdict"] == "NOTHING"]
+    watches = [r for r in arm_rows_ if r["verdict"] == "WATCH"]
+    gap_n = recorder_gap_count(recorder_gaps_ or {})
+    if nc:
+        head = f"capture incomplete — {len(nc)} file(s) NOT CAPTURED ({', '.join(nc)}); nothing on this page is a verdict"
+    elif props:
+        head = f"{len(props)} lens(es) worth a CHANGE_PROCESS proposal"
+    elif gap_n:
+        head = f"recorder gap on {gap_n} fill(s) — the arm lenses cannot be read until the recorder catches up"
+    elif nothings:
+        head = "Nothing beats what we run" + (f"; {len(watches)} arm(s) on watch" if watches else "")
+    elif watches:
+        head = f"{len(watches)} arm(s) on watch (won on under {PROPOSE_MIN} trades); nothing proposed, nothing read as beaten"
+    else:
+        fid_s = ""
+        if fidelity_ and fidelity_.get("n"):
+            fid_s = f" ({fidelity_['n']} closed live fill(s), {fidelity_.get('pass', 0)} with a settled replay pair that passes)"
+        head = "too few trades to read yet" + fid_s
     return (f"{head}; big winners {len(tails_.get('winners', []))}, bad losers {len(tails_.get('losers', []))}; "
-            f"action: {'see below' if props else 'none'}.")
+            f"action: {'see below' if props and not nc else 'none'}.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # manifest + the report driver (reads CSVs only)
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+def missing_captures(data: Path) -> list[str]:
+    """Every capture/*.sql whose CSV is absent from the run's data dir (finding 2: a failed capture must never read
+    as an empty month)."""
+    return [name for name in REQUIRED_CAPTURES if not (data / f"{name}.csv").exists()]
+
+
 def write_manifest(run_dir: Path, captured_at: str) -> str:
     data = run_dir / "data"
     lines = [f"captured_at: {captured_at}"]
     for p in sorted(data.glob("*.csv")):
         rows = max(0, sum(1 for _ in open(p, "rb")) - 1)
         lines.append(f"{p.name}: rows {rows} md5 {hashlib.md5(p.read_bytes()).hexdigest()}")
+    for name in missing_captures(data):
+        lines.append(f"{name}.csv: NOT CAPTURED")
     (run_dir / "MANIFEST.txt").write_text("\n".join(lines) + "\n")
     return "\n".join(lines)
 
 
 def _csv(data: Path, name: str) -> list[dict]:
+    """[] for a missing file — build_report has already recorded the miss in `not_captured` (finding 2); nothing
+    downstream may read [] as 'nothing happened' without checking that list."""
     p = data / name
     return read_csv(p) if p.exists() else []
 
@@ -1411,8 +1615,12 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
     """Assemble the report dict from the captured CSVs. Every number comes from the functions above; every lens of
     the plan reaches the page. `labelled` / `abstentions` / `grades` default to the repo's own lists (tests inject)."""
     data = run_dir / "data"
+    not_captured = missing_captures(data)           # finding 2: named, never read as an empty month
+    if "trades" in not_captured:
+        raise SystemExit("trades.csv NOT CAPTURED — nothing to read")
     trades = read_csv(data / "trades.csv")
     cf = _csv(data, "cf_arms.csv")
+    audit_rec = _csv(data, "audit_recorder.csv")
     sd = {str(r["trade_id"]): r for r in _csv(data, "sell_discipline.csv")}
     audit = _csv(data, "audit_breakout.csv")
     daily = _daily_by_ticker(_csv(data, "daily_bars.csv"))
@@ -1442,7 +1650,8 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
     lane_era: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for t in closed:
         lane_era[(lane_of(t), era_of(t))].append(t)
-    gaps = recorder_gaps(trades, cf, run_date)
+    gaps = recorder_gaps(trades, cf, run_date) if "cf_arms" not in not_captured else {}
+    rec_runs = recorder_runs(audit_rec, start, run_date) if "audit_recorder" not in not_captured else NOT_CAPTURED
 
     # fidelity (L1) + the arm lenses
     fid = {}
@@ -1458,7 +1667,8 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
         fills_by_era[era_of(t)].append({"trade_id": tid, "fidelity_pass": fdct["pass"], "baseline": fdct.get("baseline") or "live_actual",
                                         "live_actual": arm_rows.get((tid, "live_actual")),
                                         "live_replay": arm_rows.get((tid, "live_replay")),
-                                        "admission_era": adm, "post_1104": post_open_floor(t), "regime": t.get("regime")})
+                                        "admission_era": adm, "post_1104": post_open_floor(t), "regime": t.get("regime"),
+                                        "admission_cell": admission_cell_key(t, la_rows.get(tid))})
     current_era = exit_era_label(run_date, "magna53")
     lens_rows = []
     arm_results = {}
@@ -1469,14 +1679,14 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
             cur = res["cells"].get(current_era)
             split = f"; pre-11-04 {cur.n_pre_1104} / post {cur.n_post_1104}" if cur and current_era == "era_e" else ""
             lens_rows.append({"lens": f"{lens}: {arm}", "where": f"L1 / {current_era}", "n": cur.n if cur else 0,
-                              "reading": res["why"] + split, "verdict": res["verdict"]})
+                              "reading": res["why"] + split, "verdict": res["verdict"], "kind": "arm"})
             for era, c in sorted(res["cells"].items()):
                 out_lines.append(f"{lens:9s} {arm:28s} {era}: n {c.n} (pre-11-04 {c.n_pre_1104} / post {c.n_post_1104}; baseline=replay on {c.baseline_replay}) "
                                  f"R_cap Δ {fmt(c.rcap_delta_sum)} drop-best {fmt(c.drop_best)} R_own Δ {fmt(c.rown_delta_sum)} tail-clip {c.tail_clip} "
                                  f"arm≥4R {c.arm_ge4} live≥4R {c.live_ge4} engine {'agrees' if c.engine_agrees else 'disagrees'} won {c.won} excluded {dict(c.excluded)}")
         for cell in admission_cells(lens, fills_by_era, arm_rows):
-            out_lines.append(f"admission {lens:9s} {cell['arm']:28s} {cell['era']} {cell['admission_era']}: n {cell['n']} "
-                             f"(pre-11-04 {cell['pre_1104']} / post {cell['post_1104']}) R_cap Δ {fmt(cell['rcap_delta_sum'])} won {cell['won']}")
+            out_lines.append(f"admission {lens:9s} {cell['arm']:28s} {cell['era']} {cell['admission_era']} {cell['side']}: n {cell['n']} "
+                             f"R_cap Δ {fmt(cell['rcap_delta_sum'])} won {cell['won']}")
     for cell in regime_table(fills_by_era, arm_rows):
         out_lines.append(f"regime {cell['arm']:28s} {cell['era']} {cell['regime']:10s}: n {cell['n']}{' THIN' if cell['thin'] else ''} "
                          f"R_cap Δ {fmt(cell['rcap_delta_sum'])} won {cell['won']}")
@@ -1490,7 +1700,8 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
             same += abs((f(a.get("realized_r")) or 0) - (f(b.get("realized_r")) or 0)) < 1e-9
     out_lines.append(f"recorder check: stop_low_of_day = stop_orb_low on {same} of {total} settled fills")
 
-    # admission-era mix per lane/era (the recorder stamp; derived where no row)
+    # admission-era mix per lane/era (the recorder stamp; derived where no row) + I12/I16: every stamp that
+    # disagrees with the derived label is listed (the 11-04..11-07 rows were stamped before the #718 row existed)
     for (lane, era), ts in sorted(lane_era.items()):
         mix = Counter()
         for t in ts:
@@ -1498,6 +1709,14 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
             mix[f"{adm}{' (derived)' if src == 'derived' else ''}"] += 1
         out_lines.append(f"admission mix {lane} {era}: " + ", ".join(f"{k} {v}" for k, v in sorted(mix.items()))
                          + f"; post-11-04 {sum(post_open_floor(t) for t in ts)} of {len(ts)}")
+    for t in closed:
+        if lane_of(t) == "L3":
+            continue
+        row = la_rows.get(str(t["id"]))
+        ad = d(t.get("alert_date"))
+        if row and row.get("admission_era") and ad and str(row["admission_era"]) != admission_era_as_of(ad):
+            out_lines.append(f"admission stamp vs derived: {t.get('ticker')} trade {t.get('id')} (alert {ad}): stamp {row['admission_era']} "
+                             f"vs derived {admission_era_as_of(ad)} — cell key uses {'derived (I16)' if post_open_floor(t) else 'the stamp (I12)'}")
 
     # selection (L1 labels; L3 grades)
     labelled_all = labelled if labelled is not None else operator_labels()
@@ -1551,7 +1770,7 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
         lens_rows.append({"lens": "partials: fired / kept", "where": f"{lane} / {era}", "n": pdsc["n"],
                           "reading": f"partial fired {pdsc['partial_fired']}; median capture {fmt(pdsc['capture_pct_median'])}; median giveback "
                                      f"{fmt(pdsc['giveback_r_median'])}R; runner shape — partial then breakeven {pdsc['runner_shape_partial']} (era C's), "
-                                     f"armed at +{BREAKEVEN_ARM_R_VALUE:.0f}R then breakeven {pdsc['runner_shape_armed']} (eras D/E's); "
+                                     f"armed then breakeven {pdsc['runner_shape_armed']} (eras D/E's, the row's own arm; n/a on {pdsc['armed_na']} with no price-armed breakeven); "
                                      f"≤2-share positions {pdsc['shares_le_2']}; no record {pdsc['no_record']}{split}", "verdict": "descriptive"})
         dis = edsc["disappoints"]
         lens_rows.append({"lens": "exits: how trades ended", "where": f"{lane} / {era}", "n": edsc["n"],
@@ -1594,10 +1813,11 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
     # missed-by-slots + absence observables
     recs_all, bad_json = missed_records(audit)
     recs = [r for r in recs_all if width_ok(r)]
-    missed = []
+    missed, malformed = [], 0
     for r in recs:
         day, px, stop = d(r.get("day")), f(r.get("break_price")), f(r.get("stop"))
         if day is None or px is None or stop is None:
+            malformed += 1          # finding 5: counted and named, never a silent skip
             continue
         missed.append({"ticker": r.get("ticker"), "day": day, "walk": missed_proxy_walk(px, stop, day, daily.get(r.get("ticker"), []))})
     missed_days = {m["day"] for m in missed}
@@ -1614,6 +1834,8 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
     mvs = missed_vs_seated(missed, seated)
     mvs["width_dropped"] = len(recs_all) - len(recs)
     mvs["bad_json"] = bad_json
+    mvs["malformed"] = malformed
+    mvs["raw_n"] = len(recs_all) + bad_json          # every missed-by-slots row written, readable or not
     mvs["seated_all"] = len(seated_all)
     toggle = next((r.get("state") or r.get("status") or r.get("value") for r in toggles if r.get("safeguard") == "breakout_v1_paper"), None)
     strat = next((r for r in strategies if r.get("strategy_id") == "breakout_v1"), None)
@@ -1622,22 +1844,10 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
                       "reading": f"+2R-before-stop share missed {fmt(mvs['missed_plus2r_share'])} vs seated {fmt(mvs['seated_plus2r_share'])}; "
                                  f"median MFE missed {fmt(mvs['missed_mfe_median'])}R vs seated {fmt(mvs['seated_mfe_median'])}R", "verdict": mvs["verdict"]})
 
-    # folded reviews: the predicate counts (verbatim SQL) beside the lens verdict each one maps to
-    fold_map = {"bracket_geometry_variants_parked": ("stop", None), "live_fill_counterfactuals_first_read_482": ("exits", None),
-                "exit_tune_cohort_review": ("partials", None), "runner_rule_sweep_recut": ("partials", None),
-                "stop_too_wide_outcome_cohort": (None, stw["verdict"])}
-    folded = []
-    for p in predicates:
-        lens, fixed = fold_map.get(p.get("review"), (None, None))
-        if fixed is not None:
-            v = fixed
-        elif lens:
-            vs = [r["verdict"] for r in arm_results.get(lens, {}).values()]
-            v = "PROPOSE" if "PROPOSE" in vs else "WATCH" if "WATCH" in vs else "NOTHING" if "NOTHING" in vs else "CAN'T TELL"
-        else:
-            v = "n/a"
-        folded.append({"review": p.get("review"), "n": p.get("n"), "verdict": v})
-    voids = safeguard_transitions_check(transitions, era_start_for(current_era, window_start))
+    # folded reviews: ALWAYS the five rows (finding 2) — the predicate counts (verbatim SQL) beside the lens
+    # verdicts each one maps to (FOLD_MAP, finding 8)
+    folded = folded_rows(predicates, arm_results, stw["verdict"])
+    voids = safeguard_transitions_check(transitions, era_start_for(current_era, window_start)) if "safeguard_transitions" not in not_captured else None
 
     report = {"run_date": run_date.isoformat(), "window_start": start.isoformat(), "window_end": run_date.isoformat(),
               "population": dict(pop["by_lane_era"]), "lens_rows": lens_rows, "tails": tl, "window_trades": window_trades,
@@ -1646,13 +1856,20 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
                            "reweighted": sum(v["via"] == "reweighted" for v in fid.values()),
                            "old_pass": sum(v["tol_old_pass"] for v in fid.values()),
                            "classes": Counter(v["cls"] for v in fid.values() if not v["pass"])},
-              "recorder_gaps": gaps, "missed": mvs, "missed_absence": absence_sentence(obs, mvs["missed_n"]) + f" (observables: {obs})",
+              "recorder_gaps": gaps, "recorder_runs": rec_runs, "not_captured": not_captured, "missed": mvs,
+              "missed_absence": absence_sentence(obs, mvs["missed_n"], raw_n=mvs["raw_n"], width_dropped=mvs["width_dropped"],
+                                                 malformed=malformed, bad_json=bad_json, not_captured=not_captured) + f" (observables: {obs})",
               "folded": folded, "safeguard_voids": voids,
               "legacy_paper_count": (f(legacy[0].get("legacy_paper_closed_in_window")) if legacy else None),
               "pre_window_closes": {f"{r.get('account_mode')}/{r.get('signal_type')}": r.get("n") for r in pre_window},
               "selection": sel, "breakout_selection": bsel, "breakout_buy_point": bbp, "stop_too_wide": stw}
-    report["action"] = action_line(lens_rows)
-    report["answer"] = answer_line(lens_rows, tl)
+    report["action"] = action_line(lens_rows) if not not_captured else "none — re-capture the missing file(s) and re-run"
+    report["answer"] = answer_line(lens_rows, tl, gaps, report["fidelity"], not_captured)
+    if not_captured:
+        out_lines.insert(0, "NOT CAPTURED: " + ", ".join(f"{n}.csv" for n in not_captured))
+    if rec_runs != NOT_CAPTURED:
+        out_lines.append(f"recorder heartbeat: ran {rec_runs['ran']} of {rec_runs['sessions']} sessions; missing "
+                         + (", ".join(s.isoformat() for s in rec_runs["missing"]) or "none") + f"; error rows {rec_runs['error_rows']}")
     out_lines.append("fidelity per fill: " + "; ".join(
         f"{by_id[t].get('ticker')} {('pass ' + str(v['via'])) if v['pass'] else 'FAIL ' + str(v['cls'])} Δ {fmt(v['diff'])}"
         + (f" (re-weighted Δ {fmt(v['diff_reweighted'])}, live fraction {fmt(v['live_fraction'])})" if v.get("diff_reweighted") is not None else "")

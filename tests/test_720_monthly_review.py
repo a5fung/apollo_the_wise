@@ -326,7 +326,7 @@ class TestEraCellAndLadder:
         arm_rows = {(str(i), "stop_orb_low"): arm_row(i, "stop_orb_low", 0.0 + 0.01 * i, 0.0 + 0.01 * i) for i in range(1, 13)}
         split = {"era_e": [dict(fill(i, -1.0), admission_era=("adm_A" if i <= 7 else "adm_B")) for i in range(1, 13)]}
         res = rr.arm_lens("stop", split, arm_rows, "era_e")["stop_orb_low"]
-        assert res["verdict"] == "WATCH" and "demoted" in res["why"] and "adm_A n 7" in res["why"]
+        assert res["verdict"] == "WATCH" and "demoted" in res["why"] and "adm_A pre-11-04 n 7" in res["why"]
         one = {"era_e": [dict(fill(i, -1.0), admission_era="adm_A") for i in range(1, 13)]}
         assert rr.arm_lens("stop", one, arm_rows, "era_e")["stop_orb_low"]["verdict"] == "PROPOSE"
 
@@ -362,7 +362,7 @@ class TestDescriptives:
         armed = rr.runner_shapes(t, {"peak_price": "103.2", "peak_r": "1.6"}, arm_row(1, "live_actual", 0.0, breakeven_arm_r="3"))
         assert armed["armed_breakeven"] is True and armed["partial_breakeven"] is False and armed["arm_price"] == pytest.approx(103.0)
         assert rr.runner_shapes(t, {"peak_price": "102.5"}, arm_row(1, "live_actual", 0.0, breakeven_arm_r="3"))["armed_breakeven"] is False
-        assert rr.runner_shapes(t, {"peak_price": "103.2"}, None)["armed_breakeven"] is True        # fallback = rule_eras.BREAKEVEN_ARM_R_VALUE
+        assert rr.runner_shapes(t, {"peak_price": "103.2"}, None)["armed_breakeven"] is True        # no row: the era's arm via rule_eras.exit_rules_as_of (era E magna53 -> 3)
         assert rr.runner_shapes(trade(exits=legs(("stop_hit", 98))), {"peak_price": "103.2"}, None)["armed_breakeven"] is False
 
     def test_stopped_then_ran_reads_only_a_real_stop_leg(self):
@@ -508,13 +508,15 @@ class TestStopTooWide:
         rej = [12.0] * 4 + [1.0] * 7
         adm = [12.0] * 17 + [1.0] * 8
         m = rr.stop_too_wide_matrix(rej, adm)
-        assert m["matrix"] == "CANNOT TELL" and m["p"] == pytest.approx(0.141, abs=0.002) and m["verdict"] == "NOTHING"
+        # finding 6 (re-challenge): CANNOT TELL is the ladder's CAN'T TELL — never NOTHING ("the current rule is best")
+        assert m["matrix"] == "CANNOT TELL" and m["p"] == pytest.approx(0.141, abs=0.002) and m["verdict"] == "CAN'T TELL"
 
     def test_matrix(self):
         assert rr.stop_too_wide_matrix([12, 11, 15], [5, 4, 3])["verdict"] == "WATCH"
         keep = rr.stop_too_wide_matrix([1] * 10, [12] * 10)
         assert keep["matrix"] == "KEEP" and keep["p"] < 0.10 and keep["verdict"] == "NOTHING"
-        assert rr.stop_too_wide_matrix([12, 1, 1], [5, 5, 5])["matrix"] == "CANNOT TELL"
+        split = rr.stop_too_wide_matrix([12, 1, 1], [5, 5, 5])
+        assert split["matrix"] == "CANNOT TELL" and split["verdict"] == "CAN'T TELL"
         assert rr.stop_too_wide_matrix([12, 11], [5, 4, 3])["verdict"] == "CAN'T TELL"
         assert rr.stop_too_wide_matrix([12] * 10, [5] * 10)["verdict"] == "PROPOSE"
 
@@ -680,6 +682,7 @@ class TestRenderAndDriver:
             {"id": "3", "created_at": "", "event_type": rr.ENTRY_DAY_EVENT, "summary": "", "detail": "{}"},
             {"id": "4", "created_at": "", "event_type": rr.FILL_STOP_EVENT, "summary": "", "detail": json.dumps({"trade_id": 9, "decision": "keep"})}])
         _write_csv(run / "data" / "predicates.csv", [{"review": "stop_too_wide_outcome_cohort", "n": "1"}, {"review": "bracket_geometry_variants_parked", "n": "3"}])
+        _write_csv(run / "data" / "audit_recorder.csv", [{"id": "7", "created_at": "2026-11-27 23:04:10+00", "event_type": rr.RECORDER_RUN_EVENT, "summary": "3 fill(s)"}])
         _write_csv(run / "data" / "legacy_paper_count.csv", [{"legacy_paper_closed_in_window": "0"}])
         _write_csv(run / "data" / "pre_window_closes.csv", [{"account_mode": "live", "signal_type": "magna53", "n": "2"}])
         rep = rr.build_report(run, date(2026, 11, 29), rr.FIRST_WINDOW_START,
@@ -687,7 +690,8 @@ class TestRenderAndDriver:
                               abstentions={("CHPT", "2026-09-03")}, grades=[{"list_date": "2026-11-03", "ticker": "BPP", "grade": "good"}])
         assert rep["population"][("L1", "era_e")]["window"] == 3 and rep["population"][("L3", "bp1")]["window"] == 1
         assert rep["fidelity"] == {"n": 3, "pass": 3, "stored": 3, "reweighted": 0, "old_pass": 3, "classes": {}}
-        assert rep["recorder_gaps"]["era_e"] == {"fills": 3, "with_rows": 3, "settled_pairs": 3, "gaps": []}
+        assert rep["recorder_gaps"]["era_e"] == {"fills": 3, "with_rows": 3, "settled_pairs": 3, "gaps": [], "unsettled": []}
+        assert rep["not_captured"] == [] and rep["recorder_runs"]["ran"] == 1 and rep["recorder_runs"]["last_run"] == date(2026, 11, 27)
         assert [w["ticker"] for w in rep["tails"]["winners"]] == ["T3"] and rep["tails"]["winners"][0]["best_arm"]
         lenses = {r["lens"] for r in rep["lens_rows"]}
         for needle in ("stop: stop_orb_low", "partials: harvest_t3", "exits: trail_pivot_swing", "buy_point: entry_first_hour_bar",
@@ -710,7 +714,14 @@ class TestRenderAndDriver:
         sel = {s["ticker"]: s["did"] for s in rep["selection"]}
         assert sel == {"T1": "traded", "NEVR": "alerted, no trade row", "CHPT": "abstention"}
         assert next(r for r in rep["lens_rows"] if r["lens"] == "selection: his EP labels")["verdict"] == "CAN'T TELL"
-        assert [fr["review"] for fr in rep["folded"]] == ["stop_too_wide_outcome_cohort", "bracket_geometry_variants_parked"]
+        # finding 2 / 8: ALWAYS the five rows, in FOLDED_REVIEWS order; a review absent from predicates.csv is "not captured"
+        assert [fr["review"] for fr in rep["folded"]] == list(rr.FOLDED_REVIEWS)
+        folded = {fr["review"]: fr for fr in rep["folded"]}
+        assert folded["bracket_geometry_variants_parked"]["n"] == "3" and folded["exit_tune_cohort_review"]["n"] == rr.NOT_CAPTURED
+        assert folded["runner_rule_sweep_recut"]["verdict"] == "descriptive"
+        assert folded["live_fill_counterfactuals_first_read_482"]["verdict"] == "WATCH"     # the stop arms WON on 3 (stop lens), trail arms too
+        assert rep["answer"].startswith("3 arm(s) on watch") or rep["answer"].startswith("1") or "on watch" in rep["answer"]
+        assert not rep["answer"].startswith("Nothing beats")                                  # no arm read NOTHING here
         assert rep["safeguard_voids"] and rep["safeguard_voids"][0].startswith("x_live|live")
         assert rep["pre_window_closes"] == {"live/magna53": "2"}
         assert len(rep["window_trades"]) == 4 and all("forensic_class" in r for r in rep["window_trades"])
@@ -736,13 +747,14 @@ def test_every_capture_query_is_read_only():
     files = sorted(CAPTURE.glob("*.sql"))
     assert len(files) >= 14
     names = {p.name for p in files}
-    for need in ("admitted_magna53.sql", "ep_alerts.sql", "strategies.sql", "pre_window_closes.sql", "predicates.sql"):
+    for need in ("admitted_magna53.sql", "ep_alerts.sql", "strategies.sql", "pre_window_closes.sql", "predicates.sql", "audit_recorder.sql"):
         assert need in names, need
     for p in files:
         text = p.read_text()
         assert text.splitlines()[0].strip() == "SET default_transaction_read_only = on;", p.name
         assert ("\\copy (" in text or "COPY (" in text) and "TO STDOUT WITH CSV HEADER" in text, p.name
     assert "breakout_v1_entry_day" in (CAPTURE / "audit_breakout.sql").read_text()
+    assert "live_fill_counterfactual_recorded" in (CAPTURE / "audit_recorder.sql").read_text()   # finding 10: the recorder's heartbeat
     admitted = "skip_reason IS NULL AND status NOT IN ('cancelled', 'skipped') AND filled_at IS NOT NULL AND alert_date >= DATE '2026-05-05'"
     assert admitted in (CAPTURE / "daily_bars.sql").read_text() and admitted in (CAPTURE / "admitted_magna53.sql").read_text()
     # finding 8 counts malformed missed-by-slots rows; a ::jsonb cast in the bars capture would abort on the first one
@@ -757,7 +769,8 @@ def test_pinned_constants_match_the_plan():
     plan = PLAN.read_text()
     for needle in ("2026-08-16", "max(0.25, 0.10", "≥ +4R", "≤ −1.5R", "bp1", "CAN'T TELL", "PROPOSE", "two-sided",
                    "admitted_magna53.sql", "ep_alerts.sql", "strategies.sql", "pre_window_closes.sql", "review.out",
-                   "breakout_list_grades.py", "must_not_miss_eps.py", "2026-11-04", "D1", "D7", "width ≤ adr20"):
+                   "breakout_list_grades.py", "must_not_miss_eps.py", "2026-11-04", "D1", "D7", "D10", "I16", "width ≤ adr20",
+                   "NOT CAPTURED", "audit_recorder.sql", "charts support, never decide", "too few trades to read yet"):
         assert needle in plan, needle
     assert "max_high_5d" not in plan.split("## 3.")[1].split("## 4.")[0].replace("NEVER `mi_ep_missed_outcomes.max_high_5d`", "")
 
@@ -772,3 +785,207 @@ def test_the_five_yaml_entries_point_at_this_cadence_and_the_fidelity_bar_is_the
         assert "#720" in act and "720_monthly_review_plan_2026-11-08.md" in act, rid
     one = reg["live_fill_counterfactuals_first_read_482"]["action_when_ready"]
     assert "more than 0.25R" not in one and "max(0.25R, 10%" in one
+
+
+# ── the 2026-11-08 re-challenge: findings 1-10, one test each, every one RED on HEAD b3d0a215 ─────────────────
+def _full_capture(run: Path, trades: list[dict], cf: list[dict], audit: list[dict] | None = None,
+                  audit_recorder: list[dict] | None = None, predicates: list[dict] | None = None, skip: set[str] = frozenset()):
+    """Every capture file the runner requires, minimal rows (the fixture the re-challenge probes lacked)."""
+    (run / "data").mkdir(parents=True, exist_ok=True)
+    daily = [{"ticker": tk, "trade_date": date.fromordinal(date(2026, 10, 1).toordinal() + i).isoformat(), "open_price": "100",
+              "high_price": "103", "low_price": "99", "close": "100", "volume": "1"} for tk in {t["ticker"] for t in trades} for i in range(60)]
+    files = {"trades": trades, "cf_arms": cf, "sell_discipline": [], "daily_bars": daily, "skips_window": [], "skips_stop_too_wide": [],
+             "admitted_magna53": [], "ep_alerts": [], "breakout_list": [{"scan_date": "2026-11-03", "ticker": "BPP", "level": "100"}],
+             "strategy_toggles": [{"safeguard": "breakout_v1_paper", "account_mode": "paper", "state": "on", "last_transition_at": ""}],
+             "strategies": [{"strategy_id": "breakout_v1", "phase": "paper", "enabled": "t"}], "safeguard_transitions": [],
+             "audit_breakout": audit if audit is not None else [{"id": "3", "created_at": "", "event_type": rr.ENTRY_DAY_EVENT, "summary": "", "detail": "{}"}],
+             "audit_recorder": audit_recorder if audit_recorder is not None else [
+                 {"id": "1", "created_at": "2026-11-27 23:04:10+00", "event_type": rr.RECORDER_RUN_EVENT, "summary": "0 fill(s)"}],
+             "predicates": predicates if predicates is not None else [{"review": rid, "n": "0"} for rid in rr.FOLDED_REVIEWS],
+             "legacy_paper_count": [{"legacy_paper_closed_in_window": "0"}], "pre_window_closes": []}
+    assert set(files) == set(rr.REQUIRED_CAPTURES), set(files) ^ set(rr.REQUIRED_CAPTURES)
+    headers = {"trades": list(trade().keys()), "cf_arms": list(arm_row(1, "live_actual", 0).keys()), "predicates": ["review", "n"],
+               "sell_discipline": ["trade_id", "peak_r"], "skips_window": ["id", "ticker", "alert_date", "skip_reason"],
+               "skips_stop_too_wide": ["id", "ticker", "alert_date"], "admitted_magna53": ["id", "ticker", "alert_date", "account_mode"],
+               "ep_alerts": ["ticker", "alert_date"], "safeguard_transitions": ["safeguard", "account_mode", "state", "last_transition_at"],
+               "pre_window_closes": ["account_mode", "signal_type", "n"], "audit_breakout": ["id", "created_at", "event_type", "summary", "detail"],
+               "audit_recorder": ["id", "created_at", "event_type", "summary"]}
+    for name, rows in files.items():
+        if name in skip:
+            continue
+        if rows:
+            _write_csv(run / "data" / f"{name}.csv", rows)
+        else:
+            (run / "data" / f"{name}.csv").write_text(",".join(headers[name]) + "\n")
+
+
+def _report(run: Path, **kw):
+    return rr.build_report(run, date(2026, 11, 29), rr.FIRST_WINDOW_START, labelled=[], abstentions=set(), grades=[], **kw)
+
+
+class TestRechallenge1108:
+    def test_f1_line_one_says_too_few_or_recorder_gap_never_nothing_beats_on_an_unread_month(self, tmp_path):
+        """Finding 1: 'Nothing beats what we run' only when an ARM lens on the current era actually read NOTHING.
+        Three era-E fills with no recorder rows inside the retry window -> 'too few trades to read yet'; the same
+        three closed past the retry window -> 'recorder gap on 3 fill(s)'."""
+        fresh = [trade(id=i, ticker=f"T{i}", closed_at="2026-11-27 20:00:00+00", total_pnl="-20", exits=legs(("stop_hit", 98))) for i in range(1, 4)]
+        _full_capture(tmp_path / "fresh", fresh, [])
+        rep = _report(tmp_path / "fresh")
+        assert rep["answer"].startswith("too few trades to read yet") and "Nothing beats" not in rep["answer"]
+        old = [dict(t, closed_at="2026-11-12 20:00:00+00") for t in fresh]
+        _full_capture(tmp_path / "old", old, [])
+        rep = _report(tmp_path / "old")
+        assert rep["answer"].startswith("recorder gap on 3 fill(s)")
+        # a count lens reading NOTHING (none of his labels missed) is not an arm reading NOTHING
+        rows = [{"lens": "selection: his EP labels", "where": "L1", "n": 1, "reading": "x", "verdict": "NOTHING"},
+                {"lens": "stop: stop_orb_low", "where": "L1 / era_e", "n": 0, "reading": "x", "verdict": "CAN'T TELL"}]
+        assert not rr.answer_line(rows, {"winners": [], "losers": []}).startswith("Nothing beats")
+        rows[1]["verdict"] = "NOTHING"
+        assert rr.answer_line(rows, {"winners": [], "losers": []}).startswith("Nothing beats what we run")
+        rows[1]["verdict"] = "WATCH"
+        assert rr.answer_line(rows, {"winners": [], "losers": []}).startswith("1 arm(s) on watch")
+
+    def test_f2_a_missing_capture_file_is_named_not_read_as_an_empty_month(self, tmp_path):
+        """Finding 2: trades.csv alone (the probe's Case A) -> every other file NOT CAPTURED on the page, five folded
+        rows 'n/a — not captured', the absence sentence makes no claim, line 1 leads with the incomplete capture."""
+        run = tmp_path / "runA"
+        (run / "data").mkdir(parents=True)
+        (run / "data" / "trades.csv").write_text(",".join(trade().keys()) + "\n")
+        rep = _report(run)
+        missing = rep.get("not_captured", [])
+        assert "predicates" in missing and "strategy_toggles" in missing and "audit_recorder" in missing and "trades" not in missing
+        assert len(rep["folded"]) == 5 and all(fr["n"] == rr.NOT_CAPTURED for fr in rep["folded"])
+        assert rep["missed_absence"].startswith("NOT CAPTURED") and "did not run" not in rep["missed_absence"]
+        assert rep["answer"].startswith("capture incomplete") and "Nothing beats" not in rep["answer"]
+        md = rr.render(rep)
+        assert "**NOT CAPTURED: predicates.csv**" in md and rr.NOT_CAPTURED in md
+        assert "NOT CAPTURED" in rr.write_manifest(run, "2026-11-29T18:00:00-05:00")
+        # one file missing from an otherwise full capture is named too; trades.csv missing stops the read
+        _full_capture(tmp_path / "runB", [trade()], [], skip={"predicates"})
+        rep = _report(tmp_path / "runB")
+        assert rep.get("not_captured", []) == ["predicates"] and rep["answer"].startswith("capture incomplete — 1 file(s)")
+        _full_capture(tmp_path / "runC", [trade()], [], skip={"trades"})
+        with pytest.raises(SystemExit):
+            _report(tmp_path / "runC")
+        assert set(rr.REQUIRED_CAPTURES) == {p.stem for p in CAPTURE.glob("*.sql")} and len(rr.REQUIRED_CAPTURES) >= 17
+
+    def test_f3_a_propose_needs_one_admission_cell_on_one_side_of_1104(self):
+        """Finding 3: 12 winning era-E fills under ONE admission label split 7 before / 5 after 2026-11-04 mix the two
+        sides of #718 (an admission change) — WATCH, not PROPOSE; 12 on one side is PROPOSE. The cell key is
+        (admission era, pre/post 11-04); for a post-11-04 fill the DERIVED label (I16: the 11-04..11-07 recorder rows
+        carry the 08-31 stamp from before the row existed)."""
+        arm_rows = {(str(i), "stop_orb_low"): arm_row(i, "stop_orb_low", 0.0 + 0.01 * i, 0.0 + 0.01 * i) for i in range(1, 13)}
+        mixed = {"era_e": [dict(fill(i, -1.0), admission_era="adm_A", post_1104=(i > 7)) for i in range(1, 13)]}
+        res = rr.arm_lens("stop", mixed, arm_rows, "era_e")["stop_orb_low"]
+        assert res["verdict"] == "WATCH" and "demoted" in res["why"] and "adm_A pre-11-04 n 7" in res["why"] and "adm_A post-11-04 n 5" in res["why"]
+        one_side = {"era_e": [dict(fill(i, -1.0), admission_era="adm_A", post_1104=True) for i in range(1, 13)]}
+        assert rr.arm_lens("stop", one_side, arm_rows, "era_e")["stop_orb_low"]["verdict"] == "PROPOSE"
+        cells = rr.admission_cells("stop", mixed, arm_rows)
+        assert {(c["admission_era"], c["side"], c["n"]) for c in cells if c["arm"] == "stop_orb_low"} == {("adm_A", "pre-11-04", 7), ("adm_A", "post-11-04", 5)}
+        stamped = arm_row(1, "live_actual", 1.0, admission_era="adm_2026-08-31_extension_cap_50_slot_rank_rs")
+        assert rr.admission_cell_key(trade(alert_date="2026-11-05"), stamped) == ("adm_2026-11-04_open_below_floor", "post-11-04")
+        assert rr.admission_cell_key(trade(alert_date="2026-11-03"), stamped) == ("adm_2026-08-31_extension_cap_50_slot_rank_rs", "pre-11-04")
+        assert rr.admission_cell_key(trade(alert_date="2026-11-03"), None) == ("adm_2026-08-31_extension_cap_50_slot_rank_rs", "pre-11-04")
+
+    def test_f4_the_armed_runner_shape_does_not_apply_where_the_era_had_no_arm(self):
+        """Finding 4: an era-C trade (partial at +4, stop at entry, peak 104) counted as BOTH shapes under the 3R
+        fallback. The arm comes from rule_eras.exit_rules_as_of(alert_date, signal_type, exit_rule=row); None = n/a."""
+        era_c = trade(alert_date="2026-08-20", exit_rule="", exits=legs(("partial_profit", 104, 3), ("stop_hit", 100.0, 7)))
+        s = rr.runner_shapes(era_c, {"peak_price": "104"}, {"breakeven_arm_r": ""})
+        assert s["partial_breakeven"] is True and s["armed_breakeven"] is False and s["arm_r"] is None and s["arm_price"] is None
+        assert rr.breakeven_arm_for(era_c) is None
+        assert rr.breakeven_arm_for(trade(alert_date="2026-10-20", exit_rule="depth")) == 3.0
+        assert rr.breakeven_arm_for(trade(alert_date="2026-10-20", account_mode="paper", signal_type="magna53_smallcap", exit_rule="depth")) == 3.0
+        l3 = trade(account_mode="paper", signal_type="breakout_v1", exit_rule="breakout_pp", alert_date="2026-11-04", exits=legs(("stop_hit", 100.0)))
+        assert rr.runner_shapes(l3, {"peak_price": "104"}, None)["arm_r"] is None
+        era_e = trade(exits=legs(("stop_hit", 100.0)))
+        assert rr.runner_shapes(era_e, {"peak_price": "103.2"}, None)["armed_breakeven"] is True       # era E: 3 via rule_eras
+        assert rr.partial_descriptives([era_c, era_e], {str(era_c["id"]): {"peak_price": "104"}})["armed_na"] == 1
+
+    def test_f5_the_absence_sentence_names_width_dropped_and_malformed_records(self, tmp_path):
+        """Finding 5: two missed-by-slots records both dropped by the width rule + one malformed -> the page names
+        them; it never says 'none broke out while held' when records were written."""
+        audit = [{"id": "1", "created_at": "", "event_type": rr.HOLD_EVENT, "summary": "", "detail": json.dumps({"ticker": "ZZZ", "state": "slots_full"})},
+                 {"id": "3", "created_at": "", "event_type": rr.ENTRY_DAY_EVENT, "summary": "", "detail": "{}"}]
+        wide = {"ticker": "WID", "day": "2026-11-04", "break_price": 50, "stop": 47, "width": 0.06, "adr20": 0.05}
+        bad = {"ticker": "BAD", "day": "2026-11-04", "break_price": 50, "width": 0.02, "adr20": 0.05}     # no stop
+        audit += [{"id": str(10 + i), "created_at": "", "event_type": rr.MISSED_EVENT, "summary": "", "detail": json.dumps(rec)}
+                  for i, rec in enumerate((wide, wide, bad))]
+        _full_capture(tmp_path / "run", [trade()], [], audit=audit)
+        rep = _report(tmp_path / "run")
+        s = rep["missed_absence"]
+        assert "hold rows, none broke out while held" not in s and s.startswith("3 missed-by-slots record(s) written, none readable")
+        assert "2 dropped by the width rule" in s and "1 malformed" in s
+        assert rep["missed"]["raw_n"] == 3 and rep["missed"]["width_dropped"] == 2 and rep["missed"]["malformed"] == 1
+        obs = rr.absence_observables(audit, 0, 5, "on", None)
+        assert rr.absence_sentence(obs, 0, raw_n=0) == "1 hold rows, none broke out while held"
+        assert rr.absence_sentence(obs, 0, raw_n=1, bad_json=1).startswith("1 missed-by-slots record(s) written, none readable — 1 unreadable JSON")
+        assert rr.absence_sentence(obs, 1, raw_n=3, width_dropped=2) == "missed 1 of 1 held rows; 2 dropped by the width rule"
+
+    def test_f6_cannot_tell_stays_cannot_tell(self):
+        """Finding 6: the YAML's own 09-16 reading (4 of 11 vs 17 of 25, p 0.141) maps to the ladder's CAN'T TELL;
+        KEEP -> NOTHING (the current filter is right); REVISIT -> WATCH / PROPOSE."""
+        assert rr.stop_too_wide_matrix([12.0] * 4 + [1.0] * 7, [12.0] * 17 + [1.0] * 8)["verdict"] == "CAN'T TELL"
+        assert rr.stop_too_wide_matrix([1] * 10, [12] * 10)["verdict"] == "NOTHING"
+        assert rr.stop_too_wide_matrix([12, 11, 15], [5, 4, 3])["verdict"] == "WATCH"
+        assert rr.stop_too_wide_matrix([12, 11], [5, 4, 3])["verdict"] == "CAN'T TELL"      # under 3: the ladder's own rung
+
+    def test_f7_the_breakout_grade_test_caps_at_watch(self):
+        """Finding 7: ten graded `no` losers and a `good` winner is WATCH, never PROPOSE — charts support, never
+        decide; his EP labels are capped the same way."""
+        grades = [{"list_date": "2026-11-03", "ticker": f"N{i}", "grade": "no"} for i in range(10)] + [{"list_date": "2026-11-03", "ticker": "G", "grade": "good"}]
+        l3 = [trade(id=i, ticker=f"N{i}", account_mode="paper", signal_type="breakout_v1", exit_rule="breakout_pp", alert_date="2026-11-04", total_pnl="-20")
+              for i in range(10)] + [trade(id=99, ticker="G", account_mode="paper", signal_type="breakout_v1", exit_rule="breakout_pp", alert_date="2026-11-04", total_pnl="60")]
+        bs = rr.breakout_selection(l3, grades)
+        assert bs["graded"] == 11 and bs["low_n"] == 10 and bs["verdict"] == "WATCH"
+        l3[0]["total_pnl"] = "20"                                      # a `no` name that won: the test is not met
+        assert rr.breakout_selection(l3, grades)["verdict"] == "NOTHING"
+        assert rr.breakout_selection(l3[:2], grades)["verdict"] == "CAN'T TELL"
+
+    def test_f8_folded_rows_read_every_lens_each_review_asked_about(self):
+        """Finding 8: 482 asked stop + harvest + trail; the parked geometry review asked stop + entry; the runner
+        sweep is descriptive. A stop arm on WATCH shows on the 482 row even when the trail arms are unreadable."""
+        arm_results = {"stop": {"stop_orb_low": {"verdict": "WATCH"}, "stop_adr_050": {"verdict": "CAN'T TELL"}},
+                       "partials": {"harvest_t3": {"verdict": "CAN'T TELL"}}, "exits": {"trail_pivot_swing": {"verdict": "CAN'T TELL"}},
+                       "buy_point": {"entry_first_hour_bar": {"verdict": "NOTHING"}}}
+        preds = [{"review": rid, "n": str(i)} for i, rid in enumerate(rr.FOLDED_REVIEWS) if rid != "exit_tune_cohort_review"]
+        rows = {r["review"]: r for r in rr.folded_rows(preds, arm_results, "CAN'T TELL")}
+        assert list(rows) == list(rr.FOLDED_REVIEWS)
+        assert rows["live_fill_counterfactuals_first_read_482"]["verdict"] == "WATCH"
+        assert rows["bracket_geometry_variants_parked"]["verdict"] == "WATCH"
+        assert rows["exit_tune_cohort_review"]["verdict"] == "CAN'T TELL" and rows["exit_tune_cohort_review"]["n"] == rr.NOT_CAPTURED
+        assert rows["runner_rule_sweep_recut"]["verdict"] == "descriptive" and rows["stop_too_wide_outcome_cohort"]["verdict"] == "CAN'T TELL"
+        assert rr.FOLD_MAP["live_fill_counterfactuals_first_read_482"] == ("stop", "partials", "exits")
+        assert rr.FOLD_MAP["bracket_geometry_variants_parked"] == ("stop", "buy_point")
+
+    def test_f9_the_stop_too_wide_yaml_pointer_says_nothing_stays_outside_and_marks_step_one_replaced(self):
+        """Finding 9: plan §7's last column says nothing stays outside; the pull from mi_ep_missed_outcomes (step 1)
+        is the source the plan bans and is marked REPLACED by #720 §3 Stop (c). The other four keep their 'outside'."""
+        import yaml
+        reg = {e["review_id"]: e for e in yaml.safe_load(YAML.read_text(encoding="utf-8"))["reviews"]}
+        act = reg["stop_too_wide_outcome_cohort"]["action_when_ready"]
+        assert "keeps its own predicate and bar for what stays OUTSIDE" not in act
+        assert "Nothing stays outside" in act and "REPLACED by #720 §3 Stop (c)" in act
+        assert act.index("REPLACED by #720 §3 Stop (c)") < act.index("mi_ep_missed_outcomes")
+        for rid in rr.FOLDED_REVIEWS:
+            if rid != "stop_too_wide_outcome_cohort":
+                assert "what stays OUTSIDE" in reg[rid]["action_when_ready"], rid
+
+    def test_f10_the_recorder_heartbeat_and_unsettled_pairs_are_named(self):
+        """Finding 10: the nightly `_recorded` / `_error` audit rows are captured, the sessions with no row are
+        named, and a closed fill WITH rows but no settled control pair past the retry window is named too."""
+        assert (CAPTURE / "audit_recorder.sql").exists()
+        audit = [{"id": "1", "created_at": "2026-11-23 23:04:10+00", "event_type": rr.RECORDER_RUN_EVENT, "summary": "0 fill(s)"},
+                 {"id": "2", "created_at": "2026-11-24 23:04:10+00", "event_type": rr.RECORDER_ERROR_EVENT, "summary": "run failed: boom"},
+                 {"id": "3", "created_at": "2026-11-25 23:04:10+00", "event_type": rr.RECORDER_RUN_EVENT, "summary": "0 fill(s)"}]
+        runs = rr.recorder_runs(audit, date(2026, 11, 23), date(2026, 11, 29))
+        assert runs["sessions"] == 4 and runs["ran"] == 2 and runs["last_run"] == date(2026, 11, 25)       # 11-26 Thanksgiving is no session
+        assert runs["missing"] == [date(2026, 11, 24), date(2026, 11, 27)] and runs["error_rows"] == 1 and runs["error_samples"] == ["run failed: boom"]
+        assert rr.recorder_runs([], date(2026, 11, 23), date(2026, 11, 29))["ran"] == 0
+        old_rows = trade(id=5, ticker="HALF", closed_at="2026-10-01 20:00:00+00")
+        cf = [arm_row(5, "live_actual", 1.0), arm_row(5, "live_replay", 1.0, outcome="horizon")]
+        g = rr.recorder_gaps([old_rows], cf, date(2026, 11, 29))["era_e"]
+        assert g["with_rows"] == 1 and g["settled_pairs"] == 0 and g["gaps"] == [] and g["unsettled"] == ["HALF (trade 5, closed 2026-10-01)"]
+        assert rr.recorder_gap_count({"era_e": g}) == 1
+        fresh = trade(id=6, ticker="NEW", closed_at="2026-11-27 20:00:00+00")
+        assert rr.recorder_gaps([fresh], [arm_row(6, "live_actual", 1.0)], date(2026, 11, 29))["era_e"]["unsettled"] == []
