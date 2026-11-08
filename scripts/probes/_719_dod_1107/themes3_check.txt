@@ -1,0 +1,4 @@
+as_of 2026-11-06 bases {'1d': '2026-11-05', '5d': '2026-10-30', '21d': '2026-10-08', 'ytd': '2025-12-31'}
+Cloud Contact Center & CCaaS Communication Platfor | 1d: mine -10.34 (n=2) vs export -10.34 (n=2) ; 5d: mine -17.05 (n=2) vs export -17.05 (n=2) ; 21d: mine -14.01 (n=2) vs export -14.01 (n=2) ; ytd: mine 94.9 (n=2) vs export 94.9 (n=2)
+Digital Freight & Shared Mobility Platforms | 1d: mine -0.55 (n=3) vs export -0.55 (n=3) ; 5d: mine 6.19 (n=3) vs export 6.19 (n=3) ; 21d: mine 12.62 (n=3) vs export 12.62 (n=3) ; ytd: mine 1.21 (n=3) vs export 1.21 (n=3)
+Quantum Computing Pure-Plays (Expanded: Neutral At | 1d: mine 20.73 (n=3) vs export 20.73 (n=3) ; 5d: mine 4.38 (n=3) vs export 4.38 (n=3) ; 21d: mine -18.19 (n=3) vs export -18.19 (n=3) ; ytd: mine -37.13 (n=2) vs export -37.13 (n=2)

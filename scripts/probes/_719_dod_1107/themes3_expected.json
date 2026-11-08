@@ -1,0 +1,49 @@
+[
+ {
+  "name": "Cloud Contact Center & CCaaS Communication Platforms",
+  "members": [
+   "FIVN",
+   "RNG"
+  ],
+  "ret_1d": -10.34,
+  "ret_5d": -17.05,
+  "ret_21d": -14.01,
+  "ret_ytd": 94.9,
+  "n_1d": 2,
+  "n_5d": 2,
+  "n_21d": 2,
+  "n_ytd": 2
+ },
+ {
+  "name": "Digital Freight & Shared Mobility Platforms",
+  "members": [
+   "LYFT",
+   "VIA",
+   "YMM"
+  ],
+  "ret_1d": -0.55,
+  "ret_5d": 6.19,
+  "ret_21d": 12.62,
+  "ret_ytd": 1.21,
+  "n_1d": 3,
+  "n_5d": 3,
+  "n_21d": 3,
+  "n_ytd": 3
+ },
+ {
+  "name": "Quantum Computing Pure-Plays (Expanded: Neutral Atom & Annealing)",
+  "members": [
+   "INFQ",
+   "IONQ",
+   "RGTI"
+  ],
+  "ret_1d": 20.73,
+  "ret_5d": 4.38,
+  "ret_21d": -18.19,
+  "ret_ytd": -37.13,
+  "n_1d": 3,
+  "n_5d": 3,
+  "n_21d": 3,
+  "n_ytd": 2
+ }
+]
