@@ -13,12 +13,14 @@ from pathlib import Path
 
 import pytest
 
+from tests._sql_static import assert_one_read_only, strip_comments
+
 SQL_PATH = Path(__file__).resolve().parents[1] / "scripts" / "export_trades_snapshot.sql"
 
 
 def _code() -> str:
     """The SQL with every `--` comment removed (a keyword inside a comment must not trip the read-only check)."""
-    return re.sub(r"--[^\n]*", "", SQL_PATH.read_text())
+    return strip_comments(SQL_PATH.read_text())
 
 
 def _aliases() -> set[str]:
@@ -53,12 +55,7 @@ def test_keeps_every_pre_706_bare_column(col):
 
 
 def test_is_one_read_only_statement():
-    code = _code().strip()
-    assert re.match(r"(?is)(WITH|SELECT)\b", code), "the export must open with SELECT (or a WITH feeding it)"
-    assert code.endswith(";") and code.count(";") == 1, "exactly one statement"
-    banned = re.findall(
-        r"(?i)\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|COPY|MERGE|CALL|SET|VACUUM)\b", code)
-    assert not banned, f"a read-only export may not contain {sorted(set(banned))}"
+    assert_one_read_only(_code())
 
 
 def test_stays_the_live_book_only():

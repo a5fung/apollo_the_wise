@@ -195,6 +195,11 @@ def session_open(d: date) -> datetime:
     return datetime(d.year, d.month, d.day, 9, 30, tzinfo=_ET)
 
 
+def _clock(d: date, m: int) -> str:
+    """Minute index `m` of `d`'s session as an ET clock string (5 -> '09:35')."""
+    return (session_open(d) + timedelta(minutes=m)).strftime("%H:%M")
+
+
 def market_minute(now_et: datetime) -> int:
     """Minutes since 09:30 ET on now's ET date (09:35:10 -> 5). Negative before the open."""
     now_et = now_et.astimezone(_ET)
@@ -403,6 +408,22 @@ async def _page_once(key: tuple, text: str) -> None:
         logger.error(f"breakout v1 page failed: {e}")
 
 
+def _preview(names: list[str], n: int) -> str:
+    """The first `n` names, comma-joined, with '…' when there are more (a page's names list)."""
+    return f"{', '.join(names[:n])}{'…' if len(names) > n else ''}"
+
+
+async def _crashed(key: tuple, ticker: str, where: str, e: Exception, *, step: str = "paper order step",
+                   log: str = "tick crashed") -> str:
+    """ONE name's crash record: logged with its traceback, audited `breakout_v1_entry_crash` (`where` names the step in
+    the summary; '' for the order step), paged once per `key` (the caller's dedup key, unchanged). -> 'crashed'."""
+    logger.exception(f"breakout v1 {ticker}: {log}", exc_info=e)
+    await log_audit_event("breakout_v1_entry_crash", f"{ticker}{f' ({where})' if where else ''} — "
+                                                     f"{type(e).__name__}: {str(e)[:300]}")
+    await _page_once(key, f"🚨 *{ticker}* breakout v1 {step} crashed — {type(e).__name__}: {str(e)[:160]}")
+    return "crashed"
+
+
 async def _note(today: date, ticker: str, state: str, summary: str, detail: dict | None = None) -> None:
     """One audit row per (name, state) change in a day — a volume hold is not re-recorded every minute. The detail
     carries `ticker`, `state` and `day` (the 15:55 missed-by-slots step reads the `slots_full` rows back by them).
@@ -462,7 +483,7 @@ async def _hold_for_slot(today: date, lrow: dict, st: dict, m: int, free: int, s
     minute. `free` is the free count AT THIS HOLD (0 — the book is full; never the tick-start count, which overstated it
     on the funnel-block path) and `seated` how many names took a slot this minute before it. `count_unreadable`: the
     open count could not be read — the row's state is `slots_count_unreadable` instead, which 15:55 never records."""
-    clock = (session_open(today) + timedelta(minutes=m)).strftime("%H:%M")
+    clock = _clock(today, m)
     rank, score = lrow.get("list_rank"), lrow.get("order_score")
     state = SLOTS_UNREADABLE_STATE if count_unreadable else SLOTS_FULL_STATE
     why = ("the paper book's open count could not be read" if count_unreadable
@@ -508,29 +529,36 @@ def first_break(mins: dict[int, dict], *, level: float, vol_bar: float, from_min
     return None
 
 
-async def _todays_details(event_type: str, today: date) -> list[dict] | None:
-    """The parsed `detail` of every `event_type` audit row written for `today` (the detail's own `day` field — the rows
-    of the last day are read, matched in Python; detail is TEXT). None = the log could not be read."""
-    try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT event_type, detail FROM mi_audit_log WHERE event_type = $1 "
-                "AND created_at > NOW() - INTERVAL '1 day' ORDER BY created_at DESC", event_type)
-    except Exception as e:  # loud-ok: the caller audits + pages; nothing is written on a read it cannot trust
-        logger.warning(f"breakout v1: today's {event_type} rows are unreadable ({type(e).__name__}: {e})")
-        return None
+async def _audit_details(event_type: str, *, last_day: bool) -> list:
+    """The parsed `detail` of every `event_type` row in `mi_audit_log`, newest first — the last day's rows, or every
+    row (`last_day=False`). Matched in Python by each caller (detail is TEXT); a row whose detail is not JSON is skipped,
+    never the read. RAISES when the log cannot be read: each caller keeps its own fail-safe answer. Not
+    `db.get_audit_log`: its LIMIT 30 would cut the ~350-name hold read."""
+    sql = ("SELECT event_type, detail FROM mi_audit_log WHERE event_type = $1 "
+           + ("AND created_at > NOW() - INTERVAL '1 day' " if last_day else "") + "ORDER BY created_at DESC")
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(sql, event_type)
     out = []
     for r in rows or []:
         if r["event_type"] != event_type:
             continue
         try:
-            d = json.loads(r["detail"])
+            out.append(json.loads(r["detail"]))
         except Exception:  # loud-ok: one malformed row is skipped, never the read
             continue
-        if isinstance(d, dict) and d.get("day") == today.isoformat() and d.get("ticker"):
-            out.append(d)
     return out
+
+
+async def _todays_details(event_type: str, today: date) -> list[dict] | None:
+    """The parsed `detail` of every `event_type` audit row written for `today` (the detail's own `day` field — the rows
+    of the last day are read, matched in Python; detail is TEXT). None = the log could not be read."""
+    try:
+        details = await _audit_details(event_type, last_day=True)
+    except Exception as e:  # loud-ok: the caller audits + pages; nothing is written on a read it cannot trust
+        logger.warning(f"breakout v1: today's {event_type} rows are unreadable ({type(e).__name__}: {e})")
+        return None
+    return [d for d in details if isinstance(d, dict) and d.get("day") == today.isoformat() and d.get("ticker")]
 
 
 async def _first_holds_today(today: date) -> dict[str, dict] | None:
@@ -603,7 +631,7 @@ async def _record_missed_by_slots(today: date, rows: dict[str, dict], first: dic
                           from_minute=int(d.get("minute") or 0))
         if brk is None:
             continue                                   # held, but it never broke out (level + pace): nothing was missed
-        clock = (session_open(today) + timedelta(minutes=brk["minute"])).strftime("%H:%M")
+        clock = _clock(today, brk["minute"])
         rec = {"ticker": ticker, "day": today.isoformat(), "minute": brk["minute"], "clock_et": clock,
                "break_price": d.get("level"), "break_high": brk["high"], "stop": brk["stop"], "width": brk["width"],
                "break_cum_volume": brk["cum_volume"], "break_need_volume": brk["need_volume"],
@@ -635,7 +663,7 @@ async def _record_missed_by_slots(today: date, rows: dict[str, dict], first: dic
                               json.dumps({"unread": unread, "written": n}))
         await _page_once(("missed_bars_unreadable", today),
                          f"⚠️ Breakout v1: {len(unread)} name(s) held for a paper slot today could not be judged "
-                         f"at 15:55 ET (no minute bars or no list row) ({', '.join(unread[:5])}{'…' if len(unread) > 5 else ''}) — their "
+                         f"at 15:55 ET (no minute bars or no list row) ({_preview(unread, 5)}) — their "
                          f"missed-by-slots records were NOT written")
     return n
 
@@ -708,19 +736,7 @@ async def planned_entry_cancel_marked(trade_id, order_id: str) -> bool:
     """Did THIS job cancel this exact order of this trade on purpose? True only on a `PLANNED_ENTRY_CANCEL` row naming
     both (the last day). Matched in Python (detail is TEXT). Any failure -> False (the stream then records + pages)."""
     try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT event_type, detail FROM mi_audit_log WHERE event_type = $1 "
-                "AND created_at > NOW() - INTERVAL '1 day' ORDER BY created_at DESC",
-                PLANNED_ENTRY_CANCEL)
-        for row in rows or []:
-            if row["event_type"] != PLANNED_ENTRY_CANCEL:
-                continue
-            try:
-                d = json.loads(row["detail"])
-            except Exception:  # loud-ok: one malformed row is skipped, never the check
-                continue
+        for d in await _audit_details(PLANNED_ENTRY_CANCEL, last_day=True):
             if str(d.get("trade_id")) == str(trade_id) and str(d.get("order_id")) == str(order_id):
                 return True
     except Exception as e:  # loud-ok: fail-safe — NOT planned, so the stream still records + pages
@@ -1055,17 +1071,8 @@ async def fill_stop_checked(trade_id) -> bool:
     if int(trade_id) in _fill_checked:
         return True
     try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT event_type, detail FROM mi_audit_log WHERE event_type = $1 ORDER BY created_at DESC",
-                FILL_STOP_CHECKED)
-        for r in rows or []:
-            try:
-                d = json.loads(r["detail"])
-            except Exception:  # loud-ok: one malformed row is skipped, never the check
-                continue
-            if r["event_type"] == FILL_STOP_CHECKED and str(d.get("trade_id")) == str(trade_id):
+        for d in await _audit_details(FILL_STOP_CHECKED, last_day=False):     # ANY age: no window
+            if str(d.get("trade_id")) == str(trade_id):
                 _fill_checked.add(int(trade_id))
                 return True
     except Exception as e:  # loud-ok: re-deciding is idempotent (broker truth), so False is the safe answer
@@ -1406,13 +1413,9 @@ async def check_stop_at_fill_after_close(row: dict, now_et: datetime | None = No
         lrow = next((x for x in lrows if x["ticker"] == ticker), None)
         result = await _check_stop_at_fill_once(row, lrow, now_et, m, session_date=alert_date)
     except Exception as e:  # loud-ok: audited + paged; the evening pass must go on to the row's exit
-        logger.exception(f"breakout v1 {ticker}: the stop at the fill (after the close) crashed")
-        await log_audit_event("breakout_v1_entry_crash", f"{ticker} (stop at the fill, after the close) — "
-                                                         f"{type(e).__name__}: {str(e)[:300]}")
-        await _page_once(("crash_fill_close", tid),
-                         f"🚨 *{ticker}* breakout v1 stop-at-the-fill check (after the close) crashed — "
-                         f"{type(e).__name__}: {str(e)[:160]}")
-        return "crashed"
+        return await _crashed(("crash_fill_close", tid), ticker, "stop at the fill, after the close", e,
+                              step="stop-at-the-fill check (after the close)",
+                              log="the stop at the fill (after the close) crashed")
     if result in ("fill_check_wait", "fill_lower_rejected", "fill_lower_unverified", "fill_sale_failed"):
         # the evening pass has no "next minute", and no next evening either (only a row filled THIS session is
         # visited): whatever `_lower_stop_after_fill` / `_sell_after_fill` audited as retried next minute is NOT
@@ -1533,6 +1536,53 @@ async def _family_open_orders() -> list[dict] | None:
             and str(o.get("side") or "").lower() == "buy"]
 
 
+async def _read_list_bars(today: date, m: int, need: list[str], now_et: datetime,
+                          last_completed: int) -> dict[str, list[dict]]:
+    """The tick's ONE batched bars read (#717 stage 2) for the names in `need` -> {ticker: bars}; a name absent was not
+    read this minute (its chunk failed, or the whole batch was skipped). Owns `_bars_unread_ticks`: every tick with a
+    name unread adds one (audited), the third straight pages ONCE a day, a tick with every name read resets it. No
+    names -> no request, the count untouched."""
+    global _bars_unread_ticks
+    if not need:
+        return {}
+    bars_by_ticker: dict[str, list[dict]] = {}
+    answer = await alpaca.get_minute_bars_range_batch(
+        need, session_open(today), now_et, last_completed=last_completed, chunk_max=BARS_CHUNK_MAX)
+    if answer is None:
+        # the previous minute's page is still on the batch thread (a hung request; alpaca-py sets no HTTP
+        # timeout): this minute's batch was SKIPPED — nothing submitted behind it, every name unread, a resting
+        # buy left as it is; counts toward the same 3-straight page as a failed request (re-review 2026-11-07)
+        unread, why = list(need), "the bars batch is still in flight"
+        _bars_unread_ticks += 1
+        await log_audit_event("breakout_v1_bars_batch_in_flight",
+                              f"minute {m}: bars batch still in flight — the previous minute's bars page has not "
+                              f"returned from alpaca-py, so this minute's read was skipped (nothing submitted "
+                              f"behind it); {len(need)} name(s) unread this minute, judged once it returns",
+                              json.dumps({"minute": m, "need": len(need), "straight_ticks": _bars_unread_ticks}))
+    else:
+        bars_by_ticker = answer
+        unread, why = [t for t in need if t not in bars_by_ticker], "a bars request failed"
+        if unread:
+            _bars_unread_ticks += 1
+            await log_audit_event("breakout_v1_bars_unreadable",
+                                  f"minute {m}: {len(unread)} of {len(need)} name(s) have no minute bars this "
+                                  f"minute (a bars request failed) — judged next minute: {', '.join(unread[:20])}"
+                                  + (" …" if len(unread) > 20 else ""),
+                                  json.dumps({"minute": m, "need": len(need), "unread": unread,
+                                              "straight_ticks": _bars_unread_ticks}))
+    if unread and _bars_unread_ticks >= BARS_FAILS_BEFORE_PAGE:
+        # a chunk that keeps failing (one bad symbol can blind up to 200 names), or a page that stays hung, pages
+        # ONCE a day — an audit row a minute is not a signal anyone reads (review 2026-11-07)
+        await _page_once(("bars_unreadable", today),
+                         f"⚠️ Breakout v1: the minute bars of {len(unread)} of {len(need)} list name(s) could "
+                         f"not be read for {_bars_unread_ticks} minutes running ({why}; "
+                         f"{_preview(unread, 5)}) — those names are not "
+                         f"being judged, and a resting buy under one is left exactly as it is")
+    elif not unread:
+        _bars_unread_ticks = 0
+    return bars_by_ticker
+
+
 async def _cancel_orphans(today: date, family: list[dict], rows: dict[str, dict]) -> int:
     """An open order in the family that no LIVE row of today carries (a crash between the broker accepting an order
     and the row recording it, or a row settled 'cancelled' / 'skipped' while an order still rests under it):
@@ -1601,13 +1651,9 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
                     out["actions"][r["ticker"]] = await _check_stop_at_fill(
                         r, next((x for x in lrows if x["ticker"] == r["ticker"]), None), now_et, m)
                 except Exception as e:  # loud-ok: audited + paged; the switch-off cancels below still run
-                    logger.exception(f"breakout v1 {r['ticker']}: the stop at the fill crashed")
-                    await log_audit_event("breakout_v1_entry_crash", f"{r['ticker']} (stop at the fill) — "
-                                                                     f"{type(e).__name__}: {str(e)[:300]}")
-                    await _page_once(("crash_fill", today, r["ticker"]),
-                                     f"🚨 *{r['ticker']}* breakout v1 stop-at-the-fill step crashed — "
-                                     f"{type(e).__name__}: {str(e)[:160]}")
-                    out["actions"][r["ticker"]] = "crashed"
+                    out["actions"][r["ticker"]] = await _crashed(
+                        ("crash_fill", today, r["ticker"]), r["ticker"], "stop at the fill", e,
+                        step="stop-at-the-fill step", log="the stop at the fill crashed")
     if not may_order:
         # the switch is off / the row refused: no new order, no re-price — and no resting breakout buy is left live
         reason = f"{BLOCK_STRATEGY_DISABLED}: breakout v1 switched off ({why})"
@@ -1644,43 +1690,7 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
             or (rows.get(t) is not None and rows[t].get("signal_type") == STRATEGY_ID
                 and rows[t]["status"] in ("order_placed", "confirmed"))]
     need += [t for t in missed_candidates if t not in need]
-    bars_by_ticker: dict[str, list[dict]] = {}
-    global _bars_unread_ticks
-    if need:
-        answer = await alpaca.get_minute_bars_range_batch(
-            need, session_open(today), now_et, last_completed=last_completed, chunk_max=BARS_CHUNK_MAX)
-        if answer is None:
-            # the previous minute's page is still on the batch thread (a hung request; alpaca-py sets no HTTP
-            # timeout): this minute's batch was SKIPPED — nothing submitted behind it, every name unread, a resting
-            # buy left as it is; counts toward the same 3-straight page as a failed request (re-review 2026-11-07)
-            unread, why = list(need), "the bars batch is still in flight"
-            _bars_unread_ticks += 1
-            await log_audit_event("breakout_v1_bars_batch_in_flight",
-                                  f"minute {m}: bars batch still in flight — the previous minute's bars page has not "
-                                  f"returned from alpaca-py, so this minute's read was skipped (nothing submitted "
-                                  f"behind it); {len(need)} name(s) unread this minute, judged once it returns",
-                                  json.dumps({"minute": m, "need": len(need), "straight_ticks": _bars_unread_ticks}))
-        else:
-            bars_by_ticker = answer
-            unread, why = [t for t in need if t not in bars_by_ticker], "a bars request failed"
-            if unread:
-                _bars_unread_ticks += 1
-                await log_audit_event("breakout_v1_bars_unreadable",
-                                      f"minute {m}: {len(unread)} of {len(need)} name(s) have no minute bars this "
-                                      f"minute (a bars request failed) — judged next minute: {', '.join(unread[:20])}"
-                                      + (" …" if len(unread) > 20 else ""),
-                                      json.dumps({"minute": m, "need": len(need), "unread": unread,
-                                                  "straight_ticks": _bars_unread_ticks}))
-        if unread and _bars_unread_ticks >= BARS_FAILS_BEFORE_PAGE:
-            # a chunk that keeps failing (one bad symbol can blind up to 200 names), or a page that stays hung, pages
-            # ONCE a day — an audit row a minute is not a signal anyone reads (review 2026-11-07)
-            await _page_once(("bars_unreadable", today),
-                             f"⚠️ Breakout v1: the minute bars of {len(unread)} of {len(need)} list name(s) could "
-                             f"not be read for {_bars_unread_ticks} minutes running ({why}; "
-                             f"{', '.join(unread[:5])}{'…' if len(unread) > 5 else ''}) — those names are not "
-                             f"being judged, and a resting buy under one is left exactly as it is")
-        elif not unread:
-            _bars_unread_ticks = 0
+    bars_by_ticker = await _read_list_bars(today, m, need, now_et, last_completed)
 
     # PASS 1 — every name's state; the rows that exist are managed NOW (a cancel this minute frees its slot this
     # minute); the names whose state permits a buy are collected for the slots below.
@@ -1738,11 +1748,7 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
                 continue
             eligible.append((lrow, st))
         except Exception as e:  # loud-ok: one name's crash is audited + paged; the other names still run
-            logger.exception(f"breakout v1 {ticker}: tick crashed")
-            await log_audit_event("breakout_v1_entry_crash", f"{ticker} — {type(e).__name__}: {str(e)[:300]}")
-            await _page_once(("crash", today, ticker),
-                             f"🚨 *{ticker}* breakout v1 paper order step crashed — {type(e).__name__}: {str(e)[:160]}")
-            out["actions"][ticker] = "crashed"
+            out["actions"][ticker] = await _crashed(("crash", today, ticker), ticker, "", e)
 
     # PASS 2 — THE SLOTS (his rulings 2026-11-06): the eligible names in LIST RANK order; the first `free` go to the
     # funnel, the rest are HELD (no trade row, retried next minute at that minute's price). HOLD-ONLY: a resting
@@ -1781,12 +1787,8 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
                         free = 0
                         await _hold_for_slot(today, lrow, st, m, 0, seated)
                 except Exception as e:  # loud-ok: one name's crash is audited + paged; the other names still run
-                    logger.exception(f"breakout v1 {ticker}: tick crashed (slots)")
-                    await log_audit_event("breakout_v1_entry_crash", f"{ticker} — {type(e).__name__}: {str(e)[:300]}")
-                    await _page_once(("crash", today, ticker),
-                                     f"🚨 *{ticker}* breakout v1 paper order step crashed — {type(e).__name__}: "
-                                     f"{str(e)[:160]}")
-                    out["actions"][ticker] = "crashed"
+                    out["actions"][ticker] = await _crashed(("crash", today, ticker), ticker, "", e,
+                                                            log="tick crashed (slots)")
 
     if m >= EOD_MINUTE:
         # TRACK WHAT WE MISS (his ruling 2026-11-06): the names that broke out while held and never got a slot, once each

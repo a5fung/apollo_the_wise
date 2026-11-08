@@ -44,6 +44,8 @@ from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
 from alpaca.data.enums import DataFeed
 
+from shared.dates import _ET
+
 logger = logging.getLogger(__name__)
 
 # ── Data feed selection ──────────────────────────────────────────────────────
@@ -899,10 +901,8 @@ async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
     Handles delayed opens and bars that aren't finalized at exactly 9:31.
     """
     try:
-        from zoneinfo import ZoneInfo
         client = _get_data_client()
-        et = ZoneInfo("America/New_York")
-        start = datetime.combine(trade_date, datetime.min.time().replace(hour=9, minute=30), tzinfo=et)
+        start = datetime.combine(trade_date, datetime.min.time().replace(hour=9, minute=30), tzinfo=_ET)
         end = start + timedelta(minutes=5)
         request = StockBarsRequest(
             symbol_or_symbols=ticker,
@@ -912,8 +912,7 @@ async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
             feed=get_data_feed(),
         )
         bars = await _sdk(client.get_stock_bars, request)
-        bar_data = bars.data if hasattr(bars, 'data') else bars
-        bar_set = bar_data.get(ticker, [])
+        bar_set = _bar_data(bars).get(ticker, [])
         if not bar_set:
             logger.warning(f"No bars for {ticker} in 9:30-9:35 window on {trade_date}")
             return None
@@ -952,11 +951,9 @@ async def get_minute_bars_window(
     in the 9:35–10:00 window.
     """
     try:
-        from zoneinfo import ZoneInfo
         client = _get_data_client()
-        et = ZoneInfo("America/New_York")
         open_dt = datetime.combine(
-            trade_date, datetime.min.time().replace(hour=9, minute=30), tzinfo=et,
+            trade_date, datetime.min.time().replace(hour=9, minute=30), tzinfo=_ET,
         )
         start = open_dt + timedelta(minutes=start_minute)
         end = open_dt + timedelta(minutes=end_minute)
@@ -968,8 +965,7 @@ async def get_minute_bars_window(
             feed=get_data_feed(),
         )
         bars = await _sdk(client.get_stock_bars, request)
-        bar_data = bars.data if hasattr(bars, 'data') else bars
-        bar_set = bar_data.get(ticker, []) or []
+        bar_set = _bar_data(bars).get(ticker, []) or []
         return [
             {
                 "open": float(b.open),
@@ -977,7 +973,7 @@ async def get_minute_bars_window(
                 "low": float(b.low),
                 "close": float(b.close),
                 "volume": int(b.volume),
-                "timestamp": b.timestamp.astimezone(et) if b.timestamp else None,
+                "timestamp": b.timestamp.astimezone(_ET) if b.timestamp else None,
             }
             for b in bar_set
         ]
@@ -987,6 +983,29 @@ async def get_minute_bars_window(
             f"[{start_minute}..{end_minute}): {e}"
         )
         return []
+
+
+def _bar_data(bars):
+    """The SDK's `BarSet` -> its {symbol: [Bar]} mapping (`.data`); a plain mapping passes through."""
+    return bars.data if hasattr(bars, "data") else bars
+
+
+def _bar_dicts(bar_set) -> list[dict]:
+    """ONE symbol's SDK bars -> the per-bar shape `get_minute_bars_range` and `get_minute_bars_range_batch` both return
+    (`t_et, open, high, low, close, volume, vwap`); a bar with no timestamp is dropped."""
+    return [
+        {
+            "t_et": b.timestamp.astimezone(_ET),
+            "open": float(b.open),
+            "high": float(b.high),
+            "low": float(b.low),
+            "close": float(b.close),
+            "volume": int(b.volume),
+            "vwap": float(b.vwap) if getattr(b, "vwap", None) is not None else None,
+        }
+        for b in bar_set
+        if b.timestamp is not None
+    ]
 
 
 async def get_minute_bars_range(ticker: str, start: datetime, end: datetime) -> list[dict]:
@@ -1005,9 +1024,7 @@ async def get_minute_bars_range(ticker: str, start: datetime, end: datetime) -> 
     day-so-far, never incremental, so nothing is permanently lost).
     """
     try:
-        from zoneinfo import ZoneInfo
         client = _get_data_client()
-        et = ZoneInfo("America/New_York")
         request = StockBarsRequest(
             symbol_or_symbols=ticker,
             timeframe=TimeFrame.Minute,
@@ -1022,21 +1039,7 @@ async def get_minute_bars_range(ticker: str, start: datetime, end: datetime) -> 
         # the call to a worker thread instead (#306 mandate; money-path hygiene,
         # not style).
         bars = await asyncio.to_thread(client.get_stock_bars, request)
-        bar_data = bars.data if hasattr(bars, 'data') else bars
-        bar_set = bar_data.get(ticker, []) or []
-        return [
-            {
-                "t_et": b.timestamp.astimezone(et),
-                "open": float(b.open),
-                "high": float(b.high),
-                "low": float(b.low),
-                "close": float(b.close),
-                "volume": int(b.volume),
-                "vwap": float(b.vwap) if getattr(b, "vwap", None) is not None else None,
-            }
-            for b in bar_set
-            if b.timestamp is not None
-        ]
+        return _bar_dicts(_bar_data(bars).get(ticker, []) or [])
     except Exception as e:
         logger.error(f"Failed to get minute-bar range for {ticker} [{start}..{end}]: {e}")
         return []
@@ -1119,8 +1122,6 @@ async def get_minute_bars_range_batch(tickers: list[str], start: datetime, end: 
         logger.error(f"minute-bar batch SKIPPED: the previous page is still on the batch thread (alpaca-py has not "
                      f"returned it) — {len(names)} name(s) unread this minute, nothing submitted behind it")
         return None
-    from zoneinfo import ZoneInfo
-    et = ZoneInfo("America/New_York")
     size = bars_batch_chunk_size(len(names), last_completed, chunk_max)
     try:
         client = _get_data_client()
@@ -1138,21 +1139,9 @@ async def get_minute_bars_range_batch(tickers: list[str], start: datetime, end: 
                 feed=get_data_feed(),
             )
             bars = await _run_bars_page(client.get_stock_bars, request, timeout=BARS_BATCH_CHUNK_TIMEOUT_S)
-            bar_data = bars.data if hasattr(bars, "data") else bars
+            bar_data = _bar_data(bars)
             for t in chunk:
-                out[t] = [
-                    {
-                        "t_et": b.timestamp.astimezone(et),
-                        "open": float(b.open),
-                        "high": float(b.high),
-                        "low": float(b.low),
-                        "close": float(b.close),
-                        "volume": int(b.volume),
-                        "vwap": float(b.vwap) if getattr(b, "vwap", None) is not None else None,
-                    }
-                    for b in (bar_data.get(t, []) or [])
-                    if b.timestamp is not None
-                ]
+                out[t] = _bar_dicts(bar_data.get(t, []) or [])
         except (asyncio.TimeoutError, TimeoutError):  # loud-ok: a HUNG chunk ends this call — its own thread is still busy
             left = len(names) - i - len(chunk)
             logger.error(f"minute-bar batch chunk {i // size + 1} ({len(chunk)} symbols, {chunk[0]}..{chunk[-1]}) HUNG "
