@@ -2937,3 +2937,5 @@ Recorded: PLAN #722.
 > "ok" (2026-11-08, to the two phone-width mocks: Market Breadth — the two warning lights side by side + 19 group tiles with themes on tap; Positions — tile size = position $, one R, stop in % — with the recs: groups of 10+ stocks first, small groups after; the positions map fits one screen, small tiles show ticker, R and $ only) — #722 + the personal Positions build go ahead as mocked.
 
 > "leave it" (2026-11-08, to whether /syncnow — the broker reconcile that places a missing stop or sells a position already past its stop, as the 16:05 / 21:00 ET jobs do daily — stays open to the chat assistant; rec: leave it open) — /syncnow stays open to every route.
+
+> "Put the market breadth indicators above the theme groups" (2026-11-08, after the #722 page render) — done on the dashboard branch: lights, then the breadth card, then groups, then the theme tracker.
