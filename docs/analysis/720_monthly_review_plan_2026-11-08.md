@@ -27,8 +27,10 @@ analysis."* One review, every closed trade, five lenses, tail first, one page.
   date. A trade opened before the window and closed inside it belongs to this review; one still open belongs to
   the next. The capture timestamp of each run is written to `scripts/probes/_720_monthly/runs/<date>/MANIFEST.txt`
   and is the next run's lower bound.
-- **First window:** `closed_at` ET date ≥ **2026-08-16** (the day the entry−2R stop went live = era C start =
-  the counterfactual recorder's `BACKFILL_FROM`) through the run date. Why that far back: the review has never
+- **First window:** trades FILLED on/after **2026-08-16** ET (the day the entry−2R stop went live = era C start =
+  the counterfactual recorder's `BACKFILL_FROM`; the capture's own filter) and closed by the run date. A trade
+  filled before 08-16 and closed after it ran under the era-B stop and is not in the capture — stated so it is
+  not "accounted for" on paper and missing in fact. Why that far back: the review has never
   run, the stop geometry has been one rule since then, and the 11-06 read covered only the arm comparison on
   20 of these trades — the buy-point / partial / exit / tail reads of this plan are new on every one of them.
   The 20 fills the 11-06 read scored are flagged `read_11-06 = yes` in the trade list so nothing is re-counted
@@ -160,17 +162,20 @@ and the daily-bar trail fires at a close and sells at the next open while the re
 - A fill **passes** when both controls are `settled` and
   `|live_replay.realized_r − live_actual R| ≤ max(0.25, 0.10 × |live_actual R|) + partial_size_bound`.
 - **`partial_size_bound`** (the whole-share allowance) applies only when `live_replay.partial_fired` is TRUE and
-  `entry_shares ≤ 3`: `|live_fraction − 1/3| × target_r`, where `live_fraction = plus8r_partial_shares(entry_shares)
-  ÷ entry_shares` (1 share → 0 → 8/3 = 2.67R; 2 shares → 1/2 → 1.33R; 3 shares → 1/3 → 0) and `target_r` is the
-  row's own partial multiple (8 in eras D/E, 2 in C). Otherwise the bound is 0. This is the size of the
-  mismatch the frozen recorder cannot model, not a tuning knob.
+  `entry_shares ≤ 3`: `|live_fraction − 1/3| × target_r`, where `live_fraction` = the shares the LIVE sizer sold
+  on that fill day ÷ `entry_shares`, and `target_r` is the row's own partial multiple (8 in eras D/E, 2 in C).
+  The live sizer is dated: from **2026-10-12** (`scripts/ep_replay.PARTIAL_MIN_ONE_SHARE_FROM`, imported, never
+  re-typed) it is `plus8r_partial_shares` (1 share → 0 → bound 8/3 = 2.67R; 2 → 1/2 → 1.33R; 3 → 1/3 → 0); before
+  it, `int(shares // 3)` (1 or 2 shares → 0 sold → bound 1/3 × target_r = 2.67R at +8R, 0.67R at +2R; 3 → 0).
+  Otherwise the bound is 0. This is the size of the mismatch the frozen recorder cannot model, not a tuning knob.
 - **Every failing fill is listed with a class**, from the two control rows:
   `whole_share` (entry_shares ≤ 3 and the replay's partial fired) · `exit_session_differs` (the controls'
   `exit_session` or `final_reason` differ) · `other`. The classes have different fixes and are reported apart.
 - **Seen before this was written** (11-06 misses, in R, replay − actual): OKTA −1.44 (C), VICR −1.11 (D; live
   +7.30R), KOD −0.29 (D; live +5.87R), CLS +1.15 (E). Under the new rule KOD passes on the 10% arm alone
-  (0.59 ≥ 0.29). VICR passes only if it held ≤ 2 shares with the replay's partial fired (0.73 + 1.33 ≥ 1.11);
-  OKTA and CLS pass only through the same bound. **The share counts were NOT looked up while writing this**;
+  (0.59 ≥ 0.29). VICR (filled before 10-12) passes only if it held ≤ 2 shares with the replay's partial fired
+  (0.73 + 2.67 ≥ 1.11); OKTA (era C, +2R partial: bound 0.67R at ≤ 2 shares) and CLS (era E) pass only through
+  the same bound. **The share counts were NOT looked up while writing this**;
   whatever the runner finds is reported, and if the big winners still fail, the arm tables again hold no big
   winner and the plan says so rather than widening the bar.
 
@@ -268,7 +273,8 @@ run folder's `.out` and the dated analysis doc, not on the page.
   then `run_review.py --report runs/<date>` reads the CSVs and never the database. `MANIFEST.txt` = row counts
   + md5 per file + the capture timestamp (the thing the 11-06 plan called for and never wrote).
 - Queries: `trades.sql` (every `mi_live_trades` row filled on/after the first-window start — closed and open,
-  so "still open → next review" is visible) · `legacy_paper_count.sql` · `cf_arms.sql` (every recorder row for
+  so "still open → next review" is visible) · `skips_window.sql` (the unfilled rows since the start, for the
+  label join) · `legacy_paper_count.sql` · `cf_arms.sql` (every recorder row for
   those trade ids) · `sell_discipline.sql` · `daily_bars.sql` (the tickers' daily closes from 20 sessions before
   the first alert to the run date) · `skips_stop_too_wide.sql` + `missed_outcomes.sql` · `breakout_grades.sql` +
   `breakout_list.sql` · `audit_breakout.sql` (missed-by-slots, holds, fill-stop markers, session-third events) ·
@@ -277,7 +283,9 @@ run folder's `.out` and the dated analysis doc, not on the page.
   `breakout_pp` through the magna53 function), `in_window`, `fidelity`, `partial_size_bound`,
   `classify_fidelity_miss`, `era_cell` (the six conditions), `verdict` (the ladder), `tails`,
   `runner_shape_count`, `missed_proxy_walk`, `missed_vs_seated`, `stop_too_wide_matrix`, `render`.
-- **Output:** `runs/<date>/review.md` (the one page, §9) + `runs/<date>/review.out` (everything).
+- **Output:** `runs/<date>/review.md` (the one page, §9) + `runs/<date>/review.out` (every per-era arm cell,
+  the fidelity result per fill, the recorder checks). The 11-06 fills are flagged from the id column ONLY of
+  `scripts/probes/_482_read_1106/data/live_all.csv` (`--read-1106`; no outcome column is read).
 - **No prod run before 11-29.** The runner is exercised on fixtures only until then.
 
 ---

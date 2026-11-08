@@ -118,15 +118,38 @@ class TestFidelity:
         assert rr.partial_size_bound(2, 8.0, False) == 0.0
         assert rr.partial_size_bound(2, 2.0, True) == pytest.approx(1 / 3)
 
+    def test_bound_is_keyed_on_the_fill_day_sizer(self):
+        before, after = date(2026, 10, 9), date(2026, 10, 13)
+        assert rr.PARTIAL_MIN_ONE_SHARE_FROM == date(2026, 10, 12)
+        # 2 shares: sold 0 before 10-12 (bound 1/3 x 8), sells 1 from 10-12 (bound 1/6 x 8)
+        assert rr.partial_size_bound(2, 8.0, True, before) == pytest.approx(8 / 3)
+        assert rr.partial_size_bound(2, 8.0, True, after) == pytest.approx(4 / 3)
+        # 1 share: nothing sold either side
+        assert rr.partial_size_bound(1, 8.0, True, before) == pytest.approx(8 / 3)
+        # era C (+2R partial) at 2 shares before 10-12
+        assert rr.partial_size_bound(2, 2.0, True, before) == pytest.approx(2 / 3)
+        # 3 shares: a third either side
+        assert rr.partial_size_bound(3, 8.0, True, before) == 0.0
+
+    def test_fidelity_reads_the_fill_day_from_the_replay_row(self):
+        t = trade(entry_shares="2", filled_at="2026-09-10 13:31:00+00")
+        la = arm_row(1, "live_actual", 7.30)
+        lr = arm_row(1, "live_replay", 5.00, partial_fired="t", target_r="8", fill_day="2026-09-10")  # miss 2.30
+        res = rr.fidelity(t, la, lr)
+        assert res["pass"] and res["tol"] == pytest.approx(0.73 + 8 / 3)
+        lr_late = dict(lr, fill_day="2026-10-20")
+        res2 = rr.fidelity(dict(t, filled_at="2026-10-20 13:31:00+00"), la, lr_late)
+        assert not res2["pass"] and res2["tol"] == pytest.approx(0.73 + 4 / 3) and res2["cls"] == "whole_share"
+
     def test_ten_percent_arm_passes_a_kod_sized_miss(self):
         t = trade(entry_shares="20")
         res = rr.fidelity(t, arm_row(1, "live_actual", 5.87), arm_row(1, "live_replay", 5.58))
         assert res["pass"] and res["tol"] == pytest.approx(0.587) and res["tol_old_pass"] is False
 
     def test_small_position_with_replay_partial_passes_a_vicr_sized_miss(self):
-        t = trade(entry_shares="2")
+        t = trade(entry_shares="2")  # filled 10-20: today's sizer (2 -> sells 1)
         la = arm_row(1, "live_actual", 7.30)
-        lr = arm_row(1, "live_replay", 6.19, partial_fired="t", target_r="8")
+        lr = arm_row(1, "live_replay", 6.19, partial_fired="t", target_r="8", fill_day="2026-10-20")
         res = rr.fidelity(t, la, lr)
         assert res["pass"] and res["tol"] == pytest.approx(0.73 + 4 / 3)
 
@@ -342,8 +365,11 @@ class TestStopTooWide:
 
 # ── §9 render + end to end on a temp run dir ───────────────────────────────────────────────────
 def _write_csv(path: Path, rows: list[dict]):
+    fields: list[str] = []
+    for r in rows:
+        fields += [k for k in r if k not in fields]
     with open(path, "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
+        w = csv.DictWriter(fh, fieldnames=fields)
         w.writeheader()
         w.writerows(rows)
 
@@ -364,31 +390,94 @@ class TestRenderAndDriver:
         assert rr.action_line([]) == "none"
         assert rr.answer_line([], {"winners": [1], "losers": []}).startswith("Nothing beats")
 
-    def test_build_report_end_to_end(self, tmp_path):
+    def _daily(self, ticker, start, n, open_=100, hi=103, lo=99):
+        return [{"ticker": ticker, "trade_date": date.fromordinal(date.fromisoformat(start).toordinal() + i).isoformat(),
+                 "open_price": str(open_), "high_price": str(hi), "low_price": str(lo), "close": str(open_), "volume": "1"} for i in range(n)]
+
+    def test_build_report_end_to_end_reaches_every_lens(self, tmp_path):
         run = tmp_path / "runs" / "2026-11-29"
         (run / "data").mkdir(parents=True)
-        trades = [trade(id=i, ticker=f"T{i}", total_pnl=str(-20 if i < 3 else 150), closed_at="2026-11-12 20:00:00+00") for i in range(1, 4)]
+        trades = [trade(id=i, ticker=f"T{i}", total_pnl=str(-20 if i < 3 else 150), closed_at="2026-11-12 20:00:00+00",
+                        exits=json.dumps([{"reason": "stop_hit", "price": 98}])) for i in range(1, 4)]
         trades.append(trade(id=9, ticker="BPP", account_mode="paper", signal_type="breakout_v1", exit_rule="breakout_pp",
-                            alert_date="2026-11-04", total_pnl="-20", closed_at="2026-11-06 20:00:00+00"))
+                            alert_date="2026-11-04", total_pnl="-20", closed_at="2026-11-06 20:00:00+00", filled_at="2026-11-04 15:00:00+00"))
         _write_csv(run / "data" / "trades.csv", trades)
         cf = []
         for i in range(1, 4):
             r = -1.0 if i < 3 else 7.5
             cf += [arm_row(i, "live_actual", r, r), arm_row(i, "live_replay", r, r)]
             cf += [arm_row(i, a, -0.5 if i < 3 else 7.5, -0.5 if i < 3 else 7.5) for a in rr.STOP_ARMS + rr.HARVEST_ARMS + rr.TRAIL_ARMS + rr.ENTRY_ARMS]
+            cf.append(arm_row(i, rr.FILL_FACTS, "", outcome="unscoreable", fill_vs_trigger_pct=str(0.3 * i)))
         _write_csv(run / "data" / "cf_arms.csv", cf)
         _write_csv(run / "data" / "sell_discipline.csv", [{"trade_id": "3", "peak_r": "8.0", "capture_pct": "0.94", "hold_trading_days": "7",
                                                             "stop_pct": "2", "stop_per_adr": "0.4", "giveback_r": "0.5"}])
+        daily = []
+        for tk in ("T1", "T2", "T3", "BPP", "ZZZ"):
+            daily += self._daily(tk, "2026-10-15", 40)
+        _write_csv(run / "data" / "daily_bars.csv", daily)
+        _write_csv(run / "data" / "skips_window.csv", [{"id": "50", "ticker": "PENG", "alert_date": "2026-10-07", "account_mode": "live",
+                                                         "signal_type": "magna53", "status": "skipped", "skip_reason": "setup:stop_too_wide", "ep_score": "70", "created_at": ""}])
+        _write_csv(run / "data" / "skips_stop_too_wide.csv", [{"id": "50", "ticker": "PENG", "alert_date": "2026-10-07", "account_mode": "live", "ep_score": "70",
+                                                                "skip_reason": "setup:stop_too_wide", "orb_high": "", "orb_low": "", "atr_14": "", "open_d0": "100",
+                                                                "close_d0": "101", "ret_1d": "", "ret_5d": "", "ret_20d": "", "max_high_5d": "112", "max_high_20d": ""}])
+        _write_csv(run / "data" / "breakout_grades.csv", [{"scan_date": "2026-11-03", "ticker": "BPP", "grade": "A", "note": "", "graded_at": ""}])
+        _write_csv(run / "data" / "breakout_list.csv", [{"scan_date": "2026-11-03", "ticker": "BPP", "level": "100", "vol_bar": "1", "adr20": "0.05",
+                                                         "rs_best": "90", "close": "99", "list_rank": "1", "order_score": "0.9"}])
+        _write_csv(run / "data" / "strategy_toggles.csv", [{"safeguard": "breakout_v1_paper", "account_mode": "paper", "state": "on", "last_transition_at": ""}])
+        _write_csv(run / "data" / "audit_breakout.csv", [
+            {"id": "1", "created_at": "", "event_type": rr.HOLD_EVENT, "summary": "", "detail": json.dumps({"ticker": "ZZZ", "state": "slots_full"})},
+            {"id": "2", "created_at": "", "event_type": rr.MISSED_EVENT, "summary": "",
+             "detail": json.dumps({"ticker": "ZZZ", "day": "2026-11-04", "break_price": 100, "stop": 98, "width": 2, "adr20": 0.05})}])
+        _write_csv(run / "data" / "predicates.csv", [{"review": "stop_too_wide_outcome_cohort", "n": "1"}, {"review": "bracket_geometry_variants_parked", "n": "3"}])
+        _write_csv(run / "data" / "legacy_paper_count.csv", [{"legacy_paper_closed_in_window": "0"}])
         rep = rr.build_report(run, date(2026, 11, 29), rr.FIRST_WINDOW_START)
         assert rep["population"][("L1", "era_e")]["window"] == 3 and rep["population"][("L3", "bp1")]["window"] == 1
         assert rep["fidelity"] == {"n": 3, "pass": 3, "old_pass": 3, "classes": {}}
-        assert [w["ticker"] for w in rep["tails"]["winners"]] == ["T3"]
-        assert all(r["verdict"] in rr.VERDICTS for r in rep["lens_rows"]) and len(rep["lens_rows"]) == 13
+        assert [w["ticker"] for w in rep["tails"]["winners"]] == ["T3"] and rep["tails"]["winners"][0]["best_arm"]
+        lenses = {r["lens"] for r in rep["lens_rows"]}
+        for needle in ("stop: stop_orb_low", "partials: harvest_t3", "exits: trail_pivot_swing", "buy_point: entry_first_hour_bar",
+                       "selection: his EP labels", "selection: his breakout grades", "buy point: fill vs trigger", "stop: stopped out, then ran",
+                       "partials: fired / kept", "exits: how trades ended", "stop: the stop-too-wide filter", "breakout: missed by slots vs seated"):
+            assert needle in lenses, needle
+        assert all(r["verdict"] in rr.VERDICTS + ("descriptive",) for r in rep["lens_rows"])
+        # the absence rule reads the observables, not a hard-wired zero
+        assert "did not run" not in rep["missed_absence"] and "missed 1 of 1" in rep["missed_absence"]
+        assert rep["missed"]["missed_n"] == 1 and rep["missed"]["seated_n"] == 1
+        assert rep["breakout_selection"]["by_grade"] == {"A": 1}
+        assert rep["stop_too_wide"]["rejected_n"] == 1 and rep["stop_too_wide"]["admitted_n"] == 3
+        assert [fr["review"] for fr in rep["folded"]] == ["stop_too_wide_outcome_cohort", "bracket_geometry_variants_parked"]
+        assert rep["legacy_paper_count"] == 0 and "stop_low_of_day = stop_orb_low on 3 of 3" in rep["out"]
         md = rr.render(rep)
         (run / "review.md").write_text(md)
         assert (run / "review.md").read_text().startswith("# #720 monthly trade review — 2026-11-29")
+        assert "Total" not in md
         manifest = rr.write_manifest(run, "2026-11-29T18:00:00-05:00")
         assert "trades.csv: rows 4 md5" in manifest
+
+    def test_selection_and_grade_helpers(self):
+        trades = [trade(id=1, ticker="PLTR", alert_date="2026-08-04", total_pnl="60")]
+        skips = [{"ticker": "HTFL", "alert_date": "2026-08-14", "skip_reason": "setup:stop_too_wide"}]
+        sel = rr.selection_labels(trades, skips, [("PLTR", "2026-08-04"), ("HTFL", "2026-08-14"), ("ABNB", "2026-08-07")])
+        assert [s["did"] for s in sel] == ["traded", "skipped", "never alerted"] and sel[1]["detail"] == "setup:stop_too_wide"
+        grades = [{"scan_date": "2026-11-02", "ticker": "X", "grade": "C"}, {"scan_date": "2026-11-05", "ticker": "X", "grade": "A"}]
+        assert rr.breakout_grade_for("X", date(2026, 11, 4), grades) == "C"
+        assert rr.breakout_grade_for("X", date(2026, 11, 6), grades) == "A"
+        assert rr.breakout_grade_for("Y", date(2026, 11, 6), grades) is None
+        l3 = [trade(id=i, ticker="X", account_mode="paper", signal_type="breakout_v1", exit_rule="breakout_pp", alert_date="2026-11-04",
+                    total_pnl="-20") for i in range(3)] + [trade(id=7, ticker="W", account_mode="paper", signal_type="breakout_v1",
+                                                                exit_rule="breakout_pp", alert_date="2026-11-06", total_pnl="60")]
+        bs = rr.breakout_selection(l3, grades + [{"scan_date": "2026-11-05", "ticker": "W", "grade": "A+"}])
+        assert bs["low_n"] == 3 and bs["high_n"] == 1 and bs["verdict"] == "WATCH"
+
+    def test_mfe_5d_and_the_stop_too_wide_section(self):
+        bars = self._daily("Q", "2026-10-01", 8, open_=100, hi=100, lo=99)
+        bars[3]["high_price"] = "111"   # d+3
+        daily = {"Q": bars}
+        assert rr.mfe_5d_pct("Q", date(2026, 10, 1), daily) == pytest.approx(11.0)
+        assert rr.mfe_5d_pct("Q", date(2026, 10, 5), daily) is None          # fewer than 5 sessions after
+        sec = rr.stop_too_wide_section([{"ticker": "Q", "alert_date": "2026-10-01", "open_d0": "100", "max_high_5d": "112"}],
+                                       [trade(ticker="Q", alert_date="2026-10-01")], daily)
+        assert sec["rejected_n"] == 1 and sec["admitted_n"] == 1 and sec["verdict"] == "CAN'T TELL"
 
     def test_era_mismatch_stops_the_read(self, tmp_path):
         run = tmp_path / "r"
@@ -415,5 +504,6 @@ def test_pinned_constants_match_the_plan():
     assert rr.FIDELITY_ABS == 0.25 and rr.FIDELITY_REL == 0.10 and rr.SMALL_POSITION_SHARES == 3
     assert rr.TAIL_WIN_R == 4.0 and rr.TAIL_LOSS_R == -1.5
     plan = (_REPO / "docs" / "analysis" / "720_monthly_review_plan_2026-11-08.md").read_text()
-    for needle in ("2026-08-16", "max(0.25, 0.10", "≥ +4R", "≤ −1.5R", "bp1", "CAN'T TELL", "PROPOSE"):
+    for needle in ("2026-08-16", "max(0.25, 0.10", "≥ +4R", "≤ −1.5R", "bp1", "CAN'T TELL", "PROPOSE", "2026-10-12",
+                   "skips_window.sql", "review.out"):
         assert needle in plan, needle
