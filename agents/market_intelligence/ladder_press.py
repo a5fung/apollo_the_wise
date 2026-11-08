@@ -55,11 +55,11 @@ from __future__ import annotations
 import hmac
 import json
 import logging
+import os
 from datetime import datetime
 
 from agents.market_intelligence.ladder_watchdog import DEMOTE_TO, _CLOSE_EPISODE_SQL
 from shared.dates import _ET
-from shared.secrets import get_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -91,14 +91,14 @@ _PAGE_DECISION_SQL = "SELECT decision FROM mi_ladder_pages WHERE id = $1"
 
 
 def allowed_user_ids() -> set[int]:
-    """The operator allowlist the pages are sent to (`TELEGRAM_ALLOWED_USER_IDS`), parsed by the
-    same `shared.secrets` property the channel gate reads, so the two layers cannot disagree. An
-    unset or malformed variable is an empty allowlist: every press is refused `unauthorized`."""
-    try:
-        return set(get_secrets().telegram_allowed_user_ids)
-    except (RuntimeError, ValueError) as e:     # RuntimeError: unset / empty; ValueError: a non-integer entry
-        logger.warning(f"ladder press: the allowlist is unreadable ({e}) — every press is refused")
-        return set()
+    """The operator allowlist the pages are sent to (`TELEGRAM_ALLOWED_USER_IDS`)."""
+    raw = os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
+    out = set()
+    for part in raw.split(","):
+        part = part.strip()
+        if part.lstrip("-").isdigit():
+            out.add(int(part))
+    return out
 
 
 def _when(ts) -> str:
