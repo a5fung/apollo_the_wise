@@ -509,23 +509,23 @@ def first_break(mins: dict[int, dict], *, level: float, vol_bar: float, from_min
     cum_volume / need_volume (the pace at the break: through k-1, against the curve at k-1)}; None = never broke out
     from the hold on. ⚠ An UPPER BOUND on the trades we missed: it replays the pace at each minute, not the volume
     CANCEL — a seated buy whose pace lapsed was cancelled for the day, while a held name that lapsed, recovered and
-    then touched its level is recorded (final review 2026-11-07 finding 3).
-    ONE pass over the minutes in order: `cum` = the volume of the minutes before k, `low` = the low through k."""
+    then touched its level is recorded (final review 2026-11-07 finding 3)."""
     if not mins or level is None:
         return None
-    lvl, start = float(level), int(from_minute)
-    cum, low = 0.0, None
+    lvl = float(level)
     for k in sorted(mins):
-        bar = mins[k]
-        bar_low = float(bar["low"])
-        low = bar_low if low is None or bar_low < low else low
-        if k >= start and float(bar["high"]) >= lvl:
-            ok, need = f1_permits(cum, vol_bar, k - 1)
-            if ok:                                     # else: at the level, but the live tick had no buy resting
-                stop = stop_from_low(low)
-                return {"minute": k, "high": float(bar["high"]), "stop": stop, "width": (lvl - stop) / lvl,
-                        "cum_volume": cum, "need_volume": need}
-        cum += float(bar.get("volume") or 0)
+        if k < int(from_minute):
+            continue
+        if float(mins[k]["high"]) < lvl:
+            continue
+        cum = float(sum(float(mins[j].get("volume") or 0) for j in mins if j <= k - 1))
+        ok, need = f1_permits(cum, vol_bar, k - 1)
+        if not ok:
+            continue                                   # at the level, but the live tick would not have had a buy resting
+        low = min(float(mins[j]["low"]) for j in mins if j <= k)
+        stop = stop_from_low(low)
+        return {"minute": k, "high": float(mins[k]["high"]), "stop": stop, "width": (lvl - stop) / lvl,
+                "cum_volume": cum, "need_volume": need}
     return None
 
 
