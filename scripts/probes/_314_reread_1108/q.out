@@ -1,0 +1,13 @@
+SET
+night|summary
+2026-11-02|2026-11-02: armed 0, rejected 0, triggered 0, settled 0, closed 0, deferred 0, errors 0 (0 episode(s) open going in)
+2026-11-03|2026-11-03: armed 0, rejected 0, triggered 0, settled 0, closed 0, deferred 0, errors 0 (0 episode(s) open going in)
+2026-11-04|2026-11-04: armed 0, rejected 0, triggered 0, settled 0, closed 0, deferred 0, errors 0 (0 episode(s) open going in)
+2026-11-05|2026-11-05: armed 0, rejected 0, triggered 0, settled 0, closed 0, deferred 0, errors 0 (0 episode(s) open going in)
+2026-11-06|2026-11-06: armed 0, rejected 0, triggered 0, settled 0, closed 0, deferred 0, errors 0 (0 episode(s) open going in)
+(5 rows)
+id|ticker|climax_date|row_kind|event_date|status|reason|climax_high|climax_low|prior_day_low|limit_price|atr_14|stop_buffer|stop_price|risk_per_share|risk_fraction|market_cap|borrow_acct|shortable|easy_to_borrow|asset_status|entry_price|exit_price|exit_date|sessions_held|flush_taken|flush_price|realized_r|exit_leg_r|mfe_r|mae_r|detail|created_at
+(0 rows)
+errors
+0
+(1 row)
