@@ -1,0 +1,3 @@
+SET default_transaction_read_only = on;
+-- #720 §3 stop (c): the stop-too-wide rejections (magna53, BOTH modes — no position was taken) with their forward outcomes.
+\copy (SELECT lt.id, lt.ticker, lt.alert_date, lt.account_mode, lt.ep_score, lt.skip_reason, lt.orb_high, lt.orb_low, lt.atr_14, mo.open_d0, mo.close_d0, mo.ret_1d, mo.ret_5d, mo.ret_20d, mo.max_high_5d, mo.max_high_20d FROM mi_live_trades lt LEFT JOIN LATERAL (SELECT * FROM mi_ep_missed_outcomes m WHERE m.ticker = lt.ticker AND m.alert_date = lt.alert_date ORDER BY m.last_refreshed_at DESC NULLS LAST LIMIT 1) mo ON true WHERE lt.skip_reason LIKE 'setup:stop_too_wide%' AND lt.signal_type = 'magna53' AND lt.alert_date >= DATE '2026-05-05' ORDER BY lt.alert_date, lt.ticker) TO STDOUT WITH CSV HEADER

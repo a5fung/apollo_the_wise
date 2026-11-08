@@ -1,0 +1,3 @@
+SET default_transaction_read_only = on;
+-- #720 §3 stop (c): the ADMITTED control, the YAML's words — "entered magna53 rows (no skip_reason, status not cancelled/skipped)" since 2026-05-05, both modes (a skip took no position; the rejected cohort is both modes too) — with "entered" pinned to a FILL (filled_at IS NOT NULL: mi_live_trades also holds order_placed / expired rows that never filled). Scored by mfe_5d_pct on raw daily bars, NEVER mi_ep_missed_outcomes.
+\copy (SELECT id, ticker, alert_date, account_mode, status, filled_at FROM mi_live_trades WHERE signal_type = 'magna53' AND skip_reason IS NULL AND status NOT IN ('cancelled', 'skipped') AND filled_at IS NOT NULL AND alert_date >= DATE '2026-05-05' ORDER BY alert_date, ticker) TO STDOUT WITH CSV HEADER

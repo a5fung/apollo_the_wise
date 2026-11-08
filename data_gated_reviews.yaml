@@ -382,6 +382,8 @@ reviews:
         were stopped before running - the backtest population is the primary evidence here."
     status: pending
     action_when_ready: |
+      RUNS INSIDE PLAN #720's monthly trade review (docs/analysis/720_monthly_review_plan_2026-11-08.md §7; first run Sun 2026-11-29; pointer set 2026-11-08, his 11-06 ruling): the numbers this action asks for are computed there every month at whatever n exists, verdicts from the plan's ladder, and nothing below is put to him as a one-off fork. This entry keeps its own predicate and bar for what stays OUTSIDE the monthly review (plan §7, last column).
+
       RE-RUN THE SWEEP, do not re-derive it: scripts/probes/_bt_replay.py plus the Run-U
       population from docs/analysis/ep_backtest_run1_2026-08-29.md. It is a $0 query —
       an exit rule is arithmetic over bars we already store, so there is nothing to
@@ -3351,7 +3353,9 @@ reviews:
     #    — verify the missed-outcomes refresh). Defer ~8/8 for N>=10; decide on realized-R (not
     #    forward return — the filter is an R:R gate), operator's call (THE LINE).
     action_when_ready: |
-      1. Pull the cohort with forward outcomes via mi_ep_missed_outcomes
+      RUNS INSIDE PLAN #720's monthly trade review (docs/analysis/720_monthly_review_plan_2026-11-08.md §7; first run Sun 2026-11-29; pointer set 2026-11-08, his 11-06 ruling): the numbers this action asks for are computed there every month at whatever n exists, verdicts from the plan's ladder, and nothing below is put to him as a one-off fork. Nothing stays outside (plan §7, last column): this review IS its monthly run — the predicate count below is printed on the page for the record and the threshold is a pointer. Step 1 below is REPLACED by #720 §3 Stop (c) (set 2026-11-08, re-challenge finding 9): both cohorts are scored on the SAME raw daily bars (`mfe_5d_pct`, MFE over d+1..d+5 from the gap-day open), the ADMITTED control is the entered magna53 rows (`admitted_magna53.sql`), and `mi_ep_missed_outcomes` is NOT read — kept here as history only.
+
+      1. [REPLACED by #720 §3 Stop (c) — history only; mi_ep_missed_outcomes is NOT read] Pull the cohort with forward outcomes via mi_ep_missed_outcomes
          (which joins mi_live_trades rejections to mi_daily_closes):
            SELECT lt.ticker, lt.alert_date, lt.ep_score, lt.skip_reason,
                   mo.ret_5d, mo.ret_20d, mo.max_high_5d, mo.max_high_20d
@@ -11694,6 +11698,8 @@ reviews:
         peak_adr comes from the sell-discipline recorder written at close; realised R from the finalizers (the 10-13 part-fill bookkeeping gap is being fixed under #687 before any era-E close).
     status: pending
     action_when_ready: |
+      RUNS INSIDE PLAN #720's monthly trade review (docs/analysis/720_monthly_review_plan_2026-11-08.md §7; first run Sun 2026-11-29; pointer set 2026-11-08, his 11-06 ruling): the numbers this action asks for are computed there every month at whatever n exists, verdicts from the plan's ladder, and nothing below is put to him as a one-off fork. This entry keeps its own predicate and bar for what stays OUTSIDE the monthly review (plan §7, last column).
+
       ⚠ STALL CLAUSE (added 2026-08-01, mirroring cooldown_admission_unassumed).
       THE KILL/SCALE BANDS ACTIVATE AT THE SAME n=20 (PLAN #503, projected
       ~2026-08-20) and on a 0-for-12 start REDUCE is the modal outcome with KILL
@@ -13700,6 +13706,8 @@ reviews:
         Verified populated 2026-09-19. Known limit: re-entry evidence in the 08-18 read rested
         on ONE row (INTC) and the entry says so."
     action_when_ready: >-
+      RUNS INSIDE PLAN #720's monthly trade review (docs/analysis/720_monthly_review_plan_2026-11-08.md §7; first run Sun 2026-11-29; pointer set 2026-11-08, his 11-06 ruling): the numbers this action asks for are computed there every month at whatever n exists, verdicts from the plan's ladder, and nothing below is put to him as a one-off fork. This entry keeps its own predicate and bar for what stays OUTSIDE the monthly review (plan §7, last column).
+
       Re-run `bracket_geometry_read_482.py` and `geometry_sweep_572.py` against the
       now-populated era C cohort (era boundaries: A < 2026-08-05, B 2026-08-05..
       2026-08-16, C >= 2026-08-17 — matches `bracket_geometry_read_482.py`'s own
@@ -14970,13 +14978,14 @@ reviews:
     # parked (ENTRY geometry), delayed_entry_adr_stop_variant_616 / _025_545 (a different
     # signal's own recorder). tests/test_exit_counterfactual_consolidation_631.py pins all of it.
     action_when_ready: >-
+      RUNS INSIDE PLAN #720's monthly trade review (docs/analysis/720_monthly_review_plan_2026-11-08.md §7; first run Sun 2026-11-29; pointer set 2026-11-08, his 11-06 ruling): the numbers this action asks for are computed there every month at whatever n exists, verdicts from the plan's ladder, and nothing below is put to him as a one-off fork. This entry keeps its own predicate and bar for what stays OUTSIDE the monthly review (plan §7, last column).
+
       ONE read, read PAIRED (same fill, only the rule differs), in each arm's OWN R units AND
       size-free (realized_pct, pnl_adr): the sum, the median, the sign count and the
       drop-best-fill bound (Phase 3's conventions), with the abstain / horizon / unscoreable
       counts stated beside every number. SEGMENT FIRST by admission_era; if no era holds n>=10
       alone, report the split and extend — never pool eras to reach a number. SIX SECTIONS:
-      (1) FIDELITY — live_replay minus live_actual per fill; quote nothing from a fill where
-      they disagree by more than 0.25R. (2) STOP — stop_orb_low / stop_adr_050 / stop_adr_075 /
+      (1) FIDELITY — live_replay minus live_actual per fill; quote arm numbers only from a fill that passes PLAN #720's fidelity test — |live_replay − live_actual| within max(0.25R, 10% of the real R), the replay's partial re-weighted to the shares the live sizer actually sold (plan §5; set 2026-11-08, replacing the 0.25R bar that failed both big winners on 11-06). (2) STOP — stop_orb_low / stop_adr_050 / stop_adr_075 /
       stop_orb_3r vs live_actual: the −1R / −2R(live) / −3R ladder at equal risk by
       construction (was exit_path_shadow_first_read + stop_2r_running_comparison). (3) HARVEST —
       harvest_legacy_2r (the retired +2R rule, fixed forever) vs live_actual = old rule vs new
