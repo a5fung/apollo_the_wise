@@ -86,9 +86,10 @@ PRE_1104, POST_1104 = "pre-11-04", "post-11-04"   # the second half of every adm
 RECORDER_RUN_EVENT = "live_fill_counterfactual_recorded"
 RECORDER_ERROR_EVENT = "live_fill_counterfactual_error"
 RECORDER_JOB_WEEKDAYS_ONLY = True          # scheduler: CronTrigger(hour=18, minute=4, day_of_week="mon-fri")
-RECORDER_FIRST_SESSION = date(2026, 9, 3)  # the #482 job's first nightly run (rule_eras docstring, scheduler job list, the 482
-#                                             YAML, commit history all date it 2026-09-03); it BACKFILLED fills from 08-16 that night,
-#                                             so sessions 08-17..09-02 never had a run and are not "missing" (advisor, 2026-11-08)
+RECORDER_FIRST_SESSION = date(2026, 9, 4)  # the #482 job was BUILT 09-03 (4b6e4148, 14:43 ET) but DEPLOYED after that night's 18:04 ET
+#                                             run (0d612463, 21:57 ET: "the clock finally starts tomorrow"); first fire 09-04 18:04 ET
+#                                             (32f8ee88: "The recorder fired at 18:04 ET... first night"). It BACKFILLED fills from 08-16
+#                                             that night, so sessions 08-17..09-03 never had a run and are not "missing" (freeze check, 2026-11-08)
 
 # the full capture set = every capture/*.sql next to this file; build_report reports each one whose CSV is
 # missing as NOT CAPTURED instead of reading an empty month (finding 2). Derived, never a typed list.
@@ -249,7 +250,7 @@ def admission_era_of(trade: dict, stamp_row: Optional[dict] = None) -> tuple[Opt
 
 def post_open_floor(trade: dict) -> bool:
     """D5: alerted on/after the #718 open-below-floor rule's first acting session. rule_eras.ADMISSION_SWITCHES
-    carries the row since 2026-11-08, but the recorder rows written 11-04..11-07 were stamped BEFORE it existed
+    carries the row since 2026-11-08, but the recorder rows written from 11-04 until that row is deployed were stamped BEFORE it existed
     (the 08-31 label), so the stamp alone cannot split era E — this flag does, on every lens line."""
     ad = d(trade.get("alert_date"))
     return bool(ad and ad >= OPEN_FLOOR_FIRST_SESSION)
@@ -258,7 +259,7 @@ def post_open_floor(trade: dict) -> bool:
 def admission_cell_key(trade: dict, stamp_row: Optional[dict] = None) -> tuple[str, str]:
     """The admission cell a fill belongs to: (admission-era label, pre/post 11-04) — finding 3 of the re-challenge.
     I16: a fill alerted on/after 2026-11-04 takes the DERIVED label (rule_eras.admission_era_as_of), because the
-    recorder stamped the 11-04..11-07 rows before the #718 row existed; the stamp still prints beside it (I12) and
+    recorder stamped the rows from 11-04 until the #718 row is deployed before it existed; the stamp still prints beside it (I12) and
     the disagreement is listed in review.out. Before 11-04 the stamp wins (the recorder saw the trade)."""
     if lane_of(trade) == "L3":
         return "n/a", PRE_1104
@@ -368,6 +369,14 @@ def recorder_gap_count(gaps: dict) -> int:
     return sum(len(c.get("gaps", [])) + len(c.get("unsettled", [])) for c in gaps.values())
 
 
+def recorder_dead(rec_runs: Any) -> bool:
+    """A dead recorder (freeze check, item 4): it ran on none of the sessions it owed us, or on none of the last
+    GAP_RETRY_SESSIONS of them. Reads the heartbeat only; NOT_CAPTURED / None are not 'dead' (the page names those)."""
+    if not isinstance(rec_runs, dict) or not rec_runs.get("sessions"):
+        return False
+    return rec_runs["ran"] == 0 or (rec_runs.get("recent_n", 0) >= RECORDER_GAP_SESSIONS and rec_runs.get("recent_ran", 1) == 0)
+
+
 def recorder_runs(audit_rows: list[dict], start: date, end: date) -> dict:
     """The recorder's own heartbeat (finding 10): the sessions in [max(start, RECORDER_FIRST_SESSION), end] the
     18:04 ET job should have run (weekdays that are trading days), the ET dates with a `_recorded` row, the sessions
@@ -383,7 +392,9 @@ def recorder_runs(audit_rows: list[dict], start: date, end: date) -> dict:
             sessions.append(cur)
         cur += timedelta(days=1)
     missing = [s for s in sessions if s not in ran_days]
+    recent = sessions[-RECORDER_GAP_SESSIONS:]
     return {"sessions": len(sessions), "ran": len([s for s in sessions if s in ran_days]), "missing": missing, "from": start,
+            "recent_n": len(recent), "recent_ran": len([s for s in recent if s in ran_days]),
             "last_run": max(ran_days) if ran_days else None, "error_rows": len(errors),
             "error_samples": [str(r.get("summary") or "")[:120] for r in errors[:3]]}
 
@@ -1541,7 +1552,7 @@ def _is_arm_row(row: dict) -> bool:
 
 
 def answer_line(lens_rows: list[dict], tails_: dict, recorder_gaps_: Optional[dict] = None, fidelity_: Optional[dict] = None,
-                not_captured: Iterable[str] = ()) -> str:
+                not_captured: Iterable[str] = (), recorder_runs_: Any = None) -> str:
     """Line 1 (finding 1). In order: a capture that is not whole; a PROPOSE; a recorder that owes fills; then — ONLY
     when an arm lens on the current era actually read NOTHING — 'Nothing beats what we run'. Arms that only WATCH
     say so; no readable arm lens says 'too few trades to read yet'. The old line printed 'Nothing beats' on an empty
@@ -1552,16 +1563,26 @@ def answer_line(lens_rows: list[dict], tails_: dict, recorder_gaps_: Optional[di
     nothings = [r for r in arm_rows_ if r["verdict"] == "NOTHING"]
     watches = [r for r in arm_rows_ if r["verdict"] == "WATCH"]
     gap_n = recorder_gap_count(recorder_gaps_ or {})
+    dead = recorder_dead(recorder_runs_)
     if nc:
         head = f"capture incomplete — {len(nc)} file(s) NOT CAPTURED ({', '.join(nc)}); nothing on this page is a verdict"
     elif props:
         head = f"{len(props)} lens(es) worth a CHANGE_PROCESS proposal"
+    elif dead:
+        head = (f"recorder gap — the 18:04 ET job wrote a nightly row on {recorder_runs_['ran']} of {recorder_runs_['sessions']} sessions "
+                f"and none of the last {recorder_runs_['recent_n']}" if recorder_runs_["ran"] else
+                f"recorder gap — the 18:04 ET job wrote no nightly row on any of {recorder_runs_['sessions']} sessions")
+        head += (f"; {gap_n} fill(s) also have no usable recorder rows" if gap_n else "") + " — the arm lenses cannot be read until the recorder is running"
     elif gap_n:
         head = f"recorder gap on {gap_n} fill(s) — the arm lenses cannot be read until the recorder catches up"
-    elif nothings:
-        head = "Nothing beats what we run" + (f"; {len(watches)} arm(s) on watch" if watches else "")
     elif watches:
-        head = f"{len(watches)} arm(s) on watch (won on under {PROPOSE_MIN} trades); nothing proposed, nothing read as beaten"
+        # WATCH first: it means an arm read as BEATING what we run, so "Nothing beats" must never be printed beside it
+        not_beaten = len(nothings)
+        unread = len(arm_rows_) - len(watches) - not_beaten
+        head = (f"{len(watches)} arm(s) on watch (beat what we run, but on under {PROPOSE_MIN} trades; nothing proposed); "
+                f"{not_beaten} did not beat it, {unread} unreadable")
+    elif nothings:
+        head = "Nothing beats what we run"
     else:
         fid_s = ""
         if fidelity_ and fidelity_.get("n"):
@@ -1574,16 +1595,27 @@ def answer_line(lens_rows: list[dict], tails_: dict, recorder_gaps_: Optional[di
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # manifest + the report driver (reads CSVs only)
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _has_header(p: Path) -> bool:
+    """`\\copy ... CSV HEADER` always writes a header line, so a file with none is a FAILED capture (`psql ... > x.csv`
+    leaves a 0-byte file when psql errors): it counts as NOT CAPTURED, never as an empty month (freeze check, item 1)."""
+    try:
+        return p.is_file() and p.stat().st_size > 0 and bool(p.read_bytes().strip())
+    except OSError:
+        return False
+
+
 def missing_captures(data: Path) -> list[str]:
     """Every capture/*.sql whose CSV is absent from the run's data dir (finding 2: a failed capture must never read
     as an empty month)."""
-    return [name for name in REQUIRED_CAPTURES if not (data / f"{name}.csv").exists()]
+    return [name for name in REQUIRED_CAPTURES if not _has_header(data / f"{name}.csv")]
 
 
 def write_manifest(run_dir: Path, captured_at: str) -> str:
     data = run_dir / "data"
     lines = [f"captured_at: {captured_at}"]
     for p in sorted(data.glob("*.csv")):
+        if not _has_header(p):          # a header-less file is NOT CAPTURED (listed below), never "rows 0 md5 d41d8..."
+            continue
         rows = max(0, sum(1 for _ in open(p, "rb")) - 1)
         lines.append(f"{p.name}: rows {rows} md5 {hashlib.md5(p.read_bytes()).hexdigest()}")
     for name in missing_captures(data):
@@ -1708,7 +1740,7 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
     out_lines.append(f"recorder check: stop_low_of_day = stop_orb_low on {same} of {total} settled fills")
 
     # admission-era mix per lane/era (the recorder stamp; derived where no row) + I12/I16: every stamp that
-    # disagrees with the derived label is listed (the 11-04..11-07 rows were stamped before the #718 row existed)
+    # disagrees with the derived label is listed (rows from 11-04 until the #718 row is deployed were stamped before it existed)
     for (lane, era), ts in sorted(lane_era.items()):
         mix = Counter()
         for t in ts:
@@ -1871,7 +1903,7 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
               "pre_window_closes": {f"{r.get('account_mode')}/{r.get('signal_type')}": r.get("n") for r in pre_window},
               "selection": sel, "breakout_selection": bsel, "breakout_buy_point": bbp, "stop_too_wide": stw}
     report["action"] = action_line(lens_rows) if not not_captured else "none — re-capture the missing file(s) and re-run"
-    report["answer"] = answer_line(lens_rows, tl, gaps, report["fidelity"], not_captured)
+    report["answer"] = answer_line(lens_rows, tl, gaps, report["fidelity"], not_captured, rec_runs)
     if not_captured:
         out_lines.insert(0, "NOT CAPTURED: " + ", ".join(f"{n}.csv" for n in not_captured))
     if rec_runs != NOT_CAPTURED:

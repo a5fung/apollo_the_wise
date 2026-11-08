@@ -722,7 +722,7 @@ class TestRenderAndDriver:
         assert folded["live_fill_counterfactuals_first_read_482"]["verdict"] == "WATCH"     # the stop arms WON on 3 (stop lens), trail arms too
         n_watch = sum(1 for r in rep["lens_rows"] if r.get("kind") == "arm" and r["verdict"] == "WATCH")
         assert n_watch == len(rr.ALL_ARMS)                                                     # every arm WON on n 3 in this fixture
-        assert rep["answer"].startswith(f"{n_watch} arm(s) on watch (won on under 10 trades); nothing proposed, nothing read as beaten")
+        assert rep["answer"].startswith(f"{n_watch} arm(s) on watch (beat what we run, but on under 10 trades; nothing proposed); 0 did not beat it, 0 unreadable")
         assert rep["safeguard_voids"] and rep["safeguard_voids"][0].startswith("x_live|live")
         assert rep["pre_window_closes"] == {"live/magna53": "2"}
         assert len(rep["window_trades"]) == 4 and all("forensic_class" in r for r in rep["window_trades"])
@@ -767,7 +767,7 @@ def test_pinned_constants_match_the_plan():
     assert rr.READABLE_MIN == 3 and rr.PROPOSE_MIN == 10
     assert rr.FIDELITY_ABS == 0.25 and rr.FIDELITY_REL == 0.10 and rr.SMALL_POSITION_SHARES == 3
     assert rr.TAIL_WIN_R == 4.0 and rr.TAIL_LOSS_R == -1.5 and rr.BREAKEVEN_TOL_R == 0.05
-    assert rr.RECORDER_FIRST_SESSION == date(2026, 9, 3) and "2026-09-03" in PLAN.read_text()
+    assert rr.RECORDER_FIRST_SESSION == date(2026, 9, 4) and "**2026-09-04**" in PLAN.read_text()
     plan = PLAN.read_text()
     for needle in ("2026-08-16", "max(0.25, 0.10", "≥ +4R", "≤ −1.5R", "bp1", "CAN'T TELL", "PROPOSE", "two-sided",
                    "admitted_magna53.sql", "ep_alerts.sql", "strategies.sql", "pre_window_closes.sql", "review.out",
@@ -848,6 +848,51 @@ class TestRechallenge1108:
         assert rr.answer_line(rows, {"winners": [], "losers": []}).startswith("Nothing beats what we run")
         rows[1]["verdict"] = "WATCH"
         assert rr.answer_line(rows, {"winners": [], "losers": []}).startswith("1 arm(s) on watch")
+        # item 2 (freeze check): one arm lost (NOTHING), one won on fewer than 10 trades (WATCH), one unreadable -> WATCH is
+        # checked FIRST and the line never prints "Nothing beats" beside an arm that beat what we run
+        mixed = [{"lens": "stop: stop_orb_low", "where": "L1 / era_e", "n": 12, "reading": "x", "verdict": "NOTHING"},
+                 {"lens": "stop: stop_adr_050", "where": "L1 / era_e", "n": 6, "reading": "x", "verdict": "WATCH"},
+                 {"lens": "stop: stop_adr_075", "where": "L1 / era_e", "n": 1, "reading": "x", "verdict": "CAN'T TELL"}]
+        line = rr.answer_line(mixed, {"winners": [], "losers": []})
+        assert "Nothing beats" not in line and line.startswith("1 arm(s) on watch") and "1 did not beat it, 1 unreadable" in line
+
+    def test_freeze4_a_dead_recorder_leads_line_one_with_the_gap_not_wait(self, tmp_path):
+        """Freeze item 4: ran 0 of N sessions (or none of the last GAP_RETRY_SESSIONS) -> the recorder-gap headline, even with no old closes."""
+        dead = {"sessions": 60, "ran": 0, "missing": [], "recent_n": 5, "recent_ran": 0}
+        assert rr.recorder_dead(dead) and rr.answer_line([], {}, {}, None, (), dead).startswith("recorder gap")
+        lately = {"sessions": 60, "ran": 50, "missing": [], "recent_n": 5, "recent_ran": 0}
+        assert rr.recorder_dead(lately) and "none of the last 5" in rr.answer_line([], {}, {}, None, (), lately)
+        alive = {"sessions": 60, "ran": 59, "missing": [], "recent_n": 5, "recent_ran": 4}
+        assert not rr.recorder_dead(alive) and not rr.recorder_dead(rr.NOT_CAPTURED) and not rr.recorder_dead(None)
+        assert not rr.recorder_dead({"sessions": 0, "ran": 0, "missing": [], "recent_n": 0, "recent_ran": 0})
+        # end to end: three fresh fills, an audit_recorder with only an old row and none in the last 5 sessions
+        fresh = [trade(id=i, ticker=f"T{i}", closed_at="2026-11-27 20:00:00+00", total_pnl="-20", exits=legs(("stop_hit", 98))) for i in range(1, 4)]
+        old_row = [{"id": "1", "created_at": "2026-09-04 22:04:10+00", "summary": "0 fill(s)", "event_type": rr.RECORDER_RUN_EVENT}]
+        _full_capture(tmp_path / "late", fresh, [], audit_recorder=old_row)
+        assert _report(tmp_path / "late")["answer"].startswith("recorder gap — the 18:04 ET job wrote a nightly row on 1 of ")
+        # a missing night in the middle with a recent row is NOT dead (the default fixture has a row on 11-27)
+        _full_capture(tmp_path / "ok", fresh, [])
+        assert _report(tmp_path / "ok")["answer"].startswith("too few trades to read yet")
+        # a recorder that never wrote a row
+        (tmp_path / "none").mkdir()
+        _full_capture(tmp_path / "none", fresh, [], audit_recorder=[{"id": "1", "created_at": "2026-11-27 23:04:10+00", "summary": "x", "event_type": "other"}])
+        assert _report(tmp_path / "none")["answer"].startswith("recorder gap — the 18:04 ET job wrote no nightly row on any of ")
+
+    def test_freeze1_a_capture_file_with_no_header_line_is_not_captured(self, tmp_path):
+        """Freeze item 1: `psql ... > x.csv` leaves a 0-byte file when psql fails; `\\copy ... CSV HEADER` always writes a header line."""
+        fresh = [trade(id=i, ticker=f"T{i}", closed_at="2026-11-12 20:00:00+00", total_pnl="-20", exits=legs(("stop_hit", 98))) for i in range(1, 4)]
+        r = tmp_path / "Z"
+        _full_capture(r, fresh, [])
+        for name in ("cf_arms", "predicates", "audit_recorder"):
+            (r / "data" / f"{name}.csv").write_bytes(b"")
+        (r / "data" / "strategies.csv").write_text("\n")           # whitespace only is no header either
+        assert sorted(rr.missing_captures(r / "data")) == ["audit_recorder", "cf_arms", "predicates", "strategies"]
+        manifest = rr.write_manifest(r, "x")
+        for name in ("cf_arms", "predicates", "audit_recorder", "strategies"):
+            assert f"{name}.csv: NOT CAPTURED" in manifest and f"{name}.csv: rows" not in manifest
+        rep = _report(r)
+        assert set(rep["not_captured"]) == {"audit_recorder", "cf_arms", "predicates", "strategies"}
+        assert rep["answer"].startswith("capture incomplete") and "recorder gap" not in rep["answer"]
 
     def test_f2_a_missing_capture_file_is_named_not_read_as_an_empty_month(self, tmp_path):
         """Finding 2: trades.csv alone (the probe's Case A) -> every other file NOT CAPTURED on the page, five folded
@@ -876,7 +921,7 @@ class TestRechallenge1108:
     def test_f3_a_propose_needs_one_admission_cell_on_one_side_of_1104(self):
         """Finding 3: 12 winning era-E fills under ONE admission label split 7 before / 5 after 2026-11-04 mix the two
         sides of #718 (an admission change) — WATCH, not PROPOSE; 12 on one side is PROPOSE. The cell key is
-        (admission era, pre/post 11-04); for a post-11-04 fill the DERIVED label (I16: the 11-04..11-07 recorder rows
+        (admission era, pre/post 11-04); for a post-11-04 fill the DERIVED label (I16: the recorder rows from 11-04 until the row is deployed
         carry the 08-31 stamp from before the row existed)."""
         arm_rows = {(str(i), "stop_orb_low"): arm_row(i, "stop_orb_low", 0.0 + 0.01 * i, 0.0 + 0.01 * i) for i in range(1, 13)}
         mixed = {"era_e": [dict(fill(i, -1.0), admission_era="adm_A", post_1104=(i > 7)) for i in range(1, 13)]}
@@ -986,10 +1031,10 @@ class TestRechallenge1108:
         assert runs["sessions"] == 4 and runs["ran"] == 2 and runs["last_run"] == date(2026, 11, 25)       # 11-26 Thanksgiving is no session
         assert runs["missing"] == [date(2026, 11, 24), date(2026, 11, 27)] and runs["error_rows"] == 1 and runs["error_samples"] == ["run failed: boom"]
         assert rr.recorder_runs([], date(2026, 11, 23), date(2026, 11, 29))["ran"] == 0
-        # the first window starts 08-16 but the job's first session was 09-03: 08-17..09-02 are never "missing"
-        first = rr.recorder_runs([{"id": "9", "created_at": "2026-09-03 22:04:10+00", "event_type": rr.RECORDER_RUN_EVENT, "summary": ""}],
-                                 rr.FIRST_WINDOW_START, date(2026, 9, 3))
-        assert rr.RECORDER_FIRST_SESSION == date(2026, 9, 3) and first["from"] == date(2026, 9, 3)
+        # the first window starts 08-16 but the job's first FIRE was 09-04 (built 09-03, deployed after that night's run): 08-17..09-03 are never "missing"
+        first = rr.recorder_runs([{"id": "9", "created_at": "2026-09-04 22:04:10+00", "event_type": rr.RECORDER_RUN_EVENT, "summary": ""}],
+                                 rr.FIRST_WINDOW_START, date(2026, 9, 4))
+        assert rr.RECORDER_FIRST_SESSION == date(2026, 9, 4) and first["from"] == date(2026, 9, 4)
         assert first["sessions"] == 1 and first["ran"] == 1 and first["missing"] == []
         old_rows = trade(id=5, ticker="HALF", closed_at="2026-10-01 20:00:00+00")
         cf = [arm_row(5, "live_actual", 1.0), arm_row(5, "live_replay", 1.0, outcome="horizon")]

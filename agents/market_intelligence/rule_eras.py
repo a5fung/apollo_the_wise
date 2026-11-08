@@ -277,8 +277,8 @@ ADMISSION_SWITCHES: tuple[tuple[date, str, str, date], ...] = (
      "the open-below-the-gap-floor rule flipped shadow -> ON at 2026-11-03 15:05:28 UTC (10:05 ET, "
      "after that day's ORB window): a flip-up-admitted name whose 09:30 open is under prev close "
      "x 1.09 is refused at entry (#718/#715, operator-signed) — the fills of 11-03 were admitted by "
-     "the old stack; row added 2026-11-08 (#720 re-challenge), so recorder rows stamped 11-04..11-07 "
-     "carry the 08-31 label and readers re-derive the label for fills on/after 11-04",
+     "the old stack; row added 2026-11-08 (#720 re-challenge), so recorder rows stamped from 11-04 until "
+     "the row is deployed carry the 08-31 label, and the #720 runner re-derives the label for fills on/after 11-04",
      date(2026, 11, 3)),
 )
 # ⚠ #624 (2026-09-04) — the LOW-CAP LANE SHADOW deliberately has NO row here, and this is

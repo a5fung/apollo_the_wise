@@ -82,7 +82,7 @@ L2 and L3 get the stop / partials / exits lenses from the trade row, its `exits`
   cell with n ≥ 10 that wins (re-challenge finding 3: the 11-06 cells pooled the two sides of #718 because the
   stamp did not split them). Every era-E lens line also prints **n before / after 2026-11-04**
   (`OPEN_FLOOR_FIRST_SESSION`, derived in the tests through `rule_eras.first_acting_session_after`). ⚠ The recorder
-  rows written 11-04..11-07 were stamped BEFORE the row existed and carry the 08-31 label — **I16 (§8): a fill
+  rows written from 11-04 until the `rule_eras` row is deployed were stamped BEFORE the row existed and carry the 08-31 label — **I16 (§8): a fill
   alerted on/after 11-04 takes the DERIVED label for its cell; the stamp prints beside it and every stamp-vs-derived
   disagreement is listed in `review.out`.** Era E's trail-arming change (10-29) is not split (no admission change).
 - **Monthly window vs eras — pinned now:** a month slices an era thin forever, so every per-era lens table is
@@ -108,8 +108,9 @@ L2 and L3 get the stop / partials / exits lenses from the trade row, its `exits`
   `live_fill_counterfactual_recorded` row the 18:04 ET job writes mon–fri, and every `_error` row) is printed as
   "ran N of M sessions since <date>; sessions with no row: …; error rows E" — so a month with no older closes can
   still show a dead recorder. The sessions counted start at the LATER of the window start and the job's first
-  session, **2026-09-03** (`RECORDER_FIRST_SESSION`; that night it backfilled the fills from 08-16), so 08-17..09-02
-  are never printed as missing.
+  fire, **2026-09-04** (`RECORDER_FIRST_SESSION`: built 09-03, deployed after that night's run, first fire 09-04
+  18:04 ET; it backfilled the fills from 08-16), so 08-17..09-03 are never printed as missing. **A dead recorder** (ran on
+  none of its sessions, or on none of the last `GAP_RETRY_SESSIONS`) takes line 1's recorder-gap headline, not "too few trades".
 - **A capture that is not whole is not an empty month (finding 2).** `build_report` checks every `capture/*.sql`
   against the run's CSVs (`REQUIRED_CAPTURES`, derived from the folder, never typed); each missing file prints
   **NOT CAPTURED** at the top of the page and in `MANIFEST.txt`, every number that reads it is `n/a — not captured`
@@ -377,9 +378,9 @@ Known silences settled now:
 - **I14 —** the admitted control's `mfe_5d_pct` needs the gap-day open and five forward sessions on the captured
   bars; an unscored row is COUNTED beside the matrix, never filled from another column.
 - **I16 —** a fill alerted on/after 2026-11-04 whose recorder `admission_era` stamp predates the #718 row (the
-  08-31 label, written 11-04..11-07) takes the DERIVED label `adm_2026-11-04_open_below_floor` for its admission
+  08-31 label, written from 11-04 until the `rule_eras` row is deployed) takes the DERIVED label `adm_2026-11-04_open_below_floor` for its admission
   cell; the stamp prints beside it (I12) and the disagreement is listed in `review.out`. Changes: the admission
-  cells of the 11-04..11-07 fills; nothing before 11-04.
+  cells of the fills alerted from 11-04 on whose stamp predates the deployed row; nothing before 11-04.
 - **I15 —** an exit leg whose reason is outside the enumerated vocabulary prints as `other:<reason>` and is
   not a stop, a partial or a depth sale for any count. The five writers are complete; the REASON set flows from
   their callers (`execute_full_exit(trade_id, reason)` is also reachable from one-off operator closes — MTW's
