@@ -346,9 +346,12 @@ have made the 11-29 page say something false):**
 
 - **D8 — line 1 never says "Nothing beats what we run" unless an ARM lens on the current era actually read
   NOTHING.** In order: a capture that is not whole ("capture incomplete — N file(s) NOT CAPTURED"); a PROPOSE;
-  "recorder gap on N fills" (no rows, or rows with no settled control pair, past the retry window); "Nothing beats
-  what we run" (an arm read NOTHING; arms on WATCH counted beside it); "N arm(s) on watch, nothing proposed, nothing
-  read as beaten"; else **"too few trades to read yet"** with the closed-fill and settled-pair counts. A count lens
+  a DEAD recorder ("recorder gap — the 18:04 ET job wrote no `recorded` row on …": ran 0 of N sessions, or none of
+  the last GAP_RETRY_SESSIONS); "recorder gap on N fills" (no rows, or rows with no settled control pair, past the
+  retry window); "N arm(s) on watch (beat what we run, but on under 10 trades; nothing proposed); M did not beat it,
+  K unreadable"; "Nothing beats what we run" ONLY when no arm is on watch and an arm read NOTHING; else **"too few
+  trades to read yet"** with the closed-fill and settled-pair counts. The recorder's first session (09-04) is
+  checked against the earliest `audit_recorder.csv` row at the first capture. A count lens
   reading NOTHING (none of his labels missed) is not an arm reading NOTHING. Changes: `answer_line` (finding 1).
 - **D9 — the #718 change is an admission change with its own `ADMISSION_SWITCHES` row**, and admission cells are
   keyed on (admission era, before / after 11-04) (§1.3; findings 3). The row was added on this branch rather than
@@ -396,7 +399,8 @@ answer.
 
 1. **Line 1 — the answer** (D8). e.g. *"too few trades to read yet (3 closed live fills, 0 with a settled replay
    pair that passes); big winners 0, bad losers 1; action: none."* — or *"recorder gap on 2 fills …"*, or
-   *"Nothing beats what we run; 1 arm on watch …"* only when an arm lens read NOTHING. Under it, one **NOT
+   *"1 arm(s) on watch (beat what we run, but on under 10 trades; nothing proposed); 12 did not beat it, 0 unreadable"*,
+   or *"Nothing beats what we run"* only when no arm is on watch and an arm lens read NOTHING. Under it, one **NOT
    CAPTURED: <file>.csv** line per missing capture file (finding 2).
 2. **Population table:** lane × era → closed trades in the window · carried from the era start · excluded
    (ticker list) · the pre-window closes count · recorder coverage per era (fills / with rows / settled pairs,
