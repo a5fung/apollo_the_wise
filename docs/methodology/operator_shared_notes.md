@@ -2923,3 +2923,7 @@ Recorded: CLOSE /resume, /partialnow and /timestop to the chat route (his typed 
 > "This should probably go into the market breath dash then. The reason it doesn't work may be my portfolio has many different assets, eg I have a lot of exposure to previous metals miners and it was doing really well Jan to March this year while NASDAQ was correcting" (2026-11-07, after the hedge replay on his account: a standing Basso index hedge 2020-26 cost +81% → +43%, cut 2022's loss ~5 points; the Nasdaq explains about a third of his weekly moves)
 
 Recorded: Basso's hedge-timing rule becomes a market-risk light on the Market Breadth tab (PLAN #721), a signal to slow new buys, not a hedge instruction. His explanation, checked against the data: Jan–Feb 2026 his account +7.9% / +7.2% while QQQ +1.2% / −2.3% (fits); March he fell −20.1% vs QQQ −5.0% (his own holdings, not the index). Follow-up offered (personal): measure each sleeve against its own index (miners vs a miners ETF, tech vs QQQ).
+
+> "For the theme leaders, does it make sense to show bigger grouping? I see these mostly just that 3-5 stocks, hard to tell what's the real moving themes" then, to the rec (lead the Market Breadth tab with Apollo's 19 ecosystem groups, each stock counted once, themes as the drill-down; built Sun with #312's deploy): "Aligned" (2026-11-07)
+
+Recorded: PLAN #722.
