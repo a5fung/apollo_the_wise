@@ -87,7 +87,7 @@ Priority order. One heavy card at a time where two would touch the same files; e
 - **Sun 11-08 — 6. #491 hold-rate diagnosis** — ✅ PULLED TO SAT 11-07, DONE + CLOSED: the wall changed the board on only 3 of 24 holds, all bounce-backs it exists to stop; no theme held back (`docs/analysis/491_u2_hold_diagnosis_2026-11-07.md`).
 - **Sun 11-08 — 7. #312 last round + deploy**: close /resume, /partialnow, /timestop to the chat route (his 11-07 ruling), the final review's lows, EXPECT on #312; merge; deploy market-agent → orchestrator → execution on his go.
 - **Sun 11-08 — 8. #722 theme groups on the Market Breadth tab** (his 11-07 "Aligned"): the export adds one row per ecosystem (19 groups), the page leads with group tiles; ships with #312's market-agent deploy + his "push".
-- **Personal, no PLAN items:** the Positions heat-map mock (shown before building), the dashboard's remember-this-device login.
+- **Personal, no PLAN items:** Sun 11-08 — the Positions tab in ONE build (his 11-07 "do it together"): the dollar-size heat-map mock shown first, then the simplified tile (one R, stop in %, no alert R, a legend) + $ amounts; the dashboard's remember-this-device login.
 - **Mon 11-09:** the 12:00 ET window only if a weekend deploy slipped; #146's weekly flag re-read Fri 11-13.
 
 ## Launch — 6/22 GO/NO-GO (the long-horizon plan, as dated tasks · SSoT-spec: docs/roadmap/launch-2026-06-22.md)
