@@ -6,7 +6,20 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-11-06 (Fri) CLOSE — 🔴 RESUME HERE. Supersedes the 11-05 close below.
+## 2026-11-07 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 11-06 close below.
+
+**2026-11-07 (Sat): CLOSE run on his word ("Run close").** (Mirrors the machine-local pickup memory.)
+
+- **Board 18 → 16** (closed #210, #491, #719, #721; opened #721, #722). Server **`359fa1d7`** (deployed today on his "Go": #717 stage 2 + the #719 export). Main `2664e0c2` pushed, CI green all day.
+- **Deployed dark:** #717 breakout stage 2 (batched bars on their own one-thread executor, slots by order score hold-only, the missed-by-slots record needing level + volume pace); paper switch read back OFF; D8 met (184 names, 8 requests, 3.1 s). Verify Mon 11-09.
+- **Closed:** #719 Market Breadth tab (independent recount matched every count + three themes by hand; his "Breath looks good"); #721 market warning light (Basso's rule on SPY/QQQ, both ON — his phone); #210 (TradingView added a catalyst on 1 of 36 alerts, BSP); #491 (the wall's holds were no-ops or the bounces it stops).
+- **His rulings:** close the chat route to /strategy changes (built on the #312 branch) and to /resume, /partialnow, /timestop (pause stays) — built Sun; theme groups lead the breadth tab (#722); dashboard 'compact' = more per screen, side by side.
+- **His grades:** first breakout-list sheet + #594 sample 7 recorded (`tests/fixtures/breakout_list_grades.py`, `must_not_trade_charts.py`); the shelf lead held again (0.686; 0.750 over 24).
+- **Not merged:** #312 branch `worktree-wf_49d78a27-7cf-1` @ `85b568dc` (3 review rounds + simplify, full suite 13,714) — Sunday's last round rebases it on main first (the simplify merge `331c196c` touched breakout_v1_entry.py). Dashboard branch `simplify-1107-C` (`00ebbbb`, 653 tests) ships with #722's push.
+- **Personal (no tasks):** the hedge replay on his account (a standing index hedge would have cost +81% → +43% over 2020-26) → the warning light instead; Positions tile simplification + dollar sizing built together Sunday, mock first.
+- **Sunday:** the WEEKEND PLAN section at the top of PLAN.md — #312 last round, #722 + the side-by-side lights, ONE deploy (market-agent → orchestrator → execution) on his go, then his dashboard "push", #314 re-read.
+
+## 2026-11-06 (Fri) CLOSE — (superseded by 11-07 above)
 
 **2026-11-06 (Fri): CLOSE run on his word ("Run close").** (Mirrors the machine-local pickup memory.)
 
