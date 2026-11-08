@@ -2931,3 +2931,5 @@ Recorded: PLAN #722.
 > "Breath looks good." (2026-11-07 evening, the Market Breadth tab on his phone after the first published snapshot) — #719 closed on it.
 
 > "Yes, the improvement I'll ask is to make it more compact if possible for mobile" (2026-11-07 19:57 PT, with a phone screenshot of the two market warning lights: S&P ON since Oct 30, Nasdaq-100 ON since Oct 22) — #721 closed; the compact layout rides #722 (Sun 11-08).
+
+> "By compact, it's typically better to have more info within same vertical space to reduce scrolling, so if both warning lights can be side by side that'll be better" (2026-11-07) — his rule for dashboard layout: density per screen over hiding detail; the two lights go side by side at phone width (#722 build).
