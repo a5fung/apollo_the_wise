@@ -320,6 +320,24 @@ class TestEraCellAndLadder:
         cells = rr.admission_cells("stop", fills_by_era, arm_rows)
         assert {(c["admission_era"], c["n"]) for c in cells if c["arm"] == "stop_orb_low"} == {("adm_A", 2), ("adm_B", 2)}
 
+    def test_a_propose_needs_one_admission_era_with_ten_on_its_own(self):
+        """§1.3 / D5: 12 winning fills split 7 / 5 across two admission eras is WATCH (pooled to reach 10); 12 in one
+        admission era is PROPOSE."""
+        arm_rows = {(str(i), "stop_orb_low"): arm_row(i, "stop_orb_low", 0.0 + 0.01 * i, 0.0 + 0.01 * i) for i in range(1, 13)}
+        split = {"era_e": [dict(fill(i, -1.0), admission_era=("adm_A" if i <= 7 else "adm_B")) for i in range(1, 13)]}
+        res = rr.arm_lens("stop", split, arm_rows, "era_e")["stop_orb_low"]
+        assert res["verdict"] == "WATCH" and "demoted" in res["why"] and "adm_A n 7" in res["why"]
+        one = {"era_e": [dict(fill(i, -1.0), admission_era="adm_A") for i in range(1, 13)]}
+        assert rr.arm_lens("stop", one, arm_rows, "era_e")["stop_orb_low"]["verdict"] == "PROPOSE"
+
+    def test_era_starts_follow_rule_eras_dated_record(self, monkeypatch):
+        """The safeguard-void window starts where rule_eras says the current era starts; a moved record moves it."""
+        assert rr.era_start_for("era_e", date(2026, 1, 1)) == date(2026, 10, 13)
+        assert rr.era_start_for("era_c", date(2026, 1, 1)) == date(2026, 8, 16)
+        assert rr.era_start_for("bp1", date(2026, 10, 31)) == date(2026, 10, 31)          # no dated record -> the fallback
+        monkeypatch.setattr(rr, "exit_era_start", lambda label: date(2030, 1, 1))
+        assert rr.era_start_for("era_e", date(2026, 1, 1)) == date(2030, 1, 1)
+
     def test_regime_table_names_thin_cells(self):
         fills_by_era = {"era_e": [fill(1, -1.0), dict(fill(2, -1.0), live_actual=arm_row(2, "live_actual", -1.0, -1.0, regime="Choppy"))]}
         arm_rows = {(str(i), "stop_orb_low"): arm_row(i, "stop_orb_low", 0.0, 0.0) for i in (1, 2)}
@@ -725,7 +743,10 @@ def test_every_capture_query_is_read_only():
         assert text.splitlines()[0].strip() == "SET default_transaction_read_only = on;", p.name
         assert ("\\copy (" in text or "COPY (" in text) and "TO STDOUT WITH CSV HEADER" in text, p.name
     assert "breakout_v1_entry_day" in (CAPTURE / "audit_breakout.sql").read_text()
-    assert "skip_reason IS NULL AND status NOT IN ('cancelled', 'skipped') AND alert_date >= DATE '2026-05-05'" in (CAPTURE / "daily_bars.sql").read_text()
+    admitted = "skip_reason IS NULL AND status NOT IN ('cancelled', 'skipped') AND filled_at IS NOT NULL AND alert_date >= DATE '2026-05-05'"
+    assert admitted in (CAPTURE / "daily_bars.sql").read_text() and admitted in (CAPTURE / "admitted_magna53.sql").read_text()
+    # finding 8 counts malformed missed-by-slots rows; a ::jsonb cast in the bars capture would abort on the first one
+    assert "::jsonb" not in (CAPTURE / "daily_bars.sql").read_text()
 
 
 def test_pinned_constants_match_the_plan():

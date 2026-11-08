@@ -43,7 +43,7 @@ if str(_REPO) not in sys.path:
 from agents.market_intelligence.book_geometry_arms import capped_dollar_r  # noqa: E402
 from agents.market_intelligence.live_fill_counterfactuals import GAP_RETRY_SESSIONS  # noqa: E402
 from agents.market_intelligence.rule_eras import (  # noqa: E402
-    BREAKEVEN_ARM_R_VALUE, admission_era_as_of, exit_era_label)
+    BREAKEVEN_ARM_R_VALUE, admission_era_as_of, exit_era_label, exit_era_start)
 from agents.market_intelligence.sell_discipline import trade_realized_r, trade_risk_per_share  # noqa: E402
 
 try:  # the recorder's own calendar; weekdays-only when it cannot load (stated on the page)
@@ -614,6 +614,18 @@ def arm_lens(lens: str, fills_by_era: dict[str, list[dict]], arm_rows: dict[tupl
             per = [dict(fl, arm_row=arm_rows.get((str(fl["trade_id"]), arm))) for fl in fills]
             cells[era] = era_cell(arm, era, per)
         v, why = verdict(cells, current_era)
+        if v == "PROPOSE":
+            # §1.3 / D5: a PROPOSE is quoted only when ONE admission era carries n >= 10 and WON on its own —
+            # the exit-era cell pools admission eras, and the 482 YAML says never pool to reach a number.
+            by_adm: dict[str, list[dict]] = defaultdict(list)
+            for fl in fills_by_era.get(current_era, []):
+                by_adm[str(fl.get("admission_era") or "unknown")].append(fl)
+            adm_cells = {adm: era_cell(arm, current_era, [dict(fl, arm_row=arm_rows.get((str(fl["trade_id"]), arm))) for fl in fls])
+                         for adm, fls in by_adm.items()}
+            if not any(c.n >= PROPOSE_MIN and c.won for c in adm_cells.values()):
+                v = "WATCH"
+                why += "; demoted: no one admission era holds " + str(PROPOSE_MIN) + " and wins (" + ", ".join(
+                    f"{adm} n {c.n} {'won' if c.won else 'lost' if c.won is False else 'unreadable'}" for adm, c in sorted(adm_cells.items())) + ")"
         out[arm] = {"cells": cells, "verdict": v, "why": why}
     return out
 
@@ -1182,6 +1194,12 @@ def breakout_selection(l3_trades: list[dict], grades: list[dict]) -> dict:
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # §7 safeguard transitions (runner_rule_sweep_recut's void arm) + the predicates copied from the YAML
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+def era_start_for(label: str, fallback: date) -> date:
+    """The current exit era's first date from rule_eras' dated record (`exit_era_start`) — never re-typed here, so
+    the next exit flip moves the safeguard-void window with it; `fallback` for a label the record does not date."""
+    return exit_era_start(label) or fallback
+
+
 def safeguard_transitions_check(rows: list[dict], era_start: date) -> list[str]:
     """LIVE / global transitions since the current era start, excluding the YAML's own list and anything at or
     before its ANSWERED-THROUGH stamp. Each one printed = 'the 08-29 runner read is void'."""
@@ -1619,8 +1637,7 @@ def build_report(run_dir: Path, run_date: date, window_start: date, prev_capture
         else:
             v = "n/a"
         folded.append({"review": p.get("review"), "n": p.get("n"), "verdict": v})
-    era_start = {"era_c": date(2026, 8, 16), "era_d": date(2026, 9, 6), "era_e": date(2026, 10, 13)}.get(current_era, window_start)
-    voids = safeguard_transitions_check(transitions, era_start)
+    voids = safeguard_transitions_check(transitions, era_start_for(current_era, window_start))
 
     report = {"run_date": run_date.isoformat(), "window_start": start.isoformat(), "window_end": run_date.isoformat(),
               "population": dict(pop["by_lane_era"]), "lens_rows": lens_rows, "tails": tl, "window_trades": window_trades,
