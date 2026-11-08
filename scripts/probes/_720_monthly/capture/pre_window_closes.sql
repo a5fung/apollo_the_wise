@@ -1,0 +1,3 @@
+SET default_transaction_read_only = on;
+-- #720 §1.1: trades FILLED before the first window start (the era-B stop) and CLOSED on/after it — counted per lane so "every trade accounted for" is not true on paper and false in fact.
+\copy (SELECT account_mode, signal_type, COUNT(*) AS n FROM mi_live_trades WHERE status = 'closed' AND filled_at IS NOT NULL AND closed_at IS NOT NULL AND (filled_at AT TIME ZONE 'America/New_York')::date < DATE '2026-08-16' AND (closed_at AT TIME ZONE 'America/New_York')::date >= DATE '2026-08-16' GROUP BY account_mode, signal_type ORDER BY account_mode, signal_type) TO STDOUT WITH CSV HEADER

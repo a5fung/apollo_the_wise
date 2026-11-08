@@ -1,0 +1,154 @@
+# the 11-08 challenge's tests run against the PRE-REVISION runner (git show 6ac47c64:scripts/probes/_720_monthly/run_review.py, placed at repo depth as scripts/probes/_720_old_tmp/run_review_old.py, RUN_REVIEW_720_PATH set). Every line below is a finding the old code gets wrong or a function it lacks.
+...FF...FFFFFFFFFF....FFF.FFFFFFFFFFFFF.FFF.FFFFFFF.FF.FF                [100%]
+=================================== FAILURES ===================================
+E   AttributeError: module 'run_review_720' has no attribute 'admission_era_of'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:110: AttributeError: module 'run_review_720' has no attribute 'admission_era_of'
+E   AttributeError: module 'run_review_720' has no attribute 'is_trading_day'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:122: AttributeError: module 'run_review_720' has no attribute 'is_trading_day'
+E   AttributeError: module 'run_review_720' has no attribute 'recorder_gaps'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:161: AttributeError: module 'run_review_720' has no attribute 'recorder_gaps'
+E   AttributeError: module 'run_review_720' has no attribute 'reason_bucket'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:173: AttributeError: module 'run_review_720' has no attribute 'reason_bucket'
+E   AttributeError: module 'run_review_720' has no attribute 'is_depth_sale'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:180: AttributeError: module 'run_review_720' has no attribute 'is_depth_sale'
+E   AttributeError: module 'run_review_720' has no attribute 'depth_sale_cost_r'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:187: AttributeError: module 'run_review_720' has no attribute 'depth_sale_cost_r'
+E   AttributeError: module 'run_review_720' has no attribute 'partial_fraction'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:195: AttributeError: module 'run_review_720' has no attribute 'partial_fraction'
+E   AttributeError: module 'run_review_720' has no attribute 'reweight_replay_r'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:202: AttributeError: module 'run_review_720' has no attribute 'reweight_replay_r'
+E   KeyError: 'via'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:213: KeyError: 'via'
+E   assert (not True)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:223: assert (not True)
+E   KeyError: 'via'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:228: KeyError: 'via'
+E   AssertionError: assert 'whole_share' == 'exit_session_differs'
+      
+      - exit_session_differs
+      + whole_share
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:237: AssertionError: assert 'whole_share' == 'exit_session_differs'
+E   assert (-3.8 == 0.5 ± 5.0e-07
+      
+      comparison failed
+      Obtained: -3.8
+      Expected: 0.5 ± 5.0e-07)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:281: assert (-3.8 == 0.5 ± 5.0e-07
+E   AttributeError: 'EraCell' object has no attribute 'n_pre_1104'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:287: AttributeError: 'EraCell' object has no attribute 'n_pre_1104'
+E   AssertionError: assert ('NOTHING' == 'PROPOSE'
+      
+      - PROPOSE
+      + NOTHING)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:306: AssertionError: assert ('NOTHING' == 'PROPOSE'
+E   AttributeError: module 'run_review_720' has no attribute 'admission_cells'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:320: AttributeError: module 'run_review_720' has no attribute 'admission_cells'
+E   AttributeError: module 'run_review_720' has no attribute 'regime_table'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:326: AttributeError: module 'run_review_720' has no attribute 'regime_table'
+E   AttributeError: module 'run_review_720' has no attribute 'runner_shapes'. Did you mean: 'runner_shape'?
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:334: AttributeError: module 'run_review_720' has no attribute 'runner_shapes'. Did you mean: 'runner_shape'?
+E   AttributeError: module 'run_review_720' has no attribute 'runner_shapes'. Did you mean: 'runner_shape'?
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:344: AttributeError: module 'run_review_720' has no attribute 'runner_shapes'. Did you mean: 'runner_shape'?
+E   assert True is None
+     +  where True = <function stopped_then_ran at 0x10ce5b110>({'id': 1, 'ticker': 'AAA', 'alert_date': '2026-10-20', 'account_mode': 'live', ...}, {'AAA': [{'trade_date': '2026-10-23', 'high_price': '103', 'low_price': '99'}, {'trade_date': '2026-10-24', 'high_pric...-26', 'high_price': '104.5', 'low_price': '99'}, {'trade_date': '2026-10-27', 'high_price': '103', 'low_price': '99'}]})
+     +    where <function stopped_then_ran at 0x10ce5b110> = rr.stopped_then_ran
+     +    and   {'id': 1, 'ticker': 'AAA', 'alert_date': '2026-10-20', 'account_mode': 'live', ...} = trade(exits='[{"reason": "gap_through", "price": 95, "time": "2026-10-22T19:30:00+00:00"}]')
+     +      where '[{"reason": "gap_through", "price": 95, "time": "2026-10-22T19:30:00+00:00"}]' = legs(('gap_through', 95))
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:357: assert True is None
+E   AttributeError: module 'run_review_720' has no attribute 'post_exit_high_r'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:362: AttributeError: module 'run_review_720' has no attribute 'post_exit_high_r'
+E   KeyError: 'runner_shape_partial'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:372: KeyError: 'runner_shape_partial'
+E   TypeError: exit_descriptives() takes 2 positional arguments but 4 were given
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:382: TypeError: exit_descriptives() takes 2 positional arguments but 4 were given
+E   KeyError: 'null_n'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:391: KeyError: 'null_n'
+E   AttributeError: module 'run_review_720' has no attribute 'fill_minute_histogram'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:396: AttributeError: module 'run_review_720' has no attribute 'fill_minute_histogram'
+E   TypeError: tails() got an unexpected keyword argument 'arm_rows'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:412: TypeError: tails() got an unexpected keyword argument 'arm_rows'
+E   AssertionError: assert (True is True and True is False)
+     +  where True = <function width_ok at 0x10ce5b950>({'ticker': 'ZZZ', 'break_price': 50, 'stop': 48, 'width': 0.04, ...})
+     +    where <function width_ok at 0x10ce5b950> = rr.width_ok
+     +  and   True = <function width_ok at 0x10ce5b950>({'ticker': 'WID', 'break_price': 50, 'stop': 47, 'width': 0.06, ...})
+     +    where <function width_ok at 0x10ce5b950> = rr.width_ok
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:433: AssertionError: assert (True is True and True is False)
+E   ValueError: not enough values to unpack (expected 2, got 1)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:441: ValueError: not enough values to unpack (expected 2, got 1)
+E   AttributeError: module 'run_review_720' has no attribute 'ENTRY_DAY_EVENT'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:461: AttributeError: module 'run_review_720' has no attribute 'ENTRY_DAY_EVENT'
+E   AttributeError: module 'run_review_720' has no attribute 'breakout_buy_point'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:477: AttributeError: module 'run_review_720' has no attribute 'breakout_buy_point'
+E   AttributeError: module 'run_review_720' has no attribute 'fisher_exact_two_sided'. Did you mean: 'fisher_exact_one_sided_le'?
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:487: AttributeError: module 'run_review_720' has no attribute 'fisher_exact_two_sided'. Did you mean: 'fisher_exact_one_sided_le'?
+E   assert (3 == 3 and -99.88 == 11.0 ± 1.1e-05
+      
+      comparison failed
+      Obtained: -99.88
+      Expected: 11.0 ± 1.1e-05)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:517: assert (3 == 3 and -99.88 == 11.0 ± 1.1e-05
+E   TypeError: selection_labels() takes 3 positional arguments but 5 were given
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:529: TypeError: selection_labels() takes 3 positional arguments but 5 were given
+E   AttributeError: module 'run_review_720' has no attribute 'selection_verdict'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:537: AttributeError: module 'run_review_720' has no attribute 'selection_verdict'
+E   AttributeError: module 'run_review_720' has no attribute 'declared_abstentions'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:542: AttributeError: module 'run_review_720' has no attribute 'declared_abstentions'
+E   AttributeError: module 'run_review_720' has no attribute 'breakout_grades_fixture'. Did you mean: 'breakout_grade_for'?
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:548: AttributeError: module 'run_review_720' has no attribute 'breakout_grades_fixture'. Did you mean: 'breakout_grade_for'?
+E   AttributeError: module 'run_review_720' has no attribute 'safeguard_transitions_check'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:570: AttributeError: module 'run_review_720' has no attribute 'safeguard_transitions_check'
+E   AttributeError: module 'run_review_720' has no attribute 'emit_predicates_sql'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:582: AttributeError: module 'run_review_720' has no attribute 'emit_predicates_sql'
+E   AttributeError: module 'run_review_720' has no attribute 'ALL_ARMS'. Did you mean: 'TRAIL_ARMS'?
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:635: AttributeError: module 'run_review_720' has no attribute 'ALL_ARMS'. Did you mean: 'TRAIL_ARMS'?
+E   TypeError: build_report() got an unexpected keyword argument 'labelled'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:714: TypeError: build_report() got an unexpected keyword argument 'labelled'
+E   AttributeError: module 'run_review_720' has no attribute 'BREAKEVEN_TOL_R'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:735: AttributeError: module 'run_review_720' has no attribute 'BREAKEVEN_TOL_R'
+E   AttributeError: module 'run_review_720' has no attribute 'FOLDED_REVIEWS'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/720-plan/tests/test_720_monthly_review.py:749: AttributeError: module 'run_review_720' has no attribute 'FOLDED_REVIEWS'
+
+=========================== short test summary info ============================
+FAILED tests/test_720_monthly_review.py::TestLanesAndEras::test_admission_era_recorder_stamp_first_then_derived_and_said_so
+FAILED tests/test_720_monthly_review.py::TestLanesAndEras::test_open_floor_split_date_is_the_first_acting_session_of_the_718_flip
+FAILED tests/test_720_monthly_review.py::TestRecorderGaps::test_a_dead_recorder_is_named_not_read_as_a_thin_era
+FAILED tests/test_720_monthly_review.py::TestExitReasons::test_vocabulary_is_the_five_writers_and_gap_through_is_not_a_leg
+FAILED tests/test_720_monthly_review.py::TestExitReasons::test_depth_sale_is_exit_rule_depth_plus_a_final_sma_trail_stop_leg
+FAILED tests/test_720_monthly_review.py::TestExitReasons::test_depth_sale_cost_is_the_open_sale_vs_the_prior_close_in_r
+FAILED tests/test_720_monthly_review.py::TestFidelity::test_live_fraction_comes_from_the_real_partial_leg_shares
+FAILED tests/test_720_monthly_review.py::TestFidelity::test_reweighting_the_replay_to_the_live_fraction
+FAILED tests/test_720_monthly_review.py::TestFidelity::test_a_whole_share_miss_passes_only_reweighted_and_then_compares_arms_with_the_replay
+FAILED tests/test_720_monthly_review.py::TestFidelity::test_tolerance_is_max_of_abs_and_ten_percent_with_no_extra_bound
+FAILED tests/test_720_monthly_review.py::TestFidelity::test_ten_percent_arm_passes_a_kod_sized_miss_on_the_stored_replay
+FAILED tests/test_720_monthly_review.py::TestFidelity::test_session_or_reason_difference_is_classified_before_whole_share
+FAILED tests/test_720_monthly_review.py::TestEraCellAndLadder::test_a_reweighted_fill_is_compared_with_the_replay_on_every_condition
+FAILED tests/test_720_monthly_review.py::TestEraCellAndLadder::test_pre_and_post_1104_counts_ride_on_the_cell
+FAILED tests/test_720_monthly_review.py::TestEraCellAndLadder::test_ladder_is_judged_on_the_current_era_only_older_eras_are_context
+FAILED tests/test_720_monthly_review.py::TestEraCellAndLadder::test_arm_lens_runs_every_arm_and_admission_cells_never_pool
+FAILED tests/test_720_monthly_review.py::TestEraCellAndLadder::test_regime_table_names_thin_cells
+FAILED tests/test_720_monthly_review.py::TestDescriptives::test_runner_shape_partial_then_breakeven_needs_both_bounds
+FAILED tests/test_720_monthly_review.py::TestDescriptives::test_runner_shape_armed_breakeven_is_keyed_on_the_orb_frame_peak_not_a_partial_leg
+FAILED tests/test_720_monthly_review.py::TestDescriptives::test_stopped_then_ran_reads_only_a_real_stop_leg
+FAILED tests/test_720_monthly_review.py::TestDescriptives::test_post_exit_high_in_r
+FAILED tests/test_720_monthly_review.py::TestDescriptives::test_partial_and_exit_descriptives
+FAILED tests/test_720_monthly_review.py::TestDescriptives::test_disappoints_is_capped_dollar_r_not_trade_r
+FAILED tests/test_720_monthly_review.py::TestDescriptives::test_slippage_counts_a_null_fill_vs_trigger_apart
+FAILED tests/test_720_monthly_review.py::TestDescriptives::test_fill_minute_histogram
+FAILED tests/test_720_monthly_review.py::TestTail::test_tail_reads_the_real_trade_with_the_full_fields_and_is_never_gated_by_fidelity
+FAILED tests/test_720_monthly_review.py::TestMissedBySlots::test_width_rule_is_fraction_vs_fraction
+FAILED tests/test_720_monthly_review.py::TestMissedBySlots::test_records_count_bad_json
+FAILED tests/test_720_monthly_review.py::TestMissedBySlots::test_missed_vs_seated_and_absence
+FAILED tests/test_720_monthly_review.py::TestMissedBySlots::test_breakout_buy_point_fill_vs_level_decisions_and_thirds
+FAILED tests/test_720_monthly_review.py::TestStopTooWide::test_fisher_is_two_sided_as_the_yaml_read_it
+FAILED tests/test_720_monthly_review.py::TestStopTooWide::test_rejected_mfe_comes_from_daily_bars_never_the_fraction_column
+FAILED tests/test_720_monthly_review.py::TestSelection::test_labels_join_alerts_and_exclude_declared_abstentions
+FAILED tests/test_720_monthly_review.py::TestSelection::test_under_three_missed_labels_is_cannot_tell_not_watch
+FAILED tests/test_720_monthly_review.py::TestSelection::test_declared_abstentions_come_from_the_fixture
+FAILED tests/test_720_monthly_review.py::TestSelection::test_breakout_grades_come_from_his_chart_sheets
+FAILED tests/test_720_monthly_review.py::TestFoldedReviews::test_safeguard_transitions_reuse_the_yaml_exclusion_list
+FAILED tests/test_720_monthly_review.py::TestFoldedReviews::test_predicates_sql_is_the_yaml_verbatim
+FAILED tests/test_720_monthly_review.py::TestRenderAndDriver::test_build_report_end_to_end_reaches_every_lens
+FAILED tests/test_720_monthly_review.py::TestRenderAndDriver::test_era_mismatch_stops_the_read
+FAILED tests/test_720_monthly_review.py::test_pinned_constants_match_the_plan
+FAILED tests/test_720_monthly_review.py::test_the_five_yaml_entries_point_at_this_cadence_and_the_fidelity_bar_is_the_plans
+42 failed, 15 passed in 0.34s
