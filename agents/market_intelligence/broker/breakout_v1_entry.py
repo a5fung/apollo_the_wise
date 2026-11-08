@@ -1681,13 +1681,17 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
         return out
     if state == STATE_UNREADABLE:
         # 15:55 and unreadable (re-review 2026-11-07, the LOW): there is no next minute, and the last tick places
-        # nothing new whatever the row says (a name without a row is `never_placed` in PASS 1, before the slots) —
-        # but three things must run without the row: the cancel of the resting DAY buys (`_manage`, else one can
-        # fill between 15:55 and 16:00), the missed-by-slots record and the day row. So this minute runs as a normal
-        # one, and ONLY the switch-off cancel below (a real disable / wrong rung) is skipped — a read failure must
-        # never mark a row `block:strategy_disabled`.
+        # nothing NEW whatever the row says (a name without a row is `never_placed` in PASS 1, before the slots) —
+        # but four things must run without the row: the cancel of the resting DAY buys (`_manage`, else one can
+        # fill between 15:55 and 16:00), a filled row's stop-at-the-fill check (`_check_stop_at_fill` — it may
+        # LOWER a stop or SELL the position; a filled position's stop is not a new order, final review finding 5),
+        # the missed-by-slots record and the day row. So this minute runs as a normal one, and ONLY the switch-off
+        # cancel below (a real disable / wrong rung) is skipped — a read failure must never mark a row
+        # `block:strategy_disabled`.
         out["strategy_unreadable"] = True
-    may_order = state in (STATE_OK, STATE_UNREADABLE)     # UNREADABLE reaches here at 15:55 only: nothing is placed
+    # UNREADABLE reaches here at 15:55 only: no NEW buy is placed (PASS 1 marks a row-less name `never_placed`); the
+    # EOD cancel of resting buys, a filled row's stop-at-the-fill check, the missed record and the day row still run
+    may_order = state in (STATE_OK, STATE_UNREADABLE)
     if state == STATE_SWITCHED_OFF:
         # THE STOP AT THE FILL is part of a filled position's stop, not a new order: it still runs when the switch is
         # off (like the pp exit's jobs) — never on a refused phase (wall 2: nothing is touched then).

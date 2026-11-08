@@ -257,15 +257,20 @@ async def test_order_step_submits_lane_highs_bound_to_paper_with_magna53_order(m
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("phase", ["live", "shadow"])
-async def test_order_step_refuses_any_phase_but_paper_and_pages(monkeypatch, phase):
+@pytest.mark.parametrize("phase,pages", [("live", 1), ("shadow", 0), ("deprecated", 0)])
+async def test_order_step_refuses_any_phase_but_paper_and_pages_only_off_paper(monkeypatch, phase, pages):
     """MUTATION TARGET: drop the phase check in _strategy_paper_or_refuse — a lane row moved to
-    'live' would otherwise reach the funnel (wall 3 would still stop it; this is wall 2)."""
+    'live' would otherwise reach the funnel (wall 3 would still stop it; this is wall 2). Every
+    phase but paper is refused with an audit row; the PAGE goes out only for a phase that would
+    route the lane OFF paper ('live') — 'shadow' (his Demote press) and 'deprecated' route
+    nowhere and are his chosen off rungs: audit only (#312 final review 2026-11-07, finding 4)."""
     w = _wire_order_step(monkeypatch, phase=phase)
     out = await lpe.process_lowcap_paper_alerts(today=date(2026, 10, 12))
     assert out == [] and not w.submit.await_count and not w.get_account.await_count
     assert any(ev == "lowcap_paper_lane_refused" for ev, _ in w.audits)
-    assert len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER")
+    assert len(w.pages) == pages, w.pages
+    if pages:
+        assert w.pages[0].startswith("📄 PAPER") and "PAPER only" in w.pages[0]
 
 
 @pytest.mark.asyncio
@@ -285,13 +290,13 @@ async def test_an_unreadable_strategy_row_refuses_every_call_but_pages_once_a_da
 
 
 @pytest.mark.asyncio
-async def test_a_refused_phase_pages_once_a_day_and_audits_every_call(monkeypatch):
-    """#312 re-review 2026-11-07 LOW: his Demote press on `magna53_smallcap` lands it on 'shadow' (`DEMOTE_TO`), and
-    the order step runs after every lane tick 09:31-09:45 — on 9f9347a3 each call refused AND paged, so one press
-    bought a page a minute every morning until he also disabled the lane. The refusal is unchanged (fail-closed, an
-    audit row per call, nothing submitted, the pre-flight never asked); the page now carries its own once-a-day key
-    (`refused`), distinct from the read-failure's, so neither silences the other."""
-    w = _wire_order_step(monkeypatch, phase="shadow")
+async def test_a_refused_live_phase_pages_once_a_day_and_audits_every_call(monkeypatch):
+    """#312 re-review 2026-11-07 LOW: the order step runs after every lane tick 09:31-09:45 — on 9f9347a3 each call
+    on a non-paper phase refused AND paged, a page a minute every morning. The refusal is unchanged (fail-closed, an
+    audit row per call, nothing submitted, the pre-flight never asked); the page carries its own once-a-day key
+    (`refused`), distinct from the read-failure's, so neither silences the other. 'live' is the phase that would
+    route the lane OFF paper — the one the page is for (final review finding 4)."""
+    w = _wire_order_step(monkeypatch, phase="live")
     for _ in range(3):
         assert await lpe.process_lowcap_paper_alerts(today=date(2026, 10, 12)) == []
     assert not w.submit.await_count and not w.get_account.await_count
@@ -302,6 +307,25 @@ async def test_a_refused_phase_pages_once_a_day_and_audits_every_call(monkeypatc
     monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(side_effect=asyncio.TimeoutError("acquire timed out")))
     assert await lpe.process_lowcap_paper_alerts(today=date(2026, 10, 12)) == []
     assert len(w.pages) == 2 and "could not be read" in w.pages[1]
+
+
+@pytest.mark.asyncio
+async def test_his_demote_to_shadow_is_audited_every_call_and_never_paged(monkeypatch):
+    """#312 final review 2026-11-07, finding 4: his Demote press lands `magna53_smallcap` on 'shadow' (`DEMOTE_TO`),
+    a rung HE chose — the once-a-day 🚨 "refused to order" page for it every trading morning was noise. Shadow routes
+    nowhere (no money anywhere), so the lane still refuses (an audit row per call, nothing submitted, the pre-flight
+    never asked) and pages NOTHING; the read-failure page is untouched by it."""
+    w = _wire_order_step(monkeypatch, phase="shadow")
+    for _ in range(3):
+        assert await lpe.process_lowcap_paper_alerts(today=date(2026, 10, 12)) == []
+    assert not w.submit.await_count and not w.get_account.await_count
+    refused = [s for ev, s in w.audits if ev == "lowcap_paper_lane_refused"]
+    assert len(refused) == 3 and all("'shadow'" in s and "off rung" in s for s in refused), refused
+    assert w.pages == []
+    from agents.market_intelligence.strategies import registry
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(side_effect=asyncio.TimeoutError("acquire timed out")))
+    assert await lpe.process_lowcap_paper_alerts(today=date(2026, 10, 12)) == []
+    assert len(w.pages) == 1 and "could not be read" in w.pages[0]
 
 
 @pytest.mark.asyncio

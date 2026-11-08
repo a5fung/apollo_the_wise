@@ -16,8 +16,12 @@ import pytest
 
 
 def _request(text):
+    """His TYPED command: carries the operator origin marker (#312 round 4 — the action handlers
+    refuse any other origin before they read a position; the typed path's logic is what these pin)."""
     req = MagicMock()
     req.task = text
+    req.context = {"origin": "operator_command"}
+    req.user_id = 1
     return req
 
 

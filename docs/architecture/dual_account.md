@@ -33,11 +33,33 @@ handle_strategy_action`, the only entry to the three writers (`_do_promote`, `_d
 marker is refused too (default deny): nothing moves, the answer is "strategy changes need your
 typed /strategy command or the page button", and a `strategy_command_refused` audit row is written
 (strategy, action, origin, user). The read-only `/strategy` and `/strategy <id>` views stay open
-to the chat route. So a plain "demote magna53" typed to the bot — which goes through the LLM —
+to the chat route, and so does the usage text — only a REAL action (`enable|disable|promote|demote`)
+is refused; `strategy magna53 stats` gets the usage text and no refusal row (final review, finding 6).
+So a plain "demote magna53" typed to the bot — which goes through the LLM —
 is now refused; the same words as `/strategy magna53 demote` move it. Pinned by
 `tests/test_312_strategy_command_origin.py` (the real `_dispatch_tool` → `execute_task` path,
 every action the module knows, in all three text forms, a forged marker included; the typed
-CommandHandler path still moving; the writers and their callers DERIVED by AST).
+CommandHandler path still moving; the writers and their callers DERIVED by AST — EVERY
+`update_strategy` call in the codebase is one of four: the typed promote / demote / enable-disable
+and the button handler, `tests/test_312_ladder_act_step.py`).
+
+**The three commands that touch live trade state (his ruling 2026-11-07, "Ok but let's put it for
+tmr", to the rec; built #312 round 4):** `/resume` (lifts the real-money trading halt), `/partialnow
+TICKER [CONFIRM]` (sells a third of a filled position on whichever account holds it, live included)
+and `/timestop TICKER` (exits a 9M Day 2 position) act on his TYPED command only — the SAME origin
+marker, checked inside each handler in `agents/market_intelligence/agent.py` by
+`_refuse_unless_typed` once the request names an action (`/resume` and the bare word `resume` both
+reach `_handle_pause_command`; a ticker names the exit). Through the chat route each answers
+"Not done — this needs your typed /resume command. The chat assistant cannot lift the real-money
+trading halt; nothing was changed." (its own verb per command), changes nothing — the halt is not
+touched, no position is even read — and writes one `operator_command_refused` audit row (command,
+task, origin, user). **`/pause` stays open to the chat route** — halting can only STOP real money
+moving, the safe direction. A bare `/partialnow` or `/timestop` (no ticker) is not an action: the
+usage text, no refusal row. Pinned by `tests/test_312_operator_command_origin.py` (the four texts
+through the real `_dispatch_tool`, a forged marker included; the typed path still resuming /
+selling / exiting; `/pause` and `pause` through chat still halting). Left as they were, outside the
+ruling's words: `/syncnow` (a DB↔Alpaca position reconcile behind the #137 guard) and every
+read-only command.
 
 **Demotion — the ladder's downward direction (ADR 0022 §1 L2, #312: the nightly read built DARK
 2026-10-15, HIS act step built 2026-11-07).** `agents/market_intelligence/ladder_watchdog.py`, job

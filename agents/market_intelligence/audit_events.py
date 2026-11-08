@@ -105,6 +105,11 @@ STRATEGY_DISABLED_SKIP = "strategy_disabled_skip"
 # that did NOT arrive by his typed command (the chat assistant's tool, or a caller with no origin)
 # — refused, nothing moved. Written by `strategies/telegram.py::handle_strategy_action`.
 STRATEGY_COMMAND_REFUSED = "strategy_command_refused"
+# #312 round 4 (his ruling 2026-11-07, to the rec): `/resume` (lifts the real-money halt),
+# `/partialnow TICKER` (sells a third of a filled position) or `/timestop TICKER` (exits one) that did
+# NOT arrive by his typed command — refused, nothing changed. `/pause` is deliberately NOT gated
+# (halting is the safe direction). Written by `agent.py::_refuse_unless_typed`.
+OPERATOR_COMMAND_REFUSED = "operator_command_refused"
 
 # ── ORB / entry flow ────────────────────────────────────────────────────────
 ORB_CANCELLATION_CLASSIFICATION = "orb_cancellation_classification"

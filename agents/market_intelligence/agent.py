@@ -136,6 +136,33 @@ class ScreenerRequest(BaseModel):
 _INTERNAL_ONLY_COMMANDS = frozenset({"/ladder_press"})
 
 
+async def _refuse_unless_typed(request: AgentRequest, command: str, does: str) -> str | None:
+    """THE ORIGIN GATE for a command that touches live trade state (#312 round 4, his ruling 2026-11-07: close
+    `/resume`, `/partialnow` and `/timestop` to the chat route; keep `/pause`). -> None when the request came by
+    his TYPED command — the CommandHandler in `channels/telegram.py::_dispatch_market_slash` is the ONLY path
+    that stamps `context.origin = "operator_command"`; the orchestrator's `call_market_agent` tool always
+    overwrites the origin to `"chat_tool"`, so the LLM cannot forge it. Anything else — the chat route, a caller
+    with no origin — gets the plain refusal text back (nothing has moved) and ONE `operator_command_refused`
+    audit row naming the command, the origin that arrived and who asked. `does` is the verb for the answer
+    ("lift the real-money trading halt"). The same predicate `/strategy`'s writers sit behind
+    (`strategies/telegram.py::handle_strategy_action`). Gate ONLY the action: a usage reply is not one."""
+    import json as _json
+    from agents.market_intelligence.audit_events import OPERATOR_COMMAND_REFUSED
+    from shared.models import ORIGIN_OPERATOR_COMMAND, is_operator_command, request_origin
+    origin = request_origin(request.context)
+    if is_operator_command(origin):
+        return None
+    await log_audit_event(
+        OPERATOR_COMMAND_REFUSED,
+        f"{command} refused — not his typed command (origin {origin or 'missing'}); nothing changed",
+        detail=_json.dumps({"command": command, "task": request.task[:200], "origin": origin,
+                            "user_id": request.user_id, "required_origin": ORIGIN_OPERATOR_COMMAND}),
+    )
+    logger.warning(f"{command} refused: origin={origin!r} (user {request.user_id}, task {request.task[:80]!r})")
+    return (f"Not done — this needs your typed {command} command. The chat assistant cannot {does}; "
+            f"nothing was changed.")
+
+
 def _normalize_slash_cmd(token: str) -> str:
     """Normalize a raw slash-command token to its canonical dispatch key.
 
@@ -2006,10 +2033,21 @@ class MarketIntelligenceAgent(BaseAgent):
         `_check_safeguards`, so it takes effect on the NEXT entry with no redeploy.
         Sets the state, then READS IT BACK and reports the ACTUAL stored value — a
         silent upsert failure must never be reported as success (advisor 2026-06-19).
+
+        `/resume` ACTS ONLY ON HIS TYPED COMMAND (#312 round 4, his ruling 2026-11-07): lifting the
+        halt lets real money move again, so the chat assistant's `call_market_agent` tool — which
+        reaches this handler by `/resume` AND by the bare word `resume` (the exact-match route in
+        `execute_task`) with his user id — is refused on the request's origin
+        (`_refuse_unless_typed`): nothing changes, an `operator_command_refused` row is written.
+        `/pause` stays open to every route: halting is the safe direction.
         """
         from agents.market_intelligence.db import set_trading_halted, get_manual_halt_state
         task = request.task.strip().lower().lstrip("/")
         want_halt = task.startswith("pause")
+        if not want_halt:
+            refused = await _refuse_unless_typed(request, "/resume", "lift the real-money trading halt")
+            if refused:
+                return self._ok(request, result=refused)
         expected = "on" if want_halt else "off"
         try:
             await set_trading_halted(want_halt)
@@ -3294,6 +3332,11 @@ class MarketIntelligenceAgent(BaseAgent):
         4. Tags the exit jsonb row with reason='time_stop'
         5. Emits time_stop_executed audit event for the
            time_stop_9m_day2_effectiveness_n10 data-gated review
+
+        ACTS ONLY ON HIS TYPED COMMAND (#312 round 4, his ruling 2026-11-07): it sells a position,
+        so once a ticker is named the request's origin decides (`_refuse_unless_typed`) — the chat
+        assistant's tool is refused before the position is even read; a bare `/timestop` is not an
+        action and gets the usage text on every route.
         """
         import re as _re
         from agents.market_intelligence.db import get_pool
@@ -3313,6 +3356,9 @@ class MarketIntelligenceAgent(BaseAgent):
                     "Candidates are surfaced via the daily 4:55 PM ET EOD scan."
                 ),
             )
+        refused = await _refuse_unless_typed(request, "/timestop", "exit a position")
+        if refused:
+            return self._ok(request, result=refused)
 
         pool = await get_pool()
         async with pool.acquire() as conn:
@@ -3798,6 +3844,12 @@ class MarketIntelligenceAgent(BaseAgent):
         cause was Alpaca paper share-reservation quirks on after-hours
         retries. Outside the safe 9:30-16:50 ET window, the command
         requires explicit `CONFIRM` suffix to proceed.
+
+        ACTS ONLY ON HIS TYPED COMMAND (#312 round 4, his ruling 2026-11-07): it sells a third of
+        a filled position on whichever account holds it (live included), so once a ticker is named
+        the request's origin decides (`_refuse_unless_typed`) — the chat assistant's tool is refused
+        before the after-hours guard and before the position is read; a bare `/partialnow` is not
+        an action and gets the usage text on every route.
         """
         import re as _re
         from agents.market_intelligence.db import get_pool, log_audit_event
@@ -3824,6 +3876,9 @@ class MarketIntelligenceAgent(BaseAgent):
                     "(IBM cascade R4)."
                 ),
             )
+        refused = await _refuse_unless_typed(request, "/partialnow", "sell part of a position")
+        if refused:
+            return self._ok(request, result=refused)
 
         # After-hours guard (#141): /partialnow needs the 16:50 ET tail
         # buffer so the 16:45 ET scheduled partial-take still fits inside

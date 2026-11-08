@@ -147,13 +147,15 @@ def test_the_chat_tool_cannot_move_a_strategy(monkeypatch, action, context):
         assert request.context.get("origin") == "chat_tool"
 
 
-def test_an_unknown_action_through_the_chat_tool_is_refused_before_the_usage_text(monkeypatch):
-    """Default deny: anything with an action token is a mutation attempt to the gate; the usage text that names
-    the valid actions is the operator's, not the LLM's."""
+def test_an_unknown_action_through_the_chat_tool_gets_the_usage_text_not_a_refusal(monkeypatch):
+    """Only a REAL action is refused (final review 2026-11-07, finding 6): a token that is not one of
+    `_VALID_ACTIONS` cannot move anything, so `strategy magna53 stats` through the chat route gets the same usage
+    text he would — and writes NO refusal row (a refusal for a request that could never have moved a rung is
+    noise in the audit log). Round 3 refused it before parsing; that was the one confusing reply the review found."""
     db = _db(monkeypatch)
-    out, _ = _chat(monkeypatch, _agent(), "strategy magna53 explode")
-    assert "typed /strategy command" in out and "Valid:" not in out
-    assert len(db.audit_rows(REFUSED_EVENT)) == 1 and db.phase_writes == []
+    out, _ = _chat(monkeypatch, _agent(), "strategy magna53 stats")
+    assert "Unknown action" in out and "Valid:" in out and "typed /strategy command" not in out, out
+    assert db.audit_rows(REFUSED_EVENT) == [] and db.phase_writes == []
 
 
 def test_a_missing_marker_is_refused_at_the_dispatcher_itself(monkeypatch):

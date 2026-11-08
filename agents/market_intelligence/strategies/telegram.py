@@ -23,7 +23,10 @@ the typed path stamps `context.origin = "operator_command"`; the orchestrator's 
 ALWAYS overwrites it to `"chat_tool"`; every writer below sits behind that one check, and a
 missing origin is refused like a wrong one (default deny) — nothing moves, the answer says so
 in plain words, a `strategy_command_refused` row is written. The read-only list and detail
-views stay open to every route.
+views stay open to every route, and so does the usage text: only a REAL action (one of
+`_VALID_ACTIONS`) is refused — `strategy magna53 stats` through the chat route gets the usage
+text and no refusal row (#312 final review 2026-11-07, finding 6). The same gate closes
+`/resume`, `/partialnow` and `/timestop` in `agent.py` (`_refuse_unless_typed`, round 4).
 """
 from __future__ import annotations
 
@@ -251,7 +254,9 @@ async def handle_strategy_action(body: str, *, origin: str | None = None, user_i
     Empty body → list. `<id>` alone → detail. `<id> <action>` → mutation — ONLY when
     `origin` is the typed-command marker (`shared.models.ORIGIN_OPERATOR_COMMAND`, stamped
     by `channels/telegram.py::_dispatch_market_slash`). Any other origin, and NO origin
-    (a caller that forgets), is refused before the action is even parsed: default deny.
+    (a caller that forgets), is refused: default deny. Only a REAL action is refused — a
+    token that is not one of `_VALID_ACTIONS` cannot move anything, so it gets the usage
+    text on every route and writes no refusal row (final review 2026-11-07, finding 6).
     `user_id` is recorded on the refusal row only.
     """
     body = (body or "").strip()
@@ -262,13 +267,13 @@ async def handle_strategy_action(body: str, *, origin: str | None = None, user_i
     if len(parts) == 1:
         return await render_strategy_detail(strategy_id)
     action = parts[1].lower()
-    if not is_operator_command(origin):
-        return await _refuse_mutation(strategy_id, action, origin, user_id)
     if action not in _VALID_ACTIONS:
         return (
             f"Unknown action `{action}`. Valid: {', '.join(sorted(_VALID_ACTIONS))}.\n"
             f"Usage: `/strategy <id> <action>`"
         )
+    if not is_operator_command(origin):
+        return await _refuse_mutation(strategy_id, action, origin, user_id)
     if action == "enable":
         return await _do_enable_disable(strategy_id, enable=True)
     if action == "disable":

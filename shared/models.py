@@ -48,8 +48,11 @@ class AgentRequest(BaseModel):
 # ORIGIN_OPERATOR_COMMAND; the orchestrator's tool path (`core/orchestrator.py::_call_sub_agent`)
 # ALWAYS stamps ORIGIN_CHAT_TOOL over whatever the LLM put in `context` — the LLM writes that
 # object itself, so a value it supplies is never trusted. A handler that moves money-path state
-# (a strategy's phase or enabled flag: `strategies/telegram.py::handle_strategy_action`) acts
-# only on the operator marker; a missing marker is refused (default deny).
+# acts only on the operator marker; a missing marker is refused (default deny): a strategy's
+# phase or enabled flag (`strategies/telegram.py::handle_strategy_action`), and — #312 round 4,
+# his ruling 2026-11-07 — `/resume` (the real-money halt lifted), `/partialnow` (a third of a
+# position sold) and `/timestop` (a position exited), all through `agent.py::_refuse_unless_typed`.
+# `/pause` is deliberately open to every route: halting is the safe direction.
 REQUEST_ORIGIN_KEY = "origin"
 ORIGIN_OPERATOR_COMMAND = "operator_command"
 ORIGIN_CHAT_TOOL = "chat_tool"

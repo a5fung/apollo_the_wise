@@ -639,7 +639,11 @@ async def test_a_live_positions_stop_is_checked_on_the_live_account_after_demote
 ROOTS = ("agents", "core", "channels", "shared")
 
 
-def _calls_with_phase(tree):
+def _update_strategy_calls(tree):
+    """Every call of the one writer `update_strategy` in `tree`, whatever it passes — `phase=`, `enabled=`,
+    `live_real_enabled=`, or a `**kw` splat (final review 2026-11-07, finding 3: the pin used to see `phase=`
+    calls only, so an `enabled=` or `**kw` writer elsewhere passed the suite) → (enclosing function, carries
+    `phase=`)."""
     parents = {}
     for node in ast.walk(tree):
         for child in ast.iter_child_nodes(node):
@@ -649,7 +653,7 @@ def _calls_with_phase(tree):
             continue
         f = node.func
         name = f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
-        if name != "update_strategy" or not any(k.arg == "phase" for k in node.keywords):
+        if name != "update_strategy":
             continue
         cur, fn = node, None
         while cur in parents:
@@ -657,7 +661,7 @@ def _calls_with_phase(tree):
             if isinstance(cur, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 fn = cur.name
                 break
-        yield fn
+        yield fn, any(k.arg == "phase" for k in node.keywords)
 
 
 _DB_VERBS = {"execute", "executemany", "fetch", "fetchrow", "fetchval"}
@@ -695,12 +699,14 @@ def _called_names(fn: ast.AST) -> set[str]:
 
 
 def test_only_the_operators_three_paths_write_a_phase():
-    """DERIVED over every production module: a call to the one phase writer carrying `phase=`
-    exists in exactly three functions — the typed promote, the typed demote and the Demote
-    button's handler — all three reached only by his message or his press. A raw phase UPDATE
-    handed to a DB verb exists in the writer itself and in db.py's boot migration — which may
-    only converge a retired row to the TERMINAL 'deprecated' phase (#424; dual_account.md names
-    it), never to shadow / paper / live.
+    """DERIVED over every production module: EVERY call of the one writer `update_strategy` — whatever
+    it passes (final review 2026-11-07, finding 3: the pin used to match `phase=` calls only) — exists
+    in exactly four functions: the typed promote and demote (phase), the typed enable / disable (the
+    enabled flag) and the Demote button's handler (phase) — all four reached only by his typed command
+    or his press. The three that carry `phase=` are the phase writers. A raw phase UPDATE handed to a
+    DB verb exists in the writer itself and in db.py's boot migration — which may only converge a
+    retired row to the TERMINAL 'deprecated' phase (#424; dual_account.md names it), never to
+    shadow / paper / live.
 
     And the typed ones sit behind the origin gate (#312 round 3, his ruling 2026-11-07 "Close it"):
     every function in `strategies/telegram.py` that calls `update_strategy` at all — the two phase
@@ -708,7 +714,7 @@ def test_only_the_operators_three_paths_write_a_phase():
     `handle_strategy_action`, whose `origin` parameter is keyword-only with a default that refuses
     (a caller that forgets it cannot move anything). The behavioural proof that the gate acts is
     `tests/test_312_strategy_command_origin.py`; this proves nothing stands beside it."""
-    # source-pin-ok: the NON-existence of a fourth phase writer anywhere in the codebase cannot be
+    # source-pin-ok: the NON-existence of a fifth writer anywhere in the codebase cannot be
     # exercised by calling anything — the population of callers is only decidable from the source.
     found = set()
     raw_by_file: dict[str, list[str]] = {}
@@ -719,17 +725,21 @@ def test_only_the_operators_three_paths_write_a_phase():
             rel = str(p.relative_to(REPO))
             tree = ast.parse(src)
             if "update_strategy" in src:
-                for fn in _calls_with_phase(tree):
-                    found.add((rel, fn))
+                for fn, with_phase in _update_strategy_calls(tree):
+                    found.add((rel, fn, with_phase))
             for flat in _raw_phase_updates(tree):
                 raw_by_file.setdefault(rel, []).append(flat)
             if "update mi_strategies" in " ".join(src.lower().split()):
                 mentions.add(rel)
+    TELEGRAM, PRESS = "agents/market_intelligence/strategies/telegram.py", "agents/market_intelligence/ladder_press.py"
     assert found == {
-        ("agents/market_intelligence/strategies/telegram.py", "_do_promote"),
-        ("agents/market_intelligence/strategies/telegram.py", "_do_demote"),
-        ("agents/market_intelligence/ladder_press.py", "_demote_on_page"),
+        (TELEGRAM, "_do_promote", True),
+        (TELEGRAM, "_do_demote", True),
+        (TELEGRAM, "_do_enable_disable", False),       # the enabled flag — no phase
+        (PRESS, "_demote_on_page", True),
     }, found
+    assert {(rel, fn) for rel, fn, with_phase in found if with_phase} == {
+        (TELEGRAM, "_do_promote"), (TELEGRAM, "_do_demote"), (PRESS, "_demote_on_page")}
     # The coarse net (any spelling, built any way): the writer, the boot migration (+ a comment
     # about the operator's own hand UPDATE), and one error message that SUGGESTS SQL to him.
     assert mentions == {"agents/market_intelligence/strategies/registry.py",
