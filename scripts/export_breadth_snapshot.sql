@@ -14,6 +14,10 @@
 --
 -- READ-ONLY: one SELECT. Display only — no money path, no grade, no alert input.
 --
+-- #722 added the top-level `ecosystems` array: the active themes grouped by ecosystem (e_code), each
+-- group's UNIQUE members (a stock in three of its themes counts once) returned on the same bases the
+-- themes use. Nothing else in the file moved.
+--
 -- ⚠ DATES ARE TAKEN FROM THE DATA, NEVER FROM THE CLOCK. The cron also runs on Saturday and
 -- Sunday, so the calendar date is not a trading day. A "session" is a trade_date carrying at
 -- least 3,000 rows that join mi_security_types as CS/ADRC; as_of is the newest one. The
@@ -179,6 +183,73 @@ member_of AS (
       FROM members
      GROUP BY ticker
 ),
+-- #722 — ECOSYSTEM GROUPS. The curated names, copied VERBATIM from theme_ecosystems.yaml (the SSoT for the E-*
+-- axis); tests/test_719_export_breadth_sql.py fails the build if this list and the YAML disagree, so a renamed
+-- or added ecosystem cannot reach the page unnoticed. 'Unassigned' prints as 'Other' and an unknown code (an
+-- auto-promoted one) prints as its code — both in the output block below, not here, so this list stays the YAML.
+eco_names AS (
+    SELECT v.e_code, v.name
+      FROM (VALUES
+        ('E-CYBR', 'Cybersecurity'),
+        ('E-AISEMI', 'AI silicon & semiconductors'),
+        ('E-AIINFRA', 'AI cloud & datacenter'),
+        ('E-SAAS', 'Enterprise software'),
+        ('E-BIO', 'Biotech & therapeutics'),
+        ('E-MEDTECH', 'Devices & diagnostics'),
+        ('E-INS', 'Insurance'),
+        ('E-BANKFIN', 'Banks / fintech / brokers'),
+        ('E-REIT', 'Real estate / REITs'),
+        ('E-ENER', 'Energy'),
+        ('E-METAL', 'Metals & mining'),
+        ('E-DEF', 'Defense & space'),
+        ('E-TRANS', 'Transport & logistics'),
+        ('E-CONS', 'Consumer / retail / dining'),
+        ('E-INDL', 'Industrials / power'),
+        ('E-CRYPTO', 'Crypto infrastructure'),
+        ('E-COMM', 'Communications & media'),
+        ('E-HLTH', 'Healthcare services'),
+        ('E-QUANTUM', 'Quantum computing'),
+        ('E-ROBOT', 'Robotics & automation'),
+        ('E-UNASSIGNED', 'Unassigned')
+      ) AS v(e_code, name)
+),
+-- One row per (ecosystem, UNIQUE ticker): a stock in several of one ecosystem's themes is ONE row, so it counts
+-- once in that group's size, return and up-count. A theme with no mi_theme_ecosystems row (e_code null) files under
+-- E-UNASSIGNED, the catch-all the /themes board uses (theme_ecosystems.py); themes[].e_code itself stays null.
+eco_members AS (
+    SELECT DISTINCT COALESCE(ti.e_code, 'E-UNASSIGNED') AS code, m.ticker
+      FROM members m
+      JOIN themes_idx ti ON ti.idx = m.idx
+),
+-- The theme_ret rule over those unique members: equal-weighted mean, a member without both closes drops out of that
+-- window, n_ counts the ones that had them, up_ counts those with a positive return. Same px, same session bases.
+eco_ret AS (
+    SELECT em.code,
+           count(*) AS n_members,
+           round(avg((p.c0 / p.c1    - 1) * 100)::numeric, 2) AS ret_1d,
+           count(p.c0 / p.c1)                                 AS n_1d,
+           count(*) FILTER (WHERE p.c0 > p.c1)                AS up_1d,
+           round(avg((p.c0 / p.c5    - 1) * 100)::numeric, 2) AS ret_5d,
+           count(p.c0 / p.c5)                                 AS n_5d,
+           count(*) FILTER (WHERE p.c0 > p.c5)                AS up_5d,
+           round(avg((p.c0 / p.c21   - 1) * 100)::numeric, 2) AS ret_21d,
+           count(p.c0 / p.c21)                                AS n_21d,
+           count(*) FILTER (WHERE p.c0 > p.c21)               AS up_21d,
+           round(avg((p.c0 / p.c_ytd - 1) * 100)::numeric, 2) AS ret_ytd,
+           count(p.c0 / p.c_ytd)                              AS n_ytd,
+           count(*) FILTER (WHERE p.c0 > p.c_ytd)             AS up_ytd
+      FROM eco_members em
+      LEFT JOIN px p ON p.ticker = em.ticker
+     GROUP BY em.code
+),
+-- Every ecosystem that holds an exported theme, with those themes' positions in the themes array (a theme with no
+-- members still places its group here; the group then has zero members and null returns).
+eco_themes AS (
+    SELECT COALESCE(ti.e_code, 'E-UNASSIGNED') AS code,
+           array_agg(ti.idx ORDER BY ti.idx) AS theme_idx
+      FROM themes_idx ti
+     GROUP BY COALESCE(ti.e_code, 'E-UNASSIGNED')
+),
 -- The theme export's rule, verbatim (export_theme_snapshot.sql): the newest score_date that
 -- looks like a full RS run, never max(score_date) — a single on-demand lookup writes a
 -- one-row day that max() would pick, emptying every rank.
@@ -247,6 +318,20 @@ SELECT json_build_object(
                ) ORDER BY ti.idx), '[]'::json)
           FROM themes_idx ti
           LEFT JOIN theme_ret tr ON tr.idx = ti.idx),
+    'ecosystems', (
+        SELECT COALESCE(json_agg(json_build_object(
+                   'code', et.code,
+                   'name', CASE WHEN et.code = 'E-UNASSIGNED' THEN 'Other' ELSE COALESCE(en.name, et.code) END,
+                   'theme_idx', to_json(et.theme_idx),
+                   'n_members', COALESCE(er.n_members, 0),
+                   'ret_1d', er.ret_1d,   'n_1d', COALESCE(er.n_1d, 0),   'up_1d', COALESCE(er.up_1d, 0),
+                   'ret_5d', er.ret_5d,   'n_5d', COALESCE(er.n_5d, 0),   'up_5d', COALESCE(er.up_5d, 0),
+                   'ret_21d', er.ret_21d, 'n_21d', COALESCE(er.n_21d, 0), 'up_21d', COALESCE(er.up_21d, 0),
+                   'ret_ytd', er.ret_ytd, 'n_ytd', COALESCE(er.n_ytd, 0), 'up_ytd', COALESCE(er.up_ytd, 0)
+               ) ORDER BY et.code), '[]'::json)
+          FROM eco_themes et
+          LEFT JOIN eco_names en ON en.e_code = et.code
+          LEFT JOIN eco_ret er   ON er.code = et.code),
     'stocks', (
         SELECT COALESCE(json_object_agg(i.ticker, json_build_array(
                    s.stage, r.rs_rank, COALESCE(to_json(mo.idxs), '[]'::json)
@@ -270,6 +355,8 @@ SELECT json_build_object(
             'Weinstein stage on the 30-week line: the average close of the 150 sessions ending as_of. Its slope compares it with the same average ending 20 sessions earlier: rising if more than 1% higher, falling if more than 1% lower, flat otherwise. Rising: stage 2 if the as_of close is at or above the line, else stage 3. Falling: stage 4 if the close is at or below the line, else stage 1. Flat: stage 3 if the line is above where it stood 60 sessions earlier (it came from an advance), else stage 1. A stock missing more than 7 of the 210 sessions ending as_of (or listed for fewer) is unstaged. Stages 1-4 plus unstaged add up to the universe.',
         'themes',
             'The active themes: each name''s newest theme row dated no earlier than 7 days before as_of (a row dated after as_of counts), dropped if that newest row is Retired.',
+        'ecosystems',
+            'The active themes grouped by ecosystem (the curated group each theme is filed under; a theme with no group is filed under Other). A group counts each stock once, however many of its themes hold it. Its return is the equal-weighted average of those unique stocks'' returns, measured exactly as a theme''s is (see theme_returns); n_ counts the stocks that had both closes and up_ counts those with a positive return. A stock held by themes in two groups counts once in each.',
         'theme_returns',
             'Equal-weighted average of member returns in percent, from the close 1, 5 or 21 sessions before as_of (Today, 1W, 1M) to the as_of close; YTD is from the last close on or before the prior calendar year''s last session. A member without both closes drops out of that window; n_ counts the members that had them; a window no member could fill is null.',
         'theme_membership',

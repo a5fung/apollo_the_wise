@@ -13,6 +13,8 @@
 # keyword_stems = lowercase substrings for the deterministic fallback classifier
 # (used only when the Haiku assignment abstains). exemplars = anchor tickers.
 # Edit freely — no code change needed; the loader reads this file at runtime.
+# ⚠ A NAME (or a new/removed ecosystem) is also copied into scripts/export_breadth_snapshot.sql (`eco_names`, #722) —
+# tests/test_719_export_breadth_sql.py fails until that list matches this file.
 #
 # ⚠ NO GENERIC STEMS (2026-10-09, #505 read): a stem is a SUBSTRING match and mappings are sticky, so a word
 # every industry uses files themes in the wrong bucket for good. "services"/"provider" sent ~10 consulting,

@@ -1,4 +1,6 @@
 """#719 — the Market Breadth snapshot export (scripts/export_breadth_snapshot.sql) and its guarded nightly run.
+(#722 added the `ecosystems` array — the active themes grouped by ecosystem, each group's UNIQUE members returned on the
+themes' own bases; its checks sit under "ecosystem groups" below.)
 
 Two halves:
   1. STATIC checks on the SQL, in the test_706 pattern: one read-only SELECT, every JSON key the page reads, and the
@@ -22,6 +24,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
 from tests._sql_static import assert_one_read_only, strip_comments, strip_literals
 
@@ -30,6 +33,7 @@ SQL_PATH = REPO / "scripts" / "export_breadth_snapshot.sql"
 THEME_SQL_PATH = REPO / "scripts" / "export_theme_snapshot.sql"
 SHELL_PATH = REPO / "scripts" / "auto_export_snapshots.sh"
 SSOT_PATH = REPO / "docs" / "architecture" / "market_breadth_snapshot.md"
+ECOSYSTEMS_YAML = REPO / "theme_ecosystems.yaml"
 
 THREE = ("apollo_themes_snapshot.json", "apollo_trades_paper.json", "apollo_funnel_snapshot.json")
 BREADTH = "apollo_breadth_snapshot.json"
@@ -105,21 +109,24 @@ def test_a_nan_price_never_enters_the_universe_or_a_high_low_test():
 # ----------------------------------------------------------------------------------------------------- the JSON contract
 
 TOP_KEYS = ("version", "generated_at", "as_of", "prev_session", "prior_year_end", "score_date", "theme_membership",
-            "universe", "highs_lows", "adv_dec", "stages", "themes", "stocks", "definitions")
+            "universe", "highs_lows", "adv_dec", "stages", "themes", "ecosystems", "stocks", "definitions")
 NESTED_KEYS = ("n", "eligible_n", "new_highs", "new_lows", "advances", "declines", "unchanged", "no_prior",
                "1", "2", "3", "4", "unstaged")
 THEME_KEYS = ("idx", "name", "stage", "e_code", "theme_date", "n_members", "members",
               "ret_1d", "n_1d", "ret_5d", "n_5d", "ret_21d", "n_21d", "ret_ytd", "n_ytd")
+ECOSYSTEM_KEYS = ("code", "name", "theme_idx", "n_members",
+                  "ret_1d", "n_1d", "up_1d", "ret_5d", "n_5d", "up_5d",
+                  "ret_21d", "n_21d", "up_21d", "ret_ytd", "n_ytd", "up_ytd")
 DEFINITION_KEYS = ("session", "as_of", "universe", "new_highs_lows", "advances_declines", "stage", "themes",
-                   "theme_returns", "theme_membership", "stocks", "not_claimed")
+                   "ecosystems", "theme_returns", "theme_membership", "stocks", "not_claimed")
 
 
-@pytest.mark.parametrize("key", TOP_KEYS + NESTED_KEYS + THEME_KEYS + DEFINITION_KEYS)
+@pytest.mark.parametrize("key", TOP_KEYS + NESTED_KEYS + THEME_KEYS + ECOSYSTEM_KEYS + DEFINITION_KEYS)
 def test_emits_every_contract_key(key):
     assert re.search(rf"'{re.escape(key)}',", _code()), f"the export no longer emits `{key}`"
 
 
-@pytest.mark.parametrize("key", TOP_KEYS + THEME_KEYS)
+@pytest.mark.parametrize("key", TOP_KEYS + THEME_KEYS + ECOSYSTEM_KEYS + DEFINITION_KEYS)
 def test_every_contract_key_is_documented_in_the_ssot(key):
     assert f"`{key}`" in SSOT_PATH.read_text(), f"`{key}` is emitted but not in the SSoT's JSON contract"
 
@@ -281,6 +288,78 @@ def test_usable_score_date_is_the_theme_exports_rule_verbatim():
         assert m
         return _norm(m.group(1))
     assert body(SQL_PATH.read_text()) == body(THEME_SQL_PATH.read_text())
+
+
+# ------------------------------------------------------------------------------------------------ ecosystem groups (#722)
+
+def _sql_ecosystem_names() -> dict[str, str]:
+    """The (e_code, name) rows of the eco_names VALUES list, with '' unescaped."""
+    rows = re.findall(r"\(\s*'((?:[^']|'')*)'\s*,\s*'((?:[^']|'')*)'\s*\)", _cte("eco_names"))
+    codes = [c for c, _ in rows]
+    assert len(codes) == len(set(codes)), "a code appears twice in eco_names"
+    return {c.replace("''", "'"): n.replace("''", "'") for c, n in rows}
+
+
+def test_eco_names_equal_theme_ecosystems_yaml():
+    """The curated names live in theme_ecosystems.yaml (deliberately not a DB table). The export is one psql file with no
+    Python, so it carries a copy; this test is what stops the page printing a stale or missing name after the YAML is
+    edited. Names are copied VERBATIM — 'Unassigned' stays here and prints as 'Other' in the output block."""
+    want = {e["e_code"]: e["name"] for e in yaml.safe_load(ECOSYSTEMS_YAML.read_text())["ecosystems"]}
+    got = _sql_ecosystem_names()
+    assert got == want, (
+        "eco_names in scripts/export_breadth_snapshot.sql no longer matches theme_ecosystems.yaml — update the VALUES "
+        f"list (missing from SQL: {sorted(set(want) - set(got))}; extra in SQL: {sorted(set(got) - set(want))}; "
+        f"renamed: {sorted(c for c in set(want) & set(got) if want[c] != got[c])})")
+
+
+def test_a_group_counts_each_stock_once():
+    """The (code, ticker) DISTINCT is the whole 'counted once' rule: without it a stock held by three themes of one
+    ecosystem is averaged three times."""
+    em = _norm(_cte("eco_members"))
+    assert "SELECT DISTINCT COALESCE(ti.e_code, 'E-UNASSIGNED') AS code, m.ticker" in em
+    assert "FROM members m JOIN themes_idx ti ON ti.idx = m.idx" in em
+    er = _norm(_cte("eco_ret"))
+    assert "FROM eco_members em LEFT JOIN px p ON p.ticker = em.ticker GROUP BY em.code" in er
+    assert "count(*) AS n_members" in er
+
+
+def test_an_unmapped_theme_files_under_unassigned_in_the_groups_only():
+    """No mi_theme_ecosystems row => e_code null. The groups file it under E-UNASSIGNED (the /themes board's catch-all,
+    theme_ecosystems.py), in BOTH places a group is built; themes[].e_code keeps the raw value, as before."""
+    assert "COALESCE(ti.e_code, 'E-UNASSIGNED') AS code" in _norm(_cte("eco_themes"))
+    assert "GROUP BY COALESCE(ti.e_code, 'E-UNASSIGNED')" in _norm(_cte("eco_themes"))
+    assert "'e_code', ti.e_code," in _code(), "themes[].e_code must stay the raw (nullable) value"
+
+
+@pytest.mark.parametrize("window,base", [("1d", "c1"), ("5d", "c5"), ("21d", "c21"), ("ytd", "c_ytd")])
+def test_group_returns_use_the_themes_own_bases_and_count_up_members(window, base):
+    er = _norm(_cte("eco_ret"))
+    tr = _norm(_cte("theme_ret"))
+    ret = rf"round\(avg\(\(p\.c0 / p\.{base} *- 1\) \* 100\)::numeric, 2\) AS ret_{window}\b"
+    n = rf"count\(p\.c0 / p\.{base}\) *AS n_{window}\b"
+    for pat in (ret, n):
+        assert re.search(pat, er), f"group {pat} differs from the theme rule"
+        assert re.search(pat, tr)
+    assert re.search(rf"count\(\*\) FILTER \(WHERE p\.c0 > p\.{base}\) *AS up_{window}\b", er)
+
+
+def test_group_output_names_and_ordering():
+    code = _norm(_code())
+    assert "'name', CASE WHEN et.code = 'E-UNASSIGNED' THEN 'Other' ELSE COALESCE(en.name, et.code) END" in code
+    assert "'theme_idx', to_json(et.theme_idx)" in code
+    # every group that holds an exported theme is listed, even one whose themes have no members (then 0 / null)
+    assert re.search(r"FROM eco_themes et LEFT JOIN eco_names en ON en\.e_code = et\.code "
+                     r"LEFT JOIN eco_ret er ON er\.code = et\.code\)", code)
+    assert ") ORDER BY et.code), '[]'::json)" in code
+    for w in ("n_members", "n_1d", "up_1d", "n_5d", "up_5d", "n_21d", "up_21d", "n_ytd", "up_ytd"):
+        assert re.search(rf"COALESCE\(er\.{w}, 0\)", code), f"{w} must default to 0 for a group with no members"
+
+
+def test_the_ecosystems_definition_states_the_once_rule():
+    m = re.search(r"'ecosystems',\s*'((?:[^']|'')*)'", _code())
+    assert m, "definitions.ecosystems missing"
+    text = m.group(1)
+    assert "once" in text and "positive return" in text and "Other" in text
 
 
 # ------------------------------------------------------------------------------------------- the shell: behaviour
