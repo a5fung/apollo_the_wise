@@ -2566,3 +2566,11 @@ EVIDENCE:
 - **Stages:** 618 + 1,203 + 1,034 + 1,521 + 602 unstaged = 4,978 = the universe.
 - **Three themes by hand** (`themes3_check.txt`, bottom / middle / top by 1-day): all four windows equal to the hundredth (CCaaS −10.34 / −17.05 / −14.01 / +94.90; Digital Freight −0.55 / +6.19 / +12.62 / +1.21; Quantum +20.73 / +4.38 / −18.19 / −37.13).
 - **His phone:** "Breath looks good" (2026-11-07 evening).
+
+## #721 — the market warning light on the Market Breadth tab (2026-11-07)
+BAR: "the tab shows both lights, and their state on every date of 2026 equals replay.py's state for that index (a test over the saved CSVs); he sees it on his phone."
+EVIDENCE:
+- **Both lights:** his phone screenshot 2026-11-07 19:57 PT (`scripts/probes/_719_dod_1107/his_phone_market_risk_light_1107.png`): S&P 500 "Market warning ON since Oct 30 (Bollinger 50-day)", Nasdaq-100 "Market warning ON since Oct 22 (Keltner 50-day)", the three band distances each, the caption — exactly the expected since-dates; his words: "Yes".
+- **State equality:** `test_market_risk_721.py` pins the state, since-date and indicators on every 2026 trading date (214 per index) to `~/trading_review/hedge_replay_1107/replay.py` from the saved CSVs; the Opus review's own state machine, written from replay.py, agreed on every date (portfolio-app2 `c42021f` + `c24eb15`, 651 tests).
+- **Unavailable path:** a failed / empty / malformed fetch reads 'Unavailable' with the reason (tests), never a stale light.
+- Follow-up (his ask, same evening): make the light compact on mobile — rides #722's page build Sun 11-08.

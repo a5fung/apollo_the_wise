@@ -2929,3 +2929,5 @@ Recorded: Basso's hedge-timing rule becomes a market-risk light on the Market Br
 Recorded: PLAN #722.
 
 > "Breath looks good." (2026-11-07 evening, the Market Breadth tab on his phone after the first published snapshot) — #719 closed on it.
+
+> "Yes, the improvement I'll ask is to make it more compact if possible for mobile" (2026-11-07 19:57 PT, with a phone screenshot of the two market warning lights: S&P ON since Oct 30, Nasdaq-100 ON since Oct 22) — #721 closed; the compact layout rides #722 (Sun 11-08).
