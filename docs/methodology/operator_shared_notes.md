@@ -2919,3 +2919,7 @@ Recorded: a strategy's phase or enabled state moves ONLY by his typed /strategy 
 > "Ok but let's put it for tmr" (2026-11-07, to the #312 final-review finding that the chat assistant can still send /resume, /partialnow, /timestop and /pause through its market-agent tool; rec: close resume, partial-sell and time-stop to the chat route, keep pause open as the safe direction)
 
 Recorded: CLOSE /resume, /partialnow and /timestop to the chat route (his typed command only, the same origin gate as /strategy); KEEP /pause open to the chat. Built Sun 11-08 with #312's last fix round (the final review's lows + the EXPECT block), before #312's deploy.
+
+> "This should probably go into the market breath dash then. The reason it doesn't work may be my portfolio has many different assets, eg I have a lot of exposure to previous metals miners and it was doing really well Jan to March this year while NASDAQ was correcting" (2026-11-07, after the hedge replay on his account: a standing Basso index hedge 2020-26 cost +81% → +43%, cut 2022's loss ~5 points; the Nasdaq explains about a third of his weekly moves)
+
+Recorded: Basso's hedge-timing rule becomes a market-risk light on the Market Breadth tab (PLAN #721), a signal to slow new buys, not a hedge instruction. His explanation, checked against the data: Jan–Feb 2026 his account +7.9% / +7.2% while QQQ +1.2% / −2.3% (fits); March he fell −20.1% vs QQQ −5.0% (his own holdings, not the index). Follow-up offered (personal): measure each sleeve against its own index (miners vs a miners ETF, tech vs QQQ).
