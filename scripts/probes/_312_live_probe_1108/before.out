@@ -1,0 +1,10 @@
+SET
+strategy_id|phase|enabled|updated_at
+magna53|live|t|2026-09-07 01:41:24.691695+00
+(1 row)
+refused_rows|max
+0|
+(1 row)
+state
+off
+(1 row)
