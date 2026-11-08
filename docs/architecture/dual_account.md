@@ -16,32 +16,146 @@
 
 **Moving between phases.** Up is HUMAN: the Sunday review flags ✓-eligible from the row's
 `promotion_thresholds` (`strategies/promotion.py`) and the operator runs `/strategy <id>
-promote`; down is `/strategy <id> demote` (`strategies/telegram.py::_DEMOTE_BACK`, live→paper→
-shadow). Both go through the ONE phase writer, `strategies/registry.update_strategy`, and write
+promote`; down is `/strategy <id> demote` (`constants.DEMOTE_TO`, live→paper→shadow — the one
+rung map the ladder's Demote button steps by too). Both go through the ONE phase writer, `strategies/registry.update_strategy`, and write
 a `strategy_phase_change` audit row — that row trail is the phase history today. `deprecated`
 is terminal (#424) and is set only by the boot migration in `db._seed_strategies_registry`.
+**Who can move one (his ruling 2026-11-07, verbatim "Close it"; built #312 round 3):** ONLY his
+TYPED `/strategy <id> promote|demote|enable|disable` or his tokenized Demote button (§Demotion
+below) — never the chat assistant. Mechanism: the typed path is a `CommandHandler`
+(`channels/telegram.py::_dispatch_market_slash`, which bypasses the LLM) and stamps the request
+`context.origin = "operator_command"` (`shared.models.ORIGIN_OPERATOR_COMMAND`); the
+orchestrator's `call_market_agent` tool (`core/orchestrator.py::_call_sub_agent`) ALWAYS
+overwrites the origin to `"chat_tool"` — the LLM writes `context` itself, so a value it supplies
+(a forged operator marker included) is never trusted; and `strategies/telegram.py::
+handle_strategy_action`, the only entry to the three writers (`_do_promote`, `_do_demote`,
+`_do_enable_disable`), refuses every mutation whose origin is not the operator marker — a missing
+marker is refused too (default deny): nothing moves, the answer is "strategy changes need your
+typed /strategy command or the page button", and a `strategy_command_refused` audit row is written
+(strategy, action, origin, user). The read-only `/strategy` and `/strategy <id>` views stay open
+to the chat route, and so does the usage text — only a REAL action (`enable|disable|promote|demote`)
+is refused; `strategy magna53 stats` gets the usage text and no refusal row (final review, finding 6).
+So a plain "demote magna53" typed to the bot — which goes through the LLM —
+is now refused; the same words as `/strategy magna53 demote` move it. Pinned by
+`tests/test_312_strategy_command_origin.py` (the real `_dispatch_tool` → `execute_task` path,
+every action the module knows, in all three text forms, a forged marker included; the typed
+CommandHandler path still moving; the writers and their callers DERIVED by AST — EVERY
+`update_strategy` call in the codebase is one of four: the typed promote / demote / enable-disable
+and the button handler, `tests/test_312_ladder_act_step.py`).
 
-**Demotion — the ladder's automatic direction (ADR 0022 §1 L2, built DARK 2026-10-15, #312).**
-`agents/market_intelligence/ladder_watchdog.py`, job `ladder_watchdog` 16:17 ET mon-fri. Every
-night, for each ENABLED strategy at `paper` or `live`, on the book its phase resolves to, it
-computes the four signed M1f demotion triggers (6 consecutive losses · trailing-20 expectancy
-< −0.3R · −10R drawdown from the cumulative-R peak · 1 harmful auto-action — the last is
-"not measurable yet": nothing auto-executes) over its closed methodology trades (R =
-`kill_scale_bands.risk_placed`) and writes ONE `ladder_demotion_shadow` audit row with each
-trigger's value, threshold and `would_demote`. **It cannot move a phase**: the module has no
-`update_strategy`, no UPDATE on `mi_strategies`, no sizing/toggle/order path and no Telegram —
-there is no act step to switch on (`tests/test_ladder_watchdog.py` spies the DB layer). The act
-step is HIS explicit action, never automatic (ruled 2026-11-04, ADR 0022 §1): a breach sends one
-Telegram with the strategy's stats and two buttons — **Demote** (one rung down via `update_strategy`, the
-`/strategy <id> demote` path) or **No action** (audit row only). Not built yet; until it is, the
-manual `/strategy <id> demote` is the only way down. Checking a night: `SELECT created_at, summary FROM mi_audit_log WHERE
-event_type = 'ladder_demotion_shadow' ORDER BY created_at DESC LIMIT 3;` — `detail` is JSON
-(`evaluated[]`, `skipped{}`, `would_demote_count`, `acted: false`). **A night is verified by the
-ROW, not the ledger:** `mi_job_runs` `success` AND a `ladder_demotion_shadow` row whose `detail`
-`as_of` is that night — `log_audit_event` never raises, so a failed audit write still leaves the
-run `success`. The job lets a crash propagate (`audit_run` records it `failed` and pages once via
-`record_job_failure`), and a re-run of a night that already has its row writes no second one
-(the trade read is also bounded to trades entered and closed on or before that night).
+**The three commands that touch live trade state (his ruling 2026-11-07, "Ok but let's put it for
+tmr", to the rec; built #312 round 4):** `/resume` (lifts the real-money trading halt), `/partialnow
+TICKER [CONFIRM]` (sells a third of a filled position on whichever account holds it, live included)
+and `/timestop TICKER` (exits a 9M Day 2 position) act on his TYPED command only — the SAME origin
+marker, checked inside each handler in `agents/market_intelligence/agent.py` by
+`_refuse_unless_typed` once the request names an action (`/resume` and the bare word `resume` both
+reach `_handle_pause_command`; a ticker names the exit). Through the chat route each answers
+"Not done — this needs your typed /resume command. The chat assistant cannot lift the real-money
+trading halt; nothing was changed." (its own verb per command), changes nothing — the halt is not
+touched, no position is even read — and writes one `operator_command_refused` audit row (command,
+task, origin, user). **`/pause` stays open to the chat route** — halting can only STOP real money
+moving, the safe direction. A bare `/partialnow` or `/timestop` (no ticker) is not an action: the
+usage text, no refusal row. Pinned by `tests/test_312_operator_command_origin.py` (the four texts
+through the real `_dispatch_tool`, a forged marker included; the typed path still resuming /
+selling / exiting; `/pause` and `pause` through chat still halting). Left as they were, outside the
+ruling's words: `/syncnow` (a DB↔Alpaca position reconcile behind the #137 guard) and every
+read-only command.
+
+**Demotion — the ladder's downward direction (ADR 0022 §1 L2, #312: the nightly read built DARK
+2026-10-15, HIS act step built 2026-11-07).** `agents/market_intelligence/ladder_watchdog.py`, job
+`ladder_watchdog` 16:17 ET mon-fri. Every night, for each ENABLED strategy at `paper` or `live`, on
+the book its phase resolves to, it computes the four signed M1f demotion triggers (6 consecutive
+losses · trailing-20 expectancy < −0.3R · −10R drawdown from the cumulative-R peak · 1 harmful
+auto-action — the last is "not measurable yet": nothing auto-executes) over its closed methodology
+trades (R = `kill_scale_bands.risk_placed`) and writes ONE `ladder_demotion_shadow` audit row with
+each trigger's value, threshold and `would_demote`, plus the open positions and what it paged.
+**The job cannot move a phase**: the module has no `update_strategy`, no UPDATE on `mi_strategies`,
+no sizing/toggle/order path (`tests/test_ladder_watchdog.py` spies the DB layer). **The act step is
+HIS press, never automatic** (ruled 2026-11-04): on a breach the job sends ONE Telegram page —
+the strategy and its rung, each limit's value against its bar, closed trades, cumulative R, worst
+drawdown, open positions (count + tickers) — with two buttons, **Demote to <the rung below>** and
+**No action**. The press is the #651 button pattern: `channels/telegram.py` (`ladder:` callback,
+behind the shared allowlist gate) forwards it as the market agent's internal `/ladder_press
+<demote|noaction> <page id> <token>` → `agents/market_intelligence/ladder_press.py`. **The page's
+own token (#312 review, 2026-11-07):** every page carries a random 32-char token
+(`mi_ladder_pages.token`) that only its two buttons carry (`ladder:<action>:<page id>:<token>`); a
+press whose token does not match in constant time is refused (`bad_token`), nothing marked, nothing
+moved — so a `/ladder_press` reaching the market agent any other way (the orchestrator's LLM
+`call_market_agent` tool forwards free text with HIS user id; a typed message) cannot move a phase,
+and `/ladder_press` is kept off the Unknown-command "Available" list. **Demote** locks the page
+row, checks the token, refuses a decided page, refuses a page whose breach EPISODE has ended
+(`episode_ended` — the breach cleared, or the strategy moved by another path: "this breach ended on
+X; use /strategy <id> demote"), compares the rung the page SHOWED with the registry's current
+phase, and moves ONE rung down (`live→paper`, `paper→shadow`; shadow is the floor — never
+evaluated, never paged, no button) through the one writer `strategies/registry.update_strategy(...,
+expect_phase=<rung at page>, conn=<the same connection>)` — a compare-and-set, so the decision, the
+phase write, the episode close and the `strategy_phase_change` row (`source: ladder_press`, page
+id, who pressed, when) commit as ONE transaction. Every audit row inside that transaction is a
+RAISING write (`log_audit_event(..., strict=True)`): the plain call swallows its own failure, which
+leaves the transaction aborted and turns the COMMIT into a silent ROLLBACK — the press would have
+said "Demoted" with the phase unchanged. The answer is built from a RE-READ of the committed phase
+and page decision after the transaction ("Not done — the transaction did not commit" on a
+mismatch, audited `not_committed`); No action is held to the same re-read. A second press, or a
+press after the strategy moved by any other path, is refused with a plain reason and audited
+(`ladder_press_refused`), moving nothing. **No action** writes `ladder_press_no_action` and moves
+nothing. A user outside `TELEGRAM_ALLOWED_USER_IDS` is refused at the channel gate and again by
+the market agent; the webhook route itself accepts only Telegram's own POSTs
+(`channels/webhooks.py` checks `X-Telegram-Bot-Api-Secret-Token` against the `secret_token`
+`set_webhook` registers, derived from `INTERNAL_API_SECRET` — before that a forged `callback_query`
+from inside the compose network passed both allowlist gates). **Paging cadence (the default; his to
+override):** one page per strategy per breach EPISODE — an episode opens on the first would-demote
+night on a rung and closes on the first night with nothing breached (`ladder_breach_cleared`) or
+when the rung changes; a second breach night sends nothing; after No action there is no re-page in
+the same episode UNLESS a limit that was not breached at the last page newly breaches (one more
+page, same episode, naming what is new). State: `mi_ladder_episodes` (strategy, opened_on, phase,
+closed_on, closed_by ∈ cleared | demote | phase_moved) and `mi_ladder_pages` (one per strategy per
+night; `sent_at` NULL = the send failed — after `1 + len(SEND_RETRY_DELAYS)` = 3 attempts inside
+the run — and the episode is not paged, `ladder_page_send_error`, retried next night; a press on
+such a page answers that it was never confirmed sent; `decision` ∈ demote | no_action | stale,
+`decided_by` NULL = the nightly read marked it stale). A strategy that LEAVES the ladder (demoted
+to shadow, or disabled) has its open episode closed (`phase_moved`) and its undecided pages marked
+stale by the next nightly read (`ladder_watchdog.end_episodes_of_skipped`), so its return to paper
+pages afresh — before the #312 review the old episode read "already paged" and a returning breach
+sent nothing. The rung is re-read fresh (`registry.get_strategy_fresh`) right before a page is
+inserted, so a press or typed command landing mid-run never produces a page for a rung the
+strategy has left. A #672 recovery re-run never pages (a held Telegram reports success without
+reaching him). The page carries the strategy's resolved
+book tag, so a paper lane's breach lands in the paper chat (#699) and a live strategy's in the main
+chat. **What a demote moves and what it does not:** it changes `mi_strategies.phase`, the row NEW
+entries route by; open positions are untouched — every exit and stop path reads the trade row's
+own `account_mode` (`order_manager.execute_full_exit`, `live_tracker.morning_stop_refresh` /
+`update_open_positions_live`, `scan_profit_triggers`, `sync_positions` per mode; pinned in
+`tests/test_312_ladder_act_step.py` §C), so a live position keeps its live-account management
+after a live→paper demote. **New entries see the demote at once (#312 review, 2026-11-07):** the
+registry cache is PER PROCESS — `update_strategy` invalidates the market agent's, and
+apollo-execution's never learned of a press or a typed `/strategy <id> demote|disable` until its
+next restart (a LIVE bracket could go in the morning after a live→paper demote; `enabled` and
+`position_size_multiplier` were served equally stale). Every money-path read is now
+`strategies/registry.get_strategy_fresh` — one primary-key SELECT of the committed row, never the
+cache: `broker/entry_pipeline.submit_trade_entry` reads it ONCE before its first step (the dedup
+book, the phase gate, the safeguards' account, the sizing knob and `live_real_enabled` all come
+from that one row), and so do the two paper lanes (`lowcap_paper_entry`, `breakout_v1_entry`) and
+`constants.resolve_strategy_mode_nonfatal` (the ORB batch's dedup book). The read is BOUNDED —
+asyncpg's own 5 s `timeout=` on the acquire and the SELECT (`registry.FRESH_READ_TIMEOUT_S`, the
+#621 path), so a hung database at 09:31 makes the entry skip, not hang; a fired bound is the same
+read failure as any other. A read that FAILS skips fail-closed (`infra:strategy_unreadable`, an
+immediate page; the small-cap lane refuses to order with an audit row per call and ONE page a day;
+breakout v1 takes no action THAT MINUTE — `strategy_unreadable`: no new order, no re-price and no
+cancel of a resting buy, the next minute re-reads, audited per minute and paged once a day — the
+cancel of resting buys stays for a real disable or a phase other than paper; re-review 2026-11-07
+findings 2, 4, 5) — never a
+cached phase, never a process-mode guess of which account trades (before, that guess decided only
+a label, because the phase gate re-read the row). An entry already past its read when the press
+commits still submits on the old phase — inherent; the press's answer says so. The cached
+`get_strategy` / `should_run` remain for the scan-side enable flags. Checking a night: `SELECT created_at, summary FROM mi_audit_log WHERE event_type =
+'ladder_demotion_shadow' ORDER BY created_at DESC LIMIT 3;` — `detail` is JSON (`evaluated[]`,
+`skipped{}`, `would_demote_count`, `paged[]`, `acted: false`); a page: `SELECT * FROM
+mi_ladder_pages ORDER BY id DESC LIMIT 3;`. **A night is verified by the ROW, not the ledger:**
+`mi_job_runs` `success` AND a `ladder_demotion_shadow` row whose `detail` `as_of` is that night —
+`log_audit_event` never raises, so a failed audit write still leaves the run `success`. The job lets
+a crash propagate (`audit_run` records it `failed` and pages once via `record_job_failure`), and a
+re-run of a night that already has its row writes no second one and sends no second page (the
+trade read is also bounded to trades entered and closed on or before that night).
 
 **Strategies that can submit, and where (2026-10-10):**
 

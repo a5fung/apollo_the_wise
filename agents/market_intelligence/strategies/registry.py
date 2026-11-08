@@ -15,6 +15,18 @@ The registry cache invalidates automatically on `update_strategy()`;
 direct DB edits to `mi_strategies` won't be seen until process restart
 or `invalidate_cache()`. Phase / enable changes from Telegram go through
 `update_strategy()`.
+
+⚠ THE CACHE IS PER PROCESS (#312 review, 2026-11-07). `update_strategy` runs in
+the market agent (his Demote press, the typed `/strategy <id> demote|disable`)
+and invalidates THAT process's cache; apollo-execution — the container that
+submits orders — never sees the invalidation, so `get_strategy()` there served
+the OLD phase / enabled flag / sizing knob to NEW entries until its next restart.
+Every money-path read therefore uses `get_strategy_fresh()` — one primary-key
+SELECT of the committed row, never the cache: the entry funnel
+(`broker/entry_pipeline.py`, before its first step), the two paper lanes
+(`lowcap_paper_entry`, `breakout_v1_entry`) and the label/dedup resolver
+(`constants.resolve_strategy_mode_nonfatal`). `get_strategy()` / `should_run()`
+stay the cached read for the scan-side enable flags.
 """
 from __future__ import annotations
 
@@ -100,38 +112,39 @@ def invalidate_cache() -> None:
     _CACHE = None
 
 
+# The ONE column list a Strategy is built from — the SELECT in `_load_all` and the RETURNING of
+# `update_strategy` both use it, so the row a writer hands back is the row a reader would load.
+_STRATEGY_COLUMNS = ("strategy_id, name, family, phase, enabled, signal_type, outcomes_table, "
+                     "promotion_model, promotion_thresholds, notes, live_real_enabled, "
+                     "position_size_multiplier")
+
+
+def _row_to_strategy(r) -> Strategy:
+    thresholds = r["promotion_thresholds"]
+    if isinstance(thresholds, str):
+        thresholds = json.loads(thresholds)
+    return Strategy(
+        strategy_id=r["strategy_id"],
+        name=r["name"],
+        family=r["family"],
+        phase=r["phase"],
+        enabled=r["enabled"],
+        signal_type=r["signal_type"],
+        outcomes_table=r["outcomes_table"],
+        promotion_model=r["promotion_model"],
+        promotion_thresholds=thresholds or {},
+        notes=r["notes"],
+        live_real_enabled=r["live_real_enabled"],
+        position_size_multiplier=_coerce_position_size_multiplier(
+            r["position_size_multiplier"], r["strategy_id"]),
+    )
+
+
 async def _load_all() -> dict[str, Strategy]:
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT strategy_id, name, family, phase, enabled, signal_type,
-                   outcomes_table, promotion_model, promotion_thresholds, notes,
-                   live_real_enabled, position_size_multiplier
-            FROM mi_strategies
-            """
-        )
-    out: dict[str, Strategy] = {}
-    for r in rows:
-        thresholds = r["promotion_thresholds"]
-        if isinstance(thresholds, str):
-            thresholds = json.loads(thresholds)
-        out[r["strategy_id"]] = Strategy(
-            strategy_id=r["strategy_id"],
-            name=r["name"],
-            family=r["family"],
-            phase=r["phase"],
-            enabled=r["enabled"],
-            signal_type=r["signal_type"],
-            outcomes_table=r["outcomes_table"],
-            promotion_model=r["promotion_model"],
-            promotion_thresholds=thresholds or {},
-            notes=r["notes"],
-            live_real_enabled=r["live_real_enabled"],
-            position_size_multiplier=_coerce_position_size_multiplier(
-                r["position_size_multiplier"], r["strategy_id"]),
-        )
-    return out
+        rows = await conn.fetch(f"SELECT {_STRATEGY_COLUMNS} FROM mi_strategies")
+    return {r["strategy_id"]: _row_to_strategy(r) for r in rows}
 
 
 def assert_no_deprecated_but_enabled(strategies: dict) -> None:
@@ -172,13 +185,50 @@ async def load_strategies(force: bool = False) -> dict[str, Strategy]:
 
 
 async def get_strategy(strategy_id: str) -> Strategy | None:
-    """Fetch a single strategy. Returns None if not registered.
+    """Fetch a single strategy FROM THE PROCESS CACHE. Returns None if not registered.
 
     Callers gating behavior on phase/enabled should treat None as
     fail-open (strategy not registered yet — pre-framework code path).
+
+    ⚠ Not for a money-path decision: the cache is invalidated only by THIS process's
+    `update_strategy`, and the phase writers run in the market agent, not in
+    apollo-execution. An entry, a dedup book or a sizing read uses `get_strategy_fresh`.
     """
     by_id = await load_strategies()
     return by_id.get(strategy_id)
+
+
+# The one-row read `get_strategy_fresh` makes — the same column list the cache is built from,
+# so a fresh row and a cached row are the same shape.
+_SELECT_ONE_SQL = f"SELECT {_STRATEGY_COLUMNS} FROM mi_strategies WHERE strategy_id = $1"
+# asyncpg's own `timeout=` on the fresh read's acquire AND its SELECT (re-review 2026-11-07 finding 5): the same 5 s
+# bound `log_audit_event` (#621) and the funnel's open-floor read carry. A primary-key SELECT answers in milliseconds;
+# at 09:31 a database that cannot answer in 5 s must make the entry SKIP fail-closed, not hang in front of the order.
+FRESH_READ_TIMEOUT_S = 5.0
+
+
+async def get_strategy_fresh(strategy_id: str) -> Strategy | None:
+    """The strategy row AS COMMITTED NOW — one primary-key SELECT, never the process cache
+    (#312 review, 2026-11-07: his Demote press commits in the market agent; apollo-execution's
+    cache never learns of it, so a cached read at 09:31 would route a NEW entry on the OLD phase).
+
+    Returns None for an unregistered id (the same fail-open the cached read gives a pre-seed
+    strategy). RAISES on a DB error — deliberately no fallback to the cache or to a process
+    default: the caller decides what a missing answer means (the entry funnel skips
+    `infra:strategy_unreadable` and pages; the small-cap lane refuses to order, paged once a day;
+    breakout v1 skips that tick without touching a resting buy; the label resolver says "mode
+    unknown"). Reads the cache for nothing and writes it with nothing.
+
+    BOUNDED (re-review 2026-11-07 finding 5): asyncpg's own `timeout=` on the acquire and on the
+    SELECT (`FRESH_READ_TIMEOUT_S`, the #621 path — never `asyncio.wait_for` around a pooled call).
+    This read sits in front of every entry at 09:31; a hung database must make the entry SKIP
+    fail-closed, not hang. A fired bound raises `asyncio.TimeoutError`, an Exception, so every
+    caller's read-error branch already treats it the same way.
+    """
+    pool = await get_pool()
+    async with pool.acquire(timeout=FRESH_READ_TIMEOUT_S) as conn:
+        row = await conn.fetchrow(_SELECT_ONE_SQL, strategy_id, timeout=FRESH_READ_TIMEOUT_S)
+    return _row_to_strategy(row) if row else None
 
 
 async def should_run(strategy_id: str) -> bool:
@@ -199,9 +249,23 @@ async def update_strategy(
     enabled: bool | None = None,
     live_real_enabled: bool | None = None,
     promotion_thresholds: dict | None = None,
+    expect_phase: str | None = None,
+    conn=None,
 ) -> Strategy | None:
-    """Mutate a registered strategy. Invalidates cache and returns the
-    fresh row. Returns None if strategy_id doesn't exist.
+    """Mutate a registered strategy — THE one phase writer. Invalidates the process cache and
+    returns the fresh row (from the UPDATE's own RETURNING, so no second read is needed).
+    Returns None if `strategy_id` doesn't exist — or, with `expect_phase`, if the row's phase
+    is no longer the one the caller saw.
+
+    `expect_phase` (#312, 2026-11-07) — a compare-and-set: `... AND phase = <expect_phase>` on
+    the WHERE, so a press on the ladder's breach page moves the strategy only from the rung
+    the page SHOWED. A typed `/strategy <id> promote|demote` passes none and behaves as before.
+
+    `conn` — a caller that ALREADY HOLDS a connection inside its own transaction (the ladder
+    press locks its page row, reads the phase, writes the phase and records the decision as
+    ONE unit) hands it over instead of asking the pool for a second one (the 2026-09-17
+    nested-acquire deadlock class). The cache is still invalidated; the fresh row comes from
+    RETURNING on that same connection, never from a second acquire.
     """
     sets: list[str] = []
     args: list[Any] = []
@@ -226,14 +290,18 @@ async def update_strategy(
         raise ValueError("update_strategy requires at least one field to mutate")
     sets.append("updated_at = NOW()")
     args.append(strategy_id)
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            f"UPDATE mi_strategies SET {', '.join(sets)} "
-            f"WHERE strategy_id = ${len(args)} RETURNING strategy_id",
-            *args,
-        )
+    where = f"WHERE strategy_id = ${len(args)}"
+    if expect_phase is not None:
+        args.append(expect_phase)
+        where += f" AND phase = ${len(args)}"
+    sql = f"UPDATE mi_strategies SET {', '.join(sets)} {where} RETURNING {_STRATEGY_COLUMNS}"
+    if conn is not None:
+        row = await conn.fetchrow(sql, *args)
+    else:
+        pool = await get_pool()
+        async with pool.acquire() as c:
+            row = await c.fetchrow(sql, *args)
     if not row:
         return None
     invalidate_cache()
-    return await get_strategy(strategy_id)
+    return _row_to_strategy(row)

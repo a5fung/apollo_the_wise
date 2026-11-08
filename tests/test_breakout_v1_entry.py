@@ -447,7 +447,7 @@ class World:
         monkeypatch.setattr(trading_calendar, "get_market_status",
                             lambda d: trading_calendar.MarketStatus(True, "test"))
         monkeypatch.setattr(be, "get_runtime_toggle", AsyncMock(return_value=toggle))
-        monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=_strategy(phase=phase)))
+        monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(return_value=_strategy(phase=phase)))   # the lane reads FRESH (#312 review)
         monkeypatch.setattr(be, "LIVE_TRADING_ENABLED", True)
         monkeypatch.setattr(be, "alpaca", fake)
         monkeypatch.setattr(be, "submit_trade_entry", self.funnel)
@@ -517,14 +517,26 @@ async def test_wall_1_the_tick_reads_its_own_list_table_and_never_the_live_alert
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("phase", ["live", "shadow"])
-async def test_wall_2_any_phase_but_paper_is_refused_and_paged(monkeypatch, phase):
-    w = World(monkeypatch, phase=phase)
+async def test_wall_2_a_live_phase_is_refused_and_paged(monkeypatch):
+    w = World(monkeypatch, phase="live")
     out = await w.tick()
     assert out["skipped"] == "switched_off" and not w.funnel.await_count
     assert w.ev("breakout_v1_refused") and len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER")
     await w.tick()
     assert len(w.pages) == 1                                                          # paged once, not every minute
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("phase", ["shadow", "deprecated"])
+async def test_wall_2_an_off_rung_is_refused_with_one_audit_row_a_day_and_no_page(monkeypatch, phase):
+    """Final review 2026-11-08 F6: his Demote lands the strategy on 'shadow' — no money anywhere, so one
+    `breakout_v1_refused` row a day and no page (was a row every minute and a daily page)."""
+    w = World(monkeypatch, phase=phase)
+    out = await w.tick()
+    assert out["skipped"] == "switched_off" and not w.funnel.await_count
+    assert len(w.ev("breakout_v1_refused")) == 1 and w.pages == []
+    await w.tick(); await w.tick()
+    assert len(w.ev("breakout_v1_refused")) == 1 and w.pages == []
 
 
 @pytest.mark.asyncio
@@ -548,9 +560,68 @@ async def test_the_switch_off_frees_a_row_that_never_got_its_order(monkeypatch):
 async def test_disabled_row_is_the_switch_off_quietly(monkeypatch):
     w = World(monkeypatch)
     from agents.market_intelligence.strategies import registry
-    monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=_strategy(enabled=False)))
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(return_value=_strategy(enabled=False)))
     out = await w.tick()
     assert out["skipped"] == "switched_off" and not w.funnel.await_count and w.pages == []
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_strategy_row_takes_no_action_that_tick_and_the_next_tick_proceeds(monkeypatch):
+    """#312 re-review 2026-11-07 finding 2: ONE failed fresh read of the strategy row (a timeout at 10:05) must not
+    cancel the day's resting buys. Before: the read failure answered like a refused phase, the tick took the
+    switch-off branch, the broker order was cancelled and the row became `cancelled` under `block:strategy_disabled`
+    for good — a name lost for the day to a database blip. Now the read failure is its own THIRD state: that tick
+    returns early (`strategy_unreadable`) — no new order, no re-price, NO cancel — and the next tick, the read
+    answered, proceeds with the buy still resting. The cancel stays for a real disable or a phase other than paper.
+    The read-failure page has its own once-a-day key: a morning blip must not silence a real refusal page later."""
+    from agents.market_intelligence.strategies import registry
+    bars = _flat_bars(40, low=9.80, high=9.95, vol=60_000.0)         # the pace holds, the low never moves: a buy RESTS
+    w = World(monkeypatch, rows=[_placed_row()], orders=[_order()], bars={"BRKO": bars})
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(side_effect=[
+        asyncio.TimeoutError("pool acquire timed out"),              # 10:05 — the read fails
+        _strategy(),                                                 # 10:06 — it answers: paper, enabled
+        _strategy(phase="live"),                                     # 10:07 — a REAL refusal (wrong rung)
+    ]))
+    out = await w.tick(at=(10, 5))
+    assert out["skipped"] == "strategy_unreadable" and not w.funnel.await_count
+    assert ("cancel", "ord-1") not in w.events and w.rows["BRKO"]["status"] == "order_placed"   # the buy is left alone
+    assert w.ev("breakout_v1_strategy_unreadable") and not w.ev("breakout_v1_refused")
+    assert len(w.pages) == 1 and w.pages[0].startswith("📄 PAPER")
+
+    out = await w.tick(at=(10, 6))                                   # the next tick proceeds
+    assert out["skipped"] is None and out["actions"]["BRKO"] == "resting"
+    assert ("cancel", "ord-1") not in w.events and w.rows["BRKO"]["status"] == "order_placed"
+
+    out = await w.tick(at=(10, 7))                                   # a real refusal the same day still pages
+    assert out["skipped"] == "switched_off" and w.ev("breakout_v1_refused")
+    assert len(w.pages) == 2 and ("cancel", "ord-1") in w.events     # and the cancel is still the refusal's
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_strategy_row_at_1555_still_runs_the_end_of_day_work(monkeypatch):
+    """#312 re-review 2026-11-07 LOW: the no-action rule for an unreadable strategy row is for the minutes a NEW
+    order could be placed. At 15:55 nothing new is placed whatever the row says, and three things must run without
+    it: the cancel of the resting DAY buys (`window:breakout_unfilled_eod` — else one can fill 15:55-16:00), the
+    missed-by-slots record and the `breakout_v1_entry_day` row. On 9f9347a3 an unreadable 15:55 skipped all three
+    (`strategy_unreadable`). One minute earlier (15:54) the early return still holds: no cancel, no order. The
+    switch-off cancel (`block:strategy_disabled`) is NOT what runs — that stays for a real disable or a wrong rung."""
+    from agents.market_intelligence.strategies import registry
+    w = World(monkeypatch, rows=[_placed_row()], orders=[_order()],
+              list_rows=[dict(_LIST), dict(_LIST, ticker="NEWB", list_rank=2)],
+              bars={"BRKO": _flat_bars(385, vol=60_000.0), "NEWB": _flat_bars(385, vol=60_000.0)})
+    monkeypatch.setattr(registry, "get_strategy_fresh",
+                        AsyncMock(side_effect=asyncio.TimeoutError("pool acquire timed out")))
+    out = await w.tick(at=(15, 54))
+    assert out["skipped"] == "strategy_unreadable" and ("cancel", "ord-1") not in w.events
+    assert w.rows["BRKO"]["status"] == "order_placed"
+    out = await w.tick(at=(15, 55))
+    assert out["skipped"] is None and out["strategy_unreadable"] is True
+    assert ("cancel", "ord-1") in w.events
+    assert w.rows["BRKO"]["skip_reason"].startswith("window:breakout_unfilled_eod")
+    assert out["actions"]["NEWB"] == "never_placed" and not w.funnel.await_count
+    assert "missed_by_slots" in out and w.ev("breakout_v1_entry_day")
+    assert w.ev("breakout_v1_strategy_unreadable") and not w.ev("breakout_v1_refused")
+    assert len(w.pages) == 1                                         # the read-failure page, once a day
 
 
 @pytest.mark.asyncio

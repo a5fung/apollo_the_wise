@@ -496,7 +496,7 @@ def _wire_infra_skip(monkeypatch, router, *, phase, resolver_raises=False):
     monkeypatch.setattr(constants, "current_account_mode", lambda: "paper")
     strategy = SimpleNamespace(enabled=True, phase=phase, live_real_enabled=True,
                                position_size_multiplier=1.0, strategy_id="magna53")
-    monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=strategy))
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(return_value=strategy))   # the funnel reads FRESH (#312 review)
     monkeypatch.setattr(lt, "_check_safeguards",
                         AsyncMock(return_value=(False, f"{INFRA_NO_BAR}: 3 retries exhausted", 0.0)))
     monkeypatch.setattr(lt, "_insert_skipped_trade", AsyncMock())

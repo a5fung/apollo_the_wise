@@ -27,6 +27,15 @@ One deliberate consequence, pinned by the second-pass test: the saved row is the
 name that closes inside the opening-range window and re-alerts on a later pass the same day is NOT
 re-entered (the pre-fix bug let it re-run the guard, find the position gone, and enter). That is the
 original design - the same row every other skip kind leaves - not a change to any entry criterion.
+
+2026-11-07 (#312 review): the funnel now makes ONE strategy read, FRESH (`registry.get_strategy_fresh`,
+before its first step) — the dedup-mode resolve and the phase-gate fetch were the same cached read
+twice, and that cache is per process (apollo-execution never saw a demote committed in the market
+agent). The three tests that encoded the two-fetch shape ("recovers at the phase gate", "two fetches
+return different strategies", "the lookup failed → process-mode fallback") were rewritten to the
+single-read contract: a failed read SKIPS fail-closed (`infra:strategy_unreadable`, paged, never a
+cached phase or a process-mode guess of which account trades), and every later skip labels from the
+one row.
 """
 from __future__ import annotations
 
@@ -42,6 +51,7 @@ from agents.market_intelligence.broker import live_tracker as lt
 from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_STRATEGY_IN_SHADOW,
     BLOCK_TICKER_OPEN_POSITION,
+    INFRA_STRATEGY_UNREADABLE,
     WINDOW_DUPLICATE,
 )
 import agents.market_intelligence.strategies.registry as registry
@@ -79,10 +89,14 @@ def _wire(monkeypatch, *, phase, process_mode, open_since=OPEN_SINCE, registry_r
     # The opposite-value trap: the process-wide mode is NOT the strategy's book.
     monkeypatch.setattr(constants, "current_account_mode", lambda: process_mode)
     monkeypatch.setattr(ep, "current_account_mode", lambda: process_mode)
+    # The funnel's ONE read is the FRESH one (#312 review); the cached read must never be consulted by
+    # the money path, so it raises if touched.
+    monkeypatch.setattr(registry, "get_strategy",
+                        AsyncMock(side_effect=AssertionError("the funnel read the process cache")))
     if registry_raises:
-        monkeypatch.setattr(registry, "get_strategy", AsyncMock(side_effect=RuntimeError("registry down")))
+        monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(side_effect=RuntimeError("registry down")))
     else:
-        monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=_strategy(phase)))
+        monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(return_value=_strategy(phase)))
     safeguards = AsyncMock(return_value=(True, None, 0.0))
     monkeypatch.setattr(lt, "_check_safeguards", safeguards)
     monkeypatch.setattr(briefing.httpx, "AsyncClient", router)
@@ -182,37 +196,45 @@ async def test_the_batched_callers_get_the_row_and_no_page_from_the_skip(monkeyp
 
 
 @pytest.mark.asyncio
-async def test_the_early_skip_still_lands_when_the_registry_lookup_failed(monkeypatch):
-    """The dedup-mode resolve is wrapped (a registry hiccup must not drop an entry); the skip it can
-    still produce is recorded under the book the guard actually queried - the process mode - and
-    does not crash on a strategy that was never bound. The failure itself is loud
-    (`strategy_mode_resolve_error`, the morning-banner event the other label resolves use) and an
-    unbatched page says MODE UNKNOWN in the main chat (#699), never a guessed PAPER tag."""
+async def test_a_failed_fresh_read_skips_fail_closed_and_never_falls_back_to_the_cache(monkeypatch):
+    """#312 review (2026-11-07): the ONE strategy read is fresh, and when it FAILS the entry is
+    SKIPPED (`infra:strategy_unreadable`), not routed on a cached row or a process-mode guess — the
+    pre-#312 dedup step degraded to the process mode because the phase gate re-read the row; with
+    one read that guess would decide WHICH ACCOUNT trades. Here the process cache even holds a
+    LIVE row for magna53 and must not be consulted. The skip row lands under the process mode (the
+    only book left to name), the failure is loud (`strategy_mode_resolve_error`) and the page — an
+    infra reason, so it is sent even for a batching caller — says MODE UNKNOWN in the main chat.
+    RED on the pre-review build: the entry went on to the open-position guard under the fallback."""
     router, conn, spies = _wire(monkeypatch, phase=None, process_mode="paper", registry_raises=True)
-    out, built = await _run()
-    _assert_entry_decision_untouched(out, built, spies)
-    assert _row(conn)[9] == "paper"                              # pre-fix: no row at all
+    monkeypatch.setattr(registry, "_CACHE", {"magna53": _strategy("live")})   # the stale cache: never read
+    out, built = await _run(aggregate_skips=True)
+    assert out["action"] == ep.ACTION_SKIPPED
+    assert out["reason"].startswith(INFRA_STRATEGY_UNREADABLE) and "registry down" in out["reason"]
+    assert built == [] and spies.safeguards.await_count == 0     # nothing after step 0 ran
+    assert conn.fetchval.await_count == 0                         # not even the dedup SELECT
+    row = _row(conn)
+    assert row[7].startswith(INFRA_STRATEGY_UNREADABLE) and row[9] == "paper"
     assert _write_errors(spies) == []
-    assert len(_audit(spies, "strategy_mode_resolve_error")) == 1    # on the builder's commit and on main: none
-    (page,) = _pages(router)
+    assert len(_audit(spies, "strategy_mode_resolve_error")) == 1
+    (page,) = _pages(router)                                      # infra: paged even when batching
     assert page["chat_id"] == MAIN and constants.UNRESOLVED_MODE_TAG.strip() in page["text"]
-    assert "📄 PAPER" not in page["text"]
+    assert "📄 PAPER" not in page["text"] and "💰 LIVE-$" not in page["text"]
 
 
 @pytest.mark.asyncio
-async def test_a_lookup_that_recovers_at_the_phase_gate_does_not_leave_later_skips_unlabelled(monkeypatch):
-    """Regression pin for the failed-lookup flag: it covers ONLY the early skip. If the dedup lookup
-    blips and the phase-gate fetch then succeeds, a later skip is attributed to that fetched strategy
-    (live here) - not tagged MODE UNKNOWN because an earlier lookup once failed."""
+async def test_there_is_one_strategy_read_and_every_later_skip_labels_from_it(monkeypatch):
+    """The single-read contract (#312 review): the funnel reads the strategy row ONCE, fresh, before
+    its first step, and never through the process cache; a later skip (the safeguards' block here)
+    is attributed to that one row (live), never tagged MODE UNKNOWN."""
     router, conn, spies = _wire(monkeypatch, phase="live", process_mode="paper", open_since=None)
-    monkeypatch.setattr(registry, "get_strategy",
-                        AsyncMock(side_effect=[RuntimeError("registry blip"), _strategy("live")]))
     monkeypatch.setattr(lt, "_check_safeguards",
                         AsyncMock(return_value=(False, "block:max_positions: 5/5 (mode=live)", 0.0)))
     out, _built = await _run()
     assert out["action"] == ep.ACTION_BLOCKED
+    assert registry.get_strategy_fresh.await_count == 1           # one read, before step 1
+    assert registry.get_strategy.await_count == 0                  # the cache: never
     assert _row(conn)[9] == "live"
-    assert len(_audit(spies, "strategy_mode_resolve_error")) == 1
+    assert _audit(spies, "strategy_mode_resolve_error") == []
     (page,) = _pages(router)
     assert page["chat_id"] == MAIN and "💰 LIVE-$" in page["text"] and "MODE UNKNOWN" not in page["text"]
 
@@ -276,14 +298,12 @@ async def test_a_name_that_closes_inside_the_window_is_not_re_entered_on_a_later
 # ── a LATER `_skip` resolves exactly as before ────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_a_phase_gate_skip_resolves_from_the_strategy_fetched_at_the_phase_gate(monkeypatch):
-    """Passes before AND after the fix (a regression pin). The two registry fetches return DIFFERENT
-    strategies: the dedup-mode resolve sees a LIVE one, the phase gate a SHADOW one (not a paper/live
-    book, so it labels from the process mode - "paper" here). A later skip must read the phase-gate
-    strategy: if `_skip_strategy` stayed on the early (live) one this row would be "live"."""
-    router, conn, spies = _wire(monkeypatch, phase="live", process_mode="paper", open_since=None)
-    monkeypatch.setattr(registry, "get_strategy",
-                        AsyncMock(side_effect=[_strategy("live"), _strategy("shadow")]))
+async def test_a_shadow_strategys_phase_gate_skip_labels_from_the_process_mode(monkeypatch):
+    """A regression pin (was "the phase gate's fetch wins over the dedup fetch" when there were two
+    reads; since the #312 review there is one). A SHADOW row is blocked at the phase gate, and the
+    skip row — shadow is not a paper/live book — labels from the process mode ("paper" here) and
+    pages the paper chat."""
+    router, conn, spies = _wire(monkeypatch, phase="shadow", process_mode="paper", open_since=None)
     out, _built = await _run()
     assert out["action"] == ep.ACTION_BLOCKED and out["reason"] == BLOCK_STRATEGY_IN_SHADOW
     assert _row(conn)[9] == "paper"

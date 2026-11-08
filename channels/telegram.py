@@ -43,6 +43,35 @@ logger = logging.getLogger(__name__)
 # How long (seconds) to wait between "typing..." indicator updates
 TYPING_INTERVAL = 4
 
+# ── Webhook registration at boot (#312 re-review 2026-11-07, finding 3) ──────
+# `channels/webhooks.py` drops every update without the secret header that `set_webhook` registers.
+# So in WEBHOOK mode a `set_webhook` that fails at boot is no longer harmless: Telegram keeps posting
+# to the OLD, secret-less registration and the bot is deaf — `/pause` and the ladder's Demote button
+# included. `main.py` therefore retries, and if Telegram still refuses it FAILS THE BOOT (the lifespan
+# raises, the container exits non-zero, compose restarts it — visible) rather than run deaf. INERT IN
+# PROD: the server runs POLLING mode (WEBHOOK_BASE_URL unset in its .env, checked read-only 11-07).
+SET_WEBHOOK_ATTEMPTS = 3
+SET_WEBHOOK_RETRY_DELAYS = (2.0, 5.0)     # seconds between attempts 1→2 and 2→3
+
+
+async def set_webhook_or_fail(channel, webhook_url: str, *, attempts: int = SET_WEBHOOK_ATTEMPTS,
+                              delays: tuple[float, ...] | None = None) -> None:
+    """`channel.set_webhook(webhook_url)` with `attempts` tries; re-raises the LAST error once they
+    are spent (the caller — the boot — must not swallow it). `delays` defaults to the module's
+    `SET_WEBHOOK_RETRY_DELAYS` at call time (tests zero it)."""
+    delays = SET_WEBHOOK_RETRY_DELAYS if delays is None else delays
+    for attempt in range(1, attempts + 1):
+        try:
+            await channel.set_webhook(webhook_url)
+            return
+        except Exception as e:
+            if attempt >= attempts:
+                logger.error(f"Telegram set_webhook failed {attempts}x ({e}) — refusing to boot deaf")
+                raise
+            pause = delays[min(attempt - 1, len(delays) - 1)] if delays else 0.0
+            logger.warning(f"Telegram set_webhook attempt {attempt}/{attempts} failed ({e}); retrying in {pause:g}s")
+            await asyncio.sleep(pause)
+
 # ── Polling-health heartbeat (#153) ──────────────────────────────────────────
 # A persistent NetworkError can wedge PTB's long-poll loop silently — updates
 # stop arriving with no error surfaced (the 2026-05-22→05-29 7-day outage). The
@@ -843,9 +872,12 @@ class TelegramChannel:
     # source now; callers keep their own site-specific defaults/timeouts/error
     # text, only the POST + the Markdown->plain fallback are shared.
     async def _post_market_task(
-        self, task: str, user_id: int, timeout: float = 30
+        self, task: str, user_id: int, timeout: float = 30, context: Optional[dict] = None,
     ) -> Optional[str]:
         """POST an AgentRequest to the market agent, return the result text.
+        `context` rides on the request as-is; the typed slash-command path passes the
+        operator origin marker through it (`_dispatch_market_slash`, #312 round 3) and
+        nothing else needs to.
         Delegates the actual POST + error handling to `core.router.call_agent`
         (simplify GROUP 3, 2026-07-03 — this used to hand-roll its own
         POST {url}/task + headers, duplicating what call_agent already does for
@@ -862,7 +894,8 @@ class TelegramChannel:
         if not get_agent_url("market_intelligence"):
             return None
 
-        req = AgentRequest(task=task, user_id=user_id, conversation_id=str(user_id))
+        req = AgentRequest(task=task, context=dict(context or {}), user_id=user_id,
+                           conversation_id=str(user_id))
         resp = await call_agent(AgentName.MARKET_INTELLIGENCE, req, timeout=timeout)
         if not resp.success:
             raise RuntimeError(resp.error or "market agent call failed")
@@ -944,8 +977,16 @@ class TelegramChannel:
         args = parts[1] if len(parts) > 1 else ""
         task = (cmd + " " + args).strip() if args else cmd
 
+        # THE OPERATOR MARKER (#312 round 3, his ruling 2026-11-07 "Close it"): this handler is
+        # reached only by a slash command HE TYPED (a CommandHandler, never the LLM — the chat
+        # path is `_handle_message` → the orchestrator, whose tool call stamps "chat_tool" over
+        # any origin). A market-agent handler that moves a strategy's phase or switch acts on
+        # this marker alone and refuses everything else, so `/strategy <id> promote` typed here
+        # still moves and the same text from the chat assistant does not.
+        from shared.models import ORIGIN_OPERATOR_COMMAND, REQUEST_ORIGIN_KEY
         try:
-            result = await self._post_market_task(task, update.effective_user.id)
+            result = await self._post_market_task(
+                task, update.effective_user.id, context={REQUEST_ORIGIN_KEY: ORIGIN_OPERATOR_COMMAND})
         except Exception as e:
             logger.error(f"{cmd} failed: {e}")
             result = f"Error: {e}"
@@ -1459,6 +1500,9 @@ class TelegramChannel:
         elif callback_data.startswith("tpromo:"):
             await self._handle_theme_promote_callback(query, callback_data)
 
+        elif callback_data.startswith("ladder:"):
+            await self._handle_ladder_callback(query, callback_data)
+
         else:
             pass  # query already answered above
 
@@ -1657,11 +1701,18 @@ class TelegramChannel:
         would blow away the OTHER candidates' buttons along with this one's, so a still-open
         candidate must stay tappable after a sibling is promoted."""
         short_id = callback_data.split(":", 1)[1]
+        await self._forward_press(query, f"/promotetheme_id {short_id}", "Theme-promote")
+
+    async def _forward_press(self, query, task: str, label: str) -> None:
+        """A button press forwarded to the market agent as `task`, with the pressing user's id,
+        answered with a NEW message (HTML, then a plain-words retry) — the shared tail of the
+        `tpromo:` and `ladder:` callbacks, which each keep their own parsing and validation.
+        `label` names the button in the log lines."""
         user_id = query.from_user.id if query.from_user else 0
         try:
-            result = await self._post_market_task(f"/promotetheme_id {short_id}", user_id)
+            result = await self._post_market_task(task, user_id)
         except Exception as e:
-            logger.error(f"Theme-promote callback failed: {e}")
+            logger.error(f"{label} callback failed: {e}")
             result = f"Error: {e}"
         if result is None:
             result = "Market agent not available."
@@ -1669,8 +1720,31 @@ class TelegramChannel:
         try:
             await query.message.reply_text(html, parse_mode=ParseMode.HTML)
         except Exception as e:
-            logger.warning(f"Theme-promote reply HTML send failed, retrying plain: {e}")
+            logger.warning(f"{label} reply HTML send failed, retrying plain: {e}")
             await query.message.reply_text(to_plain(html))
+
+    async def _handle_ladder_callback(self, query, callback_data: str) -> None:
+        """ladder:<demote|noaction>:<page id>:<token> — the #312 ladder breach page's two buttons
+        (ADR 0022 §1, ruled 2026-11-04: demotion is HIS one click). Same shape as `tpromo:` above:
+        this is delivery only. Authorization is the shared gate in `_handle_callback_query` (this
+        method is reached only after that check passes); the decision itself — lock the page,
+        check the page's own TOKEN (#312 review: the button data is the only thing that carries it,
+        so a `/ladder_press` typed by the orchestrator's LLM or anyone else is refused), compare
+        the rung it showed with the registry, move ONE rung through
+        `strategies/registry.update_strategy` or record No action, audit — runs in the market agent
+        (`/ladder_press`, `ladder_press.py`), which also re-checks the pressing user against the
+        allowlist. The press is forwarded with the pressing user's id so the audit row names who
+        pressed. Replies with a NEW message (mirrors the tpromo path) so the page and its stats stay
+        readable above the answer; a second press on a decided page is refused by the market agent,
+        not by hiding the buttons."""
+        parts = callback_data.split(":")
+        token = parts[3] if len(parts) == 4 else ""
+        token_ok = 8 <= len(token) <= 64 and token.replace("-", "").replace("_", "").isalnum()
+        if len(parts) != 4 or parts[1] not in ("demote", "noaction") or not parts[2].isdigit() or not token_ok:
+            logger.warning(f"ladder callback: malformed button data {callback_data!r}")
+            await query.message.reply_text("Malformed ladder button — nothing was changed.")
+            return
+        await self._forward_press(query, f"/ladder_press {parts[1]} {parts[2]} {token}", "Ladder press")
 
     # ── Confirmation resolution ────────────────────────────────────────────────
 
@@ -1843,6 +1917,10 @@ class TelegramChannel:
         await self._app.bot.set_webhook(
             url=webhook_url,
             allowed_updates=["message", "callback_query"],
+            # #312 review (2026-11-07): Telegram echoes this in X-Telegram-Bot-Api-Secret-Token on
+            # every POST; channels/webhooks.py drops any update without it (a forged callback_query
+            # from inside the compose network used to pass both allowlist gates).
+            secret_token=self._secrets.telegram_webhook_secret_token,
         )
         await self._register_commands()
         logger.info(f"Telegram webhook set to: {webhook_url}")

@@ -41,6 +41,14 @@ from agents.market_intelligence.db import (
     PS_SHADOW_INSERT_SQL, SHADOW_HOUR_LANE_CANDIDATES_SQL, SHADOW_TRADE_EXIT_STEP_UPDATE_SQL,
     SHADOW_TRADE_INSERT_SQL,
     get_pool)
+from agents.market_intelligence.ladder_press import _DECIDE_PAGE_SQL as _LADDER_DECIDE_PAGE_SQL
+from agents.market_intelligence.ladder_watchdog import (
+    _CLOSE_EPISODE_SQL as _LADDER_CLOSE_EPISODE_SQL,
+    _INSERT_PAGE_SQL as _LADDER_INSERT_PAGE_SQL,
+    _MARK_PAGE_SENT_SQL as _LADDER_MARK_PAGE_SENT_SQL,
+    _OPEN_EPISODE_INSERT_SQL as _LADDER_OPEN_EPISODE_INSERT_SQL,
+    _STALE_OPEN_PAGES_SQL as _LADDER_STALE_OPEN_PAGES_SQL,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -296,6 +304,17 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         # db.py (the executing module) — the gate prepares the REAL SQL (#265).
         EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
     ),
+    # #312 act step (2026-11-07): the ladder's page / episode writers and the press's decision write.
+    # Imported from their owner modules (the executing code); a prepare failure here would surface
+    # only on the first real breach night (the page row INSERT) or his first press (the decision
+    # UPDATE) — exactly the kind of first-use failure this gate exists to move to deploy time.
+    ("ladder_watchdog.page_breaches: the breach page row (two ::jsonb params)", _LADDER_INSERT_PAGE_SQL),
+    ("ladder_watchdog.page_breaches: the page marked sent", _LADDER_MARK_PAGE_SENT_SQL),
+    ("ladder_watchdog.page_breaches: the breach episode opened", _LADDER_OPEN_EPISODE_INSERT_SQL),
+    ("ladder_watchdog.page_breaches / ladder_press: the episode closed", _LADDER_CLOSE_EPISODE_SQL),
+    ("ladder_press.handle_ladder_press: the page's decision (demote / no_action / stale)", _LADDER_DECIDE_PAGE_SQL),
+    # #312 review (2026-11-07): the nightly read marks a closed episode's undecided pages stale.
+    ("ladder_watchdog: a closed episode's undecided pages marked stale", _LADDER_STALE_OPEN_PAGES_SQL),
 ]
 
 

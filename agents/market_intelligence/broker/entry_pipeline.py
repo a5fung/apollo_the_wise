@@ -32,6 +32,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     strategy_cap_block_reason,
     INFRA_NO_BAR,
     INFRA_ORDER_SUBMIT_FAILED,
+    INFRA_STRATEGY_UNREADABLE,
     SETUP_CHASE_CAP_EXCEEDED,
     SETUP_FADED_FROM_ORB,
     SETUP_GAP_BELOW_FLOOR,
@@ -639,14 +640,12 @@ async def submit_trade_entry(
     pool = await get_pool()
 
     # The strategy row `_skip` attributes a skipped signal to (its account_mode picks the skip row's
-    # book AND the page's tag/chat). Set at each point a strategy row is first in hand: the
-    # dedup-mode resolve below for the early open-position guard, then the phase-gate fetch for every
-    # later skip. Bound HERE, before `_skip`, so an early skip never reads a name that is not yet
-    # assigned (the old closure read `strategy`, which only exists from the phase-gate line on).
+    # book AND the page's tag/chat). Since the #312 review (2026-11-07) there is ONE strategy read,
+    # fresh, at step 0 below, and every skip after it labels from that row. Bound HERE, before
+    # `_skip`, so the step-0 failure skip never reads a name that is not yet assigned.
     _skip_strategy = None
-    # True only while the dedup-mode registry lookup has FAILED and the phase-gate fetch has not yet
-    # recovered it: the early skip's ROW still lands (under the process-mode fallback, the same book
-    # the guard's own query used) but its PAGE says "mode unknown" (#699), never a guessed book.
+    # True only when the step-0 fresh read FAILED: that skip's ROW still lands (under the process
+    # mode, the only book left to name) but its PAGE says "mode unknown" (#699), never a guessed book.
     _skip_mode_lookup_failed = False
 
     async def _skip(
@@ -737,37 +736,65 @@ async def submit_trade_entry(
             logger.error(f"{strategy_label} {ticker}: cap+1 candidate alert failed — {e}")
         return {"ticker": ticker, "action": action, "reason": reason}
 
-    # #465 (money-path audit R4): the two pre-checks below and the ON CONFLICT
-    # target had NO account_mode filter, violating dual-account invariant 3
-    # ("account_mode filter on every trade query"). A PAPER row therefore
-    # suppressed a LIVE entry on the same ticker/day — fail-safe in direction
-    # (skip, never double-order) but a REAL entry silently dropped and mislabeled
-    # `window:duplicate`. Overlap is plausible, not theoretical: a 9M day is often
-    # an EP day (9M-Day2 paper x magna53 live). Zero collisions in 258 rows so far;
-    # fixed before it bites, not after.
-    # The strategy row is not fetched until the phase gate (1a) below, so resolve
-    # the mode here rather than REORDERING a money-path gate to suit a dedup filter.
-    # Fail-safe: if the strategy is unknown (legacy path / pre-seed), fall back to
-    # the process-wide mode — which reproduces exactly the pre-#465 behaviour for
-    # that case rather than inventing a new one.
-    # #444 pins that a resolver failure must NOT break the entry path — its test
-    # ("resolver boom") caught this line unguarded, which would have turned a
-    # registry hiccup into a dropped entry. Degrade to the process-wide mode, which
-    # is exactly the pre-#465 behaviour, rather than propagating.
+    # 0. THE strategy row — ONE FRESH READ, before anything else, reused by every stage below:
+    # the dedup book (1), the open-position guard (1b), the phase gate (1a), the lane bind (1c),
+    # the safeguards' account (2), the spec builder's account (5), the sizing knob (5b) and
+    # `live_real_enabled` (6). #312 review (2026-11-07): the registry cache is PER PROCESS —
+    # his Demote press and the typed `/strategy <id> demote|disable` run in the market agent and
+    # invalidate THAT cache; this funnel runs in apollo-execution, whose cache learned nothing, so
+    # a cached read here routed a NEW entry on the OLD phase (a LIVE bracket the morning after a
+    # live→paper demote) until the container's next restart. `get_strategy_fresh` is a primary-key
+    # SELECT of the committed row; the press's one-transaction commit is therefore visible to the
+    # very next entry. In-flight entries that read the row before the press commits still submit
+    # on the old phase — inherent, and said on the press's answer.
+    #
+    # A read that FAILS skips FAIL-CLOSED (`infra:strategy_unreadable`, an immediate page — infra
+    # reasons are never batched) — never a cached row, never the process-mode guess the pre-#312
+    # dedup step degraded to (#444/#465): that guess decided only a LABEL then, because the phase
+    # gate re-read the row; with one read it would decide WHICH ACCOUNT TRADES. A DB that cannot
+    # answer this SELECT cannot answer the dedup SELECT two lines down either, so no entry that
+    # would have reached an order is lost to this. `_skip_mode_lookup_failed` tags the page
+    # "mode unknown" (main chat, #699) and the skip row lands under the process mode, exactly as
+    # the failed-lookup page and row did before.
+    #
+    # #465 (money-path audit R4): the two pre-checks below and the ON CONFLICT target had NO
+    # account_mode filter, violating dual-account invariant 3 ("account_mode filter on every
+    # trade query"). A PAPER row therefore suppressed a LIVE entry on the same ticker/day —
+    # fail-safe in direction (skip, never double-order) but a REAL entry silently dropped and
+    # mislabeled `window:duplicate`. Fail-safe: if the strategy is unknown (legacy path /
+    # pre-seed), fall back to the process-wide mode — which reproduces exactly the pre-#465
+    # behaviour for that case rather than inventing a new one.
+    from agents.market_intelligence.strategies import registry as _registry
     try:
-        from agents.market_intelligence.strategies.registry import get_strategy as _get_strategy
-        _dedup_strategy = await _get_strategy(signal_type)
-        _skip_strategy = _dedup_strategy    # the early open-position guard's skip resolves from this
-        _dedup_mode = (get_strategy_account_mode(_dedup_strategy)
-                       if _dedup_strategy is not None else current_account_mode())
-    except Exception as e:  # loud-ok: falls back to the pre-#465 behaviour; logged, never silent
+        strategy = await _registry.get_strategy_fresh(signal_type)
+    except Exception as e:  # loud-ok: FAIL CLOSED — skipped + paged + audited; never a cached phase
+        logger.error(f"{strategy_label} {ticker}: the strategy row could not be read fresh ({e}) — "
+                     f"entry skipped (fail-closed), never routed on a cached phase")
+        _skip_mode_lookup_failed = True
+        # The one name the other label-resolve failures already use (constants.resolve_strategy_mode_nonfatal):
+        # its `_error` suffix lands it in the morning error banner beside the skip's own page.
+        await log_audit_event(
+            "strategy_mode_resolve_error",
+            f"{signal_type}: the strategy row could not be read fresh in the entry funnel for {ticker} - "
+            f"entry skipped {INFRA_STRATEGY_UNREADABLE} (fail-closed; the skip row lands under the "
+            f"process mode, the page says mode unknown)",
+            detail=str(e)[:400],
+        )
+        return await _skip(f"{INFRA_STRATEGY_UNREADABLE}: {type(e).__name__}: {str(e)[:160]}", icon="⚠️")
+    _skip_strategy = strategy    # every skip from here on labels from the one fresh row
+    # #444 pins that a LABEL-resolver failure must not break the entry path. The row is in hand;
+    # `get_strategy_account_mode` is a pure function over it (phase-guarded, never raises in prod),
+    # and if it did the dedup BOOK degrades to the process mode exactly as before — that is the
+    # pre-#465 behaviour for a label miss, not a cached phase: the gate, the safeguards and the
+    # sizing below still read the fresh row directly.
+    try:
+        _dedup_mode = (get_strategy_account_mode(strategy)
+                       if strategy is not None else current_account_mode())
+    except Exception as e:  # loud-ok: falls back to the pre-#465 behaviour; logged + audited, never silent
         logger.warning(f"{strategy_label} {ticker}: dedup mode resolve failed ({e}) — "
                        f"falling back to process mode")
         _dedup_mode = current_account_mode()
         _skip_mode_lookup_failed = True
-        # The one name the other label-resolve failures already use (constants.resolve_strategy_mode_nonfatal):
-        # its `_error` suffix lands it in the morning error banner. Without it an early skip saved under the
-        # fallback book would be the only trace of this failure, and a saved row is quiet.
         await log_audit_event(
             "strategy_mode_resolve_error",
             f"{signal_type}: account-mode label resolve failed in the entry funnel for {ticker} - "
@@ -819,13 +846,10 @@ async def submit_trade_entry(
             audit_event="orb_blocked", action=ACTION_BLOCKED,
         )
 
-    # 1a. Strategy phase gate. Fail-open if the strategy isn't in the registry
-    # (legacy code path / pre-deploy state). Once seeded, the gate is the
-    # single per-strategy enable/disable surface.
-    from agents.market_intelligence.strategies.registry import get_strategy
-    strategy = await get_strategy(signal_type)
-    _skip_strategy = strategy
-    _skip_mode_lookup_failed = False    # a strategy row is in hand now: every later skip labels from it
+    # 1a. Strategy phase gate — on the row read FRESH at step 0 (no second read: one row decides
+    # the dedup book, the gate, the account and the size, so they cannot disagree). Fail-open if
+    # the strategy isn't in the registry (legacy code path / pre-deploy state). Once seeded, the
+    # gate is the single per-strategy enable/disable surface.
     if strategy is not None:
         _phase_block = _phase_gate_skip_reason(strategy)
         if _phase_block is not None:
@@ -954,8 +978,10 @@ async def submit_trade_entry(
     # attribute is now an AttributeError (loud), never a silent 1.0. `strategy is None`
     # (unregistered / pre-seed strategy) keeps 1.0 = today's full sizing — the only answer
     # that does not change a position size on a config gap (THE LINE). A registry read that
-    # RAISES has already aborted this entry at the phase gate above (fail-closed, unchanged);
+    # RAISES has already skipped this entry at step 0 (fail-closed, `infra:strategy_unreadable`);
     # a NULL / non-finite cell resolves to 1.0 in registry._coerce_position_size_multiplier.
+    # The knob is read from the row fetched FRESH at step 0 (#312): a `/strategy <id>` change
+    # committed in the market agent sizes the very next entry here, with no restart.
     strategy_multiplier = 1.0
     if strategy is not None:
         strategy_multiplier = float(strategy.position_size_multiplier)

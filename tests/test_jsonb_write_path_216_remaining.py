@@ -82,12 +82,13 @@ _update_paper_trade = _tracker_ns["_update_paper_trade"]
 async def test_update_strategy_promotion_thresholds_param_is_dict(monkeypatch):
     from agents.market_intelligence.strategies import registry
 
+    from tests._ladder_fake_db import strategy_row
+
     pool, conn = make_mock_pool()
-    conn.fetchrow = AsyncMock(return_value={"strategy_id": "magna53"})
+    # Since #312 (2026-11-07) the UPDATE's own RETURNING carries the fresh row (no re-load), so
+    # the mock answers with a full row shape; the mutation under test is the UPDATE's own param.
+    conn.fetchrow = AsyncMock(return_value=strategy_row("magna53", "live"))
     monkeypatch.setattr(registry, "get_pool", AsyncMock(return_value=pool))
-    # get_strategy() re-load after the mutate — stub so the test doesn't need a
-    # second full row shape; the mutation under test is the UPDATE's own param.
-    monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=None))
 
     await registry.update_strategy(
         "magna53", promotion_thresholds={"shadow_to_paper": {"min_closed": 30}},

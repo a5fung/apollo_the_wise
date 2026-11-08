@@ -47,11 +47,27 @@ async def health() -> dict[str, str]:
 
 # ── Telegram webhook ──────────────────────────────────────────────────────────
 
+TELEGRAM_SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token"
+
+
 @app.post("/telegram/webhook")
 async def telegram_webhook(request: Request) -> JSONResponse:
-    """Receive Telegram updates via webhook."""
+    """Receive Telegram updates via webhook.
+
+    #312 review (2026-11-07): Telegram echoes the `secret_token` registered by
+    `TelegramChannel.set_webhook` in `X-Telegram-Bot-Api-Secret-Token` on EVERY update it posts;
+    a POST without the right header is not Telegram and is dropped (403) before the body is even
+    parsed. Before this, any process that could reach orchestrator:8000 on the compose network
+    could post a forged `callback_query` carrying his user id and pass both authorization gates
+    (the allowlist checks the user id the UPDATE claims). The route is mounted in polling mode
+    too, where no legitimate POST exists at all — so the check always applies.
+    """
     if _telegram_app is None:
         raise HTTPException(status_code=503, detail="Not initialized")
+    given = request.headers.get(TELEGRAM_SECRET_HEADER, "")
+    if not given or not hmac.compare_digest(given, get_secrets().telegram_webhook_secret_token):
+        logger.warning("Telegram webhook: missing or wrong secret-token header — update dropped")
+        return JSONResponse({"ok": False, "error": "forbidden"}, status_code=403)
 
     try:
         body = await request.body()

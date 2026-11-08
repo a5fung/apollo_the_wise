@@ -42,6 +42,38 @@ class AgentRequest(BaseModel):
     conversation_id: str                # Ties back to the conversation
 
 
+# ── Request origin — WHO sent an AgentRequest (#312 round 3, his ruling 2026-11-07 "Close it") ──
+# Carried in `AgentRequest.context[REQUEST_ORIGIN_KEY]`. The typed slash-command path
+# (`channels/telegram.py::_dispatch_market_slash`, a CommandHandler that bypasses the LLM) stamps
+# ORIGIN_OPERATOR_COMMAND; the orchestrator's tool path (`core/orchestrator.py::_call_sub_agent`)
+# ALWAYS stamps ORIGIN_CHAT_TOOL over whatever the LLM put in `context` — the LLM writes that
+# object itself, so a value it supplies is never trusted. A handler that moves money-path state
+# acts only on the operator marker; a missing marker is refused (default deny): a strategy's
+# phase or enabled flag (`strategies/telegram.py::handle_strategy_action`), and — #312 round 4,
+# his ruling 2026-11-07 — `/resume` (the real-money halt lifted), `/partialnow` (a third of a
+# position sold) and `/timestop` (a position exited), all through `agent.py::_refuse_unless_typed`.
+# `/pause` is deliberately open to every route: halting is the safe direction.
+REQUEST_ORIGIN_KEY = "origin"
+ORIGIN_OPERATOR_COMMAND = "operator_command"
+ORIGIN_CHAT_TOOL = "chat_tool"
+
+
+def request_origin(context: Any) -> Optional[str]:
+    """The origin marker on a request's context — None when absent, not a string, or the
+    context is not a dict (the LLM can hand the tool anything)."""
+    if not isinstance(context, dict):
+        return None
+    value = context.get(REQUEST_ORIGIN_KEY)
+    return value if isinstance(value, str) else None
+
+
+def is_operator_command(origin: Any) -> bool:
+    """THE gate predicate: True only for the marker the typed CommandHandler path stamps
+    (`ORIGIN_OPERATOR_COMMAND`). Pass the marker — `request_origin(request.context)`. None (a
+    missing marker), any other string and any non-string are False: default deny."""
+    return origin == ORIGIN_OPERATOR_COMMAND
+
+
 class AgentResponse(BaseModel):
     """What a sub-agent returns to Apollo."""
     request_id: str

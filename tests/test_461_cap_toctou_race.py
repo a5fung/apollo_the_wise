@@ -232,7 +232,7 @@ def _wire(monkeypatch, db: FakeDB, *, phase: str = "live",
         enabled=True, phase=phase, live_real_enabled=live_real_enabled,
         position_size_multiplier=1.0, strategy_id="magna53",
     )
-    monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=strategy))
+    monkeypatch.setattr(registry, "get_strategy_fresh", AsyncMock(return_value=strategy))   # the funnel reads FRESH (#312 review)
 
     import agents.market_intelligence.exposure_family as exposure_family
     monkeypatch.setattr(exposure_family, "shadow_check_and_emit", AsyncMock())

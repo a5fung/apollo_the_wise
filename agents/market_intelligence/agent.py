@@ -127,6 +127,42 @@ class ScreenerRequest(BaseModel):
     max_results: int = 20
 
 
+# Dispatch keys that exist only for a button's callback and are never a command anyone types — kept
+# OUT of the "Available:" list the Unknown-command reply prints, because that reply reaches the
+# orchestrator's LLM (its `call_market_agent` tool forwards free text here) and would advertise them
+# (#312 review, 2026-11-07: `/ladder_press` is the ladder breach page's Demote / No action; the press
+# itself is additionally gated by the page's own token, so advertising it would move nothing — but a
+# key that cannot be used by anyone reading the list has no business on it).
+_INTERNAL_ONLY_COMMANDS = frozenset({"/ladder_press"})
+
+
+async def _refuse_unless_typed(request: AgentRequest, command: str, does: str) -> str | None:
+    """THE ORIGIN GATE for a command that touches live trade state (#312 round 4, his ruling 2026-11-07: close
+    `/resume`, `/partialnow` and `/timestop` to the chat route; keep `/pause`). -> None when the request came by
+    his TYPED command — the CommandHandler in `channels/telegram.py::_dispatch_market_slash` is the ONLY path
+    that stamps `context.origin = "operator_command"`; the orchestrator's `call_market_agent` tool always
+    overwrites the origin to `"chat_tool"`, so the LLM cannot forge it. Anything else — the chat route, a caller
+    with no origin — gets the plain refusal text back (nothing has moved) and ONE `operator_command_refused`
+    audit row naming the command, the origin that arrived and who asked. `does` is the verb for the answer
+    ("lift the real-money trading halt"). The same predicate `/strategy`'s writers sit behind
+    (`strategies/telegram.py::handle_strategy_action`). Gate ONLY the action: a usage reply is not one."""
+    import json as _json
+    from agents.market_intelligence.audit_events import OPERATOR_COMMAND_REFUSED
+    from shared.models import ORIGIN_OPERATOR_COMMAND, is_operator_command, request_origin
+    origin = request_origin(request.context)
+    if is_operator_command(origin):
+        return None
+    await log_audit_event(
+        OPERATOR_COMMAND_REFUSED,
+        f"{command} refused — not his typed command (origin {origin or 'missing'}); nothing changed",
+        detail=_json.dumps({"command": command, "task": request.task[:200], "origin": origin,
+                            "user_id": request.user_id, "required_origin": ORIGIN_OPERATOR_COMMAND}),
+    )
+    logger.warning(f"{command} refused: origin={origin!r} (user {request.user_id}, task {request.task[:80]!r})")
+    return (f"Not done — this needs your typed {command} command. The chat assistant cannot {does}; "
+            f"nothing was changed.")
+
+
 def _normalize_slash_cmd(token: str) -> str:
     """Normalize a raw slash-command token to its canonical dispatch key.
 
@@ -1960,11 +1996,22 @@ class MarketIntelligenceAgent(BaseAgent):
 
         Actions: enable, disable, promote, demote. Promote enforces
         verdict.eligible — see strategies/telegram.py.
+
+        A MUTATION ACTS ONLY ON HIS TYPED COMMAND (#312 round 3, his ruling 2026-11-07
+        "Close it"). This handler is reached by the slash dispatch AND the plain-text route
+        (`strategy <id> demote`, `strategy: <id> enable`), and both are reachable from the
+        orchestrator's `call_market_agent` tool with his user id — so the request's origin
+        marker decides, not the text or the user: the typed CommandHandler stamps
+        `context.origin = "operator_command"`, the orchestrator's tool path always overwrites
+        it to `"chat_tool"`, and `handle_strategy_action` refuses anything else (a missing
+        marker included), moving nothing and writing `strategy_command_refused`. The list
+        and detail views answer every route.
         """
         from agents.market_intelligence.strategies.telegram import (
             handle_strategies_command,
             handle_strategy_action,
         )
+        from shared.models import request_origin
         import re as _re
         raw = request.task.strip()
         # Strip leading `/strategy` or `strategy` (colon or whitespace) and dispatch on body.
@@ -1973,7 +2020,8 @@ class MarketIntelligenceAgent(BaseAgent):
         try:
             if not body:
                 return self._ok(request, result=await handle_strategies_command())
-            return self._ok(request, result=await handle_strategy_action(body))
+            return self._ok(request, result=await handle_strategy_action(
+                body, origin=request_origin(request.context), user_id=request.user_id))
         except Exception as e:
             logger.exception(f"Strategy command failed: {e}")
             return self._error(request, f"Strategy command failed: {e}")
@@ -1985,10 +2033,22 @@ class MarketIntelligenceAgent(BaseAgent):
         `_check_safeguards`, so it takes effect on the NEXT entry with no redeploy.
         Sets the state, then READS IT BACK and reports the ACTUAL stored value — a
         silent upsert failure must never be reported as success (advisor 2026-06-19).
+
+        `/resume` ACTS ONLY ON HIS TYPED COMMAND (#312 round 4, his ruling 2026-11-07): lifting the
+        halt lets real money move again, so the chat assistant's `call_market_agent` tool — which
+        reaches this handler by `/resume` AND by the bare word `resume` (the exact-match route in
+        `execute_task`) with his user id — is refused on the request's origin
+        (`_refuse_unless_typed`): nothing changes, an `operator_command_refused` row is written.
+        `/pause` stays open to every route: halting is the safe direction.
         """
         from agents.market_intelligence.db import set_trading_halted, get_manual_halt_state
-        task = request.task.strip().lower().lstrip("/")
-        want_halt = task.startswith("pause")
+        # The same normalizer the dispatch uses (a hidden character after the slash must not flip pause into
+        # resume — final review 2026-11-08 F1).
+        want_halt = _normalize_slash_cmd((request.task.split() or [""])[0]) == "/pause"
+        if not want_halt:
+            refused = await _refuse_unless_typed(request, "/resume", "lift the real-money trading halt")
+            if refused:
+                return self._ok(request, result=refused)
         expected = "on" if want_halt else "off"
         try:
             await set_trading_halted(want_halt)
@@ -3273,6 +3333,11 @@ class MarketIntelligenceAgent(BaseAgent):
         4. Tags the exit jsonb row with reason='time_stop'
         5. Emits time_stop_executed audit event for the
            time_stop_9m_day2_effectiveness_n10 data-gated review
+
+        ACTS ONLY ON HIS TYPED COMMAND (#312 round 4, his ruling 2026-11-07): it sells a position,
+        so once a ticker is named the request's origin decides (`_refuse_unless_typed`) — the chat
+        assistant's tool is refused before the position is even read; a bare `/timestop` is not an
+        action and gets the usage text on every route.
         """
         import re as _re
         from agents.market_intelligence.db import get_pool
@@ -3292,6 +3357,9 @@ class MarketIntelligenceAgent(BaseAgent):
                     "Candidates are surfaced via the daily 4:55 PM ET EOD scan."
                 ),
             )
+        refused = await _refuse_unless_typed(request, "/timestop", "exit a position")
+        if refused:
+            return self._ok(request, result=refused)
 
         pool = await get_pool()
         async with pool.acquire() as conn:
@@ -3777,6 +3845,12 @@ class MarketIntelligenceAgent(BaseAgent):
         cause was Alpaca paper share-reservation quirks on after-hours
         retries. Outside the safe 9:30-16:50 ET window, the command
         requires explicit `CONFIRM` suffix to proceed.
+
+        ACTS ONLY ON HIS TYPED COMMAND (#312 round 4, his ruling 2026-11-07): it sells a third of
+        a filled position on whichever account holds it (live included), so once a ticker is named
+        the request's origin decides (`_refuse_unless_typed`) — the chat assistant's tool is refused
+        before the after-hours guard and before the position is read; a bare `/partialnow` is not
+        an action and gets the usage text on every route.
         """
         import re as _re
         from agents.market_intelligence.db import get_pool, log_audit_event
@@ -3803,6 +3877,9 @@ class MarketIntelligenceAgent(BaseAgent):
                     "(IBM cascade R4)."
                 ),
             )
+        refused = await _refuse_unless_typed(request, "/partialnow", "sell part of a position")
+        if refused:
+            return self._ok(request, result=refused)
 
         # After-hours guard (#141): /partialnow needs the 16:50 ET tail
         # buffer so the 16:45 ET scheduled partial-take still fits inside
@@ -5767,6 +5844,32 @@ class MarketIntelligenceAgent(BaseAgent):
             return self._error(request, f"Promote failed: {e}")
         return self._ok(request, result=_render_promote_result(res, name))
 
+    async def _handle_ladder_press(self, request: AgentRequest) -> AgentResponse:
+        """`/ladder_press <demote|noaction> <page id>` — the #312 ladder breach page's two buttons
+        (ADR 0022 §1: demotion is HIS one click). Internal-only dispatch key, never a user-typed or
+        registered command — only `channels/telegram.py`'s `ladder:` callback sends it, after the
+        shared authorization gate, carrying the pressing user's id as `request.user_id`. The whole
+        decision (lock the page, compare the phase it showed with the row, move one rung through
+        `update_strategy` or record No action, audit) is `ladder_press.handle_ladder_press`; this
+        is delivery only."""
+        import re as _re
+        from agents.market_intelligence.ladder_press import handle_ladder_press
+        # The third field is the page's own button TOKEN (#312 review): optional in the grammar so a
+        # tokenless press (the orchestrator's LLM reaching this key through `call_market_agent`, or
+        # anyone typing it) is REFUSED and audited by the press handler rather than answered
+        # "malformed" — the refusal is the record.
+        m = _re.match(r'^\s*/?ladder_press\s+([a-z_]+)\s+(\d+)(?:\s+([A-Za-z0-9_\-]+))?\s*$',
+                      request.task or '', _re.IGNORECASE)
+        if not m:
+            return self._ok(request, result="Malformed ladder press — expected `<demote|noaction> <page id> <token>`.")
+        try:
+            text = await handle_ladder_press(m.group(1).lower(), int(m.group(2)), user_id=request.user_id,
+                                             token=m.group(3))
+        except Exception as e:
+            logger.exception(f"ladder press failed: {e}")
+            return self._error(request, f"Ladder press failed: {e}")
+        return self._ok(request, result=text)
+
     async def _handle_theme_lookup(self, request: AgentRequest) -> AgentResponse:
         """Two-way theme lookup. `/themes TICKER` → the themes it's in; `/themes <name>` → the
         stocks in matching themes. Searches BOTH lanes — live mi_themes AND the #167 narrative
@@ -6304,6 +6407,9 @@ class MarketIntelligenceAgent(BaseAgent):
             "/themes":         self._handle_theme_query,
             "/promotetheme":   self._handle_promotetheme,
             "/promotetheme_id": self._handle_promotetheme_id,
+            # #312 (2026-11-07) — the ladder breach page's two buttons (internal-only, never a menu
+            # command; channels/telegram.py's `ladder:` callback is the only sender)
+            "/ladder_press":   self._handle_ladder_press,
             # #471 ADR 0032 Phase 3 — veto / retire an auto-promoted ecosystem
             "/vetoecosystem":  self._handle_vetoecosystem,
             "/clusters":       self._handle_correlation_clusters,
@@ -6369,7 +6475,8 @@ class MarketIntelligenceAgent(BaseAgent):
         handler = dispatch.get(cmd)
         if handler:
             return await handler(request)
-        available = "  ".join(sorted(k for k in dispatch if not k.endswith("_detail")))
+        available = "  ".join(sorted(k for k in dispatch
+                                     if not k.endswith("_detail") and k not in _INTERNAL_ONLY_COMMANDS))
         return self._ok(request, result=f"Unknown command: `{cmd}`\n\nAvailable:\n`{available}`")
 
     async def _handle_why_query(self, request: AgentRequest) -> AgentResponse:

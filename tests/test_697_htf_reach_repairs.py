@@ -64,7 +64,7 @@ async def test_fetch_flag_never_consults_the_strategy_registry(monkeypatch):
     conn.fetchval = AsyncMock(return_value=date(2026, 10, 9))
     conn.fetch = AsyncMock(return_value=[_flag_row("AAA", "COILED")])
     monkeypatch.setattr(fw, "get_pool", AsyncMock(return_value=pool))
-    for name in ("should_run", "get_strategy", "load_strategies"):
+    for name in ("should_run", "get_strategy", "get_strategy_fresh", "load_strategies"):
         monkeypatch.setattr(registry, name, AsyncMock(side_effect=_touched))
     monkeypatch.setattr(fw, "should_run", AsyncMock(side_effect=_touched))
     out = await fw._fetch_flag(7)

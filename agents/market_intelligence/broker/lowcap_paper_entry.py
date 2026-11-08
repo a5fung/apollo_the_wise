@@ -109,6 +109,20 @@ async def _page(text: str) -> None:
         logger.error(f"#624 paper lane page failed: {e}")
 
 
+_paged: set[tuple[str, date]] = set()   # (kind, ET day) already paged — in-memory, a restart may page again
+
+
+async def _page_once(kind: str, today: date, text: str) -> None:
+    """`_page`, at most once per (kind, ET day) — the lane detector's own pattern (`lowcap_paper_lane._page_once`).
+    For a failure the order step meets on EVERY call while it lasts (#312 re-review 2026-11-07 finding 4: with the
+    database down, every lane tick in the 09:31-09:45 window refused AND paged). The audit row is still written per
+    call; only the Telegram page is deduplicated."""
+    if (kind, today) in _paged:
+        return
+    _paged.add((kind, today))
+    await _page(text)
+
+
 async def paper_account_preflight(today: date) -> bool:
     """True when the paper account answered today (cached per ET day after the first success).
     On failure: log + audit + page, return False — the caller submits nothing."""
@@ -137,10 +151,24 @@ async def paper_account_preflight(today: date) -> bool:
 
 async def _strategy_paper_or_refuse(today: date):
     """The lane's strategy row, ONLY when it is enabled, phase 'paper' and resolves to 'paper'.
-    Disabled / missing → None quietly (the switch is off). Any other phase → None + audit + page:
-    a lane that would route anywhere but paper is refused outright."""
-    from agents.market_intelligence.strategies.registry import get_strategy
-    strategy = await get_strategy(STRATEGY_ID)
+    Disabled / missing → None quietly (the switch is off). Any other phase → None + an audit row
+    per call: a lane that would route anywhere but paper is refused outright. The PAGE (once a
+    day) goes out only when the phase would route the lane OFF paper — 'live', or a value that
+    cannot be resolved at all; 'shadow' (where his Demote press lands it) and 'deprecated' route
+    nowhere and are his chosen OFF rungs, so they are audit-only (#312 final review 2026-11-07,
+    finding 4: a 🚨 every trading morning for a state he chose is noise). Read FRESH (#312
+    review, 2026-11-07): a demote or disable committed in the market agent must stop this lane's
+    NEXT tick without an apollo-execution restart; a row that cannot be read is refused the same
+    way (audit + page, no orders) — never a cached phase."""
+    from agents.market_intelligence.strategies.registry import get_strategy_fresh
+    try:
+        strategy = await get_strategy_fresh(STRATEGY_ID)
+    except Exception as e:  # loud-ok: fail CLOSED — refused with an audit row per call, paged once a day, no orders
+        msg = (f"{STRATEGY_ID}: the strategy row could not be read fresh ({type(e).__name__}: "
+               f"{str(e)[:160]}) — the small-cap lane orders only on a row it can read; refused")
+        await log_audit_event("lowcap_paper_lane_refused", f"{today.isoformat()}: {msg}")
+        await _page_once("strategy_unreadable", today, f"🚨 Small-cap paper lane refused to order: {msg}")
+        return None
     if strategy is None or not strategy.enabled:
         return None
     try:
@@ -148,10 +176,17 @@ async def _strategy_paper_or_refuse(today: date):
     except Exception:  # loud-ok: an unresolvable phase is refused below
         mode = None
     if mode != LANE_ACCOUNT_MODE:
+        off_rung = strategy.phase in ("shadow", "deprecated")      # routes nowhere: his OFF rungs, no money anywhere
         msg = (f"{STRATEGY_ID} phase={strategy.phase!r} resolves to {mode!r} — the small-cap "
-               f"lane orders on PAPER only; refused")
+               f"lane orders on PAPER only; refused"
+               + (" (an off rung — audit only, no page)" if off_rung else ""))
         await log_audit_event("lowcap_paper_lane_refused", f"{today.isoformat()}: {msg}")
-        await _page(f"🚨 Small-cap paper lane refused to order: {msg}")
+        if not off_rung:
+            # once a day (#312 re-review 2026-11-07), and ONLY for a phase that would route the lane OFF paper
+            # (final review finding 4): his Demote press lands this lane on 'shadow' and the order step runs after
+            # every lane tick 09:31-09:45 — a page per call made one press a page a minute, and a page a day for a
+            # rung he chose is still noise. Its own key, so the read-failure page above is not silenced.
+            await _page_once("refused", today, f"🚨 Small-cap paper lane refused to order: {msg}")
         return None
     return strategy
 
