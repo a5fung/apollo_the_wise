@@ -55,11 +55,11 @@ from __future__ import annotations
 import hmac
 import json
 import logging
-import os
 from datetime import datetime
 
 from agents.market_intelligence.ladder_watchdog import DEMOTE_TO, _CLOSE_EPISODE_SQL
 from shared.dates import _ET
+from shared.secrets import get_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -91,14 +91,14 @@ _PAGE_DECISION_SQL = "SELECT decision FROM mi_ladder_pages WHERE id = $1"
 
 
 def allowed_user_ids() -> set[int]:
-    """The operator allowlist the pages are sent to (`TELEGRAM_ALLOWED_USER_IDS`)."""
-    raw = os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
-    out = set()
-    for part in raw.split(","):
-        part = part.strip()
-        if part.lstrip("-").isdigit():
-            out.add(int(part))
-    return out
+    """The operator allowlist the pages are sent to (`TELEGRAM_ALLOWED_USER_IDS`), parsed by the
+    same `shared.secrets` property the channel gate reads, so the two layers cannot disagree. An
+    unset or malformed variable is an empty allowlist: every press is refused `unauthorized`."""
+    try:
+        return set(get_secrets().telegram_allowed_user_ids)
+    except (RuntimeError, ValueError) as e:     # RuntimeError: unset / empty; ValueError: a non-integer entry
+        logger.warning(f"ladder press: the allowlist is unreadable ({e}) — every press is refused")
+        return set()
 
 
 def _when(ts) -> str:
@@ -111,11 +111,15 @@ def _when(ts) -> str:
 
 
 async def _refuse(conn, *, page_id: int, user_id, why: str, reason_code: str, page: dict | None,
-                  strict: bool = True) -> str:
+                  strict: bool = True, mark_stale: bool = False) -> str:
     """Record the refusal and answer it. `strict` (the default) makes the audit write RAISE on
     failure — inside the press transaction a swallowed failure would abort it silently; outside
-    it (the post-commit check) the caller passes strict=False so a sick DB still gets an answer."""
+    it (the post-commit check) the caller passes strict=False so a sick DB still gets an answer.
+    `mark_stale` first decides the page 'stale' (by this user), on the same connection and so in
+    the same transaction — a page whose numbers no longer hold cannot be pressed again."""
     from agents.market_intelligence.db import log_audit_event
+    if mark_stale:
+        await conn.execute(_DECIDE_PAGE_SQL, "stale", user_id, page_id)
     await log_audit_event(
         REFUSED_EVENT,
         f"ladder page #{page_id}: press refused — {why}",
@@ -145,8 +149,8 @@ async def _demote_on_page(conn, page: dict, *, user_id: int, pressed_at: str) ->
     updated = await update_strategy(sid, phase=to, expect_phase=frm, conn=conn)
     if updated is None:
         # The row moved between the phase read above and this write (a concurrent typed command).
-        await conn.execute(_DECIDE_PAGE_SQL, "stale", user_id, page["id"])
         return await _refuse(conn, page_id=page["id"], user_id=user_id, page=page, reason_code="moved_during_press",
+                             mark_stale=True,
                              why=(f"{sid} moved off {frm} while the press was being applied; the page "
                                   f"is stale and nothing was changed. /strategy {sid} shows where it is.")), None
     await conn.execute(_DECIDE_PAGE_SQL, "demote", user_id, page["id"])
@@ -160,8 +164,7 @@ async def _demote_on_page(conn, page: dict, *, user_id: int, pressed_at: str) ->
                     "pressed_at": pressed_at, "breached": page["breached"],
                     "allocator_proposal": ALLOCATOR_NOTE}, default=str),
         conn=conn, strict=True)
-    expect = {"strategy_id": sid, "page_id": page["id"], "decision": "demote", "phase": to,
-              "phase_from": frm}
+    expect = {"strategy_id": sid, "page_id": page["id"], "decision": "demote", "phase": to}
     return _demoted_answer(sid, frm, to, page), expect
 
 
@@ -202,17 +205,15 @@ async def _decide_locked(conn, action: str, page_id: int, token: str | None, *, 
                  f"{_when(page['decided_at'])} (by {who}). Nothing was changed.")), None
     episode = await conn.fetchrow(_EPISODE_STATE_SQL, sid, page["episode_on"])
     if episode is not None and episode["closed_on"] is not None:
-        await conn.execute(_DECIDE_PAGE_SQL, "stale", user_id, page_id)
         return await _refuse(
-            conn, page_id=page_id, user_id=user_id, page=page, reason_code="episode_ended",
+            conn, page_id=page_id, user_id=user_id, page=page, reason_code="episode_ended", mark_stale=True,
             why=(f"this breach episode ended on {episode['closed_on']} ({episode['closed_by']}); the "
                  f"page's numbers are stale and nothing was changed. If you still want it: "
                  f"/strategy {sid} demote.")), None
     current = await conn.fetchval(_CURRENT_PHASE_SQL, sid)
     if current != frm:
-        await conn.execute(_DECIDE_PAGE_SQL, "stale", user_id, page_id)
         return await _refuse(
-            conn, page_id=page_id, user_id=user_id, page=page, reason_code="stale_phase",
+            conn, page_id=page_id, user_id=user_id, page=page, reason_code="stale_phase", mark_stale=True,
             why=(f"{sid} has moved since this page: it showed {frm}, the registry says "
                  f"{current}. Nothing was changed; a new breach on {current} will page again.")), None
     if action == "noaction":

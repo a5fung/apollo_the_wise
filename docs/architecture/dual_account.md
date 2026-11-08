@@ -16,8 +16,8 @@
 
 **Moving between phases.** Up is HUMAN: the Sunday review flags ✓-eligible from the row's
 `promotion_thresholds` (`strategies/promotion.py`) and the operator runs `/strategy <id>
-promote`; down is `/strategy <id> demote` (`strategies/telegram.py::_DEMOTE_BACK`, live→paper→
-shadow). Both go through the ONE phase writer, `strategies/registry.update_strategy`, and write
+promote`; down is `/strategy <id> demote` (`constants.DEMOTE_TO`, live→paper→shadow — the one
+rung map the ladder's Demote button steps by too). Both go through the ONE phase writer, `strategies/registry.update_strategy`, and write
 a `strategy_phase_change` audit row — that row trail is the phase history today. `deprecated`
 is terminal (#424) and is set only by the boot migration in `db._seed_strategies_registry`.
 **Who can move one (his ruling 2026-11-07, verbatim "Close it"; built #312 round 3):** ONLY his

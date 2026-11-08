@@ -51,7 +51,7 @@ from agents.market_intelligence.strategies import registry
 from agents.market_intelligence.strategies import telegram as st
 from agents.market_intelligence.strategies.promotion import PromotionVerdict
 from shared.models import AgentName
-from tests._ladder_fake_db import LadderFakeDb, strategy_row
+from tests._ladder_fake_db import LadderFakeDb, operator_env, strategy_row
 
 REPO = Path(__file__).resolve().parents[1]
 OPERATOR = 42
@@ -65,9 +65,7 @@ REFUSED_EVENT = "strategy_command_refused"
 
 @pytest.fixture(autouse=True)
 def _operator_env(monkeypatch):
-    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", str(OPERATOR))
-    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
-    monkeypatch.delenv("TELEGRAM_PAPER_CHAT_ID", raising=False)
+    operator_env(monkeypatch, OPERATOR)
 
 
 def _db(monkeypatch, *, phase="paper", enabled=True):

@@ -46,6 +46,38 @@ def strategy_row(sid: str, phase: str, *, enabled: bool = True, live_real: bool 
             "live_real_enabled": live_real, "position_size_multiplier": 1.0}
 
 
+def operator_env(monkeypatch, user_id: int) -> None:
+    """The env the press and the typed-command paths read: `user_id` is the one allowlisted
+    operator, a bot token is set, and no paper chat is configured."""
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", str(user_id))
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
+    monkeypatch.delenv("TELEGRAM_PAPER_CHAT_ID", raising=False)
+
+
+def rs(value, n):
+    """A flat R series: `value`, `n` times."""
+    return [value] * n
+
+
+def one_row(r, *, id, alert_date, closed_on_et="same-day", exit_rule=None):
+    """One closed row with realised R = `r` at an explicit id / entry date / close date.
+    Uncapped: entry_shares=1, entry 101, hard_stop 1 → risk_placed = 100, so total_pnl = 100·R
+    reproduces the R series exactly (the #586 fixture shape). `closed_on_et` (the ET date of
+    `closed_at`) is NOT selected by the watchdog, only read by the mock DB's as-of bound; the
+    default is a same-day close, `None` is a legacy row with no `closed_at`."""
+    return {"id": id, "total_pnl": 100.0 * r, "risk_dollars_actual": None, "entry_shares": 1.0,
+            "entry_price": 101.0, "hard_stop": 1.0, "alert_date": alert_date,
+            "closed_on_et": alert_date if closed_on_et == "same-day" else closed_on_et,
+            "signal_type": "magna53", "exit_rule": exit_rule}
+
+
+def closed_rows(series, *, exit_rule=None, first_id=1):
+    """A series of same-day-close rows (`one_row`); `id` ascends with `alert_date`."""
+    base = dt.date(2026, 7, 1)
+    return [one_row(r, id=first_id + i, alert_date=base + dt.timedelta(days=i),
+                    exit_rule=exit_rule) for i, r in enumerate(series)]
+
+
 def _lp():
     """`ladder_press` is lazily resolved so the watchdog-side tests fail on a MISSING page (a real
     assertion) rather than on an ImportError when the press module does not exist yet."""
@@ -187,6 +219,17 @@ class LadderFakeDb:
             return rows
         if sql == getattr(lw, "_OPEN_POSITIONS_SQL", object()):
             return [{"ticker": t} for t in self.open_positions.get(tuple(args[:2]), [])]
+        if sql == getattr(lw, "_OPEN_EPISODES_OF_SQL", object()):
+            # DISTINCT ON (strategy_id) … ORDER BY strategy_id, opened_on DESC: the latest open
+            # episode of each strategy named in the array, served in REVERSE so a caller that
+            # trusts the row order (rather than its own) is caught.
+            latest: dict[str, dict] = {}
+            for (sid, opened_on), ep in self.episodes.items():
+                if sid in args[0] and ep["closed_on"] is None:
+                    if sid not in latest or opened_on > latest[sid]["opened_on"]:
+                        latest[sid] = ep
+            return [{"strategy_id": sid, "opened_on": ep["opened_on"], "phase": ep["phase"]}
+                    for sid, ep in sorted(latest.items(), reverse=True)]
         if sql.lstrip().upper().startswith("SELECT") and "FROM mi_strategies" in sql:
             return [dict(s) for s in self.strategies.values()]
         raise AssertionError(f"unexpected fetch: {sql}")

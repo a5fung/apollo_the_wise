@@ -64,9 +64,11 @@ def request_origin(context: Any) -> Optional[str]:
     return value if isinstance(value, str) else None
 
 
-def is_operator_command(context: Any) -> bool:
-    """True only for a request the typed CommandHandler path stamped."""
-    return request_origin(context) == ORIGIN_OPERATOR_COMMAND
+def is_operator_command(origin: Any) -> bool:
+    """THE gate predicate: True only for the marker the typed CommandHandler path stamps
+    (`ORIGIN_OPERATOR_COMMAND`). Pass the marker — `request_origin(request.context)`. None (a
+    missing marker), any other string and any non-string are False: default deny."""
+    return origin == ORIGIN_OPERATOR_COMMAND
 
 
 class AgentResponse(BaseModel):

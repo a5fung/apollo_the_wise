@@ -66,7 +66,8 @@ NAMED_SENDERS = [
     ("channels/telegram.py::TelegramChannel._handle_rules", "ptb:reply_text", {"html"}),
     ("channels/telegram.py::TelegramChannel._edit_or_resend", "ptb:edit_message_text", {"html"}),
     ("channels/telegram.py::TelegramChannel._handle_hud_drill_down", "ptb:reply_text", {"html", "plain"}),
-    ("channels/telegram.py::TelegramChannel._handle_theme_promote_callback", "ptb:reply_text", {"html", "plain"}),
+    # the tpromo: and ladder: button callbacks' shared reply (moved out of _handle_theme_promote_callback)
+    ("channels/telegram.py::TelegramChannel._forward_press", "ptb:reply_text", {"html", "plain"}),
     ("channels/telegram.py::TelegramChannel._handle_spend", "ptb:reply_text", {"html", "plain"}),
     ("channels/webhooks.py::_handle_tradingview_alert", "ptb:send_message", {"html", "plain"}),
     ("core/notifications.py::notify_owner", "raw:sendMessage", {"html"}),

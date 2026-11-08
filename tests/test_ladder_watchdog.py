@@ -43,12 +43,11 @@ from agents.market_intelligence.strategies import registry
 from agents.market_intelligence.strategies.registry import Strategy
 from tests._audit_emitters import TELEGRAM_SENDERS
 from tests._ladder_fake_db import LadderFakeDb
+from tests._ladder_fake_db import closed_rows as _closed_rows
+from tests._ladder_fake_db import one_row as _one_row
+from tests._ladder_fake_db import rs as _rs
 
 _TODAY = dt.date(2026, 10, 15)
-
-
-def _rs(value, n):
-    return [value] * n
 
 
 # ─── 1. The pure evaluator — one breach per trigger, all clear, too few ────────────────────
@@ -205,25 +204,6 @@ def _strategy(sid, phase, enabled=True, live_real=False):
                     signal_type=sid, outcomes_table="mi_live_trades",
                     promotion_model="unpaired_r", promotion_thresholds={},
                     live_real_enabled=live_real)
-
-
-def _one_row(r, *, id, alert_date, closed_on_et="same-day", exit_rule=None):
-    """One closed row with realised R = `r` at an explicit id / entry date / close date.
-    Uncapped: entry_shares=1, entry 101, hard_stop 1 → risk_placed = 100, so total_pnl = 100·R
-    reproduces the R series exactly (the #586 fixture shape). `closed_on_et` (the ET date of
-    `closed_at`) is NOT selected by the watchdog, only read by the mock DB's as-of bound; the
-    default is a same-day close, `None` is a legacy row with no `closed_at`."""
-    return {"id": id, "total_pnl": 100.0 * r, "risk_dollars_actual": None, "entry_shares": 1.0,
-            "entry_price": 101.0, "hard_stop": 1.0, "alert_date": alert_date,
-            "closed_on_et": alert_date if closed_on_et == "same-day" else closed_on_et,
-            "signal_type": "magna53", "exit_rule": exit_rule}
-
-
-def _closed_rows(rs, *, exit_rule=None, first_id=1):
-    """A series of same-day-close rows (`_one_row`); `id` ascends with `alert_date`."""
-    base = dt.date(2026, 7, 1)
-    return [_one_row(r, id=first_id + i, alert_date=base + dt.timedelta(days=i),
-                     exit_rule=exit_rule) for i, r in enumerate(rs)]
 
 
 class _Spy:

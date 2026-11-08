@@ -1688,7 +1688,7 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
         # never mark a row `block:strategy_disabled`.
         out["strategy_unreadable"] = True
     may_order = state in (STATE_OK, STATE_UNREADABLE)     # UNREADABLE reaches here at 15:55 only: nothing is placed
-    if not may_order and state == STATE_SWITCHED_OFF:
+    if state == STATE_SWITCHED_OFF:
         # THE STOP AT THE FILL is part of a filled position's stop, not a new order: it still runs when the switch is
         # off (like the pp exit's jobs) — never on a refused phase (wall 2: nothing is touched then).
         for r in rows.values():

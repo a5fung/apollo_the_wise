@@ -132,6 +132,11 @@ def active_account_modes() -> list[str]:
 #                           consult this; a strategy in one of these never submits).
 VALID_STRATEGY_PHASES = frozenset({"shadow", "paper", "live", "deprecated"})
 NO_SUBMIT_PHASES = frozenset({"shadow", "deprecated"})
+#   DEMOTE_TO             — the rung one step down, for BOTH paths that move a rung down: his typed
+#                           `/strategy <id> demote` (strategies/telegram.py) and the ladder's Demote
+#                           button (ladder_watchdog pages it, ladder_press moves it). 'shadow' is the
+#                           bottom and 'deprecated' is terminal (ADR 0022 §1): neither has a rung below.
+DEMOTE_TO = {"live": "paper", "paper": "shadow"}
 
 # ── Grade tier lattice (SSoT — ADR 0024 §3) ──────────────────────────────────
 # The ordinal EP/judge tier ladder: none < MODERATE < HIGH. Credits move a base

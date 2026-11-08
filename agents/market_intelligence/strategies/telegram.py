@@ -32,6 +32,7 @@ import logging
 from datetime import date, timedelta
 
 from agents.market_intelligence.audit_events import STRATEGY_COMMAND_REFUSED
+from agents.market_intelligence.constants import DEMOTE_TO
 from agents.market_intelligence.db import log_audit_event
 from agents.market_intelligence.strategies.adapters import get_outcomes
 from agents.market_intelligence.strategies.promotion import (
@@ -44,11 +45,11 @@ from agents.market_intelligence.strategies.registry import (
     load_strategies,
     update_strategy,
 )
-from shared.models import ORIGIN_OPERATOR_COMMAND
+from shared.models import ORIGIN_OPERATOR_COMMAND, is_operator_command
 
 logger = logging.getLogger(__name__)
 
-_DEMOTE_BACK = {"live": "paper", "paper": "shadow"}
+_DEMOTE_BACK = DEMOTE_TO      # the one rung map (constants.py) — the ladder's Demote button steps by it too
 _VALID_ACTIONS = {"enable", "disable", "promote", "demote"}
 REFUSAL_TEXT = ("Not done — strategy changes need your typed /strategy command or the page button. "
                 "The chat assistant cannot move a strategy's phase or switch; nothing was changed.")
@@ -261,7 +262,7 @@ async def handle_strategy_action(body: str, *, origin: str | None = None, user_i
     if len(parts) == 1:
         return await render_strategy_detail(strategy_id)
     action = parts[1].lower()
-    if origin != ORIGIN_OPERATOR_COMMAND:
+    if not is_operator_command(origin):
         return await _refuse_mutation(strategy_id, action, origin, user_id)
     if action not in _VALID_ACTIONS:
         return (

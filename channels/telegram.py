@@ -1701,11 +1701,18 @@ class TelegramChannel:
         would blow away the OTHER candidates' buttons along with this one's, so a still-open
         candidate must stay tappable after a sibling is promoted."""
         short_id = callback_data.split(":", 1)[1]
+        await self._forward_press(query, f"/promotetheme_id {short_id}", "Theme-promote")
+
+    async def _forward_press(self, query, task: str, label: str) -> None:
+        """A button press forwarded to the market agent as `task`, with the pressing user's id,
+        answered with a NEW message (HTML, then a plain-words retry) — the shared tail of the
+        `tpromo:` and `ladder:` callbacks, which each keep their own parsing and validation.
+        `label` names the button in the log lines."""
         user_id = query.from_user.id if query.from_user else 0
         try:
-            result = await self._post_market_task(f"/promotetheme_id {short_id}", user_id)
+            result = await self._post_market_task(task, user_id)
         except Exception as e:
-            logger.error(f"Theme-promote callback failed: {e}")
+            logger.error(f"{label} callback failed: {e}")
             result = f"Error: {e}"
         if result is None:
             result = "Market agent not available."
@@ -1713,7 +1720,7 @@ class TelegramChannel:
         try:
             await query.message.reply_text(html, parse_mode=ParseMode.HTML)
         except Exception as e:
-            logger.warning(f"Theme-promote reply HTML send failed, retrying plain: {e}")
+            logger.warning(f"{label} reply HTML send failed, retrying plain: {e}")
             await query.message.reply_text(to_plain(html))
 
     async def _handle_ladder_callback(self, query, callback_data: str) -> None:
@@ -1737,20 +1744,7 @@ class TelegramChannel:
             logger.warning(f"ladder callback: malformed button data {callback_data!r}")
             await query.message.reply_text("Malformed ladder button — nothing was changed.")
             return
-        user_id = query.from_user.id if query.from_user else 0
-        try:
-            result = await self._post_market_task(f"/ladder_press {parts[1]} {parts[2]} {token}", user_id)
-        except Exception as e:
-            logger.error(f"Ladder press callback failed: {e}")
-            result = f"Error: {e}"
-        if result is None:
-            result = "Market agent not available."
-        html = md_to_html(result)
-        try:
-            await query.message.reply_text(html, parse_mode=ParseMode.HTML)
-        except Exception as e:
-            logger.warning(f"Ladder press reply HTML send failed, retrying plain: {e}")
-            await query.message.reply_text(to_plain(html))
+        await self._forward_press(query, f"/ladder_press {parts[1]} {parts[2]} {token}", "Ladder press")
 
     # ── Confirmation resolution ────────────────────────────────────────────────
 

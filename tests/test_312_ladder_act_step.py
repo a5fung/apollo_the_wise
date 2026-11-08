@@ -42,28 +42,15 @@ import pytest
 
 from agents.market_intelligence import ladder_watchdog as lw
 from agents.market_intelligence.strategies import registry
-from tests._ladder_fake_db import LadderFakeDb, strategy_row
+from tests._ladder_fake_db import LadderFakeDb, operator_env, strategy_row
+from tests._ladder_fake_db import closed_rows as _closed_rows
+from tests._ladder_fake_db import rs as _rs
 
 REPO = Path(__file__).resolve().parents[1]
 _NIGHT1 = dt.date(2026, 10, 15)
 _NIGHT2 = dt.date(2026, 10, 16)
 _NIGHT3 = dt.date(2026, 10, 19)
 OPERATOR = 42
-
-
-def _rs(value, n):
-    return [value] * n
-
-
-def _one_row(r, *, id, alert_date, exit_rule=None):
-    return {"id": id, "total_pnl": 100.0 * r, "risk_dollars_actual": None, "entry_shares": 1.0,
-            "entry_price": 101.0, "hard_stop": 1.0, "alert_date": alert_date,
-            "closed_on_et": alert_date, "signal_type": "magna53", "exit_rule": exit_rule}
-
-
-def _closed_rows(rs, *, first_id=1):
-    base = dt.date(2026, 7, 1)
-    return [_one_row(r, id=first_id + i, alert_date=base + dt.timedelta(days=i)) for i, r in enumerate(rs)]
 
 
 STREAK_BREACH = _rs(2.0, 20) + _rs(-1.0, 6)                 # streak 6 · last-20 +1.10R · dd −6.00R
@@ -73,9 +60,7 @@ CLEAR = [1.5, -1.0, 2.0, -1.0, -1.0, 3.0] * 5
 
 @pytest.fixture(autouse=True)
 def _operator_env(monkeypatch):
-    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", str(OPERATOR))
-    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "t")
-    monkeypatch.delenv("TELEGRAM_PAPER_CHAT_ID", raising=False)
+    operator_env(monkeypatch, OPERATOR)
 
 
 def _db(monkeypatch, *, live_series=STREAK_BREACH, phase="live", open_positions=("AEHR", "FN")):

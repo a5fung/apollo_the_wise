@@ -96,6 +96,11 @@ import secrets as _secrets
 from datetime import date, datetime
 from typing import Any
 
+# The rung a breach steps down to — the ONE map the operator's typed `/strategy <id> demote` steps
+# by too (`strategies/telegram._DEMOTE_BACK`), so a page can never name a rung the real command
+# would not step to. Re-exported here: `ladder_press` and the tests read `ladder_watchdog.DEMOTE_TO`.
+# 'shadow' / 'deprecated' have no rung below and are not evaluated (ADR 0022 §1).
+from agents.market_intelligence.constants import DEMOTE_TO
 from agents.market_intelligence.kill_scale_bands import (
     _mean_tail,
     current_losing_streak,
@@ -138,12 +143,6 @@ TRIGGER_LABELS = {
     "harmful_auto_action": "harmful auto-action",
 }
 
-# The rung a breach steps down to. Must equal `strategies/telegram._DEMOTE_BACK` (the operator's
-# manual `/strategy <id> demote`) — pinned by the test so a page can never name a rung the real
-# command would not step to. 'shadow' / 'deprecated' have no rung below and are not evaluated
-# (shadow is the bottom; deprecated is terminal, ADR 0022 §1).
-DEMOTE_TO = {"live": "paper", "paper": "shadow"}
-
 HARMFUL_NOT_MEASURABLE = (
     "not measurable yet — no auto-action lane exists (mgmt_judge.py is L0 SHADOW, zero "
     "execution authority; ADR 0017 §4), so no harmful-action label source"
@@ -183,6 +182,13 @@ _OPEN_EPISODE_SQL = """
     FROM mi_ladder_episodes
     WHERE strategy_id = $1 AND closed_on IS NULL
     ORDER BY opened_on DESC LIMIT 1
+"""
+# The same "latest open episode" read for many strategies at once (`end_episodes_of_skipped`).
+_OPEN_EPISODES_OF_SQL = """
+    SELECT DISTINCT ON (strategy_id) strategy_id, opened_on, phase
+    FROM mi_ladder_episodes
+    WHERE strategy_id = ANY($1) AND closed_on IS NULL
+    ORDER BY strategy_id, opened_on DESC
 """
 _LAST_SENT_PAGE_SQL = """
     SELECT id, as_of, breached, decision
@@ -440,6 +446,16 @@ def _summary(as_of: date, evaluated: list[dict], paged: list[dict]) -> str:
             f"{n_would} would demote · paged: {sent} · acted: none (a phase moves only on his press)")
 
 
+async def _end_episode(conn, sid: str, opened_on: date, closed_on: date, closed_by: str) -> None:
+    """Close a breach episode on THIS connection. A `phase_moved` close also marks the episode's
+    undecided pages stale (the rung they showed is gone, so a press must refuse them); a `cleared`
+    close leaves them — the press refuses an ended episode on its own (`episode_ended`). The audit
+    row, where there is one, stays with the caller."""
+    await conn.execute(_CLOSE_EPISODE_SQL, closed_on, closed_by, sid, opened_on)
+    if closed_by == "phase_moved":
+        await conn.execute(_STALE_OPEN_PAGES_SQL, sid, opened_on)
+
+
 async def page_breaches(as_of: date, evaluated: list[dict]) -> list[dict]:
     """The act step's SEND half: for each evaluated strategy, apply the paging cadence
     (`decide_page`) against the DB state, send the page where it says so, persist the page and
@@ -476,9 +492,7 @@ async def page_breaches(as_of: date, evaluated: list[dict]) -> list[dict]:
         if action == "close":
             closed_by = "cleared" if ep["phase"] == phase else "phase_moved"
             async with pool.acquire() as conn:
-                await conn.execute(_CLOSE_EPISODE_SQL, as_of, closed_by, sid, ep["opened_on"])
-                if closed_by == "phase_moved":
-                    await conn.execute(_STALE_OPEN_PAGES_SQL, sid, ep["opened_on"])
+                await _end_episode(conn, sid, ep["opened_on"], as_of, closed_by)
                 await log_audit_event(
                     CLEARED_EVENT,
                     f"{sid}/{mode}: the breach episode opened {ep['opened_on']} closed on "
@@ -515,8 +529,7 @@ async def page_breaches(as_of: date, evaluated: list[dict]) -> list[dict]:
             continue
         if ep is not None and ep["phase"] != phase:
             async with pool.acquire() as conn:
-                await conn.execute(_CLOSE_EPISODE_SQL, as_of, "phase_moved", sid, ep["opened_on"])
-                await conn.execute(_STALE_OPEN_PAGES_SQL, sid, ep["opened_on"])
+                await _end_episode(conn, sid, ep["opened_on"], as_of, "phase_moved")
             ep = None
         episode_on = ep["opened_on"] if ep else as_of
         token = _secrets.token_urlsafe(TOKEN_BYTES)
@@ -586,13 +599,12 @@ async def end_episodes_of_skipped(conn, as_of: date, skipped: dict[str, str]) ->
     record per episode ended, for the nightly row."""
     from agents.market_intelligence.db import log_audit_event
     out: list[dict] = []
-    for sid in sorted(skipped):
-        ep = await conn.fetchrow(_OPEN_EPISODE_SQL, sid)
-        if ep is None:
-            continue
-        ep = dict(ep)
-        await conn.execute(_CLOSE_EPISODE_SQL, as_of, "phase_moved", sid, ep["opened_on"])
-        await conn.execute(_STALE_OPEN_PAGES_SQL, sid, ep["opened_on"])
+    if not skipped:
+        return out
+    open_eps = {r["strategy_id"]: dict(r) for r in await conn.fetch(_OPEN_EPISODES_OF_SQL, sorted(skipped))}
+    for sid in sorted(open_eps):
+        ep = open_eps[sid]
+        await _end_episode(conn, sid, ep["opened_on"], as_of, "phase_moved")
         await log_audit_event(
             CLEARED_EVENT,
             f"{sid}: the breach episode opened {ep['opened_on']} (rung {ep['phase']}) closed on "
