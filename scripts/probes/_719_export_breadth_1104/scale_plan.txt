@@ -1,55 +1,60 @@
-CTE Scan on k  (cost=485635.19..485635.22 rows=1 width=32) (actual time=4090.312..4090.347 rows=1 loops=1)
+CTE Scan on k  (cost=363441.69..363441.73 rows=1 width=32) (actual time=4231.747..4231.787 rows=1 loops=1)
   Filter: (as_of IS NOT NULL)
-  Buffers: shared hit=1770842 read=1090553, temp read=32476 written=32533
+  Buffers: shared hit=1766890 read=1037766, temp read=32476 written=32533
+  CTE latest
+    ->  Result  (cost=0.50..0.51 rows=1 width=4) (actual time=0.006..0.006 rows=1 loops=1)
+          Buffers: shared hit=4
+          InitPlan 1 (returns $0)
+            ->  Limit  (cost=0.44..0.50 rows=1 width=4) (actual time=0.005..0.005 rows=1 loops=1)
+                  Buffers: shared hit=4
+                  ->  Index Only Scan Backward using mi_daily_closes_pkey on mi_daily_closes  (cost=0.44..783003.01 rows=14322000 width=4) (actual time=0.005..0.005 rows=1 loops=1)
+                        Index Cond: ((trade_date IS NOT NULL) AND (trade_date <= ((now() AT TIME ZONE 'America/New_York'::text))::date))
+                        Heap Fetches: 1
+                        Buffers: shared hit=4
   CTE sess
-    ->  WindowAgg  (cost=224801.79..224811.55 rows=434 width=8) (actual time=318.632..318.695 rows=357 loops=1)
-          Buffers: shared hit=15939 read=103678
-          ->  Sort  (cost=224801.79..224802.87 rows=434 width=4) (actual time=318.630..318.661 rows=357 loops=1)
+    ->  WindowAgg  (cost=100832.07..100841.84 rows=434 width=8) (actual time=254.616..254.680 rows=357 loops=1)
+          Buffers: shared hit=15579 read=47297
+          ->  Sort  (cost=100832.07..100833.16 rows=434 width=4) (actual time=254.613..254.646 rows=357 loops=1)
                 Sort Key: c.trade_date DESC
                 Sort Method: quicksort  Memory: 25kB
-                Buffers: shared hit=15939 read=103678
-                ->  Finalize GroupAggregate  (cost=224449.66..224782.77 rows=434 width=4) (actual time=318.512..318.641 rows=357 loops=1)
+                Buffers: shared hit=15579 read=47297
+                ->  Finalize GroupAggregate  (cost=100479.95..100813.06 rows=434 width=4) (actual time=254.482..254.625 rows=357 loops=1)
                       Group Key: c.trade_date
                       Filter: (count(*) >= 3000)
-                      Buffers: shared hit=15939 read=103678
-                      InitPlan 2 (returns $1)
-                        ->  Result  (cost=0.49..0.50 rows=1 width=4) (actual time=0.008..0.008 rows=1 loops=1)
-                              Buffers: shared hit=2 read=2
-                              InitPlan 1 (returns $0)
-                                ->  Limit  (cost=0.43..0.49 rows=1 width=4) (actual time=0.007..0.007 rows=1 loops=1)
-                                      Buffers: shared hit=2 read=2
-                                      ->  Index Only Scan Backward using mi_daily_closes_pkey on mi_daily_closes  (cost=0.43..747198.00 rows=14322000 width=4) (actual time=0.007..0.007 rows=1 loops=1)
-                                            Index Cond: (trade_date IS NOT NULL)
-                                            Heap Fetches: 1
-                                            Buffers: shared hit=2 read=2
-                      ->  Gather Merge  (cost=224449.16..224752.98 rows=2604 width=12) (actual time=318.509..318.584 rows=887 loops=1)
+                      Buffers: shared hit=15579 read=47297
+                      InitPlan 3 (returns $2)
+                        ->  CTE Scan on latest  (cost=0.00..0.02 rows=1 width=4) (actual time=0.006..0.006 rows=1 loops=1)
+                              Buffers: shared hit=4
+                      InitPlan 4 (returns $3)
+                        ->  CTE Scan on latest latest_1  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=1)
+                      ->  Gather Merge  (cost=100479.91..100783.73 rows=2604 width=12) (actual time=254.479..254.570 rows=1071 loops=1)
                             Workers Planned: 2
-                            Params Evaluated: $1
+                            Params Evaluated: $2, $3
                             Workers Launched: 2
-                            Buffers: shared hit=15939 read=103678
-                            ->  Sort  (cost=223449.14..223452.39 rows=1302 width=12) (actual time=316.819..316.825 rows=296 loops=3)
+                            Buffers: shared hit=15579 read=47297
+                            ->  Sort  (cost=99479.88..99483.14 rows=1302 width=12) (actual time=252.708..252.716 rows=357 loops=3)
                                   Sort Key: c.trade_date
-                                  Sort Method: quicksort  Memory: 36kB
-                                  Buffers: shared hit=15937 read=103676
-                                  Worker 0:  Sort Method: quicksort  Memory: 36kB
-                                  Worker 1:  Sort Method: quicksort  Memory: 36kB
-                                  ->  Partial HashAggregate  (cost=223368.76..223381.78 rows=1302 width=12) (actual time=316.760..316.777 rows=296 loops=3)
+                                  Sort Method: quicksort  Memory: 38kB
+                                  Buffers: shared hit=15575 read=47297
+                                  Worker 0:  Sort Method: quicksort  Memory: 38kB
+                                  Worker 1:  Sort Method: quicksort  Memory: 38kB
+                                  ->  Partial HashAggregate  (cost=99399.51..99412.53 rows=1302 width=12) (actual time=252.655..252.674 rows=357 loops=3)
                                         Group Key: c.trade_date
                                         Batches: 1  Memory Usage: 97kB
-                                        Buffers: shared hit=15921 read=103676
+                                        Buffers: shared hit=15559 read=47297
                                         Worker 0:  Batches: 1  Memory Usage: 97kB
                                         Worker 1:  Batches: 1  Memory Usage: 97kB
-                                        ->  Hash Join  (cost=332.25..214418.33 rows=1790087 width=4) (actual time=121.415..266.803 rows=1178100 loops=3)
+                                        ->  Hash Join  (cost=332.69..99265.77 rows=26747 width=4) (actual time=1.000..199.763 rows=1178100 loops=3)
                                               Hash Cond: (c.ticker = t.ticker)
-                                              Buffers: shared hit=15921 read=103676
-                                              ->  Parallel Seq Scan on mi_daily_closes c  (cost=0.00..208862.50 rows=1989167 width=11) (actual time=120.377..177.593 rows=1309000 loops=3)
-                                                    Filter: (trade_date >= ($1 - 500))
-                                                    Rows Removed by Filter: 3465000
-                                                    Buffers: shared hit=15750 read=103600
-                                              ->  Hash  (cost=208.50..208.50 rows=9900 width=7) (actual time=0.949..0.949 rows=9900 loops=3)
+                                              Buffers: shared hit=15559 read=47297
+                                              ->  Parallel Index Only Scan using mi_daily_closes_pkey on mi_daily_closes c  (cost=0.44..98855.16 rows=29838 width=11) (actual time=0.035..112.444 rows=1309000 loops=3)
+                                                    Index Cond: ((trade_date >= ($2 - 500)) AND (trade_date <= $3))
+                                                    Heap Fetches: 3927000
+                                                    Buffers: shared hit=15388 read=47221
+                                              ->  Hash  (cost=208.50..208.50 rows=9900 width=7) (actual time=0.947..0.948 rows=9900 loops=3)
                                                     Buckets: 16384  Batches: 1  Memory Usage: 506kB
                                                     Buffers: shared hit=144 read=69
-                                                    ->  Seq Scan on mi_security_types t  (cost=0.00..208.50 rows=9900 width=7) (actual time=0.022..0.572 rows=9900 loops=3)
+                                                    ->  Seq Scan on mi_security_types t  (cost=0.00..208.50 rows=9900 width=7) (actual time=0.015..0.579 rows=9900 loops=3)
                                                           Filter: (security_type = ANY ('{CS,ADRC}'::text[]))
                                                           Rows Removed by Filter: 1100
                                                           Buffers: shared hit=144 read=69
@@ -58,270 +63,312 @@ CTE Scan on k  (cost=485635.19..485635.22 rows=1 width=32) (actual time=4090.312
           Filter: (idx <= 272)
           Rows Removed by Filter: 84
   CTE k
-    ->  Result  (cost=69.12..69.13 rows=1 width=20) (actual time=318.798..318.799 rows=1 loops=1)
-          Buffers: shared hit=5347 read=36149
-          InitPlan 5 (returns $5)
-            ->  CTE Scan on sess sess_1  (cost=0.00..9.76 rows=2 width=4) (actual time=318.633..318.690 rows=1 loops=1)
+    ->  Result  (cost=69.12..69.13 rows=1 width=20) (actual time=254.785..254.786 rows=1 loops=1)
+          Buffers: shared hit=4353 read=17172
+          InitPlan 7 (returns $7)
+            ->  CTE Scan on sess sess_1  (cost=0.00..9.76 rows=2 width=4) (actual time=254.617..254.675 rows=1 loops=1)
                   Filter: (idx = 0)
                   Rows Removed by Filter: 356
-                  Buffers: shared hit=5347 read=36149
-          InitPlan 6 (returns $6)
+                  Buffers: shared hit=4353 read=17172
+          InitPlan 8 (returns $8)
             ->  CTE Scan on sess sess_2  (cost=0.00..9.76 rows=2 width=4) (actual time=0.000..0.008 rows=1 loops=1)
                   Filter: (idx = 1)
                   Rows Removed by Filter: 356
-          InitPlan 7 (returns $7)
-            ->  Aggregate  (cost=3.26..3.27 rows=1 width=4) (actual time=0.028..0.028 rows=1 loops=1)
-                  ->  CTE Scan on win  (cost=0.00..2.90 rows=145 width=4) (actual time=0.000..0.021 rows=273 loops=1)
           InitPlan 9 (returns $9)
-            ->  Aggregate  (cost=23.15..23.16 rows=1 width=4) (actual time=0.038..0.038 rows=1 loops=1)
-                  InitPlan 8 (returns $8)
-                    ->  CTE Scan on sess sess_3  (cost=0.00..9.76 rows=2 width=4) (actual time=0.000..0.007 rows=1 loops=1)
-                          Filter: (idx = 0)
-                          Rows Removed by Filter: 356
-                  ->  CTE Scan on sess sess_4  (cost=0.00..13.02 rows=145 width=4) (actual time=0.025..0.035 rows=138 loops=1)
-                        Filter: (trade_date < make_date((EXTRACT(year FROM $8))::integer, 1, 1))
-                        Rows Removed by Filter: 219
+            ->  Aggregate  (cost=3.26..3.27 rows=1 width=4) (actual time=0.029..0.030 rows=1 loops=1)
+                  ->  CTE Scan on win  (cost=0.00..2.90 rows=145 width=4) (actual time=0.000..0.022 rows=273 loops=1)
           InitPlan 11 (returns $11)
-            ->  Aggregate  (cost=23.15..23.16 rows=1 width=4) (actual time=0.033..0.033 rows=1 loops=1)
+            ->  Aggregate  (cost=23.15..23.16 rows=1 width=4) (actual time=0.037..0.037 rows=1 loops=1)
                   InitPlan 10 (returns $10)
-                    ->  CTE Scan on sess sess_5  (cost=0.00..9.76 rows=2 width=4) (actual time=0.000..0.007 rows=1 loops=1)
+                    ->  CTE Scan on sess sess_3  (cost=0.00..9.76 rows=2 width=4) (actual time=0.000..0.008 rows=1 loops=1)
                           Filter: (idx = 0)
                           Rows Removed by Filter: 356
-                  ->  CTE Scan on sess sess_6  (cost=0.00..13.02 rows=145 width=4) (actual time=0.020..0.029 rows=138 loops=1)
+                  ->  CTE Scan on sess sess_4  (cost=0.00..13.02 rows=145 width=4) (actual time=0.024..0.033 rows=138 loops=1)
                         Filter: (trade_date < make_date((EXTRACT(year FROM $10))::integer, 1, 1))
                         Rows Removed by Filter: 219
-  CTE universe
-    ->  Merge Join  (cost=0.74..19391.70 rows=9647 width=7) (actual time=0.015..2.362 rows=9645 loops=1)
-          Merge Cond: (d.ticker = t_1.ticker)
-          Buffers: shared hit=169 read=70
           InitPlan 13 (returns $13)
+            ->  Aggregate  (cost=23.15..23.16 rows=1 width=4) (actual time=0.034..0.034 rows=1 loops=1)
+                  InitPlan 12 (returns $12)
+                    ->  CTE Scan on sess sess_5  (cost=0.00..9.76 rows=2 width=4) (actual time=0.000..0.008 rows=1 loops=1)
+                          Filter: (idx = 0)
+                          Rows Removed by Filter: 356
+                  ->  CTE Scan on sess sess_6  (cost=0.00..13.02 rows=145 width=4) (actual time=0.021..0.030 rows=138 loops=1)
+                        Filter: (trade_date < make_date((EXTRACT(year FROM $12))::integer, 1, 1))
+                        Rows Removed by Filter: 219
+  CTE universe
+    ->  Merge Join  (cost=0.74..19419.10 rows=9631 width=7) (actual time=0.023..2.582 rows=9645 loops=1)
+          Merge Cond: (d.ticker = t_1.ticker)
+          Buffers: shared hit=135 read=104
+          InitPlan 15 (returns $15)
             ->  CTE Scan on k k_1  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=1)
-          ->  Index Scan using mi_daily_closes_pkey on mi_daily_closes d  (cost=0.43..18848.87 rows=10720 width=7) (actual time=0.009..0.641 rows=10703 loops=1)
-                Index Cond: (trade_date = $13)
-                Filter: (close >= '1'::double precision)
+          ->  Index Scan using mi_daily_closes_pkey on mi_daily_closes d  (cost=0.43..18876.37 rows=10744 width=7) (actual time=0.012..0.649 rows=10703 loops=1)
+                Index Cond: (trade_date = $15)
+                Filter: ((close >= '1'::double precision) AND (close <> 'NaN'::double precision))
                 Rows Removed by Filter: 297
-                Buffers: shared hit=95 read=42
-          ->  Index Scan using mi_security_types_pkey on mi_security_types t_1  (cost=0.29..394.79 rows=9900 width=7) (actual time=0.003..0.732 rows=9900 loops=1)
+                Buffers: shared hit=135 read=2
+          ->  Index Scan using mi_security_types_pkey on mi_security_types t_1  (cost=0.29..394.79 rows=9900 width=7) (actual time=0.008..0.814 rows=9900 loops=1)
                 Filter: (security_type = ANY ('{CS,ADRC}'::text[]))
                 Rows Removed by Filter: 1100
-                Buffers: shared hit=74 read=28
+                Buffers: shared read=102
   CTE themes_idx
-    ->  WindowAgg  (cost=8.69..10.69 rows=49 width=230) (actual time=0.071..0.118 rows=150 loops=1)
-          Buffers: shared read=5
-          ->  Merge Left Join  (cost=8.69..9.71 rows=49 width=226) (actual time=0.070..0.096 rows=150 loops=1)
-                Merge Cond: (l.name = e.theme_name)
-                Buffers: shared read=5
-                ->  Subquery Scan on l  (cost=8.68..9.56 rows=49 width=194) (actual time=0.065..0.084 rows=150 loops=1)
-                      Filter: (l.stage <> 'Retired'::text)
-                      Buffers: shared read=5
-                      ->  Unique  (cost=8.68..8.93 rows=50 width=198) (actual time=0.065..0.077 rows=150 loops=1)
+    ->  WindowAgg  (cost=15.45..16.55 rows=49 width=206) (actual time=0.157..0.175 rows=150 loops=1)
+          Buffers: shared read=7
+          ->  Sort  (cost=15.45..15.57 rows=49 width=202) (actual time=0.155..0.159 rows=150 loops=1)
+                Sort Key: l.name
+                Sort Method: quicksort  Memory: 59kB
+                Buffers: shared read=7
+                ->  Hash Right Join  (cost=10.17..14.07 rows=49 width=202) (actual time=0.095..0.116 rows=150 loops=1)
+                      Hash Cond: (e.theme_name = l.name)
+                      Buffers: shared read=7
+                      ->  Seq Scan on mi_theme_ecosystems e  (cost=0.00..3.50 rows=150 width=17) (actual time=0.004..0.009 rows=150 loops=1)
+                            Buffers: shared read=2
+                      ->  Hash  (cost=9.56..9.56 rows=49 width=194) (actual time=0.088..0.089 rows=150 loops=1)
+                            Buckets: 1024  Batches: 1  Memory Usage: 42kB
                             Buffers: shared read=5
-                            InitPlan 15 (returns $15)
-                              ->  CTE Scan on k k_2  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=1)
-                            ->  Sort  (cost=8.66..8.79 rows=50 width=198) (actual time=0.065..0.068 rows=150 loops=1)
-                                  Sort Key: mi_themes.name, mi_themes.theme_date DESC, mi_themes.id DESC
-                                  Sort Method: quicksort  Memory: 57kB
+                            ->  Subquery Scan on l  (cost=8.68..9.56 rows=49 width=194) (actual time=0.058..0.079 rows=150 loops=1)
+                                  Filter: (l.stage <> 'Retired'::text)
                                   Buffers: shared read=5
-                                  ->  Seq Scan on mi_themes  (cost=0.00..7.25 rows=50 width=198) (actual time=0.007..0.027 rows=150 loops=1)
-                                        Filter: (theme_date >= ($15 - 7))
+                                  ->  Unique  (cost=8.68..8.93 rows=50 width=198) (actual time=0.058..0.069 rows=150 loops=1)
                                         Buffers: shared read=5
-                ->  Sort  (cost=0.01..0.02 rows=1 width=64) (actual time=0.004..0.004 rows=0 loops=1)
-                      Sort Key: e.theme_name
-                      Sort Method: quicksort  Memory: 25kB
-                      ->  Seq Scan on mi_theme_ecosystems e  (cost=0.00..0.00 rows=1 width=64) (actual time=0.002..0.002 rows=0 loops=1)
+                                        InitPlan 17 (returns $17)
+                                          ->  CTE Scan on k k_2  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=1)
+                                        ->  Sort  (cost=8.66..8.79 rows=50 width=198) (actual time=0.057..0.060 rows=150 loops=1)
+                                              Sort Key: mi_themes.name, mi_themes.theme_date DESC, mi_themes.id DESC
+                                              Sort Method: quicksort  Memory: 57kB
+                                              Buffers: shared read=5
+                                              ->  Seq Scan on mi_themes  (cost=0.00..7.25 rows=50 width=198) (actual time=0.005..0.017 rows=150 loops=1)
+                                                    Filter: (theme_date >= ($17 - 7))
+                                                    Buffers: shared read=5
   CTE members
-    ->  HashAggregate  (cost=13.72..18.13 rows=441 width=36) (actual time=0.495..0.545 rows=1800 loops=1)
+    ->  HashAggregate  (cost=13.72..18.13 rows=441 width=36) (actual time=0.560..0.614 rows=1800 loops=1)
           Group Key: ti.idx, m.ticker
           Batches: 1  Memory Usage: 193kB
-          Buffers: shared read=5
-          ->  Nested Loop  (cost=0.00..11.52 rows=441 width=36) (actual time=0.075..0.338 rows=1800 loops=1)
-                Buffers: shared read=5
-                ->  CTE Scan on themes_idx ti  (cost=0.00..0.98 rows=49 width=36) (actual time=0.071..0.136 rows=150 loops=1)
-                      Buffers: shared read=5
+          Buffers: shared read=7
+          ->  Nested Loop  (cost=0.00..11.52 rows=441 width=36) (actual time=0.161..0.399 rows=1800 loops=1)
+                Buffers: shared read=7
+                ->  CTE Scan on themes_idx ti  (cost=0.00..0.98 rows=49 width=36) (actual time=0.157..0.196 rows=150 loops=1)
+                      Buffers: shared read=7
                 ->  Function Scan on unnest m  (cost=0.00..0.13 rows=9 width=32) (actual time=0.000..0.001 rows=12 loops=150)
                       Filter: ((ticker IS NOT NULL) AND (ticker <> ''::text))
   CTE interest
-    ->  HashAggregate  (cost=277.42..378.30 rows=10088 width=32) (actual time=1.966..2.251 rows=9859 loops=1)
+    ->  HashAggregate  (cost=276.98..377.70 rows=10072 width=32) (actual time=2.117..2.436 rows=9859 loops=1)
           Group Key: universe.ticker
           Batches: 1  Memory Usage: 913kB
-          Buffers: shared read=5
-          ->  Append  (cost=0.00..252.20 rows=10088 width=32) (actual time=0.000..1.271 rows=11445 loops=1)
-                Buffers: shared read=5
-                ->  CTE Scan on universe  (cost=0.00..192.94 rows=9647 width=32) (actual time=0.000..0.204 rows=9645 loops=1)
-                ->  CTE Scan on members  (cost=0.00..8.82 rows=441 width=32) (actual time=0.495..0.678 rows=1800 loops=1)
-                      Buffers: shared read=5
+          Buffers: shared read=7
+          ->  Append  (cost=0.00..251.80 rows=10072 width=32) (actual time=0.000..1.354 rows=11445 loops=1)
+                Buffers: shared read=7
+                ->  CTE Scan on universe  (cost=0.00..192.62 rows=9631 width=32) (actual time=0.000..0.219 rows=9645 loops=1)
+                ->  CTE Scan on members  (cost=0.00..8.82 rows=441 width=32) (actual time=0.560..0.753 rows=1800 loops=1)
+                      Buffers: shared read=7
   CTE px
-    ->  GroupAggregate  (cost=128593.80..138117.95 rows=11001 width=119) (actual time=3189.859..3739.856 rows=9859 loops=1)
+    ->  GroupAggregate  (cost=127920.37..138768.13 rows=11044 width=119) (actual time=3350.735..3943.211 rows=9859 loops=1)
           Group Key: d_1.ticker
-          Buffers: shared hit=1754474 read=986675, temp read=32476 written=32533
-          ->  Sort  (cost=128593.80..128810.18 rows=86550 width=39) (actual time=3189.786..3363.350 rows=2654838 loops=1)
+          Buffers: shared hit=1751046 read=990105, temp read=32476 written=32533
+          ->  Sort  (cost=127920.37..128137.25 rows=86750 width=39) (actual time=3350.663..3523.828 rows=2654838 loops=1)
                 Sort Key: d_1.ticker, w.idx
                 Sort Method: external merge  Disk: 129904kB
-                Buffers: shared hit=1754474 read=986675, temp read=32476 written=32533
-                ->  Hash Join  (cost=238.10..119126.66 rows=86550 width=39) (actual time=3.680..2110.792 rows=2654838 loops=1)
+                Buffers: shared hit=1751046 read=990105, temp read=32476 written=32533
+                ->  Hash Join  (cost=237.73..118431.89 rows=86750 width=39) (actual time=3.888..2178.141 rows=2654838 loops=1)
                       Hash Cond: (d_1.trade_date = w.trade_date)
-                      Buffers: shared hit=1754474 read=986675
-                      ->  Nested Loop  (cost=233.39..115342.11 rows=777157 width=39) (actual time=3.658..1955.171 rows=2654838 loops=1)
-                            Buffers: shared hit=1754474 read=986675
+                      Buffers: shared hit=1751046 read=990105
+                      ->  Nested Loop  (cost=233.02..114638.57 rows=778960 width=39) (actual time=3.867..2015.106 rows=2654838 loops=1)
+                            Buffers: shared hit=1751046 read=990105
                             ->  CTE Scan on k k_3  (cost=0.00..0.02 rows=1 width=12) (actual time=0.000..0.001 rows=1 loops=1)
-                            ->  Nested Loop  (cost=233.39..115340.09 rows=200 width=35) (actual time=3.657..1863.742 rows=2654838 loops=1)
-                                  Buffers: shared hit=1754474 read=986675
-                                  ->  HashAggregate  (cost=226.98..228.98 rows=200 width=32) (actual time=3.610..4.554 rows=9859 loops=1)
+                            ->  Nested Loop  (cost=233.02..114636.55 rows=200 width=35) (actual time=3.866..1921.159 rows=2654838 loops=1)
+                                  Buffers: shared hit=1751046 read=990105
+                                  ->  HashAggregate  (cost=226.62..228.62 rows=200 width=32) (actual time=3.818..4.819 rows=9859 loops=1)
                                         Group Key: interest.ticker
                                         Batches: 1  Memory Usage: 929kB
-                                        Buffers: shared read=5
-                                        ->  CTE Scan on interest  (cost=0.00..201.76 rows=10088 width=32) (actual time=1.966..2.822 rows=9859 loops=1)
-                                              Buffers: shared read=5
-                                  ->  Bitmap Heap Scan on mi_daily_closes d_1  (cost=6.41..574.15 rows=141 width=35) (actual time=0.037..0.178 rows=269 loops=9859)
+                                        Buffers: shared read=7
+                                        ->  CTE Scan on interest  (cost=0.00..201.44 rows=10072 width=32) (actual time=2.117..3.028 rows=9859 loops=1)
+                                              Buffers: shared read=7
+                                  ->  Bitmap Heap Scan on mi_daily_closes d_1  (cost=6.40..570.63 rows=141 width=35) (actual time=0.030..0.183 rows=269 loops=9859)
                                         Recheck Cond: ((ticker = interest.ticker) AND (trade_date >= k_3.win_start) AND (trade_date <= k_3.as_of))
-                                        Filter: (close > '0'::double precision)
+                                        Filter: ((close > '0'::double precision) AND (close <> 'NaN'::double precision))
                                         Rows Removed by Filter: 4
                                         Heap Blocks: exact=2691507
-                                        Buffers: shared hit=1754474 read=986670
-                                        ->  Bitmap Index Scan on idx_daily_closes_ticker_date  (cost=0.00..6.37 rows=145 width=0) (actual time=0.027..0.027 rows=273 loops=9859)
+                                        Buffers: shared hit=1751046 read=990098
+                                        ->  Bitmap Index Scan on idx_daily_closes_ticker_date  (cost=0.00..6.36 rows=144 width=0) (actual time=0.018..0.018 rows=273 loops=9859)
                                               Index Cond: ((ticker = interest.ticker) AND (trade_date >= k_3.win_start) AND (trade_date <= k_3.as_of))
-                                              Buffers: shared hit=22427 read=27210
-                      ->  Hash  (cost=2.90..2.90 rows=145 width=8) (actual time=0.018..0.018 rows=273 loops=1)
+                                              Buffers: shared hit=22416 read=27221
+                      ->  Hash  (cost=2.90..2.90 rows=145 width=8) (actual time=0.019..0.019 rows=273 loops=1)
                             Buckets: 1024  Batches: 1  Memory Usage: 19kB
                             ->  CTE Scan on win w  (cost=0.00..2.90 rows=145 width=8) (actual time=0.000..0.009 rows=273 loops=1)
   CTE st
-    ->  CTE Scan on px p  (cost=0.00..550.05 rows=11001 width=149) (actual time=3189.861..3742.785 rows=9859 loops=1)
-          Buffers: shared hit=1754474 read=986675, temp read=32476 written=32533
+    ->  CTE Scan on px p  (cost=0.00..552.20 rows=11044 width=149) (actual time=3350.737..3946.188 rows=9859 loops=1)
+          Buffers: shared hit=1751046 read=990105, temp read=32476 written=32533
   CTE uni
-    ->  Merge Left Join  (cost=1789.85..9797.58 rows=530633 width=85) (actual time=3749.183..3750.769 rows=9645 loops=1)
+    ->  Merge Left Join  (cost=1792.42..9817.93 rows=531824 width=85) (actual time=3952.853..3954.431 rows=9645 loops=1)
           Merge Cond: (u.ticker = s.ticker)
-          Buffers: shared hit=1754643 read=986745, temp read=32476 written=32533
-          ->  Sort  (cost=831.37..855.49 rows=9647 width=32) (actual time=3.421..3.589 rows=9645 loops=1)
+          Buffers: shared hit=1751181 read=990209, temp read=32476 written=32533
+          ->  Sort  (cost=829.88..853.96 rows=9631 width=32) (actual time=3.713..3.879 rows=9645 loops=1)
                 Sort Key: u.ticker
                 Sort Method: quicksort  Memory: 535kB
-                Buffers: shared hit=169 read=70
-                ->  CTE Scan on universe u  (cost=0.00..192.94 rows=9647 width=32) (actual time=0.015..2.971 rows=9645 loops=1)
-                      Buffers: shared hit=169 read=70
-          ->  Sort  (cost=958.48..985.98 rows=11001 width=85) (actual time=3745.759..3745.933 rows=9859 loops=1)
+                Buffers: shared hit=135 read=104
+                ->  CTE Scan on universe u  (cost=0.00..192.62 rows=9631 width=32) (actual time=0.023..3.235 rows=9645 loops=1)
+                      Buffers: shared hit=135 read=104
+          ->  Sort  (cost=962.54..990.15 rows=11044 width=85) (actual time=3949.137..3949.302 rows=9859 loops=1)
                 Sort Key: s.ticker
                 Sort Method: quicksort  Memory: 1231kB
-                Buffers: shared hit=1754474 read=986675, temp read=32476 written=32533
-                ->  CTE Scan on st s  (cost=0.00..220.02 rows=11001 width=85) (actual time=3189.862..3744.971 rows=9859 loops=1)
-                      Buffers: shared hit=1754474 read=986675, temp read=32476 written=32533
+                Buffers: shared hit=1751046 read=990105, temp read=32476 written=32533
+                ->  CTE Scan on st s  (cost=0.00..220.88 rows=11044 width=85) (actual time=3350.738..3948.353 rows=9859 loops=1)
+                      Buffers: shared hit=1751046 read=990105, temp read=32476 written=32533
   CTE usable_score_date
-    ->  Limit  (cost=980.64..980.65 rows=1 width=4) (actual time=3.393..3.394 rows=1 loops=1)
-          Buffers: shared hit=260
-          InitPlan 22 (returns $26)
-            ->  Aggregate  (cost=490.44..490.45 rows=1 width=8) (actual time=1.674..1.675 rows=1 loops=1)
+    ->  Limit  (cost=980.64..980.65 rows=1 width=4) (actual time=3.677..3.677 rows=1 loops=1)
+          Buffers: shared hit=130 read=130
+          InitPlan 24 (returns $28)
+            ->  Aggregate  (cost=490.44..490.45 rows=1 width=8) (actual time=1.766..1.767 rows=1 loops=1)
                   Buffers: shared hit=130
-                  ->  Limit  (cost=490.27..490.29 rows=10 width=12) (actual time=1.670..1.670 rows=10 loops=1)
+                  ->  Limit  (cost=490.27..490.29 rows=10 width=12) (actual time=1.762..1.763 rows=10 loops=1)
                         Buffers: shared hit=130
-                        ->  Sort  (cost=490.27..490.29 rows=10 width=12) (actual time=1.670..1.670 rows=10 loops=1)
+                        ->  Sort  (cost=490.27..490.29 rows=10 width=12) (actual time=1.762..1.762 rows=10 loops=1)
                               Sort Key: mi_stock_scores.score_date DESC
                               Sort Method: quicksort  Memory: 25kB
                               Buffers: shared hit=130
-                              ->  HashAggregate  (cost=490.00..490.10 rows=10 width=12) (actual time=1.665..1.665 rows=10 loops=1)
+                              ->  HashAggregate  (cost=490.00..490.10 rows=10 width=12) (actual time=1.760..1.760 rows=10 loops=1)
                                     Group Key: mi_stock_scores.score_date
                                     Batches: 1  Memory Usage: 24kB
                                     Buffers: shared hit=130
-                                    ->  Seq Scan on mi_stock_scores  (cost=0.00..370.00 rows=24000 width=4) (actual time=0.001..0.585 rows=24000 loops=1)
+                                    ->  Seq Scan on mi_stock_scores  (cost=0.00..370.00 rows=24000 width=4) (actual time=0.003..0.624 rows=24000 loops=1)
                                           Buffers: shared hit=130
-          ->  Sort  (cost=490.19..490.20 rows=3 width=4) (actual time=3.393..3.393 rows=1 loops=1)
+          ->  Sort  (cost=490.19..490.20 rows=3 width=4) (actual time=3.676..3.677 rows=1 loops=1)
                 Sort Key: mi_stock_scores_1.score_date DESC
                 Sort Method: top-N heapsort  Memory: 25kB
-                Buffers: shared hit=260
-                ->  HashAggregate  (cost=490.00..490.18 rows=3 width=4) (actual time=3.387..3.388 rows=10 loops=1)
+                Buffers: shared hit=130 read=130
+                ->  HashAggregate  (cost=490.00..490.18 rows=3 width=4) (actual time=3.672..3.673 rows=10 loops=1)
                       Group Key: mi_stock_scores_1.score_date
-                      Filter: ((count(*))::double precision >= ('0.5'::double precision * $26))
+                      Filter: ((count(*))::double precision >= ('0.5'::double precision * $28))
                       Batches: 1  Memory Usage: 24kB
-                      Buffers: shared hit=260
-                      ->  Seq Scan on mi_stock_scores mi_stock_scores_1  (cost=0.00..370.00 rows=24000 width=4) (actual time=0.005..0.628 rows=24000 loops=1)
-                            Buffers: shared hit=130
-  InitPlan 24 (returns $28)
-    ->  CTE Scan on k k_4  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.001 rows=1 loops=1)
-  InitPlan 25 (returns $29)
-    ->  CTE Scan on k k_5  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=1)
+                      Buffers: shared hit=130 read=130
+                      ->  Seq Scan on mi_stock_scores mi_stock_scores_1  (cost=0.00..370.00 rows=24000 width=4) (actual time=0.007..0.784 rows=24000 loops=1)
+                            Buffers: shared read=130
   InitPlan 26 (returns $30)
-    ->  CTE Scan on k k_6  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=1)
+    ->  CTE Scan on k k_4  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=1)
   InitPlan 27 (returns $31)
-    ->  CTE Scan on usable_score_date  (cost=0.00..0.02 rows=1 width=4) (actual time=3.393..3.393 rows=1 loops=1)
-          Buffers: shared hit=260
+    ->  CTE Scan on k k_5  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=1)
   InitPlan 28 (returns $32)
-    ->  Aggregate  (cost=11939.24..11939.25 rows=1 width=8) (actual time=3751.867..3751.867 rows=1 loops=1)
-          Buffers: shared hit=1754643 read=986745, temp read=32476 written=32533
-          ->  CTE Scan on uni  (cost=0.00..10612.66 rows=530633 width=0) (actual time=3749.183..3751.682 rows=9645 loops=1)
-                Buffers: shared hit=1754643 read=986745, temp read=32476 written=32533
+    ->  CTE Scan on k k_6  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=1)
   InitPlan 29 (returns $33)
-    ->  Aggregate  (cost=17245.57..17245.58 rows=1 width=32) (actual time=0.623..0.623 rows=1 loops=1)
-          ->  CTE Scan on uni uni_1  (cost=0.00..10612.66 rows=530633 width=33) (actual time=0.000..0.224 rows=9645 loops=1)
+    ->  CTE Scan on usable_score_date  (cost=0.00..0.02 rows=1 width=4) (actual time=3.677..3.677 rows=1 loops=1)
+          Buffers: shared hit=130 read=130
   InitPlan 30 (returns $34)
-    ->  Aggregate  (cost=19898.74..19898.75 rows=1 width=32) (actual time=0.624..0.625 rows=1 loops=1)
-          ->  CTE Scan on uni uni_2  (cost=0.00..10612.66 rows=530633 width=16) (actual time=0.000..0.225 rows=9645 loops=1)
+    ->  Aggregate  (cost=11966.04..11966.05 rows=1 width=8) (actual time=3955.505..3955.505 rows=1 loops=1)
+          Buffers: shared hit=1751181 read=990209, temp read=32476 written=32533
+          ->  CTE Scan on uni  (cost=0.00..10636.48 rows=531824 width=0) (actual time=3952.854..3955.323 rows=9645 loops=1)
+                Buffers: shared hit=1751181 read=990209, temp read=32476 written=32533
   InitPlan 31 (returns $35)
-    ->  Aggregate  (cost=22551.90..22551.91 rows=1 width=32) (actual time=0.609..0.609 rows=1 loops=1)
-          ->  CTE Scan on uni uni_3  (cost=0.00..10612.66 rows=530633 width=4) (actual time=0.000..0.210 rows=9645 loops=1)
+    ->  Aggregate  (cost=17284.28..17284.29 rows=1 width=32) (actual time=0.562..0.562 rows=1 loops=1)
+          ->  CTE Scan on uni uni_1  (cost=0.00..10636.48 rows=531824 width=33) (actual time=0.000..0.197 rows=9645 loops=1)
   InitPlan 32 (returns $36)
-    ->  Aggregate  (cost=4588.58..4588.59 rows=1 width=32) (actual time=1.915..1.915 rows=1 loops=1)
-          ->  Merge Left Join  (cost=2878.49..4588.21 rows=49 width=304) (actual time=1.086..1.567 rows=150 loops=1)
+    ->  Aggregate  (cost=19943.40..19943.41 rows=1 width=32) (actual time=0.574..0.574 rows=1 loops=1)
+          ->  CTE Scan on uni uni_2  (cost=0.00..10636.48 rows=531824 width=16) (actual time=0.000..0.193 rows=9645 loops=1)
+  InitPlan 33 (returns $37)
+    ->  Aggregate  (cost=22602.52..22602.53 rows=1 width=32) (actual time=0.594..0.594 rows=1 loops=1)
+          ->  CTE Scan on uni uni_3  (cost=0.00..10636.48 rows=531824 width=4) (actual time=0.000..0.193 rows=9645 loops=1)
+  InitPlan 34 (returns $38)
+    ->  Aggregate  (cost=4607.12..4607.13 rows=1 width=32) (actual time=1.886..1.887 rows=1 loops=1)
+          ->  Merge Left Join  (cost=2890.37..4606.75 rows=49 width=304) (actual time=1.066..1.541 rows=150 loops=1)
                 Merge Cond: (ti_1.idx = m_1.idx)
-                ->  Sort  (cost=2.36..2.48 rows=49 width=104) (actual time=0.020..0.023 rows=150 loops=1)
+                ->  Sort  (cost=2.36..2.48 rows=49 width=104) (actual time=0.026..0.030 rows=150 loops=1)
                       Sort Key: ti_1.idx
-                      Sort Method: quicksort  Memory: 33kB
+                      Sort Method: quicksort  Memory: 34kB
                       ->  CTE Scan on themes_idx ti_1  (cost=0.00..0.98 rows=49 width=104) (actual time=0.001..0.008 rows=150 loops=1)
-                ->  GroupAggregate  (cost=2876.13..4582.62 rows=200 width=204) (actual time=1.065..1.523 rows=150 loops=1)
+                ->  GroupAggregate  (cost=2888.02..4601.16 rows=200 width=204) (actual time=1.038..1.490 rows=150 loops=1)
                       Group Key: m_1.idx
-                      ->  Sort  (cost=2876.13..2936.77 rows=24257 width=76) (actual time=1.054..1.085 rows=1800 loops=1)
+                      ->  Sort  (cost=2888.02..2948.90 rows=24352 width=76) (actual time=1.026..1.057 rows=1800 loops=1)
                             Sort Key: m_1.idx, m_1.ticker
                             Sort Method: quicksort  Memory: 188kB
-                            ->  Hash Right Join  (cost=14.33..1109.48 rows=24257 width=76) (actual time=0.096..0.731 rows=1800 loops=1)
+                            ->  Hash Right Join  (cost=14.33..1113.76 rows=24352 width=76) (actual time=0.089..0.697 rows=1800 loops=1)
                                   Hash Cond: (p_1.ticker = m_1.ticker)
-                                  ->  CTE Scan on px p_1  (cost=0.00..220.02 rows=11001 width=72) (actual time=0.000..0.217 rows=9859 loops=1)
-                                  ->  Hash  (cost=8.82..8.82 rows=441 width=36) (actual time=0.090..0.090 rows=1800 loops=1)
+                                  ->  CTE Scan on px p_1  (cost=0.00..220.88 rows=11044 width=72) (actual time=0.000..0.201 rows=9859 loops=1)
+                                  ->  Hash  (cost=8.82..8.82 rows=441 width=36) (actual time=0.085..0.085 rows=1800 loops=1)
                                         Buckets: 2048 (originally 1024)  Batches: 1 (originally 1)  Memory Usage: 92kB
-                                        ->  CTE Scan on members m_1  (cost=0.00..8.82 rows=441 width=36) (actual time=0.000..0.037 rows=1800 loops=1)
-  InitPlan 34 (returns $38)
-    ->  Aggregate  (cost=15275.52..15275.53 rows=1 width=32) (actual time=12.420..12.421 rows=1 loops=1)
+                                        ->  CTE Scan on members m_1  (cost=0.00..8.82 rows=441 width=36) (actual time=0.000..0.036 rows=1800 loops=1)
+  InitPlan 35 (returns $39)
+    ->  Aggregate  (cost=860.18..860.19 rows=1 width=32) (actual time=1.468..1.470 rows=1 loops=1)
+          ->  Merge Left Join  (cost=857.12..859.69 rows=49 width=296) (actual time=1.440..1.452 rows=5 loops=1)
+                Merge Cond: ((COALESCE(ti_2.e_code, 'E-UNASSIGNED'::text)) = er.code)
+                ->  Merge Left Join  (cost=3.08..4.50 rows=49 width=96) (actual time=0.045..0.055 rows=5 loops=1)
+                      Merge Cond: ((COALESCE(ti_2.e_code, 'E-UNASSIGNED'::text)) = "*VALUES*".column1)
+                      ->  GroupAggregate  (cost=2.36..3.34 rows=49 width=64) (actual time=0.037..0.045 rows=5 loops=1)
+                            Group Key: (COALESCE(ti_2.e_code, 'E-UNASSIGNED'::text))
+                            ->  Sort  (cost=2.36..2.48 rows=49 width=36) (actual time=0.034..0.037 rows=150 loops=1)
+                                  Sort Key: (COALESCE(ti_2.e_code, 'E-UNASSIGNED'::text)), ti_2.idx
+                                  Sort Method: quicksort  Memory: 31kB
+                                  ->  CTE Scan on themes_idx ti_2  (cost=0.00..0.98 rows=49 width=36) (actual time=0.000..0.006 rows=150 loops=1)
+                      ->  Sort  (cost=0.72..0.78 rows=21 width=64) (actual time=0.007..0.008 rows=21 loops=1)
+                            Sort Key: "*VALUES*".column1
+                            Sort Method: quicksort  Memory: 26kB
+                            ->  Values Scan on "*VALUES*"  (cost=0.00..0.26 rows=21 width=64) (actual time=0.001..0.003 rows=21 loops=1)
+                ->  Sort  (cost=854.04..854.31 rows=108 width=232) (actual time=1.394..1.395 rows=5 loops=1)
+                      Sort Key: er.code
+                      Sort Method: quicksort  Memory: 25kB
+                      ->  Subquery Scan on er  (cost=844.99..850.39 rows=108 width=232) (actual time=1.386..1.393 rows=5 loops=1)
+                            ->  HashAggregate  (cost=844.99..849.31 rows=108 width=232) (actual time=1.386..1.392 rows=5 loops=1)
+                                  Group Key: (COALESCE(ti_3.e_code, 'E-UNASSIGNED'::text))
+                                  Batches: 1  Memory Usage: 24kB
+                                  ->  Hash Right Join  (cost=16.12..338.05 rows=5964 width=72) (actual time=0.505..1.122 rows=1800 loops=1)
+                                        Hash Cond: (p_2.ticker = m_2.ticker)
+                                        ->  CTE Scan on px p_2  (cost=0.00..220.88 rows=11044 width=72) (actual time=0.000..0.213 rows=9859 loops=1)
+                                        ->  Hash  (cost=14.77..14.77 rows=108 width=64) (actual time=0.503..0.503 rows=1800 loops=1)
+                                              Buckets: 2048 (originally 1024)  Batches: 1 (originally 1)  Memory Usage: 100kB
+                                              ->  HashAggregate  (cost=13.69..14.77 rows=108 width=64) (actual time=0.349..0.419 rows=1800 loops=1)
+                                                    Group Key: COALESCE(ti_3.e_code, 'E-UNASSIGNED'::text), m_2.ticker
+                                                    Batches: 1  Memory Usage: 257kB
+                                                    ->  Hash Join  (cost=1.59..13.15 rows=108 width=64) (actual time=0.013..0.162 rows=1800 loops=1)
+                                                          Hash Cond: (m_2.idx = ti_3.idx)
+                                                          ->  CTE Scan on members m_2  (cost=0.00..8.82 rows=441 width=36) (actual time=0.000..0.036 rows=1800 loops=1)
+                                                          ->  Hash  (cost=0.98..0.98 rows=49 width=36) (actual time=0.012..0.012 rows=150 loops=1)
+                                                                Buckets: 1024  Batches: 1  Memory Usage: 15kB
+                                                                ->  CTE Scan on themes_idx ti_3  (cost=0.00..0.98 rows=49 width=36) (actual time=0.000..0.006 rows=150 loops=1)
+  InitPlan 37 (returns $41)
+    ->  Aggregate  (cost=15306.37..15306.38 rows=1 width=32) (actual time=12.632..12.633 rows=1 loops=1)
           Buffers: shared read=130
-          InitPlan 33 (returns $37)
-            ->  CTE Scan on usable_score_date usable_score_date_1  (cost=0.00..0.02 rows=1 width=4) (actual time=0.000..0.000 rows=1 loops=1)
-          ->  Merge Left Join  (cost=2639.15..11113.82 rows=554890 width=72) (actual time=8.402..10.396 rows=9859 loops=1)
+          InitPlan 36 (returns $40)
+            ->  CTE Scan on usable_score_date usable_score_date_1  (cost=0.00..0.02 rows=1 width=4) (actual time=0.001..0.001 rows=1 loops=1)
+          ->  Merge Left Join  (cost=2641.30..11135.02 rows=556176 width=72) (actual time=8.567..10.693 rows=9859 loops=1)
                 Merge Cond: (i.ticker = s_1.ticker)
                 Buffers: shared read=130
-                ->  Merge Left Join  (cost=1680.67..1806.77 rows=10088 width=68) (actual time=7.371..8.140 rows=9859 loops=1)
+                ->  Merge Left Join  (cost=1678.77..1804.67 rows=10072 width=68) (actual time=7.549..8.351 rows=9859 loops=1)
                       Merge Cond: (i.ticker = mi_stock_scores_2.ticker)
                       Buffers: shared read=130
-                      ->  Sort  (cost=938.16..963.38 rows=10088 width=64) (actual time=4.866..5.059 rows=9859 loops=1)
+                      ->  Sort  (cost=936.62..961.80 rows=10072 width=64) (actual time=5.003..5.214 rows=9859 loops=1)
                             Sort Key: i.ticker
                             Sort Method: quicksort  Memory: 735kB
-                            ->  Hash Left Join  (cost=38.50..267.29 rows=10088 width=64) (actual time=0.973..1.741 rows=9859 loops=1)
+                            ->  Hash Left Join  (cost=38.50..266.93 rows=10072 width=64) (actual time=0.959..1.671 rows=9859 loops=1)
                                   Hash Cond: (i.ticker = mo.ticker)
-                                  ->  CTE Scan on interest i  (cost=0.00..201.76 rows=10088 width=32) (actual time=0.000..0.204 rows=9859 loops=1)
-                                  ->  Hash  (cost=36.00..36.00 rows=200 width=64) (actual time=0.970..0.971 rows=1800 loops=1)
+                                  ->  CTE Scan on interest i  (cost=0.00..201.44 rows=10072 width=32) (actual time=0.000..0.199 rows=9859 loops=1)
+                                  ->  Hash  (cost=36.00..36.00 rows=200 width=64) (actual time=0.958..0.958 rows=1800 loops=1)
                                         Buckets: 2048 (originally 1024)  Batches: 1 (originally 1)  Memory Usage: 129kB
-                                        ->  Subquery Scan on mo  (cost=28.19..36.00 rows=200 width=64) (actual time=0.575..0.904 rows=1800 loops=1)
-                                              ->  GroupAggregate  (cost=28.19..34.00 rows=200 width=64) (actual time=0.575..0.846 rows=1800 loops=1)
+                                        ->  Subquery Scan on mo  (cost=28.19..36.00 rows=200 width=64) (actual time=0.574..0.893 rows=1800 loops=1)
+                                              ->  GroupAggregate  (cost=28.19..34.00 rows=200 width=64) (actual time=0.574..0.835 rows=1800 loops=1)
                                                     Group Key: members_1.ticker
                                                     ->  Sort  (cost=28.19..29.29 rows=441 width=36) (actual time=0.573..0.605 rows=1800 loops=1)
                                                           Sort Key: members_1.ticker, members_1.idx
                                                           Sort Method: quicksort  Memory: 119kB
-                                                          ->  CTE Scan on members members_1  (cost=0.00..8.82 rows=441 width=36) (actual time=0.000..0.060 rows=1800 loops=1)
-                      ->  Sort  (cost=742.50..745.50 rows=1200 width=11) (actual time=2.504..2.541 rows=2191 loops=1)
+                                                          ->  CTE Scan on members members_1  (cost=0.00..8.82 rows=441 width=36) (actual time=0.000..0.053 rows=1800 loops=1)
+                      ->  Sort  (cost=742.14..745.14 rows=1200 width=11) (actual time=2.544..2.582 rows=2191 loops=1)
                             Sort Key: mi_stock_scores_2.ticker
                             Sort Method: quicksort  Memory: 182kB
                             Buffers: shared read=130
-                            ->  Hash Join  (cost=231.48..681.13 rows=1200 width=11) (actual time=1.547..2.395 rows=2191 loops=1)
+                            ->  Hash Join  (cost=231.12..680.77 rows=1200 width=11) (actual time=1.558..2.436 rows=2191 loops=1)
                                   Hash Cond: (mi_stock_scores_2.ticker = interest_1.ticker)
                                   Buffers: shared read=130
-                                  ->  Seq Scan on mi_stock_scores mi_stock_scores_2  (cost=0.00..430.00 rows=2400 width=11) (actual time=0.019..0.712 rows=2400 loops=1)
-                                        Filter: (score_date = $37)
+                                  ->  Seq Scan on mi_stock_scores mi_stock_scores_2  (cost=0.00..430.00 rows=2400 width=11) (actual time=0.018..0.719 rows=2400 loops=1)
+                                        Filter: (score_date = $40)
                                         Rows Removed by Filter: 21600
                                         Buffers: shared read=130
-                                  ->  Hash  (cost=228.98..228.98 rows=200 width=32) (actual time=1.523..1.523 rows=9859 loops=1)
+                                  ->  Hash  (cost=228.62..228.62 rows=200 width=32) (actual time=1.537..1.537 rows=9859 loops=1)
                                         Buckets: 16384 (originally 1024)  Batches: 1 (originally 1)  Memory Usage: 504kB
-                                        ->  HashAggregate  (cost=226.98..228.98 rows=200 width=32) (actual time=0.888..1.189 rows=9859 loops=1)
+                                        ->  HashAggregate  (cost=226.62..228.62 rows=200 width=32) (actual time=0.872..1.176 rows=9859 loops=1)
                                               Group Key: interest_1.ticker
                                               Batches: 1  Memory Usage: 929kB
-                                              ->  CTE Scan on interest interest_1  (cost=0.00..201.76 rows=10088 width=32) (actual time=0.001..0.202 rows=9859 loops=1)
-                ->  Sort  (cost=958.48..985.98 rows=11001 width=36) (actual time=1.029..1.196 rows=9859 loops=1)
+                                              ->  CTE Scan on interest interest_1  (cost=0.00..201.44 rows=10072 width=32) (actual time=0.000..0.197 rows=9859 loops=1)
+                ->  Sort  (cost=962.54..990.15 rows=11044 width=36) (actual time=1.017..1.183 rows=9859 loops=1)
                       Sort Key: s_1.ticker
                       Sort Method: quicksort  Memory: 766kB
-                      ->  CTE Scan on st s_1  (cost=0.00..220.02 rows=11001 width=36) (actual time=0.000..0.555 rows=9859 loops=1)
+                      ->  CTE Scan on st s_1  (cost=0.00..220.88 rows=11044 width=36) (actual time=0.000..0.519 rows=9859 loops=1)
 Planning:
-  Buffers: shared hit=23 read=10
-Planning Time: 0.647 ms
-Execution Time: 4101.859 ms
+  Buffers: shared hit=29 read=11
+Planning Time: 0.952 ms
+Execution Time: 4243.137 ms

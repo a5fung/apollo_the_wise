@@ -1,4 +1,4 @@
-loaded 14,322,000 rows in 47s
-run 1: 4.9s | 310,109 bytes
-run 2: 3.9s | 310,109 bytes
-Planning Time: 0.647 ms | Execution Time: 4101.859 ms
+loaded 14,322,000 rows in 38s
+run 1: 4.1s | 313,433 bytes
+run 2: 3.9s | 313,433 bytes
+Planning Time: 0.952 ms | Execution Time: 4243.137 ms

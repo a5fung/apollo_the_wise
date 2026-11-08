@@ -1,0 +1,2 @@
+base rev 576102f9: 79,882 chars | new, minus the two ecosystems fragments: 79,882 chars
+RESULT: PASS — every pre-#722 key is character-identical

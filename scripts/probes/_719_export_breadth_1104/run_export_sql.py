@@ -33,6 +33,11 @@ Fixture (every number invented; seeded):
            'Gamma' (newest row 9 days before as_of -> excluded),
            'Delta' (a row dated 2026-11-04, after as_of -> included with THAT membership),
            'Epsilon' (no members), 'Zeta' (an e_code in mi_theme_ecosystems)
+  groups   (#722) 'Alpha' and 'Zeta' share ecosystem E-AISEMI and share R0001 -> the group counts R0001 ONCE;
+           'Delta' -> E99 (a code not in the YAML: prints its code); 'Epsilon' (no members) -> E-CYBR (a group with
+           zero members, null returns); 'Eta' has NO mi_theme_ecosystems row (e_code null) and 'Theta' -> E-UNASSIGNED,
+           sharing R0009: both file under E-UNASSIGNED, printed 'Other', R0009 once. Names are re-derived here from
+           theme_ecosystems.yaml, not read from the SQL's VALUES list.
   scores   2026-10-28..11-03: 2,400 rows a day; 2026-11-04: ONE stray row -> score_date must be 2026-11-03.
   empty    mi_security_types deleted (inside a rolled-back transaction) -> no session -> ZERO rows, never an all-null file.
   removal  each hand-made ticker deleted in turn (rolled back): the counts must move by exactly its expected cells.
@@ -51,6 +56,7 @@ import time
 
 import psycopg2
 import pixeltable_pgserver as pgserver
+import yaml
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
 SQL = (REPO / "scripts" / "export_breadth_snapshot.sql").read_text()
@@ -171,7 +177,13 @@ THEMES = [
     (dt.date(2026, 11, 4), "Delta", "Nascent", ["R0007", "R0008", "NEWHI"]),
     (dt.date(2026, 11, 3), "Epsilon", "Nascent", []),
     (dt.date(2026, 11, 3), "Zeta", "Mainstream", ["S2UP", "S4DN", "R0001"]),
+    (dt.date(2026, 11, 3), "Eta", "Nascent", ["R0001", "R0009"]),
+    (dt.date(2026, 11, 3), "Theta", "Nascent", ["R0009", "R0010"]),
 ]
+# theme name -> e_code in mi_theme_ecosystems ('Eta' has no row on purpose: e_code null).
+ECO_OF = {"Alpha": "E-AISEMI", "Zeta": "E-AISEMI", "Delta": "E99", "Epsilon": "E-CYBR", "Theta": "E-UNASSIGNED"}
+YAML_NAMES = {e["e_code"]: e["name"] for e in
+              yaml.safe_load((REPO / "theme_ecosystems.yaml").read_text())["ecosystems"]}
 
 
 def load(cur, rows, types, *, copy_rows=True):
@@ -188,7 +200,8 @@ def load(cur, rows, types, *, copy_rows=True):
     for td, name, stage, tickers in THEMES:
         cur.execute("INSERT INTO mi_themes (theme_date, name, stage, tickers) VALUES (%s,%s,%s,%s)",
                     (td, name, stage, tickers))
-    cur.execute("INSERT INTO mi_theme_ecosystems (theme_name, e_code) VALUES ('Zeta', 'E07')")
+    for theme, code in ECO_OF.items():
+        cur.execute("INSERT INTO mi_theme_ecosystems (theme_name, e_code) VALUES (%s, %s)", (theme, code))
     scored = sorted(types)[:2400]
     for back in range(7):
         sd = AS_OF - dt.timedelta(days=back)
@@ -220,9 +233,12 @@ def recompute(rows, types, ranks):
 
     def stage_of(t):
         b = bars.get(t, {})
-        if 0 not in b or any(i not in b for i in range(210)):
+        # 2026-11-04 relaxation (SSoT): a bar on at least 203 of the 210 sessions 0-209, each SMA over the bars present.
+        if 0 not in b or sum(i in b for i in range(210)) < 203:
             return None
-        sma = lambda end: sum(b[i][0] for i in range(end, end + 150)) / 150
+        def sma(end):
+            vals = [b[i][0] for i in range(end, end + 150) if i in b]
+            return sum(vals) / len(vals)
         now, s20, s60 = sma(0), sma(20), sma(60)
         slope, c0 = now / s20 - 1, b[0][0]
         if slope > 0.01:
@@ -271,7 +287,7 @@ def recompute(rows, types, ranks):
         mem = sorted(set(tickers))
         for m in mem:
             member_of.setdefault(m, []).append(idx)
-        th = {"idx": idx, "name": name, "stage": stage, "e_code": "E07" if name == "Zeta" else None,
+        th = {"idx": idx, "name": name, "stage": stage, "e_code": ECO_OF.get(name),
               "theme_date": str(td), "n_members": len(mem), "members": mem}
         for key, base in (("1d", lambda t: close_at(t, 1)), ("5d", lambda t: close_at(t, 5)),
                           ("21d", lambda t: close_at(t, 21)), ("ytd", ytd_base)):
@@ -280,11 +296,32 @@ def recompute(rows, types, ranks):
             th[f"ret_{key}"] = round(sum(vals) / len(vals), 2) if vals else None
             th[f"n_{key}"] = len(vals)
         themes.append(th)
+    # #722 — ecosystem groups, from the written rules: file each theme under its e_code (none -> E-UNASSIGNED), pool the
+    # UNIQUE members, return them on the same bases.
+    groups: dict[str, dict] = {}
+    for th in themes:
+        g = groups.setdefault(th["e_code"] or "E-UNASSIGNED", {"theme_idx": [], "members": set()})
+        g["theme_idx"].append(th["idx"])
+        g["members"] |= set(th["members"])
+    ecosystems = []
+    for code in sorted(groups):
+        g = groups[code]
+        eco = {"code": code,
+               "name": "Other" if code == "E-UNASSIGNED" else YAML_NAMES.get(code, code),
+               "theme_idx": sorted(g["theme_idx"]), "n_members": len(g["members"])}
+        for key, base in (("1d", lambda t: close_at(t, 1)), ("5d", lambda t: close_at(t, 5)),
+                          ("21d", lambda t: close_at(t, 21)), ("ytd", ytd_base)):
+            vals = [(close_at(m, 0) / base(m) - 1) * 100 for m in sorted(g["members"])
+                    if close_at(m, 0) is not None and base(m) is not None]
+            eco[f"ret_{key}"] = round(sum(vals) / len(vals), 2) if vals else None
+            eco[f"n_{key}"] = len(vals)
+            eco[f"up_{key}"] = sum(1 for v in vals if v > 0)
+        ecosystems.append(eco)
     stocks = {t: [stage_of(t), ranks.get(t), sorted(member_of.get(t, []))]
               for t in sorted(set(universe) | set(member_of))}
     return {"as_of": str(as_of), "prev_session": str(prev), "prior_year_end": str(pye),
             "universe": {"n": len(universe)}, "highs_lows": hl, "adv_dec": ad, "stages": stg,
-            "themes": themes, "stocks": stocks}
+            "themes": themes, "ecosystems": ecosystems, "stocks": stocks}
 
 
 def compare(got, want) -> list[str]:
@@ -301,6 +338,17 @@ def compare(got, want) -> list[str]:
                 continue
             if gv != v:
                 bad.append(f"theme {w['name']}.{k}: sql={gv} python={v}")
+    if len(got["ecosystems"]) != len(want["ecosystems"]):
+        bad.append(f"ecosystems: sql {len(got['ecosystems'])} python {len(want['ecosystems'])}")
+    for g, w in zip(got["ecosystems"], want["ecosystems"]):
+        for k, v in w.items():
+            gv = g.get(k)
+            if isinstance(v, float) and gv is not None and abs(float(gv) - v) <= 0.011:
+                continue
+            if gv != v:
+                bad.append(f"ecosystem {w['code']}.{k}: sql={gv} python={v}")
+        if set(g) != set(w):
+            bad.append(f"ecosystem {w['code']} keys: sql {sorted(g)} python {sorted(w)}")
     if set(got["stocks"]) != set(want["stocks"]):
         bad.append(f"stocks keys differ: sql-only {sorted(set(got['stocks']) - set(want['stocks']))[:5]} "
                    f"python-only {sorted(set(want['stocks']) - set(got['stocks']))[:5]}")
@@ -336,6 +384,8 @@ def run_correctness():
     print("  stages sum to universe:", sum(got["stages"].values()) == got["universe"]["n"])
     for th in got["themes"]:
         print("  theme", {k: th[k] for k in th if k != "members"}, "members", th["members"])
+    for eco in got["ecosystems"]:
+        print("  ecosystem", eco)
     for t in ("NEWHI", "NEWLO", "NULLLO", "ZEROLO", "ZEROHIST", "SHORTH", "GAPPY", "NOPRIOR", "UNCH", "PENNY", "ETF1",
               "IPO26", "S2UP", "S4DN", "S3TOP", "S1BASE", "NOBARS", "NOTYPE", "R0001"):
         print(f"  stock {t}: {got['stocks'].get(t, '(absent)')}")
@@ -354,7 +404,9 @@ def run_correctness():
             t for t in got["themes"] if t["name"] == "Alpha")["n_members"] == 6,
         "Epsilon (no members) has null returns": next(
             t for t in got["themes"] if t["name"] == "Epsilon")["ret_1d"] is None,
-        "Zeta carries its e_code": next(t for t in got["themes"] if t["name"] == "Zeta")["e_code"] == "E07",
+        "Zeta carries its e_code": next(t for t in got["themes"] if t["name"] == "Zeta")["e_code"] == "E-AISEMI",
+        "Eta (no mapping row) keeps a null e_code in themes[]": next(
+            t for t in got["themes"] if t["name"] == "Eta")["e_code"] is None,
         "S2UP stage 2": s["S2UP"][0] == 2, "S4DN stage 4": s["S4DN"][0] == 4,
         "S3TOP stage 3": s["S3TOP"][0] == 3, "S1BASE stage 1": s["S1BASE"][0] == 1,
         "SHORTH unstaged": s["SHORTH"][0] is None, "GAPPY unstaged": s["GAPPY"][0] is None,
@@ -382,8 +434,9 @@ def run_correctness():
         "ZEROHIST": {"eligible_n": -1, "new_lows": -1, "declines": -1, "stage_4": -1},  # zero lows excluded from min
         "GAPPY": {"advances": -1, "stage_unstaged": -1},    # 240 usable prior bars < 245; a gap inside 210
         "SHORTH": {"advances": -1, "stage_unstaged": -1},
-        # NOPRIOR rises steadily and misses ONE prior bar (251 >= 245 usable): eligible, and a new high.
-        "NOPRIOR": {"eligible_n": -1, "new_highs": -1, "no_prior": -1, "stage_unstaged": -1},
+        # NOPRIOR rises steadily and misses ONE prior bar (251 >= 245 usable): eligible, and a new high. Its 209 of 210
+        # bars clear the 203 floor (relaxed 2026-11-04 from 'all 210'), so it is STAGED (a flat-ish rising line: 3).
+        "NOPRIOR": {"eligible_n": -1, "new_highs": -1, "no_prior": -1, "stage_3": -1},
         # UNCH's as_of high TIES the previous session's high: "at or above" counts it as a new high.
         "UNCH": {"eligible_n": -1, "new_highs": -1, "unchanged": -1, "stage_3": -1},
     }
@@ -398,6 +451,30 @@ def run_correctness():
         hand[f"removing {t} moves exactly {exp}"] = d == exp
         if d != exp:
             print(f"    {t}: got delta {d}")
+    # #722 — the group rules, stated directly (not via the recompute) so a shared misreading cannot hide.
+    eco = {e["code"]: e for e in got["ecosystems"]}
+    names = {t["name"]: t for t in got["themes"]}
+    ai = eco.get("E-AISEMI", {})
+    hand.update({
+        "ecosystems: one entry per e_code present among the themes (+ E-UNASSIGNED for the unmapped one)":
+            sorted(eco) == ["E-AISEMI", "E-CYBR", "E-UNASSIGNED", "E99"],
+        "E-AISEMI counts R0001 ONCE (Alpha 6 + Zeta 3 members overlap on R0001 -> 8, not 9)":
+            ai.get("n_members") == 8 and names["Alpha"]["n_members"] + names["Zeta"]["n_members"] == 9,
+        "E-AISEMI lists both its themes by index": ai.get("theme_idx") == sorted(
+            [names["Alpha"]["idx"], names["Zeta"]["idx"]]),
+        "E-UNASSIGNED collects the unmapped theme AND the explicit one, R0009 once, printed 'Other'":
+            eco["E-UNASSIGNED"]["n_members"] == 3 and eco["E-UNASSIGNED"]["name"] == "Other"
+            and eco["E-UNASSIGNED"]["theme_idx"] == sorted([names["Eta"]["idx"], names["Theta"]["idx"]]),
+        "a curated code prints its YAML name": ai.get("name") == "AI silicon & semiconductors",
+        "an unknown code prints itself": eco["E99"]["name"] == "E99",
+        "a group whose only theme has no members: zero members, null returns, still listed":
+            eco["E-CYBR"]["n_members"] == 0 and eco["E-CYBR"]["ret_1d"] is None and eco["E-CYBR"]["n_1d"] == 0
+            and eco["E-CYBR"]["up_1d"] == 0,
+        "up_ never exceeds n_ and n_ never exceeds n_members": all(
+            e[f"up_{w}"] <= e[f"n_{w}"] <= e["n_members"] for e in got["ecosystems"] for w in ("1d", "5d", "21d", "ytd")),
+        "a theme's own numbers are untouched by the grouping (Alpha still has 6 members)":
+            names["Alpha"]["n_members"] == 6,
+    })
     for k, v in hand.items():
         print(f"  {'ok ' if v else 'BAD'} {k}")
         if not v:
@@ -430,6 +507,9 @@ def run_scale():
     cur.execute("""INSERT INTO mi_themes (theme_date, name, stage, tickers)
                    SELECT DATE '2026-11-03', 'Theme ' || g, 'Accelerating',
                           ARRAY(SELECT 'T' || lpad((g * 37 + j)::text, 5, '0') FROM generate_series(1, 12) j)
+                     FROM generate_series(1, 150) g""")
+    cur.execute("""INSERT INTO mi_theme_ecosystems (theme_name, e_code)
+                   SELECT 'Theme ' || g, (ARRAY['E-CYBR','E-AISEMI','E-BIO','E-ENER','E-UNASSIGNED'])[1 + g % 5]
                      FROM generate_series(1, 150) g""")
     cur.execute("""INSERT INTO mi_stock_scores (ticker, score_date, rs_rank)
                    SELECT 'T' || lpad(g::text, 5, '0'), DATE '2026-11-03' - b, g

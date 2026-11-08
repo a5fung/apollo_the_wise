@@ -20,10 +20,10 @@
 | Run by | `scripts/auto_export_snapshots.sh` on the prod host, the same nightly host cron as the themes / trades / funnel snapshots (#194) |
 | Guard | Unlike the other three (all-or-nothing: any one failing aborts the push), the breadth export runs **guarded**: `psql -v ON_ERROR_STOP=1` with a **300 s `statement_timeout`** (`PGOPTIONS`; a hung query ends as a non-zero exit instead of holding up the other three) into `apollo_breadth_snapshot.json.tmp`; if it exits non-zero or the output is under 200 bytes, the script logs to stderr, deletes the temp file, leaves the last published breadth file untouched, and commits the other three without it. The snapshot files live in one bash array (`SNAPSHOTS`; the breadth file is appended only on success); change detection stages them (`git add`) and tests `git diff --cached --quiet`, because the breadth file's first publish is a new, untracked file that a plain `git diff --quiet` does not see |
 | Output | `apollo_breadth_snapshot.json` in the portfolio-app2 repo (pushed with the others) |
-| Consumer | portfolio-app2's Market Breadth page (#719's dashboard half — NOT built in this repo). Four panels: highs vs lows, advances vs declines, the stage 1-4 stacked bar, the theme tracker with a Today / 1W / 1M / YTD toggle |
-| Cost | Read-only. Measured on prod 2026-11-04: **15 s** on the first run, **11 s** after the review fixes, **174 KB**. The 300 s `statement_timeout` leaves ~20x headroom over the first run |
-| Verified | `scripts/probes/_719_export_breadth_1104/` — the SQL on a real Postgres against a synthetic fixture, every number recomputed independently in Python from the written rules (PASS), plus removal deltas for each hand-made case (`output.txt`), and the prod-sized timing run (`scale_output.txt`, `scale_plan.txt`) |
-| Static tests | `tests/test_719_export_breadth_sql.py` — one read-only statement, every contract key, each pinned rule, and the shell's guard RUN against a fake `docker` and a real local git remote |
+| Consumer | portfolio-app2's Market Breadth page (#719's dashboard half — NOT built in this repo). Four panels: highs vs lows, advances vs declines, the stage 1-4 stacked bar, the theme tracker with a Today / 1W / 1M / YTD toggle. #722 adds the ecosystem group tiles that lead the theme tracker (the `ecosystems` array; the page half is portfolio-app2's) |
+| Cost | Read-only. Measured on prod 2026-11-04: **15 s** on the first run, **11 s** after the review fixes, **174 KB**. The 300 s `statement_timeout` leaves ~20x headroom over the first run. #722's groups add three small CTEs over the theme members already read (no new table read) and ~5-7 KB of output; on the prod-sized local fixture the run stayed at ~4 s (`scale_output.txt`) |
+| Verified | `scripts/probes/_719_export_breadth_1104/` — the SQL on a real Postgres against a synthetic fixture, every number recomputed independently in Python from the written rules (PASS), plus removal deltas for each hand-made case (`output.txt`), and the prod-sized timing run (`scale_output.txt`, `scale_plan.txt`). #722: the fixture carries ecosystem groups (a stock shared by two themes of one group, an unmapped theme, an explicit E-UNASSIGNED, a code outside the YAML, a group of memberless themes) and the Python recompute re-derives the names from the YAML; `check_722_existing_bytes.py` (`output_722_bytes.txt`) proves the text of every pre-#722 key is unchanged |
+| Static tests | `tests/test_719_export_breadth_sql.py` — one read-only statement, every contract key, each pinned rule, the `eco_names` list == `theme_ecosystems.yaml`, and the shell's guard RUN against a fake `docker` and a real local git remote |
 
 ## The rules (what each number means)
 
@@ -103,6 +103,15 @@ in `no_prior` instead, so `advances + declines + unchanged + no_prior = universe
   window. Over 1M and YTD that flatters a theme: names often joined it because they had already
   run. The page should say so next to the 1M / YTD toggle.
 
+**Ecosystem groups** (#722) — the `ecosystems` array: the active themes grouped by the ecosystem they are filed under, so the page can lead with the ~19 big groups instead of 140 small themes (93 of 144 themes hold 6 or fewer stocks).
+
+- **Which group a theme is in** — its `e_code`. A theme with **no `mi_theme_ecosystems` row** (e_code null) is filed under `E-UNASSIGNED`, the catch-all `theme_ecosystems.py` / the `/themes` board already uses; `themes[].e_code` itself stays null. One entry per group that holds at least one exported theme, ordered by `code`.
+- **Members count once** — a group's members are the DISTINCT tickers across all its themes (`n_members`; members with no price bars included, as in a theme's own count). A stock held by three themes of one group is one member, one vote in its return and one in `up_`. A stock held by themes of two *different* groups counts once in each — it is in both.
+- **Returns** — exactly a theme's rule, applied to those unique members: equal-weighted mean in percent, 2 decimals, from the same bases (Today = 1 session back, 1W = 5, 1M = 21, YTD = the member's last close on or before `prior_year_end`). A member without both closes drops out of that window; `n_<window>` counts those that had them; a window none could fill is null. `up_<window>` = members with a positive return (as_of close above the base close), so `up_` ≤ `n_` ≤ `n_members`.
+- **Group with no members** — a group whose themes hold no tickers is still listed, with `n_members` 0, null returns and zero counts.
+- **Names** — the curated names live in `theme_ecosystems.yaml` (the SSoT for the E-* axis, deliberately not a DB table). The export is a bare psql file with no Python, so it carries a copy: the `eco_names` VALUES list, copied verbatim. **`tests/test_719_export_breadth_sql.py::test_eco_names_equal_theme_ecosystems_yaml` fails the build if the list and the YAML disagree — a renamed or added ecosystem needs `eco_names` updated in the same commit.** At output time `E-UNASSIGNED` prints as **`Other`** (not the YAML's "Unassigned"), and a code that is in no list (an auto-promoted ecosystem from `mi_theme_ecosystems_dynamic`) prints as its own code.
+- Same guards as everything else: NaN closes never reach it (it reads `px`), the future-date ceiling and the 3,000-row session rule are upstream of it, and the whole thing stays inside the one read-only statement.
+
 **Stocks map** — one entry per universe stock AND per active-theme member (members outside the
 universe — an ETF, a sub-$1 name, a name with no bars — are included so the theme drill-down
 resolves): `[stage, rs_rank, theme_indexes]`.
@@ -134,8 +143,9 @@ One object. Types are JSON types; "date" = a `YYYY-MM-DD` string.
 | `adv_dec` | object | `{ "advances": int, "declines": int, "unchanged": int, "no_prior": int }` |
 | `stages` | object | `{ "1": int, "2": int, "3": int, "4": int, "unstaged": int }` — sums to `universe.n` |
 | `themes` | array | one object per active theme, ordered by name (see below) |
+| `ecosystems` | array | #722 — one object per ecosystem group holding an exported theme, ordered by code (see below) |
 | `stocks` | object | `{ "<TICKER>": [stage int \| null, rs_rank int \| null, [int, ...]] }` |
-| `definitions` | object | the rules above in plain words, keyed `session`, `as_of`, `universe`, `new_highs_lows`, `advances_declines`, `stage`, `themes`, `theme_returns`, `theme_membership`, `stocks`, `not_claimed` — the page prints them |
+| `definitions` | object | the rules above in plain words, keyed `session`, `as_of`, `universe`, `new_highs_lows`, `advances_declines`, `stage`, `themes`, `ecosystems`, `theme_returns`, `theme_membership`, `stocks`, `not_claimed` — the page prints them |
 
 Each `themes[]` object:
 
@@ -151,7 +161,19 @@ Each `themes[]` object:
 | `ret_1d` / `ret_5d` / `ret_21d` / `ret_ytd` | number \| null | equal-weighted member return in percent (Today / 1W / 1M / YTD) |
 | `n_1d` / `n_5d` / `n_21d` / `n_ytd` | int | members that had the data for that window |
 
-Size: no per-day history; the stocks map dominates (~25-30 bytes a ticker). Target < 600 KB.
+Each `ecosystems[]` object (#722; the contract version stays `1` — the array is additive and no existing key changed):
+
+| field | type | meaning |
+|---|---|---|
+| `code` | string | the ecosystem code (`E-CYBR`, ..., `E-UNASSIGNED`; an auto-promoted code too) |
+| `name` | string | the plain name: the YAML's curated name; `E-UNASSIGNED` -> `Other`; a code in no list -> the code itself |
+| `theme_idx` | array of int | positions in `themes` of the themes filed under this group — what the page expands to |
+| `n_members` | int | UNIQUE member tickers across those themes |
+| `ret_1d` / `ret_5d` / `ret_21d` / `ret_ytd` | number \| null | equal-weighted return of the unique members in percent (Today / 1W / 1M / YTD), the themes' own bases |
+| `n_1d` / `n_5d` / `n_21d` / `n_ytd` | int | unique members that had both closes for that window |
+| `up_1d` / `up_5d` / `up_21d` / `up_ytd` | int | of those, how many had a positive return — the page's "members up / total" is `up_<w>` / `n_<w>` |
+
+Size: no per-day history; the stocks map dominates (~25-30 bytes a ticker). Target < 600 KB. #722's `ecosystems` adds ~5-7 KB.
 
 ## What it does NOT claim
 
@@ -162,8 +184,10 @@ Size: no per-day history; the stocks map dominates (~25-30 bytes a ticker). Targ
 - **Theme returns are not a backtest.** Today's membership over past windows is survivorship-biased
   (above); a 1M / YTD theme number is a description of today's basket, not of the theme as it stood.
 - **A stage is a mechanical read of one moving average**, not a chart read.
+- **A group is a description of today's baskets, not a signal.** Its members are today's theme lists (the survivorship caveat above applies to a group's 1M / YTD exactly as to a theme's), and a group filed under `E-UNASSIGNED` / `Other` is a holding lane for unmapped themes, not a coherent sector.
 
 ## Change log
 
 - **2026-11-04** — built (#719, Apollo half): the export, the guarded nightly step, the static and
   shell tests, the embedded-Postgres probe. The dashboard page is the portfolio-app2 half.
+- **2026-11-08** — #722 (Apollo half): the `ecosystems` array — themes grouped by ecosystem, each group's unique members returned on the themes' own bases with the n that had data and how many were up. `eco_names` (copied from `theme_ecosystems.yaml`, test-guarded), `E-UNASSIGNED` printed as `Other`, an unmapped theme filed under it. Additive: every pre-existing key is byte-identical and `version` stays 1. Probe fixture extended (shared stock across a group's themes, unmapped / explicit-unassigned / unknown-code / memberless cases); the probe's stale stage recompute was brought to the 203-of-210 rule that shipped 2026-11-04 (it had failed since then).

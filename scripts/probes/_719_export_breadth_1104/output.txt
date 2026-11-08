@@ -1,7 +1,7 @@
-postgres 16.14 | fixture rows 1133199 | sessions in fixture 368
-export ran in 0.74s inside a READ ONLY transaction | 76,211 bytes
+postgres 16.15 | fixture rows 1133199 | sessions in fixture 368
+export ran in 0.83s inside a READ ONLY transaction | 78,242 bytes
   version: 1
-  generated_at: 2026-11-04T17:40:18 ET
+  generated_at: 2026-11-08T11:08:44 ET
   as_of: 2026-11-03
   prev_session: 2026-11-02
   prior_year_end: 2025-12-31
@@ -10,12 +10,18 @@ export ran in 0.74s inside a READ ONLY transaction | 76,211 bytes
   universe: {'n': 3037}
   highs_lows: {'eligible_n': 3032, 'new_highs': 228, 'new_lows': 224}
   adv_dec: {'advances': 1493, 'declines': 1540, 'unchanged': 3, 'no_prior': 1}
-  stages: {'1': 310, '2': 1238, '3': 276, '4': 1209, 'unstaged': 4}
+  stages: {'1': 310, '2': 1238, '3': 277, '4': 1209, 'unstaged': 3}
   stages sum to universe: True
-  theme {'idx': 0, 'name': 'Alpha', 'stage': 'Accelerating', 'e_code': None, 'theme_date': '2026-11-03', 'n_members': 6, 'ret_1d': 0.06, 'n_1d': 5, 'ret_5d': 1.24, 'n_5d': 5, 'ret_21d': 4.68, 'n_21d': 5, 'ret_ytd': 12.29, 'n_ytd': 4} members ['ETF1', 'IPO26', 'NOBARS', 'PENNY', 'R0001', 'R0002']
-  theme {'idx': 1, 'name': 'Delta', 'stage': 'Nascent', 'e_code': None, 'theme_date': '2026-11-04', 'n_members': 3, 'ret_1d': 0.6, 'n_1d': 3, 'ret_5d': -1.96, 'n_5d': 3, 'ret_21d': 2.96, 'n_21d': 3, 'ret_ytd': 55.18, 'n_ytd': 3} members ['NEWHI', 'R0007', 'R0008']
-  theme {'idx': 2, 'name': 'Epsilon', 'stage': 'Nascent', 'e_code': None, 'theme_date': '2026-11-03', 'n_members': 0, 'ret_1d': None, 'n_1d': 0, 'ret_5d': None, 'n_5d': 0, 'ret_21d': None, 'n_21d': 0, 'ret_ytd': None, 'n_ytd': 0} members []
-  theme {'idx': 3, 'name': 'Zeta', 'stage': 'Mainstream', 'e_code': 'E07', 'theme_date': '2026-11-03', 'n_members': 3, 'ret_1d': 0.18, 'n_1d': 3, 'ret_5d': 0.34, 'n_5d': 3, 'ret_21d': 2.7, 'n_21d': 3, 'ret_ytd': 20.96, 'n_ytd': 3} members ['R0001', 'S2UP', 'S4DN']
+  theme {'idx': 0, 'name': 'Alpha', 'stage': 'Accelerating', 'e_code': 'E-AISEMI', 'theme_date': '2026-11-03', 'n_members': 6, 'ret_1d': 0.06, 'n_1d': 5, 'ret_5d': 1.24, 'n_5d': 5, 'ret_21d': 4.68, 'n_21d': 5, 'ret_ytd': 12.29, 'n_ytd': 4} members ['ETF1', 'IPO26', 'NOBARS', 'PENNY', 'R0001', 'R0002']
+  theme {'idx': 1, 'name': 'Delta', 'stage': 'Nascent', 'e_code': 'E99', 'theme_date': '2026-11-04', 'n_members': 3, 'ret_1d': 0.6, 'n_1d': 3, 'ret_5d': -1.96, 'n_5d': 3, 'ret_21d': 2.96, 'n_21d': 3, 'ret_ytd': 55.18, 'n_ytd': 3} members ['NEWHI', 'R0007', 'R0008']
+  theme {'idx': 2, 'name': 'Epsilon', 'stage': 'Nascent', 'e_code': 'E-CYBR', 'theme_date': '2026-11-03', 'n_members': 0, 'ret_1d': None, 'n_1d': 0, 'ret_5d': None, 'n_5d': 0, 'ret_21d': None, 'n_21d': 0, 'ret_ytd': None, 'n_ytd': 0} members []
+  theme {'idx': 3, 'name': 'Eta', 'stage': 'Nascent', 'e_code': None, 'theme_date': '2026-11-03', 'n_members': 2, 'ret_1d': 0.54, 'n_1d': 2, 'ret_5d': 1.86, 'n_5d': 2, 'ret_21d': 11.29, 'n_21d': 2, 'ret_ytd': 71.89, 'n_ytd': 2} members ['R0001', 'R0009']
+  theme {'idx': 4, 'name': 'Theta', 'stage': 'Nascent', 'e_code': 'E-UNASSIGNED', 'theme_date': '2026-11-03', 'n_members': 2, 'ret_1d': 1.58, 'n_1d': 2, 'ret_5d': 0.39, 'n_5d': 2, 'ret_21d': 11.17, 'n_21d': 2, 'ret_ytd': 158.63, 'n_ytd': 2} members ['R0009', 'R0010']
+  theme {'idx': 5, 'name': 'Zeta', 'stage': 'Mainstream', 'e_code': 'E-AISEMI', 'theme_date': '2026-11-03', 'n_members': 3, 'ret_1d': 0.18, 'n_1d': 3, 'ret_5d': 0.34, 'n_5d': 3, 'ret_21d': 2.7, 'n_21d': 3, 'ret_ytd': 20.96, 'n_ytd': 3} members ['R0001', 'S2UP', 'S4DN']
+  ecosystem {'code': 'E-AISEMI', 'name': 'AI silicon & semiconductors', 'theme_idx': [0, 5], 'n_members': 8, 'ret_1d': 0.04, 'n_1d': 7, 'up_1d': 4, 'ret_5d': 0.89, 'n_5d': 7, 'up_5d': 5, 'ret_21d': 3.4, 'n_21d': 7, 'up_21d': 5, 'ret_ytd': 15.61, 'n_ytd': 6, 'up_ytd': 4}
+  ecosystem {'code': 'E-CYBR', 'name': 'Cybersecurity', 'theme_idx': [2], 'n_members': 0, 'ret_1d': None, 'n_1d': 0, 'up_1d': 0, 'ret_5d': None, 'n_5d': 0, 'up_5d': 0, 'ret_21d': None, 'n_21d': 0, 'up_21d': 0, 'ret_ytd': None, 'n_ytd': 0, 'up_ytd': 0}
+  ecosystem {'code': 'E-UNASSIGNED', 'name': 'Other', 'theme_idx': [3, 4], 'n_members': 3, 'ret_1d': 1.23, 'n_1d': 3, 'up_1d': 3, 'ret_5d': 0.6, 'n_5d': 3, 'up_5d': 2, 'ret_21d': 10.02, 'n_21d': 3, 'up_21d': 3, 'ret_ytd': 111.88, 'n_ytd': 3, 'up_ytd': 3}
+  ecosystem {'code': 'E99', 'name': 'E99', 'theme_idx': [1], 'n_members': 3, 'ret_1d': 0.6, 'n_1d': 3, 'up_1d': 3, 'ret_5d': -1.96, 'n_5d': 3, 'up_5d': 2, 'ret_21d': 2.96, 'n_21d': 3, 'up_21d': 3, 'ret_ytd': 55.18, 'n_ytd': 3, 'up_ytd': 2}
   stock NEWHI: [2, 4, [1]]
   stock NEWLO: [4, 5, []]
   stock NULLLO: [4, 7, []]
@@ -23,19 +29,19 @@ export ran in 0.74s inside a READ ONLY transaction | 76,211 bytes
   stock ZEROHIST: [4, None, []]
   stock SHORTH: [None, None, []]
   stock GAPPY: [None, 2, []]
-  stock NOPRIOR: [None, 6, []]
+  stock NOPRIOR: [3, 6, []]
   stock UNCH: [3, None, []]
   stock PENNY: [1, 8, [0]]
   stock ETF1: [3, 1, [0]]
   stock IPO26: [None, 3, [0]]
-  stock S2UP: [2, None, [3]]
-  stock S4DN: [4, None, [3]]
+  stock S2UP: [2, None, [5]]
+  stock S4DN: [4, None, [5]]
   stock S3TOP: [3, None, []]
   stock S1BASE: [1, None, []]
   stock NOBARS: [None, None, [0]]
   stock NOTYPE: (absent)
-  stock R0001: [1, 10, [0, 3]]
-  definitions keys: ['advances_declines', 'as_of', 'new_highs_lows', 'not_claimed', 'session', 'stage', 'stocks', 'theme_membership', 'theme_returns', 'themes', 'universe']
+  stock R0001: [1, 10, [0, 3, 5]]
+  definitions keys: ['advances_declines', 'as_of', 'ecosystems', 'new_highs_lows', 'not_claimed', 'session', 'stage', 'stocks', 'theme_membership', 'theme_returns', 'themes', 'universe']
   ok  as_of skips the 2,900-row trailing day
   ok  score_date skips the one-row stray day
   ok  Beta not resurrected from its older row
@@ -44,6 +50,7 @@ export ran in 0.74s inside a READ ONLY transaction | 76,211 bytes
   ok  Alpha dedups R0002, keeps NOBARS as a member
   ok  Epsilon (no members) has null returns
   ok  Zeta carries its e_code
+  ok  Eta (no mapping row) keeps a null e_code in themes[]
   ok  S2UP stage 2
   ok  S4DN stage 4
   ok  S3TOP stage 3
@@ -61,7 +68,16 @@ export ran in 0.74s inside a READ ONLY transaction | 76,211 bytes
   ok  removing ZEROHIST moves exactly {'eligible_n': -1, 'new_lows': -1, 'declines': -1, 'stage_4': -1}
   ok  removing GAPPY moves exactly {'advances': -1, 'stage_unstaged': -1}
   ok  removing SHORTH moves exactly {'advances': -1, 'stage_unstaged': -1}
-  ok  removing NOPRIOR moves exactly {'eligible_n': -1, 'new_highs': -1, 'no_prior': -1, 'stage_unstaged': -1}
+  ok  removing NOPRIOR moves exactly {'eligible_n': -1, 'new_highs': -1, 'no_prior': -1, 'stage_3': -1}
   ok  removing UNCH moves exactly {'eligible_n': -1, 'new_highs': -1, 'unchanged': -1, 'stage_3': -1}
+  ok  ecosystems: one entry per e_code present among the themes (+ E-UNASSIGNED for the unmapped one)
+  ok  E-AISEMI counts R0001 ONCE (Alpha 6 + Zeta 3 members overlap on R0001 -> 8, not 9)
+  ok  E-AISEMI lists both its themes by index
+  ok  E-UNASSIGNED collects the unmapped theme AND the explicit one, R0009 once, printed 'Other'
+  ok  a curated code prints its YAML name
+  ok  an unknown code prints itself
+  ok  a group whose only theme has no members: zero members, null returns, still listed
+  ok  up_ never exceeds n_ and n_ never exceeds n_members
+  ok  a theme's own numbers are untouched by the grouping (Alpha still has 6 members)
 
 RESULT: PASS — SQL matches the independent recompute on every field
