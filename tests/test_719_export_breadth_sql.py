@@ -23,6 +23,8 @@ from pathlib import Path
 
 import pytest
 
+from tests._sql_static import assert_one_read_only, strip_comments, strip_literals
+
 REPO = Path(__file__).resolve().parents[1]
 SQL_PATH = REPO / "scripts" / "export_breadth_snapshot.sql"
 THEME_SQL_PATH = REPO / "scripts" / "export_theme_snapshot.sql"
@@ -33,19 +35,15 @@ THREE = ("apollo_themes_snapshot.json", "apollo_trades_paper.json", "apollo_funn
 BREADTH = "apollo_breadth_snapshot.json"
 
 
-def _strip_comments(sql: str) -> str:
-    return re.sub(r"--[^\n]*", "", sql)
-
-
 @functools.cache
 def _code() -> str:
     """The SQL with every `--` comment removed."""
-    return _strip_comments(SQL_PATH.read_text())
+    return strip_comments(SQL_PATH.read_text())
 
 
 def _code_no_literals() -> str:
     """Comments AND string literals removed — the definitions text is prose, and a word like 'set' in it is not SQL."""
-    return re.sub(r"'(?:[^']|'')*'", "''", _code())
+    return strip_literals(_code())
 
 
 def _norm(s: str) -> str:
@@ -63,12 +61,7 @@ def _cte(name: str) -> str:
 # ----------------------------------------------------------------------------------------------- read-only, one statement
 
 def test_is_one_read_only_statement():
-    code = _code_no_literals().strip()
-    assert re.match(r"(?is)(WITH|SELECT)\b", code), "the export must open with SELECT (or a WITH feeding it)"
-    assert code.endswith(";") and code.count(";") == 1, "exactly one statement"
-    banned = re.findall(
-        r"(?i)\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|COPY|MERGE|CALL|SET|VACUUM|LOCK)\b", code)
-    assert not banned, f"a read-only export may not contain {sorted(set(banned))}"
+    assert_one_read_only(_code_no_literals())
 
 
 def test_no_comment_marker_inside_a_string_literal():
@@ -284,7 +277,7 @@ def test_return_bases_sit_on_the_pinned_sessions():
 def test_usable_score_date_is_the_theme_exports_rule_verbatim():
     """rs_rank reads the same 'newest full RS run' day as the theme export; a drift would let the two pages disagree."""
     def body(sql: str) -> str:
-        m = re.search(r"usable_score_date AS \((.*?)\n\)", _strip_comments(sql), re.S)
+        m = re.search(r"usable_score_date AS \((.*?)\n\)", strip_comments(sql), re.S)
         assert m
         return _norm(m.group(1))
     assert body(SQL_PATH.read_text()) == body(THEME_SQL_PATH.read_text())

@@ -1719,7 +1719,7 @@ def _ranked(n: int, *, prefix: str = "R", start: int = 1, **over) -> list[dict]:
 
 
 def _eligible_bars(tickers, n: int = 5) -> dict:
-    return {t: _flat_bars(n, low=9.80, high=9.95, vol=60_000.0) for t in tickers}
+    return _breaking_bars(tickers, None, n)
 
 
 def _breaking_bars(tickers, break_at: int | None, n: int = 20) -> dict:
@@ -1743,8 +1743,14 @@ def _lane_row(ticker: str, tid: int, status: str = "filled") -> dict:
     return dict(_placed_row(ticker=ticker, tid=tid, status=status, oid=f"lane-{tid}"), signal_type="magna53_smallcap")
 
 
+def _holds(w, state=be.SLOTS_FULL_STATE):
+    """The hold rows' details in write order, parsed once; `state=None` = every state."""
+    details = [json.loads(a[2]) for a in w.ev(be.HOLD_EVENT)]
+    return [d for d in details if state is None or d.get("state") == state]
+
+
 def _held(w):
-    return [json.loads(a[2]) for a in w.ev(be.HOLD_EVENT) if json.loads(a[2]).get("state") == be.SLOTS_FULL_STATE]
+    return _holds(w)
 
 
 def _funnel_tickers(w):
@@ -2219,7 +2225,7 @@ async def test_an_unreadable_open_count_holds_every_eligible_name_and_the_prefli
     monkeypatch.setattr(lt, "count_open_positions", AsyncMock(side_effect=RuntimeError("pool exhausted")))
     out = await w.tick(at=(9, 40))
     assert set(out["actions"].values()) == {"held_count_unreadable"} and not w.funnel.await_count
-    blips = [json.loads(a[2]) for a in w.ev(be.HOLD_EVENT) if json.loads(a[2])["state"] == be.SLOTS_UNREADABLE_STATE]
+    blips = _holds(w, be.SLOTS_UNREADABLE_STATE)
     assert w.ev("breakout_v1_slots_unreadable") and [h["ticker"] for h in blips] == names
     assert all(h["free_slots"] == 0 and h["count_unreadable"] is True for h in blips) and _held(w) == []
     out = await w.tick(at=(15, 55))                       # all four broke out at 09:42 — still NOT a missed record
@@ -2229,7 +2235,7 @@ async def test_an_unreadable_open_count_holds_every_eligible_name_and_the_prefli
     monkeypatch.setattr(lt, "count_open_positions", AsyncMock(side_effect=[RuntimeError("blip"), 5]))
     await w.tick(at=(9, 40))
     await w.tick(at=(9, 41))
-    holds = [json.loads(a[2]) for a in w.ev(be.HOLD_EVENT)]
+    holds = _holds(w, None)
     assert [(h["state"], h["minute"]) for h in holds] == [(be.SLOTS_UNREADABLE_STATE, 10), (be.SLOTS_FULL_STATE, 11)]
     out = await w.tick(at=(15, 55))
     assert out["missed_by_slots"] == 1 and [(r["ticker"], r["hold_minute"], r["minute"]) for r in _missed(w)] == [("R1", 11, 12)]
