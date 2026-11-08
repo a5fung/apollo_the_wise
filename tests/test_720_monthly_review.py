@@ -720,8 +720,9 @@ class TestRenderAndDriver:
         assert folded["bracket_geometry_variants_parked"]["n"] == "3" and folded["exit_tune_cohort_review"]["n"] == rr.NOT_CAPTURED
         assert folded["runner_rule_sweep_recut"]["verdict"] == "descriptive"
         assert folded["live_fill_counterfactuals_first_read_482"]["verdict"] == "WATCH"     # the stop arms WON on 3 (stop lens), trail arms too
-        assert rep["answer"].startswith("3 arm(s) on watch") or rep["answer"].startswith("1") or "on watch" in rep["answer"]
-        assert not rep["answer"].startswith("Nothing beats")                                  # no arm read NOTHING here
+        n_watch = sum(1 for r in rep["lens_rows"] if r.get("kind") == "arm" and r["verdict"] == "WATCH")
+        assert n_watch == len(rr.ALL_ARMS)                                                     # every arm WON on n 3 in this fixture
+        assert rep["answer"].startswith(f"{n_watch} arm(s) on watch (won on under 10 trades); nothing proposed, nothing read as beaten")
         assert rep["safeguard_voids"] and rep["safeguard_voids"][0].startswith("x_live|live")
         assert rep["pre_window_closes"] == {"live/magna53": "2"}
         assert len(rep["window_trades"]) == 4 and all("forensic_class" in r for r in rep["window_trades"])
@@ -766,6 +767,7 @@ def test_pinned_constants_match_the_plan():
     assert rr.READABLE_MIN == 3 and rr.PROPOSE_MIN == 10
     assert rr.FIDELITY_ABS == 0.25 and rr.FIDELITY_REL == 0.10 and rr.SMALL_POSITION_SHARES == 3
     assert rr.TAIL_WIN_R == 4.0 and rr.TAIL_LOSS_R == -1.5 and rr.BREAKEVEN_TOL_R == 0.05
+    assert rr.RECORDER_FIRST_SESSION == date(2026, 9, 3) and "2026-09-03" in PLAN.read_text()
     plan = PLAN.read_text()
     for needle in ("2026-08-16", "max(0.25, 0.10", "≥ +4R", "≤ −1.5R", "bp1", "CAN'T TELL", "PROPOSE", "two-sided",
                    "admitted_magna53.sql", "ep_alerts.sql", "strategies.sql", "pre_window_closes.sql", "review.out",
@@ -800,10 +802,12 @@ def _full_capture(run: Path, trades: list[dict], cf: list[dict], audit: list[dic
              "strategies": [{"strategy_id": "breakout_v1", "phase": "paper", "enabled": "t"}], "safeguard_transitions": [],
              "audit_breakout": audit if audit is not None else [{"id": "3", "created_at": "", "event_type": rr.ENTRY_DAY_EVENT, "summary": "", "detail": "{}"}],
              "audit_recorder": audit_recorder if audit_recorder is not None else [
-                 {"id": "1", "created_at": "2026-11-27 23:04:10+00", "event_type": rr.RECORDER_RUN_EVENT, "summary": "0 fill(s)"}],
+                 {"id": "1", "created_at": "2026-11-27 23:04:10+00", "summary": "0 fill(s)",
+                  "event_type": getattr(rr, "RECORDER_RUN_EVENT", "live_fill_counterfactual_recorded")}],
              "predicates": predicates if predicates is not None else [{"review": rid, "n": "0"} for rid in rr.FOLDED_REVIEWS],
              "legacy_paper_count": [{"legacy_paper_closed_in_window": "0"}], "pre_window_closes": []}
-    assert set(files) == set(rr.REQUIRED_CAPTURES), set(files) ^ set(rr.REQUIRED_CAPTURES)
+    required = getattr(rr, "REQUIRED_CAPTURES", None)          # absent on the pre-fix runner: the helper still writes every file
+    assert required is None or set(files) == set(required), set(files) ^ set(required)
     headers = {"trades": list(trade().keys()), "cf_arms": list(arm_row(1, "live_actual", 0).keys()), "predicates": ["review", "n"],
                "sell_discipline": ["trade_id", "peak_r"], "skips_window": ["id", "ticker", "alert_date", "skip_reason"],
                "skips_stop_too_wide": ["id", "ticker", "alert_date"], "admitted_magna53": ["id", "ticker", "alert_date", "account_mode"],
@@ -982,6 +986,11 @@ class TestRechallenge1108:
         assert runs["sessions"] == 4 and runs["ran"] == 2 and runs["last_run"] == date(2026, 11, 25)       # 11-26 Thanksgiving is no session
         assert runs["missing"] == [date(2026, 11, 24), date(2026, 11, 27)] and runs["error_rows"] == 1 and runs["error_samples"] == ["run failed: boom"]
         assert rr.recorder_runs([], date(2026, 11, 23), date(2026, 11, 29))["ran"] == 0
+        # the first window starts 08-16 but the job's first session was 09-03: 08-17..09-02 are never "missing"
+        first = rr.recorder_runs([{"id": "9", "created_at": "2026-09-03 22:04:10+00", "event_type": rr.RECORDER_RUN_EVENT, "summary": ""}],
+                                 rr.FIRST_WINDOW_START, date(2026, 9, 3))
+        assert rr.RECORDER_FIRST_SESSION == date(2026, 9, 3) and first["from"] == date(2026, 9, 3)
+        assert first["sessions"] == 1 and first["ran"] == 1 and first["missing"] == []
         old_rows = trade(id=5, ticker="HALF", closed_at="2026-10-01 20:00:00+00")
         cf = [arm_row(5, "live_actual", 1.0), arm_row(5, "live_replay", 1.0, outcome="horizon")]
         g = rr.recorder_gaps([old_rows], cf, date(2026, 11, 29))["era_e"]

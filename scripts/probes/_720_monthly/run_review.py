@@ -43,7 +43,7 @@ if str(_REPO) not in sys.path:
 from agents.market_intelligence.book_geometry_arms import capped_dollar_r  # noqa: E402
 from agents.market_intelligence.live_fill_counterfactuals import GAP_RETRY_SESSIONS  # noqa: E402
 from agents.market_intelligence.rule_eras import (  # noqa: E402
-    BREAKEVEN_ARM_R_VALUE, admission_era_as_of, exit_era_label, exit_era_start, exit_rules_as_of)
+    ADMISSION_SWITCHES, BREAKEVEN_ARM_R_VALUE, admission_era_as_of, exit_era_label, exit_era_start, exit_rules_as_of)
 from agents.market_intelligence.sell_discipline import trade_realized_r, trade_risk_per_share  # noqa: E402
 
 try:  # the recorder's own calendar; weekdays-only when it cannot load (stated on the page)
@@ -76,7 +76,9 @@ BREAKEVEN_TOL_R = 0.05                     # |stop fill − entry| <= 0.05 R = "
 RECORDER_GAP_SESSIONS = GAP_RETRY_SESSIONS  # a closed fill older than this with no recorder rows (or no settled
 #                                             control pair) = a recorder gap, named on the page (finding 10, re-challenge)
 BREAKOUT_ERA = "bp1"                       # the pp exit as deployed 2026-10-31
-OPEN_FLOOR_FIRST_SESSION = date(2026, 11, 4)  # #718 flipped ON 2026-11-03 15:05:28 UTC (after the ORB) -> first acting session (D5)
+# #718 flipped ON 2026-11-03 15:05:28 UTC (after the ORB) -> first acting session 2026-11-04 (D5) — read from the
+# module's one dated record (the ADMISSION_SWITCHES row named open_below_floor), never re-typed here
+OPEN_FLOOR_FIRST_SESSION: date = next(fs for fs, name, *_ in ADMISSION_SWITCHES if name == "open_below_floor")
 PRE_1104, POST_1104 = "pre-11-04", "post-11-04"   # the second half of every admission-cell key (finding 3)
 
 # the recorder's own nightly audit rows (live_fill_counterfactuals.py, one `_recorded` row per run, `_error` per
@@ -84,6 +86,9 @@ PRE_1104, POST_1104 = "pre-11-04", "post-11-04"   # the second half of every adm
 RECORDER_RUN_EVENT = "live_fill_counterfactual_recorded"
 RECORDER_ERROR_EVENT = "live_fill_counterfactual_error"
 RECORDER_JOB_WEEKDAYS_ONLY = True          # scheduler: CronTrigger(hour=18, minute=4, day_of_week="mon-fri")
+RECORDER_FIRST_SESSION = date(2026, 9, 3)  # the #482 job's first nightly run (rule_eras docstring, scheduler job list, the 482
+#                                             YAML, commit history all date it 2026-09-03); it BACKFILLED fills from 08-16 that night,
+#                                             so sessions 08-17..09-02 never had a run and are not "missing" (advisor, 2026-11-08)
 
 # the full capture set = every capture/*.sql next to this file; build_report reports each one whose CSV is
 # missing as NOT CAPTURED instead of reading an empty month (finding 2). Derived, never a typed list.
@@ -364,20 +369,21 @@ def recorder_gap_count(gaps: dict) -> int:
 
 
 def recorder_runs(audit_rows: list[dict], start: date, end: date) -> dict:
-    """The recorder's own heartbeat (finding 10): the sessions in [start, end] the 18:04 ET job should have run
-    (weekdays that are trading days), the ET dates with a `_recorded` row, the sessions with none (NAMED), the
-    `_error` rows (count + the first few summaries). `ran 0 of N` is a dead recorder even in a month with no
-    older closes."""
+    """The recorder's own heartbeat (finding 10): the sessions in [max(start, RECORDER_FIRST_SESSION), end] the
+    18:04 ET job should have run (weekdays that are trading days), the ET dates with a `_recorded` row, the sessions
+    with none (NAMED), the `_error` rows (count + the first few summaries). `ran 0 of N` is a dead recorder even in
+    a month with no older closes; the sessions before the job existed are not counted as missing."""
     ran_days = {et_date(r.get("created_at")) for r in audit_rows if r.get("event_type") == RECORDER_RUN_EVENT}
     ran_days.discard(None)
     errors = [r for r in audit_rows if r.get("event_type") == RECORDER_ERROR_EVENT]
+    start = max(start, RECORDER_FIRST_SESSION)
     sessions, cur = [], start
     while cur <= end:
         if is_trading_day(cur) and (cur.weekday() < 5 or not RECORDER_JOB_WEEKDAYS_ONLY):
             sessions.append(cur)
         cur += timedelta(days=1)
     missing = [s for s in sessions if s not in ran_days]
-    return {"sessions": len(sessions), "ran": len([s for s in sessions if s in ran_days]), "missing": missing,
+    return {"sessions": len(sessions), "ran": len([s for s in sessions if s in ran_days]), "missing": missing, "from": start,
             "last_run": max(ran_days) if ran_days else None, "error_rows": len(errors),
             "error_samples": [str(r.get("summary") or "")[:120] for r in errors[:3]]}
 
@@ -1415,7 +1421,8 @@ def render(report: dict) -> str:
             lines.append(f"Recorder heartbeat: {NOT_CAPTURED} (audit_recorder.csv).")
         else:
             miss = [s.isoformat() for s in rr_["missing"]]
-            lines.append(f"Recorder heartbeat: the 18:04 ET job wrote its nightly row on {rr_['ran']} of {rr_['sessions']} sessions in the window"
+            lines.append(f"Recorder heartbeat: the 18:04 ET job wrote its nightly row on {rr_['ran']} of {rr_['sessions']} sessions since {rr_['from']}"
+                         + (f" (the job's first session; the window starts earlier)" if rr_['from'] == RECORDER_FIRST_SESSION else "")
                          + (f" (last {rr_['last_run']})" if rr_["last_run"] else " (never)")
                          + (f"; sessions with no row: {', '.join(miss[:10])}{' …' if len(miss) > 10 else ''}" if miss else "")
                          + f"; error rows {rr_['error_rows']}" + (f" ({'; '.join(rr_['error_samples'])})" if rr_["error_samples"] else "") + ".")

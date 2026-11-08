@@ -106,8 +106,10 @@ L2 and L3 get the stop / partials / exits lenses from the trade row, its `exits`
   closed fill that old WITH rows but no settled control pair (unsettled — finding 10) — both on the page, both
   counted into line 1's "recorder gap on N fills". **The recorder's heartbeat** (`audit_recorder.sql`: the nightly
   `live_fill_counterfactual_recorded` row the 18:04 ET job writes mon–fri, and every `_error` row) is printed as
-  "ran N of M sessions in the window; sessions with no row: …; error rows E" — so a month with no older closes can
-  still show a dead recorder.
+  "ran N of M sessions since <date>; sessions with no row: …; error rows E" — so a month with no older closes can
+  still show a dead recorder. The sessions counted start at the LATER of the window start and the job's first
+  session, **2026-09-03** (`RECORDER_FIRST_SESSION`; that night it backfilled the fills from 08-16), so 08-17..09-02
+  are never printed as missing.
 - **A capture that is not whole is not an empty month (finding 2).** `build_report` checks every `capture/*.sql`
   against the run's CSVs (`REQUIRED_CAPTURES`, derived from the folder, never typed); each missing file prints
   **NOT CAPTURED** at the top of the page and in `MANIFEST.txt`, every number that reads it is `n/a — not captured`
