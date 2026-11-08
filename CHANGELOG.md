@@ -1,3 +1,7 @@
+### 2026-10-23 — the Opus fallback pin names the evaluated model; the judge-eval gate accepts it
+
+- Model pinning — `OPUS_PIN` → `claude-opus-5-5`; `preflight_judge_eval_gate.py` also accepts a pin equal to the model the passing eval graded (any other change still refuses); unlisted releases price at their family's highest listed rate. Same deploy (`66a44047`, 10-24): #491 U2, the theme promotion wall (cooldown/exclusion members stripped; a cohort under 3 held — diagnosed 11-07: 21 of 24 holds were no-ops, 3 real bounces stopped). Lesson: a deploy gate keyed on a pinned string must accept the evaluated model, or every routine bump fails it.
+
 ### 2026-10-18 — #702 minute fetch: a raised Alpaca error defers the batch instead of being guessed from empty batches (`raise_on_error`)
 
 - **The problem:** `collector.get_alpaca_minute_bars_window` returns `{}` on ANY failure, so the Consolidation Breakout shadow's `fetch_minutes` could not tell "Alpaca failed" from "Alpaca answered and the ticker had no bars". It guessed: a whole fetch with not one bar, or 3 empty batches in a row, was an outage (deferred); and on the oldest look-back day the guess was WRITTEN as a `no_minutes` abstain - a false row for a day that has minutes.

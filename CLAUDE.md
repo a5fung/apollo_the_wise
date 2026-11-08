@@ -269,10 +269,10 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ## Changes Made — Recent
 
-### 2026-10-23 — the Opus fallback pin names the evaluated model; the judge-eval gate accepts it
+### 2026-11-07 — breakout v1 stage 2 deployed dark; the daily breadth export live
 
-- `OPUS_PIN` → `claude-opus-5-5` (the 30-day "fallback pin behind" nudge); the deploy gate `preflight_judge_eval_gate.py` now also accepts a committed pin equal to the model the passing eval graded (`judge_model`, opus-5-5, 36/36 on 10-03) — any other pin, rubric, prompt, corpus or a failed record still refuses (tested). No live binding moves (all roles resolve from the cache). `claude-opus-5` / `claude-opus-4-8` priced explicitly at $5/$25; an unlisted release now prices at its family's highest listed rate (never the pin's, never a cache discount). Deployed 2026-10-24 (`66a44047`, both + execution): the gate passed at deploy, and `mi_model_resolution` shows the judge binding unchanged (no new row; opus-5-5 since 09-23).
-- Same deploy: #491 U2 — the theme promotion wall (`promote_shadow_themes` drops members under cooldown or exclusion; a cohort left under 3 is held). SSoT `docs/architecture/theme_engine.md`; first live read Mon 10-26.
+- #717 stage 2 (`broker/breakout_v1_entry.py`, `alpaca_client.get_minute_bars_range_batch`): one batched minute-bar read per tick on its OWN one-thread executor (a tick skips while a page is in flight); paper slots by order score, hold-only, the overflow waits; at 15:55 one `breakout_v1_missed_by_slots` row per name that broke out (level + volume pace) but never got a slot (#720 reads it). `breakout_v1_paper` still OFF. D8: 184 names, 8 requests, 3.1 s. SSoT `docs/setups/consolidation_breakout.md`.
+- #719 `scripts/export_breadth_snapshot.sql` (read-only, guarded step in the nightly export) → the dashboard's Market Breadth tab; first snapshot 11-07 matched an independent recount. Deployed `359fa1d7` (market-agent then execution, his Go).
 
 Older entries → `CHANGELOG.md` (search any concept).
 
