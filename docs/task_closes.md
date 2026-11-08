@@ -2557,3 +2557,12 @@ EVIDENCE:
 - **The concrete fix for the neocloud cohort:** his 10-03 ruling (3) — no relative-strength-free path for themeless stocks; they rejoin when their strength returns — which his 11-04 "Go with rec" confirmed as this clause's answer; 11-06 all 8 sit in no live theme, as ruled.
 - **U2 live (DONE-WHEN):** 10 of 10 nights 10-26..11-06 clean — 0 bounces, 0 failures; first cooldown skip matching a re-home 10-30 (DRS, PRI, GL).
 - **The breached hold bound, diagnosed 11-07** (`docs/analysis/491_u2_hold_diagnosis_2026-11-07.md`, `scripts/probes/_491_diag_1107/`): 21 of 24 holds were no-ops the old code also skipped (a native theme of that name held that night's row); the other 3 were bounces the wall exists to stop; every held cohort is 1–2 real members. The 10% bound compared held cohorts with rows written — not the same population. No fix.
+
+## #719 — the daily Market Breadth tab on the dashboard (2026-11-07)
+BAR: "the tab is live on the deployed dashboard, and one night's numbers match a prod read made independently — highs + lows and advances + declines from `mi_daily_closes` for that date, stage counts summing to the stated universe, and three themes' Today / 1W / 1M / YTD returns reproduced by hand; he sees it on his phone."
+EVIDENCE:
+- **Live:** the page pushed on his "Push" (portfolio-app2 `52789bf`); the export deployed with #717 stage 2 (server `359fa1d7`); the first snapshot published by the 18:30 ET export (portfolio-app2 `5917779`, as_of 2026-11-06 = the last trading day).
+- **Independent prod read** (`scripts/probes/_719_dod_1107/indep.sql/.out`, written separately from the export): universe 4,978; advances 2,659 / declines 2,159 / unchanged 134 / no prior 26; new highs 47 / new lows 255 of 4,310 eligible — every count equal to the snapshot.
+- **Stages:** 618 + 1,203 + 1,034 + 1,521 + 602 unstaged = 4,978 = the universe.
+- **Three themes by hand** (`themes3_check.txt`, bottom / middle / top by 1-day): all four windows equal to the hundredth (CCaaS −10.34 / −17.05 / −14.01 / +94.90; Digital Freight −0.55 / +6.19 / +12.62 / +1.21; Quantum +20.73 / +4.38 / −18.19 / −37.13).
+- **His phone:** "Breath looks good" (2026-11-07 evening).
