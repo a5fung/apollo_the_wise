@@ -870,7 +870,8 @@ def _why_grade_note(alert, grade) -> str | None:
             line += f' — "{_cap_summary(first, 110)}"'
         return "   " + line
     q = format_catalyst_grade((alert or {}).get("catalyst_quality"), default="")
-    return f"   {q} · set by the Claude grader" if q else None
+    # The alert's grade is AFTER the rules ran (revenue gate, earnings boost), not the grader's own answer.
+    return f"   catalyst graded {q} when scored (after the grade rules)" if q else None
 
 
 def _why_fill_verdicts(diag_lines: list[str]) -> list[str]:
@@ -964,6 +965,12 @@ def build_why_short_lines(ticker: str, target_date, *, alert, trade, scan, grade
         lines.append("   score parts were not stored for this row")
 
     note = _why_grade_note(alert, grade)
+    if not note and score_row and score_row.get("catalyst_quality"):
+        # A scanned-not-alerted name has no alert and often no grade record: the scan row still
+        # carries the grade the score used, which is the answer to "why was the catalyst 0".
+        from agents.market_intelligence.briefing import format_catalyst_grade
+        q = format_catalyst_grade(score_row.get("catalyst_quality"), default="")
+        note = f"   catalyst graded {q} when scored (after the grade rules)" if q else None
     if note:
         lines.append("")
         lines.append("🧠 GRADE NOTE")
@@ -6528,14 +6535,21 @@ class MarketIntelligenceAgent(BaseAgent):
             # ticker (alert / trade / audit) instead of et_today(). User asks
             # `/why TWLO` days after the alert; today's date returns empty.
             async with pool.acquire() as conn:
-                latest = await conn.fetchrow("""
+                # The audit arm matches the ticker as a WHOLE WORD (the same regex the events
+                # query below uses): a substring ILIKE made /why APP land on days that only
+                # mentioned APPN / "approved" / "happened" (11-09: showed 11-06 with nothing while
+                # APP was scanned and dropped 11-05). The scan-log arm is what makes a
+                # scanned-but-not-alerted day resolvable at all.
+                latest = await conn.fetchrow(r"""
                     SELECT MAX(d) AS d FROM (
                         SELECT MAX(alert_date) AS d FROM mi_ep_alerts WHERE ticker = $1
                         UNION ALL
                         SELECT MAX(alert_date) FROM mi_live_trades WHERE ticker = $1
                         UNION ALL
                         SELECT MAX((created_at AT TIME ZONE 'America/New_York')::date)
-                          FROM mi_audit_log WHERE summary ILIKE '%' || $1 || '%'
+                          FROM mi_audit_log WHERE summary ~* ('\m' || $1 || '\M')
+                        UNION ALL
+                        SELECT MAX(scan_date) FROM mi_ep_scan_log WHERE ticker = $1
                     ) u
                 """, ticker)
             _resolved = latest["d"] if latest else None
