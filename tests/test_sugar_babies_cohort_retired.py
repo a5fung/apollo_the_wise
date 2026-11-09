@@ -9,6 +9,6 @@ def test_scheduler_no_longer_registers_the_cohort_refresh():
 
 
 def test_the_sugarbabies_handler_and_cohort_list_query_are_gone():
-    cls = next(v for k, v in vars(agent_mod).items() if hasattr(v, "_handle_stocks_in_play_query"))
+    cls = agent_mod.MarketIntelligenceAgent
     assert not hasattr(cls, "_handle_sugar_babies_query")
     assert not hasattr(db, "get_sugar_babies_cohort_latest")
