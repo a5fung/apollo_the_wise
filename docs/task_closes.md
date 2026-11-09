@@ -2574,3 +2574,10 @@ EVIDENCE:
 - **State equality:** `test_market_risk_721.py` pins the state, since-date and indicators on every 2026 trading date (214 per index) to `~/trading_review/hedge_replay_1107/replay.py` from the saved CSVs; the Opus review's own state machine, written from replay.py, agreed on every date (portfolio-app2 `c42021f` + `c24eb15`, 651 tests).
 - **Unavailable path:** a failed / empty / malformed fetch reads 'Unavailable' with the reason (tests), never a stale light.
 - Follow-up (his ask, same evening): make the light compact on mobile — rides #722's page build Sun 11-08.
+
+## #722 — theme groups on the Market Breadth tab (2026-11-08)
+BAR: "the tab shows the group tiles on his phone, and on the first export three groups' returns are reproduced by hand from `mi_daily_closes` over their unique members (all four windows), the members counted once."
+EVIDENCE:
+- **Export:** deployed with #312 (server `e475346e`); the first export with groups (portfolio-app2 `097bdbb`, 2026-11-08 18:30 ET, as_of 11-06) carries 19 ecosystems; every existing key unchanged (universe 4,978, highs 47 / lows 255).
+- **Hand count** (`scripts/probes/_722_dod_1108/check.txt`): Consumer / retail / dining (139 unique members), Metals & mining (43), AI cloud & datacenter (15) — return, n and up equal on 1d / 5d / 21d / YTD; each member counted once (unique set built by hand from the themes' member lists). The YTD base is the last close on or before year end (the themes' rule; ARIS's is 2025-10-14).
+- **Page:** pushed on his "Push" (`5efc315`); his phone: "looks right" (2026-11-08 evening).

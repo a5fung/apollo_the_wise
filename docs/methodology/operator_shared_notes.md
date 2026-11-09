@@ -2939,3 +2939,5 @@ Recorded: PLAN #722.
 > "leave it" (2026-11-08, to whether /syncnow — the broker reconcile that places a missing stop or sells a position already past its stop, as the 16:05 / 21:00 ET jobs do daily — stays open to the chat assistant; rec: leave it open) — /syncnow stays open to every route.
 
 > "Put the market breadth indicators above the theme groups" (2026-11-08, after the #722 page render) — done on the dashboard branch: lights, then the breadth card, then groups, then the theme tracker.
+
+> "looks right" (2026-11-08, the Market Breadth groups on his phone) — #722 closed.
