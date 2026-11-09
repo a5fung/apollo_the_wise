@@ -2738,12 +2738,7 @@ async def run_intraday_flag_break_scan(scan_time):
         watchlist = {r["ticker"]: dict(r) for r in candidates}
 
         # 2. Sugar Baby cohort membership (read-side decoration only, NOT filter)
-        cohort_rows = await conn.fetch("""
-            SELECT ticker, count_9m_alerts_180d
-            FROM mi_sugar_babies_cohort
-            WHERE cohort_date = (SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort)
-        """)
-        cohort_map = {r["ticker"]: r["count_9m_alerts_180d"] for r in cohort_rows}
+        cohort_map: dict = {}  # Sugar Babies cohort retired 2026-11-09 — empty, no query
 
         # 3. Pre-fetch ADV-20 for the watchlist tickers (single batch query).
         # PERCENTILE_CONT(0.5) median, matching db.get_adv_from_daily_closes
@@ -3094,12 +3089,7 @@ async def run_intraday_support_test_scan(scan_time):
 
         watchlist = {r["ticker"]: dict(r) for r in candidates}
 
-        cohort_rows = await conn.fetch("""
-            SELECT ticker, count_9m_alerts_180d
-            FROM mi_sugar_babies_cohort
-            WHERE cohort_date = (SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort)
-        """)
-        cohort_map = {r["ticker"]: r["count_9m_alerts_180d"] for r in cohort_rows}
+        cohort_map: dict = {}  # Sugar Babies cohort retired 2026-11-09 — empty, no query
 
         adv_rows = await conn.fetch("""
             SELECT ticker,
@@ -3350,12 +3340,7 @@ async def run_intraday_undercut_rally_scan(scan_time):
 
         watchlist = {r["ticker"]: dict(r) for r in candidates}
 
-        cohort_rows = await conn.fetch("""
-            SELECT ticker, count_9m_alerts_180d
-            FROM mi_sugar_babies_cohort
-            WHERE cohort_date = (SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort)
-        """)
-        cohort_map = {r["ticker"]: r["count_9m_alerts_180d"] for r in cohort_rows}
+        cohort_map: dict = {}  # Sugar Babies cohort retired 2026-11-09 — empty, no query
 
         adv_rows = await conn.fetch("""
             SELECT ticker,
@@ -3580,12 +3565,7 @@ async def run_intraday_ma_pullback_scan(scan_time):
 
         watchlist = {r["ticker"]: dict(r) for r in candidates}
 
-        cohort_rows = await conn.fetch("""
-            SELECT ticker, count_9m_alerts_180d
-            FROM mi_sugar_babies_cohort
-            WHERE cohort_date = (SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort)
-        """)
-        cohort_map = {r["ticker"]: r["count_9m_alerts_180d"] for r in cohort_rows}
+        cohort_map: dict = {}  # Sugar Babies cohort retired 2026-11-09 — empty, no query
 
         adv_rows = await conn.fetch("""
             SELECT ticker,
@@ -3941,11 +3921,7 @@ async def run_intraday_low_vol_rest_scan(scan_time):
             return 0
         watchlist = {r["ticker"]: dict(r) for r in candidates}
 
-        cohort_rows = await conn.fetch("""
-            SELECT ticker, count_9m_alerts_180d FROM mi_sugar_babies_cohort
-            WHERE cohort_date = (SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort)
-        """)
-        cohort_map = {r["ticker"]: r["count_9m_alerts_180d"] for r in cohort_rows}
+        cohort_map: dict = {}  # Sugar Babies cohort retired 2026-11-09 — empty, no query
 
         adv_rows = await conn.fetch("""
             SELECT ticker, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20

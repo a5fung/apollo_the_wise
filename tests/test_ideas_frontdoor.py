@@ -3,7 +3,7 @@
 Pins the renderer contract: "Stocks in Play" = GRADUATED entries ONLY (≥paper) — today just
 MAGNA53 EP HIGH (+ any apollo_eligible substrate row). Shadow/in-development entries (coil/
 flag, anticipation) and the 9M universe are NOT in play — they're observed via the
-drill-down buttons / /9m / /sugarbabies. The board is small / sometimes empty by design.
+drill-down buttons / /9m. The board is small / sometimes empty by design.
 The interactive button→edit→back nav is a live-smoke, not unit-testable.
 """
 from datetime import date

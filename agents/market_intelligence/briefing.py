@@ -1179,7 +1179,7 @@ def _format_evening_briefing(
     materiality delta via brief_composer.compose_evening_brief instead. Retired
     from this signature 2026-07-26 (operator-ruled): the v1.0 closeout line
     (stale since the 7/24 declaration) and all 9M/sugar-baby params (strategy
-    retired; `/9m` + `/sugarbabies` stay on demand)."""
+    retired; `/9m` stays on demand; /sugarbabies retired 2026-11-09)."""
     # Theme section: use scorecard if RS data available, else legacy format
     if theme_rs_data:
         theme_section = _format_theme_scorecard(
@@ -1617,7 +1617,7 @@ async def send_evening_briefing(
             logger.warning(f"Signal quality summary failed: {e}")
 
     # 9M / sugar-baby sections: REMOVED entirely (#479, operator-ruled
-    # 2026-07-26 — strategy retired; `/9m` + `/sugarbabies` stay on demand).
+    # 2026-07-26 — strategy retired; `/9m` stays on demand; /sugarbabies retired 2026-11-09).
     # v1.0 closeout line: RETIRED (#479 — stale since the 7/24 declaration).
 
     # U&R (Undercut & Rally, #98) — today's detections. None = fetch FAILED

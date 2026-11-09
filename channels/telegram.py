@@ -1874,7 +1874,7 @@ class TelegramChannel:
                      # 2026-05-22+ new commands — must be registered here AND have a
                      # BotCommand entry above. Missing this list = silent drop in Telegram
                      # (BotCommand only affects autocomplete; CommandHandler is the actual route).
-                     "sugarbabies", "sugarbaby", "timestop",
+                     "timestop",
                      # 5 shadow entry-technique detectors consolidated into /detectors
                      # (#218, operator command review 2026-06-06).
                      "detectors", "unknownrate",
@@ -1935,7 +1935,7 @@ class TelegramChannel:
         # BotCommand entry. Hidden-but-working: ideas, pregame, watch (/watch all =
         # the mi_stocks_in_play board, operator ruled it garbage), watchlist, setup,
         # themes, promotetheme, why(=setup dup), trade, htf, anticipation, detectors,
-        # unknownrate, regime, sugarbabies, review, spotted, datareviews,
+        # unknownrate, regime, review, spotted, datareviews,
         # cost, missed, start(=help dup). RS accel / rotation-recovery move back into
         # the evening brief (#492), NOT a new command.
         commands = [
@@ -1956,7 +1956,7 @@ class TelegramChannel:
             # this list, so they worked only if you already knew to type them — the May-2026
             # invisible-command class at 5x the size. Curated, not exhaustive: a 40-item menu is
             # the same overwhelm #513 exists to fix. Aliases deduped (/flag, /reviews,
-            # /sugarbaby, /trade). Continuation surfaces (/watch, /flags) deliberately EXCLUDED —
+            # /trade). Continuation surfaces (/watch, /flags) deliberately EXCLUDED —
             # Continuation Flag is phase=deprecated, and it is a FAMILY not a setup (see the
             # SETUP vs FAMILY definition in CLAUDE.md). /positions excluded too: it maps to
             # _handle_watchlist, so its NAME lies — /trades is the real positions+P&L surface.

@@ -81,7 +81,6 @@ from agents.market_intelligence.db import (
     get_9m_alert_same_day,
     get_adv_20_dollar_asof,
     get_daily_bars_asof,
-    get_sugar_baby_cohort_member_asof,
 )
 from agents.market_intelligence.structure_axis_shadow import compute_structure_features
 
@@ -232,11 +231,7 @@ async def compute_setup_class_fields(conn: Any, r: dict[str, Any]) -> dict[str, 
     except Exception as e:
         logger.debug(f"setup_class 9m-same-day lookup failed for {ticker}: {e}")
 
-    try:
-        fields["is_sugar_baby_cohort"] = await get_sugar_baby_cohort_member_asof(
-            conn, ticker, alert_date)
-    except Exception as e:
-        logger.debug(f"setup_class sugar-baby lookup failed for {ticker}: {e}")
+    # Sugar Babies cohort retired 2026-11-09: never fed True; no DB read (default False above).
 
     try:
         events = await get_recent_upgrade_events(ticker)

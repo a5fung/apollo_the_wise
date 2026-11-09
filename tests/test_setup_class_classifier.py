@@ -394,6 +394,20 @@ def test_assembler_no_longer_reads_upgrades_30d_off_r(monkeypatch):
     assert fields["upgrades_30d"] == 0
 
 
+def test_assembler_never_reads_the_retired_sugar_baby_cohort():
+    """Cohort retired 2026-11-09: is_sugar_baby_cohort is always False and no cohort SQL runs."""
+    pool, conn = make_mock_pool()
+    seen = []
+
+    async def _fetchrow(sql, *a, **k):
+        seen.append(sql)
+        return None
+    conn.fetchrow = _fetchrow
+    fields = _run(compute_setup_class_fields(conn, {"ticker": "TICK", "alert_date": date(2026, 7, 18)}))
+    assert fields["is_sugar_baby_cohort"] is False
+    assert not any("mi_sugar_babies_cohort" in q for q in seen)
+
+
 def test_assembler_missing_ticker_or_alert_date_skips_all_lookups():
     pool, conn = make_mock_pool()
     conn.fetchrow = AsyncMock(side_effect=AssertionError("must not be called"))
@@ -419,12 +433,6 @@ def test_assembler_one_lookup_failing_does_not_blank_the_others(monkeypatch):
         return True
     monkeypatch.setattr(
         "agents.market_intelligence.setup_class_classifier.get_9m_alert_same_day", _nine_m)
-
-    async def _sugar_boom(_conn, _ticker, _alert_date):
-        raise RuntimeError("db hiccup")
-    monkeypatch.setattr(
-        "agents.market_intelligence.setup_class_classifier.get_sugar_baby_cohort_member_asof",
-        _sugar_boom)
 
     async def _adv(_conn, _ticker, _alert_date, price, days=20):
         return 200_000_000.0
@@ -459,12 +467,6 @@ def test_assembler_upgrade_fetch_failure_does_not_blank_the_others(monkeypatch):
         return True
     monkeypatch.setattr(
         "agents.market_intelligence.setup_class_classifier.get_9m_alert_same_day", _nine_m)
-
-    async def _sugar(_conn, _ticker, _alert_date):
-        return False
-    monkeypatch.setattr(
-        "agents.market_intelligence.setup_class_classifier.get_sugar_baby_cohort_member_asof",
-        _sugar)
 
     async def _adv(_conn, _ticker, _alert_date, price, days=20):
         return 50_000_000.0

@@ -26,7 +26,7 @@ Replacement entry = consolidation tightness→expansion (#327 Phase B, shadow-fi
 - Intraday detection: `agents/market_intelligence/ninem_detector.py`, scheduler every 5 min 9:30-16:00 ET (`9m_ep_scan`) — **GATED OFF 2026-09-08** (`_9m_scan_job` returns early on `should_run("9m_day2")` — the flag, not the code, decides; re-enable revives it)
 - EOD sweep: `run_9m_eod_sweep` called from nightly_data_pull — **LIVE**. ⚠ It no longer writes the
   Day-2 candidate list; the `mi_9m_day2_candidates` TABLE is retained for history (rows kept, writer gone).
-- Pradeep cohort: `mi_sugar_babies_cohort` — **LIVE, and a DIFFERENT table** from
+- Pradeep cohort: `mi_sugar_babies_cohort` — **RETIRED 2026-11-09 (table kept as history, no writer), and a DIFFERENT table** from
   `mi_9m_day2_candidates` (which was renamed FROM `mi_9m_sugar_babies`). A grep for `sugar_bab` hits
   both sides; never pattern-match between them.
 - Day 2 ORB execution: **GONE** — `_9m_day2_orb_job`, `submit_9m_day2_trade` and the facade route were
@@ -135,6 +135,10 @@ digest at all.
 3. **9M Day-2 ORB = legacy/bridge mechanism, NOT the methodology entry (#65, architecture direction analyzed 2026-05-31, advisor-reviewed).** Per Pradeep methodology the 9M event is a WATCH-UNIVERSE trigger; the *intended* entry comes from tightness→expansion (the flag-class / entry-technique layer). That path is **already wired and running in shadow** (P7.3b `ninem_universe_watch` carryforward, 2026-05-17) and is the **TARGET** 9M entry. The mechanical Day-2 ORB (Stage 3 above) runs in **parallel as a legacy/bridge** — the only 9M *paper* entry until the entry-technique detectors (flag-break #94 / support-test #95 / MA-pullback #96 / U&R #98) graduate (N≥10, earliest 7/15). Evidence 2026-05-31: N=4 clean-closed = −$1,541 / 75% loss; it mechanically enters clinical biotechs (ROIV/PURR) the MAGNA53 revenue-stage gate would block — a *gateable* defect, not proof the strategy is worthless. **Which mechanism trades the cohort is a layer-2 (evidence-gated) decision** — do NOT demote `9m_day2` on N=4 (demote→shadow freezes the cohort at N=4 forever; shadow = no fills). Operational options A (deprecate) / B (revenue-stage gate now) / C (rename) in `data_gated_reviews.yaml::ninem_day2_mechanical_vs_methodology_alignment`. Portfolio map: `docs/setups/PORTFOLIO.md`. **→ RESOLVED 2026-06-18 (option A, deprecate): #327 replay (N=36, not N=4) confirmed Day-2 ORB has no robust edge → retired to shadow, consolidation entry is the replacement. See the 2026-06-18 change-log entry (the layer-2 evidence-gated decision this limitation deferred).**
 
 ## Change log (newest first)
+
+### 2026-11-09 — Sugar Babies persistent cohort RETIRED (operator: "Retire it")
+
+Its only source (`mi_9m_ep_alerts`) is dead, so the cohort decayed to nothing. Removed: `sugar_babies_cohort_refresh` job, `/sugarbabies` + `/sugarbaby`. Every reader now behaves as empty: setup-class `is_sugar_baby_cohort` always False, flag detector cohort map empty (no 🍬), `check_sugar_baby_convergence` returns None. Table + DDL + retention kept as history; no trading logic touched.
 
 ### 2026-10-03 — the #54 monthly check (9M Day 2 stop/ATR distribution) leaves the sweep [#691]
 

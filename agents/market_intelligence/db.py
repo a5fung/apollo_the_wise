@@ -7142,59 +7142,6 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
     ]
 
 
-async def get_sugar_babies_cohort_latest(limit: int = 30) -> list[dict]:
-    """Return current persistent Sugar Babies cohort (Pradeep-class watchlist).
-    Tickers that printed 9M+ EOD vol ≥3 times in trailing 180d, LEFT JOINed
-    to mi_flag_candidates for each ticker's most-recent flag stage in last
-    5 calendar days (Memorial Day weekend compresses this to 2 trading
-    scans — acceptable for prototype; ADR will harden to trading-session
-    subquery when generalizing to mi_stocks_in_play).
-
-    Sort order (ripeness-first, info-overload reduction):
-      TRIGGERED (3) > COILED (2) > TIGHTENING (1) > no-flag (0)
-      tiebreaker: count_9m_alerts_180d DESC, then last_9m_alert DESC
-
-    Returned dict gains 3 new fields: current_flag_stage, flag_stage_scan_date,
-    flag_base_age (all None for cohort members without recent flag activity).
-    """
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            WITH latest_cohort AS (
-                SELECT MAX(cohort_date) AS d FROM mi_sugar_babies_cohort
-            ),
-            latest_flag AS (
-                SELECT DISTINCT ON (ticker)
-                       ticker, scan_date, stage, base_age
-                FROM mi_flag_candidates
-                WHERE scan_date >= CURRENT_DATE - INTERVAL '5 days'
-                  AND stage IN ('COILED', 'TIGHTENING', 'TRIGGERED')
-                ORDER BY ticker, scan_date DESC
-            )
-            SELECT c.ticker,
-                   c.count_9m_alerts_180d AS n,
-                   c.first_9m_alert_in_window,
-                   c.last_9m_alert,
-                   c.latest_volume,
-                   c.latest_gap_pct,
-                   f.stage     AS current_flag_stage,
-                   f.scan_date AS flag_stage_scan_date,
-                   f.base_age  AS flag_base_age,
-                   CASE f.stage WHEN 'TRIGGERED'  THEN 3
-                                WHEN 'COILED'     THEN 2
-                                WHEN 'TIGHTENING' THEN 1
-                                ELSE 0 END AS ripeness
-            FROM mi_sugar_babies_cohort c
-            LEFT JOIN latest_flag f ON f.ticker = c.ticker
-            WHERE c.cohort_date = (SELECT d FROM latest_cohort)
-            ORDER BY ripeness DESC,
-                     c.count_9m_alerts_180d DESC,
-                     c.last_9m_alert DESC
-            LIMIT $1
-        """, limit)
-    return [dict(r) for r in rows]
-
-
 async def upsert_stocks_in_play(
     *,
     ticker: str,
@@ -7310,7 +7257,10 @@ async def check_sugar_baby_convergence(ticker: str) -> dict | None:
     ADR will harden to trading-session subquery when generalizing to
     mi_stocks_in_play.
     """
-    pool = await get_pool()
+    # Cohort retired 2026-11-09 (operator): its only source (9M EP) is gone, so the cohort is
+    # EMPTY by definition -> never a convergence. No DB read. Table + DDL kept as history.
+    return None
+    pool = await get_pool()  # noqa: unreachable — kept so the retired query stays readable
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
             WITH latest_cohort_date AS (

@@ -73,7 +73,6 @@ JOB_EVENING_BRIEFING = "evening_briefing"
 JOB_MORNING_BRIEFING = "morning_briefing"
 JOB_PARABOLIC_SCAN = "parabolic_scan"
 JOB_FLAG_SCAN = "flag_continuation_scan"
-JOB_SUGAR_BABIES_COHORT_REFRESH = "sugar_babies_cohort_refresh"
 JOB_TIME_STOP_SCAN = "time_stop_scan"
 JOB_FLAG_BREAK_SCAN = "flag_break_scan"
 JOB_SUPPORT_TEST_SCAN = "support_test_scan"
@@ -203,7 +202,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "close_digest",  # #479 — 16:55 ET consolidated Market Close Digest flush
     "premarket_gap_risk",  # ADR 0023 Card 5 — read-only 9:00 ET gap-through heads-up, no broker calls
     "evening_briefing", "friday_watchlist", "hud_refresh",
-    "sugar_babies_cohort_refresh", "position_mgmt_judge",
+    "position_mgmt_judge",
     "chart_axis_shadow", "chart_axis_shadow_weekly_digest", "kill_scale_band_eval",
     "ladder_watchdog",  # #312 ADR 0022 L2 (2026-10-15; act step 2026-11-07) — nightly demotion-trigger read per paper/live strategy; registry + mi_live_trades READ, ONE audit row + its own page/episode rows, no phase/sizing/order write, no broker; on a breach ONE Telegram page with Demote / No action buttons (his press moves the phase, in ladder_press.py, never this job)
     "breakout_v1_list",  # breakout v1 PAPER phase 1 (2026-10-29) — the nightly list (mi_daily_closes + mi_security_types READ, mi_breakout_v1_list + ONE audit row WRITTEN) and ONE paper-chat Telegram naming tonight's names (only when the list is non-empty); no phase/sizing/order write, no strategy row, no broker import
@@ -3270,134 +3269,6 @@ async def _parabolic_scan_job():
     except Exception as e:
         logger.error(f"Parabolic digest failed: {e}", exc_info=True)
         await notify_job_failure(JOB_PARABOLIC_SCAN, str(e))
-
-
-async def _sugar_babies_cohort_refresh_job():
-    """Run at 5:18 PM ET. Rebuild persistent Sugar Babies cohort (Pradeep-class
-    watchlist): tickers that printed 9M+ EOD volume ≥3 times in trailing 180d.
-
-    Pure observability — no trade impact. Surfaced via `/sugarbabies` Telegram
-    command and the evening briefing 🍬 Persistent Sugar Babies section.
-
-    Slots between 5:15 parabolic_scan and 5:25 flag_scan. Fast aggregation
-    query (~24 rows) — runs in milliseconds. mi_daily_closes volume is the
-    ground truth (catches confirmed + materialized-anticipation alert days
-    uniformly; the 12% of anticipations that didn't pan out are excluded by
-    the join on actual EOD volume).
-    """
-    logger.info("Sugar Babies cohort refresh starting...")
-    try:
-        from agents.market_intelligence.collector import et_today
-        today = et_today()
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            await conn.execute("""
-                WITH eligible AS (
-                    -- Ground truth: alert fired AND EOD volume actually hit
-                    -- 9M+. Joins to mi_daily_closes for confirmation.
-                    -- Catches confirmed prints AND materialized anticipations.
-                    SELECT DISTINCT ON (a.ticker, a.alert_date)
-                           a.ticker, a.alert_date, a.today_volume, a.gap_pct
-                    FROM mi_9m_ep_alerts a
-                    JOIN mi_daily_closes d
-                        ON d.ticker = a.ticker
-                       AND d.trade_date = a.alert_date
-                    WHERE a.alert_date >= $1::date - INTERVAL '180 days'
-                      AND d.volume >= 9000000
-                    -- Prefer confirmed row over anticipation when both exist
-                    ORDER BY a.ticker, a.alert_date, a.is_anticipation ASC
-                ),
-                grouped AS (
-                    SELECT ticker,
-                           COUNT(*) AS n,
-                           MIN(alert_date) AS first_in_win,
-                           MAX(alert_date) AS last_in_win
-                    FROM eligible
-                    GROUP BY ticker
-                    HAVING COUNT(*) >= 3
-                ),
-                latest AS (
-                    SELECT DISTINCT ON (e.ticker)
-                           e.ticker, e.today_volume, e.gap_pct
-                    FROM eligible e
-                    JOIN grouped g ON g.ticker = e.ticker
-                    ORDER BY e.ticker, e.alert_date DESC
-                )
-                INSERT INTO mi_sugar_babies_cohort
-                    (ticker, cohort_date, count_9m_alerts_180d,
-                     first_9m_alert_in_window, last_9m_alert,
-                     latest_volume, latest_gap_pct)
-                SELECT g.ticker, $1::date, g.n,
-                       g.first_in_win, g.last_in_win,
-                       l.today_volume, l.gap_pct
-                FROM grouped g
-                JOIN latest l ON l.ticker = g.ticker
-                ON CONFLICT (ticker, cohort_date) DO UPDATE SET
-                    count_9m_alerts_180d     = EXCLUDED.count_9m_alerts_180d,
-                    first_9m_alert_in_window = EXCLUDED.first_9m_alert_in_window,
-                    last_9m_alert            = EXCLUDED.last_9m_alert,
-                    latest_volume            = EXCLUDED.latest_volume,
-                    latest_gap_pct           = EXCLUDED.latest_gap_pct
-            """, today)
-            n = await conn.fetchval(
-                "SELECT COUNT(*) FROM mi_sugar_babies_cohort WHERE cohort_date = $1",
-                today,
-            )
-        await log_audit_event(
-            "sugar_babies_cohort_refreshed",
-            f"Cohort size: {n} tickers (≥3 9M EOD prints in trailing 180d)",
-        )
-
-        # Stocks-in-Play dual-write (#99, ADR 0004 Phase 1 first migration,
-        # 2026-05-23). For each cohort member, upsert into mi_stocks_in_play
-        # as 'sugar_baby_cohort' methodology-presence signal with
-        # automation_class='informational'. Failure here MUST NOT break
-        # the upstream sugar_babies_cohort write (telemetry decoupling).
-        try:
-            from agents.market_intelligence.db import upsert_stocks_in_play
-            from agents.market_intelligence.stocks_in_play_sources import (
-                SOURCE_SUGAR_BABY_COHORT, CLASS_INFORMATIONAL,
-            )
-            # Expiry: 4-day TTL covers long weekends (Memorial Day Mon
-            # refresh skipped → Friday rows must stay valid through Tuesday).
-            # Per ADR 0004 §3 expiry policy.
-            expires_at = datetime.combine(today + timedelta(days=4),
-                                          _dt_time(23, 59), tzinfo=_ET)
-            # NOTE: the original `async with pool.acquire() as conn` block
-            # exits at the previous fetchval — `conn` is stale here. Open
-            # a fresh connection for the dual-write fetch.
-            async with pool.acquire() as conn2:
-                cohort_rows = await conn2.fetch("""
-                    SELECT ticker, count_9m_alerts_180d, first_9m_alert_in_window, last_9m_alert
-                    FROM mi_sugar_babies_cohort
-                    WHERE cohort_date = $1
-                """, today)
-            sip_count = 0
-            for r in cohort_rows:
-                await upsert_stocks_in_play(
-                    ticker=r["ticker"],
-                    source_detector=SOURCE_SUGAR_BABY_COHORT,
-                    automation_class=CLASS_INFORMATIONAL,
-                    reason=f"Pradeep persistent cohort — {r['count_9m_alerts_180d']}× 9M+ EOD prints in trailing 180d",
-                    readiness_signal={
-                        "count_9m_alerts_180d": r["count_9m_alerts_180d"],
-                        "first_9m_alert_in_window": str(r["first_9m_alert_in_window"]),
-                        "last_9m_alert": str(r["last_9m_alert"]),
-                    },
-                    expires_at=expires_at,
-                    entry_date=today,
-                )
-                sip_count += 1
-            logger.info(f"mi_stocks_in_play: upserted {sip_count} sugar_baby_cohort rows")
-        except Exception as e:
-            logger.warning(f"mi_stocks_in_play dual-write failed (non-critical): {e}")
-
-        logger.info(f"Sugar Babies cohort refreshed: {n} tickers")
-        return int(n) if n is not None else None
-    except Exception as e:
-        logger.error(f"Sugar Babies cohort refresh failed: {e}", exc_info=True)
-        await notify_job_failure(JOB_SUGAR_BABIES_COHORT_REFRESH, str(e))
-        return None
 
 
 async def _flag_break_scan_job():
@@ -8285,18 +8156,6 @@ def start_scheduler() -> AsyncIOScheduler:
         id=JOB_PARABOLIC_SCAN,
         replace_existing=True,
         misfire_grace_time=900,
-    )
-
-    # Sugar Babies cohort refresh: 5:22 PM ET — slots between 5:15 parabolic_scan
-    # and 5:25 flag_scan. Pure observability — refreshes Pradeep-class
-    # persistent watchlist from trailing-180d 9M EOD prints. Fast aggregation
-    # (~24 rows, ~ms). Surfaced via /sugarbabies + evening briefing section.
-    _scheduler.add_job(
-        audit_wrap(_sugar_babies_cohort_refresh_job, JOB_SUGAR_BABIES_COHORT_REFRESH),
-        CronTrigger(hour=17, minute=22, day_of_week="mon-fri", timezone="America/New_York"),
-        id=JOB_SUGAR_BABIES_COHORT_REFRESH,
-        replace_existing=True,
-        misfire_grace_time=3600,
     )
 
     # Continuation-flag scan: 5:25 PM ET — slots between 5:22 sugar_babies cohort

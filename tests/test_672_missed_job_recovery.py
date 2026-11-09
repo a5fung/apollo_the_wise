@@ -55,6 +55,7 @@ _RETIMED_SINCE_LEDGER = {
 # re-run. {job_id: why}. The exclusion is asserted honest below: the id must be ABSENT from the live
 # job list (a job still registered that missed Friday is not excluded by this).
 _REMOVED_SINCE_LEDGER = {
+    "sugar_babies_cohort_refresh": "Sugar Babies cohort retired 2026-11-09 (operator: 'Retire it')",
     "wick_forward_returns": "wick_fill setup retired 2026-10-17 (operator: 'kill wick fill, remove that setup completely')",
 }
 # Daily intelligence jobs ADDED after the 09-18 incident: the fixture ledger cannot hold a row for
