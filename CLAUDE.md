@@ -269,6 +269,10 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ## Changes Made — Recent
 
+### 2026-11-08 — #312 demote page live; the chat route closed to money commands; breadth groups
+
+- #312 (`ladder_watchdog.py`, `ladder_press.py`): a breach pages him once per episode with stats + Demote / No action (tokenized button; one rung, compare-and-set in one transaction); Demote takes effect without a restart (fresh strategy reads on the money path). His rulings: the chat assistant can NOT move a strategy, /resume, /partialnow or /timestop (typed command only; refusal + audit row); /pause and /syncnow stay open. Live probe passed (forged marker refused). #722: the breadth export gains 19 groups. Deployed `e475346e` (both, then execution).
+
 ### 2026-11-07 — breakout v1 stage 2 deployed dark; the daily breadth export live
 
 - #717 stage 2 (`broker/breakout_v1_entry.py`, `alpaca_client.get_minute_bars_range_batch`): one batched minute-bar read per tick on its OWN one-thread executor (a tick skips while a page is in flight); paper slots by order score, hold-only, the overflow waits; at 15:55 one `breakout_v1_missed_by_slots` row per name that broke out (level + volume pace) but never got a slot (#720 reads it). `breakout_v1_paper` still OFF. D8: 184 names, 8 requests, 3.1 s. SSoT `docs/setups/consolidation_breakout.md`.
