@@ -1,0 +1,10 @@
+SET default_transaction_read_only = on;
+SELECT scan_date, count(*) names, count(*) FILTER (WHERE order_score IS NULL) null_score FROM mi_breakout_v1_list WHERE scan_date >= DATE '2026-11-06' GROUP BY 1 ORDER BY 1;
+SELECT created_at AT TIME ZONE 'America/New_York' et, event_type, left(summary,200) FROM mi_audit_log WHERE event_type IN ('breakout_v1_list_run','breakout_v1_list_error') AND created_at > TIMESTAMPTZ '2026-11-09 12:00+00' ORDER BY id;
+SELECT status, count(*), min(started_at AT TIME ZONE 'America/New_York') first_et, max(started_at AT TIME ZONE 'America/New_York') last_et FROM mi_job_runs WHERE job_id = 'breakout_v1_entry' AND started_at > TIMESTAMPTZ '2026-11-09 13:00+00' GROUP BY 1;
+SELECT job_id, status, count(*) FROM mi_job_runs WHERE job_id ILIKE 'breakout_v1%' AND job_id <> 'breakout_v1_entry' AND started_at > TIMESTAMPTZ '2026-11-09 13:00+00' GROUP BY 1,2;
+SELECT event_type, count(*) FROM mi_audit_log WHERE created_at > TIMESTAMPTZ '2026-11-09 13:00+00' AND (event_type ILIKE 'breakout_v1%' OR summary ILIKE '%minute_bars_range_batch%') GROUP BY 1 ORDER BY 1;
+SELECT count(*) missed_by_slots FROM mi_audit_log WHERE event_type='breakout_v1_missed_by_slots' AND created_at > TIMESTAMPTZ '2026-11-09 13:00+00';
+SELECT count(*) breakout_trades FROM mi_live_trades WHERE signal_type='breakout_v1' AND alert_date >= DATE '2026-11-09';
+SELECT count(*) filled_breakout_rows FROM mi_live_trades WHERE signal_type='breakout_v1' AND status IN ('filled','confirmed','order_placed');
+SELECT state FROM mi_safeguard_state WHERE safeguard='breakout_v1_paper';

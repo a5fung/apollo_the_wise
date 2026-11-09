@@ -1,0 +1,33 @@
+SET
+scan_date|names|null_score
+2026-11-06|184|0
+2026-11-09|217|0
+(2 rows)
+et|event_type|left
+2026-11-09 17:55:05.570038|breakout_v1_list_run|2026-11-09: 217 name(s) on the list of 4120 universe name(s) (2804 evaluated); funds kept 39, excluded 16 (0 with no stored name); message sent; 5.6s
+(1 row)
+status|count|first_et|last_et
+success|420|2026-11-09 09:00:10.000905|2026-11-09 15:59:10.002022
+(1 row)
+job_id|status|count
+breakout_v1_list|success|1
+(1 row)
+event_type|count
+breakout_v1_list_run|1
+(1 row)
+missed_by_slots
+0
+(1 row)
+breakout_trades
+0
+(1 row)
+filled_breakout_rows
+0
+(1 row)
+state
+off
+(1 row)
+apollo-market: 0
+apollo-execution: 0
+
+[exited with code 0]
