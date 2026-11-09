@@ -31,6 +31,16 @@ YTD and the stages stay on the last close.
    shown as live.
 7. **Deploy scope:** market-agent (the job runs in the market agent; collector is already there). No execution change.
 
+## Implementation note (steps 2 + 3, 2026-11-10) — how decision 5's push actually runs
+
+The market-agent container has no git, no ssh and no deploy key (`docker/Dockerfile.market` is python-slim;
+`docker-compose.prod.yml` mounts no `.ssh`); the `github-p2` alias and the export deploy key live on the HOST, where
+the nightly export already pushes from. So the job writes the live file under the bind-mounted `logs/` dir and a host
+cron (`scripts/push_breadth_live.sh`, every minute, idempotent) does the orphan force-push — one more host cron line,
+no image or compose change, no second GitHub secret. The nightly reference is likewise copied to the host's `logs/`
+for the job to read. The job audits a push that failed or never happened at its next refresh. Rules, contract and
+paths: `docs/architecture/market_breadth_snapshot.md` §Live breadth.
+
 ## One action from him (step 4 depends on it)
 
 Create a fine-grained GitHub token with **read-only Contents access to `portfolio-app2` only**, and add it to the

@@ -163,3 +163,17 @@ def _check_early_close(cal, d_str: str) -> str | None:
         # an exchange_calendars integration break isn't invisible.
         logger.debug(f"[trading_calendar] _check_early_close failed for {d_str}: {e}")
         return None
+
+
+def previous_trading_day(d: date, max_back_days: int = 10) -> date:
+    """The last NYSE trading day strictly BEFORE `d` (#723 — the live-breadth reference must be
+    as of this day, or it is stale). Walks back through `get_market_status`, so weekends AND
+    holidays are skipped (shared.dates.last_trading_day skips weekends only); its fail-open
+    reading applies — a broken calendar library makes yesterday the answer."""
+    from datetime import timedelta
+    cur = d
+    for _ in range(max_back_days):
+        cur = cur - timedelta(days=1)
+        if get_market_status(cur).is_trading_day:
+            return cur
+    return cur

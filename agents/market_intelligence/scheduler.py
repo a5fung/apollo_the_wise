@@ -227,6 +227,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     # execution too would double-record and double-Telegram every release.
     "model_resolution_refresh", "judge_eval_divergence_check",
     "missed_job_recovery",  # #672 2026-09-20 — the ledger-derived re-run of missed daily jobs; INTELLIGENCE by construction (it excludes EXECUTION_OWNED_JOB_IDS itself and never touches the broker)
+    "breadth_live_refresh",  # #723 2026-11-10 — live market breadth (Today view): Alpaca SIP snapshot READ, one JSON file + ONE audit row WRITTEN under /app/logs; no DB table, no broker import, no money path
 })
 
 
@@ -7196,6 +7197,18 @@ async def _telegram_poll_watchdog_job():
         logger.warning(f"telegram poll watchdog error: {e}")
 
 
+async def _breadth_live_refresh_job():
+    """Every 15 min, 09:45-16:00 ET on trading days (#723). Recounts the Market Breadth page's TODAY
+    numbers (new highs / lows, advances / declines, group + theme 1-day returns) from real-time
+    Alpaca SIP snapshots against the nightly reference and writes ONE JSON file under /app/logs,
+    which the host's push_breadth_live.sh cron publishes to portfolio-app2's `live-breadth` branch.
+    The cron slot (hour 9-16, */15) fires wider than the window; the window, the trading-day check,
+    the stale-reference refusal and the page-after-three-straight-failures rule all live in
+    `breadth_live.run_scheduled`. Display only — no money path. SSoT: docs/architecture/market_breadth_snapshot.md."""
+    from agents.market_intelligence import breadth_live
+    return await breadth_live.run_scheduled()
+
+
 def start_scheduler() -> AsyncIOScheduler:
     global _scheduler, _boot_at
     _scheduler = AsyncIOScheduler(timezone="America/New_York")
@@ -7842,6 +7855,19 @@ def start_scheduler() -> AsyncIOScheduler:
         id="position_coverage_check",
         replace_existing=True,
         misfire_grace_time=300,
+    )
+
+    # #723 live market breadth (2026-11-10): every 15 min through the session. hour="9-16" +
+    # minute="*/15" fires 09:00..16:45; breadth_live.run_scheduled keeps 09:45..16:00 and trading
+    # days only (the explicit-window idiom above). Intelligence-owned: a data read, a file write,
+    # an audit row — nothing the broker or a trade reads. misfire grace is short on purpose: a
+    # refresh that missed its slot is replaced by the next one 15 minutes later.
+    _scheduler.add_job(
+        audit_wrap(_breadth_live_refresh_job, "breadth_live_refresh"),
+        CronTrigger(hour="9-16", minute="*/15", day_of_week="mon-fri", timezone="America/New_York"),
+        id="breadth_live_refresh",
+        replace_existing=True,
+        misfire_grace_time=120,
     )
 
     # Stop-coverage repair RETRY: every 5 min, 09:31-15:55 ET (#596). The
