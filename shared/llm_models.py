@@ -126,7 +126,8 @@ from shared.dates import et_today as _et_today
 # never auto-edited) ──────────────────────────────────────────────────────────
 SONNET_PIN = "claude-sonnet-5-5"   # 2026-10-29: the model every sonnet role has resolved to since 09-28 (the 30-day
                                    # "fallback pin behind" nudge); was claude-sonnet-4-6. Only the offline fallback moves.
-HAIKU_PIN = "claude-haiku-4-5-20251001"
+HAIKU_PIN = "claude-haiku-5-5"   # 2026-11-09: the model every haiku role has resolved to for 30 days (the "fallback
+                                 # pin behind" nudge); was claude-haiku-4-5-20251001. Only the offline fallback moves.
 OPUS_PIN = "claude-opus-5-5"   # 2026-10-23: the model production runs AND the passing judge eval graded
                                # (36/36 on 10-03, scripts/evals/judge_eval_pass_record.json). Earlier pins: the legacy group.
 
@@ -438,8 +439,15 @@ PRICING_PER_MTOK: dict[str, dict[str, float]] = {
     SONNET_PIN: {"input": 2.00, "output": 10.00},   # claude-sonnet-5-5 since 2026-10-29 (the explicit row below agrees)
     "claude-sonnet-4-6": {"input": 3.00, "output": 15.00},   # the pre-10-29 pin, kept priced for old rows / an override
     SONNET_4_5: {"input": 3.00, "output": 15.00},
-    HAIKU:      {"input": 1.00, "output": 5.00},
-    HAIKU_PIN:  {"input": 1.00, "output": 5.00},
+    # claude-haiku-5-5 — verified against https://platform.claude.com/docs/en/about-claude/pricing (fetched
+    # 2026-11-09): $0.10 in / $0.50 out for prompts up to 100,000 tokens, cache reads $0.01 (the usual 0.1x); a
+    # prompt OVER 100,000 tokens bills the whole call at $0.50 / $2.50 (`long_context`). It had sat on the haiku
+    # tier fallback ($1/$5, haiku-4-5's rate) since the resolver adopted it, so every haiku call was overstated 10x.
+    HAIKU:      {"input": 0.10, "output": 0.50,
+                 "long_context": {"over_tokens": 100_000, "input": 0.50, "output": 2.50}},   # = HAIKU_PIN
+    HAIKU_PIN:  {"input": 0.10, "output": 0.50,
+                 "long_context": {"over_tokens": 100_000, "input": 0.50, "output": 2.50}},
+    "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},   # the pre-11-09 pin, kept priced for old rows
     OPUS_5:     {"input": 5.00, "output": 25.00},
     OPUS_4_8:   {"input": 5.00, "output": 25.00},
     OPUS_4_7:   {"input": 5.00, "output": 25.00},
@@ -486,8 +494,12 @@ def cost_for_call(model_id: str, input_tokens: int, output_tokens: int,
     the cache (fixed 2026-09-26). Proof it excludes: theme_assignment's 30-day `input_tokens` (804k)
     is smaller than its `cache_read` (2.6M), impossible if input included the cache.
     Cache writes at 1.25x base input (5-minute cache); cache reads at the model's `cache_read_mult`
-    (0.1x unless the table says otherwise, e.g. claude-opus-5-5 at 0.05x)."""
+    (0.1x unless the table says otherwise, e.g. claude-opus-5-5 at 0.05x). A row with `long_context` (claude-haiku-5-5)
+    bills the whole call at its higher rate once the prompt (input + cache writes + cache reads) passes `over_tokens`."""
     prices = pricing_for(model_id)
+    long_ = prices.get("long_context")
+    if long_ and input_tokens + cache_creation_tokens + cache_read_tokens > long_["over_tokens"]:
+        prices = {**prices, **{k: long_[k] for k in ("input", "output")}}   # the whole call at the long-prompt rate
     base = prices["input"]
     return round(
         input_tokens / 1_000_000 * base
