@@ -2581,3 +2581,11 @@ EVIDENCE:
 - **Export:** deployed with #312 (server `e475346e`); the first export with groups (portfolio-app2 `097bdbb`, 2026-11-08 18:30 ET, as_of 11-06) carries 19 ecosystems; every existing key unchanged (universe 4,978, highs 47 / lows 255).
 - **Hand count** (`scripts/probes/_722_dod_1108/check.txt`): Consumer / retail / dining (139 unique members), Metals & mining (43), AI cloud & datacenter (15) — return, n and up equal on 1d / 5d / 21d / YTD; each member counted once (unique set built by hand from the themes' member lists). The YTD base is the last close on or before year end (the themes' rule; ARIS's is 2025-10-14).
 - **Page:** pushed on his "Push" (`5efc315`); his phone: "looks right" (2026-11-08 evening).
+
+## #312 — the demote page: a breach pages him with stats + Demote / No action (2026-11-09)
+BAR: "the shadow→paper→live ladder is CODE where a breach sends him ONE Telegram with the strategy's stats (each limit's value against its bar, closed trades, cumulative R, open positions) and two buttons — Demote moves it one rung down through `update_strategy` with a `strategy_phase_change` row; No action writes an audit row and moves nothing — proven by a forced breach in a test producing that page, and each button's effect."
+EVIDENCE:
+- **Forced breach → one page:** `tests/test_312_ladder_act_step.py::test_a_forced_breach_sends_exactly_one_page_with_every_stat_and_both_buttons` (every stat, both buttons); episode rules pinned by the next eight tests.
+- **Each button's effect:** `test_demote_press_moves_one_rung_and_writes_strategy_phase_change` (one rung via `update_strategy` + the `strategy_phase_change` row); `test_no_action_press_moves_nothing_and_audits`; double / stale / concurrent / unauthorized presses refused. The four #312 suites: 139 passed 2026-11-09.
+- **Live:** deployed `e475346e` (both, then execution) 2026-11-08; the live probe the same night (`scripts/probes/_312_live_probe_1108/`) — a forged chat marker refused, one refusal row, nothing moved.
+- **First live night** (`scripts/probes/_312_verify_1109/q.out`): ladder_watchdog 2026-11-09 16:17 ET success — 3 strategies evaluated (breakout_v1/paper, magna53/live, magna53_smallcap/paper), 0 would demote, paged none, 0 phase changes. No breach exists, so the page itself is proven by the test, as the BAR states.
