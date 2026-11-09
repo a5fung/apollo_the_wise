@@ -2941,3 +2941,5 @@ Recorded: PLAN #722.
 > "Put the market breadth indicators above the theme groups" (2026-11-08, after the #722 page render) — done on the dashboard branch: lights, then the breadth card, then groups, then the theme tracker.
 
 > "looks right" (2026-11-08, the Market Breadth groups on his phone) — #722 closed.
+
+> "qq the market breadth page, are all data live? one use case is to look at it during market hours and see what the latest breadth looks like" then "Yes, market breath should be live" (2026-11-08) — PLAN #723.
