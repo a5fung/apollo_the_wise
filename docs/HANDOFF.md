@@ -6,7 +6,20 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-11-07 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 11-06 close below.
+## 2026-11-08 (Sun) CLOSE — 🔴 RESUME HERE. Supersedes the 11-07 close below.
+
+**2026-11-08 (Sun): CLOSE run on his word ("Run close").** (Mirrors the machine-local pickup memory.)
+
+- **Board 16 → 16** (#722 closed; #723 opened). Server **`e475346e`** (deployed today on his "Go": #312 + the #722 export). Main `dd6b8206` pushed, CI green.
+- **Live:** #312 — the demote page (one page per breach episode, Demote / No action, one rung, compare-and-set, tokenized button), Demote effective without a restart, the chat route refused for /strategy, /resume, /partialnow, /timestop (his rulings; /pause and /syncnow open). Live probe passed (forged marker refused, one audit row, nothing moved). Verify Mon 16:17 ET ladder row → close.
+- **Closed:** #722 groups (19 on the first export, three by hand, his "looks right").
+- **Built, not yet live:** the 11-08 simplify merge + the rule_eras #718 row are on main, not the server (next deploy, Wed). Dashboard branch `simplify-1108-C` (`030dd40`) rides Thursday's push.
+- **#720:** the review plan + runner FROZEN (4 challenge rounds, 71 tests); Sun 11-29 = capture, run, one page.
+- **#723 live market breadth (his ask, Today view only):** pulled into the week — design Mon, reference + intraday job Tue-Wed, deploy Wed 21:15 ET on his go, page Thu, live check Fri.
+- **Personal:** the Positions treemap pushed (`5efc315`).
+- **Week:** the WEEK PLAN section at the top of PLAN.md.
+
+## 2026-11-07 (Sat) CLOSE — (superseded by 11-08 above)
 
 **2026-11-07 (Sat): CLOSE run on his word ("Run close").** (Mirrors the machine-local pickup memory.)
 

@@ -76,16 +76,14 @@ myself.
   a gate built 09-06 precisely so the cadence is not my memory). He confirmed the shape himself
   2026-09-08: *"what you are still waiting on me legitimately is the labeled charts."*
 
-## 🗓 WEEKEND PLAN — Sat 11-07 / Sun 11-08 (his 11-06: "Capacity is back for the week, let's complete today's work and prep for weekend")
+## 🗓 WEEK PLAN — Mon 11-09 .. Sun 11-15 (set at the Sun 11-08 CLOSE)
 
-Priority order. One heavy card at a time where two would touch the same files; every rule, paper or live-money change stays his call (THE LINE); deploys on his go (weekends unrestricted, one service at a time, box polled).
-- **Sat 11-07 — DONE:** #717 stage 2 BUILT (3 review rounds) + DEPLOYED DARK on his Go (server `359fa1d7`, D8 met; verify Mon 11-09) · his chart session (breakout sheet + #594 sample 7 graded and recorded; the shelf lead held again, 0.686) · #719 Market Breadth CLOSED (independent recount matched; his "Breath looks good") · #721 market warning light CLOSED (his phone) · #210 CLOSED (TradingView added a catalyst on 1 of 36 alerts) · #491 CLOSED (pulled from Sunday) · the simplify pass (main `331c196c`, live with Sunday's deploy).
-- **Sun 11-08 — 1. #312 last round** (Fable → Opus): close /resume, /partialnow, /timestop to the chat route (his 11-07 ruling), the final review's lows, EXPECT on #312; rebase on main (the simplify merge touched breakout_v1_entry.py); full suite; merge.
-- **Sun 11-08 — 2. #722 theme groups + the compact side-by-side warning lights** (his 11-07 "Aligned" + layout rule): export adds the ecosystem rows, the page leads with group tiles; phone-width mock first.
-- **Sun 11-08 — 3. ONE deploy** on his go: market-agent → orchestrator → execution (carries #312, #722's export, the simplify cleanups); then the dashboard "push" (#722 page + the simplify branch `simplify-1107-C`).
-- **Sun 11-08 — 4. #314 re-read** (main loop, read-only): the parabolic-short nightly shadow rows + any climax.
-- **Personal, no PLAN items:** Sun 11-08 — the Positions tab in ONE build (his 11-07 "do it together"): the dollar-size heat-map mock shown first, then the simplified tile (one R, stop in %, no alert R, a legend) + $ amounts; the remember-this-device login.
-- **Mon 11-09:** #717 stage 2 verify (the 17:55 list message without /bgrade, every entry run a success, 0 batched reads with the switch off); the 12:00 ET window only if a weekend deploy slipped; #146's weekly flag re-read Fri 11-13.
+Weekend 11-07/08 DONE: #717 stage 2 deployed dark; #312 demote page + the chat route closed (live probe passed) deployed `e475346e`; #719, #721, #722 closed (breadth tab, warning lights, groups — his phone); #210, #491 closed; #720's plan frozen (runs 11-29); the Positions treemap pushed; two simplify passes.
+- **Mon 11-09:** #312 verify (16:17 ET ladder row, no page → close); #717 stage 2 verify (17:55 list message without /bgrade, entry runs success, 0 batched reads with the switch off); #723 step 1 design (evening, read-only).
+- **Tue 11-10 – Wed 11-11:** #723 steps 2-3 (reference file, intraday job) → ONE deploy Wed 21:15 ET on his go (market-agent + execution: also carries the 11-08 simplify merge and the rule_eras #718 row).
+- **Thu 11-12:** #723 step 4 (the page's live Today view, on top of dashboard branch `simplify-1108-C`) → his "push".
+- **Fri 11-13:** #723 live check in session; #146 weekly flag re-read.
+- **Sat 11-14 / Sun 11-15:** #314 re-read; the next chart session (#594 sample 8 + a breakout sheet) if he wants it.
 
 ## Launch — 6/22 GO/NO-GO (the long-horizon plan, as dated tasks · SSoT-spec: docs/roadmap/launch-2026-06-22.md)
 
