@@ -82,3 +82,9 @@ selection). Returns are read only as the tail test the running read already uses
 **HOLDS again, as pre-registered (34e02d42) — DIRECTIONAL ONLY.** On his 12 sample-7 rulings (7 yes / 5 no, 35 pairs, none dropped) the chance a yes's lower pullback low sits closer to (or above) the shelf than a no's is **0.686** (bar 0.65), weaker than sample 6's 0.829; median yes +0.25 daily ranges from the shelf, no −7.83. Pooled over samples 6 + 7 (24 charts, 144 pairs, description only): 0.750.
 - Against the lead: SAIC (bad, "choppy") held the shelf (+2.6); MED (good) and BULL (ok) sat far below it (−10.2, −15.3) — a choppy base can hold a shelf, and two of his yes calls had no clean run or breakout for the shelf to come from (`structure` = no_run / no_breakout).
 - **What this does not answer:** unchanged from PRE-REGISTRATION 4 — the tail, returns, and any verdict on 24 charts.
+
+## PRE-REGISTRATION 5 — the shelf-distance lead on sample 8 (written 2026-11-09, BEFORE it is computed on them)
+
+- **Method unchanged from PRE-REGISTRATION 3/4** (`f3_def.py::f3_new`, `STATED`, imported; ADR20 from `_533_nbis_structure_encoder.adr20_pct`; the chance a yes's `dmin` is above a no's, ties 0.5; NULLs dropped and counted).
+- **Fresh labels:** his #594 sample 8 rulings (2026-11-09, outcome-blind, ruling_date 2026-11-09): yes = GOOD / OKISH (5: ATRO, WPP, SITM, EFXT, PICS); no = BAD (7: FLR, CRK, YEXT, WOR, AMRC, VOYG, CNH) → 35 pairs. Bars: `scripts/probes/_594_sample8_1109/q2_bars.out`.
+- **Bar:** ≥ 0.65 → holds (directional only); < 0.65 → does not replicate on this sample, reported as such. The pooled figure over samples 6-8 (36 charts) beside it, description only.
