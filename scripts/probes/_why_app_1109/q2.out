@@ -1,0 +1,14 @@
+SET
+raw_grade|sec_title|left
+strong|8-K filed 2026-11-04, items 2.02,5.07,9.01|APP gapped up in after-hours trading after AppLovin’s Q3 results beat expectations and its Q4 outlook came in ahead of consensus.
+
+Revenue rose 55% year over year to about $2.185 billion, and diluted EPS was $4.30 versus the $4.03 analysts expected. Net income climbed 72% to about $1.44 billion. Management said a partial rollout of upgraded AI advertising models improved advertiser results and encouraged higher spending; it also said the rollout still has room to expand. The company added $3.2 billion to its buyback authorization, bringing the total to $3.6 billion.
+
+The key catalyst was the combination of a strong earnings beat and upbeat guidance, reinforced by evidence that the AI ad-mode
+(1 row)
+et|event_type|left
+2026-11-05 07:00:03.650551|ep_rt_admit|APP rt 20.0% and delayed 19.2% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+2026-11-05 07:00:21.941582|ep_catalyst_provenance|APP strong direct=True
+2026-11-05 07:00:39.68456|catalyst_earnings_revenue_weak_downgrade|APP: strong → routine (earnings catalyst, rubric_composite_20.6_below_22_label_routine)
+2026-11-05 07:10:07.225731|catalyst_earnings_boost|APP: routine → strong (earnings_day, source=earnings_dates)
+(4 rows)

@@ -1,0 +1,46 @@
+SET
+t|catalyst_quality|llm_catalyst_quality|ep_score|filter_reason|reject_stage
+2026-11-05 07:00:02.07113|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 07:10:00.036123|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 07:15:00.034986|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 07:20:00.081483|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 07:25:00.02761|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 07:30:00.02816|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 07:35:00.032153|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 07:40:00.027432|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 07:45:00.038182|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 07:50:00.115019|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 07:55:00.0358|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:00:00.028757|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:05:00.037525|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:10:00.02668|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:15:00.035448|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:20:00.09605|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:25:00.025604|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:30:00.030816|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:35:00.030652|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:40:00.032873|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:45:00.027598|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:50:00.104133|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 08:55:00.029981|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:00:00.08259|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:05:00.033969|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:10:00.038852|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:15:00.036836|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:20:00.104971|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:25:00.044945|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:30:00.061034|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:31:00.025716|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:35:00.078973|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:40:00.077174|routine|routine|46.2|score 46 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:45:00.060152|routine|routine|50|score 50 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:50:00.060057|routine|routine|52.5|score 52 < bar 65 (catalyst=routine)|score_bar
+2026-11-05 09:55:00.053331|routine|routine|52.5|score 52 < bar 65 (catalyst=routine)|score_bar
+(36 rows)
+et|event_type|left|left
+2026-11-05 07:00:03.650551|ep_rt_admit|APP rt 20.0% and delayed 19.2% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit|{"ticker": "APP", "rt_gap": 19.96, "delayed_gap": 19.23, "tick_et": "07:00", "authoritative": true}
+2026-11-05 07:00:21.941582|ep_catalyst_provenance|APP strong direct=True|{"ticker": "APP", "alert_date": "2026-11-05", "catalyst_quality": "strong", "sources": {"sec_8k": 1, "benzinga_pr": 3, "web_perplexity": 1}, "has_direct_source": true}
+2026-11-05 07:00:39.68456|catalyst_earnings_revenue_weak_downgrade|APP: strong → routine (earnings catalyst, rubric_composite_20.6_below_22_label_routine)|{"ticker": "APP", "alert_date": "2026-11-05", "from_quality": "strong", "to_quality": "routine", "reason": "rubric_composite_20.6_below_22_label_routine", "q_revenue_yoy_pct": 55.5, "extraction_quality": "high", "extraction_reasoning": "Polygon (Motley Fool), FMP, Perplexity (SEC 8-K) and fiscal.ai all report Q3 2026 revenue of about $2.18B, up 55-55.5% YoY.", "extraction_sources": ["polygon", "fm
+2026-11-05 07:00:41.831348|ep_theme_fit_llm_proposed|Sonnet proposed 0 assignment(s) (batch 1/1, advisor_calls=0)|{"advisor_calls": 0, "proposals": [], "batch_no": 1, "n_batches": 1, "batch_size": 1, "candidate_pool_size": 1, "candidate_tickers": ["APP"]}
+2026-11-05 07:10:07.225731|catalyst_earnings_boost|APP: routine → strong (earnings_day, source=earnings_dates)|{"ticker": "APP", "alert_date": "2026-11-05", "from_quality": "routine", "to_quality": "strong", "earnings_source": "earnings_dates", "gap_pct": 20.88}
+(5 rows)

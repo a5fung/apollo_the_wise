@@ -1,0 +1,50 @@
+SET
+column_name
+id
+scan_date
+ticker
+gap_pct
+prev_close
+rel_volume
+filter_reason
+ep_score
+score_tier
+catalyst_quality
+created_at
+scan_time_et
+rank_by_gap
+projected_vol_multiple
+pm_rvol
+adv
+adv_source
+minutes_since_open
+gap_pct_rt
+gap_pct_delayed
+price_source
+rt_price_age_s
+prev_close_alpaca
+reject_stage
+current_price
+prev_day_volume
+today_volume
+pm_rvol_baseline_n
+days_since_prior_alert
+extension_pct
+quality_adv_dollar
+atr_pct
+market_cap
+vol_percentile
+prior_3m_change
+float_shares
+in_active_theme
+llm_catalyst_quality
+score_breakdown
+ep_bar
+score_side
+rank_by_prescore
+(42 rows)
+id|scan_date|ticker|gap_pct|prev_close|rel_volume|filter_reason|ep_score|score_tier|catalyst_quality|created_at|scan_time_et|rank_by_gap|projected_vol_multiple|pm_rvol|adv|adv_source|minutes_since_open|gap_pct_rt|gap_pct_delayed|price_source|rt_price_age_s|prev_close_alpaca|reject_stage|current_price|prev_day_volume|today_volume|pm_rvol_baseline_n|days_since_prior_alert|extension_pct|quality_adv_dollar|atr_pct|market_cap|vol_percentile|prior_3m_change|float_shares|in_active_theme|llm_catalyst_quality|score_breakdown|ep_bar|score_side|rank_by_prescore
+208064|2026-11-05|APP|33.26|271.75|1.6|score 52 < bar 65 (catalyst=routine)|52.5||routine|2026-11-05 14:55:50.442912+00|2026-11-05 14:55:00.053331+00|2|25|11.981|4372157.82094|polygon_20d|25|33.26|30.5|alpaca_sip|-6.8|271.75|score_bar|362.14|14528297|6976225|22||18.93|977728746.465|4.718907872256536|91291566080|100|-21.64|265050285|f|routine|{"gap": 10, "float": 0, "catalyst": 0, "liquidity": 15, "theme_bonus": 0, "vol_conviction": 5}|65|separation|2
+207855|2026-11-05|APP|30.56|271.75|1.35|score 52 < bar 65 (catalyst=routine)|52.5||routine|2026-11-05 14:50:52.134894+00|2026-11-05 14:50:00.060057+00|2|26.3|10.879|4372157.82094|polygon_20d|20|30.56|30.35|alpaca_sip|-7.5|271.75|score_bar|354.79|14528297|5923232|22||18.93|977728746.465|4.718907872256536|91291566080|100|-21.64|265050285|f|routine|{"gap": 10, "float": 0, "catalyst": 0, "liquidity": 15, "theme_bonus": 0, "vol_conviction": 5}|65|separation|2
+207650|2026-11-05|APP|29.65|271.75|1.2|score 50 < bar 65 (catalyst=routine)|50||routine|2026-11-05 14:45:53.172414+00|2026-11-05 14:45:00.060152+00|2|31.2|10.896|4372157.82094|polygon_20d|15|29.65|28.79|alpaca_sip|-8|271.75|score_bar|352.33|14528297|5262115|22||18.93|977728746.465|4.718907872256536|91291566080|85.7|-21.64|265050285|f|routine|{"gap": 10, "float": 0, "catalyst": 0, "liquidity": 15, "theme_bonus": 0, "vol_conviction": 3}|65|separation|2
+(3 rows)
