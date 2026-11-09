@@ -10,7 +10,7 @@ NOT in play (operator 2026-06-16, corrected repeatedly):
     surfaced as "in development" drill-down buttons, never the in-play list.
   • **9M is the stock FILTER** (the universe that identifies candidates which feed the real
     entries) — NOT an entry. So 9M Day-2 is not in play; raw 9M + the sugar-baby cohort are
-    universe, behind /9m and /sugarbabies.
+    universe, behind /9m.
 
 The board is small / sometimes empty BY DESIGN — that's the honest state while entries are
 still being completed. Do NOT pad it. As each entry graduates shadow→paper, its names earn
@@ -54,14 +54,14 @@ def render_ideas_summary(*, today, magna53, sip_rows) -> str:
     lines.append("🔬 *In development* (not yet in play — completing):")
     lines.append("  ⏱️ anticipation · 🚩 flag/coil")
     lines.append(_SEP)
-    lines.append("_Tap a button to observe · 9M = stock filter → /9m · watchlist → /sugarbabies_")
+    lines.append("_Tap a button to observe · 9M = stock filter → /9m_")
     return "\n".join(lines)
 
 
 async def build_ideas_text() -> str:
     """Fetch fail-open and render. Only graduated entries feed the in-play list (MAGNA53 EP +
     any apollo_eligible substrate row); shadow entries + the 9M universe are NOT fetched here —
-    they're observed via the drill-down buttons / /9m / /sugarbabies."""
+    they're observed via the drill-down buttons / /9m."""
     import asyncio as _aio
     from agents.market_intelligence.collector import et_today, last_trading_day
     from agents.market_intelligence.db import get_stocks_in_play, get_today_ep_alerts

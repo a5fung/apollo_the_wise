@@ -2864,58 +2864,6 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Drill-down: `/flags TICKER` for 14-day history_")
         return self._ok(request, result="\n".join(lines))
 
-    async def _handle_sugar_babies_query(self, request: AgentRequest) -> AgentResponse:
-        """`/sugarbabies` — current Pradeep-class persistent watchlist.
-
-        Tickers that printed 9M+ EOD volume ≥3 times in trailing 180 days.
-        Refreshed daily 5:22 PM ET via `_sugar_babies_cohort_refresh_job`.
-        Pure observational watchlist — no auto-entry. Operator decides when
-        a member shows a VCP / tight-base setup worth taking.
-        """
-        from agents.market_intelligence.db import get_sugar_babies_cohort_latest, get_pool
-
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            latest = await conn.fetchval("SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort")
-        if not latest:
-            return self._ok(
-                request,
-                result="_Sugar Babies cohort empty. Daily 5:22 PM ET refresh will populate._",
-            )
-        rows = await get_sugar_babies_cohort_latest(limit=60)
-        if not rows:
-            return self._ok(request, result=f"_No tickers in cohort on {latest}._")
-        # Stage emoji vocabulary matches /flags handler conventions
-        # (🎯 TRIGGERED / 🌀 COILED / 🔧 TIGHTENING). Space-pad when no
-        # recent flag stage so column alignment is preserved.
-        stage_emoji = {"TRIGGERED": "🎯", "COILED": "🌀", "TIGHTENING": "🔧"}
-        ripe_count = sum(1 for r in rows if r.get("current_flag_stage"))
-        lines = [
-            f"🍬 *Sugar Babies — Pradeep persistent cohort* ({latest})",
-            f"_{len(rows)} tickers · {ripe_count} ripe (🎯=breakout 🌀=coiled 🔧=tightening)_",
-            "",
-        ]
-        for r in rows[:30]:  # Pradeep watchlist size ~25-30
-            days_since = (latest - r["last_9m_alert"]).days
-            gap = r.get("latest_gap_pct")
-            gap_s = f" · gap {float(gap):.1f}%" if gap is not None else ""
-            stage = r.get("current_flag_stage")
-            emoji = stage_emoji.get(stage, " ")  # space-pad alignment
-            base_age = r.get("flag_base_age")
-            stage_s = (
-                f" · {stage} {base_age}d"
-                if stage and base_age is not None
-                else (f" · {stage}" if stage else "")
-            )
-            lines.append(
-                f"  {emoji} `{r['ticker']:<6}` {r['n']}× 9M · last {days_since}d ago{gap_s}{stage_s}"
-            )
-        if len(rows) > 30:
-            lines.append(f"  …{len(rows) - 30} more")
-        lines.append("")
-        lines.append("_Watchlist only — entry via VCP/tight-base setup is operator discretion._")
-        return self._ok(request, result="\n".join(lines))
-
     async def _handle_stocks_in_play_query(self, request: AgentRequest) -> AgentResponse:
         """`/inplay` — unified Stocks-in-Play surface (#99, ADR 0004 Phase 1).
 
@@ -6440,8 +6388,6 @@ class MarketIntelligenceAgent(BaseAgent):
             "/htf":            self._handle_flag_query,   # primary (renamed flag→HTF, #356)
             "/flags":          self._handle_flag_query,   # alias (muscle memory)
             "/flag":           self._handle_flag_query,   # alias
-            "/sugarbabies":    self._handle_sugar_babies_query,
-            "/sugarbaby":      self._handle_sugar_babies_query,
             "/timestop":       self._handle_time_stop_command,
             "/partialnow":     self._handle_partial_now_command,
             "/syncnow":        self._handle_sync_now_command,

@@ -210,7 +210,7 @@ held at the httpx layer (`shared/telegram_hold.py`). Exercise / verify: `scripts
 - **No LLM** — pure quantitative virgin 9M detection (Pradeep Bonde). **Every threshold, the gate list, the Sugar Baby definition and stop placement live in `docs/setups/ninem.md` — read it before touching any of them.**
 - **Intraday and EOD use identical filters** — any divergence creates phantom sugar babies.
 - **Stop = prior day's low** (breakout day's low), NOT ORB low or ATR-based.
-- **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_day2_candidates` (EOD), `mi_sugar_babies_cohort` (the persistent Pradeep cohort)
+- **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_day2_candidates` (EOD), `mi_sugar_babies_cohort` (the persistent Pradeep cohort — RETIRED 2026-11-09, history only)
 - **Anticipation cadence carve-out**: silent anticipations hit DB/audit only; Telegram only when gap ≥ 10% OR proj_vol ≥ 25M.
 - Do NOT import from `ep_detector.py` — use `collector.get_snapshot_all()` directly in `ninem_detector.py`
 

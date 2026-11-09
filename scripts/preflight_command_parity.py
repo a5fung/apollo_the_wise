@@ -59,8 +59,6 @@ HIDDEN_OK = {
     "strategy",
     "why",
     "watchlist",
-    # Singular aliases paired with plural BotCommand
-    "sugarbaby",
     # /flags + /flag — legacy aliases of /htf (renamed flag→HTF, #356 2026-06-27);
     # kept callable for muscle memory + old pinned messages, off the autocomplete menu.
     "flags",
@@ -91,7 +89,6 @@ HIDDEN_OK = {
     "detectors",
     "htf",
     "anticipation",
-    "sugarbabies",
     "review",
     "spotted",
     "promotetheme",
