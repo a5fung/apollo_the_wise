@@ -134,6 +134,7 @@ from agents.market_intelligence.constants import (
     LIVE_TRADING_ENABLED,
     MAX_CONCURRENT_LIVE_POSITIONS,
     MAX_POSITION_PCT,
+    NO_SUBMIT_PHASES,
     RISK_PCT,
     mode_prefix,
     resolve_account_mode_for_strategy,
@@ -399,11 +400,18 @@ async def prepare_breakout_order(alert: dict, orb_bar: dict, regime_record: dict
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # 3. Walls, pre-flight, pages
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _once(key: tuple) -> bool:
+    """True the first time `key` is seen this process (in-memory: a restart may see it again)."""
+    if key in _paged:
+        return False
+    _paged.add(key)
+    return True
+
+
 async def _page_once(key: tuple, text: str) -> None:
     """A FAILURE page, paper-prefixed, once per key (in-memory: a restart may page again). Never raises."""
-    if key in _paged:
+    if not _once(key):
         return
-    _paged.add(key)
     try:
         from agents.market_intelligence.briefing import send_telegram_message
         await send_telegram_message(f"{mode_prefix(ACCOUNT_MODE)}{text}")
@@ -739,11 +747,10 @@ async def _strategy_state(today: date) -> tuple[str, str]:
     if mode != ACCOUNT_MODE:
         msg = (f"{STRATEGY_ID} phase={strategy.phase!r} resolves to {mode!r} — breakout v1 orders on PAPER only; "
                f"refused")
-        if strategy.phase in ("shadow", "deprecated"):
+        if strategy.phase in NO_SUBMIT_PHASES:
             # His OFF rungs (where his Demote press lands it): no money anywhere, so ONE audit row a day and no
             # page — the small-cap lane's rule (final review 2026-11-08 F6; was a row every minute + a daily page).
-            if ("off_rung", today) not in _paged:
-                _paged.add(("off_rung", today))
+            if _once(("off_rung", today)):
                 await log_audit_event("breakout_v1_refused", f"{today.isoformat()}: {msg}")
             return STATE_REFUSED, msg
         await log_audit_event("breakout_v1_refused", f"{today.isoformat()}: {msg}")

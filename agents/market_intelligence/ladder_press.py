@@ -58,14 +58,15 @@ import logging
 import os
 from datetime import datetime
 
-from agents.market_intelligence.ladder_watchdog import DEMOTE_TO, _CLOSE_EPISODE_SQL
+from agents.market_intelligence.audit_events import STRATEGY_PHASE_CHANGE
+from agents.market_intelligence.constants import DEMOTE_TO
+from agents.market_intelligence.ladder_watchdog import end_episode
 from shared.dates import _ET
 
 logger = logging.getLogger(__name__)
 
 NO_ACTION_EVENT = "ladder_press_no_action"
 REFUSED_EVENT = "ladder_press_refused"
-PHASE_CHANGE_EVENT = "strategy_phase_change"     # the same event the typed /strategy <id> demote writes
 ACTIONS = ("demote", "noaction")
 
 ALLOCATOR_NOTE = ("no pending proposal to zero — the L3 allocation_proposals store is unbuilt "
@@ -155,9 +156,9 @@ async def _demote_on_page(conn, page: dict, *, user_id: int, pressed_at: str) ->
                                   f"is stale and nothing was changed. /strategy {sid} shows where it is.")), None
     await conn.execute(_DECIDE_PAGE_SQL, "demote", user_id, page["id"])
     # The episode closes on the day of the PRESS (it may land nights after the page), by his demote.
-    await conn.execute(_CLOSE_EPISODE_SQL, datetime.now(_ET).date(), "demote", sid, page["episode_on"])
+    await end_episode(conn, sid, page["episode_on"], datetime.now(_ET).date(), "demote")
     await log_audit_event(
-        PHASE_CHANGE_EVENT,
+        STRATEGY_PHASE_CHANGE,      # the same event the typed /strategy <id> demote writes
         f"{sid} demoted {frm} → {to} (ladder page #{page['id']}, pressed by {user_id})",
         json.dumps({"phase_from": frm, "phase_to": to, "source": "ladder_press",
                     "page_id": page["id"], "page_night": page["as_of"], "pressed_by": user_id,

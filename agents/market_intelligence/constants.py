@@ -2,6 +2,8 @@
 
 import os
 import re
+
+from agents.market_intelligence.audit_events import STRATEGY_MODE_RESOLVE_ERROR
 from shared.env_flags import env_is_true
 
 # ── Position sizing ──────────────────────────────────────────────────────────
@@ -302,7 +304,7 @@ async def resolve_strategy_mode_nonfatal(strategy_id: str) -> "str | None":
         try:
             from agents.market_intelligence.db import log_audit_event
             await log_audit_event(
-                "strategy_mode_resolve_error",
+                STRATEGY_MODE_RESOLVE_ERROR,
                 summary=(f"{strategy_id}: account-mode label resolve failed — "
                          f"alerts fall back to the legacy global prefix"),
                 detail=str(e)[:400],

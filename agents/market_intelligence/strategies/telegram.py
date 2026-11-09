@@ -34,7 +34,7 @@ import json
 import logging
 from datetime import date, timedelta
 
-from agents.market_intelligence.audit_events import STRATEGY_COMMAND_REFUSED
+from agents.market_intelligence.audit_events import STRATEGY_COMMAND_REFUSED, STRATEGY_PHASE_CHANGE
 from agents.market_intelligence.constants import DEMOTE_TO
 from agents.market_intelligence.db import log_audit_event
 from agents.market_intelligence.strategies.adapters import get_outcomes
@@ -52,7 +52,6 @@ from shared.models import ORIGIN_OPERATOR_COMMAND, is_operator_command
 
 logger = logging.getLogger(__name__)
 
-_DEMOTE_BACK = DEMOTE_TO      # the one rung map (constants.py) — the ladder's Demote button steps by it too
 _VALID_ACTIONS = {"enable", "disable", "promote", "demote"}
 REFUSAL_TEXT = ("Not done — strategy changes need your typed /strategy command or the page button. "
                 "The chat assistant cannot move a strategy's phase or switch; nothing was changed.")
@@ -176,7 +175,7 @@ async def _do_enable_disable(strategy_id: str, *, enable: bool) -> str:
         return f"Update failed for `{strategy_id}`."
     verb = "enabled" if enable else "disabled"
     await log_audit_event(
-        "strategy_phase_change",
+        STRATEGY_PHASE_CHANGE,
         f"{strategy_id} {verb}",
         detail=json.dumps({"enabled_from": s.enabled, "enabled_to": enable}),
     )
@@ -197,7 +196,7 @@ async def _do_promote(strategy_id: str) -> str:
     if updated is None:
         return f"Promotion failed for `{strategy_id}`."
     await log_audit_event(
-        "strategy_phase_change",
+        STRATEGY_PHASE_CHANGE,
         f"{strategy_id} promoted {s.phase} → {v.next_phase}",
         detail=json.dumps({
             "phase_from": s.phase,
@@ -213,14 +212,14 @@ async def _do_demote(strategy_id: str) -> str:
     s = await get_strategy(strategy_id)
     if s is None:
         return f"Unknown strategy `{strategy_id}`."
-    target = _DEMOTE_BACK.get(s.phase)
+    target = DEMOTE_TO.get(s.phase)   # the one rung map (constants.py) — the ladder's Demote button steps by it too
     if target is None:
         return f"`{strategy_id}` already at bottom (`shadow`) — cannot demote."
     updated = await update_strategy(strategy_id, phase=target)
     if updated is None:
         return f"Demotion failed for `{strategy_id}`."
     await log_audit_event(
-        "strategy_phase_change",
+        STRATEGY_PHASE_CHANGE,
         f"{strategy_id} demoted {s.phase} → {target}",
         detail=json.dumps({"phase_from": s.phase, "phase_to": target}),
     )

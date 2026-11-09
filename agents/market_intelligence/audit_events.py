@@ -101,6 +101,10 @@ SUGAR_BABY_CONVERGENCE_CHECK_FAILED = "sugar_baby_convergence_check_failed"
 # ── Strategy lifecycle ──────────────────────────────────────────────────────
 STRATEGY_PHASE_CHANGE = "strategy_phase_change"
 STRATEGY_DISABLED_SKIP = "strategy_disabled_skip"
+# A strategy's account mode could not be resolved (the fresh row unreadable in the entry funnel, or a
+# label resolve that raised). Its `_error` suffix lands it in the morning error banner. Written by
+# `broker/entry_pipeline.py` (twice) and `constants.resolve_strategy_mode_nonfatal`.
+STRATEGY_MODE_RESOLVE_ERROR = "strategy_mode_resolve_error"
 # #312 round 3 (his ruling 2026-11-07 "Close it"): a `/strategy <id> promote|demote|enable|disable`
 # that did NOT arrive by his typed command (the chat assistant's tool, or a caller with no origin)
 # — refused, nothing moved. Written by `strategies/telegram.py::handle_strategy_action`.

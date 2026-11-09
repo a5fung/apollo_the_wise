@@ -639,21 +639,25 @@ async def test_a_live_positions_stop_is_checked_on_the_live_account_after_demote
 ROOTS = ("agents", "core", "channels", "shared")
 
 
+def _parents(tree) -> dict:
+    """child node -> parent node, over the whole tree."""
+    return {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+
+
+def _call_name(call: ast.Call) -> str | None:
+    """The called function's bare name (`f(...)` or `x.f(...)`), else None."""
+    f = call.func
+    return f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
+
+
 def _update_strategy_calls(tree):
     """Every call of the one writer `update_strategy` in `tree`, whatever it passes — `phase=`, `enabled=`,
     `live_real_enabled=`, or a `**kw` splat (final review 2026-11-07, finding 3: the pin used to see `phase=`
     calls only, so an `enabled=` or `**kw` writer elsewhere passed the suite) → (enclosing function, carries
     `phase=`)."""
-    parents = {}
+    parents = _parents(tree)
     for node in ast.walk(tree):
-        for child in ast.iter_child_nodes(node):
-            parents[child] = node
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        f = node.func
-        name = f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None
-        if name != "update_strategy":
+        if not isinstance(node, ast.Call) or _call_name(node) != "update_strategy":
             continue
         cur, fn = node, None
         while cur in parents:
@@ -670,10 +674,7 @@ _DB_VERBS = {"execute", "executemany", "fetch", "fetchrow", "fetchval"}
 def _raw_phase_updates(tree):
     """Every string constant reading `UPDATE mi_strategies … phase …` that is handed DIRECTLY to a
     DB verb (`conn.execute(<sql>)` etc.) — a raw phase write, as opposed to a message or a comment."""
-    parents = {}
-    for node in ast.walk(tree):
-        for child in ast.iter_child_nodes(node):
-            parents[child] = node
+    parents = _parents(tree)
     for n in ast.walk(tree):
         if not (isinstance(n, ast.Constant) and isinstance(n.value, str)):
             continue
@@ -681,21 +682,12 @@ def _raw_phase_updates(tree):
         if "update mi_strategies" not in flat or "phase" not in flat:
             continue
         parent = parents.get(n)
-        if isinstance(parent, ast.Call) and n in parent.args:
-            f = parent.func
-            name = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", None)
-            if name in _DB_VERBS:
-                yield flat
+        if isinstance(parent, ast.Call) and n in parent.args and _call_name(parent) in _DB_VERBS:
+            yield flat
 
 
 def _called_names(fn: ast.AST) -> set[str]:
-    out = set()
-    for n in ast.walk(fn):
-        if isinstance(n, ast.Call):
-            f = n.func
-            out.add(f.id if isinstance(f, ast.Name) else f.attr if isinstance(f, ast.Attribute) else None)
-    out.discard(None)
-    return out
+    return {_call_name(n) for n in ast.walk(fn) if isinstance(n, ast.Call)} - {None}
 
 
 def test_only_the_operators_three_paths_write_a_phase():
