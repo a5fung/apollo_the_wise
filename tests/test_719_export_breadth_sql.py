@@ -412,7 +412,9 @@ def rig(tmp_path):
     (bin_dir / "docker").write_text(_FAKE_DOCKER)
     (bin_dir / "docker").chmod(0o755)
     env.update(PATH=f"{bin_dir}{os.pathsep}{env['PATH']}", APOLLO_DIR=str(REPO), EXPORT_DIR=str(dest),
-               FAKE_DOCKER_LOG=str(tmp_path / "docker.log"))
+               FAKE_DOCKER_LOG=str(tmp_path / "docker.log"),
+               # #723: the script also copies the live-breadth reference to $APOLLO/logs — keep that out of the repo
+               BREADTH_REFERENCE_COPY=str(tmp_path / "hostlogs" / "apollo_breadth_reference.json"))
 
     def run(**fake):
         e = {**env, **fake}

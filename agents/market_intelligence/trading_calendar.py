@@ -163,3 +163,33 @@ def _check_early_close(cal, d_str: str) -> str | None:
         # an exchange_calendars integration break isn't invisible.
         logger.debug(f"[trading_calendar] _check_early_close failed for {d_str}: {e}")
         return None
+
+
+def session_close_time(d: date):
+    """The regular session's close on `d` as an ET `datetime.time` — 13:00 on an NYSE half day (the day after
+    Thanksgiving, Christmas Eve), 16:00 otherwise — from the same exchange_calendars ruleset `get_market_status`
+    uses (#723: the live-breadth window ends here, so its stamp stops moving when the market shuts). Fail-open to
+    16:00 on a calendar error, like `get_market_status`: the worst case is a half day refreshed until 16:00 under a
+    moving stamp, never a session cut short. (`broker/hour_bar_walk.session_close_et` is the same read for the
+    execution side; intelligence-owned jobs must not import from broker/.)"""
+    from datetime import time
+    from zoneinfo import ZoneInfo
+    try:
+        return _get_nyse_calendar().session_close(d.isoformat()).tz_convert(ZoneInfo("America/New_York")).time()
+    except Exception as e:  # loud-ok: logged; the 16:00 fallback can only lengthen a window, never shorten one
+        logger.warning(f"[trading_calendar] session close for {d} unreadable ({e}); using 16:00")
+        return time(16, 0)
+
+
+def previous_trading_day(d: date, max_back_days: int = 10) -> date:
+    """The last NYSE trading day strictly BEFORE `d` (#723 — the live-breadth reference must be
+    as of this day, or it is stale). Walks back through `get_market_status`, so weekends AND
+    holidays are skipped (shared.dates.last_trading_day skips weekends only); its fail-open
+    reading applies — a broken calendar library makes yesterday the answer."""
+    from datetime import timedelta
+    cur = d
+    for _ in range(max_back_days):
+        cur = cur - timedelta(days=1)
+        if get_market_status(cur).is_trading_day:
+            return cur
+    return cur

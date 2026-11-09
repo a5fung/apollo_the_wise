@@ -160,3 +160,6 @@ scripts/probes/**/*_14h.*
 # #715 / #714 studies (2026-10-31): large captures, reproducible from capture/*.sql
 scripts/probes/_715_study_1031/capture/c2_bars.out
 scripts/probes/_714_study_1031/out/30_daily_bars.out.gz
+# #723 live breadth: the nightly reference copy and the intraday job's output + push status (host-mounted at /app/logs)
+logs/apollo_breadth_reference.json
+logs/breadth_live/

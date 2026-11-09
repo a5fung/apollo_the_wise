@@ -301,7 +301,9 @@ async def get_snapshot_all(caller: str = "") -> dict[str, dict]:
 
 async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0,
                                      concurrency: int = 1,
-                                     stats: dict | None = None) -> dict[str, dict]:
+                                     stats: dict | None = None,
+                                     executor=None,
+                                     max_consecutive_failures: int | None = None) -> dict[str, dict]:
     """#489 real-time SIP snapshots for a bounded EP Pass-2 symbol list (the delayed Polygon
     detection feed's real-time confirm). Batches at <=100 symbols/call (operator-ruled batch
     size, #490 fork 5 — probe 200 in RT-0 before adopting). Returns
@@ -320,6 +322,16 @@ async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0,
         under an asyncio.Semaphore — the §5.2 wall-clock margin option.
       - `stats` (optional out-param): filled with {batches_total, batches_failed} so the
         Pass-0 caller can emit the §5.3 rung-2 `ep_rt_universe_degraded` audit event.
+
+    #723 live breadth additions (both default to today's behaviour — the EP callers pass neither):
+      - `executor`: the concurrent.futures executor the blocking alpaca-py calls run on. None = the
+        event loop's default pool (EP Pass-2 / Pass-0, a handful of calls). breadth_live passes its OWN
+        one-thread executor: alpaca-py sets no HTTP timeout and `wait_for` abandons a hung call without
+        stopping its thread, so ~50 calls a refresh on the shared pool could park every other
+        `run_in_executor(None, ...)` in apollo-market behind a hanging endpoint.
+      - `max_consecutive_failures`: None = every chunk is attempted (today). N = after N chunks in a
+        row produced nothing, the remaining chunks are not attempted and count as failed — a dead
+        endpoint costs N × 2 × timeout_s, not 50 × 2 × timeout_s.
     """
     if not tickers:
         return {}
@@ -341,17 +353,31 @@ async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0,
     out: dict[str, dict] = {}
     chunks = [tickers[i:i + 100] for i in range(0, len(tickers), 100)]
 
+    consecutive_failures = 0   # chunks in a row that produced nothing (reset by any success)
+
+    def _give_up() -> bool:
+        return max_consecutive_failures is not None and consecutive_failures >= max_consecutive_failures
+
     async def _fetch_chunk(chunk):
+        nonlocal consecutive_failures
+        if _give_up():
+            return None                      # not attempted: counted failed below, never fetched
         req = StockSnapshotRequest(symbol_or_symbols=chunk, feed=feed)
         for attempt in range(2):
             try:
-                return await asyncio.wait_for(
-                    loop.run_in_executor(None, lambda r=req: client.get_stock_snapshot(r)),
+                got = await asyncio.wait_for(
+                    loop.run_in_executor(executor, lambda r=req: client.get_stock_snapshot(r)),
                     timeout=timeout_s,
                 )
+                consecutive_failures = 0
+                return got
             except Exception as e:
                 if attempt == 1:
                     logger.warning(f"Alpaca snapshot batch failed ({len(chunk)} syms): {e}")
+        consecutive_failures += 1
+        if _give_up():
+            logger.warning(f"Alpaca snapshot fetch: {consecutive_failures} chunks failed in a row — "
+                           f"not attempting the rest")
         return None
 
     if concurrency > 1:
@@ -390,6 +416,9 @@ async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0,
                     "minute_ts": getattr(mb, "timestamp", None) if mb else None,
                     "daily_bar_close": getattr(db_, "close", None) if db_ else None,
                     "daily_bar_ts": getattr(db_, "timestamp", None) if db_ else None,
+                    # #723 live breadth (additive): today's running high / low — the new-high / new-low test
+                    "daily_bar_high": getattr(db_, "high", None) if db_ else None,
+                    "daily_bar_low": getattr(db_, "low", None) if db_ else None,
                     "prev_daily_bar_ts": getattr(pdb, "timestamp", None) if pdb else None,
                     "bid": getattr(lq, "bid_price", None) if lq else None,
                     "ask": getattr(lq, "ask_price", None) if lq else None,
