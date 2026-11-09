@@ -1,0 +1,14 @@
+#594 sample #8 key: page letter -> arm and outcome. NOT shown to him (outcome-blind, his 10-10 ruling).
+RULE: sample 7's query with sample 7's pairs excluded, every ruled (ticker, date) excluded, tickers in his notes / labelled EPs / ruled charts / breakout grades excluded; 12 drawn AT RANDOM across both arms (seed 1109). Page: ~2 years of history, the gap day the last bar.
+A|FLR|2026-08-07|BELOW_BAR|score 18.0|routine|20d 3%|gap 11.8|vol 3.6x
+B|ATRO|2026-08-12|HIGH_ALERT|score 72.0|game_changer|20d -13%|gap 12.4|vol 4.3x
+C|WPP|2026-08-06|BELOW_BAR|score 48.0|routine|20d -0%|gap 25.9|vol 7.0x
+D|CRK|2026-09-01|BELOW_BAR|score 46.2|strong|20d -22%|gap 9.6|vol 5.9x
+E|SITM|2026-08-06|HIGH_ALERT|score 96.0|game_changer|20d -16%|gap 26.1|vol 3.3x
+F|YEXT|2026-09-01|BELOW_BAR|score 27.5|routine|20d -16%|gap 13.1|vol 3.9x
+G|WOR|2026-09-23|BELOW_BAR|score 33.8|routine|20d -3%|gap 13.9|vol 4.0x
+H|AMRC|2026-08-04|HIGH_ALERT|score 50.0|routine|20d -29%|gap 40.5|vol 5.7x
+I|EFXT|2026-10-01|BELOW_BAR|score 27.5|routine|20d -6%|gap 13.0|vol 5.0x
+J|PICS|2026-10-05|BELOW_BAR|score 33.8|routine|20d -33%|gap 12.2|vol 4.3x
+K|VOYG|2026-08-04|HIGH_ALERT|score 80.0|game_changer|20d -3%|gap 21.3|vol 3.3x
+L|CNH|2026-08-03|BELOW_BAR|score 30.0|routine|20d 4%|gap 11.3|vol 3.5x

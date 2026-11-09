@@ -28,6 +28,8 @@ class BreakoutGrade:
 
 _SHEET_1106 = "scripts/probes/_717_grading_sheet_1107/breakout_sheet_1106.png"   # graded 2026-11-07, 12 of 184
 
+_SHEET_1105 = "scripts/probes/_717_grading_sheet_1109/breakout_sheet_1105.png"   # graded 2026-11-09, 12 of 150 (names graded before excluded)
+
 BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2026-11-06", "IAG", "A", 145, 0.326, 18.79, "good", "good", _SHEET_1106),
     BreakoutGrade("2026-11-06", "SIG", "B", 73, 0.568, 129.26, "no", "looks extended", _SHEET_1106),
@@ -41,4 +43,16 @@ BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2026-11-06", "RSKD", "J", 41, 0.668, 8.98, "good", "good", _SHEET_1106),
     BreakoutGrade("2026-11-06", "PLSE", "K", 11, 0.867, 58.17, "good", "good", _SHEET_1106),
     BreakoutGrade("2026-11-06", "BHC", "L", 174, 0.177, 8.46, "ok", "ok", _SHEET_1106),
+    BreakoutGrade("2026-11-05", "EVH", "A", 9, 0.847, 4.98, "good", "good", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "BILL", "B", 31, 0.697, 52.54, "good", "good", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "AMPH", "C", 97, 0.43, 29.21, "good", "good", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "ONT", "D", 146, 0.127, 19.61, "no", "already gapped up", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "CHTR", "E", 147, 0.12, 127.16, "no", "no", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "OSCR", "F", 23, 0.76, 38.5, "ok", "ok", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "DUOL", "G", 145, 0.143, 175.56, "no", "no", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "CVLT", "H", 15, 0.817, 173.0, "ok", "ok", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "MANE", "I", 3, 0.91, 145.41, "ok", "ok", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "PLNT", "J", 106, 0.38, 60.22, "no", "no", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "ASO", "K", 93, 0.443, 69.62, "no", "looked extended", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "BLKB", "L", 13, 0.837, 57.85, "ok", "ok", _SHEET_1105),
 ]

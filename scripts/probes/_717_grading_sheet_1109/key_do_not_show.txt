@@ -1,0 +1,14 @@
+#717 breakout list grading sheet 2 (his 11-05 ruling: grade on charts in chat): 12 names from the Thu 2026-11-05 list (150 names), names already graded excluded, stratified by rank — 4 from ranks 1-20, 4 from 21-100, 4 from 101+, drawn at random (seed 1109), shuffled. The chart ends on 11-05 (the list night); the dashed line is the name's level (the highest high of the last 5 sessions). NOT shown to him: ticker, rank, score.
+letter|ticker|list_rank|level|order_score|adr20_pct
+A|EVH|9|4.98|0.847|6.93
+B|BILL|31|52.54|0.697|3.83
+C|AMPH|97|29.21|0.430|3.34
+D|ONT|146|19.61|0.127|5.58
+E|CHTR|147|127.16|0.120|4.17
+F|OSCR|23|38.50|0.760|5.41
+G|DUOL|145|175.56|0.143|5.52
+H|CVLT|15|173.00|0.817|4.97
+I|MANE|3|145.41|0.910|6.43
+J|PLNT|106|60.22|0.380|3.51
+K|ASO|93|69.62|0.443|3.48
+L|BLKB|13|57.85|0.837|4.06

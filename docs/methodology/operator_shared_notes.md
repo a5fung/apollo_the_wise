@@ -2947,3 +2947,7 @@ Recorded: PLAN #722.
 > "Only today needs to be live" (2026-11-08) — #723 scope: only the Today view refreshes intraday; 1W / 1M / YTD stay on the last close.
 
 > "Go" (2026-11-08, to the #723 week plan: design Mon, reference file Tue, intraday job Tue-Wed + deploy Wed 21:15 ET, page Thu, live check Fri)
+
+> His grades on the second breakout-list sheet (2026-11-09, `scripts/probes/_717_grading_sheet_1109/breakout_sheet_1105.png` — 12 names from Thu 11-05's list, 4 per rank band, names graded before excluded): "A good / B good / C good / D already gapped up / E - no / F ok / G no / H ok / I ok / J no / K looked extended / L ok"
+
+Recorded in `tests/fixtures/breakout_list_grades.py` (list night 2026-11-05): good = EVH (rank 9), BILL (31), AMPH (97); ok = OSCR (23), CVLT (15), MANE (3), BLKB (13); no = ONT (146, "already gapped up"), CHTR (147), DUOL (145), PLNT (106), ASO (93, "looked extended"). Across both sheets (24 names) his "no" calls by rank band: top 20 — 0 of 8; 21-100 — 2 of 8; 101+ — 5 of 8 — the list's order leans the right way (24 charts, directional only).
