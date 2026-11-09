@@ -31,11 +31,15 @@ import re
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
 
+import agents.market_intelligence.db as dbmod
+from agents.market_intelligence import ladder_press as lp
+from agents.market_intelligence import ladder_watchdog as lw
+from agents.market_intelligence.strategies import registry
 from shared.dates import _ET
 
-STRATEGY_COLS = ("strategy_id", "name", "family", "phase", "enabled", "signal_type", "outcomes_table",
-                 "promotion_model", "promotion_thresholds", "notes", "live_real_enabled",
-                 "position_size_multiplier")
+# The registry's own column list (its single source), so the fake's fresh read and CAS RETURNING
+# carry exactly the columns the real statements select.
+STRATEGY_COLS = tuple(c.strip() for c in registry._STRATEGY_COLUMNS.split(",") if c.strip())
 
 
 def strategy_row(sid: str, phase: str, *, enabled: bool = True, live_real: bool = False,
@@ -76,16 +80,6 @@ def closed_rows(series, *, exit_rule=None, first_id=1):
     base = dt.date(2026, 7, 1)
     return [one_row(r, id=first_id + i, alert_date=base + dt.timedelta(days=i),
                     exit_rule=exit_rule) for i, r in enumerate(series)]
-
-
-def _lp():
-    """`ladder_press` is lazily resolved so the watchdog-side tests fail on a MISSING page (a real
-    assertion) rather than on an ImportError when the press module does not exist yet."""
-    try:
-        from agents.market_intelligence import ladder_press
-        return ladder_press
-    except ImportError:
-        return None
 
 
 def _order_key(cols):
@@ -130,9 +124,7 @@ class LadderFakeDb:
         """Route `db.get_pool` (the watchdog's reads, `log_audit_event`, the press handler and the
         registry's CAS + fresh read) to this fake, read the registry FRESH from `self.strategies`,
         and record every Telegram page instead of sending it."""
-        import agents.market_intelligence.db as dbmod
-        from agents.market_intelligence import briefing, ladder_watchdog
-        from agents.market_intelligence.strategies import registry
+        from agents.market_intelligence import briefing
         from agents.market_intelligence.strategies.registry import Strategy
         from tests.conftest import make_mock_pool
 
@@ -153,9 +145,8 @@ class LadderFakeDb:
         monkeypatch.setattr(registry, "_load_all", _load_all)
         monkeypatch.setattr(registry, "load_strategies", AsyncMock(side_effect=AssertionError(
             "the ladder must read the registry fresh, never the process cache")))
-        # The retries without the sleeps (raising=False: the attribute does not exist on the pre-review
-        # build the red-first run is made against).
-        monkeypatch.setattr(ladder_watchdog, "SEND_RETRY_DELAYS", (0.0, 0.0), raising=False)
+        # The retries without the sleeps.
+        monkeypatch.setattr(lw, "SEND_RETRY_DELAYS", (0.0, 0.0))
 
         async def _send(text, chat_id=None, parse_mode=None, reply_markup=None, **kw):
             self.sends.append({"text": text, "chat_id": chat_id, "parse_mode": parse_mode,
@@ -203,7 +194,6 @@ class LadderFakeDb:
     # ── statements ──────────────────────────────────────────────────────────────────────────
 
     async def fetch(self, sql, *args, **kw):
-        from agents.market_intelligence import ladder_watchdog as lw
         self.calls.append(("fetch", sql, args))
         self._guard()
         if sql == lw._CLOSED_TRADES_SQL:
@@ -217,9 +207,9 @@ class LadderFakeDb:
                 cols = [c.split()[0] for c in sql.split("ORDER BY", 1)[1].split(",")]
                 rows = sorted(rows, key=_order_key(cols))
             return rows
-        if sql == getattr(lw, "_OPEN_POSITIONS_SQL", object()):
+        if sql == lw._OPEN_POSITIONS_SQL:
             return [{"ticker": t} for t in self.open_positions.get(tuple(args[:2]), [])]
-        if sql == getattr(lw, "_OPEN_EPISODES_OF_SQL", object()):
+        if sql == lw._OPEN_EPISODES_OF_SQL:
             # DISTINCT ON (strategy_id) … ORDER BY strategy_id, opened_on DESC: the latest open
             # episode of each strategy named in the array, served in REVERSE so a caller that
             # trusts the row order (rather than its own) is caught.
@@ -235,27 +225,24 @@ class LadderFakeDb:
         raise AssertionError(f"unexpected fetch: {sql}")
 
     async def fetchrow(self, sql, *args, **kw):
-        from agents.market_intelligence import ladder_watchdog as lw
-        from agents.market_intelligence.strategies import registry
-        lp = _lp()
         self.calls.append(("fetchrow", sql, args))
         self._guard()
-        if sql == getattr(lw, "_OPEN_EPISODE_SQL", object()):
+        if sql == lw._OPEN_EPISODE_SQL:
             for (sid, _), ep in self.episodes.items():
                 if sid == args[0] and ep["closed_on"] is None:
                     return dict(ep)
             return None
-        if sql == getattr(lw, "_LAST_SENT_PAGE_SQL", object()):
+        if sql == lw._LAST_SENT_PAGE_SQL:
             pages = [p for p in self.pages.values()
                      if p["strategy_id"] == args[0] and p["episode_on"] == args[1] and p["sent_at"]]
             return dict(max(pages, key=lambda p: (p["as_of"], p["id"]))) if pages else None
-        if lp is not None and sql == lp._PAGE_FOR_UPDATE_SQL:
+        if sql == lp._PAGE_FOR_UPDATE_SQL:
             p = self.pages.get(args[0])
             return dict(p) if p else None
-        if lp is not None and sql == getattr(lp, "_EPISODE_STATE_SQL", object()):
+        if sql == lp._EPISODE_STATE_SQL:
             ep = self.episodes.get((args[0], args[1]))
             return {"closed_on": ep["closed_on"], "closed_by": ep["closed_by"]} if ep else None
-        if sql == getattr(registry, "_SELECT_ONE_SQL", object()):
+        if sql == registry._SELECT_ONE_SQL:
             if self.fresh_read_hook is not None:
                 hook, self.fresh_read_hook = self.fresh_read_hook, None
                 hook()
@@ -266,8 +253,6 @@ class LadderFakeDb:
         raise AssertionError(f"unexpected fetchrow: {sql}")
 
     async def fetchval(self, sql, *args, **kw):
-        from agents.market_intelligence import ladder_watchdog as lw
-        lp = _lp()
         self.calls.append(("fetchval", sql, args))
         self._guard()
         if sql == lw._NIGHT_ROW_EXISTS_SQL:
@@ -276,7 +261,7 @@ class LadderFakeDb:
                 assert pattern.endswith("%") and "%" not in pattern[:-1] and "_" not in pattern
             return 1 if any(e == args[0] and any(s.startswith(p[:-1]) for p in patterns)
                             for e, s, _ in self.audit) else None
-        if sql == getattr(lw, "_INSERT_PAGE_SQL", object()):
+        if sql == lw._INSERT_PAGE_SQL:
             sid, episode_on, as_of, phase, demote_to, breached, stats = args[:7]
             token = args[7] if len(args) > 7 else None
             if (sid, as_of) in {(p["strategy_id"], p["as_of"]) for p in self.pages.values()}:
@@ -291,21 +276,18 @@ class LadderFakeDb:
                                "token": token, "sent_at": None, "decision": None, "decided_at": None,
                                "decided_by": None}
             return pid
-        if lp is not None and sql == lp._CURRENT_PHASE_SQL:
+        if sql == lp._CURRENT_PHASE_SQL:
             sid = args[0]
             if sid in self.current_phase_override:
                 return self.current_phase_override[sid]
             s = self.strategies.get(sid)
             return s["phase"] if s else None
-        if lp is not None and sql == getattr(lp, "_PAGE_DECISION_SQL", object()):
+        if sql == lp._PAGE_DECISION_SQL:
             p = self.pages.get(args[0])
             return p["decision"] if p else None
         raise AssertionError(f"unexpected fetchval: {sql}")
 
     async def execute(self, sql, *args, **kw):
-        import agents.market_intelligence.db as dbmod
-        from agents.market_intelligence import ladder_watchdog as lw
-        lp = _lp()
         self.calls.append(("execute", sql, args))
         self._guard()
         if sql == dbmod._AUDIT_INSERT_SQL:
@@ -315,21 +297,21 @@ class LadderFakeDb:
                 raise RuntimeError("canceling statement due to statement timeout")
             self.audit.append((args[0], args[1], args[2]))
             return "INSERT 0 1"
-        if sql == getattr(lw, "_MARK_PAGE_SENT_SQL", object()):
+        if sql == lw._MARK_PAGE_SENT_SQL:
             self.pages[args[0]]["sent_at"] = self.now
             return "UPDATE 1"
-        if sql == getattr(lw, "_OPEN_EPISODE_INSERT_SQL", object()):
+        if sql == lw._OPEN_EPISODE_INSERT_SQL:
             sid, opened_on, phase = args
             self.episodes.setdefault((sid, opened_on), {"strategy_id": sid, "opened_on": opened_on,
                                                         "phase": phase, "closed_on": None, "closed_by": None})
             return "INSERT 0 1"
-        if sql == getattr(lw, "_CLOSE_EPISODE_SQL", object()):
+        if sql == lw._CLOSE_EPISODE_SQL:
             closed_on, closed_by, sid, opened_on = args
             ep = self.episodes[(sid, opened_on)]
             if ep["closed_on"] is None:
                 ep["closed_on"], ep["closed_by"] = closed_on, closed_by
             return "UPDATE 1"
-        if sql == getattr(lw, "_STALE_OPEN_PAGES_SQL", object()):
+        if sql == lw._STALE_OPEN_PAGES_SQL:
             sid, episode_on = args
             n = 0
             for p in self.pages.values():
@@ -337,7 +319,7 @@ class LadderFakeDb:
                     p["decision"], p["decided_at"] = "stale", self.now
                     n += 1
             return f"UPDATE {n}"
-        if lp is not None and sql == lp._DECIDE_PAGE_SQL:
+        if sql == lp._DECIDE_PAGE_SQL:
             decision, user_id, page_id = args
             p = self.pages[page_id]
             if p["decision"] is None:

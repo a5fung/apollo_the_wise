@@ -51,6 +51,7 @@ from agents.market_intelligence.constants import (
     resolve_account_mode_for_strategy,
     strategy_mode_prefix,
 )
+from agents.market_intelligence.audit_events import STRATEGY_MODE_RESOLVE_ERROR
 from agents.market_intelligence.db import get_pool, log_audit_event
 import math
 
@@ -774,7 +775,7 @@ async def submit_trade_entry(
         # The one name the other label-resolve failures already use (constants.resolve_strategy_mode_nonfatal):
         # its `_error` suffix lands it in the morning error banner beside the skip's own page.
         await log_audit_event(
-            "strategy_mode_resolve_error",
+            STRATEGY_MODE_RESOLVE_ERROR,
             f"{signal_type}: the strategy row could not be read fresh in the entry funnel for {ticker} - "
             f"entry skipped {INFRA_STRATEGY_UNREADABLE} (fail-closed; the skip row lands under the "
             f"process mode, the page says mode unknown)",
@@ -796,7 +797,7 @@ async def submit_trade_entry(
         _dedup_mode = current_account_mode()
         _skip_mode_lookup_failed = True
         await log_audit_event(
-            "strategy_mode_resolve_error",
+            STRATEGY_MODE_RESOLVE_ERROR,
             f"{signal_type}: account-mode label resolve failed in the entry funnel for {ticker} - "
             f"dedup/skip book falls back to the process mode, any page says mode unknown",
             detail=str(e)[:400],

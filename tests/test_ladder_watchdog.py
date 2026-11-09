@@ -191,8 +191,9 @@ def test_signed_m1f_thresholds_are_the_defaults():
 
 def test_would_demote_to_matches_the_operators_manual_demote_map():
     """The dark row may never name a rung the real `/strategy <id> demote` would not step to."""
+    from agents.market_intelligence import constants
     from agents.market_intelligence.strategies import telegram as st
-    assert lw.DEMOTE_TO == st._DEMOTE_BACK
+    assert lw.DEMOTE_TO is constants.DEMOTE_TO and st.DEMOTE_TO is constants.DEMOTE_TO   # one map, never a local copy
     assert "shadow" not in lw.DEMOTE_TO and "deprecated" not in lw.DEMOTE_TO
 
 

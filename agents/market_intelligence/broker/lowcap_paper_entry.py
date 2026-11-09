@@ -67,6 +67,7 @@ from agents.market_intelligence.backtester.filters import check_filters, compute
 from shared.dates import _ET, et_today
 from agents.market_intelligence.constants import (
     LIVE_TRADING_ENABLED,
+    NO_SUBMIT_PHASES,
     mode_prefix,
     resolve_account_mode_for_strategy,
 )
@@ -176,7 +177,7 @@ async def _strategy_paper_or_refuse(today: date):
     except Exception:  # loud-ok: an unresolvable phase is refused below
         mode = None
     if mode != LANE_ACCOUNT_MODE:
-        off_rung = strategy.phase in ("shadow", "deprecated")      # routes nowhere: his OFF rungs, no money anywhere
+        off_rung = strategy.phase in NO_SUBMIT_PHASES      # routes nowhere: his OFF rungs, no money anywhere
         msg = (f"{STRATEGY_ID} phase={strategy.phase!r} resolves to {mode!r} — the small-cap "
                f"lane orders on PAPER only; refused"
                + (" (an off rung — audit only, no page)" if off_rung else ""))

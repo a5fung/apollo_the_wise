@@ -235,7 +235,7 @@ def test_his_typed_strategy_command_still_moves_it(monkeypatch, action):
     if action == "promote":
         assert row["phase"] == NEXT_PHASE[phase] and "promoted" in reply
     elif action == "demote":
-        assert row["phase"] == st._DEMOTE_BACK[phase] and "demoted" in reply
+        assert row["phase"] == st.DEMOTE_TO[phase] and "demoted" in reply
     else:
         assert row["enabled"] is (action == "enable") and f"{action}d" in reply
     assert len(db.audit_rows("strategy_phase_change")) == 1 and db.audit_rows(REFUSED_EVENT) == []
