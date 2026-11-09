@@ -1,0 +1,20 @@
+ticker|date|verdict|yes|dmin_adr|held|into|structure|null|shelf_date|shelf|adr20_pct
+FLR|2026-08-07|BAD_CHART|False|-3.813|0|0|no_run(<30%)||2026-02-20|54.260|3.654
+ATRO|2026-08-12|GOOD_CHART|True|-1.752|0|0|ok||2026-03-02|69.967|4.689
+WPP|2026-08-06|GOOD_CHART|True|-19.407|0|0|no_run(<30%)||2025-06-12|38.040|3.061
+CRK|2026-09-01|BAD_CHART|False|-12.591|0|0|ok||2025-07-16|24.040|3.938
+SITM|2026-08-06|GOOD_CHART|True|0.431|1|0|ok||2026-02-12|446.955|6.253
+YEXT|2026-09-01|BAD_CHART|False|-14.260|0|0|no_run(<30%)||2025-06-09|8.960|3.295
+WOR|2026-09-23|BAD_CHART|False|-4.198|0|0|ok||2026-02-06|59.590|3.244
+AMRC|2026-08-04|BAD_CHART|False|-1.209|0|0|ok||2025-07-15|19.870|6.221
+EFXT|2026-10-01|GOOD_CHART|True|-0.512|1|1|ok||2026-02-03|19.650|3.675
+PICS|2026-10-05|OKISH_CHART|True|||||history<250(171)|||5.936
+VOYG|2026-08-04|BAD_CHART|False|-5.190|0|0|ok||2026-01-23|38.840|8.201
+CNH|2026-08-03|BAD_CHART|False|-3.042|0|0|ok||2025-10-06|11.095|3.333
+
+yes n=4 no n=7 pairs=28 dropped(NULL)=['PICS']
+P(yes dmin > no dmin) = 0.714  (bar >= 0.65; directional only)
+VERDICT: HOLDS on fresh labels (directional)
+median dmin: yes -1.13 ADR, no -4.20 ADR
+
+POOLED samples 6+7+8 (description only): yes n=16 no n=19 pairs=304 P = 0.734

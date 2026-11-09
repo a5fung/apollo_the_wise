@@ -88,3 +88,8 @@ selection). Returns are read only as the tail test the running read already uses
 - **Method unchanged from PRE-REGISTRATION 3/4** (`f3_def.py::f3_new`, `STATED`, imported; ADR20 from `_533_nbis_structure_encoder.adr20_pct`; the chance a yes's `dmin` is above a no's, ties 0.5; NULLs dropped and counted).
 - **Fresh labels:** his #594 sample 8 rulings (2026-11-09, outcome-blind, ruling_date 2026-11-09): yes = GOOD / OKISH (5: ATRO, WPP, SITM, EFXT, PICS); no = BAD (7: FLR, CRK, YEXT, WOR, AMRC, VOYG, CNH) → 35 pairs. Bars: `scripts/probes/_594_sample8_1109/q2_bars.out`.
 - **Bar:** ≥ 0.65 → holds (directional only); < 0.65 → does not replicate on this sample, reported as such. The pooled figure over samples 6-8 (36 charts) beside it, description only.
+
+## RESULT 5 — the shelf-distance lead on sample 8 (2026-11-09; `scripts/probes/_594_shelf_lead_1109/score_shelf_lead.py` → `.txt`)
+
+**HOLDS a third time, as pre-registered (`f87ddfdf`) — DIRECTIONAL ONLY.** 0.714 on 28 pairs (4 yes / 7 no; PICS dropped, no structure data — counted); median yes −1.13 daily ranges from the shelf, no −4.20. Pooled over samples 6-8 (35 charts, 304 pairs, description only): 0.734.
+- **What this does not answer:** the tail, returns, and any verdict on 35 charts.
