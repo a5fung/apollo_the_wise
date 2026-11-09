@@ -1,0 +1,5 @@
+members 864 covered by the morning pull 864
+Consumer / retail / dining n_members 139 vs 139 | 1d: mine -1.06/139/36up vs export -1.06/139/36up | 5d: mine 3.2/139/104up vs export 3.2/139/104up | 21d: mine 14.98/139/131up vs export 14.98/139/131up | ytd: mine 13.06/135/85up vs export 13.06/135/85up
+Metals & mining n_members 43 vs 43 | 1d: mine 2.22/43/35up vs export 2.22/43/35up | 5d: mine 8.36/43/36up vs export 8.36/43/36up | 21d: mine 1.25/43/25up vs export 1.25/43/25up | ytd: mine 1.43/41/18up vs export 0.59/42/18up
+AI cloud & datacenter n_members 15 vs 15 | 1d: mine 0.51/15/6up vs export 0.51/15/6up | 5d: mine -6.39/15/7up vs export -6.39/15/7up | 21d: mine -8.33/15/7up vs export -8.33/15/7up | ytd: mine 24.72/14/10up vs export 24.72/14/10up
+Metals ytd with the export's rule (last close on/before year end; ARIS's is 2025-10-14): mine 0.59/42/18up vs export 0.59/42/18up

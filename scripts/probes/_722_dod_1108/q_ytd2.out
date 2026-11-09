@@ -1,0 +1,5 @@
+SET
+ticker|first_bar|last_bar_by_ye|bars
+ARIS|2021-10-22|2025-10-14|1180
+RYZ|2026-02-24||179
+(2 rows)
