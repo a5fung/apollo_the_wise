@@ -1,0 +1,2 @@
+POLYGON whole-market: 13257 tickers in 5.3s; with today's high 11552; last-trade age minutes p10/p50/p90 = 15.0/17.1/109.1
+ALPACA SIP batch: 958 of 1000 symbols in 1.6s ({'batches_total': 10, 'batches_failed': 0}); extrapolated 5,000 names ~8s serial
