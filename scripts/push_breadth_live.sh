@@ -18,7 +18,7 @@
 # next cron tick — nothing to do by hand).
 #
 # Host cron (every minute; the script exits at once when there is nothing new):
-#   * * * * * /home/apollo/apollo_the_wise/scripts/push_breadth_live.sh >> /home/apollo/apollo_the_wise/logs/breadth_live/push.log 2>&1
+#   * * * * * /home/apollo/apollo_the_wise/scripts/push_breadth_live.sh >> /home/apollo/apollo_the_wise/logs/push_breadth_live.log 2>&1
 set -uo pipefail
 
 APOLLO="${APOLLO_DIR:-/home/apollo/apollo_the_wise}"
