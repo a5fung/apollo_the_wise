@@ -2943,3 +2943,5 @@ Recorded: PLAN #722.
 > "looks right" (2026-11-08, the Market Breadth groups on his phone) — #722 closed.
 
 > "qq the market breadth page, are all data live? one use case is to look at it during market hours and see what the latest breadth looks like" then "Yes, market breath should be live" (2026-11-08) — PLAN #723.
+
+> "Only today needs to be live" (2026-11-08) — #723 scope: only the Today view refreshes intraday; 1W / 1M / YTD stay on the last close.
