@@ -2,7 +2,8 @@
 # #194 — daily auto-export: regenerate the dashboard snapshots (themes + trades + funnel, and since #719
 # the guarded market-breadth one) and push them to the portfolio-app2 repo, so the Streamlit dashboards
 # stay fresh without a manual regen. The first three are all-or-nothing (any one failing aborts the push);
-# the breadth export is guarded so its failure never blocks them.
+# the breadth export is guarded so its failure never blocks them. Since #723 the script ALSO writes the
+# live-breadth reference to the host's logs/ first (its own guarded block, not published — see below).
 #
 # Runs on the prod host (has docker access to apollo-postgres + the apollo_export_deploy key,
 # used only for the portfolio-app2 remote via the `github-p2` SSH-config alias — the apollo repo's
@@ -13,6 +14,29 @@ set -euo pipefail
 APOLLO="${APOLLO_DIR:-/home/apollo/apollo_the_wise}"
 DEST="${EXPORT_DIR:-/home/apollo/portfolio-app2-export}"
 PG="apollo-postgres"
+
+# #723 (2026-11-10): the live-breadth REFERENCE — what the intraday job (breadth_live.py) compares today's
+# Alpaca snapshots against (last close, 252-session high/low ending at that close, eligibility, theme and
+# group memberships). It is NOT a dashboard snapshot: nothing publishes it, and it runs FIRST — before
+# `cd $DEST`, the fetch/reset and the all-or-nothing sanity loop — so a GitHub outage, a failed theme /
+# trades / funnel export, or anything else that aborts this script under `set -e` can never leave the
+# next session without a fresh reference (which would have the live job refuse all day and page at 10:15).
+# Guarded like the breadth block (ON_ERROR_STOP, 300 s statement_timeout, 200-byte floor): a failure
+# leaves the previous reference exactly where it was and the script continues to the snapshots. The
+# output lands straight at $APOLLO/logs/ — the directory docker-compose.prod.yml bind-mounts into
+# apollo-market at /app/logs — written tmp + mv, so the intraday job never reads a half-written file.
+# SSoT: docs/architecture/market_breadth_snapshot.md §Live breadth.
+REFERENCE_HOST_COPY="${BREADTH_REFERENCE_COPY:-$APOLLO/logs/apollo_breadth_reference.json}"
+if mkdir -p "$(dirname "$REFERENCE_HOST_COPY")" \
+   && docker exec -i -e PGOPTIONS="-c statement_timeout=300s" "$PG" psql -U apollo -d apollo -A -t -X -v ON_ERROR_STOP=1 -f - \
+        < "$APOLLO/scripts/export_breadth_reference.sql" > "$REFERENCE_HOST_COPY.tmp" \
+   && [ "$(wc -c < "$REFERENCE_HOST_COPY.tmp")" -ge 200 ]; then
+  mv -f "$REFERENCE_HOST_COPY.tmp" "$REFERENCE_HOST_COPY"
+else
+  echo "auto-export: breadth REFERENCE export FAILED or truncated ($(wc -c < "$REFERENCE_HOST_COPY.tmp" 2>/dev/null || echo 0) bytes);" \
+       "keeping the previous $REFERENCE_HOST_COPY — the snapshots continue." >&2
+  rm -f "$REFERENCE_HOST_COPY.tmp"
+fi
 
 cd "$DEST"
 BR="$(git rev-parse --abbrev-ref HEAD)"
@@ -58,34 +82,6 @@ else
   echo "auto-export: breadth export FAILED or truncated ($(wc -c < "$BREADTH.tmp" 2>/dev/null || echo 0) bytes);" \
        "keeping the last published $BREADTH — the other three snapshots continue." >&2
   rm -f "$BREADTH.tmp"
-fi
-
-# #723 (2026-11-10): the live-breadth REFERENCE — what the intraday job compares today's Alpaca
-# snapshots against (last close, 252-session high/low ending at that close, eligibility, theme and
-# group memberships). Same guard as the breadth block: a failure here never costs the other
-# snapshots their refresh, and the previously published reference is left as it was. On success the
-# file is ALSO copied to $APOLLO/logs/ — the directory docker-compose.prod.yml bind-mounts into
-# apollo-market at /app/logs — which is where breadth_live.py reads it. The copy is atomic (tmp +
-# mv) so the intraday job never reads a half-written file. SSoT: docs/architecture/market_breadth_snapshot.md.
-REFERENCE=apollo_breadth_reference.json
-REFERENCE_HOST_COPY="${BREADTH_REFERENCE_COPY:-$APOLLO/logs/$REFERENCE}"
-if docker exec -i -e PGOPTIONS="-c statement_timeout=300s" "$PG" psql -U apollo -d apollo -A -t -X -v ON_ERROR_STOP=1 -f - \
-     < "$APOLLO/scripts/export_breadth_reference.sql" > "$REFERENCE.tmp" \
-   && [ "$(wc -c < "$REFERENCE.tmp")" -ge 200 ]; then
-  mv -f "$REFERENCE.tmp" "$REFERENCE"
-  SNAPSHOTS+=("$REFERENCE")
-  if mkdir -p "$(dirname "$REFERENCE_HOST_COPY")" \
-     && cp -f "$REFERENCE" "$REFERENCE_HOST_COPY.tmp" && mv -f "$REFERENCE_HOST_COPY.tmp" "$REFERENCE_HOST_COPY"; then
-    :
-  else
-    echo "auto-export: could not place the live-breadth reference at $REFERENCE_HOST_COPY;" \
-         "the intraday job will refuse to run until tomorrow's export succeeds." >&2
-    rm -f "$REFERENCE_HOST_COPY.tmp"
-  fi
-else
-  echo "auto-export: breadth REFERENCE export FAILED or truncated ($(wc -c < "$REFERENCE.tmp" 2>/dev/null || echo 0) bytes);" \
-       "keeping the last published $REFERENCE — the other snapshots continue." >&2
-  rm -f "$REFERENCE.tmp"
 fi
 
 # Stage first, then ask the index: `git diff --cached` sees the breadth file's FIRST publish (a new

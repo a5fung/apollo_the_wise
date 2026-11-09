@@ -4,19 +4,28 @@ Invented data, no network, no database. What each block proves:
   reference SQL   one read-only statement; the nightly's session / universe / NaN / usable-bar rules are copies
                   (the shared CTE bodies are byte-identical to export_breadth_snapshot.sql); the window is the 252
                   sessions ENDING at as_of (idx 0..251) with the 245-bar eligibility; the contract keys.
-  shell           auto_export_snapshots.sh RUN against a fake docker + a real local git remote: the reference is a
-                  second GUARDED step — it publishes with the others, lands in the host copy the intraday job reads,
-                  and when it fails or truncates the others still publish and the old copy is left alone.
+  shell           auto_export_snapshots.sh RUN against a fake docker + a real local git remote: the reference is its
+                  own GUARDED step that runs FIRST and is NOT published — it lands in the host copy the intraday
+                  job reads even when the fetch / the snapshots fail, and when it fails or truncates the snapshots
+                  still publish and the old copy is left alone.
   arithmetic      compute_live vs a hand-worked fixture — highs/lows, advances/declines, group + theme returns.
   missing         a name Alpaca did not return, returned with a bar from an EARLIER day, or without a close is
                   counted missing — never unchanged, never a return.
+  coverage        a refresh that lost ANY batch or read under 85% of the universe (2% coverage; every bar dated
+                  yesterday on a mis-recognised holiday) raises and writes NOTHING — a counted failure.
   stale reference refresh_once raises and writes NOTHING; run_scheduled audits it and pages ONLY at the third
-                  straight failure of the day; a success resets the streak.
-  schedule        the window rule (09:45..16:00 ET), the registration (hour 9-16, */15, mon-fri), the intelligence
-                  partition entry, the non-trading-day no-op.
+                  straight failure of the day; a success resets the streak. A file left unpublished for three
+                  straight refreshes pages the same way.
+  fetch           the job's own one-thread executor; a refresh skips (a counted failure) while the previous call is
+                  still in flight; the collector's default path (EP Pass-2) is unchanged; the fetch stops after 3
+                  lost chunks in a row only when asked to.
+  schedule        the window rule (09:45..the session close: 16:00, 13:00 on Fri 2026-11-27), the registration
+                  (hour 9-16, */15, mon-fri), the intelligence partition entry, the non-trading-day no-op.
   pusher          push_breadth_live.sh RUN against a local bare remote: one orphan single-file commit on
                   live-breadth, replaced in place on a change, nothing pushed when unchanged, the default branch
-                  untouched, a failed push recorded; the script never names the default branch.
+                  untouched (even with BREADTH_LIVE_BRANCH=main in the environment — the branch is hard-coded), a
+                  failed push recorded, one run at a time (flock), its own bare repo (the nightly's clone gains no
+                  object and no ref); the script never names the default branch.
   collector       daily_bar_high / daily_bar_low are additive keys.
 """
 from __future__ import annotations
@@ -29,6 +38,7 @@ import shutil
 import subprocess
 import time
 from datetime import date, datetime, timedelta
+from datetime import time as dt_time
 from pathlib import Path
 from types import SimpleNamespace as NS
 from unittest.mock import patch
@@ -202,14 +212,27 @@ def export_rig(remote_rig):
     return NS(run=run, published=published, copy=copy, dest=r.dest, log=r.tmp / "docker.log")
 
 
-def test_reference_publishes_with_the_others_and_lands_in_the_host_copy(export_rig):
+def test_reference_lands_in_the_host_copy_and_is_not_published(export_rig):
+    """The reference is what the intraday job reads, not a dashboard file: it goes to the host copy only. (Publishing
+    it committed ~5,000 tickers to portfolio-app2 every night for a page that never read it — review 2026-11-10.)"""
     r = export_rig.run(FAKE_NONCE="a")
     assert r.returncode == 0, r.stderr
-    assert '"reference": "a"' in (export_rig.published(REFERENCE) or "")
     assert export_rig.copy.exists() and '"reference": "a"' in export_rig.copy.read_text()
+    assert export_rig.published(REFERENCE) is None, "the reference must not be committed to the dashboard repo"
+    assert not (export_rig.dest / REFERENCE).exists() and not (export_rig.dest / f"{REFERENCE}.tmp").exists()
     assert '"breadth": "a"' in export_rig.published("apollo_breadth_snapshot.json")
-    assert not (export_rig.dest / f"{REFERENCE}.tmp").exists()
     assert not export_rig.copy.with_name(export_rig.copy.name + ".tmp").exists()
+
+
+def test_reference_is_placed_even_when_the_dashboard_push_cannot_happen(export_rig):
+    """The next session's live job depends on the reference alone, so it runs FIRST — before the fetch/reset and the
+    all-or-nothing snapshot loop. A GitHub outage at export time (the clone's origin unreachable) aborts the
+    snapshots under set -e and still leaves a fresh reference."""
+    subprocess.run(["git", "remote", "set-url", "origin", "/nonexistent/remote.git"], cwd=export_rig.dest, check=True)
+    r = export_rig.run(FAKE_NONCE="z")
+    assert r.returncode != 0, "the snapshot push must fail when the remote is unreachable"
+    assert export_rig.copy.exists() and '"reference": "z"' in export_rig.copy.read_text()
+    assert export_rig.published(THREE[0]) == '{"seed": true}\n'          # nothing else moved
 
 
 def test_a_failing_reference_export_blocks_nothing_and_keeps_the_old_copy(export_rig):
@@ -219,17 +242,15 @@ def test_a_failing_reference_export_blocks_nothing_and_keeps_the_old_copy(export
     assert "REFERENCE export FAILED" in r.stderr
     for f in THREE + ("apollo_breadth_snapshot.json",):
         assert '"c"' in export_rig.published(f), f"{f} was not refreshed because the reference failed"
-    assert '"reference": "b"' in export_rig.published(REFERENCE), "the published reference must be left as it was"
     assert '"reference": "b"' in export_rig.copy.read_text(), "the host copy the intraday job reads must be left as it was"
-    assert not (export_rig.dest / f"{REFERENCE}.tmp").exists()
+    assert not export_rig.copy.with_name(export_rig.copy.name + ".tmp").exists()
 
 
 def test_a_truncated_reference_is_not_published_or_copied(export_rig):
     r = export_rig.run(FAKE_NONCE="d", FAKE_REFERENCE="short")
     assert r.returncode == 0, r.stderr
     assert "REFERENCE export FAILED or truncated" in r.stderr
-    assert export_rig.published(REFERENCE) is None
-    assert not export_rig.copy.exists()
+    assert not export_rig.copy.exists() and not export_rig.copy.with_name(export_rig.copy.name + ".tmp").exists()
     assert '"d"' in export_rig.published(THREE[0])
 
 
@@ -373,12 +394,29 @@ def paths(tmp_path, monkeypatch):
     return NS(out_dir=out_dir, ref_path=ref_path, audit=audit)
 
 
+PAD = [f"P{i:02d}" for i in range(40)]      # 40 plain names, read fine, unchanged, not hl-eligible
+
+
+def _live_reference() -> dict:
+    """The hand-worked twelve plus forty padding names: 48 of 51 universe names read (94%) — a healthy refresh
+    clears the 85% coverage floor the way prod does (the 11-09 probe read ~96%). The twelve alone read 8 of 11
+    (73%), which the floor rightly refuses."""
+    ref = _reference()
+    for t in PAD:
+        ref["stocks"][t] = [10.0, None, None, False, True, []]
+    return ref
+
+
+def _snaps_live() -> dict:
+    return {**_snaps(), **{t: _snap(10.0) for t in PAD}}
+
+
 async def _fetch_ok(tickers):
-    return {t: s for t, s in _snaps().items() if t in tickers}, {"batches_total": 1, "batches_failed": 0}
+    return {t: s for t, s in _snaps_live().items() if t in tickers}, {"batches_total": 1, "batches_failed": 0}
 
 
 def test_stale_reference_writes_nothing(paths):
-    ref = _reference()
+    ref = _live_reference()
     ref["as_of"] = "2026-11-06"                        # Friday: the previous trading day before Tue 11-10 is Mon 11-09
     paths.ref_path.write_text(json.dumps(ref))
     with pytest.raises(bl.StaleReference, match="2026-11-06.*2026-11-09"):
@@ -404,26 +442,94 @@ def test_the_previous_trading_day_skips_weekends_and_holidays():
 
 
 def test_a_good_refresh_writes_the_contract_and_one_audit_row(paths):
-    paths.ref_path.write_text(json.dumps(_reference()))
+    paths.ref_path.write_text(json.dumps(_live_reference()))
     res = asyncio.run(bl.refresh_once(NOW, TODAY, fetch=_fetch_ok, ref_path=paths.ref_path, out_dir=paths.out_dir))
     live = json.loads((paths.out_dir / bl.LIVE_NAME).read_text())
     assert set(live) == {"version", "as_of", "reference_as_of", "universe_n", "read_n", "missing_n", "highs_lows",
                          "adv_dec", "ecosystems_1d", "themes_1d"}
     assert live["as_of"] == "2026-11-10T11:45:03 ET" and live["reference_as_of"] == "2026-11-09"
     assert live["highs_lows"] == {"eligible_n": 5, "new_highs": 1, "new_lows": 2}
-    assert res["read_n"] == 8
+    assert live["universe_n"] == 51 and live["read_n"] == 48 and live["missing_n"] == 3
+    assert res["read_n"] == 48 and res["push_problem"] is None
     assert [r[0] for r in paths.audit.rows] == [bl.EVT_REFRESH]
     assert "highs 1 lows 2 of 5" in paths.audit.rows[0][1] and "missing 3" in paths.audit.rows[0][1]
     assert not (paths.out_dir / f"{bl.LIVE_NAME}.tmp").exists()
 
 
 def test_an_empty_fetch_is_a_failure_not_a_zero_market(paths):
-    paths.ref_path.write_text(json.dumps(_reference()))
+    paths.ref_path.write_text(json.dumps(_live_reference()))
 
     async def nothing(tickers):
         return {}, {"batches_total": 1, "batches_failed": 1}
     with pytest.raises(bl.BreadthLiveError, match="no snapshots"):
         asyncio.run(bl.refresh_once(NOW, TODAY, fetch=nothing, ref_path=paths.ref_path, out_dir=paths.out_dir))
+    assert not (paths.out_dir / bl.LIVE_NAME).exists()
+
+
+# ═══════════════════════════════════════════════════════════════════════════ coverage (review 2026-11-10, blocking 1)
+
+def test_a_partial_read_writes_nothing(paths):
+    """49 of 50 batches lost: 100 names of 5,000 come back. Before the floor this published 100 advances / 0 declines /
+    4,900 missing under a fresh stamp (the reviewer's partial.py repro). Now: raises, nothing written, counted."""
+    stocks = {f"T{i:04d}": [10.0, 12.0, 8.0, True, True, []] for i in range(5000)}
+    paths.ref_path.write_text(json.dumps({"as_of": PREV.isoformat(), "stocks": stocks, "themes": [], "ecosystems": []}))
+
+    async def one_batch_of_fifty(tickers):
+        return ({t: _snap(11.0, high=11.5, low=10.5) for t in tickers[:100]}, {"batches_total": 50, "batches_failed": 49})
+    with pytest.raises(bl.BreadthLiveError, match="49 of 50 Alpaca batches failed"):
+        asyncio.run(bl.refresh_once(NOW, TODAY, fetch=one_batch_of_fifty, ref_path=paths.ref_path, out_dir=paths.out_dir))
+    assert not (paths.out_dir / bl.LIVE_NAME).exists() and not (paths.out_dir / f"{bl.LIVE_NAME}.tmp").exists()
+    assert paths.audit.rows == []                      # the failure row is run_scheduled's
+
+
+def test_low_coverage_with_no_lost_batch_writes_nothing(paths):
+    """Every batch 'succeeded' yet only 2% of the universe carries today's bar (Alpaca symbology thinned out, or the
+    bars not rolled): under the 85% floor => refused. The 11-09 probe read ~96%, ten points above the floor."""
+    stocks = {f"T{i:04d}": [10.0, 12.0, 8.0, True, True, []] for i in range(1000)}
+    paths.ref_path.write_text(json.dumps({"as_of": PREV.isoformat(), "stocks": stocks, "themes": [], "ecosystems": []}))
+
+    async def two_percent(tickers):
+        return {t: _snap(11.0) for t in tickers[:20]}, {"batches_total": 10, "batches_failed": 0}
+    with pytest.raises(bl.BreadthLiveError, match=r"read 20 of 1000 universe names \(2%\) — under the 85% floor"):
+        asyncio.run(bl.refresh_once(NOW, TODAY, fetch=two_percent, ref_path=paths.ref_path, out_dir=paths.out_dir))
+    assert not (paths.out_dir / bl.LIVE_NAME).exists()
+
+
+def test_an_all_zero_read_on_a_misrecognised_holiday_writes_nothing(paths):
+    """The calendar fails open on a holiday: every daily bar Alpaca returns is dated the previous session, so read_n is
+    0 — an all-zero market that must never go out as live."""
+    paths.ref_path.write_text(json.dumps(_live_reference()))
+
+    async def yesterdays_bars(tickers):
+        return {t: _snap(10.0, day=PREV) for t in tickers}, {"batches_total": 1, "batches_failed": 0}
+    with pytest.raises(bl.BreadthLiveError, match=r"read 0 of 51.*\(0%\).*dated before today"):
+        asyncio.run(bl.refresh_once(NOW, TODAY, fetch=yesterdays_bars, ref_path=paths.ref_path, out_dir=paths.out_dir))
+    assert not (paths.out_dir / bl.LIVE_NAME).exists()
+
+
+def test_coverage_problem_is_pure_and_the_floor_is_85_percent():
+    assert bl.COVERAGE_FLOOR == 0.85
+    ok = {"universe_n": 100, "read_n": 85}
+    assert bl.coverage_problem(ok, {"batches_total": 1, "batches_failed": 0}, 100) is None
+    assert "under the 85% floor" in bl.coverage_problem({"universe_n": 100, "read_n": 84}, {"batches_failed": 0}, 100)
+    assert "1 of 1 Alpaca batches failed" in bl.coverage_problem(ok, {"batches_total": 1, "batches_failed": 1}, 100)
+    assert "no universe" in bl.coverage_problem({"universe_n": 0, "read_n": 0}, {}, 0)
+    assert bl.coverage_problem(ok, {}, 100) is None                 # an injected fetch may return sparse stats
+
+
+def test_a_partial_read_counts_toward_the_page(paths, monkeypatch):
+    _trading(monkeypatch)
+    paths.ref_path.write_text(json.dumps(_live_reference()))
+
+    async def lossy(tickers):
+        return {t: s for t, s in _snaps_live().items() if t in tickers}, {"batches_total": 1, "batches_failed": 1}
+    kw = dict(fetch=lossy, ref_path=paths.ref_path, out_dir=paths.out_dir)
+    assert asyncio.run(bl.run_scheduled(NOW, **kw)) == 0
+    assert asyncio.run(bl.run_scheduled(NOW, **kw)) == 0
+    with pytest.raises(bl.BreadthLiveError, match="3 straight"):
+        asyncio.run(bl.run_scheduled(NOW, **kw))
+    assert [r[0] for r in paths.audit.rows] == [bl.EVT_REFRESH_FAILED] * 3
+    assert "batches failed" in paths.audit.rows[0][1]
     assert not (paths.out_dir / bl.LIVE_NAME).exists()
 
 
@@ -437,7 +543,7 @@ def test_run_scheduled_pages_only_on_the_third_straight_failure(paths, monkeypat
     """Stale all morning: audited every run, ONE raise at the third (audit_wrap's record_job_failure is the page),
     silent again after it; a success resets the streak so a later outage pages afresh."""
     _trading(monkeypatch)
-    stale = _reference()
+    stale = _live_reference()
     stale["as_of"] = "2026-11-06"
     paths.ref_path.write_text(json.dumps(stale))
     kw = dict(fetch=_fetch_ok, ref_path=paths.ref_path, out_dir=paths.out_dir)
@@ -450,8 +556,8 @@ def test_run_scheduled_pages_only_on_the_third_straight_failure(paths, monkeypat
     assert "(1 straight)" in paths.audit.rows[0][1] and "(4 straight)" in paths.audit.rows[3][1]
     assert not (paths.out_dir / bl.LIVE_NAME).exists()
     # the export catches up: a success resets the streak
-    paths.ref_path.write_text(json.dumps(_reference()))
-    assert asyncio.run(bl.run_scheduled(NOW, **kw)) == 8
+    paths.ref_path.write_text(json.dumps(_live_reference()))
+    assert asyncio.run(bl.run_scheduled(NOW, **kw)) == 48
     assert bl._streak["n"] == 0
     paths.ref_path.write_text(json.dumps(stale))
     for _ in range(2):
@@ -462,7 +568,7 @@ def test_run_scheduled_pages_only_on_the_third_straight_failure(paths, monkeypat
 
 def test_a_fetch_failure_is_audited_under_its_own_event(paths, monkeypatch):
     _trading(monkeypatch)
-    paths.ref_path.write_text(json.dumps(_reference()))
+    paths.ref_path.write_text(json.dumps(_live_reference()))
 
     async def boom(tickers):
         raise RuntimeError("alpaca down")
@@ -479,8 +585,29 @@ def test_refresh_window_is_0945_to_1600_et(hm, inside):
     assert bl.in_refresh_window(datetime(2026, 11, 10, *hm, tzinfo=_ET)) is inside
 
 
+@pytest.mark.parametrize("hm,inside", [((9, 44), False), ((9, 45), True), ((12, 45), True), ((13, 0), True),
+                                       ((13, 15), False), ((15, 45), False), ((16, 0), False)])
+def test_refresh_window_ends_at_the_early_close_on_a_half_day(hm, inside):
+    """Fri 2026-11-27 (the day after Thanksgiving) closes at 13:00: the last refresh is 13:00, so the stamp stops moving
+    when the market shuts. Before this the window ran to a fixed 16:00 and the page would have shown 'Live · as of
+    15:45' over numbers frozen at 13:00 (review 2026-11-10, blocking 3; the PLAN's 'a number older than its stamp')."""
+    assert bl.window_end(date(2026, 11, 27)) == (13, 0) and bl.window_end(date(2026, 11, 10)) == (16, 0)
+    assert bl.in_refresh_window(datetime(2026, 11, 27, *hm, tzinfo=_ET)) is inside
+
+
+def test_session_close_time_falls_open_to_1600(monkeypatch):
+    from agents.market_intelligence import trading_calendar as tc
+    assert tc.session_close_time(date(2026, 12, 24)) == dt_time(13, 0)
+    assert tc.session_close_time(date(2026, 11, 10)) == dt_time(16, 0)
+
+    def boom():
+        raise RuntimeError("no calendar")
+    monkeypatch.setattr(tc, "_get_nyse_calendar", boom)
+    assert tc.session_close_time(date(2026, 11, 27)) == dt_time(16, 0)     # a broken calendar lengthens, never shortens
+
+
 def test_outside_the_window_or_on_a_non_trading_day_nothing_is_fetched(paths, monkeypatch):
-    paths.ref_path.write_text(json.dumps(_reference()))
+    paths.ref_path.write_text(json.dumps(_live_reference()))
     calls = []
 
     async def spy(tickers):
@@ -493,8 +620,8 @@ def test_outside_the_window_or_on_a_non_trading_day_nothing_is_fetched(paths, mo
     assert asyncio.run(bl.run_scheduled(NOW, fetch=spy, ref_path=paths.ref_path, out_dir=paths.out_dir)) == 0
     assert calls == [] and paths.audit.rows == []
     _trading(monkeypatch, is_day=True)
-    assert asyncio.run(bl.run_scheduled(NOW, fetch=spy, ref_path=paths.ref_path, out_dir=paths.out_dir)) == 8
-    assert calls == [12]
+    assert asyncio.run(bl.run_scheduled(NOW, fetch=spy, ref_path=paths.ref_path, out_dir=paths.out_dir)) == 48
+    assert calls == [52]
 
 
 def test_registration_every_15_min_hour_9_to_16_weekdays_intelligence_owned():
@@ -525,6 +652,16 @@ def test_the_cron_slot_covers_every_refresh_in_the_window():
     assert (inside[-1].hour, inside[-1].minute) == (16, 0) and len(inside) == 26
     sat = trig.get_next_fire_time(None, datetime(2026, 11, 14, 0, 0, tzinfo=_ET))   # Saturday
     assert sat.weekday() == 0, "weekends never fire"
+    # the half day: 14 refreshes, 09:45..13:00
+    t = datetime(2026, 11, 26, 23, 0, tzinfo=_ET)
+    half = []
+    while True:
+        t = trig.get_next_fire_time(None, t + timedelta(seconds=1))
+        if t.date() != date(2026, 11, 27):
+            break
+        half.append(t)
+    half_inside = [f for f in half if bl.in_refresh_window(f)]
+    assert len(half_inside) == 14 and (half_inside[-1].hour, half_inside[-1].minute) == (13, 0)
 
 
 # ═══════════════════════════════════════════════════════════════════════════ the push status (job side)
@@ -556,15 +693,167 @@ def test_blob_sha_is_gits_blob_id():
 
 
 def test_a_lagging_push_is_audited_at_the_next_refresh(paths):
-    paths.ref_path.write_text(json.dumps(_reference()))
+    paths.ref_path.write_text(json.dumps(_live_reference()))
     paths.out_dir.mkdir()
     live = paths.out_dir / bl.LIVE_NAME
     live.write_text('{"old": true}\n')
     old = time.time() - bl.PUSH_LAG_TOLERANCE_S - 60
     os.utime(live, (old, old))
-    asyncio.run(bl.refresh_once(NOW, TODAY, fetch=_fetch_ok, ref_path=paths.ref_path, out_dir=paths.out_dir))
+    res = asyncio.run(bl.refresh_once(NOW, TODAY, fetch=_fetch_ok, ref_path=paths.ref_path, out_dir=paths.out_dir))
     assert [r[0] for r in paths.audit.rows] == [bl.EVT_PUSH_LAGGING, bl.EVT_REFRESH]
     assert "push_breadth_live.sh" in paths.audit.rows[0][1]
+    assert "no push has ever been recorded" in res["push_problem"]
+
+
+def _age_the_live_file(out_dir: Path) -> None:
+    live = out_dir / bl.LIVE_NAME
+    old = time.time() - bl.PUSH_LAG_TOLERANCE_S - 60
+    os.utime(live, (old, old))
+
+
+def test_a_file_left_unpublished_pages_at_the_third_straight_refresh(paths, monkeypatch):
+    """A host cron never installed (or a push failing every minute) used to be an audit row nobody reads until Friday
+    (review 2026-11-10, item 9). Now: the third straight refresh that finds the previous file unpublished raises once
+    — the page — after writing its own file; the fourth is silent; a landed push resets it."""
+    _trading(monkeypatch)
+    paths.ref_path.write_text(json.dumps(_live_reference()))
+    kw = dict(fetch=_fetch_ok, ref_path=paths.ref_path, out_dir=paths.out_dir)
+    assert asyncio.run(bl.run_scheduled(NOW, **kw)) == 48          # the first file; nothing to judge yet
+    for _ in range(2):
+        _age_the_live_file(paths.out_dir)
+        assert asyncio.run(bl.run_scheduled(NOW, **kw)) == 48
+    _age_the_live_file(paths.out_dir)
+    with pytest.raises(bl.BreadthLiveError, match="NOT PUBLISHED for 3 straight refreshes"):
+        asyncio.run(bl.run_scheduled(NOW, **kw))
+    assert json.loads((paths.out_dir / bl.LIVE_NAME).read_text())["read_n"] == 48, "the refresh itself still writes"
+    _age_the_live_file(paths.out_dir)
+    assert asyncio.run(bl.run_scheduled(NOW, **kw)) == 48          # the 4th does not page again
+    assert [r[0] for r in paths.audit.rows].count(bl.EVT_PUSH_LAGGING) == 4
+    # the host cron catches up: a recorded push of the current file resets the streak
+    live = paths.out_dir / bl.LIVE_NAME
+    (paths.out_dir / bl.STATUS_NAME).write_text(json.dumps({"ok": True, "blob": bl.blob_sha(live.read_bytes()), "at": "t"}))
+    _age_the_live_file(paths.out_dir)
+    assert asyncio.run(bl.run_scheduled(NOW, **kw)) == 48
+    assert bl._push_streak["n"] == 0
+    # the cron dies again (its status vanishes with a wiped host dir): three more lagging reads page afresh
+    (paths.out_dir / bl.STATUS_NAME).unlink()
+    for _ in range(2):
+        _age_the_live_file(paths.out_dir)
+        assert asyncio.run(bl.run_scheduled(NOW, **kw)) == 48
+    _age_the_live_file(paths.out_dir)
+    with pytest.raises(bl.BreadthLiveError, match="NOT PUBLISHED"):
+        asyncio.run(bl.run_scheduled(NOW, **kw))
+
+
+# ═══════════════════════════════════════════════════════════════════════════ the fetch (review 2026-11-10, blocking 2)
+
+def test_the_fetch_runs_on_the_jobs_own_one_thread_executor(monkeypatch):
+    """breadth_live hands the collector ITS executor (one thread, never the loop's shared default pool) plus the
+    6 s budget and the 3-lost-chunks stop; the collector's defaults are untouched for the EP callers."""
+    from agents.market_intelligence import collector
+    seen = {}
+
+    async def fake(tickers, **kw):
+        seen.update(kw)
+        kw["stats"].update({"batches_total": 1, "batches_failed": 0})
+        return {t: _snap(1.0) for t in tickers}
+    monkeypatch.setattr(collector, "get_alpaca_snapshots_batch", fake)
+    snaps, stats = asyncio.run(bl._fetch_snapshots(["AAA", "BBB"]))
+    assert set(snaps) == {"AAA", "BBB"} and stats == {"batches_total": 1, "batches_failed": 0}
+    assert seen["executor"] is bl._FETCH_EXECUTOR and isinstance(bl._FETCH_EXECUTOR, bl._OneThread)
+    assert bl._FETCH_EXECUTOR._max_workers == 1
+    assert seen["timeout_s"] == 6.0 and seen["concurrency"] == 1 and seen["max_consecutive_failures"] == 3
+
+
+def test_a_refresh_skips_while_the_previous_call_is_still_in_flight(monkeypatch):
+    """wait_for gives up on a hung alpaca-py call; the thread does not. The next refresh must not queue behind it (one
+    thread: it would wait for the hang, then run stale), so it raises — a counted failure — and the collector is never
+    called. Clears by itself when the thread returns."""
+    import threading
+    from agents.market_intelligence import collector
+    called = []
+
+    async def never(tickers, **kw):
+        called.append(tickers)
+        return {}
+    monkeypatch.setattr(collector, "get_alpaca_snapshots_batch", never)
+    gate = threading.Event()
+    hung = bl._FETCH_EXECUTOR.submit(gate.wait)              # what a hung HTTP call looks like to the executor
+    try:
+        assert bl.fetch_in_flight()
+        with pytest.raises(bl.BreadthLiveError, match="still running"):
+            asyncio.run(bl._fetch_snapshots(["AAA"]))
+        assert called == []
+    finally:
+        gate.set()
+        hung.result(timeout=5)
+    assert not bl.fetch_in_flight()
+    asyncio.run(bl._fetch_snapshots(["AAA"]))
+    assert called == [["AAA"]]
+
+
+def _collector_rig(monkeypatch, fail: bool):
+    from tests.test_490_collector_rt import _FakeClient, _FakeSnapReq, _env
+    _env(monkeypatch)
+    _FakeClient.calls, _FakeClient.fail = 0, fail
+    return _FakeClient, patch("alpaca.data.historical.StockHistoricalDataClient", _FakeClient), \
+        patch("alpaca.data.requests.StockSnapshotRequest", _FakeSnapReq)
+
+
+def test_collector_default_path_uses_the_loops_default_pool_and_tries_every_chunk(monkeypatch):
+    """EP Pass-2 / Pass-0 byte-identical: no executor passed => run_in_executor(None, ...); no stop => every one of
+    the 10 chunks is attempted twice even when all fail, and stats carry exactly the two keys they always did."""
+    from agents.market_intelligence import collector
+    executors = []
+    real = asyncio.BaseEventLoop.run_in_executor
+
+    def spy(self, executor, fn, *args):
+        executors.append(executor)
+        return real(self, executor, fn, *args)
+    monkeypatch.setattr(asyncio.BaseEventLoop, "run_in_executor", spy)
+    client, p1, p2 = _collector_rig(monkeypatch, fail=True)
+    stats: dict = {}
+    with p1, p2:
+        out = asyncio.run(collector.get_alpaca_snapshots_batch([f"T{i}" for i in range(1000)], stats=stats))
+    assert out == {} and stats == {"batches_total": 10, "batches_failed": 10}
+    assert client.calls == 20 and len(executors) == 20 and set(executors) == {None}
+
+
+def test_collector_runs_on_the_given_executor_and_stops_after_three_lost_chunks(monkeypatch):
+    from agents.market_intelligence import collector
+    executors = []
+    real = asyncio.BaseEventLoop.run_in_executor
+
+    def spy(self, executor, fn, *args):
+        executors.append(executor)
+        return real(self, executor, fn, *args)
+    monkeypatch.setattr(asyncio.BaseEventLoop, "run_in_executor", spy)
+    own = bl._OneThread()
+    client, p1, p2 = _collector_rig(monkeypatch, fail=True)
+    stats: dict = {}
+    with p1, p2:
+        out = asyncio.run(collector.get_alpaca_snapshots_batch([f"T{i}" for i in range(1000)], stats=stats,
+                                                                executor=own, max_consecutive_failures=3))
+    assert out == {} and stats == {"batches_total": 10, "batches_failed": 10}     # the 7 unattempted count as failed
+    assert client.calls == 6, "3 chunks × 2 attempts, then the rest are not attempted"
+    assert len(executors) == 6 and set(executors) == {own}
+    # a success in between resets the run: 2 fail, 1 ok, 2 fail, 1 ok ... never reaches 3 => every chunk attempted
+    class Flaky(client):
+        n = 0
+
+        def get_stock_snapshot(self, req):
+            Flaky.n += 1
+            if Flaky.n % 3:
+                raise RuntimeError("boom")
+            return super().get_stock_snapshot(req)
+    stats2: dict = {}
+    client.fail = False
+    with patch("alpaca.data.historical.StockHistoricalDataClient", Flaky), p2:
+        out2 = asyncio.run(collector.get_alpaca_snapshots_batch([f"T{i}" for i in range(500)], stats=stats2,
+                                                                 executor=own, max_consecutive_failures=3))
+    # attempts: chunk1 (fail, fail) chunk2 (ok) chunk3 (fail, fail) chunk4 (ok) chunk5 (fail, fail): 2 of 5 read
+    assert stats2 == {"batches_total": 5, "batches_failed": 3} and len(out2) == 200
+    own.shutdown(wait=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════ the pusher (behaviour)
@@ -643,8 +932,61 @@ def test_pusher_never_names_the_default_branch():
     text = PUSH_SH.read_text()
     assert not re.search(r"\bmain\b", text) and not re.search(r"\bmaster\b", text)
     assert "commit-tree" in text and " -p " not in text.split("commit-tree")[1].split("\n")[0]
-    assert "--force" in text and "refs/heads/$BRANCH" in text and 'BREADTH_LIVE_BRANCH:-live-breadth' in text
+    assert "--force" in text and "refs/heads/$BRANCH" in text
+    assert re.search(r"^BRANCH=live-breadth\b", text, re.M), "the branch is hard-coded"
+    assert "BREADTH_LIVE_BRANCH" not in text, "no environment variable may choose the branch (review item 4)"
     assert "git checkout" not in text and "git reset" not in text and "git add" not in text
+    assert "flock -n" in text and "timeout -k 5" in text and 'GIT_DIR="$PUSH_GIT"' in text
+
+
+def test_pusher_ignores_a_branch_override_in_its_environment(push_rig):
+    """BREADTH_LIVE_BRANCH=main in the cron environment used to force-push the orphan commit over the dashboard's
+    default branch (review item 4). The branch is hard-coded now: the push still lands on live-breadth."""
+    push_rig.live.write_text('{"n": 9}\n')
+    r = push_rig.run(BREADTH_LIVE_BRANCH="main")
+    assert r.returncode == 0, r.stderr
+    assert push_rig.remote("rev-parse", "main") == push_rig.main_before, "the default branch must not move"
+    assert push_rig.remote("show", f"live-breadth:{bl.LIVE_NAME}") == '{"n": 9}'
+
+
+def test_pusher_works_in_its_own_bare_repo_never_the_nightlys_clone(push_rig):
+    """The nightly export's clone gains no object and no ref from a push (review item 5: a pusher retry during the
+    nightly's `git fetch` contended for a refs/remotes lock and, under set -e, cost all four snapshots)."""
+    def dest_state():
+        objs = subprocess.run(["git", "count-objects"], cwd=push_rig.dest, capture_output=True, text=True).stdout
+        refs = subprocess.run(["git", "for-each-ref"], cwd=push_rig.dest, capture_output=True, text=True).stdout
+        return objs, refs
+    before = dest_state()
+    push_rig.live.write_text('{"n": 10}\n')
+    assert push_rig.run().returncode == 0
+    push_rig.live.write_text('{"n": 11}\n')
+    assert push_rig.run().returncode == 0
+    assert dest_state() == before, "the nightly's clone must be untouched: no objects written, no tracking ref"
+    own = push_rig.live.parent / ".push.git"
+    assert (own / "HEAD").exists() and (own / "objects").is_dir(), "the pusher's own bare repo"
+    assert push_rig.remote("show", f"live-breadth:{bl.LIVE_NAME}") == '{"n": 11}'
+    # pruned after the push: the bare repo keeps nothing (its objects are on the remote)
+    loose = subprocess.run(["git", "count-objects"], cwd=own, capture_output=True, text=True).stdout
+    assert loose.startswith("0 objects"), loose
+
+
+def test_pusher_runs_one_at_a_time(push_rig):
+    """A second run while one is in progress exits 0 at once and pushes nothing (a hung ssh push no longer piles one
+    more process onto the host every minute). flock is util-linux: present on the prod host, absent on macOS."""
+    if not shutil.which("flock"):
+        pytest.skip("flock not available on this platform (prod Linux has it)")
+    push_rig.live.write_text('{"n": 12}\n')
+    lock = push_rig.live.parent / ".push.lock"
+    holder = subprocess.Popen(["flock", str(lock), "sleep", "5"])
+    try:
+        time.sleep(0.5)
+        r = push_rig.run()
+        assert r.returncode == 0 and r.stdout == "" and not push_rig.status.exists()
+        assert push_rig.remote("rev-parse", "--verify", "-q", "live-breadth") is None
+    finally:
+        holder.terminate()
+        holder.wait()
+    assert push_rig.run().returncode == 0 and push_rig.remote("rev-list", "--count", "live-breadth") == "1"
 
 
 # ═══════════════════════════════════════════════════════════════════════════ the collector (additive)

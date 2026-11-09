@@ -7858,8 +7858,8 @@ def start_scheduler() -> AsyncIOScheduler:
     )
 
     # #723 live market breadth (2026-11-10): every 15 min through the session. hour="9-16" +
-    # minute="*/15" fires 09:00..16:45; breadth_live.run_scheduled keeps 09:45..16:00 and trading
-    # days only (the explicit-window idiom above). Intelligence-owned: a data read, a file write,
+    # minute="*/15" fires 09:00..16:45; breadth_live.run_scheduled keeps 09:45..the session close
+    # (16:00; 13:00 on a half day) and trading days only (the explicit-window idiom above). Intelligence-owned: a data read, a file write,
     # an audit row — nothing the broker or a trade reads. misfire grace is short on purpose: a
     # refresh that missed its slot is replaced by the next one 15 minutes later.
     _scheduler.add_job(

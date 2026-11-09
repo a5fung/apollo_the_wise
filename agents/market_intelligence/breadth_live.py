@@ -26,6 +26,12 @@ RULES (the nightly's, applied to today's bar)
   missing         a universe name Alpaca did not return, or returned without a daily bar DATED
                   TODAY (ET) carrying a close. Counted (missing_n, adv_dec.missing), never guessed —
                   a stale bar from an earlier day would otherwise read as "unchanged".
+  coverage        a refresh that READ under 85% of the universe (COVERAGE_FLOOR), or whose fetch lost
+                  ANY batch, is a FAILURE — nothing written, nothing pushed, counted toward the page.
+                  The 11-09 probe read ~96% of names, so a healthy refresh clears the floor by ~10
+                  points; 49 lost batches of 50 would otherwise publish 100 advances / 4,900 missing
+                  under a fresh stamp, and a holiday the calendar failed to recognise (every bar dated
+                  an earlier day, read_n 0) would publish an all-zero market as live.
   advance/decline today's bar close vs the REFERENCE prev_close (never Alpaca's previous_daily_bar,
                   which pre-open deterministically holds T-2 — the #490 finding). no_prior = a
                   universe name with no prev_close, as in the nightly.
@@ -36,14 +42,28 @@ RULES (the nightly's, applied to today's bar)
                   decimals; n_1d = members that had the data; up_1d (groups) = positive returns.
                   Same field names as the nightly's Today fields.
 
-FAILURE DISCIPLINE  every run writes ONE audit row (counts + timing); a failed refresh (fetch, compute,
-write) is audited and counted; the THIRD straight failure in a session re-raises once so audit_wrap's
-record_job_failure pages — never the first, never every run. A success resets the streak.
+WINDOW  09:45 ET through the session close of the day — 16:00, or 13:00 on an NYSE half day
+(`trading_calendar.session_close_time`), so the stamp stops moving the minute the market shuts.
+
+THE FETCH  runs on this module's OWN one-thread executor, never apollo-market's shared default pool:
+alpaca-py sets no HTTP timeout, and `asyncio.wait_for` abandons a hung call without stopping its thread —
+on the shared pool one hanging endpoint would park up to 100 blocking calls in front of every other
+`run_in_executor(None, ...)` in the process (ep_scan at 09:45/09:50/09:55 first). Here the worst case is
+this one thread stuck, and the next refresh SKIPS (a counted failure) while it is. The fetch also stops
+after 3 consecutive lost chunks instead of sitting through 50 × 2 × 6 s.
+
+FAILURE DISCIPLINE  every run writes ONE audit row (counts + timing); a failed refresh (fetch, coverage,
+compute, write) is audited and counted; the THIRD straight failure in a session re-raises once so
+audit_wrap's record_job_failure pages — never the first, never every run. A success resets the streak.
+A file that stays UNPUBLISHED (push_status.json absent, for an earlier file, or failed — the host cron
+missing or its push failing) is audited every refresh and pages the same way: at the third straight
+lagging refresh (~45 min unpublished), once, reset when a push lands.
 
 Display only. No money path: nothing here feeds a trade, a grade, an alert or any sizing.
 """
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
 import json
 import logging
@@ -67,9 +87,12 @@ ENV_LIVE_DIR = "APOLLO_BREADTH_LIVE_DIR"
 ENV_REFERENCE_PATH = "APOLLO_BREADTH_REFERENCE_PATH"
 
 WINDOW_START = (9, 45)     # first refresh (the opening 15 minutes are too thin to count)
-WINDOW_END = (16, 0)       # last refresh = the close
+# The window ENDS at the day's session close (16:00; 13:00 on a half day) — trading_calendar.session_close_time.
 PAGE_AFTER_STRAIGHT_FAILURES = 3
 PUSH_LAG_TOLERANCE_S = 5 * 60   # a live file older than this and not pushed => the pusher is down
+COVERAGE_FLOOR = 0.85           # read_n / universe_n below this => the refresh is a failure, nothing written
+FETCH_TIMEOUT_S = 6.0           # per Alpaca call (the 11-09 probe: ~0.16 s per 100-name call)
+FETCH_MAX_CONSECUTIVE_FAILURES = 3   # lost chunks in a row before the fetch gives up on the rest
 
 # audit event names (one writer each; constants here rather than audit_events.py, which collects 2+-caller names)
 EVT_REFRESH = "breadth_live_refresh"
@@ -98,11 +121,20 @@ def reference_path() -> Path:
 
 # ── schedule ─────────────────────────────────────────────────────────────────────────────────────
 
+def window_end(d: date) -> tuple[int, int]:
+    """The last refresh of the day = the session close: (16, 0), or (13, 0) on an NYSE half day."""
+    from agents.market_intelligence.trading_calendar import session_close_time
+    t = session_close_time(d)
+    return (t.hour, t.minute)
+
+
 def in_refresh_window(now_et: datetime) -> bool:
-    """09:45 <= hh:mm <= 16:00 ET. The cron slot (hour 9-16, every 15 min) fires wider; this is the
-    rule, enforced in code — the repo's idiom (_position_coverage_check_job)."""
+    """09:45 <= hh:mm <= the session close ET (16:00; 13:00 on a half day such as Fri 2026-11-27). The cron
+    slot (hour 9-16, every 15 min) fires wider; this is the rule, enforced in code — the repo's idiom
+    (_position_coverage_check_job). Ending at the real close is what keeps the stamp honest: after the
+    close every number is final, and a stamp that kept moving would claim a freshness the data lacks."""
     hm = (now_et.hour, now_et.minute)
-    return WINDOW_START <= hm <= WINDOW_END
+    return WINDOW_START <= hm <= window_end(now_et.date())
 
 
 # ── reference ────────────────────────────────────────────────────────────────────────────────────
@@ -284,17 +316,72 @@ def push_problem(directory: Path | None = None, now_ts: float | None = None) -> 
 
 # ── one refresh ──────────────────────────────────────────────────────────────────────────────────
 
+class _OneThread(concurrent.futures.ThreadPoolExecutor):
+    """ONE thread of this job's own, remembering the last call submitted. `loop.run_in_executor(executor, fn)`
+    goes through `submit`, so `busy()` is true exactly while alpaca-py is still inside a call — including a call
+    whose `wait_for` budget fired long ago (the asyncio side gave up; the thread did not). The same shape as
+    broker/alpaca_client's bars executor (re-review 2026-11-07), which intelligence-owned code must not import."""
+
+    def __init__(self):
+        super().__init__(max_workers=1, thread_name_prefix="breadth-live-fetch")
+        self.last: concurrent.futures.Future | None = None
+
+    def submit(self, fn, /, *args, **kwargs):
+        self.last = f = super().submit(fn, *args, **kwargs)
+        return f
+
+    def busy(self) -> bool:
+        return self.last is not None and not self.last.done()
+
+
+_FETCH_EXECUTOR = _OneThread()
+
+
+def fetch_in_flight() -> bool:
+    """True while the previous refresh's Alpaca call is still running on the job's thread."""
+    return _FETCH_EXECUTOR.busy()
+
+
 async def _fetch_snapshots(tickers: list[str]) -> tuple[dict[str, dict], dict]:
+    """Every ticker's snapshot, 100 per call, serially, on the job's own thread. Raises BreadthLiveError (a
+    counted failure, nothing fetched) while the previous call is still in flight — queueing behind a hung
+    call would only stack stale work on the one thread."""
     from agents.market_intelligence.collector import get_alpaca_snapshots_batch
+    if fetch_in_flight():
+        raise BreadthLiveError("the previous refresh's Alpaca call is still running (a hung HTTP call holds the "
+                               "job's thread) — this refresh skipped rather than queued behind it")
     stats: dict = {}
-    snaps = await get_alpaca_snapshots_batch(tickers, timeout_s=6.0, concurrency=1, stats=stats)
+    snaps = await get_alpaca_snapshots_batch(tickers, timeout_s=FETCH_TIMEOUT_S, concurrency=1, stats=stats,
+                                             executor=_FETCH_EXECUTOR,
+                                             max_consecutive_failures=FETCH_MAX_CONSECUTIVE_FAILURES)
     return snaps, stats
+
+
+def coverage_problem(numbers: dict, stats: dict, n_tickers: int) -> str | None:
+    """None when the read is good enough to publish; else why it is not. Pure. A lost batch or a read under
+    COVERAGE_FLOOR of the universe is a failure — the counts would be of a different market than the stamp
+    claims (49 lost batches of 50 => 100 advances / 4,900 missing; every bar dated yesterday => all zero)."""
+    failed = int(stats.get("batches_failed") or 0)
+    if failed:
+        return (f"{failed} of {stats.get('batches_total', '?')} Alpaca batches failed — a partial read is not "
+                f"published (read {numbers['read_n']} of {numbers['universe_n']})")
+    universe_n, read_n = numbers["universe_n"], numbers["read_n"]
+    if universe_n <= 0:
+        return f"the reference lists no universe names ({n_tickers} tickers)"
+    cov = read_n / universe_n
+    if cov < COVERAGE_FLOOR:
+        return (f"read {read_n} of {universe_n} universe names ({cov:.0%}) — under the {COVERAGE_FLOOR:.0%} floor"
+                + ("; every bar is dated before today — a holiday the calendar did not recognise, or Alpaca's "
+                   "daily bars not yet rolled" if read_n == 0 else ""))
+    return None
 
 
 async def refresh_once(now_et: datetime, today: date, *, fetch=None, ref_path: Path | None = None,
                        out_dir: Path | None = None) -> dict:
     """The whole refresh: reference -> staleness -> snapshots -> numbers -> file. Returns the numbers plus
-    timings; raises StaleReference (nothing written) or BreadthLiveError (fetch produced nothing)."""
+    timings and `push_problem` (None when the previous file was published); raises StaleReference (nothing
+    written) or BreadthLiveError (the fetch produced nothing, lost a batch, or read under the coverage floor —
+    nothing written either way)."""
     from agents.market_intelligence.db import log_audit_event
 
     t0 = time.monotonic()
@@ -316,6 +403,9 @@ async def refresh_once(now_et: datetime, today: date, *, fetch=None, ref_path: P
                                f"(batches {stats.get('batches_failed', '?')}/{stats.get('batches_total', '?')} failed)")
 
     numbers = compute_live(ref, snaps, today)
+    bad = coverage_problem(numbers, stats, len(tickers))
+    if bad:
+        raise BreadthLiveError(bad)
     payload = {
         "version": 1,
         "as_of": now_et.astimezone(_ET).strftime("%Y-%m-%dT%H:%M:%S") + " ET",
@@ -335,28 +425,39 @@ async def refresh_once(now_et: datetime, today: date, *, fetch=None, ref_path: P
         json.dumps({"fetch_s": round(t_fetch, 2), "total_s": round(total, 2), "stats": stats,
                     "universe_n": numbers["universe_n"], "read_n": numbers["read_n"]}),
     )
-    return {**numbers, "fetch_s": t_fetch, "total_s": total}
+    return {**numbers, "fetch_s": t_fetch, "total_s": total, "push_problem": lag}
 
 
 # ── the scheduled entry ──────────────────────────────────────────────────────────────────────────
 
-_streak: dict = {"date": None, "n": 0}
+_streak: dict = {"date": None, "n": 0}          # straight failed refreshes today
+_push_streak: dict = {"date": None, "n": 0}     # straight refreshes today whose previous file was never published
+
+
+def _bump(streak: dict, today: date) -> int:
+    if streak["date"] != today:
+        streak["date"], streak["n"] = today, 0
+    streak["n"] += 1
+    return streak["n"]
+
+
+def _reset(streak: dict, today: date) -> None:
+    streak["date"], streak["n"] = today, 0
 
 
 def _streak_bump(today: date) -> int:
-    if _streak["date"] != today:
-        _streak["date"], _streak["n"] = today, 0
-    _streak["n"] += 1
-    return _streak["n"]
+    return _bump(_streak, today)
 
 
 def _streak_reset(today: date) -> None:
-    _streak["date"], _streak["n"] = today, 0
+    _reset(_streak, today)
+    _reset(_push_streak, today)
 
 
 async def run_scheduled(now_et: datetime | None = None, **refresh_kwargs) -> int:
     """The job body under audit_wrap. Returns read_n (rows for mi_job_runs) or 0 when nothing ran.
-    Raises ONLY on the third straight failure of the day — that one raise is the page."""
+    Raises ONLY on the third straight failure of the day, or the third straight refresh whose previous file
+    was never published (the host pusher missing or failing) — each raise, once, is the page."""
     from agents.market_intelligence.db import log_audit_event
     from agents.market_intelligence.trading_calendar import get_market_status
     from shared.dates import et_today
@@ -381,5 +482,13 @@ async def run_scheduled(now_et: datetime | None = None, **refresh_kwargs) -> int
                 f"{n} straight live-breadth refreshes failed today; last: {reason}. "
                 f"The breadth page shows the last close until a refresh succeeds.") from e
         return 0
-    _streak_reset(today)
+    _reset(_streak, today)
+    if result.get("push_problem"):
+        n = _bump(_push_streak, today)
+        if n == PAGE_AFTER_STRAIGHT_FAILURES:
+            raise BreadthLiveError(
+                f"live breadth refreshed but NOT PUBLISHED for {n} straight refreshes: {result['push_problem']}. "
+                f"Is the host cron for scripts/push_breadth_live.sh installed and pushing?")
+    else:
+        _reset(_push_streak, today)
     return int(result["read_n"])

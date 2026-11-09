@@ -197,13 +197,20 @@ Display only, like everything else here.
 
 | | |
 |---|---|
-| **Reference** (nightly) | `scripts/export_breadth_reference.sql` — ONE read-only SELECT, run by `auto_export_snapshots.sh` as a second **guarded** step (same guard as the breadth block: `ON_ERROR_STOP`, 300 s `statement_timeout`, 200-byte floor; a failure never blocks the other snapshots and leaves the published file alone). Output `apollo_breadth_reference.json`, published to portfolio-app2 with the others AND copied atomically to **`/home/apollo/apollo_the_wise/logs/apollo_breadth_reference.json`** on the host (`BREADTH_REFERENCE_COPY` overrides) — the `logs/` dir docker-compose.prod.yml bind-mounts into apollo-market at `/app/logs`, which is where the job reads it |
-| **Job** (intraday) | `agents/market_intelligence/breadth_live.py`, registered as `breadth_live_refresh` (intelligence-owned): cron hour 9-16 / every 15 min / Mon-Fri, with the window **09:45 ≤ t ≤ 16:00 ET** and the `trading_calendar` trading-day check enforced in code (26 refreshes a day). Reads the reference, fetches Alpaca SIP snapshots for every ticker in it (`collector.get_alpaca_snapshots_batch`, 100 per call, ~50 calls, ~8 s measured), computes the numbers below and writes **`/app/logs/breadth_live/apollo_breadth_live.json`** atomically (host: `/home/apollo/apollo_the_wise/logs/breadth_live/`). ONE audit row per run (`breadth_live_refresh`: counts + timing) |
-| **Pusher** (host) | `scripts/push_breadth_live.sh`, a host cron **every minute** (the container has no git, no ssh and no deploy key — the `github-p2` alias lives on the host, where the nightly export pushes from). Idempotent: it hashes the live file and pushes only on a change, as ONE orphan single-file commit force-pushed to portfolio-app2's **`live-breadth`** branch (git plumbing — `hash-object` → `mktree` → `commit-tree` with no parent → `push --force <sha>:refs/heads/live-breadth`; the branch always holds exactly one commit, the default branch and the export clone's checkout are never touched, so Streamlit Cloud never reloads). Records `push_status.json` beside the live file; the job reads it on its next refresh and writes `breadth_live_push_lagging` when the previous file was never pushed or the push failed. The retry is the next cron tick. Host line: `* * * * * /home/apollo/apollo_the_wise/scripts/push_breadth_live.sh >> /home/apollo/apollo_the_wise/logs/push_breadth_live.log 2>&1` |
+| **Reference** (nightly) | `scripts/export_breadth_reference.sql` — ONE read-only SELECT, run by `auto_export_snapshots.sh` as its **FIRST** step, in its own **guarded** block (`ON_ERROR_STOP`, 300 s `statement_timeout`, 200-byte floor): it runs before `cd $DEST`, the `git fetch` / `reset` and the all-or-nothing snapshot loop, so a GitHub outage at export time or a failed theme / trades / funnel export cannot leave the next session without a fresh reference (the live job would refuse all day and page at 10:15); its own failure leaves the previous reference where it was and the snapshots continue. **Not published** — it is the job's input, not a dashboard file (publishing it committed ~5,000 tickers to portfolio-app2 every night for a page that never read it). Written tmp + mv straight to **`/home/apollo/apollo_the_wise/logs/apollo_breadth_reference.json`** on the host (`BREADTH_REFERENCE_COPY` overrides) — the `logs/` dir docker-compose.prod.yml bind-mounts into apollo-market at `/app/logs`, which is where the job reads it |
+| **Job** (intraday) | `agents/market_intelligence/breadth_live.py`, registered as `breadth_live_refresh` (intelligence-owned): cron hour 9-16 / every 15 min / Mon-Fri, with the window **09:45 ≤ t ≤ the session close ET** (`trading_calendar.session_close_time`: 16:00, **13:00 on an NYSE half day** such as Fri 2026-11-27 — 26 refreshes on a full day, 14 on a half day; the stamp stops moving when the market shuts) and the trading-day check enforced in code. Reads the reference, fetches Alpaca SIP snapshots for every ticker in it (`collector.get_alpaca_snapshots_batch`, 100 per call, ~50 calls, ~8 s measured) **on the job's OWN one-thread executor** (alpaca-py sets no HTTP timeout and `wait_for` abandons a hung call without stopping its thread — on apollo-market's shared default pool one hanging endpoint would have parked up to 100 blocking calls in front of every other `run_in_executor(None, …)` in the process, ep_scan first; a refresh **skips**, as a counted failure, while the previous call is still in flight, and the fetch **stops after 3 lost chunks in a row**), computes the numbers below, **refuses a partial read** (any lost batch, or under **85 %** of the universe read — `COVERAGE_FLOOR`; the 11-09 probe read ~96 %) and otherwise writes **`/app/logs/breadth_live/apollo_breadth_live.json`** atomically (host: `/home/apollo/apollo_the_wise/logs/breadth_live/`). ONE audit row per run (`breadth_live_refresh`: counts + timing) |
+| **Pusher** (host) | `scripts/push_breadth_live.sh`, a host cron **every minute** (the container has no git, no ssh and no deploy key — the `github-p2` alias lives on the host, where the nightly export pushes from). Idempotent: it hashes the live file and pushes only on a change, as ONE orphan single-file commit force-pushed to portfolio-app2's **`live-breadth`** branch (git plumbing — `hash-object` → `mktree` → `commit-tree` with no parent → `push --force <sha>:refs/heads/live-breadth`; the branch always holds exactly one commit, the default branch is never touched, so Streamlit Cloud never reloads). The branch name is **hard-coded** — no environment variable can point it at the default branch. It works in its **own bare repo** (`logs/breadth_live/.push.git`, created on first run, pruned after each push) and pushes to the remote **URL** (read from the nightly clone's config, or `BREADTH_LIVE_REMOTE`), so the nightly's clone gains no object and no tracking ref — a pusher retry can never collide with the nightly's `git fetch`. **One run at a time** (`flock -n`; a second run exits 0 at once) and the push runs under **`timeout 50`** (a hung ssh ends inside the cron period); both are util-linux / coreutils on the host. Records `push_status.json` beside the live file; the job reads it on its next refresh, writes `breadth_live_push_lagging` when the previous file was never pushed or the push failed, and **pages at the third straight refresh left unpublished** (~45 min; a host cron that was never installed is not silent). The retry is the next cron tick. Host line: `* * * * * /home/apollo/apollo_the_wise/scripts/push_breadth_live.sh >> /home/apollo/apollo_the_wise/logs/push_breadth_live.log 2>&1` |
 
 The page (portfolio-app2, step 4 — not in this repo) reads the branch through the GitHub contents API with a
 read-only token and shows "Live · as of HH:MM ET" while the file is ≤ 20 min old on a trading day, else the last
-close, labelled. A failed refresh therefore never leaves an old number shown as live.
+close, labelled. A failed refresh therefore never leaves an old number shown as live. **Three rules the page must
+honour** (review 2026-11-10, item 7):
+- **Age the file by the payload's `as_of`, never by the commit date** — a pusher that comes back after an hour down
+  publishes an old file under a fresh commit.
+- **Join themes by `name` and groups by `code`, never by `idx`** — the reference and the nightly snapshot are
+  separately guarded steps, so one can refresh while the other keeps last night's ordering.
+- **Yesterday's 16:00 file stays on the branch until 09:45** — the `as_of` DATE check (today, ET) is the only thing
+  between it and a "Live" label.
 
 ### The reference file
 
@@ -240,19 +247,27 @@ theme_idx}` (the nightly's grouping and names: `E-UNASSIGNED` → `Other`), `sto
 Rules the counts follow: a name Alpaca did not return, or returned with a bar from an earlier day or without a
 close, is **missing — counted, never guessed** (a stale bar would otherwise read as "unchanged"); a NaN or zero
 high / low is an unusable bar and enters no test; a member counts once per group however many of its themes hold
-it (the stocks map is one row per ticker). An early-close day keeps refreshing until 16:00 with the closed
-session's numbers under a moving stamp.
+it (the stocks map is one row per ticker). On an early-close day the last refresh is the 13:00 close — the stamp
+never moves after the market has shut.
 
 ### Failure discipline
 
 - **Stale reference** (`as_of` ≠ the previous NYSE trading day per `trading_calendar.previous_trading_day`, or
   missing / unreadable) → the job writes NOTHING and audits `breadth_live_reference_stale`. An old reference would
   count every name against the wrong close; the page falls back to the last close by the file's age.
-- **A failed refresh** (fetch, compute, write; an empty Alpaca read is a failure, not a zero market) → audited
+- **A partial read is a failure, not a thin market** (`coverage_problem`): any lost Alpaca batch, or fewer than
+  **85 %** of the universe names carrying today's bar (`COVERAGE_FLOOR`) → the job writes NOTHING. 49 lost batches
+  of 50 would otherwise have published 100 advances / 4,900 missing under a fresh stamp, and a holiday the calendar
+  failed to recognise (every bar dated the previous session, read_n 0) an all-zero market as live — the PLAN's
+  "an intraday count that disagrees with the independent read".
+- **A failed refresh** (fetch, coverage, compute, write; an empty Alpaca read is a failure, not a zero market; a
+  refresh skipped because the previous Alpaca call is still hung on the job's thread) → audited
   (`breadth_live_refresh_failed`), counted; the **third straight failure in a session** re-raises once, so
   `audit_wrap` → `record_job_failure` pages — never the first, never every run. A success resets the streak.
 - **A push that failed or never happened** → `breadth_live_push_lagging` at the next refresh (the live file is
-  > 5 min old and `push_status.json` is absent, for an earlier file, or `ok: false`).
+  > 5 min old and `push_status.json` is absent, for an earlier file, or `ok: false`); the **third straight** such
+  refresh re-raises once (after writing its own file) — the page for a host cron that is missing or failing — and
+  a landed push resets it.
 - Audit rows only; no `mi_job_runs` noise beyond the one row `audit_wrap` writes per run.
 
 ### Verified / not yet
@@ -261,12 +276,27 @@ session's numbers under a moving stamp.
   the missing rules, the stale refusal and the page-after-three rule, the window and registration, the pusher's
   orphan single-file commit against a local bare remote, the shell's guarded second step against a fake docker.
 - **Not verifiable off prod** (step 5, Fri 11-13 in session): one refresh's counts vs an independent read at the
-  same minute; the Alpaca symbol coverage of the ~5,000-name universe (the probe read 958 of 1,000); the host
-  cron. SIP creds reach apollo-market through the `ALPACA_API_KEY` fallback (the paper variables are blanked in
+  same minute; the Alpaca symbol coverage of the ~5,000-name universe (the probe read 958 of 1,000 — the 85 %
+  floor must clear with room); the host cron (and, on Linux only, the pusher's `flock` test — skipped on macOS).
+  ⚠ Two **known departures from the nightly's rules** the independent read must allow for (review 2026-11-10,
+  item 8): (a) the universe is the **previous session's** ≥ $1 closes, where the nightly uses today's — names
+  crossing $1 today and today's new listings differ; (b) Alpaca's daily-bar high / low **may include pre-market
+  prints**, where the 252-day reference comes from `mi_daily_closes` regular sessions — compare the 09:45
+  `new_highs` against a regular-hours read before trusting the count. Neither touches field names or
+  unique-member counting. SIP creds reach apollo-market through the `ALPACA_API_KEY` fallback (the paper variables are blanked in
   compose) — proven from inside that container by the 11-09 probe (`scripts/probes/_723_design_1109/`).
 
 ## Change log
 
+- **2026-11-10 (review fixes)** — the live job refuses a partial read (any lost batch, or under 85 % of the universe
+  read — nothing written, counted toward the page); the fetch runs on the job's own one-thread executor, skips while
+  a previous call is still hung, and stops after 3 lost chunks (`collector.get_alpaca_snapshots_batch` gained
+  `executor=` and `max_consecutive_failures=`; both default to the EP callers' unchanged behaviour); the window ends
+  at the day's session close (13:00 on a half day; `trading_calendar.session_close_time`); the pusher's branch is
+  hard-coded, it runs under `flock` with a `timeout` on the push, in its own bare repo against the remote URL; the
+  nightly writes the reference FIRST, in its own guarded block, and no longer publishes it; a file left unpublished
+  for three straight refreshes pages. Page rules (age by `as_of`; join by name / code) and the two rule departures
+  for the step-5 read recorded above.
 - **2026-11-10** — #723 steps 2 + 3: the nightly reference export (second guarded step, host copy under
   `logs/`), the intraday `breadth_live_refresh` job (every 15 min 09:45-16:00 ET, Alpaca SIP snapshots vs the
   reference, `apollo_breadth_live.json`), the host pusher to the `live-breadth` branch. `collector.
