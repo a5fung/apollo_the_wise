@@ -69,6 +69,7 @@ import json
 import logging
 import math
 import os
+import threading
 import time
 from datetime import date, datetime
 from pathlib import Path
@@ -317,21 +318,33 @@ def push_problem(directory: Path | None = None, now_ts: float | None = None) -> 
 # ── one refresh ──────────────────────────────────────────────────────────────────────────────────
 
 class _OneThread(concurrent.futures.ThreadPoolExecutor):
-    """ONE thread of this job's own, remembering the last call submitted. `loop.run_in_executor(executor, fn)`
-    goes through `submit`, so `busy()` is true exactly while alpaca-py is still inside a call — including a call
-    whose `wait_for` budget fired long ago (the asyncio side gave up; the thread did not). The same shape as
-    broker/alpaca_client's bars executor (re-review 2026-11-07), which intelligence-owned code must not import."""
+    """ONE thread of this job's own, remembering EVERY call submitted and not yet finished. `loop.run_in_executor(
+    executor, fn)` goes through `submit`; each future leaves the set in a done-callback, so `busy()` is true while
+    ANY submitted call is unfinished — including the one alpaca-py is still stuck inside long after its `wait_for`
+    budget fired. Tracking only the LAST call was wrong (re-review 2026-11-09): the collector keeps submitting
+    after a hang, those calls queue behind it, each `wait_for` timeout CANCELS its queued call, and a cancelled
+    future counts as done — so `busy()` read False while the thread was still hung. A cancelled queued call
+    leaves the set at once; only a call that is running (or still queued) keeps it busy."""
 
     def __init__(self):
         super().__init__(max_workers=1, thread_name_prefix="breadth-live-fetch")
-        self.last: concurrent.futures.Future | None = None
+        self._pending: set[concurrent.futures.Future] = set()
+        self._pending_lock = threading.Lock()
 
     def submit(self, fn, /, *args, **kwargs):
-        self.last = f = super().submit(fn, *args, **kwargs)
+        f = super().submit(fn, *args, **kwargs)
+        with self._pending_lock:
+            self._pending.add(f)
+        f.add_done_callback(self._forget)
         return f
 
+    def _forget(self, f) -> None:
+        with self._pending_lock:
+            self._pending.discard(f)
+
     def busy(self) -> bool:
-        return self.last is not None and not self.last.done()
+        with self._pending_lock:
+            return any(not f.done() for f in self._pending)
 
 
 _FETCH_EXECUTOR = _OneThread()
@@ -463,10 +476,10 @@ async def run_scheduled(now_et: datetime | None = None, **refresh_kwargs) -> int
     from shared.dates import et_today
 
     now = now_et or datetime.now(_ET)
-    if not in_refresh_window(now):
-        return 0
     today = et_today()
-    if not get_market_status(today).is_trading_day:
+    if not get_market_status(today).is_trading_day:     # before the window: session_close_time warns on a non-session day
+        return 0
+    if not in_refresh_window(now):
         return 0
     try:
         result = await refresh_once(now, today, **refresh_kwargs)

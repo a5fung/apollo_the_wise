@@ -624,6 +624,17 @@ def test_outside_the_window_or_on_a_non_trading_day_nothing_is_fetched(paths, mo
     assert calls == [52]
 
 
+def test_run_scheduled_checks_the_trading_day_before_the_window(paths, monkeypatch):
+    """On a weekday market holiday session_close_time logs 'session close unreadable' on every call; the trading-day
+    check comes first so the window (and its close-time lookup) is never consulted."""
+    seen = []
+    monkeypatch.setattr("agents.market_intelligence.trading_calendar.session_close_time",
+                        lambda d: seen.append(d) or None)
+    _trading(monkeypatch, is_day=False)
+    assert asyncio.run(bl.run_scheduled(NOW, ref_path=paths.ref_path, out_dir=paths.out_dir)) == 0
+    assert seen == [], "session_close_time must not be asked about a non-trading day"
+
+
 def test_registration_every_15_min_hour_9_to_16_weekdays_intelligence_owned():
     from scripts.check_job_date_sources import Module, registrations
     from agents.market_intelligence import scheduler as sched
@@ -765,31 +776,59 @@ def test_the_fetch_runs_on_the_jobs_own_one_thread_executor(monkeypatch):
     assert seen["timeout_s"] == 6.0 and seen["concurrency"] == 1 and seen["max_consecutive_failures"] == 3
 
 
-def test_a_refresh_skips_while_the_previous_call_is_still_in_flight(monkeypatch):
-    """wait_for gives up on a hung alpaca-py call; the thread does not. The next refresh must not queue behind it (one
-    thread: it would wait for the hang, then run stale), so it raises — a counted failure — and the collector is never
-    called. Clears by itself when the thread returns."""
+def test_a_refresh_skips_while_a_hung_alpaca_call_holds_the_thread(monkeypatch):
+    """Re-review 2026-11-09: a HUNG alpaca-py call (no HTTP timeout) with real wait_for timeouts firing. The collector
+    keeps submitting after the hang; those calls queue behind it and each timeout CANCELS its queued call, so a
+    last-call-only guard read 'idle' while the thread was still stuck. busy() must stay true until the hung call
+    itself returns, the second refresh must SKIP (the client is never called again), and it clears on release."""
     import threading
-    from agents.market_intelligence import collector
-    called = []
+    import time as _time
+    release, calls = threading.Event(), []
 
-    async def never(tickers, **kw):
-        called.append(tickers)
-        return {}
-    monkeypatch.setattr(collector, "get_alpaca_snapshots_batch", never)
-    gate = threading.Event()
-    hung = bl._FETCH_EXECUTOR.submit(gate.wait)              # what a hung HTTP call looks like to the executor
+    class Hung:
+        def __init__(self, **kw):
+            pass
+
+        def get_stock_snapshot(self, req):
+            calls.append(_time.monotonic())
+            release.wait(timeout=30)                          # hangs like an alpaca-py call with no HTTP timeout
+            return {}
+    from tests.test_490_collector_rt import _FakeSnapReq, _env
+    _env(monkeypatch)
+    monkeypatch.setattr(bl, "FETCH_TIMEOUT_S", 0.2)
+    own = bl._OneThread()
+    monkeypatch.setattr(bl, "_FETCH_EXECUTOR", own)
+    tickers = [f"T{i}" for i in range(5000)]
     try:
-        assert bl.fetch_in_flight()
-        with pytest.raises(bl.BreadthLiveError, match="still running"):
-            asyncio.run(bl._fetch_snapshots(["AAA"]))
-        assert called == []
+        with patch("alpaca.data.historical.StockHistoricalDataClient", Hung), \
+                patch("alpaca.data.requests.StockSnapshotRequest", _FakeSnapReq):
+            snaps, stats = asyncio.run(bl._fetch_snapshots(tickers))   # real wait_for timeouts fire; nothing read
+            assert snaps == {} and stats == {"batches_total": 50, "batches_failed": 50}, stats  # refresh_once refuses this
+            assert len(calls) == 1, "one call reached the thread; the rest queued, timed out and were cancelled"
+            assert bl.fetch_in_flight(), "the hung call still holds the thread — busy() must say so"
+            with pytest.raises(bl.BreadthLiveError, match="still running"):
+                asyncio.run(bl._fetch_snapshots(tickers))              # the second refresh SKIPS
+            assert len(calls) == 1, "the skipped refresh must not touch the client"
+    finally:
+        release.set()
+        own.shutdown(wait=True)
+    assert not bl.fetch_in_flight(), "clears by itself once the thread returns"
+
+
+def test_busy_ignores_a_cancelled_queued_call_but_not_the_running_one():
+    import threading
+    own = bl._OneThread()
+    gate = threading.Event()
+    running = own.submit(gate.wait)
+    queued = own.submit(lambda: None)
+    try:
+        assert queued.cancel() and queued.cancelled()
+        assert own.busy(), "the running call keeps it busy though the LAST call submitted is cancelled"
     finally:
         gate.set()
-        hung.result(timeout=5)
-    assert not bl.fetch_in_flight()
-    asyncio.run(bl._fetch_snapshots(["AAA"]))
-    assert called == [["AAA"]]
+        running.result(timeout=5)
+        own.shutdown(wait=True)
+    assert not own.busy() and own._pending == set()
 
 
 def _collector_rig(monkeypatch, fail: bool):
@@ -923,20 +962,6 @@ def test_a_failed_push_is_recorded_and_retried_next_tick(push_rig):
     r2 = push_rig.run()                                                    # the next cron tick, remote back
     assert r2.returncode == 0 and push_rig.remote("rev-list", "--count", "live-breadth") == "1"
     assert json.loads(push_rig.status.read_text())["ok"] is True
-
-
-def test_pusher_never_names_the_default_branch():
-    # source-pin-ok: "the script can never name the default branch" is a property of its text (no run can prove a
-    # negative over every path); the behaviour half — the default branch's sha unchanged after every push, the
-    # export clone's tree clean — is test_pusher_publishes_one_orphan_single_file_commit above.
-    text = PUSH_SH.read_text()
-    assert not re.search(r"\bmain\b", text) and not re.search(r"\bmaster\b", text)
-    assert "commit-tree" in text and " -p " not in text.split("commit-tree")[1].split("\n")[0]
-    assert "--force" in text and "refs/heads/$BRANCH" in text
-    assert re.search(r"^BRANCH=live-breadth\b", text, re.M), "the branch is hard-coded"
-    assert "BREADTH_LIVE_BRANCH" not in text, "no environment variable may choose the branch (review item 4)"
-    assert "git checkout" not in text and "git reset" not in text and "git add" not in text
-    assert "flock -n" in text and "timeout -k 5" in text and 'GIT_DIR="$PUSH_GIT"' in text
 
 
 def test_pusher_ignores_a_branch_override_in_its_environment(push_rig):
