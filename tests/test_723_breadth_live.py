@@ -1002,7 +1002,9 @@ def test_pusher_runs_one_at_a_time(push_rig):
         pytest.skip("flock not available on this platform (prod Linux has it)")
     push_rig.live.write_text('{"n": 12}\n')
     lock = push_rig.live.parent / ".push.lock"
-    holder = subprocess.Popen(["flock", str(lock), "sleep", "5"])
+    # -o: the lock fd is closed in `sleep`, so terminating the holder releases the lock at once (without it the
+    # orphaned `sleep` kept the lock ~4.5 s and the follow-up run below exited quietly — CI 2026-11-09).
+    holder = subprocess.Popen(["flock", "-o", str(lock), "sleep", "5"])
     try:
         time.sleep(0.5)
         r = push_rig.run()
