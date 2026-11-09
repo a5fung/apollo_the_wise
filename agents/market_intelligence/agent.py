@@ -870,7 +870,8 @@ def _why_grade_note(alert, grade) -> str | None:
             line += f' — "{_cap_summary(first, 110)}"'
         return "   " + line
     q = format_catalyst_grade((alert or {}).get("catalyst_quality"), default="")
-    return f"   {q} · set by the Claude grader" if q else None
+    # The alert's grade is AFTER the rules ran (revenue gate, earnings boost), not the grader's own answer.
+    return f"   catalyst graded {q} when scored (after the grade rules)" if q else None
 
 
 def _why_fill_verdicts(diag_lines: list[str]) -> list[str]:
@@ -969,7 +970,7 @@ def build_why_short_lines(ticker: str, target_date, *, alert, trade, scan, grade
         # carries the grade the score used, which is the answer to "why was the catalyst 0".
         from agents.market_intelligence.briefing import format_catalyst_grade
         q = format_catalyst_grade(score_row.get("catalyst_quality"), default="")
-        note = f"   {q} · set by the Claude grader" if q else None
+        note = f"   catalyst graded {q} when scored (after the grade rules)" if q else None
     if note:
         lines.append("")
         lines.append("🧠 GRADE NOTE")
