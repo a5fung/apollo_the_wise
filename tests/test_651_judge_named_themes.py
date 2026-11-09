@@ -290,7 +290,8 @@ def test_sweep_writes_named_rows_plus_a_sentinel_and_captures_first(monkeypatch,
     assert [l["ticker"] for l in lines] == ["AGX", "SNOW"]
     assert lines[0]["groups"][0]["canonical_key"] == "ag-re-rating"
     assert out["input_tokens"] == 500 and out["output_tokens"] == 80
-    assert out["est_cost_usd"] == pytest.approx(500 * 1.0 / 1e6 + 80 * 5.0 / 1e6)
+    # at the haiku pin's rate (claude-haiku-5-5 since 2026-11-09: $0.10 / $0.50)
+    assert out["est_cost_usd"] == pytest.approx(500 * 0.10 / 1e6 + 80 * 0.50 / 1e6)
 
 
 def test_the_declared_concurrency_budget_is_ACTUALLY_USED(monkeypatch, tmp_path):
