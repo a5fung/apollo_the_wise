@@ -27,7 +27,7 @@ def test_tier_constants_are_plain_literal_pins():
     # The committed FAIL-SAFE FLOOR: this assertion moves WITH a deliberate bump and fails loudly on an accidental one.
     assert llm_models.OPUS == llm_models.OPUS_PIN == "claude-opus-5-5"
     assert llm_models.SONNET == llm_models.SONNET_PIN == "claude-sonnet-5-5"
-    assert llm_models.HAIKU == llm_models.HAIKU_PIN == "claude-haiku-4-5-20251001"
+    assert llm_models.HAIKU == llm_models.HAIKU_PIN == "claude-haiku-5-5"
 
 
 def test_judge_model_is_the_plain_pin_alias():
@@ -208,6 +208,20 @@ def test_opus_5_5_prices_at_its_published_rate_with_its_cache_discount():
     # here: Anthropic's input_tokens excludes cached tokens, so it is passed as 0.)
     assert abs(_cost_for_call("claude-opus-5-5", 0, 0, 0, 1_000_000) - 0.20) < 1e-9
     assert abs(_cost_for_call(llm_models.OPUS_5, 0, 0, 0, 1_000_000) - 0.50) < 1e-9
+
+
+def test_haiku_5_5_prices_at_its_published_rate_and_a_long_prompt_at_the_higher_one():
+    """2026-11-09: claude-haiku-5-5 is $0.10/$0.50 up to 100,000 prompt tokens and $0.50/$2.50 for the whole call
+    above that (published pricing page); it sat on haiku-4-5's $1/$5 tier rate since its adoption (10x over)."""
+    from agents.market_intelligence.spend_tracker import _cost_for_call as mkt
+    from core.spend import _cost_for_call as orch
+    for f in (mkt, orch):
+        assert abs(f("claude-haiku-5-5", 1_000_000, 1_000_000, 0, 0) - (0.50 + 2.50)) < 1e-9     # 1M prompt: long
+        assert abs(f("claude-haiku-5-5", 100_000, 1_000_000, 0, 0) - (0.01 + 0.50)) < 1e-9       # exactly 100k: base
+        # the prompt counts cache writes and reads too: 40k + 30k written + 40k read = 110k > 100k
+        want = 40_000 / 1e6 * 0.5 + 30_000 / 1e6 * 0.5 * 1.25 + 40_000 / 1e6 * 0.5 * 0.10 + 1_000 / 1e6 * 2.5
+        assert abs(f("claude-haiku-5-5", 40_000, 1_000, 30_000, 40_000) - want) < 1e-9
+        assert abs(f("claude-haiku-4-5-20251001", 1_000_000, 0, 0, 0) - 1.00) < 1e-9             # old rows keep $1
 
 
 def test_uncached_input_is_billed_alongside_cache_tokens_in_both_writers():
