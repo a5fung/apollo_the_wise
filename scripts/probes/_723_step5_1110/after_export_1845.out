@@ -1,0 +1,2 @@
+now 2026-11-10T18:45:29-05:00 snapshot as_of 2026-11-10 live as_of 2026-11-10T16:00:00 ET is_live False holds_close False
+snapshot adv/dec {'advances': 1800, 'declines': 3005, 'unchanged': 121, 'no_prior': 80} live adv/dec {'advances': 1837, 'declines': 2989, 'unchanged': 113, 'no_prior': 0, 'missing': 67}
