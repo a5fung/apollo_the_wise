@@ -614,10 +614,13 @@ def test_outside_the_window_or_on_a_non_trading_day_nothing_is_fetched(paths, mo
         calls.append(len(tickers))
         return await _fetch_ok(tickers)
     _trading(monkeypatch, is_day=True)
+    # None, not 0: an idle slot leaves rows_written NULL, so the drift sweep never reads it as a dropped refresh
     assert asyncio.run(bl.run_scheduled(datetime(2026, 11, 10, 9, 30, tzinfo=_ET), fetch=spy,
-                                        ref_path=paths.ref_path, out_dir=paths.out_dir)) == 0
+                                        ref_path=paths.ref_path, out_dir=paths.out_dir)) is None
+    assert asyncio.run(bl.run_scheduled(datetime(2026, 11, 10, 16, 15, tzinfo=_ET), fetch=spy,
+                                        ref_path=paths.ref_path, out_dir=paths.out_dir)) is None
     _trading(monkeypatch, is_day=False)                     # a holiday that falls on a weekday
-    assert asyncio.run(bl.run_scheduled(NOW, fetch=spy, ref_path=paths.ref_path, out_dir=paths.out_dir)) == 0
+    assert asyncio.run(bl.run_scheduled(NOW, fetch=spy, ref_path=paths.ref_path, out_dir=paths.out_dir)) is None
     assert calls == [] and paths.audit.rows == []
     _trading(monkeypatch, is_day=True)
     assert asyncio.run(bl.run_scheduled(NOW, fetch=spy, ref_path=paths.ref_path, out_dir=paths.out_dir)) == 48
@@ -631,7 +634,7 @@ def test_run_scheduled_checks_the_trading_day_before_the_window(paths, monkeypat
     monkeypatch.setattr("agents.market_intelligence.trading_calendar.session_close_time",
                         lambda d: seen.append(d) or None)
     _trading(monkeypatch, is_day=False)
-    assert asyncio.run(bl.run_scheduled(NOW, ref_path=paths.ref_path, out_dir=paths.out_dir)) == 0
+    assert asyncio.run(bl.run_scheduled(NOW, ref_path=paths.ref_path, out_dir=paths.out_dir)) is None
     assert seen == [], "session_close_time must not be asked about a non-trading day"
 
 

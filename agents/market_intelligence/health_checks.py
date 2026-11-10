@@ -4035,6 +4035,15 @@ _DEAD_COL_EVENT_GATED: dict[str, tuple[str, str]] = {
     "mi_lowcap_lane_replays.mark_r": _WALK_OPEN,
     "mi_lowcap_paper_lane_replays.mark_r": _WALK_OPEN,
     # both columns are written together, so a stamped `post_breakout_from` with this one still NULL is a broken writer
+    # 2026-11-10 evening digest: the low-cap lane's `days_since_prior_alert` holds a value ONLY when the name had a
+    # live EP alert in the 60 days before its scan (the detector's cooldown map, ep_detector ~4386). Low-caps almost
+    # never have one: 0 of the first 32 rows did, so all-NULL was the correct reading, not a dead writer.
+    "mi_lowcap_lane_signals.days_since_prior_alert": (
+        "EXISTS (SELECT 1 FROM mi_ep_alerts e WHERE e.ticker = mi_lowcap_lane_signals.ticker"
+        " AND e.alert_date < mi_lowcap_lane_signals.scan_date"
+        " AND e.alert_date >= mi_lowcap_lane_signals.scan_date - 60"
+        f" AND {LIVE_SOURCE_SQL.replace('source', 'e.source')})",
+        "set only when the name had a live EP alert in the 60 days before its scan (the cooldown map)"),
     "mi_flag_candidates.days_since_breakout": (
         "post_breakout_from IS NOT NULL",
         "set only in the 25 sessions after a formed flag's pole top is closed above; NULL on all other rows "

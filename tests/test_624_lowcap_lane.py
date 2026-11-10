@@ -1401,3 +1401,19 @@ async def test_a_catalyst_type_classify_failure_keeps_the_key_present_as_none(mo
     # ...carrying None, not a stale or invented value
     assert results[0]["catalyst_type"] is None
     assert results[0]["catalyst_type_rationale"] is None
+
+
+@pytest.mark.asyncio
+async def test_a_name_with_a_prior_alert_writes_days_since_prior_alert(monkeypatch):
+    """The writer test behind the dead-column exemption (2026-11-10): `days_since_prior_alert` is NULL on a name with
+    no live EP alert in the prior 60 days (every low-cap so far) and the day count when it has one."""
+    written, _ = _wire_enrich(
+        monkeypatch, caps={"CHPT": 134_000_000}, quality=(True, None),
+        metrics={"quality_adv_dollar": 8_500_000.0, "atr_pct": 9.0}, ma=(False, None), rt={}, quotes={}, prior={})
+    hist_chpt = [400_000.0] * 9 + [1_500_000.0]
+    v = lane.free_terms(_cand("CHPT", gap=32.95, prev_close=5.19, today_volume=969_501), hist_chpt)
+    await lane.enrich_and_record(
+        [v], {"CHPT": lane.snapshot_board([_cand("CHPT", gap=32.95, prev_close=5.19, today_volume=969_501)])[0]},
+        **_ctx(extension_map={"CHPT": 4.0}, cooldown_last_alert={"CHPT": SESSION_DATE - timedelta(days=12)},
+               rank_by_prescore={"CHPT": 1}, rank_by_gap={"CHPT": 1}, acting_rank={"CHPT": 1}))
+    assert written and written[0]["days_since_prior_alert"] == 12

@@ -457,8 +457,10 @@ def _streak_reset(today: date) -> None:
     _reset(_push_streak, today)
 
 
-async def run_scheduled(now_et: datetime | None = None, **refresh_kwargs) -> int:
-    """The job body under audit_wrap. Returns read_n (rows for mi_job_runs) or 0 when nothing ran.
+async def run_scheduled(now_et: datetime | None = None, **refresh_kwargs) -> int | None:
+    """The job body under audit_wrap. Returns read_n (rows for mi_job_runs), 0 when a refresh failed, and None when
+    the slot is outside the window (the cron fires 09:00-16:45): None leaves rows_written NULL, so the row-count
+    drift sweep does not read six idle slots a day as a dropped refresh (the 11-10 evening digest did).
     Raises ONLY on the third straight failure of the day, or the third straight refresh whose previous file
     was never published (the host pusher missing or failing) — each raise, once, is the page."""
     from agents.market_intelligence.db import log_audit_event
@@ -468,9 +470,9 @@ async def run_scheduled(now_et: datetime | None = None, **refresh_kwargs) -> int
     now = now_et or datetime.now(_ET)
     today = et_today()
     if not get_market_status(today).is_trading_day:     # before the window: session_close_time warns on a non-session day
-        return 0
+        return None
     if not in_refresh_window(now):
-        return 0
+        return None
     try:
         result = await refresh_once(now, today, **refresh_kwargs)
     except Exception as e:  # loud-ok: audited below; the third straight failure re-raises (the page)
