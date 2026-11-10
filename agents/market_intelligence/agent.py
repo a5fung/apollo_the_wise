@@ -3610,6 +3610,27 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append(f"_{len(rows)} row(s). Capture-only corpus (#254) — no judge effect yet._")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_credits_command(self, request: AgentRequest) -> AgentResponse:
+        """`/credits [usd]` - record the Console balance (ledger) or show the current estimate.
+        Not money-path state (it only feeds a warning), so no origin gate. See credit_ledger.py."""
+        from agents.market_intelligence import credit_ledger as cl
+        mode, val = cl.parse_credits_arg(request.task)
+        try:
+            if mode == "error":
+                return self._ok(request, result=val)
+            if mode == "set":
+                detail = await cl.record_balance(val)
+                got = await cl.current_estimate()
+                tail = cl.format_estimate(got[0]) if got else f"Recorded ${val:.2f}."
+                return self._ok(request, result=f"Recorded ${val:.2f} as of {detail['as_of'][:16]} ET. {tail}")
+            got = await cl.current_estimate()
+            if got is None:
+                return self._ok(request, result="No Anthropic balance recorded yet. Read it off the Console and send /credits <usd>.")
+            return self._ok(request, result=cl.format_estimate(got[0], got[1]["as_of"].strftime("%Y-%m-%d %H:%M ET")))
+        except Exception as e:
+            logger.error("/credits failed: %s", e, exc_info=True)
+            return self._ok(request, result=f"Could not read or write the credit ledger: {type(e).__name__}")
+
     async def _handle_cost_query(self, request: AgentRequest) -> AgentResponse:
         """`/cost` — the FULL operating total (#378 Phase 2): metered variable
         LLM spend (api_usage, #377) + the flat subscriptions, MTD + projection
@@ -6425,6 +6446,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/reviews":        self._handle_reviews_query,
             "/datareviews":    self._handle_data_reviews_query,
             "/cost":           self._handle_cost_query,
+            "/credits":        self._handle_credits_command,
             "/anticipation":   self._handle_anticipation_query,
             "/ideas":          self._handle_ideas_query,
         }

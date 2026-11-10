@@ -1887,7 +1887,7 @@ class TelegramChannel:
                      # 2026-06-16 #54 Prong B data-gated-review board
                      "datareviews",
                      # 2026-07-16 #378 cost board (variable LLM + flat subs vs budget)
-                     "cost",
+                     "cost", "credits",
                      # 2026-06-16 #270 anticipation play board (SHADOW, Pradeep)
                      "anticipation",
                      # 2026-08-24 rejection-visibility funnel (/scanned)
@@ -1970,6 +1970,7 @@ class TelegramChannel:
             # Breakout v1 PAPER phase 1 (2026-10-29): the nightly list message names the command; in the menu so a
             # missed night can be caught up from here.
             BotCommand("bgrade",       "/bgrade TICKER A+|A|B|C|skip — grade a breakout v1 list name"),
+            BotCommand("credits",      "/credits <usd> - record Anthropic balance; bare /credits shows the estimate"),
             BotCommand("status",       "System health + API spend"),
             BotCommand("help",         "Capabilities, rules, command reference"),
         ]

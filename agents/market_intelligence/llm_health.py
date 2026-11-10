@@ -20,9 +20,9 @@ exhaustion (Anthropic 400 "credit balance too low" / 403 billing_error;
 Perplexity 402 / 401) means the feature is DOWN until refilled. The classifier
 excludes 429 FIRST, then positive-matches exhaustion.
 
-DEFERRED (separate, harder piece — NOT built here): proactive spend telemetry /
-low-balance warning via the provider billing/usage endpoints. This module is the
-REACTIVE exhaustion alert.
+This module is the REACTIVE exhaustion alert. The PROACTIVE low-balance warning
+(no provider balance endpoint exists, so a ledger: `/credits <usd>` + logged
+spend, checked 08:00/18:00 ET) lives in `credit_ledger.py` (2026-11-10).
 """
 from __future__ import annotations
 

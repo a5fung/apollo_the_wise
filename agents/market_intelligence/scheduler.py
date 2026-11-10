@@ -80,6 +80,7 @@ JOB_MA_PULLBACK_SCAN = "ma_pullback_scan"
 JOB_LOW_VOL_REST_SCAN = "low_vol_rest_scan"
 JOB_UNDERCUT_RALLY_SCAN = "undercut_rally_scan"
 JOB_BACKUP_HEALTH_CHECK = "backup_health_check"
+JOB_CREDIT_CHECK = "credit_check"
 JOB_ORDER_STATUS_RECONCILE = "order_status_reconcile"
 JOB_9M_PACE_DIGEST = "9m_pace_digest"
 JOB_CATALYST_DOWNGRADE_DIGEST = "catalyst_downgrade_digest"
@@ -219,6 +220,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "naked_position_pre_close_check", "naked_position_post_refresh_check",
     "monthly_backward_check_sweep", "news_quality_drift_check",
     "source_gap_finder", "backup_health_check", "telegram_poll_watchdog",
+    "credit_check",  # 2026-11-10 - proactive Anthropic low-balance ledger check (api_usage READ, audit rows WRITTEN, Telegram only on a low estimate); no money path
     "weekly_cleanup",
     # model registry (#509) — INTELLIGENCE, and deliberately not execution: both
     # only read models.list + write the resolution cache/audit rows, and the boot
@@ -3771,6 +3773,13 @@ async def _order_status_reconcile_job_open():
     this tight timing-only cadence would be redundant noise on top of that.
     """
     return await _order_status_reconcile_job(lookback_days=1, run_coverage_drift=False)
+
+
+async def _credit_check_job():
+    """08:00 + 18:00 ET Mon-Fri - proactive Anthropic low-balance warning (credit_ledger.py).
+    Fail-open inside run_credit_check; silent when no balance was ever recorded."""
+    from agents.market_intelligence.credit_ledger import run_credit_check
+    await run_credit_check()
 
 
 async def _backup_health_check_job():
@@ -8419,6 +8428,15 @@ def start_scheduler() -> AsyncIOScheduler:
         id=JOB_CATALYST_DOWNGRADE_DIGEST,
         replace_existing=True,
         misfire_grace_time=300,
+    )
+
+    # Anthropic low-credit ledger check - 08:00 + 18:00 ET Mon-Fri (credit_ledger.py).
+    _scheduler.add_job(
+        audit_wrap(_credit_check_job, JOB_CREDIT_CHECK),
+        CronTrigger(hour="8,18", minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        id=JOB_CREDIT_CHECK,
+        replace_existing=True,
+        misfire_grace_time=3600,
     )
 
     # Backup health check: 4:30 AM ET daily — 2.5h after host cron backup
