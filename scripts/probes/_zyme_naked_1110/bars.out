@@ -1,0 +1,3 @@
+latest None
+client <class 'NoneType'>
+Failed to get latest trade for ZYME: Required Alpaca credential env var 'ALPACA_PAPER_API_KEY' is not set (needed for account_mode='paper'). The boot bootstrap (agent._bootstrap_alpaca_credentials) should have set this. If you bypassed the boot path (e.g. docker exec python -c), run via the agent process instead. If ENABLE_LIVE_MODE=false, only ALPACA_PAPER_* vars are required — verify the strategy's phase resolves to 'paper'. See CLAUDE.md 'Required Env Vars'.

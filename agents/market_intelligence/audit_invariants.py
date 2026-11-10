@@ -55,7 +55,7 @@ INV_OPERATOR_EP_DOWNGRADED = "operator_labelled_ep_downgraded"
 async def check_naked_position(conn) -> tuple[bool, dict]:
     rows = await conn.fetch(
         """
-        SELECT ticker, alert_date, status, stop_order_id, filled_at
+        SELECT id, ticker, alert_date, status, stop_order_id, filled_at, account_mode, remaining_shares
         FROM mi_live_trades
         WHERE status = 'filled'
           AND stop_order_id IS NULL
@@ -73,7 +73,7 @@ async def check_naked_position(conn) -> tuple[bool, dict]:
             for r in rows[:10]
         ],
         "drill_sql": (
-            "SELECT ticker, alert_date, status, stop_order_id, filled_at\n"
+            "SELECT ticker, alert_date, account_mode, status, stop_order_id, filled_at\n"
             "FROM mi_live_trades\n"
             "WHERE status='filled' AND stop_order_id IS NULL\n"
             "  AND filled_at < NOW() - INTERVAL '60 seconds';"
@@ -107,6 +107,10 @@ async def classify_naked_positions(body: dict) -> dict:
     rows = body.get("offending_rows") or []
     real_naked: list[dict] = []
     db_drift: list[dict] = []
+    # 2026-11-10 (ZYME, paper): a position whose shares are all held by a QUEUED SALE (the #687
+    # ruling-(3) market sale placed after the close, filling at the open) has no stop by design —
+    # the 16:20 stop refresh already counts it `covered_by_resting_exit`. It is not naked.
+    covered_by_exit: list[dict] = []
 
     for r in rows:
         ticker = r.get("ticker")
@@ -120,7 +124,11 @@ async def classify_naked_positions(body: dict) -> dict:
             # (documented above: "safer to over-alert"), which is exactly
             # what the default [] fallback produced anyway; this just makes
             # the intent explicit instead of relying on an internal swallow.
-            open_orders = await alpaca_client.get_open_orders(ticker=ticker, raise_on_error=True)
+            # Ask the row's OWN account (2026-11-10): without account_mode this read the default book,
+            # so a PAPER position was judged against the LIVE account's orders. NULL -> live (the
+            # conservative book to check).
+            open_orders = await alpaca_client.get_open_orders(
+                ticker=ticker, account_mode=r.get("account_mode") or "live", raise_on_error=True)
             # An open sell-side stop or stop-limit on the position is broker
             # coverage. get_open_orders returns standalone orders (not OTO
             # parents) so we check the order's own fields directly — using
@@ -134,19 +142,31 @@ async def classify_naked_positions(body: dict) -> dict:
                 )
                 for o in open_orders
             )
+            queued_sale_qty = sum(
+                float(o.get("qty") or 0) for o in open_orders
+                if (o.get("side") or "").lower().endswith("sell")
+                and not o.get("stop_price") and "stop" not in str(o.get("type") or "").lower()
+            )
+            held = r.get("remaining_shares")
+            fully_queued = (not has_stop and held is not None and float(held) > 0
+                            and queued_sale_qty >= float(held))
         except Exception as _oo_err:
             logger.warning(
                 "naked-position classifier: open-orders read failed for %s - "
                 "treating as REAL NAKED (fail-open): %s", ticker, _oo_err)
             has_stop = False  # fail-open to REAL NAKED
+            fully_queued = False
 
         if has_stop:
             db_drift.append(r)
+        elif fully_queued:
+            covered_by_exit.append(r)
         else:
             real_naked.append(r)
 
     body["real_naked"] = real_naked
     body["db_drift"] = db_drift
+    body["covered_by_exit"] = covered_by_exit
     return body
 
 

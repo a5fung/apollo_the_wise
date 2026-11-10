@@ -1,0 +1,7 @@
+SET
+now_et
+2026-11-10 16:15:57.568116
+(1 row)
+id|et|event_type|summary|detail
+73452|2026-11-10 10:30:02.25144|job_failed_error|job=breadth_live_refresh BreadthLiveError: live breadth refreshed but NOT PUBLISHED for 3 straight refreshes: last push at 2026-11-10T15:29:01Z FAILED: commit-tree failed. Is the host cron for scripts/push_breadth_live.sh installed and pushing? tg=1|{"job_id": "breadth_live_refresh", "error": "BreadthLiveError: live breadth refreshed but NOT PUBLISHED for 3 straight refreshes: last push at 2026-11-10T15:29:01Z FAILED: commit-tree failed. Is the host cron for scripts/push_breadth_live.sh installed and pushing?", "consequence": ""}
+(1 row)

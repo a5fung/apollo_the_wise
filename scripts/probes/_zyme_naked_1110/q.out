@@ -1,0 +1,30 @@
+SET
+now_et
+2026-11-10 16:28:21.090409
+(1 row)
+id|ticker|alert_date|ep_score|catalyst_quality|gap_pct|regime|status|orb_high|orb_low|atr_14|entry_price|entry_shares|stop_price|hard_stop|position_size|risk_dollars|entry_order_id|stop_order_id|exits|remaining_shares|total_pnl|hold_days|partial_taken|breakeven_active|running_closes|proposed_at|confirmed_at|skip_reason|created_at|filled_at|closed_at|entry_attempt|signal_type|account_mode|lowest_price_seen|highest_price_seen|pnl_attribution|risk_dollars_actual|dead_stop_price|dead_stop_order_id|dead_stop_status|dead_stop_recorded_at|exit_rule|depth_sell_pending_on|breakout_day0_pp
+603|OUST|2026-11-10|||-2.4889810733730866|Correcting|closed|38.9|37.08||39.42|461|37.08|37.08|17932.9|897.39|21f45ee4-19f6-4529-8401-9c5b4b3b648c||[{"pnl": -1082.4201629999998, "time": "2026-11-10T16:56:09.401513+00:00", "price": 37.072017, "reason": "stop_hit", "shares": 461, "source": "websocket", "attempt": 1}]|0|-1082.4201629999998|0|f|f|[]|2026-11-10 14:44:13.815638+00|2026-11-10 14:44:13.815638+00|block:r3_reentry_disabled|2026-11-10 14:44:13.815638+00|2026-11-10 14:44:18.424391+00|2026-11-10 16:56:09.401725+00|1|breakout_v1|paper|37.0285999999999972942532622255384922027587890625|40.38000000000000255795384873636066913604736328125||839.02|||||breakout_pp||
+610|AMLX|2026-11-10|||-0.8937437934458781|Correcting|filled|30.675|29.76||30.8|583|29.76|29.76|17883.53|894.98|e9f6ff3f-835d-450f-b07e-45831491414c|25899461-1c7e-4e80-b4b5-9a31d2535d0d|[]|583|0|0|f|f|[]|2026-11-10 15:08:15.169513+00|2026-11-10 15:08:15.169513+00||2026-11-10 15:08:15.169513+00|2026-11-10 15:11:14.93571+00||1|breakout_v1|paper|29.940000000000001278976924368180334568023681640625|31.219999999999998863131622783839702606201171875||533.44|29.76|50680347-3386-4eb4-b03c-1589cfd7c2b3|OrderStatus.EXPIRED|2026-11-10 21:01:49.073849+00|breakout_pp||
+613|ZYME|2026-11-10|||1.1035378123985806|Correcting|filled|31.49|30.64||31.57|565|30.64|30.64|17791.85|890.18|4c9f6340-f8f8-44bd-901b-8f786167e287||[]|565|0|0|f|f|[]|2026-11-10 15:16:16.780735+00|2026-11-10 15:16:16.780735+00||2026-11-10 15:16:16.780735+00|2026-11-10 15:16:20.480722+00||1|breakout_v1|paper|30.8299999999999982946974341757595539093017578125|31.92999999999999971578290569595992565155029296875||480.25|30.64|52467bde-9ee8-4cd6-aa86-228ca61c4b2a|OrderStatus.EXPIRED|2026-11-10 21:02:34.254562+00|breakout_pp||
+(3 rows)
+et|event_type|summary
+2026-11-10 09:35:23.550436|breakout_v1_entry_hold|ZYME: waiting — opening_range_not_settled
+2026-11-10 09:36:24.746104|breakout_v1_entry_hold|ZYME: no buy yet — volume 27,302 by minute 5 < 53,389 (1.2x normal by this minute)
+2026-11-10 09:47:15.955959|breakout_v1_entry_hold|ZYME: held at 09:47 ET — the paper book is full (0 name(s) seated this minute ahead of it), ranked #105; retried every minute, judged at that minute's price
+2026-11-10 10:16:16.749211|exposure_family_checked|ZYME (paper/Breakout v1 (paper)): no theme membership — nothing to compare
+2026-11-10 10:16:16.750296|orb_bar_fetched|Breakout v1 (paper) ZYME O=31.15 H=31.15 L=30.64 range=0.51
+2026-11-10 10:16:16.779411|sizing_notional_cap_truncated|ZYME 2026-11-10 account_mode=paper: 20% notional cap truncated 1047->565 shares (entry=$31.49 equity=$89018 max_position=$17804) — risk $890.18 intended -> $480.25 actual (54% of intended)
+2026-11-10 10:16:16.830469|orb_order_placed|Breakout v1 (paper) ZYME entry=$31.49 stop=$30.64 shares=565 risk=$890 trade_id=613
+2026-11-10 10:16:16.831774|breakout_v1_entry_order|ZYME → auto_entered trade_id=613 level=$31.49 stop=$30.64 vol 282,848 >= 212,726
+2026-11-10 10:16:17.410545|entry_partial_fill|[paper] ZYME partial_fill 13/565 (cum 13) @ $31.57 side=buy
+2026-11-10 10:16:19.246304|entry_partial_fill|[paper] ZYME partial_fill 88/565 (cum 101) @ $31.57 side=buy
+2026-11-10 10:16:20.482161|trade_lifecycle_telegram_attempted|fill ZYME @$31.57 x565
+2026-11-10 10:17:14.357116|breakout_v1_fill_stop_checked|ZYME #613: true low $30.64 is not under the placed stop — the stop is kept
+2026-11-10 10:30:00.048406|order_status_reconciled|ZYME order=4c9f6340: pending_new -> filled (paper)
+2026-11-10 16:05:06.171955|stop_breach_market_sale|ZYME: price already through the stop $30.64 — selling 565 sh at market (order c5b70672)
+2026-11-10 16:15:00.046104|order_status_reconciled|ZYME order=52467bde: new -> expired (paper)
+2026-11-10 16:17:00.016818|ladder_demotion_shadow|ladder watchdog 2026-11-10: 3 evaluated (breakout_v1/paper, magna53/live, magna53_smallcap/paper) · 0 would demote · paged: none · acted: none (a phase moves only on his press)
+2026-11-10 16:20:00.028925|stop_update_aborted|ZYME: pending exits (565) cover full remaining (565.0) — no stop sizing left
+2026-11-10 16:20:00.041216|stop_refresh_ran|post-close: examined 2, placed 0, already-covered 1, skipped 0 (none)
+2026-11-10 16:27:00.047142|anomaly_detected|L1 naked_position
+(19 rows)

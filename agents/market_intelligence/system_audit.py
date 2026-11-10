@@ -37,6 +37,7 @@ _ET = ZoneInfo("America/New_York")
 
 
 from agents.market_intelligence.audit_invariants import INV_NAKED_POSITION, all_invariants
+from agents.market_intelligence.constants import mode_prefix
 from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.trading_calendar import get_market_status
 from agents.market_intelligence.db import (
@@ -1413,7 +1414,7 @@ async def _compute_anomaly(
 # ── Formatters ───────────────────────────────────────────────────────────────
 
 
-def _format_naked_position_alert(body: dict) -> str:
+def _format_naked_position_alert(body: dict, account_mode: str = "live") -> str:
     """Render naked-position L1 alert with DB-drift vs real-naked partition.
 
     Spec (#140, 2026-05-28):
@@ -1428,15 +1429,20 @@ def _format_naked_position_alert(body: dict) -> str:
     real_naked = body.get("real_naked") or []
     db_drift = body.get("db_drift") or []
     drill = body.get("drill_sql", "")
+    # 2026-11-10 (ZYME): a PAPER position paged the main chat saying "real $ exposure". The paper
+    # form wears the paper tag — `send_telegram_message` routes that tag to the paper chat (#699) —
+    # and says plainly that no real money is involved.
+    paper = account_mode == "paper"
 
     sections = []
     if real_naked:
         sections.append(
-            f"🚨 *NAKED POSITION [L1]* — broker confirms NO stop order "
+            f"{mode_prefix('paper') if paper else ''}🚨 *NAKED POSITION [L1]* — broker confirms NO stop order "
             f"({len(real_naked)} rows)"
         )
         sections.append("")
-        sections.append("These positions have real $ exposure with no broker-side stop:")
+        sections.append("Paper account — no real money. These paper positions have no broker-side stop:"
+                        if paper else "These positions have real $ exposure with no broker-side stop:")
         for r in real_naked[:6]:
             # Backtick the row — alert_date=/filled_at= are underscore identifiers, same
             # Markdown-italics break class as _format_l1_alert (2026-08-17 fix).
@@ -1456,7 +1462,10 @@ def _format_naked_position_alert(body: dict) -> str:
         # hours form says what is true instead of manufacturing urgency.
         _now_et = datetime.now(_ET)
         _market_hours = (_now_et.weekday() < 5 and time(9, 30) <= _now_et.time() <= time(16, 0))  # recovery-clock-ok: alert WORDING about the present moment, not a data date
-        if _market_hours:
+        if paper:
+            sections.append("No action needed: paper only; the stop-ack watchdog re-places paper stops "
+                            "from 9:00 AM ET.")
+        elif _market_hours:
             sections.append("Immediate operator action: place stop via Alpaca web UI.")
         else:
             sections.append(
@@ -1471,6 +1480,7 @@ def _format_naked_position_alert(body: dict) -> str:
             sections.append("─" * 30)
             sections.append("")
         sections.append(
+            f"{mode_prefix('paper') if paper and not real_naked else ''}"
             f"⚠️ *DB-DRIFT [L1]* — broker has stop but Apollo's DB lost track "
             f"({len(db_drift)} rows)"
         )
@@ -1604,19 +1614,70 @@ def _format_l2_alert(
 # ── Persistence + Telegram ───────────────────────────────────────────────────
 
 
+async def _naked_books_paged_today() -> set[str]:
+    """Which books ("live" / "paper") a naked-position page already went to today (ET). Read from the
+    `paged_books` list each naked-position anomaly row carries (2026-11-10). FAILS OPEN to "none yet"
+    — a read failure here must never cost the page; a repeat page is the safe error."""
+    try:
+        rows = await _naked_paged_rows_today()
+    except Exception:   # loud-ok: logged; fail-open means the page still goes out
+        logger.exception("system_audit: could not read today's naked-position pages; treating as none")
+        return set()
+    out: set[str] = set()
+    for r in rows:
+        try:
+            out.update(json.loads(r["detail"]).get("paged_books") or [])
+        except Exception:   # loud-ok: one unreadable row is skipped, never raised into the page path
+            continue
+    return out
+
+
+async def _naked_paged_rows_today():
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetch(
+            """
+            SELECT detail FROM mi_audit_log
+            WHERE event_type = $1
+              AND detail LIKE $2
+              AND (created_at AT TIME ZONE 'America/New_York')::date = (NOW() AT TIME ZONE 'America/New_York')::date
+            """,
+            _AUDIT_EVENT, f'%"key": "{INV_NAKED_POSITION}"%',
+        )
+
+
 async def _emit_l1(name: str, body: dict) -> None:
-    if await count_today_anomalies(name) > 0:
+    # The once-a-day dedupe is PER BOOK for the naked-position check (2026-11-10): a paper page at
+    # 16:27 (ZYME) used to spend the day's only slot, so a LIVE naked position later that day would
+    # never have paged. Every other L1 keeps the plain once-a-day rule.
+    if name != INV_NAKED_POSITION and await count_today_anomalies(name) > 0:
         return
+    paged_books: list[str] = []
     # Naked-position invariant (#140): classify each suspect row by querying
     # broker for actual stop coverage. Real-naked → 🚨 keeps the severe
     # alert. DB-drift → ⚠️ downgrades to operational warning. Operator
     # severity is now informative, not uniform.
+    texts: list[str]
     if name == "naked_position":
         from agents.market_intelligence.audit_invariants import classify_naked_positions
         body = await classify_naked_positions(body)
-        text = _format_naked_position_alert(body)
+        # One message per book (2026-11-10, ZYME): paper rows go out paper-tagged (-> the paper chat),
+        # live rows exactly as before; rows held by a queued sale page nobody (audit row only).
+        texts = []
+        _already = await _naked_books_paged_today()
+        for _mode in ("live", "paper"):
+            _in = (lambda r: (r.get("account_mode") or "live") == "paper") if _mode == "paper" \
+                else (lambda r: (r.get("account_mode") or "live") != "paper")
+            _part = {**body,
+                     "real_naked": [r for r in body.get("real_naked") or [] if _in(r)],
+                     "db_drift": [r for r in body.get("db_drift") or [] if _in(r)]}
+            if (_part["real_naked"] or _part["db_drift"]) and _mode not in _already:
+                texts.append(_format_naked_position_alert(_part, account_mode=_mode))
+                paged_books.append(_mode)
+        if not paged_books and await count_today_anomalies(name) > 0:
+            return      # nothing new to page and today's row exists: same as the plain rule
     else:
-        text = _format_l1_alert(name, body)
+        texts = [_format_l1_alert(name, body)]
     _detail = {
         "level": 1, "key": name,
         "summary": body.get("summary"),
@@ -1639,6 +1700,8 @@ async def _emit_l1(name: str, body: dict) -> None:
     if name == "naked_position":
         _detail["real_naked"] = body.get("real_naked") or []
         _detail["db_drift"] = body.get("db_drift") or []
+        _detail["covered_by_exit"] = body.get("covered_by_exit") or []
+        _detail["paged_books"] = paged_books
         _detail["classified"] = ("real_naked" in body) or ("db_drift" in body)
     await log_audit_event(
         _AUDIT_EVENT,
@@ -1655,7 +1718,8 @@ async def _emit_l1(name: str, body: dict) -> None:
         from shared.telegram_format import md_to_html
         # #647: HTML layer — the fenced drill SQL rides <pre> verbatim and no identifier in the
         # offending rows can 400 the send. The naked-position breach is the page that matters.
-        await send_telegram_message(md_to_html(text), parse_mode="HTML")
+        for text in texts:
+            await send_telegram_message(md_to_html(text), parse_mode="HTML")
     except Exception:
         logger.exception(f"system_audit: L1 Telegram send failed for {name} (audit row written)")
 
