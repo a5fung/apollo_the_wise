@@ -434,6 +434,8 @@ JUDGE_NAMED_THEMES_MODEL = effective_model("JUDGE_NAMED_THEMES_MODEL")
 # tier-rate fallback until this table is hand-updated — models.list carries
 # no pricing, so the resolver cannot verify rates; pricing_for logs a WARNING
 # every time it uses the fallback so this doesn't stay silent.
+_HAIKU_5_5_RATE = {"input": 0.10, "output": 0.50,
+                   "long_context": {"over_tokens": 100_000, "input": 0.50, "output": 2.50}}
 PRICING_PER_MTOK: dict[str, dict[str, float]] = {
     SONNET:     {"input": 2.00, "output": 10.00},   # = SONNET_PIN
     SONNET_PIN: {"input": 2.00, "output": 10.00},   # claude-sonnet-5-5 since 2026-10-29 (the explicit row below agrees)
@@ -443,10 +445,8 @@ PRICING_PER_MTOK: dict[str, dict[str, float]] = {
     # 2026-11-09): $0.10 in / $0.50 out for prompts up to 100,000 tokens, cache reads $0.01 (the usual 0.1x); a
     # prompt OVER 100,000 tokens bills the whole call at $0.50 / $2.50 (`long_context`). It had sat on the haiku
     # tier fallback ($1/$5, haiku-4-5's rate) since the resolver adopted it, so every haiku call was overstated 10x.
-    HAIKU:      {"input": 0.10, "output": 0.50,
-                 "long_context": {"over_tokens": 100_000, "input": 0.50, "output": 2.50}},   # = HAIKU_PIN
-    HAIKU_PIN:  {"input": 0.10, "output": 0.50,
-                 "long_context": {"over_tokens": 100_000, "input": 0.50, "output": 2.50}},
+    HAIKU:      _HAIKU_5_5_RATE,   # = HAIKU_PIN (one key; the shared row keeps an edit to either name live)
+    HAIKU_PIN:  _HAIKU_5_5_RATE,
     "claude-haiku-4-5-20251001": {"input": 1.00, "output": 5.00},   # the pre-11-09 pin, kept priced for old rows
     OPUS_5:     {"input": 5.00, "output": 25.00},
     OPUS_4_8:   {"input": 5.00, "output": 25.00},

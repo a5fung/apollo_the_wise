@@ -1355,6 +1355,20 @@ async def run_row_count_drift_sweep() -> dict[str, Any]:
         out["errors"].append(f"query: {e}")
         return out
 
+    # Judge each run ONCE: a job whose newest run predates the previous sweep was already judged on
+    # it. Without this a job that stops running (retired, like sugar_babies_cohort_refresh 2026-11-09)
+    # re-pages its last run every weekday until it ages out of the 45-day window. Fails open: no
+    # previous sweep (or a failed read) judges every job, as before.
+    prev_sweep = None
+    try:
+        async with pool.acquire() as c:
+            prev_sweep = await c.fetchval(
+                "SELECT MAX(created_at) FROM mi_audit_log WHERE event_type = 'row_count_drift_sweep'")
+    except Exception as e:
+        logger.warning("row_count_drift: previous-sweep lookup failed (judging every job): %s", e)
+    if not isinstance(prev_sweep, datetime):
+        prev_sweep = None
+
     by_job: dict[str, list] = {}
     for r in rows:
         by_job.setdefault(r["job_id"], []).append(r)
@@ -1362,6 +1376,8 @@ async def run_row_count_drift_sweep() -> dict[str, Any]:
     for job_id, runs in by_job.items():
         try:
             out["jobs_scanned"] += 1
+            if prev_sweep is not None and runs[0]["started_at"] <= prev_sweep:
+                continue                                          # no new run since the last sweep
             counts = [int(r["rows_written"]) for r in runs]      # newest first
             latest, history = counts[0], counts[1:1 + _ROWCOUNT_WINDOW]
             if len(history) < _ROWCOUNT_MIN_HISTORY:

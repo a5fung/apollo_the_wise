@@ -869,8 +869,14 @@ def _why_grade_note(alert, grade) -> str | None:
             first = re.split(r"(?<=[.!?])\s", why, maxsplit=1)[0]
             line += f' — "{_cap_summary(first, 110)}"'
         return "   " + line
-    q = format_catalyst_grade((alert or {}).get("catalyst_quality"), default="")
-    # The alert's grade is AFTER the rules ran (revenue gate, earnings boost), not the grader's own answer.
+    return _scored_grade_line((alert or {}).get("catalyst_quality"))
+
+
+def _scored_grade_line(raw) -> str | None:
+    """The catalyst grade as SCORED — after the rules ran (revenue gate, earnings boost), not the
+    grader's own answer. None when there is no grade."""
+    from agents.market_intelligence.briefing import format_catalyst_grade
+    q = format_catalyst_grade(raw, default="")
     return f"   catalyst graded {q} when scored (after the grade rules)" if q else None
 
 
@@ -965,12 +971,10 @@ def build_why_short_lines(ticker: str, target_date, *, alert, trade, scan, grade
         lines.append("   score parts were not stored for this row")
 
     note = _why_grade_note(alert, grade)
-    if not note and score_row and score_row.get("catalyst_quality"):
+    if not note and score_row:
         # A scanned-not-alerted name has no alert and often no grade record: the scan row still
         # carries the grade the score used, which is the answer to "why was the catalyst 0".
-        from agents.market_intelligence.briefing import format_catalyst_grade
-        q = format_catalyst_grade(score_row.get("catalyst_quality"), default="")
-        note = f"   catalyst graded {q} when scored (after the grade rules)" if q else None
+        note = _scored_grade_line(score_row.get("catalyst_quality"))
     if note:
         lines.append("")
         lines.append("🧠 GRADE NOTE")
@@ -2868,9 +2872,8 @@ class MarketIntelligenceAgent(BaseAgent):
         """`/inplay` — unified Stocks-in-Play surface (#99, ADR 0004 Phase 1).
 
         Surfaces active mi_stocks_in_play rows (expires_at > NOW()) grouped
-        by automation_class. Phase 1: only sugar_baby_cohort sources are
-        migrated. Future ships add flag stages, convergence, EP, intraday
-        breaks, etc.
+        by automation_class. Today's only source is the anticipation re-entry
+        detector (the Sugar Babies cohort source was retired 2026-11-09).
         """
         from agents.market_intelligence.db import get_stocks_in_play
 
@@ -2880,7 +2883,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 request,
                 result=(
                     "_No active Stocks-in-Play entries._\n\n"
-                    "Daily refresh at 5:22 PM ET (Sugar Baby cohort); other "
+                    "Fed by the anticipation re-entry detector; other "
                     "detector sources migrate in future ships."
                 ),
             )
@@ -2928,7 +2931,7 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append("")
 
         lines.append(
-            "_Phase 1: sugar_baby_cohort migrated. Future ships add flag stages, "
+            "_Source: anticipation re-entry. Future ships add flag stages, "
             "convergence, EP, intraday breaks._"
         )
         return self._ok(request, result="\n".join(lines))

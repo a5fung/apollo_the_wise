@@ -2,7 +2,6 @@
 `setup_class_classifier.compute_setup_class_fields` / `ep_detector._judge_shadow` call:
 
   - get_9m_alert_same_day            (mi_9m_ep_alerts, SAME-day exact match)
-  - get_sugar_baby_cohort_member_asof (mi_sugar_babies_cohort, AS-OF latest cohort_date <= alert_date)
   - get_adv_20_dollar_asof            (mi_daily_closes, ticker-scoped, STRICTLY PRIOR to alert_date)
   - update_ep_alert_setup_class       (mi_ep_alerts.setup_class UPDATE — P0 visibility only)
 
@@ -20,7 +19,6 @@ from tests.conftest import make_mock_pool
 from agents.market_intelligence.db import (
     get_9m_alert_same_day,
     get_adv_20_dollar_asof,
-    get_sugar_baby_cohort_member_asof,
     update_ep_alert_setup_class,
 )
 
@@ -54,35 +52,6 @@ def test_9m_same_day_queries_exact_date_not_a_window():
     _run(get_9m_alert_same_day(conn, "TICK", date(2026, 7, 18)))
     assert "mi_9m_ep_alerts" in captured["sql"]
     assert "alert_date = $2" in captured["sql"]
-    assert captured["params"] == ("TICK", date(2026, 7, 18))
-
-
-# ─── get_sugar_baby_cohort_member_asof ──────────────────────────────────────────────────────
-
-def test_sugar_baby_member_true_when_row_exists():
-    pool, conn = make_mock_pool()
-    conn.fetchrow = AsyncMock(return_value={"?column?": 1})
-    assert _run(get_sugar_baby_cohort_member_asof(conn, "TICK", date(2026, 7, 18))) is True
-
-
-def test_sugar_baby_member_false_when_not_in_cohort():
-    pool, conn = make_mock_pool()
-    conn.fetchrow = AsyncMock(return_value=None)
-    assert _run(get_sugar_baby_cohort_member_asof(conn, "TICK", date(2026, 7, 18))) is False
-
-
-def test_sugar_baby_query_uses_no_lookahead_asof_pattern():
-    pool, conn = make_mock_pool()
-    captured = {}
-
-    async def _capture(sql, *params):
-        captured["sql"], captured["params"] = sql, params
-        return None
-    conn.fetchrow = _capture
-    _run(get_sugar_baby_cohort_member_asof(conn, "TICK", date(2026, 7, 18)))
-    assert "mi_sugar_babies_cohort" in captured["sql"]
-    assert "cohort_date <= $2" in captured["sql"]
-    assert "MAX(cohort_date)" in captured["sql"]
     assert captured["params"] == ("TICK", date(2026, 7, 18))
 
 

@@ -3852,7 +3852,7 @@ async def _backup_health_check_job():
 async def _flag_scan_job():
     """Run at 5:25 PM ET. Continuation-flag detector daily pass.
 
-    Slots between 5:22 sugar_babies cohort refresh and 5:30 post_nightly_audit. Persists
+    Runs before the 5:30 post_nightly_audit. Persists
     every scored ticker (incl. `unqualified`) to mi_flag_candidates so
     thresholds can be retuned offline. TRIGGERED rows fire single-ticker
     Telegram alerts as found; daily digest summarizes the rest with
@@ -8158,8 +8158,7 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=900,
     )
 
-    # Continuation-flag scan: 5:25 PM ET — slots between 5:22 sugar_babies cohort
-    # refresh and 5:30 post_nightly_audit. Telemetry-only (phase=shadow); persists all
+    # Continuation-flag scan: 5:25 PM ET — before the 5:30 post_nightly_audit. Telemetry-only (phase=shadow); persists all
     # stages, Telegrams TRIGGERED + COILED + new-tightening on non-empty days.
     _scheduler.add_job(
         audit_wrap(_flag_scan_job, JOB_FLAG_SCAN),

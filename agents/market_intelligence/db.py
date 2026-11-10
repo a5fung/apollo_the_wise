@@ -5964,21 +5964,6 @@ async def get_9m_alert_same_day(conn: Any, ticker: str, alert_date: Any) -> bool
     return row is not None
 
 
-async def get_sugar_baby_cohort_member_asof(conn: Any, ticker: str, alert_date: Any) -> bool:
-    """Is `ticker` in the persistent Sugar Babies cohort (`mi_sugar_babies_cohort`, ≥3 9M EOD
-    prints in trailing 180d, refreshed daily) AS OF `alert_date` — the latest `cohort_date <=
-    alert_date` snapshot, no lookahead (mirrors `get_theme_heat_asof`'s as-of pattern exactly).
-    #332/ADR 0028 C1 `pradeep_explosive`'s "sugar-baby cohort" OR-condition. Takes a live conn."""
-    row = await conn.fetchrow("""
-        SELECT 1 FROM mi_sugar_babies_cohort
-        WHERE ticker = $1
-          AND cohort_date = (
-              SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort WHERE cohort_date <= $2
-          )
-    """, ticker, alert_date)
-    return row is not None
-
-
 async def get_adv_20_dollar_asof(
     conn: Any, ticker: str, alert_date: Any, price: "float | None", days: int = 20,
 ) -> "float | None":
@@ -7260,38 +7245,6 @@ async def check_sugar_baby_convergence(ticker: str) -> dict | None:
     # Cohort retired 2026-11-09 (operator): its only source (9M EP) is gone, so the cohort is
     # EMPTY by definition -> never a convergence. No DB read. Table + DDL kept as history.
     return None
-    pool = await get_pool()  # noqa: unreachable — kept so the retired query stays readable
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow("""
-            WITH latest_cohort_date AS (
-                SELECT MAX(cohort_date) AS d FROM mi_sugar_babies_cohort
-            ),
-            in_cohort AS (
-                SELECT count_9m_alerts_180d
-                FROM mi_sugar_babies_cohort
-                WHERE ticker = $1
-                  AND cohort_date = (SELECT d FROM latest_cohort_date)
-            ),
-            recent_flag AS (
-                SELECT stage, scan_date,
-                       (CURRENT_DATE - scan_date)::int AS days_since
-                FROM mi_flag_candidates
-                WHERE ticker = $1
-                  AND scan_date >= CURRENT_DATE - INTERVAL '5 days'
-                  AND stage IN ('COILED', 'TIGHTENING', 'TRIGGERED')
-                ORDER BY scan_date DESC
-                LIMIT 1
-            )
-            SELECT c.count_9m_alerts_180d AS cohort_n,
-                   f.stage                AS flag_stage,
-                   f.scan_date            AS stage_scan_date,
-                   f.days_since           AS days_since_stage,
-                   CASE WHEN f.stage = 'TRIGGERED' THEN 'breakout'
-                        ELSE 'anticipatory' END AS convergence_class
-            FROM in_cohort c
-            CROSS JOIN recent_flag f
-        """, ticker)
-    return dict(row) if row else None
 
 
 async def get_pending_9m_sugar_babies(trade_date: "str | date") -> list[dict]:

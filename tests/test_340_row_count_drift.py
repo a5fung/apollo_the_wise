@@ -184,3 +184,31 @@ def test_large_jobs_still_flag_after_the_min_median_guard(monkeypatch):
     """The guard must not blunt the case the card exists for."""
     _wire(monkeypatch, _runs("nightly_data_pull", [400] + [2500] * 6))
     assert len(_run()["drops"]) == 1
+
+
+# ── each run is judged once (2026-11-09: a retired job re-paged its last run every weekday) ──────
+
+def _wire_prev_sweep(monkeypatch, rows, prev_sweep):
+    logged, sent = _wire(monkeypatch, rows)
+    from unittest.mock import AsyncMock
+    pool = asyncio.run(hc.get_pool())
+    conn = asyncio.run(pool.acquire().__aenter__())
+    conn.fetchval = AsyncMock(return_value=prev_sweep)
+    return logged, sent
+
+
+def test_a_job_with_no_run_since_the_last_sweep_is_not_judged_again(monkeypatch):
+    # sugar_babies_cohort_refresh: its last run (12 rows vs ~22) was judged by the previous sweep;
+    # the job is retired, so that run must not page again every weekday for 45 days.
+    rows = _runs("sugar_babies_cohort_refresh", [12] + [22] * 8)
+    _, sent = _wire_prev_sweep(monkeypatch, rows, _T0 + timedelta(hours=1))
+    out = _run()
+    assert out["drops"] == [] and sent == []
+
+
+def test_a_new_run_since_the_last_sweep_is_still_judged(monkeypatch):
+    # WOULD-FAIL-IF the once-only rule swallowed fresh runs: the collapse below must still page.
+    rows = _runs("nightly_data_pull", [400] + [2500] * 8)
+    _, sent = _wire_prev_sweep(monkeypatch, rows, _T0 - timedelta(hours=1))
+    out = _run()
+    assert [d["job_id"] for d in out["drops"]] == ["nightly_data_pull"] and sent

@@ -62,7 +62,7 @@ tie-break for the one possible overlap, see the module docstring):
 
 | class | rule |
 |---|---|
-| `pradeep_explosive` | `mcap < $2B AND (RVOL ≥ 3× OR 9M-print same-day OR sugar-baby cohort)` |
+| `pradeep_explosive` | `mcap < $2B AND (RVOL ≥ 3× OR 9M-print same-day OR sugar-baby cohort)` — the cohort input is always false since 2026-11-09 (see below) |
 | `mature_leader` | `mcap ≥ $10B OR (Stage-2 AND price ≥ 0.75×52w_high AND ADV_20_dollar ≥ $100M/day)` |
 | `episodic_neglect` | `$2B ≤ mcap < $10B AND price < 0.70×52w_high AND upgrades_30d == 0` |
 | `unclassified` | anything else / any missing field — uniform baseline, **never penalized** |
@@ -81,7 +81,7 @@ or a reusable existing primitive; both are now pinned exactly as shown.
 | `stage2` | **REUSED** — `structure_axis_shadow.compute_structure_features(bars, alert_date)["stage2"]`, over `db.get_daily_bars_asof` (strictly prior to `alert_date`, no lookahead) | never reimplemented |
 | `adv_20_dollar` | new `db.get_adv_20_dollar_asof(conn, ticker, alert_date, price)` | ticker-scoped, strictly-prior median-volume query; mirrors `get_adv_from_daily_closes`'s `PERCENTILE_CONT(0.5)` formula but scoped to ONE ticker (that function is a whole-market batch query — calling it per-candidate would re-scan `mi_daily_closes` for a single-ticker answer) |
 | `is_9m_same_day` | new `db.get_9m_alert_same_day` — exact `(ticker, alert_date)` match on `mi_9m_ep_alerts` | same-day, not a window |
-| `is_sugar_baby_cohort` | new `db.get_sugar_baby_cohort_member_asof` — AS-OF latest `cohort_date <= alert_date` on `mi_sugar_babies_cohort` | mirrors `get_theme_heat_asof`'s as-of pattern |
+| `is_sugar_baby_cohort` | **RETIRED 2026-11-09** (his "Retire it"): always `False`, no DB read — the cohort's only source, the 9M setup, is gone, and its as-of reader was deleted. The key stays in the classifier rule so old rows read the same. Tag-only: no grade, tier or order ever read it (P0). | `mi_sugar_babies_cohort` kept as history |
 
 ### Field provenance (lookahead honesty) — ADR 0028 §2
 
