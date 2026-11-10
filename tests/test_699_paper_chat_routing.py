@@ -354,6 +354,9 @@ _BUILDERS_VIA_SENDER = {
     # breakout v1 phase 1 (2026-10-29): the nightly list message, paper-tagged ON PURPOSE (a paper setup's list ->
     # the paper chat); run_breakout_v1_list hands it to send_telegram_message
     ("agents/market_intelligence/breakout_v1_list.py", "format_list_message"),
+    # naked-position L1 (2026-11-10, ZYME): the paper book's page is paper-tagged ON PURPOSE (-> the paper chat);
+    # _emit_l1 hands each book's text to send_telegram_message
+    ("agents/market_intelligence/system_audit.py", "_format_naked_position_alert"),
 }
 _BUILDERS_NOT_ROUTED = {
     # an interactive /dryrun reply to the operator: stays where he asked
