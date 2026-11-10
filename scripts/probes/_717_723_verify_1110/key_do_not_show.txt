@@ -1,0 +1,7 @@
+#717 the five names holding the paper slots on 11-10 (~10:00 ET), shown with tickers — his read in chat: "the 5 stocks you listed don't look like breakouts at all"; ABCL "where's the higher low, where's the surfing moving avg? ... still flagging at best"; OUST "worse, just chopping around, no pattern at all". Charts end on the list night 11-09; dashed line = level (5-session high).
+letter|ticker|list_rank|level|order_score|adr20_pct
+A|MRNA|24|280.8|0.79|10.12
+B|SPCE|31|2.94|0.751|6.37
+C|ABCL|36|12.74|0.733|7.36
+D|OUST|70|38.895|0.604|7.62
+E|NVAX|103|11.195|0.523|8.23

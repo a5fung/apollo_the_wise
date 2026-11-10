@@ -30,6 +30,8 @@ _SHEET_1106 = "scripts/probes/_717_grading_sheet_1107/breakout_sheet_1106.png"  
 
 _SHEET_1105 = "scripts/probes/_717_grading_sheet_1109/breakout_sheet_1105.png"   # graded 2026-11-09, 12 of 150 (names graded before excluded)
 
+_LIVE_1110 = "scripts/probes/_717_723_verify_1110/breakout_live_1110.png"   # graded 2026-11-10 in chat: the 5 paper buys, tickers shown
+
 BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2026-11-06", "IAG", "A", 145, 0.326, 18.79, "good", "good", _SHEET_1106),
     BreakoutGrade("2026-11-06", "SIG", "B", 73, 0.568, 129.26, "no", "looks extended", _SHEET_1106),
@@ -55,4 +57,9 @@ BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2026-11-05", "PLNT", "J", 106, 0.38, 60.22, "no", "no", _SHEET_1105),
     BreakoutGrade("2026-11-05", "ASO", "K", 93, 0.443, 69.62, "no", "looked extended", _SHEET_1105),
     BreakoutGrade("2026-11-05", "BLKB", "L", 13, 0.837, 57.85, "ok", "ok", _SHEET_1105),
+    BreakoutGrade("2026-11-09", "MRNA", "A", 24, 0.79, 280.8, "no", "the 5 stocks you listed don't look like breakouts at all", _LIVE_1110),
+    BreakoutGrade("2026-11-09", "SPCE", "B", 31, 0.751, 2.94, "no", "the 5 stocks you listed don't look like breakouts at all", _LIVE_1110),
+    BreakoutGrade("2026-11-09", "ABCL", "C", 36, 0.733, 12.74, "no", "where's the higher low, where's the surfing moving avg? if anything, it's still flagging at best, no higher lowers", _LIVE_1110),
+    BreakoutGrade("2026-11-09", "OUST", "D", 70, 0.604, 38.895, "no", "oust is worse, just chopping around, no pattern at all", _LIVE_1110),
+    BreakoutGrade("2026-11-09", "NVAX", "E", 103, 0.523, 11.195, "no", "the 5 stocks you listed don't look like breakouts at all", _LIVE_1110),
 ]

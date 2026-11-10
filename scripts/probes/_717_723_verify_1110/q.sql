@@ -1,0 +1,13 @@
+SET default_transaction_read_only = on;
+SELECT state FROM mi_safeguard_state WHERE safeguard='breakout_v1_paper';
+SELECT status, count(*), min(started_at AT TIME ZONE 'America/New_York') first_et, max(started_at AT TIME ZONE 'America/New_York') last_et FROM mi_job_runs WHERE job_id = 'breakout_v1_entry' AND started_at > TIMESTAMPTZ '2026-11-10 13:00+00' GROUP BY 1;
+SELECT left(error_message,200) err, count(*) FROM mi_job_runs WHERE job_id='breakout_v1_entry' AND started_at > TIMESTAMPTZ '2026-11-10 13:00+00' AND status<>'success' GROUP BY 1;
+SELECT event_type, count(*) FROM mi_audit_log WHERE created_at > TIMESTAMPTZ '2026-11-10 13:00+00' AND event_type ILIKE 'breakout_v1%' GROUP BY 1 ORDER BY 1;
+SELECT created_at AT TIME ZONE 'America/New_York' et, event_type, left(summary,220) FROM mi_audit_log WHERE created_at > TIMESTAMPTZ '2026-11-10 13:00+00' AND event_type ILIKE 'breakout_v1%' ORDER BY id LIMIT 40;
+SELECT column_name FROM information_schema.columns WHERE table_name='mi_live_trades' ORDER BY ordinal_position;
+SELECT id, ticker, status, account_mode, alert_date, entry_price, created_at AT TIME ZONE 'America/New_York' et FROM mi_live_trades WHERE signal_type='breakout_v1' ORDER BY id;
+SELECT status, count(*) FROM mi_live_trades WHERE account_mode='paper' AND status IN ('filled','confirmed','order_placed','partially_filled') GROUP BY 1;
+SELECT count(*) max_pos_blocks FROM mi_audit_log WHERE created_at > TIMESTAMPTZ '2026-11-10 13:00+00' AND (summary ILIKE '%max_positions%' OR detail ILIKE '%block:max_positions%');
+SELECT created_at AT TIME ZONE 'America/New_York' et, left(summary,200), left(detail,400) FROM mi_audit_log WHERE event_type='breadth_live_refresh' ORDER BY id;
+SELECT created_at AT TIME ZONE 'America/New_York' et, event_type, left(summary,200) FROM mi_audit_log WHERE created_at > TIMESTAMPTZ '2026-11-10 13:00+00' AND event_type ILIKE '%breadth%' AND event_type<>'breadth_live_refresh' ORDER BY id;
+SELECT status, count(*), max(started_at AT TIME ZONE 'America/New_York') FROM mi_job_runs WHERE job_id ILIKE '%breadth%' AND started_at > TIMESTAMPTZ '2026-11-10 13:00+00' GROUP BY 1;

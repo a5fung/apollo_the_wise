@@ -1,0 +1,285 @@
+SET
+state
+on
+(1 row)
+status|count|first_et|last_et
+success|53|2026-11-10 09:00:10.000849|2026-11-10 09:52:10.001984
+(1 row)
+err|count
+(0 rows)
+event_type|count
+breakout_v1_entry_abstain|131
+breakout_v1_entry_cancelled|4
+breakout_v1_entry_hold|313
+breakout_v1_entry_order|9
+breakout_v1_fill_stop_checked|2
+breakout_v1_planned_cancel_seen|5
+breakout_v1_planned_entry_cancel|9
+breakout_v1_preflight_ok|1
+breakout_v1_stop_repriced|5
+(9 rows)
+et|event_type|left
+2026-11-10 09:35:23.45382|breakout_v1_entry_hold|DOCS: waiting — opening_range_not_settled
+2026-11-10 09:35:23.455963|breakout_v1_entry_hold|VEEV: waiting — opening_range_not_settled
+2026-11-10 09:35:23.45741|breakout_v1_entry_hold|AMLX: waiting — opening_range_not_settled
+2026-11-10 09:35:23.458565|breakout_v1_entry_hold|OABI: waiting — opening_range_not_settled
+2026-11-10 09:35:23.45953|breakout_v1_entry_hold|AMPL: waiting — opening_range_not_settled
+2026-11-10 09:35:23.460569|breakout_v1_entry_hold|MANE: waiting — opening_range_not_settled
+2026-11-10 09:35:23.461483|breakout_v1_entry_hold|BLLN: waiting — opening_range_not_settled
+2026-11-10 09:35:23.462409|breakout_v1_entry_hold|EVH: waiting — opening_range_not_settled
+2026-11-10 09:35:23.463234|breakout_v1_entry_hold|BLKB: waiting — opening_range_not_settled
+2026-11-10 09:35:23.464019|breakout_v1_entry_hold|PLSE: waiting — opening_range_not_settled
+2026-11-10 09:35:23.464843|breakout_v1_entry_hold|KOD: waiting — opening_range_not_settled
+2026-11-10 09:35:23.465656|breakout_v1_entry_hold|CVLT: waiting — opening_range_not_settled
+2026-11-10 09:35:23.466677|breakout_v1_entry_hold|CTSH: waiting — opening_range_not_settled
+2026-11-10 09:35:23.467572|breakout_v1_entry_hold|NCNO: waiting — opening_range_not_settled
+2026-11-10 09:35:23.468367|breakout_v1_entry_hold|HAE: waiting — opening_range_not_settled
+2026-11-10 09:35:23.469507|breakout_v1_entry_hold|APPN: waiting — opening_range_not_settled
+2026-11-10 09:35:23.470453|breakout_v1_entry_hold|AGYS: waiting — opening_range_not_settled
+2026-11-10 09:35:23.471357|breakout_v1_entry_hold|AMC: waiting — opening_range_not_settled
+2026-11-10 09:35:23.472192|breakout_v1_entry_hold|DOCU: waiting — opening_range_not_settled
+2026-11-10 09:35:23.473205|breakout_v1_entry_hold|OSCR: waiting — opening_range_not_settled
+2026-11-10 09:35:23.474172|breakout_v1_entry_hold|RHI: waiting — opening_range_not_settled
+2026-11-10 09:35:23.475081|breakout_v1_entry_hold|SRZN: waiting — opening_range_not_settled
+2026-11-10 09:35:23.475943|breakout_v1_entry_hold|PS: waiting — opening_range_not_settled
+2026-11-10 09:35:23.476894|breakout_v1_entry_hold|MRNA: waiting — opening_range_not_settled
+2026-11-10 09:35:23.477824|breakout_v1_entry_hold|CBRL: waiting — opening_range_not_settled
+2026-11-10 09:35:23.478778|breakout_v1_entry_hold|PAY: waiting — opening_range_not_settled
+2026-11-10 09:35:23.479712|breakout_v1_entry_hold|ABSI: waiting — opening_range_not_settled
+2026-11-10 09:35:23.480606|breakout_v1_entry_hold|BOX: waiting — opening_range_not_settled
+2026-11-10 09:35:23.481473|breakout_v1_entry_hold|ODD: waiting — opening_range_not_settled
+2026-11-10 09:35:23.482347|breakout_v1_entry_hold|MATV: waiting — opening_range_not_settled
+2026-11-10 09:35:23.483258|breakout_v1_entry_hold|SPCE: waiting — opening_range_not_settled
+2026-11-10 09:35:23.484232|breakout_v1_entry_hold|RPD: waiting — opening_range_not_settled
+2026-11-10 09:35:23.485232|breakout_v1_entry_hold|RSKD: waiting — opening_range_not_settled
+2026-11-10 09:35:23.486306|breakout_v1_entry_hold|INTA: waiting — opening_range_not_settled
+2026-11-10 09:35:23.487572|breakout_v1_entry_hold|NABL: waiting — opening_range_not_settled
+2026-11-10 09:35:23.488691|breakout_v1_entry_hold|ABCL: waiting — opening_range_not_settled
+2026-11-10 09:35:23.489868|breakout_v1_entry_hold|ATRC: waiting — opening_range_not_settled
+2026-11-10 09:35:23.490824|breakout_v1_entry_hold|PACB: waiting — opening_range_not_settled
+2026-11-10 09:35:23.491796|breakout_v1_entry_hold|LFST: waiting — opening_range_not_settled
+2026-11-10 09:35:23.492722|breakout_v1_entry_hold|AVAH: waiting — opening_range_not_settled
+(40 rows)
+column_name
+id
+ticker
+alert_date
+ep_score
+catalyst_quality
+gap_pct
+regime
+status
+orb_high
+orb_low
+atr_14
+entry_price
+entry_shares
+stop_price
+hard_stop
+position_size
+risk_dollars
+entry_order_id
+stop_order_id
+exits
+remaining_shares
+total_pnl
+hold_days
+partial_taken
+breakeven_active
+running_closes
+proposed_at
+confirmed_at
+skip_reason
+created_at
+filled_at
+closed_at
+entry_attempt
+signal_type
+account_mode
+lowest_price_seen
+highest_price_seen
+pnl_attribution
+risk_dollars_actual
+dead_stop_price
+dead_stop_order_id
+dead_stop_status
+dead_stop_recorded_at
+exit_rule
+depth_sell_pending_on
+breakout_day0_pp
+(46 rows)
+id|ticker|status|account_mode|alert_date|entry_price|et
+435|CYPH|skipped|paper|2026-11-02||2026-11-02 09:35:10.109021
+436|ZCSH|skipped|paper|2026-11-02||2026-11-02 09:35:10.192799
+437|OKTA|skipped|paper|2026-11-02||2026-11-02 09:35:10.433418
+438|IBTA|skipped|paper|2026-11-02||2026-11-02 09:35:10.530052
+439|CRWD|skipped|paper|2026-11-02||2026-11-02 09:35:11.21695
+440|MTW|closed|paper|2026-11-02|23.98|2026-11-02 09:35:11.777622
+441|RDVT|skipped|paper|2026-11-02||2026-11-02 09:35:11.873741
+442|NTRA|skipped|paper|2026-11-02||2026-11-02 09:35:12.675526
+443|TEM|skipped|paper|2026-11-02||2026-11-02 09:35:13.160686
+444|ACN|cancelled|paper|2026-11-02|260.42|2026-11-02 09:35:13.241733
+445|DOCS|skipped|paper|2026-11-02||2026-11-02 09:35:13.872083
+446|PLSE|skipped|paper|2026-11-02||2026-11-02 09:36:10.412715
+447|NIQ|skipped|paper|2026-11-02||2026-11-02 09:36:10.530733
+448|ARX|skipped|paper|2026-11-02||2026-11-02 09:36:10.6628
+449|JILL|skipped|paper|2026-11-02||2026-11-02 09:36:11.19066
+450|CAI|skipped|paper|2026-11-02||2026-11-02 09:39:10.080245
+451|BWMN|cancelled|paper|2026-11-02|42.95|2026-11-02 09:43:10.368604
+452|LIFE|cancelled|paper|2026-11-02|44.8699|2026-11-02 09:51:10.595054
+468|DOCS|skipped|paper|2026-11-10||2026-11-10 09:36:24.599594
+469|VEEV|skipped|paper|2026-11-10||2026-11-10 09:36:24.603612
+470|AMPL|skipped|paper|2026-11-10||2026-11-10 09:36:24.607932
+471|BLLN|skipped|paper|2026-11-10||2026-11-10 09:36:24.611657
+472|EVH|skipped|paper|2026-11-10||2026-11-10 09:36:24.61366
+473|BLKB|skipped|paper|2026-11-10||2026-11-10 09:36:24.615644
+474|CTSH|skipped|paper|2026-11-10||2026-11-10 09:36:24.62069
+475|NCNO|skipped|paper|2026-11-10||2026-11-10 09:36:24.622546
+476|HAE|skipped|paper|2026-11-10||2026-11-10 09:36:24.624538
+477|APPN|skipped|paper|2026-11-10||2026-11-10 09:36:24.626209
+478|AMC|skipped|paper|2026-11-10||2026-11-10 09:36:24.628955
+479|DOCU|skipped|paper|2026-11-10||2026-11-10 09:36:24.630785
+480|OSCR|skipped|paper|2026-11-10||2026-11-10 09:36:24.632576
+481|RHI|skipped|paper|2026-11-10||2026-11-10 09:36:24.634516
+482|PS|skipped|paper|2026-11-10||2026-11-10 09:36:24.63741
+483|CBRL|skipped|paper|2026-11-10||2026-11-10 09:36:24.639432
+484|BOX|skipped|paper|2026-11-10||2026-11-10 09:36:24.643163
+485|MATV|skipped|paper|2026-11-10||2026-11-10 09:36:24.646023
+486|RPD|skipped|paper|2026-11-10||2026-11-10 09:36:24.64771
+487|RSKD|skipped|paper|2026-11-10||2026-11-10 09:36:24.649574
+488|INTA|skipped|paper|2026-11-10||2026-11-10 09:36:24.651275
+489|NABL|skipped|paper|2026-11-10||2026-11-10 09:36:24.653054
+490|ATRC|skipped|paper|2026-11-10||2026-11-10 09:36:24.65482
+491|PACB|skipped|paper|2026-11-10||2026-11-10 09:36:24.65669
+492|LFST|skipped|paper|2026-11-10||2026-11-10 09:36:24.658273
+493|AVAH|skipped|paper|2026-11-10||2026-11-10 09:36:24.659798
+494|VSTM|skipped|paper|2026-11-10||2026-11-10 09:36:24.662186
+495|SEZL|skipped|paper|2026-11-10||2026-11-10 09:36:24.663729
+496|ZETA|skipped|paper|2026-11-10||2026-11-10 09:36:24.665288
+497|DSGX|skipped|paper|2026-11-10||2026-11-10 09:36:24.667582
+498|TTAN|skipped|paper|2026-11-10||2026-11-10 09:36:24.669083
+499|APPS|skipped|paper|2026-11-10||2026-11-10 09:36:24.670763
+500|RGEN|skipped|paper|2026-11-10||2026-11-10 09:36:24.672498
+501|TENB|skipped|paper|2026-11-10||2026-11-10 09:36:24.674223
+502|FNKO|skipped|paper|2026-11-10||2026-11-10 09:36:24.677046
+503|ACN|skipped|paper|2026-11-10||2026-11-10 09:36:24.679056
+504|ETSY|skipped|paper|2026-11-10||2026-11-10 09:36:24.68224
+505|QLYS|skipped|paper|2026-11-10||2026-11-10 09:36:24.684808
+506|CDNA|skipped|paper|2026-11-10||2026-11-10 09:36:24.686447
+507|BLMN|skipped|paper|2026-11-10||2026-11-10 09:36:24.689139
+508|SWKS|skipped|paper|2026-11-10||2026-11-10 09:36:24.690837
+509|IOT|skipped|paper|2026-11-10||2026-11-10 09:36:24.692692
+510|KVYO|skipped|paper|2026-11-10||2026-11-10 09:36:24.69618
+511|AYA|skipped|paper|2026-11-10||2026-11-10 09:36:24.69798
+512|FRPT|skipped|paper|2026-11-10||2026-11-10 09:36:24.70158
+513|PHR|skipped|paper|2026-11-10||2026-11-10 09:36:24.703311
+514|VGZ|skipped|paper|2026-11-10||2026-11-10 09:36:24.706073
+515|RVTY|skipped|paper|2026-11-10||2026-11-10 09:36:24.707789
+516|SIG|skipped|paper|2026-11-10||2026-11-10 09:36:24.709633
+517|NTSK|skipped|paper|2026-11-10||2026-11-10 09:36:24.71191
+518|GSHD|skipped|paper|2026-11-10||2026-11-10 09:36:24.713495
+519|AI|skipped|paper|2026-11-10||2026-11-10 09:36:24.715029
+520|CCI|skipped|paper|2026-11-10||2026-11-10 09:36:24.716986
+521|CDNS|skipped|paper|2026-11-10||2026-11-10 09:36:24.718833
+522|KMTS|skipped|paper|2026-11-10||2026-11-10 09:36:24.720588
+523|SENS|skipped|paper|2026-11-10||2026-11-10 09:36:24.724306
+524|FIVE|skipped|paper|2026-11-10||2026-11-10 09:36:24.729486
+525|TNDM|skipped|paper|2026-11-10||2026-11-10 09:36:24.731312
+526|BRKR|skipped|paper|2026-11-10||2026-11-10 09:36:24.734094
+527|BSP|skipped|paper|2026-11-10||2026-11-10 09:36:24.73674
+528|NG|skipped|paper|2026-11-10||2026-11-10 09:36:24.739296
+529|DNA|skipped|paper|2026-11-10||2026-11-10 09:36:24.740867
+530|INTU|skipped|paper|2026-11-10||2026-11-10 09:36:24.742517
+531|FDS|skipped|paper|2026-11-10||2026-11-10 09:36:24.746966
+532|CSTL|skipped|paper|2026-11-10||2026-11-10 09:36:24.748568
+533|SXC|skipped|paper|2026-11-10||2026-11-10 09:36:24.750046
+534|PUBM|skipped|paper|2026-11-10||2026-11-10 09:36:24.752473
+535|SAIL|skipped|paper|2026-11-10||2026-11-10 09:36:24.754054
+536|FTRE|skipped|paper|2026-11-10||2026-11-10 09:36:24.755836
+537|PRME|skipped|paper|2026-11-10||2026-11-10 09:36:24.758761
+538|PHVS|skipped|paper|2026-11-10||2026-11-10 09:36:24.761346
+539|AOSL|skipped|paper|2026-11-10||2026-11-10 09:36:24.771255
+540|DRD|skipped|paper|2026-11-10||2026-11-10 09:36:24.773099
+541|SHLS|skipped|paper|2026-11-10||2026-11-10 09:36:24.77488
+542|ANRO|skipped|paper|2026-11-10||2026-11-10 09:36:24.777474
+543|ABNB|skipped|paper|2026-11-10||2026-11-10 09:36:24.781406
+544|EFX|skipped|paper|2026-11-10||2026-11-10 09:36:24.783927
+545|VERX|skipped|paper|2026-11-10||2026-11-10 09:36:24.788599
+546|AMPH|skipped|paper|2026-11-10||2026-11-10 09:36:24.790255
+547|ASO|skipped|paper|2026-11-10||2026-11-10 09:36:24.792018
+548|CGAU|skipped|paper|2026-11-10||2026-11-10 09:36:24.794673
+549|AU|skipped|paper|2026-11-10||2026-11-10 09:36:24.796266
+550|AEM|skipped|paper|2026-11-10||2026-11-10 09:36:24.798741
+551|APPF|skipped|paper|2026-11-10||2026-11-10 09:36:24.800254
+552|VITL|skipped|paper|2026-11-10||2026-11-10 09:36:24.803426
+553|RRC|skipped|paper|2026-11-10||2026-11-10 09:36:24.805771
+554|NX|skipped|paper|2026-11-10||2026-11-10 09:36:24.808136
+555|SNPS|skipped|paper|2026-11-10||2026-11-10 09:36:24.80971
+556|RXRX|skipped|paper|2026-11-10||2026-11-10 09:36:24.811438
+557|CNMD|skipped|paper|2026-11-10||2026-11-10 09:36:24.813266
+558|OWL|skipped|paper|2026-11-10||2026-11-10 09:36:24.815033
+559|GLOB|skipped|paper|2026-11-10||2026-11-10 09:36:24.816703
+560|PRCT|skipped|paper|2026-11-10||2026-11-10 09:36:24.81852
+561|NEM|skipped|paper|2026-11-10||2026-11-10 09:36:24.821062
+562|ISRG|skipped|paper|2026-11-10||2026-11-10 09:36:24.82404
+563|WS|skipped|paper|2026-11-10||2026-11-10 09:36:24.829006
+564|CTKB|skipped|paper|2026-11-10||2026-11-10 09:36:24.830756
+565|PCOR|skipped|paper|2026-11-10||2026-11-10 09:36:24.832425
+566|B|skipped|paper|2026-11-10||2026-11-10 09:36:24.834466
+567|WPM|skipped|paper|2026-11-10||2026-11-10 09:36:24.836184
+568|BTG|skipped|paper|2026-11-10||2026-11-10 09:36:24.837983
+569|AUGO|skipped|paper|2026-11-10||2026-11-10 09:36:24.851838
+570|DC|skipped|paper|2026-11-10||2026-11-10 09:36:24.855915
+571|EQX|skipped|paper|2026-11-10||2026-11-10 09:36:24.861257
+572|ZLAB|skipped|paper|2026-11-10||2026-11-10 09:36:24.86426
+573|FNV|skipped|paper|2026-11-10||2026-11-10 09:36:24.866759
+574|LCLN|skipped|paper|2026-11-10||2026-11-10 09:36:24.86827
+575|CNH|skipped|paper|2026-11-10||2026-11-10 09:36:24.870768
+576|IAG|skipped|paper|2026-11-10||2026-11-10 09:36:24.873273
+577|VIR|skipped|paper|2026-11-10||2026-11-10 09:36:24.874822
+578|ELMT|skipped|paper|2026-11-10||2026-11-10 09:36:24.878512
+579|ADMA|skipped|paper|2026-11-10||2026-11-10 09:36:24.88109
+580|ONON|skipped|paper|2026-11-10||2026-11-10 09:36:24.882709
+581|RGLD|skipped|paper|2026-11-10||2026-11-10 09:36:24.88434
+582|OR|skipped|paper|2026-11-10||2026-11-10 09:36:24.889701
+583|CSGP|skipped|paper|2026-11-10||2026-11-10 09:36:24.893484
+584|DUOL|skipped|paper|2026-11-10||2026-11-10 09:36:24.895964
+585|CHTR|skipped|paper|2026-11-10||2026-11-10 09:36:24.897735
+586|KD|skipped|paper|2026-11-10||2026-11-10 09:36:24.900346
+587|OGC|skipped|paper|2026-11-10||2026-11-10 09:36:24.901995
+588|SKE|skipped|paper|2026-11-10||2026-11-10 09:36:24.903721
+589|LMB|skipped|paper|2026-11-10||2026-11-10 09:36:24.906295
+590|AAUC|skipped|paper|2026-11-10||2026-11-10 09:36:24.907938
+591|MRNA|order_placed|paper|2026-11-10|280.8|2026-11-10 09:36:24.973161
+592|SPCE|order_placed|paper|2026-11-10|2.94|2026-11-10 09:36:25.052012
+593|ABCL|filled|paper|2026-11-10|12.79|2026-11-10 09:36:25.166035
+594|BIO|cancelled|paper|2026-11-10|394.73|2026-11-10 09:36:25.278486
+595|CHYM|cancelled|paper|2026-11-10|33.28|2026-11-10 09:36:25.369503
+596|DLB|skipped|paper|2026-11-10||2026-11-10 09:37:15.350287
+597|AGCO|skipped|paper|2026-11-10||2026-11-10 09:37:15.35882
+598|MAT|skipped|paper|2026-11-10||2026-11-10 09:41:15.552234
+599|KOD|cancelled|paper|2026-11-10|107.525|2026-11-10 09:41:15.61241
+600|SRZN|cancelled|paper|2026-11-10|33.4999|2026-11-10 09:42:14.940292
+601|PPTA|skipped|paper|2026-11-10||2026-11-10 09:43:14.721466
+602|RDNT|skipped|paper|2026-11-10||2026-11-10 09:44:13.765959
+603|OUST|filled|paper|2026-11-10|39.42|2026-11-10 09:44:13.815638
+604|FWRD|skipped|paper|2026-11-10||2026-11-10 09:46:17.312517
+605|NVAX|order_placed|paper|2026-11-10|11.195|2026-11-10 09:46:17.374833
+606|CVNA|skipped|paper|2026-11-10||2026-11-10 09:47:15.949064
+607|VFC|skipped|paper|2026-11-10||2026-11-10 09:51:16.339937
+(158 rows)
+status|count
+filled|2
+order_placed|3
+(2 rows)
+max_pos_blocks
+0
+(1 row)
+et|left|left
+2026-11-10 09:45:03.060685|2026-11-10T09:45:00 ET vs 2026-11-09: universe 5006, read 4591, missing 415; highs 34 lows 74 of 4156; adv 1237 dec 3221 unch 133; 19 groups, 142 themes; fetch 3.0s total 3.1s, batches failed 0|{"fetch_s": 3.01, "total_s": 3.05, "stats": {"batches_total": 51, "batches_failed": 0}, "universe_n": 5006, "read_n": 4591}
+(1 row)
+et|event_type|left
+(0 rows)
+status|count|max
+success|4|2026-11-10 09:45:00.004231
+(1 row)

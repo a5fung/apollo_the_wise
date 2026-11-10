@@ -1,0 +1,18 @@
+SET
+ticker|max_score|tiers|cq|gap|reasons
+QMCO|52.5||strong|17.4|score 52 < bar 65 (catalyst=strong)
+SECZ|52.5||routine,strong|35.1|score 34 < bar 65 (catalyst=routine),score 52 < bar 65 (catalyst=strong)
+HROW|52.5||routine,strong|22.0|pre-mkt volume 3,676 < 25,000 shares,pre-mkt volume 7,076 < 25,000 shares,score 34 < bar 65 (catalyst=routine),score 52 < bar 65 (catalyst=strong)
+CSQR|46.2||routine,strong|14.2|filter:session_rvol_too_low: session_rvol=0.53x (today 11,198 / baseline 21,205 n=21) < 1.0x,filter:session_rvol_too_low: session_rvol=0.64x (today 11,198 / baseline 17,412 n=21) < 1.0x,pre-mkt volume 728 < 25,000 shares,routine catalyst, gap 9.3%,score 46 < bar 65 (catalyst=strong)
+PAYS|||routine|12.7|filter:universe_below_gap_floor: decided gap 3.4% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 4.7% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 7.1% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 7.5% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 7.6% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 7.7% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 7.9% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 8.0% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 8.6% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 8.7% < 9.0% after real-time confirm (recorded only),pre-mkt volume 6,539 < 25,000 shares,routine catalyst, gap 9.5%
+RLGT||||18.9|filter:universe_below_gap_floor: decided gap 8.8% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 8.9% < 9.0% after real-time confirm (recorded only),quality filter: filter:mcap_too_small: $429M < $500M
+CCAP||||11.7|filter:universe_below_gap_floor: decided gap 6.1% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 7.2% < 9.0% after real-time confirm (recorded only),quality filter: filter:mcap_too_small: $340M < $500M
+VMD||||11.7|filter:universe_below_gap_floor: decided gap 0.0% < 9.0% after real-time confirm (recorded only),filter:universe_below_gap_floor: decided gap 0.5% < 9.0% after real-time confirm (recorded only),quality filter: filter:mcap_too_small: $339M < $500M
+CTY|||routine|21.9|pre-mkt volume 250 < 25,000 shares
+EIKN||||15.8|filter:universe_below_gap_floor: decided gap 1.9% < 9.0% after real-time confirm (recorded only),quality filter: filter:mcap_too_small: $318M < $500M
+MCFT||||14.2|filter:universe_below_gap_floor: decided gap 8.7% < 9.0% after real-time confirm (recorded only),quality filter: filter:mcap_too_small: $497M < $500M
+(11 rows)
+ticker|score_tier|ep_score|catalyst_quality|et
+(0 rows)
+regime
+(0 rows)

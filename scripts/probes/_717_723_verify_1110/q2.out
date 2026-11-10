@@ -1,0 +1,152 @@
+SET
+r|count
+setup:stop_too_wide: level $119.22 - day low $114.02 = 4.36% > ADR20 4.10%|1
+setup:stop_too_wide: level $175.56 - day low $154.50 = 12.00% > ADR20 5.97%|1
+setup:stop_too_wide: level $11.13 - day low $10.11 = 9.16% > ADR20 6.61%|1
+setup:stop_too_wide: level $366.47 - day low $333.72 = 8.94% > ADR20 3.91%|1
+setup:stop_too_wide: level $32.98 - day low $30.93 = 6.22% > ADR20 4.79%|1
+setup:stop_too_wide: level $6.09 - day low $5.65 = 7.30% > ADR20 5.47%|1
+setup:stop_too_wide: level $283.99 - day low $274.00 = 3.52% > ADR20 3.27%|1
+setup:stop_too_wide: level $23.00 - day low $21.33 = 7.26% > ADR20 5.05%|1
+setup:stop_too_wide: level $38.05 - day low $35.96 = 5.49% > ADR20 3.17%|1
+setup:stop_too_wide: level $117.97 - day low $108.91 = 7.68% > ADR20 5.42%|1
+setup:stop_too_wide: level $23.04 - day low $21.58 = 6.34% > ADR20 6.27%|1
+setup:stop_too_wide: level $14.38 - day low $13.30 = 7.51% > ADR20 6.09%|1
+setup:stop_too_wide: level $19.57 - day low $17.58 = 10.17% > ADR20 6.24%|1
+setup:stop_too_wide: level $39.13 - day low $33.86 = 13.47% > ADR20 3.57%|1
+setup:stop_too_wide: level $33.45 - day low $31.34 = 6.31% > ADR20 5.24%|1
+setup:stop_too_wide: level $23.78 - day low $22.46 = 5.55% > ADR20 3.95%|1
+setup:stop_too_wide: level $68.98 - day low $64.11 = 7.06% > ADR20 5.70%|1
+setup:stop_too_wide: level $29.33 - day low $28.01 = 4.50% > ADR20 3.68%|1
+setup:stop_too_wide: level $12.55 - day low $11.88 = 5.34% > ADR20 4.66%|1
+setup:stop_too_wide: level $48.77 - day low $39.38 = 19.25% > ADR20 6.50%|1
+setup:stop_too_wide: level $15.66 - day low $14.28 = 8.81% > ADR20 4.78%|1
+setup:stop_too_wide: level $87.07 - day low $80.39 = 7.67% > ADR20 6.35%|1
+setup:stop_too_wide: level $38.50 - day low $32.26 = 16.21% > ADR20 5.83%|1
+setup:stop_too_wide: level $23.19 - day low $21.37 = 7.85% > ADR20 7.38%|1
+setup:stop_too_wide: level $129.26 - day low $116.90 = 9.56% > ADR20 3.71%|1
+setup:stop_too_wide: level $5.71 - day low $5.44 = 4.81% > ADR20 4.10%|1
+setup:stop_too_wide: level $43.80 - day low $40.77 = 6.92% > ADR20 4.63%|1
+setup:stop_too_wide: level $53.46 - day low $49.48 = 7.44% > ADR20 7.01%|1
+setup:stop_too_wide: level $71.29 - day low $68.00 = 4.61% > ADR20 3.67%|1
+setup:stop_too_wide: level $202.24 - day low $192.75 = 4.69% > ADR20 3.58%|1
+setup:stop_too_wide: level $27.04 - day low $25.30 = 6.42% > ADR20 4.78%|1
+setup:stop_too_wide: level $83.35 - day low $75.56 = 9.35% > ADR20 3.61%|1
+setup:stop_too_wide: level $42.86 - day low $40.58 = 5.32% > ADR20 3.01%|1
+setup:stop_too_wide: level $13.25 - day low $12.51 = 5.58% > ADR20 4.33%|1
+setup:stop_too_wide: level $5.25 - day low $4.62 = 12.08% > ADR20 4.39%|1
+setup:stop_too_wide: level $45.84 - day low $42.35 = 7.60% > ADR20 4.95%|1
+setup:stop_too_wide: level $18.85 - day low $16.56 = 12.15% > ADR20 5.42%|1
+setup:stop_too_wide: level $65.89 - day low $64.13 = 2.67% > ADR20 2.59%|1
+setup:stop_too_wide: level $171.74 - day low $157.27 = 8.43% > ADR20 4.41%|1
+setup:stop_too_wide: level $18.02 - day low $16.50 = 8.44% > ADR20 6.01%|1
+setup:stop_too_wide: level $18.53 - day low $17.03 = 8.09% > ADR20 4.48%|1
+setup:stop_too_wide: level $216.57 - day low $164.68 = 23.96% > ADR20 5.72%|1
+setup:stop_too_wide: level $57.84 - day low $53.52 = 7.48% > ADR20 4.05%|1
+setup:stop_too_wide: level $19.45 - day low $17.63 = 9.36% > ADR20 5.96%|1
+setup:stop_too_wide: level $66.02 - day low $55.80 = 15.48% > ADR20 4.29%|1
+setup:stop_too_wide: level $28.71 - day low $26.89 = 6.33% > ADR20 4.45%|1
+setup:stop_too_wide: level $21.24 - day low $20.36 = 4.14% > ADR20 4.08%|1
+setup:stop_too_wide: level $2.84 - day low $2.71 = 4.58% > ADR20 4.48%|1
+setup:stop_too_wide: level $188.50 - day low $176.08 = 6.59% > ADR20 4.85%|1
+setup:stop_too_wide: level $197.87 - day low $188.00 = 4.99% > ADR20 2.89%|1
+setup:stop_too_wide: level $178.55 - day low $148.00 = 17.11% > ADR20 7.44%|1
+setup:stop_too_wide: level $470.35 - day low $452.46 = 3.80% > ADR20 3.75%|1
+setup:stop_too_wide: level $79.80 - day low $75.34 = 5.59% > ADR20 4.31%|1
+setup:stop_too_wide: level $100.44 - day low $94.75 = 5.67% > ADR20 3.40%|1
+setup:stop_too_wide: level $59.77 - day low $44.42 = 25.68% > ADR20 5.53%|1
+setup:stop_too_wide: level $13.39 - day low $12.54 = 6.33% > ADR20 4.05%|1
+setup:stop_too_wide: level $44.88 - day low $40.90 = 8.88% > ADR20 2.75%|1
+setup:stop_too_wide: level $71.15 - day low $65.95 = 7.31% > ADR20 4.24%|1
+setup:stop_too_wide: level $20.65 - day low $19.22 = 6.92% > ADR20 5.84%|1
+setup:stop_too_wide: level $11.01 - day low $9.85 = 10.54% > ADR20 7.95%|1
+setup:stop_too_wide: level $90.05 - day low $81.00 = 10.05% > ADR20 6.77%|1
+setup:stop_too_wide: level $197.00 - day low $185.41 = 5.88% > ADR20 3.24%|1
+setup:stop_too_wide: level $348.00 - day low $316.71 = 8.99% > ADR20 3.45%|1
+setup:stop_too_wide: level $12.22 - day low $11.47 = 6.14% > ADR20 5.51%|1
+setup:stop_too_wide: level $10.30 - day low $8.37 = 18.78% > ADR20 8.09%|1
+setup:stop_too_wide: level $21.39 - day low $19.78 = 7.53% > ADR20 7.25%|1
+setup:stop_too_wide: level $29.56 - day low $27.15 = 8.15% > ADR20 7.10%|1
+setup:stop_too_wide: level $35.47 - day low $33.49 = 5.58% > ADR20 4.61%|1
+setup:stop_too_wide: level $55.13 - day low $48.32 = 12.36% > ADR20 3.64%|1
+setup:stop_too_wide: level $6.51 - day low $6.15 = 5.60% > ADR20 5.22%|1
+setup:stop_too_wide: level $265.85 - day low $255.10 = 4.04% > ADR20 2.71%|1
+setup:stop_too_wide: level $17.71 - day low $13.45 = 24.05% > ADR20 8.40%|1
+setup:stop_too_wide: level $50.19 - day low $47.06 = 6.24% > ADR20 4.84%|1
+setup:stop_too_wide: level $23.95 - day low $22.66 = 5.39% > ADR20 4.41%|1
+setup:stop_too_wide: level $3.77 - day low $3.33 = 11.67% > ADR20 6.56%|1
+setup:stop_too_wide: level $5.12 - day low $4.05 = 20.90% > ADR20 10.63%|1
+setup:stop_too_wide: level $485.85 - day low $456.27 = 6.09% > ADR20 3.21%|1
+setup:stop_too_wide: level $88.87 - day low $80.08 = 9.89% > ADR20 4.81%|1
+setup:stop_too_wide: level $2.70 - day low $2.12 = 21.48% > ADR20 11.52%|1
+setup:stop_too_wide: level $78.48 - day low $74.43 = 5.16% > ADR20 5.13%|1
+setup:stop_too_wide: level $36.43 - day low $33.65 = 7.63% > ADR20 5.30%|1
+setup:stop_too_wide: level $23.06 - day low $22.05 = 4.38% > ADR20 4.33%|1
+setup:stop_too_wide: level $22.20 - day low $19.00 = 14.41% > ADR20 5.16%|1
+setup:stop_too_wide: level $127.28 - day low $120.33 = 5.46% > ADR20 3.27%|1
+setup:stop_too_wide: level $271.76 - day low $252.20 = 7.20% > ADR20 3.91%|1
+setup:stop_too_wide: level $4.08 - day low $3.57 = 12.50% > ADR20 9.18%|1
+setup:stop_too_wide: level $23.51 - day low $20.50 = 12.80% > ADR20 8.57%|1
+setup:stop_too_wide: level $29.02 - day low $26.44 = 8.89% > ADR20 5.35%|1
+setup:stop_too_wide: level $6.98 - day low $6.44 = 7.74% > ADR20 5.40%|1
+setup:stop_too_wide: level $87.86 - day low $80.81 = 8.02% > ADR20 4.40%|1
+setup:stop_too_wide: level $8.98 - day low $8.38 = 6.68% > ADR20 5.03%|1
+setup:stop_too_wide: level $127.16 - day low $120.71 = 5.07% > ADR20 4.50%|1
+setup:stop_too_wide: level $145.28 - day low $137.75 = 5.18% > ADR20 3.64%|1
+setup:stop_too_wide: level $13.88 - day low $11.91 = 14.19% > ADR20 7.59%|1
+setup:stop_too_wide: level $11.21 - day low $10.03 = 10.53% > ADR20 4.34%|1
+setup:stop_too_wide: level $33.69 - day low $30.32 = 10.00% > ADR20 4.85%|1
+setup:stop_too_wide: level $13.12 - day low $11.63 = 11.36% > ADR20 11.33%|1
+setup:stop_too_wide: level $46.50 - day low $43.06 = 7.40% > ADR20 5.41%|1
+setup:stop_too_wide: level $43.13 - day low $37.50 = 13.05% > ADR20 5.55%|1
+setup:stop_too_wide: level $93.50 - day low $86.50 = 7.49% > ADR20 3.46%|1
+setup:stop_too_wide: level $29.89 - day low $27.47 = 8.11% > ADR20 7.62%|1
+setup:stop_too_wide: level $24.07 - day low $21.89 = 9.06% > ADR20 6.65%|1
+setup:stop_too_wide: level $314.23 - day low $302.11 = 3.86% > ADR20 2.98%|1
+setup:stop_too_wide: level $15.97 - day low $15.40 = 3.57% > ADR20 3.45%|1
+setup:stop_too_wide: level $67.95 - day low $63.20 = 6.99% > ADR20 3.69%|1
+setup:stop_too_wide: level $54.80 - day low $51.13 = 6.70% > ADR20 4.63%|1
+setup:stop_too_wide: level $339.23 - day low $324.82 = 4.25% > ADR20 3.95%|1
+setup:stop_too_wide: level $10.10 - day low $8.43 = 16.53% > ADR20 8.87%|1
+setup:stop_too_wide: level $96.75 - day low $92.97 = 3.91% > ADR20 2.99%|1
+setup:stop_too_wide: level $81.87 - day low $78.28 = 4.39% > ADR20 3.97%|1
+setup:stop_too_wide: level $7.47 - day low $6.87 = 8.09% > ADR20 5.80%|1
+setup:stop_too_wide: level $4.97 - day low $4.56 = 8.34% > ADR20 7.39%|1
+setup:stop_too_wide: level $14.55 - day low $13.04 = 10.38% > ADR20 3.69%|1
+setup:stop_too_wide: level $12.20 - day low $11.52 = 5.57% > ADR20 4.51%|1
+setup:stop_too_wide: level $97.85 - day low $86.41 = 11.69% > ADR20 4.70%|1
+setup:stop_too_wide: level $58.99 - day low $55.53 = 5.87% > ADR20 5.14%|1
+setup:stop_too_wide: level $35.15 - day low $31.97 = 9.05% > ADR20 4.29%|1
+setup:stop_too_wide: level $47.72 - day low $40.33 = 15.49% > ADR20 8.99%|1
+setup:stop_too_wide: level $13.77 - day low $12.73 = 7.55% > ADR20 4.69%|1
+setup:stop_too_wide: level $11.65 - day low $7.17 = 38.45% > ADR20 8.39%|1
+setup:stop_too_wide: level $19.93 - day low $18.88 = 5.27% > ADR20 4.43%|1
+setup:stop_too_wide: level $10.87 - day low $10.01 = 7.91% > ADR20 4.59%|1
+setup:stop_too_wide: level $26.87 - day low $25.08 = 6.66% > ADR20 3.15%|1
+setup:stop_too_wide: level $241.49 - day low $223.77 = 7.34% > ADR20 4.73%|1
+setup:stop_too_wide: level $71.45 - day low $66.17 = 7.39% > ADR20 4.00%|1
+setup:stop_too_wide: level $56.38 - day low $49.27 = 12.61% > ADR20 6.71%|1
+setup:stop_too_wide: level $258.66 - day low $249.84 = 3.41% > ADR20 3.38%|1
+setup:stop_too_wide: level $31.91 - day low $29.75 = 6.75% > ADR20 6.29%|1
+setup:stop_too_wide: level $132.00 - day low $116.68 = 11.61% > ADR20 3.22%|1
+setup:stop_too_wide: level $19.24 - day low $17.75 = 7.74% > ADR20 5.55%|1
+setup:stop_too_wide: level $31.00 - day low $28.70 = 7.42% > ADR20 3.82%|1
+(131 rows)
+ticker|status|order_score|rk
+KOD|cancelled|0.8525345622119815|1
+SRZN|cancelled|0.7995391705069124|2
+MRNA|order_placed|0.7903225806451613|3
+SPCE|order_placed|0.7511520737327189|4
+ABCL|filled|0.7327188940092166|5
+BIO|cancelled|0.7119815668202765|6
+CHYM|cancelled|0.6474654377880185|7
+OUST|filled|0.6036866359447004|8
+NVAX|order_placed|0.5230414746543779|9
+(9 rows)
+ticker|signal_type|status
+ABCL|breakout_v1|filled
+OUST|breakout_v1|filled
+SPCE|breakout_v1|order_placed
+NVAX|breakout_v1|order_placed
+MRNA|breakout_v1|order_placed
+(5 rows)
