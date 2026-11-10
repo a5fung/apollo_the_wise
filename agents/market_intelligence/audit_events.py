@@ -53,6 +53,12 @@ VALIDATION_RATE_LIMITED = "validation_rate_limited"
 ANTHROPIC_CREDITS_EXHAUSTED = "anthropic_credits_exhausted"
 PERPLEXITY_CREDITS_EXHAUSTED = "perplexity_credits_exhausted"
 
+# ── Anthropic credit LEDGER / proactive low-balance warning (credit_ledger.py, 2026-11-10) ──
+# /credits <usd> records the Console balance; the 08:00/18:00 ET check subtracts logged spend.
+ANTHROPIC_BALANCE_RECORDED = "anthropic_balance_recorded"   # detail {"usd", "as_of"}
+ANTHROPIC_CREDIT_CHECK = "anthropic_credit_check"           # one telemetry row per run, no Telegram
+ANTHROPIC_CREDITS_LOW_WARNED = "anthropic_credits_low_warned"  # dedup token: one warning per ET day
+
 # ── M&A filter ──────────────────────────────────────────────────────────────
 MNA_FILTER_FIRED = "mna_filter_fired"
 # #692 (2026-10-02) — the filter answers ONE question (is THIS ticker the target of a signed deal
