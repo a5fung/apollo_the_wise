@@ -1,0 +1,20 @@
+SET
+now_et|sw
+2026-11-10 10:19:48.298039|off
+(1 row)
+id|ticker|status|left
+591|MRNA|cancelled|setup:stop_too_wide: level $280.80 - day low $252.07 = 10.23
+592|SPCE|order_placed|
+593|ABCL|closed|block:r3_reentry_disabled
+594|BIO|cancelled|setup:breakout_volume_below_curve: 17,863 shares by minute 1
+595|CHYM|cancelled|setup:breakout_volume_below_curve: 267,300 shares by minute 
+599|KOD|cancelled|setup:breakout_volume_below_curve: 69,195 shares by minute 1
+600|SRZN|cancelled|setup:breakout_volume_below_curve: 13,558 shares by minute 1
+603|OUST|filled|
+605|NVAX|order_placed|
+610|AMLX|filled|
+612|MANE|cancelled|setup:chase_cap_exceeded: limit $149.00 risk $7.19/sh vs pla
+613|ZYME|filled|
+(12 rows)
+et|event_type|left
+(0 rows)

@@ -44,10 +44,13 @@ from agents.market_intelligence import breakout_v1 as bv
 from agents.market_intelligence import consolidation_breakout as cb
 from agents.market_intelligence.consolidation_breakout_shadow import _json_safe, build_series
 from agents.market_intelligence.db import (
+    BREAKOUT_V1_PAPER_TOGGLE,
+    BREAKOUT_V1_PAPER_TOGGLE_ENV,
     bv1_get_security_types_named,
     bv1_replace_list,
     cb_get_calendar,
     cb_get_universe_bars,
+    get_runtime_toggle,
     get_unapplied_splits,
     log_audit_event,
 )
@@ -306,6 +309,12 @@ async def run_breakout_v1_list(today: Optional[date] = None) -> dict:
         first_exc = e
 
     msg = format_list_message(today, rows) if (rows and not out["timed_out"] and first_exc is None) else None
+    # His word 2026-11-10 ("I don't want to see these garbage charts again", after the first paper session bought
+    # charts with no higher lows and no surfing average): the message goes out ONLY while breakout paper is on.
+    # The list itself is still computed and written every night (the rebuild scores against it).
+    if msg and not await get_runtime_toggle(BREAKOUT_V1_PAPER_TOGGLE, BREAKOUT_V1_PAPER_TOGGLE_ENV):
+        out["message"] = "suppressed_paper_off"
+        msg = None
     if msg:
         try:
             from agents.market_intelligence.briefing import send_telegram_message

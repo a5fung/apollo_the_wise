@@ -100,6 +100,11 @@ class Fakes:
         monkeypatch.setattr(bl, "get_unapplied_splits", splits_f)
         monkeypatch.setattr(bl, "bv1_replace_list", replace_f)
         monkeypatch.setattr(bl, "log_audit_event", audit_f)
+
+        async def toggle_f(name, env_var, default=True):
+            return self.paper_on
+        self.paper_on = True
+        monkeypatch.setattr(bl, "get_runtime_toggle", toggle_f)
         from agents.market_intelligence import briefing
         monkeypatch.setattr(briefing, "send_telegram_message", send_f)
 
@@ -133,6 +138,15 @@ def test_the_night_lists_zcsh_only_and_keeps_out_the_leveraged_and_unnamed_funds
     assert f.sent[0].startswith(mode_prefix("paper")) and is_paper_message(f.sent[0])
     assert "ZCSH" in f.sent[0] and "35.13" in f.sent[0]
     assert "/bgrade" not in f.sent[0]        # #717 stage 2 (his 2026-11-05 word): the message no longer names the command
+
+
+def test_no_message_while_breakout_paper_is_off_but_the_list_is_still_written(monkeypatch):
+    # His word 2026-11-10: "I don't want to see these garbage charts again" — paper off => no list message.
+    f = Fakes(monkeypatch)
+    f.paper_on = False
+    out = asyncio.run(bl.run_breakout_v1_list(TODAY))
+    assert f.sent == [] and out["message"] == "suppressed_paper_off"
+    assert [r["ticker"] for r in f.lists[TODAY]] == ["ZCSH"] and out["written"] == 1
 
 
 def test_a_rerun_is_idempotent(monkeypatch):

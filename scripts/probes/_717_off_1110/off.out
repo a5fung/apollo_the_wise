@@ -1,0 +1,6 @@
+BEGIN
+UPDATE 1
+safeguard|account_mode|state|last_transition_at
+breakout_v1_paper|global|off|2026-11-10 15:19:36.107908+00
+(1 row)
+COMMIT
