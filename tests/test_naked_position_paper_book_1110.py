@@ -48,6 +48,10 @@ async def test_a_queued_sale_for_every_share_is_covered_not_naked():
     with patch.object(alpaca_client, "get_open_orders", new=AsyncMock(return_value=part)):
         out = await classify_naked_positions({"offending_rows": [_row("ZYME", "paper")]})
     assert [r["ticker"] for r in out["real_naked"]] == ["ZYME"]          # 465 shares still bare
+    limit = [{"side": "sell", "type": "limit", "qty": 565.0, "stop_price": None, "limit_price": 40.0}]
+    with patch.object(alpaca_client, "get_open_orders", new=AsyncMock(return_value=limit)):
+        out = await classify_naked_positions({"offending_rows": [_row("AAPL", "live")]})
+    assert [r["ticker"] for r in out["real_naked"]] == ["AAPL"]          # a profit-take limit is not cover
 
 
 def test_the_paper_form_is_tagged_and_never_says_real_money():

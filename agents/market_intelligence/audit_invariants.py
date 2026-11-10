@@ -142,10 +142,12 @@ async def classify_naked_positions(body: dict) -> dict:
                 )
                 for o in open_orders
             )
+            # MARKET sells only — the shape of the after-close stop-breach sale. A resting LIMIT sell
+            # (a profit-take) does not protect the downside, so it never counts as cover.
             queued_sale_qty = sum(
                 float(o.get("qty") or 0) for o in open_orders
                 if (o.get("side") or "").lower().endswith("sell")
-                and not o.get("stop_price") and "stop" not in str(o.get("type") or "").lower()
+                and str(o.get("type") or "").lower().endswith("market")
             )
             held = r.get("remaining_shares")
             fully_queued = (not has_stop and held is not None and float(held) > 0

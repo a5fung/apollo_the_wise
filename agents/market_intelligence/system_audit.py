@@ -1463,8 +1463,7 @@ def _format_naked_position_alert(body: dict, account_mode: str = "live") -> str:
         _now_et = datetime.now(_ET)
         _market_hours = (_now_et.weekday() < 5 and time(9, 30) <= _now_et.time() <= time(16, 0))  # recovery-clock-ok: alert WORDING about the present moment, not a data date
         if paper:
-            sections.append("No action needed: paper only; the stop-ack watchdog re-places paper stops "
-                            "from 9:00 AM ET.")
+            sections.append("No action needed: paper only.")
         elif _market_hours:
             sections.append("Immediate operator action: place stop via Alpaca web UI.")
         else:
