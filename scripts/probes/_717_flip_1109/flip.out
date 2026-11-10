@@ -1,0 +1,15 @@
+BEGIN
+UPDATE 1
+safeguard|account_mode|state|last_transition_at
+breakout_v1_paper|global|on|2026-11-10 02:23:47.564278+00
+(1 row)
+strategy_id|phase|enabled
+breakout_v1|paper|t
+(1 row)
+COMMIT
+SET
+safeguard|state|last_transition_at
+breakout_v1_paper|on|2026-11-10 02:23:47.564278+00
+(1 row)
+event_type|created_at
+(0 rows)
