@@ -2117,8 +2117,11 @@ def test_nothing_in_stage_2_writes_the_paper_switch():  # source-pin-ok: the abs
                    if "probes" not in p.parts))
     refs = {str(p.relative_to(_REPO)) for p in tree
             if "breakout_v1_paper" in p.read_text() or "BREAKOUT_V1_PAPER_TOGGLE" in p.read_text()}
-    assert refs == {"agents/market_intelligence/db.py", "agents/market_intelligence/broker/breakout_v1_entry.py"}
-    for mod in ("agents/market_intelligence/broker/breakout_v1_entry.py", "agents/market_intelligence/broker/alpaca_client.py"):
+    # 2026-11-10: the 17:55 list job READS the switch too — its message goes out only while paper is on (his word).
+    assert refs == {"agents/market_intelligence/db.py", "agents/market_intelligence/broker/breakout_v1_entry.py",
+                    "agents/market_intelligence/breakout_v1_list.py"}
+    for mod in ("agents/market_intelligence/broker/breakout_v1_entry.py", "agents/market_intelligence/broker/alpaca_client.py",
+                "agents/market_intelligence/breakout_v1_list.py"):
         src = (_REPO / mod).read_text()
         assert "set_safeguard_state" not in src and "UPDATE mi_safeguard_state" not in src \
             and "INSERT INTO mi_safeguard_state" not in src
