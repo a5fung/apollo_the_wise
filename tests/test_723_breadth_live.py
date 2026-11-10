@@ -935,6 +935,22 @@ def test_pusher_publishes_one_orphan_single_file_commit(push_rig):
     assert subprocess.run(["git", "status", "--porcelain"], cwd=push_rig.dest, capture_output=True, text=True).stdout == ""
 
 
+def test_pusher_publishes_on_a_host_with_no_git_identity(push_rig):
+    """11-10 09:45 ET, the first live refresh: the prod host has no git user.name/email, so commit-tree died
+    ('unable to auto-detect email address') and nothing published. The rig sets GIT_AUTHOR_*/GIT_COMMITTER_*,
+    which hid it. WOULD-FAIL-IF the script relies on an ambient identity: with none in env or config, no push."""
+    push_rig.live.write_text('{"as_of": "2026-11-10T10:00:00 ET"}\n')
+    # user.useConfigOnly forbids git's hostname guess — a Mac guesses an email that passes; the Linux host cannot.
+    env_no_id = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    r = subprocess.run(["bash", str(PUSH_SH)], capture_output=True, text=True, env={
+        **env_no_id, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "HOME": str(push_rig.dest.parent),
+        "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "user.useConfigOnly", "GIT_CONFIG_VALUE_0": "true",
+        "EMAIL": "", "APOLLO_DIR": str(REPO), "EXPORT_DIR": str(push_rig.dest),
+        "BREADTH_LIVE_DIR": str(push_rig.live.parent)})
+    assert r.returncode == 0, r.stderr
+    assert push_rig.remote("show", f"live-breadth:{bl.LIVE_NAME}") == '{"as_of": "2026-11-10T10:00:00 ET"}'
+
+
 def test_pusher_replaces_in_place_and_skips_an_unchanged_file(push_rig):
     push_rig.live.write_text('{"n": 1}\n')
     assert push_rig.run().returncode == 0

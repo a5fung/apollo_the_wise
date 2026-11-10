@@ -86,6 +86,10 @@ if [ ! -d "$PUSH_GIT" ]; then
   git -c init.defaultBranch=$BRANCH init -q --bare "$PUSH_GIT" || { echo "push-breadth-live: cannot create $PUSH_GIT" >&2; exit 1; }
 fi
 export GIT_DIR="$PUSH_GIT"
+# A fixed identity for the one commit: the prod host has no git user.name/email, and commit-tree refuses to guess
+# one there ('unable to auto-detect email address' — the 11-10 first live refresh published nothing). Not a person.
+export GIT_AUTHOR_NAME="Apollo live breadth" GIT_AUTHOR_EMAIL="apollo-live-breadth@localhost"
+export GIT_COMMITTER_NAME="Apollo live breadth" GIT_COMMITTER_EMAIL="apollo-live-breadth@localhost"
 
 # The git blob id of the live file is the change detector: same bytes => same id => nothing to do.
 blob="$(git hash-object -w -- "$LIVE")" || { echo "push-breadth-live: hash-object failed" >&2; exit 1; }
