@@ -3265,67 +3265,6 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         except Exception as _se:
             logger.warning("ep_catalyst_suppressed audit emit failed (non-fatal): %s", _se)
 
-    # Sugar Baby Convergence tag — operator escalation cue. Pure telemetry:
-    # DB failure here MUST NEVER break the underlying EP alert (the trading
-    # signal). Default to no-tag on any exception, log loud audit, proceed.
-    conv: dict | None = None
-    try:
-        from agents.market_intelligence.db import check_sugar_baby_convergence
-        conv = await check_sugar_baby_convergence(ep["ticker"])
-    except Exception as _ce:
-        try:
-            await log_audit_event(
-                "sugar_baby_convergence_check_failed",
-                f"{ep['ticker']}: {type(_ce).__name__}: {str(_ce)[:200]}"
-            )
-        except Exception:  # loud-ok: fallback-of-the-fallback — the audit call
-            pass          # itself may share the same DB outage; nothing above
-                          # can handle it and the EP alert must still proceed.
-    conv_tag = ""
-    if conv:
-        if conv["convergence_class"] == "breakout":
-            conv_tag = (
-                f"🎯🎯 *BREAKOUT CONVERGENCE* — "
-                f"cohort {conv['cohort_n']}× · "
-                f"TRIGGERED {conv['days_since_stage']}d ago\n\n"
-            )
-        else:
-            conv_tag = (
-                f"🍬🌀🎯 *SUGAR BABY CONVERGENCE* — "
-                f"cohort {conv['cohort_n']}× · "
-                f"{conv['flag_stage']} {conv['days_since_stage']}d ago\n\n"
-            )
-        # Same-trading-day audit dedup — EP scans tick every 5 min and
-        # re-fire HIGH alerts as ep_score evolves over the 3-hour scan
-        # window. The original 1h dedup (copied from
-        # catalyst_earnings_revenue_weak_downgrade) was wrong shape for
-        # convergence telemetry: a ticker firing at 7:00, 8:05, 9:10 over
-        # the scan window generates 3 audit rows instead of 1, inflating
-        # backtest N denominator ~3x. Trading-day check (ET) gives
-        # exactly-once-per-converging-ticker semantics. Advisor flagged
-        # 2026-05-22 PM (#85, shipped 2026-05-23).
-        try:
-            pool = await get_pool()
-            async with pool.acquire() as conn:
-                prior = await conn.fetchrow("""
-                    SELECT 1 FROM mi_audit_log
-                    WHERE event_type = 'sugar_baby_convergence_alert'
-                      AND summary LIKE $1
-                      AND (created_at AT TIME ZONE 'America/New_York')::date
-                          = (NOW() AT TIME ZONE 'America/New_York')::date
-                    LIMIT 1
-                """, f"{ep['ticker']} MAGNA53_HIGH%")
-                if prior is None:
-                    await log_audit_event(
-                        "sugar_baby_convergence_alert",
-                        f"{ep['ticker']} MAGNA53_HIGH — "
-                        f"class={conv['convergence_class']} "
-                        f"cohort={conv['cohort_n']}x stage={conv['flag_stage']}"
-                    )
-        except Exception as _ae:
-            # Audit dedup/insert failure is also telemetry — don't block alert
-            logger.debug(f"Convergence audit log failed (non-critical): {_ae}")
-
     # North Star C1 (2026-05-30): surface catalyst TYPE — the "fire" (Pradeep
     # hierarchy: theme > policy > shortage > operational). ADVISORY — does not
     # gate; complements the magnitude grade (catalyst_quality) above.
@@ -3359,7 +3298,6 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     head_e, head_label = resolve_headline_grade(ep)
     _rv_str, _rv_pm = _resolve_ep_rvol(ep)  # pm_rvol pre-market — same SSoT as the brief/HUD line
     text = (
-        conv_tag +
         f"*EP ALERT {tier_e}*\n\n"
         f"*{ep['ticker']}* {head_e} {head_label}\n"
         f"{ct_line}"

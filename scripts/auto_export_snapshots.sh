@@ -15,6 +15,23 @@ APOLLO="${APOLLO_DIR:-/home/apollo/apollo_the_wise}"
 DEST="${EXPORT_DIR:-/home/apollo/portfolio-app2-export}"
 PG="apollo-postgres"
 
+# The guarded export both breadth blocks use: ON_ERROR_STOP (a SQL error is a non-zero exit, not empty
+# output), a 300 s statement_timeout (a hung query ends as a failure the caller handles), the output
+# written to <out>.tmp and moved into place only at >= 200 bytes. On failure <out> is left exactly as it
+# was, GUARD_BYTES holds what the failed run wrote, and the function returns non-zero.
+guarded_export() {  # <sql file> <out file>
+  local sql="$1" out="$2"
+  if docker exec -i -e PGOPTIONS="-c statement_timeout=300s" "$PG" psql -U apollo -d apollo -A -t -X -v ON_ERROR_STOP=1 -f - \
+       < "$sql" > "$out.tmp" \
+     && [ "$(wc -c < "$out.tmp")" -ge 200 ]; then
+    mv -f "$out.tmp" "$out"
+    return 0
+  fi
+  GUARD_BYTES="$(wc -c < "$out.tmp" 2>/dev/null || echo 0)"
+  rm -f "$out.tmp"
+  return 1
+}
+
 # #723 (2026-11-10): the live-breadth REFERENCE — what the intraday job (breadth_live.py) compares today's
 # Alpaca snapshots against (last close, 252-session high/low ending at that close, eligibility, theme and
 # group memberships). It is NOT a dashboard snapshot: nothing publishes it, and it runs FIRST — before
@@ -27,15 +44,10 @@ PG="apollo-postgres"
 # apollo-market at /app/logs — written tmp + mv, so the intraday job never reads a half-written file.
 # SSoT: docs/architecture/market_breadth_snapshot.md §Live breadth.
 REFERENCE_HOST_COPY="${BREADTH_REFERENCE_COPY:-$APOLLO/logs/apollo_breadth_reference.json}"
-if mkdir -p "$(dirname "$REFERENCE_HOST_COPY")" \
-   && docker exec -i -e PGOPTIONS="-c statement_timeout=300s" "$PG" psql -U apollo -d apollo -A -t -X -v ON_ERROR_STOP=1 -f - \
-        < "$APOLLO/scripts/export_breadth_reference.sql" > "$REFERENCE_HOST_COPY.tmp" \
-   && [ "$(wc -c < "$REFERENCE_HOST_COPY.tmp")" -ge 200 ]; then
-  mv -f "$REFERENCE_HOST_COPY.tmp" "$REFERENCE_HOST_COPY"
-else
-  echo "auto-export: breadth REFERENCE export FAILED or truncated ($(wc -c < "$REFERENCE_HOST_COPY.tmp" 2>/dev/null || echo 0) bytes);" \
+if ! { mkdir -p "$(dirname "$REFERENCE_HOST_COPY")" \
+       && guarded_export "$APOLLO/scripts/export_breadth_reference.sql" "$REFERENCE_HOST_COPY"; }; then
+  echo "auto-export: breadth REFERENCE export FAILED or truncated (${GUARD_BYTES:-0} bytes);" \
        "keeping the previous $REFERENCE_HOST_COPY — the snapshots continue." >&2
-  rm -f "$REFERENCE_HOST_COPY.tmp"
 fi
 
 cd "$DEST"
@@ -73,15 +85,11 @@ BREADTH=apollo_breadth_snapshot.json
 # statement_timeout: a hung breadth query (a lock from a boot-time ALTER, a cold-cache plan) must
 # not hold up the other three, which commit after it — it ends as a non-zero exit the guard handles.
 # Prod timing and the headroom this cap leaves: docs/architecture/market_breadth_snapshot.md (Cost).
-if docker exec -i -e PGOPTIONS="-c statement_timeout=300s" "$PG" psql -U apollo -d apollo -A -t -X -v ON_ERROR_STOP=1 -f - \
-     < "$APOLLO/scripts/export_breadth_snapshot.sql" > "$BREADTH.tmp" \
-   && [ "$(wc -c < "$BREADTH.tmp")" -ge 200 ]; then
-  mv -f "$BREADTH.tmp" "$BREADTH"
+if guarded_export "$APOLLO/scripts/export_breadth_snapshot.sql" "$BREADTH"; then
   SNAPSHOTS+=("$BREADTH")
 else
-  echo "auto-export: breadth export FAILED or truncated ($(wc -c < "$BREADTH.tmp" 2>/dev/null || echo 0) bytes);" \
+  echo "auto-export: breadth export FAILED or truncated (${GUARD_BYTES:-0} bytes);" \
        "keeping the last published $BREADTH — the other three snapshots continue." >&2
-  rm -f "$BREADTH.tmp"
 fi
 
 # Stage first, then ask the index: `git diff --cached` sees the breadth file's FIRST publish (a new

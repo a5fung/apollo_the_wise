@@ -2737,9 +2737,6 @@ async def run_intraday_flag_break_scan(scan_time):
 
         watchlist = {r["ticker"]: dict(r) for r in candidates}
 
-        # 2. Sugar Baby cohort membership (read-side decoration only, NOT filter)
-        cohort_map: dict = {}  # Sugar Babies cohort retired 2026-11-09 — empty, no query
-
         # 3. Pre-fetch ADV-20 for the watchlist tickers (single batch query).
         # PERCENTILE_CONT(0.5) median, matching db.get_adv_from_daily_closes
         # SSoT — median is spike-immune (a single 5x-volume day distorts
@@ -2814,7 +2811,6 @@ async def run_intraday_flag_break_scan(scan_time):
 
         pct_above = (current_price - base_high) / base_high * 100.0
         volume_pct = today_volume / adv_20 * 100.0
-        in_cohort = ticker in cohort_map
 
         new_breaks.append({
             "ticker": ticker,
@@ -2839,8 +2835,8 @@ async def run_intraday_flag_break_scan(scan_time):
             "adv_20": adv_20,
             "volume_pct_of_adv": volume_pct,
             "projected_full_day_volume": projected_full_day,
-            "in_sugar_baby_cohort": in_cohort,
-            "cohort_count_180d": cohort_map.get(ticker),
+            "in_sugar_baby_cohort": False,  # cohort retired 2026-11-09; column kept
+            "cohort_count_180d": None,
         })
 
     if not new_breaks:
@@ -2948,9 +2944,8 @@ async def run_intraday_flag_break_scan(scan_time):
                 "",
             ]
             for b in new_breaks:
-                cohort_marker = "🍬 " if b["in_sugar_baby_cohort"] else ""
                 lines.append(
-                    f"• {cohort_marker}`{b['ticker']}` — broke ${b['base_high']:.2f} "
+                    f"• `{b['ticker']}` — broke ${b['base_high']:.2f} "
                     f"at {b['pct_above_base_high']:+.1f}% "
                     f"(base {b['base_age']}d {b['parent_stage']}, "
                     f"vol {b['volume_pct_of_adv']:.0f}% ADV)"
@@ -3089,8 +3084,6 @@ async def run_intraday_support_test_scan(scan_time):
 
         watchlist = {r["ticker"]: dict(r) for r in candidates}
 
-        cohort_map: dict = {}  # Sugar Babies cohort retired 2026-11-09 — empty, no query
-
         adv_rows = await conn.fetch("""
             SELECT ticker,
                    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20
@@ -3179,7 +3172,6 @@ async def run_intraday_support_test_scan(scan_time):
         pct_below_base_low = (recent_low - base_low) / base_low * 100.0
         # current state above MA (positive when bouncing) — for the new alert wording
         pct_current_above_base = (current_price - base_low) / base_low * 100.0
-        in_cohort = ticker in cohort_map
 
         new_tests.append({
             "ticker": ticker,
@@ -3198,8 +3190,8 @@ async def run_intraday_support_test_scan(scan_time):
             "today_volume": today_volume or None,
             "adv_20": adv_20 or None,
             "volume_pct_of_adv": volume_pct,
-            "in_sugar_baby_cohort": in_cohort,
-            "cohort_count_180d": cohort_map.get(ticker),
+            "in_sugar_baby_cohort": False,  # cohort retired 2026-11-09; column kept
+            "cohort_count_180d": None,
         })
 
     if not new_tests:
@@ -3260,7 +3252,6 @@ async def run_intraday_support_test_scan(scan_time):
                 "",
             ]
             for t in new_tests:
-                cohort_marker = "🍬 " if t["in_sugar_baby_cohort"] else ""
                 touch_clock = (
                     t["recent_low_time"].strftime("%H:%M")
                     if t.get("recent_low_time") else "?"
@@ -3269,7 +3260,7 @@ async def run_intraday_support_test_scan(scan_time):
                 # plus when the recent test happened. Replaces cumulative-state
                 # "day_low undercut X%" which was stale by hours (advisor 2026-05-26).
                 lines.append(
-                    f"• {cohort_marker}`{t['ticker']}` — tested ${t['base_low']:.2f} "
+                    f"• `{t['ticker']}` — tested ${t['base_low']:.2f} "
                     f"at {touch_clock} ({t['pct_below_base_low']:+.2f}% deep), "
                     f"now {t['pct_current_above_base']:+.2f}% above base "
                     f"(${t['current_price']:.2f}; "
@@ -3339,8 +3330,6 @@ async def run_intraday_undercut_rally_scan(scan_time):
             return 0
 
         watchlist = {r["ticker"]: dict(r) for r in candidates}
-
-        cohort_map: dict = {}  # Sugar Babies cohort retired 2026-11-09 — empty, no query
 
         adv_rows = await conn.fetch("""
             SELECT ticker,
@@ -3416,8 +3405,8 @@ async def run_intraday_undercut_rally_scan(scan_time):
             "today_volume": today_volume or None,
             "adv_20": adv_20 or None,
             "volume_pct_of_adv": volume_pct,
-            "in_sugar_baby_cohort": ticker in cohort_map,
-            "cohort_count_180d": cohort_map.get(ticker),
+            "in_sugar_baby_cohort": False,  # cohort retired 2026-11-09; column kept
+            "cohort_count_180d": None,
         })
 
     if not new_urs:
@@ -3474,9 +3463,8 @@ async def run_intraday_undercut_rally_scan(scan_time):
                 "",
             ]
             for u in new_urs:
-                cohort_marker = "🍬 " if u["in_sugar_baby_cohort"] else ""
                 lines.append(
-                    f"• {cohort_marker}`{u['ticker']}` — undercut ${u['base_low']:.2f} "
+                    f"• `{u['ticker']}` — undercut ${u['base_low']:.2f} "
                     f"to ${u['undercut_low']:.2f} (-{u['undercut_pct']:.2f}%), "
                     f"reclaimed +{u['reclaim_pct_above_base']:.2f}% above base "
                     f"(${u['current_price']:.2f}; stop ${u['undercut_low']:.2f}; "
@@ -3564,8 +3552,6 @@ async def run_intraday_ma_pullback_scan(scan_time):
             return 0
 
         watchlist = {r["ticker"]: dict(r) for r in candidates}
-
-        cohort_map: dict = {}  # Sugar Babies cohort retired 2026-11-09 — empty, no query
 
         adv_rows = await conn.fetch("""
             SELECT ticker,
@@ -3723,7 +3709,6 @@ async def run_intraday_ma_pullback_scan(scan_time):
         pct_current_above_ma = (current_price - chosen_ma) / chosen_ma * 100.0
         bounce_pct = (current_price - recent_low) / recent_low * 100.0
         volume_pct = today_volume / adv_20 * 100.0
-        in_cohort = ticker in cohort_map
 
         new_pullbacks.append({
             "ticker": ticker,
@@ -3745,8 +3730,8 @@ async def run_intraday_ma_pullback_scan(scan_time):
             "adv_20": adv_20,
             "volume_pct_of_adv": volume_pct,
             "projected_full_day_volume": projected_full_day,
-            "in_sugar_baby_cohort": in_cohort,
-            "cohort_count_180d": cohort_map.get(ticker),
+            "in_sugar_baby_cohort": False,  # cohort retired 2026-11-09; column kept
+            "cohort_count_180d": None,
         })
 
     if not new_pullbacks:
@@ -3812,7 +3797,6 @@ async def run_intraday_ma_pullback_scan(scan_time):
                 "",
             ]
             for p in new_pullbacks:
-                cohort_marker = "🍬 " if p["in_sugar_baby_cohort"] else ""
                 touch_clock = (
                     p["recent_low_time"].strftime("%H:%M")
                     if p.get("recent_low_time") else "?"
@@ -3821,7 +3805,7 @@ async def run_intraday_ma_pullback_scan(scan_time):
                 # the recent test happened. Replaces cumulative-state "day_low
                 # undercut X%" which could be hours old (advisor 2026-05-26).
                 lines.append(
-                    f"• {cohort_marker}`{p['ticker']}` — {p['ma_label']} ${p['ma_value']:.2f} "
+                    f"• `{p['ticker']}` — {p['ma_label']} ${p['ma_value']:.2f} "
                     f"tested at {touch_clock} ({p['pct_below_ma']:+.2f}% deep), "
                     f"now {p['pct_current_above_ma']:+.2f}% above MA "
                     f"(${p['current_price']:.2f}; vol {p['volume_pct_of_adv']:.0f}% ADV)"
@@ -3921,8 +3905,6 @@ async def run_intraday_low_vol_rest_scan(scan_time):
             return 0
         watchlist = {r["ticker"]: dict(r) for r in candidates}
 
-        cohort_map: dict = {}  # Sugar Babies cohort retired 2026-11-09 — empty, no query
-
         adv_rows = await conn.fetch("""
             SELECT ticker, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20
             FROM (
@@ -3978,8 +3960,8 @@ async def run_intraday_low_vol_rest_scan(scan_time):
             "today_volume": today_volume, "adv_20": adv_20,
             "volume_pct_of_adv": m["vol_pct_of_adv"],
             "projected_full_day_volume": projected_full_day,
-            "in_sugar_baby_cohort": ticker in cohort_map,
-            "cohort_count_180d": cohort_map.get(ticker),
+            "in_sugar_baby_cohort": False,  # cohort retired 2026-11-09; column kept
+            "cohort_count_180d": None,
         })
 
     if not new_rests:
@@ -4023,9 +4005,8 @@ async def run_intraday_low_vol_rest_scan(scan_time):
             lines = [f"😴 *Intraday Low-Vol Rests ({len(new_rests)} new)*",
                      f"_5-min scan at {clock} ET — telemetry only, no entries submitted._", ""]
             for r in new_rests:
-                marker = "🍬 " if r["in_sugar_baby_cohort"] else ""
                 lines.append(
-                    f"• {marker}`{r['ticker']}` — resting {r['pos_in_base_pct']:.0f}% up in base "
+                    f"• `{r['ticker']}` — resting {r['pos_in_base_pct']:.0f}% up in base "
                     f"(${r['current_price']:.2f}; range {r['range_pct']:.1f}%, "
                     f"vol {r['volume_pct_of_adv']:.0f}% ADV)")
             lines += ["", "_Drill-down: `/lowvolrests` for today's list + recent history_"]

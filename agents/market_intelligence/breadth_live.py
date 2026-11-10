@@ -73,11 +73,11 @@ import threading
 import time
 from datetime import date, datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
+
+from shared.dates import _ET, parse_iso_et
 
 logger = logging.getLogger(__name__)
 
-_ET = ZoneInfo("America/New_York")
 REPO = Path(__file__).resolve().parents[2]          # /app in the container, the repo on a laptop
 
 JOB_ID = "breadth_live_refresh"
@@ -166,15 +166,9 @@ def reference_staleness(ref: dict, today: date) -> str | None:
 # ── the arithmetic ───────────────────────────────────────────────────────────────────────────────
 
 def _et_date_of(ts) -> date | None:
-    if ts is None:
-        return None
-    if isinstance(ts, datetime):
-        return (ts if ts.tzinfo else ts.replace(tzinfo=ZoneInfo("UTC"))).astimezone(_ET).date()
-    try:
-        s = str(ts).replace("Z", "+00:00")
-        return _et_date_of(datetime.fromisoformat(s))
-    except Exception:  # loud-ok: an unparseable stamp is "not today" — the name is counted missing, never guessed
-        return None
+    """The ET date of a stamp; None if unparseable ("not today" — the name is counted missing, never guessed)."""
+    dt = parse_iso_et(ts)
+    return dt.date() if dt else None
 
 
 def _num(x) -> float | None:
@@ -458,10 +452,6 @@ def _reset(streak: dict, today: date) -> None:
     streak["date"], streak["n"] = today, 0
 
 
-def _streak_bump(today: date) -> int:
-    return _bump(_streak, today)
-
-
 def _streak_reset(today: date) -> None:
     _reset(_streak, today)
     _reset(_push_streak, today)
@@ -484,7 +474,7 @@ async def run_scheduled(now_et: datetime | None = None, **refresh_kwargs) -> int
     try:
         result = await refresh_once(now, today, **refresh_kwargs)
     except Exception as e:  # loud-ok: audited below; the third straight failure re-raises (the page)
-        n = _streak_bump(today)
+        n = _bump(_streak, today)
         reason = f"{type(e).__name__}: {e}"
         evt = EVT_REFERENCE_STALE if isinstance(e, StaleReference) else EVT_REFRESH_FAILED
         logger.warning(f"{JOB_ID}: refresh {n} straight failure(s) today — {reason}")
