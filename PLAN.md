@@ -83,7 +83,7 @@ Weekend 11-07/08 DONE: #717 stage 2 deployed dark; #312 demote page + the chat r
 - **Tue 11-10:** #717 first paper session read from 09:35 ET (≤ 5 paper rows, placed ranks ≤ held ranks, 0 `block:max_positions` beyond the disclosed race); #723 first live refreshes from 09:45 ET (one `breadth_live_refresh` row per 15 min, coverage ≥ 85%, the live-breadth branch = one parentless commit). Deploy `5f3704ce` (simplify + drift fix) in a window on his go.
 - **Thu 11-12:** #723 step 4 (the page's live Today view, on top of dashboard branch `simplify-1108-C`) → his "push".
 - **Fri 11-13:** #723 live check in session; #146 weekly flag re-read.
-- **Sat 11-14 / Sun 11-15:** #314 re-read; the next chart session (#594 sample 8 + a breakout sheet) if he wants it.
+- **Sat 11-14 / Sun 11-15:** #314 re-read; the next chart session (#594 sample 9 + a breakout sheet) if he wants it.
 
 ## Launch — 6/22 GO/NO-GO (the long-horizon plan, as dated tasks · SSoT-spec: docs/roadmap/launch-2026-06-22.md)
 

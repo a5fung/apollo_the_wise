@@ -1,0 +1,11 @@
+SET
+table_name|string_agg
+mi_daily_closes|trade_date:date, ticker:text, close:double precision, volume:bigint, open_price:double precision, high_price:double precision, low_price:double precision
+mi_ep_catalyst_metrics|ticker:text, alert_date:date, q_revenue_yoy_pct:double precision, extraction_quality:text, raw_json:jsonb, extracted_at:timestamp with time zone, raw_polygon_news_json:jsonb, raw_alpaca_news_json:jsonb, raw_fmp_news_json:jsonb, raw_perplexity_text:text, raw_claude_analysis_text:text, yoy_recovered_json:jsonb
+(2 rows)
+detail
+{"ticker": "CSQR", "alert_date": "2026-11-10", "from_quality": "strong", "to_quality": "routine", "reason": "rubric_composite_16.1_below_22_label_routine", "q_revenue_yoy_pct": 25.6, "extraction_quality": "medium", "extraction_reasoning": "Perplexity's summary of the 8-K reports Q3 2026 revenue of $302.3M, up 25.6% YoY, and Polygon/Zacks and Alpaca confirm the dollar amount; Zacks' 'flat YoY' claim conflicts, so confidence is medium.", "extraction_sources": ["polygon", "alpaca", "perplexity"], "extraction_confidence": "medium", "guidance_midpoint_yoy_pct": null, "rubric": {"composite_scaled": 16.14, "label": "routine", "caps_applied": [], "axes_scored": {"a1": 3, "a2": null, "a3": null, "a4": 0, "a5": 3, "a6": 0}}, "earnings_source": "earnings_dates", "gap_pct": 12.61}
+(1 row)
+ERROR:  column "date" does not exist
+LINE 1: SELECT max(date) FROM mi_daily_closes;
+                   ^

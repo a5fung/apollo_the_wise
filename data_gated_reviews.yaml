@@ -183,10 +183,10 @@ reviews:
     # exactly this. Use a YAML comment like this one, or /* */, never `--` in a folded scalar.
     # Cadence, not accrual: fires on alert volume elapsed since the last review sample, so a
     # quiet fortnight does not manufacture a review with nothing new to look at.
-    anchor_note: "2026-10-30: the predicate's date re-anchored 2026-10-05 -> 2026-10-29 (sample #4 surfaced and ruled 10-29); the cadence restarts from it."
+    anchor_note: "2026-11-10: re-anchored 2026-10-29 -> 2026-11-09. Samples #5 (11-02), #6 (11-04), #7 (11-07) and #8 (11-09) were all built and ruled after the old anchor, which was never moved, so this review read READY (24 of 20) with no sample owed. The cadence restarts from sample #8. Earlier: 2026-10-30, 10-05 -> 10-29 (sample #4)."
     predicate_sql: >-
       SELECT count(*) FROM mi_ep_alerts
-      WHERE alert_date > '2026-10-29';
+      WHERE alert_date > '2026-11-09';
     can_fire:
       predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 11: alerts on
         09-08 (6), 09-14 (2), 09-16 (1), 09-17 (2). It did NOT run before 2026-09-10: the entire
@@ -11090,7 +11090,16 @@ reviews:
             AND a.detail LIKE '%"ticker": "' || m.ticker || '"%'
             AND a.detail LIKE '%"alert_date": "' || m.alert_date || '"%'
         )
-    threshold: 15
+    threshold: 50   # RE-GATED 2026-11-10 from 15 — see resolution_2026_11_10
+    resolution_2026_11_10: >-
+      FIRED (22 of 15) and READ, $0 (docs/analysis/b6_gate_post_rescale_2026-11-10.md; probe
+      scripts/probes/_b6_post_rescale_1110/). 5-session tail, post-rescale: PASS 0 of 24 reached +20% vs
+      DOWNGRADE 7 of 84 (8%); p90 +10.3% vs +17.6%. Leans inverted, but 0 of 24 happens 12% of the time at
+      DOWNGRADE's rate, so it cannot carry a live change. Side finding explained: metrics rows are written at
+      enrichment, before the tier decision, so a scored row with no alert is a candidate dropped later (33 of
+      54 PASS, 148 of 152 DOWNGRADE). Gate stays 22 (status quo). PRE-DECLARED for the re-read at 50 settled
+      PASS rows: bring fork B if PASS's share >= +20% at 5 sessions is under half DOWNGRADE's; close for good
+      if it is at least equal.
     # The era column IS this entry's reason for existing, and the predicate filters it —
     # `alert_date >= '2026-08-22'`. Its predecessor declared nothing and pooled both systems.
     discriminates_on: [mi_ep_catalyst_metrics.alert_date]
@@ -11107,7 +11116,9 @@ reviews:
         catalyst_earnings_revenue_weak_downgrade fires live — 122 downgrades in the 7/17-9/15
         window prove both halves emit.
       threshold_vs_observed: >-
-        Threshold 15, observed 2. DELIBERATELY not a date: the predecessor was re-run twice on
+        2026-11-10: re-gated 15 -> 50 after the first read (22 rows, 24 settled at 5 sessions) leaned
+        inverted on a sample too small to act on; 54 PASS rows were scored in the 11 weeks since the
+        rescale (~5 a week), so 50 settled is roughly six more weeks. Earlier: threshold 15, observed 2. DELIBERATELY not a date: the predecessor was re-run twice on
         schedule and both times the binding problem was the population, not the calendar.
       era_scoped: >-
         YES — `alert_date >= '2026-08-22'`, the rescale, which is the exact boundary that made the
@@ -13047,6 +13058,11 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_11_10: >-
+      RAN 2026-11-10 (scripts/probes/_rank_shadow_running_read_1110/, the 11-07 recipe unchanged). n = 37 sessions (new:
+      11-09 QXO, a pool of ONE, which can never enter the top quartile; unmatured). No row matured since 11-07. Cells
+      unchanged: 5-day 8x top 0 of 7 vs rest 3 of 56; 20-day top 1 of 6 vs rest 2 of 43. Conclusion UNCHANGED: the
+      ranking does not pick the tail.
     resolution_2026_11_07: >-
       RAN 2026-11-07 (scripts/probes/_rank_shadow_running_read_1107/). n = 36 sessions (new: 11-06, a pool of 11 —
       ALAB, AMAT, BE, CIEN, COHR, LRCX, MRNA (HIGH), NBIS, ONTO, SIMO, STX — unmatured). Three more rows matured, all in
