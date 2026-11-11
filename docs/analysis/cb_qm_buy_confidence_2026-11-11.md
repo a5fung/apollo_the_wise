@@ -110,16 +110,23 @@ Check 1 keeps its wording; the sheets' pass bar is unchanged; sensitivity grid u
 | widened (his panel) | 488 | 31 | 51 | 349 | 57 (`fund` 35, `ipo` 22) |
 - Low, widened (n = 349): `no_level` 195, `downtrend` 71, `gives_back` 40, `weak_pivot` 34, `broke_before` 5, `bounce` 4.
 - Low, dated (n = 125): `weak_pivot` 57, `no_level` 33, `gives_back` 27, `broke_before` 5, `bounce` 3.
-- Buy point, the day it was taken out and the range length are in `ratings.tsv` for every buy that cleared a level.
+- Buy point, the day it was taken out and the range length are in `ratings.tsv` for every buy that cleared a level
+  (n = 458). The bars are split-adjusted, so the file carries both `buy_point_split_adjusted` (what the charts show)
+  and `buy_point_raw_price` (the price he saw: WKHS 17.50, not 52,500). 51 widened buys have no raw price (no raw
+  close held near the window — unranked names; 4 of them High: BNGO, INO, HEXO, PLTR).
 
 ## The declared checks — the rating does NOT pass them; reported as is (the one amendment is spent)
 1. **Named examples: FAIL.** ALB High (ok). BILI, AXSM, AAPL stay Low `no_level`: AAPL's only window day fell 4.5% and
    took out no prior high; BILI was at a new high almost daily with no range behind it; AXSM is a 4-session flag after
-   a gap. FCEL 2020-02-10 came out High (a 12-session flag after a tenfold run on the adjusted chart).
-2. **His labels (dated, cross-check):** his `no` (n = 19): 0 High, 1 Medium. His good / ok (n = 37): 8 High, 10 Medium,
+   a gap. FCEL 2020-02-10 came out High (a 12-session flag after a tenfold run on the adjusted chart) — an OPEN
+   DISAGREEMENT with the main loop's read ("falling penny stock"); my own read of the missed sheet also says yes.
+   Its raw buy point is $1.95, under the list's $2 floor.
+2. **His labels (dated, cross-check — NOT independent after the amendment):** the amendment was diagnosed on his
+   good / ok buys the first run rated Low (NVAX, TSLA, AMD, MARA are cited in it), so the clean reading is the FIRST
+   run's: his `no` (n = 19) 0 High, 2 Medium; good / ok (n = 37) 6 High, 8 Medium, 21 Low. After the amendment: his `no` (n = 19): 0 High, 1 Medium. His good / ok (n = 37): 8 High, 10 Medium,
    17 Low, 2 Not. Big winners (n = 26): 11 High, 6 Medium, 9 Low. So High is clean of his NOs but holds under a
    quarter of what he calls good.
-3. **Sheets (my count, "a run, a sideways range, price leaving it"):**
+3. **Sheets — first viewed AFTER the amendment was spent, so nothing was tuned on them (my count, "a run, a sideways range, price leaving it"):**
    - `sheet_high.png`: **8 of 12 yes** (bar was 9). The four no — SLV, HEXO, AVLR, BNGO — are range breaks with no
      run before them (a fund in a flat year, two fallen stocks, a weak recovery).
    - `sheet_low.png`: **5 of 12 yes** (bar was 3 or fewer). TSLA 2020-05-08, CCL 2021-03-12, PDD 2020-09-01 (short or
@@ -151,6 +158,8 @@ Reproduced first: 263 of 269 dated on the list at D; 192 of 488 widened on any n
 | base depth | 1 | 0 | HEXO |
 | history (86 sessions) | 1 | 1 | PLTR 2021-01-22 |
 | 21-day EMA | 1 | 0 | NVAX |
+- Caveat: an unranked widened night has no raw close, so the $2 floor ran on the ADJUSTED close there. FCEL's "strength
+  rank alone" is really rank + the $2 floor (raw ~$1.95). No proposal depends on it (rank and floor are both kept).
 - Circularity control (widened High under looser ratings): holds-its-gains OFF n = 61, base depth still blocks 1;
   both leaning pieces OFF n = 86, base depth blocks 3, prior move 31, the 50-day 31. **Base depth is not what drops
   the confirmed range breaks**, with or without the piece that overlaps it.
@@ -161,11 +170,14 @@ Reproduced first: 263 of 269 dated on the list at D; 192 of 488 widened on any n
 ## Proposed initial rules (NOT wired — each needs his sign-off; counts are on the list / n)
 | Gate | Proposal | Widened High (n = 31) | Widened Low on the list (n = 349) | Pinned labels |
 |---|---|---|---|---|
-| close above the 50-day | **LOOSEN to "no more than 3% under the 50-day"** | 10 -> 16 | 149 -> 164 | 26 / 26 big winners; none of his 6 NOs back; 16 / 16 known negatives (already on) |
+| close above the 50-day | **CANDIDATE: "no more than 3% under the 50-day"** | 10 -> 16 | 149 -> 164 | 26 / 26 big winners; none of his 6 NOs back; 16 / 16 known negatives (already on) |
 | prior move >= 32% | **KEEP — his call** (loosening to 20% gives 10 -> 17) | 17 | 149 -> 178 | **4 of his 6 NOs come back (W, DOCU x2, SQM)** |
 | base depth 1.5-9 daily ranges | keep | 10 (no change at any cap) | 149 -> 150 | dropping the cap brings back YPF, MRNA |
 | strength rank >= 35 | keep | 10 (30, 20: no change; dropped: 11) | dropped: 17 funds / young listings get on | none |
 | 21-day EMA, ADR, pinned, universe, history | keep | 0-1 each | - | - |
+- **How thin the 50-day candidate is:** it rests on 6 buys (DHT, BCRX, DKNG, FSLY, AMD + one more inside 3%), read by
+  my eye only — under the N >= 10 bar. It is a candidate for him to grade on `sheet_high_missed.png`, not a
+  recommendation to ship.
 - **Plateau, the 50-day:** -2% 14, -3% 16, -5% 16, -10% 16, dropped 16 of 31; Low 160, 164, 167, 173, 179 of 349.
 - **Plateau, prior move:** 30% 11, 25% 13, 20% 17, 15% 17, 10% 17, dropped 17 of 31; his NOs back at every step (4).
 - **No second run measure separates them:** "prior move >= 32% OR the 6-month run-up >= X" returns W and DOCU at

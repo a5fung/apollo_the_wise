@@ -8,15 +8,37 @@ from collections import Counter
 sys.path.insert(0, "scripts/probes/_717_qm_confidence_1111")
 import rating as R  # noqa: E402
 
+import pandas as pd  # noqa: E402
+
 B = R.load()
 res = [(b, R.rate(b)) for b in B]
+# The fixtures' bars are split-adjusted; the price he saw = adjusted x (raw close / adjusted close) on a night we hold a raw
+# close for: the dated buys' `raw_close_D`; the widened buys' ranked nights in features_eraA (to 2022-03-31; era B not opened).
+_F = pd.read_parquet("/Users/alvinfung/apollo_data/qm_breakouts_1102/features_eraA.parquet", columns=["scan_date", "ticker", "raw_close"])
+RAW = {(t, str(d)[:10]): rc for t, d, rc in zip(_F.ticker, _F.scan_date, _F.raw_close)}
+del _F
+
+
+def raw_factor(b):
+    if b["set"] == "dated":
+        D = b["win"][0] - 1
+        return float(b["row"]["raw_close_D"]) / b["c"][D]
+    for D in range(b["win"][-1], max(-1, b["win"][0] - 11), -1):
+        rc = RAW.get((b["ticker"], b["dates"][D].isoformat()))
+        if rc is not None and rc == rc:
+            return float(rc) / b["c"][D]
+    return None
+
+
 with open("scripts/probes/_717_qm_confidence_1111/ratings.tsv", "w") as f:
-    f.write("set\teid\tsym\tticker\tlo\thi\ttier\treason\tbuy_point\tday_cleared\trange_len\tpath\tclosed_above\tvol_up\t"
+    f.write("set\teid\tsym\tticker\tlo\thi\ttier\treason\tbuy_point_split_adjusted\tbuy_point_raw_price\tday_cleared\trange_len\tpath\tclosed_above\tvol_up\t"
             "tier_before_override\this_label\tbig_winner\n")
     for b, r in res:
         lv = "" if r["level"] is None else f"{r['level']:.4g}"
+        fac = raw_factor(b)
+        raw = "" if (r["level"] is None or fac is None) else f"{r['level'] * fac:.4g}"
         day = "" if r["level"] is None else b["dates"][r["t"]].isoformat()
-        f.write("\t".join(str(x) for x in (b["set"], b["eid"], b["sym"], b["ticker"], b["lo"], b["hi"], r["tier"], r["reason"], lv, day,
+        f.write("\t".join(str(x) for x in (b["set"], b["eid"], b["sym"], b["ticker"], b["lo"], b["hi"], r["tier"], r["reason"], lv, raw, day,
                                            "" if r["len"] is None else r["len"], r["path"], "" if r["closed"] is None else int(r["closed"]),
                                            int(r["vol"]), r["base_tier"], b["row"].get("his_label", ""), b["row"].get("big_winner", ""))) + "\n")
 
