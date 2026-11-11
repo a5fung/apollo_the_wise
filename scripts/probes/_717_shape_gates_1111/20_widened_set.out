@@ -1,0 +1,39 @@
+positions 1874
+undated because our detector found no event in the window: 1040
+  after window_len <= 5: 921
+  after flicker False: 596
+  after n_sightings >= 2: 570
+  after has_bars True: 570
+  after not `initial`: 570
+  after window ends by 2022-04-01 (era A bars; later windows need the store that holds 2025-26): 546
+bars: 12,005,007 rows / 12,532 tickers / 1635 sessions 2016-01-04..2022-06-30 (4s); 5,007 tickers have a missing session inside their span (211,391 holes)
+  dropped — EP-like gap in the window (open >= 9% over the prior close): 49
+  dropped — no bar inside the window: 4
+  dropped — ticker not in the bar store: 5
+WIDENED SET: 488 buys (220 tickers); by year {'2017': 3, '2019': 53, '2020': 244, '2021': 165, '2022': 23}
+  overlap with the 269 scorecard buys (same ticker, a scorecard buy day inside the window): 0
+
+=== ON-LIST RATE (the name on the list on ANY night lo-1 .. hi-1) ===
+set                                                n    current list     amendment 2
+widened (undated by our detector)                488      192 ( 39%)      124 ( 25%)
+original scorecard (the night before his buy)    269      263 ( 98%)      249 ( 93%)
+  widened, one-session windows only (the buy day is known exactly): n = 354, current list 134 (38%), amendment 2 88 (25%)
+
+=== PER-RULE MISS TABLE of the EXISTING list gates on the widened set ===
+A gate 'blocks' a buy when it fails on EVERY night of the window; 'alone' = it is the only gate failing on the buy's best night
+(the night with the fewest failed gates). `rs` includes names the 11-02 cross-section did not rank at all (strength under
+30, a non-listable type such as an ETF, or too little history) — counted separately below.
+missed by the current list: 296 of 488
+  sma50        blocks  139 ( 28% of the set,  47% of the missed)   alone   40
+  prior_move   blocks  123 ( 25% of the set,  42% of the missed)   alone   50
+  rs           blocks   91 ( 19% of the set,  31% of the missed)   alone   22
+  ema21        blocks   56 ( 11% of the set,  19% of the missed)   alone    3
+  base_depth   blocks   49 ( 10% of the set,  17% of the missed)   alone   24
+  history      blocks   26 (  5% of the set,   9% of the missed)   alone   26
+  universe     blocks   24 (  5% of the set,   8% of the missed)   alone    0
+  adr          blocks    7 (  1% of the set,   2% of the missed)   alone    0
+  pinned       blocks    0 (  0% of the set,   0% of the missed)   alone    0
+  of the missed, never ranked on any night of the window (under 30 / not listable / short history): 115
+number of gates failing on the best night, missed buys: {1: 165, 2: 76, 3: 27, 4: 23, 5: 5}
+
+sheet: scripts/probes/_717_shape_gates_1111/qm_widened_missed_sheet.png (12 of 296 missed)

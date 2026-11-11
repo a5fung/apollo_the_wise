@@ -1,0 +1,14 @@
+#717 round 5: 12 drawn at random (seed 1111) from the widened buys the current list misses on every night of the window.
+letter|sym|ticker|lo|hi|window_len|gates failing on the best night
+A|AAPL|AAPL|2020-07-23|2020-07-23|1|prior_move,base_depth
+B|GAN|GAN|2020-05-29|2020-06-01|2|history
+C|BILI|BILI|2021-01-20|2021-01-20|1|base_depth
+D|GPOR|GPOR|2020-04-21|2020-04-21|1|universe,rs,sma50
+E|AGQ|AGQ|2021-02-23|2021-02-23|1|rs
+F|ALB|ALB|2021-05-27|2021-05-27|1|prior_move
+G|AXSM|AXSM|2019-12-27|2019-12-30|2|base_depth
+H|GGPI|GGPI|2021-11-12|2021-11-12|1|prior_move
+I|BA|BA|2020-05-11|2020-05-12|2|rs,prior_move,base_depth,sma50
+J|VSTM|VSTM|2020-01-02|2020-01-06|3|universe,rs
+K|ABNB|ABNB|2021-01-05|2021-01-07|3|history
+L|FCEL|FCEL|2020-02-10|2020-02-10|1|rs
