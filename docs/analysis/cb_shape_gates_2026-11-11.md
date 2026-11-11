@@ -302,3 +302,32 @@ What it means:
 
 Built: `breakout_v1.SHAPE_GATES_V2` computed by `shape_gates`; `ENFORCED_SHAPE_GATES` still `()`; the tests pin the
 measured numbers by name; DoD (1) stays a strict xfail.
+
+---
+# ROUND 3 (2026-11-11) — one trend-context gate on top of amendment 2
+
+## Why
+The would-buy sheet under amendment 2 (list night 2026-11-10: 117 of 190 names survive, the top 12 drawn;
+`bought_sheet.png`) failed the main loop's first pass (`13_my_first_pass_bought_sheet.md`): six of the 12 are
+recoveries from a long decline sitting at or just over a FALLING 200-day, one a falling drift off a spike. The article's
+setup is a leader's consolidation after a big move, not a recovery under a falling long-term average.
+
+## AMENDMENT 3 (written BEFORE any score; each variant scored ONCE; `08_score_amendment3.out`)
+Amendment 2's four gates + ONE of these, on bars <= D (SMA200 = the mean of the 200 closes to D; a name with fewer than
+200 sessions — or 220 for the slope — has no long-term trend to read and does NOT fail):
+| Variant | Passes when |
+|---|---|
+| T1 `above_200` | close(D) >= SMA200(D) |
+| T2 `sma50_above_200` | SMA50(D) >= SMA200(D) |
+| T3 `sma200_rising` | SMA200(D) > SMA200(D-20) |
+| T4 `above_rising_200` | T1 AND T3 |
+- Bars unchanged: `no` rejected 17 of 17 (n = 17); good / ok kept >= 9 of 11 (n = 11); Qullamaggie's listed buys kept
+  >= 250 of 263 (n = 263); big winners >= 25 of 26 (n = 26).
+- Stated now: amendment 2 alone already sits at 249 of 263, one under the bar, and an added gate can only lower it; the
+  four `no` it passes (SIG, DUOL, CVLT, OUST) are not known to be under a falling 200-day. So a full PASS is not
+  expected; the variants are reported for what each costs and removes.
+- Pick rule (fixed now): among variants that keep good / ok >= 9 and big winners >= 25, the one that blocks the FEWEST
+  additional Qullamaggie buys; a tie goes to the one rejecting more `no`. The sheet letters a variant removes are
+  REPORTED, never used to pick (the sheet is the out-of-sample check). Plateau: T3's window reported at 10 / 20 / 40.
+- Also reported per variant: how many of the 190 names of list night 2026-11-10 survive.
+- Enforce only if a variant meets every bar; otherwise nothing is enforced.

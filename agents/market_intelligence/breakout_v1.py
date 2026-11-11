@@ -354,6 +354,10 @@ SHAPE_BASE_ABOVE_ADR_MAX = 0.0   # in_base: close no higher than the pole top (n
 SHAPE_E21_S50_ADR_MIN = -1.0     # ema21_vs_sma50: the 21-day EMA no more than 1 daily range under the 50-day SMA
 SHAPE_FALLING_WINDOWS = (5, 10, 20)   # ema21_not_falling: fails only when the EMA21 is lower than at ALL three
 SHAPE_GATES_V2 = ("in_base", "ema21_not_falling", "ema21_vs_sma50", "low_not_today")
+# Amendment 3 (2026-11-11, round 3): ONE trend-context gate on top of amendment 2 — four pre-declared variants.
+SHAPE_SMA_LONG = 200
+SHAPE_SMA200_RISING_SESSIONS = 20
+SHAPE_TREND_GATES = ("above_200", "sma50_above_200", "sma200_rising", "above_rising_200")
 # Which shape gates the LIST enforces. EMPTY = none: the list is exactly the seven signed-off rules. The 2026-11-11
 # score FAILED its bar (first set 11/12 `no` but 6/16 of his good/ok kept; the revised set `("not_extended",
 # "tight10")` 9/12 and 13/16 — SIG, ABCL, NVAX still pass), so nothing is enforced; a hard gate ships only on the
@@ -439,6 +443,18 @@ def shape_gates(bars: "cb.DailyBars", D: int, *, P: int, adr20: Optional[float])
     out["ema21_vs_sma50"] = {"pass": bool(stack is not None and stack >= SHAPE_E21_S50_ADR_MIN),
                              "value": {"ema21_vs_sma50_adr": stack, "min": SHAPE_E21_S50_ADR_MIN}}
     out["low_not_today"] = {"pass": bool(B < D), "value": {"sessions_since_bottom": D - B}}
+    # ── amendment 3: the trend-context variants. A 200-day that does not EXIST yet (a young listing) does not fail:
+    #    the gate reads a falling long-term trend, and a stock with no 200-day has none to read. ──
+    s200 = cb._sma_at(bars, D, SHAPE_SMA_LONG)
+    s200p = cb._sma_at(bars, D - SHAPE_SMA200_RISING_SESSIONS, SHAPE_SMA_LONG) if D - SHAPE_SMA200_RISING_SESSIONS >= 0 else None
+    above = None if s200 is None else bool(float(c[D]) >= s200)
+    stacked = None if (s200 is None or s50 is None) else bool(s50 >= s200)
+    rising = None if (s200 is None or s200p is None) else bool(s200 > s200p)
+    tv = {"sma200": _f(s200), "sma200_prev": _f(s200p), "sma50": _f(s50), "close": _f(c[D])}
+    out["above_200"] = {"pass": above is not False, "value": tv}
+    out["sma50_above_200"] = {"pass": stacked is not False, "value": tv}
+    out["sma200_rising"] = {"pass": rising is not False, "value": tv}
+    out["above_rising_200"] = {"pass": above is not False and rising is not False, "value": tv}
     sp = order_inputs(bars, D, adr)["spread10_adr"] if adr_pos else None
     out["tight10"] = {"pass": bool(sp is not None and sp <= SHAPE_TIGHT_ADR_MAX),
                       "value": {"spread10_adr": sp, "max": SHAPE_TIGHT_ADR_MAX}}
