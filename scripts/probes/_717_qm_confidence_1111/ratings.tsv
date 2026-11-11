@@ -1,0 +1,758 @@
+set	eid	sym	ticker	lo	hi	tier	reason	buy_point	day_cleared	range_len	path	closed_above	vol_up	tier_before_override	his_label	big_winner
+dated	48	PI	PI	2017-07-27	2017-07-27	Low	weak_pivot	54.4	2017-07-27	6	high	0	1	Low		0
+dated	50	SHOP	SHOP	2017-08-01	2017-08-01	Not	ep_gap	9.55	2017-08-01	12	high	1	1	High		0
+dated	55	FGEN	KYNB	2017-08-25	2017-08-25	Low	weak_pivot	1075	2017-08-25	7	high	0	0	Low		0
+dated	59	UCTT	UCTT	2017-08-29	2017-08-29	Medium	short_pivot	23.15	2017-08-29	5	high	1	1	Medium		0
+dated	69	SEDG	SEDG	2017-09-27	2017-09-27	High	range_break	27.3	2017-09-27	15	high	1	1	High		0
+dated	71	SINA	SINA	2017-10-02	2017-10-02	Low	weak_pivot	117.5	2017-10-02	8	high	0	0	Low	good	0
+dated	72	SRPT	SRPT	2017-10-02	2017-10-02	High	range_break	47.78	2017-10-02	17	high	1	1	High	ok	0
+dated	80	SQM	SQM	2017-10-04	2017-10-04	Low	weak_pivot	59.67	2017-10-04	9	high	0	0	Low		0
+dated	95	ANET	ANET	2018-03-12	2018-03-12	Low	no_level						0	Low	no	0
+dated	107	SPLK	SPLK	2018-05-08	2018-05-08	Low	broke_before	112.7	2018-05-08	39	high	1	1	Low	ok, maybe few days ealier	0
+dated	102	OKTA	OKTA	2018-07-27	2018-07-27	Low	weak_pivot	58.3	2018-07-27	7	high	0	1	Low		0
+dated	101	HFC	DINO	2018-07-31	2018-07-31	Low	weak_pivot	75.71	2018-07-31	29	high	0	0	Low	a bit late buy	0
+dated	99	ETSY	ETSY	2018-08-07	2018-08-07	Not	ep_gap	43.77	2018-08-07	10	high	1	1	High		0
+dated	108	TSLA	TSLA	2018-08-07	2018-08-07	Low	gives_back	24.92	2018-08-07	36	high	1	1	Low	ok, but maybe a few days ealier	0
+dated	104	ROKU	ROKU	2018-08-09	2018-08-09	Not	ep_gap	49.63	2018-08-09	11	high	1	1	High		0
+dated	103	RH	RH	2018-08-22	2018-08-22	Medium	range_break_partial	154.8	2018-08-22	45	high	0	1	Medium		0
+dated	109	VKTX	VKTX	2018-08-24	2018-08-24	Medium	range_break_partial	11.8	2018-08-24	44	high	0	1	Medium		0
+dated	117	YPF	YPF	2019-04-17	2019-04-17	Low	no_level						1	Low	no	0
+dated	111	BMA	BMA	2019-08-09	2019-08-09	High	range_break	72.42	2019-08-09	18	high	1	1	High	ok	0
+dated	114	GGAL	GGAL	2019-08-09	2019-08-09	Medium	short_pivot	36.63	2019-08-09	5	high	1	1	Medium		0
+dated	113	EW	EW	2019-08-16	2019-08-16	Low	weak_pivot	73.24	2019-08-16	17	high	0	0	Low	ok	0
+dated	112	ENPH	ENPH	2019-09-24	2019-09-24	Low	no_level						0	Low		0
+dated	156	MIK	MIK	2019-10-10	2019-10-10	Low	weak_pivot	9.7	2019-10-10	6	high	0	0	Low		0
+dated	173	ACAD	ACAD	2019-10-21	2019-10-21	High	range_break	40.83	2019-10-21	18	high	1	1	High		0
+dated	174	MIK	MIK	2019-10-21	2019-10-21	Low	weak_pivot	9.932	2019-10-21	13	high	0	0	Low		0
+dated	189	MIK	MIK	2019-10-22	2019-10-22	High	range_break	10.17	2019-10-22	14	high	1	1	High		0
+dated	212	TDOC	TDOC	2019-10-31	2019-10-31	Low	gives_back	74	2019-10-31	77	high	1	1	Low	no	0
+dated	250	STNE	STNE	2019-11-18	2019-11-18	Low	no_level						1	Low	no	0
+dated	269	AMD	AMD	2019-12-12	2019-12-12	High	range_break	40.22	2019-12-12	13	high	1	1	High	good	0
+dated	285	SE	SE	2019-12-19	2019-12-19	Medium	short_pivot	38.48	2019-12-19	8	high	1	1	Medium	ok	0
+dated	290	KOD	KOD	2019-12-24	2019-12-24	Medium	range_break_partial	72.26	2019-12-24	13	high	1	0	Medium		0
+dated	348	PBYI	PBYI	2020-01-17	2020-01-17	Medium	close_break	8.895	2020-01-17	15	close	1	1	Medium		0
+dated	382	ACMR	ACMR	2020-02-10	2020-02-10	Medium	short_pivot	13.4	2020-02-10	8	high	1	1	Medium		0
+dated	383	BLDP	BLDP	2020-02-10	2020-02-10	Medium	range_break_partial	11.38	2020-02-10	13	high	1	0	Medium		0
+dated	389	LK	LK	2020-02-18	2020-02-18	Low	weak_pivot	40.24	2020-02-18	15	high	1	0	Low		0
+dated	400	APT	APT	2020-02-21	2020-02-21	Low	no_level						0	Low		1
+dated	402	NVAX	NVAX	2020-02-24	2020-02-24	Medium	range_break_partial	8.18	2020-02-24	18	high	0	1	Medium	good	0
+dated	406	NVAX	NVAX	2020-02-26	2020-02-26	High	range_break	8.5	2020-02-26	20	high	1	1	High		1
+dated	426	BILI	BILI	2020-03-05	2020-03-05	Low	weak_pivot	27.57	2020-03-05	5	high	1	0	Low		0
+dated	423	WORK	WORK	2020-03-05	2020-03-05	Medium	short_pivot	27.81	2020-03-05	6	high	1	1	Medium	ok	0
+dated	441	ZS	ZS	2020-03-24	2020-03-24	Low	gives_back	58.29	2020-03-24	22	high	1	1	Low	no	0
+dated	460	NVAX	NVAX	2020-04-03	2020-04-03	Medium	short_pivot	14.88	2020-04-03	7	high	1	1	Medium		0
+dated	461	CODX	CODX	2020-04-06	2020-04-06	Not	ep_gap	299.7	2020-04-06	10	high	1	1	High	good	0
+dated	468	W	W	2020-04-07	2020-04-07	Not	ep_gap	76.47	2020-04-07	31	high	1	1	Low	no, maybe EP	0
+dated	472	TSLA	TSLA	2020-04-14	2020-04-14	Low	gives_back	47.13	2020-04-14	26	high	1	1	Low	maybe a few days ealier	0
+dated	479	NET	NET	2020-04-16	2020-04-16	Medium	short_pivot	24	2020-04-16	5	high	1	1	Medium		0
+dated	482	EXEL	EXEL	2020-04-20	2020-04-20	Not	ep_gap	22.06	2020-04-20	43	high	1	1	Low	EP	0
+dated	484	SHOP	SHOP	2020-04-20	2020-04-20	Low	gives_back	59.39	2020-04-20	46	high	1	1	Low	no, buy point maybe a few days earlier	0
+dated	492	APT	APT	2020-04-22	2020-04-22	Low	no_level						0	Low		0
+dated	500	APT	APT	2020-04-23	2020-04-23	Low	no_level						0	Low		0
+dated	498	INO	INO	2020-04-23	2020-04-23	Not	ep_gap	143.2	2020-04-23	29	high	1	1	Low	buy few days earlier	0
+dated	496	ZM	ZM	2020-04-23	2020-04-23	Low	gives_back	164.9	2020-04-23	22	high	1	1	Low	ok	0
+dated	512	BLDP	BLDP	2020-04-27	2020-04-27	Low	weak_pivot	10.41	2020-04-27	35	high	0	0	Low		0
+dated	533	TSLA	TSLA	2020-04-30	2020-04-30	Low	gives_back	57.57	2020-04-30	47	high	0	1	Low		0
+dated	546	BNTX	BNTX	2020-05-05	2020-05-05	Medium	short_pivot	49.7	2020-05-05	5	high	1	1	Medium		0
+dated	554	FSLY	FSLY	2020-05-07	2020-05-07	Not	ep_gap	24.04	2020-05-07	10	high	1	1	High		0
+dated	560	PDD	PDD	2020-05-08	2020-05-08	High	range_break	51.88	2020-05-08	10	high	1	1	High		1
+dated	573	NVAX	NVAX	2020-05-12	2020-05-12	Not	ep_gap	24.6	2020-05-12	14	high	1	1	High	EP look, day before maybe breakout	0
+dated	568	TDOC	TDOC	2020-05-12	2020-05-12	Low	no_level						0	Low		0
+dated	578	APT	APT	2020-05-14	2020-05-14	High	range_break	14.78	2020-05-14	13	high	1	1	High		0
+dated	591	BNTX	BNTX	2020-05-18	2020-05-18	Not	ep_gap	52.12	2020-05-18	16	high	1	1	High		0
+dated	597	TTD	TTD	2020-05-22	2020-05-22	Low	weak_pivot	31.1	2020-05-22	6	high	0	0	Low		0
+dated	598	BLDP	BLDP	2020-05-26	2020-05-26	High	range_break	10.16	2020-05-26	11	high	1	1	High		0
+dated	605	CCL	CCL	2020-05-26	2020-05-26	Not	ep_gap	15.3	2020-05-26	16	high	1	1	Low		0
+dated	607	PLNT	PLNT	2020-05-26	2020-05-26	Low	weak_pivot	66.83	2020-05-26	55	high	0	0	Low	no	0
+dated	604	W	W	2020-05-26	2020-05-26	Low	no_level						0	Low		0
+dated	606	UAL	UAL	2020-05-27	2020-05-27	Not	ep_gap	32.7	2020-05-27	31	high	0	1	Low	no	0
+dated	621	TSLA	TSLA	2020-06-01	2020-06-01	High	range_break	55.67	2020-06-01	12	high	1	1	High		0
+dated	630	FLIR	FLIR	2020-06-03	2020-06-03	Medium	range_break_partial	47	2020-06-03	14	high	1	0	Medium		0
+dated	646	ACB	ACB	2020-06-08	2020-06-08	Low	bounce	148.4	2020-06-08	6	high	1	0	Low		0
+dated	641	BILI	BILI	2020-06-08	2020-06-08	Medium	range_break_partial	34.7	2020-06-08	11	high	1	0	Medium		0
+dated	642	BYND	BYND	2020-06-08	2020-06-08	High	range_break	4266	2020-06-08	11	high	1	1	High		0
+dated	650	AMD	AMD	2020-06-09	2020-06-09	High	range_break	56.08	2020-06-09	11	high	1	1	High		0
+dated	665	TWLO	TWLO	2020-06-10	2020-06-10	Low	weak_pivot	203.3	2020-06-10	9	high	0	0	Low		0
+dated	673	MRNA	MRNA	2020-06-15	2020-06-15	Low	weak_pivot	66.69	2020-06-15	14	high	0	0	Low		0
+dated	669	NET	NET	2020-06-15	2020-06-15	High	range_break	30.59	2020-06-15	19	high	1	1	High		0
+dated	670	SHOP	SHOP	2020-06-15	2020-06-15	High	range_break	78.43	2020-06-15	13	high	1	1	High		1
+dated	671	TWLO	TWLO	2020-06-15	2020-06-15	Low	no_level						0	Low		0
+dated	676	APT	APT	2020-06-17	2020-06-17	Low	gives_back	14.31	2020-06-17	20	high	0	1	Low	ok	1
+dated	678	OKTA	OKTA	2020-06-17	2020-06-17	Medium	inside_range	189.6	2020-06-17	12	pivot	1	0	Medium		0
+dated	681	VIR	VIR	2020-06-19	2020-06-19	High	range_break	40	2020-06-19	21	high	1	1	High		0
+dated	686	DKNG	DKNG	2020-06-22	2020-06-22	Medium	range_break_partial	42.8	2020-06-22	13	high	0	1	Medium		0
+dated	682	ACB	ACB	2020-06-23	2020-06-23	Low	weak_pivot	139.4	2020-06-23	8	high	0	1	Low		0
+dated	684	MRNA	MRNA	2020-06-24	2020-06-24	Low	no_level						0	Low		0
+dated	685	SRNE	SRNE	2020-06-24	2020-06-24	High	range_break	5.16	2020-06-24	10	high	1	1	High		1
+dated	688	BNTX	BNTX	2020-06-25	2020-06-25	High	range_break	58.9	2020-06-25	26	high	1	1	High	ok	0
+dated	695	BLDP	BLDP	2020-06-29	2020-06-29	High	range_break	14.58	2020-06-29	10	high	1	1	High		1
+dated	701	TSLA	TSLA	2020-06-29	2020-06-29	Medium	inside_range	66.73	2020-06-29	13	pivot	1	0	Medium		0
+dated	704	MRNA	MRNA	2020-06-30	2020-06-30	Low	no_level						0	Low		0
+dated	711	JD	JD	2020-07-02	2020-07-02	Medium	range_break_partial	61.06	2020-07-02	10	high	1	0	Medium		0
+dated	717	MDB	MDB	2020-07-08	2020-07-08	Medium	range_break_partial	232.4	2020-07-08	10	high	1	0	Medium		0
+dated	718	ARCT	ARCT	2020-07-09	2020-07-09	Low	weak_pivot	51.51	2020-07-09	11	high	0	0	Low		0
+dated	720	ROKU	ROKU	2020-07-09	2020-07-09	High	range_break	136	2020-07-09	42	high	1	1	High		0
+dated	731	CODX	CODX	2020-07-16	2020-07-16	Low	weak_pivot	576.6	2020-07-16	8	high	0	1	Low		1
+dated	732	INO	INO	2020-07-17	2020-07-17	Low	no_level						0	Low		0
+dated	743	INO	INO	2020-07-20	2020-07-20	Low	no_level						0	Low		0
+dated	741	TWTR	TWTR	2020-07-20	2020-07-20	Low	weak_pivot	36.98	2020-07-20	102	high	1	0	Low		0
+dated	739	WKHS	WKHS	2020-07-20	2020-07-20	Low	no_level						0	Low		0
+dated	750	CODX	CODX	2020-07-21	2020-07-21	High	range_break	583.5	2020-07-21	11	high	1	1	High		1
+dated	753	BLNK	BLNK	2020-07-22	2020-07-22	Not	ep_gap	6.9	2020-07-22	6	high	1	1	Medium		0
+dated	759	MU	MU	2020-07-23	2020-07-23	Medium	range_break_partial	52.66	2020-07-23	22	high	0	1	Medium		0
+dated	782	W	W	2020-07-27	2020-07-27	Low	no_level						0	Low		0
+dated	784	LAKE	LAKE	2020-07-28	2020-07-28	Low	weak_pivot	23.85	2020-07-28	10	high	0	0	Low		0
+dated	787	AVLR	AVLR	2020-07-29	2020-07-29	Medium	short_pivot	129.4	2020-07-29	5	high	1	1	Medium	okish but likely no	0
+dated	785	DXCM	DXCM	2020-07-29	2020-07-29	Medium	range_break_partial	109.4	2020-07-29	10	high	0	1	Medium		0
+dated	796	SRNE	SRNE	2020-07-30	2020-07-30	Medium	short_pivot	8.29	2020-07-30	6	high	1	1	Medium		1
+dated	794	TDOC	TDOC	2020-07-30	2020-07-30	High	range_break	231.4	2020-07-30	12	high	1	1	High		0
+dated	797	PINS	PINS	2020-07-31	2020-07-31	Not	ep_gap	26.52	2020-07-31	12	high	1	1	High		0
+dated	799	ROKU	ROKU	2020-07-31	2020-07-31	Low	weak_pivot	156.6	2020-07-31	5	high	0	0	Low		0
+dated	801	TTD	TTD	2020-07-31	2020-07-31	Medium	short_pivot	43.57	2020-07-31	5	high	1	1	Medium		0
+dated	806	WKHS	WKHS	2020-08-03	2020-08-03	High	range_break	5.25e+04	2020-08-03	14	high	1	1	High		0
+dated	804	ZM	ZM	2020-08-03	2020-08-03	Medium	short_pivot	259.9	2020-08-03	6	high	1	1	Medium		0
+dated	814	LRN	LRN	2020-08-05	2020-08-05	High	range_break	51.38	2020-08-05	14	high	1	1	High	good	0
+dated	816	TWTR	TWTR	2020-08-05	2020-08-05	Low	weak_pivot	37.33	2020-08-05	6	high	0	0	Low		0
+dated	827	BE	BE	2020-08-13	2020-08-13	Medium	short_pivot	14.13	2020-08-13	5	high	1	1	Medium		1
+dated	838	JD	JD	2020-08-17	2020-08-17	High	range_break	65.85	2020-08-17	19	high	1	1	High		0
+dated	845	TWTR	TWTR	2020-08-19	2020-08-19	Low	weak_pivot	39.17	2020-08-19	18	high	0	0	Low		0
+dated	850	DOYU	DOYU	2020-08-24	2020-08-24	Medium	inside_range	152.3	2020-08-24	13	pivot	1	0	Medium		1
+dated	851	HUYA	HUYA	2020-08-24	2020-08-24	Medium	short_pivot	26.15	2020-08-24	9	high	1	1	Medium		0
+dated	855	SHOP	SHOP	2020-08-26	2020-08-26	High	range_break	104.7	2020-08-26	11	high	1	1	High		0
+dated	856	TTD	TTD	2020-08-26	2020-08-26	Low	weak_pivot	48.4	2020-08-26	10	high	0	0	Low		0
+dated	879	NIO	NIO	2020-09-14	2020-09-14	Low	no_level						0	Low		0
+dated	880	SE	SE	2020-09-14	2020-09-14	Low	weak_pivot	146.1	2020-09-14	5	high	1	0	Low	ok	0
+dated	885	ESTC	ESTC	2020-09-16	2020-09-16	Medium	short_pivot	105.5	2020-09-16	8	high	1	1	Medium		0
+dated	887	SAVE	SAVE	2020-09-16	2020-09-16	Medium	inside_range	18.5	2020-09-16	25	pivot	1	0	Medium		0
+dated	889	CRWD	CRWD	2020-09-18	2020-09-18	Low	no_level						1	Low		0
+dated	890	ESTC	ESTC	2020-09-21	2020-09-21	Medium	range_break_partial	107.3	2020-09-21	11	high	1	0	Medium		0
+dated	892	MDB	MDB	2020-09-21	2020-09-21	Low	gives_back	221.9	2020-09-21	10	high	1	1	Low		1
+dated	893	TSLA	TSLA	2020-09-21	2020-09-21	Low	no_level						1	Low	good	0
+dated	908	DDOG	DDOG	2020-09-22	2020-09-22	Medium	inside_range	93.37	2020-09-22	52	pivot	1	1	Medium		0
+dated	907	TWTR	TWTR	2020-09-22	2020-09-22	High	range_break	41.49	2020-09-22	11	high	1	1	High		0
+dated	910	JD	JD	2020-09-23	2020-09-23	Low	no_level						0	Low		0
+dated	914	LVGO	LVGO	2020-09-25	2020-09-25	High	range_break	140	2020-09-25	15	high	1	1	High		0
+dated	916	NVDA	NVDA	2020-09-25	2020-09-25	Low	weak_pivot	12.73	2020-09-25	6	high	1	0	Low		1
+dated	915	SE	SE	2020-09-25	2020-09-25	Medium	range_break_partial	155.5	2020-09-25	15	high	0	1	Medium		0
+dated	919	NIO	NIO	2020-09-29	2020-09-29	High	range_break	20.25	2020-09-29	17	high	1	1	High		1
+dated	920	TSLA	TSLA	2020-09-30	2020-09-30	Low	weak_pivot	142.8	2020-09-30	5	high	1	0	Low		0
+dated	930	ZM	ZM	2020-10-09	2020-10-09	Low	no_level						0	Low		0
+dated	934	TSLA	TSLA	2020-10-12	2020-10-12	Low	weak_pivot	146.4	2020-10-12	6	high	1	0	Low		0
+dated	978	JD	JD	2020-10-29	2020-10-29	Medium	range_break_partial	84.46	2020-10-29	12	high	0	1	Medium		0
+dated	981	TTD	TTD	2020-10-29	2020-10-29	Low	no_level						0	Low		0
+dated	989	ENPH	ENPH	2020-11-05	2020-11-05	High	range_break	109.2	2020-11-05	10	high	1	1	High		0
+dated	994	QDEL	QDEL	2020-11-05	2020-11-05	High	range_break	275.6	2020-11-05	15	high	1	1	High		0
+dated	996	SQ	XYZ	2020-11-06	2020-11-06	Medium	close_break	176.8	2020-11-06	11	close	1	1	Medium	ok	0
+dated	998	TSLA	TSLA	2020-11-09	2020-11-09	Medium	range_break_partial	146.7	2020-11-09	10	high	0	1	Medium	ok	0
+dated	1009	BLDP	BLDP	2020-11-16	2020-11-16	Low	gives_back	16.93	2020-11-16	18	high	1	1	Low		0
+dated	1030	JMIA	JMIA	2020-11-18	2020-11-18	Low	gives_back	19.61	2020-11-18	70	high	1	1	Low	no	1
+dated	1019	TSLA	TSLA	2020-11-18	2020-11-18	High	range_break	154	2020-11-18	24	high	1	1	High		0
+dated	1031	CRON	CRON	2020-11-24	2020-11-24	High	range_break	7.69	2020-11-24	10	high	1	1	High		0
+dated	1045	FEAC	FIRY	2020-11-30	2020-11-30	Low	gives_back	294	2020-11-30	61	high	1	1	Low	no	0
+dated	1046	SE	SE	2020-12-03	2020-12-03	Medium	range_break_partial	187.8	2020-12-03	19	high	0	1	Medium		0
+dated	1048	DOCU	DOCU	2020-12-04	2020-12-04	Low	gives_back	251.9	2020-12-04	64	high	0	1	Low	no	0
+dated	1070	PTON	PTON	2020-12-14	2020-12-14	High	range_break	120.3	2020-12-14	10	high	1	1	High		1
+dated	1072	DOCU	DOCU	2020-12-15	2020-12-15	Low	weak_pivot	237.5	2020-12-15	5	high	0	0	Low	no	0
+dated	1093	TLRY	TLRY	2020-12-16	2020-12-16	Not	ep_gap	83.7	2020-12-16	5	high	1	1	Medium		0
+dated	1077	NVAX	NVAX	2020-12-17	2020-12-17	Low	no_level						0	Low		0
+dated	1081	APXT	AVPT	2020-12-21	2020-12-21	Low	weak_pivot	14.94	2020-12-21	7	high	0	0	Low		0
+dated	1084	FUV	FUV	2020-12-22	2020-12-22	High	range_break	294	2020-12-22	16	high	1	1	High		0
+dated	1100	CCL	CCL	2020-12-28	2020-12-28	Low	weak_pivot	21.98	2020-12-28	6	high	0	0	Low		0
+dated	1099	MSTR	MSTR	2020-12-28	2020-12-28	Not	ep_gap	34.97	2020-12-28	17	high	1	1	High		0
+dated	1095	NCLH	NCLH	2020-12-28	2020-12-28	Medium	inside_range	24.9	2020-12-28	12	pivot	1	0	Medium		0
+dated	1107	NIO	NIO	2020-12-30	2020-12-30	Medium	inside_range	48.36	2020-12-30	24	pivot	1	0	Medium		0
+dated	1114	TLRY	TLRY	2021-01-04	2021-01-04	Low	weak_pivot	89.3	2021-01-04	5	high	1	0	Low		0
+dated	1121	SKLZ	FIRY	2021-01-05	2021-01-05	Medium	short_pivot	426.4	2021-01-05	7	high	1	1	Medium		1
+dated	1124	APHA	APHA	2021-01-06	2021-01-06	High	range_break	7.61	2021-01-06	10	high	1	1	High		1
+dated	1125	BE	BE	2021-01-06	2021-01-06	Medium	short_pivot	29.59	2021-01-06	5	high	1	1	Medium		1
+dated	1128	JWN	JWN	2021-01-06	2021-01-06	High	range_break	32.31	2021-01-06	17	high	1	1	High		0
+dated	1129	M	M	2021-01-06	2021-01-06	High	range_break	12.11	2021-01-06	19	high	1	1	High	ok	0
+dated	1136	SNAP	SNAP	2021-01-07	2021-01-07	Medium	short_pivot	51.83	2021-01-07	5	high	1	1	Medium		0
+dated	1143	SOLO	SOLO	2021-01-11	2021-01-11	Medium	range_break_partial	7.41	2021-01-11	11	high	0	1	Medium		0
+dated	1147	JMIA	JMIA	2021-01-12	2021-01-12	Low	weak_pivot	40.57	2021-01-12	6	high	0	0	Low		1
+dated	1148	LYFT	LYFT	2021-01-12	2021-01-12	Medium	short_pivot	49.27	2021-01-12	5	high	1	1	Medium		0
+dated	1174	CBAT	CBAT	2021-01-22	2021-01-22	Medium	short_pivot	7.63	2021-01-22	8	high	1	1	Medium		0
+dated	1173	OSTK	NXH	2021-01-22	2021-01-22	Low	bounce	69.23	2021-01-22	35	high	0	1	Low		1
+dated	1171	SI	SICP	2021-01-22	2021-01-22	Medium	short_pivot	75.69	2021-01-22	8	high	1	1	Medium		1
+dated	1178	PDD	PDD	2021-01-25	2021-01-25	Medium	range_break_partial	186.7	2021-01-25	11	high	0	1	Medium		0
+dated	1181	DKNG	DKNG	2021-01-26	2021-01-26	Low	weak_pivot	55.03	2021-01-26	6	high	0	1	Low		0
+dated	1198	BTBT	BTBT	2021-01-28	2021-01-28	Low	weak_pivot	18.5	2021-01-28	8	high	1	0	Low		0
+dated	1204	PDD	PDD	2021-02-02	2021-02-02	Low	weak_pivot	182.1	2021-02-02	5	high	0	0	Low		0
+dated	1205	TLRY	TLRY	2021-02-02	2021-02-02	High	range_break	215	2021-02-02	10	high	1	1	High		1
+dated	1211	PLUG	PLUG	2021-02-03	2021-02-03	Low	no_level						0	Low		0
+dated	1217	PLUG	PLUG	2021-02-03	2021-02-03	Low	no_level						0	Low		0
+dated	1213	SQ	XYZ	2021-02-03	2021-02-03	Low	weak_pivot	231.6	2021-02-03	11	high	0	0	Low		0
+dated	1223	MARA	MARA	2021-02-08	2021-02-08	Not	ep_gap	24.96	2021-02-08	15	high	1	1	High		0
+dated	1224	RIOT	RIOT	2021-02-08	2021-02-08	Not	ep_gap	24.74	2021-02-08	13	high	1	1	High		0
+dated	1221	SEDG	SEDG	2021-02-08	2021-02-08	Low	weak_pivot	317.5	2021-02-08	9	high	1	0	Low		0
+dated	1231	FUTU	FUTU	2021-02-09	2021-02-09	Not	ep_gap	132.9	2021-02-09	11	high	1	1	High		0
+dated	1229	ENPH	ENPH	2021-02-10	2021-02-10	Medium	range_break_partial	203.4	2021-02-10	10	high	0	1	Medium		0
+dated	1233	W	W	2021-02-11	2021-02-11	Low	weak_pivot	303.4	2021-02-11	12	high	0	0	Low		0
+dated	1240	CBAT	CBAT	2021-02-16	2021-02-16	Medium	short_pivot	7.87	2021-02-16	5	high	1	1	Medium		0
+dated	1249	TTD	TTD	2021-02-19	2021-02-19	High	range_break	88.09	2021-02-19	11	high	1	1	High		0
+dated	1255	AMC	AMC	2021-02-22	2021-02-22	Low	weak_pivot	65.9	2021-02-22	8	high	0	0	Low	ok	0
+dated	1260	AMC	AMC	2021-02-25	2021-02-25	Not	ep_gap	101	2021-02-25	16	high	0	1	Low		0
+dated	1263	DKNG	DKNG	2021-02-26	2021-02-26	Medium	close_break	61.07	2021-02-26	10	close	1	1	Medium	decent	0
+dated	1265	PENN	PENN	2021-03-01	2021-03-01	High	range_break	124.1	2021-03-01	13	high	1	1	High		0
+dated	1264	RKT	RKT	2021-03-01	2021-03-01	Low	no_level						1	Low		0
+dated	1267	APHA	APHA	2021-03-02	2021-03-02	Low	weak_pivot	20.57	2021-03-02	7	high	0	0	Low		0
+dated	1270	TLRY	TLRY	2021-03-02	2021-03-02	Low	weak_pivot	288.7	2021-03-02	6	high	0	0	Low		0
+dated	1282	CAN	CAN	2021-03-09	2021-03-09	Not	ep_gap	25.3	2021-03-09	11	high	1	1	High		0
+dated	1288	FCX	FCX	2021-03-11	2021-03-11	Medium	inside_range	36.2	2021-03-11	13	pivot	1	0	Medium		0
+dated	1290	UAL	UAL	2021-03-11	2021-03-11	Low	gives_back	55.2	2021-03-11	7	high	0	1	Low	good	0
+dated	1299	RCL	RCL	2021-03-15	2021-03-15	Low	weak_pivot	96.38	2021-03-15	7	high	0	0	Low	good	0
+dated	1300	SOS	SOS	2021-03-15	2021-03-15	Not	ep_gap	5318	2021-03-15	5	high	1	1	Medium		0
+dated	1305	ZKIN	ZKIN	2021-03-15	2021-03-15	Not	ep_gap	58.1	2021-03-15	11	high	1	1	Low		0
+dated	1308	MU	MU	2021-03-16	2021-03-16	Medium	short_pivot	90.22	2021-03-16	8	high	1	1	Medium		0
+dated	1323	AMAT	AMAT	2021-03-22	2021-03-22	Medium	range_break_partial	121.3	2021-03-22	13	high	0	1	Medium		0
+dated	1324	APPS	APPS	2021-03-22	2021-03-22	Medium	short_pivot	87.39	2021-03-22	5	high	1	1	Medium	ok	0
+dated	1326	ETSY	ETSY	2021-03-23	2021-03-23	Low	gives_back	228	2021-03-23	13	high	0	0	Low		0
+dated	1335	AMAT	AMAT	2021-03-24	2021-03-24	Medium	range_break_partial	121.5	2021-03-24	15	high	0	1	Medium		0
+dated	1350	AAL	AAL	2021-03-30	2021-03-30	Low	weak_pivot	23.66	2021-03-30	5	high	1	0	Low		0
+dated	1374	FCX	FCX	2021-04-06	2021-04-06	Low	gives_back	35.73	2021-04-06	11	high	0	0	Low	ok	0
+dated	1386	RIOT	RIOT	2021-04-13	2021-04-13	Not	ep_gap	57.85	2021-04-13	14	high	1	1	High		0
+dated	1395	X	X	2021-04-23	2021-04-23	Medium	range_break_partial	23.55	2021-04-23	10	high	1	0	Medium		0
+dated	1396	CCL	CCL	2021-04-26	2021-04-26	Low	weak_pivot	28.2	2021-04-26	7	high	0	0	Low		0
+dated	1402	SNAP	SNAP	2021-04-29	2021-04-29	Low	weak_pivot	63.78	2021-04-29	9	high	0	1	Low		0
+dated	1405	CLF	CLF	2021-05-04	2021-05-04	Low	gives_back	19.65	2021-05-04	20	high	1	1	Low		0
+dated	1456	SE	SE	2021-06-08	2021-06-08	Low	gives_back	262.9	2021-06-08	26	high	1	0	Low		0
+dated	1460	CLF	CLF	2021-06-09	2021-06-09	High	range_break	20.69	2021-06-09	14	high	1	1	High		0
+dated	1462	SNAP	SNAP	2021-06-11	2021-06-11	Medium	short_pivot	62.86	2021-06-11	6	high	1	1	Medium		0
+dated	1463	SNAP	SNAP	2021-06-11	2021-06-11	Medium	short_pivot	62.86	2021-06-11	6	high	1	1	Medium		0
+dated	1465	FUTU	FUTU	2021-06-14	2021-06-14	Low	weak_pivot	156.3	2021-06-14	5	high	0	0	Low		0
+dated	1478	BILI	BILI	2021-06-25	2021-06-25	Low	broke_before	128.4	2021-06-25	78	high	0	1	Low		0
+dated	1479	BYND	BYND	2021-06-28	2021-06-28	High	range_break	4603	2021-06-28	12	high	1	1	High		0
+dated	1501	BNTX	BNTX	2021-07-21	2021-07-21	High	range_break	252.6	2021-07-21	29	high	1	1	High	ok	0
+dated	1506	MSTR	MSTR	2021-08-05	2021-08-05	Medium	short_pivot	67.5	2021-08-05	5	high	1	1	Medium	ok	0
+dated	1508	UPST	UPST	2021-08-12	2021-08-12	Low	broke_before	182	2021-08-12	47	high	0	1	Low	looks like EP	0
+dated	1509	AMD	AMD	2021-08-23	2021-08-23	Medium	inside_range	108.7	2021-08-23	13	pivot	1	0	Medium	good	0
+dated	1513	SNAP	SNAP	2021-08-23	2021-08-23	Low	weak_pivot	75.85	2021-08-23	6	high	0	0	Low		0
+dated	1516	AMC	AMC	2021-09-10	2021-09-10	Low	gives_back	497.9	2021-09-10	46	high	1	0	Low		0
+dated	1520	SQM	SQM	2021-09-10	2021-09-10	Low	gives_back	57	2021-09-10	123	high	0	1	Low	no	0
+dated	1522	GME	GME	2021-09-13	2021-09-13	Low	no_level						1	Low		0
+dated	1535	BNTX	BNTX	2021-09-23	2021-09-23	Low	no_level						0	Low	good	0
+dated	1544	LAC	LAC	2021-09-30	2021-09-30	Low	no_level						1	Low	okish	0
+dated	1550	ANY	DRK	2021-10-11	2021-10-11	High	range_break	525	2021-10-11	17	high	1	1	High		0
+dated	1552	MARA	MARA	2021-10-11	2021-10-11	High	range_break	39.98	2021-10-11	21	high	1	1	High	good	0
+dated	1553	MSTR	MSTR	2021-10-11	2021-10-11	Low	gives_back	74.78	2021-10-11	39	high	0	0	Low	ok	0
+dated	1554	CCJ	CCJ	2021-10-12	2021-10-12	High	range_break	24.34	2021-10-12	17	high	1	1	High		0
+dated	1571	BTBT	BTBT	2021-10-20	2021-10-20	Low	weak_pivot	12	2021-10-20	6	high	0	1	Low		0
+dated	1584	LCID	LCID	2021-10-25	2021-10-25	High	range_break	256.6	2021-10-25	15	high	1	1	High		1
+dated	1593	QS	QS	2021-10-29	2021-10-29	Low	gives_back	28.74	2021-10-29	83	high	1	1	Low	ok	1
+dated	1630	ZIM	ZIM	2021-11-18	2021-11-18	Low	gives_back	55.77	2021-11-18	38	high	0	1	Low		0
+dated	1637	DVN	DVN	2021-11-24	2021-11-24	High	range_break	43.99	2021-11-24	10	high	1	1	High		0
+dated	1644	MRNA	MRNA	2021-11-29	2021-11-29	Not	ep_gap	359.1	2021-11-29	40	high	1	1	Low	no, maybe a different criteria	0
+dated	1645	SI	SICP	2021-11-29	2021-11-29	Low	no_level						0	Low		0
+dated	1649	MARA	MARA	2021-11-30	2021-11-30	Low	no_level						1	Low	good	0
+dated	1658	FCX	FCX	2021-12-07	2021-12-07	Low	weak_pivot	39.27	2021-12-07	12	high	0	0	Low	no	0
+dated	1668	PFE	PFE	2021-12-13	2021-12-13	Medium	short_pivot	53.89	2021-12-13	5	high	1	1	Medium	good	0
+dated	1670	VIR	VIR	2021-12-15	2021-12-15	Low	gives_back	52.85	2021-12-15	60	high	0	1	Low		0
+dated	1676	MU	MU	2021-12-21	2021-12-21	High	range_break	87.38	2021-12-21	10	high	1	1	High	ok but EP look	0
+dated	1679	FCX	FCX	2021-12-27	2021-12-27	Low	broke_before	41.6	2021-12-27	30	high	1	0	Low	no	0
+dated	1680	MDB	MDB	2021-12-27	2021-12-27	Low	gives_back	569.8	2021-12-27	23	high	0	0	Low	no	0
+dated	1772	LHX	LHX	2022-04-05	2022-04-05	Low	weak_pivot	256.4	2022-04-05	6	high	1	0	Low		0
+dated	1773	LMT	LMT	2022-04-05	2022-04-05	Low	weak_pivot	450.5	2022-04-05	6	high	0	0	Low	good	0
+dated	1777	LMT	LMT	2022-04-06	2022-04-06	Low	weak_pivot	457.5	2022-04-06	20	high	0	0	Low	good	0
+dated	1781	X	X	2022-04-12	2022-04-12	Low	no_level						0	Low		0
+dated	1788	FTNT	FTNT	2022-04-21	2022-04-21	Medium	range_break_partial	69.73	2022-04-21	13	high	0	1	Medium		0
+dated	1786	LAC	LAC	2022-04-21	2022-04-21	Low	weak_pivot	32.93	2022-04-21	7	high	0	1	Low		0
+dated	1787	TSLA	TSLA	2022-04-21	2022-04-21	Not	ep_gap	359.7	2022-04-21	10	high	0	1	Medium	ok	0
+dated	1810	VLO	VLO	2022-05-27	2022-05-27	Medium	range_break_partial	131.7	2022-05-27	17	high	1	0	Medium		0
+dated	1822	FREY	FREY	2022-11-15	2022-11-15	Low	broke_before	15.56	2022-11-15	27	high	0	1	Low		0
+dated	1824	U	U	2022-11-15	2022-11-15	Low	bounce	34.95	2022-11-15	27	high	1	1	Low		0
+dated	1830	PDD	PDD	2023-01-05	2023-01-05	High	range_break	92.8	2023-01-05	12	high	1	1	High		0
+dated	1827	FCX	FCX	2023-01-06	2023-01-06	High	range_break	40.27	2023-01-06	15	high	1	1	High		0
+dated	1829	MDGL	MDGL	2023-01-24	2023-01-24	Low	weak_pivot	313.6	2023-01-24	16	high	0	0	Low		0
+dated	1837	LI	LI	2023-04-17	2023-04-17	High	range_break	25.29	2023-04-17	10	high	1	1	High		0
+dated	1834	AI	AI	2023-05-17	2023-05-17	Low	gives_back	25.15	2023-05-17	29	high	1	1	Low		0
+dated	1855	GSIT	GSIT	2023-06-01	2023-06-01	Low	weak_pivot	7.3	2023-06-01	12	high	1	0	Low		0
+dated	1864	DKNG	DKNG	2023-09-11	2023-09-11	Low	no_level						0	Low		0
+dated	1869	GME	GME	2023-12-14	2023-12-14	Low	gives_back	17.56	2023-12-14	53	high	0	0	Low		0
+widened	54	EXTR	EXTR	2017-08-24	2017-08-25	Low	no_level						0	Low		
+widened	57	CRMD	CRMD	2017-08-28	2017-08-29	Low	bounce	2.687	2017-08-28	76	high	0	1	Low		
+widened	60	OLED	OLED	2017-08-30	2017-08-30	Low	downtrend	123.6	2017-08-30	23	high	1	1	High		
+widened	119	RLGY	RLGY	2019-10-01	2019-10-01	Low	bounce	6.965	2019-10-01	63	high	0	1	Low		
+widened	121	ASPS	ASPS	2019-09-30	2019-09-30	Low	no_level						0	Low		
+widened	122	ENPH	ENPH	2019-09-30	2019-09-30	Low	no_level						0	Low		
+widened	127	APPS	APPS	2019-10-01	2019-10-01	Low	no_level						0	Low		
+widened	128	UVXY	UVXY	2019-10-02	2019-10-02	Not	fund	7.455e+04	2019-10-02	19	high	1	1	Low		
+widened	130	ASPS	ASPS	2019-10-03	2019-10-03	Low	no_level						0	Low		
+widened	131	JCP	JCP	2019-10-03	2019-10-03	Low	weak_pivot	0.93	2019-10-03	7	high	1	0	Low		
+widened	140	ASPS	ASPS	2019-10-04	2019-10-04	Low	no_level						0	Low		
+widened	141	DHI	DHI	2019-10-04	2019-10-04	Low	no_level						1	Low		
+widened	145	JCP	JCP	2019-10-07	2019-10-07	Medium	range_break_partial	0.96	2019-10-07	13	high	1	0	Medium		
+widened	146	ASPS	ASPS	2019-10-07	2019-10-09	Low	downtrend	165.2	2019-10-09	10	high	1	1	High		
+widened	147	DHI	DHI	2019-10-07	2019-10-09	Low	no_level						1	Low		
+widened	155	DDS	DDS	2019-10-09	2019-10-09	Low	gives_back	69.97	2019-10-09	18	high	0	0	Low		
+widened	157	RLGY	RLGY	2019-10-10	2019-10-10	Low	weak_pivot	6.98	2019-10-10	70	high	0	0	Low		
+widened	160	TTD	TTD	2019-10-10	2019-10-14	Low	downtrend						0	Low		
+widened	161	TWLO	TWLO	2019-10-10	2019-10-14	Low	downtrend						0	Low		
+widened	162	CCS	CCS	2019-10-10	2019-10-11	Low	no_level						0	Low		
+widened	164	ENDP	ENDP	2019-10-15	2019-10-16	Medium	short_pivot	3.83	2019-10-16	5	high	1	1	Medium		
+widened	167	ASPS	ASPS	2019-10-17	2019-10-17	Low	no_level						0	Low		
+widened	168	CCS	CCS	2019-10-17	2019-10-17	Low	broke_before						0	Low		
+widened	169	APPS	APPS	2019-10-17	2019-10-18	Low	weak_pivot	6.655	2019-10-17	10	high	0	0	Low		
+widened	170	MNK	MNK	2019-10-17	2019-10-18	Low	downtrend	2.44	2019-10-17	5	high	1	1	Medium		
+widened	171	TEVA	TEVA	2019-10-17	2019-10-18	Low	downtrend	7.7	2019-10-17	19	high	1	1	Low		
+widened	175	RETA	RETA	2019-10-18	2019-10-21	Low	no_level						1	Low		
+widened	182	BRZU	BRZU	2019-10-22	2019-10-22	Not	fund	1044	2019-10-22	48	high	1	1	Low		
+widened	185	PBR	PBR	2019-10-22	2019-10-22	High	range_break	14.77	2019-10-22	16	high	1	1	High		
+widened	191	JCP	JCP	2019-10-23	2019-10-23	Medium	range_break_partial	1.08	2019-10-23	12	high	0	1	Medium		
+widened	192	PBR	PBR	2019-10-22	2019-10-22	High	range_break	14.77	2019-10-22	16	high	1	1	High		
+widened	194	PLUG	PLUG	2019-10-23	2019-10-24	Low	no_level						0	Low		
+widened	196	BLDP	BLDP	2019-10-23	2019-10-24	Low	no_level						0	Low		
+widened	204	MU	MU	2019-10-23	2019-10-25	Low	downtrend						0	Low		
+widened	206	DDS	DDS	2019-10-23	2019-10-25	Low	no_level						0	Low		
+widened	213	BABA	BABA	2019-11-01	2019-11-01	Low	gives_back	181.3	2019-11-01	29	high	0	1	Low		
+widened	214	YINN	YINN	2019-11-01	2019-11-01	Not	fund	383.4	2019-11-01	34	high	0	1	Low		
+widened	215	JD	JD	2019-11-04	2019-11-04	Low	gives_back	32.38	2019-11-04	88	high	1	1	Low		
+widened	224	XNET	XNET	2019-11-06	2019-11-07	Low	gives_back	6.83	2019-11-06	7	high	0	0	Low		
+widened	227	BGNE	ONC	2019-11-08	2019-11-08	Low	weak_pivot	193.9	2019-11-08	5	high	1	0	Low		
+widened	229	BLDP	BLDP	2019-11-12	2019-11-12	High	range_break	6.2	2019-11-12	13	high	1	1	High		
+widened	232	FCEL	FCEL	2019-11-12	2019-11-12	Low	no_level						1	Low		
+widened	235	FB	META	2019-11-12	2019-11-14	Low	no_level						1	Low		
+widened	238	BLDE	SRTA	2019-11-14	2019-11-15	Not	ipo						0	Low		
+widened	239	LX	LX	2019-11-15	2019-11-15	Low	no_level						1	Low		
+widened	243	LK	LK	2019-11-15	2019-11-18	Low	gives_back	27.12	2019-11-15	78	high	0	1	Low		
+widened	261	BYND	BYND	2019-11-29	2019-11-29	Low	downtrend	2510	2019-11-29	16	high	0	0	Low		
+widened	282	DHT	DHT	2019-12-19	2019-12-19	High	range_break	7.75	2019-12-19	30	high	1	1	High		
+widened	284	FCEL	FCEL	2019-12-19	2019-12-20	Medium	close_break	21.22	2019-12-20	15	close	1	1	Medium		
+widened	288	INSG	INSG	2019-12-19	2019-12-26	Low	no_level						0	Low		
+widened	294	BE	BE	2019-12-27	2019-12-30	Medium	short_pivot	6.75	2019-12-30	5	high	1	1	Medium		
+widened	295	BNGO	BNGO	2019-12-27	2019-12-30	High	range_break	708	2019-12-30	15	high	1	1	High		
+widened	297	OCGN	OCGN	2019-12-27	2019-12-30	Low	downtrend	0.4295	2019-12-30	15	high	1	1	High		
+widened	301	I	I	2019-12-27	2019-12-30	Low	downtrend	7.05	2019-12-30	5	high	1	1	Medium		
+widened	302	TSLA	TSLA	2019-12-27	2019-12-30	Low	no_level						1	Low		
+widened	303	AXSM	AXSM	2019-12-27	2019-12-30	Low	no_level						0	Low		
+widened	309	FTSV	FTSV	2019-12-31	2020-01-02	Low	no_level						0	Low		
+widened	310	LK	LK	2019-12-31	2020-01-02	Low	no_level						1	Low		
+widened	312	ARWR	ARWR	2020-01-02	2020-01-02	Low	no_level						0	Low		
+widened	313	AVLR	AVLR	2020-01-02	2020-01-02	High	range_break	75.98	2020-01-02	12	high	1	1	High		
+widened	318	LX	LX	2020-01-02	2020-01-02	Low	no_level						1	Low		
+widened	320	PLUG	PLUG	2020-01-02	2020-01-03	Low	gives_back	3.24	2020-01-02	12	high	0	0	Low		
+widened	322	TEUM	TEUM	2020-01-02	2020-01-03	Medium	range_break_partial	0.4595	2020-01-03	10	high	0	1	Medium		
+widened	326	CB	CB	2020-01-02	2020-01-03	Medium	short_pivot	156	2020-01-02	6	high	1	1	Medium		
+widened	327	IPHI	IPHI	2020-01-02	2020-01-03	Low	no_level						0	Low		
+widened	330	XP	XP	2020-01-02	2020-01-03	Not	ipo						0	Low		
+widened	331	DT	DT	2020-01-02	2020-01-06	High	range_break	27	2020-01-06	21	high	1	1	High		
+widened	332	GBT	GBT	2020-01-02	2020-01-06	Low	no_level						0	Low		
+widened	333	VSTM	VSTM	2020-01-02	2020-01-06	Low	no_level						0	Low		
+widened	345	JMIA	JMIA	2020-01-16	2020-01-16	Low	gives_back	7.683	2020-01-16	60	high	1	1	Low		
+widened	346	AMD	AMD	2020-01-17	2020-01-17	High	range_break	50.31	2020-01-17	11	high	1	1	High		
+widened	350	INO	INO	2020-01-17	2020-01-21	High	range_break	41.4	2020-01-21	13	high	1	1	High		
+widened	351	TROW	TROW	2020-01-17	2020-01-21	Low	no_level						1	Low		
+widened	359	SPCE	SPCE	2020-01-17	2020-01-22	Low	no_level						1	Low		
+widened	363	EPZM	EPZM	2020-01-23	2020-01-24	Low	no_level						1	Low		
+widened	374	VEEV	VEEV	2020-02-04	2020-02-04	Low	gives_back	152.2	2020-02-04	44	high	1	0	Low		
+widened	375	ACB	ACB	2020-02-04	2020-02-04	Low	downtrend	254.4	2020-02-04	9	high	1	0	Low		
+widened	377	ERX	ERX	2020-02-05	2020-02-05	Not	fund						1	Low		
+widened	379	BYND	BYND	2020-02-06	2020-02-07	Low	no_level						0	Low		
+widened	380	FCEL	FCEL	2020-02-10	2020-02-10	High	range_break	58.5	2020-02-10	12	high	1	1	High		
+widened	381	LAC	LAC	2020-02-10	2020-02-10	Medium	close_break	4.37	2020-02-10	18	close	1	1	Medium		
+widened	387	AYX	AYX	2020-02-14	2020-02-14	Low	gives_back	147.9	2020-02-14	122	high	1	1	Low		
+widened	388	ZM	ZM	2020-02-14	2020-02-14	Low	no_level						0	Low		
+widened	391	TSLA	TSLA	2020-02-18	2020-02-18	Low	weak_pivot	56.4	2020-02-18	8	high	1	0	Low		
+widened	395	NIO	NIO	2020-02-19	2020-02-19	Medium	inside_range	4.05	2020-02-19	19	pivot	1	0	Medium		
+widened	412	OMI	ACH	2020-03-02	2020-03-02	Low	gives_back	7.28	2020-03-02	53	high	0	1	Low		
+widened	415	CODX	CODX	2020-03-03	2020-03-03	Low	no_level						0	Low		
+widened	418	LK	LK	2020-03-04	2020-03-04	Low	weak_pivot	40.77	2020-03-04	8	high	0	0	Low		
+widened	419	KWEB	KWEB	2020-03-05	2020-03-05	Not	fund	50.75	2020-03-05	8	high	0	0	Low		
+widened	428	INO	INO	2020-03-05	2020-03-05	Low	no_level						1	Low		
+widened	436	TLRY	TLRY	2020-03-19	2020-03-19	Low	downtrend						1	Low		
+widened	448	PENN	PENN	2020-03-26	2020-03-26	Low	downtrend						1	Low		
+widened	450	TSLA	TSLA	2020-03-26	2020-03-26	Low	no_level						0	Low		
+widened	453	CACC	CACC	2020-03-27	2020-04-01	Low	downtrend						1	Low		
+widened	455	MGM	MGM	2020-03-27	2020-04-01	Low	downtrend						1	Low		
+widened	457	UBER	UBER	2020-04-02	2020-04-02	Low	downtrend						0	Low		
+widened	458	MRNA	MRNA	2020-04-02	2020-04-02	Low	gives_back	31.69	2020-04-02	9	high	1	0	Low		
+widened	463	JD	JD	2020-04-06	2020-04-06	Low	no_level						0	Low		
+widened	466	LVGO	LVGO	2020-04-07	2020-04-07	Low	gives_back	31.82	2020-04-07	95	high	1	1	Low		
+widened	483	SDGR	SDGR	2020-04-20	2020-04-20	Not	ipo	43.8	2020-04-20	12	high	1	1	High		
+widened	488	SHOP	SHOP	2020-04-21	2020-04-21	Low	no_level						1	Low		
+widened	489	NCLH	NCLH	2020-04-21	2020-04-21	Low	downtrend						0	Low		
+widened	490	CHK	EXE	2020-04-21	2020-04-21	Low	downtrend						1	Low		
+widened	491	GPOR	GPOR	2020-04-21	2020-04-21	Low	downtrend	1.11	2020-04-21	25	high	1	1	Low		
+widened	495	FCEL	FCEL	2020-04-22	2020-04-22	Low	downtrend	51.9	2020-04-22	29	high	1	1	Low		
+widened	497	VAPO	VAPO	2020-04-23	2020-04-23	High	range_break	151.9	2020-04-23	11	high	1	1	High		
+widened	505	BA	BA	2020-04-23	2020-04-24	Low	downtrend						0	Low		
+widened	509	SPR	SPR	2020-04-23	2020-04-24	Low	downtrend						1	Low		
+widened	510	TLRY	TLRY	2020-04-23	2020-04-24	Low	downtrend	74.7	2020-04-24	10	high	1	1	High		
+widened	513	PLUG	PLUG	2020-04-27	2020-04-27	Low	no_level						0	Low		
+widened	515	CCL	CCL	2020-04-27	2020-04-27	Low	downtrend	13.19	2020-04-27	9	high	0	0	Low		
+widened	516	COUP	COUP	2020-04-27	2020-04-27	Low	gives_back	169.2	2020-04-27	45	high	0	0	Low		
+widened	517	RCL	RCL	2020-04-27	2020-04-27	Low	downtrend	39	2020-04-27	10	high	1	0	Medium		
+widened	519	W	W	2020-04-27	2020-04-27	Low	gives_back	123.8	2020-04-27	126	high	1	1	Low		
+widened	520	ETSY	ETSY	2020-04-28	2020-04-28	Low	no_level						1	Low		
+widened	521	MARK	MARK	2020-04-28	2020-04-28	Low	downtrend	4.4	2020-04-28	12	high	1	1	High		
+widened	522	NCLH	NCLH	2020-04-28	2020-04-28	Low	downtrend	12.98	2020-04-28	11	high	1	1	High		
+widened	523	SAVE	SAVE	2020-04-28	2020-04-28	Low	downtrend	13.04	2020-04-28	5	high	1	1	Medium		
+widened	524	UAL	UAL	2020-04-28	2020-04-28	Low	downtrend	28.36	2020-04-28	5	high	0	1	Low		
+widened	525	UAVS	UAVS	2020-04-28	2020-04-28	Low	no_level						1	Low		
+widened	528	W	W	2020-04-29	2020-04-29	Low	no_level						0	Low		
+widened	529	BCRX	BCRX	2020-04-30	2020-04-30	Low	gives_back	4	2020-04-30	8	high	0	1	Low		
+widened	532	DFS	DFS	2020-04-30	2020-04-30	Low	broke_before						0	Low		
+widened	534	AAL	AAL	2020-04-30	2020-05-01	Low	downtrend						1	Low		
+widened	539	OKTA	OKTA	2020-05-04	2020-05-04	Low	no_level						0	Low		
+widened	542	SE	SE	2020-05-05	2020-05-05	High	range_break	56.8	2020-05-05	13	high	1	1	High		
+widened	545	BA	BA	2020-05-05	2020-05-05	Low	downtrend						0	Low		
+widened	547	DAL	DAL	2020-05-05	2020-05-05	Low	downtrend						0	Low		
+widened	548	NCLH	NCLH	2020-05-05	2020-05-05	Low	downtrend						1	Low		
+widened	552	RCL	RCL	2020-05-06	2020-05-06	Low	downtrend						0	Low		
+widened	555	MELI	MELI	2020-05-07	2020-05-07	Low	broke_before						1	Low		
+widened	558	CODX	CODX	2020-05-07	2020-05-07	Low	no_level						0	Low		
+widened	561	TSLA	TSLA	2020-05-08	2020-05-08	Low	weak_pivot	53.26	2020-05-08	5	high	1	0	Low		
+widened	565	BA	BA	2020-05-11	2020-05-12	Low	downtrend						0	Low		
+widened	566	NCLH	NCLH	2020-05-11	2020-05-12	Low	downtrend						0	Low		
+widened	567	RCL	RCL	2020-05-11	2020-05-12	Low	downtrend						0	Low		
+widened	569	FAS	FAS	2020-05-11	2020-05-12	Not	fund						0	Low		
+widened	570	MRNA	MRNA	2020-05-11	2020-05-12	High	range_break	59.88	2020-05-11	14	high	1	1	High		
+widened	571	AAL	AAL	2020-05-11	2020-05-13	Low	downtrend						0	Low		
+widened	581	ETSY	ETSY	2020-05-15	2020-05-19	Low	weak_pivot	83.18	2020-05-15	6	high	1	0	Low		
+widened	584	NCLH	NCLH	2020-05-15	2020-05-19	Low	downtrend						0	Low		
+widened	590	BCRX	BCRX	2020-05-15	2020-05-20	Low	no_level						0	Low		
+widened	592	ENPH	ENPH	2020-05-15	2020-05-20	Low	no_level						0	Low		
+widened	601	PENN	PENN	2020-05-26	2020-05-26	Low	gives_back	30.47	2020-05-26	61	high	0	1	Low		
+widened	608	SWN	SWN	2020-05-26	2020-05-27	Medium	short_pivot	3.13	2020-05-26	5	high	1	1	Medium		
+widened	619	GAN	GAN	2020-05-29	2020-06-01	Not	ipo						0	Low		
+widened	620	MRNA	MRNA	2020-05-29	2020-06-01	Low	no_level						1	Low		
+widened	622	CAR	CAR	2020-06-02	2020-06-02	Low	gives_back	25.37	2020-06-02	60	high	0	1	Low		
+widened	625	DKNG	DKNG	2020-06-02	2020-06-02	Low	no_level						1	Low		
+widened	628	ZM	ZM	2020-06-02	2020-06-03	Low	broke_before						1	Low		
+widened	629	DDOG	DDOG	2020-06-02	2020-06-03	Low	no_level						0	Low		
+widened	634	SHOP	SHOP	2020-06-04	2020-06-04	Low	no_level						0	Low		
+widened	647	CAR	CAR	2020-06-08	2020-06-08	Low	gives_back	34.77	2020-06-08	70	high	0	1	Low		
+widened	649	BA	BA	2020-06-08	2020-06-08	Low	gives_back	227	2020-06-08	61	high	1	1	Low		
+widened	651	PTON	PTON	2020-06-09	2020-06-09	Low	no_level						0	Low		
+widened	652	NCLH	NCLH	2020-06-09	2020-06-09	Low	no_level						1	Low		
+widened	654	WKHS	WKHS	2020-06-09	2020-06-09	Low	gives_back	1.11e+04	2020-06-09	74	high	1	1	Low		
+widened	666	ZM	ZM	2020-06-09	2020-06-10	Low	no_level						0	Low		
+widened	668	NVAX	NVAX	2020-06-15	2020-06-15	Medium	inside_range	50.49	2020-06-15	19	pivot	1	0	Medium		
+widened	672	LVGO	LVGO	2020-06-15	2020-06-15	Low	no_level						1	Low		
+widened	677	LAKE	LAKE	2020-06-17	2020-06-17	Low	no_level						1	Low		
+widened	680	NKLA	NKLA	2020-06-17	2020-06-18	Low	no_level						1	Low		
+widened	691	BCRX	BCRX	2020-06-26	2020-06-26	High	range_break	4.68	2020-06-26	16	high	1	1	High		
+widened	693	FSLY	FSLY	2020-06-29	2020-06-29	Low	no_level						1	Low		
+widened	696	INO	INO	2020-06-29	2020-06-29	Low	no_level						1	Low		
+widened	698	GAN	GAN	2020-06-29	2020-06-29	Not	ipo	25.9	2020-06-29	5	high	1	0	Low		
+widened	699	NCLH	NCLH	2020-06-29	2020-06-29	Low	no_level						0	Low		
+widened	705	DXCM	DXCM	2020-06-29	2020-06-30	Medium	inside_range	101.1	2020-06-30	30	pivot	1	0	Medium		
+widened	709	NVAX	NVAX	2020-06-29	2020-07-01	Low	no_level						1	Low		
+widened	710	RH	RH	2020-06-29	2020-07-01	Medium	inside_range	258.5	2020-07-01	19	pivot	1	0	Medium		
+widened	712	NKLA	NKLA	2020-06-29	2020-07-02	Low	no_level						0	Low		
+widened	733	FSLY	FSLY	2020-07-17	2020-07-17	Low	no_level						0	Low		
+widened	734	TSLA	TSLA	2020-07-17	2020-07-17	Low	no_level						0	Low		
+widened	736	LMND	LMND	2020-07-17	2020-07-17	Not	ipo						0	Low		
+widened	737	CRSP	CRSP	2020-07-20	2020-07-20	Low	weak_pivot	96.18	2020-07-20	7	high	0	0	Low		
+widened	738	NVAX	NVAX	2020-07-20	2020-07-20	Low	no_level						1	Low		
+widened	740	JMIA	JMIA	2020-07-20	2020-07-20	Medium	short_pivot	8.65	2020-07-20	6	high	1	1	Medium		
+widened	742	DDOG	DDOG	2020-07-20	2020-07-20	Low	no_level						0	Low		
+widened	745	LAC	LAC	2020-07-20	2020-07-20	Medium	short_pivot	5.46	2020-07-20	6	high	1	1	Medium		
+widened	747	BILI	BILI	2020-07-21	2020-07-21	Low	weak_pivot	44.67	2020-07-21	5	high	0	1	Low		
+widened	752	AHPI	AHPIQ	2020-07-22	2020-07-22	Low	gives_back	12.85	2020-07-22	17	high	1	1	Low		
+widened	762	AAPL	AAPL	2020-07-23	2020-07-23	Low	no_level						1	Low		
+widened	763	TSLA	TSLA	2020-07-23	2020-07-23	Low	weak_pivot	111.7	2020-07-23	7	high	0	1	Low		
+widened	765	VXRT	VXRT	2020-07-23	2020-07-23	Low	no_level						0	Low		
+widened	774	BA	BA	2020-07-27	2020-07-27	Low	no_level						0	Low		
+widened	775	CCL	CCL	2020-07-27	2020-07-27	Low	no_level						1	Low		
+widened	779	JD	JD	2020-07-27	2020-07-27	Medium	inside_range	62.41	2020-07-27	12	pivot	1	0	Medium		
+widened	780	PTON	PTON	2020-07-27	2020-07-27	Low	no_level						0	Low		
+widened	781	SQ	XYZ	2020-07-27	2020-07-27	Low	no_level						0	Low		
+widened	786	BA	BA	2020-07-29	2020-07-29	Low	no_level						1	Low		
+widened	788	DDOG	DDOG	2020-07-29	2020-07-29	Medium	inside_range	89.72	2020-07-29	14	pivot	1	0	Medium		
+widened	791	Z	Z	2020-07-29	2020-07-29	Low	no_level						0	Low		
+widened	793	UAL	UAL	2020-07-30	2020-07-30	Low	no_level						0	Low		
+widened	802	TSLA	TSLA	2020-07-31	2020-07-31	Low	no_level						0	Low		
+widened	803	BILI	BILI	2020-07-31	2020-07-31	Medium	inside_range	43.49	2020-07-31	19	pivot	1	0	Medium		
+widened	815	LVGO	LVGO	2020-08-05	2020-08-05	Low	no_level						1	Low		
+widened	818	FVRR	FVRR	2020-08-06	2020-08-06	Low	no_level						1	Low		
+widened	819	NVAX	NVAX	2020-08-06	2020-08-06	Low	broke_before						1	Low		
+widened	820	OSTK	NXH	2020-08-06	2020-08-06	Low	no_level						1	Low		
+widened	823	TSLA	TSLA	2020-08-07	2020-08-07	Low	no_level						0	Low		
+widened	824	SPG	SPG	2020-08-10	2020-08-10	Medium	short_pivot	64.58	2020-08-10	6	high	1	1	Medium		
+widened	826	INO	INO	2020-08-12	2020-08-12	Low	no_level						1	Low		
+widened	828	TDOC	TDOC	2020-08-13	2020-08-13	Low	no_level						0	Low		
+widened	830	FSLY	FSLY	2020-08-13	2020-08-13	Low	no_level						1	Low		
+widened	832	HEXO	HEXO	2020-08-13	2020-08-13	High	range_break	42	2020-08-13	18	high	1	1	High		
+widened	836	RIOT	RIOT	2020-08-14	2020-08-14	Low	no_level						0	Low		
+widened	837	BILI	BILI	2020-08-17	2020-08-17	Medium	inside_range	43.2	2020-08-17	30	pivot	1	0	Medium		
+widened	839	NVAX	NVAX	2020-08-18	2020-08-18	Low	no_level						0	Low		
+widened	841	DKNG	DKNG	2020-08-18	2020-08-18	High	range_break	36.17	2020-08-18	13	high	1	1	High		
+widened	842	RKT	RKT	2020-08-18	2020-08-18	Not	ipo						0	Low		
+widened	843	TWLO	TWLO	2020-08-18	2020-08-18	Low	weak_pivot	252.7	2020-08-18	6	high	0	0	Low		
+widened	844	PDD	PDD	2020-08-19	2020-08-19	Medium	short_pivot	92.34	2020-08-19	7	high	1	1	Medium		
+widened	846	AMD	AMD	2020-08-20	2020-08-20	Low	no_level						0	Low		
+widened	847	FSLY	FSLY	2020-08-20	2020-08-20	Medium	short_pivot	81.82	2020-08-20	7	high	1	1	Medium		
+widened	849	NVAX	NVAX	2020-08-21	2020-08-21	Low	no_level						0	Low		
+widened	853	NCLH	NCLH	2020-08-24	2020-08-24	Low	downtrend	16.37	2020-08-24	8	high	1	1	Medium		
+widened	854	OSTK	NXH	2020-08-24	2020-08-24	Low	no_level						0	Low		
+widened	857	AGQ	AGQ	2020-08-26	2020-08-26	Not	fund	58.27	2020-08-26	12	pivot	1	0	Medium		
+widened	860	AGQ	AGQ	2020-08-27	2020-08-31	Not	fund	62.84	2020-08-31	15	pivot	1	0	Medium		
+widened	863	LVGO	LVGO	2020-09-01	2020-09-01	Medium	inside_range	142.1	2020-09-01	19	pivot	1	0	Medium		
+widened	864	PDD	PDD	2020-09-01	2020-09-01	Low	weak_pivot	92.02	2020-09-01	7	high	0	1	Low		
+widened	873	DOCU	DOCU	2020-09-08	2020-09-08	Low	no_level						1	Low		
+widened	875	DKNG	DKNG	2020-09-09	2020-09-11	High	range_break	41.29	2020-09-10	55	high	1	1	High		
+widened	881	ROKU	ROKU	2020-09-15	2020-09-15	Low	no_level						1	Low		
+widened	882	SAVE	SAVE	2020-09-15	2020-09-15	Low	no_level						0	Low		
+widened	883	BILI	BILI	2020-09-15	2020-09-15	Low	weak_pivot	45.74	2020-09-15	5	high	0	0	Low		
+widened	884	PLUG	PLUG	2020-09-15	2020-09-15	Low	weak_pivot	12.55	2020-09-15	6	high	0	0	Low		
+widened	891	FSLY	FSLY	2020-09-21	2020-09-21	High	range_break	87.22	2020-09-21	10	high	1	1	High		
+widened	894	ZS	ZS	2020-09-21	2020-09-21	Low	no_level						0	Low		
+widened	912	TSLA	TSLA	2020-09-23	2020-09-23	Low	no_level						1	Low		
+widened	917	TSLA	TSLA	2020-09-28	2020-09-28	Low	no_level						0	Low		
+widened	918	BYND	BYND	2020-09-29	2020-09-29	High	range_break	4875	2020-09-29	68	high	1	1	High		
+widened	922	APT	APT	2020-10-02	2020-10-02	Low	downtrend	16.53	2020-10-02	29	high	0	1	Low		
+widened	923	BILI	BILI	2020-10-05	2020-10-05	Low	downtrend	44.55	2020-10-05	12	high	1	1	Low		
+widened	926	TSLA	TSLA	2020-10-07	2020-10-07	Low	no_level						0	Low		
+widened	927	ENPH	ENPH	2020-10-08	2020-10-08	Low	no_level						1	Low		
+widened	938	U	U	2020-10-13	2020-10-13	Not	ipo						0	Low		
+widened	941	XPEV	XPEV	2020-10-14	2020-10-14	Not	ipo	20.63	2020-10-14	5	high	1	1	Medium		
+widened	942	UI	UI	2020-10-14	2020-10-14	Low	no_level						0	Low		
+widened	944	PENN	PENN	2020-10-16	2020-10-16	Low	weak_pivot	71.49	2020-10-16	8	high	0	0	Low		
+widened	948	LI	LI	2020-10-16	2020-10-16	Not	ipo						1	Low		
+widened	949	OPTT	OPTT	2020-10-16	2020-10-16	Low	no_level						0	Low		
+widened	952	MARA	MARA	2020-10-19	2020-10-20	Low	no_level						1	Low		
+widened	953	RIOT	RIOT	2020-10-19	2020-10-20	Low	no_level						1	Low		
+widened	954	SLV	SLV	2020-10-19	2020-10-20	Low	no_level						0	Low		
+widened	966	PTON	PTON	2020-10-21	2020-10-22	Low	no_level						0	Low		
+widened	969	TSLA	TSLA	2020-10-22	2020-10-22	Low	no_level						0	Low		
+widened	974	TSLA	TSLA	2020-10-28	2020-10-28	Low	no_level						0	Low		
+widened	977	BILI	BILI	2020-10-29	2020-10-29	Low	weak_pivot	46.8	2020-10-29	11	high	0	0	Low		
+widened	979	ZM	ZM	2020-10-29	2020-10-29	Low	no_level						1	Low		
+widened	980	SE	SE	2020-10-29	2020-10-29	Low	no_level						0	Low		
+widened	982	TSLA	TSLA	2020-10-30	2020-10-30	Low	no_level						1	Low		
+widened	984	JD	JD	2020-11-02	2020-11-02	Low	no_level						0	Low		
+widened	985	JMIA	JMIA	2020-11-02	2020-11-03	Low	no_level						0	Low		
+widened	987	XPEV	XPEV	2020-11-04	2020-11-04	Not	ipo	25	2020-11-04	48	high	1	1	Low		
+widened	991	SLV	SLV	2020-11-05	2020-11-05	Low	downtrend	23.53	2020-11-05	19	high	1	1	High		
+widened	993	FUTU	FUTU	2020-11-05	2020-11-05	Low	gives_back	33.88	2020-11-05	8	high	0	1	Low		
+widened	995	NIO	NIO	2020-11-06	2020-11-06	Low	no_level						1	Low		
+widened	1001	SE	SE	2020-11-12	2020-11-12	Low	no_level						1	Low		
+widened	1003	TSLA	TSLA	2020-11-12	2020-11-12	Low	no_level						0	Low		
+widened	1004	GRWG	GRWG	2020-11-12	2020-11-12	Low	weak_pivot	24.94	2020-11-12	5	high	0	1	Low		
+widened	1005	NIO	NIO	2020-11-13	2020-11-13	Low	no_level						1	Low		
+widened	1007	RIOT	RIOT	2020-11-13	2020-11-13	Medium	short_pivot	3.82	2020-11-13	5	high	1	1	Medium		
+widened	1010	UBER	UBER	2020-11-16	2020-11-16	Low	weak_pivot	49.62	2020-11-16	5	high	0	1	Low		
+widened	1012	MARA	MARA	2020-11-16	2020-11-16	Low	weak_pivot	2.45	2020-11-16	5	high	1	0	Low		
+widened	1013	SQ	XYZ	2020-11-17	2020-11-17	Medium	short_pivot	185.2	2020-11-17	5	high	1	1	Medium		
+widened	1015	COUP	COUP	2020-11-17	2020-11-17	Low	gives_back	303.7	2020-11-17	6	high	0	1	Low		
+widened	1016	NET	NET	2020-11-17	2020-11-17	Low	weak_pivot	66.14	2020-11-17	6	high	0	1	Low		
+widened	1017	RUN	RUN	2020-11-17	2020-11-17	Low	weak_pivot	58.3	2020-11-17	5	high	1	0	Low		
+widened	1018	ARRY	ARRY	2020-11-18	2020-11-18	Not	ipo	41.83	2020-11-18	6	high	1	0	Low		
+widened	1020	MELI	MELI	2020-11-18	2020-11-18	Low	no_level						0	Low		
+widened	1021	DOCU	DOCU	2020-11-18	2020-11-19	Low	downtrend	216	2020-11-18	7	high	0	0	Low		
+widened	1022	NVDA	NVDA	2020-11-18	2020-11-19	Low	no_level						1	Low		
+widened	1023	BILI	BILI	2020-11-18	2020-11-19	Low	no_level						1	Low		
+widened	1024	AMD	AMD	2020-11-18	2020-11-19	Medium	inside_range	84.81	2020-11-19	55	pivot	1	0	Medium		
+widened	1025	SNAP	SNAP	2020-11-18	2020-11-19	Low	no_level						0	Low		
+widened	1026	SE	SE	2020-11-18	2020-11-20	Low	no_level						1	Low		
+widened	1027	UBER	UBER	2020-11-18	2020-11-20	Low	no_level						0	Low		
+widened	1029	SPG	SPG	2020-11-18	2020-11-23	Low	no_level						1	Low		
+widened	1032	DQ	DQ	2020-11-18	2020-11-24	Low	no_level						0	Low		
+widened	1034	XPEV	XPEV	2020-11-18	2020-11-24	Not	ipo	51.27	2020-11-20	6	high	1	1	Medium		
+widened	1047	TSLA	TSLA	2020-12-03	2020-12-03	Low	no_level						1	Low		
+widened	1049	MRNA	MRNA	2020-12-04	2020-12-04	Low	no_level						0	Low		
+widened	1050	QS	QS	2020-12-04	2020-12-04	Low	no_level						0	Low		
+widened	1051	BE	BE	2020-12-04	2020-12-04	Low	no_level						0	Low		
+widened	1052	RIG	RIG	2020-12-04	2020-12-04	Low	no_level						0	Low		
+widened	1053	FSLY	FSLY	2020-12-04	2020-12-04	Low	downtrend	95.35	2020-12-04	35	high	0	1	Low		
+widened	1055	Z	Z	2020-12-04	2020-12-07	Medium	short_pivot	111	2020-12-07	7	high	1	1	Medium		
+widened	1056	DQ	DQ	2020-12-04	2020-12-08	Low	no_level						1	Low		
+widened	1060	DQ	DQ	2020-12-10	2020-12-10	Low	weak_pivot	43.89	2020-12-10	6	high	0	0	Low		
+widened	1064	LAZR	LAZR	2020-12-10	2020-12-10	Low	no_level						0	Low		
+widened	1065	QS	QS	2020-12-10	2020-12-10	Low	no_level						1	Low		
+widened	1066	DKNG	DKNG	2020-12-11	2020-12-11	Low	no_level						0	Low		
+widened	1068	NIO	NIO	2020-12-11	2020-12-11	Low	no_level						0	Low		
+widened	1073	BE	BE	2020-12-14	2020-12-15	Low	no_level						0	Low		
+widened	1074	FCEL	FCEL	2020-12-14	2020-12-15	Low	no_level						0	Low		
+widened	1075	FUBO	FUBO	2020-12-14	2020-12-16	Not	ipo						0	Low		
+widened	1076	BLDP	BLDP	2020-12-14	2020-12-17	Medium	inside_range	20.36	2020-12-17	17	pivot	1	0	Medium		
+widened	1103	FUSE	FUSE	2020-12-30	2020-12-30	Low	no_level						1	Low		
+widened	1106	CAN	CAN	2020-12-30	2020-12-30	Medium	close_break	4.32	2020-12-30	15	close	1	1	Medium		
+widened	1116	ROKU	ROKU	2020-12-31	2021-01-04	Low	no_level						0	Low		
+widened	1117	LAC	LAC	2020-12-31	2021-01-04	Low	no_level						0	Low		
+widened	1118	QS	QS	2021-01-05	2021-01-05	Low	no_level						1	Low		
+widened	1120	GUSH	GUSH	2021-01-05	2021-01-05	Not	fund	10.3	2021-01-05	10	high	1	1	High		
+widened	1131	TDOC	TDOC	2021-01-05	2021-01-06	Low	no_level						0	Low		
+widened	1132	BNTX	BNTX	2021-01-05	2021-01-06	Low	no_level						0	Low		
+widened	1137	ABNB	ABNB	2021-01-05	2021-01-07	Not	ipo						0	Low		
+widened	1138	BILI	BILI	2021-01-05	2021-01-08	Low	no_level						1	Low		
+widened	1139	MSTR	MSTR	2021-01-05	2021-01-08	Low	no_level						1	Low		
+widened	1157	WWR	WWR	2021-01-19	2021-01-19	Low	downtrend	5.66	2021-01-19	15	high	1	1	High		
+widened	1159	XP	XP	2021-01-19	2021-01-19	Low	downtrend	43.25	2021-01-19	45	high	1	1	Low		
+widened	1160	MARA	MARA	2021-01-20	2021-01-20	Low	no_level						0	Low		
+widened	1162	BILI	BILI	2021-01-20	2021-01-20	Low	no_level						0	Low		
+widened	1164	GME	GME	2021-01-20	2021-01-20	Low	no_level						1	Low		
+widened	1165	PINS	PINS	2021-01-20	2021-01-20	Low	no_level						0	Low		
+widened	1166	RIOT	RIOT	2021-01-20	2021-01-20	Low	no_level						0	Low		
+widened	1169	TSLA	TSLA	2021-01-20	2021-01-21	Low	no_level						0	Low		
+widened	1170	PLTR	PLTR	2021-01-20	2021-01-22	High	range_break	28.59	2021-01-22	17	high	1	1	High		
+widened	1172	U	U	2021-01-20	2021-01-22	Medium	close_break	151.1	2021-01-22	13	close	1	1	Medium		
+widened	1183	BNGO	BNGO	2021-01-26	2021-01-26	Low	no_level						0	Low		
+widened	1185	ROKU	ROKU	2021-01-26	2021-01-26	Low	no_level						0	Low		
+widened	1190	UVXY	UVXY	2021-01-27	2021-01-27	Not	fund	3.415e+04	2021-01-27	49	high	1	1	Low		
+widened	1194	MSTR	MSTR	2021-01-28	2021-01-28	Low	weak_pivot	59.91	2021-01-28	6	high	0	0	Low		
+widened	1195	MARA	MARA	2021-01-28	2021-01-28	Low	weak_pivot	21.38	2021-01-28	6	high	0	0	Low		
+widened	1197	XRT	XRT	2021-01-28	2021-01-28	Not	fund						1	Low		
+widened	1199	SLV	SLV	2021-01-28	2021-01-28	High	range_break	24.21	2021-01-28	11	high	1	1	High		
+widened	1201	TSLA	TSLA	2021-01-29	2021-01-29	Low	no_level						0	Low		
+widened	1206	BIDU	BIDU	2021-02-02	2021-02-02	Low	no_level						0	Low		
+widened	1207	BILI	BILI	2021-02-02	2021-02-02	Low	no_level						0	Low		
+widened	1208	DKNG	DKNG	2021-02-02	2021-02-02	Low	gives_back	60.36	2021-02-02	81	high	0	1	Low		
+widened	1216	BLNK	BLNK	2021-02-03	2021-02-03	Low	no_level						1	Low		
+widened	1225	NIO	NIO	2021-02-08	2021-02-08	Low	weak_pivot	59.2	2021-02-08	5	high	0	0	Low		
+widened	1234	LAZR	LAZR	2021-02-11	2021-02-11	Medium	short_pivot	535.5	2021-02-11	9	high	1	1	Medium		
+widened	1246	SQ	XYZ	2021-02-17	2021-02-17	Low	no_level						1	Low		
+widened	1247	MARA	MARA	2021-02-18	2021-02-18	Low	no_level						0	Low		
+widened	1248	NNDM	NNDM	2021-02-18	2021-02-18	Low	no_level						0	Low		
+widened	1250	AGQ	AGQ	2021-02-19	2021-02-19	Not	fund						1	Low		
+widened	1251	MELI	MELI	2021-02-19	2021-02-19	Low	no_level						0	Low		
+widened	1253	MRNA	MRNA	2021-02-22	2021-02-22	Low	no_level						0	Low		
+widened	1256	FUTU	FUTU	2021-02-23	2021-02-23	Low	no_level						1	Low		
+widened	1257	AGQ	AGQ	2021-02-23	2021-02-23	Not	fund						1	Low		
+widened	1261	MARA	MARA	2021-02-25	2021-02-25	Low	no_level						0	Low		
+widened	1262	BIDU	BIDU	2021-02-26	2021-02-26	Low	no_level						1	Low		
+widened	1268	GMBL	GMBL	2021-03-02	2021-03-02	Low	no_level						0	Low		
+widened	1273	ROKU	ROKU	2021-03-03	2021-03-03	Low	no_level						1	Low		
+widened	1276	MARA	MARA	2021-03-04	2021-03-04	Low	no_level						0	Low		
+widened	1277	GME	GME	2021-03-04	2021-03-04	Low	no_level						0	Low		
+widened	1278	PLUG	PLUG	2021-03-08	2021-03-08	Low	no_level						0	Low		
+widened	1286	UBER	UBER	2021-03-10	2021-03-10	Low	gives_back	58.1	2021-03-10	12	high	0	1	Low		
+widened	1289	JETS	JETS	2021-03-11	2021-03-11	Not	fund	26.64	2021-03-11	10	close	1	1	Medium		
+widened	1294	SNAP	SNAP	2021-03-11	2021-03-11	Low	no_level						0	Low		
+widened	1295	CCL	CCL	2021-03-12	2021-03-12	Low	weak_pivot	28.42	2021-03-12	5	high	1	0	Low		
+widened	1304	W	W	2021-03-15	2021-03-15	Low	gives_back	326.9	2021-03-15	8	high	0	0	Low		
+widened	1325	LRCX	LRCX	2021-03-22	2021-03-22	Low	gives_back	56.02	2021-03-22	12	high	0	0	Low		
+widened	1332	TSLA	TSLA	2021-03-23	2021-03-23	Low	no_level						0	Low		
+widened	1333	NIO	NIO	2021-03-23	2021-03-23	Low	downtrend						0	Low		
+widened	1342	AMAT	AMAT	2021-03-26	2021-03-26	High	range_break	125.8	2021-03-26	28	high	1	1	High		
+widened	1343	LRCX	LRCX	2021-03-26	2021-03-26	Low	gives_back	58.16	2021-03-26	17	high	1	1	Low		
+widened	1344	CLF	CLF	2021-03-26	2021-03-26	Low	no_level						0	Low		
+widened	1345	DISCA	DISCA	2021-03-26	2021-03-26	Low	no_level						1	Low		
+widened	1346	VIAC	VIAC	2021-03-26	2021-03-26	Low	no_level						1	Low		
+widened	1351	JETS	JETS	2021-03-30	2021-03-30	Not	fund	26.94	2021-03-30	5	high	1	0	Low		
+widened	1352	NTLA	NTLA	2021-03-30	2021-03-30	Low	downtrend	71.82	2021-03-30	26	high	1	1	Low		
+widened	1355	KWEB	KWEB	2021-03-31	2021-03-31	Not	fund						0	Low		
+widened	1357	TIGR	TIGR	2021-03-31	2021-03-31	Low	no_level						1	Low		
+widened	1360	SI	SICP	2021-03-31	2021-03-31	Low	no_level						0	Low		
+widened	1362	TSM	TSM	2021-03-31	2021-03-31	Low	gives_back	118.3	2021-03-31	9	high	0	0	Low		
+widened	1363	ALB	ALB	2021-03-31	2021-04-01	Low	downtrend						1	Low		
+widened	1364	GUSH	GUSH	2021-03-31	2021-04-01	Not	fund	18.65	2021-04-01	8	high	1	1	Medium		
+widened	1376	TWTR	TWTR	2021-03-31	2021-04-06	Medium	range_break_partial	66.89	2021-04-06	10	high	1	0	Medium		
+widened	1379	RBLX	RBLX	2021-04-08	2021-04-09	Not	ipo						0	Low		
+widened	1380	SHOP	SHOP	2021-04-08	2021-04-09	Low	downtrend	122	2021-04-08	24	high	1	1	Low		
+widened	1381	RIOT	RIOT	2021-04-12	2021-04-12	Low	no_level						1	Low		
+widened	1384	NVAX	NVAX	2021-04-13	2021-04-13	High	range_break	191	2021-04-13	10	high	1	1	High		
+widened	1385	FCX	FCX	2021-04-13	2021-04-13	Low	no_level						0	Low		
+widened	1391	AGQ	AGQ	2021-04-21	2021-04-21	Not	fund	48.76	2021-04-21	34	high	1	1	Low		
+widened	1392	NET	NET	2021-04-22	2021-04-22	Low	downtrend						1	Low		
+widened	1393	ALB	ALB	2021-04-23	2021-04-23	Low	gives_back	162.9	2021-04-23	46	high	0	1	Low		
+widened	1397	SQM	SQM	2021-04-26	2021-04-26	Low	downtrend	55.66	2021-04-26	25	close	1	1	Medium		
+widened	1399	RBLX	RBLX	2021-04-26	2021-04-26	Not	ipo	75.89	2021-04-26	5	high	0	0	Low		
+widened	1401	SHOP	SHOP	2021-04-27	2021-04-28	Low	downtrend	116.9	2021-04-28	6	high	1	1	Medium		
+widened	1403	AGQ	AGQ	2021-05-03	2021-05-03	Not	fund	48	2021-05-03	7	high	1	1	Medium		
+widened	1408	SQM	SQM	2021-05-05	2021-05-05	Low	downtrend						1	Low		
+widened	1411	TSLA	TSLA	2021-05-06	2021-05-06	Low	downtrend						0	Low		
+widened	1412	SQM	SQM	2021-05-06	2021-05-06	Low	no_level						1	Low		
+widened	1418	TSLA	TSLA	2021-05-10	2021-05-10	Low	downtrend						1	Low		
+widened	1419	FAS	FAS	2021-05-10	2021-05-10	Not	fund						1	Low		
+widened	1421	VXX	VXX	2021-05-11	2021-05-11	Not	fund						1	Low		
+widened	1423	IWN	IWN	2021-05-14	2021-05-14	Not	fund	163.7	2021-05-14	43	pivot	1	0	Medium		
+widened	1432	PANW	PANW	2021-05-24	2021-05-24	Low	gives_back	61.48	2021-05-24	25	high	0	1	Low		
+widened	1433	GME	GME	2021-05-24	2021-05-24	Low	no_level						1	Low		
+widened	1434	BRZU	BRZU	2021-05-24	2021-05-24	Not	fund						1	Low		
+widened	1437	BNTX	BNTX	2021-05-25	2021-05-25	Low	no_level						0	Low		
+widened	1441	NTLA	NTLA	2021-05-26	2021-05-26	Low	weak_pivot	71.24	2021-05-26	12	high	1	0	Low		
+widened	1443	ALB	ALB	2021-05-27	2021-05-27	High	range_break	165	2021-05-27	12	high	1	1	High		
+widened	1444	BILI	BILI	2021-05-27	2021-05-28	Low	downtrend						1	Low		
+widened	1453	SNOW	SNOW	2021-06-07	2021-06-07	Low	bounce	250.7	2021-06-07	64	high	0	1	Low		
+widened	1458	AMC	AMC	2021-06-09	2021-06-09	Low	no_level						0	Low		
+widened	1461	FAS	FAS	2021-06-10	2021-06-10	Not	fund						1	Low		
+widened	1464	BB	BB	2021-06-14	2021-06-14	Low	no_level						0	Low		
+widened	1469	WISH	LOGC	2021-06-18	2021-06-18	Low	downtrend						1	Low		
+widened	1470	BNTX	BNTX	2021-06-18	2021-06-21	Medium	inside_range	224.3	2021-06-21	10	pivot	1	0	Medium		
+widened	1472	MRNA	MRNA	2021-06-18	2021-06-21	Medium	inside_range	207.8	2021-06-21	10	pivot	1	0	Medium		
+widened	1474	SPCE	SPCE	2021-06-22	2021-06-22	Low	weak_pivot	794	2021-06-22	80	high	0	0	Low		
+widened	1475	PLUG	PLUG	2021-06-22	2021-06-22	Medium	short_pivot	30.71	2021-06-22	5	high	1	1	Medium		
+widened	1476	SNAP	SNAP	2021-06-22	2021-06-23	Medium	short_pivot	64.63	2021-06-23	6	high	1	1	Medium		
+widened	1480	XPEV	XPEV	2021-06-28	2021-06-28	Low	weak_pivot	45	2021-06-28	5	high	1	0	Low		
+widened	1481	RIOT	RIOT	2021-06-28	2021-06-28	Low	weak_pivot	35.92	2021-06-28	8	high	1	0	Low		
+widened	1482	NVAX	NVAX	2021-06-29	2021-06-29	Medium	range_break_partial	202.4	2021-06-29	10	high	1	0	Medium		
+widened	1484	AMC	AMC	2021-06-30	2021-06-30	Low	no_level						0	Low		
+widened	1489	NVDA	NVDA	2021-07-07	2021-07-08	Low	no_level						0	Low		
+widened	1490	ALB	ALB	2021-07-09	2021-07-09	High	range_break	172.5	2021-07-09	19	high	1	1	High		
+widened	1491	ASTR	ASTR	2021-07-09	2021-07-09	Not	ipo						0	Low		
+widened	1510	COIN	COIN	2021-08-17	2021-08-23	Low	no_level						0	Low		
+widened	1529	NET	NET	2021-09-16	2021-09-16	High	range_break	132.1	2021-09-16	10	high	1	1	High		
+widened	1547	KWEB	KWEB	2021-10-01	2021-10-04	Not	fund						0	Low		
+widened	1555	LTHM	LTHM	2021-10-12	2021-10-12	High	range_break	24.58	2021-10-12	12	high	1	1	High		
+widened	1559	AMD	AMD	2021-10-13	2021-10-13	High	range_break	108	2021-10-13	11	high	1	1	High		
+widened	1560	PLUG	PLUG	2021-10-13	2021-10-13	Low	gives_back	33.61	2021-10-13	70	high	0	1	Low		
+widened	1561	ALB	ALB	2021-10-13	2021-10-13	Medium	inside_range	222.8	2021-10-13	23	pivot	1	0	Medium		
+widened	1565	FAS	FAS	2021-10-14	2021-10-15	Not	fund						0	Low		
+widened	1568	CWEB	CWEB	2021-10-18	2021-10-18	Not	fund						1	Low		
+widened	1588	MQ	MQ	2021-10-26	2021-10-26	Low	gives_back	129.1	2021-10-26	93	high	0	1	Low		
+widened	1589	CC	CC	2021-10-26	2021-10-26	Low	downtrend						1	Low		
+widened	1594	TSLA	TSLA	2021-10-29	2021-10-29	Low	no_level						1	Low		
+widened	1596	COIN	COIN	2021-10-29	2021-11-01	Low	no_level						0	Low		
+widened	1597	GME	GME	2021-10-29	2021-11-01	Medium	short_pivot	46.44	2021-11-01	6	high	1	1	Medium		
+widened	1599	MSTR	MSTR	2021-11-02	2021-11-02	Medium	short_pivot	75.47	2021-11-02	5	high	1	1	Medium		
+widened	1603	ABNB	ABNB	2021-11-05	2021-11-05	High	range_break	179.4	2021-11-05	31	high	1	1	High		
+widened	1609	CC	CC	2021-11-08	2021-11-08	Low	gives_back	33.23	2021-11-08	44	high	0	1	Low		
+widened	1610	BITO	BITO	2021-11-08	2021-11-08	Not	ipo	42.79	2021-11-08	12	high	0	0	Low		
+widened	1611	CCJ	CCJ	2021-11-08	2021-11-08	Medium	close_break	27.19	2021-11-08	15	close	1	1	Medium		
+widened	1613	DWAC	DJT	2021-11-09	2021-11-10	Not	ipo						0	Low		
+widened	1614	PHUN	PHUN	2021-11-09	2021-11-10	Low	no_level						0	Low		
+widened	1616	BBBY	BBBY	2021-11-11	2021-11-11	Low	bounce						0	Low		
+widened	1617	EVGO	EVGO	2021-11-11	2021-11-11	Low	no_level						1	Low		
+widened	1621	SEDG	SEDG	2021-11-11	2021-11-11	Medium	short_pivot	354.6	2021-11-11	6	high	1	1	Medium		
+widened	1623	DWAC	DJT	2021-11-12	2021-11-12	Not	ipo	64.86	2021-11-12	6	high	0	0	Low		
+widened	1625	GGPI	GGPI	2021-11-12	2021-11-12	Low	no_level						1	Low		
+widened	1627	DCRC	SLDP	2021-11-15	2021-11-15	Low	gives_back	13.72	2021-11-15	108	high	1	1	Low		
+widened	1628	AMC	AMC	2021-11-15	2021-11-15	Low	no_level						1	Low		
+widened	1633	TSLA	TSLA	2021-11-19	2021-11-19	Medium	inside_range	373.2	2021-11-19	11	pivot	1	0	Medium		
+widened	1636	XPEV	XPEV	2021-11-23	2021-11-23	Medium	short_pivot	50.1	2021-11-23	6	high	1	1	Medium		
+widened	1643	GGPI	GGPI	2021-11-29	2021-11-29	Low	no_level						0	Low		
+widened	1647	FLGT	FLGT	2021-11-29	2021-11-29	Low	no_level						1	Low		
+widened	1648	RIOT	RIOT	2021-11-29	2021-11-29	Low	weak_pivot	37.14	2021-11-29	6	high	1	0	Low		
+widened	1652	TSLA	TSLA	2021-11-30	2021-11-30	Medium	inside_range	380.9	2021-11-30	17	pivot	1	0	Medium		
+widened	1656	DVN	DVN	2021-12-07	2021-12-07	Medium	short_pivot	43.94	2021-12-07	5	high	1	1	Medium		
+widened	1657	ERX	ERX	2021-12-07	2021-12-07	Not	fund	30.38	2021-12-07	5	high	1	1	Medium		
+widened	1661	RBLX	RBLX	2021-12-07	2021-12-07	Low	no_level						0	Low		
+widened	1665	ASAN	ASAN	2021-12-09	2021-12-09	Low	no_level						1	Low		
+widened	1666	ZS	ZS	2021-12-09	2021-12-09	Low	no_level						1	Low		
+widened	1669	RIVN	RIVN	2021-12-15	2021-12-15	Not	ipo						0	Low		
+widened	1677	CRWD	CRWD	2021-12-21	2021-12-27	Low	downtrend						0	Low		
+widened	1678	F	F	2021-12-21	2021-12-27	Medium	inside_range	20.41	2021-12-27	10	pivot	1	0	Medium		
+widened	1681	MELI	MELI	2021-12-21	2021-12-27	Low	downtrend						0	Low		
+widened	1682	PANW	PANW	2021-12-21	2021-12-27	Medium	range_break_partial	90.49	2021-12-22	11	high	1	0	Medium		
+widened	1683	SNOW	SNOW	2021-12-21	2021-12-27	Low	no_level						0	Low		
+widened	1684	ZS	ZS	2021-12-21	2021-12-27	Low	no_level						1	Low		
+widened	1685	LCID	LCID	2021-12-28	2021-12-28	Low	no_level						0	Low		
+widened	1689	PLTR	PLTR	2021-12-29	2021-12-29	Low	downtrend						0	Low		
+widened	1690	CRWD	CRWD	2021-12-30	2021-12-30	Low	downtrend						0	Low		
+widened	1691	LI	LI	2021-12-30	2021-12-30	Low	gives_back	31.35	2021-12-30	11	high	1	1	Low		
+widened	1692	PLTR	PLTR	2021-12-30	2021-12-30	Low	downtrend						0	Low		
+widened	1693	XPEV	XPEV	2021-12-30	2021-12-30	Low	gives_back	48.37	2021-12-30	18	high	1	0	Low		
+widened	1695	ERX	ERX	2022-01-03	2022-01-03	Not	fund	30.3	2022-01-03	14	close	1	1	Medium		
+widened	1698	FAS	FAS	2022-01-04	2022-01-04	Not	fund	145.7	2022-01-04	38	high	0	1	Low		
+widened	1701	NUE	NUE	2022-01-05	2022-01-05	High	range_break	118.2	2022-01-05	11	high	1	1	High		
+widened	1706	LCID	LCID	2022-01-06	2022-01-10	High	range_break	417.6	2022-01-07	14	high	1	1	High		
+widened	1708	FUTU	FUTU	2022-01-10	2022-01-11	Low	downtrend						0	Low		
+widened	1709	KWEB	KWEB	2022-01-10	2022-01-11	Not	fund	36.73	2022-01-10	5	high	0	0	Low		
+widened	1712	LI	LI	2022-01-12	2022-01-12	Low	downtrend	30.56	2022-01-12	5	high	1	1	Low		
+widened	1715	XPEV	XPEV	2022-01-12	2022-01-12	Low	gives_back	48	2022-01-12	5	high	1	1	Low		
+widened	1719	DWAC	DJT	2022-01-31	2022-01-31	Low	weak_pivot	73.65	2022-01-31	5	high	0	0	Low		
+widened	1721	HUBS	HUBS	2022-01-31	2022-01-31	Low	downtrend	478.4	2022-01-31	10	high	1	0	Low		
+widened	1722	MOS	MOS	2022-02-01	2022-02-01	Low	gives_back	42.24	2022-02-01	8	high	1	1	Low		
+widened	1724	GUSH	GUSH	2022-02-01	2022-02-01	Not	fund	28.95	2022-02-01	9	high	1	1	Low		
+widened	1730	HOOD	HOOD	2022-02-04	2022-02-04	Low	downtrend	14.96	2022-02-04	13	high	1	0	Low		
+widened	1735	FCX	FCX	2022-02-08	2022-02-08	Low	gives_back	39.86	2022-02-08	8	high	1	0	Low		
+widened	1736	ALB	ALB	2022-02-09	2022-02-09	Low	downtrend	227.4	2022-02-09	5	high	1	1	Medium		
+widened	1738	TSLA	TSLA	2022-02-11	2022-02-11	Low	downtrend						0	Low		
+widened	1739	DVN	DVN	2022-02-11	2022-02-16	Medium	close_break	53.24	2022-02-11	13	close	1	1	Medium		
+widened	1746	ERX	ERX	2022-02-22	2022-02-28	Not	fund						0	Low		
+widened	1747	MP	MP	2022-02-22	2022-02-28	Medium	short_pivot	43.99	2022-02-25	5	high	1	1	Medium		
+widened	1748	X	X	2022-02-22	2022-02-28	Medium	short_pivot	24.69	2022-02-25	5	high	1	1	Medium		
+widened	1749	GUSH	GUSH	2022-02-28	2022-02-28	Not	fund	30.59	2022-02-28	14	high	1	1	High		
+widened	1761	BOIL	BOIL	2022-03-21	2022-03-22	Not	fund	9025	2022-03-22	11	high	1	0	Medium		
+widened	1767	NEM	NEM	2022-03-31	2022-03-31	Low	weak_pivot	80.22	2022-03-31	18	high	0	0	Low		

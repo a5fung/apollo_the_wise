@@ -1,0 +1,14 @@
+#717 confidence sheet 'low': 4 dated + 8 widened drawn at random (seed 1111), shuffled.
+letter|set|ticker|lo|hi|tier|reason|buy_point|day_cleared|range_len|his_label
+A|widened|TSLA|2020-05-08|2020-05-08|Low|weak_pivot|53.26|2020-05-08|5|
+B|widened|CCL|2021-03-12|2021-03-12|Low|weak_pivot|28.42|2021-03-12|5|
+C|widened|PDD|2020-09-01|2020-09-01|Low|weak_pivot|92.02|2020-09-01|7|
+D|widened|BA|2020-07-29|2020-07-29|Low|no_level||||
+E|widened|XPEV|2020-11-18|2020-11-24|Not|ipo|51.27|2020-11-20|6|
+F|widened|RIOT|2021-01-20|2021-01-20|Low|no_level||||
+G|dated|NXH|2021-01-22|2021-01-22|Low|bounce|69.23|2021-01-22|35|
+H|dated|MARA|2021-02-08|2021-02-08|Not|ep_gap|24.96|2021-02-08|15|
+I|dated|ZM|2020-10-09|2020-10-09|Low|no_level||||
+J|widened|SHOP|2021-04-27|2021-04-28|Low|downtrend|116.91|2021-04-28|6|
+K|dated|AMC|2021-09-10|2021-09-10|Low|gives_back|497.9|2021-09-10|46|
+L|widened|ZM|2020-02-14|2020-02-14|Low|no_level||||

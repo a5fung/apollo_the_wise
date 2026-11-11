@@ -1,0 +1,14 @@
+#717 confidence sheet 'high': 4 dated + 8 widened drawn at random (seed 1111), shuffled.
+letter|set|ticker|lo|hi|tier|reason|buy_point|day_cleared|range_len|his_label
+A|dated|WKHS|2020-08-03|2020-08-03|High|range_break|52500.0|2020-08-03|14|
+B|dated|NET|2020-06-15|2020-06-15|High|range_break|30.59|2020-06-15|19|
+C|dated|DVN|2021-11-24|2021-11-24|High|range_break|43.99|2021-11-24|10|
+D|widened|SE|2020-05-05|2020-05-05|High|range_break|56.8|2020-05-05|13|
+E|widened|SLV|2021-01-28|2021-01-28|High|range_break|24.21|2021-01-28|11|
+F|widened|DKNG|2020-09-09|2020-09-11|High|range_break|41.29|2020-09-10|55|
+G|widened|BLDP|2019-11-12|2019-11-12|High|range_break|6.2|2019-11-12|13|
+H|widened|HEXO|2020-08-13|2020-08-13|High|range_break|42.0|2020-08-13|18|
+I|widened|AVLR|2020-01-02|2020-01-02|High|range_break|75.98|2020-01-02|12|
+J|widened|BNGO|2019-12-27|2019-12-30|High|range_break|708.0|2019-12-30|15|
+K|widened|ALB|2021-05-27|2021-05-27|High|range_break|164.99|2021-05-27|12|
+L|dated|AMD|2020-06-09|2020-06-09|High|range_break|56.08|2020-06-09|11|

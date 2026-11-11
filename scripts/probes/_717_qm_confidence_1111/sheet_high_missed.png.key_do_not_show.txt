@@ -1,0 +1,23 @@
+#717: every widened High buy the current list misses, by date.
+letter|ticker|lo|hi|buy_point|range_len|gates failing on the best night
+A|PBR|2019-10-22|2019-10-22|14.77|16|prior_move
+B|PBR|2019-10-22|2019-10-22|14.77|16|prior_move
+C|DHT|2019-12-19|2019-12-19|7.75|30|sma50
+D|BNGO|2019-12-27|2019-12-30|708|15|universe,rs
+E|AVLR|2020-01-02|2020-01-02|75.98|12|prior_move,sma50
+F|INO|2020-01-17|2020-01-21|41.4|13|universe,rs
+G|FCEL|2020-02-10|2020-02-10|58.5|12|rs
+H|BCRX|2020-06-26|2020-06-26|4.68|16|sma50
+I|HEXO|2020-08-13|2020-08-13|42|18|universe,rs,base_depth,sma50
+J|DKNG|2020-08-18|2020-08-18|36.17|13|sma50
+K|FSLY|2020-09-21|2020-09-21|87.22|10|sma50
+L|BYND|2020-09-29|2020-09-29|4875|68|prior_move
+M|PLTR|2021-01-20|2021-01-22|28.59|17|history
+N|SLV|2021-01-28|2021-01-28|24.21|11|rs,prior_move
+O|NVAX|2021-04-13|2021-04-13|191|10|ema21,sma50
+P|ALB|2021-05-27|2021-05-27|165|12|prior_move
+Q|ALB|2021-07-09|2021-07-09|172.5|19|prior_move
+R|AMD|2021-10-13|2021-10-13|108|11|sma50
+S|ABNB|2021-11-05|2021-11-05|179.4|31|prior_move
+T|NUE|2022-01-05|2022-01-05|118.2|11|prior_move
+U|LCID|2022-01-06|2022-01-10|417.6|14|sma50

@@ -100,6 +100,86 @@ high; BILI 2021-01-20 was making a new high almost daily with no range behind it
    Buy point = the highest of those highs. Checked after the other Medium paths.
 Check 1 keeps its wording; the sheets' pass bar is unchanged; sensitivity grid unchanged.
 
+---
+# RESULTS (after amendment 1; `01_rate.out`, `ratings.tsv`, `03_high_vs_list.out`, `04_run_measure.out`, `05_missed_high_sheet.out`)
+
+## Tier counts (n = 757)
+| Set | n | High | Medium | Low | Not-a-breakout |
+|---|---|---|---|---|---|
+| dated (our detector's) | 269 | 53 | 65 | 125 | 26 (all `ep_gap`) |
+| widened (his panel) | 488 | 31 | 51 | 349 | 57 (`fund` 35, `ipo` 22) |
+- Low, widened (n = 349): `no_level` 195, `downtrend` 71, `gives_back` 40, `weak_pivot` 34, `broke_before` 5, `bounce` 4.
+- Low, dated (n = 125): `weak_pivot` 57, `no_level` 33, `gives_back` 27, `broke_before` 5, `bounce` 3.
+- Buy point, the day it was taken out and the range length are in `ratings.tsv` for every buy that cleared a level.
+
+## The declared checks — the rating does NOT pass them; reported as is (the one amendment is spent)
+1. **Named examples: FAIL.** ALB High (ok). BILI, AXSM, AAPL stay Low `no_level`: AAPL's only window day fell 4.5% and
+   took out no prior high; BILI was at a new high almost daily with no range behind it; AXSM is a 4-session flag after
+   a gap. FCEL 2020-02-10 came out High (a 12-session flag after a tenfold run on the adjusted chart).
+2. **His labels (dated, cross-check):** his `no` (n = 19): 0 High, 1 Medium. His good / ok (n = 37): 8 High, 10 Medium,
+   17 Low, 2 Not. Big winners (n = 26): 11 High, 6 Medium, 9 Low. So High is clean of his NOs but holds under a
+   quarter of what he calls good.
+3. **Sheets (my count, "a run, a sideways range, price leaving it"):**
+   - `sheet_high.png`: **8 of 12 yes** (bar was 9). The four no — SLV, HEXO, AVLR, BNGO — are range breaks with no
+     run before them (a fund in a flat year, two fallen stocks, a weak recovery).
+   - `sheet_low.png`: **5 of 12 yes** (bar was 3 or fewer). TSLA 2020-05-08, CCL 2021-03-12, PDD 2020-09-01 (short or
+     unconfirmed pivots at the top of a real base), XPEV (`ipo`, a run and a flag), MARA 2021-02-08 (`ep_gap`, a base
+     broken by a gap).
+   - **Plainly: High mostly looks like breakouts; Low is NOT "not breakouts".** Low means the daily bars of the window
+     do not confirm a range break by this rule — a mix of non-breakouts and real setups bought early, on a short
+     pivot, or on a day that never closed through.
+4. **Sensitivity (High, dated / widened):** range 8 / 10 / 15 sessions at the half rule: 65 / 37, 53 / 31, 36 / 18;
+   give-back 1/3, 1/2, 2/3 at 10 sessions: 34 / 15, 53 / 31, 67 / 46. The tier is not stable to these choices.
+
+## Step 2 — the High tier against the current list
+Reproduced first: 263 of 269 dated on the list at D; 192 of 488 widened on any night; 0 row mismatches.
+| Set | Tier | n | On the current list |
+|---|---|---|---|
+| dated | High | 53 | 53 (by construction — our detector dated them) |
+| widened | High | 31 | **10** (the night before the rated break day: also 10) |
+| widened | Medium | 51 | 33 |
+| widened | Low | 349 | 149 |
+| widened | Not | 57 | 0 |
+
+**Per-gate misses, widened High (n = 31, 21 missed; blocks = fails every night, alone = the only failure):**
+| Gate | Blocks | Alone | Names |
+|---|---|---|---|
+| prior move >= 32% | 9 | 7 | PBR 2019-10-22 (two rows), BYND 2020-09-29, ALB 2021-05-27, ALB 2021-07-09, ABNB 2021-11-05, NUE 2022-01-05 (21-30%); + AVLR, SLV |
+| close above the 50-day | 9 | 6 | DHT 2019-12-19 (-0.6%), BCRX 2020-06-26 (-0.1%), DKNG 2020-08-18 (-1.7%), FSLY 2020-09-21 (-2.2%), AMD 2021-10-13 (-1.5%), LCID 2022-01-10 (-10%); + AVLR, HEXO, NVAX |
+| strength rank | 5 | 1 | FCEL alone; BNGO, INO, HEXO, SLV — all UNRANKED that night (not in the 11-02 cross-section), none ranked under 35 |
+| price / dollar volume | 3 | 0 | BNGO, INO, HEXO |
+| base depth | 1 | 0 | HEXO |
+| history (86 sessions) | 1 | 1 | PLTR 2021-01-22 |
+| 21-day EMA | 1 | 0 | NVAX |
+- Circularity control (widened High under looser ratings): holds-its-gains OFF n = 61, base depth still blocks 1;
+  both leaning pieces OFF n = 86, base depth blocks 3, prior move 31, the 50-day 31. **Base depth is not what drops
+  the confirmed range breaks**, with or without the piece that overlaps it.
+- My eye on all 21 missed (`sheet_high_missed.png`): the 6 dropped by the 50-day alone all look like breakouts (a
+  flag pulled back to the 50-day); the prior-move 7 are multi-month base breaks with no recent run (PBR no; ALB, NUE,
+  ABNB, BYND marginal); BNGO, HEXO, SLV, AVLR, NVAX no; INO, PLTR, FCEL yes.
+
+## Proposed initial rules (NOT wired — each needs his sign-off; counts are on the list / n)
+| Gate | Proposal | Widened High (n = 31) | Widened Low on the list (n = 349) | Pinned labels |
+|---|---|---|---|---|
+| close above the 50-day | **LOOSEN to "no more than 3% under the 50-day"** | 10 -> 16 | 149 -> 164 | 26 / 26 big winners; none of his 6 NOs back; 16 / 16 known negatives (already on) |
+| prior move >= 32% | **KEEP — his call** (loosening to 20% gives 10 -> 17) | 17 | 149 -> 178 | **4 of his 6 NOs come back (W, DOCU x2, SQM)** |
+| base depth 1.5-9 daily ranges | keep | 10 (no change at any cap) | 149 -> 150 | dropping the cap brings back YPF, MRNA |
+| strength rank >= 35 | keep | 10 (30, 20: no change; dropped: 11) | dropped: 17 funds / young listings get on | none |
+| 21-day EMA, ADR, pinned, universe, history | keep | 0-1 each | - | - |
+- **Plateau, the 50-day:** -2% 14, -3% 16, -5% 16, -10% 16, dropped 16 of 31; Low 160, 164, 167, 173, 179 of 349.
+- **Plateau, prior move:** 30% 11, 25% 13, 20% 17, 15% 17, 10% 17, dropped 17 of 31; his NOs back at every step (4).
+- **No second run measure separates them:** "prior move >= 32% OR the 6-month run-up >= X" returns W and DOCU at
+  every X from 30% to 100% (their 6-month run-ups are 252% and 156%; ALB's is 109%, NUE's 47%, PBR's 27%).
+- Both together (50-day -3%, prior move 20%): 24 of 31 High; Low 202 of 349; 4 of his 6 NOs back.
+- **The fork for him:** the prior-move gate is the one place the High tier and his own NOs disagree. ALB / NUE / ABNB
+  (clean range breaks, 22-30% run) sit on the same side of every run measure tried as W / DOCU / SQM.
+
+## Not verified
+- What "3% under the 50-day" adds to the list over the whole market per night — not measurable on his buys alone.
+- The rating failed its own eye bars (8 of 12, 5 of 12) and is unstable to its two knobs; the High tier is a usable
+  clean core (0 of his 19 NOs), not a complete census of his breakouts. n = 31 widened High (PBR counted twice).
+- The fund list is hand-marked. My eye is not his: `sheet_high_missed.png` is the sheet for him to grade.
+
 ## What this does not answer
 - Whether a buy MADE money — no bar after `hi` is read; this rates the chart at the buy, not the trade.
 - Where he actually bought: the buy point is the most plausible level by rule, not his fill.

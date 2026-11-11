@@ -1,0 +1,47 @@
+############################## 04_run_measure ##############################
+
+=== (1) CIRCULARITY CONTROL: High tier under looser ratings, widened set, vs the current list ===
+  as rated               High n =  31, on the list  10 (32%); blocks: prior_move 9, sma50 9, rs 5, universe 3, base_depth 1, history 1, ema21 1
+  holds-its-gains OFF    High n =  61, on the list  22 (36%); blocks: prior_move 22, sma50 11, rs 8, universe 5, base_depth 1, history 1, ema21 1
+  trend overrides OFF    High n =  39, on the list  10 (26%); blocks: sma50 17, prior_move 12, rs 9, universe 6, ema21 4, base_depth 2, adr 1, history 1
+  both OFF               High n =  86, on the list  24 (28%); blocks: prior_move 31, sma50 31, rs 15, universe 10, ema21 5, base_depth 3, adr 1, history 1
+
+=== (2) the run, two ways, on the best night: High buys the prior-move gate blocks, then his 6 NOs ===
+  HIGH  PBR   2019-10-22 prior 21%  6-month run-up 27%  failed prior_move
+  HIGH  PBR   2019-10-22 prior 21%  6-month run-up 27%  failed prior_move
+  HIGH  AVLR  2020-01-02 prior 25%  6-month run-up 60%  failed prior_move,sma50
+  HIGH  BYND  2020-09-29 prior 24%  6-month run-up 247%  failed prior_move
+  HIGH  SLV   2021-01-28 prior 25%  6-month run-up 92%  failed rs,prior_move
+  HIGH  ALB   2021-05-27 prior 28%  6-month run-up 109%  failed prior_move
+  HIGH  ALB   2021-07-09 prior 22%  6-month run-up 109%  failed prior_move
+  HIGH  ABNB  2021-11-05 prior 25%  6-month run-up 36%  failed prior_move
+  HIGH  NUE   2022-01-05 prior 30%  6-month run-up 47%  failed prior_move
+  NO    YPF   2019-04-17 prior 34%  6-month run-up 39%  failed base_depth  rated Low
+  NO    W     2020-04-07 prior 31%  6-month run-up 252%  failed prior_move  rated Not
+  NO    DOCU  2020-12-04 prior 32%  6-month run-up 156%  failed prior_move  rated Low
+  NO    DOCU  2020-12-15 prior 32%  6-month run-up 156%  failed prior_move  rated Low
+  NO    SQM   2021-09-10 prior 30%  6-month run-up 36%  failed prior_move  rated Low
+  NO    MRNA  2021-11-29 prior 40%  6-month run-up 239%  failed base_depth  rated Not
+
+=== (3) prior move >= 32% OR the 6-month run-up >= X (everything else as today) ===
+  TODAY                                                H  53/53   10/31  | M  65/65   33/51  | Low 121/125 149/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs back 0  | known neg 16/16
+  OR 6-month run-up >= 100%                            H  53/53   13/31  | M  65/65   33/51  | Low 123/125 159/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  OR 6-month run-up >= 80%                             H  53/53   13/31  | M  65/65   34/51  | Low 123/125 165/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  OR 6-month run-up >= 60%                             H  53/53   13/31  | M  65/65   34/51  | Low 123/125 173/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  OR 6-month run-up >= 50%                             H  53/53   13/31  | M  65/65   34/51  | Low 123/125 176/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  OR 6-month run-up >= 40%                             H  53/53   14/31  | M  65/65   36/51  | Low 123/125 182/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  OR 6-month run-up >= 30%                             H  53/53   15/31  | M  65/65   36/51  | Low 124/125 185/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 4 W,DOCU,DOCU,SQM | known neg 16/16
+
+=== (4) with the 50-day rule loosened too: close no more than X under the 50-day ===
+  50-day -2% only                                      H  53/53   14/31  | M  65/65   36/51  | Low 121/125 160/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs back 0  | known neg 16/16
+  50-day -2% + OR 6-month run-up >= 60%                H  53/53   18/31  | M  65/65   37/51  | Low 123/125 191/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  50-day -2% + OR 6-month run-up >= 50%                H  53/53   18/31  | M  65/65   37/51  | Low 123/125 194/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  50-day -2% + OR 6-month run-up >= 40%                H  53/53   19/31  | M  65/65   39/51  | Low 123/125 201/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  50-day -3% only                                      H  53/53   16/31  | M  65/65   37/51  | Low 121/125 164/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs back 0  | known neg 16/16
+  50-day -3% + OR 6-month run-up >= 60%                H  53/53   20/31  | M  65/65   38/51  | Low 123/125 197/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  50-day -3% + OR 6-month run-up >= 50%                H  53/53   20/31  | M  65/65   38/51  | Low 123/125 200/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  50-day -3% + OR 6-month run-up >= 40%                H  53/53   21/31  | M  65/65   40/51  | Low 123/125 208/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  50-day -5% only                                      H  53/53   16/31  | M  65/65   37/51  | Low 121/125 167/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs back 0  | known neg 16/16
+  50-day -5% + OR 6-month run-up >= 60%                H  53/53   20/31  | M  65/65   38/51  | Low 123/125 201/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  50-day -5% + OR 6-month run-up >= 50%                H  53/53   20/31  | M  65/65   38/51  | Low 123/125 204/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16
+  50-day -5% + OR 6-month run-up >= 40%                H  53/53   21/31  | M  65/65   40/51  | Low 123/125 213/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs back 3 W,DOCU,DOCU | known neg 16/16

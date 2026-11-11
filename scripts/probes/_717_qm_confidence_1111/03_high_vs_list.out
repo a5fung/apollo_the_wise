@@ -1,0 +1,84 @@
+REPRODUCE: dated on the list at D 263 of 269 (known 263); widened on any night 192 of 488 (known 192); row mismatches vs the fixture column: 0 []
+the re-evaluator agrees with v1_gates on all buys: mismatches 0
+
+=== HIGH TIER: on the current list ===
+  dated    High    on the list  53 of  53 (100%)
+  dated    Medium  on the list  65 of  65 (100%)
+  dated    Low     on the list 121 of 125 ( 97%)
+  dated    Not     on the list  24 of  26 ( 92%)
+  widened  High    on the list  10 of  31 ( 32%)   the night before the rated break day: 10 of 31
+  widened  Medium  on the list  33 of  51 ( 65%)   the night before the rated break day: 32 of 51
+  widened  Low     on the list 149 of 349 ( 43%)
+  widened  Not     on the list   0 of  57 (  0%)
+
+=== PER-GATE MISS TABLE, High tier (blocks = fails on every night; alone = the only gate failing on the best night) ===
+dated: High n = 53, missed 0
+widened: High n = 31, missed 21
+  prior_move  blocks  9  alone  7   PBR 2019-10-22*, PBR 2019-10-22*, AVLR 2020-01-02, BYND 2020-09-29*, SLV 2021-01-28, ALB 2021-05-27*, ALB 2021-07-09*, ABNB 2021-11-05*, NUE 2022-01-05*   (* = alone)
+  sma50       blocks  9  alone  6   DHT 2019-12-19*, AVLR 2020-01-02, BCRX 2020-06-26*, HEXO 2020-08-13, DKNG 2020-08-18*, FSLY 2020-09-21*, NVAX 2021-04-13, AMD 2021-10-13*, LCID 2022-01-10*   (* = alone)
+  rs          blocks  5  alone  1   BNGO 2019-12-30, INO 2020-01-21, FCEL 2020-02-10*, HEXO 2020-08-13, SLV 2021-01-28   (* = alone)
+  universe    blocks  3  alone  0   BNGO 2019-12-30, INO 2020-01-21, HEXO 2020-08-13   (* = alone)
+  base_depth  blocks  1  alone  0   HEXO 2020-08-13   (* = alone)
+  history     blocks  1  alone  1   PLTR 2021-01-22*   (* = alone)
+  ema21       blocks  1  alone  0   NVAX 2021-04-13   (* = alone)
+    PBR    2019-10-22..2019-10-22 failed prior_move                   rs 59 prior 21% depth 4.8 vs21 +0.94 vs50 +4.0%  level 14.77 len 16
+    PBR    2019-10-22..2019-10-22 failed prior_move                   rs 59 prior 21% depth 4.8 vs21 +0.94 vs50 +4.0%  level 14.77 len 16
+    DHT    2019-12-19..2019-12-19 failed sma50                        rs 92 prior 48% depth 4.6 vs21 +0.10 vs50 -0.6%  level 7.75 len 30
+    BNGO   2019-12-27..2019-12-30 failed universe,rs                  rs - prior 152% depth 6.6 vs21 +0.80 vs50 +7.2%  level 708 len 15
+    AVLR   2020-01-02..2020-01-02 failed prior_move,sma50             rs 55 prior 25% depth 3.8 vs21 -0.16 vs50 -0.1%  level 75.98 len 12
+    INO    2020-01-17..2020-01-21 failed universe,rs                  rs - prior 83% depth 3.0 vs21 +1.01 vs50 +21.1%  level 41.4 len 13
+    FCEL   2020-02-10..2020-02-10 failed rs                           rs - prior 1060% depth 4.8 vs21 -0.26 vs50 +21.0%  level 58.5 len 12
+    BCRX   2020-06-26..2020-06-26 failed sma50                        rs 96 prior 298% depth 5.5 vs21 -0.08 vs50 -0.1%  level 4.68 len 16
+    HEXO   2020-08-13..2020-08-13 failed universe,rs,base_depth,sma50 rs - prior 222% depth 10.8 vs21 -0.06 vs50 -7.3%  level 42 len 18
+    DKNG   2020-08-18..2020-08-18 failed sma50                        rs 96 prior 149% depth 5.2 vs21 +0.23 vs50 -1.7%  level 36.17 len 13
+    FSLY   2020-09-21..2020-09-21 failed sma50                        rs 98 prior 176% depth 4.9 vs21 -0.09 vs50 -2.2%  level 87.22 len 10
+    BYND   2020-09-29..2020-09-29 failed prior_move                   rs 94 prior 24% depth 1.7 vs21 +0.72 vs50 +12.8%  level 4875 len 68
+    PLTR   2021-01-20..2021-01-22 failed history                      rs - prior - depth - vs21 - vs50 -  level 28.59 len 17
+    SLV    2021-01-28..2021-01-28 failed rs,prior_move                rs - prior 25% depth 5.2 vs21 -0.62 vs50 +0.6%  level 24.21 len 11
+    NVAX   2021-04-13..2021-04-13 failed ema21,sma50                  rs 94 prior 210% depth 6.6 vs21 -0.85 vs50 -21.2%  level 191 len 10
+    ALB    2021-05-27..2021-05-27 failed prior_move                   rs 52 prior 28% depth 3.5 vs21 +0.49 vs50 +4.2%  level 165 len 12
+    ALB    2021-07-09..2021-07-09 failed prior_move                   rs 85 prior 22% depth 4.6 vs21 +0.14 vs50 +1.7%  level 172.5 len 19
+    AMD    2021-10-13..2021-10-13 failed sma50                        rs 91 prior 42% depth 4.2 vs21 +0.24 vs50 -1.5%  level 108 len 11
+    ABNB   2021-11-05..2021-11-05 failed prior_move                   rs 84 prior 25% depth 3.8 vs21 +1.74 vs50 +6.6%  level 179.4 len 31
+    NUE    2022-01-05..2022-01-05 failed prior_move                   rs 88 prior 30% depth 4.0 vs21 +0.76 vs50 +4.1%  level 118.2 len 11
+    LCID   2022-01-06..2022-01-10 failed sma50                        rs 99 prior 161% depth 5.1 vs21 -0.45 vs50 -10.3%  level 417.6 len 14
+
+pinned labels' tiers: his 6 NOs YPF 2019-04-17 Low, W 2020-04-07 Not, DOCU 2020-12-04 Low, DOCU 2020-12-15 Low, SQM 2021-09-10 Low, MRNA 2021-11-29 Not
+the 16 known negatives' tiers: {'Low': 12, 'Not': 3, 'High': 1}
+
+=== ONE GATE MOVED AT A TIME (everything else as today). Columns: on the list / n, dated then widened ===
+  TODAY                                        H  53/53   10/31  | M  65/65   33/51  | Low 121/125 149/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  prior -> 0.3                                 H  53/53   11/31  | M  65/65   33/51  | Low 124/125 153/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs 4/6 | known neg 16/16
+  prior -> 0.25                                H  53/53   13/31  | M  65/65   33/51  | Low 124/125 168/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs 4/6 | known neg 16/16
+  prior -> 0.2                                 H  53/53   17/31  | M  65/65   35/51  | Low 124/125 178/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs 4/6 | known neg 16/16
+  prior -> 0.15                                H  53/53   17/31  | M  65/65   36/51  | Low 124/125 183/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs 4/6 | known neg 16/16
+  prior -> 0.1                                 H  53/53   17/31  | M  65/65   36/51  | Low 124/125 185/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs 4/6 | known neg 16/16
+  prior -> dropped                             H  53/53   17/31  | M  65/65   36/51  | Low 124/125 189/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs 4/6 | known neg 16/16
+  dmax -> 10.0                                 H  53/53   10/31  | M  65/65   33/51  | Low 122/125 150/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs 2/6 | known neg 16/16
+  dmax -> 12.0                                 H  53/53   10/31  | M  65/65   33/51  | Low 122/125 150/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs 2/6 | known neg 16/16
+  dmax -> 15.0                                 H  53/53   10/31  | M  65/65   33/51  | Low 122/125 150/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs 2/6 | known neg 16/16
+  dmax -> 20.0                                 H  53/53   10/31  | M  65/65   33/51  | Low 122/125 150/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs 2/6 | known neg 16/16
+  dmax -> dropped                              H  53/53   10/31  | M  65/65   33/51  | Low 122/125 150/349 | Not  25/26    0/57  | bigwin 26/26 | his NOs 2/6 | known neg 16/16
+  dmin -> 1.0                                  H  53/53   10/31  | M  65/65   34/51  | Low 121/125 160/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  dmin -> 0.5                                  H  53/53   10/31  | M  65/65   34/51  | Low 121/125 167/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  dmin -> dropped                              H  53/53   10/31  | M  65/65   34/51  | Low 121/125 171/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  rs -> 30.0                                   H  53/53   10/31  | M  65/65   33/51  | Low 121/125 149/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  rs -> 20.0                                   H  53/53   10/31  | M  65/65   33/51  | Low 121/125 149/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  rs -> dropped                                H  53/53   11/31  | M  65/65   35/51  | Low 121/125 151/349 | Not  24/26   17/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  s50 -> -0.02                                 H  53/53   14/31  | M  65/65   36/51  | Low 121/125 160/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  s50 -> -0.05                                 H  53/53   16/31  | M  65/65   37/51  | Low 121/125 167/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  s50 -> -0.1                                  H  53/53   16/31  | M  65/65   37/51  | Low 121/125 173/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  s50 -> dropped                               H  53/53   16/31  | M  65/65   37/51  | Low 121/125 179/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  e21 -> -1.0                                  H  53/53   10/31  | M  65/65   33/51  | Low 121/125 149/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  e21 -> -1.5                                  H  53/53   10/31  | M  65/65   33/51  | Low 121/125 149/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+  e21 -> dropped                               H  53/53   10/31  | M  65/65   33/51  | Low 121/125 152/349 | Not  24/26    0/57  | bigwin 26/26 | his NOs 0/6 | known neg 16/16
+
+=== COMBINATIONS ===
+  prior 0.20 + dmax 12                         H  53/53   17/31  | M  65/65   35/51  | Low 125/125 180/349 | Not  26/26    0/57  | bigwin 26/26 | his NOs 6/6 | known neg 16/16
+  prior 0.15 + dmax 12                         H  53/53   17/31  | M  65/65   36/51  | Low 125/125 185/349 | Not  26/26    0/57  | bigwin 26/26 | his NOs 6/6 | known neg 16/16
+  prior 0.15 + dmax 15                         H  53/53   17/31  | M  65/65   36/51  | Low 125/125 185/349 | Not  26/26    0/57  | bigwin 26/26 | his NOs 6/6 | known neg 16/16
+  prior 0.10 + dmax 15                         H  53/53   17/31  | M  65/65   36/51  | Low 125/125 187/349 | Not  26/26    0/57  | bigwin 26/26 | his NOs 6/6 | known neg 16/16
+  prior 0.15 + dmax 12 + s50 -0.05             H  53/53   24/31  | M  65/65   40/51  | Low 125/125 215/349 | Not  26/26    0/57  | bigwin 26/26 | his NOs 6/6 | known neg 16/16
+  prior 0.15 + dmax 12 + rs dropped            H  53/53   19/31  | M  65/65   38/51  | Low 125/125 187/349 | Not  26/26   18/57  | bigwin 26/26 | his NOs 6/6 | known neg 16/16
+  prior dropped + dmax dropped                 H  53/53   17/31  | M  65/65   36/51  | Low 125/125 192/349 | Not  26/26    0/57  | bigwin 26/26 | his NOs 6/6 | known neg 16/16
+  prior, dmax, dmin, rs dropped                H  53/53   19/31  | M  65/65   39/51  | Low 125/125 221/349 | Not  26/26   19/57  | bigwin 26/26 | his NOs 6/6 | known neg 16/16
