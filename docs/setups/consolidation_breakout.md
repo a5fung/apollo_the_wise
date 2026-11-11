@@ -330,6 +330,10 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 (`max_positions`) with the EP lanes. None of it is touched by this build.
 
 ## Known limitations / open questions
+- **Breakout v1's list tests no SHAPE (open since 2026-11-10; #717).** The first paper session bought five charts he
+  said were not breakouts (no higher lows, no price surfing a rising 10/21-day). The shape rules removed on 11-02 are
+  being rewritten from Qullamaggie's words and his reads as list gates: pre-registered in
+  `docs/analysis/cb_shape_gates_2026-11-11.md` (scored before any paper; nothing shipped). Paper stays OFF.
 - **Spin-offs and special distributions are NOT adjusted in the daily export (found 2026-10-23, his catch).** The export
   (Alpaca, split-adjusted) adjusts splits only, so a spin-off reads as a one-session crash: OPLN (KAR Auction → IAA spin-off,
   2019-06-28, −62%), ZWS (Zurn, 2021-10), BEP (the BEPC distribution, 2020-07). Every replay on this export books those as stop-through

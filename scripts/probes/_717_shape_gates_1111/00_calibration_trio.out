@@ -1,0 +1,21 @@
+
+CODX-1 (QM good; his 'fit perfectly')  D 2020-04-15  pole 2020-02-28  base 32 sessions  ADR20 11.9%  existing gates failed: []
+  higher_lows   PASS  {"bottom_date": "2020-03-10", "bottom_low": 167.1, "sessions_since_bottom": 25, "recent_low": 255.82}
+  no_lower_low  PASS  {"undercut_swing_lows": [], "earlier_swing_lows": [["2020-03-04", 339.0]], "near_band_top": 186.91849400386505}
+  rising_avg    PASS  {"ema10": 278.54248104358726, "ema10_prev": 268.66504622518204, "ema21": 275.7963013160785, "ema21_prev": 271.5296012325576}
+  not_extended  PASS  {"close_vs_ema10_adr": 0.19546997183504405, "max": 1.0}
+  tight10       PASS  {"spread10_adr": 3.221156553944815, "max": 4.0}
+
+PENN-2 (QM good; his 'fit perfectly')  D 2020-06-22  pole 2020-06-05  base 11 sessions  ADR20 9.5%  existing gates failed: []
+  higher_lows   PASS  {"bottom_date": "2020-06-11", "bottom_low": 27.52, "sessions_since_bottom": 7, "recent_low": 30.36}
+  no_lower_low  PASS  {"undercut_swing_lows": [], "earlier_swing_lows": [], "near_band_top": 30.147150826891085}
+  rising_avg    PASS  {"ema10": 31.638429699327208, "ema10_prev": 31.270199182142747, "ema21": 30.262084475579655, "ema21_prev": 29.277509368765802}
+  not_extended  PASS  {"close_vs_ema10_adr": -0.06900937668510453, "max": 1.0}
+  tight10       PASS  {"spread10_adr": 1.7427377923795884, "max": 4.0}
+
+MTW 10-30 (his 'not a breakout')  D 2026-10-30  pole 2026-10-06  base 18 sessions  ADR20 4.1%  existing gates failed: ['prior_move']
+  higher_lows   PASS  {"bottom_date": "2026-10-20", "bottom_low": 21.05, "sessions_since_bottom": 8, "recent_low": 21.99}
+  no_lower_low  FAIL  {"undercut_swing_lows": [["2026-10-09", 21.09]], "earlier_swing_lows": [["2026-10-09", 21.09]], "near_band_top": 21.905209791511446}
+  rising_avg    PASS  {"ema10": 22.747926078362813, "ema10_prev": 22.20743218083981, "ema21": 22.412935844211294, "ema21_prev": 22.047405006460735}
+  not_extended  PASS  {"close_vs_ema10_adr": 0.3052112684589089, "max": 1.0}
+  tight10       PASS  {"spread10_adr": 2.369550114849077, "max": 4.0}

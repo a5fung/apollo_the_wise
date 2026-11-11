@@ -325,6 +325,86 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
     return out
 
 
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 2b. The SHAPE gates (2026-11-11; pre-registered in docs/analysis/cb_shape_gates_2026-11-11.md)
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# Qullamaggie's breakout shape — "higher lows", price "surfing" a RISING 10/20-day, "tightening" into the breakout
+# (the article, operator_shared_notes L1936-1937; the operator's 2026-10-28 / 10-29 / 11-02 / 11-10 words) — each a
+# list gate. Every constant below is fixed in the pre-registration BEFORE any score; the sources are cited there.
+SHAPE_HL_RECENT = 5            # higher_lows: the base's bottom is older than the last 5 sessions (v1's 10-28 unit)
+SHAPE_SWING_HALF = 2           # no_lower_low: a swing low = a 5-bar pivot (2 each side), wholly inside the base
+SHAPE_LOWER_LOW_ADR = 1.0      # no_lower_low: ...that sits within 1.0 daily range above the bottom (the 10-28 "near" band)
+SHAPE_RISING_SESSIONS = 5      # rising_avg: EMA10 and EMA21 both above their value 5 sessions earlier
+SHAPE_EMA_FAST = 10
+SHAPE_EXTENDED_ADR_MAX = 1.0   # not_extended: close no more than 1.0 daily range above the 10-day EMA (the 10-28 band)
+SHAPE_TIGHT_ADR_MAX = 4.0      # tight10: the last 10 closes' spread no more than 4 daily ranges (11-02 table, 40/48 yes)
+SHAPE_GATES = ("higher_lows", "no_lower_low", "rising_avg", "not_extended", "tight10")
+
+
+def ema_series(c: np.ndarray, D: int, span: int) -> Optional[np.ndarray]:
+    """The `span`-session EMA of the closes for every session 0..D, seeded at the series' first bar (`ema_at`'s
+    arithmetic: ema_series(c, D, n)[D] == ema_at(c, D, n)). None on a non-finite close."""
+    x = np.asarray(c[:D + 1], dtype=float)
+    if x.size == 0 or not np.isfinite(x).all():
+        return None
+    a = 2.0 / (span + 1)
+    out = np.empty(x.size)
+    out[0] = x[0]
+    for i in range(1, x.size):
+        out[i] = a * x[i] + (1.0 - a) * out[i - 1]
+    return out
+
+
+def shape_gates(bars: "cb.DailyBars", D: int, *, P: int, adr20: Optional[float]) -> dict:
+    """The five SHAPE gates at the watch night D (bars <= D only), pass AND value: {name: {"pass", "value"}}.
+    `P` = the pole top `v1_gates` found (`pole_idx`); the base = the sessions P+1..D; `adr20` = ADR20 at D.
+
+      higher_lows  B = the base's lowest low (first occurrence): B <= D-5, i.e. the lowest low of the last 5 sessions
+                   D-4..D is STRICTLY above low(B) — the lows since the bottom sit above it.
+      no_lower_low the bottom B is not a LOWER low against an earlier swing low of the same base: no session i in
+                   [P+3, B-3] with low(i) <= every low of i-2..i+2 (a 5-bar pivot wholly inside the base) AND
+                   low(i) <= low(B) x (1 + 1.0 x ADR20(D)). An earlier swing low within one daily range above the
+                   bottom, then undercut (by any amount), is flat-to-lower lows — chop; one far above the bottom is a
+                   pause on the way down to it, not a lower low.
+      rising_avg   EMA10(D) > EMA10(D-5) AND EMA21(D) > EMA21(D-5) (strict) — the 10- and the 20-day both rising.
+      not_extended (close(D) / EMA10(D) - 1) / ADR20(D) <= 1.0 — price near the average it surfs, not run away from it.
+      tight10      (max close / min close - 1 over D-9..D) / ADR20(D) <= 4.0 — tight into the breakout (the list's own
+                   `spread10_adr`, as `order_inputs`).
+    A value that cannot be computed FAILS its gate (as `v1_gates`)."""
+    l = np.asarray(bars.l, dtype=float)
+    c = np.asarray(bars.c, dtype=float)
+    adr = _f(adr20)
+    adr_pos = adr is not None and adr > 0
+    out: dict = {}
+    B = P + 1 + int(np.argmin(l[P + 1:D + 1]))               # first occurrence of the base's lowest low
+    recent_low = float(l[D - SHAPE_HL_RECENT + 1:D + 1].min())
+    out["higher_lows"] = {"pass": bool(B <= D - SHAPE_HL_RECENT and recent_low > float(l[B])),
+                          "value": {"bottom_date": str(bars.dates[B]), "bottom_low": float(l[B]),
+                                    "sessions_since_bottom": D - B, "recent_low": recent_low}}
+    k = SHAPE_SWING_HALF
+    near = float(l[B]) * (1.0 + SHAPE_LOWER_LOW_ADR * adr) if adr_pos else None
+    earlier = [i for i in range(P + 1 + k, B - k) if l[i] <= l[i - k:i + k + 1].min()]
+    undercut = [i for i in earlier if near is not None and l[i] <= near]
+    out["no_lower_low"] = {"pass": bool(near is not None and not undercut),
+                           "value": {"undercut_swing_lows": [[str(bars.dates[i]), float(l[i])] for i in undercut],
+                                     "earlier_swing_lows": [[str(bars.dates[i]), float(l[i])] for i in earlier],
+                                     "near_band_top": _f(near)}}
+    e10 = ema_series(c, D, SHAPE_EMA_FAST)
+    e21 = ema_series(c, D, EMA_SPAN)
+    n = SHAPE_RISING_SESSIONS
+    ok_e = e10 is not None and e21 is not None and D - n >= 0
+    out["rising_avg"] = {"pass": bool(ok_e and e10[D] > e10[D - n] and e21[D] > e21[D - n]),
+                         "value": {"ema10": _f(e10[D]) if ok_e else None, "ema10_prev": _f(e10[D - n]) if ok_e else None,
+                                   "ema21": _f(e21[D]) if ok_e else None, "ema21_prev": _f(e21[D - n]) if ok_e else None}}
+    ext = _f((float(c[D]) / float(e10[D]) - 1.0) / adr) if (ok_e and adr_pos and e10[D] > 0) else None
+    out["not_extended"] = {"pass": bool(ext is not None and ext <= SHAPE_EXTENDED_ADR_MAX),
+                           "value": {"close_vs_ema10_adr": ext, "max": SHAPE_EXTENDED_ADR_MAX}}
+    sp = order_inputs(bars, D, adr)["spread10_adr"] if adr_pos else None
+    out["tight10"] = {"pass": bool(sp is not None and sp <= SHAPE_TIGHT_ADR_MAX),
+                      "value": {"spread10_adr": sp, "max": SHAPE_TIGHT_ADR_MAX}}
+    return out
+
+
 def runup6m_at(bars: "cb.DailyBars", D: int) -> Optional[float]:
     """The 6-month move at D (spec §2; `23_move126_rule.py` / `stage0/s0_lib.bar_features`): the biggest gain from a
     low to a LATER-or-same high inside the 126 sessions ending D, the low no more than 63 sessions before the high —
