@@ -30,19 +30,21 @@ _SHEET_1106 = "scripts/probes/_717_grading_sheet_1107/breakout_sheet_1106.png"  
 
 _SHEET_1105 = "scripts/probes/_717_grading_sheet_1109/breakout_sheet_1105.png"   # graded 2026-11-09, 12 of 150 (names graded before excluded)
 
+_CONTRAST_1111 = "scripts/probes/_717_shape_gates_1111/contrast_sheet.png"   # 2026-11-11: five good/ok regraded no; his ABCL lines in his_lines_abcl_nvax_1111.png
+
 _LIVE_1110 = "scripts/probes/_717_723_verify_1110/breakout_live_1110.png"   # graded 2026-11-10 in chat: the 5 paper buys, tickers shown
 
 BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
-    BreakoutGrade("2026-11-06", "IAG", "A", 145, 0.326, 18.79, "good", "good", _SHEET_1106),
+    BreakoutGrade("2026-11-06", "IAG", "A", 145, 0.326, 18.79, "no", "regraded 2026-11-11 on the contrast sheet: \"on second look, the charts on first line can be interpreted as not making higher lows, what's fine, stick with qullamaggie first\" (was good)", _SHEET_1106),
     BreakoutGrade("2026-11-06", "SIG", "B", 73, 0.568, 129.26, "no", "looks extended", _SHEET_1106),
     BreakoutGrade("2026-11-06", "VFC", "C", 134, 0.367, 21.22, "no", "looks extended", _SHEET_1106),
     BreakoutGrade("2026-11-06", "PAYS", "D", 5, 0.916, 15.88, "good", "good", _SHEET_1106),
     BreakoutGrade("2026-11-06", "APPN", "E", 14, 0.821, 56.38, "ok", "okish", _SHEET_1106),
     BreakoutGrade("2026-11-06", "HAE", "F", 17, 0.815, 132.0, "ok", "okish", _SHEET_1106),
     BreakoutGrade("2026-11-06", "PAY", "G", 30, 0.75, 35.26, "conditional", "depends how far it breaks out", _SHEET_1106),
-    BreakoutGrade("2026-11-06", "FNKO", "H", 21, 0.793, 6.76, "ok", "ok", _SHEET_1106),
+    BreakoutGrade("2026-11-06", "FNKO", "H", 21, 0.793, 6.76, "no", "regraded 2026-11-11 on the contrast sheet: \"on second look, the charts on first line can be interpreted as not making higher lows, what's fine, stick with qullamaggie first\" (was ok)", _SHEET_1106),
     BreakoutGrade("2026-11-06", "PAR", "I", 152, 0.299, 21.05, "good", "good", _SHEET_1106),
-    BreakoutGrade("2026-11-06", "RSKD", "J", 41, 0.668, 8.98, "good", "good", _SHEET_1106),
+    BreakoutGrade("2026-11-06", "RSKD", "J", 41, 0.668, 8.98, "no", "regraded 2026-11-11 on the contrast sheet: \"on second look, the charts on first line can be interpreted as not making higher lows, what's fine, stick with qullamaggie first\" (was good)", _SHEET_1106),
     BreakoutGrade("2026-11-06", "PLSE", "K", 11, 0.867, 58.17, "good", "good", _SHEET_1106),
     BreakoutGrade("2026-11-06", "BHC", "L", 174, 0.177, 8.46, "ok", "ok", _SHEET_1106),
     BreakoutGrade("2026-11-05", "EVH", "A", 9, 0.847, 4.98, "good", "good", _SHEET_1105),
@@ -52,8 +54,8 @@ BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2026-11-05", "CHTR", "E", 147, 0.12, 127.16, "no", "no", _SHEET_1105),
     BreakoutGrade("2026-11-05", "OSCR", "F", 23, 0.76, 38.5, "ok", "ok", _SHEET_1105),
     BreakoutGrade("2026-11-05", "DUOL", "G", 145, 0.143, 175.56, "no", "no", _SHEET_1105),
-    BreakoutGrade("2026-11-05", "CVLT", "H", 15, 0.817, 173.0, "ok", "ok", _SHEET_1105),
-    BreakoutGrade("2026-11-05", "MANE", "I", 3, 0.91, 145.41, "ok", "ok", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "CVLT", "H", 15, 0.817, 173.0, "no", "regraded 2026-11-11 on the contrast sheet: \"on second look, the charts on first line can be interpreted as not making higher lows, what's fine, stick with qullamaggie first\" (was ok)", _SHEET_1105),
+    BreakoutGrade("2026-11-05", "MANE", "I", 3, 0.91, 145.41, "no", "regraded 2026-11-11 on the contrast sheet: \"on second look, the charts on first line can be interpreted as not making higher lows, what's fine, stick with qullamaggie first\" (was ok)", _SHEET_1105),
     BreakoutGrade("2026-11-05", "PLNT", "J", 106, 0.38, 60.22, "no", "no", _SHEET_1105),
     BreakoutGrade("2026-11-05", "ASO", "K", 93, 0.443, 69.62, "no", "looked extended", _SHEET_1105),
     BreakoutGrade("2026-11-05", "BLKB", "L", 13, 0.837, 57.85, "ok", "ok", _SHEET_1105),

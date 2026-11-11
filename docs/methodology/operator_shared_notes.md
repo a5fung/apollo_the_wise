@@ -2969,3 +2969,8 @@ Recorded in `tests/fixtures/breakout_list_grades.py` (list night 2026-11-09, she
 > "When I click into the theme detail, there is better use of space. For example, the key stats are vertical consecutively, they can be side by side. And also there is a bit of scrolling needed to get to the member stocks, maybe we should put the member stocks at the very top."
 
 Built same day on portfolio-app2 branch `dash-themes-1110` (`2e6dafa`): one clipped line of member symbols under each theme in an open group tile; the theme detail's stage / rank / RS / above-20-SMA in one row and the members first.
+
+## 2026-11-11 — breakout shape: Qullamaggie's higher lows come first (#717 contrast sheet)
+> "I can adjust my ratings, on second look the charts on first line can be interpreted as not making higher lows, what's fine, stick with qullamaggie first. On ABCL, i drew lines on the chart, it's clearly not making higher lows."
+
+Sheet `scripts/probes/_717_shape_gates_1111/contrast_sheet.png` (top: RSKD, FNKO, MANE, CVLT, IAG — his good/ok that the higher-lows / rising-average rules rejected; bottom: ABCL, NVAX, SIG — his no that passed). His drawing `scripts/probes/_717_shape_gates_1111/his_lines_abcl_nvax_1111.png`: ABCL boxed in a DOWN-sloping channel from its high (lower highs and lower lows — a flag at best, not higher lows); NVAX a rising line under its last few lows after a spike and collapse. Recorded: the five top-row names regraded `no` in `tests/fixtures/breakout_list_grades.py`. Rule taken: Qullamaggie's breakout rules (higher lows inside the base) win over his earlier looser grades; a base drifting down in a channel is not a breakout setup.
