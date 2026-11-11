@@ -187,6 +187,12 @@ What it means:
 | his no / EP-like Qullamaggie buys removed (n = 16) | reported | 13 | **11** |
 
 - The amendment's expectation held ((1) fails on SIG, ABCL, NVAX; (1b) passes at 13).
+- **CORRECTION to the amendment's "not a single-point peak" line (read from the revised sweep, n = 12 `no`):** in the
+  two-gate set the 9 of 12 holds ONLY at the 1.0 cap. With `not_extended` at 1.5 or 2.0 it is **7 of 12** (MRNA +1.19
+  and SPCE +1.48 pass; good / ok still 13 of 16, Qullamaggie buys 241-245); at 0.5 it is 10 of 12 but good / ok falls
+  to 9 of 16. So two of the nine rejections sit on a threshold edge. `tight10` is flat from 4 to 6 (9 of 12).
+- Of the five 11-10 paper buys, the revised set rejects MRNA, SPCE and OUST and PASSES ABCL and NVAX — ABCL is the
+  chart he named.
 - Built on the branch (per the verdict rule, a set that misses (1) is not wired): `breakout_v1.shape_gates` (pure,
   tested), `ENFORCED_SHAPE_GATES = ()` (empty: the list is unchanged), `tests/test_breakout_v1_shape_gates.py` (the
   measured numbers pinned by name; DoD (1) as a strict xfail — red today).
