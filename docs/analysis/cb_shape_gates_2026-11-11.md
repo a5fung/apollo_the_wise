@@ -1,6 +1,6 @@
 # Breakout v1 — Qullamaggie's shape rules as list gates: PRE-REGISTRATION (2026-11-11)
 
-**Status: PRE-REGISTERED — written and committed BEFORE any score was run (the commit is the timestamp). Nothing is
+**Status: SCORED 2026-11-11 — FAIL (first set and the one revision; RESULT below). Pre-registered and committed BEFORE any score was run (commit `48bb6458`). Nothing is
 deployed, merged or switched on; paper stays OFF (the operator's 11-10 ruling). A hard gate needs his sign-off on the
 filter list before it ships (`docs/setups/CHANGE_PROCESS.md` rule 3).**
 Owner when shipped: `docs/setups/consolidation_breakout.md` (this file is the finding). Task: PLAN.md #717.
@@ -174,3 +174,34 @@ What it means:
   shape that is measurable today. Under the verdict rule a set that misses (1) is NOT wired into the list.
 - No new formulation is introduced here (not an allowed move). The rewrite of higher-lows and rising-average needs his
   eye first — see "Next" below, filled after the re-score.
+
+## RESULT — the revision's re-score (2026-11-11; `02_score_revised.out`)
+**FAIL. The verdict is final for this registration: no shape gate is wired into the list.**
+| Check | Bar | First set (5 gates) | Revised (`not_extended` + `tight10`) |
+|---|---|---|---|
+| (1) his `no` rejected (n = 12) | 12 | 11 (SIG passes) | **9** (SIG, ABCL, NVAX pass) |
+| (1b) his good / ok kept (n = 16) | >= 13 | 6 | **13** (IAG, PAR good and BHC ok dropped) — PASS |
+| (2) Qullamaggie's buys kept (n = 269) | 263 | 108 | **225** |
+| (2) big winners kept (n = 26) | 26 | 11 | **24** (APT 2020-06-17, JMIA 2020-11-18 dropped) |
+| (2b) his ok-or-better Qullamaggie buys kept (n = 39) | >= 80% | 11 (28%) | **30 (77%)** |
+| his no / EP-like Qullamaggie buys removed (n = 16) | reported | 13 | **11** |
+
+- The amendment's expectation held ((1) fails on SIG, ABCL, NVAX; (1b) passes at 13).
+- Built on the branch (per the verdict rule, a set that misses (1) is not wired): `breakout_v1.shape_gates` (pure,
+  tested), `ENFORCED_SHAPE_GATES = ()` (empty: the list is unchanged), `tests/test_breakout_v1_shape_gates.py` (the
+  measured numbers pinned by name; DoD (1) as a strict xfail — red today).
+
+## Next (proposals; nothing here is decided)
+- **The fork for the operator:** `not_extended` + `tight10` remove 9 of his 12 `no` and 11 of the 16 Qullamaggie buys
+  he called no / EP-like, at the cost of 3 of his 16 good / ok and 38 Qullamaggie buys (2 big winners). Enforce it now
+  as a partial fix, or wait for a set that also rejects ABCL / NVAX / SIG. His call (a hard gate; the filter list is in
+  `02_score_revised.out`).
+- **Higher lows and the rising average need his eye, not another threshold.** By every night-before measure tried,
+  RSKD / FNKO / MANE / CVLT / IAG (his good or ok) read like ABCL / NVAX (his no). One sheet for him: those charts side
+  by side, "what separates these?" — then the next registration is written from that answer.
+- **"Extended" has a second form these bars miss** (seen on the chart only AFTER the score, not scored): SIG closed
+  under its 10-day EMA on the list night after a straight run far above its 50-day. A candidate for the next
+  registration: distance above the 50-day in daily ranges, or the run over the last ~20 sessions.
+- **DoD (3), the bought-names sheet:** the renderer is ready (`11_render_bought_sheet.py`); it needs the newest
+  night's list and bars from prod (`10_sheet_latest_list.sql`, read-only) — no 2026 bars for a whole list night exist
+  locally.

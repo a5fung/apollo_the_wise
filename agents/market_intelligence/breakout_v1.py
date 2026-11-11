@@ -28,6 +28,10 @@ THE LIST RULES, at the watch night D (every measure on bars <= D; the breakout d
   sma50      close(D) >= the 50-day SMA (the mean of the 50 closes ending D)
   REMOVED 2026-11-02: higher lows, surf (riding an average), tightening and the breakdown check — his CODX / PENN
   charts showed those definitions misread his pattern. NO base anchor (unchanged).
+  SHAPE GATES (2026-11-11, `shape_gates`): higher_lows, no_lower_low, rising_avg, not_extended, tight10 — written
+  from Qullamaggie's words and the operator's reads, pre-registered and scored in
+  `docs/analysis/cb_shape_gates_2026-11-11.md`. The score FAILED its bar, so `ENFORCED_SHAPE_GATES` is EMPTY and the
+  list is these seven rules only; the function is the measured, tested starting point for the next definition.
 And on E (`breakout_triggered`): high(E) > the LEVEL = the highest high of D-4..D (strict) and volume(E) >= the VOLUME
 BAR = 1.2 x the mean volume of D-9..D — the LAST 10 SESSIONS (his ruling 2026-11-02, "Yes"; was the 50-day).
 
@@ -321,6 +325,12 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
                adr20=adr_d, pole_idx=int(P), pole_date=str(bars.dates[P]), pole_high=pole_high,
                prior_move=_f(prior), base_low=base_low)
     out["failed"] = [k for k in GATES if not g[k]["pass"]]
+    if ENFORCED_SHAPE_GATES:                                 # empty today: no shape gate acts on the list
+        sg = shape_gates(bars, D, P=int(P), adr20=adr_d)
+        for k in ENFORCED_SHAPE_GATES:
+            g[k] = sg[k]
+            if not sg[k]["pass"]:
+                out["failed"].append(k)
     out["ok"] = not out["failed"]
     return out
 
@@ -339,6 +349,11 @@ SHAPE_EMA_FAST = 10
 SHAPE_EXTENDED_ADR_MAX = 1.0   # not_extended: close no more than 1.0 daily range above the 10-day EMA (the 10-28 band)
 SHAPE_TIGHT_ADR_MAX = 4.0      # tight10: the last 10 closes' spread no more than 4 daily ranges (11-02 table, 40/48 yes)
 SHAPE_GATES = ("higher_lows", "no_lower_low", "rising_avg", "not_extended", "tight10")
+# Which shape gates the LIST enforces. EMPTY = none: the list is exactly the seven signed-off rules. The 2026-11-11
+# score FAILED its bar (first set 11/12 `no` but 6/16 of his good/ok kept; the revised set `("not_extended",
+# "tight10")` 9/12 and 13/16 — SIG, ABCL, NVAX still pass), so nothing is enforced; a hard gate ships only on the
+# operator's sign-off on the filter list (CHANGE_PROCESS rule 3) with the SSoT change-log entry in the same commit.
+ENFORCED_SHAPE_GATES: tuple = ()
 
 
 def ema_series(c: np.ndarray, D: int, span: int) -> Optional[np.ndarray]:
