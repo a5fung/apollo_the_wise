@@ -80,9 +80,9 @@ myself.
 
 Weekend 11-07/08 DONE: #717 stage 2 deployed dark; #312 demote page + the chat route closed (live probe passed) deployed `e475346e`; #719, #721, #722 closed (breadth tab, warning lights, groups — his phone); #210, #491 closed; #720's plan frozen (runs 11-29); the Positions treemap pushed; two simplify passes.
 - **Mon 11-09 DONE:** #312 closed; #717 stage 2 verified, then the paper switch ON 21:23 ET (his 'Flip it'); #723 designed, built AND deployed tonight (`7493246e`, pulled from Wed on his 'Tonight') + the host pusher cron (his 'Ok cron'); Sugar Babies cohort retired; simplify pass + the drift sweep's judge-each-run-once fix merged `5f3704ce` — NOT live until the next deploy window; dashboard: breadth themes link to theme detail and back (`3cdbb3d`, his 'Push').
-- **Tue 11-10:** #717 first paper session read from 09:35 ET (≤ 5 paper rows, placed ranks ≤ held ranks, 0 `block:max_positions` beyond the disclosed race); #723 first live refreshes from 09:45 ET (one `breadth_live_refresh` row per 15 min, coverage ≥ 85%, the live-breadth branch = one parentless commit). Deploy `5f3704ce` (simplify + drift fix) in a window on his go.
-- **Thu 11-12:** #723 step 4 (the page's live Today view, on top of dashboard branch `simplify-1108-C`) → his "push".
-- **Fri 11-13:** #723 live check in session; #146 weekly flag re-read.
+- **Tue 11-10 DONE:** #717 paper OFF on his word (the first session bought non-breakouts; rebuild Sat 11-14); #723 live refreshes matched an independent recount, steps 4-5 shipped (dashboard `7bec490`), then REOPENED for the Wed after-close check; the naked-position page fixed (paper rows go to the paper chat, a queued sale counts as cover, each book deduped on its own) and deployed `f48248d3` 21:16 ET, verified on prod; two digest false alarms fixed; dashboard theme tiles list members + theme detail stats in one row (`2e6dafa`, `b6b102b`); simplify `4f3c8fbb` on main, NOT live until the next deploy.
+- **Wed 11-11:** #723 after-close check 16:20–18:30 ET ('Close · 2026-11-11'), then 'Last close' after the export → close against the DoD.
+- **Fri 11-13:** #146 weekly flag re-read (undercut & rally silence = an empty input pool, not a fault).
 - **Sat 11-14 / Sun 11-15:** #314 re-read; the next chart session (#594 sample 9 + a breakout sheet) if he wants it.
 
 ## Launch — 6/22 GO/NO-GO (the long-horizon plan, as dated tasks · SSoT-spec: docs/roadmap/launch-2026-06-22.md)
