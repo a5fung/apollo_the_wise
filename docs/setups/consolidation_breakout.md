@@ -344,6 +344,9 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   sessions ago, the 21-day EMA no more than one daily range under the 50-day, the base's low not made on the list
   night — reject 13 of his 17 `no` (SIG, DUOL, CVLT, OUST pass), keep 9 of 11 good / ok and 249 of Qullamaggie's 263
   listed buys (25 of 26 big winners). Still short of "every `no` rejected", so still NOT enforced.
+  **Round 3 (2026-11-11):** one long-term-trend gate on top (close above the 200-day; 50-day above the 200-day; a
+  rising 200-day; both) — every variant FAILS: 16 to 32 more of Qullamaggie's buys go (big winners 22-23 of 26), and
+  the rising-200-day ones drop three of his own good / ok charts. Not enforced.
 - **Spin-offs and special distributions are NOT adjusted in the daily export (found 2026-10-23, his catch).** The export
   (Alpaca, split-adjusted) adjusts splits only, so a spin-off reads as a one-session crash: OPLN (KAR Auction → IAA spin-off,
   2019-06-28, −62%), ZWS (Zurn, 2021-10), BEP (the BEPC distribution, 2020-07). Every replay on this export books those as stop-through

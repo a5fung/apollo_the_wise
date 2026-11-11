@@ -331,3 +331,30 @@ Amendment 2's four gates + ONE of these, on bars <= D (SMA200 = the mean of the 
   REPORTED, never used to pick (the sheet is the out-of-sample check). Plateau: T3's window reported at 10 / 20 / 40.
 - Also reported per variant: how many of the 190 names of list night 2026-11-10 survive.
 - Enforce only if a variant meets every bar; otherwise nothing is enforced.
+
+## RESULT — amendment 3 (each variant scored once; `08_score_amendment3.out`)
+**FAIL: no variant meets the bars, and by the pick rule none qualifies (every one drops big winners below 25).
+Nothing is enforced.**
+| Variant (on top of amendment 2) | `no` rejected (n = 17) | good / ok kept (n = 11) | Qullamaggie buys kept (n = 263) | big winners (n = 26) | list night 11-10 survivors (n = 190) | sheet letters removed (n = 12) |
+|---|---|---|---|---|---|---|
+| amendment 2 alone | 13 | 9 | 249 | 25 | 117 | - |
+| T1 `above_200` | 13 | 9 | 233 | 23 (LCID 2021-10-25, QS 2021-10-29 go) | 104 | none |
+| T2 `sma50_above_200` | 13 | 9 | 222 | 23 | 90 | none |
+| T3 `sma200_rising` | 14 (adds DUOL) | **6** (AMPH, BILL, BLKB go) | 219 | 23 | 76 | B, F, G, H |
+| T4 `above_rising_200` | 14 | **6** | 217 | 22 | 75 | B, F, G, H |
+- Plateau (T3 / T4's slope window 10 / 20 / 40): the same reading at each — good / ok 6 of 11, Qullamaggie buys
+  219 / 219 / 213 (T3), survivors 77 / 76 / 72. Not a peak; a consistent miss.
+- 21 of Qullamaggie's 269 buys had no 200-day at D (young listings); they do not fail the gate.
+
+What it means:
+- **A long-term-trend gate is not Qullamaggie's rule.** 16 to 32 more of his own buys sat under the 200-day or over a
+  falling one the night before (2020 recoveries — CCL, UAL, SAVE, ACB; and LCID, QS, both big winners).
+- **It is not the operator's read either.** A rising 200-day drops three charts he graded good or ok (BILL, AMPH good;
+  BLKB ok). BLKB is letter B of the amendment-2 sheet — a chart the main loop's first pass called a recovery under a
+  falling 200-day, and he graded it ok on the 11-05 sheet.
+- The only variants that remove any of the first pass's letters (B, F, G, H) are the ones that fail his own grades;
+  E, L and J stay under every variant.
+- `bought_sheet_a3.png` is rendered with T1 (the variant costing the fewest Qullamaggie buys) for the record only: it
+  holds the SAME 12 names as the amendment-2 sheet (letters reshuffled), because T1 removes none of them.
+- So the would-buy sheet's problem is not a missing trend gate that the labels support. What he sees in those charts
+  is a question for him, on the sheet itself.
