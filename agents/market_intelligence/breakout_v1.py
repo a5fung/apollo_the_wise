@@ -349,6 +349,11 @@ SHAPE_EMA_FAST = 10
 SHAPE_EXTENDED_ADR_MAX = 1.0   # not_extended: close no more than 1.0 daily range above the 10-day EMA (the 10-28 band)
 SHAPE_TIGHT_ADR_MAX = 4.0      # tight10: the last 10 closes' spread no more than 4 daily ranges (11-02 table, 40/48 yes)
 SHAPE_GATES = ("higher_lows", "no_lower_low", "rising_avg", "not_extended", "tight10")
+# Amendment 2 (2026-11-11, round 2 — "stick with qullamaggie first"): four gates sized against Qullamaggie's own buys.
+SHAPE_BASE_ABOVE_ADR_MAX = 0.0   # in_base: close no higher than the pole top (none of his 263 listed buys closed above it)
+SHAPE_E21_S50_ADR_MIN = -1.0     # ema21_vs_sma50: the 21-day EMA no more than 1 daily range under the 50-day SMA
+SHAPE_FALLING_WINDOWS = (5, 10, 20)   # ema21_not_falling: fails only when the EMA21 is lower than at ALL three
+SHAPE_GATES_V2 = ("in_base", "ema21_not_falling", "ema21_vs_sma50", "low_not_today")
 # Which shape gates the LIST enforces. EMPTY = none: the list is exactly the seven signed-off rules. The 2026-11-11
 # score FAILED its bar (first set 11/12 `no` but 6/16 of his good/ok kept; the revised set `("not_extended",
 # "tight10")` 9/12 and 13/16 — SIG, ABCL, NVAX still pass), so nothing is enforced; a hard gate ships only on the
@@ -371,7 +376,10 @@ def ema_series(c: np.ndarray, D: int, span: int) -> Optional[np.ndarray]:
 
 
 def shape_gates(bars: "cb.DailyBars", D: int, *, P: int, adr20: Optional[float]) -> dict:
-    """The five SHAPE gates at the watch night D (bars <= D only), pass AND value: {name: {"pass", "value"}}.
+    """The SHAPE gates at the watch night D — the first five (`SHAPE_GATES`) and amendment 2's four (`SHAPE_GATES_V2`:
+    in_base = close(D) <= the pole top's high; ema21_not_falling = the EMA21 is NOT lower than 5, 10 AND 20 sessions
+    earlier; ema21_vs_sma50 = (EMA21 / SMA50 - 1) / ADR20 >= -1.0; low_not_today = the base's lowest low is not made
+    on D). The first five, at the watch night D (bars <= D only), pass AND value: {name: {"pass", "value"}}.
     `P` = the pole top `v1_gates` found (`pole_idx`); the base = the sessions P+1..D; `adr20` = ADR20 at D.
 
       higher_lows  B = the base's lowest low (first occurrence): B <= D-5, i.e. the lowest low of the last 5 sessions
@@ -414,6 +422,23 @@ def shape_gates(bars: "cb.DailyBars", D: int, *, P: int, adr20: Optional[float])
     ext = _f((float(c[D]) / float(e10[D]) - 1.0) / adr) if (ok_e and adr_pos and e10[D] > 0) else None
     out["not_extended"] = {"pass": bool(ext is not None and ext <= SHAPE_EXTENDED_ADR_MAX),
                            "value": {"close_vs_ema10_adr": ext, "max": SHAPE_EXTENDED_ADR_MAX}}
+    # ── amendment 2 (2026-11-11): the four gates sized against Qullamaggie's own buys ──
+    pole_high = float(bars.h[P])
+    above = _f((float(c[D]) / pole_high - 1.0) / adr) if (adr_pos and pole_high > 0) else None
+    out["in_base"] = {"pass": bool(above is not None and above <= SHAPE_BASE_ABOVE_ADR_MAX),
+                      "value": {"close_vs_pole_high_adr": above, "max": SHAPE_BASE_ABOVE_ADR_MAX}}
+    wins = [w for w in SHAPE_FALLING_WINDOWS if D - w >= 0]
+    full = e21 is not None and len(wins) == len(SHAPE_FALLING_WINDOWS)
+    falling = bool(full and all(e21[D] < e21[D - w] for w in wins))
+    out["ema21_not_falling"] = {"pass": bool(full and not falling),
+                                "value": {"ema21": _f(e21[D]) if e21 is not None else None,
+                                          "ema21_before": {str(w): _f(e21[D - w]) for w in wins} if e21 is not None else None}}
+    s50 = cb._sma_at(bars, D, SMA_SESSIONS)
+    stack = (_f((float(e21[D]) / float(s50) - 1.0) / adr)
+             if (e21 is not None and adr_pos and s50 is not None and math.isfinite(s50) and s50 > 0) else None)
+    out["ema21_vs_sma50"] = {"pass": bool(stack is not None and stack >= SHAPE_E21_S50_ADR_MIN),
+                             "value": {"ema21_vs_sma50_adr": stack, "min": SHAPE_E21_S50_ADR_MIN}}
+    out["low_not_today"] = {"pass": bool(B < D), "value": {"sessions_since_bottom": D - B}}
     sp = order_inputs(bars, D, adr)["spread10_adr"] if adr_pos else None
     out["tight10"] = {"pass": bool(sp is not None and sp <= SHAPE_TIGHT_ADR_MAX),
                       "value": {"spread10_adr": sp, "max": SHAPE_TIGHT_ADR_MAX}}

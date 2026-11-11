@@ -22,13 +22,14 @@ from tests.fixtures.breakout_list_grades import BREAKOUT_LIST_GRADES  # noqa: E4
 ap = argparse.ArgumentParser()
 ap.add_argument("--drop", default="")
 ap.add_argument("--set", default="")
+ap.add_argument("--only", default="")
 a = ap.parse_args()
 DROP = {x for x in a.drop.split(",") if x}
 for kv in [x for x in a.set.split(",") if x]:
     k, v = kv.split("=")
     assert hasattr(bv, k), k
     setattr(bv, k, type(getattr(bv, k))(float(v)))
-ACTIVE = [g for g in bv.SHAPE_GATES if g not in DROP]
+ACTIVE = [x for x in a.only.split(",") if x] or [g for g in bv.SHAPE_GATES if g not in DROP]
 print(f"gate set: {ACTIVE}  (dropped: {sorted(DROP) or 'none'})")
 print("constants:", {k: getattr(bv, k) for k in ("SHAPE_HL_RECENT", "SHAPE_SWING_HALF", "SHAPE_LOWER_LOW_ADR",
                                                   "SHAPE_RISING_SESSIONS", "SHAPE_EXTENDED_ADR_MAX", "SHAPE_TIGHT_ADR_MAX")})
@@ -117,7 +118,7 @@ grows, qrows = evaluate()
 S = summary(grows, qrows)
 print("\n=== HEADLINE ===")
 print(line(S))
-print(f"bars: (1) 12/12 {'PASS' if S['no_rej'] == S['no_n'] else 'FAIL'} | (1b) >=13/16 {'PASS' if S['ok_kept'] >= 13 else 'FAIL'} | "
+print(f"bars: (1) {S['no_n']}/{S['no_n']} {'PASS' if S['no_rej'] == S['no_n'] else 'FAIL'} | (1b) >=80% of {S['ok_n']} {'PASS' if S['ok_kept'] >= 0.8 * S['ok_n'] else 'FAIL'} | "
       f"(2) 263/269 + 26/26 {'PASS' if S['kept'] >= 263 and S['big'] == 26 else 'FAIL'} | "
       f"(2b) >=80% ok-or-better {'PASS' if S['okb_kept'] >= 0.8 * S['okb_n'] else 'FAIL'} ({S['okb_kept'] / max(1, S['okb_n']):.0%})")
 
@@ -136,7 +137,7 @@ for k in ACTIVE:
     rej = [x[0].ticker for x in grows if x[0].grade == "no" and not x[2][k]]
     alone = [x[0].ticker for x in grows if x[0].grade == "no" and not x[2][k] and sum(not q for q in x[2].values()) == 1]
     drop = [f"{x[0].ticker}({x[0].grade})" for x in grows if x[0].grade in ("good", "ok") and not x[2][k]]
-    print(f"  {k:13s} rejects {len(rej):2d}/12 no {rej} (alone: {alone}) | drops {len(drop)}/16 good/ok {drop}")
+    print(f"  {k:13s} rejects {len(rej):2d}/{sum(x[0].grade == 'no' for x in grows)} no {rej} (alone: {alone}) | drops {len(drop)}/{sum(x[0].grade in ('good', 'ok') for x in grows)} good/ok {drop}")
 print("  `no` rows that pass EVERY gate:", [x[0].ticker for x in grows if x[0].grade == "no" and all(x[2].values())])
 print("  conditional row:", [(x[0].ticker, 'kept' if all(x[2].values()) else 'rejected by ' + str([k for k in ACTIVE if not x[2][k]])) for x in grows if x[0].grade == "conditional"])
 
@@ -167,7 +168,9 @@ for cls in ("ok_or_better", "no_or_ep", "timing_or_unsure"):
 
 print("\n=== SWEEPS (reported, not used to choose; each row = the full set with ONE number moved) ===")
 base = {k: getattr(bv, k) for k in ("SHAPE_HL_RECENT", "SHAPE_LOWER_LOW_ADR", "SHAPE_RISING_SESSIONS", "SHAPE_EXTENDED_ADR_MAX", "SHAPE_TIGHT_ADR_MAX")}
-SWEEPS = (("SHAPE_HL_RECENT", (3, 5, 10)), ("SHAPE_LOWER_LOW_ADR", (0.5, 1.0, 1.5, 1e9)), ("SHAPE_RISING_SESSIONS", (3, 5, 10)),
+if a.only:
+    base = {k: getattr(bv, k) for k in ("SHAPE_BASE_ABOVE_ADR_MAX", "SHAPE_E21_S50_ADR_MIN")}
+SWEEPS = (("SHAPE_BASE_ABOVE_ADR_MAX", (0.0, 0.25, 0.5, 1.0)), ("SHAPE_E21_S50_ADR_MIN", (-1.5, -1.25, -1.0, -0.75, -0.5, 0.0))) if a.only else (("SHAPE_HL_RECENT", (3, 5, 10)), ("SHAPE_LOWER_LOW_ADR", (0.5, 1.0, 1.5, 1e9)), ("SHAPE_RISING_SESSIONS", (3, 5, 10)),
           ("SHAPE_EXTENDED_ADR_MAX", (0.5, 1.0, 1.5, 2.0)), ("SHAPE_TIGHT_ADR_MAX", (3.0, 4.0, 5.0, 6.0)))
 for name, vals in SWEEPS:
     for val in vals:

@@ -1,0 +1,494 @@
+##### FIRST SET (5 gates), regraded labels
+gate set: ['higher_lows', 'no_lower_low', 'rising_avg', 'not_extended', 'tight10']  (dropped: none)
+constants: {'SHAPE_HL_RECENT': 5, 'SHAPE_SWING_HALF': 2, 'SHAPE_LOWER_LOW_ADR': 1.0, 'SHAPE_RISING_SESSIONS': 5, 'SHAPE_EXTENDED_ADR_MAX': 1.0, 'SHAPE_TIGHT_ADR_MAX': 4.0}
+
+=== HEADLINE ===
+no rejected 16/17 | good/ok kept 6/11 | QM buys kept 108/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 94/204
+bars: (1) 17/17 FAIL | (1b) >=80% of 11 FAIL | (2) 263/269 + 26/26 FAIL | (2b) >=80% ok-or-better FAIL (28%)
+
+=== (1) HIS LIST GRADES, row by row (n = 29) ===
+night       ticker grade        rank  higher_lows  no_lower_low rising_avg   not_extended tight10       verdict   values
+2026-11-06  IAG    no            145  pass         pass         FAIL         FAIL         FAIL          rejected  since_bottom 5 | undercut 0 | e10 +2.1% e21 -0.5% | ext +2.10 | spread10 4.93 | existing failed (rs aside) []
+2026-11-06  SIG    no             73  pass         pass         pass         pass         pass          KEPT      since_bottom 13 | undercut 0 | e10 +3.0% e21 +3.1% | ext -0.42 | spread10 3.17 | existing failed (rs aside) []
+2026-11-06  VFC    no            134  pass         pass         pass         FAIL         FAIL          rejected  since_bottom 7 | undercut 0 | e10 +10.6% e21 +8.5% | ext +1.41 | spread10 5.60 | existing failed (rs aside) []
+2026-11-06  PAYS   good            5  pass         pass         pass         pass         pass          KEPT      since_bottom 7 | undercut 0 | e10 +1.0% e21 +0.7% | ext +0.03 | spread10 1.63 | existing failed (rs aside) []
+2026-11-06  APPN   ok             14  FAIL         FAIL         pass         pass         pass          rejected  since_bottom 3 | undercut 1 | e10 +3.1% e21 +4.5% | ext +0.44 | spread10 1.67 | existing failed (rs aside) []
+2026-11-06  HAE    ok             17  pass         pass         pass         pass         pass          KEPT      since_bottom 10 | undercut 0 | e10 +2.0% e21 +2.0% | ext -0.29 | spread10 2.45 | existing failed (rs aside) []
+2026-11-06  PAY    conditional    30  pass         pass         pass         pass         pass          KEPT      since_bottom 31 | undercut 0 | e10 +1.7% e21 +1.0% | ext +0.35 | spread10 2.85 | existing failed (rs aside) []
+2026-11-06  FNKO   no             21  FAIL         pass         FAIL         pass         pass          rejected  since_bottom 0 | undercut 0 | e10 -1.5% e21 -0.2% | ext +0.62 | spread10 1.75 | existing failed (rs aside) []
+2026-11-06  PAR    good          152  pass         pass         pass         FAIL         FAIL          rejected  since_bottom 28 | undercut 0 | e10 +7.0% e21 +5.0% | ext +2.17 | spread10 4.31 | existing failed (rs aside) []
+2026-11-06  RSKD   no             41  FAIL         pass         FAIL         pass         pass          rejected  since_bottom 0 | undercut 0 | e10 -1.9% e21 +0.3% | ext -0.23 | spread10 2.16 | existing failed (rs aside) []
+2026-11-06  PLSE   good           11  pass         pass         pass         pass         pass          KEPT      since_bottom 15 | undercut 0 | e10 +1.7% e21 +1.7% | ext +0.02 | spread10 1.31 | existing failed (rs aside) []
+2026-11-06  BHC    ok            174  pass         FAIL         pass         FAIL         FAIL          rejected  since_bottom 31 | undercut 1 | e10 +9.1% e21 +8.4% | ext +1.03 | spread10 7.82 | existing failed (rs aside) []
+2026-11-05  EVH    good            9  FAIL         pass         pass         pass         pass          rejected  since_bottom 4 | undercut 0 | e10 +0.4% e21 +1.0% | ext +0.13 | spread10 1.87 | existing failed (rs aside) []
+2026-11-05  BILL   good           31  pass         pass         pass         pass         pass          KEPT      since_bottom 27 | undercut 0 | e10 +2.7% e21 +2.3% | ext +0.65 | spread10 2.09 | existing failed (rs aside) []
+2026-11-05  AMPH   good           97  pass         FAIL         pass         pass         pass          rejected  since_bottom 9 | undercut 1 | e10 +3.6% e21 +2.5% | ext +0.73 | spread10 3.43 | existing failed (rs aside) []
+2026-11-05  ONT    no            146  pass         pass         pass         FAIL         FAIL          rejected  since_bottom 24 | undercut 0 | e10 +10.2% e21 +5.3% | ext +3.92 | spread10 6.34 | existing failed (rs aside) []
+2026-11-05  CHTR   no            147  pass         FAIL         pass         FAIL         FAIL          rejected  since_bottom 8 | undercut 3 | e10 +6.8% e21 +2.7% | ext +2.37 | spread10 5.56 | existing failed (rs aside) []
+2026-11-05  OSCR   ok             23  pass         pass         pass         pass         pass          KEPT      since_bottom 30 | undercut 0 | e10 +2.2% e21 +0.8% | ext +0.45 | spread10 2.93 | existing failed (rs aside) []
+2026-11-05  DUOL   no            145  FAIL         pass         pass         FAIL         FAIL          rejected  since_bottom 2 | undercut 0 | e10 +2.7% e21 +0.6% | ext +1.70 | spread10 4.71 | existing failed (rs aside) []
+2026-11-05  CVLT   no             15  pass         pass         FAIL         pass         pass          rejected  since_bottom 7 | undercut 0 | e10 -1.9% e21 +0.2% | ext -0.57 | spread10 1.91 | existing failed (rs aside) []
+2026-11-05  MANE   no              3  FAIL         FAIL         FAIL         pass         pass          rejected  since_bottom 0 | undercut 1 | e10 -1.2% e21 +1.5% | ext -0.62 | spread10 1.85 | existing failed (rs aside) []
+2026-11-05  PLNT   no            106  pass         pass         pass         FAIL         FAIL          rejected  since_bottom 8 | undercut 0 | e10 +6.2% e21 +5.0% | ext +2.59 | spread10 4.26 | existing failed (rs aside) []
+2026-11-05  ASO    no             93  pass         pass         pass         FAIL         FAIL          rejected  since_bottom 6 | undercut 0 | e10 +5.9% e21 +4.8% | ext +2.50 | spread10 4.50 | existing failed (rs aside) []
+2026-11-05  BLKB   ok             13  pass         pass         pass         pass         pass          KEPT      since_bottom 6 | undercut 0 | e10 +2.7% e21 +3.3% | ext +0.71 | spread10 1.66 | existing failed (rs aside) []
+2026-11-09  MRNA   no             24  pass         pass         pass         FAIL         pass          rejected  since_bottom 9 | undercut 0 | e10 +10.6% e21 +7.4% | ext +1.19 | spread10 2.90 | existing failed (rs aside) []
+2026-11-09  SPCE   no             31  FAIL         FAIL         FAIL         FAIL         pass          rejected  since_bottom 2 | undercut 2 | e10 +1.7% e21 -0.4% | ext +1.48 | spread10 3.23 | existing failed (rs aside) []
+2026-11-09  ABCL   no             36  FAIL         FAIL         FAIL         pass         pass          rejected  since_bottom 2 | undercut 2 | e10 -1.3% e21 -1.1% | ext +0.44 | spread10 3.08 | existing failed (rs aside) []
+2026-11-09  OUST   no             70  pass         pass         pass         FAIL         FAIL          rejected  since_bottom 11 | undercut 0 | e10 +6.5% e21 +1.0% | ext +2.24 | spread10 4.81 | existing failed (rs aside) []
+2026-11-09  NVAX   no            103  pass         pass         FAIL         pass         pass          rejected  since_bottom 9 | undercut 0 | e10 +1.1% e21 -0.7% | ext +0.58 | spread10 1.73 | existing failed (rs aside) []
+
+=== per-gate on his grades: which gate rejects which `no`, which drops which good/ok ===
+  higher_lows   rejects  6/17 no ['FNKO', 'RSKD', 'DUOL', 'MANE', 'SPCE', 'ABCL'] (alone: []) | drops 2/11 good/ok ['APPN(ok)', 'EVH(good)']
+  no_lower_low  rejects  4/17 no ['CHTR', 'MANE', 'SPCE', 'ABCL'] (alone: []) | drops 3/11 good/ok ['APPN(ok)', 'BHC(ok)', 'AMPH(good)']
+  rising_avg    rejects  8/17 no ['IAG', 'FNKO', 'RSKD', 'CVLT', 'MANE', 'SPCE', 'ABCL', 'NVAX'] (alone: ['CVLT', 'NVAX']) | drops 0/11 good/ok []
+  not_extended  rejects 10/17 no ['IAG', 'VFC', 'ONT', 'CHTR', 'DUOL', 'PLNT', 'ASO', 'MRNA', 'SPCE', 'OUST'] (alone: ['MRNA']) | drops 2/11 good/ok ['PAR(good)', 'BHC(ok)']
+  tight10       rejects  8/17 no ['IAG', 'VFC', 'ONT', 'CHTR', 'DUOL', 'PLNT', 'ASO', 'OUST'] (alone: []) | drops 2/11 good/ok ['PAR(good)', 'BHC(ok)']
+  `no` rows that pass EVERY gate: ['SIG']
+  conditional row: [('PAY', 'kept')]
+
+=== (2) QULLAMAGGIE'S BUYS: per-gate miss table (n = 269; 263 on today's list) ===
+gate          | buys it blocks (any) | blocks ALONE | big winners blocked (any) | ok-or-better blocked | no/EP blocked
+  higher_lows     47 (18%)           5           6                     10                    0
+  no_lower_low    68 (26%)          22           4                     13                    2
+  rising_avg      95 (36%)          41          13                     14                    3
+  not_extended    36 (14%)          10           1                      8                   10
+  tight10         17 (6%)           1           2                      7                    6
+number of shape gates failing per listed buy: {0: 108, 1: 79, 2: 45, 3: 30, 4: 1}
+kept by year: {'2017': '6/8', '2018': '3/9', '2019': '4/13', '2020': '64/128', '2021': '26/87', '2022': '3/10', '2023': '2/8'}
+
+=== Qullamaggie buys DROPPED by the shape gates (on today's list, off the gated one) ===
+  UCTT   buy 2017-08-29  big=0  label[-]  fails ['rising_avg']
+  SINA   buy 2017-10-02  big=0  label[good]  fails ['higher_lows', 'rising_avg']
+  ANET   buy 2018-03-12  big=0  label[no]  fails ['not_extended']
+  SPLK   buy 2018-05-08  big=0  label[ok, maybe few days ealier]  fails ['no_lower_low', 'not_extended']
+  HFC    buy 2018-07-31  big=0  label[a bit late buy]  fails ['no_lower_low', 'not_extended']
+  ETSY   buy 2018-08-07  big=0  label[-]  fails ['no_lower_low', 'rising_avg']
+  TSLA   buy 2018-08-07  big=0  label[ok, but maybe a few days ealier]  fails ['no_lower_low', 'not_extended', 'tight10']
+  VKTX   buy 2018-08-24  big=0  label[-]  fails ['not_extended']
+  BMA    buy 2019-08-09  big=0  label[ok]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  GGAL   buy 2019-08-09  big=0  label[-]  fails ['rising_avg']
+  EW     buy 2019-08-16  big=0  label[ok]  fails ['no_lower_low']
+  ENPH   buy 2019-09-24  big=0  label[-]  fails ['rising_avg']
+  MIK    buy 2019-10-10  big=0  label[-]  fails ['no_lower_low', 'rising_avg']
+  MIK    buy 2019-10-21  big=0  label[-]  fails ['no_lower_low']
+  MIK    buy 2019-10-22  big=0  label[-]  fails ['no_lower_low']
+  STNE   buy 2019-11-18  big=0  label[no]  fails ['no_lower_low', 'not_extended']
+  AMD    buy 2019-12-12  big=0  label[good]  fails ['no_lower_low']
+  PBYI   buy 2020-01-17  big=0  label[-]  fails ['rising_avg']
+  APT    buy 2020-02-21  big=1  label[-]  fails ['no_lower_low', 'rising_avg']
+  BILI   buy 2020-03-05  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  WORK   buy 2020-03-05  big=0  label[ok]  fails ['higher_lows']
+  ZS     buy 2020-03-24  big=0  label[no]  fails ['not_extended', 'tight10']
+  CODX   buy 2020-04-06  big=0  label[good]  fails ['rising_avg']
+  TSLA   buy 2020-04-14  big=0  label[maybe a few days ealier]  fails ['not_extended', 'tight10']
+  EXEL   buy 2020-04-20  big=0  label[EP]  fails ['not_extended']
+  SHOP   buy 2020-04-20  big=0  label[no, buy point maybe a few days earlier]  fails ['not_extended', 'tight10']
+  INO    buy 2020-04-23  big=0  label[buy few days earlier]  fails ['not_extended', 'tight10']
+  TSLA   buy 2020-04-30  big=0  label[-]  fails ['not_extended']
+  BNTX   buy 2020-05-05  big=0  label[-]  fails ['rising_avg']
+  FSLY   buy 2020-05-07  big=0  label[-]  fails ['higher_lows', 'rising_avg']
+  PDD    buy 2020-05-08  big=1  label[-]  fails ['higher_lows']
+  NVAX   buy 2020-05-12  big=0  label[EP look, day before maybe breakout]  fails ['not_extended']
+  TDOC   buy 2020-05-12  big=0  label[-]  fails ['not_extended']
+  PLNT   buy 2020-05-26  big=0  label[no]  fails ['not_extended', 'tight10']
+  W      buy 2020-05-26  big=0  label[-]  fails ['higher_lows', 'rising_avg']
+  UAL    buy 2020-05-27  big=0  label[no]  fails ['not_extended', 'tight10']
+  AMD    buy 2020-06-09  big=0  label[-]  fails ['rising_avg']
+  MRNA   buy 2020-06-15  big=0  label[-]  fails ['rising_avg']
+  NET    buy 2020-06-15  big=0  label[-]  fails ['no_lower_low']
+  SHOP   buy 2020-06-15  big=1  label[-]  fails ['rising_avg']
+  TWLO   buy 2020-06-15  big=0  label[-]  fails ['rising_avg']
+  APT    buy 2020-06-17  big=1  label[ok]  fails ['not_extended', 'tight10']
+  OKTA   buy 2020-06-17  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  DKNG   buy 2020-06-22  big=0  label[-]  fails ['no_lower_low']
+  ACB    buy 2020-06-23  big=0  label[-]  fails ['rising_avg']
+  MRNA   buy 2020-06-30  big=0  label[-]  fails ['rising_avg']
+  MDB    buy 2020-07-08  big=0  label[-]  fails ['no_lower_low']
+  ROKU   buy 2020-07-09  big=0  label[-]  fails ['no_lower_low']
+  CODX   buy 2020-07-16  big=1  label[-]  fails ['rising_avg']
+  AVLR   buy 2020-07-29  big=0  label[okish but likely no]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  DXCM   buy 2020-07-29  big=0  label[-]  fails ['rising_avg']
+  TDOC   buy 2020-07-30  big=0  label[-]  fails ['rising_avg']
+  PINS   buy 2020-07-31  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  TTD    buy 2020-07-31  big=0  label[-]  fails ['higher_lows', 'rising_avg']
+  WKHS   buy 2020-08-03  big=0  label[-]  fails ['no_lower_low']
+  ZM     buy 2020-08-03  big=0  label[-]  fails ['no_lower_low', 'rising_avg']
+  TWTR   buy 2020-08-05  big=0  label[-]  fails ['higher_lows', 'no_lower_low']
+  BE     buy 2020-08-13  big=1  label[-]  fails ['rising_avg']
+  JD     buy 2020-08-17  big=0  label[-]  fails ['no_lower_low', 'rising_avg']
+  HUYA   buy 2020-08-24  big=0  label[-]  fails ['rising_avg']
+  TTD    buy 2020-08-26  big=0  label[-]  fails ['rising_avg']
+  NIO    buy 2020-09-14  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  SE     buy 2020-09-14  big=0  label[ok]  fails ['higher_lows', 'rising_avg']
+  ESTC   buy 2020-09-16  big=0  label[-]  fails ['rising_avg']
+  SAVE   buy 2020-09-16  big=0  label[-]  fails ['rising_avg']
+  MDB    buy 2020-09-21  big=1  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  TSLA   buy 2020-09-21  big=0  label[good]  fails ['tight10']
+  JD     buy 2020-09-23  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  NVDA   buy 2020-09-25  big=1  label[-]  fails ['rising_avg']
+  NIO    buy 2020-09-29  big=1  label[-]  fails ['no_lower_low', 'rising_avg']
+  TSLA   buy 2020-09-30  big=0  label[-]  fails ['rising_avg']
+  JD     buy 2020-10-29  big=0  label[-]  fails ['no_lower_low']
+  TTD    buy 2020-10-29  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  ENPH   buy 2020-11-05  big=0  label[-]  fails ['rising_avg']
+  SQ     buy 2020-11-06  big=0  label[ok]  fails ['higher_lows', 'rising_avg']
+  BLDP   buy 2020-11-16  big=0  label[-]  fails ['rising_avg']
+  JMIA   buy 2020-11-18  big=1  label[no]  fails ['rising_avg', 'tight10']
+  TSLA   buy 2020-11-18  big=0  label[-]  fails ['rising_avg', 'not_extended']
+  TLRY   buy 2020-12-16  big=0  label[-]  fails ['no_lower_low', 'rising_avg']
+  CCL    buy 2020-12-28  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  NCLH   buy 2020-12-28  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  TLRY   buy 2021-01-04  big=0  label[-]  fails ['no_lower_low', 'rising_avg']
+  SKLZ   buy 2021-01-05  big=1  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  APHA   buy 2021-01-06  big=1  label[-]  fails ['higher_lows', 'rising_avg']
+  BE     buy 2021-01-06  big=1  label[-]  fails ['rising_avg']
+  JWN    buy 2021-01-06  big=0  label[-]  fails ['no_lower_low']
+  M      buy 2021-01-06  big=0  label[ok]  fails ['no_lower_low']
+  SNAP   buy 2021-01-07  big=0  label[-]  fails ['rising_avg']
+  SOLO   buy 2021-01-11  big=0  label[-]  fails ['rising_avg']
+  JMIA   buy 2021-01-12  big=1  label[-]  fails ['higher_lows', 'rising_avg']
+  LYFT   buy 2021-01-12  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  CBAT   buy 2021-01-22  big=0  label[-]  fails ['no_lower_low']
+  SI     buy 2021-01-22  big=1  label[-]  fails ['higher_lows', 'rising_avg']
+  PDD    buy 2021-01-25  big=0  label[-]  fails ['higher_lows']
+  DKNG   buy 2021-01-26  big=0  label[-]  fails ['rising_avg']
+  BTBT   buy 2021-01-28  big=0  label[-]  fails ['no_lower_low', 'rising_avg']
+  PDD    buy 2021-02-02  big=0  label[-]  fails ['rising_avg']
+  SQ     buy 2021-02-03  big=0  label[-]  fails ['higher_lows', 'rising_avg']
+  RIOT   buy 2021-02-08  big=0  label[-]  fails ['no_lower_low']
+  SEDG   buy 2021-02-08  big=0  label[-]  fails ['no_lower_low', 'rising_avg']
+  FUTU   buy 2021-02-09  big=0  label[-]  fails ['not_extended']
+  CBAT   buy 2021-02-16  big=0  label[-]  fails ['rising_avg']
+  TTD    buy 2021-02-19  big=0  label[-]  fails ['no_lower_low']
+  AMC    buy 2021-02-22  big=0  label[ok]  fails ['no_lower_low', 'rising_avg']
+  AMC    buy 2021-02-25  big=0  label[-]  fails ['no_lower_low', 'not_extended']
+  DKNG   buy 2021-02-26  big=0  label[decent]  fails ['higher_lows', 'rising_avg']
+  PENN   buy 2021-03-01  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  RKT    buy 2021-03-01  big=0  label[-]  fails ['higher_lows', 'rising_avg', 'not_extended']
+  APHA   buy 2021-03-02  big=0  label[-]  fails ['rising_avg']
+  TLRY   buy 2021-03-02  big=0  label[-]  fails ['higher_lows', 'rising_avg']
+  FCX    buy 2021-03-11  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  UAL    buy 2021-03-11  big=0  label[good]  fails ['higher_lows']
+  RCL    buy 2021-03-15  big=0  label[good]  fails ['rising_avg']
+  SOS    buy 2021-03-15  big=0  label[-]  fails ['rising_avg']
+  ZKIN   buy 2021-03-15  big=0  label[-]  fails ['rising_avg']
+  APPS   buy 2021-03-22  big=0  label[ok]  fails ['no_lower_low']
+  AAL    buy 2021-03-30  big=0  label[-]  fails ['higher_lows', 'rising_avg']
+  FCX    buy 2021-04-06  big=0  label[ok]  fails ['rising_avg', 'not_extended']
+  RIOT   buy 2021-04-13  big=0  label[-]  fails ['rising_avg']
+  X      buy 2021-04-23  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  CCL    buy 2021-04-26  big=0  label[-]  fails ['rising_avg']
+  SNAP   buy 2021-04-29  big=0  label[-]  fails ['no_lower_low']
+  BILI   buy 2021-06-25  big=0  label[-]  fails ['not_extended']
+  BNTX   buy 2021-07-21  big=0  label[ok]  fails ['no_lower_low', 'not_extended', 'tight10']
+  MSTR   buy 2021-08-05  big=0  label[ok]  fails ['not_extended', 'tight10']
+  UPST   buy 2021-08-12  big=0  label[looks like EP]  fails ['no_lower_low', 'not_extended', 'tight10']
+  AMD    buy 2021-08-23  big=0  label[good]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  SNAP   buy 2021-08-23  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  AMC    buy 2021-09-10  big=0  label[-]  fails ['no_lower_low']
+  GME    buy 2021-09-13  big=0  label[-]  fails ['higher_lows', 'rising_avg']
+  LAC    buy 2021-09-30  big=0  label[okish]  fails ['rising_avg']
+  ANY    buy 2021-10-11  big=0  label[-]  fails ['no_lower_low']
+  MARA   buy 2021-10-11  big=0  label[good]  fails ['no_lower_low', 'not_extended', 'tight10']
+  MSTR   buy 2021-10-11  big=0  label[ok]  fails ['no_lower_low', 'not_extended', 'tight10']
+  CCJ    buy 2021-10-12  big=0  label[-]  fails ['no_lower_low']
+  DVN    buy 2021-11-24  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  SI     buy 2021-11-29  big=0  label[-]  fails ['higher_lows']
+  MARA   buy 2021-11-30  big=0  label[good]  fails ['rising_avg']
+  FCX    buy 2021-12-07  big=0  label[no]  fails ['rising_avg']
+  PFE    buy 2021-12-13  big=0  label[good]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  MU     buy 2021-12-21  big=0  label[ok but EP look]  fails ['rising_avg']
+  FCX    buy 2021-12-27  big=0  label[no]  fails ['not_extended']
+  LHX    buy 2022-04-05  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  X      buy 2022-04-12  big=0  label[-]  fails ['rising_avg']
+  FTNT   buy 2022-04-21  big=0  label[-]  fails ['no_lower_low']
+  LAC    buy 2022-04-21  big=0  label[-]  fails ['higher_lows', 'no_lower_low', 'rising_avg']
+  TSLA   buy 2022-04-21  big=0  label[ok]  fails ['higher_lows', 'rising_avg']
+  FREY   buy 2022-11-15  big=0  label[-]  fails ['no_lower_low', 'not_extended']
+  U      buy 2022-11-15  big=0  label[-]  fails ['higher_lows', 'rising_avg', 'not_extended', 'tight10']
+  PDD    buy 2023-01-05  big=0  label[-]  fails ['higher_lows', 'rising_avg', 'not_extended']
+  FCX    buy 2023-01-06  big=0  label[-]  fails ['no_lower_low', 'not_extended']
+  LI     buy 2023-04-17  big=0  label[-]  fails ['no_lower_low']
+  AI     buy 2023-05-17  big=0  label[-]  fails ['no_lower_low', 'not_extended', 'tight10']
+  DKNG   buy 2023-09-11  big=0  label[-]  fails ['not_extended']
+  GME    buy 2023-12-14  big=0  label[-]  fails ['higher_lows', 'not_extended']
+
+=== his LABELLED Qullamaggie buys, kept or dropped ===
+  ok_or_better: kept 11/39
+     SINA   2017-10-02 [good] dropped by ['higher_lows', 'rising_avg']
+     SRPT   2017-10-02 [ok] KEPT
+     SPLK   2018-05-08 [ok, maybe few days ealier] dropped by ['no_lower_low', 'not_extended']
+     TSLA   2018-08-07 [ok, but maybe a few days ealier] dropped by ['no_lower_low', 'not_extended', 'tight10']
+     BMA    2019-08-09 [ok] dropped by ['higher_lows', 'no_lower_low', 'rising_avg']
+     EW     2019-08-16 [ok] dropped by ['no_lower_low']
+     AMD    2019-12-12 [good] dropped by ['no_lower_low']
+     SE     2019-12-19 [ok] KEPT
+     NVAX   2020-02-24 [good] KEPT
+     WORK   2020-03-05 [ok] dropped by ['higher_lows']
+     CODX   2020-04-06 [good] dropped by ['rising_avg']
+     ZM     2020-04-23 [ok] KEPT
+     APT    2020-06-17 [ok] dropped by ['not_extended', 'tight10']
+     BNTX   2020-06-25 [ok] KEPT
+     LRN    2020-08-05 [good] KEPT
+     SE     2020-09-14 [ok] dropped by ['higher_lows', 'rising_avg']
+     TSLA   2020-09-21 [good] dropped by ['tight10']
+     SQ     2020-11-06 [ok] dropped by ['higher_lows', 'rising_avg']
+     TSLA   2020-11-09 [ok] KEPT
+     M      2021-01-06 [ok] dropped by ['no_lower_low']
+     AMC    2021-02-22 [ok] dropped by ['no_lower_low', 'rising_avg']
+     DKNG   2021-02-26 [decent] dropped by ['higher_lows', 'rising_avg']
+     UAL    2021-03-11 [good] dropped by ['higher_lows']
+     RCL    2021-03-15 [good] dropped by ['rising_avg']
+     APPS   2021-03-22 [ok] dropped by ['no_lower_low']
+     FCX    2021-04-06 [ok] dropped by ['rising_avg', 'not_extended']
+     BNTX   2021-07-21 [ok] dropped by ['no_lower_low', 'not_extended', 'tight10']
+     MSTR   2021-08-05 [ok] dropped by ['not_extended', 'tight10']
+     AMD    2021-08-23 [good] dropped by ['higher_lows', 'no_lower_low', 'rising_avg']
+     BNTX   2021-09-23 [good] KEPT
+     LAC    2021-09-30 [okish] dropped by ['rising_avg']
+     MARA   2021-10-11 [good] dropped by ['no_lower_low', 'not_extended', 'tight10']
+     MSTR   2021-10-11 [ok] dropped by ['no_lower_low', 'not_extended', 'tight10']
+     QS     2021-10-29 [ok] KEPT
+     MARA   2021-11-30 [good] dropped by ['rising_avg']
+     PFE    2021-12-13 [good] dropped by ['higher_lows', 'no_lower_low', 'rising_avg']
+     LMT    2022-04-05 [good] KEPT
+     LMT    2022-04-06 [good] KEPT
+     TSLA   2022-04-21 [ok] dropped by ['higher_lows', 'rising_avg']
+  no_or_ep: kept 3/16
+     ANET   2018-03-12 [no] dropped by ['not_extended']
+     TDOC   2019-10-31 [no] KEPT
+     STNE   2019-11-18 [no] dropped by ['no_lower_low', 'not_extended']
+     ZS     2020-03-24 [no] dropped by ['not_extended', 'tight10']
+     EXEL   2020-04-20 [EP] dropped by ['not_extended']
+     SHOP   2020-04-20 [no, buy point maybe a few days earlier] dropped by ['not_extended', 'tight10']
+     NVAX   2020-05-12 [EP look, day before maybe breakout] dropped by ['not_extended']
+     PLNT   2020-05-26 [no] dropped by ['not_extended', 'tight10']
+     UAL    2020-05-27 [no] dropped by ['not_extended', 'tight10']
+     JMIA   2020-11-18 [no] dropped by ['rising_avg', 'tight10']
+     FEAC   2020-11-30 [no] KEPT
+     UPST   2021-08-12 [looks like EP] dropped by ['no_lower_low', 'not_extended', 'tight10']
+     FCX    2021-12-07 [no] dropped by ['rising_avg']
+     MU     2021-12-21 [ok but EP look] dropped by ['rising_avg']
+     FCX    2021-12-27 [no] dropped by ['not_extended']
+     MDB    2021-12-27 [no] KEPT
+  timing_or_unsure: kept 0/4
+     HFC    2018-07-31 [a bit late buy] dropped by ['no_lower_low', 'not_extended']
+     TSLA   2020-04-14 [maybe a few days ealier] dropped by ['not_extended', 'tight10']
+     INO    2020-04-23 [buy few days earlier] dropped by ['not_extended', 'tight10']
+     AVLR   2020-07-29 [okish but likely no] dropped by ['higher_lows', 'no_lower_low', 'rising_avg']
+
+=== SWEEPS (reported, not used to choose; each row = the full set with ONE number moved) ===
+  SHAPE_HL_RECENT=3: no rejected 16/17 | good/ok kept 7/11 | QM buys kept 113/269 (of 263 on today's list) | big winners 12/26 | his ok-or-better QM 13/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 97/204
+  SHAPE_HL_RECENT=5: no rejected 16/17 | good/ok kept 6/11 | QM buys kept 108/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 94/204
+  SHAPE_HL_RECENT=10: no rejected 16/17 | good/ok kept 4/11 | QM buys kept 73/269 (of 263 on today's list) | big winners 7/26 | his ok-or-better QM 10/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 60/204
+  SHAPE_LOWER_LOW_ADR=0.5: no rejected 16/17 | good/ok kept 6/11 | QM buys kept 118/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 14/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 101/204
+  SHAPE_LOWER_LOW_ADR=1.0: no rejected 16/17 | good/ok kept 6/11 | QM buys kept 108/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 94/204
+  SHAPE_LOWER_LOW_ADR=1.5: no rejected 16/17 | good/ok kept 5/11 | QM buys kept 102/269 (of 263 on today's list) | big winners 10/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 88/204
+  SHAPE_LOWER_LOW_ADR=none: no rejected 16/17 | good/ok kept 4/11 | QM buys kept 81/269 (of 263 on today's list) | big winners 6/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 1/16 | timing/unsure 0/4 | unlabelled 69/204
+  SHAPE_RISING_SESSIONS=3: no rejected 16/17 | good/ok kept 6/11 | QM buys kept 104/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 10/39 | his no/EP QM still kept 2/16 | timing/unsure 0/4 | unlabelled 92/204
+  SHAPE_RISING_SESSIONS=5: no rejected 16/17 | good/ok kept 6/11 | QM buys kept 108/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 94/204
+  SHAPE_RISING_SESSIONS=10: no rejected 15/17 | good/ok kept 4/11 | QM buys kept 112/269 (of 263 on today's list) | big winners 12/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 4/16 | timing/unsure 0/4 | unlabelled 97/204
+  SHAPE_EXTENDED_ADR_MAX=0.5: no rejected 16/17 | good/ok kept 4/11 | QM buys kept 79/269 (of 263 on today's list) | big winners 7/26 | his ok-or-better QM 7/39 | his no/EP QM still kept 2/16 | timing/unsure 0/4 | unlabelled 70/204
+  SHAPE_EXTENDED_ADR_MAX=1.0: no rejected 16/17 | good/ok kept 6/11 | QM buys kept 108/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 94/204
+  SHAPE_EXTENDED_ADR_MAX=1.5: no rejected 15/17 | good/ok kept 6/11 | QM buys kept 115/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 6/16 | timing/unsure 0/4 | unlabelled 98/204
+  SHAPE_EXTENDED_ADR_MAX=2.0: no rejected 15/17 | good/ok kept 6/11 | QM buys kept 117/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 6/16 | timing/unsure 0/4 | unlabelled 100/204
+  SHAPE_TIGHT_ADR_MAX=3.0: no rejected 17/17 | good/ok kept 6/11 | QM buys kept 104/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 7/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 94/204
+  SHAPE_TIGHT_ADR_MAX=4.0: no rejected 16/17 | good/ok kept 6/11 | QM buys kept 108/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 94/204
+  SHAPE_TIGHT_ADR_MAX=5.0: no rejected 16/17 | good/ok kept 6/11 | QM buys kept 109/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 12/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 94/204
+  SHAPE_TIGHT_ADR_MAX=6.0: no rejected 16/17 | good/ok kept 6/11 | QM buys kept 109/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 12/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 94/204
+
+=== each gate ALONE (the existing rules + that one gate) and LEAVE-ONE-OUT ===
+  only higher_lows  : no rejected 6/17 | good/ok kept 9/11 | QM buys kept 216/269 (of 263 on today's list) | big winners 20/26 | his ok-or-better QM 29/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 168/204
+  only no_lower_low : no rejected 4/17 | good/ok kept 8/11 | QM buys kept 195/269 (of 263 on today's list) | big winners 22/26 | his ok-or-better QM 26/39 | his no/EP QM still kept 14/16 | timing/unsure 2/4 | unlabelled 153/204
+  only rising_avg   : no rejected 8/17 | good/ok kept 11/11 | QM buys kept 168/269 (of 263 on today's list) | big winners 13/26 | his ok-or-better QM 25/39 | his no/EP QM still kept 13/16 | timing/unsure 3/4 | unlabelled 127/204
+  only not_extended : no rejected 10/17 | good/ok kept 9/11 | QM buys kept 227/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 31/39 | his no/EP QM still kept 6/16 | timing/unsure 1/4 | unlabelled 189/204
+  only tight10      : no rejected 8/17 | good/ok kept 9/11 | QM buys kept 246/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 32/39 | his no/EP QM still kept 10/16 | timing/unsure 2/4 | unlabelled 202/204
+  without higher_lows  : no rejected 16/17 | good/ok kept 7/11 | QM buys kept 113/269 (of 263 on today's list) | big winners 12/26 | his ok-or-better QM 13/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 97/204
+  without no_lower_low : no rejected 16/17 | good/ok kept 7/11 | QM buys kept 130/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 15/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 112/204
+  without rising_avg   : no rejected 14/17 | good/ok kept 6/11 | QM buys kept 149/269 (of 263 on today's list) | big winners 16/26 | his ok-or-better QM 15/39 | his no/EP QM still kept 5/16 | timing/unsure 0/4 | unlabelled 129/204
+  without not_extended : no rejected 15/17 | good/ok kept 6/11 | QM buys kept 118/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 11/39 | his no/EP QM still kept 7/16 | timing/unsure 0/4 | unlabelled 100/204
+  without tight10      : no rejected 16/17 | good/ok kept 6/11 | QM buys kept 109/269 (of 263 on today's list) | big winners 11/26 | his ok-or-better QM 12/39 | his no/EP QM still kept 3/16 | timing/unsure 0/4 | unlabelled 94/204
+
+##### REVISED SET (not_extended + tight10), regraded labels
+gate set: ['not_extended', 'tight10']  (dropped: ['higher_lows', 'no_lower_low', 'rising_avg'])
+constants: {'SHAPE_HL_RECENT': 5, 'SHAPE_SWING_HALF': 2, 'SHAPE_LOWER_LOW_ADR': 1.0, 'SHAPE_RISING_SESSIONS': 5, 'SHAPE_EXTENDED_ADR_MAX': 1.0, 'SHAPE_TIGHT_ADR_MAX': 4.0}
+
+=== HEADLINE ===
+no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+bars: (1) 17/17 FAIL | (1b) >=80% of 11 PASS | (2) 263/269 + 26/26 FAIL | (2b) >=80% ok-or-better FAIL (77%)
+
+=== (1) HIS LIST GRADES, row by row (n = 29) ===
+night       ticker grade        rank  not_extended tight10       verdict   values
+2026-11-06  IAG    no            145  FAIL         FAIL          rejected  since_bottom 5 | undercut 0 | e10 +2.1% e21 -0.5% | ext +2.10 | spread10 4.93 | existing failed (rs aside) []
+2026-11-06  SIG    no             73  pass         pass          KEPT      since_bottom 13 | undercut 0 | e10 +3.0% e21 +3.1% | ext -0.42 | spread10 3.17 | existing failed (rs aside) []
+2026-11-06  VFC    no            134  FAIL         FAIL          rejected  since_bottom 7 | undercut 0 | e10 +10.6% e21 +8.5% | ext +1.41 | spread10 5.60 | existing failed (rs aside) []
+2026-11-06  PAYS   good            5  pass         pass          KEPT      since_bottom 7 | undercut 0 | e10 +1.0% e21 +0.7% | ext +0.03 | spread10 1.63 | existing failed (rs aside) []
+2026-11-06  APPN   ok             14  pass         pass          KEPT      since_bottom 3 | undercut 1 | e10 +3.1% e21 +4.5% | ext +0.44 | spread10 1.67 | existing failed (rs aside) []
+2026-11-06  HAE    ok             17  pass         pass          KEPT      since_bottom 10 | undercut 0 | e10 +2.0% e21 +2.0% | ext -0.29 | spread10 2.45 | existing failed (rs aside) []
+2026-11-06  PAY    conditional    30  pass         pass          KEPT      since_bottom 31 | undercut 0 | e10 +1.7% e21 +1.0% | ext +0.35 | spread10 2.85 | existing failed (rs aside) []
+2026-11-06  FNKO   no             21  pass         pass          KEPT      since_bottom 0 | undercut 0 | e10 -1.5% e21 -0.2% | ext +0.62 | spread10 1.75 | existing failed (rs aside) []
+2026-11-06  PAR    good          152  FAIL         FAIL          rejected  since_bottom 28 | undercut 0 | e10 +7.0% e21 +5.0% | ext +2.17 | spread10 4.31 | existing failed (rs aside) []
+2026-11-06  RSKD   no             41  pass         pass          KEPT      since_bottom 0 | undercut 0 | e10 -1.9% e21 +0.3% | ext -0.23 | spread10 2.16 | existing failed (rs aside) []
+2026-11-06  PLSE   good           11  pass         pass          KEPT      since_bottom 15 | undercut 0 | e10 +1.7% e21 +1.7% | ext +0.02 | spread10 1.31 | existing failed (rs aside) []
+2026-11-06  BHC    ok            174  FAIL         FAIL          rejected  since_bottom 31 | undercut 1 | e10 +9.1% e21 +8.4% | ext +1.03 | spread10 7.82 | existing failed (rs aside) []
+2026-11-05  EVH    good            9  pass         pass          KEPT      since_bottom 4 | undercut 0 | e10 +0.4% e21 +1.0% | ext +0.13 | spread10 1.87 | existing failed (rs aside) []
+2026-11-05  BILL   good           31  pass         pass          KEPT      since_bottom 27 | undercut 0 | e10 +2.7% e21 +2.3% | ext +0.65 | spread10 2.09 | existing failed (rs aside) []
+2026-11-05  AMPH   good           97  pass         pass          KEPT      since_bottom 9 | undercut 1 | e10 +3.6% e21 +2.5% | ext +0.73 | spread10 3.43 | existing failed (rs aside) []
+2026-11-05  ONT    no            146  FAIL         FAIL          rejected  since_bottom 24 | undercut 0 | e10 +10.2% e21 +5.3% | ext +3.92 | spread10 6.34 | existing failed (rs aside) []
+2026-11-05  CHTR   no            147  FAIL         FAIL          rejected  since_bottom 8 | undercut 3 | e10 +6.8% e21 +2.7% | ext +2.37 | spread10 5.56 | existing failed (rs aside) []
+2026-11-05  OSCR   ok             23  pass         pass          KEPT      since_bottom 30 | undercut 0 | e10 +2.2% e21 +0.8% | ext +0.45 | spread10 2.93 | existing failed (rs aside) []
+2026-11-05  DUOL   no            145  FAIL         FAIL          rejected  since_bottom 2 | undercut 0 | e10 +2.7% e21 +0.6% | ext +1.70 | spread10 4.71 | existing failed (rs aside) []
+2026-11-05  CVLT   no             15  pass         pass          KEPT      since_bottom 7 | undercut 0 | e10 -1.9% e21 +0.2% | ext -0.57 | spread10 1.91 | existing failed (rs aside) []
+2026-11-05  MANE   no              3  pass         pass          KEPT      since_bottom 0 | undercut 1 | e10 -1.2% e21 +1.5% | ext -0.62 | spread10 1.85 | existing failed (rs aside) []
+2026-11-05  PLNT   no            106  FAIL         FAIL          rejected  since_bottom 8 | undercut 0 | e10 +6.2% e21 +5.0% | ext +2.59 | spread10 4.26 | existing failed (rs aside) []
+2026-11-05  ASO    no             93  FAIL         FAIL          rejected  since_bottom 6 | undercut 0 | e10 +5.9% e21 +4.8% | ext +2.50 | spread10 4.50 | existing failed (rs aside) []
+2026-11-05  BLKB   ok             13  pass         pass          KEPT      since_bottom 6 | undercut 0 | e10 +2.7% e21 +3.3% | ext +0.71 | spread10 1.66 | existing failed (rs aside) []
+2026-11-09  MRNA   no             24  FAIL         pass          rejected  since_bottom 9 | undercut 0 | e10 +10.6% e21 +7.4% | ext +1.19 | spread10 2.90 | existing failed (rs aside) []
+2026-11-09  SPCE   no             31  FAIL         pass          rejected  since_bottom 2 | undercut 2 | e10 +1.7% e21 -0.4% | ext +1.48 | spread10 3.23 | existing failed (rs aside) []
+2026-11-09  ABCL   no             36  pass         pass          KEPT      since_bottom 2 | undercut 2 | e10 -1.3% e21 -1.1% | ext +0.44 | spread10 3.08 | existing failed (rs aside) []
+2026-11-09  OUST   no             70  FAIL         FAIL          rejected  since_bottom 11 | undercut 0 | e10 +6.5% e21 +1.0% | ext +2.24 | spread10 4.81 | existing failed (rs aside) []
+2026-11-09  NVAX   no            103  pass         pass          KEPT      since_bottom 9 | undercut 0 | e10 +1.1% e21 -0.7% | ext +0.58 | spread10 1.73 | existing failed (rs aside) []
+
+=== per-gate on his grades: which gate rejects which `no`, which drops which good/ok ===
+  not_extended  rejects 10/17 no ['IAG', 'VFC', 'ONT', 'CHTR', 'DUOL', 'PLNT', 'ASO', 'MRNA', 'SPCE', 'OUST'] (alone: ['MRNA', 'SPCE']) | drops 2/11 good/ok ['PAR(good)', 'BHC(ok)']
+  tight10       rejects  8/17 no ['IAG', 'VFC', 'ONT', 'CHTR', 'DUOL', 'PLNT', 'ASO', 'OUST'] (alone: []) | drops 2/11 good/ok ['PAR(good)', 'BHC(ok)']
+  `no` rows that pass EVERY gate: ['SIG', 'FNKO', 'RSKD', 'CVLT', 'MANE', 'ABCL', 'NVAX']
+  conditional row: [('PAY', 'kept')]
+
+=== (2) QULLAMAGGIE'S BUYS: per-gate miss table (n = 269; 263 on today's list) ===
+gate          | buys it blocks (any) | blocks ALONE | big winners blocked (any) | ok-or-better blocked | no/EP blocked
+  not_extended    36 (14%)          21           1                      8                   10
+  tight10         17 (6%)           2           2                      7                    6
+number of shape gates failing per listed buy: {0: 225, 1: 23, 2: 15}
+kept by year: {'2017': '8/8', '2018': '4/9', '2019': '12/13', '2020': '114/128', '2021': '76/87', '2022': '8/10', '2023': '3/8'}
+
+=== Qullamaggie buys DROPPED by the shape gates (on today's list, off the gated one) ===
+  ANET   buy 2018-03-12  big=0  label[no]  fails ['not_extended']
+  SPLK   buy 2018-05-08  big=0  label[ok, maybe few days ealier]  fails ['not_extended']
+  HFC    buy 2018-07-31  big=0  label[a bit late buy]  fails ['not_extended']
+  TSLA   buy 2018-08-07  big=0  label[ok, but maybe a few days ealier]  fails ['not_extended', 'tight10']
+  VKTX   buy 2018-08-24  big=0  label[-]  fails ['not_extended']
+  STNE   buy 2019-11-18  big=0  label[no]  fails ['not_extended']
+  ZS     buy 2020-03-24  big=0  label[no]  fails ['not_extended', 'tight10']
+  TSLA   buy 2020-04-14  big=0  label[maybe a few days ealier]  fails ['not_extended', 'tight10']
+  EXEL   buy 2020-04-20  big=0  label[EP]  fails ['not_extended']
+  SHOP   buy 2020-04-20  big=0  label[no, buy point maybe a few days earlier]  fails ['not_extended', 'tight10']
+  INO    buy 2020-04-23  big=0  label[buy few days earlier]  fails ['not_extended', 'tight10']
+  TSLA   buy 2020-04-30  big=0  label[-]  fails ['not_extended']
+  NVAX   buy 2020-05-12  big=0  label[EP look, day before maybe breakout]  fails ['not_extended']
+  TDOC   buy 2020-05-12  big=0  label[-]  fails ['not_extended']
+  PLNT   buy 2020-05-26  big=0  label[no]  fails ['not_extended', 'tight10']
+  UAL    buy 2020-05-27  big=0  label[no]  fails ['not_extended', 'tight10']
+  APT    buy 2020-06-17  big=1  label[ok]  fails ['not_extended', 'tight10']
+  TSLA   buy 2020-09-21  big=0  label[good]  fails ['tight10']
+  JMIA   buy 2020-11-18  big=1  label[no]  fails ['tight10']
+  TSLA   buy 2020-11-18  big=0  label[-]  fails ['not_extended']
+  FUTU   buy 2021-02-09  big=0  label[-]  fails ['not_extended']
+  AMC    buy 2021-02-25  big=0  label[-]  fails ['not_extended']
+  RKT    buy 2021-03-01  big=0  label[-]  fails ['not_extended']
+  FCX    buy 2021-04-06  big=0  label[ok]  fails ['not_extended']
+  BILI   buy 2021-06-25  big=0  label[-]  fails ['not_extended']
+  BNTX   buy 2021-07-21  big=0  label[ok]  fails ['not_extended', 'tight10']
+  MSTR   buy 2021-08-05  big=0  label[ok]  fails ['not_extended', 'tight10']
+  UPST   buy 2021-08-12  big=0  label[looks like EP]  fails ['not_extended', 'tight10']
+  MARA   buy 2021-10-11  big=0  label[good]  fails ['not_extended', 'tight10']
+  MSTR   buy 2021-10-11  big=0  label[ok]  fails ['not_extended', 'tight10']
+  FCX    buy 2021-12-27  big=0  label[no]  fails ['not_extended']
+  FREY   buy 2022-11-15  big=0  label[-]  fails ['not_extended']
+  U      buy 2022-11-15  big=0  label[-]  fails ['not_extended', 'tight10']
+  PDD    buy 2023-01-05  big=0  label[-]  fails ['not_extended']
+  FCX    buy 2023-01-06  big=0  label[-]  fails ['not_extended']
+  AI     buy 2023-05-17  big=0  label[-]  fails ['not_extended', 'tight10']
+  DKNG   buy 2023-09-11  big=0  label[-]  fails ['not_extended']
+  GME    buy 2023-12-14  big=0  label[-]  fails ['not_extended']
+
+=== his LABELLED Qullamaggie buys, kept or dropped ===
+  ok_or_better: kept 30/39
+     SINA   2017-10-02 [good] KEPT
+     SRPT   2017-10-02 [ok] KEPT
+     SPLK   2018-05-08 [ok, maybe few days ealier] dropped by ['not_extended']
+     TSLA   2018-08-07 [ok, but maybe a few days ealier] dropped by ['not_extended', 'tight10']
+     BMA    2019-08-09 [ok] KEPT
+     EW     2019-08-16 [ok] KEPT
+     AMD    2019-12-12 [good] KEPT
+     SE     2019-12-19 [ok] KEPT
+     NVAX   2020-02-24 [good] KEPT
+     WORK   2020-03-05 [ok] KEPT
+     CODX   2020-04-06 [good] KEPT
+     ZM     2020-04-23 [ok] KEPT
+     APT    2020-06-17 [ok] dropped by ['not_extended', 'tight10']
+     BNTX   2020-06-25 [ok] KEPT
+     LRN    2020-08-05 [good] KEPT
+     SE     2020-09-14 [ok] KEPT
+     TSLA   2020-09-21 [good] dropped by ['tight10']
+     SQ     2020-11-06 [ok] KEPT
+     TSLA   2020-11-09 [ok] KEPT
+     M      2021-01-06 [ok] KEPT
+     AMC    2021-02-22 [ok] KEPT
+     DKNG   2021-02-26 [decent] KEPT
+     UAL    2021-03-11 [good] KEPT
+     RCL    2021-03-15 [good] KEPT
+     APPS   2021-03-22 [ok] KEPT
+     FCX    2021-04-06 [ok] dropped by ['not_extended']
+     BNTX   2021-07-21 [ok] dropped by ['not_extended', 'tight10']
+     MSTR   2021-08-05 [ok] dropped by ['not_extended', 'tight10']
+     AMD    2021-08-23 [good] KEPT
+     BNTX   2021-09-23 [good] KEPT
+     LAC    2021-09-30 [okish] KEPT
+     MARA   2021-10-11 [good] dropped by ['not_extended', 'tight10']
+     MSTR   2021-10-11 [ok] dropped by ['not_extended', 'tight10']
+     QS     2021-10-29 [ok] KEPT
+     MARA   2021-11-30 [good] KEPT
+     PFE    2021-12-13 [good] KEPT
+     LMT    2022-04-05 [good] KEPT
+     LMT    2022-04-06 [good] KEPT
+     TSLA   2022-04-21 [ok] KEPT
+  no_or_ep: kept 5/16
+     ANET   2018-03-12 [no] dropped by ['not_extended']
+     TDOC   2019-10-31 [no] KEPT
+     STNE   2019-11-18 [no] dropped by ['not_extended']
+     ZS     2020-03-24 [no] dropped by ['not_extended', 'tight10']
+     EXEL   2020-04-20 [EP] dropped by ['not_extended']
+     SHOP   2020-04-20 [no, buy point maybe a few days earlier] dropped by ['not_extended', 'tight10']
+     NVAX   2020-05-12 [EP look, day before maybe breakout] dropped by ['not_extended']
+     PLNT   2020-05-26 [no] dropped by ['not_extended', 'tight10']
+     UAL    2020-05-27 [no] dropped by ['not_extended', 'tight10']
+     JMIA   2020-11-18 [no] dropped by ['tight10']
+     FEAC   2020-11-30 [no] KEPT
+     UPST   2021-08-12 [looks like EP] dropped by ['not_extended', 'tight10']
+     FCX    2021-12-07 [no] KEPT
+     MU     2021-12-21 [ok but EP look] KEPT
+     FCX    2021-12-27 [no] dropped by ['not_extended']
+     MDB    2021-12-27 [no] KEPT
+  timing_or_unsure: kept 1/4
+     HFC    2018-07-31 [a bit late buy] dropped by ['not_extended']
+     TSLA   2020-04-14 [maybe a few days ealier] dropped by ['not_extended', 'tight10']
+     INO    2020-04-23 [buy few days earlier] dropped by ['not_extended', 'tight10']
+     AVLR   2020-07-29 [okish but likely no] KEPT
+
+=== SWEEPS (reported, not used to choose; each row = the full set with ONE number moved) ===
+  SHAPE_HL_RECENT=3: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_HL_RECENT=5: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_HL_RECENT=10: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_LOWER_LOW_ADR=0.5: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_LOWER_LOW_ADR=1.0: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_LOWER_LOW_ADR=1.5: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_LOWER_LOW_ADR=none: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_RISING_SESSIONS=3: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_RISING_SESSIONS=5: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_RISING_SESSIONS=10: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_EXTENDED_ADR_MAX=0.5: no rejected 12/17 | good/ok kept 6/11 | QM buys kept 180/269 (of 263 on today's list) | big winners 18/26 | his ok-or-better QM 23/39 | his no/EP QM still kept 4/16 | timing/unsure 1/4 | unlabelled 152/204
+  SHAPE_EXTENDED_ADR_MAX=1.0: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_EXTENDED_ADR_MAX=1.5: no rejected 8/17 | good/ok kept 9/11 | QM buys kept 241/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 32/39 | his no/EP QM still kept 9/16 | timing/unsure 2/4 | unlabelled 198/204
+  SHAPE_EXTENDED_ADR_MAX=2.0: no rejected 8/17 | good/ok kept 9/11 | QM buys kept 245/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 32/39 | his no/EP QM still kept 9/16 | timing/unsure 2/4 | unlabelled 202/204
+  SHAPE_TIGHT_ADR_MAX=3.0: no rejected 12/17 | good/ok kept 8/11 | QM buys kept 216/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 21/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_TIGHT_ADR_MAX=4.0: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 225/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 30/39 | his no/EP QM still kept 5/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_TIGHT_ADR_MAX=5.0: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 227/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 31/39 | his no/EP QM still kept 6/16 | timing/unsure 1/4 | unlabelled 189/204
+  SHAPE_TIGHT_ADR_MAX=6.0: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 227/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 31/39 | his no/EP QM still kept 6/16 | timing/unsure 1/4 | unlabelled 189/204
+
+=== each gate ALONE (the existing rules + that one gate) and LEAVE-ONE-OUT ===
+  only not_extended : no rejected 10/17 | good/ok kept 9/11 | QM buys kept 227/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 31/39 | his no/EP QM still kept 6/16 | timing/unsure 1/4 | unlabelled 189/204
+  only tight10      : no rejected 8/17 | good/ok kept 9/11 | QM buys kept 246/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 32/39 | his no/EP QM still kept 10/16 | timing/unsure 2/4 | unlabelled 202/204
+  without not_extended : no rejected 8/17 | good/ok kept 9/11 | QM buys kept 246/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 32/39 | his no/EP QM still kept 10/16 | timing/unsure 2/4 | unlabelled 202/204
+  without tight10      : no rejected 10/17 | good/ok kept 9/11 | QM buys kept 227/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 31/39 | his no/EP QM still kept 6/16 | timing/unsure 1/4 | unlabelled 189/204

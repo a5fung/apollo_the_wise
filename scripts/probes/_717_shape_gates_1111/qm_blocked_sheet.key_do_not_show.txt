@@ -1,0 +1,13 @@
+letter|sym|his buy day E|big winner|his label|drawn for|fails|base
+A|LHX|2022-04-05|0|-|drawn for higher_lows|fails higher_lows,no_lower_low,rising_avg|base 20 sessions, bottom 4 sessions before D
+B|CCJ|2021-10-12|0|-|drawn for no_lower_low|fails no_lower_low|base 20 sessions, bottom 11 sessions before D
+C|SE|2020-09-14|0|ok|drawn for higher_lows|fails higher_lows,rising_avg|base 11 sessions, bottom 3 sessions before D
+D|RKT|2021-03-01|0|-|drawn for rising_avg|fails higher_lows,rising_avg,not_extended|base 21 sessions, bottom 3 sessions before D
+E|TDOC|2020-07-30|0|-|drawn for rising_avg|fails rising_avg|base 12 sessions, bottom 10 sessions before D
+F|AVLR|2020-07-29|0|okish but likely no|drawn for no_lower_low|fails higher_lows,no_lower_low,rising_avg|base 18 sessions, bottom 2 sessions before D
+G|AMD|2021-08-23|0|good|drawn for rising_avg|fails higher_lows,no_lower_low,rising_avg|base 12 sessions, bottom 1 sessions before D
+H|JMIA|2021-01-12|1|-|drawn for higher_lows|fails higher_lows,rising_avg|base 11 sessions, bottom 3 sessions before D
+I|AMD|2019-12-12|0|good|drawn for no_lower_low|fails no_lower_low|base 15 sessions, bottom 6 sessions before D
+J|NIO|2020-09-14|0|-|drawn for higher_lows|fails higher_lows,no_lower_low,rising_avg|base 11 sessions, bottom 4 sessions before D
+K|BNTX|2020-05-05|0|-|drawn for rising_avg|fails rising_avg|base 32 sessions, bottom 12 sessions before D
+L|APPS|2021-03-22|0|ok|drawn for no_lower_low|fails no_lower_low|base 27 sessions, bottom 9 sessions before D

@@ -211,3 +211,62 @@ What it means:
 - **DoD (3), the bought-names sheet:** the renderer is ready (`11_render_bought_sheet.py`); it needs the newest
   night's list and bars from prod (`10_sheet_latest_list.sql`, read-only) — no 2026 bars for a whole list night exist
   locally.
+
+---
+# ROUND 2 (2026-11-11, after his regrade) — "stick with qullamaggie first"
+
+## What changed
+- His words on the contrast sheet: *"on second look the charts on first line can be interpreted as not making higher
+  lows, what's fine, stick with qullamaggie first. On ABCL, i drew lines on the chart, it's clearly not making higher
+  lows."* RSKD, FNKO, MANE, CVLT, IAG are now `no`: n = 29 graded = 17 `no`, 11 good / ok, 1 conditional.
+- The binding bar is now Qullamaggie's own buys (n = 269; 263 on today's list; 26 big winners).
+
+## Re-score of the two earlier sets on the new labels (`03_score_regraded.out`)
+| Set | `no` rejected (n = 17) | good / ok kept (n = 11) | Qullamaggie buys kept (n = 269) | big winners (n = 26) |
+|---|---|---|---|---|
+| First (5 gates) | 16 (SIG passes) | 6 | 108 | 11 |
+| Revised (`not_extended` + `tight10`) | 10 | 9 | 225 | 24 |
+- `rising_avg` now agrees with his grades (rejects 8 `no`, drops 0 good / ok) — but it blocks 95 of Qullamaggie's 263.
+
+## Diagnosis — why the first structure gates block Qullamaggie's buys (`04_diagnose.out`, `qm_blocked_sheet.png`)
+- **The pole and the base are found correctly** (12 blocked buys drawn outcome-blind: the pole top is the visible peak
+  on all 12). The lookback is not the defect.
+- **He buys the turn of a short pullback.** On his 263 listed buys the base's lowest low is a median 10 sessions old,
+  but 3 or fewer sessions old on 10% of them and 6 or fewer on 25% — `higher_lows` (the low at least 5 sessions old)
+  rejects exactly those. The night before he buys, the pullback is often still in progress.
+- **The 10-day EMA dips inside every pullback.** `rising_avg` asks both EMAs to be higher than 5 sessions ago; the
+  10-day is lower on about a third of his buys (25th percentile -0.11 daily ranges) while the 21-day is still rising
+  (median +0.27). A 5-session change of the 10-day measures the pullback itself, not the trend.
+- **`no_lower_low`** fires on any volatile base that pauses once on the way to its low (68 of 263).
+- **What his buys never do** (the measures with a hard edge on all 263): none closed above the pole top the night
+  before (max -0.08 daily ranges); only 8 had the 21-day EMA below its value 5, 10 AND 20 sessions earlier; only 3 had
+  the 21-day EMA more than one daily range under the 50-day; only 4 made the base's lowest low on the night itself.
+- **Seven of his 17 `no` sit INSIDE Qullamaggie's night-before range on every measure tried** (SIG, DUOL, CVLT, OUST
+  fully; RSKD, MANE, FNKO only by the low-made-today rule): the price of rejecting each is in `05_explore_rules.out`.
+
+## AMENDMENT 2 (2026-11-11; written BEFORE its score; ONE score)
+In-sample, stated plainly: the measures and numbers below were chosen after looking at both populations
+(`04_diagnose.out`, `05_explore_rules.out`). Each number sits at the edge of QULLAMAGGIE'S buys (the 11-02 backward
+method), not at the edge of his `no` charts. The out-of-sample check is DoD (3), the bought-names sheet.
+
+Replaces the first five gates with four (`breakout_v1.SHAPE_GATES_V2`; bars <= D):
+| # | Gate | Passes when | His shape | Why this number |
+|---|---|---|---|---|
+| V1 | `in_base` | close(D) <= the pole top's high | not extended ("price already well above its base") | none of his 263 listed buys closed above it |
+| V2 | `ema21_not_falling` | the EMA21 is NOT lower than 5, 10 AND 20 sessions earlier (all three) | surfing a RISING average; ABCL's falling channel | no number: a sign at three scales; 8 of 263 fail |
+| V3 | `ema21_vs_sma50` | (EMA21 / SMA50 - 1) / ADR20 >= -1.0 | the averages stacked, not rolled over | 3 of 263 fail; his lowest is -1.66 |
+| V4 | `low_not_today` | the base's lowest low is not made on D itself | higher lows (a lower low on the list night) | 4 of 263 fail (1 big winner) |
+
+Bars for amendment 2 (fixed now):
+| # | Check | Bar | Expected from the exploration |
+|---|---|---|---|
+| (1) | his `no` rejected (n = 17) | 17 | **FAIL at 13** — SIG, DUOL, CVLT, OUST pass |
+| (1b) | his good / ok kept (n = 11) | >= 9 | 9 (PAR, BHC dropped by V1) |
+| (2) | Qullamaggie's buys kept (n = 263 listed) | the stated 263 and 26 of 26; "near" = >= 250 and >= 25 | ~249-250, 25 of 26 |
+- Why not add gates for the last four: on these measures each costs Qullamaggie's buys — SIG by distance above the
+  50-day: 16 of 263 (1 big winner); DUOL and OUST by more than 1.5 daily ranges above the 10-day EMA: 16; CVLT by a
+  falling 10-day with the close under it: 17. With all of them, about 55 of 263 go. "Qullamaggie first" is read as:
+  do not pay that without his word.
+- Plateau check declared: V1's limit swept 0 / 0.25 / 0.5 / 1.0 and V3's -1.5 .. 0, reported with the score.
+- Step 4 rule (the coordinator's): enforce only if every bar passes. (1) is expected to fail, so the expected outcome
+  is NOTHING ENFORCED and a priced fork for the operator.
