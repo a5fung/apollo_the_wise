@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""#717 step 2b: (1) the circularity control — the High tier WITHOUT the two rating pieces that lean on gates under test;
+
+
+RECORD: run at 16c12402 or earlier — it reads `breakout_v1`'s list constants as they were BEFORE the 2026-11-11 initial
+rule set was wired, and does not reproduce on a later commit."""#717 step 2b: (1) the circularity control — the High tier WITHOUT the two rating pieces that lean on gates under test;
 (2) can a different measure of the run let the High buys the prior-move gate drops back in WITHOUT his 6 NOs?
 Candidate: the 6-month run-up the list already computes for its order score (`breakout_v1.runup6m_at`).
 

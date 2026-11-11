@@ -5,6 +5,8 @@
 WHAT IT DOES. One execution-owned job, every minute 09:35-15:55 ET mon-fri (`run_breakout_v1_entry_tick`), for each
 name on LAST NIGHT's list (`mi_breakout_v1_list`, scan_date = the previous session):
   * the 5-minute opening range from today's 09:30-09:34 minute bars: ORH5 / ORL5, `level = max(ORH5, list level)`
+    — since the 2026-11-11 initial rule set (pending his sign-off) the list level is the RANGE HIGH and the
+    list's volume bar the 20-session mean; this module reads the row's values and did not change;
     (`consolidation_breakout._entry_one`'s `orh5`); no bar at all in those five minutes = the named abstain
     `no_opening_range_minutes`;
   * F1 (RULED): the buy is only PLACED, and only KEPT live, while the volume so far (through the last completed

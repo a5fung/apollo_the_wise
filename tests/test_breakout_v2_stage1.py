@@ -88,12 +88,14 @@ def test_every_list_constant_is_the_signed_off_spec():
     assert bv.RS_MIN == 35.0                                     # rule 2 (his buys' lowest 35.3)
     assert bv.ADR_MIN == 0.021 and bv.PINNED_ADR_MAX == 0.01      # rule 3 + his "both" pinned-deal gate
     assert bv.BASE_DEPTH_ADR_MIN == 1.511376833908041            # rule 4, his good LRN 2020-08-05
-    assert bv.BASE_DEPTH_ADR_MAX == 8.979719460898997            # rule 4, backward/12_final_rules.json
-    assert bv.PRIOR_MOVE_MIN == 0.3213536987121892               # rule 5, backward/12_final_rules.json
-    assert bv.EMA_SPAN == 21 and bv.EMA21_ADR_MIN == -0.6335      # rule 6, pinned at TSLA 2022-04-21
+    # 2026-11-11 INITIAL RULE SET (pending his sign-off before paper; docs/analysis/cb_initial_rules_2026-11-11.md):
+    assert bv.BASE_DEPTH_ADR_MAX == 11.0                         # was 8.9797 (HEXO 2020-08-13 is 10.8)
+    assert bv.PRIOR_MOVE_MIN == 0.20                             # was 0.32135 (PBR 2019-10-22 is 21%)
+    assert bv.EMA_SPAN == 21 and bv.EMA21_ADR_MIN == -0.9         # was -0.6335 (NVAX 2021-04-13 is -0.85)
+    assert (bv.RANGE_LOOKBACK, bv.RANGE_MIN_LEN, bv.RANGE_GIVE_BACK, bv.RANGE_RUN_LOOKBACK, bv.RANGE_TOL_SESSIONS) == (126, 10, 0.5, 60, 20)
     assert bv.SMA_SESSIONS == 50                                 # rule 7
     assert (bv.MIN_PRICE, bv.MIN_DOLLAR_VOL, bv.MIN_BARS) == (2.0, 5_000_000.0, 86)   # rule 1 unchanged
-    assert (bv.VOL_X, bv.VOL_WINDOW, bv.RECENT) == (1.2, 10, 5)  # §3: 1.2x the last 10 sessions; the 5-day level
+    assert (bv.VOL_X, bv.VOL_WINDOW, bv.RECENT) == (1.0, 20, 5)  # 2026-11-11: the 20-session mean (was 1.2x the last 10); the 5-day high is telemetry
     assert (bv.RUNUP6M_SESSIONS, bv.RUNUP6M_LOW_SESSIONS, bv.SPREAD_SESSIONS) == (126, 63, 10)   # §2
     assert bl.MESSAGE_TOP_N == 10 and bl.HISTORY_SESSIONS >= 126 + 63
     # the forward shadow's shared constants are NOT the list's and did not move
@@ -101,24 +103,31 @@ def test_every_list_constant_is_the_signed_off_spec():
 
 
 def test_the_gate_list_is_the_rebuilt_rules_and_the_four_removed_gates_are_gone():
-    assert bv.GATES == ("history", "universe", "pinned", "adr", "rs", "prior_move", "base_depth", "ema21", "sma50")
+    # 2026-11-11 initial rule set: the 50-day is no longer a gate; `range` (a range to buy the break of) is
+    assert bv.GATES == ("history", "universe", "pinned", "adr", "rs", "prior_move", "base_depth", "ema21", "range")
     for gone in ("higher_lows", "surf", "tightening", "breakdown"):
         assert gone not in bv.GATES
         assert not hasattr(bv, "surf_run")
 
 
 # ── THE SCORECARD ─────────────────────────────────────────────────────────────────────────────────────────────────
-def test_the_scorecard_263_of_his_269_buys_on_the_list_26_of_26_big_winners_the_6_off_are_his_6_nos(scorecard):
+def test_the_scorecard_under_the_initial_rule_set_190_of_269_listed_and_every_one_off_lacks_only_a_range(scorecard):
+    """2026-11-11 initial rule set (PENDING HIS SIGN-OFF). The loosened gates drop NONE of Qullamaggie's 269 dated buys
+    (his 6 NOs — YPF, W, DOCU x2, SQM, MRNA — pass them now: his 11-11 ruling, Qullamaggie's buys are ground truth).
+    The new `range` gate is the only thing that leaves a buy off: 79 had no range of 10+ sessions holding its gains the
+    night before, 6 of the 26 big winners among them. THE KNOWN COST of buying only range breaks, pinned by name so it
+    cannot drift silently; the 2026-11-02 scorecard was 263 / 26 of 26."""
     assert len(scorecard) == 269
     on = [r for r, _, _, g in scorecard if g["ok"]]
-    assert len(on) == 263
-    big = [r for r, _, _, _ in scorecard if r["big_winner"] == "1"]
-    assert len(big) == 26 and all(g["ok"] for r, _, _, g in scorecard if r["big_winner"] == "1")
-    off = {_key(r): g["failed"] for r, _, _, g in scorecard if not g["ok"]}
-    assert off == HIS_SIX_NOS
-    # per row, the live code equals the research result the fixture recorded (41_check_fixture.py: 0 mismatches)
-    mism = [_key(r) for r, _, _, g in scorecard if int(g["ok"]) != int(r["on_rebuilt_list"])]
-    assert mism == []
+    assert len(on) == 190
+    off = [g["failed"] for _, _, _, g in scorecard if not g["ok"]]
+    assert len(off) == 79 and all(v == ["range"] for v in off)
+    assert all(g["gates"][k]["pass"] for _, _, _, g in scorecard for k in bv.GATES if k != "range")
+    big_off = {_key(r) for r, _, _, g in scorecard if r["big_winner"] == "1" and not g["ok"]}
+    assert big_off == {("APT", "2020-06-17"), ("MDB", "2020-09-21"), ("JMIA", "2020-11-18"), ("SKLZ", "2021-01-05"),
+                       ("OSTK", "2021-01-22"), ("QS", "2021-10-29")}
+    # the level of every listed buy is its lowest qualifying range high, never the 5-day high by construction
+    assert all(g["level"] == g["gates"]["range"]["value"]["level"] for _, _, _, g in scorecard if g["ok"])
 
 
 def test_the_16_known_non_setups_stay_on_the_list_as_the_committed_negatives(scorecard):
@@ -126,10 +135,13 @@ def test_the_16_known_non_setups_stay_on_the_list_as_the_committed_negatives(sco
     the next rule is judged on. Derived from the fixture's labels (no / EP), not only hand-listed."""
     def non_setup(label):
         return label.startswith("no") or "EP" in label
-    derived = {_key(r) for r, _, _, g in scorecard if g["ok"] and non_setup(r["his_label"])}
-    assert derived == KNOWN_NON_SETUPS and len(KNOWN_NON_SETUPS) == 16
-    off_labels = {_key(r): r["his_label"] for r, _, _, g in scorecard if not g["ok"]}
-    assert all(non_setup(v) for v in off_labels.values())          # every one left off is one of his NOs
+    derived = {_key(r) for r, _, _, g in scorecard if non_setup(r["his_label"]) and all(
+        g["gates"][k]["pass"] for k in bv.GATES if k != "range")}
+    # 2026-11-11: his grades are a report column, not a bar. The loosened gates keep all 16 plus his former 6 NOs;
+    # the `range` gate then leaves 4 of the 16 listed (the rest had no range to break that night).
+    assert KNOWN_NON_SETUPS <= derived and len(KNOWN_NON_SETUPS) == 16
+    listed = {_key(r) for r, _, _, g in scorecard if g["ok"] and non_setup(r["his_label"])}
+    assert listed == {("FCX", "2021-12-07"), ("MU", "2021-12-21"), ("NVAX", "2020-05-12"), ("PLNT", "2020-05-26")}
 
 
 def test_the_knife_edges_the_rules_were_pinned_on(scorecard):
@@ -138,15 +150,16 @@ def test_the_knife_edges_the_rules_were_pinned_on(scorecard):
     row = {_key(r): g for r, _, _, g in scorecard}
     tsla = row[("TSLA", "2022-04-21")]["gates"]["ema21"]
     assert tsla["pass"] is True and tsla["value"]["vs_ema21_adr"] == pytest.approx(-0.6334871453264559, abs=1e-12)
-    assert -0.6335 <= tsla["value"]["vs_ema21_adr"] < -0.63
+    assert bv.EMA21_ADR_MIN <= -0.6335 <= tsla["value"]["vs_ema21_adr"] < -0.63   # the 11-02 knife edge, inside the 11-11 line
     lrn = row[("LRN", "2020-08-05")]["gates"]["base_depth"]
     assert lrn["pass"] is True and lrn["value"]["depth_adr"] == pytest.approx(bv.BASE_DEPTH_ADR_MIN, abs=1e-12)
 
 
-def test_mtw_1030_v1s_first_paper_buy_is_off_on_its_run_up_alone():
-    """MTW (his 'no setup', 11-02): the live 10-30 list row carried prior move 0.30789 and rs_best 98.6
-    (`scripts/probes/_mtw_1102/q1.out`). Under the rebuilt rules it passes the 2.1% floor (4.06%) and fails ONLY the
-    32.1% run-up — under the old code it failed the 4.26% floor instead."""
+def test_mtw_1030_v1s_first_paper_buy_is_back_on_under_the_initial_rule_set():
+    """MTW (his 'no setup', 11-02): prior move 0.30789, rs_best 98.6 (`scripts/probes/_mtw_1102/q1.out`). The 11-02
+    rebuild left it off on its 32.1% run-up alone. Under the 2026-11-11 initial rule set (prior move >= 20%, his grades
+    a report column only) it is LISTED again, with a range high of 23.875 to buy through — a KNOWN consequence of
+    loosening to keep every Qullamaggie buy, pinned here so it is seen, and stated in the SSoT change log."""
     rr = list(csv.DictReader(open(FX / "mtw_bars.csv")))
     b = cb.daily_bars_from_arrays([date.fromisoformat(r["trade_date"]) for r in rr],
                                   *[[float(r[k]) for r in rr] for k in ("open_price", "high_price", "low_price",
@@ -154,8 +167,8 @@ def test_mtw_1030_v1s_first_paper_buy_is_off_on_its_run_up_alone():
     D = len(b) - 1
     assert b.dates[D] == date(2026, 10, 30)
     g = bv.v1_gates(b, D, rs_best=98.6)
-    assert g["ok"] is False and g["failed"] == ["prior_move"]
-    assert round(g["prior_move"], 5) == 0.30789 and g["pole_date"] == "2026-10-06"
+    assert g["ok"] is True and g["failed"] == [] and g["level"] == 23.875 and g["gates"]["range"]["value"]["len"] == 18
+    assert round(g["prior_move"], 5) == 0.30789 < 0.3213536987121892 and g["pole_date"] == "2026-10-06"
     assert round(g["adr20"], 4) == 0.0406
 
 
@@ -175,7 +188,7 @@ def test_the_order_inputs_equal_the_research_formula_on_all_269_series(scorecard
         assert oi["spread10_adr"] == pytest.approx(c10, rel=1e-12), _key(r)
 
 
-def test_the_era_b_buys_read_as_stage0_printed_and_the_10_day_bar_fires_11_of_18(scorecard):
+def test_the_era_b_buys_read_as_stage0_printed_on_the_10_day_bar_11_of_18(scorecard):
     """stage0/s0.txt (blind-recounted): each era-B buy's 6-month move, it in daily ranges, the last-10-close spread,
     its buy-day volume vs the 10-day average and whether the NEW bar fires — 11 of the 18. GME 2023-12-14 fired on the
     old 50-day bar (1.69x) and does not on the 10-day (0.86x): the bar really changed."""
@@ -186,27 +199,29 @@ def test_the_era_b_buys_read_as_stage0_printed_and_the_10_day_bar_fires_11_of_18
             continue
         seen += 1
         oi = bv.order_inputs(b, D, g["adr20"])
-        t = bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)
+        # stage 0's trigger: the 5-day high and 1.2x the last 10 sessions (both telemetry since 2026-11-11)
+        t = bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])},
+                                  dict(g, ok=True, level=g["level5"], vol_bar=1.2 * g["vol10"]))
         got = (f"{oi['runup6m']:.0%}", f"{oi['runup6m_adr']:.1f}", f"{oi['spread10_adr']:.1f}",
                f"{float(b.v[D + 1]) / g['vol10']:.2f}", t["fired"])
         assert got == STAGE0_ERA_B[k], k
         fired += t["fired"]
         if k == ("GME", "2023-12-14"):
-            assert float(b.v[D + 1]) >= bv.VOL_X * g["vol50"] and t["volume_pass"] is False
+            assert float(b.v[D + 1]) >= 1.2 * g["vol50"] and t["volume_pass"] is False
     assert seen == 18 and fired == 11
 
 
-def test_the_volume_bar_is_1_2x_the_mean_of_the_last_10_sessions_to_d():
+def test_the_volume_bar_is_the_mean_of_the_last_20_sessions_to_d():
     n = 120
     days = [date(2024, 1, 1) + timedelta(days=i) for i in range(n)]
     c = np.linspace(10.0, 14.0, n)
-    v = np.concatenate([np.full(n - 10, 5_000_000.0), np.full(10, 1_000_000.0)])   # a heavy run-up, a quiet base
+    v = np.concatenate([np.full(n - 10, 5_000_000.0), np.full(10, 1_000_000.0)])   # a heavy run-up, a quiet last 10
     b = cb.DailyBars(dates=days, o=c.copy(), h=c * 1.03, l=c * 0.97, c=c, v=v)
     g = bv.v1_gates(b, n - 1, rs_best=99.0)
-    assert g["vol10"] == 1_000_000.0 and g["vol_bar"] == pytest.approx(1_200_000.0)
+    assert g["vol10"] == 1_000_000.0 and g["vol_bar"] == pytest.approx(3_000_000.0)   # (10 x 5M + 10 x 1M) / 20
     assert g["vol50"] == pytest.approx((40 * 5_000_000.0 + 10 * 1_000_000.0) / 50)     # telemetry only
-    t = bv.breakout_triggered({"h": 1e9, "v": 1_200_000.0}, dict(g, ok=True))
-    assert t["volume_pass"] is True and bv.breakout_triggered({"h": 1e9, "v": 1_199_999.0}, g)["volume_pass"] is False
+    t = bv.breakout_triggered({"h": 1e9, "v": 3_000_000.0}, dict(g, ok=True))
+    assert t["volume_pass"] is True and bv.breakout_triggered({"h": 1e9, "v": 2_999_999.0}, g)["volume_pass"] is False
 
 
 def test_runup6m_reads_only_bars_up_to_d_and_the_low_at_most_63_sessions_before_the_high():

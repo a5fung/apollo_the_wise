@@ -9,6 +9,16 @@ nothing on its own — the nightly list (`breakout_v1_list.py`) calls it. The ac
 (`tests/test_breakout_v2_stage1.py` on `tests/fixtures/qm_breakout_scorecard/`): 263 of Qullamaggie's 269 dated
 breakout buys on the list the night before, 26 of 26 big winners, the 6 off exactly his 6 NOs.
 
+INITIAL RULE SET 2026-11-11 (PENDING HIS SIGN-OFF BEFORE PAPER; `docs/analysis/cb_initial_rules_2026-11-11.md`, his
+"we are trying to buy like qullamaggie ... buy his setups period"): built on the 84 high-confidence Qullamaggie buys
+(`docs/analysis/cb_qm_buy_confidence_2026-11-11.md`). It SUPERSEDES the lines below where they differ:
+  prior_move >= 20% (was 32.1%) · base_depth 1.51-11 daily ranges (was -8.98) · ema21 >= -0.9 (was -0.6335) ·
+  sma50 NO LONGER A GATE (still measured, `gates["sma50"]`, telemetry) · NEW gate `range`: a qualifying range exists
+  (`range_levels`: 10+ sessions counting to E, gives back no more than half its run) · the LEVEL = the lowest
+  qualifying RANGE HIGH (was the 5-day high, kept as `level5`) · the VOLUME BAR = the mean volume of the 20 sessions
+  ending D (was 1.2 x the last 10; `vol10` kept as telemetry) · on E the close must also be above the level when the
+  bar carries one. The $2 / $5M / ADR / 86-session floors are unchanged (they cost 4 of the 84: BNGO, INO, HEXO, PLTR).
+
 THE LIST RULES, at the watch night D (every measure on bars <= D; the breakout day is E = D + 1):
   history    >= 86 consecutive sessions ending D (the data guard, unchanged)
   universe   RAW close(D) >= $2 and the 20-session median dollar volume ending D >= $5M (adjusted close x volume,
@@ -68,17 +78,18 @@ RS_MIN = 35.0
 RS_HORIZONS = cb.RS_HORIZONS         # (21, 63, 126)
 # rule 5: the run-up into the pole (v1's prior move) >= 32.1% — backward/12_final_rules.json step 3 (the 4th smallest
 # of the 162 fit buys); it dropped only his NOs (W, DOCU x2, SQM). The list's own; `cb.PRIOR_MOVE_MIN` (0.30) stays.
-PRIOR_MOVE_MIN = 0.3213536987121892
+PRIOR_MOVE_MIN = 0.20                # 2026-11-11 initial rule set (was 0.3213536987121892): the lowest High-tier buy is 21% (PBR)
 POLE_LOOKBACK = cb.POLE_LOOKBACK     # 40: pole low = min low over [P-40, P]
 BASE_MIN = cb.BASE_MIN_SESSIONS      # 10
 BASE_MAX = cb.BASE_MAX_SESSIONS      # 45
 RECENT = 5                           # the level = the highest high of the last 5 sessions
 ADR_WINDOW = 20
-VOL_X = 1.2
+VOL_X = 1.0                          # 2026-11-11 initial rule set (was 1.2): volume above the 20-session average
 # His ruling 2026-11-02 ("Yes"): the volume bar = 1.2 x the mean volume of the LAST 10 SESSIONS (the base), not the
 # 50-day (which carries the run-up's heavy volume): 145 of Qullamaggie's 245 era-A buys fire on his day (was 116),
 # 21/26 big winners (was 15) — `scripts/probes/_qm_breakouts_vs_v1_1102/36_trigger_vol10.txt`.
-VOL_WINDOW = 10
+VOL_WINDOW = 20                      # 2026-11-11 initial rule set (was 10; 3 of the 84 High buys miss 1.2 x the 10-day)
+VOL_WINDOW_10 = 10                   # telemetry only (`vol10` on the row): his 2026-11-02 bar's base
 VOL_WINDOW_50 = 50                   # telemetry only (`vol50` on the row): the old bar's base, never a gate
 DEEP = BASE_MAX + POLE_LOOKBACK      # 85: the deepest look-back from D (the pole-low window of the oldest pole)
 MIN_BARS = DEEP + 1                  # 86 bars ending D, consecutive sessions (the data guard)
@@ -92,18 +103,26 @@ PINNED_ADR_MAX = 0.01
 # rule 4: base depth from the pole top in daily ranges, inclusive band — the backward step (12_final_rules.json
 # step 2, upper end 8.98) with the low end moved to his good LRN 2020-08-05 (1.511; 14_after_his_labels.py).
 BASE_DEPTH_ADR_MIN = 1.511376833908041
-BASE_DEPTH_ADR_MAX = 8.979719460898997
+BASE_DEPTH_ADR_MAX = 11.0            # 2026-11-11 initial rule set (was 8.979719460898997): HEXO 2020-08-13 is 10.8
 # rule 6: close no more than 0.6335 daily ranges under the 21-day EMA — loosened to keep the 7 buys he rated ok or
 # better (17_ema21_loosened.py); pinned at TSLA 2022-04-21's value (-0.63349 on the research EMA; -0.63 drops it).
 EMA_SPAN = 21
-EMA21_ADR_MIN = -0.6335
+EMA21_ADR_MIN = -0.9                 # 2026-11-11 initial rule set (was -0.6335): NVAX 2021-04-13 is -0.85
 # rule 7: close at or above the 50-day SMA (18_sma50_rule.py's plain line; drops none of Qullamaggie's buys).
 SMA_SESSIONS = 50
 # The order inputs (spec §2; 23_move126_rule.py, 32_tight_recently.py, 33_rank_topn.py).
 RUNUP6M_SESSIONS = 126               # the highs: the 126 sessions ending D
 RUNUP6M_LOW_SESSIONS = 63            # each high's low: the 64 sessions j-63..j (the low no more than 63 before)
 SPREAD_SESSIONS = 10                 # the last-10-close spread
-GATES = ("history", "universe", "pinned", "adr", "rs", "prior_move", "base_depth", "ema21", "sma50")
+# 2026-11-11 initial rule set: `sma50` is no longer a gate (9 of the 31 widened High buys sat under the 50-day; it is
+# still measured as telemetry) and `range` is new (a qualifying range to buy the break of).
+GATES = ("history", "universe", "pinned", "adr", "rs", "prior_move", "base_depth", "ema21", "range")
+# The range break (docs/analysis/cb_initial_rules_2026-11-11.md (b); the High tier of the Qullamaggie buy rating).
+RANGE_LOOKBACK = 126                 # how far back from D a level may sit
+RANGE_MIN_LEN = 10                   # sessions from the range's start to E = D + 1 (two weeks)
+RANGE_GIVE_BACK = 0.5                # the range's low gives back no more than half the run into it
+RANGE_RUN_LOOKBACK = 60              # the run = level - the lowest low of the 60 sessions before the range starts
+RANGE_TOL_SESSIONS = 20              # "touched the level" = within one mean (high - low) of the 20 sessions ending D
 STOCK_SECURITY_TYPES = frozenset({"CS", "ADRC"})
 FUND_SECURITY_TYPE = "ETV"
 
@@ -241,6 +260,35 @@ def history_ok(D: int, cidx: Optional[Sequence[int]] = None) -> bool:
     return int(cidx[D]) - int(cidx[D - DEEP]) == DEEP
 
 
+def range_levels(h: np.ndarray, l: np.ndarray, D: int) -> list:
+    """Every qualifying RANGE at night D (bars <= D), lowest level first: [{"level", "start", "len"}].
+
+    Walk back from D (at most `RANGE_LOOKBACK` sessions): each high above every later high is a level; its range starts
+    at the earliest session, among those it stands above, whose high came within one average daily range (mean
+    high - low of the `RANGE_TOL_SESSIONS` ending D, in price) of it. It qualifies when it is `RANGE_MIN_LEN`+ sessions
+    long counting to E = D + 1 and holds its gains: level - the range's lowest low <= `RANGE_GIVE_BACK` x (level - the
+    lowest low of the `RANGE_RUN_LOOKBACK` sessions before the range). The lowest level is the buy point."""
+    a = max(0, D - RANGE_TOL_SESSIONS + 1)
+    tol = float((h[a:D + 1] - l[a:D + 1]).mean())
+    steps, m = [], -math.inf
+    for j in range(D, max(-1, D - RANGE_LOOKBACK), -1):
+        if h[j] > m:
+            m = float(h[j])
+            steps.append([m, j])
+        if h[j] >= m - tol:
+            steps[-1][1] = j
+    out = []
+    for level, s in steps:
+        n = D + 1 - s
+        if n < RANGE_MIN_LEN or s < 1:
+            continue
+        run = level - float(l[max(0, s - RANGE_RUN_LOOKBACK):s].min())
+        depth = level - float(l[s:D + 1].min())
+        if run > 0 and depth <= RANGE_GIVE_BACK * run:
+            out.append({"level": level, "start": int(s), "len": int(n)})
+    return out
+
+
 def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_close: Optional[float] = None,
              cidx: Optional[Sequence[int]] = None) -> dict:
     """Every v1 gate at watch night D, pass AND value, plus the next session's breakout LEVEL and VOLUME BAR.
@@ -316,12 +364,23 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
 
     # the close at or above the 50-day SMA
     s50 = cb._sma_at(bars, D, SMA_SESSIONS)
-    g["sma50"] = {"pass": bool(s50 is not None and math.isfinite(s50) and close_d >= s50),
-                  "value": {"sma50": _f(s50), "close": _f(close_d)}}
+    sma50 = {"pass": bool(s50 is not None and math.isfinite(s50) and close_d >= s50),
+             "value": {"sma50": _f(s50), "close": _f(close_d)}}
+    out["sma50"] = sma50                                     # telemetry since 2026-11-11 (no longer in GATES)
+    if "sma50" in GATES:
+        g["sma50"] = sma50
 
-    v10 = float(v[D - VOL_WINDOW + 1:D + 1].mean())
+    # the range to buy the break of: the LEVEL is the lowest qualifying range high (2026-11-11; was the 5-day high)
+    rl = range_levels(np.asarray(h, float), np.asarray(l, float), D)
+    g["range"] = {"pass": bool(rl), "value": {"n_levels": len(rl), "level": rl[0]["level"] if rl else None,
+                                              "start_date": str(bars.dates[rl[0]["start"]]) if rl else None,
+                                              "len": rl[0]["len"] if rl else None, "min_len": RANGE_MIN_LEN}}
+
+    vbase = float(v[D - VOL_WINDOW + 1:D + 1].mean())
+    v10 = float(v[D - VOL_WINDOW_10 + 1:D + 1].mean())
     v50 = float(v[D - VOL_WINDOW_50 + 1:D + 1].mean())
-    out.update(level=float(h[D - RECENT + 1:D + 1].max()), vol_bar=VOL_X * v10, vol10=v10, vol50=v50,
+    out.update(level=(float(rl[0]["level"]) if rl else None), level5=float(h[D - RECENT + 1:D + 1].max()),
+               vol_bar=VOL_X * vbase, vol10=v10, vol50=v50,
                adr20=adr_d, pole_idx=int(P), pole_date=str(bars.dates[P]), pole_high=pole_high,
                prior_move=_f(prior), base_low=base_low)
     out["failed"] = [k for k in GATES if not g[k]["pass"]]
@@ -540,8 +599,11 @@ def breakout_triggered(bar_E: Mapping, gates: dict) -> dict:
     is the NEXT session after D (a hole between them is not a breakout of that list)."""
     hi = _bar_get(bar_E, "h", "high")
     vol = _bar_get(bar_E, "v", "volume")
+    cl = _bar_get(bar_E, "c", "close")
     level, bar = gates.get("level"), gates.get("vol_bar")
     level_pass = bool(hi is not None and level is not None and hi > level)
+    if cl is not None:                                       # 2026-11-11: a daily bar must also CLOSE above the range high
+        level_pass = level_pass and bool(level is not None and cl > level)
     vol_pass = bool(vol is not None and bar is not None and vol >= bar)
     return {"level_pass": level_pass, "volume_pass": vol_pass,
             "fired": bool(gates.get("ok")) and level_pass and vol_pass,

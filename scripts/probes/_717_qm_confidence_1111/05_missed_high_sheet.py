@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""#717 step 2c: every widened High-confidence buy the CURRENT list misses, on one outcome-blind sheet (charts end on `hi`),
+
+
+RECORD: run at 16c12402 or earlier — it reads `breakout_v1`'s list constants as they were BEFORE the 2026-11-11 initial
+rule set was wired, and does not reproduce on a later commit."""#717 step 2c: every widened High-confidence buy the CURRENT list misses, on one outcome-blind sheet (charts end on `hi`),
 plus the two-change combination. Ordered by date, lettered A..; the key carries the gates that fail on the best night.
 
     python3 scripts/probes/_717_qm_confidence_1111/05_missed_high_sheet.py > scripts/probes/_717_qm_confidence_1111/05_missed_high_sheet.out"""

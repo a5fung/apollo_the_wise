@@ -116,7 +116,8 @@ def test_the_night_lists_zcsh_only_and_keeps_out_the_leveraged_and_unnamed_funds
     assert [r["ticker"] for r in rows] == ["ZCSH"]
     r = rows[0]
     assert r["list_rank"] == 1 and r["security_type"] == "ETV" and r["rs_best"] >= bv.RS_MIN
-    assert round(r["level"], 2) == 35.13 and round(r["vol_bar"]) == 1_556_012        # 1.2x the last 10 sessions
+    # 2026-11-11 initial rule set: the level is the RANGE HIGH (the 5-day high was 35.13), the bar the 20-session mean
+    assert round(r["level"], 2) == 36.55 and round(r["vol_bar"]) == 1_370_507
     # the order score: alone on the night, ZCSH is the top of both within-night ranks
     assert r["order_score"] == 1.0
     assert round(r["runup6m_adr"], 2) == 70.67 and round(r["spread10_adr"], 2) == 3.46
@@ -130,13 +131,13 @@ def test_the_night_lists_zcsh_only_and_keeps_out_the_leveraged_and_unnamed_funds
     assert out["fund_excluded_tickers"] == {"fund_leveraged_or_inverse": ["ZLEV"], "fund_no_name": ["ZNON"]}
     assert out["universe_n"] == 63 and out["listable_n"] == 61                # ruling (a): the two funds are ranked, not listed
     assert out["passing"] == 1 and out["written"] == 1
-    assert out["gate_fails"]["prior_move"] == 60                       # the flat fillers have no prior move
+    assert out["gate_fails"]["prior_move"] == 59   # the flat fillers have no prior move (one random walk clears the 11-11 20% line; 60 at 32.1%)
     ev = [a for a in f.audit if a[0] == "breakout_v1_list_run"]
     assert len(ev) == 1 and ev[0][2]["passing"] == 1 and not [a for a in f.audit if a[0].endswith("_error")]
     assert len(f.sent) == 1 and out["message"] == "sent"
     from agents.market_intelligence.constants import is_paper_message, mode_prefix
     assert f.sent[0].startswith(mode_prefix("paper")) and is_paper_message(f.sent[0])
-    assert "ZCSH" in f.sent[0] and "35.13" in f.sent[0]
+    assert "ZCSH" in f.sent[0] and "36.55" in f.sent[0]
     assert "/bgrade" not in f.sent[0]        # #717 stage 2 (his 2026-11-05 word): the message no longer names the command
 
 
@@ -244,7 +245,7 @@ def test_format_list_message_shows_the_top_10_by_score_and_the_count_and_is_none
     block = msg.split("```")[1]
     shown = [ln.split()[1] for ln in block.strip().splitlines()[1:]]
     assert shown == [f"T{k:03d}" for k in range(249, 239, -1)]          # the biggest run-up first (spread tied)
-    assert "|" not in block and "last 10 sessions" in msg and "50-day" not in msg      # no pipe table
+    assert "|" not in block and "last 20 sessions" in msg and "high of its range" in msg and "50-day" not in msg      # no pipe table
     # #717 stage 2: the message no longer names /bgrade (grades come from chart sheets in chat, his 2026-11-05 word);
     # the command itself stays — `test_bgrade_is_in_all_three_places` and the bare-/bgrade tests below pin it
     assert "/bgrade" not in msg and "bgrade" not in msg
