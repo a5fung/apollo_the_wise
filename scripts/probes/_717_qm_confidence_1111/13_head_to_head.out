@@ -1,0 +1,13 @@
+group                                 n | 11-02 rules: listed  fired | 11-11 wired: listed  fired | fired by both / only 11-02 / only 11-11
+ALL 757                             757 |                 455    209 |                 319     94 |     75 /   134 /    19
+dated — all                         269 |                 263    156 |                 190     67 |     66 /    90 /     1
+dated — High                         53 |                  53     52 |                  53     53 |     52 /     0 /     1
+dated — Medium                       65 |                  65     41 |                  53      0 |      0 /    41 /     0
+dated — Low                         125 |                 121     40 |                  68      0 |      0 /    40 /     0
+dated — Not                          26 |                  24     23 |                  16     14 |     14 /     9 /     0
+widened — all                       488 |                 192     53 |                 129     27 |      9 /    44 /    18
+widened — High                       31 |                  10      9 |                  25     25 |      9 /     0 /    16
+widened — Medium                     51 |                  33     16 |                  27      0 |      0 /    16 /     0
+widened — Low                       349 |                 149     28 |                  77      2 |      0 /    28 /     2
+widened — Not                        57 |                   0      0 |                   0      0 |      0 /     0 /     0
+the 26 big winners (dated)           26 |                  26     21 |                  20     11 |     11 /    10 /     0

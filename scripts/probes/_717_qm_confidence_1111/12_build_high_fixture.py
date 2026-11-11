@@ -18,10 +18,12 @@ RS = {(t, str(d)[:10]): (r, rc) for t, d, r, rc in zip(F.ticker, F.scan_date, F.
 FX = "tests/fixtures/qm_breakout_scorecard/"
 dated = {r["eid"]: r for r in csv.DictReader(open(FX + "buys.tsv"), delimiter="\t")}
 dates = defaultdict(list)
+closes = defaultdict(dict)
 for name, key in (("bars.psv.gz", "dated"), ("bars_undated_widened.psv.gz", "widened")):
     with gzip.open(FX + name, "rt") as f:
         for r in csv.DictReader(f, delimiter="|"):
             dates[(key, r["eid"])].append(r["date"])
+            closes[(key, r["eid"])][r["date"]] = float(r["c"])
 rows = [r for r in csv.DictReader(open("scripts/probes/_717_qm_confidence_1111/ratings.tsv"), delimiter="\t") if r["tier"] == "High"]
 rows.sort(key=lambda r: (r["set"], r["day_cleared"], r["ticker"], int(r["eid"])))
 n_unranked = 0
@@ -37,5 +39,12 @@ with open(FX + "high_tier.tsv", "w") as f:
             v = RS.get((r["ticker"], D))
             n_unranked += v is None
             rs, raw = ("", "") if v is None else (repr(float(v[0])), repr(float(v[1])))
+            if v is None:                                    # the raw close from the nearest ranked night within 10 sessions
+                i = ds.index(D)                              # (the split factor: raw / adjusted that night x the adjusted close of D)
+                for j in [i + 1] + list(range(i - 1, max(-1, i - 11), -1)):   # E first: the factor is a constant of the split history
+                    w = RS.get((r["ticker"], ds[j]))
+                    if w is not None and w[1] == w[1]:
+                        raw = repr(float(w[1]) / closes[("widened", r["eid"])][ds[j]] * closes[("widened", r["eid"])][D])
+                        break
         f.write(f"{r['set']}\t{r['eid']}\t{r['sym']}\t{r['ticker']}\t{D}\t{r['day_cleared']}\t{r['buy_point_split_adjusted']}\t{r['range_len']}\t{rs}\t{raw}\n")
 print(len(rows), "rows; unranked widened nights:", n_unranked)

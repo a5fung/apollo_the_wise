@@ -3,9 +3,9 @@
 Spec: `docs/analysis/cb_initial_rules_2026-11-11.md`; owner `docs/setups/consolidation_breakout.md` (change log
 2026-11-11). His words: "we are trying to buy like qullamaggie ... buy his setups period". THE TARGET is the 84
 high-confidence Qullamaggie buys (`docs/analysis/cb_qm_buy_confidence_2026-11-11.md`, `high_tier.tsv`):
-  * the 80 the unchanged safety floors allow are LISTED the night before and BOUGHT on their break day, at the rated
+  * the 79 the unchanged safety floors allow are LISTED the night before and BOUGHT on their break day, at the rated
     buy point (the range high) — pinned by name;
-  * the 4 the floors cost are pinned by name and by the floor that stops each (his call, never silently fixed);
+  * the 5 the floors cost are pinned by name and by the floor that stops each (his call, never silently fixed);
   * the trigger never fires without the range high being taken out.
 """
 from __future__ import annotations
@@ -25,13 +25,14 @@ from agents.market_intelligence import consolidation_breakout as cb
 from agents.market_intelligence.broker import breakout_v1_entry as be
 
 FX = Path(__file__).parent / "fixtures" / "qm_breakout_scorecard"
-# The four High-tier Qullamaggie buys the UNCHANGED floors keep off the list (his call whether to move a floor).
+# The five High-tier Qullamaggie buys the UNCHANGED floors keep off the list (his call whether to move a floor).
 FLOOR_LOSSES = {("BNGO", "2019-12-30"): ["universe"],      # 20-session median dollar volume $1.5M (floor $5M)
                 ("INO", "2020-01-21"): ["universe"],       # $3.6M
                 ("HEXO", "2020-08-13"): ["universe"],      # $4.4M
+                ("FCEL", "2020-02-10"): ["universe"],      # raw close $1.72 at D, under the $2 floor (dollar volume $42.6M)
                 ("PLTR", "2021-01-22"): ["history"]}       # under 86 sessions since listing
 # Unranked nights (not in the 2026-11-02 cross-section): the strength rank cannot be measured from the fixtures, so the
-# rank is passed; FCEL's raw price that night was ~$1.95 (the $2 floor would stop it live) — stated, not asserted.
+# rank is passed. A raw close is derived for FCEL and SLV from a neighbouring ranked night (12_build_high_fixture.py).
 RANK_NOT_MEASURED = {("BNGO", "2019-12-30"), ("INO", "2020-01-21"), ("FCEL", "2020-02-10"), ("HEXO", "2020-08-13"),
                      ("PLTR", "2021-01-22"), ("SLV", "2021-01-28")}
 
@@ -61,7 +62,9 @@ def _key(r):
     return (r["ticker"], r["E"])
 
 
-def test_the_80_listable_high_confidence_qullamaggie_buys_are_listed_the_night_before_and_bought_on_the_break_day(high_tier):
+def test_the_79_listable_high_confidence_qullamaggie_buys_are_listed_the_night_before_and_bought_on_the_break_day(high_tier):
+    """'Bought' = the DAILY bar of the break day takes out the range high, closes above it, on volume above the bar — a
+    proxy of the buy, not the live intraday entry (opening range, volume pace, the stop-width rule)."""
     assert len(high_tier) == 84 and sum(r["set"] == "dated" for r, *_ in high_tier) == 53
     assert {_key(r) for r, *_ in high_tier if not r["rs_best"]} == RANK_NOT_MEASURED
     listed, bought = [], []
@@ -76,14 +79,14 @@ def test_the_80_listable_high_confidence_qullamaggie_buys_are_listed_the_night_b
         t = bv.breakout_triggered({"h": float(b.h[D + 1]), "c": float(b.c[D + 1]), "v": float(b.v[D + 1])}, g)
         assert t["fired"] is True and t["level_pass"] and t["volume_pass"], _key(r)
         bought.append(_key(r))
-    assert len(listed) == len(bought) == 80
+    assert len(listed) == len(bought) == 79
     for name in (("ALB", "2021-05-27"), ("ALB", "2021-07-09"), ("NUE", "2022-01-05"), ("ABNB", "2021-11-05"),     # prior move 22-30%
                  ("DKNG", "2020-08-18"), ("FSLY", "2020-09-21"), ("AMD", "2021-10-13"), ("LCID", "2022-01-07"),    # under the 50-day
                  ("NVAX", "2021-04-13"), ("WKHS", "2020-08-03"), ("NET", "2020-06-15"), ("DVN", "2021-11-24")):
         assert name in bought, name
 
 
-def test_the_four_buys_the_unchanged_floors_cost_are_named_with_the_floor_that_stops_each(high_tier):
+def test_the_five_buys_the_unchanged_floors_cost_are_named_with_the_floor_that_stops_each(high_tier):
     got = {_key(r): g["failed"] for r, _, _, g in high_tier if not g["ok"]}
     assert got == FLOOR_LOSSES
     assert (bv.MIN_PRICE, bv.MIN_DOLLAR_VOL, bv.MIN_BARS, bv.ADR_MIN) == (2.0, 5_000_000.0, 86, 0.021)   # not moved

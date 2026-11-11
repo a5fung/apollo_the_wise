@@ -126,6 +126,16 @@ def test_the_scorecard_under_the_initial_rule_set_190_of_269_listed_and_every_on
     big_off = {_key(r) for r, _, _, g in scorecard if r["big_winner"] == "1" and not g["ok"]}
     assert big_off == {("APT", "2020-06-17"), ("MDB", "2020-09-21"), ("JMIA", "2020-11-18"), ("SKLZ", "2021-01-05"),
                        ("OSTK", "2021-01-22"), ("QS", "2021-10-29")}
+    # THE HEADLINE COST (13_head_to_head.out): on the daily bar of his buy day the wired trigger fires on 67 of the 269
+    # and 11 of the 26 big winners; the 11-02 trigger (the 5-day high, 1.2x the 10-day volume) fired on 156 and 21.
+    fired = [(r, bv.breakout_triggered({"h": float(b.h[D + 1]), "c": float(b.c[D + 1]), "v": float(b.v[D + 1])}, g)["fired"])
+             for r, b, D, g in scorecard]
+    assert sum(f for _, f in fired) == 67 and sum(f for r, f in fired if r["big_winner"] == "1") == 11
+    old = [(r, g["gates"]["prior_move"]["value"]["prior_move"] >= 0.3213536987121892
+            and g["gates"]["base_depth"]["value"]["depth_adr"] <= 8.979719460898997
+            and g["gates"]["ema21"]["value"]["vs_ema21_adr"] >= -0.6335 and g["sma50"]["pass"]
+            and float(b.h[D + 1]) > g["level5"] and float(b.v[D + 1]) >= 1.2 * g["vol10"]) for r, b, D, g in scorecard]
+    assert sum(f for _, f in old) == 156 and sum(f for r, f in old if r["big_winner"] == "1") == 21
     # the level of every listed buy is its lowest qualifying range high, never the 5-day high by construction
     assert all(g["level"] == g["gates"]["range"]["value"]["level"] for _, _, _, g in scorecard if g["ok"])
 

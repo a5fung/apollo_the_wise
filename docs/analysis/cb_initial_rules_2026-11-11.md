@@ -104,3 +104,13 @@ Qullamaggie buys) no longer count against a rule.
 - The loosened list's size on 11-10 or any night (the file holds only today's listed names).
 - Whether the intraday entry would have fired on the 84 break days.
 - `rs` and the $2 floor on the 6 unranked High nights (BNGO, INO, FCEL, HEXO, PLTR, SLV).
+
+---
+# WIRED on the branch (2026-11-11, on his "buy his setups period"; PENDING HIS SIGN-OFF BEFORE PAPER)
+His grades stopped being a bar, so the rule set was wired (commit `c41436db` + the follow-up). Owner: the 2026-11-11
+change-log entry of `docs/setups/consolidation_breakout.md`. Two things found while wiring that this document did not
+show:
+- **Head to head on all 757 buys (n = 757; `13_head_to_head.out`):** listed / fired — the 11-02 rules 455 / 209, the
+  wired set 319 / 94; big winners fired 21 -> 11 (n = 26). The wired set buys 78 of the 84 High and none of the 116
+  Medium. "84 of 84" above was true by construction and hid this.
+- **FCEL 2020-02-10** fails the $2 floor (raw close $1.72): 79 listable, 5 floor losses (not 80 and 4).
