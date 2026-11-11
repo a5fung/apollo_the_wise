@@ -2979,3 +2979,8 @@ Sheet `scripts/probes/_717_shape_gates_1111/contrast_sheet.png` (top: RSKD, FNKO
 > "A - maybe / B - maybe, a few more tight days / C - ok / D - a few more tight days / E - ok / F - no / G - no / H - few more tight days / I - no / J - no / K - no, needs more time / L - no"
 
 Sheet `scripts/probes/_717_shape_gates_1111/bought_sheet.png` (key beside it): A PLSE, B BLKB, C CVLT, D VEEV, E EVH, F DOCS, G CTSH, H NCNO, I AMPL, J AMLX, K APPN, L BLLN. 2 of 12 ok (DoD (3) bar 80%: FAIL). Four of the twelve are "not yet — a few more tight days": the list fires before the base has tightened. Recorded in `tests/fixtures/breakout_list_grades.py` (maybe / few more tight days = `conditional`). The main loop's own first pass (A, D, I, K good; E, L no) disagreed with him on 6 of 12 — his eye is the label, not mine.
+
+## 2026-11-11 — the 21 missed high-confidence Qullamaggie buys
+> "these are qullamaggie buys, they all look good"
+
+Sheet `scripts/probes/_717_qm_confidence_1111/sheet_high_missed.png` (key beside it): all 21 (20 distinct; PBR shown twice) = yes. Rule taken: Qullamaggie's own buys are ground truth — they are not graded by him; a rule must keep them. They are now the must-keep set for the initial rules (with the other 63 High-tier buys).
