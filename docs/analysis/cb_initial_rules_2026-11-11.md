@@ -69,14 +69,20 @@ Qullamaggie buys) no longer count against a rule.
 | Bar | Result | Verdict |
 |---|---|---|
 | (i) the 84 bought on E by the trigger port (n = 84) | 84 of 84, same buy point as the rating | pass |
-| (i) the 84 listed at D by the loosened gates (n = 84) | **80 of 84** | **fail** — PLTR (the named history exception) + BNGO 2019-12-30, INO 2020-01-21, HEXO 2020-08-13, all under the $5M dollar-volume floor |
-| (ii) Medium listed (n = 65 dated / 51 widened) | 65 / 42 (today 65 / 34) | reported |
+| (i) the 84 listed at D by the loosened gates (n = 84) | **80 of 84** (79 counting FCEL) | **fail** — PLTR (the named history exception) + BNGO 2019-12-30, INO 2020-01-21, HEXO 2020-08-13 under the $5M dollar-volume floor (20-session median $1.5M, $3.6M, $4.4M); FCEL 2020-02-10 is scored as kept only because its night has no raw close — its raw buy point is $1.95, under the $2 floor |
+| (ii) Medium listed (n = 65 dated / 51 widened) | 65 / 42 (today 65 / 34 by this scorer, which leaves the strength rank out on unranked nights; with it, 32 of 51 the night before the break) | reported |
 | (ii) Medium ready the night before / bought by the High trigger | 53 / 31 ready; 0 bought (a Medium buy is by definition short of the High trigger) | reported |
 | (iii) his 28 no / not-yet LISTED (n = 28) | 28 of 28 | reported |
 | (iii) his 28 READY to trigger (n = 28) | **11 of 28** at the X the 84 force (3.0); 1 / 6 / 9 at X = 1.0 / 1.5 / 2.0 | **fail** (bar 0) |
 | (iv) his 13 good / ok listed / ready (n = 13) | 13 listed; 6 ready (2 / 5 / 6 at X = 1.0 / 1.5 / 2.0) | listed pass |
 | (v) 2026-11-10, ready of the 190 listed (n = 190) | 48 at X = 3.0 (23 / 33 / 41 at 1.0 / 1.5 / 2.0) | reported |
 
+- **(iii) has two readings.** At the definition as given (within ONE day's range of the close) it is 1 of 28 (AMLX) —
+  but only 47 of the 84 are ready at that distance. At the 3.0 the pre-registered escalation forced, it is 11 of 28.
+  The trigger itself bought 84 of 84 with no distance condition. Whether "ready" is a gate or only a description is
+  his / the main loop's call; either way the bar of 0 is missed.
+- **"84 of 84 bought" is port parity:** the High tier IS the trigger, so it shows the port matches the rating, not
+  that the trigger is selective.
 - **X had to go to 3.0:** the buy point sits a median 0.87 daily ranges above the prior close for the 84, but 37 are
   further than 1.0, 5 further than 1.5, and CCJ 2021-10-12 is 2.5 away. At X = 1.0 only 47 of the 84 are ready.
 - **The charts that break (iii):** PAY 11-06 and PLSE 11-10, VEEV 11-10 (not-yet); RSKD 11-06, CVLT 11-05, MANE 11-05,
@@ -91,7 +97,8 @@ Qullamaggie buys) no longer count against a rule.
 - **Sheet:** `scripts/probes/_717_qm_confidence_1111/ready_sheet_1110.png` — the 12 highest-ranked ready names on
   11-10. Eight of the twelve are charts he has already graded: 2 ok (CVLT, EVH), 6 no / not-yet (DOCS, VEEV, AMLX,
   PLSE, CTSH, APPN); MANE is the 11-05 `no` ticker a few sessions later. New to him: OABI, AVAH, KOD.
-- Tests: `pytest tests -q -x -k "breakout or consolidation"` — 759 passed, 1 xfailed (no code changed).
+- Tests: `pytest tests -q -x -k "breakout or consolidation"` — 759 passed, 1 xfailed. No production code was touched, so
+  this confirms only that nothing changed.
 
 ## Not verified
 - The loosened list's size on 11-10 or any night (the file holds only today's listed names).
