@@ -122,3 +122,22 @@ show:
 - The range high wherever a range exists (as first asked) measured 228 / 18 with 27 lost, so it was not wired.
 - The range high is never under the 5-day high on these buys: the level is the 5-day high everywhere and the gain is
   the loosened gates. The range high stays on the row as the rated buy point.
+
+---
+# WICK RULE — pre-registered before scoring (2026-11-11; his "Fix it")
+**Case:** APT 2020-02-21 (a big winner). Our level is 5.98, the high of the 02-13 spike day (open 5.90, high 5.98,
+close 5.18, 8.0M shares); the days after it topped at 5.40 / 5.38; Qullamaggie bought through about 5.40 on 02-21
+(high 5.77). His 2026-10-18 note: a big upper wick that settles lower — ignore part of the wick.
+
+**Rule (one, on the 5-day level only):** take the day with the highest high of the 5-day window D-4..D (the latest on
+a tie). If it is not the last day AND it closed in the lower part of its own range — **upper wick (high - close) at
+least X = 0.5 of that day's range (high - low)** — the level is the highest high of the sessions AFTER it (the settled
+range). Otherwise the 5-day high as now. Applied once, not repeated. The level stays the lower of this and the range
+high. X = 0.5 is a declared starting value ("closed in the lower half"); **sweep 0.4 / 0.5 / 0.6 / 0.7** reported.
+The later days are under the spike by construction (it is the window's highest high).
+
+**Population:** all 757 Qullamaggie buys (n = 757), head to head against the wired set of commit `49bb0b27`
+(566 listed / 260 fired / 21 of 26 big winners), same scorer (`13_head_to_head.py`: any window session, daily bar).
+**Bars:** APT 2020-02-21 fires; fired >= 260; big winners fired >= 22; NO buy that fires today stops firing. Every buy
+that changes is named. If any is lost: reported, not wired. The rule can only LOWER a level, so a loss is not expected.
+**Not answered:** how many more non-Qullamaggie names it triggers across the market (a lower level fires more often).
