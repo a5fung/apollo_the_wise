@@ -141,3 +141,8 @@ The later days are under the spike by construction (it is the window's highest h
 **Bars:** APT 2020-02-21 fires; fired >= 260; big winners fired >= 22; NO buy that fires today stops firing. Every buy
 that changes is named. If any is lost: reported, not wired. The rule can only LOWER a level, so a loss is not expected.
 **Not answered:** how many more non-Qullamaggie names it triggers across the market (a lower level fires more often).
+
+## RESULT — wick rule (scored once at X = 0.5; `scripts/probes/_717_qm_confidence_1111/14_wick_rule.out`)
+**PASS — wired (pending his sign-off).** Listed / fired / big winners fired (n = 757 / 757 / 26): 566 / 260 / 21
+without it, **566 / 272 / 22** with it; 12 gained, 0 lost; APT 2020-02-21 fires at 5.40. Sweep 0.4 / 0.5 / 0.6 / 0.7:
+273 / 272 / 271 / 269 fired, 22 big winners at each (a plateau). The 12 by name are in the SSoT change log.

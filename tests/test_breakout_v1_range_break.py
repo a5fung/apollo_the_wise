@@ -80,7 +80,7 @@ def test_the_79_listable_high_confidence_qullamaggie_buys_are_listed_the_night_b
         # the range high is the rated buy point (ratings.tsv keeps 4 significant figures); the level is never above it
         assert g["range"]["value"]["level"] == pytest.approx(float(r["buy_point"]), rel=5e-4), _key(r)
         assert g["range"]["value"]["len"] == int(r["range_len"]) >= bv.RANGE_MIN_LEN, _key(r)
-        assert g["level"] == min(g["level5"], g["range"]["value"]["level"]), _key(r)
+        assert g["level"] == min(bv.settled_level(b.h, b.l, b.c, D)[0], g["range"]["value"]["level"]) <= g["level5"], _key(r)
         listed.append(_key(r))
         t = bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)
         assert t["level_pass"] is True, _key(r)                        # every one takes its level out on the break day
@@ -132,6 +132,54 @@ def test_no_range_keeps_the_name_on_the_list_at_its_5_day_high():
     assert g["range"]["pass"] is False and "range" not in g["failed"]
     assert g["level"] == g["level5"] == pytest.approx(30.0 * 1.01) and g["level_source"] == "five_day"
     assert bv.range_levels(np.asarray(b.h), np.asarray(b.l), n - 1) == []
+
+
+# Every Qullamaggie buy the wick rule turns from not-fired to fired (14_wick_rule.out, X = 0.5): (ticker, D, E, level, 5-day high).
+WICK_GAINS_DATED = {("APT", "2020-02-21"): (5.40, 5.98, "2020-02-13"), ("CRWD", "2020-09-18"): (32.31, 33.46, "2020-09-16"),
+                    ("NVAX", "2020-12-17"): (130.9, 135.5, "2020-12-14"), ("DKNG", "2021-02-26"): (61.63, 63.25, "2021-02-22"),
+                    ("LAC", "2021-09-30"): (22.46, 22.8, "2021-09-23")}
+
+
+def test_the_wick_rule_apt_0221_is_bought_through_the_settled_range_not_the_spike():
+    """His 2026-10-18 note, "big upper wick then settling lower -> ignore part of the wick". APT 2020-02-13 opened 5.90,
+    made 5.98 and closed 5.18; the days after topped at 5.40. Qullamaggie bought through ~5.40 on 02-21 (high 5.77) —
+    a big winner the 5-day high (5.98) never fired on. The four other dated buys the rule adds are pinned with it."""
+    assert bv.LEVEL_WICK_MIN == 0.5
+    by = defaultdict(list)
+    with gzip.open(FX / "bars.psv.gz", "rt") as f:
+        for r in csv.DictReader(f, delimiter="|"):
+            by[r["eid"]].append(r)
+    seen = {}
+    for r in csv.DictReader(open(FX / "buys.tsv"), delimiter="\t"):
+        k = (r["ticker"], r["E"])
+        if k not in WICK_GAINS_DATED:
+            continue
+        rr = sorted(by[r["eid"]], key=lambda x: x["date"])
+        ds = [date.fromisoformat(x["date"]) for x in rr]
+        b = cb.daily_bars_from_arrays(ds, *[[float(x[c]) for x in rr] for c in "ohlcv"])
+        D = ds.index(date.fromisoformat(r["D"]))
+        g = bv.v1_gates(b, D, rs_best=float(r["rs_best"]), raw_close=float(r["raw_close_D"]))
+        lvl, l5, wick = WICK_GAINS_DATED[k]
+        assert g["ok"] and g["level_source"] == "settled_after_wick" and g["wick_date"] == wick, k
+        assert g["level"] == pytest.approx(lvl, rel=1e-3) and g["level5"] == pytest.approx(l5, rel=1e-3), k
+        bar = {"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}
+        assert bv.breakout_triggered(bar, g)["fired"] is True, k
+        assert bv.breakout_triggered(bar, dict(g, level=g["level5"]))["fired"] is False, k     # the spike high never fired
+        seen[k] = r["big_winner"]
+    assert set(seen) == set(WICK_GAINS_DATED) and seen[("APT", "2020-02-21")] == "1"
+
+
+def test_the_wick_rule_only_acts_on_a_day_that_closed_in_the_lower_half_and_is_not_the_last_day():
+    h = np.array([10.0, 10.2, 12.0, 10.5, 10.4, 10.6])
+    lo = np.array([9.8, 9.9, 10.0, 10.1, 10.0, 10.2])
+    c = np.array([9.9, 10.1, 10.2, 10.3, 10.2, 10.5])              # day 2: high 12.0, close 10.2 -> wick 1.8 of a 2.0 range
+    assert bv.settled_level(h, lo, c, 5) == (10.6, 12.0, 2)        # the high of the sessions after the spike
+    c2 = c.copy()
+    c2[2] = 11.5                                                   # closed in the upper half: a real high, kept
+    assert bv.settled_level(h, lo, c2, 5) == (12.0, 12.0, None)
+    h3 = np.array([10.0, 10.2, 10.3, 10.5, 10.4, 12.0])            # the spike is the last day: nothing after it to settle
+    c3 = np.array([9.9, 10.1, 10.2, 10.3, 10.2, 10.3])
+    assert bv.settled_level(h3, lo, c3, 5) == (12.0, 12.0, None)
 
 
 def test_range_levels_reads_only_bars_up_to_d():

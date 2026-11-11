@@ -123,6 +123,10 @@ RANGE_LOOKBACK = 126                 # how far back from D a level may sit
 RANGE_MIN_LEN = 10                   # sessions from the range's start to E = D + 1 (two weeks)
 RANGE_GIVE_BACK = 0.5                # the range's low gives back no more than half the run into it
 RANGE_RUN_LOOKBACK = 60              # the run = level - the lowest low of the 60 sessions before the range starts
+# The wick rule (2026-11-11, pending his sign-off; pre-registered in docs/analysis/cb_initial_rules_2026-11-11.md): a
+# 5-day high set by a day that closed in the lower part of its own range is a spike, not the range's top — his
+# 2026-10-18 "big upper wick then settling lower -> ignore part of the wick" (APT 2020-02-21: 5.98 -> 5.40).
+LEVEL_WICK_MIN = 0.5                 # upper wick (high - close) >= this share of the day's range (high - low); None = off
 RANGE_TOL_SESSIONS = 20              # "touched the level" = within one mean (high - low) of the 20 sessions ending D
 STOCK_SECURITY_TYPES = frozenset({"CS", "ADRC"})
 FUND_SECURITY_TYPE = "ETV"
@@ -290,6 +294,22 @@ def range_levels(h: np.ndarray, l: np.ndarray, D: int) -> list:
     return out
 
 
+def settled_level(h: np.ndarray, l: np.ndarray, c: np.ndarray, D: int) -> tuple:
+    """(the 5-day level after the wick rule, the 5-day high, wick_day_index or None). The day with the highest high of
+    D-4..D (the latest on a tie): if it is not D and its upper wick (high - close) is at least `LEVEL_WICK_MIN` of its
+    range (high - low), the level is the highest high of the sessions AFTER it; otherwise the 5-day high. Once."""
+    a = D - RECENT + 1
+    win = np.asarray(h[a:D + 1], float)
+    level5 = float(win.max())
+    k = a + int(np.flatnonzero(win == win.max())[-1])
+    if LEVEL_WICK_MIN is None or k >= D:
+        return level5, level5, None
+    rng = float(h[k]) - float(l[k])
+    if rng > 0 and (float(h[k]) - float(c[k])) >= LEVEL_WICK_MIN * rng:
+        return float(np.asarray(h[k + 1:D + 1], float).max()), level5, int(k)
+    return level5, level5, None
+
+
 def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_close: Optional[float] = None,
              cidx: Optional[Sequence[int]] = None) -> dict:
     """Every v1 gate at watch night D, pass AND value, plus the next session's breakout LEVEL and VOLUME BAR.
@@ -381,12 +401,13 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
 
     v10 = float(v[D - VOL_WINDOW + 1:D + 1].mean())
     v50 = float(v[D - VOL_WINDOW_50 + 1:D + 1].mean())
-    level5 = float(h[D - RECENT + 1:D + 1].max())
-    # the LOWER of the range high and the 5-day high: a name is bought through whichever comes first, so no buy the
-    # 5-day level made is lost and a range break under it is bought at the range high (13_head_to_head_fixup.out)
-    use_range = bool(rl) and float(rl[0]["level"]) < level5
-    out.update(level=(float(rl[0]["level"]) if use_range else level5), level5=level5,
-               level_source="range" if use_range else "five_day",
+    settled, level5, wick_k = settled_level(h, l, c, D)     # the 5-day high, or the settled range after a wick day
+    # the LOWER of the range high and the (settled) 5-day level: a name is bought through whichever comes first, so no
+    # buy the 5-day level made is lost and a range break under it is bought at the range high (13_head_to_head_fixup.out)
+    use_range = bool(rl) and float(rl[0]["level"]) < settled
+    out.update(level=(float(rl[0]["level"]) if use_range else settled), level5=level5,
+               level_source="range" if use_range else ("settled_after_wick" if wick_k is not None else "five_day"),
+               wick_date=(str(bars.dates[wick_k]) if wick_k is not None else None),
                vol_bar=VOL_X * v10, vol10=v10, vol50=v50,
                adr20=adr_d, pole_idx=int(P), pole_date=str(bars.dates[P]), pole_high=pole_high,
                prior_move=_f(prior), base_low=base_low)

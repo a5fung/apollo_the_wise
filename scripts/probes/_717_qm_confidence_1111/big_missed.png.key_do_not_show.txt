@@ -1,0 +1,6 @@
+letter|ticker|buy day|why
+A|APT|2020-02-21|listed; buy day high 5.77 vs level 5.98 (NOT cleared), volume 1.22x of the bar (ok)
+B|DOYU|2020-08-24|listed; buy day high 156.80 vs level 152.30 (cleared), volume 0.74x of the bar (SHORT)
+C|MDB|2020-09-21|listed; buy day high 222.87 vs level 216.26 (cleared), volume 0.86x of the bar (SHORT)
+D|NVDA|2020-09-25|listed; buy day high 12.88 vs level 12.73 (cleared), volume 0.67x of the bar (SHORT)
+E|JMIA|2021-01-12|listed; buy day high 40.99 vs level 39.99 (cleared), volume 0.80x of the bar (SHORT)

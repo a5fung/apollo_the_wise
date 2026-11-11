@@ -148,7 +148,9 @@ def test_odd_0908_is_still_rejected_now_by_the_ema21_rule():
     # 2026-11-11 initial rule set: the 50-day is telemetry (still under it), the EMA21 line is -0.9 (ODD is -1.11);
     # no range of 10+ sessions holds its gains that night, so the level stays the 5-day high
     assert g["failed"] == ["ema21"] and g["sma50"]["pass"] is False
-    assert g["range"]["pass"] is False and g["level"] == g["level5"] and g["level_source"] == "five_day"
+    # (2026-11-11 wick rule: the 5-day high 15.175 was a wick day, so the level is the settled 15.12)
+    assert g["range"]["pass"] is False and round(g["level5"], 3) == 15.175 and round(g["level"], 2) == 15.12
+    assert g["level_source"] == "settled_after_wick"
     assert round(g["gates"]["ema21"]["value"]["vs_ema21_adr"], 2) == -1.11
     assert round(g["sma50"]["value"]["sma50"], 2) == 14.94 and round(g["close"], 2) == 13.03
 
@@ -162,7 +164,10 @@ def test_odd_1009_his_better_date_is_listed_now_and_still_misses_on_volume():
     g = bv.v1_gates(b, D, rs_best=96.6)
     assert g["ok"] is True and g["failed"] == []
     assert round(g["prior_move"], 2) == 0.71
-    assert round(g["level"], 2) == 20.68 == round(g["level5"], 2) and round(g["vol_bar"]) == 883_641
+    # 2026-11-11 wick rule: the 5-day high 20.68 was set by a day that closed in the lower half of its range, so the
+    # level is the high of the sessions after it, 19.73; E still clears it and still misses on volume
+    assert round(g["level5"], 2) == 20.68 and round(g["level"], 2) == 19.73 and g["level_source"] == "settled_after_wick"
+    assert round(g["vol_bar"]) == 883_641
     assert round(1.2 * g["vol50"]) == 1_460_436
     t = bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)
     assert t["level_pass"] is True and t["volume_pass"] is False and t["fired"] is False

@@ -76,7 +76,8 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
 >   rule 6 close vs the 21-day EMA **>= -0.9** (was -0.6335) · rule 7 the 50-day **is no longer a gate** (telemetry).
 > - A **range** (10+ sessions counting to the next session, giving back no more than half its run) is MEASURED on
 >   every name (`breakout_v1.range_levels`, the row's `range`); it is never a gate. **The level = the LOWER of the
->   range high and the 5-day high** (`level_source`); no range = the 5-day high as before.
+>   range high and the 5-day high** (`level_source`); no range = the 5-day high as before. **Wick rule:** a 5-day
+>   high set by a day that closed in the lower half of its range is replaced by the high of the sessions after it.
 > - Unchanged: the volume bar (1.2 x the last 10 sessions, his 2026-11-02 ruling), $2, $5M, ADR 2.1%, 86 sessions,
 >   strength 35, stop, sizing, exits, slots, the order score.
 
@@ -405,6 +406,8 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 - **A range as a list gate + the range high as the only level + a 20-session volume bar** (the first wiring, `c41436db`): 319 listed / 94 fired / 11 big winners — fewer of his buys than the 11-02 rules. Removed.
 - **The range high as the level wherever a range exists** (measured, not wired): 228 fired, 18 big winners, 27 of the 11-02 trigger's buys lost — the range high sits AT or ABOVE the 5-day high, and he often buys the nearer pivot.
 - So the level is the LOWER of the two. **On all 566 listed buys the range high was never under the 5-day high, so today the level IS the 5-day high everywhere and the whole gain comes from the loosened gates**; the range high is recorded on the row as the rated buy point, for the next step.
+
+**The wick rule (same day, his "Fix it"; pre-registered in `docs/analysis/cb_initial_rules_2026-11-11.md` §WICK RULE, pending his sign-off):** when the highest high of the 5-day window was set by a day that closed in the lower half of its own range (upper wick >= 0.5 of the day's range) and is not the last day, the level is the highest high of the sessions AFTER it (`breakout_v1.settled_level`, `LEVEL_WICK_MIN`; the row's `level_source = settled_after_wick`, `wick_date`). His 2026-10-18 note: *big upper wick then settling lower → ignore part of the wick.* Case: APT 2020-02-21 — 5.98 (the 02-13 spike, close 5.18) becomes 5.40 and the buy fires. **Head to head, all 757 (n = 757 / 757 / 26; `14_wick_rule.out`): 566 listed / 260 fired / 21 big winners without it; 566 / 272 / 22 with it; 0 lost.** The 12 gained: APT 2020-02-21, CRWD 2020-09-18, NVAX 2020-12-17, DKNG 2021-02-26, LAC 2021-09-30 (dated); IPHI 2020-01-03, EPZM 2020-01-23, ROKU 2020-09-15, DQ 2020-11-24, CAN 2020-12-30, MELI 2021-02-19, DVN 2022-02-11 (widened). Sweep X = 0.4 / 0.5 / 0.6 / 0.7: 273 / 272 / 271 / 269 fired, 22 big winners at each. Not measured: how many more non-Qullamaggie names a lower level triggers across the market.
 
 **Known costs, stated plainly (each pinned in a test):**
 - **The unchanged floors cost 5 of the 84:** BNGO 2019-12-30, INO 2020-01-21, HEXO 2020-08-13 ($5M dollar volume: $1.5M, $3.6M, $4.4M), FCEL 2020-02-10 (raw close $1.72, the $2 floor) and PLTR 2021-01-22 (86 sessions). Moving a floor is his call.

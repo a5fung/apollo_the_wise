@@ -1,0 +1,22 @@
+listed / fired / big winners fired (n = 757 / 757 / 26)
+  wick rule OFF (49bb0b27): (566, 260, 21)
+  X = 0.4: (566, 273, 22)   gained 13, lost 0 []
+  X = 0.5: (566, 272, 22)   gained 12, lost 0 []
+  X = 0.6: (566, 271, 22)   gained 11, lost 0 []
+  X = 0.7: (566, 269, 22)   gained 9, lost 0 []
+
+X = 0.5 — every buy that changes (not fired -> fired):
+  dated    APT    window 2020-02-21..2020-02-21 fires 2020-02-21: level 5.4 (5-day high 5.98, wick day 2020-02-13)  big winner 1
+  dated    CRWD   window 2020-09-18..2020-09-18 fires 2020-09-18: level 32.31 (5-day high 33.46, wick day 2020-09-16)  big winner 0
+  dated    NVAX   window 2020-12-17..2020-12-17 fires 2020-12-17: level 130.9 (5-day high 135.5, wick day 2020-12-14)  big winner 0
+  dated    DKNG   window 2021-02-26..2021-02-26 fires 2021-02-26: level 61.63 (5-day high 63.25, wick day 2021-02-22)  big winner 0
+  dated    LAC    window 2021-09-30..2021-09-30 fires 2021-09-30: level 22.46 (5-day high 22.8, wick day 2021-09-23)  big winner 0
+  widened  IPHI   window 2020-01-02..2020-01-03 fires 2020-01-03: level 76.31 (5-day high 76.85, wick day 2019-12-27)  big winner 
+  widened  EPZM   window 2020-01-23..2020-01-24 fires 2020-01-23: level 26.58 (5-day high 27.82, wick day 2020-01-21)  big winner 
+  widened  ROKU   window 2020-09-15..2020-09-15 fires 2020-09-15: level 168.6 (5-day high 170.4, wick day 2020-09-08)  big winner 
+  widened  DQ     window 2020-11-18..2020-11-24 fires 2020-11-24: level 43.36 (5-day high 47.52, wick day 2020-11-17)  big winner 
+  widened  CAN    window 2020-12-30..2020-12-30 fires 2020-12-30: level 4.285 (5-day high 4.7, wick day 2020-12-28)  big winner 
+  widened  MELI   window 2021-02-19..2021-02-19 fires 2021-02-19: level 1916 (5-day high 2007, wick day 2021-02-16)  big winner 
+  widened  DVN    window 2022-02-11..2022-02-16 fires 2022-02-11: level 53.95 (5-day high 55.44, wick day 2022-02-04)  big winner 
+
+APT 2020-02-21: FIRES ('2020-02-21', 5.4, 5.98, 'settled_after_wick', '2020-02-13')
