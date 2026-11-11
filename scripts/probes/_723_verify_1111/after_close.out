@@ -1,0 +1,4 @@
+2026-11-11 13:41:43.012 WARNING streamlit.runtime.caching.cache_data_api: No runtime found, using MemoryCacheStorageManager
+now 2026-11-11T16:41:43-05:00 live as_of 2026-11-11T16:00:00 ET snapshot as_of 2026-11-10
+is_live False holds_close True
+stamp Live · as of 16:00 ET

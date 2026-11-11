@@ -2589,3 +2589,11 @@ EVIDENCE:
 - **Each button's effect:** `test_demote_press_moves_one_rung_and_writes_strategy_phase_change` (one rung via `update_strategy` + the `strategy_phase_change` row); `test_no_action_press_moves_nothing_and_audits`; double / stale / concurrent / unauthorized presses refused. The four #312 suites: 139 passed 2026-11-09.
 - **Live:** deployed `e475346e` (both, then execution) 2026-11-08; the live probe the same night (`scripts/probes/_312_live_probe_1108/`) — a forged chat marker refused, one refusal row, nothing moved.
 - **First live night** (`scripts/probes/_312_verify_1109/q.out`): ladder_watchdog 2026-11-09 16:17 ET success — 3 strategies evaluated (breakout_v1/paper, magna53/live, magna53_smallcap/paper), 0 would demote, paged none, 0 phase changes. No breach exists, so the page itself is proven by the test, as the BAR states.
+
+## #723 — live market breadth: the session view refreshes intraday, and after the close the page holds the 16:00 read, then the last close (2026-11-11)
+BAR: "during a market session the tab shows highs/lows, advances/declines and group 1-day returns stamped within the last refresh window, and one refresh's counts match an independent read made at the same minute; outside market hours it shows the last close, labelled."
+EVIDENCE:
+- **In session (11-10):** one refresh vs an independent recount at the same minute, 12:45 ET — 4,889 read, adv/dec 1,597/3,193 vs 1,596/3,194 (one name moved between reads), highs/lows 65/139 equal (`scripts/probes/_723_step5_1110/recount.out`).
+- **After the close, before the export (11-11 16:41 ET):** the live file reads as_of 2026-11-11 16:00 ET, snapshot as_of 11-10 → the page's own `live_breadth.holds_close` (portfolio-app2 main `b6b102b`) = True, so Today shows "Close · 2026-11-11, read at 16:00 ET", not yesterday's numbers (`scripts/probes/_723_verify_1111/after_close.out`).
+- **After the export (11-11 18:50 ET):** snapshot as_of 2026-11-11 → holds_close False, the page reads "Last close · 2026-11-11" (`after_export.out`). The load error of 11-10 was a stale module on Streamlit Cloud, cleared by his reboot; no code path changed since.
+- **Known, filed separately:** the 11-27 half day (last read 13:00) is not held as "Close" before the export — the page falls back to the labelled previous close, so no unlabelled or wrong number shows.
