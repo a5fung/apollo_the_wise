@@ -114,3 +114,11 @@ show:
   wired set 319 / 94; big winners fired 21 -> 11 (n = 26). The wired set buys 78 of the 84 High and none of the 116
   Medium. "84 of 84" above was true by construction and hid this.
 - **FCEL 2020-02-10** fails the $2 floor (raw close $1.72): 79 listable, 5 floor losses (not 80 and 4).
+
+# FIX-UP (2026-11-11, later) — no range gate, the lower of the two levels, his volume bar back
+- The range gate and the 20-session volume bar are REMOVED; the level is the LOWER of the range high and the 5-day high.
+- **Head to head, all 757 (n = 757 / 757 / 26; `13_head_to_head_fixup.out`): 11-02 rules 455 listed / 209 fired / 21 big
+  winners; wired 566 / 260 / 21; 0 of the 11-02 trigger's buys lost.**
+- The range high wherever a range exists (as first asked) measured 228 / 18 with 27 lost, so it was not wired.
+- The range high is never under the 5-day high on these buys: the level is the 5-day high everywhere and the gain is
+  the loosened gates. The range high stays on the row as the rated buy point.

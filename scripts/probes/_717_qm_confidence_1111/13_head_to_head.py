@@ -2,7 +2,9 @@
 """#717: HEAD TO HEAD on all 757 Qullamaggie buys — the 2026-11-02 rules (list + the 5-day level + 1.2 x the 10-day
 volume) against the wired 2026-11-11 initial rule set (loosened list + range rule + the range high + the 20-session
 volume + a close above). Per buy, on ANY session of its window: listed the night before, and fired on the daily bar.
-"Fired" is a daily-bar proxy of the buy, not the live intraday entry. Strength rank: buys.tsv (dated) / the era-A
+FIX-UP (same day): the wired set is now the loosened list with NO range gate, the level = the LOWER of the range high
+and the 5-day high, and his 1.2 x 10-day volume bar; `13_head_to_head.out` is the first wiring's record (range as a gate,
+the 20-session bar, a close above), `13_head_to_head_fixup.out` this one. "Fired" is a daily-bar proxy of the buy, not the live intraday entry. Strength rank: buys.tsv (dated) / the era-A
 parquet (widened; an unranked night fails the rank under BOTH rule sets).
 
     python3 scripts/probes/_717_qm_confidence_1111/13_head_to_head.py > scripts/probes/_717_qm_confidence_1111/13_head_to_head.out"""
@@ -54,7 +56,10 @@ for b in R.load():
             o["of"] |= bool(b["h"][t] > g0["level5"] and b["v"][t] >= 1.2 * g0["vol10"])
         if g1 and g1["ok"]:
             o["nl"] = True
-            o["nf"] |= bv.breakout_triggered({"h": float(b["h"][t]), "c": float(b["c"][t]), "v": float(b["v"][t])}, g1)["fired"]
+            o["nf"] |= bv.breakout_triggered({"h": float(b["h"][t]), "v": float(b["v"][t])}, g1)["fired"]
+            o["nr"] = o.get("nr", False) or g1["level_source"] == "range"
+            rl = g1["range"]["value"]["level"]
+            o["rf"] = o.get("rf", False) or bool(b["h"][t] > (rl if rl is not None else g1["level5"]) and b["v"][t] >= g1["vol_bar"])
     res.append(o)
 
 print(f"{'group':34s}{'n':>5s} | 11-02 rules: listed  fired | 11-11 wired: listed  fired | fired by both / only 11-02 / only 11-11")
@@ -67,4 +72,10 @@ for s in ("dated", "widened"):
     line(f"{s} — all", [x for x in res if x["set"] == s])
     for t in R.TIERS:
         line(f"{s} — {t}", [x for x in res if x["set"] == s and x["tier"] == t])
+print("wired (level = the LOWER of the range high and the 5-day high): listed buys whose level is the range high on some night:", sum(x.get("nr", False) for x in res), "of", sum(x["nl"] for x in res))
+print("NOT WIRED, measured only — level = the range high wherever a range exists (else the 5-day high): fired", sum(x.get("rf", False) for x in res),
+      "of 757; big winners", sum(x.get("rf", False) for x in res if x["big"]), "of 26; High", sum(x.get("rf", False) for x in res if x["tier"] == "High"),
+      "of 84; fired under 11-02 and not under it:", sum(x["of"] and not x.get("rf", False) for x in res))
+lost = [x for x in res if x["of"] and not x["nf"]]
+print("fired under 11-02 and not under the wired set:", len(lost), dict(Counter((x["set"], x["tier"]) for x in lost)))
 line("the 26 big winners (dated)", [x for x in res if x["big"]])

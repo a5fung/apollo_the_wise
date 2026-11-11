@@ -1,0 +1,16 @@
+group                                 n | 11-02 rules: listed  fired | 11-11 wired: listed  fired | fired by both / only 11-02 / only 11-11
+ALL 757                             757 |                 455    209 |                 566    260 |    209 /     0 /    51
+dated — all                         269 |                 263    156 |                 269    160 |    156 /     0 /     4
+dated — High                         53 |                  53     52 |                  53     52 |     52 /     0 /     0
+dated — Medium                       65 |                  65     41 |                  65     41 |     41 /     0 /     0
+dated — Low                         125 |                 121     40 |                 125     42 |     40 /     0 /     2
+dated — Not                          26 |                  24     23 |                  26     25 |     23 /     0 /     2
+widened — all                       488 |                 192     53 |                 297    100 |     53 /     0 /    47
+widened — High                       31 |                  10      9 |                  25     23 |      9 /     0 /    14
+widened — Medium                     51 |                  33     16 |                  40     19 |     16 /     0 /     3
+widened — Low                       349 |                 149     28 |                 232     58 |     28 /     0 /    30
+widened — Not                        57 |                   0      0 |                   0      0 |      0 /     0 /     0
+wired (level = the LOWER of the range high and the 5-day high): listed buys whose level is the range high on some night: 0 of 566
+NOT WIRED, measured only — level = the range high wherever a range exists (else the 5-day high): fired 228 of 757; big winners 18 of 26; High 75 of 84; fired under 11-02 and not under it: 27
+fired under 11-02 and not under the wired set: 0 {}
+the 26 big winners (dated)           26 |                  26     21 |                  26     21 |     21 /     0 /     0

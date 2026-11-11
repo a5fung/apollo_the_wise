@@ -138,7 +138,7 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_OPEN_BELOW_GAP_FLOOR: "Opened below the gap floor",
     SETUP_CHASE_CAP_EXCEEDED:   "Ran too far past ORB high to chase",
     SETUP_NO_OPENING_RANGE_MINUTES:    "No trades in the first five minutes",
-    SETUP_BREAKOUT_VOLUME_BELOW_CURVE: "Volume below the stock's normal for the time of day",
+    SETUP_BREAKOUT_VOLUME_BELOW_CURVE: "Volume below 1.2x normal for the time of day",
     SETUP_STOP_TOO_WIDE_AFTER_FILL:    "Stop too wide at the true low after the fill",
     BLOCK_MAX_POSITIONS:           "Max open positions reached",
     BLOCK_DAILY_LOSS:              "Daily loss limit hit",

@@ -139,15 +139,16 @@ def _at(bars, iso):
     return next(i for i, d in enumerate(bars.dates) if d.isoformat() == iso)
 
 
-def test_odd_0908_is_still_rejected_now_by_the_ema21_rule_and_has_no_range():
+def test_odd_0908_is_still_rejected_now_by_the_ema21_rule():
     """His 'there's no setup on Sept 8' (2026-10-29; the breakdown check he ruled in that day was REMOVED in the
     2026-11-02 rebuild): the rebuilt rules still reject it — the close 13.02 sits 1.11 daily ranges under the 21-day EMA
     (the line is -0.6335) and under the 50-day SMA 14.94 — and every other rebuilt rule passes."""
     b = _example("ODD")
     g = bv.v1_gates(b, _at(b, "2026-09-08"), rs_best=99.0)
-    # 2026-11-11 initial rule set: the 50-day is telemetry (still under it), the EMA21 line is -0.9 (ODD is -1.11),
-    # and no range of 10+ sessions holds its gains that night
-    assert g["failed"] == ["ema21", "range"] and g["sma50"]["pass"] is False and g["level"] is None
+    # 2026-11-11 initial rule set: the 50-day is telemetry (still under it), the EMA21 line is -0.9 (ODD is -1.11);
+    # no range of 10+ sessions holds its gains that night, so the level stays the 5-day high
+    assert g["failed"] == ["ema21"] and g["sma50"]["pass"] is False
+    assert g["range"]["pass"] is False and g["level"] == g["level5"] and g["level_source"] == "five_day"
     assert round(g["gates"]["ema21"]["value"]["vs_ema21_adr"], 2) == -1.11
     assert round(g["sma50"]["value"]["sma50"], 2) == 14.94 and round(g["close"], 2) == 13.03
 
@@ -161,10 +162,8 @@ def test_odd_1009_his_better_date_is_listed_now_and_still_misses_on_volume():
     g = bv.v1_gates(b, D, rs_best=96.6)
     assert g["ok"] is True and g["failed"] == []
     assert round(g["prior_move"], 2) == 0.71
-    # 2026-11-11: the level is the range high (here it equals the old 5-day high) and the volume bar is the mean of
-    # the last 20 sessions = 1,220,921 (1.2x the last 10 was 883,641; the old 50-day bar 1,460,436)
-    assert round(g["level"], 2) == 20.68 == round(g["level5"], 2) and round(g["vol_bar"]) == 1_220_921
-    assert round(1.2 * g["vol10"]) == 883_641 and round(1.2 * g["vol50"]) == 1_460_436
+    assert round(g["level"], 2) == 20.68 == round(g["level5"], 2) and round(g["vol_bar"]) == 883_641
+    assert round(1.2 * g["vol50"]) == 1_460_436
     t = bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)
     assert t["level_pass"] is True and t["volume_pass"] is False and t["fired"] is False
 
@@ -180,15 +179,15 @@ def test_zcsh_1028_passes_every_rebuilt_rule():
     assert g["gates"]["prior_move"]["value"]["base_len"] == 25
     assert round(g["gates"]["base_depth"]["value"]["depth_adr"], 2) == 5.50
     assert round(g["gates"]["ema21"]["value"]["vs_ema21_adr"], 2) == 0.64
-    # 2026-11-11: the level is the RANGE HIGH 36.55 (the 5-day high 35.13 is telemetry)
-    assert round(g["level"], 2) == 36.55 and round(g["level5"], 2) == 35.13
-    assert round(1.2 * g["vol10"]) == 1_556_012 and round(1.2 * g["vol50"]) == 1_922_869
+    # 2026-11-11: the level is the LOWER of the range high (36.55) and the 5-day high (35.13)
+    assert round(g["level"], 2) == 35.13 and round(g["range"]["value"]["level"], 2) == 36.55 and g["level_source"] == "five_day"
+    assert round(g["vol_bar"]) == 1_556_012 and round(1.2 * g["vol50"]) == 1_922_869
 
 
 def test_history_gate_short_and_holed_series():
     b = _example("ZCSH")
     g = bv.v1_gates(b, bv.DEEP - 1, rs_best=99.0)
-    assert g["ok"] is False and g["failed"] == ["history"] and g["gates"]["range"]["pass"] is None
+    assert g["ok"] is False and g["failed"] == ["history"] and g["gates"]["ema21"]["pass"] is None
     D = len(b) - 1
     cidx = np.arange(len(b))
     cidx[D - 30:] += 1                                  # one missing session inside the 86-bar window

@@ -70,17 +70,15 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
 `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md`, "signd off"), at the watch night D on bars <= D:
 
 > **⚠ 2026-11-11 — INITIAL RULE SET wired on branch `worktree-agent-af09ad1fb995d350b`, PENDING HIS SIGN-OFF BEFORE
-> PAPER (not merged, not deployed, `breakout_v1_paper` OFF).** Built on the 84 high-confidence Qullamaggie buys; change
-> log 2026-11-11 below. Where it differs, it SUPERSEDES the table and the level / volume-bar bullet under it:
+> PAPER (not merged, not deployed, `breakout_v1_paper` OFF).** Change log 2026-11-11 below. Where it differs, it
+> SUPERSEDES the table under it:
 > - rule 5 run-up into the pole **>= 20%** (was 32.1%) · rule 4 base depth **1.51-11** daily ranges (was -8.98) ·
 >   rule 6 close vs the 21-day EMA **>= -0.9** (was -0.6335) · rule 7 the 50-day **is no longer a gate** (telemetry).
-> - NEW rule `range`: a range of **10+ sessions** (counting to the next session) that **gives back no more than half
->   its run** must exist at D (`breakout_v1.range_levels`).
-> - **The level = the lowest qualifying RANGE HIGH** (was the 5-day high, kept as `level5`). The live entry rests its
->   buy at max(5-minute opening-range high, this level) — unchanged code, so no buy happens under the range high.
-> - **The volume bar = the mean volume of the last 20 sessions** (was 1.2 x the last 10 — his 2026-11-02 ruling;
->   3 of the 84 miss that bar). On a daily bar the close must also be above the level.
-> - Unchanged: $2, $5M, ADR 2.1%, 86 sessions, strength 35, stop, sizing, exits, slots, the order score.
+> - A **range** (10+ sessions counting to the next session, giving back no more than half its run) is MEASURED on
+>   every name (`breakout_v1.range_levels`, the row's `range`); it is never a gate. **The level = the LOWER of the
+>   range high and the 5-day high** (`level_source`); no range = the 5-day high as before.
+> - Unchanged: the volume bar (1.2 x the last 10 sessions, his 2026-11-02 ruling), $2, $5M, ADR 2.1%, 86 sessions,
+>   strength 35, stop, sizing, exits, slots, the order score.
 
 | # | Rule | Value | Source | Code |
 |---|---|---|---|---|
@@ -397,25 +395,27 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
-### 2026-11-11 — breakout v1 INITIAL RULE SET: buy Qullamaggie's range breaks — list gates loosened to keep his high-confidence buys, the level becomes the range high (PENDING HIS SIGN-OFF BEFORE PAPER; wired on a branch, not merged, not deployed, paper OFF)
+### 2026-11-11 — breakout v1 INITIAL RULE SET: the list gates loosened to keep Qullamaggie's buys; a range is measured, the level is the lower of the range high and the 5-day high (PENDING HIS SIGN-OFF BEFORE PAPER; wired on a branch, not merged, not deployed, paper OFF)
 
-**Trigger**: his words 2026-11-11 — *"rate each buy with how confident we know it's a breakout and where the buy point is, then let's first focus on the high confidence ones to craft initial rules, then expand as needed"*; on the 21 high-confidence buys the list missed, *"these are qullamaggie buys, they all look good"*; then *"we are trying to buy like qullamaggie, stop with all the random tangents, buy his setups period."* The only target is Qullamaggie's buys; his grades of our list charts are a report column, no longer a bar.
+**Trigger**: his words 2026-11-11 — *"rate each buy with how confident we know it's a breakout and where the buy point is, then let's first focus on the high confidence ones to craft initial rules, then expand as needed"*; on the 21 high-confidence buys the list missed, *"these are qullamaggie buys, they all look good"*; then *"we are trying to buy like qullamaggie, stop with all the random tangents, buy his setups period."* The only target is Qullamaggie's buys; his grades of our list charts and his earlier NO labels of Qullamaggie buys are a report column, not a bar.
 
-**Evidence**: `docs/analysis/cb_qm_buy_confidence_2026-11-11.md` (the rating of his 757 buys: 84 High = a run, a range of 10+ sessions that holds its gains, its high taken out with a close above on volume) and `docs/analysis/cb_initial_rules_2026-11-11.md` (pre-registered before scoring). On the 84 (n = 84: 53 dated, 31 widened): the 11-02 list held 63; these rules list **79** the night before and the daily-bar trigger (a proxy of the buy, not the live intraday entry) fires on **79 of 79** at the rated buy point (`tests/test_breakout_v1_range_break.py`, pinned by name). Per change: prior move 20% (lowest High buy 21%, PBR; flat from 20% to dropped) · the 50-day dropped (9 of the 31 widened High buys sat under it; NVAX 2021-04-13 21% under) · EMA21 -0.9 (NVAX -0.85) · base depth to 11 (HEXO 10.8) · the 20-session volume bar (LVGO 2020-09-25, AVLR 2020-01-02, AMD 2020-01-17 miss 1.2 x the 10-day).
+**Evidence**: `docs/analysis/cb_qm_buy_confidence_2026-11-11.md` (the rating of his 757 buys; 84 High) and `docs/analysis/cb_initial_rules_2026-11-11.md`. **Head to head on all 757 buys (`scripts/probes/_717_qm_confidence_1111/13_head_to_head_fixup.out`; listed the night before / fired on the daily bar of a window session / big winners fired, n = 757 / 757 / 26): the 11-02 rules 455 / 209 / 21; this rule set 566 / 260 / 21.** Every buy the 11-02 trigger fired on still fires (0 lost); 51 more fire, 14 of them widened High. On the 84 High: 79 listed the night before (63 on 11-02), 76 fire (`tests/test_breakout_v1_range_break.py`, by name). Per change: prior move 20% (lowest High buy 21%, PBR; flat from 20% to dropped) · the 50-day dropped (9 of the 31 widened High buys sat under it; NVAX 2021-04-13 21% under) · EMA21 -0.9 (NVAX -0.85) · base depth to 11 (HEXO 10.8).
 
-**Known costs, stated plainly (each is pinned in a test so it cannot drift):**
-- **⚠ HEAD TO HEAD, all 757 of his buys (`scripts/probes/_717_qm_confidence_1111/13_head_to_head.out`; listed the night before / fired on the daily bar of a window session): the 11-02 rules 455 / 209; this rule set 319 / 94.** It gains 19 buys (16 of them widened High) and loses 134 the 11-02 trigger fired on; of the 26 big winners the 11-02 trigger fired on 21, this one on 11. By tier it fires on 78 of the 84 High and on NONE of the 116 Medium. **As wired it buys fewer of Qullamaggie's buys than the 11-02 rules** — the cost of buying only confirmed range breaks.
-- **The `range` rule as a LIST GATE was the builder's reading** of "never buys without a range-high take-out" — it is not in the pre-registration's gate list. The fork, his call: (a) range required (as wired), or (b) the range high where a range exists and the 11-02 level (the 5-day high) otherwise, which keeps the 11-02 buys and adds the range breaks.
+**What was tried and NOT kept (same day):**
+- **A range as a list gate + the range high as the only level + a 20-session volume bar** (the first wiring, `c41436db`): 319 listed / 94 fired / 11 big winners — fewer of his buys than the 11-02 rules. Removed.
+- **The range high as the level wherever a range exists** (measured, not wired): 228 fired, 18 big winners, 27 of the 11-02 trigger's buys lost — the range high sits AT or ABOVE the 5-day high, and he often buys the nearer pivot.
+- So the level is the LOWER of the two. **On all 566 listed buys the range high was never under the 5-day high, so today the level IS the 5-day high everywhere and the whole gain comes from the loosened gates**; the range high is recorded on the row as the rated buy point, for the next step.
+
+**Known costs, stated plainly (each pinned in a test):**
 - **The unchanged floors cost 5 of the 84:** BNGO 2019-12-30, INO 2020-01-21, HEXO 2020-08-13 ($5M dollar volume: $1.5M, $3.6M, $4.4M), FCEL 2020-02-10 (raw close $1.72, the $2 floor) and PLTR 2021-01-22 (86 sessions). Moving a floor is his call.
-- **The `range` rule leaves 79 of Qullamaggie's 269 dated buys off the list, 6 of the 26 big winners among them** (APT 2020-06-17, MDB 2020-09-21, JMIA 2020-11-18, SKLZ 2021-01-05, OSTK 2021-01-22, QS 2021-10-29): they had no range of 10+ sessions holding its gains the night before. The 11-02 scorecard was 263 of 269 and 26 of 26. This rule set buys ONLY range breaks; the Medium tier (a short pivot, a pivot inside a range — 116 buys) is the "expand as needed" step and is NOT bought by it.
-- **His 6 former NOs and MTW 2026-10-30 are back on the loosened gates** (MTW is listed with a range high of 23.875). His 28 no / not-yet list charts: all pass the loosened gates; 11 have a range within 3 daily ranges of the close.
-- **It reverses his 2026-11-02 volume-bar ruling** (1.2 x the last 10 sessions) and the 5-day level.
+- **Three listed High buys are short of his volume bar on the break day:** AMD 2020-01-17, AVLR 2020-01-02, LVGO 2020-09-25.
+- **His 6 former NOs and MTW 2026-10-30 are back on the list.** His 28 no / not-yet list charts all pass the loosened gates.
 
-**Anticipated effect**: the list becomes "names with a range to break". On 2026-11-10, 52 of the 190 names the 11-02 rules listed have such a range; how many names the loosened gates ADD that night is not measurable from the saved file (it holds only the 190). Buys rest at the range high (often above the 5-day high), so fewer and later entries; the stop rule (day low, no wider than ADR20) is unchanged and will abstain on a range high more than one daily range above the day's low.
+**Anticipated effect**: a longer nightly list (more names clear a 20% run-up, sit under the 50-day, or have a deeper base). How much longer is NOT measured — the saved 11-10 file holds only the 190 names the 11-02 rules listed, all 190 of which stay. Levels, the volume bar, the entry, stop, sizing and exits are unchanged.
 
-**Reversion-flag**: REVERSAL of four 2026-11-02 list constants (prior move, base depth cap, EMA21 line, the 50-day gate) — the 11-02 values were fit on the 269 buys OUR detector could date and on his NO labels of Qullamaggie buys; the widened set (488 more of his positions) showed they drop his clean range breaks, and his 11-11 ruling removes those labels as a bar. REVERSAL of the 11-02 volume bar and REPLACEMENT of the 5-day level. NEW: the `range` rule.
+**Reversion-flag**: REVERSAL of four 2026-11-02 list constants (prior move, base depth cap, EMA21 line, the 50-day gate) — the 11-02 values were fit on the 269 buys OUR detector could date and on his NO labels of Qullamaggie buys; the widened set (488 more of his positions) showed they drop his clean range breaks, and his 11-11 ruling removes those labels as a bar. NEW: the range measure (telemetry + the lower-of-two level).
 
-**Status**: wired on branch `worktree-agent-af09ad1fb995d350b`, tests green, **NOT merged, NOT deployed, paper OFF — pending his sign-off before paper.** Not verified: the whole-market list size; the intraday entry on the 84 break days (daily bars only); strength rank on 6 unranked nights.
+**Status**: wired on branch `worktree-agent-af09ad1fb995d350b`, tests green, **NOT merged, NOT deployed, paper OFF — pending his sign-off before paper.** Not verified: the whole-market list size; the intraday entry on the break days (daily bars only); strength rank on 6 unranked nights.
 
 ### 2026-11-07 — breakout v1's paper entry reads its strategy row FRESH every minute, and a row it cannot READ is a third state: no action that minute, nothing cancelled (#312 review + re-review; the PAPER lane only — no rule, number or exit moved)
 

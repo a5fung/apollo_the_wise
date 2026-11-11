@@ -116,8 +116,8 @@ def test_the_night_lists_zcsh_only_and_keeps_out_the_leveraged_and_unnamed_funds
     assert [r["ticker"] for r in rows] == ["ZCSH"]
     r = rows[0]
     assert r["list_rank"] == 1 and r["security_type"] == "ETV" and r["rs_best"] >= bv.RS_MIN
-    # 2026-11-11 initial rule set: the level is the RANGE HIGH (the 5-day high was 35.13), the bar the 20-session mean
-    assert round(r["level"], 2) == 36.55 and round(r["vol_bar"]) == 1_370_507
+    # 2026-11-11: the level is the LOWER of the range high (36.55 here) and the 5-day high (35.13); 1.2x the last 10 sessions
+    assert round(r["level"], 2) == 35.13 and round(r["vol_bar"]) == 1_556_012 and r["gates"]["level_source"] == "five_day"
     # the order score: alone on the night, ZCSH is the top of both within-night ranks
     assert r["order_score"] == 1.0
     assert round(r["runup6m_adr"], 2) == 70.67 and round(r["spread10_adr"], 2) == 3.46
@@ -137,7 +137,7 @@ def test_the_night_lists_zcsh_only_and_keeps_out_the_leveraged_and_unnamed_funds
     assert len(f.sent) == 1 and out["message"] == "sent"
     from agents.market_intelligence.constants import is_paper_message, mode_prefix
     assert f.sent[0].startswith(mode_prefix("paper")) and is_paper_message(f.sent[0])
-    assert "ZCSH" in f.sent[0] and "36.55" in f.sent[0]
+    assert "ZCSH" in f.sent[0] and "35.13" in f.sent[0]
     assert "/bgrade" not in f.sent[0]        # #717 stage 2 (his 2026-11-05 word): the message no longer names the command
 
 
@@ -245,7 +245,7 @@ def test_format_list_message_shows_the_top_10_by_score_and_the_count_and_is_none
     block = msg.split("```")[1]
     shown = [ln.split()[1] for ln in block.strip().splitlines()[1:]]
     assert shown == [f"T{k:03d}" for k in range(249, 239, -1)]          # the biggest run-up first (spread tied)
-    assert "|" not in block and "last 20 sessions" in msg and "high of its range" in msg and "50-day" not in msg      # no pipe table
+    assert "|" not in block and "last 10 sessions" in msg and "50-day" not in msg      # no pipe table
     # #717 stage 2: the message no longer names /bgrade (grades come from chart sheets in chat, his 2026-11-05 word);
     # the command itself stays — `test_bgrade_is_in_all_three_places` and the bare-/bgrade tests below pin it
     assert "/bgrade" not in msg and "bgrade" not in msg

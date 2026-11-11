@@ -5,8 +5,8 @@
 WHAT IT DOES. One execution-owned job, every minute 09:35-15:55 ET mon-fri (`run_breakout_v1_entry_tick`), for each
 name on LAST NIGHT's list (`mi_breakout_v1_list`, scan_date = the previous session):
   * the 5-minute opening range from today's 09:30-09:34 minute bars: ORH5 / ORL5, `level = max(ORH5, list level)`
-    — since the 2026-11-11 initial rule set (pending his sign-off) the list level is the RANGE HIGH and the
-    list's volume bar the 20-session mean; this module reads the row's values and did not change;
+    — since the 2026-11-11 initial rule set (pending his sign-off) the list level is the LOWER of the range high and
+    the 5-day high; this module reads the row's value and did not change;
     (`consolidation_breakout._entry_one`'s `orh5`); no bar at all in those five minutes = the named abstain
     `no_opening_range_minutes`;
   * F1 (RULED): the buy is only PLACED, and only KEPT live, while the volume so far (through the last completed
@@ -233,8 +233,7 @@ def stop_from_low(low: float) -> float:
 
 def f1_permits(cum_volume: float, vol_bar: float, last_completed: int) -> tuple[bool, float]:
     """F1 (his ruling 2026-10-29): volume so far >= 1.2x the stock's normal volume BY THAT MINUTE.
-    `vol_bar` is the list row's bar — since the 2026-11-11 initial rule set (pending his sign-off) the mean full daily
-    volume of the last 20 sessions; before it 1.2 x the average full daily volume of the last 10 sessions (his ruling 2026-11-02; the
+    `vol_bar` is the list's 1.2 x the average full daily volume of the last 10 sessions (his ruling 2026-11-02; the
     50-day before — this function only reads the row's value), so the bar is vol_bar x the curve's share at the last
     completed minute. -> (permits, the volume the minute needs)."""
     m = max(0, min(int(last_completed), N_SESSION_MINUTES - 1))
@@ -1808,7 +1807,7 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
             if not st["f1_ok"]:
                 await _note(today, ticker, "volume_below_curve",
                             f"no buy yet — volume {st['cum_volume']:,.0f} by minute {last_completed} < "
-                            f"{st['need_volume']:,.0f} (the list's volume bar by this minute)",
+                            f"{st['need_volume']:,.0f} (1.2x normal by this minute)",
                             {"cum_volume": st["cum_volume"], "need_volume": st["need_volume"],
                              "minute": last_completed})
                 out["actions"][ticker] = "volume_hold"

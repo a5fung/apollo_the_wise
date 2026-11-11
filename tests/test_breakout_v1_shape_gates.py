@@ -70,7 +70,7 @@ def qm_series():
 @pytest.fixture(autouse=True)
 def the_1102_list_rules(monkeypatch):
     """Every count in this file is the 2026-11-11 SHAPE-GATE research, scored on the 2026-11-02 list rules. The initial
-    rule set (same day, later; pending his sign-off) moved four list constants and swapped `sma50` for `range` in GATES,
+    rule set (same day, later; pending his sign-off) moved three list constants and took `sma50` out of GATES,
     so these records are re-read under the rules they were scored on. `shape_gates` itself did not change."""
     monkeypatch.setattr(bv, "GATES", ("history", "universe", "pinned", "adr", "rs", "prior_move", "base_depth", "ema21", "sma50"))
     monkeypatch.setattr(bv, "PRIOR_MOVE_MIN", 0.3213536987121892)
@@ -111,8 +111,7 @@ def test_calibration_codx_and_penn_pass_all_five_and_mtw_fails_on_its_lower_low(
 def test_the_list_is_unchanged_while_no_shape_gate_is_enforced(graded):
     for g, b in graded:
         v = bv.v1_gates(b, len(b) - 1, rs_best=99.0)
-        # every graded name WAS on the 11-02 list; `range` is measured on every name since 2026-11-11 (not a gate here)
-        assert v["ok"] and set(v["gates"]) == set(bv.GATES) | {"range"}, g.ticker
+        assert v["ok"] and set(v["gates"]) == set(bv.GATES), g.ticker      # every graded name WAS on the list
 
 
 def test_shape_gates_read_only_bars_up_to_d(graded):

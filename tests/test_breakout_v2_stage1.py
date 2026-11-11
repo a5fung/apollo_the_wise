@@ -95,7 +95,7 @@ def test_every_list_constant_is_the_signed_off_spec():
     assert (bv.RANGE_LOOKBACK, bv.RANGE_MIN_LEN, bv.RANGE_GIVE_BACK, bv.RANGE_RUN_LOOKBACK, bv.RANGE_TOL_SESSIONS) == (126, 10, 0.5, 60, 20)
     assert bv.SMA_SESSIONS == 50                                 # rule 7
     assert (bv.MIN_PRICE, bv.MIN_DOLLAR_VOL, bv.MIN_BARS) == (2.0, 5_000_000.0, 86)   # rule 1 unchanged
-    assert (bv.VOL_X, bv.VOL_WINDOW, bv.RECENT) == (1.0, 20, 5)  # 2026-11-11: the 20-session mean (was 1.2x the last 10); the 5-day high is telemetry
+    assert (bv.VOL_X, bv.VOL_WINDOW, bv.RECENT) == (1.2, 10, 5)  # §3: 1.2x the last 10 sessions; the 5-day level
     assert (bv.RUNUP6M_SESSIONS, bv.RUNUP6M_LOW_SESSIONS, bv.SPREAD_SESSIONS) == (126, 63, 10)   # §2
     assert bl.MESSAGE_TOP_N == 10 and bl.HISTORY_SESSIONS >= 126 + 63
     # the forward shadow's shared constants are NOT the list's and did not move
@@ -103,41 +103,31 @@ def test_every_list_constant_is_the_signed_off_spec():
 
 
 def test_the_gate_list_is_the_rebuilt_rules_and_the_four_removed_gates_are_gone():
-    # 2026-11-11 initial rule set: the 50-day is no longer a gate; `range` (a range to buy the break of) is
-    assert bv.GATES == ("history", "universe", "pinned", "adr", "rs", "prior_move", "base_depth", "ema21", "range")
+    # 2026-11-11 initial rule set: the 50-day is no longer a gate (telemetry); a range is measured, never a gate
+    assert bv.GATES == ("history", "universe", "pinned", "adr", "rs", "prior_move", "base_depth", "ema21")
     for gone in ("higher_lows", "surf", "tightening", "breakdown"):
         assert gone not in bv.GATES
         assert not hasattr(bv, "surf_run")
 
 
 # ── THE SCORECARD ─────────────────────────────────────────────────────────────────────────────────────────────────
-def test_the_scorecard_under_the_initial_rule_set_190_of_269_listed_and_every_one_off_lacks_only_a_range(scorecard):
-    """2026-11-11 initial rule set (PENDING HIS SIGN-OFF). The loosened gates drop NONE of Qullamaggie's 269 dated buys
-    (his 6 NOs — YPF, W, DOCU x2, SQM, MRNA — pass them now: his 11-11 ruling, Qullamaggie's buys are ground truth).
-    The new `range` gate is the only thing that leaves a buy off: 79 had no range of 10+ sessions holding its gains the
-    night before, 6 of the 26 big winners among them. THE KNOWN COST of buying only range breaks, pinned by name so it
-    cannot drift silently; the 2026-11-02 scorecard was 263 / 26 of 26."""
-    assert len(scorecard) == 269
-    on = [r for r, _, _, g in scorecard if g["ok"]]
-    assert len(on) == 190
-    off = [g["failed"] for _, _, _, g in scorecard if not g["ok"]]
-    assert len(off) == 79 and all(v == ["range"] for v in off)
-    assert all(g["gates"][k]["pass"] for _, _, _, g in scorecard for k in bv.GATES if k != "range")
-    big_off = {_key(r) for r, _, _, g in scorecard if r["big_winner"] == "1" and not g["ok"]}
-    assert big_off == {("APT", "2020-06-17"), ("MDB", "2020-09-21"), ("JMIA", "2020-11-18"), ("SKLZ", "2021-01-05"),
-                       ("OSTK", "2021-01-22"), ("QS", "2021-10-29")}
-    # THE HEADLINE COST (13_head_to_head.out): on the daily bar of his buy day the wired trigger fires on 67 of the 269
-    # and 11 of the 26 big winners; the 11-02 trigger (the 5-day high, 1.2x the 10-day volume) fired on 156 and 21.
-    fired = [(r, bv.breakout_triggered({"h": float(b.h[D + 1]), "c": float(b.c[D + 1]), "v": float(b.v[D + 1])}, g)["fired"])
-             for r, b, D, g in scorecard]
-    assert sum(f for _, f in fired) == 67 and sum(f for r, f in fired if r["big_winner"] == "1") == 11
+def test_the_scorecard_under_the_initial_rule_set_all_269_listed_and_no_buy_of_the_1102_trigger_lost(scorecard):
+    """2026-11-11 initial rule set (PENDING HIS SIGN-OFF). The loosened gates list ALL 269 of Qullamaggie's dated buys
+    the night before (263 on 2026-11-02; his 6 former NOs — YPF, W, DOCU x2, SQM, MRNA — are Qullamaggie buys and count
+    now: his 11-11 ruling). The level is the LOWER of the range high and the 5-day high, the volume bar his 1.2x the last
+    10 sessions, so every buy the 11-02 trigger fired on still fires: 160 of 269 on the daily bar (156 on 11-02), 21 of
+    the 26 big winners (21). On these 269 the range high is never under the 5-day high, so the level is the 5-day high."""
+    assert len(scorecard) == 269 and all(g["ok"] and g["failed"] == [] for _, _, _, g in scorecard)
+    fired = [(r, bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)["fired"]) for r, b, D, g in scorecard]
+    assert sum(f for _, f in fired) == 160 and sum(f for r, f in fired if r["big_winner"] == "1") == 21
     old = [(r, g["gates"]["prior_move"]["value"]["prior_move"] >= 0.3213536987121892
             and g["gates"]["base_depth"]["value"]["depth_adr"] <= 8.979719460898997
             and g["gates"]["ema21"]["value"]["vs_ema21_adr"] >= -0.6335 and g["sma50"]["pass"]
             and float(b.h[D + 1]) > g["level5"] and float(b.v[D + 1]) >= 1.2 * g["vol10"]) for r, b, D, g in scorecard]
     assert sum(f for _, f in old) == 156 and sum(f for r, f in old if r["big_winner"] == "1") == 21
-    # the level of every listed buy is its lowest qualifying range high, never the 5-day high by construction
-    assert all(g["level"] == g["gates"]["range"]["value"]["level"] for _, _, _, g in scorecard if g["ok"])
+    assert all(n or not o for (_, n), (_, o) in zip(fired, old))             # nothing the 11-02 trigger bought is lost
+    assert all(g["level"] == g["level5"] and g["level_source"] == "five_day" for _, _, _, g in scorecard)
+    assert sum(g["range"]["pass"] for _, _, _, g in scorecard) == 190        # a range existed the night before on 190
 
 
 def test_the_16_known_non_setups_stay_on_the_list_as_the_committed_negatives(scorecard):
@@ -145,13 +135,11 @@ def test_the_16_known_non_setups_stay_on_the_list_as_the_committed_negatives(sco
     the next rule is judged on. Derived from the fixture's labels (no / EP), not only hand-listed."""
     def non_setup(label):
         return label.startswith("no") or "EP" in label
-    derived = {_key(r) for r, _, _, g in scorecard if non_setup(r["his_label"]) and all(
-        g["gates"][k]["pass"] for k in bv.GATES if k != "range")}
-    # 2026-11-11: his grades are a report column, not a bar. The loosened gates keep all 16 plus his former 6 NOs;
-    # the `range` gate then leaves 4 of the 16 listed (the rest had no range to break that night).
+    derived = {_key(r) for r, _, _, g in scorecard if g["ok"] and non_setup(r["his_label"])}
+    # 2026-11-11: his labels of Qullamaggie buys are a report column, not a bar. The loosened gates keep the 16 and
+    # his 6 former NOs (22 rows, 21 distinct ticker-days).
     assert KNOWN_NON_SETUPS <= derived and len(KNOWN_NON_SETUPS) == 16
-    listed = {_key(r) for r, _, _, g in scorecard if g["ok"] and non_setup(r["his_label"])}
-    assert listed == {("FCX", "2021-12-07"), ("MU", "2021-12-21"), ("NVAX", "2020-05-12"), ("PLNT", "2020-05-26")}
+    assert derived - KNOWN_NON_SETUPS == set(HIS_SIX_NOS)
 
 
 def test_the_knife_edges_the_rules_were_pinned_on(scorecard):
@@ -177,7 +165,7 @@ def test_mtw_1030_v1s_first_paper_buy_is_back_on_under_the_initial_rule_set():
     D = len(b) - 1
     assert b.dates[D] == date(2026, 10, 30)
     g = bv.v1_gates(b, D, rs_best=98.6)
-    assert g["ok"] is True and g["failed"] == [] and g["level"] == 23.875 and g["gates"]["range"]["value"]["len"] == 18
+    assert g["ok"] is True and g["failed"] == [] and g["level"] == 23.875 == g["level5"] and g["range"]["value"]["len"] == 18
     assert round(g["prior_move"], 5) == 0.30789 < 0.3213536987121892 and g["pole_date"] == "2026-10-06"
     assert round(g["adr20"], 4) == 0.0406
 
@@ -221,17 +209,17 @@ def test_the_era_b_buys_read_as_stage0_printed_on_the_10_day_bar_11_of_18(scorec
     assert seen == 18 and fired == 11
 
 
-def test_the_volume_bar_is_the_mean_of_the_last_20_sessions_to_d():
+def test_the_volume_bar_is_1_2x_the_mean_of_the_last_10_sessions_to_d():
     n = 120
     days = [date(2024, 1, 1) + timedelta(days=i) for i in range(n)]
     c = np.linspace(10.0, 14.0, n)
     v = np.concatenate([np.full(n - 10, 5_000_000.0), np.full(10, 1_000_000.0)])   # a heavy run-up, a quiet last 10
     b = cb.DailyBars(dates=days, o=c.copy(), h=c * 1.03, l=c * 0.97, c=c, v=v)
     g = bv.v1_gates(b, n - 1, rs_best=99.0)
-    assert g["vol10"] == 1_000_000.0 and g["vol_bar"] == pytest.approx(3_000_000.0)   # (10 x 5M + 10 x 1M) / 20
+    assert g["vol10"] == 1_000_000.0 and g["vol_bar"] == pytest.approx(1_200_000.0)
     assert g["vol50"] == pytest.approx((40 * 5_000_000.0 + 10 * 1_000_000.0) / 50)     # telemetry only
-    t = bv.breakout_triggered({"h": 1e9, "v": 3_000_000.0}, dict(g, ok=True))
-    assert t["volume_pass"] is True and bv.breakout_triggered({"h": 1e9, "v": 2_999_999.0}, g)["volume_pass"] is False
+    t = bv.breakout_triggered({"h": 1e9, "v": 1_200_000.0}, dict(g, ok=True))
+    assert t["volume_pass"] is True and bv.breakout_triggered({"h": 1e9, "v": 1_199_999.0}, g)["volume_pass"] is False
 
 
 def test_runup6m_reads_only_bars_up_to_d_and_the_low_at_most_63_sessions_before_the_high():

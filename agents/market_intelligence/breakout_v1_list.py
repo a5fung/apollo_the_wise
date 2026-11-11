@@ -217,8 +217,8 @@ def format_list_message(today: date, rows: list) -> Optional[str]:
     more = f"\n…and {n - len(shown)} more (mi_breakout_v1_list)" if n > len(shown) else ""
     return (f"{mode_prefix('paper')}*Breakout v1 — watch list for the next session* ({today.isoformat()}, "
             f"{n} name{'s' if n != 1 else ''}; the top {len(shown)} by the order score)\n"
-            f"A name breaks out when it trades above its level (the high of its range) on more than its average "
-            f"volume of the last {bv.VOL_WINDOW} sessions. No order is placed from this message.\n"
+            f"A name breaks out when it trades above its level on at least 1.2× its average volume of the last "
+            f"10 sessions. No order is placed from this message.\n"
             "```\n" + "\n".join(lines) + "\n```" + more)
 
 

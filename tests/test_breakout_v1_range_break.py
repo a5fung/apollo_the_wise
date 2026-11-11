@@ -1,12 +1,13 @@
-"""Breakout v1 — the INITIAL RULE SET of 2026-11-11 (PENDING HIS SIGN-OFF BEFORE PAPER): buy Qullamaggie's range breaks.
+"""Breakout v1 — the INITIAL RULE SET of 2026-11-11 (PENDING HIS SIGN-OFF BEFORE PAPER): keep Qullamaggie's buys.
 
 Spec: `docs/analysis/cb_initial_rules_2026-11-11.md`; owner `docs/setups/consolidation_breakout.md` (change log
-2026-11-11). His words: "we are trying to buy like qullamaggie ... buy his setups period". THE TARGET is the 84
-high-confidence Qullamaggie buys (`docs/analysis/cb_qm_buy_confidence_2026-11-11.md`, `high_tier.tsv`):
-  * the 79 the unchanged safety floors allow are LISTED the night before and BOUGHT on their break day, at the rated
-    buy point (the range high) — pinned by name;
+2026-11-11). His words: "we are trying to buy like qullamaggie ... buy his setups period". THE TARGET is Qullamaggie's
+buys; the 84 high-confidence ones (`docs/analysis/cb_qm_buy_confidence_2026-11-11.md`, `high_tier.tsv`) shaped it:
+  * the 79 the unchanged safety floors allow are LISTED the night before (63 under the 2026-11-02 rules) and 76 fire on
+    their break day — pinned by name; the 3 that do not are short of his 1.2x 10-day volume bar, named;
   * the 5 the floors cost are pinned by name and by the floor that stops each (his call, never silently fixed);
-  * the trigger never fires without the range high being taken out.
+  * the range high is MEASURED on every name (the rated buy point) and the level is the LOWER of it and the 5-day high —
+    a missing range never takes a name off the list, and no buy the 5-day level made is lost.
 """
 from __future__ import annotations
 
@@ -62,28 +63,33 @@ def _key(r):
     return (r["ticker"], r["E"])
 
 
-def test_the_79_listable_high_confidence_qullamaggie_buys_are_listed_the_night_before_and_bought_on_the_break_day(high_tier):
-    """'Bought' = the DAILY bar of the break day takes out the range high, closes above it, on volume above the bar — a
-    proxy of the buy, not the live intraday entry (opening range, volume pace, the stop-width rule)."""
+# High-tier buys the list holds whose break day is under his 2026-11-02 volume bar (1.2x the last 10 sessions).
+VOLUME_MISSES = {("AMD", "2020-01-17"), ("AVLR", "2020-01-02"), ("LVGO", "2020-09-25")}
+
+
+def test_the_79_listable_high_confidence_qullamaggie_buys_are_listed_the_night_before_and_76_fire_on_the_break_day(high_tier):
+    """'Fire' = the DAILY bar of the break day takes out the level on volume at or above the bar — a proxy of the buy,
+    not the live intraday entry (opening range, volume pace, the stop-width rule)."""
     assert len(high_tier) == 84 and sum(r["set"] == "dated" for r, *_ in high_tier) == 53
     assert {_key(r) for r, *_ in high_tier if not r["rs_best"]} == RANK_NOT_MEASURED
-    listed, bought = [], []
+    listed, fired, missed = [], [], set()
     for r, b, D, g in high_tier:
         if _key(r) in FLOOR_LOSSES:
             continue
         assert g["ok"] is True and g["failed"] == [], (_key(r), g["failed"])
-        # the range high IS the rated buy point (ratings.tsv keeps 4 significant figures)
-        assert g["level"] == pytest.approx(float(r["buy_point"]), rel=5e-4), _key(r)
-        assert g["gates"]["range"]["value"]["len"] == int(r["range_len"]) >= bv.RANGE_MIN_LEN, _key(r)
+        # the range high is the rated buy point (ratings.tsv keeps 4 significant figures); the level is never above it
+        assert g["range"]["value"]["level"] == pytest.approx(float(r["buy_point"]), rel=5e-4), _key(r)
+        assert g["range"]["value"]["len"] == int(r["range_len"]) >= bv.RANGE_MIN_LEN, _key(r)
+        assert g["level"] == min(g["level5"], g["range"]["value"]["level"]), _key(r)
         listed.append(_key(r))
-        t = bv.breakout_triggered({"h": float(b.h[D + 1]), "c": float(b.c[D + 1]), "v": float(b.v[D + 1])}, g)
-        assert t["fired"] is True and t["level_pass"] and t["volume_pass"], _key(r)
-        bought.append(_key(r))
-    assert len(listed) == len(bought) == 79
+        t = bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)
+        assert t["level_pass"] is True, _key(r)                        # every one takes its level out on the break day
+        (fired.append(_key(r)) if t["fired"] else missed.add(_key(r)))
+    assert len(listed) == 79 and len(fired) == 76 and missed == VOLUME_MISSES
     for name in (("ALB", "2021-05-27"), ("ALB", "2021-07-09"), ("NUE", "2022-01-05"), ("ABNB", "2021-11-05"),     # prior move 22-30%
                  ("DKNG", "2020-08-18"), ("FSLY", "2020-09-21"), ("AMD", "2021-10-13"), ("LCID", "2022-01-07"),    # under the 50-day
                  ("NVAX", "2021-04-13"), ("WKHS", "2020-08-03"), ("NET", "2020-06-15"), ("DVN", "2021-11-24")):
-        assert name in bought, name
+        assert name in fired, name
 
 
 def test_the_five_buys_the_unchanged_floors_cost_are_named_with_the_floor_that_stops_each(high_tier):
@@ -102,29 +108,30 @@ def _base(n=160, top=20.0):
     return cb.DailyBars(dates=days, o=c.copy(), h=h, l=lo, c=c, v=np.full(n, 1_000_000.0))
 
 
-def test_the_level_is_the_range_high_and_nothing_fires_without_taking_it_out():
+def test_a_range_is_measured_and_the_level_is_the_lower_of_the_range_high_and_the_5_day_high():
     b = _base()
     g = bv.v1_gates(b, len(b) - 1, rs_best=99.0)
-    rng = g["gates"]["range"]
-    assert rng["pass"] is True and g["level"] == rng["value"]["level"] == 20.0 and rng["value"]["len"] >= 10
+    rng = g["range"]
+    assert "range" not in g["gates"] and "range" not in bv.GATES              # measured, never a gate
+    assert rng["pass"] is True and rng["value"]["level"] == 20.0 and rng["value"]["len"] >= 10
+    assert g["level"] == min(g["level5"], 20.0) == 20.0
     ok = dict(g, ok=True)
     big = 10 * g["vol_bar"]
-    assert bv.breakout_triggered({"h": 20.01, "c": 20.005, "v": big}, ok)["fired"] is True
-    assert bv.breakout_triggered({"h": 20.00, "c": 19.9, "v": big}, ok)["fired"] is False      # touched, not taken out
-    assert bv.breakout_triggered({"h": 20.50, "c": 19.9, "v": big}, ok)["fired"] is False      # a daily bar must close above it
-    assert bv.breakout_triggered({"h": 20.50, "c": 20.4, "v": 0.99 * g["vol_bar"]}, ok)["fired"] is False   # under the 20-session mean
-    assert bv.breakout_triggered({"h": 19.99, "v": big}, ok)["fired"] is False                 # high volume alone never buys
+    assert bv.breakout_triggered({"h": 20.01, "v": big}, ok)["fired"] is True
+    assert bv.breakout_triggered({"h": 20.00, "v": big}, ok)["fired"] is False                 # touched, not taken out
+    assert bv.breakout_triggered({"h": 20.50, "v": 0.99 * g["vol_bar"]}, ok)["fired"] is False   # under 1.2x the last 10
+    assert bv.breakout_triggered({"h": 19.99, "v": big}, ok)["fired"] is False                 # volume alone never buys
 
 
-def test_no_range_means_no_level_and_no_buy():
+def test_no_range_keeps_the_name_on_the_list_at_its_5_day_high():
     n = 160                                                  # a straight run, new highs to the last bar: no range
     days = [date(2024, 1, 1) + timedelta(days=i) for i in range(n)]
     c = np.linspace(10.0, 30.0, n)
     b = cb.DailyBars(dates=days, o=c.copy(), h=c * 1.01, l=c * 0.99, c=c, v=np.full(n, 1_000_000.0))
     g = bv.v1_gates(b, n - 1, rs_best=99.0)
-    assert "range" in g["failed"] and g["ok"] is False and g["level"] is None and g["level5"] > 0
+    assert g["range"]["pass"] is False and "range" not in g["failed"]
+    assert g["level"] == g["level5"] == pytest.approx(30.0 * 1.01) and g["level_source"] == "five_day"
     assert bv.range_levels(np.asarray(b.h), np.asarray(b.l), n - 1) == []
-    assert bv.breakout_triggered({"h": 1e9, "c": 1e9, "v": 1e12}, dict(g, ok=True))["fired"] is False
 
 
 def test_range_levels_reads_only_bars_up_to_d():
@@ -145,10 +152,9 @@ def _bar(m, o, h, lo, c, v):
             "open": o, "high": h, "low": lo, "close": c, "volume": v}
 
 
-def test_the_live_entry_rests_its_buy_at_the_range_high_never_under_it():
-    """`breakout_v1_entry.evaluate` buys through max(the 5-minute opening-range high, the list row's level). The list
-    row's level is now the range high, so an opening range UNDER it rests the buy at the range high (no buy on an
-    opening-range break alone), and one above it rests at the opening-range high (still above the range high)."""
+def test_the_live_entry_rests_its_buy_at_the_list_level_never_under_it():
+    """`breakout_v1_entry.evaluate` (unchanged) buys through max(the 5-minute opening-range high, the list row's level):
+    an opening range UNDER the level rests the buy at the level, one above it at the opening-range high."""
     bars = [_bar(m, 9.9, 10.00, 9.85, 9.9, 5e4) for m in range(6)]
     mins = be.bars_by_minute(bars, TODAY, 5)
     st = be.evaluate(mins, list_level=10.40, adr20=0.08, vol_bar=1e5, last_completed=5)
