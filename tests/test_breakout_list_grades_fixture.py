@@ -22,8 +22,10 @@ def test_every_sheet_exists_and_its_key_agrees():
     for sheet in {g.sheet for g in BREAKOUT_LIST_GRADES}:
         path = _REPO / sheet
         assert path.exists(), sheet
-        key = (path.parent / "key_do_not_show.txt").read_text().splitlines()
+        own = path.parent / (path.name + ".key_do_not_show.txt")     # the bought-names sheets: letter|ticker|new|OLD rank
+        key = (own if own.exists() else path.parent / "key_do_not_show.txt").read_text().splitlines()
         rows = {r.split("|")[0]: r.split("|") for r in key if r[:2] in {f"{c}|" for c in "ABCDEFGHIJKL"}}
         for g in (x for x in BREAKOUT_LIST_GRADES if x.sheet == sheet):
-            letter, ticker, rank = rows[g.sheet_card][:3]
+            letter, ticker = rows[g.sheet_card][:2]
+            rank = rows[g.sheet_card][3 if own.exists() else 2]
             assert (ticker, int(rank)) == (g.ticker, g.list_rank), g

@@ -358,6 +358,12 @@ SHAPE_GATES_V2 = ("in_base", "ema21_not_falling", "ema21_vs_sma50", "low_not_tod
 SHAPE_SMA_LONG = 200
 SHAPE_SMA200_RISING_SESSIONS = 20
 SHAPE_TREND_GATES = ("above_200", "sma50_above_200", "sma200_rising", "above_rising_200")
+# Amendment 4 (2026-11-11, round 4 — his "a few more tight days"): ONE tightness gate at the RIGHT EDGE, three variants.
+SHAPE_RC_MAX = 1.1               # range_contract: mean range of D-4..D <= 1.1 x the mean of D-9..D-5 (his 10-28 "Yes")
+SHAPE_C5_ADR_MAX = 1.5           # tight_closes5: the last 5 closes inside 1.5 daily ranges
+SHAPE_TIGHT_RUN = 3              # tight_run3: the last 3 sessions each no wider than ...
+SHAPE_TIGHT_RUN_X = 1.0          # ... 1.0 x ADR20 (a normal day), and each close within that of the one before
+SHAPE_TIGHT_GATES = ("range_contract", "tight_closes5", "tight_run3")
 # Which shape gates the LIST enforces. EMPTY = none: the list is exactly the seven signed-off rules. The 2026-11-11
 # score FAILED its bar (first set 11/12 `no` but 6/16 of his good/ok kept; the revised set `("not_extended",
 # "tight10")` 9/12 and 13/16 — SIG, ABCL, NVAX still pass), so nothing is enforced; a hard gate ships only on the
@@ -455,6 +461,23 @@ def shape_gates(bars: "cb.DailyBars", D: int, *, P: int, adr20: Optional[float])
     out["sma50_above_200"] = {"pass": stacked is not False, "value": tv}
     out["sma200_rising"] = {"pass": rising is not False, "value": tv}
     out["above_rising_200"] = {"pass": above is not False and rising is not False, "value": tv}
+    # ── amendment 4: tightness at the right edge ("a few more tight days") ──
+    hh = np.asarray(bars.h, dtype=float)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        rng = (hh - l) / c
+    r_last, r_prev = float(rng[D - 4:D + 1].mean()), float(rng[D - 9:D - 4].mean())
+    rc = _f(r_last / r_prev) if r_prev > 0 else None
+    out["range_contract"] = {"pass": bool(rc is not None and rc <= SHAPE_RC_MAX), "value": {"range5_over_prev5": rc}}
+    c5 = _f((float(c[D - 4:D + 1].max()) / float(c[D - 4:D + 1].min()) - 1.0) / adr) if adr_pos else None
+    out["tight_closes5"] = {"pass": bool(c5 is not None and c5 <= SHAPE_C5_ADR_MAX), "value": {"spread5_adr": c5}}
+    run = 0
+    if adr_pos:
+        for i in range(D, 0, -1):
+            if rng[i] <= SHAPE_TIGHT_RUN_X * adr and abs(c[i] / c[i - 1] - 1.0) <= SHAPE_TIGHT_RUN_X * adr:
+                run += 1
+            else:
+                break
+    out["tight_run3"] = {"pass": bool(run >= SHAPE_TIGHT_RUN), "value": {"tight_days_in_a_row": run}}
     sp = order_inputs(bars, D, adr)["spread10_adr"] if adr_pos else None
     out["tight10"] = {"pass": bool(sp is not None and sp <= SHAPE_TIGHT_ADR_MAX),
                       "value": {"spread10_adr": sp, "max": SHAPE_TIGHT_ADR_MAX}}

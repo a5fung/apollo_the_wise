@@ -35,7 +35,7 @@ ap.add_argument("--seed", type=int, default=1111)
 ap.add_argument("--out", default=HERE + "bought_sheet.png")
 a = ap.parse_args()
 GATES = [] if a.gates == "none" else a.gates.split(",")
-assert all(g in bv.SHAPE_GATES + bv.SHAPE_GATES_V2 + bv.SHAPE_TREND_GATES for g in GATES), GATES
+assert all(g in bv.SHAPE_GATES + bv.SHAPE_GATES_V2 + bv.SHAPE_TREND_GATES + bv.SHAPE_TIGHT_GATES for g in GATES), GATES
 
 lst, bars, sec = [], defaultdict(list), None
 for line in open(a.inp):

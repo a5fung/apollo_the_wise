@@ -358,3 +358,38 @@ What it means:
   holds the SAME 12 names as the amendment-2 sheet (letters reshuffled), because T1 removes none of them.
 - So the would-buy sheet's problem is not a missing trend gate that the labels support. What he sees in those charts
   is a question for him, on the sheet itself.
+
+---
+# ROUND 4 (2026-11-11) — his grades on the would-buy sheet: "a few more tight days"
+
+## What changed
+- He graded the amendment-2 would-buy sheet (list night 2026-11-10, 12 names): 2 ok (CVLT, EVH), 6 no, 4 not yet —
+  *"maybe"*, *"maybe, a few more tight days"*, *"a few more tight days"*, *"few more tight days"* — and APPN *"no,
+  needs more time"*. DoD (3) FAILS at 2 of 12.
+- Labels now n = 41 name-nights: 23 `no`, 5 conditional (scored as must-REJECT tonight: not tight yet), 13 good / ok.
+  The same ticker can carry different grades on different nights (PLSE good 11-06, maybe 11-10; CVLT no 11-05, ok
+  11-10), so every count is keyed on ticker + night.
+
+## AMENDMENT 4 (written BEFORE any score; each variant scored ONCE; `09_score_amendment4.out`)
+Amendment 2's four gates + ONE tightness gate at the chart's RIGHT EDGE. Sources: the article's *"tightening range"*;
+his 10-28 *"it'll surf for multiple days near the MAs, tighten, then breakout"* and his "Yes" that day to *the last 5
+sessions' mean range no more than 1.1x the 5 before*; 11-02 *"the chart should tighten leading to the breakout, not the
+full base"*; 11-11 *"a few more tight days"*.
+| Variant | Passes when (bars <= D) | From |
+|---|---|---|
+| K1 `range_contract` | mean of (high-low)/close over D-4..D <= 1.1 x the mean over D-9..D-5 | his ruled 10-28 value, removed 11-02 |
+| K2 `tight_closes5` | (max / min - 1 of the closes D-4..D) / ADR20 <= 1.5 | "closes in a narrow band" — the 11-02 measure on 5 sessions instead of 10 |
+| K3 `tight_run3` | the last 3 sessions EACH have a range <= 1.0 x ADR20 and a close within 1.0 x ADR20 of the prior close | "a few ... tight days": a count of tight days in a row |
+- How these differ from the first set's `tight10` (last 10 closes within 4 daily ranges): that was a loose two-week
+  band, set where it kept 80% of his yes labels, and it reads the same whether the tight days are at the start or the
+  end of the window. These read only the last 3-5 sessions — the days he says are missing.
+- K2's 1.5 and K3's 3 / 1.0 have no ruled source; they are declared starting values, with sweeps reported (K1 1.0 /
+  1.1 / 1.25; K2 1.0 / 1.5 / 2.0; K3 run 2 / 3 / 4). Volume drying up is NOT tested here (one concept per amendment).
+- Bars: `no` + conditional rejected 28 of 28 (n = 28); good / ok kept >= 11 of 13 (n = 13); Qullamaggie's listed buys
+  kept >= 250 of 263 (n = 263); big winners >= 25 of 26 (n = 26).
+- Stated now: amendment 2 alone is at 249 of 263, so the Qullamaggie bar is already missed by one and a full PASS is
+  not expected. Old v1's tightening (K1's rule) blocked 56 of his 269 buys.
+- Pick rule (fixed now): among variants keeping good / ok >= 11 and big winners >= 25, the one blocking the fewest
+  additional Qullamaggie buys; a tie goes to more rejections. The 12 sheet letters each variant removes are reported;
+  those 12 are now LABELS (in the 28 / 13 counts), no longer an out-of-sample check.
+- Enforce only if a variant meets every bar.
