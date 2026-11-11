@@ -79,6 +79,27 @@ miss counts read LOW by construction:
   cost = how many more Low / Not buys get on the list, plus the pinned labels (26 big winners, his 6 NOs, the 16
   known negatives). **Not measurable here: the list's size over the whole market** — reported as unverified.
 
+## AMENDMENT 1 (2026-11-11, the ONE allowed; written before the re-run)
+**Why:** the first run (`01_rate_first.out`) failed check 1 — BILI, AXSM and AAPL rated Low `no_level` — and put 21 of
+his 37 good / ok dated buys in Low (n = 37). Reading the bars showed a defect in the method, not in those charts:
+- **Range length was the AGE OF THE HIGHEST HIGH, not how long price went sideways.** NVAX 2020-02-24 took out 18
+  sessions of highs, but the top of that range was printed 4 sessions earlier, so it counted as a 4-session range and
+  was dropped. A flat range touches its top several times; the last touch is not its start.
+- **Many buys are a short pivot INSIDE a range** (TSLA 2020-09-21, AMD 2021-08-23, MARA 2021-11-30 — the down-sloping
+  line, "a lower entry than what we call a breakout"). The method had no place for them.
+What the first run also showed and is NOT changed: AAPL 2020-07-23's only window day fell 4.5% and took out no prior
+high; BILI 2021-01-20 was making a new high almost daily with no range behind it. If they stay Low, that is reported.
+
+**Changes (everything else as above):**
+1. **Range start.** For a candidate level, the range starts at the EARLIEST session, among the sessions whose highs it
+   stands above, whose high came within one average daily range of the level (mean of high - low over the 20
+   sessions before `t`, in price — a unit of measure, not a threshold on the stock). Range length = `t` - that start.
+   Holds-its-gains is measured on this range (its low vs the 60 sessions before its start).
+2. **New Medium path `inside_range`:** the highest high of the 60 sessions before `t` is 10+ sessions old, the stretch
+   since it holds its gains (same half rule), and `t` takes out the highs of 3+ sessions and closes above them.
+   Buy point = the highest of those highs. Checked after the other Medium paths.
+Check 1 keeps its wording; the sheets' pass bar is unchanged; sensitivity grid unchanged.
+
 ## What this does not answer
 - Whether a buy MADE money — no bar after `hi` is read; this rates the chart at the buy, not the trade.
 - Where he actually bought: the buy point is the most plausible level by rule, not his fill.

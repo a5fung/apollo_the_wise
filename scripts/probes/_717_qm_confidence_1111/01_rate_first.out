@@ -1,0 +1,57 @@
+=== TIER COUNTS ===
+dated    n = 269: High 43 (16%), Medium 46 (17%), Low 154 (57%), Not 26 (10%)
+widened  n = 488: High 14 (3%), Medium 35 (7%), Low 382 (78%), Not 57 (12%)
+
+=== REASON by tier and set ===
+dated    High    range_break 43
+dated    Medium  short_pivot 27, range_break_partial 11, close_break 8
+dated    Low     no_level 72, weak_pivot 52, gives_back 24, bounce 3, broke_before 3
+dated    Not     ep_gap 26
+widened  High    range_break 14
+widened  Medium  short_pivot 26, range_break_partial 6, close_break 3
+widened  Low     no_level 252, downtrend 71, gives_back 30, weak_pivot 21, bounce 4, broke_before 4
+widened  Not     fund 35, ipo 22
+
+=== what the trend overrides demoted (tier before the override -> Low) ===
+downtrend  dated    
+downtrend  widened  was High 7, was Low 60, was Medium 4
+bounce     dated    was Low 2, was Medium 1
+bounce     widened  was Low 4
+holds-its-gains OFF, dated: tier moves (with -> without) Low->High 13, Low->Medium 12, Medium->High 5
+holds-its-gains OFF, widened: tier moves (with -> without) Low->High 17, Low->Medium 17, Medium->High 6
+
+=== CHECK 1: the named examples ===
+  must not be Low/Not: BILI widened 2021-01-20..2021-01-20 -> Low (no_level) level None len None  FAIL
+  must not be Low/Not: ALB widened 2021-05-27..2021-05-27 -> High (range_break) level 165.14 len 13  OK
+  must not be Low/Not: AXSM widened 2019-12-27..2019-12-30 -> Low (no_level) level None len None  FAIL
+  must not be Low/Not: AAPL widened 2020-07-23..2020-07-23 -> Low (no_level) level None len None  FAIL
+  sheet A AAPL   2020-07-23..2020-07-23 -> Low    (no_level) 
+  sheet B GAN    2020-05-29..2020-06-01 -> Not    (ipo) 
+  sheet C BILI   2021-01-20..2021-01-20 -> Low    (no_level) 
+  sheet D GPOR   2020-04-21..2020-04-21 -> Low    (downtrend) 
+  sheet E AGQ    2021-02-23..2021-02-23 -> Not    (fund) 
+  sheet F ALB    2021-05-27..2021-05-27 -> High   (range_break) 
+  sheet G AXSM   2019-12-27..2019-12-30 -> Low    (no_level) 
+  sheet H GGPI   2021-11-12..2021-11-12 -> Low    (no_level) 
+  sheet I BA     2020-05-11..2020-05-12 -> Low    (downtrend) 
+  sheet J VSTM   2020-01-02..2020-01-06 -> Low    (no_level) 
+  sheet K ABNB   2021-01-05..2021-01-07 -> Not    (ipo) 
+  sheet L FCEL   2020-02-10..2020-02-10 -> Medium (short_pivot) 
+
+=== CHECK 2: his labels on the dated buys (cross-check only) ===
+  good/ok         n =  37: High 6, Medium 8, Low 21, Not 2
+  ok but earlier  n =   5: High 0, Medium 0, Low 4, Not 1
+  EP-like         n =   4: High 1, Medium 0, Low 1, Not 2
+  no              n =  19: High 0, Medium 2, Low 14, Not 3
+  big winners n = 26: High 8, Medium 7, Low 11, Not 0
+
+=== CHECK 4: sensitivity (reported, not picked from) — High count dated / widened ===
+  range >=  8, gives back <= 0.33: High  33 /   8   Medium  42 /  28
+  range >=  8, gives back <= 0.50: High  52 /  20   Medium  50 /  35
+  range >=  8, gives back <= 0.67: High  65 /  33   Medium  54 /  39
+  range >= 10, gives back <= 0.33: High  24 /   3   Medium  43 /  27
+  range >= 10, gives back <= 0.50: High  43 /  14   Medium  46 /  35
+  range >= 10, gives back <= 0.67: High  54 /  24   Medium  53 /  43
+  range >= 15, gives back <= 0.33: High  14 /   3   Medium  44 /  23
+  range >= 15, gives back <= 0.50: High  29 /   6   Medium  48 /  37
+  range >= 15, gives back <= 0.67: High  40 /  16   Medium  56 /  44
