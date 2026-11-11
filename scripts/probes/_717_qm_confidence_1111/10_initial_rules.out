@@ -1,0 +1,118 @@
+=== (i) THE 84 HIGH-TIER BUYS ===
+bought on E by the port (same buy point as the rating): 84 of 84
+listed at D by the initial list rules: 80 of 84   (scored without rs / $2: 5)
+  NOT LISTED BNGO 2019-12-30 [rs/$2 not measurable] today's failed gates ['universe', 'rs']  val {'universe': False, 'pinned': True, 'adr': True, 'rs': None, 'prior': 1.52, 'depth': 6.553039822336762, 'e21': 0.8031840417333117, 's50': 0.07175108911742623, 's50pass': True}
+  NOT LISTED INO 2020-01-21 [rs/$2 not measurable] today's failed gates ['universe', 'rs']  val {'universe': False, 'pinned': True, 'adr': True, 'rs': None, 'prior': 0.8325358851674642, 'depth': 2.984674536641921, 'e21': 0.49420519999850526, 's50': 0.1655920073690922, 's50pass': True}
+  NOT LISTED HEXO 2020-08-13 [rs/$2 not measurable] today's failed gates ['universe', 'rs', 'base_depth', 'sma50']  val {'universe': False, 'pinned': True, 'adr': True, 'rs': None, 'prior': 2.225, 'depth': 10.77783509826701, 'e21': -0.05611067057363853, 's50': -0.07327325651684669, 's50pass': False}
+  NOT LISTED PLTR 2021-01-22 [history] today's failed gates ['history']  val None
+  unranked High nights (rs and the $2 floor not measurable): BNGO 2019-12-30, INO 2020-01-21, FCEL 2020-02-10, HEXO 2020-08-13, PLTR 2021-01-22, SLV 2021-01-28
+alternative (3% under the 50-day instead of dropped): listed 78 of 84; drops BNGO 2019-12-30, INO 2020-01-21, HEXO 2020-08-13, PLTR 2021-01-22, NVAX 2021-04-13, LCID 2022-01-10
+distance from the close of D up to the buy point, in average daily ranges:
+  median 0.87, 90th pct 1.42, max 2.50
+  ready at X = 1.0: 47 of 84   not ready: SRPT 2017-10-02, BMA 2019-08-09, APT 2020-05-14, AMD 2020-06-09, NET 2020-06-15, SHOP 2020-06-15, VIR 2020-06-19, BNTX 2020-06-25, BLDP 2020-06-29, TDOC 2020-07-30, WKHS 2020-08-03, LRN 2020-08-05
+  ready at X = 1.5: 79 of 84   not ready: BNTX 2020-06-25, JD 2020-08-17, CCJ 2021-10-12, MU 2021-12-21, DHT 2019-12-19
+  ready at X = 2.0: 83 of 84   not ready: CCJ 2021-10-12
+  ready at X = 3.0: 84 of 84
+X chosen on the 84 only: 3.0
+
+=== (ii) MEDIUM TIER (the port is the High-tier trigger, so a Medium buy is bought only if the daily bar also meets it) ===
+  dated    n = 65: listed 65 (today's gates 65); ready the night before 53; bought by the High trigger 0
+  widened  n = 51: listed 42 (today's gates 34); ready the night before 31; bought by the High trigger 0
+
+=== (iii) / (iv) HIS 41 GRADED LIST CHARTS at their list night ===
+  no          IAG   2026-11-06 listed 1 ranges 0 nearest     - READY -
+  no          SIG   2026-11-06 listed 1 ranges 0 nearest     - READY -
+  no          VFC   2026-11-06 listed 1 ranges 0 nearest     - READY -
+  good        PAYS  2026-11-06 listed 1 ranges 2 nearest  1.33 READY 15.88 len 13
+  ok          APPN  2026-11-06 listed 1 ranges 1 nearest  1.52 READY 56.38 len 11
+  ok          HAE   2026-11-06 listed 1 ranges 0 nearest     - READY -
+  conditional PAY   2026-11-06 listed 1 ranges 6 nearest  1.20 READY 35.26 len 34
+  no          FNKO  2026-11-06 listed 1 ranges 0 nearest     - READY -
+  good        PAR   2026-11-06 listed 1 ranges 0 nearest     - READY -
+  no          RSKD  2026-11-06 listed 1 ranges 1 nearest  1.58 READY 9.23 len 14
+  good        PLSE  2026-11-06 listed 1 ranges 2 nearest  1.34 READY 58.17 len 42
+  ok          BHC   2026-11-06 listed 1 ranges 0 nearest     - READY -
+  good        EVH   2026-11-05 listed 1 ranges 1 nearest  1.38 READY 4.975 len 15
+  good        BILL  2026-11-05 listed 1 ranges 0 nearest     - READY -
+  good        AMPH  2026-11-05 listed 1 ranges 0 nearest     - READY -
+  no          ONT   2026-11-05 listed 1 ranges 0 nearest     - READY -
+  no          CHTR  2026-11-05 listed 1 ranges 0 nearest     - READY -
+  ok          OSCR  2026-11-05 listed 1 ranges 0 nearest     - READY -
+  no          DUOL  2026-11-05 listed 1 ranges 0 nearest     - READY -
+  no          CVLT  2026-11-05 listed 1 ranges 1 nearest  2.07 READY 174.2 len 11
+  no          MANE  2026-11-05 listed 1 ranges 1 nearest  2.17 READY 146.6 len 12
+  no          PLNT  2026-11-05 listed 1 ranges 0 nearest     - READY -
+  no          ASO   2026-11-05 listed 1 ranges 0 nearest     - READY -
+  ok          BLKB  2026-11-05 listed 1 ranges 0 nearest     - READY -
+  no          MRNA  2026-11-09 listed 1 ranges 0 nearest     - READY -
+  no          SPCE  2026-11-09 listed 1 ranges 0 nearest     - READY -
+  no          ABCL  2026-11-09 listed 1 ranges 4 nearest  1.52 READY 13.86 len 24
+  no          OUST  2026-11-09 listed 1 ranges 0 nearest     - READY -
+  no          NVAX  2026-11-09 listed 1 ranges 0 nearest     - READY -
+  conditional PLSE  2026-11-10 listed 1 ranges 1 nearest  1.01 READY 58.94 len 48
+  conditional BLKB  2026-11-10 listed 1 ranges 0 nearest     - READY -
+  ok          CVLT  2026-11-10 listed 1 ranges 3 nearest  0.56 READY 173 len 10
+  conditional VEEV  2026-11-10 listed 1 ranges 3 nearest  1.47 READY 319 len 11
+  ok          EVH   2026-11-10 listed 1 ranges 1 nearest  0.53 READY 4.975 len 18
+  no          DOCS  2026-11-10 listed 1 ranges 1 nearest  1.94 READY 35.15 len 16
+  no          CTSH  2026-11-10 listed 1 ranges 2 nearest  1.22 READY 67.95 len 10
+  conditional NCNO  2026-11-10 listed 1 ranges 0 nearest     - READY -
+  no          AMPL  2026-11-10 listed 1 ranges 0 nearest     - READY -
+  no          AMLX  2026-11-10 listed 1 ranges 13 nearest  0.20 READY 31.22 len 34
+  no          APPN  2026-11-10 listed 1 ranges 1 nearest  1.24 READY 56.38 len 13
+  no          BLLN  2026-11-10 listed 1 ranges 0 nearest     - READY -
+his 28 no / not-yet (n = 28): listed 28; ready to trigger at X = 1.0: 1, 1.5: 6, 2.0: 9, 3.0: 11   (X in force: 3.0)
+his 13 good / ok (n = 13): listed 13; ready to trigger at X = 1.0: 2, 1.5: 5, 2.0: 6, 3.0: 6   (X in force: 3.0)
+  READY among the 28: PAY 2026-11-06 (conditional: depends how far it breaks out), RSKD 2026-11-06 (no: regraded 2026-11-11 on the contrast shee), CVLT 2026-11-05 (no: regraded 2026-11-11 on the contrast shee), MANE 2026-11-05 (no: regraded 2026-11-11 on the contrast shee), ABCL 2026-11-09 (no: where's the higher low, where's the surf), PLSE 2026-11-10 (conditional: maybe), VEEV 2026-11-10 (conditional: a few more tight days), DOCS 2026-11-10 (no: no), CTSH 2026-11-10 (no: no), AMLX 2026-11-10 (no: no), APPN 2026-11-10 (no: no, needs more time)
+  READY among the 13: PAYS 2026-11-06, APPN 2026-11-06, PLSE 2026-11-06, EVH 2026-11-05, CVLT 2026-11-10, EVH 2026-11-10
+
+=== (v) LIST NIGHT 2026-11-10: 190 names on today's list ===
+ready to trigger at X = 3.0: 48 of 190  (at 1.0 / 1.5 / 2.0 / 3.0 the loop above is re-run below)
+  rank   1 DOCS   range high 35.15 (range 16 sessions)   today's 5-day level 35.15   kept by the loosened gates 1
+  rank   2 VEEV   range high 319 (range 11 sessions)   today's 5-day level 314.2   kept by the loosened gates 1
+  rank   3 OABI   range high 5.45 (range 49 sessions)   today's 5-day level 5.45   kept by the loosened gates 1
+  rank   5 AMLX   range high 31.22 (range 34 sessions)   today's 5-day level 31.22   kept by the loosened gates 1
+  rank   6 EVH    range high 4.975 (range 18 sessions)   today's 5-day level 4.975   kept by the loosened gates 1
+  rank   9 CVLT   range high 173 (range 10 sessions)   today's 5-day level 169.3   kept by the loosened gates 1
+  rank  10 PLSE   range high 58.94 (range 48 sessions)   today's 5-day level 58.94   kept by the loosened gates 1
+  rank  12 CTSH   range high 67.95 (range 10 sessions)   today's 5-day level 67.95   kept by the loosened gates 1
+  rank  15 APPN   range high 56.38 (range 13 sessions)   today's 5-day level 56.38   kept by the loosened gates 1
+  rank  16 AVAH   range high 14.55 (range 39 sessions)   today's 5-day level 14.55   kept by the loosened gates 1
+  rank  17 MANE   range high 152.8 (range 10 sessions)   today's 5-day level 152.8   kept by the loosened gates 1
+  rank  18 KOD    range high 109.2 (range 29 sessions)   today's 5-day level 109.2   kept by the loosened gates 1
+  rank  19 AGYS   range high 125.7 (range 11 sessions)   today's 5-day level 125.7   kept by the loosened gates 1
+  rank  20 RHI    range high 45.84 (range 11 sessions)   today's 5-day level 45.84   kept by the loosened gates 1
+  rank  21 FWRD   range high 19.66 (range 60 sessions)   today's 5-day level 19.45   kept by the loosened gates 1
+  rank  22 DOCU   range high 84.2 (range 10 sessions)   today's 5-day level 83.35   kept by the loosened gates 1
+  rank  31 PAY    range high 35.26 (range 36 sessions)   today's 5-day level 34.6   kept by the loosened gates 1
+  rank  33 MATV   range high 12.55 (range 35 sessions)   today's 5-day level 12.55   kept by the loosened gates 1
+  rank  34 RSKD   range high 9.14 (range 10 sessions)   today's 5-day level 8.98   kept by the loosened gates 1
+  rank  38 ABCL   range high 13.86 (range 25 sessions)   today's 5-day level 12.96   kept by the loosened gates 1
+  rank  41 BIO    range high 394.7 (range 52 sessions)   today's 5-day level 394.7   kept by the loosened gates 1
+  rank  45 AZTA   range high 41.7 (range 11 sessions)   today's 5-day level 41.28   kept by the loosened gates 1
+  rank  48 KSS    range high 25.6 (range 14 sessions)   today's 5-day level 25.6   kept by the loosened gates 1
+  rank  49 DSGX   range high 96.75 (range 14 sessions)   today's 5-day level 96.75   kept by the loosened gates 1
+  rank  54 HWKN   range high 158.4 (range 11 sessions)   today's 5-day level 158.4   kept by the loosened gates 1
+  rank  55 CART   range high 59.86 (range 10 sessions)   today's 5-day level 59.76   kept by the loosened gates 1
+  rank  56 CHYM   range high 33.28 (range 39 sessions)   today's 5-day level 33.28   kept by the loosened gates 1
+  rank  59 CNXC   range high 32.69 (range 11 sessions)   today's 5-day level 32.69   kept by the loosened gates 1
+  rank  61 SPT    range high 12.68 (range 10 sessions)   today's 5-day level 12.62   kept by the loosened gates 1
+  rank  66 KVYO   range high 22.2 (range 13 sessions)   today's 5-day level 22.2   kept by the loosened gates 1
+  rank  70 WIT    range high 2.199 (range 13 sessions)   today's 5-day level 2.199   kept by the loosened gates 1
+  rank  71 ETSY   range high 97.85 (range 10 sessions)   today's 5-day level 97.85   kept by the loosened gates 1
+  rank  72 RVTY   range high 171.7 (range 26 sessions)   today's 5-day level 167.7   kept by the loosened gates 1
+  rank  74 AI     range high 12.56 (range 10 sessions)   today's 5-day level 12.22   kept by the loosened gates 1
+  rank  76 VGZ    range high 2.84 (range 35 sessions)   today's 5-day level 2.84   kept by the loosened gates 1
+  rank  78 GME    range high 26.01 (range 13 sessions)   today's 5-day level 26.01   kept by the loosened gates 1
+  rank  85 CRL    range high 379.6 (range 10 sessions)   today's 5-day level 358.8   kept by the loosened gates 1
+  rank  88 FDS    range high 348 (range 14 sessions)   today's 5-day level 348   kept by the loosened gates 1
+  rank  94 ZETA   range high 35.35 (range 16 sessions)   today's 5-day level 35.35   kept by the loosened gates 1
+  rank  98 CSTL   range high 38.73 (range 29 sessions)   today's 5-day level 36.43   kept by the loosened gates 1
+  rank 106 SAIL   range high 22.62 (range 36 sessions)   today's 5-day level 20.65   kept by the loosened gates 1
+  rank 108 OLLI   range high 96.11 (range 21 sessions)   today's 5-day level 96.11   kept by the loosened gates 1
+  rank 116 CGAU   range high 23.06 (range 35 sessions)   today's 5-day level 23.06   kept by the loosened gates 1
+  rank 126 DXC    range high 16.21 (range 11 sessions)   today's 5-day level 15.53   kept by the loosened gates 1
+  rank 127 MLAB   range high 138.1 (range 25 sessions)   today's 5-day level 138.1   kept by the loosened gates 1
+  rank 131 RRC    range high 56.9 (range 11 sessions)   today's 5-day level 53.48   kept by the loosened gates 1
+  rank 137 TRU    range high 84.01 (range 15 sessions)   today's 5-day level 84.01   kept by the loosened gates 1
+  rank 139 SNPS   range high 491.4 (range 11 sessions)   today's 5-day level 470.3   kept by the loosened gates 1

@@ -61,3 +61,39 @@ Qullamaggie buys) no longer count against a rule.
 - The loosened list's nightly size over the whole market.
 - Whether the intraday entry (5-minute opening range, volume pace) fires on these days — the score uses daily bars.
 - Medium and Low buys: the rule set is crafted on High only ("then expand as needed").
+
+---
+# RESULT (scored once; `scripts/probes/_717_qm_confidence_1111/10_initial_rules.out`, `11_ready_sheet_1110.out`)
+**FAIL on (i) the list half and on (iii). Nothing is wired; no gate changed; paper stays OFF.**
+
+| Bar | Result | Verdict |
+|---|---|---|
+| (i) the 84 bought on E by the trigger port (n = 84) | 84 of 84, same buy point as the rating | pass |
+| (i) the 84 listed at D by the loosened gates (n = 84) | **80 of 84** | **fail** — PLTR (the named history exception) + BNGO 2019-12-30, INO 2020-01-21, HEXO 2020-08-13, all under the $5M dollar-volume floor |
+| (ii) Medium listed (n = 65 dated / 51 widened) | 65 / 42 (today 65 / 34) | reported |
+| (ii) Medium ready the night before / bought by the High trigger | 53 / 31 ready; 0 bought (a Medium buy is by definition short of the High trigger) | reported |
+| (iii) his 28 no / not-yet LISTED (n = 28) | 28 of 28 | reported |
+| (iii) his 28 READY to trigger (n = 28) | **11 of 28** at the X the 84 force (3.0); 1 / 6 / 9 at X = 1.0 / 1.5 / 2.0 | **fail** (bar 0) |
+| (iv) his 13 good / ok listed / ready (n = 13) | 13 listed; 6 ready (2 / 5 / 6 at X = 1.0 / 1.5 / 2.0) | listed pass |
+| (v) 2026-11-10, ready of the 190 listed (n = 190) | 48 at X = 3.0 (23 / 33 / 41 at 1.0 / 1.5 / 2.0) | reported |
+
+- **X had to go to 3.0:** the buy point sits a median 0.87 daily ranges above the prior close for the 84, but 37 are
+  further than 1.0, 5 further than 1.5, and CCJ 2021-10-12 is 2.5 away. At X = 1.0 only 47 of the 84 are ready.
+- **The charts that break (iii):** PAY 11-06 and PLSE 11-10, VEEV 11-10 (not-yet); RSKD 11-06, CVLT 11-05, MANE 11-05,
+  ABCL 11-09, DOCS, CTSH, AMLX, APPN 11-10 (no). AMLX is ready even at X = 1.0 (range high 31.22, 0.2 away).
+- **Why:** "a range of 10+ sessions that holds its gains, with its high near the close" is true of 11 of his 28
+  rejected charts and 6 of his 13 good ones — the night-before reading does not tell his no from his good. Everything
+  that made the 84 High is in the bar of the break day itself (takes the level out, closes above it, on volume),
+  which no list-night chart has yet. The rating was built to recognise a breakout AFTER it happened.
+- **The 50-day alternative** (3% under instead of dropped) lists 78 of 84 — NVAX 2021-04-13 and LCID 2022-01-10 go too.
+- **The $5M floor** was not in the pre-registration; three High buys fail it. It is a tradability rule, so it is
+  named here and not loosened.
+- **Sheet:** `scripts/probes/_717_qm_confidence_1111/ready_sheet_1110.png` — the 12 highest-ranked ready names on
+  11-10. Eight of the twelve are charts he has already graded: 2 ok (CVLT, EVH), 6 no / not-yet (DOCS, VEEV, AMLX,
+  PLSE, CTSH, APPN); MANE is the 11-05 `no` ticker a few sessions later. New to him: OABI, AVAH, KOD.
+- Tests: `pytest tests -q -x -k "breakout or consolidation"` — 759 passed, 1 xfailed (no code changed).
+
+## Not verified
+- The loosened list's size on 11-10 or any night (the file holds only today's listed names).
+- Whether the intraday entry would have fired on the 84 break days.
+- `rs` and the $2 floor on the 6 unranked High nights (BNGO, INO, FCEL, HEXO, PLTR, SLV).

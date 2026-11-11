@@ -1,0 +1,16 @@
+list night 2026-11-10: 190 names; ready to trigger at X = 1.0: 23, 1.5: 33, 2.0: 41, 3.0: 48
+#717 ready-to-trigger sheet, list night 2026-11-10: the 12 highest by list rank among the 48 ready at X = 3.0, shuffled (seed 1111).
+letter|ticker|list_rank|range_high|range_len|distance_above_close_in_daily_ranges
+A|APPN|15|56.38|13|1.24
+B|PLSE|10|58.94|48|1.01
+C|CTSH|12|67.95|10|1.22
+D|VEEV|2|319|11|1.47
+E|EVH|6|4.975|18|0.53
+F|DOCS|1|35.15|16|1.94
+G|MANE|17|152.8|10|0.51
+H|AVAH|16|14.55|39|2.80
+I|OABI|3|5.45|49|0.97
+J|CVLT|9|173|10|0.56
+K|KOD|18|109.2|29|0.18
+L|AMLX|5|31.22|34|0.20
+
