@@ -1,0 +1,157 @@
+gate set: ['in_base', 'ema21_not_falling', 'ema21_vs_sma50', 'low_not_today']  (dropped: none)
+constants: {'SHAPE_HL_RECENT': 5, 'SHAPE_SWING_HALF': 2, 'SHAPE_LOWER_LOW_ADR': 1.0, 'SHAPE_RISING_SESSIONS': 5, 'SHAPE_EXTENDED_ADR_MAX': 1.0, 'SHAPE_TIGHT_ADR_MAX': 4.0}
+
+=== HEADLINE ===
+no rejected 13/17 | good/ok kept 9/11 | QM buys kept 249/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 192/204
+bars: (1) 17/17 FAIL | (1b) >=80% of 11 PASS | (2) 263/269 + 26/26 FAIL | (2b) >=80% ok-or-better PASS (97%)
+
+=== (1) HIS LIST GRADES, row by row (n = 29) ===
+night       ticker grade        rank  in_base      ema21_not_fa ema21_vs_sma low_not_toda  verdict   values
+2026-11-06  IAG    no            145  pass         FAIL         FAIL         pass          rejected  since_bottom 5 | undercut 0 | e10 +2.1% e21 -0.5% | ext +2.10 | spread10 4.93 | existing failed (rs aside) []
+2026-11-06  SIG    no             73  pass         pass         pass         pass          KEPT      since_bottom 13 | undercut 0 | e10 +3.0% e21 +3.1% | ext -0.42 | spread10 3.17 | existing failed (rs aside) []
+2026-11-06  VFC    no            134  FAIL         pass         pass         pass          rejected  since_bottom 7 | undercut 0 | e10 +10.6% e21 +8.5% | ext +1.41 | spread10 5.60 | existing failed (rs aside) []
+2026-11-06  PAYS   good            5  pass         pass         pass         pass          KEPT      since_bottom 7 | undercut 0 | e10 +1.0% e21 +0.7% | ext +0.03 | spread10 1.63 | existing failed (rs aside) []
+2026-11-06  APPN   ok             14  pass         pass         pass         pass          KEPT      since_bottom 3 | undercut 1 | e10 +3.1% e21 +4.5% | ext +0.44 | spread10 1.67 | existing failed (rs aside) []
+2026-11-06  HAE    ok             17  pass         pass         pass         pass          KEPT      since_bottom 10 | undercut 0 | e10 +2.0% e21 +2.0% | ext -0.29 | spread10 2.45 | existing failed (rs aside) []
+2026-11-06  PAY    conditional    30  pass         pass         pass         pass          KEPT      since_bottom 31 | undercut 0 | e10 +1.7% e21 +1.0% | ext +0.35 | spread10 2.85 | existing failed (rs aside) []
+2026-11-06  FNKO   no             21  pass         pass         pass         FAIL          rejected  since_bottom 0 | undercut 0 | e10 -1.5% e21 -0.2% | ext +0.62 | spread10 1.75 | existing failed (rs aside) []
+2026-11-06  PAR    good          152  FAIL         pass         pass         pass          rejected  since_bottom 28 | undercut 0 | e10 +7.0% e21 +5.0% | ext +2.17 | spread10 4.31 | existing failed (rs aside) []
+2026-11-06  RSKD   no             41  pass         pass         pass         FAIL          rejected  since_bottom 0 | undercut 0 | e10 -1.9% e21 +0.3% | ext -0.23 | spread10 2.16 | existing failed (rs aside) []
+2026-11-06  PLSE   good           11  pass         pass         pass         pass          KEPT      since_bottom 15 | undercut 0 | e10 +1.7% e21 +1.7% | ext +0.02 | spread10 1.31 | existing failed (rs aside) []
+2026-11-06  BHC    ok            174  FAIL         pass         pass         pass          rejected  since_bottom 31 | undercut 1 | e10 +9.1% e21 +8.4% | ext +1.03 | spread10 7.82 | existing failed (rs aside) []
+2026-11-05  EVH    good            9  pass         pass         pass         pass          KEPT      since_bottom 4 | undercut 0 | e10 +0.4% e21 +1.0% | ext +0.13 | spread10 1.87 | existing failed (rs aside) []
+2026-11-05  BILL   good           31  pass         pass         pass         pass          KEPT      since_bottom 27 | undercut 0 | e10 +2.7% e21 +2.3% | ext +0.65 | spread10 2.09 | existing failed (rs aside) []
+2026-11-05  AMPH   good           97  pass         pass         pass         pass          KEPT      since_bottom 9 | undercut 1 | e10 +3.6% e21 +2.5% | ext +0.73 | spread10 3.43 | existing failed (rs aside) []
+2026-11-05  ONT    no            146  FAIL         pass         pass         pass          rejected  since_bottom 24 | undercut 0 | e10 +10.2% e21 +5.3% | ext +3.92 | spread10 6.34 | existing failed (rs aside) []
+2026-11-05  CHTR   no            147  pass         pass         FAIL         pass          rejected  since_bottom 8 | undercut 3 | e10 +6.8% e21 +2.7% | ext +2.37 | spread10 5.56 | existing failed (rs aside) []
+2026-11-05  OSCR   ok             23  pass         pass         pass         pass          KEPT      since_bottom 30 | undercut 0 | e10 +2.2% e21 +0.8% | ext +0.45 | spread10 2.93 | existing failed (rs aside) []
+2026-11-05  DUOL   no            145  pass         pass         pass         pass          KEPT      since_bottom 2 | undercut 0 | e10 +2.7% e21 +0.6% | ext +1.70 | spread10 4.71 | existing failed (rs aside) []
+2026-11-05  CVLT   no             15  pass         pass         pass         pass          KEPT      since_bottom 7 | undercut 0 | e10 -1.9% e21 +0.2% | ext -0.57 | spread10 1.91 | existing failed (rs aside) []
+2026-11-05  MANE   no              3  pass         pass         pass         FAIL          rejected  since_bottom 0 | undercut 1 | e10 -1.2% e21 +1.5% | ext -0.62 | spread10 1.85 | existing failed (rs aside) []
+2026-11-05  PLNT   no            106  FAIL         pass         pass         pass          rejected  since_bottom 8 | undercut 0 | e10 +6.2% e21 +5.0% | ext +2.59 | spread10 4.26 | existing failed (rs aside) []
+2026-11-05  ASO    no             93  FAIL         pass         pass         pass          rejected  since_bottom 6 | undercut 0 | e10 +5.9% e21 +4.8% | ext +2.50 | spread10 4.50 | existing failed (rs aside) []
+2026-11-05  BLKB   ok             13  pass         pass         pass         pass          KEPT      since_bottom 6 | undercut 0 | e10 +2.7% e21 +3.3% | ext +0.71 | spread10 1.66 | existing failed (rs aside) []
+2026-11-09  MRNA   no             24  FAIL         pass         pass         pass          rejected  since_bottom 9 | undercut 0 | e10 +10.6% e21 +7.4% | ext +1.19 | spread10 2.90 | existing failed (rs aside) []
+2026-11-09  SPCE   no             31  pass         FAIL         FAIL         pass          rejected  since_bottom 2 | undercut 2 | e10 +1.7% e21 -0.4% | ext +1.48 | spread10 3.23 | existing failed (rs aside) []
+2026-11-09  ABCL   no             36  pass         FAIL         pass         pass          rejected  since_bottom 2 | undercut 2 | e10 -1.3% e21 -1.1% | ext +0.44 | spread10 3.08 | existing failed (rs aside) []
+2026-11-09  OUST   no             70  pass         pass         pass         pass          KEPT      since_bottom 11 | undercut 0 | e10 +6.5% e21 +1.0% | ext +2.24 | spread10 4.81 | existing failed (rs aside) []
+2026-11-09  NVAX   no            103  pass         FAIL         pass         pass          rejected  since_bottom 9 | undercut 0 | e10 +1.1% e21 -0.7% | ext +0.58 | spread10 1.73 | existing failed (rs aside) []
+
+=== per-gate on his grades: which gate rejects which `no`, which drops which good/ok ===
+  in_base       rejects  5/17 no ['VFC', 'ONT', 'PLNT', 'ASO', 'MRNA'] (alone: ['VFC', 'ONT', 'PLNT', 'ASO', 'MRNA']) | drops 2/11 good/ok ['PAR(good)', 'BHC(ok)']
+  ema21_not_falling rejects  4/17 no ['IAG', 'SPCE', 'ABCL', 'NVAX'] (alone: ['ABCL', 'NVAX']) | drops 0/11 good/ok []
+  ema21_vs_sma50 rejects  3/17 no ['IAG', 'CHTR', 'SPCE'] (alone: ['CHTR']) | drops 0/11 good/ok []
+  low_not_today rejects  3/17 no ['FNKO', 'RSKD', 'MANE'] (alone: ['FNKO', 'RSKD', 'MANE']) | drops 0/11 good/ok []
+  `no` rows that pass EVERY gate: ['SIG', 'DUOL', 'CVLT', 'OUST']
+  conditional row: [('PAY', 'kept')]
+
+=== (2) QULLAMAGGIE'S BUYS: per-gate miss table (n = 269; 263 on today's list) ===
+gate          | buys it blocks (any) | blocks ALONE | big winners blocked (any) | ok-or-better blocked | no/EP blocked
+  in_base          0 (0%)           0           0                      0                    0
+  ema21_not_falling    8 (3%)           7           0                      1                    0
+  ema21_vs_sma50    3 (1%)           2           0                      0                    0
+  low_not_today    4 (2%)           4           1                      0                    0
+number of shape gates failing per listed buy: {0: 249, 1: 13, 2: 1}
+kept by year: {'2017': '8/8', '2018': '9/9', '2019': '11/13', '2020': '123/128', '2021': '82/87', '2022': '9/10', '2023': '7/8'}
+
+=== Qullamaggie buys DROPPED by the shape gates (on today's list, off the gated one) ===
+  BMA    buy 2019-08-09  big=0  label[ok]  fails ['ema21_not_falling']
+  ENPH   buy 2019-09-24  big=0  label[-]  fails ['ema21_not_falling']
+  PBYI   buy 2020-01-17  big=0  label[-]  fails ['ema21_not_falling']
+  TSLA   buy 2020-04-14  big=0  label[maybe a few days ealier]  fails ['ema21_vs_sma50']
+  TWTR   buy 2020-08-05  big=0  label[-]  fails ['low_not_today']
+  TTD    buy 2020-10-29  big=0  label[-]  fails ['low_not_today']
+  BLDP   buy 2020-11-16  big=0  label[-]  fails ['ema21_not_falling']
+  SOLO   buy 2021-01-11  big=0  label[-]  fails ['ema21_not_falling']
+  LYFT   buy 2021-01-12  big=0  label[-]  fails ['low_not_today']
+  SI     buy 2021-01-22  big=1  label[-]  fails ['low_not_today']
+  SEDG   buy 2021-02-08  big=0  label[-]  fails ['ema21_not_falling']
+  RKT    buy 2021-03-01  big=0  label[-]  fails ['ema21_not_falling']
+  U      buy 2022-11-15  big=0  label[-]  fails ['ema21_not_falling', 'ema21_vs_sma50']
+  AI     buy 2023-05-17  big=0  label[-]  fails ['ema21_vs_sma50']
+
+=== his LABELLED Qullamaggie buys, kept or dropped ===
+  ok_or_better: kept 38/39
+     SINA   2017-10-02 [good] KEPT
+     SRPT   2017-10-02 [ok] KEPT
+     SPLK   2018-05-08 [ok, maybe few days ealier] KEPT
+     TSLA   2018-08-07 [ok, but maybe a few days ealier] KEPT
+     BMA    2019-08-09 [ok] dropped by ['ema21_not_falling']
+     EW     2019-08-16 [ok] KEPT
+     AMD    2019-12-12 [good] KEPT
+     SE     2019-12-19 [ok] KEPT
+     NVAX   2020-02-24 [good] KEPT
+     WORK   2020-03-05 [ok] KEPT
+     CODX   2020-04-06 [good] KEPT
+     ZM     2020-04-23 [ok] KEPT
+     APT    2020-06-17 [ok] KEPT
+     BNTX   2020-06-25 [ok] KEPT
+     LRN    2020-08-05 [good] KEPT
+     SE     2020-09-14 [ok] KEPT
+     TSLA   2020-09-21 [good] KEPT
+     SQ     2020-11-06 [ok] KEPT
+     TSLA   2020-11-09 [ok] KEPT
+     M      2021-01-06 [ok] KEPT
+     AMC    2021-02-22 [ok] KEPT
+     DKNG   2021-02-26 [decent] KEPT
+     UAL    2021-03-11 [good] KEPT
+     RCL    2021-03-15 [good] KEPT
+     APPS   2021-03-22 [ok] KEPT
+     FCX    2021-04-06 [ok] KEPT
+     BNTX   2021-07-21 [ok] KEPT
+     MSTR   2021-08-05 [ok] KEPT
+     AMD    2021-08-23 [good] KEPT
+     BNTX   2021-09-23 [good] KEPT
+     LAC    2021-09-30 [okish] KEPT
+     MARA   2021-10-11 [good] KEPT
+     MSTR   2021-10-11 [ok] KEPT
+     QS     2021-10-29 [ok] KEPT
+     MARA   2021-11-30 [good] KEPT
+     PFE    2021-12-13 [good] KEPT
+     LMT    2022-04-05 [good] KEPT
+     LMT    2022-04-06 [good] KEPT
+     TSLA   2022-04-21 [ok] KEPT
+  no_or_ep: kept 16/16
+     ANET   2018-03-12 [no] KEPT
+     TDOC   2019-10-31 [no] KEPT
+     STNE   2019-11-18 [no] KEPT
+     ZS     2020-03-24 [no] KEPT
+     EXEL   2020-04-20 [EP] KEPT
+     SHOP   2020-04-20 [no, buy point maybe a few days earlier] KEPT
+     NVAX   2020-05-12 [EP look, day before maybe breakout] KEPT
+     PLNT   2020-05-26 [no] KEPT
+     UAL    2020-05-27 [no] KEPT
+     JMIA   2020-11-18 [no] KEPT
+     FEAC   2020-11-30 [no] KEPT
+     UPST   2021-08-12 [looks like EP] KEPT
+     FCX    2021-12-07 [no] KEPT
+     MU     2021-12-21 [ok but EP look] KEPT
+     FCX    2021-12-27 [no] KEPT
+     MDB    2021-12-27 [no] KEPT
+  timing_or_unsure: kept 3/4
+     HFC    2018-07-31 [a bit late buy] KEPT
+     TSLA   2020-04-14 [maybe a few days ealier] dropped by ['ema21_vs_sma50']
+     INO    2020-04-23 [buy few days earlier] KEPT
+     AVLR   2020-07-29 [okish but likely no] KEPT
+
+=== SWEEPS (reported, not used to choose; each row = the full set with ONE number moved) ===
+  SHAPE_BASE_ABOVE_ADR_MAX=0.0: no rejected 13/17 | good/ok kept 9/11 | QM buys kept 249/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 192/204
+  SHAPE_BASE_ABOVE_ADR_MAX=0.25: no rejected 13/17 | good/ok kept 9/11 | QM buys kept 249/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 192/204
+  SHAPE_BASE_ABOVE_ADR_MAX=0.5: no rejected 12/17 | good/ok kept 9/11 | QM buys kept 249/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 192/204
+  SHAPE_BASE_ABOVE_ADR_MAX=1.0: no rejected 11/17 | good/ok kept 10/11 | QM buys kept 249/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 192/204
+  SHAPE_E21_S50_ADR_MIN=-1.5: no rejected 13/17 | good/ok kept 9/11 | QM buys kept 250/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 193/204
+  SHAPE_E21_S50_ADR_MIN=-1.25: no rejected 13/17 | good/ok kept 9/11 | QM buys kept 250/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 193/204
+  SHAPE_E21_S50_ADR_MIN=-1.0: no rejected 13/17 | good/ok kept 9/11 | QM buys kept 249/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 192/204
+  SHAPE_E21_S50_ADR_MIN=-0.75: no rejected 14/17 | good/ok kept 9/11 | QM buys kept 247/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 37/39 | his no/EP QM still kept 15/16 | timing/unsure 3/4 | unlabelled 192/204
+  SHAPE_E21_S50_ADR_MIN=-0.5: no rejected 14/17 | good/ok kept 9/11 | QM buys kept 244/269 (of 263 on today's list) | big winners 24/26 | his ok-or-better QM 36/39 | his no/EP QM still kept 14/16 | timing/unsure 2/4 | unlabelled 192/204
+  SHAPE_E21_S50_ADR_MIN=0.0: no rejected 15/17 | good/ok kept 9/11 | QM buys kept 227/269 (of 263 on today's list) | big winners 22/26 | his ok-or-better QM 34/39 | his no/EP QM still kept 11/16 | timing/unsure 2/4 | unlabelled 180/204
+
+=== each gate ALONE (the existing rules + that one gate) and LEAVE-ONE-OUT ===
+  only in_base      : no rejected 5/17 | good/ok kept 9/11 | QM buys kept 263/269 (of 263 on today's list) | big winners 26/26 | his ok-or-better QM 39/39 | his no/EP QM still kept 16/16 | timing/unsure 4/4 | unlabelled 204/204
+  only ema21_not_falling: no rejected 4/17 | good/ok kept 11/11 | QM buys kept 255/269 (of 263 on today's list) | big winners 26/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 4/4 | unlabelled 197/204
+  only ema21_vs_sma50: no rejected 3/17 | good/ok kept 11/11 | QM buys kept 260/269 (of 263 on today's list) | big winners 26/26 | his ok-or-better QM 39/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 202/204
+  only low_not_today: no rejected 3/17 | good/ok kept 11/11 | QM buys kept 259/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 39/39 | his no/EP QM still kept 16/16 | timing/unsure 4/4 | unlabelled 200/204
+  without in_base      : no rejected 8/17 | good/ok kept 11/11 | QM buys kept 249/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 192/204
+  without ema21_not_falling: no rejected 11/17 | good/ok kept 9/11 | QM buys kept 256/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 39/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 198/204
+  without ema21_vs_sma50: no rejected 12/17 | good/ok kept 9/11 | QM buys kept 251/269 (of 263 on today's list) | big winners 25/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 4/4 | unlabelled 193/204
+  without low_not_today: no rejected 10/17 | good/ok kept 9/11 | QM buys kept 253/269 (of 263 on today's list) | big winners 26/26 | his ok-or-better QM 38/39 | his no/EP QM still kept 16/16 | timing/unsure 3/4 | unlabelled 196/204

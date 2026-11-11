@@ -339,6 +339,11 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   (close no more than 1 daily range above the 10-day EMA + the last 10 closes within 4 daily ranges) rejects 9 of 12
   (SIG, ABCL, NVAX pass), keeps 13 of 16 and 225 of 269 (24 of 26 big winners). Higher lows and the rising average are
   still not defined in a way that matches his grades. Paper stays OFF; any gate ships only on his sign-off.
+  **Round 2 (2026-11-11, after his regrade to 17 `no` / 11 good-ok and "stick with qullamaggie first"):** four gates
+  sized against Qullamaggie's own buys — the close not above the pole top, the 21-day EMA not lower than 5, 10 and 20
+  sessions ago, the 21-day EMA no more than one daily range under the 50-day, the base's low not made on the list
+  night — reject 13 of his 17 `no` (SIG, DUOL, CVLT, OUST pass), keep 9 of 11 good / ok and 249 of Qullamaggie's 263
+  listed buys (25 of 26 big winners). Still short of "every `no` rejected", so still NOT enforced.
 - **Spin-offs and special distributions are NOT adjusted in the daily export (found 2026-10-23, his catch).** The export
   (Alpaca, split-adjusted) adjusts splits only, so a spin-off reads as a one-session crash: OPLN (KAR Auction → IAA spin-off,
   2019-06-28, −62%), ZWS (Zurn, 2021-10), BEP (the BEPC distribution, 2020-07). Every replay on this export books those as stop-through

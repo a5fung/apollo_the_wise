@@ -1,6 +1,6 @@
 # Breakout v1 — Qullamaggie's shape rules as list gates: PRE-REGISTRATION (2026-11-11)
 
-**Status: SCORED 2026-11-11 — FAIL (first set and the one revision; RESULT below). Pre-registered and committed BEFORE any score was run (commit `48bb6458`). Nothing is
+**Status: SCORED 2026-11-11 — FAIL in both rounds (round 2 after his regrade is at the END of this file: amendment 2 rejects 13 of 17 `no` and keeps 249 of Qullamaggie's 263 listed buys; nothing enforced). Pre-registered and committed BEFORE any score was run (commit `48bb6458`). Nothing is
 deployed, merged or switched on; paper stays OFF (the operator's 11-10 ruling). A hard gate needs his sign-off on the
 filter list before it ships (`docs/setups/CHANGE_PROCESS.md` rule 3).**
 Owner when shipped: `docs/setups/consolidation_breakout.md` (this file is the finding). Task: PLAN.md #717.
@@ -270,3 +270,35 @@ Bars for amendment 2 (fixed now):
 - Plateau check declared: V1's limit swept 0 / 0.25 / 0.5 / 1.0 and V3's -1.5 .. 0, reported with the score.
 - Step 4 rule (the coordinator's): enforce only if every bar passes. (1) is expected to fail, so the expected outcome
   is NOTHING ENFORCED and a priced fork for the operator.
+
+## RESULT — amendment 2 (scored once; `07_score_amendment2.out`)
+**FAIL on (1): 13 of 17 `no` rejected — SIG, DUOL, CVLT, OUST pass. Nothing is enforced.** Every other number landed
+where the exploration said.
+| Check | Bar | First (5 gates) | Revised (`not_extended` + `tight10`) | Amendment 2 (4 gates) |
+|---|---|---|---|---|
+| his `no` rejected (n = 17) | 17 | 16 | 10 | **13** |
+| his good / ok kept (n = 11) | >= 9 | 6 | 9 | **9** (PAR, BHC dropped by `in_base`) |
+| Qullamaggie's buys kept (n = 263 listed) | 263; near = >= 250 | 108 | 225 | **249** |
+| big winners kept (n = 26) | 26; near = >= 25 | 11 | 24 | **25** (SI 2021-01-22, by `low_not_today`) |
+| his ok-or-better Qullamaggie buys kept (n = 39) | >= 80% | 11 | 30 | **38** (BMA 2019-08-09) |
+| his no / EP-like Qullamaggie buys removed (n = 16) | reported | 13 | 11 | **0** |
+
+Per gate (n = 17 `no`; n = 263 buys): `in_base` rejects VFC, ONT, PLNT, ASO, MRNA and blocks 0 buys;
+`ema21_not_falling` rejects IAG, SPCE, ABCL, NVAX and blocks 8; `ema21_vs_sma50` rejects IAG, CHTR, SPCE and blocks 3;
+`low_not_today` rejects FNKO, RSKD, MANE and blocks 4 (1 big winner).
+
+Plateau: `in_base` at 0 and 0.25 read the same (13 of 17); at 0.5 it is 12 and at 1.0 it is 11 (ONT +0.31 and MRNA
++0.56 sit just above the pole top) — Qullamaggie's count does not move at any of them. `ema21_vs_sma50` reads 13 of 17
+from -1.5 to -1.0 (249-250 buys); -0.75 adds OUST for 2 more buys.
+
+What it means:
+- **All five 11-10 paper buys but OUST are now rejected** (ABCL and NVAX by the falling 21-day, SPCE, MRNA), at a cost
+  of 14 of Qullamaggie's 263 listed buys and one big winner.
+- **It does NOT remove the Qullamaggie buys he called no / EP-like (0 of 16)**; the earlier "extended" gate removed 11
+  of them but cost 38 buys.
+- **The last four `no` cannot be rejected on night-before bars without paying in Qullamaggie's buys** (16-17 each on
+  the measures tried; `05_explore_rules.out`). That is the operator's fork.
+- In-sample: these four gates were chosen with both populations in view. The real test is the bought-names sheet.
+
+Built: `breakout_v1.SHAPE_GATES_V2` computed by `shape_gates`; `ENFORCED_SHAPE_GATES` still `()`; the tests pin the
+measured numbers by name; DoD (1) stays a strict xfail.

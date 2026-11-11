@@ -567,7 +567,7 @@ class TestSelection:
         """D4: tests/fixtures/breakout_list_grades.py (good / ok / no / conditional), not mi_breakout_v1_grades."""
         g = rr.breakout_grades_fixture()
         assert len(g) >= 12 and {x["grade"] for x in g} <= {"good", "ok", "no", "conditional"}
-        assert any(x["ticker"] == "IAG" and x["list_date"] == "2026-11-06" and x["grade"] == "good" for x in g)
+        assert any(x["ticker"] == "PAYS" and x["list_date"] == "2026-11-06" and x["grade"] == "good" for x in g)
         assert not (CAPTURE / "breakout_grades.sql").exists()
         grades = [{"list_date": "2026-11-02", "ticker": "X", "grade": "no"}, {"list_date": "2026-11-05", "ticker": "X", "grade": "good"}]
         assert rr.breakout_grade_for("X", date(2026, 11, 4), grades) == "no"

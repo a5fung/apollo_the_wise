@@ -119,21 +119,40 @@ def test_ema_series_ends_on_ema_at(graded):
     assert bv.ema_series(b.c, D, 21)[D] == pytest.approx(bv.ema_at(b.c, D, 21), rel=1e-12)
 
 
-def test_the_revised_set_on_his_grades_9_of_12_no_rejected_13_of_16_good_ok_kept(graded, monkeypatch):
-    """The MEASURED result (docs/analysis/cb_shape_gates_2026-11-11.md, the amendment's re-score), every name pinned."""
+def test_the_revised_set_on_his_grades_10_of_17_no_rejected_9_of_11_good_ok_kept(graded, monkeypatch):
+    """The MEASURED result on his 2026-11-11 REGRADE (17 no / 11 good-ok; `03_score_regraded.out`), every name pinned."""
     monkeypatch.setattr(bv, "ENFORCED_SHAPE_GATES", REVISED)
     kept = {(g.ticker, g.grade) for g, b in graded if bv.v1_gates(b, len(b) - 1, rs_best=99.0)["ok"]}
     no_kept = sorted(t for t, gr in kept if gr == "no")
-    assert no_kept == ["ABCL", "NVAX", "SIG"]                      # the three `no` charts the revised set does NOT reject
+    assert no_kept == ["ABCL", "CVLT", "FNKO", "MANE", "NVAX", "RSKD", "SIG"]   # the `no` charts it does NOT reject
     good_ok = {g.ticker for g, _ in graded if g.grade in ("good", "ok")}
     dropped = sorted(good_ok - {t for t, _ in kept})
-    assert dropped == ["BHC", "IAG", "PAR"] and len(good_ok) == 16  # 13 of 16 kept
+    assert dropped == ["BHC", "PAR"] and len(good_ok) == 11         # 9 of 11 kept
     failed = {g.ticker: bv.v1_gates(b, len(b) - 1, rs_best=99.0)["failed"] for g, b in graded if g.grade == "no"}
     assert failed["MRNA"] == ["not_extended"] and failed["SPCE"] == ["not_extended"]
     assert all(failed[t] == ["not_extended", "tight10"] for t in ("VFC", "ONT", "CHTR", "DUOL", "PLNT", "ASO", "OUST"))
 
 
-def test_the_first_set_keeps_only_6_of_his_16_good_ok_which_is_why_it_is_not_enforced(graded, monkeypatch):
+def test_amendment_2_on_his_grades_13_of_17_no_rejected_and_249_of_qullamaggies_263(graded, qm_series, monkeypatch):
+    """Round 2 (`07_score_amendment2.out`): the four gates sized against Qullamaggie's buys. SIG, DUOL, CVLT, OUST pass
+    — so DoD (1) is still red and NOTHING is enforced."""
+    assert bv.SHAPE_GATES_V2 == ("in_base", "ema21_not_falling", "ema21_vs_sma50", "low_not_today")
+    assert (bv.SHAPE_BASE_ABOVE_ADR_MAX, bv.SHAPE_E21_S50_ADR_MIN, bv.SHAPE_FALLING_WINDOWS) == (0.0, -1.0, (5, 10, 20))
+    monkeypatch.setattr(bv, "ENFORCED_SHAPE_GATES", bv.SHAPE_GATES_V2)
+    kept = {(g.ticker, g.grade) for g, b in graded if bv.v1_gates(b, len(b) - 1, rs_best=99.0)["ok"]}
+    assert sorted(t for t, gr in kept if gr == "no") == ["CVLT", "DUOL", "OUST", "SIG"]
+    good_ok = {g.ticker for g, _ in graded if g.grade in ("good", "ok")}
+    assert sorted(good_ok - {t for t, _ in kept}) == ["BHC", "PAR"]
+    failed = {g.ticker: bv.v1_gates(b, len(b) - 1, rs_best=99.0)["failed"] for g, b in graded}
+    assert failed["ABCL"] == ["ema21_not_falling"] and failed["NVAX"] == ["ema21_not_falling"]
+    assert failed["RSKD"] == failed["FNKO"] == failed["MANE"] == ["low_not_today"]
+    on = [r for r, b, _ in qm_series
+          if bv.v1_gates(b, len(b) - 1, rs_best=float(r["rs_best"]), raw_close=float(r["raw_close_D"]))["ok"]]
+    assert (len(on), sum(r["big_winner"] == "1" for r in on)) == (249, 25)
+    assert ("SI", "2021-01-22") not in {(r["sym"], r["E"]) for r in on}          # the one big winner it drops
+
+
+def test_the_first_set_keeps_only_6_of_his_11_good_ok_and_108_of_qullamaggies_buys(graded, monkeypatch):
     monkeypatch.setattr(bv, "ENFORCED_SHAPE_GATES", bv.SHAPE_GATES)
     kept = {(g.ticker, g.grade) for g, b in graded if bv.v1_gates(b, len(b) - 1, rs_best=99.0)["ok"]}
     assert sorted(t for t, gr in kept if gr == "no") == ["SIG"]
@@ -154,10 +173,10 @@ def test_recall_on_qullamaggies_buys_263_unenforced_225_under_the_revised_set_10
     assert count()[:2] == (108, 11)
 
 
-@pytest.mark.xfail(strict=True, reason="DoD (1) of #717: RED on 2026-11-11 — SIG, ABCL and NVAX pass the revised shape "
-                                       "set; the higher-lows / rising-average definitions still misread his pattern "
-                                       "(docs/analysis/cb_shape_gates_2026-11-11.md)")
+@pytest.mark.xfail(strict=True, reason="DoD (1) of #717: RED on 2026-11-11 — SIG, DUOL, CVLT and OUST pass amendment 2 "
+                                       "(the best set that keeps Qullamaggie's buys near 263); rejecting them costs "
+                                       "16-17 of his buys each (docs/analysis/cb_shape_gates_2026-11-11.md, round 2)")
 def test_dod_1_the_list_rejects_every_chart_he_graded_no(graded, monkeypatch):
-    monkeypatch.setattr(bv, "ENFORCED_SHAPE_GATES", REVISED)
+    monkeypatch.setattr(bv, "ENFORCED_SHAPE_GATES", bv.SHAPE_GATES_V2)
     survivors = [g.ticker for g, b in graded if g.grade == "no" and bv.v1_gates(b, len(b) - 1, rs_best=99.0)["ok"]]
     assert survivors == []
