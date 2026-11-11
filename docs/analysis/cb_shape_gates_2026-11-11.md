@@ -127,5 +127,50 @@ arithmetic — the averages on his charts).
 - If no set meets (1) and (1b) even after the revision: the functions stay as telemetry-ready code, the list is left as
   it is, and the result is reported as a FAIL with the charts that defeat each gate.
 
-## RESULT
-(not run at the time of this commit)
+## RESULT — first score (2026-11-11, the pre-registered set; `02_score_first.out`)
+**FAIL on all four bars.**
+| Check | Bar | First score |
+|---|---|---|
+| (1) his `no` rejected (n = 12) | 12 of 12 | **11 of 12** — SIG ("looks extended") passes every gate |
+| (1b) his good / ok kept (n = 16) | >= 13 | **6 of 16** |
+| (2) Qullamaggie's buys kept (n = 269) | 263, 26 of 26 big winners | **108**, **11 of 26** |
+| (2b) his ok-or-better Qullamaggie buys kept (n = 39) | >= 80% | **11 of 39 (28%)** |
+
+Per gate (each one alone on top of the existing rules):
+| Gate | `no` rejected (n = 12) | good / ok kept (n = 16) | Qullamaggie buys kept (n = 263 on today's list) | big winners (n = 26) | his ok-or-better buys kept (n = 39) | his no / EP buys removed (n = 16) |
+|---|---|---|---|---|---|---|
+| S1 `higher_lows` | 3 (DUOL, SPCE, ABCL) | 11 | 216 | 20 | 29 | 0 |
+| S2 `no_lower_low` | 3 (CHTR, SPCE, ABCL) | 12 | 195 | 22 | 26 | 2 |
+| S3 `rising_avg` | 3 (SPCE, ABCL, NVAX) | 11 | 168 | 13 | 25 | 3 |
+| S4 `not_extended` | **9** (VFC, ONT, CHTR, DUOL, PLNT, ASO, MRNA, SPCE, OUST) | **13** | 227 | **25** | 31 | **10** |
+| S5 `tight10` | 7 (a subset of S4's nine) | 13 | 246 | 24 | 32 | 6 |
+
+What it means:
+- **"Extended" is the read that matches his grades.** One gate — the close more than one daily range above the 10-day
+  EMA — rejects 9 of his 12 `no`, keeps 13 of his 16 good / ok, keeps 25 of 26 big winners, and removes 10 of the 16
+  Qullamaggie buys he himself called no or EP-like.
+- **The three structure gates (S1-S3) still misread his pattern.** Each rejects only the 11-10 trio's members (3 of 12)
+  and each drops 4-5 of the 16 charts he graded good or ok on the same sheets: RSKD (good), FNKO, MANE (ok) make their
+  base's lowest low ON the list night; IAG, RSKD (good), FNKO, CVLT, MANE (ok) have a 10- or 21-day EMA lower than five
+  sessions before. By these measurements they look like ABCL and NVAX. Whatever separates them to his eye is not a
+  night-before "the bottom is 5 sessions old" or "both averages higher than last week".
+- **A night-before shape gate costs Qullamaggie's buys heavily**, as expected: S3 alone blocks 95 of 263 (13 big
+  winners). Many of his buys are reclaim days from under flat or falling averages.
+- SIG passes all five (close UNDER its 10-day EMA, last-10 spread 3.17): his "looks extended" there is something these
+  bars do not measure (S5 at 3.0 would reject it, but 4.0 does not — a single-point peak, not allowed).
+
+## AMENDMENT 2026-11-11 (the ONE revision; written BEFORE the re-score)
+- **Move: drop S1 `higher_lows`, S2 `no_lower_low` and S3 `rising_avg`. Keep S4 `not_extended` and S5 `tight10` at
+  their pre-registered numbers (1.0 and 4.0). No number moves.** (The verdict rule's allowed moves; three drops, each
+  for the same reason.)
+- Reason: each dropped gate fails the (1b) floor by itself or in any pair — it removes 4-5 of his 16 good / ok charts
+  to reject 3 `no` — so it does not encode his read; that is a definition defect, the same class as 11-02's, not a
+  threshold to nudge (the declared sweeps move good/ok kept between 4 and 7 of 16, never near 13). S4 and S5 each keep
+  13 of 16.
+- Not a single-point peak: S4 at 1.0 / 1.5 / 2.0 and S5 at 4 / 5 / 6 give the same (1) reading in the first score's
+  sweep rows apart from one `no` (10 vs 11 of 12 with S4 >= 1.5).
+- Expected before the re-score, from the first score's per-gate rows: (1) will still FAIL — SIG, ABCL and NVAX pass
+  S4 and S5 — and (1b) should pass at 13 of 16. So this revision cannot reach PASS; it is reported as the part of the
+  shape that is measurable today. Under the verdict rule a set that misses (1) is NOT wired into the list.
+- No new formulation is introduced here (not an allowed move). The rewrite of higher-lows and rising-average needs his
+  eye first — see "Next" below, filled after the re-score.
