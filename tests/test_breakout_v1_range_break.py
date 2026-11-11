@@ -63,13 +63,14 @@ def _key(r):
     return (r["ticker"], r["E"])
 
 
-# High-tier buys the list holds whose break day is under his 2026-11-02 volume bar (1.2x the last 10 sessions).
+# High-tier buys the list holds whose break day is under the 2026-11-02 volume bar (1.2x the last 10 sessions) — they
+# FIRE since his 2026-11-11 "drop it" (volume is recorded, not required).
 VOLUME_MISSES = {("AMD", "2020-01-17"), ("AVLR", "2020-01-02"), ("LVGO", "2020-09-25")}
 
 
-def test_the_79_listable_high_confidence_qullamaggie_buys_are_listed_the_night_before_and_76_fire_on_the_break_day(high_tier):
-    """'Fire' = the DAILY bar of the break day takes out the level on volume at or above the bar — a proxy of the buy,
-    not the live intraday entry (opening range, volume pace, the stop-width rule)."""
+def test_the_79_listable_high_confidence_qullamaggie_buys_are_listed_the_night_before_and_all_79_fire_on_the_break_day(high_tier):
+    """'Fire' = the DAILY bar of the break day takes out the level — a proxy of the buy, not the live intraday entry
+    (opening range, the stop-width rule). Volume is recorded, not required (his 2026-11-11 "drop it")."""
     assert len(high_tier) == 84 and sum(r["set"] == "dated" for r, *_ in high_tier) == 53
     assert {_key(r) for r, *_ in high_tier if not r["rs_best"]} == RANK_NOT_MEASURED
     listed, fired, missed = [], [], set()
@@ -84,8 +85,11 @@ def test_the_79_listable_high_confidence_qullamaggie_buys_are_listed_the_night_b
         listed.append(_key(r))
         t = bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)
         assert t["level_pass"] is True, _key(r)                        # every one takes its level out on the break day
-        (fired.append(_key(r)) if t["fired"] else missed.add(_key(r)))
-    assert len(listed) == 79 and len(fired) == 76 and missed == VOLUME_MISSES
+        assert t["fired"] is True, _key(r)
+        fired.append(_key(r))
+        if not t["volume_pass"]:
+            missed.add(_key(r))
+    assert len(listed) == 79 and len(fired) == 79 and missed == VOLUME_MISSES
     for name in (("ALB", "2021-05-27"), ("ALB", "2021-07-09"), ("NUE", "2022-01-05"), ("ABNB", "2021-11-05"),     # prior move 22-30%
                  ("DKNG", "2020-08-18"), ("FSLY", "2020-09-21"), ("AMD", "2021-10-13"), ("LCID", "2022-01-07"),    # under the 50-day
                  ("NVAX", "2021-04-13"), ("WKHS", "2020-08-03"), ("NET", "2020-06-15"), ("DVN", "2021-11-24")):
@@ -119,7 +123,8 @@ def test_a_range_is_measured_and_the_level_is_the_lower_of_the_range_high_and_th
     big = 10 * g["vol_bar"]
     assert bv.breakout_triggered({"h": 20.01, "v": big}, ok)["fired"] is True
     assert bv.breakout_triggered({"h": 20.00, "v": big}, ok)["fired"] is False                 # touched, not taken out
-    assert bv.breakout_triggered({"h": 20.50, "v": 0.99 * g["vol_bar"]}, ok)["fired"] is False   # under 1.2x the last 10
+    t = bv.breakout_triggered({"h": 20.50, "v": 0.5 * g["vol_bar"]}, ok)                       # a below-volume break
+    assert t["fired"] is True and t["volume_pass"] is False                                    # still buys (2026-11-11)
     assert bv.breakout_triggered({"h": 19.99, "v": big}, ok)["fired"] is False                 # volume alone never buys
 
 
@@ -164,9 +169,37 @@ def test_the_wick_rule_apt_0221_is_bought_through_the_settled_range_not_the_spik
         assert g["level"] == pytest.approx(lvl, rel=1e-3) and g["level5"] == pytest.approx(l5, rel=1e-3), k
         bar = {"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}
         assert bv.breakout_triggered(bar, g)["fired"] is True, k
-        assert bv.breakout_triggered(bar, dict(g, level=g["level5"]))["fired"] is False, k     # the spike high never fired
+        assert bv.breakout_triggered(bar, dict(g, level=g["level5"]))["level_pass"] is False, k     # the spike high was never taken out
         seen[k] = r["big_winner"]
     assert set(seen) == set(WICK_GAINS_DATED) and seen[("APT", "2020-02-21")] == "1"
+
+
+# The four big winners the day's volume kept out (0.89x / 1.04x / 0.80x / 0.96x the 10-day average); at the minute they
+# crossed the level the live pace was 0.38 / 0.60 / 1.00 / 0.86 against the 1.2 it needed (15_pace_at_cross.out).
+VOLUME_MISSED_BIG_WINNERS = {("DOYU", "2020-08-24"), ("MDB", "2020-09-21"), ("NVDA", "2020-09-25"), ("JMIA", "2021-01-12")}
+
+
+def test_the_four_big_winners_the_volume_bar_kept_out_fire_on_the_price_break():
+    """His ruling 2026-11-11: "drop it" — buy on the price break alone."""
+    by = defaultdict(list)
+    with gzip.open(FX / "bars.psv.gz", "rt") as f:
+        for r in csv.DictReader(f, delimiter="|"):
+            by[r["eid"]].append(r)
+    seen = set()
+    for r in csv.DictReader(open(FX / "buys.tsv"), delimiter="\t"):
+        k = (r["ticker"], r["E"])
+        if k not in VOLUME_MISSED_BIG_WINNERS:
+            continue
+        assert r["big_winner"] == "1", k
+        rr = sorted(by[r["eid"]], key=lambda x: x["date"])
+        ds = [date.fromisoformat(x["date"]) for x in rr]
+        b = cb.daily_bars_from_arrays(ds, *[[float(x[c]) for x in rr] for c in "ohlcv"])
+        D = ds.index(date.fromisoformat(r["D"]))
+        g = bv.v1_gates(b, D, rs_best=float(r["rs_best"]), raw_close=float(r["raw_close_D"]))
+        t = bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)
+        assert g["ok"] and t["level_pass"] and t["volume_pass"] is False and t["fired"] is True, k
+        seen.add(k)
+    assert seen == VOLUME_MISSED_BIG_WINNERS
 
 
 def test_the_wick_rule_only_acts_on_a_day_that_closed_in_the_lower_half_and_is_not_the_last_day():

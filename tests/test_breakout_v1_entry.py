@@ -931,6 +931,7 @@ async def test_too_wide_cancels_with_the_named_reason(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_a_volume_lapse_cancels_the_resting_buy(monkeypatch):
+    monkeypatch.setattr(be, "VOLUME_PACE_GATE", True)   # the OLD gate (off since his 2026-11-11 "drop it"): the machinery still works
     bars = _flat_bars(30, low=9.80, high=9.95, vol=1_000.0)          # 30k by minute 29 << 1.2M x 12%
     w = World(monkeypatch, rows=[_placed_row()], orders=[_order()], bars={"BRKO": bars})
     await w.tick(at=(10, 0))
@@ -993,7 +994,27 @@ async def test_an_order_in_the_family_no_row_tracks_is_cancelled_and_paged(monke
 
 
 @pytest.mark.asyncio
+async def test_a_below_pace_break_still_buys_and_a_volume_lapse_cancels_nothing(monkeypatch):
+    """His ruling 2026-11-11, "drop it" (pending his sign-off before paper): volume is no longer a buy condition. A name
+    far under the pace gets its buy on the first tick; a resting buy whose volume dries up keeps resting. The pace is
+    still on the state (recorded), it just decides nothing."""
+    assert be.VOLUME_PACE_GATE is False
+    thin = _flat_bars(10, vol=1_000.0)                               # 10k shares by 09:40 against ~55k needed
+    w = World(monkeypatch, bars={"BRKO": thin})
+    out = await w.tick(at=(9, 40))
+    assert w.funnel.await_count == 1 and out["actions"]["BRKO"] != "volume_hold"
+    assert not [e for e in w.ev("breakout_v1_entry_hold") if "volume" in str(e)]
+    st = be.evaluate(be.bars_by_minute(thin, TODAY, 9), list_level=10.0, adr20=0.06, vol_bar=1.2e6, last_completed=9)
+    assert st["status"] == "ok" and st["f1_ok"] is False and st["cum_volume"] == 10_000.0 and st["need_volume"] > 10_000.0
+    assert be._terminal_reason(st, 30) is None                       # under pace is not a reason to cancel
+    w2 = World(monkeypatch, rows=[_placed_row()], orders=[_order()], bars={"BRKO": _flat_bars(30, low=9.80, high=9.95, vol=1_000.0)})
+    await w2.tick(at=(10, 0))
+    assert w2.rows["BRKO"]["status"] == "order_placed"               # the resting buy is NOT cancelled for volume
+
+
+@pytest.mark.asyncio
 async def test_no_buy_before_the_volume_curve_permits_then_one_buy_once_it_does(monkeypatch):
+    monkeypatch.setattr(be, "VOLUME_PACE_GATE", True)   # the OLD gate (off since his 2026-11-11 "drop it"): the machinery still works
     thin = _flat_bars(10, vol=1_000.0)
     w = World(monkeypatch, bars={"BRKO": thin})
     await w.tick(at=(9, 40))
@@ -2345,12 +2366,13 @@ def test_the_break_is_the_first_bar_at_or_after_the_hold_whose_high_reaches_the_
     assert be.first_break({}, level=10.0, vol_bar=1.0, from_minute=10) is None
 
 
-def test_the_break_needs_the_volume_pace_at_that_minute_exactly_as_the_live_tick_applies_it():
+def test_the_break_needs_the_volume_pace_at_that_minute_exactly_as_the_live_tick_applies_it(monkeypatch):
     """PURE (re-review 2026-11-07 finding 1 — his ruling: a name that 'met the break (LEVEL + VOLUME PACE)'): a bar at
     the level counts as the break at minute k only when `f1_permits(volume of minutes <= k-1, vol_bar, k-1)` — the
     check the live tick makes with last_completed = k-1 before it places or keeps the buy that would have filled in
     minute k. A touch of the level on lapsed volume is not a break (a seated buy would have been cancelled before it
     filled); a later touch back on pace is; the break minute's OWN volume never counts (it is not complete yet)."""
+    monkeypatch.setattr(be, "VOLUME_PACE_GATE", True)   # the OLD gate (off since his 2026-11-11 "drop it"): the machinery still works
     bars = _flat_bars(20, low=9.80, high=9.95, vol=1.0)                      # 1 share a minute: cum through k-1 = k
     bars[12] = _bar(12, 9.9, 10.05, 9.85, 10.02, 1000.0)                     # at the level, a huge bar of its own
     bars[15] = _bar(15, 9.9, 10.30, 9.70, 10.2, 1.0)
@@ -2380,6 +2402,7 @@ def test_the_break_needs_the_volume_pace_at_that_minute_exactly_as_the_live_tick
 
 @pytest.mark.asyncio
 async def test_a_held_name_whose_volume_lapsed_at_its_break_is_not_recorded_and_one_on_pace_is(monkeypatch):
+    monkeypatch.setattr(be, "VOLUME_PACE_GATE", True)   # the OLD gate (off since his 2026-11-11 "drop it"): the machinery still works
     """Re-review 2026-11-07 finding 1 (the reviewer's repro): R3 is held at 09:40 on the pace, then its volume dries up
     (~100 shares a minute); at 15:20 it trades above the level with ~634,000 shares done against the ~743,000 the
     curve needs by then — the live tick would have cancelled a seated buy for volume long before, so it is NOT a

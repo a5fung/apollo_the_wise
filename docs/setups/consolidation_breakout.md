@@ -78,8 +78,9 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
 >   every name (`breakout_v1.range_levels`, the row's `range`); it is never a gate. **The level = the LOWER of the
 >   range high and the 5-day high** (`level_source`); no range = the 5-day high as before. **Wick rule:** a 5-day
 >   high set by a day that closed in the lower half of its range is replaced by the high of the sessions after it.
-> - Unchanged: the volume bar (1.2 x the last 10 sessions, his 2026-11-02 ruling), $2, $5M, ADR 2.1%, 86 sessions,
->   strength 35, stop, sizing, exits, slots, the order score.
+> - **Volume is NOT a buy condition** (his 2026-11-11 "drop it"; replaces F1 of 10-29 and the 1.2 x 10-day bar of
+>   11-02): the price break alone buys. The bar and the intraday pace are still computed and recorded.
+> - Unchanged: $2, $5M, ADR 2.1%, 86 sessions, strength 35, stop, sizing, exits, slots, the order score.
 
 | # | Rule | Value | Source | Code |
 |---|---|---|---|---|
@@ -395,6 +396,20 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   shortened 6-month look-back, as the research's era-B store did on its first 59 nights).
 
 ## Change log
+
+### 2026-11-11 — breakout v1: VOLUME IS NO LONGER A BUY CONDITION — the price break alone buys (his ruling "drop it"; PENDING HIS SIGN-OFF BEFORE PAPER; wired on a branch, not merged, not deployed, paper OFF)
+
+**Trigger**: his words 2026-11-11 — *"we need to look at the moment he buys not after the fact"*, then, on the pace-at-the-cross result, **"drop it"**. Full-day volume is unknowable at the entry, and the live pace check blocked Qullamaggie's own buys.
+
+**Evidence**: `scripts/probes/_717_qm_confidence_1111/15_pace_at_cross.out` — minute bars on 261 of the 272 buys the daily trigger fired on and on all 26 big winners; at the first minute from 09:35 that reaches the live level, the live pace (volume through the minute before / the 10-day average x the intraday curve) is at or above the 1.2 it needed on **82% of the fired (n = 244)** and **66% of every buy that took out the level (n = 421)**; 18 of the 26 big winners. The four big winners the day's volume kept out cross at 0.38 (DOYU 2020-08-24), 0.60 (MDB 2020-09-21), 0.86 (JMIA 2021-01-12), 1.00 (NVDA 2020-09-25). **Head to head, all 757 (n = 757 / 757 / 26; `16_no_volume_gate.out`; listed / fired on the daily bar / big winners fired): with the volume bar 566 / 272 / 22; the price break alone 566 / 465 / 26; 0 lost, 193 gained.**
+
+**What changed**: `breakout_v1.breakout_triggered` fires on the level alone (`volume_pass` still reported); `broker/breakout_v1_entry.VOLUME_PACE_GATE = False` — a name under the pace gets its buy, a resting buy is not cancelled for volume, and the missed-by-slots record counts a touch of the level as the break. The pace (`f1_ok`, `cum_volume`, `need_volume`) stays on the tick state, the order audit row and the missed row; the list row keeps `vol_bar`. The nightly message no longer states a volume condition. Stops, sizing, exits, slots, the safety floors: untouched.
+
+**Anticipated effect**: more buys, earlier in the session (no wait for the pace), including breaks on quiet volume. Not measured: how many more non-Qullamaggie names buy across the market, or their outcome.
+
+**Reversion-flag**: REVERSAL of F1 (2026-10-29, "volume so far >= 1.2x normal by that minute") and of the 2026-11-02 volume bar (1.2 x the last 10 sessions) AS BUY CONDITIONS — both judged a day's or a minute's volume against a bar his own buys do not respect at the moment of the buy (above). `VOLUME_PACE_GATE = True` restores the old behaviour; its tests still run with it on.
+
+**Status**: wired on branch `worktree-agent-af09ad1fb995d350b`, tests green, **NOT merged, NOT deployed, paper OFF — pending his sign-off before paper.**
 
 ### 2026-11-11 — breakout v1 INITIAL RULE SET: the list gates loosened to keep Qullamaggie's buys; a range is measured, the level is the lower of the range high and the 5-day high (PENDING HIS SIGN-OFF BEFORE PAPER; wired on a branch, not merged, not deployed, paper OFF)
 

@@ -155,7 +155,7 @@ def test_odd_0908_is_still_rejected_now_by_the_ema21_rule():
     assert round(g["sma50"]["value"]["sma50"], 2) == 14.94 and round(g["close"], 2) == 13.03
 
 
-def test_odd_1009_his_better_date_is_listed_now_and_still_misses_on_volume():
+def test_odd_1009_his_better_date_is_listed_and_fires_on_the_price_break_with_its_volume_under_the_bar():
     """v1_gates_odd_1009.txt: setup at the 10-08 close; strength 96.6 failed the old 98 and passes the rebuilt 35, so
     ODD is ON the rebuilt list that night (prior move +71%). E = 10-09 clears the level 20.68 but its volume 767,079 is
     under the rebuilt bar too — 1.2x the last 10 sessions = 883,641 (the old 50-day bar was 1,460,436)."""
@@ -170,7 +170,8 @@ def test_odd_1009_his_better_date_is_listed_now_and_still_misses_on_volume():
     assert round(g["vol_bar"]) == 883_641
     assert round(1.2 * g["vol50"]) == 1_460_436
     t = bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)
-    assert t["level_pass"] is True and t["volume_pass"] is False and t["fired"] is False
+    # his 2026-11-11 "drop it": the volume is recorded (still under the bar) and no longer stops the buy
+    assert t["level_pass"] is True and t["volume_pass"] is False and t["fired"] is True
 
 
 def test_zcsh_1028_passes_every_rebuilt_rule():
@@ -208,11 +209,15 @@ def test_rs_gate_reads_none_as_a_fail():
     assert bv.v1_gates(b, _at(b, "2026-10-28"), rs_best=34.9)["failed"] == ["rs"]
 
 
-def test_breakout_triggered_is_strict_on_level_inclusive_on_volume():
+def test_breakout_triggered_is_strict_on_level_and_volume_is_recorded_not_required():
+    """His ruling 2026-11-11, "drop it": the price break alone fires; `volume_pass` is still reported (inclusive)."""
     g = {"ok": True, "level": 10.0, "vol_bar": 1000.0}
     assert bv.breakout_triggered({"h": 10.0, "v": 5000}, g)["level_pass"] is False
+    assert bv.breakout_triggered({"h": 10.0, "v": 5000}, g)["fired"] is False
     assert bv.breakout_triggered({"high": 10.01, "volume": 1000}, g)["fired"] is True
-    assert bv.breakout_triggered({"h": 10.01, "v": 999.9}, g)["fired"] is False
+    t = bv.breakout_triggered({"h": 10.01, "v": 999.9}, g)
+    assert t["fired"] is True and t["volume_pass"] is False
+    assert bv.breakout_triggered({"h": 10.01, "v": 1000}, g)["volume_pass"] is True
     assert bv.breakout_triggered({"h": 11, "v": 2000}, dict(g, ok=False))["fired"] is False
 
 

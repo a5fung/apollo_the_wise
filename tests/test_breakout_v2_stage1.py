@@ -115,12 +115,16 @@ def test_the_scorecard_under_the_initial_rule_set_all_269_listed_and_no_buy_of_t
     """2026-11-11 initial rule set (PENDING HIS SIGN-OFF). The loosened gates list ALL 269 of Qullamaggie's dated buys
     the night before (263 on 2026-11-02; his 6 former NOs — YPF, W, DOCU x2, SQM, MRNA — are Qullamaggie buys and count
     now: his 11-11 ruling). The level is the LOWER of the range high and the 5-day high, the volume bar his 1.2x the last
-    10 sessions, so every buy the 11-02 trigger fired on still fires: 165 of 269 on the daily bar (156 on 11-02), 22 of
-    the 26 big winners (21). On these 269 the range high is never under the 5-day high; the wick rule lowers 5 levels."""
+    10 sessions (recorded, not required since his 11-11 "drop it"), so every buy the 11-02 trigger fired on still fires:
+    256 of 269 on the daily bar (156 on 11-02), 26 of the 26 big winners (21). On these 269 the range high is never under the 5-day high; the wick rule lowers 5 levels."""
     assert len(scorecard) == 269 and all(g["ok"] and g["failed"] == [] for _, _, _, g in scorecard)
     fired = [(r, bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)["fired"]) for r, b, D, g in scorecard]
-    # 165 / 22 with the 2026-11-11 wick rule (160 / 21 without it: APT 2020-02-21 is the 22nd big winner)
-    assert sum(f for _, f in fired) == 165 and sum(f for r, f in fired if r["big_winner"] == "1") == 22
+    # the price break alone (his 2026-11-11 "drop it"): 256 of 269 and ALL 26 big winners; with the volume bar it was
+    # 165 / 22 (the wick rule; 160 / 21 without it)
+    assert sum(f for _, f in fired) == 256 and sum(f for r, f in fired if r["big_winner"] == "1") == 26
+    with_vol = [(r, bool(bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)["volume_pass"]) and f)
+                for (r, b, D, g), (_, f) in zip(scorecard, fired)]
+    assert sum(f for _, f in with_vol) == 165 and sum(f for r, f in with_vol if r["big_winner"] == "1") == 22
     old = [(r, g["gates"]["prior_move"]["value"]["prior_move"] >= 0.3213536987121892
             and g["gates"]["base_depth"]["value"]["depth_adr"] <= 8.979719460898997
             and g["gates"]["ema21"]["value"]["vs_ema21_adr"] >= -0.6335 and g["sma50"]["pass"]
@@ -201,6 +205,7 @@ def test_the_era_b_buys_read_as_stage0_printed_on_the_10_day_bar_11_of_18(scorec
         # stage 0's trigger: the 5-day high and 1.2x the last 10 sessions (both telemetry since 2026-11-11)
         t = bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])},
                                   dict(g, ok=True, level=g["level5"], vol_bar=1.2 * g["vol10"]))
+        t["fired"] = t["level_pass"] and t["volume_pass"]          # stage 0's own trigger (volume was a condition then)
         got = (f"{oi['runup6m']:.0%}", f"{oi['runup6m_adr']:.1f}", f"{oi['spread10_adr']:.1f}",
                f"{float(b.v[D + 1]) / g['vol10']:.2f}", t["fired"])
         assert got == STAGE0_ERA_B[k], k

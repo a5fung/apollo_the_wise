@@ -9,7 +9,8 @@ name on LAST NIGHT's list (`mi_breakout_v1_list`, scan_date = the previous sessi
     the 5-day high; this module reads the row's value and did not change;
     (`consolidation_breakout._entry_one`'s `orh5`); no bar at all in those five minutes = the named abstain
     `no_opening_range_minutes`;
-  * F1 (RULED): the buy is only PLACED, and only KEPT live, while the volume so far (through the last completed
+  * F1 — NOT A GATE since his 2026-11-11 "drop it" (`VOLUME_PACE_GATE = False`, pending his sign-off before paper):
+    the pace below is still computed and recorded, and decides nothing. As ruled 2026-10-29 it read: the buy is only PLACED, and only KEPT live, while the volume so far (through the last completed
     minute) >= the list's volume bar (1.2 x the average FULL daily volume of the last 10 sessions to the list night —
     his ruling 2026-11-02, read from the list row's `vol_bar`; it was the 50-day average before) x the share of a
     day's volume normally done by that minute (`breakout_v1_volume_curve.CUM_SHARE`, ONE pooled curve for every
@@ -229,6 +230,14 @@ def bars_by_minute(bars: list[dict], d: date, last_completed: int) -> dict[int, 
 def stop_from_low(low: float) -> float:
     """The protective stop at the day's low, on the cent at or BELOW it (a cent above would sit inside the range)."""
     return math.floor(round(float(low) * 100, 6)) / 100.0
+
+
+# His ruling 2026-11-11, "drop it" (PENDING HIS SIGN-OFF BEFORE PAPER): volume is NO LONGER a buy condition — the buy is
+# the price break alone. It replaces F1 (2026-10-29) and the 1.2x 10-day bar (2026-11-02) AS A GATE. The pace is still
+# computed on every tick and recorded (`f1_ok`, `cum_volume`, `need_volume` on the state, the order audit row and the
+# missed-by-slots row). Evidence: at the minute his buys cross the level the pace is under 1.2 on 34% of them, and on
+# all four volume-missed big winners (scripts/probes/_717_qm_confidence_1111/15_pace_at_cross.out). True = the old gate.
+VOLUME_PACE_GATE = False
 
 
 def f1_permits(cum_volume: float, vol_bar: float, last_completed: int) -> tuple[bool, float]:
@@ -533,7 +542,7 @@ def first_break(mins: dict[int, dict], *, level: float, vol_bar: float, from_min
             continue
         cum = float(sum(float(mins[j].get("volume") or 0) for j in mins if j <= k - 1))
         ok, need = f1_permits(cum, vol_bar, k - 1)
-        if not ok:
+        if VOLUME_PACE_GATE and not ok:
             continue                                   # at the level, but the live tick would not have had a buy resting
         low = min(float(mins[j]["low"]) for j in mins if j <= k)
         stop = stop_from_low(low)
@@ -910,8 +919,8 @@ async def _enter(today: date, lrow: dict, st: dict, regime_record: dict | None) 
             "breakout_v1_entry_order",
             f"{ticker} → {r.get('action')}" + (f" ({r.get('reason')})" if r.get("reason") else "")
             + (f" trade_id={r.get('trade_id')}" if r.get("trade_id") else "")
-            + f" level=${st['level']:.2f} stop=${st['stop']:.2f} vol {st['cum_volume']:,.0f} >= "
-              f"{st['need_volume']:,.0f}",
+            + f" level=${st['level']:.2f} stop=${st['stop']:.2f} vol {st['cum_volume']:,.0f} vs pace "
+              f"{st['need_volume']:,.0f} ({'on' if st['f1_ok'] else 'UNDER'} pace; not a gate)",
             json.dumps({k: st[k] for k in ("level", "orh5", "orl5", "stop", "width", "cum_volume", "need_volume",
                                            "last_completed")}, default=str))
     return r
@@ -940,7 +949,7 @@ def _terminal_reason(st: dict | None, m: int) -> str | None:
         return None
     if st["status"] == "abstain":
         return st["reason"]
-    if not st["f1_ok"]:
+    if VOLUME_PACE_GATE and not st["f1_ok"]:
         return (f"{SETUP_BREAKOUT_VOLUME_BELOW_CURVE}: {st['cum_volume']:,.0f} shares by minute "
                 f"{st['last_completed']} < {st['need_volume']:,.0f} needed")
     return None
@@ -1804,7 +1813,7 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
                                                  default=str))
                 out["actions"][ticker] = "abstain"
                 continue
-            if not st["f1_ok"]:
+            if VOLUME_PACE_GATE and not st["f1_ok"]:
                 await _note(today, ticker, "volume_below_curve",
                             f"no buy yet — volume {st['cum_volume']:,.0f} by minute {last_completed} < "
                             f"{st['need_volume']:,.0f} (1.2x normal by this minute)",

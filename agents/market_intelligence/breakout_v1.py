@@ -630,8 +630,10 @@ def breakout_triggered(bar_E: Mapping, gates: dict) -> dict:
     level, bar = gates.get("level"), gates.get("vol_bar")
     level_pass = bool(hi is not None and level is not None and hi > level)
     vol_pass = bool(vol is not None and bar is not None and vol >= bar)
+    # his ruling 2026-11-11, "drop it" (pending his sign-off before paper): volume is no longer a buy condition — the
+    # break of the level alone fires; `volume_pass` (the day's volume vs 1.2x the last 10 sessions) is recorded only
     return {"level_pass": level_pass, "volume_pass": vol_pass,
-            "fired": bool(gates.get("ok")) and level_pass and vol_pass,
+            "fired": bool(gates.get("ok")) and level_pass,
             "high": hi, "volume": vol, "level": level, "vol_bar": bar}
 
 
