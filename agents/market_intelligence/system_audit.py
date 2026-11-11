@@ -43,6 +43,7 @@ from agents.market_intelligence.trading_calendar import get_market_status
 from agents.market_intelligence.db import (
     add_baseline_reset,  # noqa: F401  re-exported for callers
     count_today_anomalies,
+    fetch_today_anomaly_details,
     get_baseline_reset,
     get_metric_baseline,
     get_pool,
@@ -1613,36 +1614,22 @@ def _format_l2_alert(
 # ── Persistence + Telegram ───────────────────────────────────────────────────
 
 
-async def _naked_books_paged_today() -> set[str]:
-    """Which books ("live" / "paper") a naked-position page already went to today (ET). Read from the
-    `paged_books` list each naked-position anomaly row carries (2026-11-10). FAILS OPEN to "none yet"
-    — a read failure here must never cost the page; a repeat page is the safe error."""
+async def _naked_pages_today() -> tuple[bool, set[str]]:
+    """(any naked-position row today, the books already paged today), from ONE read of today's rows'
+    `paged_books` lists (2026-11-10). FAILS OPEN to (False, none) — a read failure here must never cost
+    the page; a repeat page is the safe error."""
     try:
-        rows = await _naked_paged_rows_today()
+        details = await fetch_today_anomaly_details(INV_NAKED_POSITION)
     except Exception:   # loud-ok: logged; fail-open means the page still goes out
         logger.exception("system_audit: could not read today's naked-position pages; treating as none")
-        return set()
-    out: set[str] = set()
-    for r in rows:
+        return False, set()
+    books: set[str] = set()
+    for d in details:
         try:
-            out.update(json.loads(r["detail"]).get("paged_books") or [])
+            books.update(json.loads(d).get("paged_books") or [])
         except Exception:   # loud-ok: one unreadable row is skipped, never raised into the page path
             continue
-    return out
-
-
-async def _naked_paged_rows_today():
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        return await conn.fetch(
-            """
-            SELECT detail FROM mi_audit_log
-            WHERE event_type = $1
-              AND detail LIKE $2
-              AND (created_at AT TIME ZONE 'America/New_York')::date = (NOW() AT TIME ZONE 'America/New_York')::date
-            """,
-            _AUDIT_EVENT, f'%"key": "{INV_NAKED_POSITION}"%',
-        )
+    return bool(details), books
 
 
 async def _emit_l1(name: str, body: dict) -> None:
@@ -1658,22 +1645,19 @@ async def _emit_l1(name: str, body: dict) -> None:
     # severity is now informative, not uniform.
     texts: list[str]
     if name == "naked_position":
-        from agents.market_intelligence.audit_invariants import classify_naked_positions
+        from agents.market_intelligence.audit_invariants import book_of, classify_naked_positions
         body = await classify_naked_positions(body)
         # One message per book (2026-11-10, ZYME): paper rows go out paper-tagged (-> the paper chat),
         # live rows exactly as before; rows held by a queued sale page nobody (audit row only).
         texts = []
-        _already = await _naked_books_paged_today()
+        _row_today, _already = await _naked_pages_today()
         for _mode in ("live", "paper"):
-            _in = (lambda r: (r.get("account_mode") or "live") == "paper") if _mode == "paper" \
-                else (lambda r: (r.get("account_mode") or "live") != "paper")
-            _part = {**body,
-                     "real_naked": [r for r in body.get("real_naked") or [] if _in(r)],
-                     "db_drift": [r for r in body.get("db_drift") or [] if _in(r)]}
+            _part = {**body, **{k: [r for r in body.get(k) or [] if book_of(r) == _mode]
+                                for k in ("real_naked", "db_drift")}}
             if (_part["real_naked"] or _part["db_drift"]) and _mode not in _already:
                 texts.append(_format_naked_position_alert(_part, account_mode=_mode))
                 paged_books.append(_mode)
-        if not paged_books and await count_today_anomalies(name) > 0:
+        if not paged_books and _row_today:
             return      # nothing new to page and today's row exists: same as the plain rule
     else:
         texts = [_format_l1_alert(name, body)]

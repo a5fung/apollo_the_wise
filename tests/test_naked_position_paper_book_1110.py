@@ -72,7 +72,8 @@ async def _run_emit(rows, orders_by_ticker, paged_already=(), rows_today=0):
         written.append(json.loads(detail))
     with patch.object(alpaca_client, "get_open_orders", new=oo), \
          patch.object(system_audit, "count_today_anomalies", new=AsyncMock(return_value=rows_today)), \
-         patch.object(system_audit, "_naked_books_paged_today", new=AsyncMock(return_value=set(paged_already))), \
+         patch.object(system_audit, "_naked_pages_today",
+                      new=AsyncMock(return_value=(bool(rows_today), set(paged_already)))), \
          patch.object(system_audit, "log_audit_event", new=log), \
          patch("agents.market_intelligence.briefing.send_telegram_message",
                new=AsyncMock(side_effect=lambda text, **kw: sent.append(text) or True)):

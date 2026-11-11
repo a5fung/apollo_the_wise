@@ -86,6 +86,12 @@ async def check_naked_position(conn) -> tuple[bool, dict]:
     })
 
 
+def book_of(row: dict) -> str:
+    """The row's book, "live" or "paper". A NULL account_mode reads as live — the conservative book
+    to check and to page (2026-11-10)."""
+    return "paper" if row.get("account_mode") == "paper" else "live"
+
+
 async def classify_naked_positions(body: dict) -> dict:
     """Distinguish real-naked from DB-drift cases (#140, 2026-05-28).
 
@@ -128,7 +134,7 @@ async def classify_naked_positions(body: dict) -> dict:
             # so a PAPER position was judged against the LIVE account's orders. NULL -> live (the
             # conservative book to check).
             open_orders = await alpaca_client.get_open_orders(
-                ticker=ticker, account_mode=r.get("account_mode") or "live", raise_on_error=True)
+                ticker=ticker, account_mode=book_of(r), raise_on_error=True)
             # An open sell-side stop or stop-limit on the position is broker
             # coverage. get_open_orders returns standalone orders (not OTO
             # parents) so we check the order's own fields directly — using

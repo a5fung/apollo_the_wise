@@ -4042,7 +4042,7 @@ _DEAD_COL_EVENT_GATED: dict[str, tuple[str, str]] = {
         "EXISTS (SELECT 1 FROM mi_ep_alerts e WHERE e.ticker = mi_lowcap_lane_signals.ticker"
         " AND e.alert_date < mi_lowcap_lane_signals.scan_date"
         " AND e.alert_date >= mi_lowcap_lane_signals.scan_date - 60"
-        f" AND {LIVE_SOURCE_SQL.replace('source', 'e.source')})",
+        f" AND {LIVE_SOURCE_SQL})",   # unqualified `source` binds to mi_ep_alerts: the signals table has none
         "set only when the name had a live EP alert in the 60 days before its scan (the cooldown map)"),
     "mi_flag_candidates.days_since_breakout": (
         "post_breakout_from IS NOT NULL",

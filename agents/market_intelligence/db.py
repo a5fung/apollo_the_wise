@@ -15916,6 +15916,24 @@ async def count_today_anomalies(audit_key: str, on_date: date | None = None) -> 
     return int(row["n"] or 0)
 
 
+async def fetch_today_anomaly_details(audit_key: str) -> list[str]:
+    """The `detail` text of today's (ET) `anomaly_detected` rows for `audit_key` — the same rows
+    `count_today_anomalies` counts, for a caller that needs what they say (the naked-position check
+    reads which books it already paged, 2026-11-10)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT detail FROM mi_audit_log
+            WHERE event_type = 'anomaly_detected'
+              AND detail LIKE $1
+              AND (created_at AT TIME ZONE 'America/New_York')::date = (NOW() AT TIME ZONE 'America/New_York')::date
+            """,
+            f'%"key": "{audit_key}"%',
+        )
+    return [r["detail"] for r in rows]
+
+
 # ── Validation cooldowns ───────────────────────────────────────────────────────
 
 async def add_validation_cooldown(
