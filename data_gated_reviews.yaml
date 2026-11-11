@@ -11099,7 +11099,8 @@ reviews:
       enrichment, before the tier decision, so a scored row with no alert is a candidate dropped later (33 of
       54 PASS, 148 of 152 DOWNGRADE). Gate stays 22 (status quo). PRE-DECLARED for the re-read at 50 settled
       PASS rows: bring fork B if PASS's share >= +20% at 5 sessions is under half DOWNGRADE's; close for good
-      if it is at least equal.
+      if it is at least equal; anything in between keeps 22 and re-reads once at 100 settled PASS rows on the
+      same rule (gap filled 11-10, before the data).
     # The era column IS this entry's reason for existing, and the predicate filters it —
     # `alert_date >= '2026-08-22'`. Its predecessor declared nothing and pooled both systems.
     discriminates_on: [mi_ep_catalyst_metrics.alert_date]

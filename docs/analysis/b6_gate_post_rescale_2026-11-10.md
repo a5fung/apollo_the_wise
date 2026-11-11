@@ -29,7 +29,7 @@ Review `b6_gate_inversion_post_rescale` fired (predicate 22 of 15). $0 read: one
 
 ## Decision
 - Fork B (neutralise the composite's downgrade authority) is the operator's call (THE LINE). Status quo (keep 22) needs no sign-off.
-- Recommendation: keep 22; re-read at 50 settled post-rescale PASS rows, judged on the same tail rule declared here BEFORE the data: bring fork B if PASS's share ≥ +20% at 5 sessions is under half DOWNGRADE's with ≥ 50 PASS rows; close for good if it is at least equal.
+- Recommendation: keep 22; re-read at 50 settled post-rescale PASS rows, judged on the same tail rule declared here BEFORE the data: bring fork B if PASS's share ≥ +20% at 5 sessions is under half DOWNGRADE's with ≥ 50 PASS rows; close for good if it is at least equal; anything in between keeps 22 and re-reads once at 100 settled PASS rows on the same rule.
 
 ## What this does not answer
 - Realized trade returns: every figure is a day-0-open buyer with no stop and no R.
