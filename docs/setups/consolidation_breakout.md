@@ -347,6 +347,12 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   **Round 3 (2026-11-11):** one long-term-trend gate on top (close above the 200-day; 50-day above the 200-day; a
   rising 200-day; both) — every variant FAILS: 16 to 32 more of Qullamaggie's buys go (big winners 22-23 of 26), and
   the rising-200-day ones drop three of his own good / ok charts. Not enforced.
+  **Round 4 (2026-11-11, his grades on the would-buy sheet: 2 of 12 ok, "a few more tight days"):** three right-edge
+  tightness gates (range of the last 5 sessions vs the 5 before; the last 5 closes' band; tight days in a row) each
+  drop most of his 13 good / ok (2, 6 and 0 kept) and 45 to 137 of Qullamaggie's buys — the names he sends back for
+  "more tight days" are already the tightest by daily bars, and five tickers graded twice a few sessions apart carry
+  opposite grades. SCOPE FINDING (the analysis doc's last section): 28 of 28 is not reachable by a rule on these bars
+  until he says what the tight-days read counts. Nothing enforced.
 - **Spin-offs and special distributions are NOT adjusted in the daily export (found 2026-10-23, his catch).** The export
   (Alpaca, split-adjusted) adjusts splits only, so a spin-off reads as a one-session crash: OPLN (KAR Auction → IAA spin-off,
   2019-06-28, −62%), ZWS (Zurn, 2021-10), BEP (the BEPC distribution, 2020-07). Every replay on this export books those as stop-through

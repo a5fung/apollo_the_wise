@@ -1,6 +1,6 @@
 # Breakout v1 — Qullamaggie's shape rules as list gates: PRE-REGISTRATION (2026-11-11)
 
-**Status: SCORED 2026-11-11 — FAIL in both rounds (round 2 after his regrade is at the END of this file: amendment 2 rejects 13 of 17 `no` and keeps 249 of Qullamaggie's 263 listed buys; nothing enforced). Pre-registered and committed BEFORE any score was run (commit `48bb6458`). Nothing is
+**Status: SCORED 2026-11-11 — FAIL in all four rounds (round 4, the tightness gate, and the SCOPE FINDING are at the end)**. Earlier: FAIL in both rounds (round 2 after his regrade is at the END of this file: amendment 2 rejects 13 of 17 `no` and keeps 249 of Qullamaggie's 263 listed buys; nothing enforced). Pre-registered and committed BEFORE any score was run (commit `48bb6458`). Nothing is
 deployed, merged or switched on; paper stays OFF (the operator's 11-10 ruling). A hard gate needs his sign-off on the
 filter list before it ships (`docs/setups/CHANGE_PROCESS.md` rule 3).**
 Owner when shipped: `docs/setups/consolidation_breakout.md` (this file is the finding). Task: PLAN.md #717.
@@ -393,3 +393,39 @@ full base"*; 11-11 *"a few more tight days"*.
   additional Qullamaggie buys; a tie goes to more rejections. The 12 sheet letters each variant removes are reported;
   those 12 are now LABELS (in the 28 / 13 counts), no longer an out-of-sample check.
 - Enforce only if a variant meets every bar.
+
+## RESULT — amendment 4 (each variant scored once; `09_score_amendment4.out`)
+**FAIL: no variant comes near the bars; by the pick rule none qualifies. Nothing is enforced.**
+| Variant (on top of amendment 2) | no + not-yet rejected (n = 28) | good / ok kept (n = 13) | Qullamaggie buys kept (n = 263) | big winners (n = 26) | 11-10 list survivors (n = 190) | sheet letters removed (n = 12) |
+|---|---|---|---|---|---|---|
+| amendment 2 alone | 13 | 11 | 249 | 25 | 117 | none |
+| K1 `range_contract` (<= 1.1) | 23 | **2** | 203 | 21 | 48 | A, E, F, I, J, K, L |
+| K2 `tight_closes5` (<= 1.5) | 19 | **6** | 204 | 20 | 47 | F, J |
+| K3 `tight_run3` (3 days) | 25 | **0** | 112 | 11 | 18 | all but B, H |
+- Sweeps (not a peak — the miss is the same everywhere): K1 at 1.0 / 1.25 keeps 2 / 4 of 13 good-ok; K2 at 1.0 / 2.0
+  keeps 1 / 10 of 13 (at 2.0 it rejects 18 of 28 and blocks 27 more of Qullamaggie's buys); K3 at 2 / 4 days keeps 0.
+- Amendment 2 alone, on the new labels: it rejects NONE of the 10 would-buy names he did not call ok.
+
+## SCOPE FINDING — which labels no bar measure separates (n = 41 labels; measures table at the end of the output)
+1. **"A few more tight days" is not a tightness shortfall the bars can see.** The three names he said it of (BLKB,
+   VEEV, NCNO on 11-10) are the TIGHTEST charts in the whole label set on every right-edge measure — range ratio 0.56 /
+   1.07 / 0.80, last-5-close band 0.89 / 0.78 / 1.09 daily ranges, 3 / 2 / 3 tight days in a row. His good and ok
+   charts are loose by the same measures: EVH 1.49 and 1.94, BILL 1.35, AMPH 1.51, PLSE 2.24, HAE 2.10, OSCR 1.59 on
+   the range ratio, and 0 tight days in a row for 9 of the 13. A gate asking for tightness removes his good charts
+   first and keeps the ones he sends back. Whatever "a few more tight days" counts, it is not days already printed.
+2. **The same chart a few sessions apart carries opposite grades** (n = 5 tickers graded twice):
+   BLKB ok on 11-05, "maybe, a few more tight days" on 11-10 (tighter on 11-10 by every measure); PLSE good 11-06,
+   "maybe" 11-10; APPN okish 11-06, "no, needs more time" 11-10; CVLT no 11-05 (regraded), ok 11-10; EVH good / ok
+   (the one consistent pair). Three or four sessions do not move any night-before measure across a line that the
+   other 36 labels respect. Either the framing changed (a random list name "is this a setup?" vs "would you buy this
+   tomorrow?") or the grade rests on something outside the daily bars. Until that is known, 28 of 28 is not reachable
+   by ANY rule on these bars: a rule that rejects BLKB 11-10 rejects BLKB 11-05.
+3. **Five 11-10 `no` charts carry no stated reason and sit inside his good / ok range on everything measured**
+   (DOCS, CTSH, AMPL, AMLX, BLLN), with SIG, DUOL, CVLT 11-05 and OUST from the earlier rounds.
+4. **What IS separable (and already in amendment 2):** closed above the base (5 `no`), a 21-day EMA falling at every
+   scale or far under the 50-day (ABCL, NVAX, IAG, SPCE, CHTR), the base low made on the list night (FNKO, RSKD,
+   MANE) — 13 of 28, for 14 of Qullamaggie's 263 buys.
+
+This is a scope finding, not a fifth amendment: the next step is his answer to two questions, not another threshold —
+(a) what "a few more tight days" is counting on BLKB / VEEV / NCNO, shown beside EVH and PLSE 11-06 which he passed
+looser; (b) whether the would-buy sheet is graded to a stricter standard than the list sheets (BLKB, PLSE, APPN).
