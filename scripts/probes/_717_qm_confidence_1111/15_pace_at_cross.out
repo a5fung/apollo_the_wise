@@ -1,0 +1,46 @@
+POPULATION: daily bar takes out the wired level while listed: 465 buys — FIRED 272 (22 big winners), VOLUME-MISSED 193 (4 big winners)
+stores read: ['cb702_pre_v2/minutes', 'cb702_pre/minutes', 'cb702/minutes_intra_1025', 'cb702/minutes_bv1_1101', 'cb702/minutes_tgrid_1101', 'cb702/minutes_rev_1024', 'cb702/minutes_asis_1026', 'cb702/minutes_ep_1023', 'cb702/minutes_ep_1024']
+  FIRED, buy day to 2022-01-03: minute bars on 254 of 254
+  FIRED, buy day after 2022-01-03: minute bars on 7 of 18
+checks: minute->daily price scale is 1.00 +/- 1% on 100% of covered days (others are split-adjusted differently and rescaled); regular-hours minute volume / the daily volume: median 0.93 (the curve's own end is 0.80)
+
+=== FIRED (the daily volume met his bar): n = 272; minute bars on the buy day 261 (22 of 22 big winners); crossed the live level at or after 09:35: 244 ===
+  pace at the cross (x the stock's normal volume by that minute; the live entry needs 1.2): median 2.25, 10th pct 1.02, 5th pct 0.77, min 0.13
+  share of his buys at or above: 0.5: 98% (239), 0.8: 94% (230), 1.0: 91% (221), 1.2: 82% (200), 1.5: 73% (179), 2.0: 57% (139)
+  cross minute after the open: median 11, by 09:45 60%, by 10:30 81%; the opening-range high was the level (above the list level) on 140
+  pace 5 minutes after the open (n = 261): median 2.23; at or above 1.2: 78%
+  pace 15 minutes after the open (n = 261): median 2.74; at or above 1.2: 87%
+  big winners (n = 22): pace at the cross >= 1.2 on 18; lowest APT 2020-06-17 0.86, BE 2020-08-13 1.01, APT 2020-02-21 1.04, SRNE 2020-06-24 1.08, SRNE 2020-07-30 1.21
+  the lowest: FIRY 2020-11-30 0.13@5, AVLR 2020-07-29 0.33@7, IPHI 2020-01-03 0.44@203, NVAX 2020-04-03 0.47@10, BMA 2019-08-09 0.49@6, CCJ 2021-10-12 0.59@10, CRWD 2020-09-18 0.61@30, DT 2020-01-06 0.62@12, WORK 2020-03-05 0.65@6, NTLA 2021-03-30 0.66@87, TWTR 2020-08-19 0.69@8, BILI 2020-07-31 0.76@16, GGAL 2019-08-09 0.76@37, FSLY 2020-08-20 0.77@15, PI 2017-07-27 0.80@55
+  the bar that keeps 95% of these: pace >= 0.77
+  the bar that keeps 90% of these: pace >= 1.02
+
+=== VOLUME-MISSED (level taken out, the DAY's volume under 1.2 x the 10-day average): n = 193; minute bars on the buy day 186 (4 of 4 big winners); crossed the live level at or after 09:35: 177 ===
+  pace at the cross (x the stock's normal volume by that minute; the live entry needs 1.2): median 1.14, 10th pct 0.60, 5th pct 0.46, min 0.15
+  share of his buys at or above: 0.5: 92% (163), 0.8: 81% (144), 1.0: 62% (109), 1.2: 44% (77), 1.5: 25% (44), 2.0: 12% (21)
+  cross minute after the open: median 19, by 09:45 46%, by 10:30 69%; the opening-range high was the level (above the list level) on 77
+  pace 5 minutes after the open (n = 186): median 1.13; at or above 1.2: 44%
+  pace 15 minutes after the open (n = 186): median 1.28; at or above 1.2: 56%
+  big winners (n = 4): pace at the cross >= 1.2 on 0; lowest DOYU 2020-08-24 0.38, MDB 2020-09-21 0.60, JMIA 2021-01-12 0.86, NVDA 2020-09-25 1.00
+  the lowest: GMBL 2021-03-02 0.15@18, CCS 2019-10-17 0.21@7, DDS 2019-10-09 0.26@123, DDS 2019-10-25 0.29@12, MDB 2021-12-27 0.38@36, DOYU 2020-08-24 0.38@11, DINO 2018-07-31 0.42@5, ARCT 2020-07-09 0.42@23, TWTR 2020-08-05 0.45@29, UBER 2020-11-18 0.47@41, EXTR 2017-08-25 0.48@65
+  the bar that keeps 95% of these: pace >= 0.46
+  the bar that keeps 90% of these: pace >= 0.60
+
+=== ALL that took out the level: n = 465; minute bars on the buy day 447 (26 of 26 big winners); crossed the live level at or after 09:35: 421 ===
+  pace at the cross (x the stock's normal volume by that minute; the live entry needs 1.2): median 1.60, 10th pct 0.76, 5th pct 0.55, min 0.13
+  share of his buys at or above: 0.5: 95% (402), 0.8: 89% (374), 1.0: 78% (330), 1.2: 66% (277), 1.5: 53% (223), 2.0: 38% (160)
+  cross minute after the open: median 14, by 09:45 54%, by 10:30 76%; the opening-range high was the level (above the list level) on 217
+  pace 5 minutes after the open (n = 447): median 1.65; at or above 1.2: 64%
+  pace 15 minutes after the open (n = 447): median 1.91; at or above 1.2: 74%
+  big winners (n = 26): pace at the cross >= 1.2 on 18; lowest DOYU 2020-08-24 0.38, MDB 2020-09-21 0.60, APT 2020-06-17 0.86, JMIA 2021-01-12 0.86, NVDA 2020-09-25 1.00
+  the lowest: FIRY 2020-11-30 0.13@5, GMBL 2021-03-02 0.15@18, CCS 2019-10-17 0.21@7, DDS 2019-10-09 0.26@123, DDS 2019-10-25 0.29@12, AVLR 2020-07-29 0.33@7, MDB 2021-12-27 0.38@36, DOYU 2020-08-24 0.38@11, DINO 2018-07-31 0.42@5, ARCT 2020-07-09 0.42@23, IPHI 2020-01-03 0.44@203, TWTR 2020-08-05 0.45@29, UBER 2020-11-18 0.47@41, NVAX 2020-04-03 0.47@10, EXTR 2017-08-25 0.48@65, KYNB 2017-08-25 0.49@13, BMA 2019-08-09 0.49@6, COUP 2020-11-17 0.50@64, RLGY 2019-10-10 0.50@11, ZS 2021-12-21 0.52@146, PANW 2021-12-21 0.55@311, W 2021-03-15 0.55@83, CCJ 2021-10-12 0.59@10, NVAX 2021-06-29 0.60@6
+  the bar that keeps 95% of these: pace >= 0.55
+  the bar that keeps 90% of these: pace >= 0.76
+
+=== the four volume-missed big winners ===
+  DOYU 2020-08-24: crossed at minute 11 with pace 0.38 (needs 1.2: fail); pace at 5 / 15 min 0.35 / 0.53; the day ended 0.89x the 10-day average
+  MDB 2020-09-21: crossed at minute 24 with pace 0.60 (needs 1.2: fail); pace at 5 / 15 min 0.83 / 0.56; the day ended 1.04x the 10-day average
+  NVDA 2020-09-25: crossed at minute 103 with pace 1.00 (needs 1.2: fail); pace at 5 / 15 min 0.94 / 1.08; the day ended 0.80x the 10-day average
+  JMIA 2021-01-12: crossed at minute 26 with pace 0.86 (needs 1.2: fail); pace at 5 / 15 min 0.51 / 0.76; the day ended 0.96x the 10-day average
+
+every volume-missed big winner in the population: DOYU 2020-08-24, MDB 2020-09-21, NVDA 2020-09-25, JMIA 2021-01-12
