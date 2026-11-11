@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 
-RECORD: run at 16c12402 or earlier — it reads `breakout_v1`'s list constants as they were BEFORE the 2026-11-11 initial
-rule set was wired, and does not reproduce on a later commit."""#717: SCORE the pre-registered initial rule set (docs/analysis/cb_initial_rules_2026-11-11.md), once.
+"""RECORD: run at 16c12402 or earlier — it reads `breakout_v1`'s list constants as they were BEFORE the 2026-11-11 initial
+rule set was wired, and does not reproduce on a later commit.
+
+#717: SCORE the pre-registered initial rule set (docs/analysis/cb_initial_rules_2026-11-11.md), once.
 
     python3 scripts/probes/_717_qm_confidence_1111/10_initial_rules.py > scripts/probes/_717_qm_confidence_1111/10_initial_rules.out"""
 import contextlib

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 
-RECORD: run at 16c12402 or earlier — it reads `breakout_v1`'s list constants as they were BEFORE the 2026-11-11 initial
-rule set was wired, and does not reproduce on a later commit."""#717 step 2: the High-confidence Qullamaggie buys against the CURRENT breakout list, gate by gate, and what each
+"""RECORD: run at 16c12402 or earlier — it reads `breakout_v1`'s list constants as they were BEFORE the 2026-11-11 initial
+rule set was wired, and does not reproduce on a later commit.
+
+#717 step 2: the High-confidence Qullamaggie buys against the CURRENT breakout list, gate by gate, and what each
 loosening does (recall on High / Medium, cost on Low / Not, the pinned labels). Nothing is wired; proposals only.
 
 Reads the two fixtures, ratings via rating.py, and (widened nights' strength rank + raw close only)
