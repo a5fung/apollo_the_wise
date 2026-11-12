@@ -1,0 +1,44 @@
+#717 picks — ERA A ONLY, 1322 watch nights 2016-12-30 .. 2022-03-31; 11-11 list rows 945,199 (715 a night), 11-02 443,987; fires a day: 11-11 277, 11-02 38 (means)
+NOT MEASURED: 2022-04 .. 2024 (its bar store holds 2025-26 rows; not opened). No minute bars: see the docstring's two models.
+rows with no order score (ranked last): 0
+
+Qullamaggie's scorecard buys inside era A: 739 of 757 (26 big winners); on the 11-11 list 548; FIRED under 11-11: 447 (26 big) — the era-A part of the 465; fired under 11-02: 198 (21 big)
+
+== 1+2. THE PICKS (order score; held / bought on covered days; buys taken = distinct scorecard buys) ==
+reference — ALL fires:
+  11-02 all fires                                      buys/day 38.11  n=50,388 | held  4.18%  bought  2.70% (n=37,036) | Qullamaggie buys taken 198 (21 big)
+  11-11 all fires                                      buys/day 276.86  n=366,014 | held  1.92%  bought  1.15% (n=246,762) | Qullamaggie buys taken 447 (26 big)
+Model A, live-like (the top of the LIST rests in the slots from 09:35; a buy only if it breaks):
+  11-02 list, hold 0 sessions                          buys/day  0.96  n= 1,272 | held 10.22%  bought  7.63% (n=695) | Qullamaggie buys taken  21 (4 big) | resting seats/day 4.99, 19% of them broke out
+  11-11 list, hold 0 sessions                          buys/day  2.80  n= 3,696 | held  5.74%  bought  3.96% (n=1,969) | Qullamaggie buys taken  21 (4 big) | resting seats/day 5.00, 56% of them broke out
+  11-02 list, hold 5 sessions                          buys/day  0.47  n=   617 | held 11.94%  bought  8.36% (n=335) | Qullamaggie buys taken   7 (1 big) | resting seats/day 2.67, 17% of them broke out
+  11-11 list, hold 5 sessions                          buys/day  0.71  n=   945 | held  5.99%  bought  3.99% (n=501) | Qullamaggie buys taken   3 (1 big) | resting seats/day 1.43, 50% of them broke out
+Model B, the day's top 5 FIRES by order score (all 5 slots free daily):
+  11-02 fires, top 5 by order score                    buys/day  4.86  n= 6,421 | held  7.29%  bought  4.83% (n=3,455) | Qullamaggie buys taken  65 (8 big)
+  11-11 fires, top 5 by order score                    buys/day  5.00  n= 6,610 | held  5.50%  bought  3.71% (n=3,530) | Qullamaggie buys taken  41 (5 big)
+  11-11 fires, 5 at RANDOM (seed 717)                  buys/day  5.00  n= 6,610 | held  2.78%  bought  1.56% (n=3,530) | Qullamaggie buys taken   7 (1 big)
+  11-02 fires, 5 at RANDOM (seed 717)                  buys/day  4.86  n= 6,421 | held  5.85%  bought  3.62% (n=3,455) | Qullamaggie buys taken  42 (5 big)
+
+== 3. ONE FEATURE AT A TIME: re-rank the day's 11-11 FIRES, take the top 5 (descriptive; no tuning, no combination) ==
+  feature (direction)                           QM buys taken  big | bought +-5  held +-5 |   A: list top-5 rests (hold 0): buys/day, QM buys taken
+  dollar volume (20-day median) (high first)               67    3 |     11.81%    19.04% |                     3.37 buys/day,  51 taken
+  prior move (high first)                                  42    1 |      7.59%    11.39% |                     2.55 buys/day,  20 taken
+  order score (live) (high first)                          41    5 |      3.71%     5.50% |                     2.80 buys/day,  21 taken
+  daily range (ADR20) (high first)                         40    2 |      7.25%    11.02% |                     2.28 buys/day,  15 taken
+  strength rank (high first)                               37    2 |      7.48%    11.50% |                     2.72 buys/day,  19 taken
+  6-month run in daily ranges (high first)                 25    3 |      4.84%     7.22% |                     3.00 buys/day,  16 taken
+  close vs 21-day EMA in daily ranges (high first)             19    0 |      5.84%     8.70% |                     3.70 buys/day,  13 taken
+  10-close spread in daily ranges (high first)             18    0 |      5.81%     8.05% |                     3.39 buys/day,  11 taken
+  10-close spread in daily ranges (low first)              18    2 |      1.42%     2.27% |                     2.74 buys/day,  11 taken
+  distance to the level in daily ranges (high first)             12    0 |      2.86%     4.31% |                     2.69 buys/day,   7 taken
+  6-month run in daily ranges (low first)                   6    0 |      1.08%     1.56% |                     3.10 buys/day,   5 taken
+  base depth in daily ranges (low first)                    5    0 |      1.39%     3.74% |                     3.19 buys/day,   3 taken
+  distance to the level in daily ranges (low first)              5    0 |      1.78%     3.12% |                     4.44 buys/day,   6 taken
+  base depth in daily ranges (high first)                   4    1 |      0.99%     1.64% |                     3.49 buys/day,   3 taken
+  daily range (ADR20) (low first)                           3    0 |      0.17%     0.37% |                     3.57 buys/day,   3 taken
+  strength rank (low first)                                 2    1 |      0.28%     0.48% |                     3.31 buys/day,   2 taken
+  prior move (low first)                                    2    0 |      0.51%     0.85% |                     3.45 buys/day,   1 taken
+  close vs 21-day EMA in daily ranges (low first)              1    0 |      0.91%     1.42% |                     2.91 buys/day,   1 taken
+  dollar volume (20-day median) (low first)                 0    0 |      0.48%     0.96% |                     3.20 buys/day,   0 taken
+  ceiling: 447 Qullamaggie buys fire under 11-11; the most on one day is 6, so 5 slots a day could hold nearly all of them (475 of 477 name-days)
+  note: a widened buy counts when the pick lands on ANY session of its window (same reading as the head to head).
