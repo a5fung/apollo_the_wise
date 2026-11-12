@@ -2984,3 +2984,12 @@ Sheet `scripts/probes/_717_shape_gates_1111/bought_sheet.png` (key beside it): A
 > "these are qullamaggie buys, they all look good"
 
 Sheet `scripts/probes/_717_qm_confidence_1111/sheet_high_missed.png` (key beside it): all 21 (20 distinct; PBR shown twice) = yes. Rule taken: Qullamaggie's own buys are ground truth — they are not graded by him; a rule must keep them. They are now the must-keep set for the initial rules (with the other 63 High-tier buys).
+
+## 2026-11-11 — #717 rebuilt on Qullamaggie's buys (his rulings, verbatim)
+> "why are we not mapping to all of qullamaggie trades?"
+> "rate each buy with how confident we know it's a breakout and where the buy point is, then let's first focus on the high confidence ones to craft initial rules, then expand as needed"
+> "I'll say it again, we are trying to buy like qullamaggie, stop with all the random tangents, buy his setups period"
+> "Apt, is there a lower range break out he's buying" → "Fix it" (the wick rule: a 5-day high set by a day closing in its lower half is replaced by the high of the sessions after it — APT 2020-02-21 bought through ~5.40, not the 5.98 spike)
+> "we need to look at the moment he buys not after the fact" → "drop it" (volume no longer a buy condition: at the minute his buys crossed the level, 1 in 3 ran under a 1.2x pace, incl. DOYU 0.38, MDB 0.60, JMIA 0.86, NVDA 1.00 — `scripts/probes/_717_qm_confidence_1111/15_pace_at_cross.out`)
+
+Taken: the target for breakout v1 is Qullamaggie's own stream-dated buys (757); his grades of our list charts are a report column. Wired on main `7b646781` (pending his sign-off before paper): 566 listed / 465 fired / 26 of 26 big winners (daily-bar proxy).
