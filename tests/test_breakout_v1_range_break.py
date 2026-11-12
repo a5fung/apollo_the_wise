@@ -32,6 +32,16 @@ FLOOR_LOSSES = {("BNGO", "2019-12-30"): ["universe"],      # 20-session median d
                 ("HEXO", "2020-08-13"): ["universe"],      # $4.4M
                 ("FCEL", "2020-02-10"): ["universe"],      # raw close $1.72 at D, under the $2 floor (dollar volume $42.6M)
                 ("PLTR", "2021-01-22"): ["history"]}       # under 86 sessions since listing
+# The 22 more High-tier buys the 4% daily-range floor (operator 2026-11-12, was 2.1%) now stops at the `adr` gate alone
+# (ADR20 in the comment) — every other gate still passes for each. He holds them as buys; the floor is the ruling.
+ADR_DROPS = {("SEDG", "2017-09-27"): "adr", ("AMD", "2019-12-12"): "adr", ("AMD", "2020-06-09"): "adr",    # 3.2 / 2.8 / 3.96%
+             ("JD", "2020-08-17"): "adr", ("TWTR", "2020-09-22"): "adr", ("TTD", "2021-02-19"): "adr",     # 3.1 / 3.4 / 3.88%
+             ("DVN", "2021-11-24"): "adr", ("MU", "2021-12-21"): "adr", ("FCX", "2023-01-06"): "adr",      # 3.7 / 3.3 / 3.1%
+             ("LI", "2023-04-17"): "adr", ("PBR", "2019-10-22"): "adr", ("DHT", "2019-12-19"): "adr",      # 3.3 / 2.1 / 3.0%
+             ("AVLR", "2020-01-02"): "adr", ("DT", "2020-01-06"): "adr", ("AMD", "2020-01-17"): "adr",     # 3.1 / 3.5 / 2.6%
+             ("SLV", "2021-01-28"): "adr", ("ALB", "2021-05-27"): "adr", ("ALB", "2021-07-09"): "adr",     # 2.2 / 3.6 / 2.4%
+             ("NET", "2021-09-16"): "adr", ("AMD", "2021-10-13"): "adr", ("ABNB", "2021-11-05"): "adr",    # 3.3 / 2.7 / 2.5%
+             ("NUE", "2022-01-05"): "adr"}                                                                  # 3.8%
 # Unranked nights (not in the 2026-11-02 cross-section): the strength rank cannot be measured from the fixtures, so the
 # rank is passed. A raw close is derived for FCEL and SLV from a neighbouring ranked night (12_build_high_fixture.py).
 RANK_NOT_MEASURED = {("BNGO", "2019-12-30"), ("INO", "2020-01-21"), ("FCEL", "2020-02-10"), ("HEXO", "2020-08-13"),
@@ -65,10 +75,10 @@ def _key(r):
 
 # High-tier buys the list holds whose break day is under the 2026-11-02 volume bar (1.2x the last 10 sessions) — they
 # FIRE since his 2026-11-11 "drop it" (volume is recorded, not required).
-VOLUME_MISSES = {("AMD", "2020-01-17"), ("AVLR", "2020-01-02"), ("LVGO", "2020-09-25")}
+VOLUME_MISSES = {("LVGO", "2020-09-25")}      # (AMD 01-17 and AVLR 01-02 are now dropped by the 4% daily-range floor)
 
 
-def test_the_79_listable_high_confidence_qullamaggie_buys_are_listed_the_night_before_and_all_79_fire_on_the_break_day(high_tier):
+def test_the_56_listable_high_confidence_qullamaggie_buys_are_listed_the_night_before_and_all_56_fire_on_the_break_day(high_tier):
     """'Fire' = the DAILY bar of the break day takes out the level — a proxy of the buy, not the live intraday entry
     (opening range, the stop-width rule). Volume is recorded, not required (his 2026-11-11 "drop it")."""
     assert len(high_tier) == 84 and sum(r["set"] == "dated" for r, *_ in high_tier) == 53
@@ -76,6 +86,9 @@ def test_the_79_listable_high_confidence_qullamaggie_buys_are_listed_the_night_b
     listed, fired, missed = [], [], set()
     for r, b, D, g in high_tier:
         if _key(r) in FLOOR_LOSSES:
+            continue
+        if _key(r) in ADR_DROPS:
+            assert g["failed"] == ["adr"], (_key(r), g["failed"])          # only the 4% floor stops it
             continue
         assert g["ok"] is True and g["failed"] == [], (_key(r), g["failed"])
         # the range high is the rated buy point (ratings.tsv keeps 4 significant figures); the level is never above it
@@ -89,17 +102,18 @@ def test_the_79_listable_high_confidence_qullamaggie_buys_are_listed_the_night_b
         fired.append(_key(r))
         if not t["volume_pass"]:
             missed.add(_key(r))
-    assert len(listed) == 79 and len(fired) == 79 and missed == VOLUME_MISSES
+    assert len(listed) == 56 and len(fired) == 56 and missed == VOLUME_MISSES
     for name in (("ALB", "2021-05-27"), ("ALB", "2021-07-09"), ("NUE", "2022-01-05"), ("ABNB", "2021-11-05"),     # prior move 22-30%
                  ("DKNG", "2020-08-18"), ("FSLY", "2020-09-21"), ("AMD", "2021-10-13"), ("LCID", "2022-01-07"),    # under the 50-day
                  ("NVAX", "2021-04-13"), ("WKHS", "2020-08-03"), ("NET", "2020-06-15"), ("DVN", "2021-11-24")):
-        assert name in fired, name
+        assert name in fired or name in ADR_DROPS, name       # the six now under 4% ADR20 are in ADR_DROPS
 
 
 def test_the_five_buys_the_unchanged_floors_cost_are_named_with_the_floor_that_stops_each(high_tier):
     got = {_key(r): g["failed"] for r, _, _, g in high_tier if not g["ok"]}
-    assert got == FLOOR_LOSSES
-    assert (bv.MIN_PRICE, bv.MIN_DOLLAR_VOL, bv.MIN_BARS, bv.ADR_MIN) == (2.0, 5_000_000.0, 86, 0.021)   # not moved
+    assert {k: v for k, v in got.items() if v != ["adr"]} == FLOOR_LOSSES
+    assert {k for k, v in got.items() if v == ["adr"]} == set(ADR_DROPS)
+    assert (bv.MIN_PRICE, bv.MIN_DOLLAR_VOL, bv.MIN_BARS, bv.ADR_MIN) == (2.0, 5_000_000.0, 86, 0.04)   # not moved
 
 
 def _base(n=160, top=20.0):

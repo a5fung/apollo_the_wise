@@ -96,7 +96,7 @@ MIN_BARS = DEEP + 1                  # 86 bars ending D, consecutive sessions (t
 
 # rule 3 (2026-11-02, his spec sign-off): a DAILY-RANGE FLOOR ADR20 >= 2.1% — his good EW 2.11% and LMT 2.6% sit under
 # the 11-02 morning 4.26% floor, which is REPLACED (the SSoT's change log says why it was wrong).
-ADR_MIN = 0.021
+ADR_MIN = 0.04                       # 2026-11-12 his 'aligned' (Qullamaggie: don't trade low-ADR stocks, '4-5 as minimum'); was 0.021 (11-02). Era A: fires 213 -> 68 a day, 26/26 big winners kept
 # His "both" (2026-11-02): a named PINNED-DEAL rule, ADR20 >= 1% (the deal targets BWMN 0.16% / ARX 0.25% / PCRX
 # 0.73%). Inside the 2.1% floor (the list is the same) — kept so the per-gate counts name WHY a deal target is out.
 PINNED_ADR_MAX = 0.01

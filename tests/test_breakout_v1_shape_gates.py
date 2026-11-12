@@ -76,6 +76,7 @@ def the_1102_list_rules(monkeypatch):
     monkeypatch.setattr(bv, "PRIOR_MOVE_MIN", 0.3213536987121892)
     monkeypatch.setattr(bv, "BASE_DEPTH_ADR_MAX", 8.979719460898997)
     monkeypatch.setattr(bv, "EMA21_ADR_MIN", -0.6335)
+    monkeypatch.setattr(bv, "ADR_MIN", 0.021)      # 2026-11-12 the floor became 4%; these records were scored at 2.1%
 
 
 def _shape(b, D=None):

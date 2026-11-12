@@ -80,13 +80,14 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
 >   high set by a day that closed in the lower half of its range is replaced by the high of the sessions after it.
 > - **Volume is NOT a buy condition** (his 2026-11-11 "drop it"; replaces F1 of 10-29 and the 1.2 x 10-day bar of
 >   11-02): the price break alone buys. The bar and the intraday pace are still computed and recorded.
-> - Unchanged: $2, $5M, ADR 2.1%, 86 sessions, strength 35, stop, sizing, exits, slots, the order score.
+> - **⚠ 2026-11-12: rule 3 the daily-range floor is now ADR20 >= 4% (was 2.1%)** — change log 2026-11-12 below.
+> - Unchanged: $2, $5M, 86 sessions, strength 35, stop, sizing, exits, slots, the order score.
 
 | # | Rule | Value | Source | Code |
 |---|---|---|---|---|
 | 1 | universe + history | raw close >= $2, 20-session median dollar volume >= $5M, >= 86 consecutive sessions | v1 (2026-10-28), unchanged | `universe`, `history`; `MIN_PRICE`, `MIN_DOLLAR_VOL`, `MIN_BARS` |
 | — | pinned deal | ADR20 >= 1% (inside rule 3; kept so the counts name a deal target) | his "both", 2026-11-02 | `pinned`; `PINNED_ADR_MAX` |
-| 3 | daily range | ADR20 >= 2.1% | his good EW 2.11%, LMT 2.6% | `adr`; `ADR_MIN` |
+| 3 | daily range | ADR20 >= 4% (2026-11-12; was 2.1%, his good EW 2.11%, LMT 2.6%) | his 2026-11-12 "aligned": Qullamaggie does not trade low-ADR stocks, "4-5 as minimum" | `adr`; `ADR_MIN` |
 | 2 | strength | rs_best (best of the 21/63/126-session percentiles) >= 35 | Qullamaggie's 269 buys' lowest, 35.3 | `rs`; `RS_MIN` (the list's own; `cb.RS_BEST_PRIMARY` 98 is the shadow's) |
 | 5 | run-up into the pole | high(P) / min low[P-40, P] - 1 >= 0.3213536987121892 (P = the pole top in [D-45, D-10]) | backward step 3 (dropped only his NOs) | `prior_move`; `PRIOR_MOVE_MIN` (the list's own; `cb.PRIOR_MOVE_MIN` 0.30 stays) |
 | 4 | base depth | (high(P) - the lowest low of P+1..D) / high(P) / ADR20 in [1.511376833908041, 8.979719460898997], inclusive | backward step 2; low end = his good LRN 2020-08-05 | `base_depth`; `BASE_DEPTH_ADR_MIN/MAX` |
@@ -396,6 +397,18 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   shortened 6-month look-back, as the research's era-B store did on its first 59 nights).
 
 ## Change log
+
+### 2026-11-12 — breakout v1: ADR floor 2.1% → 4% (OPERATOR-SIGNED "aligned", 2026-11-12; paper still OFF; not deployed)
+
+**Trigger**: his words 2026-11-12 — Qullamaggie does not trade low-ADR stocks, **"4-5 as minimum"**; his reply to the floor proposal: **"aligned"**.
+
+**Evidence**: era-A replay `scripts/probes/_717_precision_1112/03_adr_floor.out` — fires a day (median) **213 → 68**; all **26 of 26** big winners kept; fired Qullamaggie buys **447 → 375**. The buys under 4% are mostly undated panel sightings, funds and liquid large caps — none a big winner. 5% would keep 299 and 25 of the 26, so 4% is the floor.
+
+**What changed**: `breakout_v1.ADR_MIN` 0.021 → 0.04 (the `adr` gate; the 1% `pinned` gate is unchanged). On the scorecard: of the 269 dated buys, 40 now stop at `adr` alone (229 listed, 217 fire on the break day; 256 before), none a big winner. 22 more of the 84 High-tier buys drop (56 listable, was 79), each by `adr` alone. Three of the 16 known non-setups (TDOC 2019-10-31, MU 2021-12-21, FCX 2021-12-27) and two of his six former NOs (YPF, SQM) leave the list.
+
+**Head to head on all 757 buys** (`13_head_to_head.py` run on current constants with the 11-02 side pinned to ADR 2.1%): listed **479** (11-02 rules 455), fired on the daily bar **386** (209); the 26 dated big winners 26 of 26 fire (21). 31 buys the 11-02 rules fired no longer fire.
+
+**Reversion-flag**: REVERSAL of the 2026-11-02 rebuild's 2.1% floor and a partial return toward the 2026-11-02 4.26% floor it replaced; `ADR_MIN = 0.021` restores it. Tests: the shape-gate research records are re-read at 2.1% in their autouse fixture (scored on those rules).
 
 ### 2026-11-11 — breakout v1: VOLUME IS NO LONGER A BUY CONDITION — the price break alone buys (his ruling "drop it"; PENDING HIS SIGN-OFF BEFORE PAPER; wired on a branch, not merged, not deployed, paper OFF)
 

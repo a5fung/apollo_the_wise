@@ -22,7 +22,7 @@ def _bars(n: int, daily_range_pct: float, close: float = 40.0) -> "cb.DailyBars"
 
 
 def test_the_floor_is_the_rebuilt_2_1_pct_and_both_gates_are_named_in_order():
-    assert bv1.ADR_MIN == 0.021
+    assert bv1.ADR_MIN == 0.04
     assert bv1.PINNED_ADR_MAX == 0.01
     assert bv1.GATES.index("pinned") == bv1.GATES.index("universe") + 1 and bv1.GATES.index("adr") == bv1.GATES.index("pinned") + 1
 
@@ -30,7 +30,7 @@ def test_the_floor_is_the_rebuilt_2_1_pct_and_both_gates_are_named_in_order():
 def test_a_pinned_deal_target_fails_both_a_slow_mover_fails_the_floor_and_a_normal_mover_passes():
     n = max(bv1.MIN_BARS, 300)
     pinned = bv1.v1_gates(_bars(n, 0.0025), n - 1, rs_best=99.0)        # ARX-like: 0.25% a day
-    mover = bv1.v1_gates(_bars(n, 0.03), n - 1, rs_best=99.0)           # 3% a day: under the old 4.26%, over 2.1%
+    mover = bv1.v1_gates(_bars(n, 0.05), n - 1, rs_best=99.0)           # 5% a day: over the 4% floor (11-12)
     assert pinned["gates"]["adr"]["pass"] is False and "adr" in pinned["failed"]
     assert abs(pinned["gates"]["adr"]["value"]["adr20"] - 0.0025) < 1e-9
     assert pinned["gates"]["pinned"]["pass"] is False and "pinned" in pinned["failed"]
@@ -38,6 +38,6 @@ def test_a_pinned_deal_target_fails_both_a_slow_mover_fails_the_floor_and_a_norm
     assert mover["gates"]["pinned"]["pass"] is True
     slow = bv1.v1_gates(_bars(n, 0.015), n - 1, rs_best=99.0)           # 1.5%: not pinned, under the floor
     assert slow["gates"]["pinned"]["pass"] is True and slow["gates"]["adr"]["pass"] is False
-    ew = bv1.v1_gates(_bars(n, 0.0211), n - 1, rs_best=99.0)            # his good EW sat at 2.11%: kept
-    below = bv1.v1_gates(_bars(n, 0.0209), n - 1, rs_best=99.0)         # just under 2.1% fails
-    assert ew["gates"]["adr"]["pass"] is True and below["gates"]["adr"]["pass"] is False
+    at = bv1.v1_gates(_bars(n, 0.0401), n - 1, rs_best=99.0)            # just over the 4% floor (his 'aligned' 11-12): kept
+    below = bv1.v1_gates(_bars(n, 0.0399), n - 1, rs_best=99.0)         # just under 4% fails (EW 2.11% / LMT 2.6% now fail too)
+    assert at["gates"]["adr"]["pass"] is True and below["gates"]["adr"]["pass"] is False
