@@ -1,0 +1,57 @@
+#717 the daily-range floor — ERA A ONLY, 1322 nights 2016-12-30 .. 2022-03-31; live ADR_MIN = 0.021; Qullamaggie scorecard buys in era A 739 (26 big winners)
+NOT MEASURED: 2022-04 .. 2024. Daily-bar proxy; picks as in 02_picks.py (A = as wired, all 5 slots free each morning = upper bound; B = the day's top 5 fires).
+
+== 1+2. BY FLOOR (11-11 rules otherwise unchanged) ==
+ floor |  listed  fires  bought  QM buys  big | A: buys/day  bought    (n)  taken  big | B: bought    (n)  taken  big
+       |  median median     +-5    fired      |                 +-5                    |       +-5
+ 2.10% |     585    213   1.15%      447   26 |        2.80   3.96%   1969     21    4 |     3.71%   3530     41    5
+ 3.00% |     372    132   1.46%      425   26 |        2.80   4.25%   1976     24    3 |     3.97%   3530     45    5
+ 4.00% |     190     68   2.04%      375   26 |        2.74   4.74%   1920     25    4 |     4.08%   3530     50    5
+ 4.26% |     160     57   2.21%      364   26 |        2.69   4.76%   1892     26    4 |     4.31%   3530     51    6
+ 5.00% |     100     33   2.66%      299   25 |        2.66   4.99%   1884     28    5 |     4.43%   3525     46    6
+(QM buys fired = distinct scorecard buys that are on the list at that floor and fire; 'taken' = of those, the ones a pick lands on.)
+
+== 3. QULLAMAGGIE'S BUYS BY DAILY RANGE (scorecard bars, 747 of 757 with 20 sessions before the buy; ADR20 = the gate's own) ==
+median ADR20 6.17%; under 2.1%: 0.9%; under 3%: 6.4%; under 4%: 16.9%; under 4.26%: 19.7%; under 5%: 32.3%; big winners under 4%: 0, under 5%: 1 of 26
+
+UNDER 4%: 126 buys — funds 12%; gap up >= 9% on the buy day 2% (the rest of the buys: 4%); median dollar volume $247M (rest $354M); over $500M a day 37% (rest 41%); median close $63 (rest $55); dated 32%; panel tag {'undated': 86, 'breakout': 38, 'both': 2}; big winners 0
+    CB     2020-01-02..2020-01-03   ADR 1.10%  $    225M/day  gap  +0.1%  undated
+    TROW   2020-01-17..2020-01-21   ADR 1.37%  $    126M/day  gap  +0.4%  undated
+    DHI    2019-10-04..2019-10-04   ADR 1.82%  $    220M/day  gap  +0.3%  undated
+    DHI    2019-10-07..2019-10-09   ADR 1.89%  $    227M/day  gap  +0.6%  undated
+    IWN    2021-05-14..2021-05-14   ADR 1.90%  $    246M/day  gap  +0.9%  FUND undated
+    SLV    2020-11-05..2020-11-05   ADR 1.91%  $    524M/day  gap  +3.5%  undated
+    YINN   2019-11-01..2019-11-01   ADR 2.04%  $     20M/day  gap  +4.7%  FUND undated
+    PBR    2019-10-22..2019-10-22   ADR 2.10%  $    169M/day  gap  +1.0%  undated
+    PBR    2019-10-22..2019-10-22   ADR 2.10%  $    169M/day  gap  +1.0%  undated
+    EW     2019-08-16               ADR 2.11%  $    246M/day  gap  +1.3%  breakout
+    AAPL   2020-07-23..2020-07-23   ADR 2.21%  $ 11,970M/day  gap  -0.3%  undated
+    SLV    2021-01-28..2021-01-28   ADR 2.24%  $    662M/day  gap  +4.7%  undated
+    KWEB   2020-03-05..2020-03-05   ADR 2.26%  $    166M/day  gap  -0.4%  FUND undated
+    BABA   2019-11-01..2019-11-01   ADR 2.27%  $  1,933M/day  gap  +1.3%  undated
+    VEEV   2020-02-04..2020-02-04   ADR 2.32%  $    196M/day  gap  +1.3%  undated
+    META   2019-11-12..2019-11-14   ADR 2.32%  $  2,579M/day  gap  +0.2%  undated
+    FUSE   2020-12-30..2020-12-30   ADR 2.34%  $      4M/day  gap  +1.0%  undated
+    PANW   2021-05-24..2021-05-24   ADR 2.42%  $    292M/day  gap  -0.4%  undated
+
+4% to 5%: 115 buys — funds 5%; gap up >= 9% on the buy day 3% (the rest of the buys: 4%); median dollar volume $507M (rest $315M); over $500M a day 50% (rest 38%); median close $71 (rest $52); dated 44%; panel tag {'undated': 64, 'breakout': 49, 'both': 2}; big winners 1
+    TSLA   2020-11-18               ADR 4.01%  $ 12,385M/day  gap  +1.5%  breakout
+    TTD    2020-10-29               ADR 4.01%  $    543M/day  gap  +1.1%  breakout
+    TSLA   2021-05-06..2021-05-06   ADR 4.01%  $ 20,971M/day  gap  +1.5%  undated
+    AYX    2020-02-14..2020-02-14   ADR 4.02%  $    195M/day  gap  +2.6%  undated
+    DT     2020-01-02..2020-01-06   ADR 4.03%  $     35M/day  gap  +1.1%  undated
+    TDOC   2021-01-05..2021-01-06   ADR 4.04%  $    507M/day  gap  -0.3%  undated
+    ALB    2021-03-31..2021-04-01   ADR 4.06%  $    186M/day  gap  +1.4%  undated
+    TWTR   2020-08-05               ADR 4.07%  $    738M/day  gap  +0.6%  breakout
+    BA     2020-07-29..2020-07-29   ADR 4.07%  $  6,847M/day  gap  +1.2%  undated
+    PDD    2023-01-05               ADR 4.10%  $    790M/day  gap  -1.2%  breakout
+    TSLA   2020-06-29               ADR 4.10%  $ 10,278M/day  gap  +1.0%  breakout
+    MSTR   2021-10-11               ADR 4.13%  $    313M/day  gap  +1.6%  breakout
+    CCL    2021-04-26               ADR 4.14%  $    765M/day  gap  +2.0%  breakout
+    BILI   2021-06-25               ADR 4.15%  $    376M/day  gap  +0.7%  breakout
+    FLIR   2020-06-03               ADR 4.15%  $    102M/day  gap  +0.3%  breakout
+    F      2021-12-21..2021-12-27   ADR 4.16%  $  1,907M/day  gap  +1.7%  undated
+    MOS    2022-02-01..2022-02-01   ADR 4.18%  $    209M/day  gap  +0.8%  undated
+    TSLA   2022-04-21               ADR 4.19%  $ 21,768M/day  gap +10.0%  breakout
+
+(18 lowest of each band shown. Dollar volume is on split-adjusted bars; the gap is the largest open-vs-prior-close of the buy window.)
