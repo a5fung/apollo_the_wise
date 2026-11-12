@@ -1,0 +1,54 @@
+#717 precision — HEAD 06954411, breakout_v1.py sha256 064fc4c3283e35f9; GATES ('history', 'universe', 'pinned', 'adr', 'rs', 'prior_move', 'base_depth', 'ema21')
+ERA A ONLY: 1322 watch nights 2016-12-30 .. 2022-03-31 (breakout days to 2022-04-01); 2,655,136 pool rows (rank >= 35, listable, 86 sessions), 2008 a night
+NOT MEASURED: watch nights 2022-04-01 .. 2024-12-30 — their bar store (cb702/daily_closes_all.csv.gz) holds 2025-26 rows; not opened.
+names with no bar on the next session (cannot fire): new-listed 79, old-listed 43
+
+== 1. PER NIGHT: names listed, and names that fire the next session (daily proxy) ==
+anchor (SSoT, stage 0, 11-02 rules, 2017-24): 'a median 249 names a night, ~25 breakouts a day'
+           nights |   11-02 listed   fired(1.2x vol)   fired(no vol) |   11-11 listed         fired | fired x
+                  |      med / p90         med / p90       med / p90 |      med / p90     med / p90 |
+ALL          1322 |      221 / 825           24 / 86        65 / 231 |     585 / 1385     213 / 576 | 7.3
+2017          251 |      161 / 252           16 / 37         46 / 87 |      390 / 626     145 / 264 | 8.0
+2018          251 |      190 / 258           18 / 39        46 / 105 |      506 / 708     171 / 343 | 9.7
+2019          252 |      186 / 413           21 / 48        58 / 138 |      554 / 737     196 / 381 | 8.7
+2020          253 |     506 / 1329          42 / 152       137 / 437 |    1100 / 1696     312 / 823 | 5.8
+2021          252 |      368 / 988          38 / 129       110 / 340 |     956 / 1639     352 / 777 | 6.9
+2022           63 |      188 / 496           26 / 57        63 / 171 |     765 / 1075     256 / 510 | 10.0
+means a night: 11-02 listed 336, fired 38.1 (no vol 105.7); 11-11 listed 715, fired 276.9
+share of the list that fires next day: 11-02 11.3% (no vol 31.5%); 11-11 38.7%
+11-11 fires by level source: {'settled_after_wick': 141859, 'five_day': 224155}
+11-11 LISTED names by level source: {'five_day': 547199, 'settled_after_wick': 398000} (the range high is never the lower level, as in 13_head_to_head_fixup.out)
+11-02 fires that the 11-11 rules also fire: 50388 of 50388; 11-11 fires not fired by 11-02: 315626 of 366014
+funds (single-asset ETVs) among fires: 11-02 0.1%, 11-11 0.1%
+
+== 2. PRECISION AGAINST QULLAMAGGIE (his positions panel: 1820 entries to 2022-06-30, 499 snapshot days) ==
+HELD = a name in his panel at any point within +-5 sessions of the fire day (includes names held for months and his EP buys);
+BOUGHT = his entry (dated, or an entry window <= 10 sessions) within +-5 sessions; BREAKOUT BUY = a dated breakout buy within +-5.
+fire days with a positions snapshot within +-5 sessions: 706 of 1322 — the shares below use ONLY those days
+  11-02 fired (1.2x volume)                    n=   37,036  held  1,548 =  4.18%   bought 1,000 =  2.70%   breakout buy  437 =  1.18%
+  11-02 fired (no volume bar)                  n=  102,919  held  3,031 =  2.95%   bought 1,849 =  1.80%   breakout buy  769 =  0.75%
+  11-11 fired                                  n=  246,762  held  4,749 =  1.92%   bought 2,838 =  1.15%   breakout buy  993 =  0.40%
+  11-11 fired, NOT fired by 11-02              n=  209,726  held  3,201 =  1.53%   bought 1,838 =  0.88%   breakout buy  556 =  0.27%
+  11-02 listed, did not fire                   n=  286,897  held  7,786 =  2.71%   bought 4,315 =  1.50%   breakout buy 1,672 =  0.58%
+  11-11 listed, did not fire                   n=  388,436  held  7,576 =  1.95%   bought 4,072 =  1.05%   breakout buy 1,307 =  0.34%
+  11-02 listed (all)                           n=  323,933  held  9,334 =  2.88%   bought 5,315 =  1.64%   breakout buy 2,109 =  0.65%
+  11-11 listed (all)                           n=  635,198  held 12,325 =  1.94%   bought 6,910 =  1.09%   breakout buy 2,300 =  0.36%
+  BASE RATE: the whole rank >= 35 pool         n=1,486,031  held 16,582 =  1.12%   bought 8,883 =  0.60%   breakout buy 2,433 =  0.16%
+  BASE RATE: pool, rank >= 90                  n=  389,978  held 12,647 =  3.24%   bought 6,631 =  1.70%   breakout buy 1,922 =  0.49%
+  lift over the pool base rate (held): 11-02 fired 3.7x, 11-11 fired 1.7x, 11-11-only fires 1.4x
+  per year (held share of fires, covered days):
+    2017  11-02  114/1588   =  7.18%   11-11  403/11753  =  3.43%   pool  1.14%
+    2018  11-02   18/277    =  6.50%   11-11   99/2336   =  4.24%   pool  1.48%
+    2019  11-02  110/1661   =  6.62%   11-11  463/14752  =  3.14%   pool  1.33%
+    2020  11-02  861/17390  =  4.95%   11-11 2372/100814 =  2.35%   pool  1.52%
+    2021  11-02  418/14291  =  2.92%   11-11 1275/98825  =  1.29%   pool  0.86%
+    2022  11-02   27/1829   =  1.48%   11-11  137/18282  =  0.75%   pool  0.41%
+  CEILING / base-rate caveat: pool names he held (+-5) per covered day: median 23, p90 39 — against 213 fires a day, precision vs holdings cannot exceed ~11% on a median day
+  his BOUGHT pool rows (name x day within +-5 of an entry): 8,883; on the 11-02 list 59.8%, fired 11.3%; on the 11-11 list 77.8%, fired 31.9% (a day-level recall view, not the 757-buy scorecard)
+
+== 3. PAPER CAPACITY: fires a day against 5 slots ==
+  11-02 (1.2x volume)    median 24, p10 6, p90 86, max 655; days with more than 5 fires 91.8%; days with 0 fires 0.4%; a full 5 slots takes 21% of a median day's fires
+  11-02 (no volume bar)  median 65, p10 19, p90 231, max 1227; days with more than 5 fires 98.6%; days with 0 fires 0.1%; a full 5 slots takes 8% of a median day's fires
+  11-11                  median 213, p10 77, p90 576, max 1436; days with more than 5 fires 100.0%; days with 0 fires 0.0%; a full 5 slots takes 2% of a median day's fires
+  caveat: slots are HELD for days, so fewer than 5 are free on a typical morning; and the live entry needs an intraday break
+  (ORH5 / width), so real fires run under this daily-bar proxy. The paper book fills by ORDER SCORE — not replayed here.
