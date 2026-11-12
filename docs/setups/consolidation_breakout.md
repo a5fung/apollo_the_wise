@@ -70,7 +70,7 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
 `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md`, "signd off"), at the watch night D on bars <= D:
 
 > **⚠ 2026-11-11 — INITIAL RULE SET wired on branch `worktree-agent-af09ad1fb995d350b`, PENDING HIS SIGN-OFF BEFORE
-> PAPER (not merged, not deployed, `breakout_v1_paper` OFF).** Change log 2026-11-11 below. Where it differs, it
+> PAPER (deployed 2026-11-11 `cec3cc3c`; `breakout_v1_paper` OFF).** Change log 2026-11-11 below. Where it differs, it
 > SUPERSEDES the table under it:
 > - rule 5 run-up into the pole **>= 20%** (was 32.1%) · rule 4 base depth **1.51-11** daily ranges (was -8.98) ·
 >   rule 6 close vs the 21-day EMA **>= -0.9** (was -0.6335) · rule 7 the 50-day **is no longer a gate** (telemetry).
@@ -409,7 +409,7 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 **Reversion-flag**: REVERSAL of F1 (2026-10-29, "volume so far >= 1.2x normal by that minute") and of the 2026-11-02 volume bar (1.2 x the last 10 sessions) AS BUY CONDITIONS — both judged a day's or a minute's volume against a bar his own buys do not respect at the moment of the buy (above). `VOLUME_PACE_GATE = True` restores the old behaviour; its tests still run with it on.
 
-**Status**: wired on branch `worktree-agent-af09ad1fb995d350b`, tests green, **NOT merged, NOT deployed, paper OFF — pending his sign-off before paper.**
+**Status**: MERGED and DEPLOYED 2026-11-11 21:16 ET (server `cec3cc3c`, market-agent then execution); `breakout_v1_paper` = off (read on prod after the deploy) — paper only on his word after his sign-off.
 
 ### 2026-11-11 — breakout v1 INITIAL RULE SET: the list gates loosened to keep Qullamaggie's buys; a range is measured, the level is the lower of the range high and the 5-day high (PENDING HIS SIGN-OFF BEFORE PAPER; wired on a branch, not merged, not deployed, paper OFF)
 
@@ -433,7 +433,7 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 **Reversion-flag**: REVERSAL of four 2026-11-02 list constants (prior move, base depth cap, EMA21 line, the 50-day gate) — the 11-02 values were fit on the 269 buys OUR detector could date and on his NO labels of Qullamaggie buys; the widened set (488 more of his positions) showed they drop his clean range breaks, and his 11-11 ruling removes those labels as a bar. NEW: the range measure (telemetry + the lower-of-two level).
 
-**Status**: wired on branch `worktree-agent-af09ad1fb995d350b`, tests green, **NOT merged, NOT deployed, paper OFF — pending his sign-off before paper.** Not verified: the whole-market list size; the intraday entry on the break days (daily bars only); strength rank on 6 unranked nights.
+**Status**: MERGED and DEPLOYED 2026-11-11 21:16 ET (server `cec3cc3c`, market-agent then execution); `breakout_v1_paper` = off (read on prod after the deploy) — paper only on his word after his sign-off. Not verified: the whole-market list size; the intraday entry on the break days (daily bars only); strength rank on 6 unranked nights.
 
 ### 2026-11-07 — breakout v1's paper entry reads its strategy row FRESH every minute, and a row it cannot READ is a third state: no action that minute, nothing cancelled (#312 review + re-review; the PAPER lane only — no rule, number or exit moved)
 
