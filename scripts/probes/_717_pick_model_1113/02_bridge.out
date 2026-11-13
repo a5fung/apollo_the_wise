@@ -1,0 +1,7 @@
+BRIDGE to 03_adr_floor.out, the 4.00% row (expect: listed median 190, fires median 68, fired buys 375 / 26 big, order-score top 5 takes 50 / 5 big)
+this capture: 1322 nights 2016-12-30 .. 2022-03-31; listed median 190; fires median 68; fired buys 375 / 26 big; order-score top 5 takes 50 / 5 big
+BRIDGE OK
+
+feature coverage on the 420,158 list rows (share missing before the 0.5 fill): rs_6m 2.39%, group_strength 35.78%
+industry code present: list rows 68.6%, fires 70.6%; group strength present (a group of 10+): list 64.2%
+first base (no earlier base since the major low): list rows 13.8%; sessions of history at D under 252: 8.2% of rows

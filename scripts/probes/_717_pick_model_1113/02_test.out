@@ -1,0 +1,38 @@
+TEST — scored once. Days E 2021-01-04 .. 2022-04-01: 315 days (303 with a positions snapshot within +-5 sessions); list rows 160,525, fires 59,212 (median 153 a day)
+Qullamaggie's scorecard buys that FIRE on the test days: 138 (9 big winners); fire rows landing on one: 148
+ceiling with 5 slots a day: 148 of 148 name-days (most on one day 5)
+
+== THE BAR: the day's top 5 fires by each ranking (all 5 slots free daily) ==
+  MODEL (primary: night-before features)       buys taken  41  big  3 | picks 1,575  on a Qullamaggie buy  40 =  2.54% of picks, 0.127 a day | bought +-5 (covered days) 12.81% (n=1,515)
+  ORDER SCORE (live)                           buys taken  18  big  1 | picks 1,575  on a Qullamaggie buy  18 =  1.14% of picks, 0.057 a day | bought +-5 (covered days)  2.84% (n=1,515)
+  DOLLAR VOLUME (high first)                   buys taken  43  big  1 | picks 1,575  on a Qullamaggie buy  42 =  2.67% of picks, 0.133 a day | bought +-5 (covered days) 15.97% (n=1,515)
+  model, secondary (+ the opening gap)         buys taken  40  big  3 | picks 1,575  on a Qullamaggie buy  39 =  2.48% of picks, 0.124 a day | bought +-5 (covered days) 12.94% (n=1,515)
+  5 at random (seed 717)                       buys taken   5  big  0 | picks 1,575  on a Qullamaggie buy   5 =  0.32% of picks, 0.016 a day | bought +-5 (covered days)  1.91% (n=1,515)
+  5 at random, mean of 200 draws: buys taken 4.3 (5th-95th 1-8)
+  all fires (no ranking, 188 a day): buys taken 138  big 9
+
+== THE REGISTERED COMPARISON (1,000 resamples of test DAYS, seed 717; 90% interval of the difference in distinct buys taken) ==
+  model minus order score: +23 buys (90% interval +10 .. +19) -> beats it
+  model minus dollar volume: -2 buys (90% interval -7 .. +4) -> NOT SHOWN
+  VERDICT: PASS — the model beats the order score; dollar volume alone does as well
+  2021: fired 130 | model 39 | order score 16 | dollar volume 40
+  2022: fired 8 | model 2 | order score 2 | dollar volume 3
+
+== SLOT MECHANICS PROXY (test days; daily bars cannot see WHICH name breaks first — a bracket, not a measurement) ==
+ ranking = MODEL
+  R as wired: top 5 of the LIST rest at 09:35, buy only if it breaks buys/day  2.80 | buys taken  33  big  3 | on a Qullamaggie buy  3.63% of buys | 56% of resting seats broke out
+  K break-only, best case: the day's top 5 FIRES by the ranking      buys/day  5.00 | buys taken  41  big  3 | on a Qullamaggie buy  2.54% of buys
+  G break-only, open-first: above the level at the open first, then by rank buys/day  5.00 | buys taken  21  big  1 | on a Qullamaggie buy  1.33% of buys
+  N break-only, order-blind: only the top 10 of the list may buy     buys/day  2.63 | buys taken  30  big  3 | on a Qullamaggie buy  3.49% of buys | mean of 200 draws 28.1; eligible fires a day 2.9
+  N break-only, order-blind: only the top 20 of the list may buy     buys/day  3.90 | buys taken  29  big  2 | on a Qullamaggie buy  2.36% of buys | mean of 200 draws 28.4; eligible fires a day 6.1
+  N break-only, order-blind: only the top 40 of the list may buy     buys/day  4.63 | buys taken  22  big  0 | on a Qullamaggie buy  1.51% of buys | mean of 200 draws 30.0; eligible fires a day 12.7
+ ranking = ORDER SCORE
+  R as wired: top 5 of the LIST rest at 09:35, buy only if it breaks buys/day  2.80 | buys taken  12  big  1 | on a Qullamaggie buy  1.36% of buys | 56% of resting seats broke out
+  K break-only, best case: the day's top 5 FIRES by the ranking      buys/day  5.00 | buys taken  18  big  1 | on a Qullamaggie buy  1.14% of buys
+  G break-only, open-first: above the level at the open first, then by rank buys/day  5.00 | buys taken   7  big  0 | on a Qullamaggie buy  0.44% of buys
+  N break-only, order-blind: only the top 10 of the list may buy     buys/day  2.97 | buys taken  13  big  1 | on a Qullamaggie buy  1.39% of buys | mean of 200 draws 13.3; eligible fires a day 3.3
+  N break-only, order-blind: only the top 20 of the list may buy     buys/day  4.11 | buys taken  14  big  1 | on a Qullamaggie buy  1.08% of buys | mean of 200 draws 13.4; eligible fires a day 6.7
+  N break-only, order-blind: only the top 40 of the list may buy     buys/day  4.73 | buys taken  13  big  1 | on a Qullamaggie buy  0.87% of buys | mean of 200 draws 11.4; eligible fires a day 13.4
+  Z break-only, no ranking: 5 fires at random (seed 717)             buys/day  5.00 | buys taken   5  big  0 | on a Qullamaggie buy  0.32% of buys
+  share of fires already above the level at the open: 24.7%; of Qullamaggie-buy fire rows: 31.1%
+  cannot see: the minute of each break (so who takes a seat first), the too-wide cancel minute (the daily low is used), slots still held from earlier days (all 5 free each morning here).

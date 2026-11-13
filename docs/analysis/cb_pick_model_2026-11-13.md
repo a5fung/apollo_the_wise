@@ -1,6 +1,6 @@
 # Breakout v1 — how Qullamaggie PICKED among a day's breakouts: PRE-REGISTRATION (2026-11-13)
 
-**Status: PRE-REGISTERED, NOT FITTED.** This file is committed BEFORE any model is fitted or any label is joined to
+**Status: SCORED ONCE 2026-11-13 — the model beats the live order score on the test years (41 of Qullamaggie's buys in the daily top 5 against 18) but NOT plain dollar-volume ranking (43); results at the end. Nothing wired.** Pre-registered in commit `730db6c7`: this file was committed BEFORE any model is fitted or any label is joined to
 the new features. Research only: no rule wired, nothing deployed, no prod write, $0. A ranking change to the paper
 slots is the operator's sign-off (`docs/setups/CHANGE_PROCESS.md`); paper stays OFF.
 Owner: `docs/setups/consolidation_breakout.md` (this file is the finding). Task: PLAN.md #717, the "SAT 11-14 BUILD" item (a).
@@ -130,9 +130,86 @@ Declared before the read (also the "what would make this wrong" list):
 The slot ranking is entry discipline: any change is the operator's call. Nothing was flipped, wired or deployed by this study; paper stays OFF.
 
 ## The numbers
-None yet — pre-registration. The test-years table is appended below after the single test run.
+See RESULTS at the end of this file (appended after the single test run; everything above it is the registration as committed in `730db6c7`).
 
 ## 9. Files
 `01_build.py` (the capture, once, outside git: `/Users/alvinfung/apollo_data/bv1_pick_model_1113/list_eraA_4pct.parquet`),
 `02_fit_test.py` stages `bridge`, `fit` (writes `coef.json`), `test` (reads it; `02_test.out`). Results are appended
 below this line after the single test run.
+
+---
+
+# RESULTS (2026-11-13, one test run; outputs `scripts/probes/_717_pick_model_1113/02_bridge.out`, `02_fit.out`, `02_test.out`)
+
+**Bridge: OK** — the new capture reproduces the 4% row of `03_adr_floor.out` exactly (listed median 190, fires median
+68, 375 fired buys / 26 big, order-score top 5 takes 50 / 5).
+
+**Fit (2017-2020, fires on covered days):** 62,051 fire rows on 403 days; 410 carry the label (0.66%) — 365 of them in
+2020, 36 in 2019, 9 in 2017-18. So the model is, in practice, fitted on his 2020 buying.
+
+## The test years (E 2021-01-04 .. 2022-04-01, 315 days; 138 of Qullamaggie's buys fire, 9 big winners; a median 153 fires a day)
+
+| the day's top 5 fires by | his buys taken (of 138) | big winners (of 9) | picks landing on one of his buys | hits a day |
+|---|---|---|---|---|
+| **the model** (night-before features) | **41** | **3** | 40 of 1,575 = 2.5% | 0.13 |
+| the live order score | 18 | 1 | 18 of 1,575 = 1.1% | 0.06 |
+| dollar volume, high first | 43 | 1 | 42 of 1,575 = 2.7% | 0.13 |
+| the model + the opening gap (secondary) | 40 | 3 | 39 of 1,575 = 2.5% | 0.12 |
+| 5 at random (mean of 200 draws) | 4.3 | 0 | 0.3% | 0.02 |
+| every fire, no ranking (188 a day) | 138 | 9 | — | — |
+
+- **Registered verdict: PASS against the order score; "dollar volume alone does as well".** Model minus order score
+  +23 buys (the interval excludes zero); model minus dollar volume −2 (interval −7 .. +4).
+- ⚠ The printed 90% intervals (+10 .. +19) sit BELOW the point (+23): resampling days with replacement drops about a
+  third of the distinct days, so every distinct-buy count shrinks. The sign of the comparison holds; the interval's
+  position is an artefact of the registered method, not re-computed.
+- By year: 2021 — fired 130, model 39, order score 16, dollar volume 40; 2022 Q1 — fired 8, model 2, order 2, dollar 3.
+- Even the best ranking fills 97% of the five slots with names he did not buy; the ceiling (all 138) needs ~0.44 right
+  picks a day.
+
+## What carries the weight (each feature is its rank inside the night's list; "odds x" = bottom of the list to the top)
+
+| feature | coefficient | odds x | reads as |
+|---|---|---|---|
+| dollar volume | +5.30 | 200 | he buys the MOST LIQUID names that break — by far the largest weight |
+| 6-month strength rank | +1.26 | 3.5 | the strongest names over six months (the 1- and 3-month ranks add little) |
+| daily range (ADR) | +1.25 | 3.5 | the fast movers |
+| sessions since the major low | +1.24 | 3.4 | a long advance behind it (not a fresh turn) |
+| last-10-close spread | −0.88 | 0.41 | tight into the break |
+| closeness to the 52-week high | −0.81 | 0.44 | NOT pinned at the high — somewhat below it |
+| 6-month move | +0.81 | 2.3 | a big prior move |
+| first base since the major low | +0.37 | 1.4 | a small lean to first bases (z 2.1) |
+
+No weight found (|z| < 1.5): the run-up into the base, base depth, base length, the 1-month rank, distance below the
+level, close vs the 21-day average, industry group strength (SIC proxy, present on 64% of rows). The opening gap
+(secondary) carries some weight (+0.75) but did not add buys on the test.
+
+## Slot mechanics proxy (test days; a bracket — daily bars cannot see which name breaks first)
+
+| how the 5 slots fill | model: buys a day | model: his buys taken (big) | order score: his buys taken (big) |
+|---|---|---|---|
+| R — as wired: the top 5 of the LIST rest at 09:35, bought only if they break (56% do) | 2.8 | 33 (3) | 12 (1) |
+| K — break-only, best case: the day's top 5 fires by rank | 5.0 | 41 (3) | 18 (1) |
+| N — break-only, order-blind: only the top 10 of the list may buy | 2.6 | ~28 (3) | ~13 (1) |
+| N — top 20 of the list | 3.9 | ~28 (2) | ~13 (1) |
+| N — top 40 of the list | 4.6 | ~30 (0 on the seed draw) | ~11 (1) |
+| G — break-only, open-first: names above the level at the open take seats first | 5.0 | 21 (1) | 7 (0) |
+| Z — break-only, no ranking: 5 fires at random | 5.0 | ~4 (0) | — |
+
+- With a good ranking, RESTING on the top 5 (33) is within a few buys of break-only (28–41 depending on who breaks
+  first); break-only without a rank cap is the random floor (~4). **The ranking, not the slot mechanics, is what moves
+  the count** (18 → 41 from the ranking; 33 vs 28–41 from the mechanics).
+- Giving seats to whatever is through the level at the open is WORSE (21): 25% of fires open above the level, 31% of
+  his.
+- Cannot see: the minute of each break, the too-wide cancel minute (the daily low is used — look-ahead), slots still
+  held from earlier days (all five free each morning here).
+
+## Reading, and what is NOT established
+- The live order score (6-month run + tightness) is a poor picker of his buys: 18 of 138. A liquidity-first ranking
+  takes ~2.3x as many; the 16-feature model adds nothing in COUNT over dollar volume alone, but takes 3 of the 9 big
+  winners against 1 (3 vs 1 is too few to call).
+- ⚠ UNVERIFIED — why dollar volume dominates. It may be his real constraint (account size), or partly how the yardstick
+  was built: 488 of the 757 buys are undated sightings on his positions panel, and the fit is 89% 2020. Not separated here.
+- ⚠ UNVERIFIED — 2022-04 .. 2024 and the sealed years; the fit label's +2-session window (no sensitivity run); the
+  industry-group proxy (2026 snapshot, 36% of rows without a group).
+- Not a rule. A ranking change to the paper slots is the operator's sign-off.
