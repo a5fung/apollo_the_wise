@@ -2998,3 +2998,8 @@ Taken: the target for breakout v1 is Qullamaggie's own stream-dated buys (757); 
 > "qullamaggie always say don't trade low ADR stocks, i think he uses 4-5 as minimum" → (4% shown with its table) "aligned"
 
 Taken: breakout v1's daily-range floor ADR20 >= 4% (was 2.1% since 11-02). Era A replay (`scripts/probes/_717_precision_1112/03_adr_floor.out`): breakouts a day 213 -> 68, all 26 big winners kept; Qullamaggie's buys under 4% are mostly undated panel sightings, funds and large caps. Deployed 2026-11-12 12:01 ET (`0210a5f0`), paper OFF.
+
+## 2026-11-13 — his grades on the learned ranking's picks (#717, 2021-22, none a Qullamaggie buy)
+> "A looks ok, caveat is the run up (post huge EP day) then quickly giving it all back, not much time to build range after that volatility / B no pull back or basing , I don't see a setup / C don't see setup, it's in a large base / D looks ok / E looks ok / F no setup, gapped down and moved back into base/range, no breakout / G choppy, very large bars (red), no tightness / H random stock, nothing in it, no setup at all, large ranges, no run up / I looks ok / J nothing at all, downtrend, gap down, large bars, no setup at all / K random, still in large range, no building higher lows, poor / L maybe ok but not great, where's the runup and tightness"
+
+Sheet `scripts/probes/_717_pick_model_1113/sheet_model_picks.png`: A ATYR, B X, C ZIM, D TELL, E CAR, F LCID, G SWAV, H FLGT, I VUZI, J F, K MVIS, L FUTU. 4 ok + 1 maybe of 12. His recurring reasons for no: no recent run-up; no pullback/base, or still inside a large base/range; no tightness / very large bars; a gap down back into the range; downtrend; no higher lows. Recorded in `tests/fixtures/breakout_list_grades.py` `MODEL_PICK_GRADES`.

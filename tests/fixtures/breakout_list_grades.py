@@ -34,6 +34,8 @@ _CONTRAST_1111 = "scripts/probes/_717_shape_gates_1111/contrast_sheet.png"   # 2
 
 _BOUGHT_1111 = "scripts/probes/_717_shape_gates_1111/bought_sheet.png"   # graded 2026-11-11 in chat: the 12 names amendment 2 would buy first (order_score not stored: 0.0; list_rank = the original rank)
 
+_MODEL_1113 = "scripts/probes/_717_pick_model_1113/sheet_model_picks.png"   # graded 2026-11-13 in chat: 12 random picks of the learned ranking, test years 2021-22 (list_rank = the model rank that day; level not stored: 0.0)
+
 _LIVE_1110 = "scripts/probes/_717_723_verify_1110/breakout_live_1110.png"   # graded 2026-11-10 in chat: the 5 paper buys, tickers shown
 
 BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
@@ -78,4 +80,22 @@ BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2026-11-10", "AMLX", "J", 5, 0.0, 31.22, "no", "no", _BOUGHT_1111),
     BreakoutGrade("2026-11-10", "APPN", "K", 15, 0.0, 56.38, "no", "no, needs more time", _BOUGHT_1111),
     BreakoutGrade("2026-11-10", "BLLN", "L", 7, 0.0, 117.9698, "no", "no", _BOUGHT_1111),
+]
+
+
+# His grades on the LEARNED RANKING's picks (#717, 2026-11-13) — historical charts (2021-22 test years), kept apart
+# from BREAKOUT_LIST_GRADES (whose tests need bars for every row). None of the 12 was a Qullamaggie buy.
+MODEL_PICK_GRADES: list[BreakoutGrade] = [
+    BreakoutGrade("2021-10-08", "ATYR", "A", 5, 0.0, 0.0, "ok", "looks ok, caveat is the run up (post huge EP day) then quickly giving it all back, not much time to build range after that volatility", _MODEL_1113),
+    BreakoutGrade("2022-03-21", "X", "B", 4, 0.0, 0.0, "no", "no pull back or basing , I don't see a setup", _MODEL_1113),
+    BreakoutGrade("2021-12-28", "ZIM", "C", 4, 0.0, 0.0, "no", "don't see setup, it's in a large base", _MODEL_1113),
+    BreakoutGrade("2021-05-12", "TELL", "D", 5, 0.0, 0.0, "ok", "looks ok", _MODEL_1113),
+    BreakoutGrade("2021-11-16", "CAR", "E", 1, 0.0, 0.0, "ok", "looks ok", _MODEL_1113),
+    BreakoutGrade("2021-09-20", "LCID", "F", 5, 0.0, 0.0, "no", "no setup, gapped down and moved back into base/range, no breakout", _MODEL_1113),
+    BreakoutGrade("2021-08-17", "SWAV", "G", 5, 0.0, 0.0, "no", "choppy, very large bars (red), no tightness", _MODEL_1113),
+    BreakoutGrade("2021-12-10", "FLGT", "H", 5, 0.0, 0.0, "no", "random stock, nothing in it, no setup at all, large ranges, no run up", _MODEL_1113),
+    BreakoutGrade("2021-04-23", "VUZI", "I", 2, 0.0, 0.0, "ok", "looks ok", _MODEL_1113),
+    BreakoutGrade("2022-03-02", "F", "J", 4, 0.0, 0.0, "no", "nothing at all, downtrend, gap down, large bars, no setup at all", _MODEL_1113),
+    BreakoutGrade("2021-04-23", "MVIS", "K", 4, 0.0, 0.0, "no", "random, still in large range, no building higher lows, poor", _MODEL_1113),
+    BreakoutGrade("2021-06-23", "FUTU", "L", 3, 0.0, 0.0, "conditional", "maybe ok but not great, where's the runup and tightness", _MODEL_1113),
 ]
