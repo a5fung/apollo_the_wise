@@ -231,3 +231,69 @@ Of the 138 test-day buys that fire, 78 are stream-DATED buys and 60 are UNDATED 
 - ⚠ UNVERIFIED — 2022-04 .. 2024 and the sealed years; the fit label's +2-session window (no sensitivity run); the
   industry-group proxy (2026 snapshot, 36% of rows without a group).
 - Not a rule. A ranking change to the paper slots is the operator's sign-off.
+
+---
+
+# PART 2 — the TEMPLATE: rank by likeness to Qullamaggie's average good breakout setup. PRE-REGISTRATION (2026-11-13, appended BEFORE any similarity is computed)
+
+**Trigger (the operator, 2026-11-13, after grading the 12-chart sheet of model picks — 4 ok, 7 no, 1 conditional, none a
+Qullamaggie buy):** *"many of those clearly look nothing like qullamaggie breakout setups, you can easily see it if you
+overlay an average of a group of really good breakout setup charts."*
+The decision it serves: the same slot ranking as Part 1. Judged ONLY on matching Qullamaggie's picks and the
+operator's eye — never on returns (the 11-01 "path-to-template grid" was a returns test; this is not that test).
+Same constraints: era A only, research only, nothing wired.
+
+## T1. The template set (FIT years only)
+Qullamaggie's buys in `scripts/probes/_717_qm_confidence_1111/ratings.tsv` whose break day (`day_cleared`) is on or
+before 2020-12-31 and that are either **High tier** (a confirmed range break) or a **big winner** (scorecard
+`big_winner`). Counted before any scoring: 62 buys (54 High, of which 8 are big winners; 8 more big winners of a lower
+tier; 43 stream-dated, 19 undated sightings). No 2021+ buy enters the template.
+
+## T2. The shape
+- For a template buy: the closes of the W sessions ending the session BEFORE its break day, from the scorecard's own
+  bars; each close written as **(close − buy level) / (ADR20 × buy level)** — daily ranges from the buy level, so
+  price scale and volatility drop out. Buy level = `buy_point_split_adjusted`; ADR20 = the gate's own
+  (`breakout_v1.adr20_at`) at that last session.
+- For a candidate (a fire row): the same, the W sessions ending the list night D, its level = the live buy level of
+  `v1_gates`, ADR20 = the gate's. Bars: `cb702_pre_v2` only. A candidate with fewer than W sessions is compared on
+  the sessions it has (never fewer than 40).
+- Closes only. Highs / lows and volume are NOT in the similarity (declared out, to keep one inspectable number).
+- The template = the mean path of the set, position by position; the 25% / 75% band is drawn, not scored.
+
+## T3. Similarity — one primary, one reported beside
+- **PRIMARY = distance:** the root-mean-square gap between the candidate's path and the template, in daily ranges
+  (smaller = more alike). Chosen as primary because the operator's objections are about SIZE as well as shape ("large
+  bars", "large base", "no run up") and a correlation ignores size.
+- Reported beside: the Pearson correlation of the candidate's path with the template (shape only).
+- **Window W ∈ {40, 60, 90}: picked on the FIT years only** — the W whose distance ranking puts the most of
+  Qullamaggie's buys in the daily top 5 fires on E 2017-01 .. 2020-12 (ties → the shorter W). The template buys are in
+  those years, so the fit-year count is in-sample by construction; it only picks W.
+
+## T4. The test (E 2021-01-04 .. 2022-04-01, once) — the day's top 5 fires by
+1. similarity alone (the primary distance, smallest first);
+2. similarity × the learned model: the product of the two within-day percentile ranks among that day's fires
+   (similarity rank × model rank, each 0..1, bigger = better);
+3. the learned model alone (Part 1's `coef.json`, no refit) — the baseline, 41 buys / 3 big.
+Per row: his buys taken (the `taken()` reading), big winners, picks landing on one of his buys, hits a day, and the
+panel ±5 share — as Part 1. The correlation variant of rows 1–2 is printed beside. "Best of the three" = most buys
+taken (tie → more big winners, then the simpler ranking).
+
+## T5. The operator's eye
+The 12 graded model picks (`tests/fixtures/breakout_list_grades.py::MODEL_PICK_GRADES`): each letter's similarity
+percentile among that day's fires and among all test-year fires. The question: do his **ok** charts (A, D, E, I) score
+MORE alike than his **no** charts (B, C, F, G, H, J, K)? (L is "conditional", shown, not counted.) Read as: the median
+of ok against the median of no, and how many of the 28 ok-vs-no pairs are ordered the right way. 4 against 7 charts
+is a lean, never a verdict. These 12 were graded before this registration; their similarity was not computed before it.
+
+## T6. Pictures
+`template.png` (the mean path, the 25–75% band, a few faint member paths, the level at 0) and a fresh outcome-blind
+sheet of 12 random picks (seed 717, one per ticker, none of the 12 already graded) of the best of the three:
+`sheet_template_picks.png` + a do-not-show key.
+
+## T7. What Part 2 does not answer
+- Whether a template-like chart makes money (not read). Whether it holds after 2022-03.
+- A mean of 62 paths is a blur: two distinct good shapes (a tight flag, a longer base) average into something
+  neither is. A poor result may be the blur, not the idea.
+- The template uses Qullamaggie's rated buy point; a candidate uses our level. Where ours sits differently, the path
+  shifts by that gap.
+- 89% of the template set is 2020.
