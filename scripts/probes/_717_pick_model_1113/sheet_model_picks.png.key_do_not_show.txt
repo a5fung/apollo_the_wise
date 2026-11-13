@@ -1,0 +1,13 @@
+letter|ticker|fire day E (list night D)|model rank among that day's fires|Qullamaggie bought? (scorecard, on E)|his-buy window|bought within +-5 sessions (panel)
+A|ATYR|2021-10-11 (2021-10-08)|5|no|-|no
+B|X|2022-03-22 (2022-03-21)|4|no|-|no
+C|ZIM|2021-12-29 (2021-12-28)|4|no|-|no
+D|TELL|2021-05-13 (2021-05-12)|5|no|-|no
+E|CAR|2021-11-17 (2021-11-16)|1|no|-|no
+F|LCID|2021-09-21 (2021-09-20)|5|no|-|no
+G|SWAV|2021-08-18 (2021-08-17)|5|no|-|no
+H|FLGT|2021-12-13 (2021-12-10)|5|no|-|no
+I|VUZI|2021-04-26 (2021-04-23)|2|no|-|no
+J|F|2022-03-03 (2022-03-02)|4|no|-|no
+K|MVIS|2021-04-26 (2021-04-23)|4|no|-|no
+L|FUTU|2021-06-24 (2021-06-23)|3|no|-|no
