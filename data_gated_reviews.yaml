@@ -2687,6 +2687,14 @@ reviews:
       net read (capital preserved vs recovery winners missed) waits for the REDUCE window to close
       (release at drawdown >= -4%). Re-read weekly; thresholds are his (THE LINE).
       Probe: scripts/probes/_dd_review_1113/.
+    can_fire:
+      predicate_runs: "2026-11-13 - runs on prod and returns 1 (drawdown_reduce_entered, 'live: WATCH -> REDUCE', 2026-11-12 16:12 ET)."
+      nonzero_possible: "proven - it fired: the live breaker crossed -7% on 2026-11-12."
+      lane_live: "the live account trades MAGNA53 EP; mi_safeguard_state drawdown_breaker live = REDUCE."
+      threshold_vs_observed: "threshold 1, observed 1 - the gate is only the first trip; the effectiveness read needs the REDUCE window's outcomes, not more trips."
+      era_scoped: "summary LIKE 'live%' scopes it to the live account since cutover (paper trips excluded)."
+      population_actionable: "yes - the half-size live entries in the REDUCE window and the trades it would have skipped are the population; thresholds stay his (THE LINE)."
+      instrument_trusted: "the 16:12 ET evaluation wrote the transition and the safeguard row agrees (REDUCE, same minute); the half-size effect itself is unproven until the first live entry in REDUCE."
     predicate_sql: |
       SELECT COUNT(*) FROM mi_audit_log
       WHERE event_type IN ('drawdown_reduce_entered', 'drawdown_block_entered')
