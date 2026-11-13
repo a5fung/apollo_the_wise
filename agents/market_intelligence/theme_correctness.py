@@ -626,6 +626,20 @@ async def load_scored_universe(conn: Any, today: date) -> tuple[dict[str, dict[s
     return scores, sector
 
 
+def _round_floats(x: Any, nd: int = 4) -> Any:
+    """The STORED audit copy only: floats to `nd` places. 2026-11-12 the row first outgrew the 32k audit
+    budget (31.8k after the cut; 141 themes x ~185 chars in g3.themes, most of it 17-digit floats) and lost
+    its tail. Rounding keeps every per-theme row and key (#655 probes read them by name) and saves ~12%;
+    the in-memory report the job returns is untouched."""
+    if isinstance(x, float):
+        return round(x, nd)
+    if isinstance(x, dict):
+        return {k: _round_floats(v, nd) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [_round_floats(v, nd) for v in x]
+    return x
+
+
 async def run_theme_correctness_check(conn: Any = None) -> dict[str, Any]:
     """Nightly (#655): loads the live board exactly as the engine defines it, the closes and
     scored-universe rows G1-G3 need, and the theme/cluster history the latency read needs;
@@ -721,7 +735,7 @@ async def run_theme_correctness_check(conn: Any = None) -> dict[str, Any]:
                 f"sessions (n={report['latency']['new_n'] if report['latency'] else None})"
             )
             await _log("theme_correctness_check", summary,
-                      json.dumps(report, default=_json_default), conn=c)
+                      json.dumps(_round_floats(report), default=_json_default, separators=(",", ":")), conn=c)
         except Exception as e:
             logger.error("theme_correctness_check: audit-row write failed: %s", e, exc_info=True)
             out["errors"].append(f"audit_write: {e}")

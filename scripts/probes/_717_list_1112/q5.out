@@ -1,0 +1,4 @@
+SET
+event_type|created_at|length|left
+theme_correctness_check|2026-11-12 22:31:08.142317+00|31789|G1 747/779 (95.9% bar 90.0%) · G2 21/779 (2.7% bar<= 5.0%) · G3 126/146 (86.3% bar 90.0%) · G4 9/146 small (6.2% bar<= 1
+(1 row)

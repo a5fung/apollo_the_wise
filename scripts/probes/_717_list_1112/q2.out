@@ -1,0 +1,12 @@
+SET
+min|percentile_cont|count
+0.04010987649873649|0.054422711837226724|0
+(1 row)
+count|count
+417|151
+(1 row)
+ERROR:  relation "mi_trade_entries" does not exist
+LINE 1: SELECT count(*) FROM mi_trade_entries WHERE signal_type='bre...
+                             ^
+left|created_at
+(0 rows)

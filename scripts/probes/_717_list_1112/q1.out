@@ -1,0 +1,25 @@
+SET
+scan_date|count
+2026-11-09|217
+2026-11-10|190
+2026-11-11|203
+2026-11-12|417
+(4 rows)
+Table "public.mi_breakout_v1_list"
+Column|Type|Collation|Nullable|Default
+scan_date|date||not null|
+ticker|text||not null|
+level|double precision||not null|
+vol_bar|double precision||not null|
+adr20|double precision|||
+rs_best|double precision||not null|
+close|double precision|||
+security_type|text|||
+gates|jsonb||not null|
+list_rank|integer||not null|
+created_at|timestamp with time zone||not null|now()
+order_score|double precision|||
+runup6m_adr|double precision|||
+spread10_adr|double precision|||
+Indexes:
+    "mi_breakout_v1_list_pkey" PRIMARY KEY, btree (scan_date, ticker)

@@ -1,0 +1,7 @@
+SET
+ERROR:  relation "mi_trades" does not exist
+LINE 1: SELECT count(*) FROM mi_trades WHERE signal_type='breakout_v...
+                             ^
+event_type|left|created_at
+breakout_v1_list_run|2026-11-12: 417 name(s) on the list of 4098 universe name(s) (2791 evaluated); funds kept 38, excluded 15 (0 with no stored name); message s|2026-11-12 22:55:04.822197+00
+(1 row)

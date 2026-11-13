@@ -409,3 +409,13 @@ def test_the_check_is_in_the_liveness_registry():
     from agents.market_intelligence import health_checks as hc
     labels = [e[1] for e in hc._DETECTOR_LIVENESS_TABLES]
     assert "theme correctness check (#655)" in labels
+
+
+def test_the_stored_audit_copy_rounds_floats_and_keeps_every_key_1112():
+    """2026-11-12: the theme check's audit row outgrew the 32k budget; the stored copy rounds floats."""
+    rep = {"g3": {"themes": [{"name": "A", "cohesion": 0.3148391995203736, "c1_p95": None, "pass_g3": True,
+                              "size": 4}], "rate_pct": 86.30137}, "n": 3}
+    out = tc._round_floats(rep)
+    assert out == {"g3": {"themes": [{"name": "A", "cohesion": 0.3148, "c1_p95": None, "pass_g3": True,
+                                      "size": 4}], "rate_pct": 86.3014}, "n": 3}
+    assert rep["g3"]["themes"][0]["cohesion"] == 0.3148391995203736      # the in-memory report is untouched
