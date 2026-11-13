@@ -396,6 +396,8 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   catches it); (e) the order inputs read up to 189 sessions (the list job loads 200; a name with less history gets a
   shortened 6-month look-back, as the research's era-B store did on its first 59 nights).
 
+- **The pick among a day's breakouts (2026-11-13, research, nothing wired):** which of the ~68 names that fire a day Qullamaggie bought is being measured in `docs/analysis/cb_pick_model_2026-11-13.md` — PRE-REGISTERED 2026-11-13 before any fit (fit 2017-2020, one test on 2021-01..2022-03; the bar = his buys in the daily top 5 against the live order score's). No ranking change ships without his sign-off.
+
 ## Change log
 
 ### 2026-11-12 — breakout v1: ADR floor 2.1% → 4% (OPERATOR-SIGNED "aligned", 2026-11-12; paper still OFF; not deployed)
