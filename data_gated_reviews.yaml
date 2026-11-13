@@ -2679,6 +2679,14 @@ reviews:
     # so it went ripe on day 14 and stayed ripe forever regardless of the answer.
     # Now it counts the ONLY event that can test this breaker: a REDUCE or BLOCK tier
     # actually engaging on LIVE money. Zero today; silent until one fires.
+    resolution_2026_11_13: |
+      FIRST LIVE TRIP. The live account entered REDUCE at the 16:12 ET evaluation on 2026-11-12
+      (drawdown -7.22%, peak $5,103.47 -> $4,734.81; WATCH since 2026-10-15). mi_safeguard_state live =
+      REDUCE; 0 live entries since. The breaker has now ACTED, but effectiveness needs outcomes: the
+      first live entry in REDUCE must size at 0.5x (check its size against an OK-tier peer), and the
+      net read (capital preserved vs recovery winners missed) waits for the REDUCE window to close
+      (release at drawdown >= -4%). Re-read weekly; thresholds are his (THE LINE).
+      Probe: scripts/probes/_dd_review_1113/.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_audit_log
       WHERE event_type IN ('drawdown_reduce_entered', 'drawdown_block_entered')
