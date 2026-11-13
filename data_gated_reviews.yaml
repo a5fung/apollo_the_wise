@@ -10314,7 +10314,11 @@ reviews:
       -- over-count, the 7/18-readiness-redteam finding). Gate arms on 5 real signals, not 5 rejects.
       SELECT COUNT(*) FROM mi_htf_breakout_shadow WHERE outcome IS NOT NULL AND would_reject_reason IS NULL;
     threshold: 5
-    earliest_review_date: 2026-11-13   # [blocked: his 09-15 hold — HTF waits behind EP profitability;
+    earliest_review_date: 2026-11-21   # [re-gated 2026-11-13: the 09-15 hold lifted 10-17, but this review grades HTF on
+      # settled R, and his standing rulings judge setups on DETECTION (matching Qullamaggie's setups, 11-02
+      # 'setups are detection, not trading'; 11-11 'buy his setups period'). Re-read after #717's pick build
+      # (Sat 11-14) decides how breakout-family setups are scored; until then a returns graduation is the wrong bar.]
+      # [was blocked: his 09-15 hold — HTF waits behind EP profitability;
       # EP's new exit (#687 depth) only went live 2026-10-12, so its first read is weeks out. Checked back
       # 2026-10-13: the predicate reads 10 takeable settlements (bar 5); the hold, not the sample, is what
       # stops it. Not raised to him (never re-ask an answered question).]
