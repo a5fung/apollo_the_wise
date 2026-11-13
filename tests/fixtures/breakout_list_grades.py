@@ -85,6 +85,7 @@ BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
 
 # His grades on the LEARNED RANKING's picks (#717, 2026-11-13) — historical charts (2021-22 test years), kept apart
 # from BREAKOUT_LIST_GRADES (whose tests need bars for every row). None of the 12 was a Qullamaggie buy.
+_MODEL_1113B = "scripts/probes/_717_pick_model_1113/sheet_template_picks.png"   # graded 2026-11-13 (second sheet, 12 new learned-ranking picks)
 MODEL_PICK_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2021-10-08", "ATYR", "A", 5, 0.0, 0.0, "ok", "looks ok, caveat is the run up (post huge EP day) then quickly giving it all back, not much time to build range after that volatility", _MODEL_1113),
     BreakoutGrade("2022-03-21", "X", "B", 4, 0.0, 0.0, "no", "no pull back or basing , I don't see a setup", _MODEL_1113),
@@ -98,4 +99,16 @@ MODEL_PICK_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2022-03-02", "F", "J", 4, 0.0, 0.0, "no", "nothing at all, downtrend, gap down, large bars, no setup at all", _MODEL_1113),
     BreakoutGrade("2021-04-23", "MVIS", "K", 4, 0.0, 0.0, "no", "random, still in large range, no building higher lows, poor", _MODEL_1113),
     BreakoutGrade("2021-06-23", "FUTU", "L", 3, 0.0, 0.0, "conditional", "maybe ok but not great, where's the runup and tightness", _MODEL_1113),
+    BreakoutGrade("2021-01-08", "MRNA", "A", 2, 0.0, 0.0, "good", "looks good", _MODEL_1113B),
+    BreakoutGrade("2021-11-17", "DVAX", "B", 5, 0.0, 0.0, "no", "no, choppy, volatile, large range and still within that range, gappy", _MODEL_1113B),
+    BreakoutGrade("2021-12-09", "CLR", "C", 5, 0.0, 0.0, "conditional", "looks decent except 50ma is above and curling down", _MODEL_1113B),
+    BreakoutGrade("2021-04-19", "DQ", "D", 1, 0.0, 0.0, "no", "no", _MODEL_1113B),
+    BreakoutGrade("2021-07-13", "ATOS", "E", 1, 0.0, 0.0, "ok", "ok but don't really see higher lows", _MODEL_1113B),
+    BreakoutGrade("2021-08-25", "HAPN", "F", 4, 0.0, 0.0, "no", "no", _MODEL_1113B),
+    BreakoutGrade("2021-04-23", "TIGR", "G", 1, 0.0, 0.0, "no", "no", _MODEL_1113B),
+    BreakoutGrade("2021-09-10", "OCGN", "H", 5, 0.0, 0.0, "no", "no, why is it so tight, looks suspicious", _MODEL_1113B),
+    BreakoutGrade("2021-09-23", "AFRM", "I", 2, 0.0, 0.0, "no", "No", _MODEL_1113B),
+    BreakoutGrade("2021-03-11", "APHA", "J", 2, 0.0, 0.0, "ok", "ok", _MODEL_1113B),
+    BreakoutGrade("2021-07-21", "BEAM", "K", 5, 0.0, 0.0, "no", "no", _MODEL_1113B),
+    BreakoutGrade("2022-01-11", "DOCN", "L", 3, 0.0, 0.0, "no", "no, downtrend, lower lows", _MODEL_1113B),
 ]
