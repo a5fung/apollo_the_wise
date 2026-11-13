@@ -3008,3 +3008,8 @@ Sheet `scripts/probes/_717_pick_model_1113/sheet_model_picks.png`: A ATYR, B X, 
 > "A looks good / B no, choppy, volatile, large range and still within that range, gappy / C looks decent except 50ma is above and curling down / D no / E ok but don't really see higher lows / F no / G no / H no, why is it so tight, looks suspicious / I No / J ok / K no / L no, downtrend, lower lows"
 
 Sheet `scripts/probes/_717_pick_model_1113/sheet_template_picks.png`: A MRNA, B DVAX, C CLR, D DQ, E ATOS, F HAPN, G TIGR, H OCGN, I AFRM, J APHA, K BEAM, L DOCN. 3 ok/good + 1 conditional of 12. New reasons: a 50-day average above price and curling down; suspiciously tight (OCGN); downtrend with lower lows. Likeness to Qullamaggie's average shape (key): his ok charts at the 46th/100th/93rd percentile, his no charts mostly lower (median ~47th).
+
+## 2026-11-13 — the 4% floor's cost on Qullamaggie's high-confidence buys
+> "keep for now unless there's evidence that it degrades performand or drop key stock/big winners"
+
+Context: the 4% floor drops 22 of the 84 high-confidence buys (PBR, ALB, AMD, ABNB, NUE, DHT, AVLR, SLV …), all 26 big winners kept. Re-open only on evidence it hurts results or drops big winners.
