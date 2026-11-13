@@ -1,0 +1,8 @@
+SET
+safeguard|account_mode|state|last_transition_at
+drawdown_breaker|paper|OK|2026-07-20 20:12:00.067533+00
+drawdown_breaker|live|REDUCE|2026-11-12 21:12:00.165295+00
+(2 rows)
+count
+0
+(1 row)

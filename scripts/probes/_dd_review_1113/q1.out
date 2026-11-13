@@ -1,0 +1,5 @@
+SET
+event_type|created_at|left
+drawdown_reduce_entered|2026-11-12 21:12:00.166882+00|live: WATCH → REDUCE (dd -7.22%, peak $5,103.47 → current $4,734.81)
+drawdown_watch_entered|2026-10-15 20:12:00.082888+00|live: OK → WATCH (dd -4.09%, peak $5,175.63 → current $4,963.94)
+(2 rows)
