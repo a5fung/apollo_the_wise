@@ -149,14 +149,14 @@ below this line after the single test run.
 
 ## The test years (E 2021-01-04 .. 2022-04-01, 315 days; 138 of Qullamaggie's buys fire, 9 big winners; a median 153 fires a day)
 
-| the day's top 5 fires by | his buys taken (of 138) | big winners (of 9) | picks landing on one of his buys | hits a day |
-|---|---|---|---|---|
-| **the model** (night-before features) | **41** | **3** | 40 of 1,575 = 2.5% | 0.13 |
-| the live order score | 18 | 1 | 18 of 1,575 = 1.1% | 0.06 |
-| dollar volume, high first | 43 | 1 | 42 of 1,575 = 2.7% | 0.13 |
-| the model + the opening gap (secondary) | 40 | 3 | 39 of 1,575 = 2.5% | 0.12 |
-| 5 at random (mean of 200 draws) | 4.3 | 0 | 0.3% | 0.02 |
-| every fire, no ranking (188 a day) | 138 | 9 | — | — |
+| the day's top 5 fires by | his buys taken (of 138) | big winners (of 9) | picks landing on one of his buys | hits a day | picks he bought within ±5 sessions (panel, covered days, n=1,515) |
+|---|---|---|---|---|---|
+| **the model** (night-before features) | **41** | **3** | 40 of 1,575 = 2.5% | 0.13 | 12.8% |
+| the live order score | 18 | 1 | 18 of 1,575 = 1.1% | 0.06 | 2.8% |
+| dollar volume, high first | 43 | 1 | 42 of 1,575 = 2.7% | 0.13 | 16.0% |
+| the model + the opening gap (secondary) | 40 | 3 | 39 of 1,575 = 2.5% | 0.12 | 12.9% |
+| 5 at random (mean of 200 draws) | 4.3 | 0 | 0.3% | 0.02 | 1.9% (seed 717) |
+| every fire, no ranking (188 a day) | 138 | 9 | — | — | — |
 
 - **Registered verdict: PASS against the order score; "dollar volume alone does as well".** Model minus order score
   +23 buys (the interval excludes zero); model minus dollar volume −2 (interval −7 .. +4).
@@ -164,15 +164,16 @@ below this line after the single test run.
   third of the distinct days, so every distinct-buy count shrinks. The sign of the comparison holds; the interval's
   position is an artefact of the registered method, not re-computed.
 - By year: 2021 — fired 130, model 39, order score 16, dollar volume 40; 2022 Q1 — fired 8, model 2, order 2, dollar 3.
-- Even the best ranking fills 97% of the five slots with names he did not buy; the ceiling (all 138) needs ~0.44 right
-  picks a day.
+- Two readings of precision: on the strict scorecard (the pick lands on the buy's own day or window) even the best
+  ranking is right on ~2.5% of picks, 0.13 a day (the ceiling, all 138, is ~0.44 a day); on the looser panel reading
+  13–16% of the model's / dollar volume's picks are names he bought within ±5 sessions, against 2.8% for the order score.
 
 ## What carries the weight (each feature is its rank inside the night's list; "odds x" = bottom of the list to the top)
 
 | feature | coefficient | odds x | reads as |
 |---|---|---|---|
 | dollar volume | +5.30 | 200 | he buys the MOST LIQUID names that break — by far the largest weight |
-| 6-month strength rank | +1.26 | 3.5 | the strongest names over six months (the 1- and 3-month ranks add little) |
+| 6-month strength rank | +1.26 | 3.5 | the strongest names over six months (the 1- and 3-month ranks add little) — a three-way tie with the next two rows, a quarter of dollar volume's weight |
 | daily range (ADR) | +1.25 | 3.5 | the fast movers |
 | sessions since the major low | +1.24 | 3.4 | a long advance behind it (not a fresh turn) |
 | last-10-close spread | −0.88 | 0.41 | tight into the break |
@@ -190,11 +191,11 @@ level, close vs the 21-day average, industry group strength (SIC proxy, present 
 |---|---|---|---|
 | R — as wired: the top 5 of the LIST rest at 09:35, bought only if they break (56% do) | 2.8 | 33 (3) | 12 (1) |
 | K — break-only, best case: the day's top 5 fires by rank | 5.0 | 41 (3) | 18 (1) |
-| N — break-only, order-blind: only the top 10 of the list may buy | 2.6 | ~28 (3) | ~13 (1) |
-| N — top 20 of the list | 3.9 | ~28 (2) | ~13 (1) |
-| N — top 40 of the list | 4.6 | ~30 (0 on the seed draw) | ~11 (1) |
+| N — break-only, order-blind: only the top 10 of the list may buy (mean of 200 draws; big = the seed-717 draw) | 2.6 | 28.1 (3) | 13.3 (1) |
+| N — top 20 of the list (same) | 3.9 | 28.4 (2) | 13.4 (1) |
+| N — top 40 of the list (same) | 4.6 | 30.0 (0) | 11.4 (1) |
 | G — break-only, open-first: names above the level at the open take seats first | 5.0 | 21 (1) | 7 (0) |
-| Z — break-only, no ranking: 5 fires at random | 5.0 | ~4 (0) | — |
+| Z — break-only, no ranking: 5 fires at random (mean of 200 draws) | 5.0 | 4.3 (0) | — |
 
 - With a good ranking, RESTING on the top 5 (33) is within a few buys of break-only (28–41 depending on who breaks
   first); break-only without a rank cap is the random floor (~4). **The ranking, not the slot mechanics, is what moves
@@ -204,12 +205,29 @@ level, close vs the 21-day average, industry group strength (SIC proxy, present 
 - Cannot see: the minute of each break, the too-wide cancel minute (the daily low is used — look-ahead), slots still
   held from earlier days (all five free each morning here).
 
+## POST-HOC, not registered (`03_posthoc_split.py/.out`; no refit, the verdict above is untouched): is the liquidity weight an artefact of the undated sightings?
+Of the 138 test-day buys that fire, 78 are stream-DATED buys and 60 are UNDATED positions-panel sightings.
+
+| the day's top 5 fires by | dated buys taken (of 78) | undated sightings taken (of 60) | total | big |
+|---|---|---|---|---|
+| the model | 30 | 11 | 41 | 3 |
+| the order score | 12 | 6 | 18 | 1 |
+| dollar volume | 23 | 20 | 43 | 1 |
+
+- No artefact: BOTH kinds sit at the 96th percentile of the day's list by dollar volume (all fires: the 51st). He buys
+  the liquid end of the list whichever way the buy is known.
+- The model and dollar volume are NOT the same picks: they share 17 buys; the model alone takes 24 (19 dated), dollar
+  volume alone 26 (12 dated). On the dated buys — the firmer evidence — the model leads 30 to 23 and 3 big winners to
+  1. Post-hoc and small; not a verdict.
+- 165 of the 410 fit labels are fires one or two sessions BEFORE his buy (the +2 window), 123 land on a dated buy's
+  own day, 122 inside an undated window.
+
 ## Reading, and what is NOT established
 - The live order score (6-month run + tightness) is a poor picker of his buys: 18 of 138. A liquidity-first ranking
   takes ~2.3x as many; the 16-feature model adds nothing in COUNT over dollar volume alone, but takes 3 of the 9 big
   winners against 1 (3 vs 1 is too few to call).
-- ⚠ UNVERIFIED — why dollar volume dominates. It may be his real constraint (account size), or partly how the yardstick
-  was built: 488 of the 757 buys are undated sightings on his positions panel, and the fit is 89% 2020. Not separated here.
+- Dollar volume dominating is not an artefact of the undated sightings (post-hoc split above). ⚠ UNVERIFIED: whether
+  it would hold outside 2020-21 — the fit is 89% 2020 and the test is 94% 2021, his largest-account years.
 - ⚠ UNVERIFIED — 2022-04 .. 2024 and the sealed years; the fit label's +2-session window (no sensitivity run); the
   industry-group proxy (2026 snapshot, 36% of rows without a group).
 - Not a rule. A ranking change to the paper slots is the operator's sign-off.
