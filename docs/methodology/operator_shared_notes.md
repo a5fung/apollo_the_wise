@@ -2993,3 +2993,8 @@ Sheet `scripts/probes/_717_qm_confidence_1111/sheet_high_missed.png` (key beside
 > "we need to look at the moment he buys not after the fact" → "drop it" (volume no longer a buy condition: at the minute his buys crossed the level, 1 in 3 ran under a 1.2x pace, incl. DOYU 0.38, MDB 0.60, JMIA 0.86, NVDA 1.00 — `scripts/probes/_717_qm_confidence_1111/15_pace_at_cross.out`)
 
 Taken: the target for breakout v1 is Qullamaggie's own stream-dated buys (757); his grades of our list charts are a report column. Wired on main `7b646781` (pending his sign-off before paper): 566 listed / 465 fired / 26 of 26 big winners (daily-bar proxy).
+
+## 2026-11-12 — breakout: Qullamaggie's daily-range minimum
+> "qullamaggie always say don't trade low ADR stocks, i think he uses 4-5 as minimum" → (4% shown with its table) "aligned"
+
+Taken: breakout v1's daily-range floor ADR20 >= 4% (was 2.1% since 11-02). Era A replay (`scripts/probes/_717_precision_1112/03_adr_floor.out`): breakouts a day 213 -> 68, all 26 big winners kept; Qullamaggie's buys under 4% are mostly undated panel sightings, funds and large caps. Deployed 2026-11-12 12:01 ET (`0210a5f0`), paper OFF.
