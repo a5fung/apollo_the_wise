@@ -297,3 +297,50 @@ sheet of 12 random picks (seed 717, one per ticker, none of the 12 already grade
 - The template uses Qullamaggie's rated buy point; a candidate uses our level. Where ours sits differently, the path
   shifts by that gap.
 - 89% of the template set is 2020.
+
+---
+
+# PART 2 RESULTS (2026-11-13, one test run; `scripts/probes/_717_pick_model_1113/06_fit.out`, `06_test.out`)
+
+**The template:** 62 of Qullamaggie's buys (54 High tier, 16 big winners; 51 of them 2020). The average path sits ~6
+daily ranges under the buy level 90 sessions out, climbs to ~1.5 under by 20 sessions out, then runs flat and tight
+~1 under the level into the break — picture: `template.png`. **Window: W = 90**, picked on the fit years (top 5 by
+distance takes 22 of his 238 fit-year buys at 90, 9 at 40 and at 60; the learned model takes 69 there).
+
+## The test years (315 days, 138 of his buys fire, 9 big winners) — the day's top 5 fires by
+
+| ranking | his buys taken | big winners | picks on one of his buys | hits a day | bought within ±5 (panel) |
+|---|---|---|---|---|---|
+| 1 similarity alone (distance to the template) | 6 | 0 | 0.4% | 0.02 | 1.5% |
+| 2 similarity × the learned model | 16 | 2 | 1.0% | 0.05 | 6.4% |
+| **3 the learned model alone** | **41** | **3** | 2.5% | 0.13 | 12.8% |
+| beside: correlation alone / × model | 6 / 18 | 1 / 2 | 0.4% / 1.1% | | 1.9% / 7.0% |
+
+- **Likeness to the average chart does NOT find his picks.** Alone it is at the random floor (6; random 5 = ~4), and
+  multiplying it into the model costs 25 of the model's 41 buys. His buys that fire sit at the 58th percentile of the
+  day by likeness (50 = chance) against the 94th by the model.
+- Best of the three, by the registered rule: the learned model alone.
+
+## The operator's eye — his 12 grades (percentile of likeness among that day's fires; 1.00 = most like the template)
+
+| ok | A 0.88 | D 0.19 | E 0.99 | I 0.87 | | | | median 0.88 |
+|---|---|---|---|---|---|---|---|---|
+| **no** | B 0.85 | C 0.56 | F 0.33 | G 0.73 | H 0.23 | J 0.15 | K 0.84 | **median 0.56** |
+
+L (conditional) 0.70. The ok charts are ordered above the no charts in 22 of the 28 pairs (21 of 28 against all test
+fires: medians 0.82 vs 0.50). So the template DOES lean with his eye — three of his four ok charts are in the top
+13% of their day, and his worst (F, H, J) are in the bottom third — but D (ok) scores 0.19 and B, K (no) score 0.85:
+4 against 7 charts, a lean, not a verdict.
+
+## Reading
+- Two different questions got two different answers: the template tracks **what looks like a setup to the operator**
+  (a lean) and does not track **which names Qullamaggie bought** (none). What predicts his buys is liquidity and
+  strength (Part 1); what the operator rejects by eye is shape. A ranking for his buys and a FILTER for shape are
+  separate jobs — the template is a candidate for the second, not a replacement for the first.
+- ⚠ UNVERIFIED: whether a likeness FLOOR (drop the least-alike third, then rank by the model) keeps the model's 41
+  buys — not run (not registered). The blur of one mean over 62 different bases; closes only (no "large bars"
+  measure — highs / lows were declared out); our level vs his rated buy point.
+- Fresh sheet for his eye: `sheet_template_picks.png` = 12 new random picks of the best of the three (the learned
+  model), none of the 12 already graded; the key carries each chart's likeness percentile so his grades can be read
+  against it afterwards. None of the 12 is a Qullamaggie buy (expected ~0.3 at 2.5%).
+- Nothing wired; the slot ranking and any shape filter are his sign-off.

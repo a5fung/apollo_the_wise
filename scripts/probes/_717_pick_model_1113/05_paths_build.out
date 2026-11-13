@@ -1,0 +1,3 @@
+bars: 12,005,007 rows / 12,532 tickers / 1635 sessions 2016-01-04..2022-06-30 (5s); 5,007 tickers have a missing session inside their span (211,391 holes)
+store A: loaded in 10s; {'raw_factor': 'pre_v2 daily_raw_close.csv.gz per bar (exact)', 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+paths: 156,695 fire rows, 0 unmatched, rows with fewer than 90 closes 315 -> /Users/alvinfung/apollo_data/bv1_pick_model_1113/fire_paths90.npz

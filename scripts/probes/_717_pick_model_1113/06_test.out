@@ -1,0 +1,27 @@
+TEST — scored once; W = 90. Days E 2021-01-04 .. 2022-04-01: 315; fires 59,212; Qullamaggie buys that fire 138 (9 big); fires with no similarity (under 40 sessions): 0
+similarity of the fires that ARE his buys vs the rest: median distance 2.43 vs 2.81 daily ranges; median within-day similarity percentile of his buys 0.58 (0.50 = no better than chance; model percentile 0.94)
+
+== the day's top 5 fires by each ranking ==
+  1 SIMILARITY alone (distance)          buys taken   6  big  0 | picks 1,575  on a Qullamaggie buy   6 =  0.38%, 0.019 a day | bought +-5 (covered)  1.52% | median distance of the picks 1.04
+  2 SIMILARITY x MODEL                   buys taken  16  big  2 | picks 1,575  on a Qullamaggie buy  16 =  1.02%, 0.051 a day | bought +-5 (covered)  6.40% | median distance of the picks 1.31
+  3 the learned MODEL alone (baseline)   buys taken  41  big  3 | picks 1,575  on a Qullamaggie buy  40 =  2.54%, 0.127 a day | bought +-5 (covered) 12.81% | median distance of the picks 2.35
+  beside: correlation alone              buys taken   6  big  1 | picks 1,575  on a Qullamaggie buy   6 =  0.38%, 0.019 a day | bought +-5 (covered)  1.91% | median distance of the picks 1.97
+  beside: correlation x model            buys taken  18  big  2 | picks 1,575  on a Qullamaggie buy  18 =  1.14%, 0.057 a day | bought +-5 (covered)  7.00% | median distance of the picks 1.72
+best of the three (most buys, then big winners, then the simpler): model
+
+== THE OPERATOR'S EYE: his 12 graded model picks (ok = A D E I; no = B C F G H J K; L conditional) ==
+     ticker grade        distance pct that day pct all test   corr  (percentile: 1.00 = the most like the template)
+  A  ATYR   ok               1.39         0.88         0.89  +0.83
+  B  X      no               1.82         0.85         0.76  +0.58
+  C  ZIM    no               2.83         0.56         0.50  +0.20
+  D  TELL   ok               6.67         0.19         0.09  -0.41
+  E  CAR    ok               1.08         0.99         0.96  +0.86
+  F  LCID   no               3.98         0.33         0.31  -0.28
+  G  SWAV   no               2.43         0.73         0.59  +0.54
+  H  FLGT   no               4.73         0.23         0.22  -0.31
+  I  VUZI   ok               1.82         0.87         0.75  +0.91
+  J  F      no               6.76         0.15         0.08  -0.10
+  K  MVIS   no               1.92         0.84         0.73  +0.58
+  L  FUTU   conditional      2.80         0.70         0.50  -0.17
+  percentile among that day's fires: ok median 0.88 vs no median 0.56; ok-above-no pairs 22 of 28
+  percentile among all test fires: ok median 0.82 vs no median 0.50; ok-above-no pairs 21 of 28
