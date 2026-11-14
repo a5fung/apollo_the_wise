@@ -1,0 +1,21 @@
+== BRIDGE ==
+  MELI list night 2018-09-17 (fire path): V3 0.484 (expect 0.484), slope -0.002 (expect -0.002), bars 200, flagged True -> REPRODUCED
+  TDOC list night 2020-03-19 (fire path): V3 0.244 (expect 0.244), slope -0.037 (expect -0.037), bars 200, flagged True -> REPRODUCED
+  48 graded charts: fire-path window == wideloose graded window on 48/48; V3 equal 48/48, slope equal 48/48
+  graded flagged: ['COUP', 'DVAX', 'MELI', 'RRC', 'TDOC', 'TWTR', 'WPX'] (expect COUP DVAX MELI RRC TDOC TWTR WPX); VUZI (ok, the edge row): V3 0.210 slope +0.0016 -> kept
+  graded grades flagged: {'no': 6, 'conditional': 1} | graded under 189 bars (not scoreable): [['AFRM', 'no', 176.0], ['CHWY', 'ok', 141.0]]
+  pool: fires 156,695 -> 136,305 after 1d -> 120,872 after 1d + A2(10) (expect 156,695 / 136,305 / 120,872)
+
+== FIRES A DAY (median / mean over 1322 era-A list nights) ==
+  fires under 189 bars (not scoreable, pass): 7,859 of 156,695
+  all fires               : 68 / 118.5 -> 64 / 111.2 with the check; removed 9,663 of 156,695 (6.17%), 7.31 a day on average
+  pool after 1d + A2(10)  : 53 / 91.4 -> 50 / 86.9 with the check; removed 6,048 of 120,872 (5.00%), 4.57 a day on average
+  top-5 dollar-volume picks of the pool replaced by the check: 4.8%
+
+== QULLAMAGGIE SCORECARD BUYS ==
+  listed High-tier buys (56): flagged 0: []; under 189 bars 2
+  check alone: fired buys lost 8 of 386; tiers {'Low': 7, 'Not': 1}; big winners 0: PLNT 2020-05-26 (Low), UAL 2020-05-27 (Not), SICP 2021-11-29 (Low), FCX 2021-12-07 (Low), U 2022-11-15 (Low), SHOP 2021-04-08 (Low), SNOW 2021-12-22 (Low), LI 2022-01-12 (Low)
+  1d + A2(10) + check, beyond 1d + A2(10): fired buys lost 4 of 386; tiers {'Low': 4}; big winners 0: SICP 2021-11-29 (Low), FCX 2021-12-07 (Low), SHOP 2021-04-08 (Low), SNOW 2021-12-22 (Low)
+  fired sessions flagged: 12 of 410 (9 buys); of big winners: []; of High tier: []
+  scorecard fired sessions under 189 bars (not scoreable): 25
+BIG WINNERS LOST: 0 -> none, sheet may be drawn

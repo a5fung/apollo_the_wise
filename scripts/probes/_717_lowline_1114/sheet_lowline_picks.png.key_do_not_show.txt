@@ -1,0 +1,14 @@
+stack = 1d (more than 3% under a FALLING 50-day -> out) + A2 (50-day lower than 10 sessions ago AND a negative 126-session return -> out) + lower line (V3 > 0.212 AND the 30-session lower line flat or falling -> out); ranking = 20-day dollar volume
+letter|ticker|fire day E (list night D)|dollar-volume rank among that day's passing fires|Qullamaggie bought? (scorecard, on E)|his-buy window|bought within +-5 sessions (panel)
+A|WPM|2020-05-14 (2020-05-13)|5|no|-|no
+B|AU|2019-09-24 (2019-09-23)|3|no|-|no
+C|AKRX|2018-07-31 (2018-07-30)|5|no|-|no (no snapshot within 5 sessions)
+D|RETA|2019-12-10 (2019-12-09)|3|no|-|no
+E|CVNA|2019-11-15 (2019-11-14)|5|no|-|no
+F|XYZ|2018-04-20 (2018-04-19)|2|no|-|no (no snapshot within 5 sessions)
+G|NEM|2020-04-02 (2020-04-01)|5|no|-|no
+H|FOUR|2021-04-30 (2021-04-29)|3|no|-|no
+I|ONCE|2019-02-07 (2019-02-06)|5|no|-|no (no snapshot within 5 sessions)
+J|TAL|2017-09-11 (2017-09-08)|1|no|-|no (no snapshot within 5 sessions)
+K|CIG|2018-10-25 (2018-10-24)|3|no|-|no (no snapshot within 5 sessions)
+L|TRXC|2018-06-26 (2018-06-25)|4|no|-|no (no snapshot within 5 sessions)

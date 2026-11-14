@@ -1,0 +1,18 @@
+exclusions from scripts/probes/_717_context_1114/sheet_context_a2_dollar_volume_picks.png.key_do_not_show.txt: 12 ticker fields, 24 dates
+exclusions from scripts/probes/_717_pick_model_1113/sheet_model_picks.png.key_do_not_show.txt: 12 ticker fields, 24 dates
+exclusions from scripts/probes/_717_pick_model_1113/sheet_template_picks.png.key_do_not_show.txt: 12 ticker fields, 24 dates
+exclusions from scripts/probes/_717_qm_confidence_1111/big_missed.png.key_do_not_show.txt: 5 ticker fields, 5 dates
+exclusions from scripts/probes/_717_qm_confidence_1111/ready_sheet_1110.png.key_do_not_show.txt: 12 ticker fields, 0 dates
+exclusions from scripts/probes/_717_qm_confidence_1111/sheet_high.png.key_do_not_show.txt: 12 ticker fields, 36 dates
+exclusions from scripts/probes/_717_qm_confidence_1111/sheet_high_missed.png.key_do_not_show.txt: 21 ticker fields, 42 dates
+exclusions from scripts/probes/_717_qm_confidence_1111/sheet_low.png.key_do_not_show.txt: 12 ticker fields, 32 dates
+exclusions from scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png.key_do_not_show.txt: 12 ticker fields, 24 dates
+exclusions from scripts/probes/_717_shape_1114/sheet_shape_stack_dollar_volume_picks.png.key_do_not_show.txt: 12 ticker fields, 26 dates
+exclusions from scripts/probes/_717_shape_gates_1111/bought_sheet.png.key_do_not_show.txt: 86 ticker fields, 0 dates
+exclusions from scripts/probes/_717_shape_gates_1111/bought_sheet_a3.png.key_do_not_show.txt: 99 ticker fields, 0 dates
+exclusions from scripts/probes/_717_shape_gates_1111/qm_blocked_sheet.key_do_not_show.txt: 12 ticker fields, 12 dates
+exclusions from scripts/probes/_717_shape_gates_1111/qm_widened_missed_sheet.png.key_do_not_show.txt: 24 ticker fields, 24 dates
+excluded tickers 211, excluded dates 175
+bars: 12,005,007 rows / 12,532 tickers / 1635 sessions 2016-01-04..2022-06-30 (4s); 5,007 tickers have a missing session inside their span (211,391 holes)
+store A: loaded in 9s; {'raw_factor': 'pre_v2 daily_raw_close.csv.gz per bar (exact)', 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+/Users/alvinfung/apollo_the_wise/scripts/probes/_717_lowline_1114/sheet_lowline_picks.png: 12 charts from 6,597 picks on 1322 era-A days (fires 156,695 -> 136,305 after 1d -> 120,872 after A2(10) -> 114,824 after the lower line); 4.8% of the 1d + A2(10) dollar-volume picks replaced; Qullamaggie buys the daily top 5 by dollar volume takes: 1d + A2(10) 113 (5 big), + lower line 112 (5 big); Qullamaggie buys on the sheet (scorecard): 0; bought within +-5 (panel): 0; years on the sheet ['2017', '2018', '2018', '2018', '2018', '2019', '2019', '2019', '2019', '2020', '2020', '2021']
