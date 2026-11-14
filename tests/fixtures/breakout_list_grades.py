@@ -87,6 +87,7 @@ BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
 # from BREAKOUT_LIST_GRADES (whose tests need bars for every row). None of the 12 was a Qullamaggie buy.
 _MODEL_1113B = "scripts/probes/_717_pick_model_1113/sheet_template_picks.png"   # graded 2026-11-13 (second sheet, 12 new learned-ranking picks)
 _MODEL_1114 = "scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png"   # graded 2026-11-14 (third sheet: the 50-day check, ranked by dollar volume); dates = the LIST NIGHT, as on the earlier sheets
+_MODEL_1114B = "scripts/probes/_717_context_1114/sheet_context_a2_dollar_volume_picks.png"   # graded 2026-11-14 (fourth sheet: 1d + 50-day falling over 10 sessions with a negative 6-month return); dates = the list night
 MODEL_PICK_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2021-10-08", "ATYR", "A", 5, 0.0, 0.0, "ok", "looks ok, caveat is the run up (post huge EP day) then quickly giving it all back, not much time to build range after that volatility", _MODEL_1113),
     BreakoutGrade("2022-03-21", "X", "B", 4, 0.0, 0.0, "no", "no pull back or basing , I don't see a setup", _MODEL_1113),
@@ -124,4 +125,16 @@ MODEL_PICK_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2021-11-11", "RIOT", "J", 4, 0.0, 0.0, "no", 'no', _MODEL_1114),
     BreakoutGrade("2019-02-15", "WDC", "K", 4, 0.0, 0.0, "ok", 'ok', _MODEL_1114),
     BreakoutGrade("2018-08-21", "W", "L", 4, 0.0, 0.0, "conditional", 'maybe', _MODEL_1114),
+    BreakoutGrade("2020-03-19", "TDOC", "A", 3, 0.0, 0.0, "no", 'still no, this is just so wide and lose, chopping wide up and down, this is a def no', _MODEL_1114B),
+    BreakoutGrade("2018-03-26", "OKTA", "B", 2, 0.0, 0.0, "ok", 'ok', _MODEL_1114B),
+    BreakoutGrade("2019-05-01", "PS", "C", 1, 0.0, 0.0, "conditional", 'ok but looks to have broken avbove range already, maybe a bit late', _MODEL_1114B),
+    BreakoutGrade("2018-09-17", "MELI", "D", 3, 0.0, 0.0, "no", 'no no no, super choppy, huge wide ranges, def no', _MODEL_1114B),
+    BreakoutGrade("2019-06-24", "GBT", "E", 3, 0.0, 0.0, "conditional", 'maybe but if so, late', _MODEL_1114B),
+    BreakoutGrade("2018-03-21", "MDCO", "F", 4, 0.0, 0.0, "conditional", 'ok, but maybe needs to tighten up more', _MODEL_1114B),
+    BreakoutGrade("2018-11-12", "RRC", "G", 1, 0.0, 0.0, "no", 'no huge wide ranges', _MODEL_1114B),
+    BreakoutGrade("2019-10-08", "COUP", "H", 1, 0.0, 0.0, "conditional", 'maybe but not really build tight higher lows if 50/50 at best', _MODEL_1114B),
+    BreakoutGrade("2018-04-23", "WPX", "I", 2, 0.0, 0.0, "no", 'a bit late, if not, needs to build tight a few days', _MODEL_1114B),
+    BreakoutGrade("2020-01-03", "CHWY", "J", 3, 0.0, 0.0, "ok", 'ok', _MODEL_1114B),
+    BreakoutGrade("2019-06-07", "ZS", "K", 5, 0.0, 0.0, "ok", 'ok', _MODEL_1114B),
+    BreakoutGrade("2020-10-22", "PINS", "L", 2, 0.0, 0.0, "no", 'late, looks broken out already', _MODEL_1114B),
 ]
