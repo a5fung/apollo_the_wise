@@ -3034,3 +3034,13 @@ Sheet `scripts/probes/_717_wideloose_1114/sheet_qm_wide_loose.png`. His verdict:
 The rule this states: a wide range is NOT the defect. The defect is a range that does NOT CONTRACT — wide, erratic up-and-down that stays wide or widens. Qullamaggie's buys show the range SHRINKING into the buy (lower highs with higher or equal lows — a triangle/flag; higher lows; tightening over days after the big move). Earlier (2026-11-14): chop = "wide range, chopping up and down erratically", "wide lose bars ... not tightening".
 
 Follow-up, same day: > "of the def no, MELI is the worse IMO" — MELI 2018-09-17 is the anchor example of the defect.
+
+## 2026-11-14 — his markups: MELI / TDOC (def no) vs FIRY / BLDP (Qullamaggie buys) (#717)
+> "FIRY looks nothing like MELI. Look at my mark ups, his buys looks great with higher lows, MELI has nothing, I don't get how rules can say they are similar when they look nohting alike."
+
+Chart with his drawn lines: `docs/methodology/charts/2026-11-14_markup_meli_firy_tdoc_bldp.png` (on `scripts/probes/_717_pairs_1114/pairs_v3_blockers.png`). What he drew:
+- MELI: two FLAT parallel lines — a wide horizontal box, top and bottom both flat; nothing converging, no higher lows.
+- TDOC: flat top, a lower line that SLOPES DOWN — the lows are falling.
+- FIRY: lower highs AND higher lows — converging lines (a triangle), the range narrowing into the buy.
+- BLDP: flat top at the buy level, lows RISING steeply to it — an ascending triangle.
+The rule he draws: the base's LOWS must be rising (the lower line slopes up) and the lines converge into the buy level; a wide base whose lower line is flat or falling is the defect. Swing SIZE alone cannot tell these apart — the lines' direction does.
