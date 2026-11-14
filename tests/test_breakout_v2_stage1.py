@@ -45,6 +45,17 @@ KNOWN_NON_SETUPS = {("ANET", "2018-03-12"), ("TDOC", "2019-10-31"), ("STNE", "20
                     ("UAL", "2020-05-27"), ("JMIA", "2020-11-18"), ("FEAC", "2020-11-30"), ("UPST", "2021-08-12"),
                     ("FCX", "2021-12-07"), ("MU", "2021-12-21"), ("FCX", "2021-12-27"), ("MDB", "2021-12-27")}
 ADR_DROPPED_NON_SETUPS = {("TDOC", "2019-10-31"), ("MU", "2021-12-21"), ("FCX", "2021-12-27")}    # 4% floor, 2026-11-12
+# 2026-11-14 the three CONTEXT checks (operator-signed; docs/setups/consolidation_breakout.md change log 2026-11-14):
+# the 11 of the 229 listed dated buys they take off, by buy day E, with the checks that stop each — none a big winner.
+# His labels: W "no, maybe EP", PLNT / UAL / FCX 12-07 "no" (three of the 16 known non-setups); the research named the
+# same costs (scripts/probes/_717_context_1114/03_posthoc.out, _717_lowline_1114/02_score.out).
+CONTEXT_OFF = {("W", "2020-04-07"): ("downtrend_6m",), ("CCL", "2020-05-26"): ("downtrend_6m",),
+               ("PLNT", "2020-05-26"): ("downtrend_6m", "lower_line"), ("UAL", "2020-05-27"): ("downtrend_6m", "lower_line"),
+               ("RKT", "2021-03-01"): ("downtrend_6m",), ("GME", "2021-09-13"): ("downtrend_6m",),
+               ("BTBT", "2021-10-20"): ("downtrend_6m",), ("SI", "2021-11-29"): ("lower_line",),
+               ("FCX", "2021-12-07"): ("lower_line",), ("U", "2022-11-15"): ("downtrend_6m", "lower_line"),
+               ("GME", "2023-12-14"): ("downtrend_6m",)}
+CONTEXT_DROPPED_NON_SETUPS = {("PLNT", "2020-05-26"), ("UAL", "2020-05-27"), ("FCX", "2021-12-07")}
 # stage0/s0.txt "era-B buys one by one" (2026-11-02, the blind-recounted stage 0): 6-month move, it in daily ranges,
 # the last-10-close spread in daily ranges, volume(E) / the 10-day average, and whether the NEW (10-day) bar fires.
 STAGE0_ERA_B = {
@@ -84,6 +95,11 @@ def _key(r):
     return (r["sym"], r["E"])
 
 
+def _pre(g):
+    """The failed gates BEFORE the 2026-11-14 context checks (the context gates set aside)."""
+    return tuple(k for k in g["failed"] if k not in bv.CONTEXT_GATES)
+
+
 # ── the constants: every one pinned to the signed-off spec ────────────────────────────────────────────────────────
 def test_every_list_constant_is_the_signed_off_spec():
     assert bv.RS_MIN == 35.0                                     # rule 2 (his buys' lowest 35.3)
@@ -121,23 +137,36 @@ def test_the_scorecard_under_the_initial_rule_set_all_269_listed_and_no_buy_of_t
     # 2026-11-12: the daily-range floor 2.1% -> 4% (his "aligned") drops 40 of the 269 at the `adr` gate ALONE; every other
     # gate still passes for all 269, and not one of the 26 big winners is among the 40. Listed 229; fired 217 (was 256).
     assert len(scorecard) == 269
-    assert Counter(tuple(g["failed"]) for _, _, _, g in scorecard) == {(): 229, ("adr",): 40}
+    # 2026-11-14 the three CONTEXT checks (operator-signed): the counts BEFORE them are read with the context gates
+    # set aside (every other gate is untouched by them), then their own effect is pinned below.
+    assert Counter(_pre(g) for _, _, _, g in scorecard) == {(): 229, ("adr",): 40}
+    assert Counter(tuple(g["failed"]) for _, _, _, g in scorecard) == {
+        (): 218, ("adr",): 40, ("downtrend_6m",): 6, ("downtrend_6m", "lower_line"): 3, ("lower_line",): 2}
+    assert {_key(r) for r, _, _, g in scorecard if _pre(g) == () and not g["ok"]} == set(CONTEXT_OFF)
+    assert all(tuple(g["failed"]) == CONTEXT_OFF[_key(r)] for r, _, _, g in scorecard if _key(r) in CONTEXT_OFF)
     assert not any(r["big_winner"] == "1" for r, _, _, g in scorecard if not g["ok"])
+    pre_fired = [(r, _pre(g) == () and float(b.h[D + 1]) > g["level"]) for r, b, D, g in scorecard]
+    assert sum(f for _, f in pre_fired) == 217 and sum(f for r, f in pre_fired if r["big_winner"] == "1") == 26
     fired = [(r, g["ok"] and bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)["fired"]) for r, b, D, g in scorecard]
-    # the price break alone (his 2026-11-11 "drop it"): 217 of 269 and ALL 26 big winners (256 / 26 at the 2.1% floor);
-    # with the volume bar it was 165 / 22 at 2.1% (160 / 21 without the wick rule), now 136 / 22
-    assert sum(f for _, f in fired) == 217 and sum(f for r, f in fired if r["big_winner"] == "1") == 26
+    # the price break alone (his 2026-11-11 "drop it"): 217 of 269 and ALL 26 big winners before the 2026-11-14 context
+    # checks (256 / 26 at the 2.1% floor); after them 207 and still ALL 26 (10 of the 11 they take off fired).
+    # With the volume bar it was 165 / 22 at 2.1% (160 / 21 without the wick rule), 136 / 22 at 4%, now 131 / 22
+    assert sum(f for _, f in fired) == 207 and sum(f for r, f in fired if r["big_winner"] == "1") == 26
     with_vol = [(r, g["ok"] and bool(bv.breakout_triggered({"h": float(b.h[D + 1]), "v": float(b.v[D + 1])}, g)["volume_pass"]) and f)
                 for (r, b, D, g), (_, f) in zip(scorecard, fired)]
-    assert sum(f for _, f in with_vol) == 136 and sum(f for r, f in with_vol if r["big_winner"] == "1") == 22
+    assert sum(f for _, f in with_vol) == 131 and sum(f for r, f in with_vol if r["big_winner"] == "1") == 22
     old = [(r, g["gates"]["prior_move"]["value"]["prior_move"] >= 0.3213536987121892
             and g["gates"]["base_depth"]["value"]["depth_adr"] <= 8.979719460898997
             and g["gates"]["ema21"]["value"]["vs_ema21_adr"] >= -0.6335 and g["sma50"]["pass"]
             and float(b.h[D + 1]) > g["level5"] and float(b.v[D + 1]) >= 1.2 * g["vol10"]) for r, b, D, g in scorecard]
     assert sum(f for _, f in old) == 156 and sum(f for r, f in old if r["big_winner"] == "1") == 21
-    # what the 11-02 trigger bought and the 4% floor now stops: 28 buys, all by `adr` alone, none a big winner
+    # what the 11-02 trigger bought and the list now stops: 28 by the 4% floor (`adr` alone) and, since 2026-11-14,
+    # 4 by the context checks (CCL 2020-05-26, UAL 2020-05-27, RKT 2021-03-01, U 2022-11-15) — none a big winner
     lost = [(r, g) for (r, b, D, g), (_, n), (_, o) in zip(scorecard, fired, old) if o and not n]
-    assert len(lost) == 28 and all(g["failed"] == ["adr"] and r["big_winner"] != "1" for r, g in lost)
+    assert len(lost) == 32 and not any(r["big_winner"] == "1" for r, _ in lost)
+    assert sum(g["failed"] == ["adr"] for _, g in lost) == 28
+    assert {_key(r) for r, g in lost if g["failed"] != ["adr"]} == {("CCL", "2020-05-26"), ("UAL", "2020-05-27"),
+                                                                  ("RKT", "2021-03-01"), ("U", "2022-11-15")}
     assert all(g["level"] <= g["level5"] and g["level_source"] != "range" for _, _, _, g in scorecard if g["ok"])
     assert sum(g["range"]["pass"] for _, _, _, g in scorecard) == 190        # a range existed the night before on 190
 
@@ -153,9 +182,11 @@ def test_the_16_known_non_setups_stay_on_the_list_as_the_committed_negatives(sco
     assert len(KNOWN_NON_SETUPS) == 16
     # 2026-11-12 the 4% daily-range floor takes three of the 16 off the list, by `adr` alone: FCX 2021-12-27 (ADR20 3.9%),
     # MU 2021-12-21 (3.3%), TDOC 2019-10-31 (3.4%). Of his six former NOs it also drops YPF (2.6%) and SQM (3.7%).
-    assert KNOWN_NON_SETUPS - derived == ADR_DROPPED_NON_SETUPS and len(ADR_DROPPED_NON_SETUPS) == 3
+    # 2026-11-14 the context checks take three more of the 16 off: PLNT 2020-05-26 and UAL 2020-05-27 (the 6-month
+    # downtrend + the lower line), FCX 2021-12-07 (the lower line); of his six former NOs, W 2020-04-07 (the downtrend).
+    assert KNOWN_NON_SETUPS - derived == ADR_DROPPED_NON_SETUPS | CONTEXT_DROPPED_NON_SETUPS and len(ADR_DROPPED_NON_SETUPS) == 3
     assert {_key(r) for r, _, _, g in scorecard if g["failed"] == ["adr"]} >= ADR_DROPPED_NON_SETUPS | {("YPF", "2019-04-17"), ("SQM", "2021-09-10")}
-    assert derived - KNOWN_NON_SETUPS == set(HIS_SIX_NOS) - {("YPF", "2019-04-17"), ("SQM", "2021-09-10")}
+    assert derived - KNOWN_NON_SETUPS == set(HIS_SIX_NOS) - {("YPF", "2019-04-17"), ("SQM", "2021-09-10"), ("W", "2020-04-07")}
 
 
 def test_the_knife_edges_the_rules_were_pinned_on(scorecard):

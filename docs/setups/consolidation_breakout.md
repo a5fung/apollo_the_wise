@@ -81,6 +81,10 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
 > - **Volume is NOT a buy condition** (his 2026-11-11 "drop it"; replaces F1 of 10-29 and the 1.2 x 10-day bar of
 >   11-02): the price break alone buys. The bar and the intraday pace are still computed and recorded.
 > - **⚠ 2026-11-12: rule 3 the daily-range floor is now ADR20 >= 4% (was 2.1%)** — change log 2026-11-12 below.
+> - **⚠ 2026-11-14: three CONTEXT gates (OPERATOR-SIGNED "ok, let's build it today"; rows 8-10 below,
+>   `breakout_v1.context_gates`)** — a name is OFF when it sits more than 3% under a falling 50-day, when the 50-day is
+>   falling with a negative 6-month return, or when its base keeps re-widening while the 30-session lower line is flat
+>   or falling. Change log 2026-11-14 below.
 > - Unchanged: $2, $5M, 86 sessions, strength 35, stop, sizing, exits, slots, the order score.
 
 | # | Rule | Value | Source | Code |
@@ -94,6 +98,9 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
 | 6 | close vs the 21-day EMA | (close / EMA21 - 1) / ADR20 >= -0.6335 (EMA seeded at the series' first bar) | his labels on 9 EMA-dropped buys; pinned at TSLA 2022-04-21 (-0.63349) | `ema21`; `EMA21_ADR_MIN`, `ema_at` |
 | 7 | close vs the 50-day SMA | close >= the mean of the 50 closes ending D | his picks; drops none of Qullamaggie's buys | `sma50`; `SMA_SESSIONS` |
 | — | REMOVED | higher lows, surf (riding an average), tightening, the breakdown check | his CODX / PENN charts (11-02): the definitions misread his pattern | — |
+| 8 | not under a falling 50-day | OUT when close(D) / SMA50(D) - 1 < -3% AND SMA50(D) < SMA50(D-10) (the 50-day of the 50 closes ending each session) | 2026-11-14 SIGNED; research check 1d (`_717_reasons_1114/02_score.py`) | `sma50_falling_under`; `CTX_UNDER_SMA50_MAX`, `CTX_SMA_FALL_SESSIONS` |
+| 9 | not a 6-month downtrend | OUT when SMA50(D) < SMA50(D-10) AND close(D) / close(D-126) - 1 < 0 (the earliest bar when 120-126 bars exist; under 120 = blank, passes) | 2026-11-14 SIGNED; his "long decline under a FALLING 50-day"; research A2 read over 10 sessions (`_717_context_1114/03_posthoc.py`, T = 0) | `downtrend_6m`; `CTX_RET_SESSIONS`, `CTX_RET_MAX` |
+| 10 | not a re-widening base on a flat / falling lower line | OUT when V3 > 0.2123 (strict) AND the 30-session lower line's slope <= 0, with >= 189 bars (fewer = `insufficient_history`, passes). Log prices; chart height = max high - min low over the last 189 sessions; swings = 3-bar-each-side pivots over the last 60 sessions; V3 = after the biggest swing, the largest smaller-of-two consecutive swings bigger than one already seen since it, / chart height; lower line = least squares through the 30-session swing lows + the lowest low after the last pivot, slope per 10 sessions / chart height | 2026-11-14 SIGNED; his MELI / TDOC vs FIRY / BLDP markups; the line = MU 2021-12-21's V3 (0.21229655, a High buy, kept by the strict >) | `lower_line`; `LOWER_LINE_V3_MIN`, `LOWER_LINE_SESSIONS`, `LOWER_LINE_MIN_BARS`, `rewiden_v3`, `lower_line_slope`, `swing_pivots` |
 
 - **The level and the volume bar (for the next session):** level = the highest high of D-4..D (strict break); the
   volume bar = **1.2 x the mean volume of the last 10 sessions D-9..D** (his ruling 2026-11-02; was the 50-day; `vol50`
@@ -114,6 +121,8 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
   judged at that minute's price) and records, at 15:55, every name that BROKE OUT while held and never got a slot
   (`breakout_v1_missed_by_slots`, with the first break minute — the level reached with the volume pace held, the live tick's own check).
 - **Acceptance:** `tests/test_breakout_v2_stage1.py` on `tests/fixtures/qm_breakout_scorecard/` (the scorecard below).
+  The context gates (rows 8-10): `tests/test_breakout_v1_context_gates.py` — his cases, parity with the research code
+  on every scorecard series, and every existing gate unchanged against a pre-change baseline.
 
 ## Cells (post-hoc flags on one watch row; the 8 deciding cells strict → loose)
 
@@ -394,11 +403,93 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   design — rule 6 at TSLA 2022-04-21's own value (1.3e-5 daily ranges inside) and rule 4's low end AT LRN 2020-08-05's
   depth — so a change in how ADR20, the EMA or the depth is computed can drop his own "ok"/"good" buys (the scorecard test
   catches it); (e) the order inputs read up to 189 sessions (the list job loads 200; a name with less history gets a
-  shortened 6-month look-back, as the research's era-B store did on its first 59 nights).
+  shortened 6-month look-back, as the research's era-B store did on its first 59 nights). The 2026-11-14 context gates
+  read the same 200-session load BY ROW, as the research did: a name with more than 11 calendar holes in those 200
+  sessions reads `insufficient_history` on the lower line where the research (no hole test) would have scored it, and a
+  name under 189 bars (a recent listing; FIRY 2021-01-05, a big winner, had 175) is never removed by it.
 
 - **The pick among a day's breakouts (2026-11-13, research, nothing wired):** which of the ~68 names that fire a day Qullamaggie bought is being measured in `docs/analysis/cb_pick_model_2026-11-13.md` (pre-registered before the fit, `730db6c7`). ESTABLISHED on the test years 2021-01..2022-03 (138 of his buys fire): the live order score's daily top 5 takes 18 of them, a model fitted on 2017-2020 takes 41, and ranking by dollar volume alone takes 43 (on his stream-dated buys only, post-hoc: model 30, dollar volume 23, order score 12 of 78) — liquidity is by far the largest weight (his dated buys and his panel sightings both sit at the 96th percentile of the day's list), then 6-month strength, daily range, a long advance since the major low, and tightness; base depth / length / run-up and industry-group strength carry none. Slot mechanics move the count far less than the ranking (resting on the model's top 5: 33; break-only: 28-41 by break order). PART 2, the TEMPLATE (the average path of his 62 best-confirmed 2017-2020 setups, 90 sessions in daily ranges from the buy level): ranking by likeness to it takes 6 of his 138 test-year buys (the random floor) and 16 when multiplied into the model — it does not find his picks; it DOES lean with the operator's eye (his 4 ok charts median 88th percentile of the day, his 7 no charts 56th; 22 of 28 pairs ordered right) — a candidate shape filter, not a ranking. No ranking or filter change ships without his sign-off.
 
 ## Change log
+
+### 2026-11-14 — breakout v1: three CONTEXT gates on the nightly list — not under a falling 50-day, not a 6-month downtrend, not a re-widening base on a flat / falling lower line (OPERATOR-SIGNED "ok, let's build it today", 2026-11-14; paper still OFF; built on a branch, not deployed)
+
+**Trigger**: his reads of the 2026-11-14 sheets (`docs/methodology/operator_shared_notes.md`, the 2026-11-14 entries): a
+downtrend is *"a long decline under a falling 50-day"*; chop is a range that does not contract — of the def-no charts
+*"MELI is the worse IMO"*; on his markups *"FIRY looks nothing like MELI ... his buys looks great with higher lows, MELI
+has nothing"* (MELI two flat parallel lines, TDOC a falling lower line; FIRY and BLDP rising lows). On the fifth sheet
+(the three checks applied): *"A looks ok but seems extended / B ok / C ok / D ok / E ok / F ok / G no ... / H ok / I ok /
+J ok, might be extended / K ok / L looks extended"* — 9 ok (+ A) of 12. On the Qullamaggie buys the lower line drops:
+*"rest looks sus as well, we may have wrong buy time/date so might be fine if we skip these on those particular days"*.
+The sign-off on the table (rows 1-3 = these three; rows 4-5 are the entry's, not this change): **"ok, let's build it
+today"**; paper stays OFF until his "paper on".
+
+**What changed** (`breakout_v1.py` section 2a, `context_gates`; wired into `v1_gates` after the existing gates, every
+name evaluated, never short-circuited): three named gates `sma50_falling_under`, `downtrend_6m`, `lower_line` (rows 8-10 of
+the rule table; `CONTEXT_GATES`), each recorded as `{"pass", "value"}` on the gates JSON with its measures, appended to
+`failed` so the `breakout_v1_list_run` audit row's per-gate counts carry them; the audit row also names, per check, the
+names those checks ALONE took off (`context_removed`, `context_removed_n`; `evaluate_members(..., removed=)`). `GATES` (the
+eight existing gates) and every existing gate's input and result are unchanged. The list job's load is unchanged — it
+already loads 200 sessions (`HISTORY_SESSIONS`) and the deepest read is 189. The lower line's V3 line is **0.2123 strict**
+(MU 2021-12-21's own V3, 0.21229655 — the loosest line that flags no must-keep buy with a flat or falling lower line);
+the research's `ll.py` ran 0.212, which would flag MU itself. The swing / V3 / lower-line code is the research's
+(`_717_contract_1114/swings/sw.py`, `v3m.py`, `04_lowline.py` = `_717_lowline_1114/ll.py`) copied verbatim; 1d is
+`_717_reasons_1114/02_score.py`, A2 read over 10 sessions `_717_context_1114/03_posthoc.py` (its sizing gave T = 0.0).
+
+**Evidence** (era A; no R, P&L or win rate decided any rule):
+- **The research scorecard, all three at the signed line** (`scripts/probes/_717_context_1114/06_all_three.py` → `.out`:
+  the context card's own `score()` harness exec'd as `03_posthoc.py` does, the lower line on the fires from
+  `_717_lowline_1114/01_capture.py`'s capture and on the scorecard rows by THIS production code; the bridge rows reproduce
+  `03_posthoc.out` 466 / 380 / 26 and 449 / 366 / 26 and `_717_lowline_1114/03_sheet.out` 114,824). Qullamaggie's 757
+  buys, listed / fired / big winners fired: **none 479 / 386 / 26 → 1d 466 / 380 / 26 → 1d + A2 449 / 366 / 26 → all three
+  445 / 362 / 26**; the 56 listed High-tier buys **56 / 56** at every step; fired buys lost (all three) High 0, Medium 1
+  (PLUG 2021-06-22), Low 20, Not 3 — the lower line's own 4 beyond 1d + A2: SICP 2021-11-29, FCX 2021-12-07, SHOP
+  2021-04-08, SNOW 2021-12-22 (all Low). Era-A fires a day median / mean **68 / 118.5 → 50 / 86.9**; 21.5% of the daily
+  top-5 dollar-volume picks replaced. His grades (IN-SAMPLE, the 36 of the first three sheets): 10 of 20 `no` removed,
+  0 of 11 ok / good. At 0.2123 vs the research's 0.212 the scorecard is identical; 23 more era-A fires are kept (114,847
+  vs 114,824 after the stack).
+- **The live code on the repo scorecard** (`tests/test_breakout_v2_stage1.py`, his 269 dated buys' own bars): listed
+  **229 → 218**, fired on the break day (price alone) **217 → 207**, big winners **26 / 26** kept; the 11 off, named in
+  `CONTEXT_OFF`: W 2020-04-07, CCL 2020-05-26, RKT 2021-03-01, GME 2021-09-13, BTBT 2021-10-20, GME 2023-12-14 (downtrend);
+  PLNT 2020-05-26, UAL 2020-05-27, U 2022-11-15 (downtrend + lower line); SI 2021-11-29, FCX 2021-12-07 (lower line) —
+  PLNT, UAL, FCX 12-07 are three of his 16 known non-setups, W one of his six former NOs. Of the 84 High-tier buys the
+  checks touch only PBR 2019-10-22, already off by the 4% floor (`tests/test_breakout_v1_range_break.py`).
+- **Parity**: production vs the research code on every Qullamaggie series in the fixtures (757 series, 50,467 nights at
+  every 3rd night, 862 lower-line flags): V3, slope, bar count, 6-month return EXACTLY equal and every verdict equal; on the
+  research's own scorecard rows the 1d / A2 verdicts agree 571 / 571 and 56 / 56. Every existing gate's pass and value
+  identical on the same 50,467 nights vs the pre-change module (`bv1_existing_gates_baseline.json.gz` pins 731 of them).
+- **His cases** (era-A windows, `tests/fixtures/bv1_context_cases.psv.gz`): MELI 2018-09-17 V3 0.484 slope -0.002 OUT;
+  TDOC 2020-03-19 V3 0.244 slope -0.037 OUT; FIRY (D 2021-01-04) V3 0.299 slope +0.180 kept (175 bars — insufficient
+  history; kept either way); BLDP (D 2019-11-11) V3 0.237 slope +0.066 kept; MU (D 2021-12-20) V3 0.21230 slope -0.018 kept
+  by the strict line.
+
+**Anticipated effect**: the 17:55 ET list loses roughly a quarter of its names (era-A fires a day 68 → 50 median); the
+audit row's `gate_fails` carries the three names and `context_removed` lists the names they took off. Nightly cost: no
+extra bars fetched (the load was already 200 sessions); the three checks add ~75 µs per evaluated name (50,467 evaluations
+3.1 s → 6.9 s on a laptop) — under a second a night. Not measured: the live list size under these rules (era A only).
+
+**EXPECT** (declared before it ships; BASELINE = the last list night before the deploy: its `passing` count and
+`gate_fails` without the three names): on the first list night after the deploy, `gate_fails` carries `sma50_falling_under`,
+`downtrend_6m` and `lower_line` with non-zero counts; `context_removed_n` is non-zero and its names are on the baseline's
+kind of list (they pass every other gate); `passing` falls by roughly a quarter against the baseline, not to zero; every
+listed row's gates JSON carries the three with `pass: true`. UNINTENDED, declared: a recent listing (< 189 bars) is never
+removed by the lower line; a name with many calendar holes reads `insufficient_history`.
+**DONE-WHEN:** 3 list nights with the counts in that shape and his spot check of one night's removed names.
+**WOULD-FAIL-IF:** `gate_fails` has none of the three names (the checks are not running), `passing` is unchanged against
+the baseline, or the list drops to near zero (a check removing everything).
+
+**Reversion-flag**: NEW (rows 9 and 10: no prior gate on the 6-month return or the base's swings / lower line).
+Row 8 is a **narrower 50-day condition after the 2026-11-11 removal of the plain `close >= SMA50` gate** — not a
+reversal of that reasoning: the plain gate was removed because 9 of the 31 widened High buys sat under the 50-day (NVAX
+2021-04-13 21% under), i.e. a price-vs-the-50-day-on-one-day reading cut Qullamaggie's clean range breaks. Row 8 needs
+BOTH more than 3% under AND a falling 50-day (his "not price vs the 50-day on one day"), and keeps all 56 High buys and all
+26 big winners on the research scorecard (1d alone: 466 / 380 / 26 vs 479 / 386 / 26). `sma50` stays telemetry, not a gate.
+Reverting: drop the three names from `CONTEXT_GATES` (an empty tuple restores the 2026-11-12 list exactly; the baseline test
+proves the rest is untouched).
+
+**Status**: BUILT on a branch (#717), NOT merged, NOT deployed; `breakout_v1_paper` stays OFF. His notes of 2026-11-14 and
+the research dirs `_717_lowline_1114/`, `_717_contract_1114/`, `_717_wideloose_1114/` live in the main checkout and are
+committed separately (the tests vendor the research code; they read nothing from the main checkout or `apollo_data`).
 
 ### 2026-11-12 — breakout v1: ADR floor 2.1% → 4% (OPERATOR-SIGNED "aligned", 2026-11-12; paper still OFF; not deployed)
 

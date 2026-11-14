@@ -123,7 +123,10 @@ def test_the_night_lists_zcsh_only_and_keeps_out_the_leveraged_and_unnamed_funds
     assert round(r["runup6m_adr"], 2) == 70.67 and round(r["spread10_adr"], 2) == 3.46
     g = r["gates"]
     assert g["ok"] is True and g["failed"] == [] and all(v["pass"] for v in g["gates"].values())
-    assert set(g["gates"]) == set(bv.GATES)
+    assert set(g["gates"]) == set(bv.GATES) | set(bv.CONTEXT_GATES)     # the 2026-11-14 context checks recorded too
+    assert g["gates"]["lower_line"]["value"]["status"] in ("scored", "insufficient_history")
+    assert out["gate_fails"].keys() <= set(bv.GATES) | set(bv.CONTEXT_GATES) | {"gate_error"}
+    assert set(out["context_removed"]) <= set(bv.CONTEXT_GATES) and "context_removed_n" in out
     assert g["order_inputs"] == {"runup6m": pytest.approx(4.4542484), "runup6m_adr": r["runup6m_adr"],
                                  "spread10_adr": r["spread10_adr"]}
     json.dumps(g, allow_nan=False)

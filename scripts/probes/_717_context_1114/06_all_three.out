@@ -1,0 +1,20 @@
+grades kept for the harness: 36
+A2(10) threshold T = 0.0
+scorecard: production vs research columns — 1d agree 571/571, A2(10) agree 571/571
+High: production vs research columns — 1d agree 56/56, A2(10) agree 56/56
+
+== V3 line 0.212 (research ll.py): fires 156,695 -> 1d 136,305 -> +A2(10) 120,872 -> + lower line 114,824
+check                                          | High  | scorecard listed/fired/big | fired buys lost by tier | his eye (IN-SAMPLE): removed of 20 no / 11 ok-good / 5 maybe | fires a day median mean | top-5 dollar-volume picks replaced | names
+1d                                             | 56/56 | 466 / 380 / 26 | lost H0 M0 L6 N0 | no  5/20 ok-good 0/11 maybe 0/5 |   59  103.1 | 11.9% | High dropped: - | no removed: F DVAX DQ TIGR DOCN
+1d + A2(10)                                    | 56/56 | 449 / 366 / 26 | lost H0 M1 L16 N3 | no  9/20 ok-good 0/11 maybe 1/5 |   53   91.4 | 18.2% | High dropped: - | no removed: LCID F DVAX DQ TIGR OCGN DOCN THC REN | maybe removed: AZUL
+1d + A2(10) + lower line 0.212                 | 56/56 | 445 / 362 / 26 | lost H0 M1 L20 N3 | no 10/20 ok-good 0/11 maybe 1/5 |   50   86.9 | 21.5% | High dropped: - | no removed: LCID F DVAX DQ TIGR OCGN DOCN THC TWTR REN | maybe removed: AZUL
+lower line 0.212 alone                         | 56/56 | 470 / 378 / 26 | lost H0 M0 L7 N1 | no  2/20 ok-good 0/11 maybe 0/5 |   64  111.2 |  5.6% | High dropped: - | no removed: DVAX TWTR
+fired buys lost beyond 1d + A2(10): 4 SICP 2021-11-29 (Low); FCX 2021-12-07 (Low); SHOP 2021-04-08 (Low); SNOW 2021-12-22 (Low)
+
+== V3 line 0.2123 (SIGNED, strict): fires 156,695 -> 1d 136,305 -> +A2(10) 120,872 -> + lower line 114,847
+check                                          | High  | scorecard listed/fired/big | fired buys lost by tier | his eye (IN-SAMPLE): removed of 20 no / 11 ok-good / 5 maybe | fires a day median mean | top-5 dollar-volume picks replaced | names
+1d                                             | 56/56 | 466 / 380 / 26 | lost H0 M0 L6 N0 | no  5/20 ok-good 0/11 maybe 0/5 |   59  103.1 | 11.9% | High dropped: - | no removed: F DVAX DQ TIGR DOCN
+1d + A2(10)                                    | 56/56 | 449 / 366 / 26 | lost H0 M1 L16 N3 | no  9/20 ok-good 0/11 maybe 1/5 |   53   91.4 | 18.2% | High dropped: - | no removed: LCID F DVAX DQ TIGR OCGN DOCN THC REN | maybe removed: AZUL
+1d + A2(10) + lower line 0.2123                | 56/56 | 445 / 362 / 26 | lost H0 M1 L20 N3 | no 10/20 ok-good 0/11 maybe 1/5 |   50   86.9 | 21.5% | High dropped: - | no removed: LCID F DVAX DQ TIGR OCGN DOCN THC TWTR REN | maybe removed: AZUL
+lower line 0.2123 alone                        | 56/56 | 470 / 378 / 26 | lost H0 M0 L7 N1 | no  2/20 ok-good 0/11 maybe 0/5 |   64  111.2 |  5.6% | High dropped: - | no removed: DVAX TWTR
+fired buys lost beyond 1d + A2(10): 4 SICP 2021-11-29 (Low); FCX 2021-12-07 (Low); SHOP 2021-04-08 (Low); SNOW 2021-12-22 (Low)

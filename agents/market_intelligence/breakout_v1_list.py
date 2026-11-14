@@ -16,7 +16,8 @@ The rules are `breakout_v1.py` (PURE); this module is the plumbing around them f
      (`breakout_v1.order_inputs`) and ranked by the ORDER SCORE over the night's whole list (`rank_rows`; the rebuilt
      rules his spec sign-off of 2026-11-02 named, `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md` §2);
   5. ONE audit row `breakout_v1_list_run` (universe size, funds kept / excluded and why, names passing, per-gate fail
-     counts, the message's fate);
+     counts — the three CONTEXT checks of 2026-11-14 among them — the names those checks alone took off the list
+     (`context_removed`), the message's fate);
   6. ONE paper-prefixed Telegram message: tonight's TOP 10 by the order score (ticker, level, score, rs_best) and
      the night's total count (the rebuilt list holds ~250 names a night — never 250 lines) — ONLY when the list is
      non-empty (an alert that says no action is noise). A failed send is logged and counted in the audit row.
@@ -63,12 +64,16 @@ AUDIT_ERROR_EVENT = "breakout_v1_list_error"
 BUDGET_S = 600                        # fail open past this (the shadow's pattern; a night is ~1 minute of work)
 # Bars loaded per name: the 6-month move reads 126 highs, each against the lowest low of the 64 sessions up to it, so
 # 189 sessions are needed for the research's full look-back (`breakout_v1.runup6m_at`; 150 shortened it), + margin.
-# The EMA21 is seeded at the first loaded bar (its weight at D after 200 bars is ~1e-8).
+# The EMA21 is seeded at the first loaded bar (its weight at D after 200 bars is ~1e-8). The three context checks
+# (2026-11-14) need at most 189 bars (the lower line's chart height; 126 + 1 for the 6-month return, 60 for the 50-day
+# 10 sessions back) and read the research's last-200-bar window, so the load did NOT change: a name with more than 11
+# calendar holes in these 200 sessions reads "insufficient_history" on the lower line where the research scored it.
 HISTORY_SESSIONS = 200
 CALENDAR_SESSIONS = 400
 PREFILTER_DOLLAR_VOL = 0.7 * bv.MIN_DOLLAR_VOL
 SCAN_CHUNK = 250                      # tickers per to_thread slice: cancellation lands between slices
 FUND_EXCLUDED_LIST_MAX = 60           # fund tickers named in the audit row, per reason
+CONTEXT_REMOVED_LIST_MAX = 60         # names a context check took off the list, named in the audit row, per check
 MESSAGE_TOP_N = 10                    # the nightly message and bare /bgrade show the top 10 by the order score
 
 
@@ -123,8 +128,10 @@ def scan_members(series: dict, *, today_ci: int, types: dict, unapplied: set) ->
     return {"members": members, "counts": counts, "fund_kept": fund_kept, "fund_excluded": fund_excl}
 
 
-def evaluate_members(members: list, rs_best: list, today: date) -> tuple:
-    """`v1_gates` per member (with its rs_best) -> (passing list rows unranked, per-gate fail Counter, n evaluated)."""
+def evaluate_members(members: list, rs_best: list, today: date, removed: Optional[dict] = None) -> tuple:
+    """`v1_gates` per member (with its rs_best) -> (passing list rows unranked, per-gate fail Counter, n evaluated).
+    `removed` (optional, filled in place): {context gate: [tickers]} — the names that pass every OTHER gate and are
+    taken off by one of the three context checks (2026-11-14), i.e. the names those checks removed from the list."""
     rows, fails, n_eval = [], Counter(), 0
     for m, rb in zip(members, rs_best):
         if not m.get("listable", True):
@@ -143,6 +150,9 @@ def evaluate_members(members: list, rs_best: list, today: date) -> tuple:
         n_eval += 1
         for k in g["failed"]:
             fails[k] += 1
+        if removed is not None and g["failed"] and set(g["failed"]) <= set(bv.CONTEXT_GATES):
+            for k in g["failed"]:
+                removed.setdefault(k, []).append(m["ticker"])
         if not g["ok"]:
             continue
         oi = bv.order_inputs(bars, D, g["adr20"])        # the two order-score inputs, bars <= D (passing names only)
@@ -227,7 +237,7 @@ def format_list_message(today: date, rows: list) -> Optional[str]:
 def _new_out(today: date) -> dict:
     return {"date": today.isoformat(), "skipped": None, "timed_out": False, "error": None,
             "prefilter_tickers": 0, "bad_bars": 0, "universe_n": 0, "listable_n": 0, "evaluated": 0, "passing": 0, "written": 0,
-            "counts": {}, "gate_fails": {}, "funds_kept": 0, "funds_excluded": 0, "funds_excluded_no_name": 0,
+            "counts": {}, "gate_fails": {}, "context_removed_n": {}, "context_removed": {}, "funds_kept": 0, "funds_excluded": 0, "funds_excluded_no_name": 0,
             "fund_kept_tickers": [], "fund_excluded_tickers": {}, "message": "not_needed", "wall_s": 0.0}
 
 
@@ -272,15 +282,17 @@ async def _run(today: date, out: dict) -> list:
 
     rs_best, _, _, _ = cb.cross_section_one_date([m["r21"] for m in members], [m["r63"] for m in members],
                                                  [m["r126"] for m in members], [None] * len(members))
-    list_rows, fails, n_eval = [], Counter(), 0
+    list_rows, fails, n_eval, removed = [], Counter(), 0, {}
     for lo in range(0, len(members), SCAN_CHUNK):
         r_, f_, e_ = await asyncio.to_thread(evaluate_members, members[lo:lo + SCAN_CHUNK],
-                                             rs_best[lo:lo + SCAN_CHUNK], today)
+                                             rs_best[lo:lo + SCAN_CHUNK], today, removed)
         list_rows.extend(r_)
         fails.update(f_)
         n_eval += e_
     rank_rows(list_rows)
     out["evaluated"], out["passing"], out["gate_fails"] = n_eval, len(list_rows), dict(fails)
+    out["context_removed_n"] = {k: len(v) for k, v in removed.items()}
+    out["context_removed"] = {k: sorted(v)[:CONTEXT_REMOVED_LIST_MAX] for k, v in removed.items()}
     out["written"] = await bv1_replace_list(today, list_rows)
     out["tickers"] = [r["ticker"] for r in list_rows]
     return list_rows
