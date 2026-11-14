@@ -43,6 +43,11 @@ THE LIST RULES, at the watch night D (every measure on bars <= D; the breakout d
   from Qullamaggie's words and the operator's reads, pre-registered and scored in
   `docs/analysis/cb_shape_gates_2026-11-11.md`. The score FAILED its bar, so `ENFORCED_SHAPE_GATES` is EMPTY and the
   list is these seven rules only; the function is the measured, tested starting point for the next definition.
+  CONTEXT GATES (OPERATOR-SIGNED 2026-11-14, `context_gates`, `CONTEXT_GATES`; section 2a): out when
+  sma50_falling_under  the close is more than 3% under the 50-day SMA AND the 50-day is lower than 10 sessions ago
+  downtrend_6m         the 50-day is lower than 10 sessions ago AND the 126-session return is negative
+  lower_line           the re-widening swing V3 > 0.2123 of the 189-session chart height AND the 30-session lower line
+                       is flat or falling (>= 189 bars; fewer = "insufficient_history", passes)
 And on E (`breakout_triggered`): high(E) > the LEVEL = the highest high of D-4..D (strict) and volume(E) >= the VOLUME
 BAR = 1.2 x the mean volume of D-9..D — the LAST 10 SESSIONS (his ruling 2026-11-02, "Yes"; was the 50-day).
 
@@ -335,7 +340,7 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
     g["history"] = {"pass": hist, "value": {"bars_to_d": D + 1, "need": MIN_BARS,
                                             "consecutive": None if cidx is None else hist}}
     if not hist:
-        for k in GATES[1:]:
+        for k in GATES[1:] + CONTEXT_GATES:
             g[k] = {"pass": None, "value": None}
         out["ok"], out["failed"] = False, ["history"]
         return out
@@ -412,6 +417,13 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
                adr20=adr_d, pole_idx=int(P), pole_date=str(bars.dates[P]), pole_high=pole_high,
                prior_move=_f(prior), base_low=base_low)
     out["failed"] = [k for k in GATES if not g[k]["pass"]]
+    # the three CONTEXT checks (operator-signed 2026-11-14): evaluated on every name, never short-circuited, so the
+    # night's per-gate counts say which check took a name off; they read only bars <= D and touch no gate above
+    cg = context_gates(bars, D, adr20=adr_d)
+    for k in CONTEXT_GATES:
+        g[k] = cg[k]
+        if not cg[k]["pass"]:
+            out["failed"].append(k)
     if ENFORCED_SHAPE_GATES:                                 # empty today: no shape gate acts on the list
         sg = shape_gates(bars, D, P=int(P), adr20=adr_d)
         for k in ENFORCED_SHAPE_GATES:
@@ -419,6 +431,176 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
             if not sg[k]["pass"]:
                 out["failed"].append(k)
     out["ok"] = not out["failed"]
+    return out
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 2a. The CONTEXT checks (OPERATOR-SIGNED 2026-11-14, "ok, let's build it today"; SSoT change log 2026-11-14)
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# Three list gates from his reads of the 2026-11-14 sheets: a long decline under a falling 50-day is not a setup, and a
+# wide base that keeps re-widening while its lows go nowhere (MELI 2018-09-17, TDOC 2020-03-19) is not one either.
+# Ported from the research, each measure on bars <= D, BY ROW (the research's bar store has no calendar holes test):
+#   sma50_falling_under  scripts/probes/_717_reasons_1114/02_score.py check 1d (u50 < -0.03 and s50_chg10 < 0), the
+#                        measures of _717_reasons_1114/01_measure.py::reason_measures
+#   downtrend_6m         scripts/probes/_717_context_1114/02_score.py A2 read over 10 sessions (03_posthoc.py, the stack
+#                        05_sheet.py applies): s50_chg10 < 0 and ret126 < 0 (its sizing gave T = 0.0); ret126 =
+#                        ctx.ret126_of / _717_rank_1114/01_trend.py
+#   lower_line           scripts/probes/_717_lowline_1114/ll.py: V3 > the line and lowslope(30) <= 0 with >= 189 bars;
+#                        V3 = _717_contract_1114/swings/v3m.py, the swings = sw.py, lowslope = 04_lowline.py
+# A blank measure PASSES (the research's NaN-passes convention for these three); the value records why.
+CONTEXT_GATES = ("sma50_falling_under", "downtrend_6m", "lower_line")
+CTX_SMA_SESSIONS = 50                # the 50-day SMA (the mean of the 50 closes ending the session)
+CTX_SMA_FALL_SESSIONS = 10           # "falling" = the 50-day lower than 10 sessions earlier
+CTX_UNDER_SMA50_MAX = -0.03          # sma50_falling_under: close(D) / SMA50(D) - 1 < -3%
+CTX_RET_SESSIONS = 126               # downtrend_6m: close(D) / close(D-126) - 1 < 0 ...
+CTX_RET_MIN_BARS = 120               # ... the earliest bar when 120..126 bars exist; fewer = blank (passes)
+CTX_RET_MAX = 0.0
+SWING_K = 3                          # a swing high / low = the extreme of the 3 bars either side (sw.K)
+SWING_LOOK = 60                      # the base the eye reads: the last 60 sessions (sw.LOOK)
+CHART_SESSIONS = 189                 # chart height = max high - min low (log) over the last 189 sessions (sw.CHART)
+CTX_WINDOW = 200                     # the research's window: the last 200 bars ending D (ll / 01_capture.py W)
+LOWER_LINE_SESSIONS = 30             # the lower line: the swing lows of the last 30 sessions (ll.N_LOW)
+# The V3 line = the re-widening swing of MU 2021-12-21 (a High-tier Qullamaggie buy; V3 0.21229655), the loosest line
+# that flags no must-keep buy with a flat or falling lower line (04_lowline.py's W); STRICT >, so MU itself stays.
+LOWER_LINE_V3_MIN = 0.2123
+LOWER_LINE_SLOPE_MAX = 0.0           # lower line flat or falling (slope <= 0) ...
+LOWER_LINE_MIN_BARS = 189            # ... scored only with >= 189 bars; fewer = "insufficient_history" (passes)
+
+
+def swing_pivots(h: np.ndarray, l: np.ndarray, k: int = SWING_K) -> list:
+    """Alternating fractal swing points [(i, price, +1 high / -1 low)], confirmed only (k bars after each) — sw.pivots
+    verbatim. An outside bar is both, ordered to alternate with the last point; two highs in a row keep the higher,
+    two lows the lower."""
+    n = len(h)
+    ev = []
+    for i in range(k, n - k):
+        hi = h[i] >= h[i - k:i + k + 1].max()
+        lo = l[i] <= l[i - k:i + k + 1].min()
+        if hi and lo:
+            last = ev[-1][2] if ev else 0
+            ev += [(i, l[i], -1), (i, h[i], 1)] if last == 1 else [(i, h[i], 1), (i, l[i], -1)]
+        elif hi:
+            ev.append((i, h[i], 1))
+        elif lo:
+            ev.append((i, l[i], -1))
+    out: list = []
+    for p in ev:
+        if out and out[-1][2] == p[2]:
+            if (p[2] == 1 and p[1] > out[-1][1]) or (p[2] == -1 and p[1] < out[-1][1]):
+                out[-1] = p
+        else:
+            out.append(p)
+    return out
+
+
+def swing_legs(h: np.ndarray, l: np.ndarray, k: int = SWING_K) -> tuple:
+    """(swing sizes oldest -> newest, the pivots) — sw.legs verbatim. The LAST leg = the move from the last confirmed
+    pivot to the extreme of the bars since it (a tight right side is a small final swing, never vanishes)."""
+    p = swing_pivots(h, l, k)
+    if not p:
+        return np.zeros(0), p
+    a = [abs(p[j + 1][1] - p[j][1]) for j in range(len(p) - 1)]
+    i0, v0, t0 = p[-1]
+    after = slice(i0 + 1, len(h))
+    a.append(max(0.0, (v0 - l[after].min()) if t0 == 1 else (h[after].max() - v0)) if i0 + 1 < len(h) else 0.0)
+    return np.asarray(a), p
+
+
+def _log_window(bars: "cb.DailyBars", D: int) -> tuple:
+    """(log highs, log lows) of the research window — the last `CTX_WINDOW` bars ending D, the bars with a finite log
+    high and low only (ll.measure / v3m.v3's `ok` mask)."""
+    a = max(0, D - CTX_WINDOW + 1)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        h = np.log(np.asarray(bars.h[a:D + 1], dtype=np.float64))
+        l = np.log(np.asarray(bars.l[a:D + 1], dtype=np.float64))
+    ok = np.isfinite(h) & np.isfinite(l)
+    return h[ok], l[ok]
+
+
+def rewiden_v3(hh: np.ndarray, ll: np.ndarray) -> float:
+    """V3 (v3m.v3 verbatim) on log highs / lows ending D: in the last `SWING_LOOK` sessions' swings, after the
+    biggest confirmed swing B, the largest smaller-of-a-pair of consecutive swings that is bigger than a swing already
+    seen since B (the swings shrank and then widened again), as a fraction of the chart height (the last
+    `CHART_SESSIONS`). 0 when it never re-widens or there are fewer than 2 swings; NaN under `SWING_LOOK` bars."""
+    if len(hh) < SWING_LOOK:
+        return float("nan")
+    chart = hh[-CHART_SESSIONS:].max() - ll[-CHART_SESSIONS:].min()
+    a, _ = swing_legs(hh[-SWING_LOOK:], ll[-SWING_LOOK:])
+    if len(a) < 2:
+        return 0.0
+    b = int(np.argmax(a[:-1]))
+    s = 0.0
+    for j in range(b + 2, len(a) - 1):
+        m = min(a[j], a[j + 1])
+        if m > a[b + 1:j].min():
+            s = max(s, m)
+    return float(s / chart)
+
+
+def lower_line_slope(hh: np.ndarray, ll: np.ndarray, n: int = LOWER_LINE_SESSIONS) -> float:
+    """lowslope (04_lowline.py / ll.py verbatim) on log highs / lows ending D: a least-squares line through the
+    confirmed swing lows of the last `n` sessions plus the lowest low of the bars after the last confirmed pivot;
+    slope per 10 sessions as a fraction of the chart height. 0.0 (flat) with fewer than 2 points; NaN under
+    max(n, 60) bars."""
+    if len(hh) < max(n, 60):
+        return float("nan")
+    chart = hh[-CHART_SESSIONS:].max() - ll[-CHART_SESSIONS:].min()
+    H, L = hh[-n:], ll[-n:]
+    p = swing_pivots(H, L)
+    pts = [(i, v) for i, v, t in p if t == -1]
+    last = p[-1][0] if p else -1
+    if last + 1 < n:
+        j = last + 1 + int(np.argmin(L[last + 1:]))
+        pts.append((j, L[j]))
+    if len(pts) < 2:
+        return 0.0
+    x = np.array([q[0] for q in pts], float)
+    y = np.array([q[1] for q in pts])
+    return float(np.polyfit(x, y, 1)[0] * 10 / chart)
+
+
+def ret126_at(c: np.ndarray, D: int) -> Optional[float]:
+    """close(D) / close(D-126) - 1 on the bars ending D; the earliest bar when 120..126 exist; None under 120
+    (ctx.ret126_of / 01_trend.py::meas)."""
+    x = np.asarray(c[:D + 1], dtype=float)
+    x = x[~np.isnan(x)]
+    if len(x) < CTX_RET_MIN_BARS:
+        return None
+    return _f(x[-1] / (x[-(CTX_RET_SESSIONS + 1)] if len(x) >= CTX_RET_SESSIONS + 1 else x[0]) - 1)
+
+
+def context_gates(bars: "cb.DailyBars", D: int, *, adr20: Optional[float]) -> dict:
+    """The three CONTEXT gates at night D, {name: {"pass", "value"}} (bars <= D). `adr20` = ADR20(D) as `v1_gates`
+    measures it; it scales the 50-day's change (the research's s50_chg10, in daily ranges), so only its SIGN acts — a
+    missing or non-positive ADR leaves the change blank and both 50-day checks pass."""
+    c = np.asarray(bars.c[:D + 1], dtype=float)
+
+    def sma(i: int) -> float:
+        return float(c[i - CTX_SMA_SESSIONS + 1:i + 1].mean()) if i >= CTX_SMA_SESSIONS - 1 else float("nan")
+    s50, s50_prev = sma(D), sma(D - CTX_SMA_FALL_SESSIONS)
+    u50 = c[D] / s50 - 1.0 if s50 == s50 else float("nan")
+    adr_ok = adr20 is not None and math.isfinite(adr20) and adr20 > 0
+    chg10 = (s50 / s50_prev - 1.0) / adr20 if (adr_ok and s50_prev == s50_prev) else float("nan")
+    falling = bool(chg10 < 0)
+    out = {}
+    out["sma50_falling_under"] = {
+        "pass": not (bool(u50 < CTX_UNDER_SMA50_MAX) and falling),
+        "value": {"u50": _f(u50), "sma50": _f(s50), "sma50_10_before": _f(s50_prev), "s50_chg10_adr": _f(chg10),
+                  "under_max": CTX_UNDER_SMA50_MAX}}
+    r126 = ret126_at(c, D)
+    out["downtrend_6m"] = {
+        "pass": not (falling and r126 is not None and r126 < CTX_RET_MAX),
+        "value": {"ret126": r126, "s50_chg10_adr": _f(chg10), "ret_max": CTX_RET_MAX}}
+    hh, ll = _log_window(bars, D)
+    nb = int(len(hh))
+    v3 = rewiden_v3(hh, ll)
+    slope = lower_line_slope(hh, ll)
+    scored = nb >= LOWER_LINE_MIN_BARS
+    out["lower_line"] = {
+        "pass": not (scored and bool(v3 > LOWER_LINE_V3_MIN) and bool(slope <= LOWER_LINE_SLOPE_MAX)),
+        "value": {"v3": _f(v3), "slope30": _f(slope), "bars": nb,
+                  "status": "scored" if scored else "insufficient_history", "need_bars": LOWER_LINE_MIN_BARS,
+                  "v3_min": LOWER_LINE_V3_MIN, "slope_max": LOWER_LINE_SLOPE_MAX}}
     return out
 
 

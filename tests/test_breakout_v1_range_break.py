@@ -73,6 +73,11 @@ def _key(r):
     return (r["ticker"], r["E"])
 
 
+def _pre(g):
+    """The failed gates before the 2026-11-14 context checks (set aside)."""
+    return [k for k in g["failed"] if k not in bv.CONTEXT_GATES]
+
+
 # High-tier buys the list holds whose break day is under the 2026-11-02 volume bar (1.2x the last 10 sessions) — they
 # FIRE since his 2026-11-11 "drop it" (volume is recorded, not required).
 VOLUME_MISSES = {("LVGO", "2020-09-25")}      # (AMD 01-17 and AVLR 01-02 are now dropped by the 4% daily-range floor)
@@ -88,7 +93,7 @@ def test_the_56_listable_high_confidence_qullamaggie_buys_are_listed_the_night_b
         if _key(r) in FLOOR_LOSSES:
             continue
         if _key(r) in ADR_DROPS:
-            assert g["failed"] == ["adr"], (_key(r), g["failed"])          # only the 4% floor stops it
+            assert _pre(g) == ["adr"], (_key(r), g["failed"])              # only the 4% floor stops it (before 11-14)
             continue
         assert g["ok"] is True and g["failed"] == [], (_key(r), g["failed"])
         # the range high is the rated buy point (ratings.tsv keeps 4 significant figures); the level is never above it
@@ -110,10 +115,18 @@ def test_the_56_listable_high_confidence_qullamaggie_buys_are_listed_the_night_b
 
 
 def test_the_five_buys_the_unchanged_floors_cost_are_named_with_the_floor_that_stops_each(high_tier):
-    got = {_key(r): g["failed"] for r, _, _, g in high_tier if not g["ok"]}
+    got = {_key(r): _pre(g) for r, _, _, g in high_tier if not g["ok"]}
     assert {k: v for k, v in got.items() if v != ["adr"]} == FLOOR_LOSSES
     assert {k for k, v in got.items() if v == ["adr"]} == set(ADR_DROPS)
     assert (bv.MIN_PRICE, bv.MIN_DOLLAR_VOL, bv.MIN_BARS, bv.ADR_MIN) == (2.0, 5_000_000.0, 86, 0.04)   # not moved
+
+
+def test_the_2026_11_14_context_checks_take_no_high_confidence_buy_off_the_list(high_tier):
+    """The three context checks (operator-signed 2026-11-14) act on ONE of the 84 High-tier buys — PBR 2019-10-22
+    (the 6-month downtrend), already off the list by the 4% floor. All 56 listable High buys stay listed."""
+    ctx = {_key(r): [k for k in g["failed"] if k in bv.CONTEXT_GATES] for r, _, _, g in high_tier}
+    assert {k: v for k, v in ctx.items() if v} == {("PBR", "2019-10-22"): ["downtrend_6m"]}
+    assert ("PBR", "2019-10-22") in ADR_DROPS
 
 
 def _base(n=160, top=20.0):
