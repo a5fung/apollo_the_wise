@@ -86,6 +86,10 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
 >   falling with a negative 6-month return, or when its base keeps re-widening while the 30-session lower line is flat
 >   or falling. Change log 2026-11-14 below.
 > - Unchanged: $2, $5M, 86 sessions, strength 35, stop, sizing, exits, slots, the order score.
+> - **⚠ 2026-11-14: SLOTS ON AN ACTUAL BREAK** — a name takes a paper slot and gets its order only in a minute where
+>   it has broken its level — traded THROUGH it (a touch is no break), read from the last 2 completed minutes; no buy
+>   rests ahead of a break (change log 2026-11-14 below). The slot count (5), the
+>   rank order among names breaking in the same minute and hold-only are unchanged.
 
 | # | Rule | Value | Source | Code |
 |---|---|---|---|---|
@@ -116,10 +120,26 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
   2026-11-07 (stage 2), no `/bgrade` line (his 2026-11-05 word: grades come from chart sheets shown in chat); bare
   `/bgrade` still shows the newest night's top 10 ungraded + the total and per-night ungraded counts (the command stays
   as the catch-up path).
-- **The entry at 150-350 names (stage 2, 2026-11-07; change log below):** the minute job reads every name's bars in ONE
-  batched fetch, takes the paper slots in LIST RANK order (hold-only; the overflow waits for a slot the same session,
-  judged at that minute's price) and records, at 15:55, every name that BROKE OUT while held and never got a slot
-  (`breakout_v1_missed_by_slots`, with the first break minute — the level reached with the volume pace held, the live tick's own check).
+- **The entry at 150-350 names (stage 2, 2026-11-07; SLOTS ON AN ACTUAL BREAK, 2026-11-14; change log below):** the
+  minute job reads every name's bars in ONE batched fetch. **A name takes a paper slot — goes to the entry funnel and
+  gets an order — only in a minute where it has ACTUALLY BROKEN its level: the high of one of its last 2 completed
+  minute bars is THROUGH the level — strictly above it; a bar that only touches the level is no break**
+  (`breakout_v1_entry.break_this_minute` = `first_break` on those minutes, the newest first; the volume
+  pace is recorded, not a gate; an opening-range minute never counts, so the 09:35 run places nothing and the
+  earliest order is the 09:36 run). Before a break there is no order, no trade row and no slot used. Names breaking
+  in the same minute take the free slots in LIST RANK order; hold-only (a placed buy or a position keeps its slot);
+  a name that broke with the book full is held (`slots_full`) and seats in the first later minute that again reads
+  a break for it with a slot free, judged at that minute's price; at 15:55 every name that BROKE OUT with no free
+  slot and never got one — no order was ever placed for it: no trade row, a skipped one, or one cancelled `setup:*`
+  before any order (the chase cap) — is recorded (`breakout_v1_missed_by_slots`, with its break minute). **The order at the
+  break** is the unchanged entry spec: the latest trade at or under the level (it broke and came back) -> the
+  stop-limit at the level, which rests with its slot (the ask above the level while the last trade is not: the
+  venue kills that stop-limit unless his `entry_ask_aware` toggle is on — the row is cancelled `broker:*`, terminal
+  for the day); the latest trade above the level -> a limit buy at latest x 1.002 (the #500 submit), placed only
+  when the stop is no wider than ADR20 at that price (else a terminal
+  `setup:stop_too_wide` skip) and the risk per share is within 1.5x the planned (else the row is cancelled
+  `setup:chase_cap_exceeded`, terminal for the day, with `submit_entry`'s "No entry" Telegram). No chasing beyond
+  that.
 - **Acceptance:** `tests/test_breakout_v2_stage1.py` on `tests/fixtures/qm_breakout_scorecard/` (the scorecard below).
   The context gates (rows 8-10): `tests/test_breakout_v1_context_gates.py` — his cases, parity with the research code
   on every scorecard series, and every existing gate unchanged against a pre-change baseline.
@@ -353,6 +373,26 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 (`max_positions`) with the EP lanes. None of it is touched by this build.
 
 ## Known limitations / open questions
+- **Breakout v1's order is placed AFTER the break minute completes (since 2026-11-14, slots on an actual break; paper
+  OFF).** The minute job reads a break from the last 2 completed minute bars, at second 10 of each minute:
+  (a) the order goes in 10-70 seconds after the level first trades — **the first break no longer fills AT the
+  level** as the resting stop-limit did and as `cb`'s `orh5` (the shadow, the replays, the 2026-10-30 part A parity)
+  assumes: it is priced by the #500 submit — a limit at
+  latest x 1.002 when the price is above the level, sized on (level - stop) so the dollar risk can be up to 1.5x the
+  planned (the chase cap), or the stop-limit at the level when price came back under it (a resting buy, with its
+  slot, on a name that has broken once today); (b) a break that runs past the band in its first minute is a
+  terminal skip / cancel for the day (`setup:stop_too_wide`, `setup:chase_cap_exceeded` — the latter sends
+  `submit_entry`'s Telegram, so it is no longer rare) — whether such a name should be retried later the same day is
+  NOT decided (his call; #720's review can count them from the skip rows); (c) a break is seen by the two runs that read it as one of the last 2 completed minutes — a
+  minute bar published after second 10, a minute whose bars request failed or whose batch was still in flight, a run
+  skipped whole (the broker or the strategy row unreadable, an overrun) is caught by the NEXT run (one
+  `breakout_v1_break_lookback` audit row; the order is priced at that later minute); only TWO such runs in a row
+  lose it, and that name then waits for its next minute through the level. The lookback also means a slot that
+  frees in the minute after a held name's break seats it even if it is back under the level by then (the stop-limit
+  then rests, as after any break-and-return); and the bar is the configured feed's (`ALPACA_DATA_FEED`,
+  `iex` by default), so a level traded only on a venue outside that feed is not a break here; (d) a name already too wide before it breaks (level - day low > ADR20) still
+  abstains for the day at that minute, as before. None of these is measured on minute bars yet — the first paper
+  sessions' `breakout_v1_entry_order` rows (they carry `break_minute` / `break_high`) and the skip rows are the read.
 - **Breakout v1's list tests no SHAPE (open since 2026-11-10; #717).** The first paper session bought five charts he
   said were not breakouts (no higher lows, no price surfing a rising 10/21-day). The shape rules removed on 11-02 are
   being rewritten from Qullamaggie's words and his reads as list gates: pre-registered and scored in
@@ -395,7 +435,9 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   negatives the next rule is judged on) and MRNA / INO 2020-08-07 ("breaking down") still pass; (b) it holds **~250 names a
   night** and the order score separates his yes from his no only 70% of the time — of his firing buys only 52 of 156 rank in
   their day's top 5 (stage 0); the slot RULES are his 2026-11-06 rulings (hold-only, the overflow waits the same session,
-  the count stays 5 shared with the small-cap lane) and every name that broke out while held for a slot and never got
+  the count stays 5 shared with the small-cap lane) plus, since 2026-11-14, a slot only on an actual break (the top
+  5 no longer hold the slots with resting buys — rank now decides only among names breaking in the same minute) and
+  every name that broke out with no free slot and never got
   one is recorded for #720's monthly review (`breakout_v1_missed_by_slots`) — whether the slot count or the order
   should change is that review's question; (c) CLOSED 2026-11-07 (stage 2, change log below): the entry job reads the list in one batched
   fetch per minute (≤ 14 requests at 350 names) and fills the slots by the score; the paper switch stays off until his
@@ -499,9 +541,33 @@ BOTH more than 3% under AND a falling 50-day (his "not price vs the 50-day on on
 Reverting: drop the three names from `CONTEXT_GATES` (an empty tuple restores the 2026-11-12 list exactly; the baseline test
 proves the rest is untouched).
 
-**Status**: BUILT on a branch (#717), NOT merged, NOT deployed; `breakout_v1_paper` stays OFF. His notes of 2026-11-14 and
+**Status**: MERGED to main 2026-11-14 with the slots change below; deploy market-agent (the list) the same day; `breakout_v1_paper` stays OFF. His notes of 2026-11-14 and
 the research dirs `_717_lowline_1114/`, `_717_contract_1114/`, `_717_wideloose_1114/` live in the main checkout and are
 committed separately (the tests vendor the research code; they read nothing from the main checkout or `apollo_data`).
+
+### 2026-11-14 — breakout v1: SLOTS ON AN ACTUAL BREAK — an order is placed only once price breaks the level, no resting buys on the top 5 at 09:35 (OPERATOR-SIGNED 2026-11-14 "ok, let's build it today"; the PAPER lane only — the switch `breakout_v1_paper` stays OFF; built on a branch, not merged, not deployed)
+
+**Trigger**: the 11-07 slot rule took the names whose state PERMITTED a buy in list-rank order from 09:35, so the 5 paper slots went to 5 stop-limit buys RESTING at the level on the 5 best-ranked names — names that might never break — while a lower-ranked name that did break was held `slots_full` for the day. The rule is PLAN #717's "SAT 11-14 BUILD" item (b) — *slots taken only on an actual break (not resting buys on the top 5 at 09:35)* — which he signed 2026-11-14 with "ok, let's build it today". His note: `docs/methodology/operator_shared_notes.md`, the entry "2026-11-14 — SIGNED: the #717 rule changes (build today)" — row 5 of the sign-off table, *slots taken only on an actual break, not resting buys on the top 5 at 09:35*, signed with "ok, let's build it today"; paper stays OFF until his "paper on". (The row is the table's wording; his verbatim words are the quote.)
+
+**Evidence**: user judgment (his sign-off above) on a slot-allocation mechanism — no detection criterion, threshold, level, stop, size or exit moved, so CHANGE_PROCESS rule 1 (backtest of a threshold change) does not apply. Context already on file: at stage 0 the order score put only 52 of Qullamaggie's 156 firing buys in their day's top 5 (limitation (b) above), and the 2026-11-14 ranking comparison found no ranking that puts more of his buys in the daily top 5 than the baseline's 112 (`scripts/probes/_717_rank_1114/02_rank.out`, row R0) — the order alone does not put his buys in the top 5. NOT measured: how many more of his buys the new rule seats on minute bars, the fill prices after the break, or how often a break outruns the band (limitation above).
+
+**What changed** (code: `agents/market_intelligence/broker/breakout_v1_entry.py` — runs on apollo-execution): a name with no row today whose state permits a buy goes to the slots **only in a minute where it has actually broken its level** — `break_this_minute` (PURE) = `first_break` on the LAST completed minute alone: that bar's high at or through the level (`>=`, the stop-limit's own trigger — **superseded the same day: strictly through, `>`, and the last 2 completed minutes; review fixes below**), the volume pace recorded and not a gate (`VOLUME_PACE_GATE` stays False, his 11-11 ruling), and never an opening-range minute (with level = ORH5 the bar that set the range high equals it), so the 09:35 run places nothing and the earliest order is the 09:36 run on the 09:35 bar. Before a break: action `no_break` — no funnel call, no order, no trade row, no hold row, and the open count / pre-flight are not read. The names that broke in the same minute take the free slots in list-rank order; the rest are held `slots_full` (the hold row now carries `break_minute` / `break_high`) and seat in the first LATER minute whose last completed bar is again through the level with a slot free — a slot that frees while the name trades back under its level seats nothing (an earlier break does not carry over: no resting buy). The 15:55 missed-by-slots record now means **broke out but no free slot**: a hold is written only in a break minute, and `first_break` re-reads the break from the hold row's `break_minute` on (it searched from the hold tick's minute, which is now AFTER the break that caused the hold). The order audit row (`breakout_v1_entry_order`) carries `break_minute` / `break_high`.
+- **The order at the break — unchanged entry spec, stated:** the funnel + `order_manager.submit_entry` (#500) as before. Latest trade at or under the level (it broke and came back): the stop-limit at the level with the day-low stop, which then RESTS with its slot (re-priced on new lows, cancelled at 15:55, as before). **Latest trade at or under the level but the ASK above it** (a thin name sitting at its level — likelier now that the order is placed while price is AT the level than it was at 09:35): `submit_entry` reads the last trade only unless the `entry_ask_aware` toggle is on (default OFF, his switch), so the stop-limit is sent and the venue kills it (the #500 QNST / INSM class); the minute job leaves a broker kill alone (`dead_unplanned`), the trade stream marks the row `cancelled` with a `broker:*` reason and pages — terminal for the day, and (a row that had an order) not a missed-by-slots record. **Whether `entry_ask_aware` is turned on for paper is his decision — not made here.** Latest trade above the level: a stop-limit whose stop is already through is killed by Alpaca (#500), so `submit_entry` sends a LIMIT buy at latest x 1.002 with the stop — only if (latest x 1.002 − stop) ÷ (latest x 1.002) ≤ ADR20 (`width_at_expected_fill`; else the funnel writes a terminal `setup:stop_too_wide` skipped row) and (limit − stop) ≤ 1.5 x (level − stop) (`CHASE_RISK_INFLATION_CAP`; else the row is cancelled `setup:chase_cap_exceeded`, terminal for the day, and `submit_entry` sends its "No entry" Telegram). Shares are sized on (level − stop), so a fallback fill carries up to 1.5x the planned dollar risk — existing behaviour, now the common path. No chasing beyond those two existing bounds; nothing in `order_manager` or `entry_pipeline` changed.
+- **Kept exactly:** the width rule judged at that minute's price; hold-only (a placed / filled row keeps its slot; no displacement); the funnel `block:max_positions` / `block:strategy_position_cap` race holding the rest of the minute; `slots_count_unreadable`; the abstains (a name too wide BEFORE it breaks still abstains for the day at that minute); the stop rules (the day low until the fill, the stop at the fill); the 10:00 exclusion and the 15:55 / 16:05 cancels; the switch (`breakout_v1_paper` or `mi_strategies.enabled` OFF -> the tick returns before the bars read, no order); sizing, stops, exits, the cap of 5.
+- Tests (`tests/test_breakout_v1_entry.py` §10, 7 new): **WOULD-FAIL-IF — 7 listed names, none broken, at 09:35 and three later minutes: zero funnel calls, zero orders, zero hold rows, the open count not read (run against the pre-change module first: 5 funnel calls)**; a rank-6 name that breaks at 10:12 while ranks 1-5 never break gets the slot and the order at the 10:13 run; two names breaking in one minute with one free slot — the higher rank seats, the other is held and recorded missed-by-slots at its break minute when it never seats; a held name seats only in a later minute again through the level; `break_this_minute` PURE (not sticky, a missing last bar is no break, an opening-range bar is never one); switch OFF in a break minute places nothing and reads no bars. 23 existing tests that asserted an order / hold BEFORE any break (or, one, passed without reaching the slots) were moved to a break minute (22 in that file + `tests/test_715_open_below_floor.py::test_breakout_v1_hands_the_funnel_no_floor`; listed in the two commits). Full suite: 14,034 passed, 46 skipped, 1 xfailed.
+
+- **Review fixes (2026-11-14, same branch, before any merge — an adversarial review of the build above; where they differ from the text above, THESE rule):**
+  1. **A break = traded THROUGH the level, strictly above it** (`first_break`: bar high `>` level; the build read `>=`, so a bar that only TOUCHED the level took a slot). "An actual break" in his signed row, and the research reference reads it the same way (`consolidation_breakout.py`: `minutes.h > level`). One function, so the live slot decision and the 15:55 missed-by-slots record stay the same test. Not a threshold change: it is the build brought to the signed rule's own word.
+  2. **"Never got a slot" at 15:55 = no order was ever placed** (`_no_order_ever`): no trade row, a `skipped` row, or — new — a row `cancelled` with a `setup:*` reason and NO entry order on it: a held name whose later seat attempt `submit_entry` ended at the chase cap (`setup:chase_cap_exceeded`) was silently dropped from the record. A cancelled row that carries an entry order (a buy that rested and was cancelled, whatever the reason) had a slot and is still not recorded; nor is a `broker:*` kill. Not covered: the chase cap's post-retry branch writes `order_failed` (a submit that raised, then the cap on the retry) — still not recorded; and a re-priced buy whose tick crashed between the cancel and the re-submit and is then cancelled `setup:*` carries no entry order and WOULD be recorded although it had rested (a crash-only path).
+  3. **A 2-minute lookback** (`BREAK_LOOKBACK_MINUTES = 2`, `break_this_minute`): the name counts as broken at a run if either of the last 2 completed minutes (never an opening-range minute) traded through the level — a break visible in one bar only was lost for good, silently, when that run's read was late or failed. The order is still decided by the unchanged `submit_entry` rules at the CURRENT price (width, chase cap). When only the lookback minute carried the break and no earlier run had read it: one `breakout_v1_break_lookback` audit row (name, break minute, the run that read it). **Side effect, stated:** a held name is judged for a seat in the break run and the run after it, so a slot freeing in that second run seats it even when the last bar is back under the level (a stop-limit then rests with the slot — a name that has broken, as after any break-and-return); "an earlier break does not carry over" above now means a break older than 2 minutes.
+  4. The Trigger cites his note (it was written after the build started).
+  - Tests (§10, +5 new, 5 existing re-pinned): ORH5 = 10.00 with a 09:35 high of exactly 10.00 -> `no_break`, no order; 10.01 -> the break; the 15:55 record ignores a touch; the chase-cap-cancelled held name is recorded and three rows that had an order / a broker kill are not; a break bar absent at the next run is entered by the run after with ONE lookback row, a failed read likewise, a break 3 minutes back is never read; the lookback never reads an opening-range bar, and a break read on time writes no lookback row and no second hold row. Each new test fails against the pre-fix module. Full suite after the fixes (rebased onto local main `f550c32c`): 14,038 passed, 46 skipped, 1 xfailed, 1 failed — `tests/test_681_one_reader_per_env_flag.py::test_the_remaining_hand_rolled_comparisons_are_not_booleans`, which fails identically without these changes (a probe on main, `scripts/probes/_717_contract_1114/thirds/01_thirds.py`, reads an env var `REV` by hand); not touched here.
+
+**Anticipated effect**: DARK while `breakout_v1_paper` is off (the tick returns `switched_off` before the bars read — no behaviour change in production until he turns it on). Once on: at 09:35 **0** breakout orders and 0 `slots_full` rows (was up to 5 resting buys + a hold row for every other buyable name, ~100+ at a 150-350 list); `breakout_v1_entry_order` rows appear only in a minute after a name's bar reached its level, each carrying `break_minute`; open breakout `order_placed` rows at any minute ≤ the names that have broken so far (was 5 from 09:35 on any day with 5 buyable names); `slots_full` hold rows only on days when more names break than slots are free, and every `breakout_v1_missed_by_slots` row's `minute` is one before its `hold_minute` or later; more entries via the #500 limit (`entry_type` limit, fill above the level) than via a resting stop-limit; **more `setup:stop_too_wide` skips and `setup:chase_cap_exceeded` cancels on fast breaks, the latter each with a Telegram** (unintended-but-expected; counted from the skip rows). WOULD-FAIL-IF: any breakout `order_placed` row whose ticker's minute bars show no high ABOVE its level in the two minutes before the order time. (Review fixes: a `breakout_v1_break_lookback` row only on a run whose predecessor missed the bar — expected rare; a steady stream of them means the bars are publishing after second 10.)
+
+**Reversion-flag**: REFINEMENT of the 2026-11-07 stage-2 slot rule (same 5 shared slots, same list-rank order, hold-only, the overflow still waits the same session — what changed is WHEN a name may take a slot: on its break, not from 09:35 on a permitted state). It also overrules two MECHANICS of the 2026-10-30 part A build (listed there as "readings the build had to make … each can be overruled", not his rules): the buy placed as a stop-limit RESTING at the level from the first minute its state permits (the live image of `orh5`'s fill at the level), and reading 8, "a resting unfilled buy holds a paper slot all day" — a buy now rests only after its name has broken once (the order placed, price back under the level). The entry `orh5` itself (his ruling: the level = max(ORH5, list level), regular hours, the day-low stop, the 1 ADR20 abstain) is unchanged; the live FILL on a first break is now above the level where `orh5` books the level. His 2026-11-06 rulings stand; the 11-07 "track what we miss" record keeps its meaning (a name that met the break and never got a slot) and loses its false negatives' cause (slots held by names that never broke). Revert = drop the `break_this_minute` check in PASS 1 of `run_breakout_v1_entry_tick`.
+
+**Status**: built 2026-11-14 on branch `worktree-wf_c151b167-0ab-2`; MERGED to main 2026-11-14, deployed with `deploy.sh execution` the same day (a `broker/` change); paper OFF. Field validation = the first paper sessions after his word to turn the switch on.
 
 ### 2026-11-12 — breakout v1: ADR floor 2.1% → 4% (OPERATOR-SIGNED "aligned", 2026-11-12; paper still OFF; not deployed)
 

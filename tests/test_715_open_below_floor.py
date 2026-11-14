@@ -233,9 +233,10 @@ async def test_the_small_cap_paper_lane_hands_the_funnel_no_floor(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_breakout_v1_hands_the_funnel_no_floor(monkeypatch):
-    """BEHAVIOUR (the breakout v1 World): its 09:35 tick names neither floor."""
-    from tests.test_breakout_v1_entry import World
-    w = World(monkeypatch)
+    """BEHAVIOUR (the breakout v1 World): its tick names neither floor. 2026-11-14 (slots on an actual break): the
+    09:36 tick on a name through its level in the 09:35 minute — the 09:35 tick no longer orders an unbroken name."""
+    from tests.test_breakout_v1_entry import World, _broke_bars
+    w = World(monkeypatch, at=(9, 36), bars={"BRKO": _broke_bars()})
     out = await w.tick()
     assert out["actions"] == {"BRKO": ep.ACTION_AUTO_ENTERED}
     kw = w.funnel.await_args.kwargs

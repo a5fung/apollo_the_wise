@@ -46,25 +46,53 @@ THE LIST AT 150-350 NAMES (#717 stage 2, 2026-11-07; design `docs/design/717_sta
     ends that tick's read, and every tick until it returns SKIPS its batch (`breakout_v1_bars_batch_in_flight`, one
     row per tick, nothing submitted behind the stuck page) — a hung endpoint never holds more than that one thread.
     3 straight ticks with unread names, for either reason, page once a day.
-  * THE SLOTS (his rulings 2026-11-06, "Go with rec, track what we miss"): the 5 paper slots are shared with every paper
-    strategy (F2). Each minute, after the existing rows are managed, the names whose state permits a buy are taken in
-    LIST RANK order (the night's order score, rank 1 first): the first `free` = 5 - the funnel's own open count
+  * THE SLOTS (his rulings 2026-11-06, "Go with rec, track what we miss"; SLOTS ON AN ACTUAL BREAK, operator-signed
+    2026-11-14): the 5 paper slots are shared with every paper strategy (F2). A name takes a slot — goes to the funnel
+    and gets an order — ONLY IN A MINUTE WHERE IT HAS ACTUALLY BROKEN ITS LEVEL: the high of one of its last
+    `BREAK_LOOKBACK_MINUTES` (2) completed minute bars is THROUGH the level — strictly above it; a bar that only
+    touches the level is not a break (review 2026-11-14 finding 1; the research reference `consolidation_breakout`
+    reads `minutes.h > level` too) — (`break_this_minute` = `first_break` on those minutes, the newest first; never an
+    opening-range minute, so the 09:35 tick places nothing and the earliest order is the 09:36 tick, on the 09:35
+    bar). Before a break: no order, no trade row, no slot used, no hold row (action `no_break`) — it was 5 buys
+    RESTING at the level from 09:35 on the 5 best-ranked names, which could sit all day on names that never broke
+    while a lower-ranked name that did break was held. Each minute, after the existing rows are managed, the names
+    that broke in the last completed minute are taken in LIST RANK order (the night's order score, rank 1 first):
+    the first `free` = 5 - the funnel's own open count
     (`live_tracker.count_open_positions`, every paper strategy's filled / order_placed / confirmed rows; the smaller of
     that and the breakout row's own `max_concurrent_positions` when one is set — NULL today) go to the funnel (whose
-    advisory-locked recount still rules); the rest are HELD — one `breakout_v1_entry_hold` row (state `slots_full`)
-    and NO trade row, so they are retried every minute until a slot frees, judged at THAT minute's price by the
-    existing width rule. HOLD-ONLY: a resting lower-ranked buy keeps its slot (no displacement — a one-function add on
-    his word). A funnel `block:max_positions` / `block:strategy_position_cap` on one name (a same-moment entry
+    advisory-locked recount still rules); the rest are HELD — one `breakout_v1_entry_hold` row (state `slots_full`,
+    carrying the break) and NO trade row; a held name is judged again every minute and seats in the first later
+    minute that again reads a break (one of its last 2 completed bars through the level) WITH a slot free, at THAT
+    minute's price by the existing width rule (a slot that frees later than the minute after its last bar through the
+    level seats nothing — no resting buy ahead of a break).
+    THE ORDER AT THE BREAK is the unchanged entry spec (`order_manager.submit_entry`, #500): the latest trade at or
+    under the level (it broke and came back) -> the stop-limit at the level, which then rests WITH its slot (if the
+    ASK is above the level while the last trade is not, the venue kills that stop-limit — the #500 QNST / INSM class —
+    unless the operator's `entry_ask_aware` toggle is on, default OFF: the trade stream then marks the row
+    `cancelled` with a `broker:*` reason and pages; terminal for the day, not a missed record); the
+    latest trade above the level -> a limit buy at latest x 1.002, placed only when the width rule holds at that
+    price (else a terminal `setup:stop_too_wide` skip) and the risk is within the 1.5x chase cap (else the row is
+    cancelled `setup:chase_cap_exceeded`, terminal, and `submit_entry` sends its "No entry" Telegram) — no chasing
+    beyond that. THE LOOKBACK (review 2026-11-14 finding 3): a break is read from the last 2 completed minutes, so a
+    bar that publishes after the tick's read (second 10), or a tick whose read failed or was skipped, is still seen
+    by the next tick — the order is then decided by the same `submit_entry` rules at THAT tick's price; when only
+    the lookback minute carried the break and no earlier tick had read it, one `breakout_v1_break_lookback` audit row
+    says so. Two straight ticks without the bar still lose the break. HOLD-ONLY: a placed lower-ranked buy keeps its slot (no displacement — a
+    one-function add on his word).
+    A funnel `block:max_positions` / `block:strategy_position_cap` on one name (a same-moment entry
     elsewhere, the disclosed race) holds the rest of the minute's names instead of sending each to a terminal skip,
     and holds that name too (its skipped row is terminal, so only a hold row lets 15:55 record it). An open count that
-    cannot be READ holds every eligible name under its own state (`slots_count_unreadable`) — never a missed record.
+    cannot be READ holds every name that broke that minute under its own state (`slots_count_unreadable`) — never a
+    missed record.
   * TRACK WHAT WE MISS (his ruling: "every name that met the break (level + volume pace) but never got a slot", with
-    the first break minute): at 15:55 ET one `breakout_v1_missed_by_slots` audit row per list name that was held
-    (`slots_full`) at least once today, never got a slot (no trade row today, or only a 'skipped' one — no order was
-    ever placed) AND BROKE OUT after the hold — the held names are added to the 15:55 bars read and `first_break`
-    finds the first minute at/after the first hold whose high reached the level WITH the volume pace held at that
-    minute (`f1_permits` through the minute before, the live tick's own check); a held name that never traded at its
-    level, or touched it only on lapsed volume, writes nothing. The record: ticker, day, the BREAK minute, the break
+    the first break minute; since 2026-11-14 = BROKE OUT BUT NO FREE SLOT): at 15:55 ET one
+    `breakout_v1_missed_by_slots` audit row per list name that was held (`slots_full`) at least once today and never
+    got a slot (no trade row today, or only a row no order was ever placed under: 'skipped', or 'cancelled' with a
+    `setup:*` reason and no entry order — the chase cap at its seat attempt). A hold is now written only
+    in a break minute, so every such name broke out: the held names are added to the 15:55 bars read and
+    `first_break` re-reads the break from the first hold's break minute on (the bar BEFORE the hold tick; the pace
+    through the minute before is recorded, and gates only if `VOLUME_PACE_GATE` is ever True again); a hold whose
+    break the 15:55 bars no longer show (a revised bar) writes nothing. The record: ticker, day, the BREAK minute, the break
     price (the level), the stop it would have carried (the day low through the break minute), the pace at the break,
     the first hold's minute and stop, list rank, order score, the pace at the hold, the list row's `vol_bar` and
     `adr20`, reason `slots_full`. The holds are read back from the audit log (restart-safe; a hold note is marked
@@ -91,7 +119,9 @@ WHY IT CANNOT REACH REAL MONEY — four walls, mirrored from `lowcap_paper_entry
 
 PRE-FLIGHT. Before the first order of an ET day the paper account must answer (not trading- or account-blocked).
 TELEGRAM. Normal events (an order placed, re-priced, cancelled for a named reason, an abstain, a volume hold) send NO
-Telegram — audit rows only. A FAILURE pages, paper-prefixed, once: the pre-flight, a refused phase, a crashed name, a
+Telegram — audit rows only (one exception, not this module's: `order_manager.submit_entry`'s chase-cap skip sends
+its own "No entry" message — reachable more often now that every order is placed after the break).
+A FAILURE pages, paper-prefixed, once: the pre-flight, a refused phase, a crashed name, a
 cancel the broker refused while the order should die, an unknown order in the family, a re-price that lost its row.
 STOP SWITCH. The runtime toggle `breakout_v1_paper` (mi_safeguard_state, account_mode='global', default ON) and
 `mi_strategies.enabled`: either OFF -> no new order, no re-price, and every resting unfilled breakout buy is
@@ -181,7 +211,10 @@ BARS_FAILS_BEFORE_PAGE = 3                                  # straight ticks wit
 HOLD_EVENT = "breakout_v1_entry_hold"                       # one row per (name, state) change a day (`_note`)
 SLOTS_FULL_STATE = "slots_full"                             # the hold state: eligible, the paper book full, retried next minute
 SLOTS_UNREADABLE_STATE = "slots_count_unreadable"           # held because the open count could not be READ: never a missed record
-MISSED_BY_SLOTS = "breakout_v1_missed_by_slots"             # 15:55 ET: one row per name that BROKE OUT (level + pace) while held and never got a slot
+BREAK_LOOKBACK_MINUTES = 2                                  # a break is read from the last 2 completed minutes (a late / failed read loses nothing for one tick)
+BREAK_LOOKBACK_EVENT = "breakout_v1_break_lookback"         # only the lookback minute carried the break, and no earlier tick read it
+NO_BREAK = "no_break"                                       # a buyable name NOT through its level this minute: no order, no slot
+MISSED_BY_SLOTS = "breakout_v1_missed_by_slots"             # 15:55 ET: one row per name that BROKE OUT with no free slot and never got one
 
 _FILLED_STATUSES = frozenset({"filled", "partially_filled"})
 _ROWS_THAT_OWN_NO_ORDER = frozenset({"cancelled", "skipped"})   # an open order under such a row is an orphan
@@ -255,7 +288,8 @@ def evaluate(mins: dict[int, dict], *, list_level: float, adr20: float | None, v
     """The name's state at this tick from today's completed minute bars. PURE.
 
     status: 'wait' (nothing to judge yet) | 'abstain' (terminal for the day: no opening range, zero range, the stop
-    too wide) | 'ok' (a buy may rest — subject to `f1_ok`). Carries level / ORH5 / ORL5 / open / day low / stop /
+    too wide) | 'ok' (a buy is permitted — placed only in a minute the name BREAKS its level, `break_this_minute`;
+    `f1_ok` is recorded, and gates only when `VOLUME_PACE_GATE`). Carries level / ORH5 / ORL5 / open / day low / stop /
     width / the F1 numbers."""
     st: dict = {"status": "wait", "reason": None, "level": None, "orh5": None, "orl5": None, "open": None,
                 "day_low": None, "stop": None, "width": None, "cum_volume": None, "need_volume": None,
@@ -469,7 +503,8 @@ async def _note(today: date, ticker: str, state: str, summary: str, detail: dict
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
-# 3b. THE SLOTS (#717 stage 2; his rulings 2026-11-06 — hold-only, the overflow waits, track what we miss)
+# 3b. THE SLOTS (#717 stage 2; his rulings 2026-11-06 — hold-only, the overflow waits, track what we miss;
+#     operator-signed 2026-11-14 — a slot only on an ACTUAL BREAK: no order before the level is traded)
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 async def _free_slots() -> int | None:
     """The paper book's free slots this minute = the shared cap (`MAX_CONCURRENT_LIVE_POSITIONS`, 5) minus the funnel's
@@ -499,10 +534,12 @@ async def _free_slots() -> int | None:
 
 
 async def _hold_for_slot(today: date, lrow: dict, st: dict, m: int, free: int, seated: int,
-                         count_unreadable: bool = False) -> None:
-    """A name whose state permits a buy while the paper book is full: HELD — one hold row (state `slots_full`; the
-    first such row's facts are the missed-by-slots record's hold facts), no trade row, no funnel call; retried next
-    minute. `free` is the free count AT THIS HOLD (0 — the book is full; never the tick-start count, which overstated it
+                         count_unreadable: bool = False, brk: dict | None = None) -> None:
+    """A name that BROKE its level this minute (`brk`, `break_this_minute`) while the paper book is full: HELD — one
+    hold row (state `slots_full`; the first such row's facts, its break minute included, are the missed-by-slots
+    record's hold facts), no trade row, no funnel call; judged again every minute and seated in the first later
+    minute that again reads a break with a slot free.
+    `free` is the free count AT THIS HOLD (0 — the book is full; never the tick-start count, which overstated it
     on the funnel-block path) and `seated` how many names took a slot this minute before it. `count_unreadable`: the
     open count could not be read — the row's state is `slots_count_unreadable` instead, which 15:55 never records."""
     clock = _clock(today, m)
@@ -511,18 +548,25 @@ async def _hold_for_slot(today: date, lrow: dict, st: dict, m: int, free: int, s
     why = ("the paper book's open count could not be read" if count_unreadable
            else f"the paper book is full ({seated} name(s) seated this minute ahead of it)")
     await _note(today, lrow["ticker"], state,
-                f"held at {clock} ET — {why}, ranked #{rank}; retried every minute, judged at that minute's price",
+                f"held at {clock} ET — broke its level"
+                + (f" in the {_clock(today, brk['minute'])} minute" if brk else "")
+                + f", {why}, ranked #{rank}; seated in the next minute it is through the level with a slot free, "
+                  f"judged at that minute's price",
                 {"minute": m, "last_completed": st["last_completed"], "clock_et": clock, "list_rank": rank,
                  "order_score": score, "level": st["level"], "stop": st["stop"], "width": st["width"],
                  "cum_volume": st["cum_volume"], "need_volume": st["need_volume"], "free_slots": int(free),
-                 "seated_this_minute": int(seated), "count_unreadable": bool(count_unreadable), "reason": state})
+                 "seated_this_minute": int(seated), "count_unreadable": bool(count_unreadable), "reason": state,
+                 "break_minute": (brk or {}).get("minute"), "break_high": (brk or {}).get("high")})
 
 
 def first_break(mins: dict[int, dict], *, level: float, vol_bar: float, from_minute: int) -> dict | None:
-    """THE BREAK a held name made (his ruling 2026-11-06: record the names that "met the break (LEVEL + VOLUME PACE)",
-    with the first break minute): the first minute k >= `from_minute` (the first hold's tick minute — a buy seated
-    then would have rested from that minute) whose bar HIGH reaches the level the buy would have rested at AND whose
-    volume pace held — `f1_permits(the volume of minutes <= k-1, vol_bar, k-1)`, exactly the check the live tick
+    """THE BREAK (his ruling 2026-11-06: record the names that "met the break (LEVEL + VOLUME PACE)", with the first
+    break minute; since 2026-11-14 ALSO the live tick's own test for a slot, through `break_this_minute`): the first
+    minute k >= `from_minute` (the missed record passes the first hold's break minute; the live tick the last
+    completed minutes) whose bar HIGH trades THROUGH the level the buy is placed at — strictly above it; a bar that
+    only touches the level is not a break (review 2026-11-14 finding 1: "an actual break", and the research
+    reference `consolidation_breakout` reads `minutes.h > level`), for the live slot AND the missed record alike — AND
+    whose volume pace held — `f1_permits(the volume of minutes <= k-1, vol_bar, k-1)`, exactly the check the live tick
     makes at minute k (last_completed = k-1) before it places or keeps the buy that would have filled in minute k
     (re-review 2026-11-07 finding 1: a touch of the level on lapsed volume is NOT a break — a seated buy would have
     been cancelled `setup:breakout_volume_below_curve` before it filled; a later touch back on pace is). PURE.
@@ -538,17 +582,67 @@ def first_break(mins: dict[int, dict], *, level: float, vol_bar: float, from_min
     for k in sorted(mins):
         if k < int(from_minute):
             continue
-        if float(mins[k]["high"]) < lvl:
-            continue
+        if float(mins[k]["high"]) <= lvl:
+            continue                                   # under the level, or an exact touch: not traded THROUGH it
         cum = float(sum(float(mins[j].get("volume") or 0) for j in mins if j <= k - 1))
         ok, need = f1_permits(cum, vol_bar, k - 1)
         if VOLUME_PACE_GATE and not ok:
-            continue                                   # at the level, but the live tick would not have had a buy resting
+            continue                                   # through the level, but the live tick would not have had a buy resting
         low = min(float(mins[j]["low"]) for j in mins if j <= k)
         stop = stop_from_low(low)
         return {"minute": k, "high": float(mins[k]["high"]), "stop": stop, "width": (lvl - stop) / lvl,
                 "cum_volume": cum, "need_volume": need}
     return None
+
+
+def break_this_minute(mins: dict[int, dict], *, level: float | None, vol_bar: float,
+                      last_completed: int, lookback: int = BREAK_LOOKBACK_MINUTES) -> dict | None:
+    """SLOTS ON AN ACTUAL BREAK (operator-signed 2026-11-14; PLAN #717's 11-14 build item (b): slots taken only on an
+    actual break, not resting buys on the top 5 at 09:35): has the name traded THROUGH its level in one of the last
+    `lookback` (2) COMPLETED minutes? = `first_break` on each of those minutes, the newest first (the same test —
+    bar high strictly above the level — and the same pace record as the missed-by-slots record; `VOLUME_PACE_GATE`
+    False — the pace is recorded, not a gate). PURE. -> the `first_break` dict of the newest such minute plus
+    `lookback` (True = the LAST completed minute did not carry the break, the one before it did), or None:
+      * a break older than the lookback does not carry over — a name back under its level gets no order (no resting
+        buy ahead of a break), and one still above it reads as broken again every minute;
+      * the last completed bar missing (no trade that minute, or not published by the tick's read) is no break on
+        its own — the minute before it is still read (review 2026-11-14 finding 3: a break visible in one bar only
+        is not lost to one late or failed read);
+      * an opening-range minute (0..4) is never a break, as the last minute or as the lookback: with level = ORH5
+        the bar that SET the range high equals the level. So the 09:35 tick (last completed 09:34) places nothing;
+        the earliest order is the 09:36 tick."""
+    if level is None or not mins:
+        return None
+    last = int(last_completed)
+    for k in range(last, last - max(1, int(lookback)), -1):
+        if k < OR_MINUTES or k not in mins:
+            continue
+        brk = first_break(mins, level=level, vol_bar=vol_bar, from_minute=k)
+        if brk is not None and brk["minute"] == k:
+            return dict(brk, lookback=k != last)
+    return None
+
+
+async def _note_break_read(today: date, ticker: str, brk: dict, st: dict, m: int) -> None:
+    """THE LOOKBACK'S AUDIT ROW (review 2026-11-14 finding 3): a break read from the LAST completed minute is marked
+    seen (in memory); a break carried ONLY by the lookback minute that no earlier tick of this process read — its
+    bar published after that tick's read, or that tick's read failed / was skipped — writes ONE
+    `breakout_v1_break_lookback` row per (name, break minute). A held name re-read through the lookback the minute
+    after its hold writes nothing (its break was read on time). A restart forgets what was seen: one extra row."""
+    seen = ("break_seen", today, ticker, int(brk["minute"]))
+    if not brk.get("lookback"):
+        _paged.add(seen)
+        return
+    if seen in _paged or not _once(("break_lookback", today, ticker, int(brk["minute"]))):
+        return
+    await log_audit_event(
+        BREAK_LOOKBACK_EVENT,
+        f"{ticker}: broke its level ${st['level']:.2f} in the {_clock(today, brk['minute'])} minute (high "
+        f"${brk['high']:.2f}) — not read by the tick after it (bar late, or that read failed / was skipped); read at "
+        f"{_clock(today, m)} ET through the lookback, the order decided at this minute's price",
+        json.dumps({"ticker": ticker, "day": today.isoformat(), "minute": m, "clock_et": _clock(today, m),
+                    "break_minute": brk["minute"], "break_high": brk["high"], "level": st["level"],
+                    "last_completed": st["last_completed"]}, default=str))
 
 
 async def _audit_details(event_type: str, *, last_day: bool) -> list:
@@ -599,14 +693,27 @@ async def _first_holds_today(today: date) -> dict[str, dict] | None:
     return first
 
 
+def _no_order_ever(row: dict | None) -> bool:
+    """A name's trade row today under which NO order was ever placed: no row; a 'skipped' row; or a 'cancelled' row
+    with a `setup:*` reason and no entry order on it — a held name whose later seat attempt `submit_entry` ended
+    before any order (`setup:chase_cap_exceeded`; review 2026-11-14 finding 2). A cancelled row that carries an entry
+    order (a buy that rested and was cancelled, `setup:*` or `window:*`), an order_placed / filled row, and a
+    `broker:*` kill all had a slot."""
+    if row is None or row.get("status") == "skipped":
+        return True
+    return (row.get("status") == "cancelled" and not row.get("entry_order_id")
+            and str(row.get("skip_reason") or "").startswith("setup:"))
+
+
 def _never_seated(first: dict[str, dict] | None, rows: dict[str, dict]) -> list[str]:
-    """The names held for `slots_full` today that never got a slot: no trade row today, or only a 'skipped' one (no
-    order was ever placed; a cancelled / order_placed / filled row means it had a slot at some point). In list-rank
-    order. These are the 15:55 missed-by-slots CANDIDATES — the tick adds them to its bars read so the break can be judged."""
+    """The names held for `slots_full` today that never got a slot: no order was ever placed for them today
+    (`_no_order_ever`: no trade row, a 'skipped' one, or one cancelled `setup:*` before any order — the chase cap; a
+    cancelled row with an entry order / order_placed / filled row means it had a slot at some point). In list-rank
+    order. These are the 15:55 missed-by-slots CANDIDATES — the tick adds them to its bars read so the break is re-read."""
     if not first:
         return []
     return [t for t, d in sorted(first.items(), key=lambda kv: (kv[1].get("list_rank") or 10 ** 9, kv[0]))
-            if rows.get(t) is None or rows[t].get("status") == "skipped"]
+            if _no_order_ever(rows.get(t))]
 
 
 async def _record_missed_by_slots(today: date, rows: dict[str, dict], first: dict[str, dict] | None,
@@ -615,12 +722,13 @@ async def _record_missed_by_slots(today: date, rows: dict[str, dict], first: dic
     """TRACK WHAT WE MISS (his ruling 2026-11-06: "every name that met the break (level + volume pace) but never got a
     slot", with the first break minute). At 15:55 ET: one `breakout_v1_missed_by_slots` row per list name HELD for
     `slots_full` at least once today (`first` = the earliest such hold per name, read back from the audit log by the
-    tick BEFORE its bars read), that never got a slot (`_never_seated`), AND that BROKE OUT after the hold —
-    `first_break` on today's bars (`bars_by_ticker`, the tick's one batched read, the held names added to it) with the
-    list row's `vol_bar` (`lrows`, keyed by ticker): the first minute at/after the first hold whose high reached the
-    level WITH the volume pace held at that minute, the live tick's own check. A name held that never traded at its
-    level, or that touched it only on lapsed volume (a seated buy would have been cancelled before it filled), is NOT
-    a miss and writes nothing. The record: ticker, day, `minute` + `clock_et` = THE BREAK, `break_high`, `break_price`
+    tick BEFORE its bars read), that never got a slot (`_never_seated`), AND that BROKE OUT — since 2026-11-14 a
+    hold is written only in a break minute (broke out, no free slot), so `first_break` on today's bars
+    (`bars_by_ticker`, the tick's one batched read, the held names added to it) with the list row's `vol_bar`
+    (`lrows`, keyed by ticker) re-reads the break from the hold row's `break_minute` on (the bar before the hold tick;
+    a hold row without one — written by the pre-2026-11-14 code — falls back to its tick minute). A hold whose break
+    the 15:55 bars do not show (a revised bar; or, were `VOLUME_PACE_GATE` True again, a touch on lapsed volume)
+    is NOT a miss and writes nothing. The record: ticker, day, `minute` + `clock_et` = THE BREAK, `break_high`, `break_price`
     (the level the buy would have rested at), `stop` (the day low through the break minute — the stop it would have
     carried) + `width`, `break_cum_volume` / `break_need_volume` (the pace at the break), `hold_minute` /
     `hold_clock_et` / `stop_at_hold` (the first hold), list rank, order score, the pace at the hold, `vol_bar` and
@@ -649,10 +757,11 @@ async def _record_missed_by_slots(today: date, rows: dict[str, dict], first: dic
             unread.append(ticker)                      # cannot be judged: never "never broke" on an absence
             continue
         mins = bars_by_minute(bars_by_ticker[ticker], today, last_completed)
+        from_minute = d.get("break_minute") if d.get("break_minute") is not None else d.get("minute")
         brk = first_break(mins, level=d.get("level"), vol_bar=float(lrow["vol_bar"]),
-                          from_minute=int(d.get("minute") or 0))
+                          from_minute=int(from_minute or 0))
         if brk is None:
-            continue                                   # held, but it never broke out (level + pace): nothing was missed
+            continue                                   # the 15:55 bars show no break from the hold's on: nothing recorded
         clock = _clock(today, brk["minute"])
         rec = {"ticker": ticker, "day": today.isoformat(), "minute": brk["minute"], "clock_et": clock,
                "break_price": d.get("level"), "break_high": brk["high"], "stop": brk["stop"], "width": brk["width"],
@@ -665,8 +774,8 @@ async def _record_missed_by_slots(today: date, rows: dict[str, dict], first: dic
         try:
             ok = await log_audit_event(
                 MISSED_BY_SLOTS,
-                f"{ticker}: broke out at {clock} ET on pace (#{d.get('list_rank')}, score {d.get('order_score')}; held "
-                f"for a slot since {d.get('clock_et')} ET) but never got a paper slot today — would have bought "
+                f"{ticker}: broke out at {clock} ET (#{d.get('list_rank')}, score {d.get('order_score')}; no free "
+                f"slot — held since {d.get('clock_et')} ET) and never got a paper slot today — would have bought "
                 f"${float(d.get('level')):.2f} with the stop at ${float(brk['stop']):.2f} ({SLOTS_FULL_STATE})",
                 json.dumps(rec, default=str))
         except Exception as e:  # loud-ok: one failed write is logged; the other names' records still go out
@@ -881,8 +990,9 @@ async def _set_unsubmitted_order(trade_id: int, from_status: str, from_order_id:
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # 6. Per-name steps
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
-async def _enter(today: date, lrow: dict, st: dict, regime_record: dict | None) -> dict:
-    """A name with no row today whose state permits a buy: through the single funnel, bound to paper."""
+async def _enter(today: date, lrow: dict, st: dict, regime_record: dict | None, brk: dict | None = None) -> dict:
+    """A name with no row today whose state permits a buy AND that broke its level this minute (`brk`), with a slot
+    free: through the single funnel, bound to paper. The entry spec is unchanged (the level, the day-low stop)."""
     ticker = lrow["ticker"]
     orb = {"open": st["open"], "high": st["orh5"], "low": st["orl5"], "level": st["level"], "stop": st["stop"]}
 
@@ -919,10 +1029,13 @@ async def _enter(today: date, lrow: dict, st: dict, regime_record: dict | None) 
             "breakout_v1_entry_order",
             f"{ticker} → {r.get('action')}" + (f" ({r.get('reason')})" if r.get("reason") else "")
             + (f" trade_id={r.get('trade_id')}" if r.get("trade_id") else "")
-            + f" level=${st['level']:.2f} stop=${st['stop']:.2f} vol {st['cum_volume']:,.0f} vs pace "
+            + f" level=${st['level']:.2f}"
+            + (f" broke {_clock(today, brk['minute'])} (high ${brk['high']:.2f})" if brk else "")
+            + f" stop=${st['stop']:.2f} vol {st['cum_volume']:,.0f} vs pace "
               f"{st['need_volume']:,.0f} ({'on' if st['f1_ok'] else 'UNDER'} pace; not a gate)",
-            json.dumps({k: st[k] for k in ("level", "orh5", "orl5", "stop", "width", "cum_volume", "need_volume",
-                                           "last_completed")}, default=str))
+            json.dumps(dict({k: st[k] for k in ("level", "orh5", "orl5", "stop", "width", "cum_volume", "need_volume",
+                                                "last_completed")},
+                            break_minute=(brk or {}).get("minute"), break_high=(brk or {}).get("high")), default=str))
     return r
 
 
@@ -1749,7 +1862,8 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
     last_completed = min(m - 1, N_SESSION_MINUTES - 1)
 
     # 15:55: the names held for a slot today are read back from the audit log BEFORE the bars read, so the ones that
-    # never got a slot can be judged on today's bars (did they break out after the hold?) — TRACK WHAT WE MISS below
+    # never got a slot have their break re-read on today's bars (a hold is written only in a break minute since
+    # 2026-11-14) — TRACK WHAT WE MISS below
     first_holds: dict[str, dict] | None = None
     missed_candidates: list[str] = []
     if m >= EOD_MINUTE:
@@ -1768,8 +1882,9 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
     bars_by_ticker = await _read_list_bars(today, m, need, now_et, last_completed)
 
     # PASS 1 — every name's state; the rows that exist are managed NOW (a cancel this minute frees its slot this
-    # minute); the names whose state permits a buy are collected for the slots below.
-    eligible: list[tuple[dict, dict]] = []
+    # minute); the names whose state permits a buy AND that broke their level in the last completed minute are
+    # collected for the slots below (operator-signed 2026-11-14: a slot only on an actual break).
+    eligible: list[tuple[dict, dict, dict]] = []
     for lrow in lrows:
         ticker = lrow["ticker"]
         try:
@@ -1784,7 +1899,7 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
             if row is not None and row["status"] not in ("order_placed", "confirmed"):
                 out["actions"][ticker] = f"row_{row['status']}"
                 continue
-            st = None
+            st, mins = None, {}
             if ticker in bars_by_ticker:
                 mins = bars_by_minute(bars_by_ticker[ticker], today, last_completed)
                 st = evaluate(mins, list_level=float(lrow["level"]), adr20=lrow.get("adr20"),
@@ -1821,33 +1936,42 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
                              "minute": last_completed})
                 out["actions"][ticker] = "volume_hold"
                 continue
-            eligible.append((lrow, st))
+            # SLOTS ON AN ACTUAL BREAK (operator-signed 2026-11-14): no order, no slot and no hold row before one of
+            # the last 2 completed minutes' bars traded THROUGH the level — no buy rests ahead of a break
+            brk = break_this_minute(mins, level=st["level"], vol_bar=float(lrow["vol_bar"]),
+                                    last_completed=last_completed)
+            if brk is None:
+                out["actions"][ticker] = NO_BREAK
+                continue
+            await _note_break_read(today, ticker, brk, st, m)
+            eligible.append((lrow, st, brk))
         except Exception as e:  # loud-ok: one name's crash is audited + paged; the other names still run
             out["actions"][ticker] = await _crashed(("crash", today, ticker), ticker, "", e)
 
-    # PASS 2 — THE SLOTS (his rulings 2026-11-06): the eligible names in LIST RANK order; the first `free` go to the
-    # funnel, the rest are HELD (no trade row, retried next minute at that minute's price). HOLD-ONLY: a resting
+    # PASS 2 — THE SLOTS (his rulings 2026-11-06; on an actual break since 2026-11-14): the names that BROKE this
+    # minute in LIST RANK order; the first `free` go to the funnel, the rest are HELD (no trade row; seated in the
+    # next minute that reads a break for them with a slot free, at that minute's price). HOLD-ONLY: a placed
     # lower-ranked buy is never cancelled to seat a higher-ranked name.
     if eligible:
         eligible.sort(key=lambda e: (e[0].get("list_rank") is None, e[0].get("list_rank") or 0, e[0]["ticker"]))
         if not await paper_account_preflight(today):
-            for lrow, _st in eligible:
+            for lrow, _st, _brk in eligible:
                 out["actions"][lrow["ticker"]] = "preflight_failed"
         else:
             free = await _free_slots()
             count_unreadable = free is None                     # the count could not be read: hold all, own state
             free = 0 if count_unreadable else free
             seated = 0
-            for lrow, st in eligible:
+            for lrow, st, brk in eligible:
                 ticker = lrow["ticker"]
                 try:
                     if free <= 0:
-                        await _hold_for_slot(today, lrow, st, m, free, seated, count_unreadable)
+                        await _hold_for_slot(today, lrow, st, m, free, seated, count_unreadable, brk)
                         out["actions"][ticker] = "held_count_unreadable" if count_unreadable else "held_slots_full"
                         continue
                     if regime_record is None:
                         regime_record = await _regime(today)
-                    r = await _enter(today, lrow, st, regime_record)
+                    r = await _enter(today, lrow, st, regime_record, brk)
                     out["actions"][ticker] = r.get("action")
                     reason = str(r.get("reason", ""))
                     if r.get("action") == ACTION_AUTO_ENTERED:
@@ -1860,13 +1984,13 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
                         # rather than send each to a terminal skip — and hold THIS name too (its skipped row is
                         # terminal for the day), so 15:55 can record it if it breaks out and never seats
                         free = 0
-                        await _hold_for_slot(today, lrow, st, m, 0, seated)
+                        await _hold_for_slot(today, lrow, st, m, 0, seated, brk=brk)
                 except Exception as e:  # loud-ok: one name's crash is audited + paged; the other names still run
                     out["actions"][ticker] = await _crashed(("crash", today, ticker), ticker, "", e,
                                                             log="tick crashed (slots)")
 
     if m >= EOD_MINUTE:
-        # TRACK WHAT WE MISS (his ruling 2026-11-06): the names that broke out while held and never got a slot, once each
+        # TRACK WHAT WE MISS (his ruling 2026-11-06): the names that broke out with no free slot and never got one, once each
         out["missed_by_slots"] = await _record_missed_by_slots(today, rows, first_holds, bars_by_ticker, last_completed,
                                                                {r["ticker"]: r for r in lrows})
         await log_audit_event("breakout_v1_entry_day", f"{today.isoformat()}: {len(lrows)} list name(s) — "
