@@ -463,23 +463,35 @@ the research's `ll.py` ran 0.212, which would flag MU itself. The swing / V3 / l
   history; kept either way); BLDP (D 2019-11-11) V3 0.237 slope +0.066 kept; MU (D 2021-12-20) V3 0.21230 slope -0.018 kept
   by the strict line.
 
-**Anticipated effect**: the 17:55 ET list loses roughly a quarter of its names (era-A fires a day 68 → 50 median); the
-audit row's `gate_fails` carries the three names and `context_removed` lists the names they took off. Nightly cost: no
-extra bars fetched (the load was already 200 sessions); the three checks add ~75 µs per evaluated name (50,467 evaluations
-3.1 s → 6.9 s on a laptop) — under a second a night. Not measured: the live list size under these rules (era A only).
+**Anticipated effect**: fewer names on the 17:55 ET list. MEASURED only on era-A FIRE rows (names that broke out the next
+session): 68 → 50 a day (median); how many LISTED names a night it removes is NOT measured. The audit row's `gate_fails`
+carries the three names and `context_removed` lists the names they took off. Nightly cost: no extra bars fetched (the
+load was already 200 sessions); CPU ESTIMATED from the fixture series, not a nightly run: ~75 µs per evaluated name
+(50,467 evaluations 3.1 s → 6.9 s on a laptop), i.e. well under a second for a few thousand names.
 
 **EXPECT** (declared before it ships; BASELINE = the last list night before the deploy: its `passing` count and
 `gate_fails` without the three names): on the first list night after the deploy, `gate_fails` carries `sma50_falling_under`,
-`downtrend_6m` and `lower_line` with non-zero counts; `context_removed_n` is non-zero and its names are on the baseline's
-kind of list (they pass every other gate); `passing` falls by roughly a quarter against the baseline, not to zero; every
+`downtrend_6m` and `lower_line` with non-zero counts; `context_removed_n` is non-zero and its names pass every other gate; `passing` is lower than the baseline night's but
+not near zero (the size of the drop on the listed population is not pre-measured — record it as the first reading); every
 listed row's gates JSON carries the three with `pass: true`. UNINTENDED, declared: a recent listing (< 189 bars) is never
 removed by the lower line; a name with many calendar holes reads `insufficient_history`.
 **DONE-WHEN:** 3 list nights with the counts in that shape and his spot check of one night's removed names.
 **WOULD-FAIL-IF:** `gate_fails` has none of the three names (the checks are not running), `passing` is unchanged against
 the baseline, or the list drops to near zero (a check removing everything).
 
-**Reversion-flag**: NEW (rows 9 and 10: no prior gate on the 6-month return or the base's swings / lower line).
-Row 8 is a **narrower 50-day condition after the 2026-11-11 removal of the plain `close >= SMA50` gate** — not a
+**Reversion-flag**: REFINEMENT / new definitions, each after an earlier removal or failure — not a reversal of the
+reasoning behind it:
+- **Row 10 (lower line)** is a NEW definition of the base-shape idea behind the "higher lows" gate REMOVED 2026-11-02
+  (v1's last-5-low > base-low count; his CODX / PENN charts showed that definition misread his pattern and it cost 47 of
+  his 269 buys). The 11-11 shape-gate rounds 1-4 (higher_lows / no_lower_low etc.) FAILED their bar and stay unenforced.
+  This one differs: it is drawn from his own line markups (the lower line's DIRECTION, MELI flat / TDOC falling vs FIRY /
+  BLDP rising), acts only together with a re-widening base (V3), and on the research scorecard loses no High buy and no
+  big winner (4 Low buys beyond 1d + A2, which he read as likely mis-dated: "might be fine if we skip these").
+- **Row 9 (6-month downtrend)** is a trend gate after the 11-11 round-3 long-term trend gates (200-day variants) FAILED
+  (16-32 more of Qullamaggie's buys lost, 22-23 of 26 big winners). It differs: a 10-session 50-day fall AND a negative
+  126-session return together, sized so it keeps all 56 High buys and all 26 big winners (1d + A2: 449 / 366 / 26).
+- The 2026-10-29 breakdown check (removed 11-02, single-case ODD) is not restored; ODD stays rejected by ema21.
+- Row 8 is a **narrower 50-day condition after the 2026-11-11 removal of the plain `close >= SMA50` gate** — not a
 reversal of that reasoning: the plain gate was removed because 9 of the 31 widened High buys sat under the 50-day (NVAX
 2021-04-13 21% under), i.e. a price-vs-the-50-day-on-one-day reading cut Qullamaggie's clean range breaks. Row 8 needs
 BOTH more than 3% under AND a falling 50-day (his "not price vs the 50-day on one day"), and keeps all 56 High buys and all
