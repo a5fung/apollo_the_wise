@@ -1,0 +1,427 @@
+check	set	eid	ticker	E	tier	big
+1d (>3% under a falling 50-day)	widened	375	ACB	2020-02-04	Low	0
+1d (>3% under a falling 50-day)	widened	510	TLRY	2020-04-24	Low	0
+1d (>3% under a falling 50-day)	widened	922	APT	2020-10-02	Low	0
+1d (>3% under a falling 50-day)	widened	923	BILI	2020-10-05	Low	0
+1d (>3% under a falling 50-day)	widened	1053	FSLY	2020-12-04	Low	0
+1d (>3% under a falling 50-day)	widened	1712	LI	2022-01-12	Low	0
+A1 falling 50d + under 200d + 126d return	dated	468	W	2020-04-07	Not	0
+A1 falling 50d + under 200d + 126d return	dated	605	CCL	2020-05-26	Not	0
+A1 falling 50d + under 200d + 126d return	dated	607	PLNT	2020-05-26	Low	0
+A1 falling 50d + under 200d + 126d return	dated	606	UAL	2020-05-27	Not	0
+A1 falling 50d + under 200d + 126d return	dated	1824	U	2022-11-15	Low	0
+A1 falling 50d + under 200d + 126d return	dated	1869	GME	2023-12-14	Low	0
+A1 falling 50d + under 200d + 126d return	widened	119	RLGY	2019-10-01	Low	0
+A1 falling 50d + under 200d + 126d return	widened	171	TEVA	2019-10-18	Low	0
+A1 falling 50d + under 200d + 126d return	widened	375	ACB	2020-02-04	Low	0
+A1 falling 50d + under 200d + 126d return	widened	510	TLRY	2020-04-24	Low	0
+A1 falling 50d + under 200d + 126d return	widened	622	CAR	2020-06-02	Low	0
+A1 falling 50d + under 200d + 126d return	widened	649	BA	2020-06-08	Low	0
+A1 falling 50d + under 200d + 126d return	widened	853	NCLH	2020-08-24	Low	0
+A1 falling 50d + under 200d + 126d return	widened	1469	LOGC	2021-06-18	Low	0
+A1 falling 50d + under 200d + 126d return	widened	1475	PLUG	2021-06-22	Medium	0
+A2 falling 50d + 126d return	dated	468	W	2020-04-07	Not	0
+A2 falling 50d + 126d return	dated	605	CCL	2020-05-26	Not	0
+A2 falling 50d + 126d return	dated	607	PLNT	2020-05-26	Low	0
+A2 falling 50d + 126d return	dated	606	UAL	2020-05-27	Not	0
+A2 falling 50d + 126d return	dated	1824	U	2022-11-15	Low	0
+A2 falling 50d + 126d return	dated	1869	GME	2023-12-14	Low	0
+A2 falling 50d + 126d return	widened	119	RLGY	2019-10-01	Low	0
+A2 falling 50d + 126d return	widened	155	DDS	2019-10-09	Low	0
+A2 falling 50d + 126d return	widened	171	TEVA	2019-10-18	Low	0
+A2 falling 50d + 126d return	widened	375	ACB	2020-02-04	Low	0
+A2 falling 50d + 126d return	widened	510	TLRY	2020-04-24	Low	0
+A2 falling 50d + 126d return	widened	622	CAR	2020-06-02	Low	0
+A2 falling 50d + 126d return	widened	649	BA	2020-06-08	Low	0
+A2 falling 50d + 126d return	widened	853	NCLH	2020-08-24	Low	0
+A2 falling 50d + 126d return	widened	1469	LOGC	2021-06-18	Low	0
+A2 falling 50d + 126d return	widened	1475	PLUG	2021-06-22	Medium	0
+A2 falling 50d + 126d return	widened	1712	LI	2022-01-12	Low	0
+A2 falling 50d + 126d return	widened	1736	ALB	2022-02-09	Low	0
+B1 last-5 bars vs the base's earlier	dated	1645	SICP	2021-11-29	Low	0
+B1 last-5 bars vs the base's earlier	widened	175	RETA	2019-10-18	Low	0
+B1 last-5 bars vs the base's earlier	widened	243	LK	2019-11-18	Low	0
+B1 last-5 bars vs the base's earlier	widened	359	SPCE	2020-01-21	Low	0
+B1 last-5 bars vs the base's earlier	widened	428	INO	2020-03-05	Low	0
+B1 last-5 bars vs the base's earlier	widened	647	CAR	2020-06-08	Low	0
+B1 last-5 bars vs the base's earlier	widened	649	BA	2020-06-08	Low	0
+B1 last-5 bars vs the base's earlier	widened	677	LAKE	2020-06-17	Low	0
+B1 last-5 bars vs the base's earlier	widened	693	FSLY	2020-06-29	Low	0
+B1 last-5 bars vs the base's earlier	widened	709	NVAX	2020-06-29	Low	0
+B1 last-5 bars vs the base's earlier	widened	995	NIO	2020-11-06	Low	0
+B1 last-5 bars vs the base's earlier	widened	1004	GRWG	2020-11-12	Low	0
+B1 last-5 bars vs the base's earlier	widened	1010	UBER	2020-11-16	Low	0
+B1 last-5 bars vs the base's earlier	widened	1047	TSLA	2020-12-03	Low	0
+B1 last-5 bars vs the base's earlier	widened	1588	MQ	2021-10-26	Low	0
+B1 last-5 bars vs the base's earlier	widened	1617	EVGO	2021-11-11	Low	0
+B2 wide bars in the last 10	dated	1231	FUTU	2021-02-09	Not	0
+B2 wide bars in the last 10	dated	1855	GSIT	2023-06-01	Low	0
+B2 wide bars in the last 10	widened	693	FSLY	2020-06-29	Low	0
+B2 wide bars in the last 10	widened	1029	SPG	2020-11-20	Low	0
+B2 wide bars in the last 10	widened	1183	BNGO	2021-01-26	Low	0
+B2 wide bars in the last 10	widened	1627	SLDP	2021-11-15	Low	0
+1d + A1 falling 50d + under 200d + 126d return	dated	468	W	2020-04-07	Not	0
+1d + A1 falling 50d + under 200d + 126d return	dated	605	CCL	2020-05-26	Not	0
+1d + A1 falling 50d + under 200d + 126d return	dated	607	PLNT	2020-05-26	Low	0
+1d + A1 falling 50d + under 200d + 126d return	dated	606	UAL	2020-05-27	Not	0
+1d + A1 falling 50d + under 200d + 126d return	dated	1824	U	2022-11-15	Low	0
+1d + A1 falling 50d + under 200d + 126d return	dated	1869	GME	2023-12-14	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	119	RLGY	2019-10-01	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	171	TEVA	2019-10-18	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	375	ACB	2020-02-04	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	510	TLRY	2020-04-24	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	622	CAR	2020-06-02	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	649	BA	2020-06-08	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	853	NCLH	2020-08-24	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	922	APT	2020-10-02	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	923	BILI	2020-10-05	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	1053	FSLY	2020-12-04	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	1469	LOGC	2021-06-18	Low	0
+1d + A1 falling 50d + under 200d + 126d return	widened	1475	PLUG	2021-06-22	Medium	0
+1d + A1 falling 50d + under 200d + 126d return	widened	1712	LI	2022-01-12	Low	0
+1d + A2 falling 50d + 126d return	dated	468	W	2020-04-07	Not	0
+1d + A2 falling 50d + 126d return	dated	605	CCL	2020-05-26	Not	0
+1d + A2 falling 50d + 126d return	dated	607	PLNT	2020-05-26	Low	0
+1d + A2 falling 50d + 126d return	dated	606	UAL	2020-05-27	Not	0
+1d + A2 falling 50d + 126d return	dated	1824	U	2022-11-15	Low	0
+1d + A2 falling 50d + 126d return	dated	1869	GME	2023-12-14	Low	0
+1d + A2 falling 50d + 126d return	widened	119	RLGY	2019-10-01	Low	0
+1d + A2 falling 50d + 126d return	widened	155	DDS	2019-10-09	Low	0
+1d + A2 falling 50d + 126d return	widened	171	TEVA	2019-10-18	Low	0
+1d + A2 falling 50d + 126d return	widened	375	ACB	2020-02-04	Low	0
+1d + A2 falling 50d + 126d return	widened	510	TLRY	2020-04-24	Low	0
+1d + A2 falling 50d + 126d return	widened	622	CAR	2020-06-02	Low	0
+1d + A2 falling 50d + 126d return	widened	649	BA	2020-06-08	Low	0
+1d + A2 falling 50d + 126d return	widened	853	NCLH	2020-08-24	Low	0
+1d + A2 falling 50d + 126d return	widened	922	APT	2020-10-02	Low	0
+1d + A2 falling 50d + 126d return	widened	923	BILI	2020-10-05	Low	0
+1d + A2 falling 50d + 126d return	widened	1053	FSLY	2020-12-04	Low	0
+1d + A2 falling 50d + 126d return	widened	1469	LOGC	2021-06-18	Low	0
+1d + A2 falling 50d + 126d return	widened	1475	PLUG	2021-06-22	Medium	0
+1d + A2 falling 50d + 126d return	widened	1712	LI	2022-01-12	Low	0
+1d + A2 falling 50d + 126d return	widened	1736	ALB	2022-02-09	Low	0
+1d + B1 last-5 bars vs the base's earlier	dated	1645	SICP	2021-11-29	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	175	RETA	2019-10-18	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	243	LK	2019-11-18	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	359	SPCE	2020-01-21	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	375	ACB	2020-02-04	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	428	INO	2020-03-05	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	510	TLRY	2020-04-24	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	647	CAR	2020-06-08	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	649	BA	2020-06-08	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	677	LAKE	2020-06-17	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	693	FSLY	2020-06-29	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	709	NVAX	2020-06-29	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	922	APT	2020-10-02	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	923	BILI	2020-10-05	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	995	NIO	2020-11-06	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	1004	GRWG	2020-11-12	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	1010	UBER	2020-11-16	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	1047	TSLA	2020-12-03	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	1053	FSLY	2020-12-04	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	1588	MQ	2021-10-26	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	1617	EVGO	2021-11-11	Low	0
+1d + B1 last-5 bars vs the base's earlier	widened	1712	LI	2022-01-12	Low	0
+1d + B2 wide bars in the last 10	dated	1231	FUTU	2021-02-09	Not	0
+1d + B2 wide bars in the last 10	dated	1855	GSIT	2023-06-01	Low	0
+1d + B2 wide bars in the last 10	widened	375	ACB	2020-02-04	Low	0
+1d + B2 wide bars in the last 10	widened	510	TLRY	2020-04-24	Low	0
+1d + B2 wide bars in the last 10	widened	693	FSLY	2020-06-29	Low	0
+1d + B2 wide bars in the last 10	widened	922	APT	2020-10-02	Low	0
+1d + B2 wide bars in the last 10	widened	923	BILI	2020-10-05	Low	0
+1d + B2 wide bars in the last 10	widened	1029	SPG	2020-11-20	Low	0
+1d + B2 wide bars in the last 10	widened	1053	FSLY	2020-12-04	Low	0
+1d + B2 wide bars in the last 10	widened	1183	BNGO	2021-01-26	Low	0
+1d + B2 wide bars in the last 10	widened	1627	SLDP	2021-11-15	Low	0
+1d + B2 wide bars in the last 10	widened	1712	LI	2022-01-12	Low	0
+1d + A1 50-day fall over 5 T=0.0	dated	468	W	2020-04-07	Not	0
+1d + A1 50-day fall over 5 T=0.0	dated	605	CCL	2020-05-26	Not	0
+1d + A1 50-day fall over 5 T=0.0	dated	606	UAL	2020-05-27	Not	0
+1d + A1 50-day fall over 5 T=0.0	dated	1571	BTBT	2021-10-20	Low	0
+1d + A1 50-day fall over 5 T=0.0	dated	1824	U	2022-11-15	Low	0
+1d + A1 50-day fall over 5 T=0.0	dated	1869	GME	2023-12-14	Low	0
+1d + A1 50-day fall over 5 T=0.0	widened	171	TEVA	2019-10-18	Low	0
+1d + A1 50-day fall over 5 T=0.0	widened	375	ACB	2020-02-04	Low	0
+1d + A1 50-day fall over 5 T=0.0	widened	510	TLRY	2020-04-24	Low	0
+1d + A1 50-day fall over 5 T=0.0	widened	853	NCLH	2020-08-24	Low	0
+1d + A1 50-day fall over 5 T=0.0	widened	922	APT	2020-10-02	Low	0
+1d + A1 50-day fall over 5 T=0.0	widened	923	BILI	2020-10-05	Low	0
+1d + A1 50-day fall over 5 T=0.0	widened	1053	FSLY	2020-12-04	Low	0
+1d + A1 50-day fall over 5 T=0.0	widened	1469	LOGC	2021-06-18	Low	0
+1d + A1 50-day fall over 5 T=0.0	widened	1475	PLUG	2021-06-22	Medium	0
+1d + A1 50-day fall over 5 T=0.0	widened	1712	LI	2022-01-12	Low	0
+1d + A1 50-day fall over 10 T=0.0	dated	468	W	2020-04-07	Not	0
+1d + A1 50-day fall over 10 T=0.0	dated	605	CCL	2020-05-26	Not	0
+1d + A1 50-day fall over 10 T=0.0	dated	607	PLNT	2020-05-26	Low	0
+1d + A1 50-day fall over 10 T=0.0	dated	606	UAL	2020-05-27	Not	0
+1d + A1 50-day fall over 10 T=0.0	dated	1571	BTBT	2021-10-20	Low	0
+1d + A1 50-day fall over 10 T=0.0	dated	1824	U	2022-11-15	Low	0
+1d + A1 50-day fall over 10 T=0.0	dated	1869	GME	2023-12-14	Low	0
+1d + A1 50-day fall over 10 T=0.0	widened	171	TEVA	2019-10-18	Low	0
+1d + A1 50-day fall over 10 T=0.0	widened	375	ACB	2020-02-04	Low	0
+1d + A1 50-day fall over 10 T=0.0	widened	510	TLRY	2020-04-24	Low	0
+1d + A1 50-day fall over 10 T=0.0	widened	853	NCLH	2020-08-24	Low	0
+1d + A1 50-day fall over 10 T=0.0	widened	922	APT	2020-10-02	Low	0
+1d + A1 50-day fall over 10 T=0.0	widened	923	BILI	2020-10-05	Low	0
+1d + A1 50-day fall over 10 T=0.0	widened	1053	FSLY	2020-12-04	Low	0
+1d + A1 50-day fall over 10 T=0.0	widened	1469	LOGC	2021-06-18	Low	0
+1d + A1 50-day fall over 10 T=0.0	widened	1475	PLUG	2021-06-22	Medium	0
+1d + A1 50-day fall over 10 T=0.0	widened	1712	LI	2022-01-12	Low	0
+1d + A1 50-day fall over 20 T=0.0	dated	468	W	2020-04-07	Not	0
+1d + A1 50-day fall over 20 T=0.0	dated	605	CCL	2020-05-26	Not	0
+1d + A1 50-day fall over 20 T=0.0	dated	607	PLNT	2020-05-26	Low	0
+1d + A1 50-day fall over 20 T=0.0	dated	606	UAL	2020-05-27	Not	0
+1d + A1 50-day fall over 20 T=0.0	dated	1824	U	2022-11-15	Low	0
+1d + A1 50-day fall over 20 T=0.0	dated	1869	GME	2023-12-14	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	119	RLGY	2019-10-01	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	171	TEVA	2019-10-18	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	375	ACB	2020-02-04	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	510	TLRY	2020-04-24	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	622	CAR	2020-06-02	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	649	BA	2020-06-08	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	853	NCLH	2020-08-24	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	922	APT	2020-10-02	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	923	BILI	2020-10-05	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	1053	FSLY	2020-12-04	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	1469	LOGC	2021-06-18	Low	0
+1d + A1 50-day fall over 20 T=0.0	widened	1475	PLUG	2021-06-22	Medium	0
+1d + A1 50-day fall over 20 T=0.0	widened	1712	LI	2022-01-12	Low	0
+1d + A2 50-day fall over 5 T=0.0	dated	468	W	2020-04-07	Not	0
+1d + A2 50-day fall over 5 T=0.0	dated	605	CCL	2020-05-26	Not	0
+1d + A2 50-day fall over 5 T=0.0	dated	606	UAL	2020-05-27	Not	0
+1d + A2 50-day fall over 5 T=0.0	dated	1264	RKT	2021-03-01	Low	0
+1d + A2 50-day fall over 5 T=0.0	dated	1571	BTBT	2021-10-20	Low	0
+1d + A2 50-day fall over 5 T=0.0	dated	1824	U	2022-11-15	Low	0
+1d + A2 50-day fall over 5 T=0.0	dated	1869	GME	2023-12-14	Low	0
+1d + A2 50-day fall over 5 T=0.0	widened	155	DDS	2019-10-09	Low	0
+1d + A2 50-day fall over 5 T=0.0	widened	171	TEVA	2019-10-18	Low	0
+1d + A2 50-day fall over 5 T=0.0	widened	375	ACB	2020-02-04	Low	0
+1d + A2 50-day fall over 5 T=0.0	widened	510	TLRY	2020-04-24	Low	0
+1d + A2 50-day fall over 5 T=0.0	widened	853	NCLH	2020-08-24	Low	0
+1d + A2 50-day fall over 5 T=0.0	widened	922	APT	2020-10-02	Low	0
+1d + A2 50-day fall over 5 T=0.0	widened	923	BILI	2020-10-05	Low	0
+1d + A2 50-day fall over 5 T=0.0	widened	1053	FSLY	2020-12-04	Low	0
+1d + A2 50-day fall over 5 T=0.0	widened	1469	LOGC	2021-06-18	Low	0
+1d + A2 50-day fall over 5 T=0.0	widened	1475	PLUG	2021-06-22	Medium	0
+1d + A2 50-day fall over 5 T=0.0	widened	1712	LI	2022-01-12	Low	0
+1d + A2 50-day fall over 5 T=0.0	widened	1736	ALB	2022-02-09	Low	0
+1d + A2 50-day fall over 10 T=0.0	dated	468	W	2020-04-07	Not	0
+1d + A2 50-day fall over 10 T=0.0	dated	605	CCL	2020-05-26	Not	0
+1d + A2 50-day fall over 10 T=0.0	dated	607	PLNT	2020-05-26	Low	0
+1d + A2 50-day fall over 10 T=0.0	dated	606	UAL	2020-05-27	Not	0
+1d + A2 50-day fall over 10 T=0.0	dated	1264	RKT	2021-03-01	Low	0
+1d + A2 50-day fall over 10 T=0.0	dated	1571	BTBT	2021-10-20	Low	0
+1d + A2 50-day fall over 10 T=0.0	dated	1824	U	2022-11-15	Low	0
+1d + A2 50-day fall over 10 T=0.0	dated	1869	GME	2023-12-14	Low	0
+1d + A2 50-day fall over 10 T=0.0	widened	155	DDS	2019-10-09	Low	0
+1d + A2 50-day fall over 10 T=0.0	widened	171	TEVA	2019-10-18	Low	0
+1d + A2 50-day fall over 10 T=0.0	widened	375	ACB	2020-02-04	Low	0
+1d + A2 50-day fall over 10 T=0.0	widened	510	TLRY	2020-04-24	Low	0
+1d + A2 50-day fall over 10 T=0.0	widened	853	NCLH	2020-08-24	Low	0
+1d + A2 50-day fall over 10 T=0.0	widened	922	APT	2020-10-02	Low	0
+1d + A2 50-day fall over 10 T=0.0	widened	923	BILI	2020-10-05	Low	0
+1d + A2 50-day fall over 10 T=0.0	widened	1053	FSLY	2020-12-04	Low	0
+1d + A2 50-day fall over 10 T=0.0	widened	1469	LOGC	2021-06-18	Low	0
+1d + A2 50-day fall over 10 T=0.0	widened	1475	PLUG	2021-06-22	Medium	0
+1d + A2 50-day fall over 10 T=0.0	widened	1712	LI	2022-01-12	Low	0
+1d + A2 50-day fall over 10 T=0.0	widened	1736	ALB	2022-02-09	Low	0
+1d + A2 50-day fall over 20 T=0.0	dated	468	W	2020-04-07	Not	0
+1d + A2 50-day fall over 20 T=0.0	dated	605	CCL	2020-05-26	Not	0
+1d + A2 50-day fall over 20 T=0.0	dated	607	PLNT	2020-05-26	Low	0
+1d + A2 50-day fall over 20 T=0.0	dated	606	UAL	2020-05-27	Not	0
+1d + A2 50-day fall over 20 T=0.0	dated	1824	U	2022-11-15	Low	0
+1d + A2 50-day fall over 20 T=0.0	dated	1869	GME	2023-12-14	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	119	RLGY	2019-10-01	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	155	DDS	2019-10-09	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	171	TEVA	2019-10-18	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	375	ACB	2020-02-04	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	510	TLRY	2020-04-24	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	622	CAR	2020-06-02	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	649	BA	2020-06-08	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	853	NCLH	2020-08-24	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	922	APT	2020-10-02	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	923	BILI	2020-10-05	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	1053	FSLY	2020-12-04	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	1469	LOGC	2021-06-18	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	1475	PLUG	2021-06-22	Medium	0
+1d + A2 50-day fall over 20 T=0.0	widened	1712	LI	2022-01-12	Low	0
+1d + A2 50-day fall over 20 T=0.0	widened	1736	ALB	2022-02-09	Low	0
+1d + B1 k=1 T=1.683	dated	1645	SICP	2021-11-29	Low	0
+1d + B1 k=1 T=1.683	widened	175	RETA	2019-10-18	Low	0
+1d + B1 k=1 T=1.683	widened	243	LK	2019-11-18	Low	0
+1d + B1 k=1 T=1.683	widened	359	SPCE	2020-01-21	Low	0
+1d + B1 k=1 T=1.683	widened	375	ACB	2020-02-04	Low	0
+1d + B1 k=1 T=1.683	widened	428	INO	2020-03-05	Low	0
+1d + B1 k=1 T=1.683	widened	510	TLRY	2020-04-24	Low	0
+1d + B1 k=1 T=1.683	widened	647	CAR	2020-06-08	Low	0
+1d + B1 k=1 T=1.683	widened	649	BA	2020-06-08	Low	0
+1d + B1 k=1 T=1.683	widened	677	LAKE	2020-06-17	Low	0
+1d + B1 k=1 T=1.683	widened	693	FSLY	2020-06-29	Low	0
+1d + B1 k=1 T=1.683	widened	709	NVAX	2020-06-29	Low	0
+1d + B1 k=1 T=1.683	widened	922	APT	2020-10-02	Low	0
+1d + B1 k=1 T=1.683	widened	923	BILI	2020-10-05	Low	0
+1d + B1 k=1 T=1.683	widened	995	NIO	2020-11-06	Low	0
+1d + B1 k=1 T=1.683	widened	1004	GRWG	2020-11-12	Low	0
+1d + B1 k=1 T=1.683	widened	1010	UBER	2020-11-16	Low	0
+1d + B1 k=1 T=1.683	widened	1047	TSLA	2020-12-03	Low	0
+1d + B1 k=1 T=1.683	widened	1053	FSLY	2020-12-04	Low	0
+1d + B1 k=1 T=1.683	widened	1588	MQ	2021-10-26	Low	0
+1d + B1 k=1 T=1.683	widened	1617	EVGO	2021-11-11	Low	0
+1d + B1 k=1 T=1.683	widened	1712	LI	2022-01-12	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	dated	1263	DKNG	2021-02-26	Medium	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	dated	1645	SICP	2021-11-29	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	dated	1830	PDD	2023-01-05	High	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	175	RETA	2019-10-18	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	243	LK	2019-11-18	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	359	SPCE	2020-01-21	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	375	ACB	2020-02-04	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	428	INO	2020-03-05	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	510	TLRY	2020-04-24	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	622	CAR	2020-06-02	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	647	CAR	2020-06-08	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	649	BA	2020-06-08	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	677	LAKE	2020-06-17	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	693	FSLY	2020-06-29	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	709	NVAX	2020-06-29	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	922	APT	2020-10-02	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	923	BILI	2020-10-05	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	995	NIO	2020-11-06	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	1004	GRWG	2020-11-12	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	1010	UBER	2020-11-16	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	1047	TSLA	2020-12-03	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	1053	FSLY	2020-12-04	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	1588	MQ	2021-10-26	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	1617	EVGO	2021-11-11	Low	0
+1d + B1 k=2 T=1.659 (loses must-keeps by construction)	widened	1712	LI	2022-01-12	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	dated	1263	DKNG	2021-02-26	Medium	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	dated	1593	QS	2021-10-29	Low	1
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	dated	1645	SICP	2021-11-29	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	dated	1824	U	2022-11-15	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	dated	1830	PDD	2023-01-05	High	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	175	RETA	2019-10-18	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	243	LK	2019-11-18	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	359	SPCE	2020-01-21	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	375	ACB	2020-02-04	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	412	ACH	2020-03-02	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	428	INO	2020-03-05	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	510	TLRY	2020-04-24	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	622	CAR	2020-06-02	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	647	CAR	2020-06-08	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	649	BA	2020-06-08	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	677	LAKE	2020-06-17	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	693	FSLY	2020-06-29	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	709	NVAX	2020-06-29	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	922	APT	2020-10-02	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	923	BILI	2020-10-05	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	995	NIO	2020-11-06	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	1004	GRWG	2020-11-12	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	1010	UBER	2020-11-16	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	1047	TSLA	2020-12-03	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	1053	FSLY	2020-12-04	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	1588	MQ	2021-10-26	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	1617	EVGO	2021-11-11	Low	0
+1d + B1 k=3 T=1.616 (loses must-keeps by construction)	widened	1712	LI	2022-01-12	Low	0
+1d + B2 k=1 T=6.0	dated	1231	FUTU	2021-02-09	Not	0
+1d + B2 k=1 T=6.0	dated	1855	GSIT	2023-06-01	Low	0
+1d + B2 k=1 T=6.0	widened	375	ACB	2020-02-04	Low	0
+1d + B2 k=1 T=6.0	widened	510	TLRY	2020-04-24	Low	0
+1d + B2 k=1 T=6.0	widened	693	FSLY	2020-06-29	Low	0
+1d + B2 k=1 T=6.0	widened	922	APT	2020-10-02	Low	0
+1d + B2 k=1 T=6.0	widened	923	BILI	2020-10-05	Low	0
+1d + B2 k=1 T=6.0	widened	1029	SPG	2020-11-20	Low	0
+1d + B2 k=1 T=6.0	widened	1053	FSLY	2020-12-04	Low	0
+1d + B2 k=1 T=6.0	widened	1183	BNGO	2021-01-26	Low	0
+1d + B2 k=1 T=6.0	widened	1627	SLDP	2021-11-15	Low	0
+1d + B2 k=1 T=6.0	widened	1712	LI	2022-01-12	Low	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	dated	1231	FUTU	2021-02-09	Not	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	dated	1855	GSIT	2023-06-01	Low	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	widened	375	ACB	2020-02-04	Low	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	widened	510	TLRY	2020-04-24	Low	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	widened	693	FSLY	2020-06-29	Low	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	widened	922	APT	2020-10-02	Low	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	widened	923	BILI	2020-10-05	Low	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	widened	1029	SPG	2020-11-20	Low	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	widened	1053	FSLY	2020-12-04	Low	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	widened	1183	BNGO	2021-01-26	Low	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	widened	1627	SLDP	2021-11-15	Low	0
+1d + B2 k=2 T=6.0 (loses must-keeps by construction)	widened	1712	LI	2022-01-12	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	dated	1205	TLRY	2021-02-02	High	1
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	dated	1231	FUTU	2021-02-09	Not	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	dated	1282	CAN	2021-03-09	Not	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	dated	1855	GSIT	2023-06-01	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	dated	1869	GME	2023-12-14	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	175	RETA	2019-10-18	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	375	ACB	2020-02-04	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	510	TLRY	2020-04-24	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	529	BCRX	2020-04-30	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	647	CAR	2020-06-08	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	693	FSLY	2020-06-29	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	922	APT	2020-10-02	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	923	BILI	2020-10-05	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	995	NIO	2020-11-06	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	1010	UBER	2020-11-16	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	1027	UBER	2020-11-18	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	1029	SPG	2020-11-20	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	1047	TSLA	2020-12-03	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	1051	BE	2020-12-04	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	1053	FSLY	2020-12-04	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	1183	BNGO	2021-01-26	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	1268	GMBL	2021-03-02	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	1617	EVGO	2021-11-11	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	1627	SLDP	2021-11-15	Low	0
+1d + B2 k=3 T=5.0 (loses must-keeps by construction)	widened	1712	LI	2022-01-12	Low	0
+1d	widened	375	ACB	2020-02-04	Low	0
+1d	widened	510	TLRY	2020-04-24	Low	0
+1d	widened	922	APT	2020-10-02	Low	0
+1d	widened	923	BILI	2020-10-05	Low	0
+1d	widened	1053	FSLY	2020-12-04	Low	0
+1d	widened	1712	LI	2022-01-12	Low	0
++ B1 last-5 bars vs the base's earlier	dated	1645	SICP	2021-11-29	Low	0
++ B1 last-5 bars vs the base's earlier	widened	175	RETA	2019-10-18	Low	0
++ B1 last-5 bars vs the base's earlier	widened	243	LK	2019-11-18	Low	0
++ B1 last-5 bars vs the base's earlier	widened	359	SPCE	2020-01-21	Low	0
++ B1 last-5 bars vs the base's earlier	widened	375	ACB	2020-02-04	Low	0
++ B1 last-5 bars vs the base's earlier	widened	428	INO	2020-03-05	Low	0
++ B1 last-5 bars vs the base's earlier	widened	510	TLRY	2020-04-24	Low	0
++ B1 last-5 bars vs the base's earlier	widened	647	CAR	2020-06-08	Low	0
++ B1 last-5 bars vs the base's earlier	widened	649	BA	2020-06-08	Low	0
++ B1 last-5 bars vs the base's earlier	widened	677	LAKE	2020-06-17	Low	0
++ B1 last-5 bars vs the base's earlier	widened	693	FSLY	2020-06-29	Low	0
++ B1 last-5 bars vs the base's earlier	widened	709	NVAX	2020-06-29	Low	0
++ B1 last-5 bars vs the base's earlier	widened	922	APT	2020-10-02	Low	0
++ B1 last-5 bars vs the base's earlier	widened	923	BILI	2020-10-05	Low	0
++ B1 last-5 bars vs the base's earlier	widened	995	NIO	2020-11-06	Low	0
++ B1 last-5 bars vs the base's earlier	widened	1004	GRWG	2020-11-12	Low	0
++ B1 last-5 bars vs the base's earlier	widened	1010	UBER	2020-11-16	Low	0
++ B1 last-5 bars vs the base's earlier	widened	1047	TSLA	2020-12-03	Low	0
++ B1 last-5 bars vs the base's earlier	widened	1053	FSLY	2020-12-04	Low	0
++ B1 last-5 bars vs the base's earlier	widened	1588	MQ	2021-10-26	Low	0
++ B1 last-5 bars vs the base's earlier	widened	1617	EVGO	2021-11-11	Low	0
++ B1 last-5 bars vs the base's earlier	widened	1712	LI	2022-01-12	Low	0
++ B2 wide bars in the last 10	dated	1231	FUTU	2021-02-09	Not	0
++ B2 wide bars in the last 10	dated	1645	SICP	2021-11-29	Low	0
++ B2 wide bars in the last 10	dated	1855	GSIT	2023-06-01	Low	0
++ B2 wide bars in the last 10	widened	175	RETA	2019-10-18	Low	0
++ B2 wide bars in the last 10	widened	243	LK	2019-11-18	Low	0
++ B2 wide bars in the last 10	widened	359	SPCE	2020-01-21	Low	0
++ B2 wide bars in the last 10	widened	375	ACB	2020-02-04	Low	0
++ B2 wide bars in the last 10	widened	428	INO	2020-03-05	Low	0
++ B2 wide bars in the last 10	widened	510	TLRY	2020-04-24	Low	0
++ B2 wide bars in the last 10	widened	647	CAR	2020-06-08	Low	0
++ B2 wide bars in the last 10	widened	649	BA	2020-06-08	Low	0
++ B2 wide bars in the last 10	widened	677	LAKE	2020-06-17	Low	0
++ B2 wide bars in the last 10	widened	693	FSLY	2020-06-29	Low	0
++ B2 wide bars in the last 10	widened	709	NVAX	2020-06-29	Low	0
++ B2 wide bars in the last 10	widened	922	APT	2020-10-02	Low	0
++ B2 wide bars in the last 10	widened	923	BILI	2020-10-05	Low	0
++ B2 wide bars in the last 10	widened	995	NIO	2020-11-06	Low	0
++ B2 wide bars in the last 10	widened	1004	GRWG	2020-11-12	Low	0
++ B2 wide bars in the last 10	widened	1010	UBER	2020-11-16	Low	0
++ B2 wide bars in the last 10	widened	1029	SPG	2020-11-20	Low	0
++ B2 wide bars in the last 10	widened	1047	TSLA	2020-12-03	Low	0
++ B2 wide bars in the last 10	widened	1053	FSLY	2020-12-04	Low	0
++ B2 wide bars in the last 10	widened	1183	BNGO	2021-01-26	Low	0
++ B2 wide bars in the last 10	widened	1588	MQ	2021-10-26	Low	0
++ B2 wide bars in the last 10	widened	1617	EVGO	2021-11-11	Low	0
++ B2 wide bars in the last 10	widened	1627	SLDP	2021-11-15	Low	0
++ B2 wide bars in the last 10	widened	1712	LI	2022-01-12	Low	0

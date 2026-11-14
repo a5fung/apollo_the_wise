@@ -1,0 +1,4 @@
+1d
+B1 last-5 bars vs the base's earlier	1.6827604033235577
+B2 wide bars in the last 10	6.0
+sheet	0

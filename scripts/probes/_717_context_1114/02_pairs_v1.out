@@ -1,0 +1,20 @@
+== PAIR VALIDATION — raw components of the six rows (fire rows) ==
+ticker         Ed    u50  s50_chg5  s50_chg10  s50_chg20  ret126  sma200_ratio  runup6m_adr  off_high_adr  hh_age  base_len  tr5_base  cc5_base  wide10  wide5  tr5_prev15  tr10_prev20  tr3_prev10  trmax5_med20  cc10_prev20
+   THC 2017-05-10 -0.004    -0.445     -0.818     -1.282  -0.014         0.889       12.607         4.325      50        45     1.090     0.870     3.0    2.0       1.129        1.638       0.521         3.149        1.872
+   REN 2017-07-28  0.006    -0.419     -0.710     -1.537  -0.261         0.924       20.915         5.313     103        44     0.693     0.551     0.0    0.0       0.846        0.872       0.754         1.220        0.864
+   APT 2020-06-17  0.017    -0.197     -0.105      0.124   2.877         1.754      155.962         8.802      75        22     1.616     1.570     2.0    2.0       1.903        1.111       1.021         2.486        1.404
+    BE 2020-08-13  0.103     0.399      0.880      2.796   0.263         1.560       24.145         3.142      15        19     0.510     0.755     0.0    0.0       0.497        0.581       0.351         1.171        0.550
+  TWTR 2018-02-08  0.140     0.395      0.813      1.546   0.666         1.384       11.357         0.000       4        31     2.009     2.155     9.0    5.0       1.661        2.230       1.409         2.920        2.548
+  JMIA 2020-11-18  0.404     0.466      1.123      2.071   2.752         2.184       49.950         2.435      74        16     0.714     0.813     3.0    1.0       0.745        1.062       0.873         1.674        1.270
+bridge — the same measures on the scorecard rows of the three Qullamaggie buys (other bar path):
+ticker          E  fired  big   u50  s50_chg5  s50_chg10  s50_chg20  ret126  runup6m_adr  off_high_adr  hh_age  base_len  tr5_base  cc5_base  wide10  wide5  tr5_prev15  tr10_prev20  tr3_prev10  trmax5_med20  cc10_prev20
+   APT 2020-06-17      1    1 0.017    -0.197     -0.105      0.124   2.877      155.962         8.802      75        22     1.616     1.570     2.0    2.0       1.903        1.111       1.021         2.486        1.404
+    BE 2020-08-13      1    1 0.103     0.399      0.880      2.796   0.263       24.145         3.142      15        19     0.510     0.755     0.0    0.0       0.497        0.581       0.351         1.171        0.550
+  JMIA 2020-11-18      1    1 0.404     0.466      1.123      2.071   2.752       49.950         2.435      74        16     0.714     0.813     3.0    1.0       0.745        1.062       0.873         1.674        1.270
+
+thresholds (from the 56 + the 26 big winners only) and the pair verdicts:
+  A1 falling 50d + under it + 126d return    T = 0.0  set by []  ->  THC OUT (ok); REN kept (WRONG); APT kept (ok); BE kept (ok)
+  A2 falling 50d + 126d return               T = 0.0  set by [(0.1626253825303412, 'NXH 2021-01-22 (big)'), (0.4446085318352899, 'BLDP 2020-05-26'), (0.5758710124852529, 'BNTX 2020-06-25')]  ->  THC OUT (ok); REN OUT (ok); APT kept (ok); BE kept (ok)
+  B1 last-5 bars vs the base's earlier       T = 1.6827604033235577  set by [(1.6827604033235577, 'PDD 2023-01-05'), (1.6594411433232732, 'QS 2021-10-29 (big)'), (1.6155249783030259, 'APT 2020-06-17 (big)')]  ->  TWTR OUT (ok); JMIA kept (ok)
+  B2 wide bars in the last 10                T = 6.0  set by [(6.0, 'TLRY 2021-02-02 (big)'), (6.0, 'TLRY 2021-02-02'), (5.0, 'DKNG 2020-09-10')]  ->  TWTR OUT (ok); JMIA kept (ok)
+ALL PAIRS SEPARATED AS HE SAYS: False

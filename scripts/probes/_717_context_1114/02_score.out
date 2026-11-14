@@ -1,0 +1,125 @@
+== PAIR VALIDATION — raw components of the six rows (fire rows) ==
+ticker         Ed    u50  s50_chg5  s50_chg10  s50_chg20  ret126  sma200_ratio  runup6m_adr  off_high_adr  hh_age  base_len  tr5_base  cc5_base  wide10  wide5  tr5_prev15  tr10_prev20  tr3_prev10  trmax5_med20  cc10_prev20
+   THC 2017-05-10 -0.004    -0.445     -0.818     -1.282  -0.014         0.889       12.607         4.325      50        45     1.090     0.870     3.0    2.0       1.129        1.638       0.521         3.149        1.872
+   REN 2017-07-28  0.006    -0.419     -0.710     -1.537  -0.261         0.924       20.915         5.313     103        44     0.693     0.551     0.0    0.0       0.846        0.872       0.754         1.220        0.864
+   APT 2020-06-17  0.017    -0.197     -0.105      0.124   2.877         1.754      155.962         8.802      75        22     1.616     1.570     2.0    2.0       1.903        1.111       1.021         2.486        1.404
+    BE 2020-08-13  0.103     0.399      0.880      2.796   0.263         1.560       24.145         3.142      15        19     0.510     0.755     0.0    0.0       0.497        0.581       0.351         1.171        0.550
+  TWTR 2018-02-08  0.140     0.395      0.813      1.546   0.666         1.384       11.357         0.000       4        31     2.009     2.155     9.0    5.0       1.661        2.230       1.409         2.920        2.548
+  JMIA 2020-11-18  0.404     0.466      1.123      2.071   2.752         2.184       49.950         2.435      74        16     0.714     0.813     3.0    1.0       0.745        1.062       0.873         1.674        1.270
+bridge — the same measures on the scorecard rows of the three Qullamaggie buys (other bar path):
+ticker          E  fired  big   u50  s50_chg5  s50_chg10  s50_chg20  ret126  sma200_ratio  runup6m_adr  off_high_adr  hh_age  base_len  tr5_base  cc5_base  wide10  wide5  tr5_prev15  tr10_prev20  tr3_prev10  trmax5_med20  cc10_prev20
+   APT 2020-06-17      1    1 0.017    -0.197     -0.105      0.124   2.877         1.754      155.962         8.802      75        22     1.616     1.570     2.0    2.0       1.903        1.111       1.021         2.486        1.404
+    BE 2020-08-13      1    1 0.103     0.399      0.880      2.796   0.263         1.560       24.145         3.142      15        19     0.510     0.755     0.0    0.0       0.497        0.581       0.351         1.171        0.550
+  JMIA 2020-11-18      1    1 0.404     0.466      1.123      2.071   2.752         2.184       49.950         2.435      74        16     0.714     0.813     3.0    1.0       0.745        1.062       0.873         1.674        1.270
+
+thresholds (from the 56 + the 26 big winners only) and the pair verdicts:
+  A1 falling 50d + under 200d + 126d return  T = 0.0  set by []  ->  THC OUT (ok); REN OUT (ok); APT kept (ok); BE kept (ok)
+  A2 falling 50d + 126d return               T = 0.0  set by [(0.1626253825303412, 'NXH 2021-01-22 (big)'), (0.4446085318352899, 'BLDP 2020-05-26'), (0.5758710124852529, 'BNTX 2020-06-25')]  ->  THC OUT (ok); REN OUT (ok); APT kept (ok); BE kept (ok)
+  B1 last-5 bars vs the base's earlier       T = 1.6827604033235577  set by [(1.6827604033235577, 'PDD 2023-01-05'), (1.6594411433232732, 'QS 2021-10-29 (big)'), (1.6155249783030259, 'APT 2020-06-17 (big)')]  ->  TWTR OUT (ok); JMIA kept (ok)
+  B2 wide bars in the last 10                T = 6.0  set by [(6.0, 'TLRY 2021-02-02 (big)'), (6.0, 'TLRY 2021-02-02'), (5.0, 'DKNG 2020-09-10')]  ->  TWTR OUT (ok); JMIA kept (ok)
+ALL PAIRS SEPARATED AS HE SAYS: True
+
+BRIDGE: scorecard listed / fired / big winners = 479 / 386 / 26 (expect 479 / 386 / 26); listed High-tier buys 56 (expect 56); era-A fires a day median 68 (expect 68) over 1322 nights; grades 20 no / 11 ok-good / 5 maybe (36 = the three sheets)
+
+== THRESHOLDS (who sets each; how the 56 and the era-A fires sit) ==
+  A1 falling 50d + under 200d + 126d return  ret126 < 0.0  constraints (most binding first): [] | the 56 median 0.83; fires median 0.28; fires OUT 16.0%
+  A2 falling 50d + 126d return               ret126 < 0.0  constraints (most binding first): [(0.1626253825303412, 'NXH 2021-01-22 (big)'), (0.4446085318352899, 'BLDP 2020-05-26'), (0.5758710124852529, 'BNTX 2020-06-25'), (1.7848276598700163, 'DKNG 2020-09-10')] | the 56 median 0.83; fires median 0.28; fires OUT 17.5%
+  B1 last-5 bars vs the base's earlier       tr5_base > 1.6827604033235577  constraints (most binding first): [(1.6827604033235577, 'PDD 2023-01-05'), (1.6594411433232732, 'QS 2021-10-29 (big)'), (1.6155249783030259, 'APT 2020-06-17 (big)'), (1.3792591048126304, 'BNTX 2020-06-25')] | the 56 median 0.82; fires median 0.91; fires OUT 4.5%
+  B2 wide bars in the last 10                wide10 > 6.0  constraints (most binding first): [(6.0, 'TLRY 2021-02-02 (big)'), (6.0, 'TLRY 2021-02-02'), (5.0, 'DKNG 2020-09-10'), (3.0, 'JMIA 2020-11-18 (big)')] | the 56 median 0.00; fires median 1.00; fires OUT 1.8%
+
+== EACH DEFINITION ALONE on the plain list (baseline first) ==
+check                                          | High  | scorecard listed/fired/big | fired buys lost by tier | his eye (IN-SAMPLE): removed of 20 no / 11 ok-good / 5 maybe | fires a day median mean | top-5 dollar-volume picks replaced | names
+baseline (no check)                            | 56/56 | 479 / 386 / 26 | lost H0 M0 L0 N0 | no  0/20 ok-good 0/11 maybe 0/5 |   68  118.5 |  0.0% | High dropped: - | no removed: -
+1d (>3% under a falling 50-day)                | 56/56 | 466 / 380 / 26 | lost H0 M0 L6 N0 | no  5/20 ok-good 0/11 maybe 0/5 |   59  103.1 | 11.9% | High dropped: - | no removed: F DVAX DQ TIGR DOCN
+A1 falling 50d + under 200d + 126d return      | 56/56 | 459 / 371 / 26 | lost H0 M1 L11 N3 | no  2/20 ok-good 1/11 maybe 1/5 |   58   99.6 | 10.1% | High dropped: - | no removed: THC REN | OK/GOOD REMOVED: WDC | maybe removed: AZUL
+A2 falling 50d + 126d return                   | 56/56 | 454 / 368 / 26 | lost H0 M1 L14 N3 | no  4/20 ok-good 1/11 maybe 1/5 |   57   97.8 | 11.2% | High dropped: - | no removed: LCID OCGN THC REN | OK/GOOD REMOVED: WDC | maybe removed: AZUL
+B1 last-5 bars vs the base's earlier           | 56/56 | 454 / 370 / 26 | lost H0 M0 L16 N0 | no  2/20 ok-good 0/11 maybe 0/5 |   65  113.2 |  5.6% | High dropped: - | no removed: TWTR RIOT
+B2 wide bars in the last 10                    | 56/56 | 467 / 380 / 26 | lost H0 M0 L5 N1 | no  1/20 ok-good 0/11 maybe 0/5 |   67  116.4 |  2.5% | High dropped: - | no removed: TWTR
+
+== EACH DEFINITION ON TOP OF 1d (the 1d baseline: 56/56, 466 / 380 / 26, 59 a day) ==
+check                                          | High  | scorecard listed/fired/big | fired buys lost by tier | his eye (IN-SAMPLE): removed of 20 no / 11 ok-good / 5 maybe | fires a day median mean | top-5 dollar-volume picks replaced | names
+1d + A1 falling 50d + under 200d + 126d return | 56/56 | 451 / 367 / 26 | lost H0 M1 L15 N3 | no  7/20 ok-good 1/11 maybe 1/5 |   52   90.2 | 18.6% | High dropped: - | no removed: F DVAX DQ TIGR DOCN THC REN | OK/GOOD REMOVED: WDC | maybe removed: AZUL
+1d + A2 falling 50d + 126d return              | 56/56 | 447 / 365 / 26 | lost H0 M1 L17 N3 | no  9/20 ok-good 1/11 maybe 1/5 |   52   88.7 | 19.6% | High dropped: - | no removed: LCID F DVAX DQ TIGR OCGN DOCN THC REN | OK/GOOD REMOVED: WDC | maybe removed: AZUL
+1d + B1 last-5 bars vs the base's earlier      | 56/56 | 441 / 364 / 26 | lost H0 M0 L22 N0 | no  7/20 ok-good 0/11 maybe 0/5 |   55   98.0 | 17.3% | High dropped: - | no removed: F DVAX DQ TIGR DOCN TWTR RIOT
+1d + B2 wide bars in the last 10               | 56/56 | 454 / 374 / 26 | lost H0 M0 L11 N1 | no  6/20 ok-good 0/11 maybe 0/5 |   59  101.3 | 14.2% | High dropped: - | no removed: F DVAX DQ TIGR DOCN TWTR
+
+== PLATEAU, on top of 1d (3 points each) ==
+check                                          | High  | scorecard listed/fired/big | fired buys lost by tier | his eye (IN-SAMPLE): removed of 20 no / 11 ok-good / 5 maybe | fires a day median mean | top-5 dollar-volume picks replaced | names
+1d + A1 50-day fall over 5 T=0.0               | 56/56 | 455 / 370 / 26 | lost H0 M1 L12 N3 | no  7/20 ok-good 0/11 maybe 1/5 |   54   94.0 | 16.9% | High dropped: - | no removed: F DVAX DQ TIGR DOCN THC REN | maybe removed: AZUL
+1d + A1 50-day fall over 10 T=0.0              | 56/56 | 454 / 369 / 26 | lost H0 M1 L13 N3 | no  7/20 ok-good 0/11 maybe 1/5 |   54   92.6 | 17.4% | High dropped: - | no removed: F DVAX DQ TIGR DOCN THC REN | maybe removed: AZUL
+1d + A1 50-day fall over 20 T=0.0              | 56/56 | 451 / 367 / 26 | lost H0 M1 L15 N3 | no  7/20 ok-good 1/11 maybe 1/5 |   52   90.2 | 18.6% | High dropped: - | no removed: F DVAX DQ TIGR DOCN THC REN | OK/GOOD REMOVED: WDC | maybe removed: AZUL
+1d + A2 50-day fall over 5 T=0.0               | 56/56 | 450 / 367 / 26 | lost H0 M1 L15 N3 | no  9/20 ok-good 0/11 maybe 1/5 |   53   92.9 | 17.6% | High dropped: - | no removed: LCID F DVAX DQ TIGR OCGN DOCN THC REN | maybe removed: AZUL
+1d + A2 50-day fall over 10 T=0.0              | 56/56 | 449 / 366 / 26 | lost H0 M1 L16 N3 | no  9/20 ok-good 0/11 maybe 1/5 |   53   91.4 | 18.2% | High dropped: - | no removed: LCID F DVAX DQ TIGR OCGN DOCN THC REN | maybe removed: AZUL
+1d + A2 50-day fall over 20 T=0.0              | 56/56 | 447 / 365 / 26 | lost H0 M1 L17 N3 | no  9/20 ok-good 1/11 maybe 1/5 |   52   88.7 | 19.6% | High dropped: - | no removed: LCID F DVAX DQ TIGR OCGN DOCN THC REN | OK/GOOD REMOVED: WDC | maybe removed: AZUL
+1d + B1 k=1 T=1.683                            | 56/56 | 441 / 364 / 26 | lost H0 M0 L22 N0 | no  7/20 ok-good 0/11 maybe 0/5 |   55   98.0 | 17.3% | High dropped: - | no removed: F DVAX DQ TIGR DOCN TWTR RIOT
+1d + B1 k=2 T=1.659 (loses must-keeps by construction) | 55/56 | 437 / 361 / 26 | lost H1 M1 L23 N0 | no  7/20 ok-good 0/11 maybe 0/5 |   55   97.7 | 17.8% | High dropped: PDD 2023-01-05 | no removed: F DVAX DQ TIGR DOCN TWTR RIOT
+1d + B1 k=3 T=1.616 (loses must-keeps by construction) | 55/56 | 434 / 358 / 25 | lost H1 M1 L26 N0 | no  8/20 ok-good 0/11 maybe 0/5 |   55   97.0 | 18.8% | High dropped: PDD 2023-01-05 | BIG WINNERS LOST: QS 2021-10-29 | no removed: LCID F DVAX DQ TIGR DOCN TWTR RIOT
+1d + B2 k=1 T=6.0                              | 56/56 | 454 / 374 / 26 | lost H0 M0 L11 N1 | no  6/20 ok-good 0/11 maybe 0/5 |   59  101.3 | 14.2% | High dropped: - | no removed: F DVAX DQ TIGR DOCN TWTR
+1d + B2 k=2 T=6.0 (loses must-keeps by construction) | 56/56 | 454 / 374 / 26 | lost H0 M0 L11 N1 | no  6/20 ok-good 0/11 maybe 0/5 |   59  101.3 | 14.2% | High dropped: - | no removed: F DVAX DQ TIGR DOCN TWTR
+1d + B2 k=3 T=5.0 (loses must-keeps by construction) | 55/56 | 435 / 361 / 25 | lost H1 M0 L22 N2 | no  8/20 ok-good 0/11 maybe 1/5 |   57   99.5 | 16.4% | High dropped: TLRY 2021-02-02 | BIG WINNERS LOST: TLRY 2021-02-02 | no removed: F DVAX DQ TIGR AFRM DOCN TWTR RIOT | maybe removed: NVTA
+
+== THE 36 GRADED PICKS — the measures and which definition removes each (x) ==
+    sheet card ticker         Dd       grade  out_1d A1 A2 B1 B2   u50  s50_chg20  ret126  runup6m_adr  base_len  tr5_base  wide10  tr5_prev15  cc5_base
+3 (11-14)    G   AZUL 2022-01-20 conditional   False  x  x  .  .  0.09      -1.54   -0.35         7.67        45      0.99     1.0        1.18      0.90
+2 (11-13)    C    CLR 2021-12-09 conditional   False  .  .  .  . -0.06       0.89    0.29        16.56        42      0.83     2.0        0.75      1.01
+1 (11-13)    L   FUTU 2021-06-23 conditional   False  .  .  .  .  0.20       0.59    2.99        83.16        45      0.96     1.0        0.97      1.23
+3 (11-14)    C   NVTA 2019-08-06 conditional   False  .  .  .  .  0.12       1.33    0.87        30.26        19      1.47     6.0        1.46      1.24
+3 (11-14)    L      W 2018-08-21 conditional   False  .  .  .  .  0.06       2.04    0.31        24.30        21      0.66     0.0        0.67      0.59
+2 (11-13)    A   MRNA 2021-01-08        good   False  .  .  .  . -0.01       2.99    0.80        27.95        26      0.67     0.0        0.74      0.82
+2 (11-13)    I   AFRM 2021-09-23          no   False  .  .  .  .  0.61       2.90    0.82        17.72        17      0.99     6.0        0.92      0.78
+2 (11-13)    K   BEAM 2021-07-21          no   False  .  .  .  .  0.12       1.57   -0.04        32.40        12      0.60     0.0        0.59      0.45
+3 (11-14)    D    CDE 2019-11-05          no   False  .  .  .  .  0.13       0.01    0.72        20.36        30      1.20     1.0        1.29      0.75
+1 (11-13)    H   FLGT 2021-12-10          no   False  .  .  .  . -0.02       0.00    0.11        12.84        16      0.53     2.0        0.56      0.40
+2 (11-13)    F   HAPN 2021-08-25          no   False  .  .  .  .  0.36       4.64    1.67        28.89        10      0.95     1.0        0.65      0.94
+1 (11-13)    F   LCID 2021-09-20          no   False  .  x  .  .  0.07      -1.39   -0.08        29.85        39      1.62     3.0        1.57      2.24
+1 (11-13)    K   MVIS 2021-04-23          no   False  .  .  .  .  0.17       1.00    6.49        86.00        43      1.20     1.0        1.44      1.60
+2 (11-13)    H   OCGN 2021-09-10          no   False  .  x  .  . -0.02      -0.46   -0.28       672.62        22      0.81     0.0        0.94      0.85
+3 (11-14)    I    REN 2017-07-27          no   False  x  x  .  .  0.01      -1.54   -0.26        20.91        44      0.69     0.0        0.85      0.55
+3 (11-14)    J   RIOT 2021-11-11          no   False  .  .  x  .  0.34      -0.72    0.52        11.76        45      2.49     6.0        2.01      2.45
+1 (11-13)    G   SWAV 2021-08-17          no   False  .  .  .  .  0.04       0.56    0.45        19.01        34      1.09     3.0        1.01      0.91
+3 (11-14)    B    THC 2017-05-09          no   False  x  x  .  . -0.00      -1.28   -0.01        12.61        45      1.09     3.0        1.13      0.87
+3 (11-14)    E   TWTR 2018-02-07          no   False  .  .  x  x  0.14       1.55    0.67        11.36        31      2.01     9.0        1.66      2.15
+1 (11-13)    B      X 2022-03-21          no   False  .  .  .  .  0.38       1.86    0.62        15.17        10      0.97     4.0        1.08      0.90
+1 (11-13)    C    ZIM 2021-12-28          no   False  .  .  .  .  0.05       0.53    0.26        16.08        24      0.51     0.0        0.52      0.55
+2 (11-13)    L   DOCN 2022-01-11          no    True  .  .  .  . -0.21      -0.77    0.44        22.69        35      0.66     0.0        0.94      0.42
+2 (11-13)    D     DQ 2021-04-19          no    True  .  .  .  . -0.24      -1.02    0.66        28.11        43      0.44     0.0        0.65      0.40
+2 (11-13)    B   DVAX 2021-11-17          no    True  .  .  .  . -0.04       1.21    1.17        24.02        37      0.56     1.0        0.51      0.49
+1 (11-13)    J      F 2022-03-02          no    True  .  .  .  . -0.11      -0.92    0.39        19.43        32      1.05     0.0        1.27      1.54
+2 (11-13)    G   TIGR 2021-04-23          no    True  .  .  .  . -0.03      -0.20    3.40        46.90        44      0.85     1.0        0.98      1.12
+3 (11-14)    H   ADMS 2018-01-16          ok   False  .  .  .  .  0.10       3.58    1.11        25.88        30      0.86     1.0        0.96      1.01
+2 (11-13)    J   APHA 2021-03-11          ok   False  .  .  .  .  0.33       2.72    3.40        35.81        20      0.73     0.0        0.73      0.80
+2 (11-13)    E   ATOS 2021-07-13          ok   False  .  .  .  .  0.39       4.08    4.76        38.06        11      0.65     0.0        0.76      0.57
+1 (11-13)    A   ATYR 2021-10-08          ok   False  .  .  .  .  0.29       3.05    1.22        15.25        18      0.41     0.0        0.33      0.24
+1 (11-13)    E    CAR 2021-11-16          ok   False  .  .  .  .  0.72       4.14    2.43        49.91        10      0.42     2.0        0.41      0.29
+3 (11-14)    A   CRWD 2020-10-16          ok   False  .  .  .  .  0.14       2.89    1.12        54.00        31      0.96     0.0        1.05      1.03
+1 (11-13)    D   TELL 2021-05-12          ok   False  .  .  .  . -0.03      -2.17    1.02        48.93        41      0.86     0.0        0.90      0.69
+3 (11-14)    F    TTD 2017-07-26          ok   False  .  .  .  .  0.06       2.48    0.81        20.69        36      1.20     2.0        1.36      1.00
+1 (11-13)    I   VUZI 2021-04-23          ok   False  .  .  .  .  0.06       2.46    4.39        46.05        22      0.69     0.0        0.73      0.88
+3 (11-14)    K    WDC 2019-02-15          ok   False  x  x  .  .  0.16      -0.42   -0.25         9.67        15      0.68     0.0        0.54      0.53
+
+the 56 listed High-tier buys (quantiles):
+      u50  s50_chg20  ret126  tr5_base  wide10  tr5_prev15
+min -0.21      -0.69   -0.22      0.39     0.0        0.50
+10%  0.01       0.17    0.12      0.56     0.0        0.59
+25%  0.07       1.27    0.49      0.68     0.0        0.70
+50%  0.13       2.42    0.83      0.82     0.0        0.82
+75%  0.22       3.36    1.55      0.96     1.0        0.98
+90%  0.35       4.25    2.76      1.29     2.0        1.26
+max  0.70       9.87   16.40      1.68     6.0        1.69
+tier medians (scorecard sessions):
+        ret126  tr5_base  wide10  tr5_prev15
+tier                                        
+High      0.88      0.86     0.0        0.83
+Medium    0.70      0.77     0.5        0.79
+Low       0.95      0.87     1.0        0.92
+Not       1.72      0.73     0.0        0.73
+era-A fires median:  ret126 0.28  tr5_base 0.91  wide10 1.00  tr5_prev15 0.92
+
+== STACK (rule in PREREG), cumulative on top of 1d ==
+definitions that pass the rule on top of 1d: B1 last-5 bars vs the base's earlier; B2 wide bars in the last 10
+check                                          | High  | scorecard listed/fired/big | fired buys lost by tier | his eye (IN-SAMPLE): removed of 20 no / 11 ok-good / 5 maybe | fires a day median mean | top-5 dollar-volume picks replaced | names
+1d                                             | 56/56 | 466 / 380 / 26 | lost H0 M0 L6 N0 | no  5/20 ok-good 0/11 maybe 0/5 |   59  103.1 | 11.9% | High dropped: - | no removed: F DVAX DQ TIGR DOCN
++ B1 last-5 bars vs the base's earlier         | 56/56 | 441 / 364 / 26 | lost H0 M0 L22 N0 | no  7/20 ok-good 0/11 maybe 0/5 |   55   98.0 | 17.3% | High dropped: - | no removed: F DVAX DQ TIGR DOCN TWTR RIOT
++ B2 wide bars in the last 10                  | 56/56 | 432 / 359 / 26 | lost H0 M0 L26 N1 | no  7/20 ok-good 0/11 maybe 0/5 |   55   96.8 | 18.9% | High dropped: - | no removed: F DVAX DQ TIGR DOCN TWTR RIOT
+
+the stack removes 2 more 'no' than 1d alone (7 of 20); SHEET RULE (>= 4 more, 56/56, 26/26, no ok/good): NOT MET
