@@ -1008,7 +1008,9 @@ async def test_a_below_pace_break_still_buys_and_a_volume_lapse_cancels_nothing(
     far under the pace gets its buy on the first tick; a resting buy whose volume dries up keeps resting. The pace is
     still on the state (recorded), it just decides nothing."""
     assert be.VOLUME_PACE_GATE is False
-    thin = _flat_bars(10, vol=1_000.0)                               # 10k shares by 09:40 against ~55k needed
+    # 10k shares by 09:40 against ~55k needed; from 09:35 each bar trades THROUGH the level (10.05 > 10.00 — a bar
+    # that only touches 10.00 is no break since the 2026-11-14 review)
+    thin = [_bar(m, 9.90, 10.00 if m < 5 else 10.05, 9.80, 9.90, 1_000.0) for m in range(10)]
     w = World(monkeypatch, bars={"BRKO": thin})
     out = await w.tick(at=(9, 40))
     assert w.funnel.await_count == 1 and out["actions"]["BRKO"] != "volume_hold"
@@ -1024,12 +1026,14 @@ async def test_a_below_pace_break_still_buys_and_a_volume_lapse_cancels_nothing(
 @pytest.mark.asyncio
 async def test_no_buy_before_the_volume_curve_permits_then_one_buy_once_it_does(monkeypatch):
     monkeypatch.setattr(be, "VOLUME_PACE_GATE", True)   # the OLD gate (off since his 2026-11-11 "drop it"): the machinery still works
-    thin = _flat_bars(10, vol=1_000.0)
-    w = World(monkeypatch, bars={"BRKO": thin})
+    def through(n, vol):          # from 09:35 each bar trades THROUGH the level (a touch of 10.00 is no break)
+        return [_bar(m, 9.90, 10.00 if m < 5 else 10.05, 9.80, 9.90, vol) for m in range(n)]
+
+    w = World(monkeypatch, bars={"BRKO": through(10, 1_000.0)})
     await w.tick(at=(9, 40))
     await w.tick(at=(9, 41))
     assert not w.funnel.await_count and len(w.ev("breakout_v1_entry_hold")) == 1     # recorded once, not per minute
-    w.bars["BRKO"] = _flat_bars(12, vol=60_000.0)
+    w.bars["BRKO"] = through(12, 60_000.0)
     await w.tick(at=(9, 42))
     assert w.funnel.await_count == 1
 
@@ -2368,11 +2372,12 @@ async def test_an_unreadable_open_count_holds_every_eligible_name_and_the_prefli
 # ── track what we miss ──
 def test_the_break_is_the_first_bar_at_or_after_the_hold_whose_high_reaches_the_level():
     """PURE (review 2026-11-07 finding 2 — his ruling: a name that BROKE OUT, with the FIRST BREAK MINUTE): the first
-    minute at/after the first hold minute whose bar high >= the level; a high at the level before the hold does not
-    count (no order rested then); the stop it would have carried = the day's low through the break minute, on the
+    minute at/after the first hold minute whose bar high is THROUGH the level (strictly above it — review 2026-11-14
+    finding 1: an exact touch is not a break); a break before the hold does not count (no order rested then); the stop it would have carried = the day's low through the break minute, on the
     cent (the resting buy was re-priced to each new low until the fill); never traded at the level -> None."""
     bars = _flat_bars(20, low=9.80, high=9.95, vol=1.0)
-    bars[3] = _bar(3, 9.9, 10.00, 9.80, 9.9, 1.0)                           # at the level BEFORE the hold: ignored
+    bars[3] = _bar(3, 9.9, 10.01, 9.80, 9.9, 1.0)                           # through the level BEFORE the hold: ignored
+    bars[11] = _bar(11, 9.9, 10.00, 9.80, 9.9, 1.0)                         # an exact TOUCH after the hold: not a break
     bars[12] = _bar(12, 9.9, 10.05, 9.85, 10.02, 1.0)
     bars[15] = _bar(15, 9.9, 10.30, 9.70, 10.2, 1.0)                        # a later, bigger bar: not the first
     mins = be.bars_by_minute(bars, TODAY, 384)
@@ -2385,6 +2390,8 @@ def test_the_break_is_the_first_bar_at_or_after_the_hold_whose_high_reaches_the_
         "minute": 15, "high": 10.30, "stop": 9.70, "width": pytest.approx(0.03),
         "cum_volume": 15.0, "need_volume": pytest.approx(CUM_SHARE[14])}
     assert be.first_break(mins, level=10.06, vol_bar=1.0, from_minute=10)["minute"] == 15
+    assert be.first_break(mins, level=10.05, vol_bar=1.0, from_minute=10)["minute"] == 15   # 10.05 only TOUCHES 10.05
+    assert be.first_break(mins, level=10.30, vol_bar=1.0, from_minute=10) is None   # the day's high only touches it
     assert be.first_break(mins, level=10.31, vol_bar=1.0, from_minute=10) is None   # never traded at its level
     assert be.first_break({}, level=10.0, vol_bar=1.0, from_minute=10) is None
 
@@ -2635,7 +2642,8 @@ async def test_a_day_with_fewer_eligible_names_than_free_slots_records_nothing(m
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # 10. SLOTS ON AN ACTUAL BREAK (operator-signed 2026-11-14): a name takes a slot — goes to the funnel and gets an
-#     order — only in a minute whose last completed bar is at or through its level. No resting buys before a break.
+#     order — only in a minute where one of its last 2 completed bars traded THROUGH its level (strictly above; a
+#     touch is no break; review 2026-11-14 findings 1 + 3). No resting buys before a break.
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 def _bars_breaking_in(n: int, breaks=(), *, high: float = 10.05) -> list[dict]:
     """`n` opening-range-eligible minutes (ORH5 9.95 < the list level 10.00, low 9.80, the pace met) that trade through
@@ -2711,10 +2719,15 @@ async def test_two_names_break_in_one_minute_with_one_free_slot_the_higher_rank_
     assert [h["ticker"] for h in held] == ["R5"]
     assert held[0]["minute"] == 43 and held[0]["break_minute"] == 42 and held[0]["break_high"] == 10.05
     assert held[0]["free_slots"] == 0 and held[0]["seated_this_minute"] == 1 and held[0]["list_rank"] == 5
-    # rank 3 now rests (its row + order hold the last slot); the next minutes R5 is back under its level: not retried
+    # rank 3 now rests (its row + order hold the last slot). 10:14: the lookback still reads R5's 10:12 break — the
+    # book is full, so it is held again (the same single hold row, no lookback audit row: its break was read on
+    # time); from 10:15 R5 is back under its level past the lookback: not retried
     w.rows["R3"] = _placed_row(ticker="R3", tid=23, oid="o-3")
     w.orders["o-3"] = _order(oid="o-3", ticker="R3")
     out = await w.tick(at=(10, 14))
+    assert out["actions"]["R5"] == "held_slots_full" and _funnel_tickers(w) == ["R3"] and len(_held(w)) == 1
+    assert w.ev(be.BREAK_LOOKBACK_EVENT) == []
+    out = await w.tick(at=(10, 15))
     assert out["actions"]["R5"] == "no_break" and _funnel_tickers(w) == ["R3"] and len(_held(w)) == 1
     out = await w.tick(at=(15, 55))
     rec = _missed(w)
@@ -2740,28 +2753,189 @@ async def test_a_held_name_seats_only_in_a_later_minute_that_is_again_through_th
     assert out["actions"] == {"R1": ep.ACTION_AUTO_ENTERED} and _funnel_tickers(w) == ["R1"]
 
 
-def test_the_break_this_minute_is_the_last_completed_bar_through_the_level_and_never_an_opening_range_bar():
-    """PURE: the break a slot needs = `first_break` on the LAST COMPLETED minute alone (bar high >= the level, the pace
-    recorded, `VOLUME_PACE_GATE` honoured) — an earlier break does not carry over, a missing last bar is no break,
-    and an opening-range minute (0-4) is never one: with level = ORH5 the bar that SET the range high equals it."""
+def test_the_break_this_minute_is_a_bar_through_the_level_in_the_last_two_minutes_and_never_an_opening_range_bar():
+    """PURE: the break a slot needs = `first_break` on the last 2 COMPLETED minutes, the newest first (bar high
+    strictly ABOVE the level, the pace recorded, `VOLUME_PACE_GATE` honoured) — a break older than the lookback does
+    not carry over, a missing last bar is no break on its own, an exact touch is never one, and an opening-range
+    minute (0-4) is never one: with level = ORH5 the bar that SET the range high equals it."""
     mins = be.bars_by_minute(_bars_breaking_in(20, breaks=[12]), TODAY, 19)
 
     def upto(last):
         return {k: b for k, b in mins.items() if k <= last}
 
-    assert be.break_this_minute(upto(11), level=10.0, vol_bar=1_200_000.0, last_completed=11) is None
-    brk = be.break_this_minute(upto(12), level=10.0, vol_bar=1_200_000.0, last_completed=12)
-    assert brk == be.first_break(upto(12), level=10.0, vol_bar=1_200_000.0, from_minute=12) and brk["minute"] == 12
+    kw = dict(level=10.0, vol_bar=1_200_000.0)
+    assert be.break_this_minute(upto(11), last_completed=11, **kw) is None
+    brk = be.break_this_minute(upto(12), last_completed=12, **kw)
+    assert brk == dict(be.first_break(upto(12), from_minute=12, **kw), lookback=False) and brk["minute"] == 12
     assert brk["high"] == 10.05 and brk["cum_volume"] == 720_000.0
-    assert be.break_this_minute(upto(13), level=10.0, vol_bar=1_200_000.0, last_completed=13) is None   # not sticky
+    # THE LOOKBACK (review 2026-11-14 finding 3): the minute after, the 10:12-style break is still read — flagged
+    late = be.break_this_minute(upto(13), last_completed=13, **kw)
+    assert late == dict(be.first_break(upto(12), from_minute=12, **kw), lookback=True) and late["minute"] == 12
+    assert be.break_this_minute(upto(14), last_completed=14, **kw) is None                 # two minutes on: not sticky
+    assert be.break_this_minute(upto(13), last_completed=13, lookback=1, **kw) is None     # no lookback: the old rule
     gap = {k: b for k, b in upto(12).items() if k != 12}                    # the last completed bar is not published
-    assert be.break_this_minute(gap, level=10.0, vol_bar=1_200_000.0, last_completed=12) is None
-    assert be.break_this_minute(upto(12), level=10.05, vol_bar=1_200_000.0, last_completed=12)["minute"] == 12  # AT the level
+    assert be.break_this_minute(gap, last_completed=12, **kw) is None       # ... and the minute before did not break
+    gap13 = {k: b for k, b in upto(13).items() if k != 13}                  # 09:43 not published; 09:42 broke
+    assert be.break_this_minute(gap13, last_completed=13, **kw)["minute"] == 12
+    # both of the last two minutes broke: the NEWEST is the break, not flagged
+    both = be.bars_by_minute(_bars_breaking_in(20, breaks=[12, 13]), TODAY, 13)
+    assert be.break_this_minute(both, last_completed=13, **kw) == dict(
+        be.first_break(both, from_minute=13, **kw), lookback=False)
+    # STRICTLY through (review 2026-11-14 finding 1): a bar whose high only TOUCHES the level is not a break
+    assert be.break_this_minute(upto(12), level=10.05, vol_bar=1_200_000.0, last_completed=12) is None
+    assert be.break_this_minute(upto(12), level=10.04, vol_bar=1_200_000.0, last_completed=12)["minute"] == 12
     assert be.break_this_minute(upto(12), level=10.06, vol_bar=1_200_000.0, last_completed=12) is None
-    # the 09:35 tick: last completed = 09:34, an opening-range bar whose high IS the level (ORH5 9.95 > list level)
+    # the 09:35 tick: last completed = 09:34, an opening-range bar whose high IS the level (ORH5 9.95 > list level);
+    # the 09:36 tick's lookback minute (09:34) is an opening-range bar too: never read, even were it above the level
     assert be.break_this_minute(upto(4), level=9.95, vol_bar=1_200_000.0, last_completed=4) is None
-    assert be.break_this_minute(upto(5), level=9.95, vol_bar=1_200_000.0, last_completed=5)["minute"] == 5
+    assert be.break_this_minute(upto(5), level=9.95, vol_bar=1_200_000.0, last_completed=5) is None      # 9.95 touches
+    assert be.break_this_minute(upto(5), level=9.94, vol_bar=1_200_000.0, last_completed=5) == dict(
+        be.first_break(upto(5), level=9.94, vol_bar=1_200_000.0, from_minute=5), lookback=False)
+    flat5 = {k: b for k, b in upto(5).items()}
+    flat5[5] = dict(flat5[5], high=9.90)                                    # 09:35 under 9.94; 09:34 (range) above it
+    assert be.break_this_minute(flat5, level=9.94, vol_bar=1_200_000.0, last_completed=5) is None
     assert be.break_this_minute({}, level=10.0, vol_bar=1.0, last_completed=12) is None
+
+
+def _orh5_10_bars(n: int, high_0935: float) -> list[dict]:
+    """ORH5 = 10.00 exactly (the list level 10.00 too, so the level is 10.00), low 9.80, the pace met; the 09:35 bar's
+    high is `high_0935`, every later bar stays under the level."""
+    bars = [_bar(m, 9.90, 10.00 if m < 5 else 9.95, 9.80, 9.90, 60_000.0) for m in range(n)]
+    bars[5] = _bar(5, 9.90, high_0935, 9.85, 9.95, 60_000.0)
+    return bars
+
+
+@pytest.mark.asyncio
+async def test_a_bar_that_only_touches_the_level_is_no_break_and_no_order_one_cent_through_it_is(monkeypatch):
+    """Review 2026-11-14 finding 1 — "an actual break" = traded THROUGH the level. ORH5 = 10.00; a 09:36 run whose
+    09:35 bar's high is EXACTLY 10.00 -> no break: no funnel call, no order, no hold row, the open count not read
+    (the pre-fix `>=` sent it to the funnel). A high of 10.01 -> the break, the order, `break_high` 10.01."""
+    st = be.evaluate(be.bars_by_minute(_orh5_10_bars(6, 10.00), TODAY, 5), list_level=10.0, adr20=0.06,
+                     vol_bar=1.2e6, last_completed=5)
+    assert st["status"] == "ok" and st["orh5"] == 10.00 and st["level"] == 10.00
+    w = World(monkeypatch, bars={"BRKO": _orh5_10_bars(6, 10.00)})
+    out = await w.tick(at=(9, 36))
+    assert out["actions"] == {"BRKO": "no_break"} and w.funnel.await_count == 0 and w.orders == {}
+    assert _holds(w, state=None) == [] and w.count_calls == [] and w.ev("breakout_v1_entry_order") == []
+    w.bars["BRKO"] = _orh5_10_bars(8, 10.00)
+    out = await w.tick(at=(9, 38))                                           # still only the touch behind it
+    assert out["actions"] == {"BRKO": "no_break"} and w.funnel.await_count == 0
+    w2 = World(monkeypatch, bars={"BRKO": _orh5_10_bars(6, 10.01)})
+    out = await w2.tick(at=(9, 36))
+    assert out["actions"] == {"BRKO": ep.ACTION_AUTO_ENTERED} and _funnel_tickers(w2) == ["BRKO"]
+    d = json.loads(w2.ev("breakout_v1_entry_order")[0][2])
+    assert d["break_minute"] == 5 and d["break_high"] == 10.01 and d["level"] == 10.0
+    assert w2.ev(be.BREAK_LOOKBACK_EVENT) == []
+
+
+@pytest.mark.asyncio
+async def test_a_touch_while_held_is_not_the_missed_records_break_a_later_trade_through_is(monkeypatch):
+    """The 15:55 missed-by-slots record reads the SAME strict break: a hold whose 15:55 bars show only a touch of the
+    level from the hold's break minute on (the bar revised down to the level) writes nothing; one whose bar is
+    through it is recorded."""
+    bars = {t: _bars_breaking_in(386, breaks=[42]) for t in ("R1", "R2")}
+    w = World(monkeypatch, list_rows=_ranked(2), bars=bars, rows=[_lane_row(f"L{k}", 100 + k) for k in range(1, 6)])
+    out = await w.tick(at=(10, 13))
+    assert out["actions"] == {"R1": "held_slots_full", "R2": "held_slots_full"}
+    w.bars["R1"] = _bars_breaking_in(386, breaks=[42], high=10.00)           # revised: the bar only touched the level
+    out = await w.tick(at=(15, 55))
+    assert out["missed_by_slots"] == 1 and [r["ticker"] for r in _missed(w)] == ["R2"]
+
+
+@pytest.mark.asyncio
+async def test_a_held_name_whose_seat_attempt_was_cancelled_by_the_chase_cap_is_recorded_missed(monkeypatch):
+    """Review 2026-11-14 finding 2 — 'never got a slot' = no ORDER was ever placed: a held name whose later seat
+    attempt `submit_entry` ended at the chase cap (row `cancelled`, `setup:chase_cap_exceeded`, no entry order) IS
+    recorded at 15:55 (the pre-fix `_never_seated` counted only a missing or skipped row -> nothing recorded). A
+    held name that was seated, rested and was cancelled — a `setup:*` or `window:*` reason WITH its entry order —
+    had a slot and is not; nor is a broker kill."""
+    names = ["R1", "R2", "R3", "R4"]
+    w = World(monkeypatch, list_rows=_ranked(4), bars=_breaking_bars(names, break_at=12, n=386),
+              rows=[_lane_row(f"L{k}", 100 + k) for k in range(1, 6)])
+    await w.tick(at=(9, 43))
+    assert [h["ticker"] for h in _held(w)] == names
+
+    def cancelled(t, tid, oid, reason):
+        return dict(_placed_row(ticker=t, tid=tid, oid=oid, status="cancelled"), skip_reason=reason)
+
+    w.rows["R1"] = cancelled("R1", 31, None, "setup:chase_cap_exceeded: limit $10.40 risk $0.60/sh vs planned $0.20/sh")
+    w.rows["R2"] = cancelled("R2", 32, "o-2", "setup:stop_too_wide: level $10.00 - day low $9.20 = 8.00% > ADR20 6.00%")
+    w.rows["R3"] = cancelled("R3", 33, "o-3", "window:breakout_unfilled_eod: unfilled at 15:55 ET")
+    w.rows["R4"] = cancelled("R4", 34, None, "broker:rejected: stop price through the market")
+    assert be._never_seated({t: {"list_rank": k} for k, t in enumerate(names, 1)}, w.rows) == ["R1"]
+    out = await w.tick(at=(15, 55))
+    assert out["missed_by_slots"] == 1
+    assert [(r["ticker"], r["row_status"], r["minute"], r["hold_minute"]) for r in _missed(w)] == [
+        ("R1", "cancelled", 12, 13)]
+    assert w.batch_calls[-1][0] == ["R1"]                                    # only the candidate's bars are read
+    # the pure rule, row by row
+    assert be._no_order_ever(None) and be._no_order_ever({"status": "skipped", "skip_reason": "block:max_positions"})
+    assert be._no_order_ever({"status": "cancelled", "entry_order_id": None, "skip_reason": "setup:chase_cap_exceeded: x"})
+    assert not be._no_order_ever({"status": "cancelled", "entry_order_id": "o", "skip_reason": "setup:chase_cap_exceeded: x"})
+    assert not be._no_order_ever({"status": "cancelled", "entry_order_id": None, "skip_reason": None})
+    for status in ("order_placed", "confirmed", "filled", "closed", "order_failed"):
+        assert not be._no_order_ever({"status": status, "entry_order_id": None, "skip_reason": "setup:x"})
+
+
+@pytest.mark.asyncio
+async def test_a_break_whose_bar_the_next_tick_did_not_read_is_caught_by_the_lookback_with_one_audit_row(monkeypatch):
+    """Review 2026-11-14 finding 3 — a break visible in ONE minute's bar only (10:12), whose bar was not there when
+    the 10:13 run read (published late / the read failed): the pre-fix rule lost it for good, silently. Now the
+    10:14 run reads it through the lookback: the name goes to the funnel (the existing `submit_entry` rules decide
+    the order at that minute's price), the order row carries `break_minute` 42, and ONE `breakout_v1_break_lookback`
+    row says the break was read late. A break 3 minutes back is never read."""
+    full = _bars_breaking_in(50, breaks=[42])
+    w = World(monkeypatch, list_rows=_ranked(1), bars={"R1": [b for k, b in enumerate(full) if k != 42]})
+    out = await w.tick(at=(10, 13))                                          # the 10:12 bar is not published yet
+    assert out["actions"] == {"R1": "no_break"} and not w.funnel.await_count
+    w.bars["R1"] = full
+    out = await w.tick(at=(10, 14))                                          # last completed 10:13 (under); 10:12 broke
+    assert out["actions"] == {"R1": ep.ACTION_AUTO_ENTERED} and _funnel_tickers(w) == ["R1"]
+    look = w.ev(be.BREAK_LOOKBACK_EVENT)
+    assert len(look) == 1 and "R1" in look[0][1] and "10:12" in look[0][1] and "10:14" in look[0][1]
+    d = json.loads(look[0][2])
+    assert d["break_minute"] == 42 and d["minute"] == 44 and d["break_high"] == 10.05 and d["level"] == 10.0
+    assert json.loads(w.ev("breakout_v1_entry_order")[0][2])["break_minute"] == 42
+    bar = await w.funnel.await_args.kwargs["bar_fetcher"]("R1", TODAY, "x")   # the unchanged entry spec inputs
+    assert bar["level"] == 10.00 and bar["stop"] == 9.80
+
+    # the read FAILED at the tick after the break (the name absent from the batch): the same catch, one row
+    w2 = World(monkeypatch, list_rows=_ranked(1), bars={"R1": full}, bars_unreadable=["R1"])
+    out = await w2.tick(at=(10, 13))
+    assert out["actions"] == {"R1": "bars_unreadable"}
+    w2.bars_unreadable = set()
+    out = await w2.tick(at=(10, 14))
+    assert _funnel_tickers(w2) == ["R1"] and len(w2.ev(be.BREAK_LOOKBACK_EVENT)) == 1
+
+    # both of those ticks missed it: the 10:15 run does NOT read a break three minutes back
+    w3 = World(monkeypatch, list_rows=_ranked(1), bars={"R1": full}, bars_unreadable=["R1"])
+    await w3.tick(at=(10, 13))
+    await w3.tick(at=(10, 14))
+    w3.bars_unreadable = set()
+    out = await w3.tick(at=(10, 15))
+    assert out["actions"] == {"R1": "no_break"} and not w3.funnel.await_count and w3.ev(be.BREAK_LOOKBACK_EVENT) == []
+
+
+@pytest.mark.asyncio
+async def test_the_lookback_never_reads_an_opening_range_bar_and_a_break_read_on_time_writes_no_lookback_row(monkeypatch):
+    """The lookback keeps the opening-range exclusion: at the 09:36 run the lookback minute is 09:34, the bar that
+    SET the range high — never a break, whatever the list level. And a break read on time, then read again through
+    the lookback the minute after (the name held: the book full), writes no lookback row and no second hold row."""
+    bars = [_bar(m, 9.90, 10.20 if m == 4 else 9.95, 9.80, 9.90, 60_000.0) for m in range(6)]   # 09:34 high 10.20
+    w = World(monkeypatch, list_rows=[dict(_LIST, level=9.50)], bars={"BRKO": bars})
+    st = be.evaluate(be.bars_by_minute(bars, TODAY, 5), list_level=9.5, adr20=0.06, vol_bar=1.2e6, last_completed=5)
+    assert st["status"] == "ok" and st["level"] == 10.20
+    out = await w.tick(at=(9, 36))
+    assert out["actions"] == {"BRKO": "no_break"} and not w.funnel.await_count
+    # even with a level UNDER the 09:34 high handed to the pure check, minute 4 is not read
+    assert be.break_this_minute(be.bars_by_minute(bars, TODAY, 5), level=10.0, vol_bar=1.2e6, last_completed=5) is None
+
+    w2 = World(monkeypatch, list_rows=_ranked(1), bars={"R1": _bars_breaking_in(50, breaks=[42])},
+               rows=[_lane_row(f"L{k}", 100 + k) for k in range(1, 6)])
+    assert (await w2.tick(at=(10, 13)))["actions"] == {"R1": "held_slots_full"}
+    assert (await w2.tick(at=(10, 14)))["actions"] == {"R1": "held_slots_full"}      # the lookback, the book still full
+    assert (await w2.tick(at=(10, 15)))["actions"] == {"R1": "no_break"}
+    assert len(_held(w2)) == 1 and w2.ev(be.BREAK_LOOKBACK_EVENT) == [] and not w2.funnel.await_count
 
 
 @pytest.mark.asyncio
