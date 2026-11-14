@@ -3044,3 +3044,8 @@ Chart with his drawn lines: `docs/methodology/charts/2026-11-14_markup_meli_firy
 - FIRY: lower highs AND higher lows — converging lines (a triangle), the range narrowing into the buy.
 - BLDP: flat top at the buy level, lows RISING steeply to it — an ascending triangle.
 The rule he draws: the base's LOWS must be rising (the lower line slopes up) and the lines converge into the buy level; a wide base whose lower line is flat or falling is the defect. Swing SIZE alone cannot tell these apart — the lines' direction does.
+
+## 2026-11-14 — the Qullamaggie buys the lower-line check drops, and the fifth sheet (#717)
+On `scripts/probes/_717_lowline_1114/sheet_qm_flagged.png` (Qullamaggie buys the check would drop): > "QS - maybe buy point is wrong / BNTX not good, don't think he bought on this day (possible some of our buy days are wrong) / rest looks sus as well, we may have wrong buy time/date so might be fine if we skip these on those particular days". Read: none looks like a real setup on the recorded day — the dropped rows are likely mis-dated buys, so skipping them on those days is acceptable.
+
+Fifth sheet `scripts/probes/_717_lowline_1114/sheet_lowline_picks.png` (1d + A2(10) + lower line; dollar-volume top 5): > "A looks ok but seems extended / B ok / C ok / D ok / E ok / F ok / G no, erratic, huge wide moves without enough time to tighten / H ok / I ok / J ok, might be extended / K ok / L looks extended". A WPM, B AU, C AKRX, D RETA, E CVNA, F XYZ(SQ), G NEM, H FOUR, I ONCE, J TAL, K CIG, L TRXC. **9 ok (+ A ok-but-extended) of 12 — first sheet over the paper bar of 8.** Remaining defects: one erratic chart (NEM) and EXTENDED (A, J, L).

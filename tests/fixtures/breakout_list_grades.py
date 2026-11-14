@@ -88,6 +88,7 @@ BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
 _MODEL_1113B = "scripts/probes/_717_pick_model_1113/sheet_template_picks.png"   # graded 2026-11-13 (second sheet, 12 new learned-ranking picks)
 _MODEL_1114 = "scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png"   # graded 2026-11-14 (third sheet: the 50-day check, ranked by dollar volume); dates = the LIST NIGHT, as on the earlier sheets
 _MODEL_1114B = "scripts/probes/_717_context_1114/sheet_context_a2_dollar_volume_picks.png"   # graded 2026-11-14 (fourth sheet: 1d + 50-day falling over 10 sessions with a negative 6-month return); dates = the list night
+_MODEL_1114C = "scripts/probes/_717_lowline_1114/sheet_lowline_picks.png"   # graded 2026-11-14 (fifth sheet: 1d + A2(10) + the lower-line check); dates = the list night
 MODEL_PICK_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2021-10-08", "ATYR", "A", 5, 0.0, 0.0, "ok", "looks ok, caveat is the run up (post huge EP day) then quickly giving it all back, not much time to build range after that volatility", _MODEL_1113),
     BreakoutGrade("2022-03-21", "X", "B", 4, 0.0, 0.0, "no", "no pull back or basing , I don't see a setup", _MODEL_1113),
@@ -137,4 +138,16 @@ MODEL_PICK_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2020-01-03", "CHWY", "J", 3, 0.0, 0.0, "ok", 'ok', _MODEL_1114B),
     BreakoutGrade("2019-06-07", "ZS", "K", 5, 0.0, 0.0, "ok", 'ok', _MODEL_1114B),
     BreakoutGrade("2020-10-22", "PINS", "L", 2, 0.0, 0.0, "no", 'late, looks broken out already', _MODEL_1114B),
+    BreakoutGrade("2020-05-13", "WPM", "A", 5, 0.0, 0.0, "conditional", 'looks ok but seems extended', _MODEL_1114C),
+    BreakoutGrade("2019-09-23", "AU", "B", 3, 0.0, 0.0, "ok", 'ok', _MODEL_1114C),
+    BreakoutGrade("2018-07-30", "AKRX", "C", 5, 0.0, 0.0, "ok", 'ok', _MODEL_1114C),
+    BreakoutGrade("2019-12-09", "RETA", "D", 3, 0.0, 0.0, "ok", 'ok', _MODEL_1114C),
+    BreakoutGrade("2019-11-14", "CVNA", "E", 5, 0.0, 0.0, "ok", 'ok', _MODEL_1114C),
+    BreakoutGrade("2018-04-19", "XYZ", "F", 2, 0.0, 0.0, "ok", 'ok', _MODEL_1114C),
+    BreakoutGrade("2020-04-01", "NEM", "G", 5, 0.0, 0.0, "no", 'no, erratic, huge wide moves without enough time to tighten', _MODEL_1114C),
+    BreakoutGrade("2021-04-29", "FOUR", "H", 3, 0.0, 0.0, "ok", 'ok', _MODEL_1114C),
+    BreakoutGrade("2019-02-06", "ONCE", "I", 5, 0.0, 0.0, "ok", 'ok', _MODEL_1114C),
+    BreakoutGrade("2017-09-08", "TAL", "J", 1, 0.0, 0.0, "ok", 'ok, might be extended', _MODEL_1114C),
+    BreakoutGrade("2018-10-24", "CIG", "K", 3, 0.0, 0.0, "ok", 'ok', _MODEL_1114C),
+    BreakoutGrade("2018-06-25", "TRXC", "L", 4, 0.0, 0.0, "conditional", 'looks extended', _MODEL_1114C),
 ]
