@@ -3013,3 +3013,8 @@ Sheet `scripts/probes/_717_pick_model_1113/sheet_template_picks.png`: A MRNA, B 
 > "keep for now unless there's evidence that it degrades performand or drop key stock/big winners"
 
 Context: the 4% floor drops 22 of the 84 high-confidence buys (PBR, ALB, AMD, ABNB, NUE, DHT, AVLR, SLV …), all 26 big winners kept. Re-open only on evidence it hurts results or drops big winners.
+
+## 2026-11-14 — third sheet: the picks after the one surviving check (#717, era A, none a Qullamaggie buy)
+> "A ok / B no, choppy, looks like in downtrend, recent up move made lower high / C maybe / D no, large choppy range, where's the tightness and building higher lows? / E no, no tightness just chop / F ok / G maybe, but looks like needs to build sideways tight more days / H ok / I no, just downtrend, where's breakout? / J no / K ok / L maybe"
+
+Sheet `scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png` (check: out when more than 3% under a falling 50-day; ranked by dollar volume): A CRWD, B THC, C NVTA, D CDE, E TWTR, F TTD, G AZUL, H ADMS, I REN, J RIOT, K WDC, L W. 4 ok + 3 maybe of 12 (bar for paper: 8 good/ok). His reasons for no, again: choppy wide range with no tightness; downtrend / a lower high on the recent up move; no higher lows; no breakout. "Maybe" = needs more sideways tight days. Recorded in `tests/fixtures/breakout_list_grades.py` (`MODEL_PICK_GRADES`, `_MODEL_1114`).

@@ -86,6 +86,7 @@ BREAKOUT_LIST_GRADES: list[BreakoutGrade] = [
 # His grades on the LEARNED RANKING's picks (#717, 2026-11-13) — historical charts (2021-22 test years), kept apart
 # from BREAKOUT_LIST_GRADES (whose tests need bars for every row). None of the 12 was a Qullamaggie buy.
 _MODEL_1113B = "scripts/probes/_717_pick_model_1113/sheet_template_picks.png"   # graded 2026-11-13 (second sheet, 12 new learned-ranking picks)
+_MODEL_1114 = "scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png"   # graded 2026-11-14 (third sheet: the 50-day check, ranked by dollar volume)
 MODEL_PICK_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2021-10-08", "ATYR", "A", 5, 0.0, 0.0, "ok", "looks ok, caveat is the run up (post huge EP day) then quickly giving it all back, not much time to build range after that volatility", _MODEL_1113),
     BreakoutGrade("2022-03-21", "X", "B", 4, 0.0, 0.0, "no", "no pull back or basing , I don't see a setup", _MODEL_1113),
@@ -111,4 +112,16 @@ MODEL_PICK_GRADES: list[BreakoutGrade] = [
     BreakoutGrade("2021-03-11", "APHA", "J", 2, 0.0, 0.0, "ok", "ok", _MODEL_1113B),
     BreakoutGrade("2021-07-21", "BEAM", "K", 5, 0.0, 0.0, "no", "no", _MODEL_1113B),
     BreakoutGrade("2022-01-11", "DOCN", "L", 3, 0.0, 0.0, "no", "no, downtrend, lower lows", _MODEL_1113B),
+    BreakoutGrade("2020-10-19", "CRWD", "A", 4, 0.0, 0.0, "ok", 'ok', _MODEL_1114),
+    BreakoutGrade("2017-05-10", "THC", "B", 5, 0.0, 0.0, "no", 'no, choppy, looks like in downtrend, recent up move made lower high', _MODEL_1114),
+    BreakoutGrade("2019-08-07", "NVTA", "C", 5, 0.0, 0.0, "conditional", 'maybe', _MODEL_1114),
+    BreakoutGrade("2019-11-06", "CDE", "D", 5, 0.0, 0.0, "no", "no, large choppy range, where's the tightness and building higher lows?", _MODEL_1114),
+    BreakoutGrade("2018-02-08", "TWTR", "E", 1, 0.0, 0.0, "no", 'no, no tightness just chop', _MODEL_1114),
+    BreakoutGrade("2017-07-27", "TTD", "F", 5, 0.0, 0.0, "ok", 'ok', _MODEL_1114),
+    BreakoutGrade("2022-01-21", "AZUL", "G", 2, 0.0, 0.0, "conditional", 'maybe, but looks like needs to build sideways tight more days', _MODEL_1114),
+    BreakoutGrade("2018-01-17", "ADMS", "H", 3, 0.0, 0.0, "ok", 'ok', _MODEL_1114),
+    BreakoutGrade("2017-07-28", "REN", "I", 4, 0.0, 0.0, "no", "no, just downtrend, where's breakout?", _MODEL_1114),
+    BreakoutGrade("2021-11-12", "RIOT", "J", 4, 0.0, 0.0, "no", 'no', _MODEL_1114),
+    BreakoutGrade("2019-02-19", "WDC", "K", 4, 0.0, 0.0, "ok", 'ok', _MODEL_1114),
+    BreakoutGrade("2018-08-22", "W", "L", 4, 0.0, 0.0, "conditional", 'maybe', _MODEL_1114),
 ]
