@@ -1,0 +1,90 @@
+T = 0.2988; must-pass top 10:
+                          src       S3
+qm FIRY 2021-01-05 Medium BIG 0.298825
+      qm BLDP 2019-11-12 High 0.236679
+       qm NUE 2022-01-05 High 0.232110
+       qm AMD 2021-10-13 High 0.220727
+        qm MU 2021-12-21 High 0.212297
+           ok VUZI 2021-04-23 0.209616
+       qm PBR 2019-10-22 High 0.207554
+       qm PBR 2019-10-22 High 0.207554
+           ok OKTA 2018-03-26 0.205854
+         qm M 2021-01-06 High 0.200782
+
+GRADED, S3 descending:
+ticker          D       grade    S3
+  MELI 2018-09-17          no 0.484
+   RRC 2018-11-12          no 0.460
+   CDE 2019-11-05          no 0.303
+  FLGT 2021-12-10          no 0.302
+  TWTR 2018-02-07          no 0.287
+   WPX 2018-04-23          no 0.255
+  MDCO 2018-03-21 conditional 0.252
+  AZUL 2022-01-20 conditional 0.249
+  TDOC 2020-03-19          no 0.244
+  DVAX 2021-11-17          no 0.233
+  TIGR 2021-04-23          no 0.231
+  SWAV 2021-08-17          no 0.221
+  COUP 2019-10-08 conditional 0.215
+  VUZI 2021-04-23          ok 0.210
+  OKTA 2018-03-26          ok 0.206
+   THC 2017-05-09          no 0.193
+  AFRM 2021-09-23          no 0.184
+     F 2022-03-02          no 0.182
+   WDC 2019-02-15          ok 0.178
+  APHA 2021-03-11          ok 0.174
+  DOCN 2022-01-11          no 0.169
+  RIOT 2021-11-11          no 0.164
+    PS 2019-05-01 conditional 0.162
+   TTD 2017-07-26          ok 0.157
+  ADMS 2018-01-16          ok 0.136
+  MRNA 2021-01-08        good 0.104
+  OCGN 2021-09-10          no 0.075
+  FUTU 2021-06-23 conditional 0.074
+  CRWD 2020-10-16          ok 0.046
+   GBT 2019-06-24 conditional 0.000
+     W 2018-08-21 conditional 0.000
+  CHWY 2020-01-03          ok 0.000
+    ZS 2019-06-07          ok 0.000
+  ATYR 2021-10-08          ok 0.000
+   REN 2017-07-27          no 0.000
+  NVTA 2019-08-06 conditional 0.000
+     X 2022-03-21          no 0.000
+  BEAM 2021-07-21          no 0.000
+  HAPN 2021-08-25          no 0.000
+  ATOS 2021-07-13          ok 0.000
+    DQ 2021-04-19          no 0.000
+   CLR 2021-12-09 conditional 0.000
+  MVIS 2021-04-23          no 0.000
+  LCID 2021-09-20          no 0.000
+   CAR 2021-11-16          ok 0.000
+  TELL 2021-05-12          ok 0.000
+   ZIM 2021-12-28          no 0.000
+  PINS 2020-10-22          no 0.000
+
+DEF-NO flagged 4/8: ['FLGT', 'CDE', 'MELI', 'RRC']; ok/good flagged []
+QM scoreable rows 941 (736 buys); flagged buys 16: tiers {'Low': 11, 'Medium': 3, 'Not': 2}
+ticker          E   tier  big    S3
+  SPCE 2020-01-17    Low    0 0.405
+  TDOC 2019-10-31    Low    0 0.403
+   FAS 2022-01-04    Not    0 0.383
+   DDS 2019-10-09    Low    0 0.377
+    MP 2022-02-22 Medium    0 0.376
+  MARA 2021-11-30    Low    0 0.373
+   NET 2020-04-16 Medium    0 0.363
+     W 2021-03-15    Low    0 0.353
+  MRNA 2020-06-15    Low    0 0.341
+  MRNA 2020-05-29    Low    0 0.341
+    QS 2021-01-05    Low    0 0.333
+  BNTX 2021-01-05    Low    0 0.327
+    MQ 2021-10-26    Low    0 0.321
+    AI 2023-05-17    Low    0 0.320
+   ERX 2022-01-03    Not    0 0.320
+   NIO 2020-02-19 Medium    0 0.304
+
+POST-HOC: line without FIRY = 0.2367
+graded flagged: [['FLGT', 'no'], ['CDE', 'no'], ['TWTR', 'no'], ['AZUL', 'conditional'], ['TDOC', 'no'], ['MELI', 'no'], ['MDCO', 'conditional'], ['RRC', 'no'], ['WPX', 'no']]
+QM buys flagged 36 of 736: tiers {'Low': 25, 'Medium': 7, 'Not': 4}, big 1
+ticker          E   tier  big  nbars       S3
+  FIRY 2020-11-30    Low    0    151 0.000000
+  FIRY 2021-01-05 Medium    1    175 0.298825

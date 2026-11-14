@@ -1,0 +1,91 @@
+VERSION v1: LOOK 60 K 3 GATE 0.1
+graded: 48 (ok/good 14, def-no 8); qm rows 972, scoreable (>= 60 bars) 941
+protected keys: High tier 84 (scoreable 84), listed56 56 (scoreable 56), big 26 (scoreable 26)
+
+MUST-PASS set 129 rows; T = max S = 6.7143; the 8 highest:
+                              src        S
+  qm w448 PENN 2020-03-26 Low SIX 6.714288
+ qm d695 BLDP 2020-06-29 High BIG 3.905348
+      qm d814 LRN 2020-08-05 High 3.834643
+     qm d1249 TTD 2021-02-19 High 2.098147
+qm d1124 APHA 2021-01-06 High BIG 1.725383
+          ok/good MRNA 2021-01-08 1.624812
+ qm d1030 JMIA 2020-11-18 Low BIG 1.609771
+    qm d1552 MARA 2021-10-11 High 1.600917
+
+GRADED charts, S descending:
+ticker          D       grade     S  late  early  late_chart  nlegs  lowchg
+   WPX 2018-04-23          no 3.078 0.221  0.072       0.370 11.000  -0.140
+   GBT 2019-06-24 conditional 2.933 0.204  0.069       0.266 12.000  -0.156
+   THC 2017-05-09          no 2.260 0.181  0.080       0.270 11.000   0.047
+     F 2022-03-02          no 1.992 0.141  0.071       0.191 12.000  -0.109
+   ZIM 2021-12-28          no 1.890 0.263  0.139       0.278 12.000  -0.136
+  MRNA 2021-01-08        good 1.625 0.270  0.166       0.156  7.000  -0.156
+   RRC 2018-11-12          no 1.610 0.190  0.118       0.474  8.000  -0.204
+  RIOT 2021-11-11          no 1.583 0.354  0.224       0.263  8.000   0.049
+  DVAX 2021-11-17          no 1.449 0.263  0.182       0.239 10.000  -0.095
+  TWTR 2018-02-07          no 1.399 0.170  0.122       0.306 10.000  -0.135
+  ADMS 2018-01-16          ok 1.340 0.144  0.107       0.138 11.000  -0.025
+  MVIS 2021-04-23          no 1.212 0.647  0.534       0.218  8.000  -0.039
+  TDOC 2020-03-19          no 1.210 0.332  0.274       0.320  8.000   0.114
+  APHA 2021-03-11          ok 1.180 0.398  0.337       0.190  9.000  -0.061
+  MDCO 2018-03-21 conditional 1.170 0.135  0.115       0.232 12.000   0.142
+  NVTA 2019-08-06 conditional 1.123 0.230  0.205       0.201  9.000   0.106
+  COUP 2019-10-08 conditional 1.097 0.207  0.189       0.229 12.000  -0.028
+    ZS 2019-06-07          ok 1.092 0.180  0.165       0.187  9.000   0.031
+  SWAV 2021-08-17          no 1.080 0.169  0.157       0.192 12.000   0.008
+  BEAM 2021-07-21          no 0.989 0.351  0.355       0.226  6.000   0.025
+   CLR 2021-12-09 conditional 0.955 0.175  0.183       0.213  8.000  -0.055
+   TTD 2017-07-26          ok 0.942 0.108  0.115       0.112  9.000   0.025
+   CDE 2019-11-05          no 0.931 0.170  0.182       0.221  8.000  -0.130
+  AFRM 2021-09-23          no 0.912 0.294  0.323       0.256  8.000   0.297
+  DOCN 2022-01-11          no 0.844 0.247  0.293       0.186  9.000  -0.102
+    PS 2019-05-01 conditional 0.836 0.118  0.141       0.154 10.000   0.082
+  AZUL 2022-01-20 conditional 0.828 0.153  0.185       0.160 10.000  -0.113
+     X 2022-03-21          no 0.744 0.130  0.174       0.192 12.000   0.101
+  VUZI 2021-04-23          ok 0.742 0.486  0.655       0.211  6.000   0.194
+   CAR 2021-11-16          ok 0.705 0.471  0.668       0.188  6.000   0.168
+     W 2018-08-21 conditional 0.705 0.112  0.159       0.149  9.000  -0.063
+   REN 2017-07-27          no 0.663 0.181  0.273       0.228  8.000   0.001
+  MELI 2018-09-17          no 0.657 0.137  0.209       0.346  7.000  -0.035
+  ATOS 2021-07-13          ok 0.616 0.467  0.758       0.187 10.000   0.116
+  ATYR 2021-10-08          ok 0.601 0.307  0.510       0.231  8.000   0.352
+  TIGR 2021-04-23          no 0.445 0.257  0.577       0.117  7.000   0.111
+  HAPN 2021-08-25          no 0.429 0.154  0.359       0.111 10.000   0.353
+   WDC 2019-02-15          ok 0.402 0.101  0.251       0.105  8.000   0.238
+  FLGT 2021-12-10          no 0.352 0.083  0.236       0.123 15.000  -0.094
+  CHWY 2020-01-03          ok 0.000 0.058  0.163       0.091 10.000   0.308
+  CRWD 2020-10-16          ok 0.000 0.107  0.106       0.068  8.000   0.044
+  OKTA 2018-03-26          ok 0.000 0.056  0.172       0.081 10.000   0.086
+  OCGN 2021-09-10          no 0.000 0.088  0.126       0.021  9.000   0.015
+    DQ 2021-04-19          no 0.000 0.171  0.361       0.087 11.000   0.029
+  FUTU 2021-06-23 conditional 0.000 0.173  0.121       0.086 10.000  -0.004
+  LCID 2021-09-20          no 0.000 0.178  0.347       0.095 10.000   0.079
+  TELL 2021-05-12          ok 0.000 0.134  0.299       0.072  8.000   0.105
+  PINS 2020-10-22          no 0.000 0.135  0.272       0.082  8.000   0.166
+
+DEF-NO flagged 0/8: ; margin min(TDOC,MELI,RRC)/T = 0.098
+ok/good flagged: [] | all 'no' flagged: [] | conditional flagged: []
+six:
+  key ticker          E     S  late  early  late_chart  nlegs  lowchg
+ d400    APT 2020-02-21 0.631 0.251  0.397       0.279 13.000  -0.090
+ d460   NVAX 2020-04-03 0.530 0.530  1.001       0.329  6.000   0.049
+ d468      W 2020-04-07 0.347 0.451  1.300       0.230  6.000   0.356
+d1255    AMC 2021-02-22 0.496 0.789  1.592       0.334  5.000   0.428
+ w448   PENN 2020-03-26 6.714 1.898  0.283       0.809  6.000  -0.804
+ w458   MRNA 2020-04-02 0.513 0.312  0.609       0.275  8.000   0.204
+
+QM headline (fixed day, full chart) 573: flagged 2; tier {'Low': 2}; High 0, listed56 0, big 0
+  key ticker          E tier  big  listed56     S  late  early  late_chart  nlegs
+ d739   WKHS 2020-07-20  Low    0         0 7.385 1.362  0.184       0.477  5.000
+w1064   LAZR 2020-12-10  Low    0         0 6.981 0.790  0.113       0.488  5.000
+short history fixed-day (60-188 bars) flagged 1 of 35
+multi-session windows 128: any night flagged 1, every night flagged 0
+all scoreable Qullamaggie buys (any row flagged): 4 of 736
+bridge TDOC 2020-03-19: fires 1.2099 graded 1.2099
+bridge MELI 2018-09-17: fires 0.6572 graded 0.6572
+bridge RRC 2018-11-12: fires 1.6105 graded 1.6105
+
+fires 156,695 / 1322 nights = 118.5 a day; pool after 1d 136,305 = 103.1 a day; S NaN (under 60 bars) 0
+all fires: removed 145 = 0.11 a day of 118.5 (0.1%); Qullamaggie fired buys removed 2 (High 0, big 0): d739,w1627
+pool after 1d: removed 77 = 0.06 a day of 103.1 (0.1%); Qullamaggie fired buys removed 2 (High 0, big 0): d739,w1627

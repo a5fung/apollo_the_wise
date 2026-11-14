@@ -1,0 +1,115 @@
+LOOSE gate: box20_chart >= 0.3961 (least of TDOC/MELI/RRC, wl.py frozen line)
+graded gated: 10 of 48 (ok/good gated 2 of 14); chop rejects gated: TDOC, MELI, RRC, CDE, FLGT
+
+== GRADED 48 (sorted by grade, box20_chart) ==
+ticker          D       grade  box20_chart  gate  V1_box21  V2_box30  V3_tr21  V4_tr30
+  MDCO 2018-03-21 conditional        0.348 False     1.009     0.958    0.688    0.827
+  AZUL 2022-01-20 conditional        0.317 False     1.113     1.531    0.960    0.999
+   GBT 2019-06-24 conditional        0.307 False     1.853     1.727    1.434    1.213
+    PS 2019-05-01 conditional        0.265 False     0.772     0.885    0.862    0.949
+   CLR 2021-12-09 conditional        0.253 False     0.901     0.950    0.819    1.197
+  NVTA 2019-08-06 conditional        0.244 False     1.255     0.733    1.399    1.278
+  COUP 2019-10-08 conditional        0.242 False     1.207     1.274    1.041    0.801
+     W 2018-08-21 conditional        0.223 False     0.375     0.560    0.561    0.619
+  FUTU 2021-06-23 conditional        0.139 False     1.222     0.612    1.022    0.758
+  MRNA 2021-01-08        good        0.270 False     0.559     0.394    0.857    0.587
+     X 2022-03-21          no        0.720  True     0.583     0.499    0.793    0.983
+  AFRM 2021-09-23          no        0.582  True     0.510     0.548    0.694    1.219
+  MELI 2018-09-17          no        0.519  True     0.379     0.517    0.825    0.727
+   RRC 2018-11-12          no        0.488  True     0.877     1.026    0.759    0.838
+   WPX 2018-04-23          no        0.485  True     0.795     1.639    0.733    0.847
+   CDE 2019-11-05          no        0.403  True     0.661     0.814    0.928    0.915
+  FLGT 2021-12-10          no        0.396  True     0.441     1.174    0.596    0.867
+  TDOC 2020-03-19          no        0.396  True     1.231     1.231    1.627    1.659
+   THC 2017-05-09          no        0.394 False     1.500     1.204    1.827    1.549
+  TWTR 2018-02-07          no        0.387 False     0.851     1.373    1.474    1.819
+     F 2022-03-02          no        0.376 False     0.632     0.521    1.128    0.847
+  RIOT 2021-11-11          no        0.362 False     1.420     2.121    1.429    1.340
+  BEAM 2021-07-21          no        0.334 False     0.387     0.468    0.702    0.735
+  DVAX 2021-11-17          no        0.327 False     0.304     1.541    0.509    1.265
+   ZIM 2021-12-28          no        0.315 False     0.587     0.958    0.558    0.650
+   REN 2017-07-27          no        0.311 False     0.557     0.507    0.812    0.710
+  SWAV 2021-08-17          no        0.235 False     1.745     0.937    1.401    1.241
+  TIGR 2021-04-23          no        0.231 False     0.579     0.476    0.745    0.854
+  HAPN 2021-08-25          no        0.231 False     0.253     0.506    0.424    0.487
+  MVIS 2021-04-23          no        0.220 False     1.196     1.196    1.105    1.147
+  LCID 2021-09-20          no        0.217 False     1.038     0.730    0.944    1.101
+  DOCN 2022-01-11          no        0.205 False     1.069     0.818    0.821    0.610
+  PINS 2020-10-22          no        0.189 False     1.219     0.797    1.204    0.882
+    DQ 2021-04-19          no        0.188 False     0.353     0.415    0.606    0.518
+  OCGN 2021-09-10          no        0.037 False     0.522     0.313    0.744    0.514
+  ATYR 2021-10-08          ok        0.609  True     0.168     0.321    0.276    0.313
+   CAR 2021-11-16          ok        0.494  True     0.213     0.223    0.344    0.653
+  CHWY 2020-01-03          ok        0.392 False     0.210     0.278    0.364    0.521
+  ATOS 2021-07-13          ok        0.318 False     0.552     0.615    1.000    0.715
+   WDC 2019-02-15          ok        0.307 False     0.323     0.363    0.452    0.519
+  OKTA 2018-03-26          ok        0.292 False     0.487     0.322    0.717    0.629
+  APHA 2021-03-11          ok        0.274 False     0.459     0.439    0.505    0.611
+    ZS 2019-06-07          ok        0.216 False     0.735     0.926    0.876    0.913
+  TELL 2021-05-12          ok        0.213 False     0.458     0.577    0.814    0.789
+  VUZI 2021-04-23          ok        0.212 False     0.729     0.645    0.659    0.564
+   TTD 2017-07-26          ok        0.178 False     1.481     0.969    1.234    1.025
+  ADMS 2018-01-16          ok        0.152 False     1.071     0.794    0.937    0.856
+  CRWD 2020-10-16          ok        0.130 False     0.640     0.575    0.758    0.726
+
+== SELECTION (graded only) ==
+ variant  t_graded  rej8_flagged  all3  min_R_3  margin                flagged
+V1_box21     0.213             5  True    0.379   1.778 FLGT,CDE,TDOC,MELI,RRC
+V2_box30     0.321             5  True    0.517   1.610 FLGT,CDE,TDOC,MELI,RRC
+ V3_tr21     0.344             5  True    0.759   2.207 FLGT,CDE,TDOC,MELI,RRC
+ V4_tr30     0.653             5  True    0.727   1.113 FLGT,CDE,TDOC,MELI,RRC
+SELECTED: V3_tr21
+
+== MUST-PASS rows inside the LOOSE gate (14), by V3_tr21 ==
+           src ticker          D  box20_chart  V3_tr21
+           six   PENN 2020-03-26        0.892    1.925
+          High   TLRY 2021-02-02        0.606    0.884
+           six      W 2020-04-07        0.642    0.784
+          High   MRNA 2020-05-11        0.405    0.725
+           big   FIRY 2021-01-05        0.415    0.664
+          High   MRNA 2020-05-12        0.422    0.649
+           six    APT 2020-02-21        0.594    0.500
+           big   DOYU 2020-08-24        0.399    0.425
+           six   MRNA 2020-04-02        0.522    0.422
+           six   NVAX 2020-04-03        0.491    0.398
+          High   CRON 2020-11-24        0.675    0.364
+graded ok/good    CAR 2021-11-16        0.494    0.344
+graded ok/good   ATYR 2021-10-08        0.609    0.276
+           six    AMC 2021-02-22        0.837    0.168
+THRESHOLD t = 1.9254 (flag iff gated AND V3_tr21 > t); unscored must-pass inside gate: 0
+
+== SCOREBOARD (V3_tr21, t = 1.9254) ==
+def-no 3: TDOC not (R 1.627, gate True), MELI not (R 0.825, gate True), RRC not (R 0.759, gate True); margin min(R 3)/t = 0.394
+chop rejects flagged 0/8: SWAV(R 1.40, gate False), FLGT(R 0.60, gate True), DVAX(R 0.51, gate False), CDE(R 0.93, gate True), TWTR(R 1.47, gate False), TDOC(R 1.63, gate True), MELI(R 0.82, gate True), RRC(R 0.76, gate True)
+other 'no' flagged: []; conditional flagged: []
+ok/good flagged: []
+six tightening buys flagged: []; their R: APT 0.50(gate True), NVAX 0.40(gate True), W 0.78(gate True), AMC 0.17(gate True), PENN 1.93(gate True), MRNA 0.42(gate True)
+Qullamaggie buys [ALL rows in capture]: flagged 13 of 736 scoreable buys (757 buys); High flagged 0 (scoreable 56 of 56); big flagged 0 (scoreable 26 of 26)
+Qullamaggie buys [era A (E <= 2022-03-31)]: flagged 13 of 718 scoreable buys (739 buys); High flagged 0 (scoreable 55 of 56); big flagged 0 (scoreable 26 of 26)
+flagged Qullamaggie buys:
+    set  eid ticker          E tier     reason  big  high                how   nbars  box20_chart  V3_tr21
+widened  175   RETA 2019-10-18  Low   no_level    0 False   window_not_fixed 200.000        0.948    2.778
+widened  227    ONC 2019-11-08  Low weak_pivot    0 False one_session_window 200.000        0.938    1.968
+widened  415   CODX 2020-03-03  Low   no_level    0 False one_session_window 200.000        0.635    2.115
+widened  677   LAKE 2020-06-17  Low   no_level    0 False one_session_window 200.000        0.601    2.693
+widened  680   NKLA 2020-06-17  Low   no_level    0 False   window_not_fixed 200.000        0.658    2.085
+widened 1049   MRNA 2020-12-04  Low   no_level    0 False one_session_window 200.000        0.420    2.277
+widened 1064   LAZR 2020-12-10  Low   no_level    0 False one_session_window 200.000        0.958    2.239
+widened 1164    GME 2021-01-20  Low   no_level    0 False one_session_window 200.000        0.441    2.032
+widened 1197    XRT 2021-01-28  Not       fund    0 False one_session_window 200.000        0.400    2.013
+widened 1458    AMC 2021-06-09  Low   no_level    0 False one_session_window 200.000        0.556    2.025
+widened 1594   TSLA 2021-10-29  Low   no_level    0 False one_session_window 200.000        0.509    2.317
+widened 1616   BBBY 2021-11-11  Low     bounce    0 False one_session_window 200.000        0.544    2.746
+widened 1666     ZS 2021-12-09  Low   no_level    0 False one_session_window 200.000        0.399    2.114
+VIR / LAC rows: VIR 2021-12-15 R 0.51 gate True flag False; LAC 2022-04-21 R 0.78 gate True flag False; LAC 2020-02-10 R 0.99 gate True flag False
+
+all-variant view at each variant's own must-pass line (descriptive):
+  V1_box21: t 1.369; def-no3 R TDOC 1.231, MELI 0.379, RRC 0.877; max-must-pass row: PENN 2020-03-26, MRNA 2020-05-12
+  V2_box30: t 3.480; def-no3 R TDOC 1.231, MELI 0.517, RRC 1.026; max-must-pass row: PENN 2020-03-26, W 2020-04-07
+  V3_tr21: t 1.925; def-no3 R TDOC 1.627, MELI 0.825, RRC 0.759; max-must-pass row: PENN 2020-03-26, TLRY 2021-02-02
+  V4_tr30: t 3.617; def-no3 R TDOC 1.659, MELI 0.727, RRC 0.838; max-must-pass row: PENN 2020-03-26, W 2020-04-07
+
+bridge: fire path reproduces graded R + gate for TDOC/MELI/RRC: ok
+== ERA-A FIRES (1322 list nights) ==  R unscored (missing bars): 0
+  all fires: 156,695 = 118.5/day; flagged 862 = 0.65/day removed (0.6%); gated 36,710
+  pool after 1d: 136,305 = 103.1/day; flagged 753 = 0.57/day removed (0.6%); gated 29,740

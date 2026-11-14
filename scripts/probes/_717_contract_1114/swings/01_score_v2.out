@@ -1,0 +1,101 @@
+VERSION v2: LOOK 60 K 3 GATE 0.1
+graded: 48 (ok/good 14, def-no 8); qm rows 972, scoreable (>= 60 bars) 941
+protected keys: High tier 84 (scoreable 84), listed56 56 (scoreable 56), big 26 (scoreable 26)
+
+MUST-PASS set 129 rows; T = max S = 0.8963; the 8 highest:
+                            src        S
+    qm d681 VIR 2020-06-19 High 0.896297
+qm d1173 NXH 2021-01-22 Low BIG 0.889372
+   qm w1701 NUE 2022-01-05 High 0.777870
+   qm w1490 ALB 2021-07-09 High 0.736828
+   qm w1559 AMD 2021-10-13 High 0.722667
+   qm d1460 CLF 2021-06-09 High 0.652838
+   qm w229 BLDP 2019-11-12 High 0.619271
+  qm d1501 BNTX 2021-07-21 High 0.614400
+   qm w875 DKNG 2020-09-09 High 0.600860
+   qm w875 DKNG 2020-09-10 High 0.600860
+   qm w875 DKNG 2020-09-11 High 0.600860
+   qm w841 DKNG 2020-08-18 High 0.600860
+     qm d838 JD 2020-08-17 High 0.595739
+   qm d688 BNTX 2020-06-25 High 0.592500
+   qm d720 ROKU 2020-07-09 High 0.590389
+
+GRADED charts, S descending:
+ticker          D       grade     S     B  nlegs
+  COUP 2019-10-08 conditional 0.938 0.208 12.000
+   RRC 2018-11-12          no 0.825 0.223  8.000
+   CDE 2019-11-05          no 0.819 0.284  8.000
+  OCGN 2021-09-10          no 0.810 0.390  9.000
+  MELI 2018-09-17          no 0.799 0.240  7.000
+  SWAV 2021-08-17          no 0.774 0.252 12.000
+  TDOC 2020-03-19          no 0.759 0.333  8.000
+   WPX 2018-04-23          no 0.728 0.209 11.000
+  FLGT 2021-12-10          no 0.701 0.292 15.000
+  TWTR 2018-02-07          no 0.666 0.239 10.000
+  AZUL 2022-01-20 conditional 0.644 0.371 10.000
+  TIGR 2021-04-23          no 0.588 0.861  7.000
+  RIOT 2021-11-11          no 0.579 0.381  8.000
+    PS 2019-05-01 conditional 0.578 0.214 10.000
+  DVAX 2021-11-17          no 0.565 0.455 10.000
+  DOCN 2022-01-11          no 0.565 0.398  9.000
+  VUZI 2021-04-23          ok 0.550 0.878  6.000
+   TTD 2017-07-26          ok 0.461 0.328  9.000
+   WDC 2019-02-15          ok 0.454 0.378  8.000
+  AFRM 2021-09-23          no 0.430 0.493  8.000
+     F 2022-03-02          no 0.421 0.319 12.000
+   THC 2017-05-09          no 0.416 0.311 11.000
+  OKTA 2018-03-26          ok 0.411 0.345 10.000
+  MDCO 2018-03-21 conditional 0.401 0.366 12.000
+  APHA 2021-03-11          ok 0.366 1.000  9.000
+  FUTU 2021-06-23 conditional 0.326 0.455 10.000
+  ADMS 2018-01-16          ok 0.280 0.505 11.000
+  MRNA 2021-01-08        good 0.179 1.003  7.000
+  CRWD 2020-10-16          ok 0.146 0.495  8.000
+   GBT 2019-06-24 conditional 0.000 0.172 12.000
+     W 2018-08-21 conditional 0.000 0.183  9.000
+  CHWY 2020-01-03          ok 0.000 0.263 10.000
+    ZS 2019-06-07          ok 0.000 0.237  9.000
+  ATYR 2021-10-08          ok 0.000 0.934  8.000
+   REN 2017-07-27          no 0.000 0.429  8.000
+  NVTA 2019-08-06 conditional 0.000 0.279  9.000
+     X 2022-03-21          no 0.000 0.439 12.000
+  BEAM 2021-07-21          no 0.000 0.555  6.000
+  HAPN 2021-08-25          no 0.000 0.645 10.000
+  ATOS 2021-07-13          ok 0.000 0.940 10.000
+    DQ 2021-04-19          no 0.000 0.518 11.000
+   CLR 2021-12-09 conditional 0.000 0.208  8.000
+  MVIS 2021-04-23          no 0.000 0.653  8.000
+  LCID 2021-09-20          no 0.000 0.448 10.000
+   CAR 2021-11-16          ok 0.000 1.218  6.000
+  TELL 2021-05-12          ok 0.000 0.442  8.000
+   ZIM 2021-12-28          no 0.000 0.298 12.000
+  PINS 2020-10-22          no 0.000 0.344  8.000
+
+DEF-NO flagged 0/8: ; margin min(TDOC,MELI,RRC)/T = 0.847
+ok/good flagged: [] | all 'no' flagged: [] | conditional flagged: ['COUP']
+six:
+  key ticker          E     S     B  nlegs
+ d400    APT 2020-02-21 0.000 0.835 13.000
+ d460   NVAX 2020-04-03 0.000 1.040  6.000
+ d468      W 2020-04-07 0.000 1.561  6.000
+d1255    AMC 2021-02-22 0.000 2.366  5.000
+ w448   PENN 2020-03-26 0.000 2.346  6.000
+ w458   MRNA 2020-04-02 0.000 0.698  8.000
+
+QM headline (fixed day, full chart) 573: flagged 5; tier {'Low': 4, 'Medium': 1}; High 0, listed56 0, big 0
+  key ticker          E   tier  big  listed56     S     B  nlegs
+w1393    ALB 2021-04-23    Low    0         0 0.971 0.197 10.000
+d1506   MSTR 2021-08-05 Medium    0         0 0.924 0.415  8.000
+d1649   MARA 2021-11-30    Low    0         0 0.920 0.614  9.000
+d1824      U 2022-11-15    Low    0         0 0.914 0.431 10.000
+ w318     LX 2020-01-02    Low    0         0 0.912 0.141  9.000
+short history fixed-day (60-188 bars) flagged 0 of 35
+multi-session windows 128: any night flagged 2, every night flagged 2
+all scoreable Qullamaggie buys (any row flagged): 7 of 736
+bridge TDOC 2020-03-19: fires 0.7594 graded 0.7594
+bridge MELI 2018-09-17: fires 0.7993 graded 0.7993
+bridge RRC 2018-11-12: fires 0.8250 graded 0.8250
+
+fires 156,695 / 1322 nights = 118.5 a day; pool after 1d 136,305 = 103.1 a day; S NaN (under 60 bars) 0
+all fires: removed 1,644 = 1.24 a day of 118.5 (1.0%); Qullamaggie fired buys removed 3 (High 0, big 0): d1506,d1649,w171
+pool after 1d: removed 1,537 = 1.16 a day of 103.1 (1.1%); Qullamaggie fired buys removed 3 (High 0, big 0): d1506,d1649,w171

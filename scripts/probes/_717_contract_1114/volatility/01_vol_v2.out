@@ -1,0 +1,93 @@
+VERSION v2 {'rec': 20, 'prior': 40, 'alt': 40}; lines: CR >= 0.943, ALT >= 0.5820 (least of TDOC/MELI/RRC)
+bridge: fire windows reproduce the graded CR/ALT for TDOC MELI RRC OKTA CRWD (float32 tol 1e-3): ok
+protected scored: ok/good 14/14; six 6/6; listed High 56/56 (rows 61); big 26/26
+
+top protected scores:
+ src         key ticker  score    CR   ALT          E
+High  widened918   BYND  1.652 1.558 1.016 2020-09-29
+ six  widened458   MRNA  1.545 1.576 0.899 2020-04-02
+High   dated1031   CRON  1.538 1.893 0.895 2020-11-24
+ six    dated460   NVAX  1.322 1.267 0.770 2020-04-03
+High    dated695   BLDP  1.312 1.237 0.925 2020-06-29
+ big    dated695   BLDP  1.312 1.237 0.925 2020-06-29
+ six   dated1255    AMC  1.262 3.011 0.735 2021-02-22
+High widened1342   AMAT  1.216 1.147 1.622 2021-03-26
+High   dated1479   BYND  1.191 1.123 0.895 2021-06-28
+ big    dated400    APT  1.190 4.035 0.692 2020-02-21
+
+all graded (score desc):
+ticker          D       grade    CR   ALT  score
+  RIOT 2021-11-11          no 1.447 0.999  1.535
+   RRC 2018-11-12          no 1.248 0.868  1.324
+  FLGT 2021-12-10          no 1.246 0.873  1.321
+  NVTA 2019-08-06 conditional 1.183 0.711  1.222
+  TDOC 2020-03-19          no 3.508 0.668  1.148
+  OKTA 2018-03-26          ok 1.253 0.666  1.145
+   GBT 2019-06-24 conditional 1.076 1.014  1.141
+   WPX 2018-04-23          no 1.068 0.778  1.133
+  MRNA 2021-01-08        good 1.052 0.696  1.116
+  COUP 2019-10-08 conditional 1.041 1.113  1.104
+   THC 2017-05-09          no 1.034 0.675  1.096
+    ZS 2019-06-07          ok 1.162 0.628  1.080
+  CHWY 2020-01-03          ok 1.010 1.137  1.072
+  SWAV 2021-08-17          no 1.225 0.616  1.058
+  MDCO 2018-03-21 conditional 0.946 0.654  1.003
+   WDC 2019-02-15          ok 0.944 0.714  1.001
+  MELI 2018-09-17          no 0.943 0.582  1.000
+  DOCN 2022-01-11          no 0.940 0.814  0.997
+   ZIM 2021-12-28          no 0.921 0.740  0.977
+   CDE 2019-11-05          no 0.908 0.919  0.963
+  TELL 2021-05-12          ok 0.904 0.574  0.959
+  AFRM 2021-09-23          no 1.737 0.553  0.951
+   CLR 2021-12-09 conditional 1.222 0.540  0.928
+   REN 2017-07-27          no 0.847 0.679  0.898
+     F 2022-03-02          no 1.046 0.517  0.888
+  LCID 2021-09-20          no 1.020 0.490  0.843
+   TTD 2017-07-26          ok 0.767 0.701  0.814
+  MVIS 2021-04-23          no 0.863 0.468  0.804
+  VUZI 2021-04-23          ok 0.753 0.755  0.798
+  TIGR 2021-04-23          no 0.965 0.458  0.787
+    PS 2019-05-01 conditional 1.119 0.457  0.785
+  AZUL 2022-01-20 conditional 0.811 0.454  0.781
+  FUTU 2021-06-23 conditional 0.736 0.878  0.780
+    DQ 2021-04-19          no 0.725 1.160  0.769
+  CRWD 2020-10-16          ok 0.823 0.436  0.748
+  APHA 2021-03-11          ok 1.645 0.407  0.699
+  TWTR 2018-02-07          no 1.503 0.406  0.697
+  ATYR 2021-10-08          ok 3.188 0.398  0.684
+  OCGN 2021-09-10          no 0.619 0.821  0.657
+  ADMS 2018-01-16          ok 0.762 0.370  0.635
+     X 2022-03-21          no 1.405 0.361  0.620
+  DVAX 2021-11-17          no 0.764 0.347  0.597
+  PINS 2020-10-22          no 0.729 0.278  0.478
+     W 2018-08-21 conditional 1.156 0.268  0.460
+   CAR 2021-11-16          ok 2.497 0.253  0.434
+  HAPN 2021-08-25          no 1.608 0.247  0.424
+  ATOS 2021-07-13          ok 1.067 0.165  0.284
+  BEAM 2021-07-21          no 1.202 0.134  0.230
+
+THRESHOLD t = max protected score = 1.6521; flag = score > t; anchors {'TDOC': 1.148, 'MELI': 1.0, 'RRC': 1.324} -> NONE EXISTS (an anchor is not above t)
+
+==== SCOREBOARD @ rule threshold: t = 1.6521 ====
+def-no (chop) flagged 0/8: TDOC 2020-03-19 (1.15), MELI 2018-09-17 (1.00), RRC 2018-11-12 (1.32), TWTR 2018-02-07 (0.70), SWAV 2021-08-17 (1.06), CDE 2019-11-05 (0.96), DVAX 2021-11-17 (0.60), FLGT 2021-12-10 (1.32)  (* = flagged)
+ok/good flagged: []
+conditional flagged: []; other 'no' flagged: []
+six tightening flagged: []  scores {'AMC': 1.26, 'W': 0.72, 'APT': 1.19, 'PENN': 0.59, 'MRNA': 1.54, 'NVAX': 1.32}
+Qullamaggie buys flagged (any night): 7 of 733 scoreable (>= 80 bars; all dates to 2023-12); era-A 6 of 715; fixed-day only 5 of 607
+  tier-High flagged 0 of 83; listed High 0/56; big 0/26
+  flagged High/big: []
+  flagged buys: JD 2020-04-06 (Low), LVGO 2020-04-07 (Low), RIOT 2021-11-29 (Low), SNOW 2021-12-21 (Low), ZS 2021-12-21 (Low), MDB 2021-12-27 (Low), GME 2023-12-14 (Low)
+  all fires: 118.5 a day -> removes 1.72 a day (2,275 of 156,695 = 1.5%); unscored (<80 bars) 0
+  pool after 1d: 103.1 a day -> removes 0.94 a day (1,237 of 136,305 = 0.9%); unscored (<80 bars) 0
+
+==== SCOREBOARD @ the anchor line 1.0 (for reference, breaks a must-pass): t = 1.0000 ====
+def-no (chop) flagged 4/8: TDOC 2020-03-19* (1.15), MELI 2018-09-17 (1.00), RRC 2018-11-12* (1.32), TWTR 2018-02-07 (0.70), SWAV 2021-08-17* (1.06), CDE 2019-11-05 (0.96), DVAX 2021-11-17 (0.60), FLGT 2021-12-10* (1.32)  (* = flagged)
+ok/good flagged: ['MRNA 2021-01-08', 'WDC 2019-02-15', 'OKTA 2018-03-26', 'CHWY 2020-01-03', 'ZS 2019-06-07']
+conditional flagged: ['NVTA 2019-08-06', 'GBT 2019-06-24', 'MDCO 2018-03-21', 'COUP 2019-10-08']; other 'no' flagged: ['THC 2017-05-09', 'RIOT 2021-11-11', 'WPX 2018-04-23']
+six tightening flagged: ['AMC', 'APT', 'MRNA', 'NVAX']  scores {'AMC': 1.26, 'W': 0.72, 'APT': 1.19, 'PENN': 0.59, 'MRNA': 1.54, 'NVAX': 1.32}
+Qullamaggie buys flagged (any night): 152 of 733 scoreable (>= 80 bars; all dates to 2023-12); era-A 150 of 715; fixed-day only 123 of 607
+  tier-High flagged 15 of 83; listed High 10/56; big 8/26
+  flagged High/big: [{'ticker': 'CRON', 'E': '2020-11-24', 'tier': 'High', 'big': 0, 'hl': 1, 'fixed': 1, 'flag': True}, {'ticker': 'NXH', 'E': '2021-01-22', 'tier': 'Low', 'big': 1, 'hl': 0, 'fixed': 1, 'flag': True}, {'ticker': 'TTD', 'E': '2021-02-19', 'tier': 'High', 'big': 0, 'hl': 0, 'fixed': 1, 'flag': True}, {'ticker': 'BYND', 'E': '2021-06-28', 'tier': 'High', 'big': 0, 'hl': 1, 'fixed': 1, 'flag': True}, {'ticker': 'LCID', 'E': '2021-10-25', 'tier': 'High', 'big': 1, 'hl': 1, 'fixed': 1, 'flag': True}, {'ticker': 'QS', 'E': '2021-10-29', 'tier': 'Low', 'big': 1, 'hl': 0, 'fixed': 1, 'flag': True}, {'ticker': 'MU', 'E': '2021-12-21', 'tier': 'High', 'big': 0, 'hl': 0, 'fixed': 1, 'flag': True}, {'ticker': 'APT', 'E': '2020-02-21', 'tier': 'Low', 'big': 1, 'hl': 0, 'fixed': 1, 'flag': True}, {'ticker': 'NVAX', 'E': '2020-02-26', 'tier': 'High', 'big': 1, 'hl': 1, 'fixed': 1, 'flag': True}, {'ticker': 'PDD', 'E': '2020-05-08', 'tier': 'High', 'big': 1, 'hl': 1, 'fixed': 1, 'flag': True}, {'ticker': 'BLDP', 'E': '2020-06-29', 'tier': 'High', 'big': 1, 'hl': 1, 'fixed': 1, 'flag': True}, {'ticker': 'SRPT', 'E': '2017-10-02', 'tier': 'High', 'big': 0, 'hl': 1, 'fixed': 1, 'flag': True}, {'ticker': 'MDB', 'E': '2020-09-21', 'tier': 'Low', 'big': 1, 'hl': 0, 'fixed': 1, 'flag': True}, {'ticker': 'SLV', 'E': '2021-01-28', 'tier': 'High', 'big': 0, 'hl': 0, 'fixed': 1, 'flag': True}, {'ticker': 'AMAT', 'E': '2021-03-26', 'tier': 'High', 'big': 0, 'hl': 1, 'fixed': 1, 'flag': True}, {'ticker': 'ALB', 'E': '2021-05-27', 'tier': 'High', 'big': 0, 'hl': 0, 'fixed': 1, 'flag': True}, {'ticker': 'NUE', 'E': '2022-01-05', 'tier': 'High', 'big': 0, 'hl': 0, 'fixed': 1, 'flag': True}, {'ticker': 'DKNG', 'E': '2020-09-09', 'tier': 'High', 'big': 0, 'hl': 1, 'fixed': 0, 'flag': True}, {'ticker': 'BYND', 'E': '2020-09-29', 'tier': 'High', 'big': 0, 'hl': 1, 'fixed': 1, 'flag': True}]
+  flagged buys: KYNB 2017-08-25 (Low), CRMD 2017-08-28 (Low), SRPT 2017-10-02 (High), ANET 2018-03-12 (Low), SPLK 2018-05-08 (Low), TSLA 2018-08-07 (Low), JCP 2019-10-03 (Low), JCP 2019-10-07 (Medium), MU 2019-10-23 (Low), BABA 2019-11-01 (Low), FCEL 2019-11-12 (Low), META 2019-11-12 (Low), STNE 2019-11-18 (Low), PLUG 2020-01-02 (Low), BYND 2020-02-06 (Low), APT 2020-02-21 (Low), NVAX 2020-02-24 (Medium), NVAX 2020-02-26 (High), ACH 2020-03-02 (Low), BILI 2020-03-05 (Low), KWEB 2020-03-05 (Not), MRNA 2020-04-02 (Low), NVAX 2020-04-03 (Medium), JD 2020-04-06 (Low), LVGO 2020-04-07 (Low), NET 2020-04-16 (Medium), SHOP 2020-04-20 (Low), SHOP 2020-04-21 (Low), ZM 2020-04-23 (Low), BA 2020-04-23 (Low), COUP 2020-04-27 (Low), UAVS 2020-04-28 (Low), BCRX 2020-04-30 (Low), PDD 2020-05-08 (High), BCRX 2020-05-15 (Low), BLDP 2020-06-29 (High), NCLH 2020-06-29 (Low), BILI 2020-07-31 (Medium), AGQ 2020-08-27 (Not), DKNG 2020-09-09 (High), MDB 2020-09-21 (Low), BYND 2020-09-29 (High), UI 2020-10-14 (Low), OPTT 2020-10-16 (Low), FUTU 2020-11-05 (Low), SE 2020-11-12 (Low), RIOT 2020-11-13 (Medium), XYZ 2020-11-17 (Medium), MELI 2020-11-18 (Low), NVDA 2020-11-18 (Low), BILI 2020-11-18 (Low), SE 2020-11-18 (Low), SPG 2020-11-18 (Low), CRON 2020-11-24 (High), SE 2020-12-03 (Medium), BE 2020-12-04 (Low), Z 2020-12-04 (Medium), DQ 2020-12-04 (Low), BE 2020-12-14 (Low), BLDP 2020-12-14 (Medium), NVAX 2020-12-17 (Low), BNTX 2021-01-05 (Low), BILI 2021-01-05 (Low), NXH 2021-01-22 (Low), PDD 2021-01-25 (Medium), SLV 2021-01-28 (High), BIDU 2021-02-02 (Low), DKNG 2021-02-02 (Low), XYZ 2021-02-03 (Low), TTD 2021-02-19 (High), AGQ 2021-02-19 (Not), MELI 2021-02-19 (Low), AMC 2021-02-22 (Low), AGQ 2021-02-23 (Not), AMC 2021-02-25 (Not), RKT 2021-03-01 (Low), GME 2021-03-04 (Low), PLUG 2021-03-08 (Low), UBER 2021-03-10 (Low), FCX 2021-03-11 (Medium), UAL 2021-03-11 (Low), JETS 2021-03-11 (Not), SNAP 2021-03-11 (Low), RCL 2021-03-15 (Low), SOS 2021-03-15 (Not), W 2021-03-15 (Low), MU 2021-03-16 (Medium), AMAT 2021-03-22 (Medium), APPS 2021-03-22 (Medium), LRCX 2021-03-22 (Low), ETSY 2021-03-23 (Low), TSLA 2021-03-23 (Low), NIO 2021-03-23 (Low), AMAT 2021-03-24 (Medium), AMAT 2021-03-26 (High), LRCX 2021-03-26 (Low), CLF 2021-03-26 (Low), NTLA 2021-03-30 (Low), KWEB 2021-03-31 (Not), TSM 2021-03-31 (Low), SHOP 2021-04-08 (Low), ALB 2021-05-27 (High), SNOW 2021-06-07 (Low), SE 2021-06-08 (Low), LOGC 2021-06-18 (Low), BYND 2021-06-28 (High), MSTR 2021-08-05 (Medium), COIN 2021-08-17 (Low), SQM 2021-09-10 (Low), LAC 2021-09-30 (Low), FAS 2021-10-14 (Not), LCID 2021-10-25 (High), QS 2021-10-29 (Low), COIN 2021-10-29 (Low), MSTR 2021-11-02 (Medium), SEDG 2021-11-11 (Medium), GGPI 2021-11-12 (Low), SLDP 2021-11-15 (Low), XPEV 2021-11-23 (Medium), SICP 2021-11-29 (Low), FLGT 2021-11-29 (Low), RIOT 2021-11-29 (Low), FCX 2021-12-07 (Low), RBLX 2021-12-07 (Low), ZS 2021-12-09 (Low), PFE 2021-12-13 (Medium), VIR 2021-12-15 (Low), MU 2021-12-21 (High), CRWD 2021-12-21 (Low), PANW 2021-12-21 (Medium), SNOW 2021-12-21 (Low), ZS 2021-12-21 (Low), FCX 2021-12-27 (Low), MDB 2021-12-27 (Low), PLTR 2021-12-29 (Low), CRWD 2021-12-30 (Low), LI 2021-12-30 (Low), PLTR 2021-12-30 (Low), XPEV 2021-12-30 (Low), FAS 2022-01-04 (Not), NUE 2022-01-05 (High), KWEB 2022-01-10 (Not), LI 2022-01-12 (Low), XPEV 2022-01-12 (Low), HUBS 2022-01-31 (Low), GUSH 2022-02-01 (Not), FCX 2022-02-08 (Low), TSLA 2022-02-11 (Low), MP 2022-02-22 (Medium), NEM 2022-03-31 (Low), LHX 2022-04-05 (Low), GME 2023-12-14 (Low)
+  all fires: 118.5 a day -> removes 35.46 a day (46,881 of 156,695 = 29.9%); unscored (<80 bars) 0
+  pool after 1d: 103.1 a day -> removes 28.72 a day (37,963 of 136,305 = 27.9%); unscored (<80 bars) 0
