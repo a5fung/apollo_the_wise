@@ -409,3 +409,16 @@ def test_the_ddl_is_idempotent_and_writes_only_its_own_tables():
     assert db.BV1_LIST_COLS.index("gates") == 8                         # $9 stays the jsonb param
     assert "order_score" in db.BV1_UNGRADED_SQL
     assert "COALESCE(EXCLUDED.name, mi_security_types.name)" in db.SECURITY_TYPES_UPSERT_SQL
+
+
+def test_a_night_where_every_name_raises_in_the_gates_pages_instead_of_writing_a_quiet_empty_list(monkeypatch):
+    """Review 11-14: the context checks add a numeric path run on every name; if it raised on all of them the list
+    would be empty with no message. Now the job raises after the audit row, so audit_wrap's failure page fires."""
+    f = Fakes(monkeypatch)
+
+    def boom(*a, **k):
+        raise FloatingPointError("polyfit")
+    monkeypatch.setattr(bl.bv, "v1_gates", boom)
+    with pytest.raises(RuntimeError, match="every name"):
+        asyncio.run(bl.run_breakout_v1_list(TODAY))
+    assert f.audit and f.audit[-1][0] == "breakout_v1_list_run" and f.sent == []

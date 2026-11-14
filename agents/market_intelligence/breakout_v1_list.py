@@ -293,6 +293,10 @@ async def _run(today: date, out: dict) -> list:
     out["evaluated"], out["passing"], out["gate_fails"] = n_eval, len(list_rows), dict(fails)
     out["context_removed_n"] = {k: len(v) for k, v in removed.items()}
     out["context_removed"] = {k: sorted(v)[:CONTEXT_REMOVED_LIST_MAX] for k, v in removed.items()}
+    if fails.get("gate_error", 0) and n_eval == 0:
+        # every name's gates raised (e.g. a numpy change under the 2026-11-14 context checks): an empty list must not
+        # look like a quiet night — raise, so audit_wrap's notify_job_failure pages after the audit row (review 11-14)
+        raise RuntimeError(f"breakout_v1_list: gates raised on every name ({fails['gate_error']}); nothing evaluated")
     out["written"] = await bv1_replace_list(today, list_rows)
     out["tickers"] = [r["ticker"] for r in list_rows]
     return list_rows

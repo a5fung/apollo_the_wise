@@ -430,7 +430,7 @@ the rule table; `CONTEXT_GATES`), each recorded as `{"pass", "value"}` on the ga
 `failed` so the `breakout_v1_list_run` audit row's per-gate counts carry them; the audit row also names, per check, the
 names those checks ALONE took off (`context_removed`, `context_removed_n`; `evaluate_members(..., removed=)`). `GATES` (the
 eight existing gates) and every existing gate's input and result are unchanged. The list job's load is unchanged — it
-already loads 200 sessions (`HISTORY_SESSIONS`) and the deepest read is 189. The lower line's V3 line is **0.2123 strict**
+already loads 200 sessions (`HISTORY_SESSIONS`) and the deepest read is 189. The lower line's V3 line is **0.2123 strict** (he signed the check, not a number: the research printed 0.212, and 0.2123 is its stated rule — the loosest line keeping MU 2021-12-21, a High buy)
 (MU 2021-12-21's own V3, 0.21229655 — the loosest line that flags no must-keep buy with a flat or falling lower line);
 the research's `ll.py` ran 0.212, which would flag MU itself. The swing / V3 / lower-line code is the research's
 (`_717_contract_1114/swings/sw.py`, `v3m.py`, `04_lowline.py` = `_717_lowline_1114/ll.py`) copied verbatim; 1d is

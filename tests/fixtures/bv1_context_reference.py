@@ -5,7 +5,7 @@ came from. Sources (era-A probes, 2026-11-14):
   v3                                 scripts/probes/_717_contract_1114/swings/v3m.py
   lowslope                           scripts/probes/_717_contract_1114/swings/04_lowline.py == _717_lowline_1114/ll.py
   measure / flag (MIN_BARS 189)      scripts/probes/_717_lowline_1114/ll.py — the V3 line is a PARAMETER here: the
-                                     research ran 0.212; the operator-signed line is MU 2021-12-21's V3, 0.2123 strict
+                                     research ran 0.212; the line used is MU 2021-12-21's exact V3, 0.2123 strict (the research's stated rule; he signed the check, not a number)
   ret126_of                          scripts/probes/_717_context_1114/ctx.py
   u50 / s50_chg10                    scripts/probes/_717_reasons_1114/01_measure.py::reason_measures
   ONE_D / A2(10)                     scripts/probes/_717_lowline_1114/02_score.py (= _717_context_1114/05_sheet.py)

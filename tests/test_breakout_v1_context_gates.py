@@ -286,3 +286,15 @@ def test_the_list_counts_the_checks_and_names_the_names_they_alone_removed():
     assert rows == [] and n == 1 and fails == Counter({"lower_line": 1}) and removed == {"lower_line": ["FCX"]}
     rows, fails, n = bl.evaluate_members([m], [float(r["rs_best"])], date(2021, 12, 6))      # the old call still works
     assert rows == [] and fails == Counter({"lower_line": 1})
+
+
+def test_the_lower_line_scores_at_exactly_189_bars_and_not_at_188(cases):
+    """Review 11-14: pin the history boundary (>= 189). MELI's last 189 bars end on its list night: scored and
+    removed; one bar fewer: insufficient_history, passes."""
+    b, D, _ = cases["MELI"]
+    for n, status in ((189, "scored"), (188, "insufficient_history")):
+        s = D - n + 1
+        t = cb.daily_bars_from_arrays(b.dates[s:D + 1], *[np.asarray(x[s:D + 1], float) for x in (b.o, b.h, b.l, b.c, b.v)])
+        g = bv.context_gates(t, n - 1, adr20=0.04)
+        assert g["lower_line"]["value"]["status"] == status
+        assert g["lower_line"]["pass"] is (status != "scored")
