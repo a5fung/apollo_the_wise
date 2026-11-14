@@ -1,0 +1,36 @@
+fires 156,695 -> 136,305 after 1d; trend NaN (no 120 bars): sma200 1.49%, ret126 1.49%; box NaN 0.00%
+scorecard sets: ['dated', 'widened'] tiers: {'Low': 378, 'Medium': 108, 'High': 61, 'Not': 24}
+
+== BRIDGE: R0 total Qullamaggie buys in the daily top 5 (expect 112; big 5) == 112 5
+(qm_top5 per era is a union within era; total = sum of eras; a buy id never spans eras)
+rank              era  qm_top5  high  big  picks
+  R0 2017-01..2020-12       63    12    4   5032
+  R0 2021-01..2022-03       49     3    1   1574
+  R1 2017-01..2020-12       17     4    4   5032
+  R1 2021-01..2022-03        6     1    0   1574
+  R2 2017-01..2020-12       22     3    1   5032
+  R2 2021-01..2022-03        8     0    0   1574
+  R3 2017-01..2020-12       40    14    4   5032
+  R3 2021-01..2022-03       11     1    0   1574
+  R4 2017-01..2020-12       58    17    6   5032
+  R4 2021-01..2022-03       33     5    2   1574
+
+TOTAL
+      qm_top5  high  big  picks
+rank                           
+R0        112    15    5   6606
+R1         23     5    4   6606
+R2         30     3    1   6606
+R3         51    15    4   6606
+R4         91    22    8   6606
+
+R0 qm_top5 per era: {'2017-01..2020-12': 63, '2021-01..2022-03': 49}
+BEATS R0 on Qullamaggie buys in top 5 in BOTH eras: NONE
+
+== 36 GRADED PICKS: median within-day percentile (1 = ranked best of the pool), IN-SAMPLE ==
+graded ok/good+no = 31; skipped (not in pool after 1d) 5: ['DOCN', 'DQ', 'DVAX', 'F', 'TIGR']; scored: ok/good 11, no 15
+  R0: ok/good 0.89  no 0.89  gap +0.01
+  R1: ok/good 0.85  no 0.34  gap +0.50
+  R2: ok/good 0.79  no 0.56  gap +0.23
+  R3: ok/good 0.89  no 0.69  gap +0.21
+  R4: ok/good 0.95  no 0.81  gap +0.13
