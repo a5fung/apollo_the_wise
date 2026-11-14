@@ -2623,8 +2623,11 @@ async def test_the_1555_count_counts_only_the_missed_records_that_were_written(m
 
 @pytest.mark.asyncio
 async def test_a_day_with_fewer_eligible_names_than_free_slots_records_nothing(monkeypatch):
-    w = World(monkeypatch, list_rows=_ranked(3), bars=_eligible_bars(["R1", "R2", "R3"]))
+    # 2026-11-14 (slots on an actual break): the three names are THROUGH their level at 09:40 — on never-breaking bars
+    # nothing would reach the slots at all and the absence below would prove nothing
+    w = World(monkeypatch, list_rows=_ranked(3), bars=_through_bars(["R1", "R2", "R3"]))
     await w.tick(at=(9, 40))
+    assert _funnel_tickers(w) == ["R1", "R2", "R3"]                               # all three broke and were seated
     out = await w.tick(at=(15, 55))
     assert _held(w) == [] and out["missed_by_slots"] == 0 and w.ev(be.MISSED_BY_SLOTS) == []
 

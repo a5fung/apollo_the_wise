@@ -63,7 +63,10 @@ THE LIST AT 150-350 NAMES (#717 stage 2, 2026-11-07; design `docs/design/717_sta
     minute whose last completed bar is again at or through the level WITH a slot free, at THAT minute's price by the
     existing width rule (a slot that frees while it trades back under its level seats nothing — no resting buy).
     THE ORDER AT THE BREAK is the unchanged entry spec (`order_manager.submit_entry`, #500): the latest trade at or
-    under the level (it broke and came back) -> the stop-limit at the level, which then rests WITH its slot; the
+    under the level (it broke and came back) -> the stop-limit at the level, which then rests WITH its slot (if the
+    ASK is above the level while the last trade is not, the venue kills that stop-limit — the #500 QNST / INSM class —
+    unless the operator's `entry_ask_aware` toggle is on, default OFF: the trade stream then marks the row
+    `cancelled` with a `broker:*` reason and pages; terminal for the day, not a missed record); the
     latest trade above the level -> a limit buy at latest x 1.002, placed only when the width rule holds at that
     price (else a terminal `setup:stop_too_wide` skip) and the risk is within the 1.5x chase cap (else the row is
     cancelled `setup:chase_cap_exceeded`, terminal, and `submit_entry` sends its "No entry" Telegram) — no chasing
@@ -583,8 +586,9 @@ def first_break(mins: dict[int, dict], *, level: float, vol_bar: float, from_min
 
 def break_this_minute(mins: dict[int, dict], *, level: float | None, vol_bar: float,
                       last_completed: int) -> dict | None:
-    """SLOTS ON AN ACTUAL BREAK (operator-signed 2026-11-14: "place the order only once price breaks the level, not as
-    resting buys on the top 5 at 09:35"): has the name broken its level IN THE LAST COMPLETED MINUTE? = `first_break`
+    """SLOTS ON AN ACTUAL BREAK (operator-signed 2026-11-14; PLAN #717's 11-14 build item (b): slots taken only on an
+    actual break, not resting buys on the top 5 at 09:35): has the name broken its level IN THE LAST COMPLETED
+    MINUTE? = `first_break`
     on that one minute (the same test and the same pace record as the missed-by-slots record; `VOLUME_PACE_GATE`
     False — the pace is recorded, not a gate). PURE. -> the `first_break` dict, or None:
       * an earlier break does not carry over — a name back under its level gets no order (no resting buy), and one
