@@ -1,0 +1,3 @@
+scorecard (current constants, ADR floor 0.04): listed sessions 571; buys LISTED 479 of 757; FIRED 386; big winners fired 26 of 26   (expect 479 / 386 / 26)
+High tier: 84 buys; listed 56 (expect 56); stopped by the 4% floor alone 23 (expect 22); other floors 5 (expect 5); 84 - 22 = 61
+not listed, not the 4% floor: BNGO 2019-12-30 [universe], INO 2020-01-21 [universe], FCEL 2020-02-10 [universe], HEXO 2020-08-13 [universe], PLTR 2021-01-22 [history]

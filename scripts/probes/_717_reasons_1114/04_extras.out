@@ -1,0 +1,4 @@
+1d LISTED losses 13 {'Low': 13} big 0
+TTD 2019-10-14 (Low), ACB 2020-02-04 (Low), PENN 2020-03-26 (Low), UBER 2020-04-02 (Low), TLRY 2020-04-23 (Low), APT 2020-10-02 (Low), BILI 2020-10-05 (Low), FSLY 2020-12-04 (Low), TSLA 2021-03-23 (Low), NIO 2021-03-23 (Low), CLF 2021-03-26 (Low), LI 2022-01-12 (Low), TSLA 2022-02-11 (Low)
+floor-only rows 23 duplicate (ticker,E): [['widened', '185', 'PBR', '2019-10-22'], ['widened', '192', 'PBR', '2019-10-22']]
+listed High at a falling 50-day (10 sessions): 4 of 56 [['TSLA', '2020-11-18'], ['DKNG', '2020-08-18'], ['DKNG', '2020-09-10'], ['FSLY', '2020-09-21']]

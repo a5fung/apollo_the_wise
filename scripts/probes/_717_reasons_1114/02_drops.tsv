@@ -1,0 +1,1184 @@
+check	set	eid	ticker	E	tier	big
+1a close>=SMA50	widened	169	APPS	2019-10-17	Low	0
+1a close>=SMA50	widened	375	ACB	2020-02-04	Low	0
+1a close>=SMA50	widened	418	LK	2020-03-04	Low	0
+1a close>=SMA50	widened	450	TSLA	2020-03-26	Low	0
+1a close>=SMA50	widened	463	JD	2020-04-06	Low	0
+1a close>=SMA50	widened	510	TLRY	2020-04-24	Low	0
+1a close>=SMA50	widened	691	BCRX	2020-06-26	High	0
+1a close>=SMA50	widened	837	BILI	2020-08-17	Medium	0
+1a close>=SMA50	widened	841	DKNG	2020-08-18	High	0
+1a close>=SMA50	widened	847	FSLY	2020-08-20	Medium	0
+1a close>=SMA50	widened	853	NCLH	2020-08-24	Low	0
+1a close>=SMA50	widened	883	BILI	2020-09-15	Low	0
+1a close>=SMA50	widened	891	FSLY	2020-09-21	High	0
+1a close>=SMA50	widened	894	ZS	2020-09-21	Low	0
+1a close>=SMA50	widened	922	APT	2020-10-02	Low	0
+1a close>=SMA50	widened	923	BILI	2020-10-05	Low	0
+1a close>=SMA50	widened	952	MARA	2020-10-20	Low	0
+1a close>=SMA50	widened	1017	RUN	2020-11-17	Low	0
+1a close>=SMA50	widened	1021	DOCU	2020-11-18	Low	0
+1a close>=SMA50	widened	1053	FSLY	2020-12-04	Low	0
+1a close>=SMA50	widened	1157	WWR	2021-01-19	Low	0
+1a close>=SMA50	widened	1286	UBER	2021-03-10	Low	0
+1a close>=SMA50	widened	1325	LRCX	2021-03-22	Low	0
+1a close>=SMA50	widened	1352	NTLA	2021-03-30	Low	0
+1a close>=SMA50	widened	1376	TWTR	2021-03-31	Medium	0
+1a close>=SMA50	widened	1384	NVAX	2021-04-13	High	0
+1a close>=SMA50	widened	1392	NET	2021-04-22	Low	0
+1a close>=SMA50	widened	1441	NTLA	2021-05-26	Low	0
+1a close>=SMA50	widened	1444	BILI	2021-05-28	Low	0
+1a close>=SMA50	widened	1469	LOGC	2021-06-18	Low	0
+1a close>=SMA50	widened	1597	GME	2021-10-29	Medium	0
+1a close>=SMA50	widened	1691	LI	2021-12-30	Low	0
+1a close>=SMA50	widened	1693	XPEV	2021-12-30	Low	0
+1a close>=SMA50	widened	1706	LCID	2022-01-07	High	0
+1a close>=SMA50	widened	1712	LI	2022-01-12	Low	0
+1a close>=SMA50	widened	1715	XPEV	2022-01-12	Low	0
+1a close>=SMA50	widened	1735	FCX	2022-02-08	Low	0
+1a close>=SMA50	widened	1736	ALB	2022-02-09	Low	0
+1b close>=0.97xSMA50	widened	169	APPS	2019-10-17	Low	0
+1b close>=0.97xSMA50	widened	375	ACB	2020-02-04	Low	0
+1b close>=0.97xSMA50	widened	450	TSLA	2020-03-26	Low	0
+1b close>=0.97xSMA50	widened	510	TLRY	2020-04-24	Low	0
+1b close>=0.97xSMA50	widened	922	APT	2020-10-02	Low	0
+1b close>=0.97xSMA50	widened	923	BILI	2020-10-05	Low	0
+1b close>=0.97xSMA50	widened	1017	RUN	2020-11-17	Low	0
+1b close>=0.97xSMA50	widened	1053	FSLY	2020-12-04	Low	0
+1b close>=0.97xSMA50	widened	1157	WWR	2021-01-19	Low	0
+1b close>=0.97xSMA50	widened	1384	NVAX	2021-04-13	High	0
+1b close>=0.97xSMA50	widened	1691	LI	2021-12-30	Low	0
+1b close>=0.97xSMA50	widened	1693	XPEV	2021-12-30	Low	0
+1b close>=0.97xSMA50	widened	1706	LCID	2022-01-07	High	0
+1b close>=0.97xSMA50	widened	1712	LI	2022-01-12	Low	0
+1c under AND falling 50d	widened	375	ACB	2020-02-04	Low	0
+1c under AND falling 50d	widened	510	TLRY	2020-04-24	Low	0
+1c under AND falling 50d	widened	841	DKNG	2020-08-18	High	0
+1c under AND falling 50d	widened	853	NCLH	2020-08-24	Low	0
+1c under AND falling 50d	widened	891	FSLY	2020-09-21	High	0
+1c under AND falling 50d	widened	922	APT	2020-10-02	Low	0
+1c under AND falling 50d	widened	923	BILI	2020-10-05	Low	0
+1c under AND falling 50d	widened	952	MARA	2020-10-20	Low	0
+1c under AND falling 50d	widened	1021	DOCU	2020-11-18	Low	0
+1c under AND falling 50d	widened	1053	FSLY	2020-12-04	Low	0
+1c under AND falling 50d	widened	1352	NTLA	2021-03-30	Low	0
+1c under AND falling 50d	widened	1392	NET	2021-04-22	Low	0
+1c under AND falling 50d	widened	1444	BILI	2021-05-28	Low	0
+1c under AND falling 50d	widened	1469	LOGC	2021-06-18	Low	0
+1c under AND falling 50d	widened	1712	LI	2022-01-12	Low	0
+1c under AND falling 50d	widened	1735	FCX	2022-02-08	Low	0
+1c under AND falling 50d	widened	1736	ALB	2022-02-09	Low	0
+1d >3% under AND falling	widened	375	ACB	2020-02-04	Low	0
+1d >3% under AND falling	widened	510	TLRY	2020-04-24	Low	0
+1d >3% under AND falling	widened	922	APT	2020-10-02	Low	0
+1d >3% under AND falling	widened	923	BILI	2020-10-05	Low	0
+1d >3% under AND falling	widened	1053	FSLY	2020-12-04	Low	0
+1d >3% under AND falling	widened	1712	LI	2022-01-12	Low	0
+2b level under 6m high	dated	676	APT	2020-06-17	Low	1
+2b level under 6m high	widened	157	RLGY	2019-10-10	Low	0
+2b level under 6m high	widened	171	TEVA	2019-10-18	Low	0
+2b level under 6m high	widened	375	ACB	2020-02-04	Low	0
+2b level under 6m high	widened	853	NCLH	2020-08-24	Low	0
+2b level under 6m high	widened	1475	PLUG	2021-06-22	Medium	0
+2b level under 6m high	widened	1597	GME	2021-10-29	Medium	0
+2c 6m run size	dated	348	PBYI	2020-01-17	Medium	0
+2c 6m run size	dated	400	APT	2020-02-21	Low	1
+2c 6m run size	dated	423	WORK	2020-03-05	Medium	0
+2c 6m run size	dated	441	ZS	2020-03-24	Low	0
+2c 6m run size	dated	479	NET	2020-04-16	Medium	0
+2c 6m run size	dated	482	EXEL	2020-04-20	Not	0
+2c 6m run size	dated	1045	FIRY	2020-11-30	Low	0
+2c 6m run size	dated	1081	AVPT	2020-12-21	Low	0
+2c 6m run size	dated	1121	FIRY	2021-01-05	Medium	1
+2c 6m run size	dated	1290	UAL	2021-03-11	Low	0
+2c 6m run size	dated	1299	RCL	2021-03-15	Low	0
+2c 6m run size	dated	1593	QS	2021-10-29	Low	1
+2c 6m run size	dated	1658	FCX	2021-12-07	Low	0
+2c 6m run size	dated	1670	VIR	2021-12-15	Low	0
+2c 6m run size	dated	1680	MDB	2021-12-27	Low	0
+2c 6m run size	dated	1869	GME	2023-12-14	Low	0
+2c 6m run size	widened	119	RLGY	2019-10-01	Low	0
+2c 6m run size	widened	155	DDS	2019-10-09	Low	0
+2c 6m run size	widened	157	RLGY	2019-10-10	Low	0
+2c 6m run size	widened	171	TEVA	2019-10-18	Low	0
+2c 6m run size	widened	375	ACB	2020-02-04	Low	0
+2c 6m run size	widened	458	MRNA	2020-04-02	Low	0
+2c 6m run size	widened	463	JD	2020-04-06	Low	0
+2c 6m run size	widened	466	LVGO	2020-04-07	Low	0
+2c 6m run size	widened	516	COUP	2020-04-27	Low	0
+2c 6m run size	widened	1304	W	2021-03-15	Low	0
+2c 6m run size	widened	1469	LOGC	2021-06-18	Low	0
+2c 6m run size	widened	1510	COIN	2021-08-23	Low	0
+2c 6m run size	widened	1588	MQ	2021-10-26	Low	0
+2c 6m run size	widened	1596	COIN	2021-11-01	Low	0
+2c 6m run size	widened	1627	SLDP	2021-11-15	Low	0
+2c 6m run size	widened	1648	RIOT	2021-11-29	Low	0
+2c 6m run size	widened	1683	SNOW	2021-12-22	Low	0
+2c 6m run size	widened	1684	ZS	2021-12-21	Low	0
+2c 6m run size	widened	1722	MOS	2022-02-01	Low	0
+2c 6m run size	widened	1735	FCX	2022-02-08	Low	0
+2c 6m run size	widened	1747	MP	2022-02-25	Medium	0
+2  run-up (2a+2b+2c)	dated	348	PBYI	2020-01-17	Medium	0
+2  run-up (2a+2b+2c)	dated	400	APT	2020-02-21	Low	1
+2  run-up (2a+2b+2c)	dated	423	WORK	2020-03-05	Medium	0
+2  run-up (2a+2b+2c)	dated	441	ZS	2020-03-24	Low	0
+2  run-up (2a+2b+2c)	dated	479	NET	2020-04-16	Medium	0
+2  run-up (2a+2b+2c)	dated	482	EXEL	2020-04-20	Not	0
+2  run-up (2a+2b+2c)	dated	676	APT	2020-06-17	Low	1
+2  run-up (2a+2b+2c)	dated	1045	FIRY	2020-11-30	Low	0
+2  run-up (2a+2b+2c)	dated	1081	AVPT	2020-12-21	Low	0
+2  run-up (2a+2b+2c)	dated	1121	FIRY	2021-01-05	Medium	1
+2  run-up (2a+2b+2c)	dated	1290	UAL	2021-03-11	Low	0
+2  run-up (2a+2b+2c)	dated	1299	RCL	2021-03-15	Low	0
+2  run-up (2a+2b+2c)	dated	1593	QS	2021-10-29	Low	1
+2  run-up (2a+2b+2c)	dated	1658	FCX	2021-12-07	Low	0
+2  run-up (2a+2b+2c)	dated	1670	VIR	2021-12-15	Low	0
+2  run-up (2a+2b+2c)	dated	1680	MDB	2021-12-27	Low	0
+2  run-up (2a+2b+2c)	dated	1869	GME	2023-12-14	Low	0
+2  run-up (2a+2b+2c)	widened	119	RLGY	2019-10-01	Low	0
+2  run-up (2a+2b+2c)	widened	155	DDS	2019-10-09	Low	0
+2  run-up (2a+2b+2c)	widened	157	RLGY	2019-10-10	Low	0
+2  run-up (2a+2b+2c)	widened	171	TEVA	2019-10-18	Low	0
+2  run-up (2a+2b+2c)	widened	375	ACB	2020-02-04	Low	0
+2  run-up (2a+2b+2c)	widened	458	MRNA	2020-04-02	Low	0
+2  run-up (2a+2b+2c)	widened	463	JD	2020-04-06	Low	0
+2  run-up (2a+2b+2c)	widened	466	LVGO	2020-04-07	Low	0
+2  run-up (2a+2b+2c)	widened	516	COUP	2020-04-27	Low	0
+2  run-up (2a+2b+2c)	widened	853	NCLH	2020-08-24	Low	0
+2  run-up (2a+2b+2c)	widened	1304	W	2021-03-15	Low	0
+2  run-up (2a+2b+2c)	widened	1469	LOGC	2021-06-18	Low	0
+2  run-up (2a+2b+2c)	widened	1475	PLUG	2021-06-22	Medium	0
+2  run-up (2a+2b+2c)	widened	1510	COIN	2021-08-23	Low	0
+2  run-up (2a+2b+2c)	widened	1588	MQ	2021-10-26	Low	0
+2  run-up (2a+2b+2c)	widened	1596	COIN	2021-11-01	Low	0
+2  run-up (2a+2b+2c)	widened	1597	GME	2021-10-29	Medium	0
+2  run-up (2a+2b+2c)	widened	1627	SLDP	2021-11-15	Low	0
+2  run-up (2a+2b+2c)	widened	1648	RIOT	2021-11-29	Low	0
+2  run-up (2a+2b+2c)	widened	1683	SNOW	2021-12-22	Low	0
+2  run-up (2a+2b+2c)	widened	1684	ZS	2021-12-21	Low	0
+2  run-up (2a+2b+2c)	widened	1722	MOS	2022-02-01	Low	0
+2  run-up (2a+2b+2c)	widened	1735	FCX	2022-02-08	Low	0
+2  run-up (2a+2b+2c)	widened	1747	MP	2022-02-25	Medium	0
+3a higher_lows (as-is)	dated	111	BMA	2019-08-09	High	0
+3a higher_lows (as-is)	dated	426	BILI	2020-03-05	Low	0
+3a higher_lows (as-is)	dated	423	WORK	2020-03-05	Medium	0
+3a higher_lows (as-is)	dated	554	FSLY	2020-05-07	Not	0
+3a higher_lows (as-is)	dated	560	PDD	2020-05-08	High	1
+3a higher_lows (as-is)	dated	604	W	2020-05-26	Low	0
+3a higher_lows (as-is)	dated	678	OKTA	2020-06-17	Medium	0
+3a higher_lows (as-is)	dated	787	AVLR	2020-07-29	Medium	0
+3a higher_lows (as-is)	dated	797	PINS	2020-07-31	Not	0
+3a higher_lows (as-is)	dated	801	TTD	2020-07-31	Medium	0
+3a higher_lows (as-is)	dated	816	TWTR	2020-08-05	Low	0
+3a higher_lows (as-is)	dated	880	SE	2020-09-14	Low	0
+3a higher_lows (as-is)	dated	892	MDB	2020-09-21	Low	1
+3a higher_lows (as-is)	dated	981	TTD	2020-10-29	Low	0
+3a higher_lows (as-is)	dated	996	XYZ	2020-11-06	Medium	0
+3a higher_lows (as-is)	dated	1100	CCL	2020-12-28	Low	0
+3a higher_lows (as-is)	dated	1095	NCLH	2020-12-28	Medium	0
+3a higher_lows (as-is)	dated	1121	FIRY	2021-01-05	Medium	1
+3a higher_lows (as-is)	dated	1124	APHA	2021-01-06	High	1
+3a higher_lows (as-is)	dated	1147	JMIA	2021-01-12	Low	1
+3a higher_lows (as-is)	dated	1171	SICP	2021-01-22	Medium	1
+3a higher_lows (as-is)	dated	1178	PDD	2021-01-25	Medium	0
+3a higher_lows (as-is)	dated	1213	XYZ	2021-02-03	Low	0
+3a higher_lows (as-is)	dated	1263	DKNG	2021-02-26	Medium	0
+3a higher_lows (as-is)	dated	1265	PENN	2021-03-01	High	0
+3a higher_lows (as-is)	dated	1264	RKT	2021-03-01	Low	0
+3a higher_lows (as-is)	dated	1270	TLRY	2021-03-02	Low	0
+3a higher_lows (as-is)	dated	1288	FCX	2021-03-11	Medium	0
+3a higher_lows (as-is)	dated	1290	UAL	2021-03-11	Low	0
+3a higher_lows (as-is)	dated	1350	AAL	2021-03-30	Low	0
+3a higher_lows (as-is)	dated	1395	X	2021-04-23	Medium	0
+3a higher_lows (as-is)	dated	1509	AMD	2021-08-23	Medium	0
+3a higher_lows (as-is)	dated	1513	SNAP	2021-08-23	Low	0
+3a higher_lows (as-is)	dated	1645	SICP	2021-11-29	Low	0
+3a higher_lows (as-is)	dated	1786	LAC	2022-04-21	Low	0
+3a higher_lows (as-is)	dated	1787	TSLA	2022-04-21	Not	0
+3a higher_lows (as-is)	dated	1824	U	2022-11-15	Low	0
+3a higher_lows (as-is)	dated	1830	PDD	2023-01-05	High	0
+3a higher_lows (as-is)	dated	1869	GME	2023-12-14	Low	0
+3a higher_lows (as-is)	widened	379	BYND	2020-02-07	Low	0
+3a higher_lows (as-is)	widened	691	BCRX	2020-06-26	High	0
+3a higher_lows (as-is)	widened	747	BILI	2020-07-21	Low	0
+3a higher_lows (as-is)	widened	803	BILI	2020-07-31	Medium	0
+3a higher_lows (as-is)	widened	843	TWLO	2020-08-18	Low	0
+3a higher_lows (as-is)	widened	875	DKNG	2020-09-10	High	0
+3a higher_lows (as-is)	widened	894	ZS	2020-09-21	Low	0
+3a higher_lows (as-is)	widened	993	FUTU	2020-11-05	Low	0
+3a higher_lows (as-is)	widened	1012	MARA	2020-11-16	Low	0
+3a higher_lows (as-is)	widened	1195	MARA	2021-01-28	Low	0
+3a higher_lows (as-is)	widened	1206	BIDU	2021-02-02	Low	0
+3a higher_lows (as-is)	widened	1207	BILI	2021-02-02	Low	0
+3a higher_lows (as-is)	widened	1225	NIO	2021-02-08	Low	0
+3a higher_lows (as-is)	widened	1295	CCL	2021-03-12	Low	0
+3a higher_lows (as-is)	widened	1470	BNTX	2021-06-21	Medium	0
+3a higher_lows (as-is)	widened	1475	PLUG	2021-06-22	Medium	0
+3a higher_lows (as-is)	widened	1599	MSTR	2021-11-02	Medium	0
+3a higher_lows (as-is)	widened	1627	SLDP	2021-11-15	Low	0
+3a higher_lows (as-is)	widened	1633	TSLA	2021-11-19	Medium	0
+3a higher_lows (as-is)	widened	1656	DVN	2021-12-07	Medium	0
+3a higher_lows (as-is)	widened	1706	LCID	2022-01-07	High	0
+3a higher_lows (as-is)	widened	1712	LI	2022-01-12	Low	0
+3b no_lower_low (as-is)	dated	111	BMA	2019-08-09	High	0
+3b no_lower_low (as-is)	dated	156	MIK	2019-10-10	Low	0
+3b no_lower_low (as-is)	dated	174	MIK	2019-10-21	Low	0
+3b no_lower_low (as-is)	dated	189	MIK	2019-10-22	High	0
+3b no_lower_low (as-is)	dated	400	APT	2020-02-21	Low	1
+3b no_lower_low (as-is)	dated	426	BILI	2020-03-05	Low	0
+3b no_lower_low (as-is)	dated	669	NET	2020-06-15	High	0
+3b no_lower_low (as-is)	dated	678	OKTA	2020-06-17	Medium	0
+3b no_lower_low (as-is)	dated	686	DKNG	2020-06-22	Medium	0
+3b no_lower_low (as-is)	dated	717	MDB	2020-07-08	Medium	0
+3b no_lower_low (as-is)	dated	720	ROKU	2020-07-09	High	0
+3b no_lower_low (as-is)	dated	787	AVLR	2020-07-29	Medium	0
+3b no_lower_low (as-is)	dated	797	PINS	2020-07-31	Not	0
+3b no_lower_low (as-is)	dated	806	WKHS	2020-08-03	High	0
+3b no_lower_low (as-is)	dated	804	ZM	2020-08-03	Medium	0
+3b no_lower_low (as-is)	dated	816	TWTR	2020-08-05	Low	0
+3b no_lower_low (as-is)	dated	892	MDB	2020-09-21	Low	1
+3b no_lower_low (as-is)	dated	919	NIO	2020-09-29	High	1
+3b no_lower_low (as-is)	dated	981	TTD	2020-10-29	Low	0
+3b no_lower_low (as-is)	dated	1093	TLRY	2020-12-16	Not	0
+3b no_lower_low (as-is)	dated	1100	CCL	2020-12-28	Low	0
+3b no_lower_low (as-is)	dated	1095	NCLH	2020-12-28	Medium	0
+3b no_lower_low (as-is)	dated	1114	TLRY	2021-01-04	Low	0
+3b no_lower_low (as-is)	dated	1121	FIRY	2021-01-05	Medium	1
+3b no_lower_low (as-is)	dated	1128	JWN	2021-01-06	High	0
+3b no_lower_low (as-is)	dated	1129	M	2021-01-06	High	0
+3b no_lower_low (as-is)	dated	1174	CBAT	2021-01-22	Medium	0
+3b no_lower_low (as-is)	dated	1198	BTBT	2021-01-28	Low	0
+3b no_lower_low (as-is)	dated	1224	RIOT	2021-02-08	Not	0
+3b no_lower_low (as-is)	dated	1221	SEDG	2021-02-08	Low	0
+3b no_lower_low (as-is)	dated	1255	AMC	2021-02-22	Low	0
+3b no_lower_low (as-is)	dated	1260	AMC	2021-02-25	Not	0
+3b no_lower_low (as-is)	dated	1265	PENN	2021-03-01	High	0
+3b no_lower_low (as-is)	dated	1288	FCX	2021-03-11	Medium	0
+3b no_lower_low (as-is)	dated	1324	APPS	2021-03-22	Medium	0
+3b no_lower_low (as-is)	dated	1395	X	2021-04-23	Medium	0
+3b no_lower_low (as-is)	dated	1402	SNAP	2021-04-29	Low	0
+3b no_lower_low (as-is)	dated	1501	BNTX	2021-07-21	High	0
+3b no_lower_low (as-is)	dated	1508	UPST	2021-08-12	Low	0
+3b no_lower_low (as-is)	dated	1509	AMD	2021-08-23	Medium	0
+3b no_lower_low (as-is)	dated	1513	SNAP	2021-08-23	Low	0
+3b no_lower_low (as-is)	dated	1516	AMC	2021-09-10	Low	0
+3b no_lower_low (as-is)	dated	1550	DRK	2021-10-11	High	0
+3b no_lower_low (as-is)	dated	1552	MARA	2021-10-11	High	0
+3b no_lower_low (as-is)	dated	1553	MSTR	2021-10-11	Low	0
+3b no_lower_low (as-is)	dated	1554	CCJ	2021-10-12	High	0
+3b no_lower_low (as-is)	dated	1786	LAC	2022-04-21	Low	0
+3b no_lower_low (as-is)	dated	1822	FREY	2022-11-15	Low	0
+3b no_lower_low (as-is)	dated	1834	AI	2023-05-17	Low	0
+3b no_lower_low (as-is)	widened	171	TEVA	2019-10-18	Low	0
+3b no_lower_low (as-is)	widened	206	DDS	2019-10-25	Low	0
+3b no_lower_low (as-is)	widened	243	LK	2019-11-18	Low	0
+3b no_lower_low (as-is)	widened	310	LK	2019-12-31	Low	0
+3b no_lower_low (as-is)	widened	395	NIO	2020-02-19	Medium	0
+3b no_lower_low (as-is)	widened	458	MRNA	2020-04-02	Low	0
+3b no_lower_low (as-is)	widened	622	CAR	2020-06-02	Low	0
+3b no_lower_low (as-is)	widened	668	NVAX	2020-06-15	Medium	0
+3b no_lower_low (as-is)	widened	677	LAKE	2020-06-17	Low	0
+3b no_lower_low (as-is)	widened	691	BCRX	2020-06-26	High	0
+3b no_lower_low (as-is)	widened	709	NVAX	2020-06-29	Low	0
+3b no_lower_low (as-is)	widened	803	BILI	2020-07-31	Medium	0
+3b no_lower_low (as-is)	widened	853	NCLH	2020-08-24	Low	0
+3b no_lower_low (as-is)	widened	875	DKNG	2020-09-10	High	0
+3b no_lower_low (as-is)	widened	883	BILI	2020-09-15	Low	0
+3b no_lower_low (as-is)	widened	891	FSLY	2020-09-21	High	0
+3b no_lower_low (as-is)	widened	894	ZS	2020-09-21	Low	0
+3b no_lower_low (as-is)	widened	1017	RUN	2020-11-17	Low	0
+3b no_lower_low (as-is)	widened	1023	BILI	2020-11-19	Low	0
+3b no_lower_low (as-is)	widened	1025	SNAP	2020-11-19	Low	0
+3b no_lower_low (as-is)	widened	1029	SPG	2020-11-20	Low	0
+3b no_lower_low (as-is)	widened	1106	CAN	2020-12-30	Medium	0
+3b no_lower_low (as-is)	widened	1225	NIO	2021-02-08	Low	0
+3b no_lower_low (as-is)	widened	1360	SICP	2021-03-31	Low	0
+3b no_lower_low (as-is)	widened	1376	TWTR	2021-03-31	Medium	0
+3b no_lower_low (as-is)	widened	1380	SHOP	2021-04-08	Low	0
+3b no_lower_low (as-is)	widened	1469	LOGC	2021-06-18	Low	0
+3b no_lower_low (as-is)	widened	1560	PLUG	2021-10-13	Low	0
+3b no_lower_low (as-is)	widened	1588	MQ	2021-10-26	Low	0
+3b no_lower_low (as-is)	widened	1596	COIN	2021-11-01	Low	0
+3b no_lower_low (as-is)	widened	1597	GME	2021-10-29	Medium	0
+3b no_lower_low (as-is)	widened	1599	MSTR	2021-11-02	Medium	0
+3b no_lower_low (as-is)	widened	1627	SLDP	2021-11-15	Low	0
+3b no_lower_low (as-is)	widened	1633	TSLA	2021-11-19	Medium	0
+3b no_lower_low (as-is)	widened	1656	DVN	2021-12-07	Medium	0
+3b no_lower_low (as-is)	widened	1706	LCID	2022-01-07	High	0
+3b no_lower_low (as-is)	widened	1712	LI	2022-01-12	Low	0
+3b no_lower_low (as-is)	widened	1736	ALB	2022-02-09	Low	0
+3c low_not_today (as-is)	dated	816	TWTR	2020-08-05	Low	0
+3c low_not_today (as-is)	dated	981	TTD	2020-10-29	Low	0
+3c low_not_today (as-is)	dated	1171	SICP	2021-01-22	Medium	1
+3c low_not_today (as-is)	widened	1706	LCID	2022-01-07	High	0
+3d ema21_not_falling (as-is)	dated	111	BMA	2019-08-09	High	0
+3d ema21_not_falling (as-is)	dated	348	PBYI	2020-01-17	Medium	0
+3d ema21_not_falling (as-is)	dated	1009	BLDP	2020-11-16	Low	0
+3d ema21_not_falling (as-is)	dated	1143	SOLO	2021-01-11	Medium	0
+3d ema21_not_falling (as-is)	dated	1221	SEDG	2021-02-08	Low	0
+3d ema21_not_falling (as-is)	dated	1264	RKT	2021-03-01	Low	0
+3d ema21_not_falling (as-is)	dated	1824	U	2022-11-15	Low	0
+3d ema21_not_falling (as-is)	widened	169	APPS	2019-10-17	Low	0
+3d ema21_not_falling (as-is)	widened	375	ACB	2020-02-04	Low	0
+3d ema21_not_falling (as-is)	widened	450	TSLA	2020-03-26	Low	0
+3d ema21_not_falling (as-is)	widened	510	TLRY	2020-04-24	Low	0
+3d ema21_not_falling (as-is)	widened	691	BCRX	2020-06-26	High	0
+3d ema21_not_falling (as-is)	widened	837	BILI	2020-08-17	Medium	0
+3d ema21_not_falling (as-is)	widened	923	BILI	2020-10-05	Low	0
+3d ema21_not_falling (as-is)	widened	1017	RUN	2020-11-17	Low	0
+3d ema21_not_falling (as-is)	widened	1021	DOCU	2020-11-18	Low	0
+3d ema21_not_falling (as-is)	widened	1157	WWR	2021-01-19	Low	0
+3d ema21_not_falling (as-is)	widened	1325	LRCX	2021-03-22	Low	0
+3d ema21_not_falling (as-is)	widened	1376	TWTR	2021-03-31	Medium	0
+3d ema21_not_falling (as-is)	widened	1384	NVAX	2021-04-13	High	0
+3d ema21_not_falling (as-is)	widened	1441	NTLA	2021-05-26	Low	0
+3d ema21_not_falling (as-is)	widened	1555	LTHM	2021-10-12	High	0
+3d ema21_not_falling (as-is)	widened	1597	GME	2021-10-29	Medium	0
+3d ema21_not_falling (as-is)	widened	1683	SNOW	2021-12-22	Low	0
+3d ema21_not_falling (as-is)	widened	1691	LI	2021-12-30	Low	0
+3d ema21_not_falling (as-is)	widened	1706	LCID	2022-01-07	High	0
+3d ema21_not_falling (as-is)	widened	1712	LI	2022-01-12	Low	0
+3d ema21_not_falling (as-is)	widened	1735	FCX	2022-02-08	Low	0
+3d ema21_not_falling (as-is)	widened	1736	ALB	2022-02-09	Low	0
+3e swing low not lower	dated	441	ZS	2020-03-24	Low	0
+3e swing low not lower	dated	676	APT	2020-06-17	Low	1
+3e swing low not lower	dated	996	XYZ	2020-11-06	Medium	0
+3e swing low not lower	dated	1213	XYZ	2021-02-03	Low	0
+3e swing low not lower	dated	1824	U	2022-11-15	Low	0
+3e swing low not lower	widened	450	TSLA	2020-03-26	Low	0
+4 unreclaimed gap down	dated	95	ANET	2018-03-12	Low	0
+4b any gap down (POST-HOC)	dated	95	ANET	2018-03-12	Low	0
+5a frozen: range5/ADR	dated	290	KOD	2019-12-24	Medium	0
+5a frozen: range5/ADR	dated	460	NVAX	2020-04-03	Medium	0
+5a frozen: range5/ADR	dated	461	CODX	2020-04-06	Not	0
+5a frozen: range5/ADR	dated	646	ACB	2020-06-08	Low	0
+5a frozen: range5/ADR	dated	739	WKHS	2020-07-20	Low	0
+5a frozen: range5/ADR	dated	1255	AMC	2021-02-22	Low	0
+5a frozen: range5/ADR	widened	458	MRNA	2020-04-02	Low	0
+5b frozen: range10/ADR	dated	290	KOD	2019-12-24	Medium	0
+5b frozen: range10/ADR	dated	461	CODX	2020-04-06	Not	0
+5b frozen: range10/ADR	dated	646	ACB	2020-06-08	Low	0
+5b frozen: range10/ADR	dated	934	TSLA	2020-10-12	Low	0
+5b frozen: range10/ADR	dated	1255	AMC	2021-02-22	Low	0
+5b frozen: range10/ADR	dated	1260	AMC	2021-02-25	Not	0
+5b frozen: range10/ADR	widened	510	TLRY	2020-04-24	Low	0
+5c frozen: spread10	dated	1198	BTBT	2021-01-28	Low	0
+5c frozen: spread10	widened	510	TLRY	2020-04-24	Low	0
+5c frozen: spread10	widened	710	RH	2020-07-01	Medium	0
+5c frozen: spread10	widened	853	NCLH	2020-08-24	Low	0
+5c frozen: spread10	widened	1157	WWR	2021-01-19	Low	0
+6 template distance	dated	605	CCL	2020-05-26	Not	0
+6 template distance	dated	607	PLNT	2020-05-26	Low	0
+6 template distance	dated	606	UAL	2020-05-27	Not	0
+6 template distance	dated	1644	MRNA	2021-11-29	Not	0
+6 template distance	dated	1824	U	2022-11-15	Low	0
+6 template distance	dated	1829	MDGL	2023-01-24	Low	0
+6 template distance	widened	375	ACB	2020-02-04	Low	0
+6 template distance	widened	510	TLRY	2020-04-24	Low	0
+6 template distance	widened	649	BA	2020-06-08	Low	0
+6 template distance	widened	922	APT	2020-10-02	Low	0
+6 template distance	widened	1444	BILI	2021-05-28	Low	0
+6 template distance	widened	1469	LOGC	2021-06-18	Low	0
+6 template distance	widened	1475	PLUG	2021-06-22	Medium	0
+6 template distance	widened	1481	RIOT	2021-06-28	Low	0
+6 template distance	widened	1736	ALB	2022-02-09	Low	0
+SWEEP 2a k=3 T=105.00	dated	104	ROKU	2018-08-09	Not	0
+SWEEP 2a k=3 T=105.00	dated	156	MIK	2019-10-10	Low	0
+SWEEP 2a k=3 T=105.00	dated	174	MIK	2019-10-21	Low	0
+SWEEP 2a k=3 T=105.00	dated	189	MIK	2019-10-22	High	0
+SWEEP 2a k=3 T=105.00	dated	423	WORK	2020-03-05	Medium	0
+SWEEP 2a k=3 T=105.00	dated	468	W	2020-04-07	Not	0
+SWEEP 2a k=3 T=105.00	dated	606	UAL	2020-05-27	Not	0
+SWEEP 2a k=3 T=105.00	dated	646	ACB	2020-06-08	Low	0
+SWEEP 2a k=3 T=105.00	dated	682	ACB	2020-06-23	Low	0
+SWEEP 2a k=3 T=105.00	dated	741	TWTR	2020-07-20	Low	0
+SWEEP 2a k=3 T=105.00	dated	1173	NXH	2021-01-22	Low	1
+SWEEP 2a k=3 T=105.00	dated	1264	RKT	2021-03-01	Low	0
+SWEEP 2a k=3 T=105.00	dated	1506	MSTR	2021-08-05	Medium	0
+SWEEP 2a k=3 T=105.00	dated	1552	MARA	2021-10-11	High	0
+SWEEP 2a k=3 T=105.00	dated	1553	MSTR	2021-10-11	Low	0
+SWEEP 2a k=3 T=105.00	dated	1593	QS	2021-10-29	Low	1
+SWEEP 2a k=3 T=105.00	dated	1658	FCX	2021-12-07	Low	0
+SWEEP 2a k=3 T=105.00	dated	1787	TSLA	2022-04-21	Not	0
+SWEEP 2a k=3 T=105.00	dated	1869	GME	2023-12-14	Low	0
+SWEEP 2a k=3 T=105.00	widened	157	RLGY	2019-10-10	Low	0
+SWEEP 2a k=3 T=105.00	widened	164	ENDP	2019-10-16	Medium	0
+SWEEP 2a k=3 T=105.00	widened	171	TEVA	2019-10-18	Low	0
+SWEEP 2a k=3 T=105.00	widened	294	BE	2019-12-30	Medium	0
+SWEEP 2a k=3 T=105.00	widened	375	ACB	2020-02-04	Low	0
+SWEEP 2a k=3 T=105.00	widened	379	BYND	2020-02-07	Low	0
+SWEEP 2a k=3 T=105.00	widened	412	ACH	2020-03-02	Low	0
+SWEEP 2a k=3 T=105.00	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 2a k=3 T=105.00	widened	649	BA	2020-06-08	Low	0
+SWEEP 2a k=3 T=105.00	widened	740	JMIA	2020-07-20	Medium	0
+SWEEP 2a k=3 T=105.00	widened	853	NCLH	2020-08-24	Low	0
+SWEEP 2a k=3 T=105.00	widened	1029	SPG	2020-11-20	Low	0
+SWEEP 2a k=4 T=99.00	dated	104	ROKU	2018-08-09	Not	0
+SWEEP 2a k=4 T=99.00	dated	156	MIK	2019-10-10	Low	0
+SWEEP 2a k=4 T=99.00	dated	174	MIK	2019-10-21	Low	0
+SWEEP 2a k=4 T=99.00	dated	189	MIK	2019-10-22	High	0
+SWEEP 2a k=4 T=99.00	dated	423	WORK	2020-03-05	Medium	0
+SWEEP 2a k=4 T=99.00	dated	468	W	2020-04-07	Not	0
+SWEEP 2a k=4 T=99.00	dated	606	UAL	2020-05-27	Not	0
+SWEEP 2a k=4 T=99.00	dated	646	ACB	2020-06-08	Low	0
+SWEEP 2a k=4 T=99.00	dated	682	ACB	2020-06-23	Low	0
+SWEEP 2a k=4 T=99.00	dated	741	TWTR	2020-07-20	Low	0
+SWEEP 2a k=4 T=99.00	dated	784	LAKE	2020-07-28	Low	0
+SWEEP 2a k=4 T=99.00	dated	1173	NXH	2021-01-22	Low	1
+SWEEP 2a k=4 T=99.00	dated	1264	RKT	2021-03-01	Low	0
+SWEEP 2a k=4 T=99.00	dated	1479	BYND	2021-06-28	High	0
+SWEEP 2a k=4 T=99.00	dated	1506	MSTR	2021-08-05	Medium	0
+SWEEP 2a k=4 T=99.00	dated	1552	MARA	2021-10-11	High	0
+SWEEP 2a k=4 T=99.00	dated	1553	MSTR	2021-10-11	Low	0
+SWEEP 2a k=4 T=99.00	dated	1593	QS	2021-10-29	Low	1
+SWEEP 2a k=4 T=99.00	dated	1658	FCX	2021-12-07	Low	0
+SWEEP 2a k=4 T=99.00	dated	1787	TSLA	2022-04-21	Not	0
+SWEEP 2a k=4 T=99.00	dated	1869	GME	2023-12-14	Low	0
+SWEEP 2a k=4 T=99.00	widened	119	RLGY	2019-10-01	Low	0
+SWEEP 2a k=4 T=99.00	widened	157	RLGY	2019-10-10	Low	0
+SWEEP 2a k=4 T=99.00	widened	164	ENDP	2019-10-16	Medium	0
+SWEEP 2a k=4 T=99.00	widened	171	TEVA	2019-10-18	Low	0
+SWEEP 2a k=4 T=99.00	widened	294	BE	2019-12-30	Medium	0
+SWEEP 2a k=4 T=99.00	widened	375	ACB	2020-02-04	Low	0
+SWEEP 2a k=4 T=99.00	widened	379	BYND	2020-02-07	Low	0
+SWEEP 2a k=4 T=99.00	widened	412	ACH	2020-03-02	Low	0
+SWEEP 2a k=4 T=99.00	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 2a k=4 T=99.00	widened	649	BA	2020-06-08	Low	0
+SWEEP 2a k=4 T=99.00	widened	740	JMIA	2020-07-20	Medium	0
+SWEEP 2a k=4 T=99.00	widened	853	NCLH	2020-08-24	Low	0
+SWEEP 2a k=4 T=99.00	widened	1029	SPG	2020-11-20	Low	0
+SWEEP 2a k=4 T=99.00	widened	1475	PLUG	2021-06-22	Medium	0
+SWEEP 2a k=4 T=99.00	widened	1597	GME	2021-10-29	Medium	0
+SWEEP 2b k=2 T=7.21	dated	605	CCL	2020-05-26	Not	0
+SWEEP 2b k=2 T=7.21	dated	606	UAL	2020-05-27	Not	0
+SWEEP 2b k=2 T=7.21	dated	676	APT	2020-06-17	Low	1
+SWEEP 2b k=2 T=7.21	dated	682	ACB	2020-06-23	Low	0
+SWEEP 2b k=2 T=7.21	dated	688	BNTX	2020-06-25	High	0
+SWEEP 2b k=2 T=7.21	dated	1506	MSTR	2021-08-05	Medium	0
+SWEEP 2b k=2 T=7.21	widened	119	RLGY	2019-10-01	Low	0
+SWEEP 2b k=2 T=7.21	widened	157	RLGY	2019-10-10	Low	0
+SWEEP 2b k=2 T=7.21	widened	171	TEVA	2019-10-18	Low	0
+SWEEP 2b k=2 T=7.21	widened	375	ACB	2020-02-04	Low	0
+SWEEP 2b k=2 T=7.21	widened	853	NCLH	2020-08-24	Low	0
+SWEEP 2b k=2 T=7.21	widened	1475	PLUG	2021-06-22	Medium	0
+SWEEP 2b k=2 T=7.21	widened	1481	RIOT	2021-06-28	Low	0
+SWEEP 2b k=2 T=7.21	widened	1510	COIN	2021-08-23	Low	0
+SWEEP 2b k=2 T=7.21	widened	1597	GME	2021-10-29	Medium	0
+SWEEP 2b k=3 T=6.61	dated	578	APT	2020-05-14	High	0
+SWEEP 2b k=3 T=6.61	dated	605	CCL	2020-05-26	Not	0
+SWEEP 2b k=3 T=6.61	dated	606	UAL	2020-05-27	Not	0
+SWEEP 2b k=3 T=6.61	dated	676	APT	2020-06-17	Low	1
+SWEEP 2b k=3 T=6.61	dated	682	ACB	2020-06-23	Low	0
+SWEEP 2b k=3 T=6.61	dated	688	BNTX	2020-06-25	High	0
+SWEEP 2b k=3 T=6.61	dated	1506	MSTR	2021-08-05	Medium	0
+SWEEP 2b k=3 T=6.61	widened	119	RLGY	2019-10-01	Low	0
+SWEEP 2b k=3 T=6.61	widened	157	RLGY	2019-10-10	Low	0
+SWEEP 2b k=3 T=6.61	widened	171	TEVA	2019-10-18	Low	0
+SWEEP 2b k=3 T=6.61	widened	375	ACB	2020-02-04	Low	0
+SWEEP 2b k=3 T=6.61	widened	649	BA	2020-06-08	Low	0
+SWEEP 2b k=3 T=6.61	widened	853	NCLH	2020-08-24	Low	0
+SWEEP 2b k=3 T=6.61	widened	1157	WWR	2021-01-19	Low	0
+SWEEP 2b k=3 T=6.61	widened	1475	PLUG	2021-06-22	Medium	0
+SWEEP 2b k=3 T=6.61	widened	1481	RIOT	2021-06-28	Low	0
+SWEEP 2b k=3 T=6.61	widened	1510	COIN	2021-08-23	Low	0
+SWEEP 2b k=3 T=6.61	widened	1597	GME	2021-10-29	Medium	0
+SWEEP 2b k=4 T=6.46	dated	578	APT	2020-05-14	High	0
+SWEEP 2b k=4 T=6.46	dated	605	CCL	2020-05-26	Not	0
+SWEEP 2b k=4 T=6.46	dated	606	UAL	2020-05-27	Not	0
+SWEEP 2b k=4 T=6.46	dated	676	APT	2020-06-17	Low	1
+SWEEP 2b k=4 T=6.46	dated	681	VIR	2020-06-19	High	0
+SWEEP 2b k=4 T=6.46	dated	682	ACB	2020-06-23	Low	0
+SWEEP 2b k=4 T=6.46	dated	688	BNTX	2020-06-25	High	0
+SWEEP 2b k=4 T=6.46	dated	1264	RKT	2021-03-01	Low	0
+SWEEP 2b k=4 T=6.46	dated	1506	MSTR	2021-08-05	Medium	0
+SWEEP 2b k=4 T=6.46	widened	119	RLGY	2019-10-01	Low	0
+SWEEP 2b k=4 T=6.46	widened	157	RLGY	2019-10-10	Low	0
+SWEEP 2b k=4 T=6.46	widened	171	TEVA	2019-10-18	Low	0
+SWEEP 2b k=4 T=6.46	widened	375	ACB	2020-02-04	Low	0
+SWEEP 2b k=4 T=6.46	widened	649	BA	2020-06-08	Low	0
+SWEEP 2b k=4 T=6.46	widened	853	NCLH	2020-08-24	Low	0
+SWEEP 2b k=4 T=6.46	widened	1157	WWR	2021-01-19	Low	0
+SWEEP 2b k=4 T=6.46	widened	1475	PLUG	2021-06-22	Medium	0
+SWEEP 2b k=4 T=6.46	widened	1481	RIOT	2021-06-28	Low	0
+SWEEP 2b k=4 T=6.46	widened	1510	COIN	2021-08-23	Low	0
+SWEEP 2b k=4 T=6.46	widened	1597	GME	2021-10-29	Medium	0
+SWEEP 2c k=2 T=12.57	dated	348	PBYI	2020-01-17	Medium	0
+SWEEP 2c k=2 T=12.57	dated	400	APT	2020-02-21	Low	1
+SWEEP 2c k=2 T=12.57	dated	423	WORK	2020-03-05	Medium	0
+SWEEP 2c k=2 T=12.57	dated	441	ZS	2020-03-24	Low	0
+SWEEP 2c k=2 T=12.57	dated	479	NET	2020-04-16	Medium	0
+SWEEP 2c k=2 T=12.57	dated	482	EXEL	2020-04-20	Not	0
+SWEEP 2c k=2 T=12.57	dated	1031	CRON	2020-11-24	High	0
+SWEEP 2c k=2 T=12.57	dated	1045	FIRY	2020-11-30	Low	0
+SWEEP 2c k=2 T=12.57	dated	1081	AVPT	2020-12-21	Low	0
+SWEEP 2c k=2 T=12.57	dated	1121	FIRY	2021-01-05	Medium	1
+SWEEP 2c k=2 T=12.57	dated	1290	UAL	2021-03-11	Low	0
+SWEEP 2c k=2 T=12.57	dated	1299	RCL	2021-03-15	Low	0
+SWEEP 2c k=2 T=12.57	dated	1593	QS	2021-10-29	Low	1
+SWEEP 2c k=2 T=12.57	dated	1658	FCX	2021-12-07	Low	0
+SWEEP 2c k=2 T=12.57	dated	1670	VIR	2021-12-15	Low	0
+SWEEP 2c k=2 T=12.57	dated	1680	MDB	2021-12-27	Low	0
+SWEEP 2c k=2 T=12.57	dated	1824	U	2022-11-15	Low	0
+SWEEP 2c k=2 T=12.57	dated	1869	GME	2023-12-14	Low	0
+SWEEP 2c k=2 T=12.57	widened	119	RLGY	2019-10-01	Low	0
+SWEEP 2c k=2 T=12.57	widened	155	DDS	2019-10-09	Low	0
+SWEEP 2c k=2 T=12.57	widened	157	RLGY	2019-10-10	Low	0
+SWEEP 2c k=2 T=12.57	widened	171	TEVA	2019-10-18	Low	0
+SWEEP 2c k=2 T=12.57	widened	375	ACB	2020-02-04	Low	0
+SWEEP 2c k=2 T=12.57	widened	458	MRNA	2020-04-02	Low	0
+SWEEP 2c k=2 T=12.57	widened	463	JD	2020-04-06	Low	0
+SWEEP 2c k=2 T=12.57	widened	466	LVGO	2020-04-07	Low	0
+SWEEP 2c k=2 T=12.57	widened	516	COUP	2020-04-27	Low	0
+SWEEP 2c k=2 T=12.57	widened	1304	W	2021-03-15	Low	0
+SWEEP 2c k=2 T=12.57	widened	1469	LOGC	2021-06-18	Low	0
+SWEEP 2c k=2 T=12.57	widened	1510	COIN	2021-08-23	Low	0
+SWEEP 2c k=2 T=12.57	widened	1588	MQ	2021-10-26	Low	0
+SWEEP 2c k=2 T=12.57	widened	1596	COIN	2021-11-01	Low	0
+SWEEP 2c k=2 T=12.57	widened	1627	SLDP	2021-11-15	Low	0
+SWEEP 2c k=2 T=12.57	widened	1648	RIOT	2021-11-29	Low	0
+SWEEP 2c k=2 T=12.57	widened	1683	SNOW	2021-12-22	Low	0
+SWEEP 2c k=2 T=12.57	widened	1684	ZS	2021-12-21	Low	0
+SWEEP 2c k=2 T=12.57	widened	1722	MOS	2022-02-01	Low	0
+SWEEP 2c k=2 T=12.57	widened	1735	FCX	2022-02-08	Low	0
+SWEEP 2c k=2 T=12.57	widened	1747	MP	2022-02-25	Medium	0
+SWEEP 2c k=3 T=13.65	dated	72	SRPT	2017-10-02	High	0
+SWEEP 2c k=3 T=13.65	dated	95	ANET	2018-03-12	Low	0
+SWEEP 2c k=3 T=13.65	dated	348	PBYI	2020-01-17	Medium	0
+SWEEP 2c k=3 T=13.65	dated	400	APT	2020-02-21	Low	1
+SWEEP 2c k=3 T=13.65	dated	423	WORK	2020-03-05	Medium	0
+SWEEP 2c k=3 T=13.65	dated	441	ZS	2020-03-24	Low	0
+SWEEP 2c k=3 T=13.65	dated	479	NET	2020-04-16	Medium	0
+SWEEP 2c k=3 T=13.65	dated	482	EXEL	2020-04-20	Not	0
+SWEEP 2c k=3 T=13.65	dated	1031	CRON	2020-11-24	High	0
+SWEEP 2c k=3 T=13.65	dated	1045	FIRY	2020-11-30	Low	0
+SWEEP 2c k=3 T=13.65	dated	1081	AVPT	2020-12-21	Low	0
+SWEEP 2c k=3 T=13.65	dated	1121	FIRY	2021-01-05	Medium	1
+SWEEP 2c k=3 T=13.65	dated	1290	UAL	2021-03-11	Low	0
+SWEEP 2c k=3 T=13.65	dated	1299	RCL	2021-03-15	Low	0
+SWEEP 2c k=3 T=13.65	dated	1544	LAC	2021-09-30	Low	0
+SWEEP 2c k=3 T=13.65	dated	1593	QS	2021-10-29	Low	1
+SWEEP 2c k=3 T=13.65	dated	1658	FCX	2021-12-07	Low	0
+SWEEP 2c k=3 T=13.65	dated	1670	VIR	2021-12-15	Low	0
+SWEEP 2c k=3 T=13.65	dated	1680	MDB	2021-12-27	Low	0
+SWEEP 2c k=3 T=13.65	dated	1824	U	2022-11-15	Low	0
+SWEEP 2c k=3 T=13.65	dated	1869	GME	2023-12-14	Low	0
+SWEEP 2c k=3 T=13.65	widened	119	RLGY	2019-10-01	Low	0
+SWEEP 2c k=3 T=13.65	widened	155	DDS	2019-10-09	Low	0
+SWEEP 2c k=3 T=13.65	widened	157	RLGY	2019-10-10	Low	0
+SWEEP 2c k=3 T=13.65	widened	164	ENDP	2019-10-16	Medium	0
+SWEEP 2c k=3 T=13.65	widened	171	TEVA	2019-10-18	Low	0
+SWEEP 2c k=3 T=13.65	widened	206	DDS	2019-10-25	Low	0
+SWEEP 2c k=3 T=13.65	widened	375	ACB	2020-02-04	Low	0
+SWEEP 2c k=3 T=13.65	widened	458	MRNA	2020-04-02	Low	0
+SWEEP 2c k=3 T=13.65	widened	463	JD	2020-04-06	Low	0
+SWEEP 2c k=3 T=13.65	widened	466	LVGO	2020-04-07	Low	0
+SWEEP 2c k=3 T=13.65	widened	516	COUP	2020-04-27	Low	0
+SWEEP 2c k=3 T=13.65	widened	529	BCRX	2020-04-30	Low	0
+SWEEP 2c k=3 T=13.65	widened	1304	W	2021-03-15	Low	0
+SWEEP 2c k=3 T=13.65	widened	1469	LOGC	2021-06-18	Low	0
+SWEEP 2c k=3 T=13.65	widened	1510	COIN	2021-08-23	Low	0
+SWEEP 2c k=3 T=13.65	widened	1588	MQ	2021-10-26	Low	0
+SWEEP 2c k=3 T=13.65	widened	1596	COIN	2021-11-01	Low	0
+SWEEP 2c k=3 T=13.65	widened	1627	SLDP	2021-11-15	Low	0
+SWEEP 2c k=3 T=13.65	widened	1648	RIOT	2021-11-29	Low	0
+SWEEP 2c k=3 T=13.65	widened	1683	SNOW	2021-12-22	Low	0
+SWEEP 2c k=3 T=13.65	widened	1684	ZS	2021-12-21	Low	0
+SWEEP 2c k=3 T=13.65	widened	1722	MOS	2022-02-01	Low	0
+SWEEP 2c k=3 T=13.65	widened	1735	FCX	2022-02-08	Low	0
+SWEEP 2c k=3 T=13.65	widened	1747	MP	2022-02-25	Medium	0
+SWEEP 2c k=4 T=14.07	dated	72	SRPT	2017-10-02	High	0
+SWEEP 2c k=4 T=14.07	dated	95	ANET	2018-03-12	Low	0
+SWEEP 2c k=4 T=14.07	dated	348	PBYI	2020-01-17	Medium	0
+SWEEP 2c k=4 T=14.07	dated	400	APT	2020-02-21	Low	1
+SWEEP 2c k=4 T=14.07	dated	423	WORK	2020-03-05	Medium	0
+SWEEP 2c k=4 T=14.07	dated	441	ZS	2020-03-24	Low	0
+SWEEP 2c k=4 T=14.07	dated	479	NET	2020-04-16	Medium	0
+SWEEP 2c k=4 T=14.07	dated	482	EXEL	2020-04-20	Not	0
+SWEEP 2c k=4 T=14.07	dated	484	SHOP	2020-04-20	Low	0
+SWEEP 2c k=4 T=14.07	dated	606	UAL	2020-05-27	Not	0
+SWEEP 2c k=4 T=14.07	dated	1031	CRON	2020-11-24	High	0
+SWEEP 2c k=4 T=14.07	dated	1045	FIRY	2020-11-30	Low	0
+SWEEP 2c k=4 T=14.07	dated	1081	AVPT	2020-12-21	Low	0
+SWEEP 2c k=4 T=14.07	dated	1121	FIRY	2021-01-05	Medium	1
+SWEEP 2c k=4 T=14.07	dated	1290	UAL	2021-03-11	Low	0
+SWEEP 2c k=4 T=14.07	dated	1299	RCL	2021-03-15	Low	0
+SWEEP 2c k=4 T=14.07	dated	1326	ETSY	2021-03-23	Low	0
+SWEEP 2c k=4 T=14.07	dated	1509	AMD	2021-08-23	Medium	0
+SWEEP 2c k=4 T=14.07	dated	1544	LAC	2021-09-30	Low	0
+SWEEP 2c k=4 T=14.07	dated	1593	QS	2021-10-29	Low	1
+SWEEP 2c k=4 T=14.07	dated	1658	FCX	2021-12-07	Low	0
+SWEEP 2c k=4 T=14.07	dated	1670	VIR	2021-12-15	Low	0
+SWEEP 2c k=4 T=14.07	dated	1680	MDB	2021-12-27	Low	0
+SWEEP 2c k=4 T=14.07	dated	1786	LAC	2022-04-21	Low	0
+SWEEP 2c k=4 T=14.07	dated	1824	U	2022-11-15	Low	0
+SWEEP 2c k=4 T=14.07	dated	1869	GME	2023-12-14	Low	0
+SWEEP 2c k=4 T=14.07	widened	119	RLGY	2019-10-01	Low	0
+SWEEP 2c k=4 T=14.07	widened	155	DDS	2019-10-09	Low	0
+SWEEP 2c k=4 T=14.07	widened	157	RLGY	2019-10-10	Low	0
+SWEEP 2c k=4 T=14.07	widened	164	ENDP	2019-10-16	Medium	0
+SWEEP 2c k=4 T=14.07	widened	171	TEVA	2019-10-18	Low	0
+SWEEP 2c k=4 T=14.07	widened	206	DDS	2019-10-25	Low	0
+SWEEP 2c k=4 T=14.07	widened	375	ACB	2020-02-04	Low	0
+SWEEP 2c k=4 T=14.07	widened	458	MRNA	2020-04-02	Low	0
+SWEEP 2c k=4 T=14.07	widened	463	JD	2020-04-06	Low	0
+SWEEP 2c k=4 T=14.07	widened	466	LVGO	2020-04-07	Low	0
+SWEEP 2c k=4 T=14.07	widened	516	COUP	2020-04-27	Low	0
+SWEEP 2c k=4 T=14.07	widened	529	BCRX	2020-04-30	Low	0
+SWEEP 2c k=4 T=14.07	widened	1295	CCL	2021-03-12	Low	0
+SWEEP 2c k=4 T=14.07	widened	1304	W	2021-03-15	Low	0
+SWEEP 2c k=4 T=14.07	widened	1469	LOGC	2021-06-18	Low	0
+SWEEP 2c k=4 T=14.07	widened	1510	COIN	2021-08-23	Low	0
+SWEEP 2c k=4 T=14.07	widened	1555	LTHM	2021-10-12	High	0
+SWEEP 2c k=4 T=14.07	widened	1588	MQ	2021-10-26	Low	0
+SWEEP 2c k=4 T=14.07	widened	1596	COIN	2021-11-01	Low	0
+SWEEP 2c k=4 T=14.07	widened	1627	SLDP	2021-11-15	Low	0
+SWEEP 2c k=4 T=14.07	widened	1648	RIOT	2021-11-29	Low	0
+SWEEP 2c k=4 T=14.07	widened	1683	SNOW	2021-12-22	Low	0
+SWEEP 2c k=4 T=14.07	widened	1684	ZS	2021-12-21	Low	0
+SWEEP 2c k=4 T=14.07	widened	1722	MOS	2022-02-01	Low	0
+SWEEP 2c k=4 T=14.07	widened	1735	FCX	2022-02-08	Low	0
+SWEEP 2c k=4 T=14.07	widened	1736	ALB	2022-02-09	Low	0
+SWEEP 2c k=4 T=14.07	widened	1747	MP	2022-02-25	Medium	0
+SWEEP 3e k=2 T=-2.18	dated	441	ZS	2020-03-24	Low	0
+SWEEP 3e k=2 T=-2.18	dated	484	SHOP	2020-04-20	Low	0
+SWEEP 3e k=2 T=-2.18	dated	607	PLNT	2020-05-26	Low	0
+SWEEP 3e k=2 T=-2.18	dated	676	APT	2020-06-17	Low	1
+SWEEP 3e k=2 T=-2.18	dated	996	XYZ	2020-11-06	Medium	0
+SWEEP 3e k=2 T=-2.18	dated	1124	APHA	2021-01-06	High	1
+SWEEP 3e k=2 T=-2.18	dated	1213	XYZ	2021-02-03	Low	0
+SWEEP 3e k=2 T=-2.18	dated	1649	MARA	2021-11-30	Low	0
+SWEEP 3e k=2 T=-2.18	dated	1824	U	2022-11-15	Low	0
+SWEEP 3e k=2 T=-2.18	widened	450	TSLA	2020-03-26	Low	0
+SWEEP 3e k=2 T=-2.18	widened	488	SHOP	2020-04-21	Low	0
+SWEEP 3e k=2 T=-2.18	widened	1051	BE	2020-12-04	Low	0
+SWEEP 3e k=3 T=-2.07	dated	441	ZS	2020-03-24	Low	0
+SWEEP 3e k=3 T=-2.07	dated	484	SHOP	2020-04-20	Low	0
+SWEEP 3e k=3 T=-2.07	dated	607	PLNT	2020-05-26	Low	0
+SWEEP 3e k=3 T=-2.07	dated	606	UAL	2020-05-27	Not	0
+SWEEP 3e k=3 T=-2.07	dated	676	APT	2020-06-17	Low	1
+SWEEP 3e k=3 T=-2.07	dated	994	QDEL	2020-11-05	High	0
+SWEEP 3e k=3 T=-2.07	dated	996	XYZ	2020-11-06	Medium	0
+SWEEP 3e k=3 T=-2.07	dated	1124	APHA	2021-01-06	High	1
+SWEEP 3e k=3 T=-2.07	dated	1213	XYZ	2021-02-03	Low	0
+SWEEP 3e k=3 T=-2.07	dated	1649	MARA	2021-11-30	Low	0
+SWEEP 3e k=3 T=-2.07	dated	1787	TSLA	2022-04-21	Not	0
+SWEEP 3e k=3 T=-2.07	dated	1824	U	2022-11-15	Low	0
+SWEEP 3e k=3 T=-2.07	widened	450	TSLA	2020-03-26	Low	0
+SWEEP 3e k=3 T=-2.07	widened	488	SHOP	2020-04-21	Low	0
+SWEEP 3e k=3 T=-2.07	widened	1051	BE	2020-12-04	Low	0
+SWEEP 3e k=4 T=-1.56	dated	441	ZS	2020-03-24	Low	0
+SWEEP 3e k=4 T=-1.56	dated	460	NVAX	2020-04-03	Medium	0
+SWEEP 3e k=4 T=-1.56	dated	484	SHOP	2020-04-20	Low	0
+SWEEP 3e k=4 T=-1.56	dated	607	PLNT	2020-05-26	Low	0
+SWEEP 3e k=4 T=-1.56	dated	606	UAL	2020-05-27	Not	0
+SWEEP 3e k=4 T=-1.56	dated	676	APT	2020-06-17	Low	1
+SWEEP 3e k=4 T=-1.56	dated	994	QDEL	2020-11-05	High	0
+SWEEP 3e k=4 T=-1.56	dated	996	XYZ	2020-11-06	Medium	0
+SWEEP 3e k=4 T=-1.56	dated	1030	JMIA	2020-11-18	Low	1
+SWEEP 3e k=4 T=-1.56	dated	1124	APHA	2021-01-06	High	1
+SWEEP 3e k=4 T=-1.56	dated	1213	XYZ	2021-02-03	Low	0
+SWEEP 3e k=4 T=-1.56	dated	1506	MSTR	2021-08-05	Medium	0
+SWEEP 3e k=4 T=-1.56	dated	1649	MARA	2021-11-30	Low	0
+SWEEP 3e k=4 T=-1.56	dated	1787	TSLA	2022-04-21	Not	0
+SWEEP 3e k=4 T=-1.56	dated	1824	U	2022-11-15	Low	0
+SWEEP 3e k=4 T=-1.56	dated	1830	PDD	2023-01-05	High	0
+SWEEP 3e k=4 T=-1.56	widened	194	PLUG	2019-10-24	Low	0
+SWEEP 3e k=4 T=-1.56	widened	450	TSLA	2020-03-26	Low	0
+SWEEP 3e k=4 T=-1.56	widened	488	SHOP	2020-04-21	Low	0
+SWEEP 3e k=4 T=-1.56	widened	622	CAR	2020-06-02	Low	0
+SWEEP 3e k=4 T=-1.56	widened	647	CAR	2020-06-08	Low	0
+SWEEP 3e k=4 T=-1.56	widened	1051	BE	2020-12-04	Low	0
+SWEEP 3e k=4 T=-1.56	widened	1380	SHOP	2021-04-08	Low	0
+SWEEP 3e k=4 T=-1.56	widened	1735	FCX	2022-02-08	Low	0
+SWEEP 4 k=2 T=2.08	dated	95	ANET	2018-03-12	Low	0
+SWEEP 4 k=2 T=2.08	dated	1070	PTON	2020-12-14	High	1
+SWEEP 4 k=2 T=2.08	widened	847	FSLY	2020-08-20	Medium	0
+SWEEP 4 k=2 T=2.08	widened	864	PDD	2020-09-01	Low	0
+SWEEP 4 k=3 T=1.90	dated	95	ANET	2018-03-12	Low	0
+SWEEP 4 k=3 T=1.90	dated	1070	PTON	2020-12-14	High	1
+SWEEP 4 k=3 T=1.90	dated	1550	DRK	2021-10-11	High	0
+SWEEP 4 k=3 T=1.90	widened	847	FSLY	2020-08-20	Medium	0
+SWEEP 4 k=3 T=1.90	widened	864	PDD	2020-09-01	Low	0
+SWEEP 4 k=4 T=1.72	dated	95	ANET	2018-03-12	Low	0
+SWEEP 4 k=4 T=1.72	dated	1070	PTON	2020-12-14	High	1
+SWEEP 4 k=4 T=1.72	dated	1223	MARA	2021-02-08	Not	0
+SWEEP 4 k=4 T=1.72	dated	1550	DRK	2021-10-11	High	0
+SWEEP 4 k=4 T=1.72	widened	847	FSLY	2020-08-20	Medium	0
+SWEEP 4 k=4 T=1.72	widened	864	PDD	2020-09-01	Low	0
+SWEEP 4 k=4 T=1.72	widened	1706	LCID	2022-01-07	High	0
+SWEEP 4b k=2 T=2.08	dated	95	ANET	2018-03-12	Low	0
+SWEEP 4b k=2 T=2.08	dated	512	BLDP	2020-04-27	Low	0
+SWEEP 4b k=2 T=2.08	dated	934	TSLA	2020-10-12	Low	0
+SWEEP 4b k=2 T=2.08	dated	1070	PTON	2020-12-14	High	1
+SWEEP 4b k=2 T=2.08	dated	1644	MRNA	2021-11-29	Not	0
+SWEEP 4b k=2 T=2.08	widened	847	FSLY	2020-08-20	Medium	0
+SWEEP 4b k=2 T=2.08	widened	864	PDD	2020-09-01	Low	0
+SWEEP 4b k=2 T=2.08	widened	1474	SPCE	2021-06-22	Low	0
+SWEEP 4b k=3 T=1.90	dated	95	ANET	2018-03-12	Low	0
+SWEEP 4b k=3 T=1.90	dated	512	BLDP	2020-04-27	Low	0
+SWEEP 4b k=3 T=1.90	dated	717	MDB	2020-07-08	Medium	0
+SWEEP 4b k=3 T=1.90	dated	934	TSLA	2020-10-12	Low	0
+SWEEP 4b k=3 T=1.90	dated	1070	PTON	2020-12-14	High	1
+SWEEP 4b k=3 T=1.90	dated	1550	DRK	2021-10-11	High	0
+SWEEP 4b k=3 T=1.90	dated	1644	MRNA	2021-11-29	Not	0
+SWEEP 4b k=3 T=1.90	widened	513	PLUG	2020-04-27	Low	0
+SWEEP 4b k=3 T=1.90	widened	847	FSLY	2020-08-20	Medium	0
+SWEEP 4b k=3 T=1.90	widened	864	PDD	2020-09-01	Low	0
+SWEEP 4b k=3 T=1.90	widened	1474	SPCE	2021-06-22	Low	0
+SWEEP 4b k=4 T=1.79	dated	95	ANET	2018-03-12	Low	0
+SWEEP 4b k=4 T=1.79	dated	484	SHOP	2020-04-20	Low	0
+SWEEP 4b k=4 T=1.79	dated	512	BLDP	2020-04-27	Low	0
+SWEEP 4b k=4 T=1.79	dated	704	MRNA	2020-06-30	Low	0
+SWEEP 4b k=4 T=1.79	dated	717	MDB	2020-07-08	Medium	0
+SWEEP 4b k=4 T=1.79	dated	920	TSLA	2020-09-30	Low	0
+SWEEP 4b k=4 T=1.79	dated	934	TSLA	2020-10-12	Low	0
+SWEEP 4b k=4 T=1.79	dated	1070	PTON	2020-12-14	High	1
+SWEEP 4b k=4 T=1.79	dated	1550	DRK	2021-10-11	High	0
+SWEEP 4b k=4 T=1.79	dated	1644	MRNA	2021-11-29	Not	0
+SWEEP 4b k=4 T=1.79	widened	363	EPZM	2020-01-23	Low	0
+SWEEP 4b k=4 T=1.79	widened	488	SHOP	2020-04-21	Low	0
+SWEEP 4b k=4 T=1.79	widened	513	PLUG	2020-04-27	Low	0
+SWEEP 4b k=4 T=1.79	widened	847	FSLY	2020-08-20	Medium	0
+SWEEP 4b k=4 T=1.79	widened	864	PDD	2020-09-01	Low	0
+SWEEP 4b k=4 T=1.79	widened	1474	SPCE	2021-06-22	Low	0
+SWEEP 4b k=4 T=1.79	widened	1481	RIOT	2021-06-28	Low	0
+SWEEP 4b k=4 T=1.79	widened	1706	LCID	2022-01-07	High	0
+SWEEP 5a k=2 T=0.57	dated	290	KOD	2019-12-24	Medium	0
+SWEEP 5a k=2 T=0.57	dated	460	NVAX	2020-04-03	Medium	0
+SWEEP 5a k=2 T=0.57	dated	461	CODX	2020-04-06	Not	0
+SWEEP 5a k=2 T=0.57	dated	646	ACB	2020-06-08	Low	0
+SWEEP 5a k=2 T=0.57	dated	739	WKHS	2020-07-20	Low	0
+SWEEP 5a k=2 T=0.57	dated	1255	AMC	2021-02-22	Low	0
+SWEEP 5a k=2 T=0.57	widened	458	MRNA	2020-04-02	Low	0
+SWEEP 5a k=2 T=0.57	widened	497	VAPO	2020-04-23	High	0
+SWEEP 5a k=3 T=0.59	dated	173	ACAD	2019-10-21	High	0
+SWEEP 5a k=3 T=0.59	dated	290	KOD	2019-12-24	Medium	0
+SWEEP 5a k=3 T=0.59	dated	460	NVAX	2020-04-03	Medium	0
+SWEEP 5a k=3 T=0.59	dated	461	CODX	2020-04-06	Not	0
+SWEEP 5a k=3 T=0.59	dated	482	EXEL	2020-04-20	Not	0
+SWEEP 5a k=3 T=0.59	dated	646	ACB	2020-06-08	Low	0
+SWEEP 5a k=3 T=0.59	dated	739	WKHS	2020-07-20	Low	0
+SWEEP 5a k=3 T=0.59	dated	1198	BTBT	2021-01-28	Low	0
+SWEEP 5a k=3 T=0.59	dated	1255	AMC	2021-02-22	Low	0
+SWEEP 5a k=3 T=0.59	widened	458	MRNA	2020-04-02	Low	0
+SWEEP 5a k=3 T=0.59	widened	497	VAPO	2020-04-23	High	0
+SWEEP 5a k=3 T=0.59	widened	1444	BILI	2021-05-28	Low	0
+SWEEP 5a k=3 T=0.59	widened	1691	LI	2021-12-30	Low	0
+SWEEP 5a k=4 T=0.63	dated	55	KYNB	2017-08-25	Low	0
+SWEEP 5a k=4 T=0.63	dated	80	SQM	2017-10-04	Low	0
+SWEEP 5a k=4 T=0.63	dated	173	ACAD	2019-10-21	High	0
+SWEEP 5a k=4 T=0.63	dated	174	MIK	2019-10-21	Low	0
+SWEEP 5a k=4 T=0.63	dated	290	KOD	2019-12-24	Medium	0
+SWEEP 5a k=4 T=0.63	dated	460	NVAX	2020-04-03	Medium	0
+SWEEP 5a k=4 T=0.63	dated	461	CODX	2020-04-06	Not	0
+SWEEP 5a k=4 T=0.63	dated	472	TSLA	2020-04-14	Low	0
+SWEEP 5a k=4 T=0.63	dated	482	EXEL	2020-04-20	Not	0
+SWEEP 5a k=4 T=0.63	dated	646	ACB	2020-06-08	Low	0
+SWEEP 5a k=4 T=0.63	dated	641	BILI	2020-06-08	Medium	0
+SWEEP 5a k=4 T=0.63	dated	685	SRNE	2020-06-24	High	1
+SWEEP 5a k=4 T=0.63	dated	739	WKHS	2020-07-20	Low	0
+SWEEP 5a k=4 T=0.63	dated	816	TWTR	2020-08-05	Low	0
+SWEEP 5a k=4 T=0.63	dated	850	DOYU	2020-08-24	Medium	1
+SWEEP 5a k=4 T=0.63	dated	930	ZM	2020-10-09	Low	0
+SWEEP 5a k=4 T=0.63	dated	934	TSLA	2020-10-12	Low	0
+SWEEP 5a k=4 T=0.63	dated	1081	AVPT	2020-12-21	Low	0
+SWEEP 5a k=4 T=0.63	dated	1198	BTBT	2021-01-28	Low	0
+SWEEP 5a k=4 T=0.63	dated	1221	SEDG	2021-02-08	Low	0
+SWEEP 5a k=4 T=0.63	dated	1229	ENPH	2021-02-10	Medium	0
+SWEEP 5a k=4 T=0.63	dated	1255	AMC	2021-02-22	Low	0
+SWEEP 5a k=4 T=0.63	dated	1270	TLRY	2021-03-02	Low	0
+SWEEP 5a k=4 T=0.63	dated	1305	ZKIN	2021-03-15	Not	0
+SWEEP 5a k=4 T=0.63	dated	1456	SE	2021-06-08	Low	0
+SWEEP 5a k=4 T=0.63	widened	375	ACB	2020-02-04	Low	0
+SWEEP 5a k=4 T=0.63	widened	395	NIO	2020-02-19	Medium	0
+SWEEP 5a k=4 T=0.63	widened	458	MRNA	2020-04-02	Low	0
+SWEEP 5a k=4 T=0.63	widened	497	VAPO	2020-04-23	High	0
+SWEEP 5a k=4 T=0.63	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 5a k=4 T=0.63	widened	668	NVAX	2020-06-15	Medium	0
+SWEEP 5a k=4 T=0.63	widened	863	LVGO	2020-09-01	Medium	0
+SWEEP 5a k=4 T=0.63	widened	1183	BNGO	2021-01-26	Low	0
+SWEEP 5a k=4 T=0.63	widened	1444	BILI	2021-05-28	Low	0
+SWEEP 5a k=4 T=0.63	widened	1474	SPCE	2021-06-22	Low	0
+SWEEP 5a k=4 T=0.63	widened	1691	LI	2021-12-30	Low	0
+SWEEP 5b k=2 T=0.68	dated	173	ACAD	2019-10-21	High	0
+SWEEP 5b k=2 T=0.68	dated	290	KOD	2019-12-24	Medium	0
+SWEEP 5b k=2 T=0.68	dated	461	CODX	2020-04-06	Not	0
+SWEEP 5b k=2 T=0.68	dated	591	BNTX	2020-05-18	Not	0
+SWEEP 5b k=2 T=0.68	dated	646	ACB	2020-06-08	Low	0
+SWEEP 5b k=2 T=0.68	dated	934	TSLA	2020-10-12	Low	0
+SWEEP 5b k=2 T=0.68	dated	1198	BTBT	2021-01-28	Low	0
+SWEEP 5b k=2 T=0.68	dated	1255	AMC	2021-02-22	Low	0
+SWEEP 5b k=2 T=0.68	dated	1260	AMC	2021-02-25	Not	0
+SWEEP 5b k=2 T=0.68	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 5b k=2 T=0.68	widened	1074	FCEL	2020-12-15	Low	0
+SWEEP 5b k=3 T=0.72	dated	173	ACAD	2019-10-21	High	0
+SWEEP 5b k=3 T=0.72	dated	290	KOD	2019-12-24	Medium	0
+SWEEP 5b k=3 T=0.72	dated	460	NVAX	2020-04-03	Medium	0
+SWEEP 5b k=3 T=0.72	dated	461	CODX	2020-04-06	Not	0
+SWEEP 5b k=3 T=0.72	dated	591	BNTX	2020-05-18	Not	0
+SWEEP 5b k=3 T=0.72	dated	621	TSLA	2020-06-01	High	0
+SWEEP 5b k=3 T=0.72	dated	646	ACB	2020-06-08	Low	0
+SWEEP 5b k=3 T=0.72	dated	739	WKHS	2020-07-20	Low	0
+SWEEP 5b k=3 T=0.72	dated	934	TSLA	2020-10-12	Low	0
+SWEEP 5b k=3 T=0.72	dated	1198	BTBT	2021-01-28	Low	0
+SWEEP 5b k=3 T=0.72	dated	1255	AMC	2021-02-22	Low	0
+SWEEP 5b k=3 T=0.72	dated	1260	AMC	2021-02-25	Not	0
+SWEEP 5b k=3 T=0.72	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 5b k=3 T=0.72	widened	1074	FCEL	2020-12-15	Low	0
+SWEEP 5b k=4 T=0.73	dated	173	ACAD	2019-10-21	High	0
+SWEEP 5b k=4 T=0.73	dated	290	KOD	2019-12-24	Medium	0
+SWEEP 5b k=4 T=0.73	dated	400	APT	2020-02-21	Low	1
+SWEEP 5b k=4 T=0.73	dated	460	NVAX	2020-04-03	Medium	0
+SWEEP 5b k=4 T=0.73	dated	461	CODX	2020-04-06	Not	0
+SWEEP 5b k=4 T=0.73	dated	591	BNTX	2020-05-18	Not	0
+SWEEP 5b k=4 T=0.73	dated	621	TSLA	2020-06-01	High	0
+SWEEP 5b k=4 T=0.73	dated	646	ACB	2020-06-08	Low	0
+SWEEP 5b k=4 T=0.73	dated	739	WKHS	2020-07-20	Low	0
+SWEEP 5b k=4 T=0.73	dated	934	TSLA	2020-10-12	Low	0
+SWEEP 5b k=4 T=0.73	dated	1198	BTBT	2021-01-28	Low	0
+SWEEP 5b k=4 T=0.73	dated	1255	AMC	2021-02-22	Low	0
+SWEEP 5b k=4 T=0.73	dated	1260	AMC	2021-02-25	Not	0
+SWEEP 5b k=4 T=0.73	dated	1326	ETSY	2021-03-23	Low	0
+SWEEP 5b k=4 T=0.73	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 5b k=4 T=0.73	widened	1074	FCEL	2020-12-15	Low	0
+SWEEP 5b k=4 T=0.73	widened	1183	BNGO	2021-01-26	Low	0
+SWEEP 5b k=4 T=0.73	widened	1384	NVAX	2021-04-13	High	0
+SWEEP 5c k=2 T=0.78	dated	806	WKHS	2020-08-03	High	0
+SWEEP 5c k=2 T=0.78	dated	1198	BTBT	2021-01-28	Low	0
+SWEEP 5c k=2 T=0.78	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 5c k=2 T=0.78	widened	710	RH	2020-07-01	Medium	0
+SWEEP 5c k=2 T=0.78	widened	853	NCLH	2020-08-24	Low	0
+SWEEP 5c k=2 T=0.78	widened	1157	WWR	2021-01-19	Low	0
+SWEEP 5c k=2 T=0.78	widened	1251	MELI	2021-02-19	Low	0
+SWEEP 5c k=3 T=0.90	dated	382	ACMR	2020-02-10	Medium	0
+SWEEP 5c k=3 T=0.90	dated	673	MRNA	2020-06-15	Low	0
+SWEEP 5c k=3 T=0.90	dated	806	WKHS	2020-08-03	High	0
+SWEEP 5c k=3 T=0.90	dated	889	CRWD	2020-09-18	Low	0
+SWEEP 5c k=3 T=0.90	dated	1031	CRON	2020-11-24	High	0
+SWEEP 5c k=3 T=0.90	dated	1198	BTBT	2021-01-28	Low	0
+SWEEP 5c k=3 T=0.90	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 5c k=3 T=0.90	widened	710	RH	2020-07-01	Medium	0
+SWEEP 5c k=3 T=0.90	widened	853	NCLH	2020-08-24	Low	0
+SWEEP 5c k=3 T=0.90	widened	863	LVGO	2020-09-01	Medium	0
+SWEEP 5c k=3 T=0.90	widened	1157	WWR	2021-01-19	Low	0
+SWEEP 5c k=3 T=0.90	widened	1251	MELI	2021-02-19	Low	0
+SWEEP 5c k=3 T=0.90	widened	1474	SPCE	2021-06-22	Low	0
+SWEEP 5c k=4 T=0.95	dated	174	MIK	2019-10-21	Low	0
+SWEEP 5c k=4 T=0.95	dated	382	ACMR	2020-02-10	Medium	0
+SWEEP 5c k=4 T=0.95	dated	673	MRNA	2020-06-15	Low	0
+SWEEP 5c k=4 T=0.95	dated	695	BLDP	2020-06-29	High	1
+SWEEP 5c k=4 T=0.95	dated	799	ROKU	2020-07-31	Low	0
+SWEEP 5c k=4 T=0.95	dated	806	WKHS	2020-08-03	High	0
+SWEEP 5c k=4 T=0.95	dated	889	CRWD	2020-09-18	Low	0
+SWEEP 5c k=4 T=0.95	dated	892	MDB	2020-09-21	Low	1
+SWEEP 5c k=4 T=0.95	dated	1031	CRON	2020-11-24	High	0
+SWEEP 5c k=4 T=0.95	dated	1198	BTBT	2021-01-28	Low	0
+SWEEP 5c k=4 T=0.95	dated	1255	AMC	2021-02-22	Low	0
+SWEEP 5c k=4 T=0.95	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 5c k=4 T=0.95	widened	710	RH	2020-07-01	Medium	0
+SWEEP 5c k=4 T=0.95	widened	853	NCLH	2020-08-24	Low	0
+SWEEP 5c k=4 T=0.95	widened	863	LVGO	2020-09-01	Medium	0
+SWEEP 5c k=4 T=0.95	widened	1053	FSLY	2020-12-04	Low	0
+SWEEP 5c k=4 T=0.95	widened	1157	WWR	2021-01-19	Low	0
+SWEEP 5c k=4 T=0.95	widened	1251	MELI	2021-02-19	Low	0
+SWEEP 5c k=4 T=0.95	widened	1268	GMBL	2021-03-02	Low	0
+SWEEP 5c k=4 T=0.95	widened	1474	SPCE	2021-06-22	Low	0
+SWEEP 6 k=2 T=4.93	dated	468	W	2020-04-07	Not	0
+SWEEP 6 k=2 T=4.93	dated	605	CCL	2020-05-26	Not	0
+SWEEP 6 k=2 T=4.93	dated	607	PLNT	2020-05-26	Low	0
+SWEEP 6 k=2 T=4.93	dated	606	UAL	2020-05-27	Not	0
+SWEEP 6 k=2 T=4.93	dated	630	FLIR	2020-06-03	Medium	0
+SWEEP 6 k=2 T=4.93	dated	1128	JWN	2021-01-06	High	0
+SWEEP 6 k=2 T=4.93	dated	1644	MRNA	2021-11-29	Not	0
+SWEEP 6 k=2 T=4.93	dated	1824	U	2022-11-15	Low	0
+SWEEP 6 k=2 T=4.93	dated	1829	MDGL	2023-01-24	Low	0
+SWEEP 6 k=2 T=4.93	widened	375	ACB	2020-02-04	Low	0
+SWEEP 6 k=2 T=4.93	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 6 k=2 T=4.93	widened	622	CAR	2020-06-02	Low	0
+SWEEP 6 k=2 T=4.93	widened	649	BA	2020-06-08	Low	0
+SWEEP 6 k=2 T=4.93	widened	752	AHPIQ	2020-07-22	Low	0
+SWEEP 6 k=2 T=4.93	widened	922	APT	2020-10-02	Low	0
+SWEEP 6 k=2 T=4.93	widened	1053	FSLY	2020-12-04	Low	0
+SWEEP 6 k=2 T=4.93	widened	1392	NET	2021-04-22	Low	0
+SWEEP 6 k=2 T=4.93	widened	1444	BILI	2021-05-28	Low	0
+SWEEP 6 k=2 T=4.93	widened	1469	LOGC	2021-06-18	Low	0
+SWEEP 6 k=2 T=4.93	widened	1475	PLUG	2021-06-22	Medium	0
+SWEEP 6 k=2 T=4.93	widened	1481	RIOT	2021-06-28	Low	0
+SWEEP 6 k=2 T=4.93	widened	1736	ALB	2022-02-09	Low	0
+SWEEP 6 k=3 T=4.88	dated	468	W	2020-04-07	Not	0
+SWEEP 6 k=3 T=4.88	dated	598	BLDP	2020-05-26	High	0
+SWEEP 6 k=3 T=4.88	dated	605	CCL	2020-05-26	Not	0
+SWEEP 6 k=3 T=4.88	dated	607	PLNT	2020-05-26	Low	0
+SWEEP 6 k=3 T=4.88	dated	606	UAL	2020-05-27	Not	0
+SWEEP 6 k=3 T=4.88	dated	630	FLIR	2020-06-03	Medium	0
+SWEEP 6 k=3 T=4.88	dated	1128	JWN	2021-01-06	High	0
+SWEEP 6 k=3 T=4.88	dated	1644	MRNA	2021-11-29	Not	0
+SWEEP 6 k=3 T=4.88	dated	1824	U	2022-11-15	Low	0
+SWEEP 6 k=3 T=4.88	dated	1829	MDGL	2023-01-24	Low	0
+SWEEP 6 k=3 T=4.88	widened	375	ACB	2020-02-04	Low	0
+SWEEP 6 k=3 T=4.88	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 6 k=3 T=4.88	widened	622	CAR	2020-06-02	Low	0
+SWEEP 6 k=3 T=4.88	widened	649	BA	2020-06-08	Low	0
+SWEEP 6 k=3 T=4.88	widened	752	AHPIQ	2020-07-22	Low	0
+SWEEP 6 k=3 T=4.88	widened	922	APT	2020-10-02	Low	0
+SWEEP 6 k=3 T=4.88	widened	1053	FSLY	2020-12-04	Low	0
+SWEEP 6 k=3 T=4.88	widened	1392	NET	2021-04-22	Low	0
+SWEEP 6 k=3 T=4.88	widened	1444	BILI	2021-05-28	Low	0
+SWEEP 6 k=3 T=4.88	widened	1469	LOGC	2021-06-18	Low	0
+SWEEP 6 k=3 T=4.88	widened	1475	PLUG	2021-06-22	Medium	0
+SWEEP 6 k=3 T=4.88	widened	1481	RIOT	2021-06-28	Low	0
+SWEEP 6 k=3 T=4.88	widened	1736	ALB	2022-02-09	Low	0
+SWEEP 6 k=4 T=3.64	dated	348	PBYI	2020-01-17	Medium	0
+SWEEP 6 k=4 T=3.64	dated	468	W	2020-04-07	Not	0
+SWEEP 6 k=4 T=3.64	dated	482	EXEL	2020-04-20	Not	0
+SWEEP 6 k=4 T=3.64	dated	512	BLDP	2020-04-27	Low	0
+SWEEP 6 k=4 T=3.64	dated	598	BLDP	2020-05-26	High	0
+SWEEP 6 k=4 T=3.64	dated	605	CCL	2020-05-26	Not	0
+SWEEP 6 k=4 T=3.64	dated	607	PLNT	2020-05-26	Low	0
+SWEEP 6 k=4 T=3.64	dated	606	UAL	2020-05-27	Not	0
+SWEEP 6 k=4 T=3.64	dated	630	FLIR	2020-06-03	Medium	0
+SWEEP 6 k=4 T=3.64	dated	646	ACB	2020-06-08	Low	0
+SWEEP 6 k=4 T=3.64	dated	665	TWLO	2020-06-10	Low	0
+SWEEP 6 k=4 T=3.64	dated	676	APT	2020-06-17	Low	1
+SWEEP 6 k=4 T=3.64	dated	682	ACB	2020-06-23	Low	0
+SWEEP 6 k=4 T=3.64	dated	701	TSLA	2020-06-29	Medium	0
+SWEEP 6 k=4 T=3.64	dated	782	W	2020-07-27	Low	0
+SWEEP 6 k=4 T=3.64	dated	887	SAVE	2020-09-16	Medium	0
+SWEEP 6 k=4 T=3.64	dated	892	MDB	2020-09-21	Low	1
+SWEEP 6 k=4 T=3.64	dated	1009	BLDP	2020-11-16	Low	0
+SWEEP 6 k=4 T=3.64	dated	1128	JWN	2021-01-06	High	0
+SWEEP 6 k=4 T=3.64	dated	1136	SNAP	2021-01-07	Medium	0
+SWEEP 6 k=4 T=3.64	dated	1173	NXH	2021-01-22	Low	1
+SWEEP 6 k=4 T=3.64	dated	1465	FUTU	2021-06-14	Low	0
+SWEEP 6 k=4 T=3.64	dated	1478	BILI	2021-06-25	Low	0
+SWEEP 6 k=4 T=3.64	dated	1644	MRNA	2021-11-29	Not	0
+SWEEP 6 k=4 T=3.64	dated	1670	VIR	2021-12-15	Low	0
+SWEEP 6 k=4 T=3.64	dated	1824	U	2022-11-15	Low	0
+SWEEP 6 k=4 T=3.64	dated	1829	MDGL	2023-01-24	Low	0
+SWEEP 6 k=4 T=3.64	dated	1869	GME	2023-12-14	Low	0
+SWEEP 6 k=4 T=3.64	widened	119	RLGY	2019-10-01	Low	0
+SWEEP 6 k=4 T=3.64	widened	164	ENDP	2019-10-16	Medium	0
+SWEEP 6 k=4 T=3.64	widened	171	TEVA	2019-10-18	Low	0
+SWEEP 6 k=4 T=3.64	widened	175	RETA	2019-10-18	Low	0
+SWEEP 6 k=4 T=3.64	widened	375	ACB	2020-02-04	Low	0
+SWEEP 6 k=4 T=3.64	widened	450	TSLA	2020-03-26	Low	0
+SWEEP 6 k=4 T=3.64	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 6 k=4 T=3.64	widened	601	PENN	2020-05-26	Low	0
+SWEEP 6 k=4 T=3.64	widened	622	CAR	2020-06-02	Low	0
+SWEEP 6 k=4 T=3.64	widened	647	CAR	2020-06-08	Low	0
+SWEEP 6 k=4 T=3.64	widened	649	BA	2020-06-08	Low	0
+SWEEP 6 k=4 T=3.64	widened	693	FSLY	2020-06-29	Low	0
+SWEEP 6 k=4 T=3.64	widened	710	RH	2020-07-01	Medium	0
+SWEEP 6 k=4 T=3.64	widened	752	AHPIQ	2020-07-22	Low	0
+SWEEP 6 k=4 T=3.64	widened	818	FVRR	2020-08-06	Low	0
+SWEEP 6 k=4 T=3.64	widened	843	TWLO	2020-08-18	Low	0
+SWEEP 6 k=4 T=3.64	widened	853	NCLH	2020-08-24	Low	0
+SWEEP 6 k=4 T=3.64	widened	922	APT	2020-10-02	Low	0
+SWEEP 6 k=4 T=3.64	widened	923	BILI	2020-10-05	Low	0
+SWEEP 6 k=4 T=3.64	widened	952	MARA	2020-10-20	Low	0
+SWEEP 6 k=4 T=3.64	widened	993	FUTU	2020-11-05	Low	0
+SWEEP 6 k=4 T=3.64	widened	995	NIO	2020-11-06	Low	0
+SWEEP 6 k=4 T=3.64	widened	1012	MARA	2020-11-16	Low	0
+SWEEP 6 k=4 T=3.64	widened	1015	COUP	2020-11-17	Low	0
+SWEEP 6 k=4 T=3.64	widened	1017	RUN	2020-11-17	Low	0
+SWEEP 6 k=4 T=3.64	widened	1021	DOCU	2020-11-18	Low	0
+SWEEP 6 k=4 T=3.64	widened	1053	FSLY	2020-12-04	Low	0
+SWEEP 6 k=4 T=3.64	widened	1138	BILI	2021-01-07	Low	0
+SWEEP 6 k=4 T=3.64	widened	1139	MSTR	2021-01-06	Low	0
+SWEEP 6 k=4 T=3.64	widened	1157	WWR	2021-01-19	Low	0
+SWEEP 6 k=4 T=3.64	widened	1380	SHOP	2021-04-08	Low	0
+SWEEP 6 k=4 T=3.64	widened	1384	NVAX	2021-04-13	High	0
+SWEEP 6 k=4 T=3.64	widened	1392	NET	2021-04-22	Low	0
+SWEEP 6 k=4 T=3.64	widened	1441	NTLA	2021-05-26	Low	0
+SWEEP 6 k=4 T=3.64	widened	1444	BILI	2021-05-28	Low	0
+SWEEP 6 k=4 T=3.64	widened	1469	LOGC	2021-06-18	Low	0
+SWEEP 6 k=4 T=3.64	widened	1474	SPCE	2021-06-22	Low	0
+SWEEP 6 k=4 T=3.64	widened	1475	PLUG	2021-06-22	Medium	0
+SWEEP 6 k=4 T=3.64	widened	1481	RIOT	2021-06-28	Low	0
+SWEEP 6 k=4 T=3.64	widened	1482	NVAX	2021-06-29	Medium	0
+SWEEP 6 k=4 T=3.64	widened	1510	COIN	2021-08-23	Low	0
+SWEEP 6 k=4 T=3.64	widened	1560	PLUG	2021-10-13	Low	0
+SWEEP 6 k=4 T=3.64	widened	1597	GME	2021-10-29	Medium	0
+SWEEP 6 k=4 T=3.64	widened	1691	LI	2021-12-30	Low	0
+SWEEP 6 k=4 T=3.64	widened	1712	LI	2022-01-12	Low	0
+SWEEP 6 k=4 T=3.64	widened	1736	ALB	2022-02-09	Low	0
+SWEEP 6 drop worst 10% T=6.62	dated	605	CCL	2020-05-26	Not	0
+SWEEP 6 drop worst 10% T=6.62	dated	606	UAL	2020-05-27	Not	0
+SWEEP 6 drop worst 10% T=6.62	dated	1829	MDGL	2023-01-24	Low	0
+SWEEP 6 drop worst 10% T=6.62	widened	375	ACB	2020-02-04	Low	0
+SWEEP 6 drop worst 10% T=6.62	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 6 drop worst 10% T=6.62	widened	649	BA	2020-06-08	Low	0
+SWEEP 6 drop worst 10% T=6.62	widened	1444	BILI	2021-05-28	Low	0
+SWEEP 6 drop worst 10% T=6.62	widened	1469	LOGC	2021-06-18	Low	0
+SWEEP 6 drop worst 10% T=6.62	widened	1475	PLUG	2021-06-22	Medium	0
+SWEEP 6 drop worst 10% T=6.62	widened	1481	RIOT	2021-06-28	Low	0
+SWEEP 6 drop worst 25% T=4.68	dated	468	W	2020-04-07	Not	0
+SWEEP 6 drop worst 25% T=4.68	dated	598	BLDP	2020-05-26	High	0
+SWEEP 6 drop worst 25% T=4.68	dated	605	CCL	2020-05-26	Not	0
+SWEEP 6 drop worst 25% T=4.68	dated	607	PLNT	2020-05-26	Low	0
+SWEEP 6 drop worst 25% T=4.68	dated	606	UAL	2020-05-27	Not	0
+SWEEP 6 drop worst 25% T=4.68	dated	630	FLIR	2020-06-03	Medium	0
+SWEEP 6 drop worst 25% T=4.68	dated	682	ACB	2020-06-23	Low	0
+SWEEP 6 drop worst 25% T=4.68	dated	1128	JWN	2021-01-06	High	0
+SWEEP 6 drop worst 25% T=4.68	dated	1173	NXH	2021-01-22	Low	1
+SWEEP 6 drop worst 25% T=4.68	dated	1644	MRNA	2021-11-29	Not	0
+SWEEP 6 drop worst 25% T=4.68	dated	1824	U	2022-11-15	Low	0
+SWEEP 6 drop worst 25% T=4.68	dated	1829	MDGL	2023-01-24	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	171	TEVA	2019-10-18	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	375	ACB	2020-02-04	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	622	CAR	2020-06-02	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	649	BA	2020-06-08	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	752	AHPIQ	2020-07-22	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	922	APT	2020-10-02	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	1012	MARA	2020-11-16	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	1053	FSLY	2020-12-04	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	1384	NVAX	2021-04-13	High	0
+SWEEP 6 drop worst 25% T=4.68	widened	1392	NET	2021-04-22	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	1444	BILI	2021-05-28	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	1469	LOGC	2021-06-18	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	1475	PLUG	2021-06-22	Medium	0
+SWEEP 6 drop worst 25% T=4.68	widened	1481	RIOT	2021-06-28	Low	0
+SWEEP 6 drop worst 25% T=4.68	widened	1736	ALB	2022-02-09	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	59	UCTT	2017-08-29	Medium	0
+SWEEP 6 drop worst 50% T=3.00	dated	109	VKTX	2018-08-24	Medium	0
+SWEEP 6 drop worst 50% T=3.00	dated	348	PBYI	2020-01-17	Medium	0
+SWEEP 6 drop worst 50% T=3.00	dated	441	ZS	2020-03-24	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	468	W	2020-04-07	Not	0
+SWEEP 6 drop worst 50% T=3.00	dated	472	TSLA	2020-04-14	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	482	EXEL	2020-04-20	Not	0
+SWEEP 6 drop worst 50% T=3.00	dated	512	BLDP	2020-04-27	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	533	TSLA	2020-04-30	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	554	FSLY	2020-05-07	Not	0
+SWEEP 6 drop worst 50% T=3.00	dated	597	TTD	2020-05-22	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	598	BLDP	2020-05-26	High	0
+SWEEP 6 drop worst 50% T=3.00	dated	605	CCL	2020-05-26	Not	0
+SWEEP 6 drop worst 50% T=3.00	dated	607	PLNT	2020-05-26	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	604	W	2020-05-26	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	606	UAL	2020-05-27	Not	0
+SWEEP 6 drop worst 50% T=3.00	dated	621	TSLA	2020-06-01	High	0
+SWEEP 6 drop worst 50% T=3.00	dated	630	FLIR	2020-06-03	Medium	0
+SWEEP 6 drop worst 50% T=3.00	dated	646	ACB	2020-06-08	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	665	TWLO	2020-06-10	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	676	APT	2020-06-17	Low	1
+SWEEP 6 drop worst 50% T=3.00	dated	681	VIR	2020-06-19	High	0
+SWEEP 6 drop worst 50% T=3.00	dated	682	ACB	2020-06-23	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	701	TSLA	2020-06-29	Medium	0
+SWEEP 6 drop worst 50% T=3.00	dated	704	MRNA	2020-06-30	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	717	MDB	2020-07-08	Medium	0
+SWEEP 6 drop worst 50% T=3.00	dated	782	W	2020-07-27	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	801	TTD	2020-07-31	Medium	0
+SWEEP 6 drop worst 50% T=3.00	dated	887	SAVE	2020-09-16	Medium	0
+SWEEP 6 drop worst 50% T=3.00	dated	892	MDB	2020-09-21	Low	1
+SWEEP 6 drop worst 50% T=3.00	dated	908	DDOG	2020-09-22	Medium	0
+SWEEP 6 drop worst 50% T=3.00	dated	914	LVGO	2020-09-25	High	0
+SWEEP 6 drop worst 50% T=3.00	dated	930	ZM	2020-10-09	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	994	QDEL	2020-11-05	High	0
+SWEEP 6 drop worst 50% T=3.00	dated	1009	BLDP	2020-11-16	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1077	NVAX	2020-12-17	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1128	JWN	2021-01-06	High	0
+SWEEP 6 drop worst 50% T=3.00	dated	1136	SNAP	2021-01-07	Medium	0
+SWEEP 6 drop worst 50% T=3.00	dated	1173	NXH	2021-01-22	Low	1
+SWEEP 6 drop worst 50% T=3.00	dated	1181	DKNG	2021-01-26	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1233	W	2021-02-11	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1255	AMC	2021-02-22	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1456	SE	2021-06-08	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1465	FUTU	2021-06-14	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1478	BILI	2021-06-25	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1501	BNTX	2021-07-21	High	0
+SWEEP 6 drop worst 50% T=3.00	dated	1506	MSTR	2021-08-05	Medium	0
+SWEEP 6 drop worst 50% T=3.00	dated	1516	AMC	2021-09-10	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1571	BTBT	2021-10-20	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1584	LCID	2021-10-25	High	1
+SWEEP 6 drop worst 50% T=3.00	dated	1593	QS	2021-10-29	Low	1
+SWEEP 6 drop worst 50% T=3.00	dated	1644	MRNA	2021-11-29	Not	0
+SWEEP 6 drop worst 50% T=3.00	dated	1670	VIR	2021-12-15	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1787	TSLA	2022-04-21	Not	0
+SWEEP 6 drop worst 50% T=3.00	dated	1824	U	2022-11-15	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1830	PDD	2023-01-05	High	0
+SWEEP 6 drop worst 50% T=3.00	dated	1829	MDGL	2023-01-24	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1834	AI	2023-05-17	Low	0
+SWEEP 6 drop worst 50% T=3.00	dated	1869	GME	2023-12-14	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	119	RLGY	2019-10-01	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	157	RLGY	2019-10-10	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	164	ENDP	2019-10-16	Medium	0
+SWEEP 6 drop worst 50% T=3.00	widened	171	TEVA	2019-10-18	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	175	RETA	2019-10-18	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	243	LK	2019-11-18	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	375	ACB	2020-02-04	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	379	BYND	2020-02-07	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	412	ACH	2020-03-02	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	450	TSLA	2020-03-26	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	466	LVGO	2020-04-07	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	510	TLRY	2020-04-24	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	513	PLUG	2020-04-27	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	516	COUP	2020-04-27	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	601	PENN	2020-05-26	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	622	CAR	2020-06-02	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	628	ZM	2020-06-02	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	647	CAR	2020-06-08	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	649	BA	2020-06-08	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	693	FSLY	2020-06-29	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	710	RH	2020-07-01	Medium	0
+SWEEP 6 drop worst 50% T=3.00	widened	742	DDOG	2020-07-20	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	752	AHPIQ	2020-07-22	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	815	LVGO	2020-08-05	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	818	FVRR	2020-08-06	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	841	DKNG	2020-08-18	High	0
+SWEEP 6 drop worst 50% T=3.00	widened	843	TWLO	2020-08-18	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	853	NCLH	2020-08-24	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	891	FSLY	2020-09-21	High	0
+SWEEP 6 drop worst 50% T=3.00	widened	922	APT	2020-10-02	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	923	BILI	2020-10-05	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	927	ENPH	2020-10-08	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	952	MARA	2020-10-20	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	993	FUTU	2020-11-05	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	995	NIO	2020-11-06	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1010	UBER	2020-11-16	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1012	MARA	2020-11-16	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1015	COUP	2020-11-17	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1017	RUN	2020-11-17	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1021	DOCU	2020-11-18	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1027	UBER	2020-11-18	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1047	TSLA	2020-12-03	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1053	FSLY	2020-12-04	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1066	DKNG	2020-12-11	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1138	BILI	2021-01-07	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1139	MSTR	2021-01-06	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1157	WWR	2021-01-19	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1207	BILI	2021-02-02	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1352	NTLA	2021-03-30	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1380	SHOP	2021-04-08	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1384	NVAX	2021-04-13	High	0
+SWEEP 6 drop worst 50% T=3.00	widened	1392	NET	2021-04-22	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1441	NTLA	2021-05-26	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1444	BILI	2021-05-28	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1469	LOGC	2021-06-18	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1474	SPCE	2021-06-22	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1475	PLUG	2021-06-22	Medium	0
+SWEEP 6 drop worst 50% T=3.00	widened	1481	RIOT	2021-06-28	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1482	NVAX	2021-06-29	Medium	0
+SWEEP 6 drop worst 50% T=3.00	widened	1510	COIN	2021-08-23	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1560	PLUG	2021-10-13	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1588	MQ	2021-10-26	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1597	GME	2021-10-29	Medium	0
+SWEEP 6 drop worst 50% T=3.00	widened	1648	RIOT	2021-11-29	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1691	LI	2021-12-30	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1712	LI	2022-01-12	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1715	XPEV	2022-01-12	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1722	MOS	2022-02-01	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1735	FCX	2022-02-08	Low	0
+SWEEP 6 drop worst 50% T=3.00	widened	1736	ALB	2022-02-09	Low	0
++ 1d >3% under AND falling	widened	375	ACB	2020-02-04	Low	0
++ 1d >3% under AND falling	widened	510	TLRY	2020-04-24	Low	0
++ 1d >3% under AND falling	widened	922	APT	2020-10-02	Low	0
++ 1d >3% under AND falling	widened	923	BILI	2020-10-05	Low	0
++ 1d >3% under AND falling	widened	1053	FSLY	2020-12-04	Low	0
++ 1d >3% under AND falling	widened	1712	LI	2022-01-12	Low	0
++ 4b any gap down (POST-HOC)	dated	95	ANET	2018-03-12	Low	0
++ 4b any gap down (POST-HOC)	widened	375	ACB	2020-02-04	Low	0
++ 4b any gap down (POST-HOC)	widened	510	TLRY	2020-04-24	Low	0
++ 4b any gap down (POST-HOC)	widened	922	APT	2020-10-02	Low	0
++ 4b any gap down (POST-HOC)	widened	923	BILI	2020-10-05	Low	0
++ 4b any gap down (POST-HOC)	widened	1053	FSLY	2020-12-04	Low	0
++ 4b any gap down (POST-HOC)	widened	1712	LI	2022-01-12	Low	0

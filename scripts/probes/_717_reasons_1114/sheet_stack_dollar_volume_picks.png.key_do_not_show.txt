@@ -1,0 +1,14 @@
+stack = 1d ONLY (the close more than 3% under a FALLING 50-day -> out); ranking = 20-day dollar volume
+letter|ticker|fire day E (list night D)|dollar-volume rank among that day's passing fires|Qullamaggie bought? (scorecard, on E)|his-buy window|bought within +-5 sessions (panel)
+A|CRWD|2020-10-19 (2020-10-16)|4|no|-|no
+B|THC|2017-05-10 (2017-05-09)|5|no|-|no (no snapshot within 5 sessions)
+C|NVTA|2019-08-07 (2019-08-06)|5|no|-|no (no snapshot within 5 sessions)
+D|CDE|2019-11-06 (2019-11-05)|5|no|-|no
+E|TWTR|2018-02-08 (2018-02-07)|1|no|-|no (no snapshot within 5 sessions)
+F|TTD|2017-07-27 (2017-07-26)|5|no|-|no (no snapshot within 5 sessions)
+G|AZUL|2022-01-21 (2022-01-20)|2|no|-|no
+H|ADMS|2018-01-17 (2018-01-16)|3|no|-|no (no snapshot within 5 sessions)
+I|REN|2017-07-28 (2017-07-27)|4|no|-|no (no snapshot within 5 sessions)
+J|RIOT|2021-11-12 (2021-11-11)|4|no|-|no
+K|WDC|2019-02-19 (2019-02-15)|4|no|-|no (no snapshot within 5 sessions)
+L|W|2018-08-22 (2018-08-21)|4|no|-|no
