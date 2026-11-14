@@ -35,13 +35,13 @@ which (if used) is recorded as REVISION 1 below with the first version's result 
    and gate. Removed per day reported against ALL fires and against the pool after the 1d check.
 
     python3 scripts/probes/_717_contract_1114/thirds/01_thirds.py > scripts/probes/_717_contract_1114/thirds/01_thirds_v0.out
-    REV=1 python3 scripts/probes/_717_contract_1114/thirds/01_thirds.py > scripts/probes/_717_contract_1114/thirds/01_thirds_rev1.out
+    python3 scripts/probes/_717_contract_1114/thirds/01_thirds.py --rev1 > scripts/probes/_717_contract_1114/thirds/01_thirds_rev1.out
 
  VERSION 0 RESULT (01_thirds_v0.out): selected V3_tr21; threshold set by PENN 2020-03-26 (R 1.93: its latest third IS the
    rebound, the widest slice) -> 0 of 3 def-no flagged; MELI's latest third is NARROWER than its earlier thirds on all four
    variants (box21 0.38). FAIL.
  REVISION 1 (the one allowed; written before its result but AFTER the v0 result and a per-bar TR/close printout of
-   MELI TDOC RRC CAR ATYR PENN W AMC — disclosed; run with REV=1 > 01_thirds_rev1.out): his PENN words are
+   MELI TDOC RRC CAR ATYR PENN W AMC — disclosed; run with --rev1 > 01_thirds_rev1.out): his PENN words are
    "rebound, not wide loose range up and down" -> the slice metric becomes TWO-WAY travel, so a one-way rebound is small:
      V5 churn21 : k=7, metric = min(sum of up close-to-close moves, sum of down moves) inside the slice
    R = churn(latest) / max(churn(oldest), churn(middle)). Same gate, same must-pass threshold rule, same scoreboard; V5 only
@@ -61,7 +61,7 @@ pd.set_option("display.width", 250); pd.set_option("display.max_rows", 500)
 ff = lambda x: f"{x:.3f}"
 
 VARIANTS = {"V1_box21": (7, "box"), "V2_box30": (10, "box"), "V3_tr21": (7, "tr"), "V4_tr30": (10, "tr")}
-if os.environ.get("REV") == "1":
+if "--rev1" in sys.argv:   # was env REV=1 (the one revision; #681 bans hand-rolled env booleans)
     VARIANTS = {"V5_churn21": (7, "churn")}
 REJ3 = ["TDOC", "MELI", "RRC"]; REJ8 = REJ3 + ["TWTR", "SWAV", "CDE", "DVAX", "FLGT"]
 SIX = [("AMC", "2021-02-22"), ("W", "2020-04-07"), ("APT", "2020-02-21"), ("PENN", "2020-03-26"), ("MRNA", "2020-04-02"), ("NVAX", "2020-04-03")]
