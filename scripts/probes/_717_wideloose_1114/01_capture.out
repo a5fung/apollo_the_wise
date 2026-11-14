@@ -1,0 +1,7 @@
+bars: 12,005,007 rows / 12,532 tickers / 1635 sessions 2016-01-04..2022-06-30 (5s); 5,007 tickers have a missing session inside their span (211,391 holes)
+store A: loaded in 10s; {'raw_factor': 'pre_v2 daily_raw_close.csv.gz per bar (exact)', 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+graded: 48 charts; grades {'no': 25, 'ok': 13, 'conditional': 9, 'good': 1}
+qm: 972 candidate sessions of 757 buys; buy day fixed for 672 ({'one_session_window': 354, 'dated': 269, 'rated_session': 49}); not fixed 85 buys
+fixed-day buys by tier: {'Low': 399, 'Medium': 116, 'High': 84, 'Not': 73} | big winners: 26 | E range 2017-07-27 2023-12-14
+bars to the night before (fixed): min 5 under 60: 15 under 189: 55
+level / close(D) on fixed rows with a level: n 458 min 1.000 median 1.044 max 1.423

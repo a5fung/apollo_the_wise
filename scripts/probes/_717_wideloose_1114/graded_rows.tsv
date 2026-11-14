@@ -1,0 +1,49 @@
+ticker	D	E	grade	words	level	adr20	wid	sheet
+ATYR	2021-10-08	2021-10-11	ok	looks ok, caveat is the run up (post huge EP day) then quickly giving it all back, not much time to build range after that volatility	9.5	0.1379446247302555	0	sheet_model_picks.png
+X	2022-03-21	2022-03-22	no	no pull back or basing , I don't see a setup	35.61	0.0636452238762614	1	sheet_model_picks.png
+ZIM	2021-12-28	2021-12-29	no	don't see setup, it's in a large base	57.24	0.05533251874747006	2	sheet_model_picks.png
+TELL	2021-05-12	2021-05-13	ok	looks ok	2.24	0.0913953757668213	3	sheet_model_picks.png
+CAR	2021-11-16	2021-11-17	ok	looks ok	282.9	0.12704738236127294	4	sheet_model_picks.png
+LCID	2021-09-20	2021-09-21	no	no setup, gapped down and moved back into base/range, no breakout	242.2	0.054786720020019296	5	sheet_model_picks.png
+SWAV	2021-08-17	2021-08-18	no	choppy, very large bars (red), no tightness	191.64	0.054838771965422785	6	sheet_model_picks.png
+FLGT	2021-12-10	2021-12-13	no	random stock, nothing in it, no setup at all, large ranges, no run up	86.7499	0.06167735632949569	7	sheet_model_picks.png
+VUZI	2021-04-23	2021-04-26	ok	looks ok	23.25	0.12427815314452492	8	sheet_model_picks.png
+F	2022-03-02	2022-03-03	no	nothing at all, downtrend, gap down, large bars, no setup at all	18.249	0.04098827337321071	9	sheet_model_picks.png
+MVIS	2021-04-23	2021-04-26	no	random, still in large range, no building higher lows, poor	287.1	0.1437176117868542	10	sheet_model_picks.png
+FUTU	2021-06-23	2021-06-24	conditional	maybe ok but not great, where's the runup and tightness	172.2	0.062402075523711374	11	sheet_model_picks.png
+MRNA	2021-01-08	2021-01-11	good	looks good	117.71	0.08203157368570053	12	sheet_template_picks.png
+DVAX	2021-11-17	2021-11-18	no	no, choppy, volatile, large range and still within that range, gappy	17.43	0.06218304872467475	13	sheet_template_picks.png
+CLR	2021-12-09	2021-12-10	conditional	looks decent except 50ma is above and curling down	46.3	0.046302518290178375	14	sheet_template_picks.png
+DQ	2021-04-19	2021-04-20	no	no	73.0	0.08966333990784645	15	sheet_template_picks.png
+ATOS	2021-07-13	2021-07-14	ok	ok but don't really see higher lows	101.7	0.14769893582156807	16	sheet_template_picks.png
+HAPN	2021-08-25	2021-08-26	no	no	29.369	0.06254642408586708	17	sheet_template_picks.png
+TIGR	2021-04-23	2021-04-26	no	no	21.1	0.13901064984231024	18	sheet_template_picks.png
+OCGN	2021-09-10	2021-09-13	no	no, why is it so tight, looks suspicious	7.5694	0.05302625179322066	19	sheet_template_picks.png
+AFRM	2021-09-23	2021-09-24	no	No	129.08	0.07831446492308924	20	sheet_template_picks.png
+APHA	2021-03-11	2021-03-12	ok	ok	19.86	0.14615436394102452	21	sheet_template_picks.png
+BEAM	2021-07-21	2021-07-22	no	no	99.38	0.08732361164074787	22	sheet_template_picks.png
+DOCN	2022-01-11	2022-01-12	no	no, downtrend, lower lows	74.48	0.07165770204064718	23	sheet_template_picks.png
+CRWD	2020-10-16	2020-10-19	ok	ok	37.22	0.04164316976845765	24	sheet_stack_dollar_volume_picks.png
+THC	2017-05-09	2017-05-10	no	no, choppy, looks like in downtrend, recent up move made lower high	18.13	0.0467063188585523	25	sheet_stack_dollar_volume_picks.png
+NVTA	2019-08-06	2019-08-07	conditional	maybe	28.3103	0.061115372403099354	26	sheet_stack_dollar_volume_picks.png
+CDE	2019-11-05	2019-11-06	no	no, large choppy range, where's the tightness and building higher lows?	5.83	0.053345939601062785	27	sheet_stack_dollar_volume_picks.png
+TWTR	2018-02-07	2018-02-08	no	no, no tightness just chop	27.33	0.04777277497851012	28	sheet_stack_dollar_volume_picks.png
+TTD	2017-07-26	2017-07-27	ok	ok	5.707	0.04200322058089738	29	sheet_stack_dollar_volume_picks.png
+AZUL	2022-01-20	2022-01-21	conditional	maybe, but looks like needs to build sideways tight more days	15.315	0.04619767537451147	30	sheet_stack_dollar_volume_picks.png
+ADMS	2018-01-16	2018-01-17	ok	ok	36.45	0.05424120981338672	31	sheet_stack_dollar_volume_picks.png
+REN	2017-07-27	2017-07-28	no	no, just downtrend, where's breakout?	35.02	0.05408167091261055	32	sheet_stack_dollar_volume_picks.png
+RIOT	2021-11-11	2021-11-12	no	no	41.76	0.08271767076968471	33	sheet_stack_dollar_volume_picks.png
+WDC	2019-02-15	2019-02-19	ok	ok	48.46	0.04560465053912923	34	sheet_stack_dollar_volume_picks.png
+W	2018-08-21	2018-08-22	conditional	maybe	125.3999	0.04616371786182773	35	sheet_stack_dollar_volume_picks.png
+TDOC	2020-03-19	2020-03-20	no	still no, this is just so wide and lose, chopping wide up and down, this is a def no	148.49	0.1245191776149129	36	sheet_context_a2_dollar_volume_picks.png
+OKTA	2018-03-26	2018-03-27	ok	ok	39.97	0.04609226672688625	37	sheet_context_a2_dollar_volume_picks.png
+PS	2019-05-01	2019-05-02	conditional	ok but looks to have broken avbove range already, maybe a bit late	35.68	0.04302822368254228	38	sheet_context_a2_dollar_volume_picks.png
+MELI	2018-09-17	2018-09-18	no	no no no, super choppy, huge wide ranges, def no	329.52	0.04070666866209323	39	sheet_context_a2_dollar_volume_picks.png
+GBT	2019-06-24	2019-06-25	conditional	maybe but if so, late	64.89	0.04574020470032724	40	sheet_context_a2_dollar_volume_picks.png
+MDCO	2018-03-21	2018-03-22	conditional	ok, but maybe needs to tighten up more	33.88	0.051484930813898155	41	sheet_context_a2_dollar_volume_picks.png
+RRC	2018-11-12	2018-11-13	no	no huge wide ranges	18.24	0.04632954280446026	42	sheet_context_a2_dollar_volume_picks.png
+COUP	2019-10-08	2019-10-09	conditional	maybe but not really build tight higher lows if 50/50 at best	150.4	0.047243175048236795	43	sheet_context_a2_dollar_volume_picks.png
+WPX	2018-04-23	2018-04-24	no	a bit late, if not, needs to build tight a few days	17.04	0.04592234067392874	44	sheet_context_a2_dollar_volume_picks.png
+CHWY	2020-01-03	2020-01-06	ok	ok	29.63	0.04405313767937672	45	sheet_context_a2_dollar_volume_picks.png
+ZS	2019-06-07	2019-06-10	ok	ok	76.0	0.049818510312737575	46	sheet_context_a2_dollar_volume_picks.png
+PINS	2020-10-22	2020-10-23	no	late, looks broken out already	51.2275	0.040387089210806845	47	sheet_context_a2_dollar_volume_picks.png

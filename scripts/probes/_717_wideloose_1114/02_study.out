@@ -1,0 +1,146 @@
+              measure   auc  wl_med  ok_med    min3  ok_ge_min3  maybe_ge  otherno_ge  wl_ge
+          atr15_chart 0.938   0.090   0.052   0.098           0         0           2      4
+        churn20_chart 0.884   0.404   0.209   0.424           0         1           1      4
+box15_x_churn15_chart 0.857   0.319   0.177   0.320           0         0           1      4
+        swtrav20_0.15 0.844   0.583   0.105   0.633           0         0           1      4
+          atr30_chart 0.839   0.076   0.058   0.097           0         0           0      3
+        swtrav20_0.12 0.817   0.633   0.253   0.633           0         0           2      5
+          box15_chart 0.920   0.390   0.207   0.396           1         0           3      3
+          atr20_chart 0.866   0.086   0.055   0.105           1         0           0      3
+box20_x_churn20_chart 0.866   0.398   0.240   0.410           1         0           3      4
+           swn40_0.15 0.786   3.000   2.000   3.000           1         2           3      5
+            swn20_0.2 0.768   2.000   0.000   2.000           1         1           1      5
+         swtrav20_0.2 0.759   0.496   0.000   0.460           1         0           3      5
+           swn30_0.15 0.737   2.000   1.500   3.000           1         1           1      3
+           b10_prev30 0.973   0.831   0.319   0.470           2         8           6      8
+        churn30_chart 0.893   0.516   0.381   0.468           2         2           4      6
+          box20_chart 0.795   0.395   0.272   0.396           2         0           4      4
+        swtrav40_0.15 0.723   0.797   0.414   0.729           2         1           5      5
+        swtrav30_0.15 0.705   0.652   0.359   0.674           2         0           2      4
+          rev30_chart 0.589   0.302   0.279   0.358           2         0           2      4
+           swn20_0.15 0.795   2.000   0.500   2.000           3         4           2      6
+           swn30_0.12 0.790   3.500   2.000   3.000           3         2           6      5
+box30_x_churn30_chart 0.768   0.449   0.369   0.431           3         1           5      6
+        swtrav30_0.12 0.759   0.731   0.422   0.674           3         0           3      5
+            swn40_0.2 0.750   2.500   1.000   2.000           3         1           4      6
+         swtrav40_0.2 0.714   0.734   0.316   0.556           3         0           6      6
+            swn30_0.2 0.701   2.000   1.000   2.000           3         0           2      5
+         swtrav30_0.2 0.679   0.566   0.294   0.501           3         0           4      5
+           swn40_0.12 0.844   4.500   2.000   3.000           4         5           8      7
+        swtrav40_0.12 0.804   1.052   0.552   0.729           4         2           6      6
+        churn15_chart 0.714   0.227   0.160   0.197           4         3           6      5
+           b10_prev20 0.902   0.960   0.416   0.470           5         8          11      8
+           path30_box 0.643   3.002   2.619   3.010           5         6           4      4
+           swn20_0.12 0.723   2.000   1.000   2.000           6         4           5      6
+          box30_chart 0.598   0.395   0.343   0.396           6         0           7      4
+          rev15_chart 0.562   0.128   0.145   0.148           6         1           6      4
+           path20_box 0.491   2.258   2.080   2.141           6         7           9      6
+           b10_prev15 0.920   1.184   0.550   0.553           7         8          10      8
+        swtrav40_0.25 0.558   0.356   0.316   0.339           7         0           8      5
+         zzsum20_0.08 0.438   0.138   0.154   0.138           7         2           9      4
+          rev20_chart 0.571   0.172   0.187   0.183           8         2           8      4
+                box15 0.509   0.239   0.255   0.195           8         6          14      8
+         zzsum20_0.05 0.500   0.185   0.269   0.138           8         6          13      8
+         zzsum30_0.05 0.438   0.411   0.574   0.379           8         5          15      5
+           atr5_atr20 0.741   1.008   0.881   0.841           9         7           9      7
+           swn40_0.25 0.585   1.000   1.000   1.000           9         1           8      5
+              churn20 0.464   0.239   0.264   0.217           9         8          12      6
+              churn30 0.420   0.365   0.478   0.333           9         6          12      7
+            box15_adr 0.777   4.782   3.433   3.273          10         8          13      8
+      box10_x_churn20 0.518   0.218   0.227   0.152          10         7          15      8
+      box10_x_churn30 0.518   0.279   0.310   0.194          10         7          16      8
+           zzn20_0.08 0.455   1.000   1.000   1.000          10         6          13      7
+           zzn30_0.05 0.455   3.000   3.500   3.000          10         7          16      7
+         zzsum30_0.08 0.446   0.271   0.354   0.124          10         4          13      7
+      box20_x_churn20 0.420   0.247   0.291   0.206          10         7          14      8
+      box30_x_churn30 0.375   0.304   0.433   0.267          10         7          17      7
+          churn20_adr 0.696   4.655   4.017   3.502          11         8          13      8
+           zzn20_0.05 0.500   2.000   2.000   1.000          11         9          16      8
+           zzn30_0.08 0.496   2.000   2.000   1.000          11         7          15      8
+                atr15 0.491   0.056   0.070   0.039          12         9          17      8
+      box10_x_churn15 0.473   0.189   0.187   0.091          12         8          17      8
+               path15 0.464   0.448   0.474   0.288          12         9          16      8
+               absc15 0.464   0.030   0.032   0.019          12         9          16      8
+      box15_x_churn15 0.429   0.191   0.219   0.127          12         7          16      7
+                box20 0.384   0.239   0.347   0.195          12         8          16      8
+               path20 0.366   0.567   0.740   0.438          12         8          16      8
+               absc20 0.366   0.028   0.037   0.022          12         8          16      8
+                box30 0.286   0.253   0.413   0.215          12         5          17      8
+                nbars 0.536 200.000 200.000 200.000          13         9          16      8
+            box20_adr 0.473   4.782   4.627   3.273          13         9          16      8
+           path15_box 0.375   1.767   1.870   1.398          13         9          14      6
+               path30 0.304   0.775   1.114   0.698          13         7          17      7
+               absc30 0.304   0.026   0.037   0.023          13         7          17      7
+                atr30 0.286   0.051   0.074   0.045          13         7          17      7
+           swn20_0.25 0.621   0.000   0.000   0.000          14         9          17      8
+        swtrav20_0.25 0.621   0.000   0.000   0.000          14         9          17      8
+          churn30_adr 0.571   7.027   6.562   3.867          14         9          17      8
+           swn30_0.25 0.536   0.500   1.000   0.000          14         9          17      8
+          churn15_adr 0.527   3.168   2.966   1.932          14         7          15      7
+        swtrav30_0.25 0.518   0.142   0.294   0.000          14         9          17      8
+           zzn15_0.05 0.487   1.000   1.000   0.000          14         9          17      8
+         zzsum15_0.05 0.429   0.074   0.115   0.000          14         9          17      8
+                atr20 0.402   0.054   0.070   0.042          14         9          17      8
+                adr20 0.393   0.051   0.068   0.041          14         9          16      8
+              churn15 0.330   0.163   0.197   0.078          14         8          15      7
+           zzn15_0.08 0.299   0.000   1.000   0.000          14         9          17      8
+         zzsum15_0.08 0.277   0.000   0.112   0.000          14         9          17      8
+            box30_adr 0.223   5.159   6.841   3.273          14         9          17      8
+                rev15 0.170   0.078   0.174   0.059          14         7          13      8
+              chart_h 0.143   0.718   1.449   0.397          14         9          17      8
+                rev20 0.143   0.123   0.218   0.073          14         8          16      8
+                rev30 0.125   0.180   0.295   0.142          14         9          16      7
+
+CHOSEN: wide = box20_chart, chop = churn20_chart; the line = the least of TDOC/MELI/RRC on each: WIDE_MIN 0.3961 (TDOC), CHOP_MIN 0.4239 (TDOC)
+wl_score: AUC wide-loose vs ok/good 0.929; at or beyond the line (>= 1): wide-loose 3 of 8, ok/good 0 of 14, maybe 0 of 9, other no 1 of 17
+
+== per chart ==
+ticker          D       grade        grp  chart_h  adr20  box20_chart  churn20_chart  atr15_chart  b10_prev30  wl_score                                                        words
+  MELI 2018-09-17          no wide-loose    0.397  0.041        0.519          0.548        0.098       0.470     1.293             no no no, super choppy, huge wide ranges, def no
+   RRC 2018-11-12          no wide-loose    0.400  0.046        0.488          0.543        0.128       0.881     1.231                                          no huge wide ranges
+  FLGT 2021-12-10          no   other no    0.676  0.061        0.396          0.459        0.100       0.774     1.000 random stock, nothing in it, no setup at all, large ranges, 
+  TDOC 2020-03-19          no wide-loose    1.036  0.125        0.396          0.424        0.135       0.895     1.000 still no, this is just so wide and lose, chopping wide up an
+   THC 2017-05-09          no wide-loose    0.669  0.047        0.394          0.442        0.083       0.781     0.994 no, choppy, looks like in downtrend, recent up move made low
+  ATYR 2021-10-08          ok    ok/good    1.326  0.138        0.609          0.413        0.072       0.243     0.975 looks ok, caveat is the run up (post huge EP day) then quick
+  AFRM 2021-09-23          no   other no    1.150  0.079        0.582          0.389        0.086       0.394     0.918                                                           No
+  TWTR 2018-02-07          no wide-loose    0.556  0.048        0.387          0.384        0.101       1.060     0.907                                   no, no tightness just chop
+  MDCO 2018-03-21 conditional      maybe    0.583  0.052        0.348          0.435        0.087       0.814     0.878                       ok, but maybe needs to tighten up more
+   CDE 2019-11-05          no wide-loose    0.768  0.054        0.403          0.338        0.070       0.566     0.798 no, large choppy range, where's the tightness and building h
+  OKTA 2018-03-26          ok    ok/good    0.690  0.046        0.292          0.346        0.066       0.202     0.738                                                           ok
+     F 2022-03-02          no   other no    0.737  0.041        0.376          0.311        0.065       0.351     0.733 nothing at all, downtrend, gap down, large bars, no setup at
+   WPX 2018-04-23          no   other no    0.598  0.046        0.485          0.309        0.075       1.413     0.728          a bit late, if not, needs to build tight a few days
+  BEAM 2021-07-21          no   other no    1.549  0.087        0.334          0.308        0.063       0.352     0.726                                                           no
+  AZUL 2022-01-20 conditional      maybe    0.957  0.046        0.317          0.304        0.058       1.188     0.716 maybe, but looks like needs to build sideways tight more day
+   GBT 2019-06-24 conditional      maybe    0.767  0.046        0.307          0.296        0.064       1.302     0.699                                        maybe but if so, late
+  APHA 2021-03-11          ok    ok/good    2.099  0.142        0.274          0.347        0.057       0.348     0.692                                                           ok
+     X 2022-03-21          no   other no    0.676  0.065        0.720          0.276        0.103       0.349     0.651                 no pull back or basing , I don't see a setup
+   CLR 2021-12-09 conditional      maybe    0.821  0.046        0.253          0.321        0.073       0.664     0.640           looks decent except 50ma is above and curling down
+  RIOT 2021-11-11          no   other no    1.347  0.083        0.362          0.262        0.068       1.569     0.617                                                           no
+  DVAX 2021-11-17          no wide-loose    1.104  0.062        0.327          0.258        0.061       1.258     0.609 no, choppy, volatile, large range and still within that rang
+  COUP 2019-10-08 conditional      maybe    0.905  0.047        0.242          0.249        0.054       1.054     0.588 maybe but not really build tight higher lows if 50/50 at bes
+  TIGR 2021-04-23          no   other no    2.192  0.140        0.231          0.265        0.058       0.351     0.583                                                           no
+  SWAV 2021-08-17          no wide-loose    0.883  0.055        0.235          0.243        0.068       0.774     0.573                  choppy, very large bars (red), no tightness
+   ZIM 2021-12-28          no   other no    0.946  0.055        0.315          0.240        0.057       0.847     0.566                        don't see setup, it's in a large base
+     W 2018-08-21 conditional      maybe    0.752  0.046        0.223          0.309        0.059       0.514     0.563                                                        maybe
+  MVIS 2021-04-23          no   other no    2.962  0.146        0.220          0.249        0.047       0.988     0.557  random, still in large range, no building higher lows, poor
+    ZS 2019-06-07          ok    ok/good    0.962  0.050        0.216          0.290        0.050       0.553     0.545                                                           ok
+  VUZI 2021-04-23          ok    ok/good    2.304  0.124        0.212          0.251        0.052       0.407     0.535                                                     looks ok
+  ATOS 2021-07-13          ok    ok/good    2.493  0.148        0.318          0.222        0.069       0.402     0.523                          ok but don't really see higher lows
+  DOCN 2022-01-11          no   other no    1.328  0.072        0.205          0.255        0.051       0.380     0.518                                    no, downtrend, lower lows
+  NVTA 2019-08-06 conditional      maybe    1.144  0.061        0.244          0.217        0.060       0.606     0.513                                                        maybe
+   CAR 2021-11-16          ok    ok/good    2.504  0.131        0.494          0.212        0.066       0.156     0.501                                                     looks ok
+  TELL 2021-05-12          ok    ok/good    1.864  0.092        0.213          0.205        0.048       0.373     0.484                                                     looks ok
+    DQ 2021-04-19          no   other no    1.968  0.088        0.188          0.204        0.043       0.230     0.475                                                           no
+  CHWY 2020-01-03          ok    ok/good    0.645  0.044        0.392          0.196        0.057       0.224     0.463                                                           ok
+  LCID 2021-09-20          no   other no    1.875  0.055        0.217          0.190        0.040       0.440     0.449 no setup, gapped down and moved back into base/range, no bre
+   TTD 2017-07-26          ok    ok/good    0.962  0.042        0.178          0.180        0.045       0.750     0.425                                                           ok
+   REN 2017-07-27          no   other no    0.791  0.054        0.311          0.179        0.074       0.288     0.423                        no, just downtrend, where's breakout?
+    PS 2019-05-01 conditional      maybe    0.764  0.043        0.265          0.176        0.056       0.686     0.414 ok but looks to have broken avbove range already, maybe a bi
+  ADMS 2018-01-16          ok    ok/good    1.041  0.054        0.152          0.186        0.051       0.415     0.383                                                           ok
+   WDC 2019-02-15          ok    ok/good    0.963  0.046        0.307          0.161        0.040       0.291     0.379                                                           ok
+  MRNA 2021-01-08        good    ok/good    1.728  0.081        0.270          0.144        0.050       0.274     0.340                                                   looks good
+  HAPN 2021-08-25          no   other no    1.385  0.063        0.231          0.124        0.038       0.231     0.292                                                           no
+  FUTU 2021-06-23 conditional      maybe    2.018  0.063        0.139          0.116        0.033       0.436     0.274      maybe ok but not great, where's the runup and tightness
+  CRWD 2020-10-16          ok    ok/good    1.572  0.042        0.130          0.100        0.026       0.251     0.236                                                           ok
+  PINS 2020-10-22          no   other no    1.640  0.040        0.189          0.048        0.028       0.602     0.112                               late, looks broken out already
+  OCGN 2021-09-10          no   other no    4.188  0.053        0.037          0.058        0.013       0.270     0.095                     no, why is it so tight, looks suspicious

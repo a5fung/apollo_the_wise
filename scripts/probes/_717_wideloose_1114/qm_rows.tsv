@@ -1,0 +1,973 @@
+set	eid	ticker	sym	E	D	tier	reason	big	fixed	how	level	nbars	win_len	wid
+dated	48	PI	PI	2017-07-27	2017-07-26	Low	weak_pivot	0	1	dated	54.4	256	1	0
+dated	50	SHOP	SHOP	2017-08-01	2017-07-31	Not	ep_gap	0	1	dated	9.55	301	1	1
+dated	55	KYNB	FGEN	2017-08-25	2017-08-24	Low	weak_pivot	0	1	dated	1075.0	301	1	2
+dated	59	UCTT	UCTT	2017-08-29	2017-08-28	Medium	short_pivot	0	1	dated	23.15	301	1	3
+dated	69	SEDG	SEDG	2017-09-27	2017-09-26	High	range_break	0	1	dated	27.3	301	1	4
+dated	71	SINA	SINA	2017-10-02	2017-09-29	Low	weak_pivot	0	1	dated	117.5	301	1	5
+dated	72	SRPT	SRPT	2017-10-02	2017-09-29	High	range_break	0	1	dated	47.78	301	1	6
+dated	80	SQM	SQM	2017-10-04	2017-10-03	Low	weak_pivot	0	1	dated	59.67	301	1	7
+dated	95	ANET	ANET	2018-03-12	2018-03-09	Low	no_level	0	1	dated		301	1	8
+dated	107	SPLK	SPLK	2018-05-08	2018-05-07	Low	broke_before	0	1	dated	112.7	301	1	9
+dated	102	OKTA	OKTA	2018-07-27	2018-07-26	Low	weak_pivot	0	1	dated	58.3	301	1	10
+dated	101	DINO	HFC	2018-07-31	2018-07-30	Low	weak_pivot	0	1	dated	75.71	301	1	11
+dated	99	ETSY	ETSY	2018-08-07	2018-08-06	Not	ep_gap	0	1	dated	43.77	301	1	12
+dated	108	TSLA	TSLA	2018-08-07	2018-08-06	Low	gives_back	0	1	dated	24.92	301	1	13
+dated	104	ROKU	ROKU	2018-08-09	2018-08-08	Not	ep_gap	0	1	dated	49.63	217	1	14
+dated	103	RH	RH	2018-08-22	2018-08-21	Medium	range_break_partial	0	1	dated	154.8	301	1	15
+dated	109	VKTX	VKTX	2018-08-24	2018-08-23	Medium	range_break_partial	0	1	dated	11.8	301	1	16
+dated	117	YPF	YPF	2019-04-17	2019-04-16	Low	no_level	0	1	dated		301	1	17
+dated	111	BMA	BMA	2019-08-09	2019-08-08	High	range_break	0	1	dated	72.42	301	1	18
+dated	114	GGAL	GGAL	2019-08-09	2019-08-08	Medium	short_pivot	0	1	dated	36.63	301	1	19
+dated	113	EW	EW	2019-08-16	2019-08-15	Low	weak_pivot	0	1	dated	73.24	301	1	20
+dated	112	ENPH	ENPH	2019-09-24	2019-09-23	Low	no_level	0	1	dated		301	1	21
+dated	156	MIK	MIK	2019-10-10	2019-10-09	Low	weak_pivot	0	1	dated	9.7	301	1	22
+dated	173	ACAD	ACAD	2019-10-21	2019-10-18	High	range_break	0	1	dated	40.83	301	1	23
+dated	174	MIK	MIK	2019-10-21	2019-10-18	Low	weak_pivot	0	1	dated	9.932	301	1	24
+dated	189	MIK	MIK	2019-10-22	2019-10-21	High	range_break	0	1	dated	10.17	301	1	25
+dated	212	TDOC	TDOC	2019-10-31	2019-10-30	Low	gives_back	0	1	dated	74.0	301	1	26
+dated	250	STNE	STNE	2019-11-18	2019-11-15	Low	no_level	0	1	dated		267	1	27
+dated	269	AMD	AMD	2019-12-12	2019-12-11	High	range_break	0	1	dated	40.22	301	1	28
+dated	285	SE	SE	2019-12-19	2019-12-18	Medium	short_pivot	0	1	dated	38.48	301	1	29
+dated	290	KOD	KOD	2019-12-24	2019-12-23	Medium	range_break_partial	0	1	dated	72.26	301	1	30
+dated	348	PBYI	PBYI	2020-01-17	2020-01-16	Medium	close_break	0	1	dated	8.895	301	1	31
+dated	382	ACMR	ACMR	2020-02-10	2020-02-07	Medium	short_pivot	0	1	dated	13.4	301	1	32
+dated	383	BLDP	BLDP	2020-02-10	2020-02-07	Medium	range_break_partial	0	1	dated	11.38	301	1	33
+dated	389	LK	LK	2020-02-18	2020-02-14	Low	weak_pivot	0	1	dated	40.24	189	1	34
+dated	400	APT	APT	2020-02-21	2020-02-20	Low	no_level	1	1	dated		301	1	35
+dated	402	NVAX	NVAX	2020-02-24	2020-02-21	Medium	range_break_partial	0	1	dated	8.18	301	1	36
+dated	406	NVAX	NVAX	2020-02-26	2020-02-25	High	range_break	1	1	dated	8.5	301	1	37
+dated	426	BILI	BILI	2020-03-05	2020-03-04	Low	weak_pivot	0	1	dated	27.57	301	1	38
+dated	423	WORK	WORK	2020-03-05	2020-03-04	Medium	short_pivot	0	1	dated	27.81	178	1	39
+dated	441	ZS	ZS	2020-03-24	2020-03-23	Low	gives_back	0	1	dated	58.29	301	1	40
+dated	460	NVAX	NVAX	2020-04-03	2020-04-02	Medium	short_pivot	0	1	dated	14.88	301	1	41
+dated	461	CODX	CODX	2020-04-06	2020-04-03	Not	ep_gap	0	1	dated	299.7	301	1	42
+dated	468	W	W	2020-04-07	2020-04-06	Not	ep_gap	0	1	dated	76.47	301	1	43
+dated	472	TSLA	TSLA	2020-04-14	2020-04-13	Low	gives_back	0	1	dated	47.13	301	1	44
+dated	479	NET	NET	2020-04-16	2020-04-15	Medium	short_pivot	0	1	dated	24.0	148	1	45
+dated	482	EXEL	EXEL	2020-04-20	2020-04-17	Not	ep_gap	0	1	dated	22.06	301	1	46
+dated	484	SHOP	SHOP	2020-04-20	2020-04-17	Low	gives_back	0	1	dated	59.39	301	1	47
+dated	492	APT	APT	2020-04-22	2020-04-21	Low	no_level	0	1	dated		301	1	48
+dated	500	APT	APT	2020-04-23	2020-04-22	Low	no_level	0	1	dated		301	1	49
+dated	498	INO	INO	2020-04-23	2020-04-22	Not	ep_gap	0	1	dated	143.2	301	1	50
+dated	496	ZM	ZM	2020-04-23	2020-04-22	Low	gives_back	0	1	dated	164.9	255	1	51
+dated	512	BLDP	BLDP	2020-04-27	2020-04-24	Low	weak_pivot	0	1	dated	10.41	301	1	52
+dated	533	TSLA	TSLA	2020-04-30	2020-04-29	Low	gives_back	0	1	dated	57.57	301	1	53
+dated	546	BNTX	BNTX	2020-05-05	2020-05-04	Medium	short_pivot	0	1	dated	49.7	142	1	54
+dated	554	FSLY	FSLY	2020-05-07	2020-05-06	Not	ep_gap	0	1	dated	24.04	245	1	55
+dated	560	PDD	PDD	2020-05-08	2020-05-07	High	range_break	1	1	dated	51.88	301	1	56
+dated	573	NVAX	NVAX	2020-05-12	2020-05-11	Not	ep_gap	0	1	dated	24.6	301	1	57
+dated	568	TDOC	TDOC	2020-05-12	2020-05-11	Low	no_level	0	1	dated		301	1	58
+dated	578	APT	APT	2020-05-14	2020-05-13	High	range_break	0	1	dated	14.78	301	1	59
+dated	591	BNTX	BNTX	2020-05-18	2020-05-15	Not	ep_gap	0	1	dated	52.12	151	1	60
+dated	597	TTD	TTD	2020-05-22	2020-05-21	Low	weak_pivot	0	1	dated	31.1	301	1	61
+dated	598	BLDP	BLDP	2020-05-26	2020-05-22	High	range_break	0	1	dated	10.16	301	1	62
+dated	605	CCL	CCL	2020-05-26	2020-05-22	Not	ep_gap	0	1	dated	15.3	301	1	63
+dated	607	PLNT	PLNT	2020-05-26	2020-05-22	Low	weak_pivot	0	1	dated	66.83	301	1	64
+dated	604	W	W	2020-05-26	2020-05-22	Low	no_level	0	1	dated		301	1	65
+dated	606	UAL	UAL	2020-05-27	2020-05-26	Not	ep_gap	0	1	dated	32.7	301	1	66
+dated	621	TSLA	TSLA	2020-06-01	2020-05-29	High	range_break	0	1	dated	55.67	301	1	67
+dated	630	FLIR	FLIR	2020-06-03	2020-06-02	Medium	range_break_partial	0	1	dated	47.0	301	1	68
+dated	646	ACB	ACB	2020-06-08	2020-06-05	Low	bounce	0	1	dated	148.4	301	1	69
+dated	641	BILI	BILI	2020-06-08	2020-06-05	Medium	range_break_partial	0	1	dated	34.7	301	1	70
+dated	642	BYND	BYND	2020-06-08	2020-06-05	High	range_break	0	1	dated	4266.0	277	1	71
+dated	650	AMD	AMD	2020-06-09	2020-06-08	High	range_break	0	1	dated	56.08	301	1	72
+dated	665	TWLO	TWLO	2020-06-10	2020-06-09	Low	weak_pivot	0	1	dated	203.3	301	1	73
+dated	673	MRNA	MRNA	2020-06-15	2020-06-12	Low	weak_pivot	0	1	dated	66.69	301	1	74
+dated	669	NET	NET	2020-06-15	2020-06-12	High	range_break	0	1	dated	30.59	189	1	75
+dated	670	SHOP	SHOP	2020-06-15	2020-06-12	High	range_break	1	1	dated	78.43	301	1	76
+dated	671	TWLO	TWLO	2020-06-15	2020-06-12	Low	no_level	0	1	dated		301	1	77
+dated	676	APT	APT	2020-06-17	2020-06-16	Low	gives_back	1	1	dated	14.31	301	1	78
+dated	678	OKTA	OKTA	2020-06-17	2020-06-16	Medium	inside_range	0	1	dated	189.6	301	1	79
+dated	681	VIR	VIR	2020-06-19	2020-06-18	High	range_break	0	1	dated	40.0	173	1	80
+dated	686	DKNG	DKNG	2020-06-22	2020-06-19	Medium	range_break_partial	0	1	dated	42.8	174	1	81
+dated	682	ACB	ACB	2020-06-23	2020-06-22	Low	weak_pivot	0	1	dated	139.4	301	1	82
+dated	684	MRNA	MRNA	2020-06-24	2020-06-23	Low	no_level	0	1	dated		301	1	83
+dated	685	SRNE	SRNE	2020-06-24	2020-06-23	High	range_break	1	1	dated	5.16	301	1	84
+dated	688	BNTX	BNTX	2020-06-25	2020-06-24	High	range_break	0	1	dated	58.9	178	1	85
+dated	695	BLDP	BLDP	2020-06-29	2020-06-26	High	range_break	1	1	dated	14.58	301	1	86
+dated	701	TSLA	TSLA	2020-06-29	2020-06-26	Medium	inside_range	0	1	dated	66.73	301	1	87
+dated	704	MRNA	MRNA	2020-06-30	2020-06-29	Low	no_level	0	1	dated		301	1	88
+dated	711	JD	JD	2020-07-02	2020-07-01	Medium	range_break_partial	0	1	dated	61.06	301	1	89
+dated	717	MDB	MDB	2020-07-08	2020-07-07	Medium	range_break_partial	0	1	dated	232.4	301	1	90
+dated	718	ARCT	ARCT	2020-07-09	2020-07-08	Low	weak_pivot	0	1	dated	51.51	301	1	91
+dated	720	ROKU	ROKU	2020-07-09	2020-07-08	High	range_break	0	1	dated	136.0	301	1	92
+dated	731	CODX	CODX	2020-07-16	2020-07-15	Low	weak_pivot	1	1	dated	576.6	301	1	93
+dated	732	INO	INO	2020-07-17	2020-07-16	Low	no_level	0	1	dated		301	1	94
+dated	743	INO	INO	2020-07-20	2020-07-17	Low	no_level	0	1	dated		301	1	95
+dated	741	TWTR	TWTR	2020-07-20	2020-07-17	Low	weak_pivot	0	1	dated	36.98	301	1	96
+dated	739	WKHS	WKHS	2020-07-20	2020-07-17	Low	no_level	0	1	dated		301	1	97
+dated	750	CODX	CODX	2020-07-21	2020-07-20	High	range_break	1	1	dated	583.5	301	1	98
+dated	753	BLNK	BLNK	2020-07-22	2020-07-21	Not	ep_gap	0	1	dated	6.9	301	1	99
+dated	759	MU	MU	2020-07-23	2020-07-22	Medium	range_break_partial	0	1	dated	52.66	301	1	100
+dated	782	W	W	2020-07-27	2020-07-24	Low	no_level	0	1	dated		301	1	101
+dated	784	LAKE	LAKE	2020-07-28	2020-07-27	Low	weak_pivot	0	1	dated	23.85	301	1	102
+dated	787	AVLR	AVLR	2020-07-29	2020-07-28	Medium	short_pivot	0	1	dated	129.4	301	1	103
+dated	785	DXCM	DXCM	2020-07-29	2020-07-28	Medium	range_break_partial	0	1	dated	109.4	301	1	104
+dated	796	SRNE	SRNE	2020-07-30	2020-07-29	Medium	short_pivot	1	1	dated	8.29	301	1	105
+dated	794	TDOC	TDOC	2020-07-30	2020-07-29	High	range_break	0	1	dated	231.4	301	1	106
+dated	797	PINS	PINS	2020-07-31	2020-07-30	Not	ep_gap	0	1	dated	26.52	301	1	107
+dated	799	ROKU	ROKU	2020-07-31	2020-07-30	Low	weak_pivot	0	1	dated	156.6	301	1	108
+dated	801	TTD	TTD	2020-07-31	2020-07-30	Medium	short_pivot	0	1	dated	43.57	301	1	109
+dated	806	WKHS	WKHS	2020-08-03	2020-07-31	High	range_break	0	1	dated	52500.0	301	1	110
+dated	804	ZM	ZM	2020-08-03	2020-07-31	Medium	short_pivot	0	1	dated	259.9	301	1	111
+dated	814	LRN	LRN	2020-08-05	2020-08-04	High	range_break	0	1	dated	51.38	301	1	112
+dated	816	TWTR	TWTR	2020-08-05	2020-08-04	Low	weak_pivot	0	1	dated	37.33	301	1	113
+dated	827	BE	BE	2020-08-13	2020-08-12	Medium	short_pivot	1	1	dated	14.13	301	1	114
+dated	838	JD	JD	2020-08-17	2020-08-14	High	range_break	0	1	dated	65.85	301	1	115
+dated	845	TWTR	TWTR	2020-08-19	2020-08-18	Low	weak_pivot	0	1	dated	39.17	301	1	116
+dated	850	DOYU	DOYU	2020-08-24	2020-08-21	Medium	inside_range	1	1	dated	152.3	279	1	117
+dated	851	HUYA	HUYA	2020-08-24	2020-08-21	Medium	short_pivot	0	1	dated	26.15	301	1	118
+dated	855	SHOP	SHOP	2020-08-26	2020-08-25	High	range_break	0	1	dated	104.7	301	1	119
+dated	856	TTD	TTD	2020-08-26	2020-08-25	Low	weak_pivot	0	1	dated	48.4	301	1	120
+dated	879	NIO	NIO	2020-09-14	2020-09-11	Low	no_level	0	1	dated		301	1	121
+dated	880	SE	SE	2020-09-14	2020-09-11	Low	weak_pivot	0	1	dated	146.1	301	1	122
+dated	885	ESTC	ESTC	2020-09-16	2020-09-15	Medium	short_pivot	0	1	dated	105.5	301	1	123
+dated	887	SAVE	SAVE	2020-09-16	2020-09-15	Medium	inside_range	0	1	dated	18.5	301	1	124
+dated	889	CRWD	CRWD	2020-09-18	2020-09-17	Low	no_level	0	1	dated		301	1	125
+dated	890	ESTC	ESTC	2020-09-21	2020-09-18	Medium	range_break_partial	0	1	dated	107.3	301	1	126
+dated	892	MDB	MDB	2020-09-21	2020-09-18	Low	gives_back	1	1	dated	221.9	301	1	127
+dated	893	TSLA	TSLA	2020-09-21	2020-09-18	Low	no_level	0	1	dated		301	1	128
+dated	908	DDOG	DDOG	2020-09-22	2020-09-21	Medium	inside_range	0	1	dated	93.37	254	1	129
+dated	907	TWTR	TWTR	2020-09-22	2020-09-21	High	range_break	0	1	dated	41.49	301	1	130
+dated	910	JD	JD	2020-09-23	2020-09-22	Low	no_level	0	1	dated		301	1	131
+dated	914	LVGO	LVGO	2020-09-25	2020-09-24	High	range_break	0	1	dated	140.0	296	1	132
+dated	916	NVDA	NVDA	2020-09-25	2020-09-24	Low	weak_pivot	1	1	dated	12.73	301	1	133
+dated	915	SE	SE	2020-09-25	2020-09-24	Medium	range_break_partial	0	1	dated	155.5	301	1	134
+dated	919	NIO	NIO	2020-09-29	2020-09-28	High	range_break	1	1	dated	20.25	301	1	135
+dated	920	TSLA	TSLA	2020-09-30	2020-09-29	Low	weak_pivot	0	1	dated	142.8	301	1	136
+dated	930	ZM	ZM	2020-10-09	2020-10-08	Low	no_level	0	1	dated		301	1	137
+dated	934	TSLA	TSLA	2020-10-12	2020-10-09	Low	weak_pivot	0	1	dated	146.4	301	1	138
+dated	978	JD	JD	2020-10-29	2020-10-28	Medium	range_break_partial	0	1	dated	84.46	301	1	139
+dated	981	TTD	TTD	2020-10-29	2020-10-28	Low	no_level	0	1	dated		301	1	140
+dated	989	ENPH	ENPH	2020-11-05	2020-11-04	High	range_break	0	1	dated	109.2	301	1	141
+dated	994	QDEL	QDEL	2020-11-05	2020-11-04	High	range_break	0	1	dated	275.6	301	1	142
+dated	996	XYZ	SQ	2020-11-06	2020-11-05	Medium	close_break	0	1	dated	176.8	301	1	143
+dated	998	TSLA	TSLA	2020-11-09	2020-11-06	Medium	range_break_partial	0	1	dated	146.7	301	1	144
+dated	1009	BLDP	BLDP	2020-11-16	2020-11-13	Low	gives_back	0	1	dated	16.93	301	1	145
+dated	1030	JMIA	JMIA	2020-11-18	2020-11-17	Low	gives_back	1	1	dated	19.61	301	1	146
+dated	1019	TSLA	TSLA	2020-11-18	2020-11-17	High	range_break	0	1	dated	154.0	301	1	147
+dated	1031	CRON	CRON	2020-11-24	2020-11-23	High	range_break	0	1	dated	7.69	301	1	148
+dated	1045	FIRY	FEAC	2020-11-30	2020-11-27	Low	gives_back	0	1	dated	294.0	151	1	149
+dated	1046	SE	SE	2020-12-03	2020-12-02	Medium	range_break_partial	0	1	dated	187.8	301	1	150
+dated	1048	DOCU	DOCU	2020-12-04	2020-12-03	Low	gives_back	0	1	dated	251.9	301	1	151
+dated	1070	PTON	PTON	2020-12-14	2020-12-11	High	range_break	1	1	dated	120.3	301	1	152
+dated	1072	DOCU	DOCU	2020-12-15	2020-12-14	Low	weak_pivot	0	1	dated	237.5	301	1	153
+dated	1093	TLRY	TLRY	2020-12-16	2020-12-15	Not	ep_gap	0	1	dated	83.7	301	1	154
+dated	1077	NVAX	NVAX	2020-12-17	2020-12-16	Low	no_level	0	1	dated		301	1	155
+dated	1081	AVPT	APXT	2020-12-21	2020-12-18	Low	weak_pivot	0	1	dated	14.94	236	1	156
+dated	1084	FUV	FUV	2020-12-22	2020-12-21	High	range_break	0	1	dated	294.0	301	1	157
+dated	1100	CCL	CCL	2020-12-28	2020-12-24	Low	weak_pivot	0	1	dated	21.98	301	1	158
+dated	1099	MSTR	MSTR	2020-12-28	2020-12-24	Not	ep_gap	0	1	dated	34.97	301	1	159
+dated	1095	NCLH	NCLH	2020-12-28	2020-12-24	Medium	inside_range	0	1	dated	24.9	301	1	160
+dated	1107	NIO	NIO	2020-12-30	2020-12-29	Medium	inside_range	0	1	dated	48.36	301	1	161
+dated	1114	TLRY	TLRY	2021-01-04	2020-12-31	Low	weak_pivot	0	1	dated	89.3	301	1	162
+dated	1121	FIRY	SKLZ	2021-01-05	2021-01-04	Medium	short_pivot	1	1	dated	426.4	175	1	163
+dated	1124	APHA	APHA	2021-01-06	2021-01-05	High	range_break	1	1	dated	7.61	301	1	164
+dated	1125	BE	BE	2021-01-06	2021-01-05	Medium	short_pivot	1	1	dated	29.59	301	1	165
+dated	1128	JWN	JWN	2021-01-06	2021-01-05	High	range_break	0	1	dated	32.31	301	1	166
+dated	1129	M	M	2021-01-06	2021-01-05	High	range_break	0	1	dated	12.11	301	1	167
+dated	1136	SNAP	SNAP	2021-01-07	2021-01-06	Medium	short_pivot	0	1	dated	51.83	301	1	168
+dated	1143	SOLO	SOLO	2021-01-11	2021-01-08	Medium	range_break_partial	0	1	dated	7.41	301	1	169
+dated	1147	JMIA	JMIA	2021-01-12	2021-01-11	Low	weak_pivot	1	1	dated	40.57	301	1	170
+dated	1148	LYFT	LYFT	2021-01-12	2021-01-11	Medium	short_pivot	0	1	dated	49.27	301	1	171
+dated	1174	CBAT	CBAT	2021-01-22	2021-01-21	Medium	short_pivot	0	1	dated	7.63	301	1	172
+dated	1173	NXH	OSTK	2021-01-22	2021-01-21	Low	bounce	1	1	dated	69.23	301	1	173
+dated	1171	SICP	SI	2021-01-22	2021-01-21	Medium	short_pivot	1	1	dated	75.69	301	1	174
+dated	1178	PDD	PDD	2021-01-25	2021-01-22	Medium	range_break_partial	0	1	dated	186.7	301	1	175
+dated	1181	DKNG	DKNG	2021-01-26	2021-01-25	Low	weak_pivot	0	1	dated	55.03	301	1	176
+dated	1198	BTBT	BTBT	2021-01-28	2021-01-27	Low	weak_pivot	0	1	dated	18.5	301	1	177
+dated	1204	PDD	PDD	2021-02-02	2021-02-01	Low	weak_pivot	0	1	dated	182.1	301	1	178
+dated	1205	TLRY	TLRY	2021-02-02	2021-02-01	High	range_break	1	1	dated	215.0	301	1	179
+dated	1211	PLUG	PLUG	2021-02-03	2021-02-02	Low	no_level	0	1	dated		301	1	180
+dated	1217	PLUG	PLUG	2021-02-03	2021-02-02	Low	no_level	0	1	dated		301	1	181
+dated	1213	XYZ	SQ	2021-02-03	2021-02-02	Low	weak_pivot	0	1	dated	231.6	301	1	182
+dated	1223	MARA	MARA	2021-02-08	2021-02-05	Not	ep_gap	0	1	dated	24.96	301	1	183
+dated	1224	RIOT	RIOT	2021-02-08	2021-02-05	Not	ep_gap	0	1	dated	24.74	301	1	184
+dated	1221	SEDG	SEDG	2021-02-08	2021-02-05	Low	weak_pivot	0	1	dated	317.5	301	1	185
+dated	1231	FUTU	FUTU	2021-02-09	2021-02-08	Not	ep_gap	0	1	dated	132.9	301	1	186
+dated	1229	ENPH	ENPH	2021-02-10	2021-02-09	Medium	range_break_partial	0	1	dated	203.4	301	1	187
+dated	1233	W	W	2021-02-11	2021-02-10	Low	weak_pivot	0	1	dated	303.4	301	1	188
+dated	1240	CBAT	CBAT	2021-02-16	2021-02-12	Medium	short_pivot	0	1	dated	7.87	301	1	189
+dated	1249	TTD	TTD	2021-02-19	2021-02-18	High	range_break	0	1	dated	88.09	301	1	190
+dated	1255	AMC	AMC	2021-02-22	2021-02-19	Low	weak_pivot	0	1	dated	65.9	301	1	191
+dated	1260	AMC	AMC	2021-02-25	2021-02-24	Not	ep_gap	0	1	dated	101.0	301	1	192
+dated	1263	DKNG	DKNG	2021-02-26	2021-02-25	Medium	close_break	0	1	dated	61.07	301	1	193
+dated	1265	PENN	PENN	2021-03-01	2021-02-26	High	range_break	0	1	dated	124.1	301	1	194
+dated	1264	RKT	RKT	2021-03-01	2021-02-26	Low	no_level	0	1	dated		141	1	195
+dated	1267	APHA	APHA	2021-03-02	2021-03-01	Low	weak_pivot	0	1	dated	20.57	301	1	196
+dated	1270	TLRY	TLRY	2021-03-02	2021-03-01	Low	weak_pivot	0	1	dated	288.7	301	1	197
+dated	1282	CAN	CAN	2021-03-09	2021-03-08	Not	ep_gap	0	1	dated	25.3	301	1	198
+dated	1288	FCX	FCX	2021-03-11	2021-03-10	Medium	inside_range	0	1	dated	36.2	301	1	199
+dated	1290	UAL	UAL	2021-03-11	2021-03-10	Low	gives_back	0	1	dated	55.2	301	1	200
+dated	1299	RCL	RCL	2021-03-15	2021-03-12	Low	weak_pivot	0	1	dated	96.38	301	1	201
+dated	1300	SOS	SOS	2021-03-15	2021-03-12	Not	ep_gap	0	1	dated	5318.0	301	1	202
+dated	1305	ZKIN	ZKIN	2021-03-15	2021-03-12	Not	ep_gap	0	1	dated	58.1	301	1	203
+dated	1308	MU	MU	2021-03-16	2021-03-15	Medium	short_pivot	0	1	dated	90.22	301	1	204
+dated	1323	AMAT	AMAT	2021-03-22	2021-03-19	Medium	range_break_partial	0	1	dated	121.3	301	1	205
+dated	1324	APPS	APPS	2021-03-22	2021-03-19	Medium	short_pivot	0	1	dated	87.39	301	1	206
+dated	1326	ETSY	ETSY	2021-03-23	2021-03-22	Low	gives_back	0	1	dated	228.0	301	1	207
+dated	1335	AMAT	AMAT	2021-03-24	2021-03-23	Medium	range_break_partial	0	1	dated	121.5	301	1	208
+dated	1350	AAL	AAL	2021-03-30	2021-03-29	Low	weak_pivot	0	1	dated	23.66	301	1	209
+dated	1374	FCX	FCX	2021-04-06	2021-04-05	Low	gives_back	0	1	dated	35.73	301	1	210
+dated	1386	RIOT	RIOT	2021-04-13	2021-04-12	Not	ep_gap	0	1	dated	57.85	301	1	211
+dated	1395	X	X	2021-04-23	2021-04-22	Medium	range_break_partial	0	1	dated	23.55	301	1	212
+dated	1396	CCL	CCL	2021-04-26	2021-04-23	Low	weak_pivot	0	1	dated	28.2	301	1	213
+dated	1402	SNAP	SNAP	2021-04-29	2021-04-28	Low	weak_pivot	0	1	dated	63.78	301	1	214
+dated	1405	CLF	CLF	2021-05-04	2021-05-03	Low	gives_back	0	1	dated	19.65	301	1	215
+dated	1456	SE	SE	2021-06-08	2021-06-07	Low	gives_back	0	1	dated	262.9	301	1	216
+dated	1460	CLF	CLF	2021-06-09	2021-06-08	High	range_break	0	1	dated	20.69	301	1	217
+dated	1462	SNAP	SNAP	2021-06-11	2021-06-10	Medium	short_pivot	0	1	dated	62.86	301	1	218
+dated	1463	SNAP	SNAP	2021-06-11	2021-06-10	Medium	short_pivot	0	1	dated	62.86	301	1	219
+dated	1465	FUTU	FUTU	2021-06-14	2021-06-11	Low	weak_pivot	0	1	dated	156.3	301	1	220
+dated	1478	BILI	BILI	2021-06-25	2021-06-24	Low	broke_before	0	1	dated	128.4	301	1	221
+dated	1479	BYND	BYND	2021-06-28	2021-06-25	High	range_break	0	1	dated	4603.0	301	1	222
+dated	1501	BNTX	BNTX	2021-07-21	2021-07-20	High	range_break	0	1	dated	252.6	301	1	223
+dated	1506	MSTR	MSTR	2021-08-05	2021-08-04	Medium	short_pivot	0	1	dated	67.5	301	1	224
+dated	1508	UPST	UPST	2021-08-12	2021-08-11	Low	broke_before	0	1	dated	182.0	164	1	225
+dated	1509	AMD	AMD	2021-08-23	2021-08-20	Medium	inside_range	0	1	dated	108.7	301	1	226
+dated	1513	SNAP	SNAP	2021-08-23	2021-08-20	Low	weak_pivot	0	1	dated	75.85	301	1	227
+dated	1516	AMC	AMC	2021-09-10	2021-09-09	Low	gives_back	0	1	dated	497.9	301	1	228
+dated	1520	SQM	SQM	2021-09-10	2021-09-09	Low	gives_back	0	1	dated	57.0	301	1	229
+dated	1522	GME	GME	2021-09-13	2021-09-10	Low	no_level	0	1	dated		301	1	230
+dated	1535	BNTX	BNTX	2021-09-23	2021-09-22	Low	no_level	0	1	dated		301	1	231
+dated	1544	LAC	LAC	2021-09-30	2021-09-29	Low	no_level	0	1	dated		301	1	232
+dated	1550	DRK	ANY	2021-10-11	2021-10-08	High	range_break	0	1	dated	525.0	301	1	233
+dated	1552	MARA	MARA	2021-10-11	2021-10-08	High	range_break	0	1	dated	39.98	301	1	234
+dated	1553	MSTR	MSTR	2021-10-11	2021-10-08	Low	gives_back	0	1	dated	74.78	301	1	235
+dated	1554	CCJ	CCJ	2021-10-12	2021-10-11	High	range_break	0	1	dated	24.34	301	1	236
+dated	1571	BTBT	BTBT	2021-10-20	2021-10-19	Low	weak_pivot	0	1	dated	12.0	301	1	237
+dated	1584	LCID	LCID	2021-10-25	2021-10-22	High	range_break	1	1	dated	256.6	277	1	238
+dated	1593	QS	QS	2021-10-29	2021-10-28	Low	gives_back	1	1	dated	28.74	301	1	239
+dated	1630	ZIM	ZIM	2021-11-18	2021-11-17	Low	gives_back	0	1	dated	55.77	205	1	240
+dated	1637	DVN	DVN	2021-11-24	2021-11-23	High	range_break	0	1	dated	43.99	301	1	241
+dated	1644	MRNA	MRNA	2021-11-29	2021-11-26	Not	ep_gap	0	1	dated	359.1	301	1	242
+dated	1645	SICP	SI	2021-11-29	2021-11-26	Low	no_level	0	1	dated		301	1	243
+dated	1649	MARA	MARA	2021-11-30	2021-11-29	Low	no_level	0	1	dated		301	1	244
+dated	1658	FCX	FCX	2021-12-07	2021-12-06	Low	weak_pivot	0	1	dated	39.27	301	1	245
+dated	1668	PFE	PFE	2021-12-13	2021-12-10	Medium	short_pivot	0	1	dated	53.89	301	1	246
+dated	1670	VIR	VIR	2021-12-15	2021-12-14	Low	gives_back	0	1	dated	52.85	301	1	247
+dated	1676	MU	MU	2021-12-21	2021-12-20	High	range_break	0	1	dated	87.38	301	1	248
+dated	1679	FCX	FCX	2021-12-27	2021-12-23	Low	broke_before	0	1	dated	41.6	301	1	249
+dated	1680	MDB	MDB	2021-12-27	2021-12-23	Low	gives_back	0	1	dated	569.8	301	1	250
+dated	1772	LHX	LHX	2022-04-05	2022-04-04	Low	weak_pivot	0	1	dated	256.4	132	1	251
+dated	1773	LMT	LMT	2022-04-05	2022-04-04	Low	weak_pivot	0	1	dated	450.5	132	1	252
+dated	1777	LMT	LMT	2022-04-06	2022-04-05	Low	weak_pivot	0	1	dated	457.5	133	1	253
+dated	1781	X	X	2022-04-12	2022-04-11	Low	no_level	0	1	dated		137	1	254
+dated	1788	FTNT	FTNT	2022-04-21	2022-04-20	Medium	range_break_partial	0	1	dated	69.73	143	1	255
+dated	1786	LAC	LAC	2022-04-21	2022-04-20	Low	weak_pivot	0	1	dated	32.93	143	1	256
+dated	1787	TSLA	TSLA	2022-04-21	2022-04-20	Not	ep_gap	0	1	dated	359.7	143	1	257
+dated	1810	VLO	VLO	2022-05-27	2022-05-26	Medium	range_break_partial	0	1	dated	131.7	169	1	258
+dated	1822	FREY	FREY	2022-11-15	2022-11-14	Low	broke_before	0	1	dated	15.56	287	1	259
+dated	1824	U	U	2022-11-15	2022-11-14	Low	bounce	0	1	dated	34.95	287	1	260
+dated	1830	PDD	PDD	2023-01-05	2023-01-04	High	range_break	0	1	dated	92.8	301	1	261
+dated	1827	FCX	FCX	2023-01-06	2023-01-05	High	range_break	0	1	dated	40.27	301	1	262
+dated	1829	MDGL	MDGL	2023-01-24	2023-01-23	Low	weak_pivot	0	1	dated	313.6	301	1	263
+dated	1837	LI	LI	2023-04-17	2023-04-14	High	range_break	0	1	dated	25.29	301	1	264
+dated	1834	AI	AI	2023-05-17	2023-05-16	Low	gives_back	0	1	dated	25.15	301	1	265
+dated	1855	GSIT	GSIT	2023-06-01	2023-05-31	Low	weak_pivot	0	1	dated	7.3	301	1	266
+dated	1864	DKNG	DKNG	2023-09-11	2023-09-08	Low	no_level	0	1	dated		301	1	267
+dated	1869	GME	GME	2023-12-14	2023-12-13	Low	gives_back	0	1	dated	17.56	301	1	268
+widened	54	EXTR	EXTR	2017-08-24	2017-08-23	Low	no_level	0	0	window_not_fixed		301	2	269
+widened	54	EXTR	EXTR	2017-08-25	2017-08-24	Low	no_level	0	0	window_not_fixed		302	2	270
+widened	57	CRMD	CRMD	2017-08-28	2017-08-25	Low	bounce	0	1	rated_session	2.687	301	2	271
+widened	57	CRMD	CRMD	2017-08-29	2017-08-28	Low	bounce	0	0	rated_session		302	2	272
+widened	60	OLED	OLED	2017-08-30	2017-08-29	Low	downtrend	0	1	one_session_window	123.6	301	1	273
+widened	119	RLGY	RLGY	2019-10-01	2019-09-30	Low	bounce	0	1	one_session_window	6.965	301	1	274
+widened	121	ASPS	ASPS	2019-09-30	2019-09-27	Low	no_level	0	1	one_session_window		301	1	275
+widened	122	ENPH	ENPH	2019-09-30	2019-09-27	Low	no_level	0	1	one_session_window		301	1	276
+widened	127	APPS	APPS	2019-10-01	2019-09-30	Low	no_level	0	1	one_session_window		301	1	277
+widened	128	UVXY	UVXY	2019-10-02	2019-10-01	Not	fund	0	1	one_session_window	74550.0	301	1	278
+widened	130	ASPS	ASPS	2019-10-03	2019-10-02	Low	no_level	0	1	one_session_window		301	1	279
+widened	131	JCP	JCP	2019-10-03	2019-10-02	Low	weak_pivot	0	1	one_session_window	0.93	301	1	280
+widened	140	ASPS	ASPS	2019-10-04	2019-10-03	Low	no_level	0	1	one_session_window		301	1	281
+widened	141	DHI	DHI	2019-10-04	2019-10-03	Low	no_level	0	1	one_session_window		301	1	282
+widened	145	JCP	JCP	2019-10-07	2019-10-04	Medium	range_break_partial	0	1	one_session_window	0.96	301	1	283
+widened	146	ASPS	ASPS	2019-10-07	2019-10-04	Low	downtrend	0	0	rated_session		301	3	284
+widened	146	ASPS	ASPS	2019-10-08	2019-10-07	Low	downtrend	0	0	rated_session		302	3	285
+widened	146	ASPS	ASPS	2019-10-09	2019-10-08	Low	downtrend	0	1	rated_session	165.2	303	3	286
+widened	147	DHI	DHI	2019-10-07	2019-10-04	Low	no_level	0	0	window_not_fixed		301	3	287
+widened	147	DHI	DHI	2019-10-08	2019-10-07	Low	no_level	0	0	window_not_fixed		302	3	288
+widened	147	DHI	DHI	2019-10-09	2019-10-08	Low	no_level	0	0	window_not_fixed		303	3	289
+widened	155	DDS	DDS	2019-10-09	2019-10-08	Low	gives_back	0	1	one_session_window	69.97	301	1	290
+widened	157	RLGY	RLGY	2019-10-10	2019-10-09	Low	weak_pivot	0	1	one_session_window	6.98	301	1	291
+widened	160	TTD	TTD	2019-10-10	2019-10-09	Low	downtrend	0	0	window_not_fixed		301	3	292
+widened	160	TTD	TTD	2019-10-11	2019-10-10	Low	downtrend	0	0	window_not_fixed		302	3	293
+widened	160	TTD	TTD	2019-10-14	2019-10-11	Low	downtrend	0	0	window_not_fixed		303	3	294
+widened	161	TWLO	TWLO	2019-10-10	2019-10-09	Low	downtrend	0	0	window_not_fixed		301	3	295
+widened	161	TWLO	TWLO	2019-10-11	2019-10-10	Low	downtrend	0	0	window_not_fixed		302	3	296
+widened	161	TWLO	TWLO	2019-10-14	2019-10-11	Low	downtrend	0	0	window_not_fixed		303	3	297
+widened	162	CCS	CCS	2019-10-10	2019-10-09	Low	no_level	0	0	window_not_fixed		301	2	298
+widened	162	CCS	CCS	2019-10-11	2019-10-10	Low	no_level	0	0	window_not_fixed		302	2	299
+widened	164	ENDP	ENDP	2019-10-15	2019-10-14	Medium	short_pivot	0	0	rated_session		301	2	300
+widened	164	ENDP	ENDP	2019-10-16	2019-10-15	Medium	short_pivot	0	1	rated_session	3.83	302	2	301
+widened	167	ASPS	ASPS	2019-10-17	2019-10-16	Low	no_level	0	1	one_session_window		301	1	302
+widened	168	CCS	CCS	2019-10-17	2019-10-16	Low	broke_before	0	1	one_session_window		301	1	303
+widened	169	APPS	APPS	2019-10-17	2019-10-16	Low	weak_pivot	0	1	rated_session	6.655	301	2	304
+widened	169	APPS	APPS	2019-10-18	2019-10-17	Low	weak_pivot	0	0	rated_session		302	2	305
+widened	170	MNK	MNK	2019-10-17	2019-10-16	Low	downtrend	0	1	rated_session	2.44	301	2	306
+widened	170	MNK	MNK	2019-10-18	2019-10-17	Low	downtrend	0	0	rated_session		302	2	307
+widened	171	TEVA	TEVA	2019-10-17	2019-10-16	Low	downtrend	0	1	rated_session	7.7	301	2	308
+widened	171	TEVA	TEVA	2019-10-18	2019-10-17	Low	downtrend	0	0	rated_session		302	2	309
+widened	175	RETA	RETA	2019-10-18	2019-10-17	Low	no_level	0	0	window_not_fixed		301	2	310
+widened	175	RETA	RETA	2019-10-21	2019-10-18	Low	no_level	0	0	window_not_fixed		302	2	311
+widened	182	BRZU	BRZU	2019-10-22	2019-10-21	Not	fund	0	1	one_session_window	1044.0	301	1	312
+widened	185	PBR	PBR	2019-10-22	2019-10-21	High	range_break	0	1	one_session_window	14.77	301	1	313
+widened	191	JCP	JCP	2019-10-23	2019-10-22	Medium	range_break_partial	0	1	one_session_window	1.08	301	1	314
+widened	192	PBR	PBR	2019-10-22	2019-10-21	High	range_break	0	1	one_session_window	14.77	301	1	315
+widened	194	PLUG	PLUG	2019-10-23	2019-10-22	Low	no_level	0	0	window_not_fixed		301	2	316
+widened	194	PLUG	PLUG	2019-10-24	2019-10-23	Low	no_level	0	0	window_not_fixed		302	2	317
+widened	196	BLDP	BLDP	2019-10-23	2019-10-22	Low	no_level	0	0	window_not_fixed		301	2	318
+widened	196	BLDP	BLDP	2019-10-24	2019-10-23	Low	no_level	0	0	window_not_fixed		302	2	319
+widened	204	MU	MU	2019-10-23	2019-10-22	Low	downtrend	0	0	window_not_fixed		301	3	320
+widened	204	MU	MU	2019-10-24	2019-10-23	Low	downtrend	0	0	window_not_fixed		302	3	321
+widened	204	MU	MU	2019-10-25	2019-10-24	Low	downtrend	0	0	window_not_fixed		303	3	322
+widened	206	DDS	DDS	2019-10-23	2019-10-22	Low	no_level	0	0	window_not_fixed		301	3	323
+widened	206	DDS	DDS	2019-10-24	2019-10-23	Low	no_level	0	0	window_not_fixed		302	3	324
+widened	206	DDS	DDS	2019-10-25	2019-10-24	Low	no_level	0	0	window_not_fixed		303	3	325
+widened	213	BABA	BABA	2019-11-01	2019-10-31	Low	gives_back	0	1	one_session_window	181.3	301	1	326
+widened	214	YINN	YINN	2019-11-01	2019-10-31	Not	fund	0	1	one_session_window	383.4	301	1	327
+widened	215	JD	JD	2019-11-04	2019-11-01	Low	gives_back	0	1	one_session_window	32.38	301	1	328
+widened	224	XNET	XNET	2019-11-06	2019-11-05	Low	gives_back	0	1	rated_session	6.83	301	2	329
+widened	224	XNET	XNET	2019-11-07	2019-11-06	Low	gives_back	0	0	rated_session		302	2	330
+widened	227	ONC	BGNE	2019-11-08	2019-11-07	Low	weak_pivot	0	1	one_session_window	193.9	301	1	331
+widened	229	BLDP	BLDP	2019-11-12	2019-11-11	High	range_break	0	1	one_session_window	6.2	301	1	332
+widened	232	FCEL	FCEL	2019-11-12	2019-11-11	Low	no_level	0	1	one_session_window		301	1	333
+widened	235	META	FB	2019-11-12	2019-11-11	Low	no_level	0	0	window_not_fixed		301	3	334
+widened	235	META	FB	2019-11-13	2019-11-12	Low	no_level	0	0	window_not_fixed		302	3	335
+widened	235	META	FB	2019-11-14	2019-11-13	Low	no_level	0	0	window_not_fixed		303	3	336
+widened	238	SRTA	BLDE	2019-11-14	2019-11-13	Not	ipo	0	1	one_session_window		5	1	337
+widened	239	LX	LX	2019-11-15	2019-11-14	Low	no_level	0	1	one_session_window		301	1	338
+widened	243	LK	LK	2019-11-15	2019-11-14	Low	gives_back	0	1	rated_session	27.12	127	2	339
+widened	243	LK	LK	2019-11-18	2019-11-15	Low	gives_back	0	0	rated_session		128	2	340
+widened	261	BYND	BYND	2019-11-29	2019-11-27	Low	downtrend	0	1	one_session_window	2510.0	147	1	341
+widened	282	DHT	DHT	2019-12-19	2019-12-18	High	range_break	0	1	one_session_window	7.75	301	1	342
+widened	284	FCEL	FCEL	2019-12-19	2019-12-18	Medium	close_break	0	0	rated_session		301	2	343
+widened	284	FCEL	FCEL	2019-12-20	2019-12-19	Medium	close_break	0	1	rated_session	21.22	302	2	344
+widened	288	INSG	INSG	2019-12-19	2019-12-18	Low	no_level	0	0	window_not_fixed		301	5	345
+widened	288	INSG	INSG	2019-12-20	2019-12-19	Low	no_level	0	0	window_not_fixed		302	5	346
+widened	288	INSG	INSG	2019-12-23	2019-12-20	Low	no_level	0	0	window_not_fixed		303	5	347
+widened	288	INSG	INSG	2019-12-24	2019-12-23	Low	no_level	0	0	window_not_fixed		304	5	348
+widened	288	INSG	INSG	2019-12-26	2019-12-24	Low	no_level	0	0	window_not_fixed		305	5	349
+widened	294	BE	BE	2019-12-27	2019-12-26	Medium	short_pivot	0	0	rated_session		301	2	350
+widened	294	BE	BE	2019-12-30	2019-12-27	Medium	short_pivot	0	1	rated_session	6.75	302	2	351
+widened	295	BNGO	BNGO	2019-12-27	2019-12-26	High	range_break	0	0	rated_session		292	2	352
+widened	295	BNGO	BNGO	2019-12-30	2019-12-27	High	range_break	0	1	rated_session	708.0	293	2	353
+widened	297	OCGN	OCGN	2019-12-27	2019-12-26	Low	downtrend	0	0	rated_session		301	2	354
+widened	297	OCGN	OCGN	2019-12-30	2019-12-27	Low	downtrend	0	1	rated_session	0.4295	302	2	355
+widened	301	I	I	2019-12-27	2019-12-26	Low	downtrend	0	0	rated_session		301	2	356
+widened	301	I	I	2019-12-30	2019-12-27	Low	downtrend	0	1	rated_session	7.05	302	2	357
+widened	302	TSLA	TSLA	2019-12-27	2019-12-26	Low	no_level	0	0	window_not_fixed		301	2	358
+widened	302	TSLA	TSLA	2019-12-30	2019-12-27	Low	no_level	0	0	window_not_fixed		302	2	359
+widened	303	AXSM	AXSM	2019-12-27	2019-12-26	Low	no_level	0	0	window_not_fixed		301	2	360
+widened	303	AXSM	AXSM	2019-12-30	2019-12-27	Low	no_level	0	0	window_not_fixed		302	2	361
+widened	309	FTSV	FTSV	2019-12-31	2019-12-30	Low	no_level	0	0	window_not_fixed		301	2	362
+widened	309	FTSV	FTSV	2020-01-02	2019-12-31	Low	no_level	0	0	window_not_fixed		302	2	363
+widened	310	LK	LK	2019-12-31	2019-12-30	Low	no_level	0	0	window_not_fixed		157	2	364
+widened	310	LK	LK	2020-01-02	2019-12-31	Low	no_level	0	0	window_not_fixed		158	2	365
+widened	312	ARWR	ARWR	2020-01-02	2019-12-31	Low	no_level	0	1	one_session_window		301	1	366
+widened	313	AVLR	AVLR	2020-01-02	2019-12-31	High	range_break	0	1	one_session_window	75.98	301	1	367
+widened	318	LX	LX	2020-01-02	2019-12-31	Low	no_level	0	1	one_session_window		301	1	368
+widened	320	PLUG	PLUG	2020-01-02	2019-12-31	Low	gives_back	0	1	rated_session	3.24	301	2	369
+widened	320	PLUG	PLUG	2020-01-03	2020-01-02	Low	gives_back	0	0	rated_session		302	2	370
+widened	322	TEUM	TEUM	2020-01-02	2019-12-31	Medium	range_break_partial	0	0	rated_session		301	2	371
+widened	322	TEUM	TEUM	2020-01-03	2020-01-02	Medium	range_break_partial	0	1	rated_session	0.4595	302	2	372
+widened	326	CB	CB	2020-01-02	2019-12-31	Medium	short_pivot	0	1	rated_session	156.0	301	2	373
+widened	326	CB	CB	2020-01-03	2020-01-02	Medium	short_pivot	0	0	rated_session		302	2	374
+widened	327	IPHI	IPHI	2020-01-02	2019-12-31	Low	no_level	0	0	window_not_fixed		301	2	375
+widened	327	IPHI	IPHI	2020-01-03	2020-01-02	Low	no_level	0	0	window_not_fixed		302	2	376
+widened	330	XP	XP	2020-01-02	2019-12-31	Not	ipo	0	0	window_not_fixed		14	2	377
+widened	330	XP	XP	2020-01-03	2020-01-02	Not	ipo	0	0	window_not_fixed		15	2	378
+widened	331	DT	DT	2020-01-02	2019-12-31	High	range_break	0	0	rated_session		106	3	379
+widened	331	DT	DT	2020-01-03	2020-01-02	High	range_break	0	0	rated_session		107	3	380
+widened	331	DT	DT	2020-01-06	2020-01-03	High	range_break	0	1	rated_session	27.0	108	3	381
+widened	332	GBT	GBT	2020-01-02	2019-12-31	Low	no_level	0	0	window_not_fixed		301	3	382
+widened	332	GBT	GBT	2020-01-03	2020-01-02	Low	no_level	0	0	window_not_fixed		302	3	383
+widened	332	GBT	GBT	2020-01-06	2020-01-03	Low	no_level	0	0	window_not_fixed		303	3	384
+widened	333	VSTM	VSTM	2020-01-02	2019-12-31	Low	no_level	0	0	window_not_fixed		301	3	385
+widened	333	VSTM	VSTM	2020-01-03	2020-01-02	Low	no_level	0	0	window_not_fixed		302	3	386
+widened	333	VSTM	VSTM	2020-01-06	2020-01-03	Low	no_level	0	0	window_not_fixed		303	3	387
+widened	345	JMIA	JMIA	2020-01-16	2020-01-15	Low	gives_back	0	1	one_session_window	7.683	192	1	388
+widened	346	AMD	AMD	2020-01-17	2020-01-16	High	range_break	0	1	one_session_window	50.31	301	1	389
+widened	350	INO	INO	2020-01-17	2020-01-16	High	range_break	0	0	rated_session		301	2	390
+widened	350	INO	INO	2020-01-21	2020-01-17	High	range_break	0	1	rated_session	41.4	302	2	391
+widened	351	TROW	TROW	2020-01-17	2020-01-16	Low	no_level	0	0	window_not_fixed		301	2	392
+widened	351	TROW	TROW	2020-01-21	2020-01-17	Low	no_level	0	0	window_not_fixed		302	2	393
+widened	359	SPCE	SPCE	2020-01-17	2020-01-16	Low	no_level	0	0	window_not_fixed		301	3	394
+widened	359	SPCE	SPCE	2020-01-21	2020-01-17	Low	no_level	0	0	window_not_fixed		302	3	395
+widened	359	SPCE	SPCE	2020-01-22	2020-01-21	Low	no_level	0	0	window_not_fixed		303	3	396
+widened	363	EPZM	EPZM	2020-01-23	2020-01-22	Low	no_level	0	0	window_not_fixed		301	2	397
+widened	363	EPZM	EPZM	2020-01-24	2020-01-23	Low	no_level	0	0	window_not_fixed		302	2	398
+widened	374	VEEV	VEEV	2020-02-04	2020-02-03	Low	gives_back	0	1	one_session_window	152.2	301	1	399
+widened	375	ACB	ACB	2020-02-04	2020-02-03	Low	downtrend	0	1	one_session_window	254.4	301	1	400
+widened	377	ERX	ERX	2020-02-05	2020-02-04	Not	fund	0	1	one_session_window		301	1	401
+widened	379	BYND	BYND	2020-02-06	2020-02-05	Low	no_level	0	0	window_not_fixed		193	2	402
+widened	379	BYND	BYND	2020-02-07	2020-02-06	Low	no_level	0	0	window_not_fixed		194	2	403
+widened	380	FCEL	FCEL	2020-02-10	2020-02-07	High	range_break	0	1	one_session_window	58.5	301	1	404
+widened	381	LAC	LAC	2020-02-10	2020-02-07	Medium	close_break	0	1	one_session_window	4.37	301	1	405
+widened	387	AYX	AYX	2020-02-14	2020-02-13	Low	gives_back	0	1	one_session_window	147.9	301	1	406
+widened	388	ZM	ZM	2020-02-14	2020-02-13	Low	no_level	0	1	one_session_window		208	1	407
+widened	391	TSLA	TSLA	2020-02-18	2020-02-14	Low	weak_pivot	0	1	one_session_window	56.4	301	1	408
+widened	395	NIO	NIO	2020-02-19	2020-02-18	Medium	inside_range	0	1	one_session_window	4.05	301	1	409
+widened	412	ACH	OMI	2020-03-02	2020-02-28	Low	gives_back	0	1	one_session_window	7.28	301	1	410
+widened	415	CODX	CODX	2020-03-03	2020-03-02	Low	no_level	0	1	one_session_window		301	1	411
+widened	418	LK	LK	2020-03-04	2020-03-03	Low	weak_pivot	0	1	one_session_window	40.77	200	1	412
+widened	419	KWEB	KWEB	2020-03-05	2020-03-04	Not	fund	0	1	one_session_window	50.75	301	1	413
+widened	428	INO	INO	2020-03-05	2020-03-04	Low	no_level	0	1	one_session_window		301	1	414
+widened	436	TLRY	TLRY	2020-03-19	2020-03-18	Low	downtrend	0	1	one_session_window		301	1	415
+widened	448	PENN	PENN	2020-03-26	2020-03-25	Low	downtrend	0	1	one_session_window		301	1	416
+widened	450	TSLA	TSLA	2020-03-26	2020-03-25	Low	no_level	0	1	one_session_window		301	1	417
+widened	453	CACC	CACC	2020-03-27	2020-03-26	Low	downtrend	0	0	window_not_fixed		301	4	418
+widened	453	CACC	CACC	2020-03-30	2020-03-27	Low	downtrend	0	0	window_not_fixed		302	4	419
+widened	453	CACC	CACC	2020-03-31	2020-03-30	Low	downtrend	0	0	window_not_fixed		303	4	420
+widened	453	CACC	CACC	2020-04-01	2020-03-31	Low	downtrend	0	0	window_not_fixed		304	4	421
+widened	455	MGM	MGM	2020-03-27	2020-03-26	Low	downtrend	0	0	window_not_fixed		301	4	422
+widened	455	MGM	MGM	2020-03-30	2020-03-27	Low	downtrend	0	0	window_not_fixed		302	4	423
+widened	455	MGM	MGM	2020-03-31	2020-03-30	Low	downtrend	0	0	window_not_fixed		303	4	424
+widened	455	MGM	MGM	2020-04-01	2020-03-31	Low	downtrend	0	0	window_not_fixed		304	4	425
+widened	457	UBER	UBER	2020-04-02	2020-04-01	Low	downtrend	0	1	one_session_window		226	1	426
+widened	458	MRNA	MRNA	2020-04-02	2020-04-01	Low	gives_back	0	1	one_session_window	31.69	301	1	427
+widened	463	JD	JD	2020-04-06	2020-04-03	Low	no_level	0	1	one_session_window		301	1	428
+widened	466	LVGO	LVGO	2020-04-07	2020-04-06	Low	gives_back	0	1	one_session_window	31.82	177	1	429
+widened	483	SDGR	SDGR	2020-04-20	2020-04-17	Not	ipo	0	1	one_session_window	43.8	50	1	430
+widened	488	SHOP	SHOP	2020-04-21	2020-04-20	Low	no_level	0	1	one_session_window		301	1	431
+widened	489	NCLH	NCLH	2020-04-21	2020-04-20	Low	downtrend	0	1	one_session_window		301	1	432
+widened	490	EXE	CHK	2020-04-21	2020-04-20	Low	downtrend	0	1	one_session_window		301	1	433
+widened	491	GPOR	GPOR	2020-04-21	2020-04-20	Low	downtrend	0	1	one_session_window	1.11	301	1	434
+widened	495	FCEL	FCEL	2020-04-22	2020-04-21	Low	downtrend	0	1	one_session_window	51.9	301	1	435
+widened	497	VAPO	VAPO	2020-04-23	2020-04-22	High	range_break	0	1	one_session_window	151.9	301	1	436
+widened	505	BA	BA	2020-04-23	2020-04-22	Low	downtrend	0	0	window_not_fixed		301	2	437
+widened	505	BA	BA	2020-04-24	2020-04-23	Low	downtrend	0	0	window_not_fixed		302	2	438
+widened	509	SPR	SPR	2020-04-23	2020-04-22	Low	downtrend	0	0	window_not_fixed		301	2	439
+widened	509	SPR	SPR	2020-04-24	2020-04-23	Low	downtrend	0	0	window_not_fixed		302	2	440
+widened	510	TLRY	TLRY	2020-04-23	2020-04-22	Low	downtrend	0	0	rated_session		301	2	441
+widened	510	TLRY	TLRY	2020-04-24	2020-04-23	Low	downtrend	0	1	rated_session	74.7	302	2	442
+widened	513	PLUG	PLUG	2020-04-27	2020-04-24	Low	no_level	0	1	one_session_window		301	1	443
+widened	515	CCL	CCL	2020-04-27	2020-04-24	Low	downtrend	0	1	one_session_window	13.19	301	1	444
+widened	516	COUP	COUP	2020-04-27	2020-04-24	Low	gives_back	0	1	one_session_window	169.2	301	1	445
+widened	517	RCL	RCL	2020-04-27	2020-04-24	Low	downtrend	0	1	one_session_window	39.0	301	1	446
+widened	519	W	W	2020-04-27	2020-04-24	Low	gives_back	0	1	one_session_window	123.8	301	1	447
+widened	520	ETSY	ETSY	2020-04-28	2020-04-27	Low	no_level	0	1	one_session_window		301	1	448
+widened	521	MARK	MARK	2020-04-28	2020-04-27	Low	downtrend	0	1	one_session_window	4.4	301	1	449
+widened	522	NCLH	NCLH	2020-04-28	2020-04-27	Low	downtrend	0	1	one_session_window	12.98	301	1	450
+widened	523	SAVE	SAVE	2020-04-28	2020-04-27	Low	downtrend	0	1	one_session_window	13.04	301	1	451
+widened	524	UAL	UAL	2020-04-28	2020-04-27	Low	downtrend	0	1	one_session_window	28.36	301	1	452
+widened	525	UAVS	UAVS	2020-04-28	2020-04-27	Low	no_level	0	1	one_session_window		301	1	453
+widened	528	W	W	2020-04-29	2020-04-28	Low	no_level	0	1	one_session_window		301	1	454
+widened	529	BCRX	BCRX	2020-04-30	2020-04-29	Low	gives_back	0	1	one_session_window	4.0	301	1	455
+widened	532	DFS	DFS	2020-04-30	2020-04-29	Low	broke_before	0	1	one_session_window		301	1	456
+widened	534	AAL	AAL	2020-04-30	2020-04-29	Low	downtrend	0	0	window_not_fixed		301	2	457
+widened	534	AAL	AAL	2020-05-01	2020-04-30	Low	downtrend	0	0	window_not_fixed		302	2	458
+widened	539	OKTA	OKTA	2020-05-04	2020-05-01	Low	no_level	0	1	one_session_window		301	1	459
+widened	542	SE	SE	2020-05-05	2020-05-04	High	range_break	0	1	one_session_window	56.8	301	1	460
+widened	545	BA	BA	2020-05-05	2020-05-04	Low	downtrend	0	1	one_session_window		301	1	461
+widened	547	DAL	DAL	2020-05-05	2020-05-04	Low	downtrend	0	1	one_session_window		301	1	462
+widened	548	NCLH	NCLH	2020-05-05	2020-05-04	Low	downtrend	0	1	one_session_window		301	1	463
+widened	552	RCL	RCL	2020-05-06	2020-05-05	Low	downtrend	0	1	one_session_window		301	1	464
+widened	555	MELI	MELI	2020-05-07	2020-05-06	Low	broke_before	0	1	one_session_window		301	1	465
+widened	558	CODX	CODX	2020-05-07	2020-05-06	Low	no_level	0	1	one_session_window		301	1	466
+widened	561	TSLA	TSLA	2020-05-08	2020-05-07	Low	weak_pivot	0	1	one_session_window	53.26	301	1	467
+widened	565	BA	BA	2020-05-11	2020-05-08	Low	downtrend	0	0	window_not_fixed		301	2	468
+widened	565	BA	BA	2020-05-12	2020-05-11	Low	downtrend	0	0	window_not_fixed		302	2	469
+widened	566	NCLH	NCLH	2020-05-11	2020-05-08	Low	downtrend	0	0	window_not_fixed		301	2	470
+widened	566	NCLH	NCLH	2020-05-12	2020-05-11	Low	downtrend	0	0	window_not_fixed		302	2	471
+widened	567	RCL	RCL	2020-05-11	2020-05-08	Low	downtrend	0	0	window_not_fixed		301	2	472
+widened	567	RCL	RCL	2020-05-12	2020-05-11	Low	downtrend	0	0	window_not_fixed		302	2	473
+widened	569	FAS	FAS	2020-05-11	2020-05-08	Not	fund	0	0	window_not_fixed		301	2	474
+widened	569	FAS	FAS	2020-05-12	2020-05-11	Not	fund	0	0	window_not_fixed		302	2	475
+widened	570	MRNA	MRNA	2020-05-11	2020-05-08	High	range_break	0	1	rated_session	59.88	301	2	476
+widened	570	MRNA	MRNA	2020-05-12	2020-05-11	High	range_break	0	0	rated_session		302	2	477
+widened	571	AAL	AAL	2020-05-11	2020-05-08	Low	downtrend	0	0	window_not_fixed		301	3	478
+widened	571	AAL	AAL	2020-05-12	2020-05-11	Low	downtrend	0	0	window_not_fixed		302	3	479
+widened	571	AAL	AAL	2020-05-13	2020-05-12	Low	downtrend	0	0	window_not_fixed		303	3	480
+widened	581	ETSY	ETSY	2020-05-15	2020-05-14	Low	weak_pivot	0	1	rated_session	83.18	301	3	481
+widened	581	ETSY	ETSY	2020-05-18	2020-05-15	Low	weak_pivot	0	0	rated_session		302	3	482
+widened	581	ETSY	ETSY	2020-05-19	2020-05-18	Low	weak_pivot	0	0	rated_session		303	3	483
+widened	584	NCLH	NCLH	2020-05-15	2020-05-14	Low	downtrend	0	0	window_not_fixed		301	3	484
+widened	584	NCLH	NCLH	2020-05-18	2020-05-15	Low	downtrend	0	0	window_not_fixed		302	3	485
+widened	584	NCLH	NCLH	2020-05-19	2020-05-18	Low	downtrend	0	0	window_not_fixed		303	3	486
+widened	590	BCRX	BCRX	2020-05-15	2020-05-14	Low	no_level	0	0	window_not_fixed		301	4	487
+widened	590	BCRX	BCRX	2020-05-18	2020-05-15	Low	no_level	0	0	window_not_fixed		302	4	488
+widened	590	BCRX	BCRX	2020-05-19	2020-05-18	Low	no_level	0	0	window_not_fixed		303	4	489
+widened	590	BCRX	BCRX	2020-05-20	2020-05-19	Low	no_level	0	0	window_not_fixed		304	4	490
+widened	592	ENPH	ENPH	2020-05-15	2020-05-14	Low	no_level	0	0	window_not_fixed		301	4	491
+widened	592	ENPH	ENPH	2020-05-18	2020-05-15	Low	no_level	0	0	window_not_fixed		302	4	492
+widened	592	ENPH	ENPH	2020-05-19	2020-05-18	Low	no_level	0	0	window_not_fixed		303	4	493
+widened	592	ENPH	ENPH	2020-05-20	2020-05-19	Low	no_level	0	0	window_not_fixed		304	4	494
+widened	601	PENN	PENN	2020-05-26	2020-05-22	Low	gives_back	0	1	one_session_window	30.47	301	1	495
+widened	608	SWN	SWN	2020-05-26	2020-05-22	Medium	short_pivot	0	1	rated_session	3.13	301	2	496
+widened	608	SWN	SWN	2020-05-27	2020-05-26	Medium	short_pivot	0	0	rated_session		302	2	497
+widened	619	GAN	GAN	2020-05-29	2020-05-28	Not	ipo	0	0	window_not_fixed		17	2	498
+widened	619	GAN	GAN	2020-06-01	2020-05-29	Not	ipo	0	0	window_not_fixed		18	2	499
+widened	620	MRNA	MRNA	2020-05-29	2020-05-28	Low	no_level	0	0	window_not_fixed		301	2	500
+widened	620	MRNA	MRNA	2020-06-01	2020-05-29	Low	no_level	0	0	window_not_fixed		302	2	501
+widened	622	CAR	CAR	2020-06-02	2020-06-01	Low	gives_back	0	1	one_session_window	25.37	301	1	502
+widened	625	DKNG	DKNG	2020-06-02	2020-06-01	Low	no_level	0	1	one_session_window		160	1	503
+widened	628	ZM	ZM	2020-06-02	2020-06-01	Low	broke_before	0	0	window_not_fixed		282	2	504
+widened	628	ZM	ZM	2020-06-03	2020-06-02	Low	broke_before	0	0	window_not_fixed		283	2	505
+widened	629	DDOG	DDOG	2020-06-02	2020-06-01	Low	no_level	0	0	window_not_fixed		176	2	506
+widened	629	DDOG	DDOG	2020-06-03	2020-06-02	Low	no_level	0	0	window_not_fixed		177	2	507
+widened	634	SHOP	SHOP	2020-06-04	2020-06-03	Low	no_level	0	1	one_session_window		301	1	508
+widened	647	CAR	CAR	2020-06-08	2020-06-05	Low	gives_back	0	1	one_session_window	34.77	301	1	509
+widened	649	BA	BA	2020-06-08	2020-06-05	Low	gives_back	0	1	one_session_window	227.0	301	1	510
+widened	651	PTON	PTON	2020-06-09	2020-06-08	Low	no_level	0	1	one_session_window		176	1	511
+widened	652	NCLH	NCLH	2020-06-09	2020-06-08	Low	no_level	0	1	one_session_window		301	1	512
+widened	654	WKHS	WKHS	2020-06-09	2020-06-08	Low	gives_back	0	1	one_session_window	11100.0	301	1	513
+widened	666	ZM	ZM	2020-06-09	2020-06-08	Low	no_level	0	0	window_not_fixed		287	2	514
+widened	666	ZM	ZM	2020-06-10	2020-06-09	Low	no_level	0	0	window_not_fixed		288	2	515
+widened	668	NVAX	NVAX	2020-06-15	2020-06-12	Medium	inside_range	0	1	one_session_window	50.49	301	1	516
+widened	672	LVGO	LVGO	2020-06-15	2020-06-12	Low	no_level	0	1	one_session_window		224	1	517
+widened	677	LAKE	LAKE	2020-06-17	2020-06-16	Low	no_level	0	1	one_session_window		301	1	518
+widened	680	NKLA	NKLA	2020-06-17	2020-06-16	Low	no_level	0	0	window_not_fixed		301	2	519
+widened	680	NKLA	NKLA	2020-06-18	2020-06-17	Low	no_level	0	0	window_not_fixed		302	2	520
+widened	691	BCRX	BCRX	2020-06-26	2020-06-25	High	range_break	0	1	one_session_window	4.68	301	1	521
+widened	693	FSLY	FSLY	2020-06-29	2020-06-26	Low	no_level	0	1	one_session_window		281	1	522
+widened	696	INO	INO	2020-06-29	2020-06-26	Low	no_level	0	1	one_session_window		301	1	523
+widened	698	GAN	GAN	2020-06-29	2020-06-26	Not	ipo	0	1	one_session_window	25.9	38	1	524
+widened	699	NCLH	NCLH	2020-06-29	2020-06-26	Low	no_level	0	1	one_session_window		301	1	525
+widened	705	DXCM	DXCM	2020-06-29	2020-06-26	Medium	inside_range	0	0	rated_session		301	2	526
+widened	705	DXCM	DXCM	2020-06-30	2020-06-29	Medium	inside_range	0	1	rated_session	101.1	302	2	527
+widened	709	NVAX	NVAX	2020-06-29	2020-06-26	Low	no_level	0	0	window_not_fixed		301	3	528
+widened	709	NVAX	NVAX	2020-06-30	2020-06-29	Low	no_level	0	0	window_not_fixed		302	3	529
+widened	709	NVAX	NVAX	2020-07-01	2020-06-30	Low	no_level	0	0	window_not_fixed		303	3	530
+widened	710	RH	RH	2020-06-29	2020-06-26	Medium	inside_range	0	0	rated_session		301	3	531
+widened	710	RH	RH	2020-06-30	2020-06-29	Medium	inside_range	0	0	rated_session		302	3	532
+widened	710	RH	RH	2020-07-01	2020-06-30	Medium	inside_range	0	1	rated_session	258.5	303	3	533
+widened	712	NKLA	NKLA	2020-06-29	2020-06-26	Low	no_level	0	0	window_not_fixed		301	4	534
+widened	712	NKLA	NKLA	2020-06-30	2020-06-29	Low	no_level	0	0	window_not_fixed		302	4	535
+widened	712	NKLA	NKLA	2020-07-01	2020-06-30	Low	no_level	0	0	window_not_fixed		303	4	536
+widened	712	NKLA	NKLA	2020-07-02	2020-07-01	Low	no_level	0	0	window_not_fixed		304	4	537
+widened	733	FSLY	FSLY	2020-07-17	2020-07-16	Low	no_level	0	1	one_session_window		294	1	538
+widened	734	TSLA	TSLA	2020-07-17	2020-07-16	Low	no_level	0	1	one_session_window		301	1	539
+widened	736	LMND	LMND	2020-07-17	2020-07-16	Not	ipo	0	1	one_session_window		10	1	540
+widened	737	CRSP	CRSP	2020-07-20	2020-07-17	Low	weak_pivot	0	1	one_session_window	96.18	301	1	541
+widened	738	NVAX	NVAX	2020-07-20	2020-07-17	Low	no_level	0	1	one_session_window		301	1	542
+widened	740	JMIA	JMIA	2020-07-20	2020-07-17	Medium	short_pivot	0	1	one_session_window	8.65	301	1	543
+widened	742	DDOG	DDOG	2020-07-20	2020-07-17	Low	no_level	0	1	one_session_window		209	1	544
+widened	745	LAC	LAC	2020-07-20	2020-07-17	Medium	short_pivot	0	1	one_session_window	5.46	301	1	545
+widened	747	BILI	BILI	2020-07-21	2020-07-20	Low	weak_pivot	0	1	one_session_window	44.67	301	1	546
+widened	752	AHPIQ	AHPI	2020-07-22	2020-07-21	Low	gives_back	0	1	one_session_window	12.85	301	1	547
+widened	762	AAPL	AAPL	2020-07-23	2020-07-22	Low	no_level	0	1	one_session_window		301	1	548
+widened	763	TSLA	TSLA	2020-07-23	2020-07-22	Low	weak_pivot	0	1	one_session_window	111.7	301	1	549
+widened	765	VXRT	VXRT	2020-07-23	2020-07-22	Low	no_level	0	1	one_session_window		301	1	550
+widened	774	BA	BA	2020-07-27	2020-07-24	Low	no_level	0	1	one_session_window		301	1	551
+widened	775	CCL	CCL	2020-07-27	2020-07-24	Low	no_level	0	1	one_session_window		301	1	552
+widened	779	JD	JD	2020-07-27	2020-07-24	Medium	inside_range	0	1	one_session_window	62.41	301	1	553
+widened	780	PTON	PTON	2020-07-27	2020-07-24	Low	no_level	0	1	one_session_window		209	1	554
+widened	781	XYZ	SQ	2020-07-27	2020-07-24	Low	no_level	0	1	one_session_window		301	1	555
+widened	786	BA	BA	2020-07-29	2020-07-28	Low	no_level	0	1	one_session_window		301	1	556
+widened	788	DDOG	DDOG	2020-07-29	2020-07-28	Medium	inside_range	0	1	one_session_window	89.72	216	1	557
+widened	791	Z	Z	2020-07-29	2020-07-28	Low	no_level	0	1	one_session_window		301	1	558
+widened	793	UAL	UAL	2020-07-30	2020-07-29	Low	no_level	0	1	one_session_window		301	1	559
+widened	802	TSLA	TSLA	2020-07-31	2020-07-30	Low	no_level	0	1	one_session_window		301	1	560
+widened	803	BILI	BILI	2020-07-31	2020-07-30	Medium	inside_range	0	1	one_session_window	43.49	301	1	561
+widened	815	LVGO	LVGO	2020-08-05	2020-08-04	Low	no_level	0	1	one_session_window		260	1	562
+widened	818	FVRR	FVRR	2020-08-06	2020-08-05	Low	no_level	0	1	one_session_window		290	1	563
+widened	819	NVAX	NVAX	2020-08-06	2020-08-05	Low	broke_before	0	1	one_session_window		301	1	564
+widened	820	NXH	OSTK	2020-08-06	2020-08-05	Low	no_level	0	1	one_session_window		301	1	565
+widened	823	TSLA	TSLA	2020-08-07	2020-08-06	Low	no_level	0	1	one_session_window		301	1	566
+widened	824	SPG	SPG	2020-08-10	2020-08-07	Medium	short_pivot	0	1	one_session_window	64.58	301	1	567
+widened	826	INO	INO	2020-08-12	2020-08-11	Low	no_level	0	1	one_session_window		301	1	568
+widened	828	TDOC	TDOC	2020-08-13	2020-08-12	Low	no_level	0	1	one_session_window		301	1	569
+widened	830	FSLY	FSLY	2020-08-13	2020-08-12	Low	no_level	0	1	one_session_window		301	1	570
+widened	832	HEXO	HEXO	2020-08-13	2020-08-12	High	range_break	0	1	one_session_window	42.0	301	1	571
+widened	836	RIOT	RIOT	2020-08-14	2020-08-13	Low	no_level	0	1	one_session_window		301	1	572
+widened	837	BILI	BILI	2020-08-17	2020-08-14	Medium	inside_range	0	1	one_session_window	43.2	301	1	573
+widened	839	NVAX	NVAX	2020-08-18	2020-08-17	Low	no_level	0	1	one_session_window		301	1	574
+widened	841	DKNG	DKNG	2020-08-18	2020-08-17	High	range_break	0	1	one_session_window	36.17	214	1	575
+widened	842	RKT	RKT	2020-08-18	2020-08-17	Not	ipo	0	1	one_session_window		8	1	576
+widened	843	TWLO	TWLO	2020-08-18	2020-08-17	Low	weak_pivot	0	1	one_session_window	252.7	301	1	577
+widened	844	PDD	PDD	2020-08-19	2020-08-18	Medium	short_pivot	0	1	one_session_window	92.34	301	1	578
+widened	846	AMD	AMD	2020-08-20	2020-08-19	Low	no_level	0	1	one_session_window		301	1	579
+widened	847	FSLY	FSLY	2020-08-20	2020-08-19	Medium	short_pivot	0	1	one_session_window	81.82	301	1	580
+widened	849	NVAX	NVAX	2020-08-21	2020-08-20	Low	no_level	0	1	one_session_window		301	1	581
+widened	853	NCLH	NCLH	2020-08-24	2020-08-21	Low	downtrend	0	1	one_session_window	16.37	301	1	582
+widened	854	NXH	OSTK	2020-08-24	2020-08-21	Low	no_level	0	1	one_session_window		301	1	583
+widened	857	AGQ	AGQ	2020-08-26	2020-08-25	Not	fund	0	1	one_session_window	58.27	301	1	584
+widened	860	AGQ	AGQ	2020-08-27	2020-08-26	Not	fund	0	0	rated_session		301	3	585
+widened	860	AGQ	AGQ	2020-08-28	2020-08-27	Not	fund	0	0	rated_session		302	3	586
+widened	860	AGQ	AGQ	2020-08-31	2020-08-28	Not	fund	0	1	rated_session	62.84	303	3	587
+widened	863	LVGO	LVGO	2020-09-01	2020-08-31	Medium	inside_range	0	1	one_session_window	142.1	279	1	588
+widened	864	PDD	PDD	2020-09-01	2020-08-31	Low	weak_pivot	0	1	one_session_window	92.02	301	1	589
+widened	873	DOCU	DOCU	2020-09-08	2020-09-04	Low	no_level	0	1	one_session_window		301	1	590
+widened	875	DKNG	DKNG	2020-09-09	2020-09-08	High	range_break	0	0	rated_session		229	3	591
+widened	875	DKNG	DKNG	2020-09-10	2020-09-09	High	range_break	0	1	rated_session	41.29	230	3	592
+widened	875	DKNG	DKNG	2020-09-11	2020-09-10	High	range_break	0	0	rated_session		231	3	593
+widened	881	ROKU	ROKU	2020-09-15	2020-09-14	Low	no_level	0	1	one_session_window		301	1	594
+widened	882	SAVE	SAVE	2020-09-15	2020-09-14	Low	no_level	0	1	one_session_window		301	1	595
+widened	883	BILI	BILI	2020-09-15	2020-09-14	Low	weak_pivot	0	1	one_session_window	45.74	301	1	596
+widened	884	PLUG	PLUG	2020-09-15	2020-09-14	Low	weak_pivot	0	1	one_session_window	12.55	301	1	597
+widened	891	FSLY	FSLY	2020-09-21	2020-09-18	High	range_break	0	1	one_session_window	87.22	301	1	598
+widened	894	ZS	ZS	2020-09-21	2020-09-18	Low	no_level	0	1	one_session_window		301	1	599
+widened	912	TSLA	TSLA	2020-09-23	2020-09-22	Low	no_level	0	1	one_session_window		301	1	600
+widened	917	TSLA	TSLA	2020-09-28	2020-09-25	Low	no_level	0	1	one_session_window		301	1	601
+widened	918	BYND	BYND	2020-09-29	2020-09-28	High	range_break	0	1	one_session_window	4875.0	301	1	602
+widened	922	APT	APT	2020-10-02	2020-10-01	Low	downtrend	0	1	one_session_window	16.53	301	1	603
+widened	923	BILI	BILI	2020-10-05	2020-10-02	Low	downtrend	0	1	one_session_window	44.55	301	1	604
+widened	926	TSLA	TSLA	2020-10-07	2020-10-06	Low	no_level	0	1	one_session_window		301	1	605
+widened	927	ENPH	ENPH	2020-10-08	2020-10-07	Low	no_level	0	1	one_session_window		301	1	606
+widened	938	U	U	2020-10-13	2020-10-12	Not	ipo	0	1	one_session_window		17	1	607
+widened	941	XPEV	XPEV	2020-10-14	2020-10-13	Not	ipo	0	1	one_session_window	20.63	33	1	608
+widened	942	UI	UI	2020-10-14	2020-10-13	Low	no_level	0	1	one_session_window		301	1	609
+widened	944	PENN	PENN	2020-10-16	2020-10-15	Low	weak_pivot	0	1	one_session_window	71.49	301	1	610
+widened	948	LI	LI	2020-10-16	2020-10-15	Not	ipo	0	1	one_session_window		55	1	611
+widened	949	OPTT	OPTT	2020-10-16	2020-10-15	Low	no_level	0	1	one_session_window		301	1	612
+widened	952	MARA	MARA	2020-10-19	2020-10-16	Low	no_level	0	0	window_not_fixed		301	2	613
+widened	952	MARA	MARA	2020-10-20	2020-10-19	Low	no_level	0	0	window_not_fixed		302	2	614
+widened	953	RIOT	RIOT	2020-10-19	2020-10-16	Low	no_level	0	0	window_not_fixed		301	2	615
+widened	953	RIOT	RIOT	2020-10-20	2020-10-19	Low	no_level	0	0	window_not_fixed		302	2	616
+widened	954	SLV	SLV	2020-10-19	2020-10-16	Low	no_level	0	0	window_not_fixed		301	2	617
+widened	954	SLV	SLV	2020-10-20	2020-10-19	Low	no_level	0	0	window_not_fixed		302	2	618
+widened	966	PTON	PTON	2020-10-21	2020-10-20	Low	no_level	0	0	window_not_fixed		270	2	619
+widened	966	PTON	PTON	2020-10-22	2020-10-21	Low	no_level	0	0	window_not_fixed		271	2	620
+widened	969	TSLA	TSLA	2020-10-22	2020-10-21	Low	no_level	0	1	one_session_window		301	1	621
+widened	974	TSLA	TSLA	2020-10-28	2020-10-27	Low	no_level	0	1	one_session_window		301	1	622
+widened	977	BILI	BILI	2020-10-29	2020-10-28	Low	weak_pivot	0	1	one_session_window	46.8	301	1	623
+widened	979	ZM	ZM	2020-10-29	2020-10-28	Low	no_level	0	1	one_session_window		301	1	624
+widened	980	SE	SE	2020-10-29	2020-10-28	Low	no_level	0	1	one_session_window		301	1	625
+widened	982	TSLA	TSLA	2020-10-30	2020-10-29	Low	no_level	0	1	one_session_window		301	1	626
+widened	984	JD	JD	2020-11-02	2020-10-30	Low	no_level	0	1	one_session_window		301	1	627
+widened	985	JMIA	JMIA	2020-11-02	2020-10-30	Low	no_level	0	0	window_not_fixed		301	2	628
+widened	985	JMIA	JMIA	2020-11-03	2020-11-02	Low	no_level	0	0	window_not_fixed		302	2	629
+widened	987	XPEV	XPEV	2020-11-04	2020-11-03	Not	ipo	0	1	one_session_window	25.0	48	1	630
+widened	991	SLV	SLV	2020-11-05	2020-11-04	Low	downtrend	0	1	one_session_window	23.53	301	1	631
+widened	993	FUTU	FUTU	2020-11-05	2020-11-04	Low	gives_back	0	1	one_session_window	33.88	301	1	632
+widened	995	NIO	NIO	2020-11-06	2020-11-05	Low	no_level	0	1	one_session_window		301	1	633
+widened	1001	SE	SE	2020-11-12	2020-11-11	Low	no_level	0	1	one_session_window		301	1	634
+widened	1003	TSLA	TSLA	2020-11-12	2020-11-11	Low	no_level	0	1	one_session_window		301	1	635
+widened	1004	GRWG	GRWG	2020-11-12	2020-11-11	Low	weak_pivot	0	1	one_session_window	24.94	240	1	636
+widened	1005	NIO	NIO	2020-11-13	2020-11-12	Low	no_level	0	1	one_session_window		301	1	637
+widened	1007	RIOT	RIOT	2020-11-13	2020-11-12	Medium	short_pivot	0	1	one_session_window	3.82	301	1	638
+widened	1010	UBER	UBER	2020-11-16	2020-11-13	Low	weak_pivot	0	1	one_session_window	49.62	301	1	639
+widened	1012	MARA	MARA	2020-11-16	2020-11-13	Low	weak_pivot	0	1	one_session_window	2.45	301	1	640
+widened	1013	XYZ	SQ	2020-11-17	2020-11-16	Medium	short_pivot	0	1	one_session_window	185.2	301	1	641
+widened	1015	COUP	COUP	2020-11-17	2020-11-16	Low	gives_back	0	1	one_session_window	303.7	301	1	642
+widened	1016	NET	NET	2020-11-17	2020-11-16	Low	weak_pivot	0	1	one_session_window	66.14	298	1	643
+widened	1017	RUN	RUN	2020-11-17	2020-11-16	Low	weak_pivot	0	1	one_session_window	58.3	301	1	644
+widened	1018	ARRY	ARRY	2020-11-18	2020-11-17	Not	ipo	0	1	one_session_window	41.83	24	1	645
+widened	1020	MELI	MELI	2020-11-18	2020-11-17	Low	no_level	0	1	one_session_window		301	1	646
+widened	1021	DOCU	DOCU	2020-11-18	2020-11-17	Low	downtrend	0	1	rated_session	216.0	301	2	647
+widened	1021	DOCU	DOCU	2020-11-19	2020-11-18	Low	downtrend	0	0	rated_session		302	2	648
+widened	1022	NVDA	NVDA	2020-11-18	2020-11-17	Low	no_level	0	0	window_not_fixed		301	2	649
+widened	1022	NVDA	NVDA	2020-11-19	2020-11-18	Low	no_level	0	0	window_not_fixed		302	2	650
+widened	1023	BILI	BILI	2020-11-18	2020-11-17	Low	no_level	0	0	window_not_fixed		301	2	651
+widened	1023	BILI	BILI	2020-11-19	2020-11-18	Low	no_level	0	0	window_not_fixed		302	2	652
+widened	1024	AMD	AMD	2020-11-18	2020-11-17	Medium	inside_range	0	0	rated_session		301	2	653
+widened	1024	AMD	AMD	2020-11-19	2020-11-18	Medium	inside_range	0	1	rated_session	84.81	302	2	654
+widened	1025	SNAP	SNAP	2020-11-18	2020-11-17	Low	no_level	0	0	window_not_fixed		301	2	655
+widened	1025	SNAP	SNAP	2020-11-19	2020-11-18	Low	no_level	0	0	window_not_fixed		302	2	656
+widened	1026	SE	SE	2020-11-18	2020-11-17	Low	no_level	0	0	window_not_fixed		301	3	657
+widened	1026	SE	SE	2020-11-19	2020-11-18	Low	no_level	0	0	window_not_fixed		302	3	658
+widened	1026	SE	SE	2020-11-20	2020-11-19	Low	no_level	0	0	window_not_fixed		303	3	659
+widened	1027	UBER	UBER	2020-11-18	2020-11-17	Low	no_level	0	0	window_not_fixed		301	3	660
+widened	1027	UBER	UBER	2020-11-19	2020-11-18	Low	no_level	0	0	window_not_fixed		302	3	661
+widened	1027	UBER	UBER	2020-11-20	2020-11-19	Low	no_level	0	0	window_not_fixed		303	3	662
+widened	1029	SPG	SPG	2020-11-18	2020-11-17	Low	no_level	0	0	window_not_fixed		301	4	663
+widened	1029	SPG	SPG	2020-11-19	2020-11-18	Low	no_level	0	0	window_not_fixed		302	4	664
+widened	1029	SPG	SPG	2020-11-20	2020-11-19	Low	no_level	0	0	window_not_fixed		303	4	665
+widened	1029	SPG	SPG	2020-11-23	2020-11-20	Low	no_level	0	0	window_not_fixed		304	4	666
+widened	1032	DQ	DQ	2020-11-18	2020-11-17	Low	no_level	0	0	window_not_fixed		301	5	667
+widened	1032	DQ	DQ	2020-11-19	2020-11-18	Low	no_level	0	0	window_not_fixed		302	5	668
+widened	1032	DQ	DQ	2020-11-20	2020-11-19	Low	no_level	0	0	window_not_fixed		303	5	669
+widened	1032	DQ	DQ	2020-11-23	2020-11-20	Low	no_level	0	0	window_not_fixed		304	5	670
+widened	1032	DQ	DQ	2020-11-24	2020-11-23	Low	no_level	0	0	window_not_fixed		305	5	671
+widened	1034	XPEV	XPEV	2020-11-18	2020-11-17	Not	ipo	0	0	rated_session		58	5	672
+widened	1034	XPEV	XPEV	2020-11-19	2020-11-18	Not	ipo	0	0	rated_session		59	5	673
+widened	1034	XPEV	XPEV	2020-11-20	2020-11-19	Not	ipo	0	1	rated_session	51.27	60	5	674
+widened	1034	XPEV	XPEV	2020-11-23	2020-11-20	Not	ipo	0	0	rated_session		61	5	675
+widened	1034	XPEV	XPEV	2020-11-24	2020-11-23	Not	ipo	0	0	rated_session		62	5	676
+widened	1047	TSLA	TSLA	2020-12-03	2020-12-02	Low	no_level	0	1	one_session_window		301	1	677
+widened	1049	MRNA	MRNA	2020-12-04	2020-12-03	Low	no_level	0	1	one_session_window		301	1	678
+widened	1050	QS	QS	2020-12-04	2020-12-03	Low	no_level	0	1	one_session_window		77	1	679
+widened	1051	BE	BE	2020-12-04	2020-12-03	Low	no_level	0	1	one_session_window		301	1	680
+widened	1052	RIG	RIG	2020-12-04	2020-12-03	Low	no_level	0	1	one_session_window		301	1	681
+widened	1053	FSLY	FSLY	2020-12-04	2020-12-03	Low	downtrend	0	1	one_session_window	95.35	301	1	682
+widened	1055	Z	Z	2020-12-04	2020-12-03	Medium	short_pivot	0	0	rated_session		301	2	683
+widened	1055	Z	Z	2020-12-07	2020-12-04	Medium	short_pivot	0	1	rated_session	111.0	302	2	684
+widened	1056	DQ	DQ	2020-12-04	2020-12-03	Low	no_level	0	0	window_not_fixed		301	3	685
+widened	1056	DQ	DQ	2020-12-07	2020-12-04	Low	no_level	0	0	window_not_fixed		302	3	686
+widened	1056	DQ	DQ	2020-12-08	2020-12-07	Low	no_level	0	0	window_not_fixed		303	3	687
+widened	1060	DQ	DQ	2020-12-10	2020-12-09	Low	weak_pivot	0	1	one_session_window	43.89	301	1	688
+widened	1064	LAZR	LAZR	2020-12-10	2020-12-09	Low	no_level	0	1	one_session_window		296	1	689
+widened	1065	QS	QS	2020-12-10	2020-12-09	Low	no_level	0	1	one_session_window		81	1	690
+widened	1066	DKNG	DKNG	2020-12-11	2020-12-10	Low	no_level	0	1	one_session_window		295	1	691
+widened	1068	NIO	NIO	2020-12-11	2020-12-10	Low	no_level	0	1	one_session_window		301	1	692
+widened	1073	BE	BE	2020-12-14	2020-12-11	Low	no_level	0	0	window_not_fixed		301	2	693
+widened	1073	BE	BE	2020-12-15	2020-12-14	Low	no_level	0	0	window_not_fixed		302	2	694
+widened	1074	FCEL	FCEL	2020-12-14	2020-12-11	Low	no_level	0	0	window_not_fixed		301	2	695
+widened	1074	FCEL	FCEL	2020-12-15	2020-12-14	Low	no_level	0	0	window_not_fixed		302	2	696
+widened	1075	FUBO	FUBO	2020-12-14	2020-12-11	Not	ipo	0	0	window_not_fixed		46	3	697
+widened	1075	FUBO	FUBO	2020-12-15	2020-12-14	Not	ipo	0	0	window_not_fixed		47	3	698
+widened	1075	FUBO	FUBO	2020-12-16	2020-12-15	Not	ipo	0	0	window_not_fixed		48	3	699
+widened	1076	BLDP	BLDP	2020-12-14	2020-12-11	Medium	inside_range	0	0	rated_session		301	4	700
+widened	1076	BLDP	BLDP	2020-12-15	2020-12-14	Medium	inside_range	0	0	rated_session		302	4	701
+widened	1076	BLDP	BLDP	2020-12-16	2020-12-15	Medium	inside_range	0	0	rated_session		303	4	702
+widened	1076	BLDP	BLDP	2020-12-17	2020-12-16	Medium	inside_range	0	1	rated_session	20.36	304	4	703
+widened	1103	FUSE	FUSE	2020-12-30	2020-12-29	Low	no_level	0	1	one_session_window		95	1	704
+widened	1106	CAN	CAN	2020-12-30	2020-12-29	Medium	close_break	0	1	one_session_window	4.32	278	1	705
+widened	1116	ROKU	ROKU	2020-12-31	2020-12-30	Low	no_level	0	0	window_not_fixed		301	2	706
+widened	1116	ROKU	ROKU	2021-01-04	2020-12-31	Low	no_level	0	0	window_not_fixed		302	2	707
+widened	1117	LAC	LAC	2020-12-31	2020-12-30	Low	no_level	0	0	window_not_fixed		301	2	708
+widened	1117	LAC	LAC	2021-01-04	2020-12-31	Low	no_level	0	0	window_not_fixed		302	2	709
+widened	1118	QS	QS	2021-01-05	2021-01-04	Low	no_level	0	1	one_session_window		97	1	710
+widened	1120	GUSH	GUSH	2021-01-05	2021-01-04	Not	fund	0	1	one_session_window	10.3	301	1	711
+widened	1131	TDOC	TDOC	2021-01-05	2021-01-04	Low	no_level	0	0	window_not_fixed		301	2	712
+widened	1131	TDOC	TDOC	2021-01-06	2021-01-05	Low	no_level	0	0	window_not_fixed		302	2	713
+widened	1132	BNTX	BNTX	2021-01-05	2021-01-04	Low	no_level	0	0	window_not_fixed		301	2	714
+widened	1132	BNTX	BNTX	2021-01-06	2021-01-05	Low	no_level	0	0	window_not_fixed		302	2	715
+widened	1137	ABNB	ABNB	2021-01-05	2021-01-04	Not	ipo	0	0	window_not_fixed		16	3	716
+widened	1137	ABNB	ABNB	2021-01-06	2021-01-05	Not	ipo	0	0	window_not_fixed		17	3	717
+widened	1137	ABNB	ABNB	2021-01-07	2021-01-06	Not	ipo	0	0	window_not_fixed		18	3	718
+widened	1138	BILI	BILI	2021-01-05	2021-01-04	Low	no_level	0	0	window_not_fixed		301	4	719
+widened	1138	BILI	BILI	2021-01-06	2021-01-05	Low	no_level	0	0	window_not_fixed		302	4	720
+widened	1138	BILI	BILI	2021-01-07	2021-01-06	Low	no_level	0	0	window_not_fixed		303	4	721
+widened	1138	BILI	BILI	2021-01-08	2021-01-07	Low	no_level	0	0	window_not_fixed		304	4	722
+widened	1139	MSTR	MSTR	2021-01-05	2021-01-04	Low	no_level	0	0	window_not_fixed		301	4	723
+widened	1139	MSTR	MSTR	2021-01-06	2021-01-05	Low	no_level	0	0	window_not_fixed		302	4	724
+widened	1139	MSTR	MSTR	2021-01-07	2021-01-06	Low	no_level	0	0	window_not_fixed		303	4	725
+widened	1139	MSTR	MSTR	2021-01-08	2021-01-07	Low	no_level	0	0	window_not_fixed		304	4	726
+widened	1157	WWR	WWR	2021-01-19	2021-01-15	Low	downtrend	0	1	one_session_window	5.66	301	1	727
+widened	1159	XP	XP	2021-01-19	2021-01-15	Low	downtrend	0	1	one_session_window	43.25	277	1	728
+widened	1160	MARA	MARA	2021-01-20	2021-01-19	Low	no_level	0	1	one_session_window		301	1	729
+widened	1162	BILI	BILI	2021-01-20	2021-01-19	Low	no_level	0	1	one_session_window		301	1	730
+widened	1164	GME	GME	2021-01-20	2021-01-19	Low	no_level	0	1	one_session_window		301	1	731
+widened	1165	PINS	PINS	2021-01-20	2021-01-19	Low	no_level	0	1	one_session_window		301	1	732
+widened	1166	RIOT	RIOT	2021-01-20	2021-01-19	Low	no_level	0	1	one_session_window		301	1	733
+widened	1169	TSLA	TSLA	2021-01-20	2021-01-19	Low	no_level	0	0	window_not_fixed		301	2	734
+widened	1169	TSLA	TSLA	2021-01-21	2021-01-20	Low	no_level	0	0	window_not_fixed		302	2	735
+widened	1170	PLTR	PLTR	2021-01-20	2021-01-19	High	range_break	0	0	rated_session		76	3	736
+widened	1170	PLTR	PLTR	2021-01-21	2021-01-20	High	range_break	0	0	rated_session		77	3	737
+widened	1170	PLTR	PLTR	2021-01-22	2021-01-21	High	range_break	0	1	rated_session	28.59	78	3	738
+widened	1172	U	U	2021-01-20	2021-01-19	Medium	close_break	0	0	rated_session		84	3	739
+widened	1172	U	U	2021-01-21	2021-01-20	Medium	close_break	0	0	rated_session		85	3	740
+widened	1172	U	U	2021-01-22	2021-01-21	Medium	close_break	0	1	rated_session	151.1	86	3	741
+widened	1183	BNGO	BNGO	2021-01-26	2021-01-25	Low	no_level	0	1	one_session_window		301	1	742
+widened	1185	ROKU	ROKU	2021-01-26	2021-01-25	Low	no_level	0	1	one_session_window		301	1	743
+widened	1190	UVXY	UVXY	2021-01-27	2021-01-26	Not	fund	0	1	one_session_window	34150.0	301	1	744
+widened	1194	MSTR	MSTR	2021-01-28	2021-01-27	Low	weak_pivot	0	1	one_session_window	59.91	301	1	745
+widened	1195	MARA	MARA	2021-01-28	2021-01-27	Low	weak_pivot	0	1	one_session_window	21.38	301	1	746
+widened	1197	XRT	XRT	2021-01-28	2021-01-27	Not	fund	0	1	one_session_window		301	1	747
+widened	1199	SLV	SLV	2021-01-28	2021-01-27	High	range_break	0	1	one_session_window	24.21	301	1	748
+widened	1201	TSLA	TSLA	2021-01-29	2021-01-28	Low	no_level	0	1	one_session_window		301	1	749
+widened	1206	BIDU	BIDU	2021-02-02	2021-02-01	Low	no_level	0	1	one_session_window		301	1	750
+widened	1207	BILI	BILI	2021-02-02	2021-02-01	Low	no_level	0	1	one_session_window		301	1	751
+widened	1208	DKNG	DKNG	2021-02-02	2021-02-01	Low	gives_back	0	1	one_session_window	60.36	301	1	752
+widened	1216	BLNK	BLNK	2021-02-03	2021-02-02	Low	no_level	0	1	one_session_window		301	1	753
+widened	1225	NIO	NIO	2021-02-08	2021-02-05	Low	weak_pivot	0	1	one_session_window	59.2	301	1	754
+widened	1234	LAZR	LAZR	2021-02-11	2021-02-10	Medium	short_pivot	0	1	one_session_window	535.5	301	1	755
+widened	1246	XYZ	SQ	2021-02-17	2021-02-16	Low	no_level	0	1	one_session_window		301	1	756
+widened	1247	MARA	MARA	2021-02-18	2021-02-17	Low	no_level	0	1	one_session_window		301	1	757
+widened	1248	NNDM	NNDM	2021-02-18	2021-02-17	Low	no_level	0	1	one_session_window		301	1	758
+widened	1250	AGQ	AGQ	2021-02-19	2021-02-18	Not	fund	0	1	one_session_window		301	1	759
+widened	1251	MELI	MELI	2021-02-19	2021-02-18	Low	no_level	0	1	one_session_window		301	1	760
+widened	1253	MRNA	MRNA	2021-02-22	2021-02-19	Low	no_level	0	1	one_session_window		301	1	761
+widened	1256	FUTU	FUTU	2021-02-23	2021-02-22	Low	no_level	0	1	one_session_window		301	1	762
+widened	1257	AGQ	AGQ	2021-02-23	2021-02-22	Not	fund	0	1	one_session_window		301	1	763
+widened	1261	MARA	MARA	2021-02-25	2021-02-24	Low	no_level	0	1	one_session_window		301	1	764
+widened	1262	BIDU	BIDU	2021-02-26	2021-02-25	Low	no_level	0	1	one_session_window		301	1	765
+widened	1268	GMBL	GMBL	2021-03-02	2021-03-01	Low	no_level	0	1	one_session_window		222	1	766
+widened	1273	ROKU	ROKU	2021-03-03	2021-03-02	Low	no_level	0	1	one_session_window		301	1	767
+widened	1276	MARA	MARA	2021-03-04	2021-03-03	Low	no_level	0	1	one_session_window		301	1	768
+widened	1277	GME	GME	2021-03-04	2021-03-03	Low	no_level	0	1	one_session_window		301	1	769
+widened	1278	PLUG	PLUG	2021-03-08	2021-03-05	Low	no_level	0	1	one_session_window		301	1	770
+widened	1286	UBER	UBER	2021-03-10	2021-03-09	Low	gives_back	0	1	one_session_window	58.1	301	1	771
+widened	1289	JETS	JETS	2021-03-11	2021-03-10	Not	fund	0	1	one_session_window	26.64	301	1	772
+widened	1294	SNAP	SNAP	2021-03-11	2021-03-10	Low	no_level	0	1	one_session_window		301	1	773
+widened	1295	CCL	CCL	2021-03-12	2021-03-11	Low	weak_pivot	0	1	one_session_window	28.42	301	1	774
+widened	1304	W	W	2021-03-15	2021-03-12	Low	gives_back	0	1	one_session_window	326.9	301	1	775
+widened	1325	LRCX	LRCX	2021-03-22	2021-03-19	Low	gives_back	0	1	one_session_window	56.02	301	1	776
+widened	1332	TSLA	TSLA	2021-03-23	2021-03-22	Low	no_level	0	1	one_session_window		301	1	777
+widened	1333	NIO	NIO	2021-03-23	2021-03-22	Low	downtrend	0	1	one_session_window		301	1	778
+widened	1342	AMAT	AMAT	2021-03-26	2021-03-25	High	range_break	0	1	one_session_window	125.8	301	1	779
+widened	1343	LRCX	LRCX	2021-03-26	2021-03-25	Low	gives_back	0	1	one_session_window	58.16	301	1	780
+widened	1344	CLF	CLF	2021-03-26	2021-03-25	Low	no_level	0	1	one_session_window		301	1	781
+widened	1345	DISCA	DISCA	2021-03-26	2021-03-25	Low	no_level	0	1	one_session_window		301	1	782
+widened	1346	VIAC	VIAC	2021-03-26	2021-03-25	Low	no_level	0	1	one_session_window		301	1	783
+widened	1351	JETS	JETS	2021-03-30	2021-03-29	Not	fund	0	1	one_session_window	26.94	301	1	784
+widened	1352	NTLA	NTLA	2021-03-30	2021-03-29	Low	downtrend	0	1	one_session_window	71.82	301	1	785
+widened	1355	KWEB	KWEB	2021-03-31	2021-03-30	Not	fund	0	1	one_session_window		301	1	786
+widened	1357	TIGR	TIGR	2021-03-31	2021-03-30	Low	no_level	0	1	one_session_window		301	1	787
+widened	1360	SICP	SI	2021-03-31	2021-03-30	Low	no_level	0	1	one_session_window		301	1	788
+widened	1362	TSM	TSM	2021-03-31	2021-03-30	Low	gives_back	0	1	one_session_window	118.3	301	1	789
+widened	1363	ALB	ALB	2021-03-31	2021-03-30	Low	downtrend	0	0	window_not_fixed		301	2	790
+widened	1363	ALB	ALB	2021-04-01	2021-03-31	Low	downtrend	0	0	window_not_fixed		302	2	791
+widened	1364	GUSH	GUSH	2021-03-31	2021-03-30	Not	fund	0	0	rated_session		301	2	792
+widened	1364	GUSH	GUSH	2021-04-01	2021-03-31	Not	fund	0	1	rated_session	18.65	302	2	793
+widened	1376	TWTR	TWTR	2021-03-31	2021-03-30	Medium	range_break_partial	0	0	rated_session		301	4	794
+widened	1376	TWTR	TWTR	2021-04-01	2021-03-31	Medium	range_break_partial	0	0	rated_session		302	4	795
+widened	1376	TWTR	TWTR	2021-04-05	2021-04-01	Medium	range_break_partial	0	0	rated_session		303	4	796
+widened	1376	TWTR	TWTR	2021-04-06	2021-04-05	Medium	range_break_partial	0	1	rated_session	66.89	304	4	797
+widened	1379	RBLX	RBLX	2021-04-08	2021-04-07	Not	ipo	0	0	window_not_fixed		20	2	798
+widened	1379	RBLX	RBLX	2021-04-09	2021-04-08	Not	ipo	0	0	window_not_fixed		21	2	799
+widened	1380	SHOP	SHOP	2021-04-08	2021-04-07	Low	downtrend	0	1	rated_session	122.0	301	2	800
+widened	1380	SHOP	SHOP	2021-04-09	2021-04-08	Low	downtrend	0	0	rated_session		302	2	801
+widened	1381	RIOT	RIOT	2021-04-12	2021-04-09	Low	no_level	0	1	one_session_window		301	1	802
+widened	1384	NVAX	NVAX	2021-04-13	2021-04-12	High	range_break	0	1	one_session_window	191.0	301	1	803
+widened	1385	FCX	FCX	2021-04-13	2021-04-12	Low	no_level	0	1	one_session_window		301	1	804
+widened	1391	AGQ	AGQ	2021-04-21	2021-04-20	Not	fund	0	1	one_session_window	48.76	301	1	805
+widened	1392	NET	NET	2021-04-22	2021-04-21	Low	downtrend	0	1	one_session_window		301	1	806
+widened	1393	ALB	ALB	2021-04-23	2021-04-22	Low	gives_back	0	1	one_session_window	162.9	301	1	807
+widened	1397	SQM	SQM	2021-04-26	2021-04-23	Low	downtrend	0	1	one_session_window	55.66	301	1	808
+widened	1399	RBLX	RBLX	2021-04-26	2021-04-23	Not	ipo	0	1	one_session_window	75.89	32	1	809
+widened	1401	SHOP	SHOP	2021-04-27	2021-04-26	Low	downtrend	0	0	rated_session		301	2	810
+widened	1401	SHOP	SHOP	2021-04-28	2021-04-27	Low	downtrend	0	1	rated_session	116.9	302	2	811
+widened	1403	AGQ	AGQ	2021-05-03	2021-04-30	Not	fund	0	1	one_session_window	48.0	301	1	812
+widened	1408	SQM	SQM	2021-05-05	2021-05-04	Low	downtrend	0	1	one_session_window		301	1	813
+widened	1411	TSLA	TSLA	2021-05-06	2021-05-05	Low	downtrend	0	1	one_session_window		301	1	814
+widened	1412	SQM	SQM	2021-05-06	2021-05-05	Low	no_level	0	1	one_session_window		301	1	815
+widened	1418	TSLA	TSLA	2021-05-10	2021-05-07	Low	downtrend	0	1	one_session_window		301	1	816
+widened	1419	FAS	FAS	2021-05-10	2021-05-07	Not	fund	0	1	one_session_window		301	1	817
+widened	1421	VXX	VXX	2021-05-11	2021-05-10	Not	fund	0	1	one_session_window		301	1	818
+widened	1423	IWN	IWN	2021-05-14	2021-05-13	Not	fund	0	1	one_session_window	163.7	301	1	819
+widened	1432	PANW	PANW	2021-05-24	2021-05-21	Low	gives_back	0	1	one_session_window	61.48	301	1	820
+widened	1433	GME	GME	2021-05-24	2021-05-21	Low	no_level	0	1	one_session_window		301	1	821
+widened	1434	BRZU	BRZU	2021-05-24	2021-05-21	Not	fund	0	1	one_session_window		301	1	822
+widened	1437	BNTX	BNTX	2021-05-25	2021-05-24	Low	no_level	0	1	one_session_window		301	1	823
+widened	1441	NTLA	NTLA	2021-05-26	2021-05-25	Low	weak_pivot	0	1	one_session_window	71.24	301	1	824
+widened	1443	ALB	ALB	2021-05-27	2021-05-26	High	range_break	0	1	one_session_window	165.0	301	1	825
+widened	1444	BILI	BILI	2021-05-27	2021-05-26	Low	downtrend	0	0	window_not_fixed		301	2	826
+widened	1444	BILI	BILI	2021-05-28	2021-05-27	Low	downtrend	0	0	window_not_fixed		302	2	827
+widened	1453	SNOW	SNOW	2021-06-07	2021-06-04	Low	bounce	0	1	one_session_window	250.7	181	1	828
+widened	1458	AMC	AMC	2021-06-09	2021-06-08	Low	no_level	0	1	one_session_window		301	1	829
+widened	1461	FAS	FAS	2021-06-10	2021-06-09	Not	fund	0	1	one_session_window		301	1	830
+widened	1464	BB	BB	2021-06-14	2021-06-11	Low	no_level	0	1	one_session_window		301	1	831
+widened	1469	LOGC	WISH	2021-06-18	2021-06-17	Low	downtrend	0	1	one_session_window		126	1	832
+widened	1470	BNTX	BNTX	2021-06-18	2021-06-17	Medium	inside_range	0	0	rated_session		301	2	833
+widened	1470	BNTX	BNTX	2021-06-21	2021-06-18	Medium	inside_range	0	1	rated_session	224.3	302	2	834
+widened	1472	MRNA	MRNA	2021-06-18	2021-06-17	Medium	inside_range	0	0	rated_session		301	2	835
+widened	1472	MRNA	MRNA	2021-06-21	2021-06-18	Medium	inside_range	0	1	rated_session	207.8	302	2	836
+widened	1474	SPCE	SPCE	2021-06-22	2021-06-21	Low	weak_pivot	0	1	one_session_window	794.0	301	1	837
+widened	1475	PLUG	PLUG	2021-06-22	2021-06-21	Medium	short_pivot	0	1	one_session_window	30.71	301	1	838
+widened	1476	SNAP	SNAP	2021-06-22	2021-06-21	Medium	short_pivot	0	0	rated_session		301	2	839
+widened	1476	SNAP	SNAP	2021-06-23	2021-06-22	Medium	short_pivot	0	1	rated_session	64.63	302	2	840
+widened	1480	XPEV	XPEV	2021-06-28	2021-06-25	Low	weak_pivot	0	1	one_session_window	45.0	209	1	841
+widened	1481	RIOT	RIOT	2021-06-28	2021-06-25	Low	weak_pivot	0	1	one_session_window	35.92	301	1	842
+widened	1482	NVAX	NVAX	2021-06-29	2021-06-28	Medium	range_break_partial	0	1	one_session_window	202.4	301	1	843
+widened	1484	AMC	AMC	2021-06-30	2021-06-29	Low	no_level	0	1	one_session_window		301	1	844
+widened	1489	NVDA	NVDA	2021-07-07	2021-07-06	Low	no_level	0	0	window_not_fixed		301	2	845
+widened	1489	NVDA	NVDA	2021-07-08	2021-07-07	Low	no_level	0	0	window_not_fixed		302	2	846
+widened	1490	ALB	ALB	2021-07-09	2021-07-08	High	range_break	0	1	one_session_window	172.5	301	1	847
+widened	1491	ASTR	ASTR	2021-07-09	2021-07-08	Not	ipo	0	1	one_session_window		5	1	848
+widened	1510	COIN	COIN	2021-08-17	2021-08-16	Low	no_level	0	0	window_not_fixed		87	5	849
+widened	1510	COIN	COIN	2021-08-18	2021-08-17	Low	no_level	0	0	window_not_fixed		88	5	850
+widened	1510	COIN	COIN	2021-08-19	2021-08-18	Low	no_level	0	0	window_not_fixed		89	5	851
+widened	1510	COIN	COIN	2021-08-20	2021-08-19	Low	no_level	0	0	window_not_fixed		90	5	852
+widened	1510	COIN	COIN	2021-08-23	2021-08-20	Low	no_level	0	0	window_not_fixed		91	5	853
+widened	1529	NET	NET	2021-09-16	2021-09-15	High	range_break	0	1	one_session_window	132.1	301	1	854
+widened	1547	KWEB	KWEB	2021-10-01	2021-09-30	Not	fund	0	0	window_not_fixed		301	2	855
+widened	1547	KWEB	KWEB	2021-10-04	2021-10-01	Not	fund	0	0	window_not_fixed		302	2	856
+widened	1555	LTHM	LTHM	2021-10-12	2021-10-11	High	range_break	0	1	one_session_window	24.58	301	1	857
+widened	1559	AMD	AMD	2021-10-13	2021-10-12	High	range_break	0	1	one_session_window	108.0	301	1	858
+widened	1560	PLUG	PLUG	2021-10-13	2021-10-12	Low	gives_back	0	1	one_session_window	33.61	301	1	859
+widened	1561	ALB	ALB	2021-10-13	2021-10-12	Medium	inside_range	0	1	one_session_window	222.8	301	1	860
+widened	1565	FAS	FAS	2021-10-14	2021-10-13	Not	fund	0	0	window_not_fixed		301	2	861
+widened	1565	FAS	FAS	2021-10-15	2021-10-14	Not	fund	0	0	window_not_fixed		302	2	862
+widened	1568	CWEB	CWEB	2021-10-18	2021-10-15	Not	fund	0	1	one_session_window		301	1	863
+widened	1588	MQ	MQ	2021-10-26	2021-10-25	Low	gives_back	0	1	one_session_window	129.1	97	1	864
+widened	1589	CC	CC	2021-10-26	2021-10-25	Low	downtrend	0	1	one_session_window		301	1	865
+widened	1594	TSLA	TSLA	2021-10-29	2021-10-28	Low	no_level	0	1	one_session_window		301	1	866
+widened	1596	COIN	COIN	2021-10-29	2021-10-28	Low	no_level	0	0	window_not_fixed		139	2	867
+widened	1596	COIN	COIN	2021-11-01	2021-10-29	Low	no_level	0	0	window_not_fixed		140	2	868
+widened	1597	GME	GME	2021-10-29	2021-10-28	Medium	short_pivot	0	0	rated_session		301	2	869
+widened	1597	GME	GME	2021-11-01	2021-10-29	Medium	short_pivot	0	1	rated_session	46.44	302	2	870
+widened	1599	MSTR	MSTR	2021-11-02	2021-11-01	Medium	short_pivot	0	1	one_session_window	75.47	301	1	871
+widened	1603	ABNB	ABNB	2021-11-05	2021-11-04	High	range_break	0	1	one_session_window	179.4	228	1	872
+widened	1609	CC	CC	2021-11-08	2021-11-05	Low	gives_back	0	1	one_session_window	33.23	301	1	873
+widened	1610	BITO	BITO	2021-11-08	2021-11-05	Not	ipo	0	1	one_session_window	42.79	14	1	874
+widened	1611	CCJ	CCJ	2021-11-08	2021-11-05	Medium	close_break	0	1	one_session_window	27.19	301	1	875
+widened	1613	DJT	DWAC	2021-11-09	2021-11-08	Not	ipo	0	0	window_not_fixed		28	2	876
+widened	1613	DJT	DWAC	2021-11-10	2021-11-09	Not	ipo	0	0	window_not_fixed		29	2	877
+widened	1614	PHUN	PHUN	2021-11-09	2021-11-08	Low	no_level	0	0	window_not_fixed		301	2	878
+widened	1614	PHUN	PHUN	2021-11-10	2021-11-09	Low	no_level	0	0	window_not_fixed		302	2	879
+widened	1616	BBBY	BBBY	2021-11-11	2021-11-10	Low	bounce	0	1	one_session_window		301	1	880
+widened	1617	EVGO	EVGO	2021-11-11	2021-11-10	Low	no_level	0	1	one_session_window		245	1	881
+widened	1621	SEDG	SEDG	2021-11-11	2021-11-10	Medium	short_pivot	0	1	one_session_window	354.6	301	1	882
+widened	1623	DJT	DWAC	2021-11-12	2021-11-11	Not	ipo	0	1	one_session_window	64.86	31	1	883
+widened	1625	GGPI	GGPI	2021-11-12	2021-11-11	Low	no_level	0	1	one_session_window		123	1	884
+widened	1627	SLDP	DCRC	2021-11-15	2021-11-12	Low	gives_back	0	1	one_session_window	13.72	121	1	885
+widened	1628	AMC	AMC	2021-11-15	2021-11-12	Low	no_level	0	1	one_session_window		301	1	886
+widened	1633	TSLA	TSLA	2021-11-19	2021-11-18	Medium	inside_range	0	1	one_session_window	373.2	301	1	887
+widened	1636	XPEV	XPEV	2021-11-23	2021-11-22	Medium	short_pivot	0	1	one_session_window	50.1	301	1	888
+widened	1643	GGPI	GGPI	2021-11-29	2021-11-26	Low	no_level	0	1	one_session_window		133	1	889
+widened	1647	FLGT	FLGT	2021-11-29	2021-11-26	Low	no_level	0	1	one_session_window		301	1	890
+widened	1648	RIOT	RIOT	2021-11-29	2021-11-26	Low	weak_pivot	0	1	one_session_window	37.14	301	1	891
+widened	1652	TSLA	TSLA	2021-11-30	2021-11-29	Medium	inside_range	0	1	one_session_window	380.9	301	1	892
+widened	1656	DVN	DVN	2021-12-07	2021-12-06	Medium	short_pivot	0	1	one_session_window	43.94	301	1	893
+widened	1657	ERX	ERX	2021-12-07	2021-12-06	Not	fund	0	1	one_session_window	30.38	301	1	894
+widened	1661	RBLX	RBLX	2021-12-07	2021-12-06	Low	no_level	0	1	one_session_window		189	1	895
+widened	1665	ASAN	ASAN	2021-12-09	2021-12-08	Low	no_level	0	1	one_session_window		301	1	896
+widened	1666	ZS	ZS	2021-12-09	2021-12-08	Low	no_level	0	1	one_session_window		301	1	897
+widened	1669	RIVN	RIVN	2021-12-15	2021-12-14	Not	ipo	0	1	one_session_window		24	1	898
+widened	1677	CRWD	CRWD	2021-12-21	2021-12-20	Low	downtrend	0	0	window_not_fixed		301	4	899
+widened	1677	CRWD	CRWD	2021-12-22	2021-12-21	Low	downtrend	0	0	window_not_fixed		302	4	900
+widened	1677	CRWD	CRWD	2021-12-23	2021-12-22	Low	downtrend	0	0	window_not_fixed		303	4	901
+widened	1677	CRWD	CRWD	2021-12-27	2021-12-23	Low	downtrend	0	0	window_not_fixed		304	4	902
+widened	1678	F	F	2021-12-21	2021-12-20	Medium	inside_range	0	0	rated_session		301	4	903
+widened	1678	F	F	2021-12-22	2021-12-21	Medium	inside_range	0	0	rated_session		302	4	904
+widened	1678	F	F	2021-12-23	2021-12-22	Medium	inside_range	0	0	rated_session		303	4	905
+widened	1678	F	F	2021-12-27	2021-12-23	Medium	inside_range	0	1	rated_session	20.41	304	4	906
+widened	1681	MELI	MELI	2021-12-21	2021-12-20	Low	downtrend	0	0	window_not_fixed		301	4	907
+widened	1681	MELI	MELI	2021-12-22	2021-12-21	Low	downtrend	0	0	window_not_fixed		302	4	908
+widened	1681	MELI	MELI	2021-12-23	2021-12-22	Low	downtrend	0	0	window_not_fixed		303	4	909
+widened	1681	MELI	MELI	2021-12-27	2021-12-23	Low	downtrend	0	0	window_not_fixed		304	4	910
+widened	1682	PANW	PANW	2021-12-21	2021-12-20	Medium	range_break_partial	0	0	rated_session		301	4	911
+widened	1682	PANW	PANW	2021-12-22	2021-12-21	Medium	range_break_partial	0	1	rated_session	90.49	302	4	912
+widened	1682	PANW	PANW	2021-12-23	2021-12-22	Medium	range_break_partial	0	0	rated_session		303	4	913
+widened	1682	PANW	PANW	2021-12-27	2021-12-23	Medium	range_break_partial	0	0	rated_session		304	4	914
+widened	1683	SNOW	SNOW	2021-12-21	2021-12-20	Low	no_level	0	0	window_not_fixed		301	4	915
+widened	1683	SNOW	SNOW	2021-12-22	2021-12-21	Low	no_level	0	0	window_not_fixed		302	4	916
+widened	1683	SNOW	SNOW	2021-12-23	2021-12-22	Low	no_level	0	0	window_not_fixed		303	4	917
+widened	1683	SNOW	SNOW	2021-12-27	2021-12-23	Low	no_level	0	0	window_not_fixed		304	4	918
+widened	1684	ZS	ZS	2021-12-21	2021-12-20	Low	no_level	0	0	window_not_fixed		301	4	919
+widened	1684	ZS	ZS	2021-12-22	2021-12-21	Low	no_level	0	0	window_not_fixed		302	4	920
+widened	1684	ZS	ZS	2021-12-23	2021-12-22	Low	no_level	0	0	window_not_fixed		303	4	921
+widened	1684	ZS	ZS	2021-12-27	2021-12-23	Low	no_level	0	0	window_not_fixed		304	4	922
+widened	1685	LCID	LCID	2021-12-28	2021-12-27	Low	no_level	0	1	one_session_window		301	1	923
+widened	1689	PLTR	PLTR	2021-12-29	2021-12-28	Low	downtrend	0	1	one_session_window		301	1	924
+widened	1690	CRWD	CRWD	2021-12-30	2021-12-29	Low	downtrend	0	1	one_session_window		301	1	925
+widened	1691	LI	LI	2021-12-30	2021-12-29	Low	gives_back	0	1	one_session_window	31.35	301	1	926
+widened	1692	PLTR	PLTR	2021-12-30	2021-12-29	Low	downtrend	0	1	one_session_window		301	1	927
+widened	1693	XPEV	XPEV	2021-12-30	2021-12-29	Low	gives_back	0	1	one_session_window	48.37	301	1	928
+widened	1695	ERX	ERX	2022-01-03	2021-12-31	Not	fund	0	1	one_session_window	30.3	301	1	929
+widened	1698	FAS	FAS	2022-01-04	2022-01-03	Not	fund	0	1	one_session_window	145.7	301	1	930
+widened	1701	NUE	NUE	2022-01-05	2022-01-04	High	range_break	0	1	one_session_window	118.2	301	1	931
+widened	1706	LCID	LCID	2022-01-06	2022-01-05	High	range_break	0	0	rated_session		301	3	932
+widened	1706	LCID	LCID	2022-01-07	2022-01-06	High	range_break	0	1	rated_session	417.6	302	3	933
+widened	1706	LCID	LCID	2022-01-10	2022-01-07	High	range_break	0	0	rated_session		303	3	934
+widened	1708	FUTU	FUTU	2022-01-10	2022-01-07	Low	downtrend	0	0	window_not_fixed		301	2	935
+widened	1708	FUTU	FUTU	2022-01-11	2022-01-10	Low	downtrend	0	0	window_not_fixed		302	2	936
+widened	1709	KWEB	KWEB	2022-01-10	2022-01-07	Not	fund	0	1	rated_session	36.73	301	2	937
+widened	1709	KWEB	KWEB	2022-01-11	2022-01-10	Not	fund	0	0	rated_session		302	2	938
+widened	1712	LI	LI	2022-01-12	2022-01-11	Low	downtrend	0	1	one_session_window	30.56	301	1	939
+widened	1715	XPEV	XPEV	2022-01-12	2022-01-11	Low	gives_back	0	1	one_session_window	48.0	301	1	940
+widened	1719	DJT	DWAC	2022-01-31	2022-01-28	Low	weak_pivot	0	1	one_session_window	73.65	84	1	941
+widened	1721	HUBS	HUBS	2022-01-31	2022-01-28	Low	downtrend	0	1	one_session_window	478.4	301	1	942
+widened	1722	MOS	MOS	2022-02-01	2022-01-31	Low	gives_back	0	1	one_session_window	42.24	301	1	943
+widened	1724	GUSH	GUSH	2022-02-01	2022-01-31	Not	fund	0	1	one_session_window	28.95	301	1	944
+widened	1730	HOOD	HOOD	2022-02-04	2022-02-03	Low	downtrend	0	1	one_session_window	14.96	132	1	945
+widened	1735	FCX	FCX	2022-02-08	2022-02-07	Low	gives_back	0	1	one_session_window	39.86	301	1	946
+widened	1736	ALB	ALB	2022-02-09	2022-02-08	Low	downtrend	0	1	one_session_window	227.4	301	1	947
+widened	1738	TSLA	TSLA	2022-02-11	2022-02-10	Low	downtrend	0	1	one_session_window		301	1	948
+widened	1739	DVN	DVN	2022-02-11	2022-02-10	Medium	close_break	0	1	rated_session	53.24	301	4	949
+widened	1739	DVN	DVN	2022-02-14	2022-02-11	Medium	close_break	0	0	rated_session		302	4	950
+widened	1739	DVN	DVN	2022-02-15	2022-02-14	Medium	close_break	0	0	rated_session		303	4	951
+widened	1739	DVN	DVN	2022-02-16	2022-02-15	Medium	close_break	0	0	rated_session		304	4	952
+widened	1746	ERX	ERX	2022-02-22	2022-02-18	Not	fund	0	0	window_not_fixed		301	5	953
+widened	1746	ERX	ERX	2022-02-23	2022-02-22	Not	fund	0	0	window_not_fixed		302	5	954
+widened	1746	ERX	ERX	2022-02-24	2022-02-23	Not	fund	0	0	window_not_fixed		303	5	955
+widened	1746	ERX	ERX	2022-02-25	2022-02-24	Not	fund	0	0	window_not_fixed		304	5	956
+widened	1746	ERX	ERX	2022-02-28	2022-02-25	Not	fund	0	0	window_not_fixed		305	5	957
+widened	1747	MP	MP	2022-02-22	2022-02-18	Medium	short_pivot	0	0	rated_session		301	5	958
+widened	1747	MP	MP	2022-02-23	2022-02-22	Medium	short_pivot	0	0	rated_session		302	5	959
+widened	1747	MP	MP	2022-02-24	2022-02-23	Medium	short_pivot	0	0	rated_session		303	5	960
+widened	1747	MP	MP	2022-02-25	2022-02-24	Medium	short_pivot	0	1	rated_session	43.99	304	5	961
+widened	1747	MP	MP	2022-02-28	2022-02-25	Medium	short_pivot	0	0	rated_session		305	5	962
+widened	1748	X	X	2022-02-22	2022-02-18	Medium	short_pivot	0	0	rated_session		301	5	963
+widened	1748	X	X	2022-02-23	2022-02-22	Medium	short_pivot	0	0	rated_session		302	5	964
+widened	1748	X	X	2022-02-24	2022-02-23	Medium	short_pivot	0	0	rated_session		303	5	965
+widened	1748	X	X	2022-02-25	2022-02-24	Medium	short_pivot	0	1	rated_session	24.69	304	5	966
+widened	1748	X	X	2022-02-28	2022-02-25	Medium	short_pivot	0	0	rated_session		305	5	967
+widened	1749	GUSH	GUSH	2022-02-28	2022-02-25	Not	fund	0	1	one_session_window	30.59	301	1	968
+widened	1761	BOIL	BOIL	2022-03-21	2022-03-18	Not	fund	0	0	rated_session		301	2	969
+widened	1761	BOIL	BOIL	2022-03-22	2022-03-21	Not	fund	0	1	rated_session	9025.0	302	2	970
+widened	1767	NEM	NEM	2022-03-31	2022-03-30	Low	weak_pivot	0	1	one_session_window	80.22	301	1	971

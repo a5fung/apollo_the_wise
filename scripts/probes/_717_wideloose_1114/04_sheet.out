@@ -1,0 +1,20 @@
+line: range >= 0.3961 and up-and-down >= 0.4239; headline buys at or past it: 27; shown 16; skipped as the same chart: ['AMC 2021-02-25']
+you	TDOC	2020-03-20	-	-	big=-	wide=0.396	chop=0.424	legs15=3	score=1.000	level=drawn
+you	MELI	2018-09-18	-	-	big=-	wide=0.519	chop=0.548	legs15=2	score=1.293	level=drawn
+you	RRC	2018-11-13	-	-	big=-	wide=0.488	chop=0.543	legs15=2	score=1.231	level=drawn
+qm	AMC	2021-02-22	Low	weak_pivot	big=0	wide=0.837	chop=0.810	legs15=4	score=1.912	level=none
+qm	W	2020-04-07	Not	ep_gap	big=0	wide=0.642	chop=0.666	legs15=2	score=1.570	level=drawn
+qm	APT	2020-02-21	Low	no_level	big=1	wide=0.594	chop=0.869	legs15=4	score=1.499	level=none
+qm	PENN	2020-03-26	Low	downtrend	big=0	wide=0.892	chop=0.583	legs15=2	score=1.376	level=none
+qm	RBLX	2021-12-07	Low	no_level	big=0	wide=0.719	chop=0.574	legs15=4	score=1.354	level=none
+qm	UBER	2020-04-02	Low	downtrend	big=0	wide=0.745	chop=0.571	legs15=2	score=1.348	level=none
+qm	COUP	2020-04-27	Low	gives_back	big=0	wide=0.586	chop=0.566	legs15=2	score=1.336	level=drawn
+qm	SOS	2021-03-15	Not	ep_gap	big=0	wide=0.516	chop=0.579	legs15=4	score=1.302	level=drawn
+qm	JD	2020-04-06	Low	no_level	big=0	wide=0.524	chop=0.545	legs15=2	score=1.287	level=none
+qm	MRNA	2020-04-02	Low	gives_back	big=0	wide=0.522	chop=0.539	legs15=3	score=1.271	level=drawn
+qm	NVAX	2020-04-03	Medium	short_pivot	big=0	wide=0.491	chop=0.585	legs15=2	score=1.240	level=drawn
+qm	VIR	2021-12-15	Low	gives_back	big=0	wide=0.855	chop=0.517	legs15=3	score=1.221	level=drawn
+qm	TSLA	2018-08-07	Low	gives_back	big=0	wide=0.509	chop=0.508	legs15=2	score=1.198	level=drawn
+qm	TLRY	2021-03-02	Low	weak_pivot	big=0	wide=0.488	chop=0.507	legs15=2	score=1.195	level=drawn
+qm	LAC	2020-02-10	Medium	close_break	big=0	wide=0.473	chop=0.623	legs15=3	score=1.195	level=drawn
+qm	W	2021-03-15	Low	gives_back	big=0	wide=0.462	chop=0.534	legs15=3	score=1.166	level=drawn

@@ -1,0 +1,132 @@
+the line: wide >= 0.3961 AND chop >= 0.4239 (score >= 1); fast path == full measures on the 48 graded charts: ok
+
+== QULLAMAGGIE'S 757 BUYS ==
+buys 757; fixed buy day 623 (dated 269 + one-session window 354); multi-session window 134
+fixed-day buys: full chart (>= 189 bars) 573 = HEADLINE; 60-188 bars 35 (scored, listed apart); under 60 bars 15 (not scored)
+headline composition: tier {'Low': 360, 'Medium': 87, 'High': 75, 'Not': 51}; listed High 51 of 56; big winners 25 of 26; fired (current list + trigger) 314
+score percentiles (headline): p10 0.25, p50 0.45, p90 0.85, p95 0.98, p99 1.35, max 1.91
+
+beyond the line, HEADLINE (573 buys):
+ cut  beyond  not_tier  ex_not  High  Medium  Low  listed_high_of_56  big_of_26  fired  short_history_beyond
+ 0.9      50         9      41     0       4   37                  0          1     29                    10
+ 1.0      27         4      23     0       2   21                  0          1     16                     9
+ 1.1      20         3      17     0       2   15                  0          1     14                     7
+
+EVERY headline buy at score >= 0.9 (>= 1.0 = as wide and loose as the least of his def-no charts); legs15 = swings of >= 15% of the chart's height in the 20 sessions:
+    set  eid ticker          E   tier              reason  big  high_listed  fired  nbars  chart_h  adr20  wide  chop  legs15  score
+  dated 1255    AMC 2021-02-22    Low          weak_pivot    0            0      1    301    2.366  0.250 0.837 0.810   4.000  1.912
+  dated  468      W 2020-04-07    Not              ep_gap    0            0      1    301    1.962  0.179 0.642 0.666   2.000  1.570
+  dated  400    APT 2020-02-21    Low            no_level    1            0      1    301    0.899  0.145 0.594 0.869   4.000  1.499
+  dated 1260    AMC 2021-02-25    Not              ep_gap    0            0      1    301    2.366  0.253 0.572 0.810   4.000  1.444
+widened  448   PENN 2020-03-26    Low           downtrend    0            0      0    301    2.346  0.240 0.892 0.583   2.000  1.376
+widened 1661   RBLX 2021-12-07    Low            no_level    0            0      0    189    0.850  0.099 0.719 0.574   4.000  1.354
+widened  457   UBER 2020-04-02    Low           downtrend    0            0      0    226    1.202  0.122 0.745 0.571   2.000  1.348
+widened  516   COUP 2020-04-27    Low          gives_back    0            0      1    301    0.587  0.072 0.586 0.566   2.000  1.336
+  dated 1300    SOS 2021-03-15    Not              ep_gap    0            0      1    301    2.574  0.261 0.516 0.579   4.000  1.302
+widened  463     JD 2020-04-06    Low            no_level    0            0      1    301    0.565  0.067 0.524 0.545   2.000  1.287
+widened  458   MRNA 2020-04-02    Low          gives_back    0            0      1    301    1.138  0.141 0.522 0.539   3.000  1.271
+  dated  460   NVAX 2020-04-03 Medium         short_pivot    0            0      1    301    1.610  0.167 0.491 0.585   2.000  1.240
+  dated 1670    VIR 2021-12-15    Low          gives_back    0            0      1    301    0.682  0.095 0.855 0.517   3.000  1.221
+  dated  108   TSLA 2018-08-07    Low          gives_back    0            0      0    301    0.424  0.037 0.509 0.508   2.000  1.198
+  dated 1270   TLRY 2021-03-02    Low          weak_pivot    0            0      1    301    2.721  0.181 0.488 0.507   2.000  1.195
+widened  381    LAC 2020-02-10 Medium         close_break    0            0      0    301    0.490  0.064 0.473 0.623   3.000  1.195
+widened 1304      W 2021-03-15    Low          gives_back    0            0      1    301    0.742  0.078 0.462 0.534   3.000  1.166
+  dated 1869    GME 2023-12-14    Low          gives_back    0            0      1    301    0.849  0.081 0.459 0.559   2.000  1.159
+  dated  441     ZS 2020-03-24    Low          gives_back    0            0      1    301    0.939  0.088 0.540 0.488   2.000  1.151
+widened  525   UAVS 2020-04-28    Low            no_level    0            0      0    301    2.124  0.186 0.784 0.476   3.000  1.123
+widened 1647   FLGT 2021-11-29    Low            no_level    0            0      0    301    0.676  0.060 0.458 0.463   3.000  1.092
+widened  131    JCP 2019-10-03    Low          weak_pivot    0            0      0    301    1.284  0.099 0.432 0.491   2.000  1.091
+widened 1648   RIOT 2021-11-29    Low          weak_pivot    0            0      1    301    1.188  0.099 0.459 0.462   2.000  1.090
+widened  489   NCLH 2020-04-21    Low           downtrend    0            0      0    301    2.140  0.159 0.430 0.482   3.000  1.085
+widened 1735    FCX 2022-02-08    Low          gives_back    0            0      1    301    0.431  0.043 0.648 0.448   3.000  1.057
+  dated 1520    SQM 2021-09-10    Low          gives_back    0            0      0    301    0.405  0.037 0.418 0.464   2.000  1.054
+widened 1657    ERX 2021-12-07    Not                fund    0            0      0    301    0.549  0.050 0.401 0.481   3.000  1.011
+  dated  484   SHOP 2020-04-20    Low          gives_back    0            0      1    301    0.744  0.074 0.766 0.421   3.000  0.994
+widened  215     JD 2019-11-04    Low          gives_back    0            0      0    301    0.320  0.026 0.444 0.417   1.000  0.984
+  dated  472   TSLA 2020-04-14    Low          gives_back    0            0      1    301    1.524  0.094 0.407 0.412   1.000  0.972
+  dated  402   NVAX 2020-02-24 Medium range_break_partial    0            0      1    301    1.037  0.088 0.384 0.466   2.000  0.968
+widened 1698    FAS 2022-01-04    Not                fund    0            0      0    301    0.486  0.037 0.398 0.409   2.000  0.966
+  dated  753   BLNK 2020-07-22    Not              ep_gap    0            0      1    301    1.917  0.168 0.660 0.408   2.000  0.962
+widened 1722    MOS 2022-02-01    Low          gives_back    0            0      1    301    0.444  0.042 0.388 0.407   2.000  0.961
+widened  155    DDS 2019-10-09    Low          gives_back    0            0      1    301    0.592  0.053 0.377 0.422   2.000  0.951
+widened  213   BABA 2019-11-01    Low          gives_back    0            0      0    301    0.280  0.023 0.376 0.512   4.000  0.950
+  dated 1305   ZKIN 2021-03-15    Not              ep_gap    0            0      1    301    2.501  0.237 0.445 0.402   2.000  0.947
+widened 1690   CRWD 2021-12-30    Low           downtrend    0            0      0    301    0.521  0.057 0.373 0.454   0.000  0.943
+widened  145    JCP 2019-10-07 Medium range_break_partial    0            0      0    301    1.284  0.100 0.373 0.513   2.000  0.942
+  dated 1649   MARA 2021-11-30    Low            no_level    0            0      1    301    1.516  0.115 0.373 0.473   2.000  0.941
+widened 1355   KWEB 2021-03-31    Not                fund    0            0      0    301    0.531  0.037 0.490 0.397   3.000  0.936
+  dated  496     ZM 2020-04-23    Low          gives_back    0            0      1    255    0.995  0.080 0.401 0.396   2.000  0.935
+  dated 1645   SICP 2021-11-29    Low            no_level    0            0      1    301    1.086  0.102 0.406 0.393   2.000  0.928
+widened 1666     ZS 2021-12-09    Low            no_level    0            0      0    301    0.873  0.055 0.399 0.393   1.000  0.927
+  dated 1456     SE 2021-06-08    Low          gives_back    0            0      1    301    0.745  0.049 0.367 0.402   1.000  0.926
+  dated 1658    FCX 2021-12-07    Low          weak_pivot    0            0      1    301    0.448  0.044 0.366 0.531   1.000  0.925
+  dated 1679    FCX 2021-12-27    Low        broke_before    0            0      0    301    0.429  0.039 0.365 0.397   1.000  0.922
+widened 1724   GUSH 2022-02-01    Not                fund    0            0      0    301    0.888  0.090 0.400 0.390   2.000  0.920
+widened  517    RCL 2020-04-27    Low           downtrend    0            0      0    301    1.950  0.128 0.363 0.451   2.000  0.915
+  dated 1267   APHA 2021-03-02    Low          weak_pivot    0            0      1    301    2.099  0.152 0.467 0.385   2.000  0.908
+
+short history (60-188 bars; a smaller chart height by construction) at score >= 0.9:
+    set  eid ticker          E   tier      reason  big  high_listed  fired  nbars  chart_h  adr20  wide  chop  legs15  score
+widened 1588     MQ 2021-10-26    Low  gives_back    0            0      1     97    0.504  0.073 0.773 0.832   4.000  1.952
+widened 1627   SLDP 2021-11-15    Low  gives_back    0            0      1    121    0.349  0.058 0.904 0.763   5.000  1.799
+widened 1625   GGPI 2021-11-12    Low    no_level    0            0      0    123    0.184  0.033 0.832 0.634   5.000  1.496
+widened 1643   GGPI 2021-11-29    Low    no_level    0            0      0    133    0.526  0.071 0.860 0.585   2.000  1.380
+widened 1118     QS 2021-01-05    Low    no_level    0            0      0     97    2.612  0.162 0.470 0.505   2.000  1.187
+  dated 1786    LAC 2022-04-21    Low  weak_pivot    0            0      1    143    0.754  0.082 0.456 0.507   2.000  1.152
+widened  466   LVGO 2020-04-07    Low  gives_back    0            0      1    177    1.106  0.110 0.439 0.504   2.000  1.109
+  dated  479    NET 2020-04-16 Medium short_pivot    0            0      1    148    0.595  0.097 0.692 0.461   3.000  1.087
+  dated 1121   FIRY 2021-01-05 Medium short_pivot    1            0      1    175    0.889  0.123 0.415 0.563   2.000  1.048
+  dated 1772    LHX 2022-04-05    Low  weak_pivot    0            0      0    132    0.332  0.028 0.357 0.440   2.000  0.900
+
+big winners (26), most wide-loose first:
+  set  eid ticker          E   tier      reason  big  high_listed  fired  nbars  chart_h  adr20  wide  chop  legs15  score
+dated  400    APT 2020-02-21    Low    no_level    1            0      1    301    0.899  0.145 0.594 0.869   4.000  1.499
+dated 1121   FIRY 2021-01-05 Medium short_pivot    1            0      1    175    0.889  0.123 0.415 0.563   2.000  1.048
+dated  406   NVAX 2020-02-26   High range_break    1            1      1    301    1.037  0.085 0.295 0.427   0.000  0.744
+dated  695   BLDP 2020-06-29   High range_break    1            1      1    301    1.164  0.065 0.262 0.323   2.000  0.662
+dated  892    MDB 2020-09-21    Low  gives_back    1            0      1    301    1.012  0.053 0.249 0.276   0.000  0.630
+dated  560    PDD 2020-05-08   High range_break    1            1      1    301    0.900  0.049 0.322 0.233   2.000  0.549
+dated 1030   JMIA 2020-11-18    Low  gives_back    1            0      1    301    2.408  0.108 0.214 0.245   0.000  0.541
+dated  916   NVDA 2020-09-25    Low  weak_pivot    1            0      1    301    1.182  0.053 0.195 0.266   0.000  0.492
+
+listed High tier (56), most wide-loose first:
+    set  eid ticker          E tier      reason  big  high_listed  fired  nbars  chart_h  adr20  wide  chop  legs15  score
+  dated   72   SRPT 2017-10-02 High range_break    0            1      1    301    0.602  0.047 0.333 0.381   1.000  0.840
+  dated 1031   CRON 2020-11-24 High range_break    0            1      1    301    0.790  0.083 0.675 0.337   1.000  0.794
+  dated  406   NVAX 2020-02-26 High range_break    1            1      1    301    1.037  0.085 0.295 0.427   0.000  0.744
+widened  497   VAPO 2020-04-23 High range_break    0            1      1    301    1.089  0.108 0.281 0.298   2.000  0.703
+  dated  695   BLDP 2020-06-29 High range_break    1            1      1    301    1.164  0.065 0.262 0.323   2.000  0.662
+widened 1555   LTHM 2021-10-12 High range_break    0            1      1    301    0.616  0.046 0.256 0.401   0.000  0.646
+  dated 1554    CCJ 2021-10-12 High range_break    0            1      1    301    0.782  0.051 0.309 0.250   1.000  0.591
+  dated  669    NET 2020-06-15 High range_break    0            1      1    189    0.753  0.053 0.232 0.243   0.000  0.573
+
+multi-session windows with a full chart: 119 buys; EVERY candidate night beyond the line: >=0.9: 5, >=1.0: 2, >=1.1: 0 | ANY night: >=0.9: 9, >=1.0: 5, >=1.1: 1
+            ticker    tier       reason  nights   nb    lo    hi
+key                                                             
+widened453    CACC     Low    downtrend       4  301 1.037 1.184
+widened455     MGM     Low    downtrend       4  301 1.061 1.092
+widened1747     MP  Medium  short_pivot       5  301 0.943 1.072
+widened350     INO    High  range_break       2  301 0.978 1.069
+widened1677   CRWD     Low    downtrend       4  301 0.858 1.013
+widened1684     ZS     Low     no_level       4  301 0.990 0.990
+widened509     SPR     Low    downtrend       2  301 0.789 0.979
+widened1681   MELI     Low    downtrend       4  301 0.847 0.958
+widened204      MU     Low    downtrend       3  301 0.655 0.942
+bars: 12,005,007 rows / 12,532 tickers / 1635 sessions 2016-01-04..2022-06-30 (5s); 5,007 tickers have a missing session inside their span (211,391 holes)
+store A: loaded in 10s; {'raw_factor': 'pre_v2 daily_raw_close.csv.gz per bar (exact)', 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+
+== ERA-A FIRES ==
+fires 156,695 over 1322 list nights = 118.5 a day; unmatched 0; under 60 bars 0; 60-188 bars 7,859
+pool after the current list rule (1d): 136,305 = 103.1 a day; the 5 daily slots by dollar volume: 6,606; Qullamaggie's fired buys among the fires: 375 (386 on the scorecard; 11 of its sessions are after 2022-03, outside the era-A fires)
+ cut        population      n  removed   pct  per_day_before  per_day_removed  removed_full_chart  qm_fired_buys_removed  qm_high  qm_big                                                                           qm_ids
+ 0.9         all fires 156695    21261 13.6%           118.5            16.08               19518                     36        0       2 d1121,d1255,d1260,d1267,d1270,d1300,d1305,d1456,d1645,d1649,d1658,d1670,d400,d40
+ 0.9     pool after 1d 136305    15532 11.4%           103.1            11.75               14141                     36        0       2 d1121,d1255,d1260,d1267,d1270,d1300,d1305,d1456,d1645,d1649,d1658,d1670,d400,d40
+ 0.9 the 5 daily slots   6606      730 11.1%             5.0             0.55                 686                     11        0       0                    d1260,d1270,d1456,d1649,d1658,d472,d484,d496,w1684,w1735,w463
+ 1.0         all fires 156695    14921  9.5%           118.5            11.29               13689                     21        0       2 d1121,d1255,d1260,d1270,d1300,d1670,d400,d441,d460,d468,d479,w1304,w1588,w1627,w
+ 1.0     pool after 1d 136305    10415  7.6%           103.1             7.88                9446                     21        0       2 d1121,d1255,d1260,d1270,d1300,d1670,d400,d441,d460,d468,d479,w1304,w1588,w1627,w
+ 1.0 the 5 daily slots   6606      537  8.1%             5.0             0.41                 515                      4        0       0                                                           d1260,d1270,w1735,w463
+ 1.1         all fires 156695    10636  6.8%           118.5             8.05                9774                     16        0       1 d1255,d1260,d1270,d1300,d1670,d400,d441,d460,d468,w1304,w1588,w1627,w458,w463,w4
+ 1.1     pool after 1d 136305     7078  5.2%           103.1             5.35                6412                     16        0       1 d1255,d1260,d1270,d1300,d1670,d400,d441,d460,d468,w1304,w1588,w1627,w458,w463,w4
+ 1.1 the 5 daily slots   6606      395  6.0%             5.0             0.30                 379                      3        0       0                                                                 d1260,d1270,w463
+
+wide-loose fires by year (pool after 1d, score >= 1): {'2017': 508, '2018': 1532, '2019': 1069, '2020': 2945, '2021': 2466, '2022': 1895} | all pool fires: {'2016': 41, '2017': 9114, '2018': 13589, '2019': 14487, '2020': 48673, '2021': 42619, '2022': 7782}
