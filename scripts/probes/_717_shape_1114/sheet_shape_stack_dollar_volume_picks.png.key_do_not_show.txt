@@ -1,0 +1,14 @@
+stack = 1d (more than 3% under a FALLING 50-day -> out) + fewer than 2 of the last 10 closes within 2 daily ranges of the level -> out; ranking = 20-day dollar volume
+letter|ticker|fire day E (list night D)|dollar-volume rank among that day's passing fires|Qullamaggie bought? (scorecard, on E)|his-buy window|bought within +-5 sessions (panel)
+A|NNVC|2020-02-26 (2020-02-25)|5|no|-|no
+B|ATI|2017-09-15 (2017-09-14)|5|no|-|no (no snapshot within 5 sessions)
+C|BNTX|2021-05-20 (2021-05-19)|4|no|-|yes
+D|EXEL|2017-02-07 (2017-02-06)|3|no|-|no
+E|VIAC|2022-01-31 (2022-01-28)|1|no|-|no
+F|BABA|2022-02-16 (2022-02-15)|2|no|-|no
+G|RH|2017-11-29 (2017-11-28)|4|no|-|no (no snapshot within 5 sessions)
+H|TWLO|2017-03-07 (2017-03-06)|1|no|-|no
+I|APA|2022-01-11 (2022-01-10)|5|no|-|no
+J|AMD|2022-03-30 (2022-03-29)|1|no|-|no
+K|BNGO|2021-01-26 (2021-01-25)|3|YES|2021-01-26..2021-01-26 (undated sighting)|yes
+L|ZM|2020-06-15 (2020-06-12)|2|no|-|yes

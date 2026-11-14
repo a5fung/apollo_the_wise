@@ -1,0 +1,1592 @@
+check	set	eid	ticker	E	tier	big
+1d (>3% under a falling 50-day)	widened	375	ACB	2020-02-04	Low	0
+1d (>3% under a falling 50-day)	widened	510	TLRY	2020-04-24	Low	0
+1d (>3% under a falling 50-day)	widened	922	APT	2020-10-02	Low	0
+1d (>3% under a falling 50-day)	widened	923	BILI	2020-10-05	Low	0
+1d (>3% under a falling 50-day)	widened	1053	FSLY	2020-12-04	Low	0
+1d (>3% under a falling 50-day)	widened	1712	LI	2022-01-12	Low	0
+(i)A hl10 box	dated	484	SHOP	2020-04-20	Low	0
+(i)A hl10 box	dated	1553	MSTR	2021-10-11	Low	0
+(i)A hl10 box	dated	1644	MRNA	2021-11-29	Not	0
+(i)A hl10 box	widened	175	RETA	2019-10-18	Low	0
+(i)A hl10 box	widened	243	LK	2019-11-18	Low	0
+(i)A hl10 box	widened	488	SHOP	2020-04-21	Low	0
+(i)A hl10 box	widened	628	ZM	2020-06-02	Low	0
+(i)A hl10 box	widened	649	BA	2020-06-08	Low	0
+(i)A hl10 box	widened	677	LAKE	2020-06-17	Low	0
+(i)A hl10 box	widened	693	FSLY	2020-06-29	Low	0
+(i)A hl10 box	widened	818	FVRR	2020-08-06	Low	0
+(i)A hl10 box	widened	927	ENPH	2020-10-08	Low	0
+(i)A hl10 box	widened	995	NIO	2020-11-06	Low	0
+(i)A hl10 box	widened	1010	UBER	2020-11-16	Low	0
+(i)A hl10 box	widened	1013	XYZ	2020-11-17	Medium	0
+(i)A hl10 box	widened	1016	NET	2020-11-17	Low	0
+(i)A hl10 box	widened	1021	DOCU	2020-11-18	Low	0
+(i)A hl10 box	widened	1027	UBER	2020-11-18	Low	0
+(i)A hl10 box	widened	1047	TSLA	2020-12-03	Low	0
+(i)A hl10 box	widened	1117	LAC	2020-12-31	Low	0
+(i)A hl10 box	widened	1469	LOGC	2021-06-18	Low	0
+(i)A hl10 box	widened	1617	EVGO	2021-11-11	Low	0
+(i)B hl15 box	dated	55	KYNB	2017-08-25	Low	0
+(i)B hl15 box	dated	484	SHOP	2020-04-20	Low	0
+(i)B hl15 box	dated	604	W	2020-05-26	Low	0
+(i)B hl15 box	dated	646	ACB	2020-06-08	Low	0
+(i)B hl15 box	dated	996	XYZ	2020-11-06	Medium	0
+(i)B hl15 box	dated	1255	AMC	2021-02-22	Low	0
+(i)B hl15 box	dated	1267	APHA	2021-03-02	Low	0
+(i)B hl15 box	dated	1270	TLRY	2021-03-02	Low	0
+(i)B hl15 box	dated	1508	UPST	2021-08-12	Low	0
+(i)B hl15 box	dated	1644	MRNA	2021-11-29	Not	0
+(i)B hl15 box	dated	1649	MARA	2021-11-30	Low	0
+(i)B hl15 box	widened	175	RETA	2019-10-18	Low	0
+(i)B hl15 box	widened	194	PLUG	2019-10-24	Low	0
+(i)B hl15 box	widened	243	LK	2019-11-18	Low	0
+(i)B hl15 box	widened	450	TSLA	2020-03-26	Low	0
+(i)B hl15 box	widened	488	SHOP	2020-04-21	Low	0
+(i)B hl15 box	widened	520	ETSY	2020-04-28	Low	0
+(i)B hl15 box	widened	649	BA	2020-06-08	Low	0
+(i)B hl15 box	widened	677	LAKE	2020-06-17	Low	0
+(i)B hl15 box	widened	693	FSLY	2020-06-29	Low	0
+(i)B hl15 box	widened	818	FVRR	2020-08-06	Low	0
+(i)B hl15 box	widened	847	FSLY	2020-08-20	Medium	0
+(i)B hl15 box	widened	894	ZS	2020-09-21	Low	0
+(i)B hl15 box	widened	927	ENPH	2020-10-08	Low	0
+(i)B hl15 box	widened	995	NIO	2020-11-06	Low	0
+(i)B hl15 box	widened	1010	UBER	2020-11-16	Low	0
+(i)B hl15 box	widened	1013	XYZ	2020-11-17	Medium	0
+(i)B hl15 box	widened	1016	NET	2020-11-17	Low	0
+(i)B hl15 box	widened	1021	DOCU	2020-11-18	Low	0
+(i)B hl15 box	widened	1027	UBER	2020-11-18	Low	0
+(i)B hl15 box	widened	1047	TSLA	2020-12-03	Low	0
+(i)B hl15 box	widened	1139	MSTR	2021-01-06	Low	0
+(i)B hl15 box	widened	1510	COIN	2021-08-23	Low	0
+(i)B hl15 box	widened	1596	COIN	2021-11-01	Low	0
+(i)B hl15 box	widened	1617	EVGO	2021-11-11	Low	0
+(i)B hl15 box	widened	1735	FCX	2022-02-08	Low	0
+(ii)A lower high	dated	389	LK	2020-02-18	Low	0
+(ii)A lower high	dated	673	MRNA	2020-06-15	Low	0
+(ii)A lower high	dated	676	APT	2020-06-17	Low	1
+(ii)A lower high	dated	827	BE	2020-08-13	Medium	1
+(ii)A lower high	dated	1255	AMC	2021-02-22	Low	0
+(ii)A lower high	dated	1267	APHA	2021-03-02	Low	0
+(ii)A lower high	dated	1300	SOS	2021-03-15	Not	0
+(ii)A lower high	widened	320	PLUG	2020-01-02	Low	0
+(ii)A lower high	widened	450	TSLA	2020-03-26	Low	0
+(ii)A lower high	widened	510	TLRY	2020-04-24	Low	0
+(ii)A lower high	widened	922	APT	2020-10-02	Low	0
+(ii)A lower high	widened	923	BILI	2020-10-05	Low	0
+(ii)A lower high	widened	1017	RUN	2020-11-17	Low	0
+(ii)A lower high	widened	1053	FSLY	2020-12-04	Low	0
+(ii)A lower high	widened	1106	CAN	2020-12-30	Medium	0
+(ii)A lower high	widened	1735	FCX	2022-02-08	Low	0
+(iii)A swing low not lower	dated	472	TSLA	2020-04-14	Low	0
+(iii)A swing low not lower	dated	676	APT	2020-06-17	Low	1
+(iii)A swing low not lower	dated	827	BE	2020-08-13	Medium	1
+(iii)A swing low not lower	dated	1465	FUTU	2021-06-14	Low	0
+(iii)A swing low not lower	dated	1508	UPST	2021-08-12	Low	0
+(iii)A swing low not lower	dated	1553	MSTR	2021-10-11	Low	0
+(iii)A swing low not lower	dated	1644	MRNA	2021-11-29	Not	0
+(iii)A swing low not lower	dated	1649	MARA	2021-11-30	Low	0
+(iii)A swing low not lower	dated	1824	U	2022-11-15	Low	0
+(iii)A swing low not lower	widened	320	PLUG	2020-01-02	Low	0
+(iii)A swing low not lower	widened	359	SPCE	2020-01-21	Low	0
+(iii)A swing low not lower	widened	450	TSLA	2020-03-26	Low	0
+(iii)A swing low not lower	widened	1588	MQ	2021-10-26	Low	0
+(iii)A swing low not lower	widened	1735	FCX	2022-02-08	Low	0
+(iii)A swing low not lower	widened	1747	MP	2022-02-25	Medium	0
+(iii)B same, 3-range swings	dated	472	TSLA	2020-04-14	Low	0
+(iii)B same, 3-range swings	dated	482	EXEL	2020-04-20	Not	0
+(iii)B same, 3-range swings	dated	533	TSLA	2020-04-30	Low	0
+(iii)B same, 3-range swings	dated	1571	BTBT	2021-10-20	Low	0
+(iii)B same, 3-range swings	dated	1644	MRNA	2021-11-29	Not	0
+(iii)B same, 3-range swings	widened	450	TSLA	2020-03-26	Low	0
+(iii)B same, 3-range swings	widened	520	ETSY	2020-04-28	Low	0
+(iii)B same, 3-range swings	widened	922	APT	2020-10-02	Low	0
+(iii)B same, 3-range swings	widened	952	MARA	2020-10-20	Low	0
+(iii)B same, 3-range swings	widened	1066	DKNG	2020-12-11	Low	0
+(iv)B closes near the level	dated	1264	RKT	2021-03-01	Low	0
+(iv)B closes near the level	dated	1508	UPST	2021-08-12	Low	0
+(iv)B closes near the level	dated	1644	MRNA	2021-11-29	Not	0
+(iv)B closes near the level	widened	243	LK	2019-11-18	Low	0
+(iv)B closes near the level	widened	649	BA	2020-06-08	Low	0
+(iv)B closes near the level	widened	818	FVRR	2020-08-06	Low	0
+(ii)B lower high AND lower low	dated	95	ANET	2018-03-12	Low	0
+(ii)B lower high AND lower low	dated	111	BMA	2019-08-09	High	0
+(ii)B lower high AND lower low	dated	156	MIK	2019-10-10	Low	0
+(ii)B lower high AND lower low	dated	173	ACAD	2019-10-21	High	0
+(ii)B lower high AND lower low	dated	174	MIK	2019-10-21	Low	0
+(ii)B lower high AND lower low	dated	189	MIK	2019-10-22	High	0
+(ii)B lower high AND lower low	dated	348	PBYI	2020-01-17	Medium	0
+(ii)B lower high AND lower low	dated	389	LK	2020-02-18	Low	0
+(ii)B lower high AND lower low	dated	400	APT	2020-02-21	Low	1
+(ii)B lower high AND lower low	dated	441	ZS	2020-03-24	Low	0
+(ii)B lower high AND lower low	dated	461	CODX	2020-04-06	Not	0
+(ii)B lower high AND lower low	dated	472	TSLA	2020-04-14	Low	0
+(ii)B lower high AND lower low	dated	498	INO	2020-04-23	Not	0
+(ii)B lower high AND lower low	dated	496	ZM	2020-04-23	Low	0
+(ii)B lower high AND lower low	dated	598	BLDP	2020-05-26	High	0
+(ii)B lower high AND lower low	dated	606	UAL	2020-05-27	Not	0
+(ii)B lower high AND lower low	dated	676	APT	2020-06-17	Low	1
+(ii)B lower high AND lower low	dated	681	VIR	2020-06-19	High	0
+(ii)B lower high AND lower low	dated	682	ACB	2020-06-23	Low	0
+(ii)B lower high AND lower low	dated	717	MDB	2020-07-08	Medium	0
+(ii)B lower high AND lower low	dated	718	ARCT	2020-07-09	Low	0
+(ii)B lower high AND lower low	dated	784	LAKE	2020-07-28	Low	0
+(ii)B lower high AND lower low	dated	797	PINS	2020-07-31	Not	0
+(ii)B lower high AND lower low	dated	801	TTD	2020-07-31	Medium	0
+(ii)B lower high AND lower low	dated	806	WKHS	2020-08-03	High	0
+(ii)B lower high AND lower low	dated	804	ZM	2020-08-03	Medium	0
+(ii)B lower high AND lower low	dated	827	BE	2020-08-13	Medium	1
+(ii)B lower high AND lower low	dated	855	SHOP	2020-08-26	High	0
+(ii)B lower high AND lower low	dated	1030	JMIA	2020-11-18	Low	1
+(ii)B lower high AND lower low	dated	1124	APHA	2021-01-06	High	1
+(ii)B lower high AND lower low	dated	1173	NXH	2021-01-22	Low	1
+(ii)B lower high AND lower low	dated	1213	XYZ	2021-02-03	Low	0
+(ii)B lower high AND lower low	dated	1223	MARA	2021-02-08	Not	0
+(ii)B lower high AND lower low	dated	1224	RIOT	2021-02-08	Not	0
+(ii)B lower high AND lower low	dated	1221	SEDG	2021-02-08	Low	0
+(ii)B lower high AND lower low	dated	1229	ENPH	2021-02-10	Medium	0
+(ii)B lower high AND lower low	dated	1255	AMC	2021-02-22	Low	0
+(ii)B lower high AND lower low	dated	1260	AMC	2021-02-25	Not	0
+(ii)B lower high AND lower low	dated	1263	DKNG	2021-02-26	Medium	0
+(ii)B lower high AND lower low	dated	1264	RKT	2021-03-01	Low	0
+(ii)B lower high AND lower low	dated	1305	ZKIN	2021-03-15	Not	0
+(ii)B lower high AND lower low	dated	1323	AMAT	2021-03-22	Medium	0
+(ii)B lower high AND lower low	dated	1324	APPS	2021-03-22	Medium	0
+(ii)B lower high AND lower low	dated	1326	ETSY	2021-03-23	Low	0
+(ii)B lower high AND lower low	dated	1335	AMAT	2021-03-24	Medium	0
+(ii)B lower high AND lower low	dated	1374	FCX	2021-04-06	Low	0
+(ii)B lower high AND lower low	dated	1386	RIOT	2021-04-13	Not	0
+(ii)B lower high AND lower low	dated	1456	SE	2021-06-08	Low	0
+(ii)B lower high AND lower low	dated	1508	UPST	2021-08-12	Low	0
+(ii)B lower high AND lower low	dated	1553	MSTR	2021-10-11	Low	0
+(ii)B lower high AND lower low	dated	1584	LCID	2021-10-25	High	1
+(ii)B lower high AND lower low	dated	1644	MRNA	2021-11-29	Not	0
+(ii)B lower high AND lower low	dated	1649	MARA	2021-11-30	Low	0
+(ii)B lower high AND lower low	dated	1670	VIR	2021-12-15	Low	0
+(ii)B lower high AND lower low	dated	1822	FREY	2022-11-15	Low	0
+(ii)B lower high AND lower low	dated	1824	U	2022-11-15	Low	0
+(ii)B lower high AND lower low	dated	1834	AI	2023-05-17	Low	0
+(ii)B lower high AND lower low	dated	1869	GME	2023-12-14	Low	0
+(ii)B lower high AND lower low	widened	169	APPS	2019-10-17	Low	0
+(ii)B lower high AND lower low	widened	320	PLUG	2020-01-02	Low	0
+(ii)B lower high AND lower low	widened	379	BYND	2020-02-07	Low	0
+(ii)B lower high AND lower low	widened	450	TSLA	2020-03-26	Low	0
+(ii)B lower high AND lower low	widened	463	JD	2020-04-06	Low	0
+(ii)B lower high AND lower low	widened	608	SWN	2020-05-26	Medium	0
+(ii)B lower high AND lower low	widened	668	NVAX	2020-06-15	Medium	0
+(ii)B lower high AND lower low	widened	691	BCRX	2020-06-26	High	0
+(ii)B lower high AND lower low	widened	747	BILI	2020-07-21	Low	0
+(ii)B lower high AND lower low	widened	803	BILI	2020-07-31	Medium	0
+(ii)B lower high AND lower low	widened	853	NCLH	2020-08-24	Low	0
+(ii)B lower high AND lower low	widened	864	PDD	2020-09-01	Low	0
+(ii)B lower high AND lower low	widened	884	PLUG	2020-09-15	Low	0
+(ii)B lower high AND lower low	widened	891	FSLY	2020-09-21	High	0
+(ii)B lower high AND lower low	widened	894	ZS	2020-09-21	Low	0
+(ii)B lower high AND lower low	widened	923	BILI	2020-10-05	Low	0
+(ii)B lower high AND lower low	widened	1021	DOCU	2020-11-18	Low	0
+(ii)B lower high AND lower low	widened	1060	DQ	2020-12-10	Low	0
+(ii)B lower high AND lower low	widened	1074	FCEL	2020-12-15	Low	0
+(ii)B lower high AND lower low	widened	1172	U	2021-01-22	Medium	0
+(ii)B lower high AND lower low	widened	1195	MARA	2021-01-28	Low	0
+(ii)B lower high AND lower low	widened	1225	NIO	2021-02-08	Low	0
+(ii)B lower high AND lower low	widened	1325	LRCX	2021-03-22	Low	0
+(ii)B lower high AND lower low	widened	1343	LRCX	2021-03-26	Low	0
+(ii)B lower high AND lower low	widened	1376	TWTR	2021-03-31	Medium	0
+(ii)B lower high AND lower low	widened	1441	NTLA	2021-05-26	Low	0
+(ii)B lower high AND lower low	widened	1444	BILI	2021-05-28	Low	0
+(ii)B lower high AND lower low	widened	1470	BNTX	2021-06-21	Medium	0
+(ii)B lower high AND lower low	widened	1555	LTHM	2021-10-12	High	0
+(ii)B lower high AND lower low	widened	1588	MQ	2021-10-26	Low	0
+(ii)B lower high AND lower low	widened	1627	SLDP	2021-11-15	Low	0
+(ii)B lower high AND lower low	widened	1656	DVN	2021-12-07	Medium	0
+(ii)B lower high AND lower low	widened	1691	LI	2021-12-30	Low	0
+(ii)B lower high AND lower low	widened	1693	XPEV	2021-12-30	Low	0
+(ii)B lower high AND lower low	widened	1706	LCID	2022-01-07	High	0
+(ii)B lower high AND lower low	widened	1735	FCX	2022-02-08	Low	0
+(ii)B lower high AND lower low	widened	1736	ALB	2022-02-09	Low	0
+(ii)B lower high AND lower low	widened	1747	MP	2022-02-25	Medium	0
+(C) flags of the four A	dated	606	UAL	2020-05-27	Not	0
+(C) flags of the four A	dated	676	APT	2020-06-17	Low	1
+(C) flags of the four A	dated	1644	MRNA	2021-11-29	Not	0
+(C) flags of the four A	dated	1824	U	2022-11-15	Low	0
+(C) flags of the four A	dated	1834	AI	2023-05-17	Low	0
+(C) flags of the four A	widened	450	TSLA	2020-03-26	Low	0
+(C) flags of the four A	widened	1021	DOCU	2020-11-18	Low	0
+(Cv) flags of the four B	dated	95	ANET	2018-03-12	Low	0
+(Cv) flags of the four B	dated	441	ZS	2020-03-24	Low	0
+(Cv) flags of the four B	dated	472	TSLA	2020-04-14	Low	0
+(Cv) flags of the four B	dated	606	UAL	2020-05-27	Not	0
+(Cv) flags of the four B	dated	676	APT	2020-06-17	Low	1
+(Cv) flags of the four B	dated	1264	RKT	2021-03-01	Low	0
+(Cv) flags of the four B	dated	1374	FCX	2021-04-06	Low	0
+(Cv) flags of the four B	dated	1508	UPST	2021-08-12	Low	0
+(Cv) flags of the four B	dated	1553	MSTR	2021-10-11	Low	0
+(Cv) flags of the four B	dated	1644	MRNA	2021-11-29	Not	0
+(Cv) flags of the four B	dated	1822	FREY	2022-11-15	Low	0
+(Cv) flags of the four B	dated	1824	U	2022-11-15	Low	0
+(Cv) flags of the four B	dated	1834	AI	2023-05-17	Low	0
+(Cv) flags of the four B	widened	450	TSLA	2020-03-26	Low	0
+(Cv) flags of the four B	widened	488	SHOP	2020-04-21	Low	0
+(Cv) flags of the four B	widened	1588	MQ	2021-10-26	Low	0
+1d + (i)A hl10 box	dated	484	SHOP	2020-04-20	Low	0
+1d + (i)A hl10 box	dated	1553	MSTR	2021-10-11	Low	0
+1d + (i)A hl10 box	dated	1644	MRNA	2021-11-29	Not	0
+1d + (i)A hl10 box	widened	175	RETA	2019-10-18	Low	0
+1d + (i)A hl10 box	widened	243	LK	2019-11-18	Low	0
+1d + (i)A hl10 box	widened	375	ACB	2020-02-04	Low	0
+1d + (i)A hl10 box	widened	488	SHOP	2020-04-21	Low	0
+1d + (i)A hl10 box	widened	510	TLRY	2020-04-24	Low	0
+1d + (i)A hl10 box	widened	628	ZM	2020-06-02	Low	0
+1d + (i)A hl10 box	widened	649	BA	2020-06-08	Low	0
+1d + (i)A hl10 box	widened	677	LAKE	2020-06-17	Low	0
+1d + (i)A hl10 box	widened	693	FSLY	2020-06-29	Low	0
+1d + (i)A hl10 box	widened	818	FVRR	2020-08-06	Low	0
+1d + (i)A hl10 box	widened	922	APT	2020-10-02	Low	0
+1d + (i)A hl10 box	widened	923	BILI	2020-10-05	Low	0
+1d + (i)A hl10 box	widened	927	ENPH	2020-10-08	Low	0
+1d + (i)A hl10 box	widened	995	NIO	2020-11-06	Low	0
+1d + (i)A hl10 box	widened	1010	UBER	2020-11-16	Low	0
+1d + (i)A hl10 box	widened	1013	XYZ	2020-11-17	Medium	0
+1d + (i)A hl10 box	widened	1016	NET	2020-11-17	Low	0
+1d + (i)A hl10 box	widened	1021	DOCU	2020-11-18	Low	0
+1d + (i)A hl10 box	widened	1027	UBER	2020-11-18	Low	0
+1d + (i)A hl10 box	widened	1047	TSLA	2020-12-03	Low	0
+1d + (i)A hl10 box	widened	1053	FSLY	2020-12-04	Low	0
+1d + (i)A hl10 box	widened	1117	LAC	2020-12-31	Low	0
+1d + (i)A hl10 box	widened	1469	LOGC	2021-06-18	Low	0
+1d + (i)A hl10 box	widened	1617	EVGO	2021-11-11	Low	0
+1d + (i)A hl10 box	widened	1712	LI	2022-01-12	Low	0
+1d + (i)B hl15 box	dated	55	KYNB	2017-08-25	Low	0
+1d + (i)B hl15 box	dated	484	SHOP	2020-04-20	Low	0
+1d + (i)B hl15 box	dated	604	W	2020-05-26	Low	0
+1d + (i)B hl15 box	dated	646	ACB	2020-06-08	Low	0
+1d + (i)B hl15 box	dated	996	XYZ	2020-11-06	Medium	0
+1d + (i)B hl15 box	dated	1255	AMC	2021-02-22	Low	0
+1d + (i)B hl15 box	dated	1267	APHA	2021-03-02	Low	0
+1d + (i)B hl15 box	dated	1270	TLRY	2021-03-02	Low	0
+1d + (i)B hl15 box	dated	1508	UPST	2021-08-12	Low	0
+1d + (i)B hl15 box	dated	1644	MRNA	2021-11-29	Not	0
+1d + (i)B hl15 box	dated	1649	MARA	2021-11-30	Low	0
+1d + (i)B hl15 box	widened	175	RETA	2019-10-18	Low	0
+1d + (i)B hl15 box	widened	194	PLUG	2019-10-24	Low	0
+1d + (i)B hl15 box	widened	243	LK	2019-11-18	Low	0
+1d + (i)B hl15 box	widened	375	ACB	2020-02-04	Low	0
+1d + (i)B hl15 box	widened	450	TSLA	2020-03-26	Low	0
+1d + (i)B hl15 box	widened	488	SHOP	2020-04-21	Low	0
+1d + (i)B hl15 box	widened	510	TLRY	2020-04-24	Low	0
+1d + (i)B hl15 box	widened	520	ETSY	2020-04-28	Low	0
+1d + (i)B hl15 box	widened	649	BA	2020-06-08	Low	0
+1d + (i)B hl15 box	widened	677	LAKE	2020-06-17	Low	0
+1d + (i)B hl15 box	widened	693	FSLY	2020-06-29	Low	0
+1d + (i)B hl15 box	widened	818	FVRR	2020-08-06	Low	0
+1d + (i)B hl15 box	widened	847	FSLY	2020-08-20	Medium	0
+1d + (i)B hl15 box	widened	894	ZS	2020-09-21	Low	0
+1d + (i)B hl15 box	widened	922	APT	2020-10-02	Low	0
+1d + (i)B hl15 box	widened	923	BILI	2020-10-05	Low	0
+1d + (i)B hl15 box	widened	927	ENPH	2020-10-08	Low	0
+1d + (i)B hl15 box	widened	995	NIO	2020-11-06	Low	0
+1d + (i)B hl15 box	widened	1010	UBER	2020-11-16	Low	0
+1d + (i)B hl15 box	widened	1013	XYZ	2020-11-17	Medium	0
+1d + (i)B hl15 box	widened	1016	NET	2020-11-17	Low	0
+1d + (i)B hl15 box	widened	1021	DOCU	2020-11-18	Low	0
+1d + (i)B hl15 box	widened	1027	UBER	2020-11-18	Low	0
+1d + (i)B hl15 box	widened	1047	TSLA	2020-12-03	Low	0
+1d + (i)B hl15 box	widened	1053	FSLY	2020-12-04	Low	0
+1d + (i)B hl15 box	widened	1139	MSTR	2021-01-06	Low	0
+1d + (i)B hl15 box	widened	1510	COIN	2021-08-23	Low	0
+1d + (i)B hl15 box	widened	1596	COIN	2021-11-01	Low	0
+1d + (i)B hl15 box	widened	1617	EVGO	2021-11-11	Low	0
+1d + (i)B hl15 box	widened	1712	LI	2022-01-12	Low	0
+1d + (i)B hl15 box	widened	1735	FCX	2022-02-08	Low	0
+1d + (ii)A lower high	dated	389	LK	2020-02-18	Low	0
+1d + (ii)A lower high	dated	673	MRNA	2020-06-15	Low	0
+1d + (ii)A lower high	dated	676	APT	2020-06-17	Low	1
+1d + (ii)A lower high	dated	827	BE	2020-08-13	Medium	1
+1d + (ii)A lower high	dated	1255	AMC	2021-02-22	Low	0
+1d + (ii)A lower high	dated	1267	APHA	2021-03-02	Low	0
+1d + (ii)A lower high	dated	1300	SOS	2021-03-15	Not	0
+1d + (ii)A lower high	widened	320	PLUG	2020-01-02	Low	0
+1d + (ii)A lower high	widened	375	ACB	2020-02-04	Low	0
+1d + (ii)A lower high	widened	450	TSLA	2020-03-26	Low	0
+1d + (ii)A lower high	widened	510	TLRY	2020-04-24	Low	0
+1d + (ii)A lower high	widened	922	APT	2020-10-02	Low	0
+1d + (ii)A lower high	widened	923	BILI	2020-10-05	Low	0
+1d + (ii)A lower high	widened	1017	RUN	2020-11-17	Low	0
+1d + (ii)A lower high	widened	1053	FSLY	2020-12-04	Low	0
+1d + (ii)A lower high	widened	1106	CAN	2020-12-30	Medium	0
+1d + (ii)A lower high	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)A lower high	widened	1735	FCX	2022-02-08	Low	0
+1d + (iii)A swing low not lower	dated	472	TSLA	2020-04-14	Low	0
+1d + (iii)A swing low not lower	dated	676	APT	2020-06-17	Low	1
+1d + (iii)A swing low not lower	dated	827	BE	2020-08-13	Medium	1
+1d + (iii)A swing low not lower	dated	1465	FUTU	2021-06-14	Low	0
+1d + (iii)A swing low not lower	dated	1508	UPST	2021-08-12	Low	0
+1d + (iii)A swing low not lower	dated	1553	MSTR	2021-10-11	Low	0
+1d + (iii)A swing low not lower	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iii)A swing low not lower	dated	1649	MARA	2021-11-30	Low	0
+1d + (iii)A swing low not lower	dated	1824	U	2022-11-15	Low	0
+1d + (iii)A swing low not lower	widened	320	PLUG	2020-01-02	Low	0
+1d + (iii)A swing low not lower	widened	359	SPCE	2020-01-21	Low	0
+1d + (iii)A swing low not lower	widened	375	ACB	2020-02-04	Low	0
+1d + (iii)A swing low not lower	widened	450	TSLA	2020-03-26	Low	0
+1d + (iii)A swing low not lower	widened	510	TLRY	2020-04-24	Low	0
+1d + (iii)A swing low not lower	widened	922	APT	2020-10-02	Low	0
+1d + (iii)A swing low not lower	widened	923	BILI	2020-10-05	Low	0
+1d + (iii)A swing low not lower	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iii)A swing low not lower	widened	1588	MQ	2021-10-26	Low	0
+1d + (iii)A swing low not lower	widened	1712	LI	2022-01-12	Low	0
+1d + (iii)A swing low not lower	widened	1735	FCX	2022-02-08	Low	0
+1d + (iii)A swing low not lower	widened	1747	MP	2022-02-25	Medium	0
+1d + (iii)B same, 3-range swings	dated	472	TSLA	2020-04-14	Low	0
+1d + (iii)B same, 3-range swings	dated	482	EXEL	2020-04-20	Not	0
+1d + (iii)B same, 3-range swings	dated	533	TSLA	2020-04-30	Low	0
+1d + (iii)B same, 3-range swings	dated	1571	BTBT	2021-10-20	Low	0
+1d + (iii)B same, 3-range swings	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iii)B same, 3-range swings	widened	375	ACB	2020-02-04	Low	0
+1d + (iii)B same, 3-range swings	widened	450	TSLA	2020-03-26	Low	0
+1d + (iii)B same, 3-range swings	widened	510	TLRY	2020-04-24	Low	0
+1d + (iii)B same, 3-range swings	widened	520	ETSY	2020-04-28	Low	0
+1d + (iii)B same, 3-range swings	widened	922	APT	2020-10-02	Low	0
+1d + (iii)B same, 3-range swings	widened	923	BILI	2020-10-05	Low	0
+1d + (iii)B same, 3-range swings	widened	952	MARA	2020-10-20	Low	0
+1d + (iii)B same, 3-range swings	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iii)B same, 3-range swings	widened	1066	DKNG	2020-12-11	Low	0
+1d + (iii)B same, 3-range swings	widened	1712	LI	2022-01-12	Low	0
+1d + (iv)A level under 60d high	widened	375	ACB	2020-02-04	Low	0
+1d + (iv)A level under 60d high	widened	510	TLRY	2020-04-24	Low	0
+1d + (iv)A level under 60d high	widened	922	APT	2020-10-02	Low	0
+1d + (iv)A level under 60d high	widened	923	BILI	2020-10-05	Low	0
+1d + (iv)A level under 60d high	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iv)A level under 60d high	widened	1712	LI	2022-01-12	Low	0
+1d + (iv)B closes near the level	dated	1264	RKT	2021-03-01	Low	0
+1d + (iv)B closes near the level	dated	1508	UPST	2021-08-12	Low	0
+1d + (iv)B closes near the level	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iv)B closes near the level	widened	243	LK	2019-11-18	Low	0
+1d + (iv)B closes near the level	widened	375	ACB	2020-02-04	Low	0
+1d + (iv)B closes near the level	widened	510	TLRY	2020-04-24	Low	0
+1d + (iv)B closes near the level	widened	649	BA	2020-06-08	Low	0
+1d + (iv)B closes near the level	widened	818	FVRR	2020-08-06	Low	0
+1d + (iv)B closes near the level	widened	922	APT	2020-10-02	Low	0
+1d + (iv)B closes near the level	widened	923	BILI	2020-10-05	Low	0
+1d + (iv)B closes near the level	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iv)B closes near the level	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)B lower high AND lower low	dated	95	ANET	2018-03-12	Low	0
+1d + (ii)B lower high AND lower low	dated	111	BMA	2019-08-09	High	0
+1d + (ii)B lower high AND lower low	dated	156	MIK	2019-10-10	Low	0
+1d + (ii)B lower high AND lower low	dated	173	ACAD	2019-10-21	High	0
+1d + (ii)B lower high AND lower low	dated	174	MIK	2019-10-21	Low	0
+1d + (ii)B lower high AND lower low	dated	189	MIK	2019-10-22	High	0
+1d + (ii)B lower high AND lower low	dated	348	PBYI	2020-01-17	Medium	0
+1d + (ii)B lower high AND lower low	dated	389	LK	2020-02-18	Low	0
+1d + (ii)B lower high AND lower low	dated	400	APT	2020-02-21	Low	1
+1d + (ii)B lower high AND lower low	dated	441	ZS	2020-03-24	Low	0
+1d + (ii)B lower high AND lower low	dated	461	CODX	2020-04-06	Not	0
+1d + (ii)B lower high AND lower low	dated	472	TSLA	2020-04-14	Low	0
+1d + (ii)B lower high AND lower low	dated	498	INO	2020-04-23	Not	0
+1d + (ii)B lower high AND lower low	dated	496	ZM	2020-04-23	Low	0
+1d + (ii)B lower high AND lower low	dated	598	BLDP	2020-05-26	High	0
+1d + (ii)B lower high AND lower low	dated	606	UAL	2020-05-27	Not	0
+1d + (ii)B lower high AND lower low	dated	676	APT	2020-06-17	Low	1
+1d + (ii)B lower high AND lower low	dated	681	VIR	2020-06-19	High	0
+1d + (ii)B lower high AND lower low	dated	682	ACB	2020-06-23	Low	0
+1d + (ii)B lower high AND lower low	dated	717	MDB	2020-07-08	Medium	0
+1d + (ii)B lower high AND lower low	dated	718	ARCT	2020-07-09	Low	0
+1d + (ii)B lower high AND lower low	dated	784	LAKE	2020-07-28	Low	0
+1d + (ii)B lower high AND lower low	dated	797	PINS	2020-07-31	Not	0
+1d + (ii)B lower high AND lower low	dated	801	TTD	2020-07-31	Medium	0
+1d + (ii)B lower high AND lower low	dated	806	WKHS	2020-08-03	High	0
+1d + (ii)B lower high AND lower low	dated	804	ZM	2020-08-03	Medium	0
+1d + (ii)B lower high AND lower low	dated	827	BE	2020-08-13	Medium	1
+1d + (ii)B lower high AND lower low	dated	855	SHOP	2020-08-26	High	0
+1d + (ii)B lower high AND lower low	dated	1030	JMIA	2020-11-18	Low	1
+1d + (ii)B lower high AND lower low	dated	1124	APHA	2021-01-06	High	1
+1d + (ii)B lower high AND lower low	dated	1173	NXH	2021-01-22	Low	1
+1d + (ii)B lower high AND lower low	dated	1213	XYZ	2021-02-03	Low	0
+1d + (ii)B lower high AND lower low	dated	1223	MARA	2021-02-08	Not	0
+1d + (ii)B lower high AND lower low	dated	1224	RIOT	2021-02-08	Not	0
+1d + (ii)B lower high AND lower low	dated	1221	SEDG	2021-02-08	Low	0
+1d + (ii)B lower high AND lower low	dated	1229	ENPH	2021-02-10	Medium	0
+1d + (ii)B lower high AND lower low	dated	1255	AMC	2021-02-22	Low	0
+1d + (ii)B lower high AND lower low	dated	1260	AMC	2021-02-25	Not	0
+1d + (ii)B lower high AND lower low	dated	1263	DKNG	2021-02-26	Medium	0
+1d + (ii)B lower high AND lower low	dated	1264	RKT	2021-03-01	Low	0
+1d + (ii)B lower high AND lower low	dated	1305	ZKIN	2021-03-15	Not	0
+1d + (ii)B lower high AND lower low	dated	1323	AMAT	2021-03-22	Medium	0
+1d + (ii)B lower high AND lower low	dated	1324	APPS	2021-03-22	Medium	0
+1d + (ii)B lower high AND lower low	dated	1326	ETSY	2021-03-23	Low	0
+1d + (ii)B lower high AND lower low	dated	1335	AMAT	2021-03-24	Medium	0
+1d + (ii)B lower high AND lower low	dated	1374	FCX	2021-04-06	Low	0
+1d + (ii)B lower high AND lower low	dated	1386	RIOT	2021-04-13	Not	0
+1d + (ii)B lower high AND lower low	dated	1456	SE	2021-06-08	Low	0
+1d + (ii)B lower high AND lower low	dated	1508	UPST	2021-08-12	Low	0
+1d + (ii)B lower high AND lower low	dated	1553	MSTR	2021-10-11	Low	0
+1d + (ii)B lower high AND lower low	dated	1584	LCID	2021-10-25	High	1
+1d + (ii)B lower high AND lower low	dated	1644	MRNA	2021-11-29	Not	0
+1d + (ii)B lower high AND lower low	dated	1649	MARA	2021-11-30	Low	0
+1d + (ii)B lower high AND lower low	dated	1670	VIR	2021-12-15	Low	0
+1d + (ii)B lower high AND lower low	dated	1822	FREY	2022-11-15	Low	0
+1d + (ii)B lower high AND lower low	dated	1824	U	2022-11-15	Low	0
+1d + (ii)B lower high AND lower low	dated	1834	AI	2023-05-17	Low	0
+1d + (ii)B lower high AND lower low	dated	1869	GME	2023-12-14	Low	0
+1d + (ii)B lower high AND lower low	widened	169	APPS	2019-10-17	Low	0
+1d + (ii)B lower high AND lower low	widened	320	PLUG	2020-01-02	Low	0
+1d + (ii)B lower high AND lower low	widened	375	ACB	2020-02-04	Low	0
+1d + (ii)B lower high AND lower low	widened	379	BYND	2020-02-07	Low	0
+1d + (ii)B lower high AND lower low	widened	450	TSLA	2020-03-26	Low	0
+1d + (ii)B lower high AND lower low	widened	463	JD	2020-04-06	Low	0
+1d + (ii)B lower high AND lower low	widened	510	TLRY	2020-04-24	Low	0
+1d + (ii)B lower high AND lower low	widened	608	SWN	2020-05-26	Medium	0
+1d + (ii)B lower high AND lower low	widened	668	NVAX	2020-06-15	Medium	0
+1d + (ii)B lower high AND lower low	widened	691	BCRX	2020-06-26	High	0
+1d + (ii)B lower high AND lower low	widened	747	BILI	2020-07-21	Low	0
+1d + (ii)B lower high AND lower low	widened	803	BILI	2020-07-31	Medium	0
+1d + (ii)B lower high AND lower low	widened	853	NCLH	2020-08-24	Low	0
+1d + (ii)B lower high AND lower low	widened	864	PDD	2020-09-01	Low	0
+1d + (ii)B lower high AND lower low	widened	884	PLUG	2020-09-15	Low	0
+1d + (ii)B lower high AND lower low	widened	891	FSLY	2020-09-21	High	0
+1d + (ii)B lower high AND lower low	widened	894	ZS	2020-09-21	Low	0
+1d + (ii)B lower high AND lower low	widened	922	APT	2020-10-02	Low	0
+1d + (ii)B lower high AND lower low	widened	923	BILI	2020-10-05	Low	0
+1d + (ii)B lower high AND lower low	widened	1021	DOCU	2020-11-18	Low	0
+1d + (ii)B lower high AND lower low	widened	1053	FSLY	2020-12-04	Low	0
+1d + (ii)B lower high AND lower low	widened	1060	DQ	2020-12-10	Low	0
+1d + (ii)B lower high AND lower low	widened	1074	FCEL	2020-12-15	Low	0
+1d + (ii)B lower high AND lower low	widened	1172	U	2021-01-22	Medium	0
+1d + (ii)B lower high AND lower low	widened	1195	MARA	2021-01-28	Low	0
+1d + (ii)B lower high AND lower low	widened	1225	NIO	2021-02-08	Low	0
+1d + (ii)B lower high AND lower low	widened	1325	LRCX	2021-03-22	Low	0
+1d + (ii)B lower high AND lower low	widened	1343	LRCX	2021-03-26	Low	0
+1d + (ii)B lower high AND lower low	widened	1376	TWTR	2021-03-31	Medium	0
+1d + (ii)B lower high AND lower low	widened	1441	NTLA	2021-05-26	Low	0
+1d + (ii)B lower high AND lower low	widened	1444	BILI	2021-05-28	Low	0
+1d + (ii)B lower high AND lower low	widened	1470	BNTX	2021-06-21	Medium	0
+1d + (ii)B lower high AND lower low	widened	1555	LTHM	2021-10-12	High	0
+1d + (ii)B lower high AND lower low	widened	1588	MQ	2021-10-26	Low	0
+1d + (ii)B lower high AND lower low	widened	1627	SLDP	2021-11-15	Low	0
+1d + (ii)B lower high AND lower low	widened	1656	DVN	2021-12-07	Medium	0
+1d + (ii)B lower high AND lower low	widened	1691	LI	2021-12-30	Low	0
+1d + (ii)B lower high AND lower low	widened	1693	XPEV	2021-12-30	Low	0
+1d + (ii)B lower high AND lower low	widened	1706	LCID	2022-01-07	High	0
+1d + (ii)B lower high AND lower low	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)B lower high AND lower low	widened	1735	FCX	2022-02-08	Low	0
+1d + (ii)B lower high AND lower low	widened	1736	ALB	2022-02-09	Low	0
+1d + (ii)B lower high AND lower low	widened	1747	MP	2022-02-25	Medium	0
+1d + (C) flags of the four A	dated	606	UAL	2020-05-27	Not	0
+1d + (C) flags of the four A	dated	676	APT	2020-06-17	Low	1
+1d + (C) flags of the four A	dated	1644	MRNA	2021-11-29	Not	0
+1d + (C) flags of the four A	dated	1824	U	2022-11-15	Low	0
+1d + (C) flags of the four A	dated	1834	AI	2023-05-17	Low	0
+1d + (C) flags of the four A	widened	375	ACB	2020-02-04	Low	0
+1d + (C) flags of the four A	widened	450	TSLA	2020-03-26	Low	0
+1d + (C) flags of the four A	widened	510	TLRY	2020-04-24	Low	0
+1d + (C) flags of the four A	widened	922	APT	2020-10-02	Low	0
+1d + (C) flags of the four A	widened	923	BILI	2020-10-05	Low	0
+1d + (C) flags of the four A	widened	1021	DOCU	2020-11-18	Low	0
+1d + (C) flags of the four A	widened	1053	FSLY	2020-12-04	Low	0
+1d + (C) flags of the four A	widened	1712	LI	2022-01-12	Low	0
+1d + (Cv) flags of the four B	dated	95	ANET	2018-03-12	Low	0
+1d + (Cv) flags of the four B	dated	441	ZS	2020-03-24	Low	0
+1d + (Cv) flags of the four B	dated	472	TSLA	2020-04-14	Low	0
+1d + (Cv) flags of the four B	dated	606	UAL	2020-05-27	Not	0
+1d + (Cv) flags of the four B	dated	676	APT	2020-06-17	Low	1
+1d + (Cv) flags of the four B	dated	1264	RKT	2021-03-01	Low	0
+1d + (Cv) flags of the four B	dated	1374	FCX	2021-04-06	Low	0
+1d + (Cv) flags of the four B	dated	1508	UPST	2021-08-12	Low	0
+1d + (Cv) flags of the four B	dated	1553	MSTR	2021-10-11	Low	0
+1d + (Cv) flags of the four B	dated	1644	MRNA	2021-11-29	Not	0
+1d + (Cv) flags of the four B	dated	1822	FREY	2022-11-15	Low	0
+1d + (Cv) flags of the four B	dated	1824	U	2022-11-15	Low	0
+1d + (Cv) flags of the four B	dated	1834	AI	2023-05-17	Low	0
+1d + (Cv) flags of the four B	widened	375	ACB	2020-02-04	Low	0
+1d + (Cv) flags of the four B	widened	450	TSLA	2020-03-26	Low	0
+1d + (Cv) flags of the four B	widened	488	SHOP	2020-04-21	Low	0
+1d + (Cv) flags of the four B	widened	510	TLRY	2020-04-24	Low	0
+1d + (Cv) flags of the four B	widened	922	APT	2020-10-02	Low	0
+1d + (Cv) flags of the four B	widened	923	BILI	2020-10-05	Low	0
+1d + (Cv) flags of the four B	widened	1053	FSLY	2020-12-04	Low	0
+1d + (Cv) flags of the four B	widened	1588	MQ	2021-10-26	Low	0
+1d + (Cv) flags of the four B	widened	1712	LI	2022-01-12	Low	0
+1d + (i)A hl10 box k=1 T=4.94	dated	484	SHOP	2020-04-20	Low	0
+1d + (i)A hl10 box k=1 T=4.94	dated	1553	MSTR	2021-10-11	Low	0
+1d + (i)A hl10 box k=1 T=4.94	dated	1644	MRNA	2021-11-29	Not	0
+1d + (i)A hl10 box k=1 T=4.94	widened	175	RETA	2019-10-18	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	243	LK	2019-11-18	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	375	ACB	2020-02-04	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	488	SHOP	2020-04-21	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	510	TLRY	2020-04-24	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	628	ZM	2020-06-02	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	649	BA	2020-06-08	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	677	LAKE	2020-06-17	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	693	FSLY	2020-06-29	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	818	FVRR	2020-08-06	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	922	APT	2020-10-02	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	923	BILI	2020-10-05	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	927	ENPH	2020-10-08	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	995	NIO	2020-11-06	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	1010	UBER	2020-11-16	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	1013	XYZ	2020-11-17	Medium	0
+1d + (i)A hl10 box k=1 T=4.94	widened	1016	NET	2020-11-17	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	1021	DOCU	2020-11-18	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	1027	UBER	2020-11-18	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	1047	TSLA	2020-12-03	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	1053	FSLY	2020-12-04	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	1117	LAC	2020-12-31	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	1469	LOGC	2021-06-18	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	1617	EVGO	2021-11-11	Low	0
+1d + (i)A hl10 box k=1 T=4.94	widened	1712	LI	2022-01-12	Low	0
+1d + (i)A hl10 box k=2 T=4.16	dated	441	ZS	2020-03-24	Low	0
+1d + (i)A hl10 box k=2 T=4.16	dated	484	SHOP	2020-04-20	Low	0
+1d + (i)A hl10 box k=2 T=4.16	dated	607	PLNT	2020-05-26	Low	0
+1d + (i)A hl10 box k=2 T=4.16	dated	606	UAL	2020-05-27	Not	0
+1d + (i)A hl10 box k=2 T=4.16	dated	676	APT	2020-06-17	Low	1
+1d + (i)A hl10 box k=2 T=4.16	dated	851	HUYA	2020-08-24	Medium	0
+1d + (i)A hl10 box k=2 T=4.16	dated	1030	JMIA	2020-11-18	Low	1
+1d + (i)A hl10 box k=2 T=4.16	dated	1072	DOCU	2020-12-15	Low	0
+1d + (i)A hl10 box k=2 T=4.16	dated	1264	RKT	2021-03-01	Low	0
+1d + (i)A hl10 box k=2 T=4.16	dated	1501	BNTX	2021-07-21	High	0
+1d + (i)A hl10 box k=2 T=4.16	dated	1508	UPST	2021-08-12	Low	0
+1d + (i)A hl10 box k=2 T=4.16	dated	1553	MSTR	2021-10-11	Low	0
+1d + (i)A hl10 box k=2 T=4.16	dated	1644	MRNA	2021-11-29	Not	0
+1d + (i)A hl10 box k=2 T=4.16	dated	1824	U	2022-11-15	Low	0
+1d + (i)A hl10 box k=2 T=4.16	dated	1834	AI	2023-05-17	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	175	RETA	2019-10-18	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	243	LK	2019-11-18	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	359	SPCE	2020-01-21	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	375	ACB	2020-02-04	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	428	INO	2020-03-05	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	450	TSLA	2020-03-26	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	488	SHOP	2020-04-21	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	510	TLRY	2020-04-24	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	581	ETSY	2020-05-15	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	601	PENN	2020-05-26	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	628	ZM	2020-06-02	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	647	CAR	2020-06-08	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	649	BA	2020-06-08	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	677	LAKE	2020-06-17	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	693	FSLY	2020-06-29	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	709	NVAX	2020-06-29	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	818	FVRR	2020-08-06	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	843	TWLO	2020-08-18	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	883	BILI	2020-09-15	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	922	APT	2020-10-02	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	923	BILI	2020-10-05	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	927	ENPH	2020-10-08	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	995	NIO	2020-11-06	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1010	UBER	2020-11-16	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1013	XYZ	2020-11-17	Medium	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1015	COUP	2020-11-17	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1016	NET	2020-11-17	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1021	DOCU	2020-11-18	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1027	UBER	2020-11-18	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1047	TSLA	2020-12-03	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1053	FSLY	2020-12-04	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1117	LAC	2020-12-31	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1138	BILI	2021-01-07	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1139	MSTR	2021-01-06	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1469	LOGC	2021-06-18	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1510	COIN	2021-08-23	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1560	PLUG	2021-10-13	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1588	MQ	2021-10-26	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1617	EVGO	2021-11-11	Low	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1633	TSLA	2021-11-19	Medium	0
+1d + (i)A hl10 box k=2 T=4.16	widened	1712	LI	2022-01-12	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	80	SQM	2017-10-04	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	95	ANET	2018-03-12	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	441	ZS	2020-03-24	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	484	SHOP	2020-04-20	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	498	INO	2020-04-23	Not	0
+1d + (i)A hl10 box k=3 T=3.87	dated	607	PLNT	2020-05-26	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	606	UAL	2020-05-27	Not	0
+1d + (i)A hl10 box k=3 T=3.87	dated	676	APT	2020-06-17	Low	1
+1d + (i)A hl10 box k=3 T=3.87	dated	851	HUYA	2020-08-24	Medium	0
+1d + (i)A hl10 box k=3 T=3.87	dated	880	SE	2020-09-14	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	1030	JMIA	2020-11-18	Low	1
+1d + (i)A hl10 box k=3 T=3.87	dated	1072	DOCU	2020-12-15	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	1264	RKT	2021-03-01	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	1374	FCX	2021-04-06	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	1501	BNTX	2021-07-21	High	0
+1d + (i)A hl10 box k=3 T=3.87	dated	1506	MSTR	2021-08-05	Medium	0
+1d + (i)A hl10 box k=3 T=3.87	dated	1508	UPST	2021-08-12	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	1553	MSTR	2021-10-11	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	1644	MRNA	2021-11-29	Not	0
+1d + (i)A hl10 box k=3 T=3.87	dated	1649	MARA	2021-11-30	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	1824	U	2022-11-15	Low	0
+1d + (i)A hl10 box k=3 T=3.87	dated	1834	AI	2023-05-17	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	175	RETA	2019-10-18	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	229	BLDP	2019-11-12	High	0
+1d + (i)A hl10 box k=3 T=3.87	widened	243	LK	2019-11-18	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	359	SPCE	2020-01-21	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	375	ACB	2020-02-04	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	428	INO	2020-03-05	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	450	TSLA	2020-03-26	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	488	SHOP	2020-04-21	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	510	TLRY	2020-04-24	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	581	ETSY	2020-05-15	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	592	ENPH	2020-05-18	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	601	PENN	2020-05-26	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	628	ZM	2020-06-02	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	647	CAR	2020-06-08	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	649	BA	2020-06-08	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	677	LAKE	2020-06-17	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	693	FSLY	2020-06-29	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	709	NVAX	2020-06-29	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	815	LVGO	2020-08-05	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	818	FVRR	2020-08-06	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	837	BILI	2020-08-17	Medium	0
+1d + (i)A hl10 box k=3 T=3.87	widened	843	TWLO	2020-08-18	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	883	BILI	2020-09-15	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	922	APT	2020-10-02	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	923	BILI	2020-10-05	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	927	ENPH	2020-10-08	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	953	RIOT	2020-10-20	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	995	NIO	2020-11-06	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1004	GRWG	2020-11-12	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1010	UBER	2020-11-16	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1013	XYZ	2020-11-17	Medium	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1015	COUP	2020-11-17	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1016	NET	2020-11-17	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1021	DOCU	2020-11-18	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1027	UBER	2020-11-18	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1047	TSLA	2020-12-03	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1051	BE	2020-12-04	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1053	FSLY	2020-12-04	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1117	LAC	2020-12-31	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1138	BILI	2021-01-07	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1139	MSTR	2021-01-06	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1380	SHOP	2021-04-08	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1469	LOGC	2021-06-18	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1470	BNTX	2021-06-21	Medium	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1510	COIN	2021-08-23	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1560	PLUG	2021-10-13	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1588	MQ	2021-10-26	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1617	EVGO	2021-11-11	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1633	TSLA	2021-11-19	Medium	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1648	RIOT	2021-11-29	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1712	LI	2022-01-12	Low	0
+1d + (i)A hl10 box k=3 T=3.87	widened	1722	MOS	2022-02-01	Low	0
+1d + (i)B hl15 box k=1 T=5.42	dated	55	KYNB	2017-08-25	Low	0
+1d + (i)B hl15 box k=1 T=5.42	dated	484	SHOP	2020-04-20	Low	0
+1d + (i)B hl15 box k=1 T=5.42	dated	604	W	2020-05-26	Low	0
+1d + (i)B hl15 box k=1 T=5.42	dated	646	ACB	2020-06-08	Low	0
+1d + (i)B hl15 box k=1 T=5.42	dated	996	XYZ	2020-11-06	Medium	0
+1d + (i)B hl15 box k=1 T=5.42	dated	1255	AMC	2021-02-22	Low	0
+1d + (i)B hl15 box k=1 T=5.42	dated	1267	APHA	2021-03-02	Low	0
+1d + (i)B hl15 box k=1 T=5.42	dated	1270	TLRY	2021-03-02	Low	0
+1d + (i)B hl15 box k=1 T=5.42	dated	1508	UPST	2021-08-12	Low	0
+1d + (i)B hl15 box k=1 T=5.42	dated	1644	MRNA	2021-11-29	Not	0
+1d + (i)B hl15 box k=1 T=5.42	dated	1649	MARA	2021-11-30	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	175	RETA	2019-10-18	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	194	PLUG	2019-10-24	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	243	LK	2019-11-18	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	375	ACB	2020-02-04	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	450	TSLA	2020-03-26	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	488	SHOP	2020-04-21	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	510	TLRY	2020-04-24	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	520	ETSY	2020-04-28	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	649	BA	2020-06-08	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	677	LAKE	2020-06-17	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	693	FSLY	2020-06-29	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	818	FVRR	2020-08-06	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	847	FSLY	2020-08-20	Medium	0
+1d + (i)B hl15 box k=1 T=5.42	widened	894	ZS	2020-09-21	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	922	APT	2020-10-02	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	923	BILI	2020-10-05	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	927	ENPH	2020-10-08	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	995	NIO	2020-11-06	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1010	UBER	2020-11-16	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1013	XYZ	2020-11-17	Medium	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1016	NET	2020-11-17	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1021	DOCU	2020-11-18	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1027	UBER	2020-11-18	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1047	TSLA	2020-12-03	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1053	FSLY	2020-12-04	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1139	MSTR	2021-01-06	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1510	COIN	2021-08-23	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1596	COIN	2021-11-01	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1617	EVGO	2021-11-11	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1712	LI	2022-01-12	Low	0
+1d + (i)B hl15 box k=1 T=5.42	widened	1735	FCX	2022-02-08	Low	0
+1d + (i)B hl15 box k=2 T=5.32	dated	55	KYNB	2017-08-25	Low	0
+1d + (i)B hl15 box k=2 T=5.32	dated	484	SHOP	2020-04-20	Low	0
+1d + (i)B hl15 box k=2 T=5.32	dated	604	W	2020-05-26	Low	0
+1d + (i)B hl15 box k=2 T=5.32	dated	646	ACB	2020-06-08	Low	0
+1d + (i)B hl15 box k=2 T=5.32	dated	996	XYZ	2020-11-06	Medium	0
+1d + (i)B hl15 box k=2 T=5.32	dated	1031	CRON	2020-11-24	High	0
+1d + (i)B hl15 box k=2 T=5.32	dated	1255	AMC	2021-02-22	Low	0
+1d + (i)B hl15 box k=2 T=5.32	dated	1267	APHA	2021-03-02	Low	0
+1d + (i)B hl15 box k=2 T=5.32	dated	1270	TLRY	2021-03-02	Low	0
+1d + (i)B hl15 box k=2 T=5.32	dated	1506	MSTR	2021-08-05	Medium	0
+1d + (i)B hl15 box k=2 T=5.32	dated	1508	UPST	2021-08-12	Low	0
+1d + (i)B hl15 box k=2 T=5.32	dated	1644	MRNA	2021-11-29	Not	0
+1d + (i)B hl15 box k=2 T=5.32	dated	1649	MARA	2021-11-30	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	175	RETA	2019-10-18	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	194	PLUG	2019-10-24	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	243	LK	2019-11-18	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	375	ACB	2020-02-04	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	450	TSLA	2020-03-26	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	488	SHOP	2020-04-21	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	510	TLRY	2020-04-24	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	520	ETSY	2020-04-28	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	649	BA	2020-06-08	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	677	LAKE	2020-06-17	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	693	FSLY	2020-06-29	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	818	FVRR	2020-08-06	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	847	FSLY	2020-08-20	Medium	0
+1d + (i)B hl15 box k=2 T=5.32	widened	894	ZS	2020-09-21	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	922	APT	2020-10-02	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	923	BILI	2020-10-05	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	927	ENPH	2020-10-08	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	995	NIO	2020-11-06	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1010	UBER	2020-11-16	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1013	XYZ	2020-11-17	Medium	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1016	NET	2020-11-17	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1021	DOCU	2020-11-18	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1027	UBER	2020-11-18	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1047	TSLA	2020-12-03	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1053	FSLY	2020-12-04	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1139	MSTR	2021-01-06	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1469	LOGC	2021-06-18	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1510	COIN	2021-08-23	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1596	COIN	2021-11-01	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1617	EVGO	2021-11-11	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1712	LI	2022-01-12	Low	0
+1d + (i)B hl15 box k=2 T=5.32	widened	1735	FCX	2022-02-08	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	55	KYNB	2017-08-25	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	484	SHOP	2020-04-20	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	512	BLDP	2020-04-27	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	533	TSLA	2020-04-30	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	604	W	2020-05-26	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	646	ACB	2020-06-08	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	741	TWTR	2020-07-20	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	827	BE	2020-08-13	Medium	1
+1d + (i)B hl15 box k=3 T=4.94	dated	889	CRWD	2020-09-18	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	892	MDB	2020-09-21	Low	1
+1d + (i)B hl15 box k=3 T=4.94	dated	996	XYZ	2020-11-06	Medium	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1031	CRON	2020-11-24	High	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1255	AMC	2021-02-22	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1267	APHA	2021-03-02	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1270	TLRY	2021-03-02	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1305	ZKIN	2021-03-15	Not	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1374	FCX	2021-04-06	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1506	MSTR	2021-08-05	Medium	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1508	UPST	2021-08-12	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1553	MSTR	2021-10-11	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1571	BTBT	2021-10-20	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1644	MRNA	2021-11-29	Not	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1649	MARA	2021-11-30	Low	0
+1d + (i)B hl15 box k=3 T=4.94	dated	1670	VIR	2021-12-15	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	175	RETA	2019-10-18	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	194	PLUG	2019-10-24	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	243	LK	2019-11-18	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	359	SPCE	2020-01-21	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	375	ACB	2020-02-04	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	450	TSLA	2020-03-26	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	488	SHOP	2020-04-21	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	510	TLRY	2020-04-24	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	520	ETSY	2020-04-28	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	628	ZM	2020-06-02	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	647	CAR	2020-06-08	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	649	BA	2020-06-08	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	677	LAKE	2020-06-17	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	693	FSLY	2020-06-29	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	709	NVAX	2020-06-29	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	818	FVRR	2020-08-06	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	847	FSLY	2020-08-20	Medium	0
+1d + (i)B hl15 box k=3 T=4.94	widened	894	ZS	2020-09-21	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	922	APT	2020-10-02	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	923	BILI	2020-10-05	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	927	ENPH	2020-10-08	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	995	NIO	2020-11-06	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1010	UBER	2020-11-16	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1013	XYZ	2020-11-17	Medium	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1015	COUP	2020-11-17	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1016	NET	2020-11-17	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1021	DOCU	2020-11-18	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1027	UBER	2020-11-18	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1029	SPG	2020-11-20	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1047	TSLA	2020-12-03	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1053	FSLY	2020-12-04	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1117	LAC	2020-12-31	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1139	MSTR	2021-01-06	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1384	NVAX	2021-04-13	High	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1469	LOGC	2021-06-18	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1510	COIN	2021-08-23	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1596	COIN	2021-11-01	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1617	EVGO	2021-11-11	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1712	LI	2022-01-12	Low	0
+1d + (i)B hl15 box k=3 T=4.94	widened	1735	FCX	2022-02-08	Low	0
+1d + (ii)A lower high k=1 T=-2.98	dated	389	LK	2020-02-18	Low	0
+1d + (ii)A lower high k=1 T=-2.98	dated	673	MRNA	2020-06-15	Low	0
+1d + (ii)A lower high k=1 T=-2.98	dated	676	APT	2020-06-17	Low	1
+1d + (ii)A lower high k=1 T=-2.98	dated	827	BE	2020-08-13	Medium	1
+1d + (ii)A lower high k=1 T=-2.98	dated	1255	AMC	2021-02-22	Low	0
+1d + (ii)A lower high k=1 T=-2.98	dated	1267	APHA	2021-03-02	Low	0
+1d + (ii)A lower high k=1 T=-2.98	dated	1300	SOS	2021-03-15	Not	0
+1d + (ii)A lower high k=1 T=-2.98	widened	320	PLUG	2020-01-02	Low	0
+1d + (ii)A lower high k=1 T=-2.98	widened	375	ACB	2020-02-04	Low	0
+1d + (ii)A lower high k=1 T=-2.98	widened	450	TSLA	2020-03-26	Low	0
+1d + (ii)A lower high k=1 T=-2.98	widened	510	TLRY	2020-04-24	Low	0
+1d + (ii)A lower high k=1 T=-2.98	widened	922	APT	2020-10-02	Low	0
+1d + (ii)A lower high k=1 T=-2.98	widened	923	BILI	2020-10-05	Low	0
+1d + (ii)A lower high k=1 T=-2.98	widened	1017	RUN	2020-11-17	Low	0
+1d + (ii)A lower high k=1 T=-2.98	widened	1053	FSLY	2020-12-04	Low	0
+1d + (ii)A lower high k=1 T=-2.98	widened	1106	CAN	2020-12-30	Medium	0
+1d + (ii)A lower high k=1 T=-2.98	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)A lower high k=1 T=-2.98	widened	1735	FCX	2022-02-08	Low	0
+1d + (ii)A lower high k=2 T=-2.97	dated	389	LK	2020-02-18	Low	0
+1d + (ii)A lower high k=2 T=-2.97	dated	673	MRNA	2020-06-15	Low	0
+1d + (ii)A lower high k=2 T=-2.97	dated	676	APT	2020-06-17	Low	1
+1d + (ii)A lower high k=2 T=-2.97	dated	827	BE	2020-08-13	Medium	1
+1d + (ii)A lower high k=2 T=-2.97	dated	1255	AMC	2021-02-22	Low	0
+1d + (ii)A lower high k=2 T=-2.97	dated	1267	APHA	2021-03-02	Low	0
+1d + (ii)A lower high k=2 T=-2.97	dated	1300	SOS	2021-03-15	Not	0
+1d + (ii)A lower high k=2 T=-2.97	dated	1554	CCJ	2021-10-12	High	0
+1d + (ii)A lower high k=2 T=-2.97	widened	320	PLUG	2020-01-02	Low	0
+1d + (ii)A lower high k=2 T=-2.97	widened	375	ACB	2020-02-04	Low	0
+1d + (ii)A lower high k=2 T=-2.97	widened	450	TSLA	2020-03-26	Low	0
+1d + (ii)A lower high k=2 T=-2.97	widened	510	TLRY	2020-04-24	Low	0
+1d + (ii)A lower high k=2 T=-2.97	widened	922	APT	2020-10-02	Low	0
+1d + (ii)A lower high k=2 T=-2.97	widened	923	BILI	2020-10-05	Low	0
+1d + (ii)A lower high k=2 T=-2.97	widened	1017	RUN	2020-11-17	Low	0
+1d + (ii)A lower high k=2 T=-2.97	widened	1053	FSLY	2020-12-04	Low	0
+1d + (ii)A lower high k=2 T=-2.97	widened	1106	CAN	2020-12-30	Medium	0
+1d + (ii)A lower high k=2 T=-2.97	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)A lower high k=2 T=-2.97	widened	1735	FCX	2022-02-08	Low	0
+1d + (ii)A lower high k=3 T=-2.85	dated	389	LK	2020-02-18	Low	0
+1d + (ii)A lower high k=3 T=-2.85	dated	673	MRNA	2020-06-15	Low	0
+1d + (ii)A lower high k=3 T=-2.85	dated	676	APT	2020-06-17	Low	1
+1d + (ii)A lower high k=3 T=-2.85	dated	827	BE	2020-08-13	Medium	1
+1d + (ii)A lower high k=3 T=-2.85	dated	1084	FUV	2020-12-22	High	0
+1d + (ii)A lower high k=3 T=-2.85	dated	1255	AMC	2021-02-22	Low	0
+1d + (ii)A lower high k=3 T=-2.85	dated	1267	APHA	2021-03-02	Low	0
+1d + (ii)A lower high k=3 T=-2.85	dated	1300	SOS	2021-03-15	Not	0
+1d + (ii)A lower high k=3 T=-2.85	dated	1554	CCJ	2021-10-12	High	0
+1d + (ii)A lower high k=3 T=-2.85	widened	320	PLUG	2020-01-02	Low	0
+1d + (ii)A lower high k=3 T=-2.85	widened	375	ACB	2020-02-04	Low	0
+1d + (ii)A lower high k=3 T=-2.85	widened	450	TSLA	2020-03-26	Low	0
+1d + (ii)A lower high k=3 T=-2.85	widened	510	TLRY	2020-04-24	Low	0
+1d + (ii)A lower high k=3 T=-2.85	widened	922	APT	2020-10-02	Low	0
+1d + (ii)A lower high k=3 T=-2.85	widened	923	BILI	2020-10-05	Low	0
+1d + (ii)A lower high k=3 T=-2.85	widened	1017	RUN	2020-11-17	Low	0
+1d + (ii)A lower high k=3 T=-2.85	widened	1053	FSLY	2020-12-04	Low	0
+1d + (ii)A lower high k=3 T=-2.85	widened	1106	CAN	2020-12-30	Medium	0
+1d + (ii)A lower high k=3 T=-2.85	widened	1441	NTLA	2021-05-26	Low	0
+1d + (ii)A lower high k=3 T=-2.85	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)A lower high k=3 T=-2.85	widened	1735	FCX	2022-02-08	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	dated	472	TSLA	2020-04-14	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	dated	676	APT	2020-06-17	Low	1
+1d + (iii)A swing low not k=1 T=-2.52	dated	827	BE	2020-08-13	Medium	1
+1d + (iii)A swing low not k=1 T=-2.52	dated	1465	FUTU	2021-06-14	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	dated	1508	UPST	2021-08-12	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	dated	1553	MSTR	2021-10-11	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iii)A swing low not k=1 T=-2.52	dated	1649	MARA	2021-11-30	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	dated	1824	U	2022-11-15	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	320	PLUG	2020-01-02	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	359	SPCE	2020-01-21	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	375	ACB	2020-02-04	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	450	TSLA	2020-03-26	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	510	TLRY	2020-04-24	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	922	APT	2020-10-02	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	923	BILI	2020-10-05	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	1588	MQ	2021-10-26	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	1712	LI	2022-01-12	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	1735	FCX	2022-02-08	Low	0
+1d + (iii)A swing low not k=1 T=-2.52	widened	1747	MP	2022-02-25	Medium	0
+1d + (iii)A swing low not k=2 T=-2.46	dated	472	TSLA	2020-04-14	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	dated	676	APT	2020-06-17	Low	1
+1d + (iii)A swing low not k=2 T=-2.46	dated	827	BE	2020-08-13	Medium	1
+1d + (iii)A swing low not k=2 T=-2.46	dated	1124	APHA	2021-01-06	High	1
+1d + (iii)A swing low not k=2 T=-2.46	dated	1465	FUTU	2021-06-14	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	dated	1508	UPST	2021-08-12	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	dated	1553	MSTR	2021-10-11	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iii)A swing low not k=2 T=-2.46	dated	1649	MARA	2021-11-30	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	dated	1824	U	2022-11-15	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	320	PLUG	2020-01-02	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	359	SPCE	2020-01-21	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	375	ACB	2020-02-04	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	450	TSLA	2020-03-26	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	510	TLRY	2020-04-24	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	922	APT	2020-10-02	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	923	BILI	2020-10-05	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	1588	MQ	2021-10-26	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	1712	LI	2022-01-12	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	1735	FCX	2022-02-08	Low	0
+1d + (iii)A swing low not k=2 T=-2.46	widened	1747	MP	2022-02-25	Medium	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	95	ANET	2018-03-12	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	389	LK	2020-02-18	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	441	ZS	2020-03-24	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	472	TSLA	2020-04-14	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	496	ZM	2020-04-23	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	607	PLNT	2020-05-26	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	606	UAL	2020-05-27	Not	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	676	APT	2020-06-17	Low	1
+1d + (iii)A swing low not k=3 T=-1.51	dated	718	ARCT	2020-07-09	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	827	BE	2020-08-13	Medium	1
+1d + (iii)A swing low not k=3 T=-1.51	dated	1030	JMIA	2020-11-18	Low	1
+1d + (iii)A swing low not k=3 T=-1.51	dated	1124	APHA	2021-01-06	High	1
+1d + (iii)A swing low not k=3 T=-1.51	dated	1264	RKT	2021-03-01	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	1305	ZKIN	2021-03-15	Not	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	1386	RIOT	2021-04-13	Not	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	1456	SE	2021-06-08	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	1465	FUTU	2021-06-14	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	1508	UPST	2021-08-12	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	1553	MSTR	2021-10-11	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	1649	MARA	2021-11-30	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	1822	FREY	2022-11-15	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	1824	U	2022-11-15	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	dated	1834	AI	2023-05-17	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	320	PLUG	2020-01-02	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	359	SPCE	2020-01-21	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	375	ACB	2020-02-04	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	450	TSLA	2020-03-26	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	510	TLRY	2020-04-24	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	691	BCRX	2020-06-26	High	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	853	NCLH	2020-08-24	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	922	APT	2020-10-02	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	923	BILI	2020-10-05	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	1444	BILI	2021-05-28	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	1588	MQ	2021-10-26	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	1712	LI	2022-01-12	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	1735	FCX	2022-02-08	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	1736	ALB	2022-02-09	Low	0
+1d + (iii)A swing low not k=3 T=-1.51	widened	1747	MP	2022-02-25	Medium	0
+1d + (iii)B same, 3-range k=1 T=-2.92	dated	472	TSLA	2020-04-14	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	dated	482	EXEL	2020-04-20	Not	0
+1d + (iii)B same, 3-range k=1 T=-2.92	dated	533	TSLA	2020-04-30	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	dated	1571	BTBT	2021-10-20	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iii)B same, 3-range k=1 T=-2.92	widened	375	ACB	2020-02-04	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	widened	450	TSLA	2020-03-26	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	widened	510	TLRY	2020-04-24	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	widened	520	ETSY	2020-04-28	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	widened	922	APT	2020-10-02	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	widened	923	BILI	2020-10-05	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	widened	952	MARA	2020-10-20	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	widened	1066	DKNG	2020-12-11	Low	0
+1d + (iii)B same, 3-range k=1 T=-2.92	widened	1712	LI	2022-01-12	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	dated	472	TSLA	2020-04-14	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	dated	482	EXEL	2020-04-20	Not	0
+1d + (iii)B same, 3-range k=2 T=-2.74	dated	533	TSLA	2020-04-30	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	dated	1465	FUTU	2021-06-14	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	dated	1478	BILI	2021-06-25	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	dated	1571	BTBT	2021-10-20	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	375	ACB	2020-02-04	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	450	TSLA	2020-03-26	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	488	SHOP	2020-04-21	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	510	TLRY	2020-04-24	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	520	ETSY	2020-04-28	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	542	SE	2020-05-05	High	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	922	APT	2020-10-02	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	923	BILI	2020-10-05	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	952	MARA	2020-10-20	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	1066	DKNG	2020-12-11	Low	0
+1d + (iii)B same, 3-range k=2 T=-2.74	widened	1712	LI	2022-01-12	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	dated	472	TSLA	2020-04-14	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	dated	482	EXEL	2020-04-20	Not	0
+1d + (iii)B same, 3-range k=3 T=-2.52	dated	533	TSLA	2020-04-30	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	dated	676	APT	2020-06-17	Low	1
+1d + (iii)B same, 3-range k=3 T=-2.52	dated	1465	FUTU	2021-06-14	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	dated	1478	BILI	2021-06-25	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	dated	1508	UPST	2021-08-12	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	dated	1553	MSTR	2021-10-11	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	dated	1571	BTBT	2021-10-20	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	375	ACB	2020-02-04	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	450	TSLA	2020-03-26	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	488	SHOP	2020-04-21	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	510	TLRY	2020-04-24	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	520	ETSY	2020-04-28	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	542	SE	2020-05-05	High	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	922	APT	2020-10-02	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	923	BILI	2020-10-05	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	952	MARA	2020-10-20	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	953	RIOT	2020-10-20	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	1066	DKNG	2020-12-11	Low	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	1706	LCID	2022-01-07	High	0
+1d + (iii)B same, 3-range k=3 T=-2.52	widened	1712	LI	2022-01-12	Low	0
+1d + (iv)A level under 60 k=1 T=20.29	widened	375	ACB	2020-02-04	Low	0
+1d + (iv)A level under 60 k=1 T=20.29	widened	510	TLRY	2020-04-24	Low	0
+1d + (iv)A level under 60 k=1 T=20.29	widened	922	APT	2020-10-02	Low	0
+1d + (iv)A level under 60 k=1 T=20.29	widened	923	BILI	2020-10-05	Low	0
+1d + (iv)A level under 60 k=1 T=20.29	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iv)A level under 60 k=1 T=20.29	widened	1712	LI	2022-01-12	Low	0
+1d + (iv)A level under 60 k=2 T=10.88	dated	546	BNTX	2020-05-05	Medium	0
+1d + (iv)A level under 60 k=2 T=10.88	dated	578	APT	2020-05-14	High	0
+1d + (iv)A level under 60 k=2 T=10.88	dated	591	BNTX	2020-05-18	Not	0
+1d + (iv)A level under 60 k=2 T=10.88	dated	605	CCL	2020-05-26	Not	0
+1d + (iv)A level under 60 k=2 T=10.88	dated	606	UAL	2020-05-27	Not	0
+1d + (iv)A level under 60 k=2 T=10.88	widened	375	ACB	2020-02-04	Low	0
+1d + (iv)A level under 60 k=2 T=10.88	widened	510	TLRY	2020-04-24	Low	0
+1d + (iv)A level under 60 k=2 T=10.88	widened	853	NCLH	2020-08-24	Low	0
+1d + (iv)A level under 60 k=2 T=10.88	widened	922	APT	2020-10-02	Low	0
+1d + (iv)A level under 60 k=2 T=10.88	widened	923	BILI	2020-10-05	Low	0
+1d + (iv)A level under 60 k=2 T=10.88	widened	952	MARA	2020-10-20	Low	0
+1d + (iv)A level under 60 k=2 T=10.88	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iv)A level under 60 k=2 T=10.88	widened	1712	LI	2022-01-12	Low	0
+1d + (iv)A level under 60 k=3 T=9.47	dated	546	BNTX	2020-05-05	Medium	0
+1d + (iv)A level under 60 k=3 T=9.47	dated	578	APT	2020-05-14	High	0
+1d + (iv)A level under 60 k=3 T=9.47	dated	591	BNTX	2020-05-18	Not	0
+1d + (iv)A level under 60 k=3 T=9.47	dated	605	CCL	2020-05-26	Not	0
+1d + (iv)A level under 60 k=3 T=9.47	dated	606	UAL	2020-05-27	Not	0
+1d + (iv)A level under 60 k=3 T=9.47	dated	685	SRNE	2020-06-24	High	1
+1d + (iv)A level under 60 k=3 T=9.47	dated	1143	SOLO	2021-01-11	Medium	0
+1d + (iv)A level under 60 k=3 T=9.47	dated	1255	AMC	2021-02-22	Low	0
+1d + (iv)A level under 60 k=3 T=9.47	widened	375	ACB	2020-02-04	Low	0
+1d + (iv)A level under 60 k=3 T=9.47	widened	510	TLRY	2020-04-24	Low	0
+1d + (iv)A level under 60 k=3 T=9.47	widened	853	NCLH	2020-08-24	Low	0
+1d + (iv)A level under 60 k=3 T=9.47	widened	922	APT	2020-10-02	Low	0
+1d + (iv)A level under 60 k=3 T=9.47	widened	923	BILI	2020-10-05	Low	0
+1d + (iv)A level under 60 k=3 T=9.47	widened	952	MARA	2020-10-20	Low	0
+1d + (iv)A level under 60 k=3 T=9.47	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iv)A level under 60 k=3 T=9.47	widened	1481	RIOT	2021-06-28	Low	0
+1d + (iv)A level under 60 k=3 T=9.47	widened	1712	LI	2022-01-12	Low	0
+1d + (iv)B closes near th k=1 T=2.00	dated	1264	RKT	2021-03-01	Low	0
+1d + (iv)B closes near th k=1 T=2.00	dated	1508	UPST	2021-08-12	Low	0
+1d + (iv)B closes near th k=1 T=2.00	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iv)B closes near th k=1 T=2.00	widened	243	LK	2019-11-18	Low	0
+1d + (iv)B closes near th k=1 T=2.00	widened	375	ACB	2020-02-04	Low	0
+1d + (iv)B closes near th k=1 T=2.00	widened	510	TLRY	2020-04-24	Low	0
+1d + (iv)B closes near th k=1 T=2.00	widened	649	BA	2020-06-08	Low	0
+1d + (iv)B closes near th k=1 T=2.00	widened	818	FVRR	2020-08-06	Low	0
+1d + (iv)B closes near th k=1 T=2.00	widened	922	APT	2020-10-02	Low	0
+1d + (iv)B closes near th k=1 T=2.00	widened	923	BILI	2020-10-05	Low	0
+1d + (iv)B closes near th k=1 T=2.00	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iv)B closes near th k=1 T=2.00	widened	1712	LI	2022-01-12	Low	0
+1d + (iv)B closes near th k=2 T=3.00	dated	484	SHOP	2020-04-20	Low	0
+1d + (iv)B closes near th k=2 T=3.00	dated	498	INO	2020-04-23	Not	0
+1d + (iv)B closes near th k=2 T=3.00	dated	573	NVAX	2020-05-12	Not	0
+1d + (iv)B closes near th k=2 T=3.00	dated	688	BNTX	2020-06-25	High	0
+1d + (iv)B closes near th k=2 T=3.00	dated	1264	RKT	2021-03-01	Low	0
+1d + (iv)B closes near th k=2 T=3.00	dated	1508	UPST	2021-08-12	Low	0
+1d + (iv)B closes near th k=2 T=3.00	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iv)B closes near th k=2 T=3.00	dated	1822	FREY	2022-11-15	Low	0
+1d + (iv)B closes near th k=2 T=3.00	dated	1834	AI	2023-05-17	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	243	LK	2019-11-18	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	375	ACB	2020-02-04	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	428	INO	2020-03-05	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	488	SHOP	2020-04-21	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	510	TLRY	2020-04-24	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	628	ZM	2020-06-02	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	649	BA	2020-06-08	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	818	FVRR	2020-08-06	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	922	APT	2020-10-02	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	923	BILI	2020-10-05	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	995	NIO	2020-11-06	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	1617	EVGO	2021-11-11	Low	0
+1d + (iv)B closes near th k=2 T=3.00	widened	1712	LI	2022-01-12	Low	0
+1d + (iv)B closes near th k=3 T=3.00	dated	484	SHOP	2020-04-20	Low	0
+1d + (iv)B closes near th k=3 T=3.00	dated	498	INO	2020-04-23	Not	0
+1d + (iv)B closes near th k=3 T=3.00	dated	573	NVAX	2020-05-12	Not	0
+1d + (iv)B closes near th k=3 T=3.00	dated	688	BNTX	2020-06-25	High	0
+1d + (iv)B closes near th k=3 T=3.00	dated	1264	RKT	2021-03-01	Low	0
+1d + (iv)B closes near th k=3 T=3.00	dated	1508	UPST	2021-08-12	Low	0
+1d + (iv)B closes near th k=3 T=3.00	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iv)B closes near th k=3 T=3.00	dated	1822	FREY	2022-11-15	Low	0
+1d + (iv)B closes near th k=3 T=3.00	dated	1834	AI	2023-05-17	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	243	LK	2019-11-18	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	375	ACB	2020-02-04	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	428	INO	2020-03-05	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	488	SHOP	2020-04-21	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	510	TLRY	2020-04-24	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	628	ZM	2020-06-02	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	649	BA	2020-06-08	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	818	FVRR	2020-08-06	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	922	APT	2020-10-02	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	923	BILI	2020-10-05	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	995	NIO	2020-11-06	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	1617	EVGO	2021-11-11	Low	0
+1d + (iv)B closes near th k=3 T=3.00	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)A lower high zz=1.5 T=-2.97	dated	55	KYNB	2017-08-25	Low	0
+1d + (ii)A lower high zz=1.5 T=-2.97	dated	827	BE	2020-08-13	Medium	1
+1d + (ii)A lower high zz=1.5 T=-2.97	dated	892	MDB	2020-09-21	Low	1
+1d + (ii)A lower high zz=1.5 T=-2.97	dated	1233	W	2021-02-11	Low	0
+1d + (ii)A lower high zz=1.5 T=-2.97	dated	1255	AMC	2021-02-22	Low	0
+1d + (ii)A lower high zz=1.5 T=-2.97	dated	1270	TLRY	2021-03-02	Low	0
+1d + (ii)A lower high zz=1.5 T=-2.97	dated	1300	SOS	2021-03-15	Not	0
+1d + (ii)A lower high zz=1.5 T=-2.97	widened	375	ACB	2020-02-04	Low	0
+1d + (ii)A lower high zz=1.5 T=-2.97	widened	450	TSLA	2020-03-26	Low	0
+1d + (ii)A lower high zz=1.5 T=-2.97	widened	510	TLRY	2020-04-24	Low	0
+1d + (ii)A lower high zz=1.5 T=-2.97	widened	922	APT	2020-10-02	Low	0
+1d + (ii)A lower high zz=1.5 T=-2.97	widened	923	BILI	2020-10-05	Low	0
+1d + (ii)A lower high zz=1.5 T=-2.97	widened	1053	FSLY	2020-12-04	Low	0
+1d + (ii)A lower high zz=1.5 T=-2.97	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	dated	389	LK	2020-02-18	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	dated	673	MRNA	2020-06-15	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	dated	676	APT	2020-06-17	Low	1
+1d + (ii)A lower high zz=2.0 T=-2.98	dated	827	BE	2020-08-13	Medium	1
+1d + (ii)A lower high zz=2.0 T=-2.98	dated	1255	AMC	2021-02-22	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	dated	1267	APHA	2021-03-02	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	dated	1300	SOS	2021-03-15	Not	0
+1d + (ii)A lower high zz=2.0 T=-2.98	widened	320	PLUG	2020-01-02	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	widened	375	ACB	2020-02-04	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	widened	450	TSLA	2020-03-26	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	widened	510	TLRY	2020-04-24	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	widened	922	APT	2020-10-02	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	widened	923	BILI	2020-10-05	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	widened	1017	RUN	2020-11-17	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	widened	1053	FSLY	2020-12-04	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	widened	1106	CAN	2020-12-30	Medium	0
+1d + (ii)A lower high zz=2.0 T=-2.98	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)A lower high zz=2.0 T=-2.98	widened	1735	FCX	2022-02-08	Low	0
+1d + (ii)A lower high zz=3.0 T=-5.82	dated	731	CODX	2020-07-16	Low	1
+1d + (ii)A lower high zz=3.0 T=-5.82	dated	1143	SOLO	2021-01-11	Medium	0
+1d + (ii)A lower high zz=3.0 T=-5.82	dated	1824	U	2022-11-15	Low	0
+1d + (ii)A lower high zz=3.0 T=-5.82	widened	375	ACB	2020-02-04	Low	0
+1d + (ii)A lower high zz=3.0 T=-5.82	widened	510	TLRY	2020-04-24	Low	0
+1d + (ii)A lower high zz=3.0 T=-5.82	widened	922	APT	2020-10-02	Low	0
+1d + (ii)A lower high zz=3.0 T=-5.82	widened	923	BILI	2020-10-05	Low	0
+1d + (ii)A lower high zz=3.0 T=-5.82	widened	952	MARA	2020-10-20	Low	0
+1d + (ii)A lower high zz=3.0 T=-5.82	widened	1053	FSLY	2020-12-04	Low	0
+1d + (ii)A lower high zz=3.0 T=-5.82	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)B both lower zz=1.5	dated	55	KYNB	2017-08-25	Low	0
+1d + (ii)B both lower zz=1.5	dated	95	ANET	2018-03-12	Low	0
+1d + (ii)B both lower zz=1.5	dated	104	ROKU	2018-08-09	Not	0
+1d + (ii)B both lower zz=1.5	dated	111	BMA	2019-08-09	High	0
+1d + (ii)B both lower zz=1.5	dated	156	MIK	2019-10-10	Low	0
+1d + (ii)B both lower zz=1.5	dated	174	MIK	2019-10-21	Low	0
+1d + (ii)B both lower zz=1.5	dated	189	MIK	2019-10-22	High	0
+1d + (ii)B both lower zz=1.5	dated	348	PBYI	2020-01-17	Medium	0
+1d + (ii)B both lower zz=1.5	dated	383	BLDP	2020-02-10	Medium	0
+1d + (ii)B both lower zz=1.5	dated	426	BILI	2020-03-05	Low	0
+1d + (ii)B both lower zz=1.5	dated	423	WORK	2020-03-05	Medium	0
+1d + (ii)B both lower zz=1.5	dated	441	ZS	2020-03-24	Low	0
+1d + (ii)B both lower zz=1.5	dated	461	CODX	2020-04-06	Not	0
+1d + (ii)B both lower zz=1.5	dated	496	ZM	2020-04-23	Low	0
+1d + (ii)B both lower zz=1.5	dated	554	FSLY	2020-05-07	Not	0
+1d + (ii)B both lower zz=1.5	dated	597	TTD	2020-05-22	Low	0
+1d + (ii)B both lower zz=1.5	dated	598	BLDP	2020-05-26	High	0
+1d + (ii)B both lower zz=1.5	dated	606	UAL	2020-05-27	Not	0
+1d + (ii)B both lower zz=1.5	dated	642	BYND	2020-06-08	High	0
+1d + (ii)B both lower zz=1.5	dated	676	APT	2020-06-17	Low	1
+1d + (ii)B both lower zz=1.5	dated	682	ACB	2020-06-23	Low	0
+1d + (ii)B both lower zz=1.5	dated	753	BLNK	2020-07-22	Not	0
+1d + (ii)B both lower zz=1.5	dated	784	LAKE	2020-07-28	Low	0
+1d + (ii)B both lower zz=1.5	dated	787	AVLR	2020-07-29	Medium	0
+1d + (ii)B both lower zz=1.5	dated	797	PINS	2020-07-31	Not	0
+1d + (ii)B both lower zz=1.5	dated	801	TTD	2020-07-31	Medium	0
+1d + (ii)B both lower zz=1.5	dated	855	SHOP	2020-08-26	High	0
+1d + (ii)B both lower zz=1.5	dated	885	ESTC	2020-09-16	Medium	0
+1d + (ii)B both lower zz=1.5	dated	890	ESTC	2020-09-21	Medium	0
+1d + (ii)B both lower zz=1.5	dated	892	MDB	2020-09-21	Low	1
+1d + (ii)B both lower zz=1.5	dated	981	TTD	2020-10-29	Low	0
+1d + (ii)B both lower zz=1.5	dated	989	ENPH	2020-11-05	High	0
+1d + (ii)B both lower zz=1.5	dated	996	XYZ	2020-11-06	Medium	0
+1d + (ii)B both lower zz=1.5	dated	1009	BLDP	2020-11-16	Low	0
+1d + (ii)B both lower zz=1.5	dated	1030	JMIA	2020-11-18	Low	1
+1d + (ii)B both lower zz=1.5	dated	1100	CCL	2020-12-28	Low	0
+1d + (ii)B both lower zz=1.5	dated	1099	MSTR	2020-12-28	Not	0
+1d + (ii)B both lower zz=1.5	dated	1095	NCLH	2020-12-28	Medium	0
+1d + (ii)B both lower zz=1.5	dated	1114	TLRY	2021-01-04	Low	0
+1d + (ii)B both lower zz=1.5	dated	1124	APHA	2021-01-06	High	1
+1d + (ii)B both lower zz=1.5	dated	1171	SICP	2021-01-22	Medium	1
+1d + (ii)B both lower zz=1.5	dated	1198	BTBT	2021-01-28	Low	0
+1d + (ii)B both lower zz=1.5	dated	1213	XYZ	2021-02-03	Low	0
+1d + (ii)B both lower zz=1.5	dated	1223	MARA	2021-02-08	Not	0
+1d + (ii)B both lower zz=1.5	dated	1221	SEDG	2021-02-08	Low	0
+1d + (ii)B both lower zz=1.5	dated	1229	ENPH	2021-02-10	Medium	0
+1d + (ii)B both lower zz=1.5	dated	1255	AMC	2021-02-22	Low	0
+1d + (ii)B both lower zz=1.5	dated	1260	AMC	2021-02-25	Not	0
+1d + (ii)B both lower zz=1.5	dated	1263	DKNG	2021-02-26	Medium	0
+1d + (ii)B both lower zz=1.5	dated	1264	RKT	2021-03-01	Low	0
+1d + (ii)B both lower zz=1.5	dated	1270	TLRY	2021-03-02	Low	0
+1d + (ii)B both lower zz=1.5	dated	1288	FCX	2021-03-11	Medium	0
+1d + (ii)B both lower zz=1.5	dated	1290	UAL	2021-03-11	Low	0
+1d + (ii)B both lower zz=1.5	dated	1305	ZKIN	2021-03-15	Not	0
+1d + (ii)B both lower zz=1.5	dated	1308	MU	2021-03-16	Medium	0
+1d + (ii)B both lower zz=1.5	dated	1324	APPS	2021-03-22	Medium	0
+1d + (ii)B both lower zz=1.5	dated	1326	ETSY	2021-03-23	Low	0
+1d + (ii)B both lower zz=1.5	dated	1350	AAL	2021-03-30	Low	0
+1d + (ii)B both lower zz=1.5	dated	1374	FCX	2021-04-06	Low	0
+1d + (ii)B both lower zz=1.5	dated	1395	X	2021-04-23	Medium	0
+1d + (ii)B both lower zz=1.5	dated	1396	CCL	2021-04-26	Low	0
+1d + (ii)B both lower zz=1.5	dated	1456	SE	2021-06-08	Low	0
+1d + (ii)B both lower zz=1.5	dated	1571	BTBT	2021-10-20	Low	0
+1d + (ii)B both lower zz=1.5	dated	1644	MRNA	2021-11-29	Not	0
+1d + (ii)B both lower zz=1.5	dated	1649	MARA	2021-11-30	Low	0
+1d + (ii)B both lower zz=1.5	dated	1670	VIR	2021-12-15	Low	0
+1d + (ii)B both lower zz=1.5	dated	1822	FREY	2022-11-15	Low	0
+1d + (ii)B both lower zz=1.5	dated	1830	PDD	2023-01-05	High	0
+1d + (ii)B both lower zz=1.5	dated	1834	AI	2023-05-17	Low	0
+1d + (ii)B both lower zz=1.5	dated	1869	GME	2023-12-14	Low	0
+1d + (ii)B both lower zz=1.5	widened	375	ACB	2020-02-04	Low	0
+1d + (ii)B both lower zz=1.5	widened	379	BYND	2020-02-07	Low	0
+1d + (ii)B both lower zz=1.5	widened	450	TSLA	2020-03-26	Low	0
+1d + (ii)B both lower zz=1.5	widened	510	TLRY	2020-04-24	Low	0
+1d + (ii)B both lower zz=1.5	widened	608	SWN	2020-05-26	Medium	0
+1d + (ii)B both lower zz=1.5	widened	691	BCRX	2020-06-26	High	0
+1d + (ii)B both lower zz=1.5	widened	747	BILI	2020-07-21	Low	0
+1d + (ii)B both lower zz=1.5	widened	752	AHPIQ	2020-07-22	Low	0
+1d + (ii)B both lower zz=1.5	widened	803	BILI	2020-07-31	Medium	0
+1d + (ii)B both lower zz=1.5	widened	864	PDD	2020-09-01	Low	0
+1d + (ii)B both lower zz=1.5	widened	875	DKNG	2020-09-10	High	0
+1d + (ii)B both lower zz=1.5	widened	884	PLUG	2020-09-15	Low	0
+1d + (ii)B both lower zz=1.5	widened	894	ZS	2020-09-21	Low	0
+1d + (ii)B both lower zz=1.5	widened	922	APT	2020-10-02	Low	0
+1d + (ii)B both lower zz=1.5	widened	923	BILI	2020-10-05	Low	0
+1d + (ii)B both lower zz=1.5	widened	993	FUTU	2020-11-05	Low	0
+1d + (ii)B both lower zz=1.5	widened	1021	DOCU	2020-11-18	Low	0
+1d + (ii)B both lower zz=1.5	widened	1025	SNAP	2020-11-19	Low	0
+1d + (ii)B both lower zz=1.5	widened	1053	FSLY	2020-12-04	Low	0
+1d + (ii)B both lower zz=1.5	widened	1060	DQ	2020-12-10	Low	0
+1d + (ii)B both lower zz=1.5	widened	1074	FCEL	2020-12-15	Low	0
+1d + (ii)B both lower zz=1.5	widened	1157	WWR	2021-01-19	Low	0
+1d + (ii)B both lower zz=1.5	widened	1195	MARA	2021-01-28	Low	0
+1d + (ii)B both lower zz=1.5	widened	1225	NIO	2021-02-08	Low	0
+1d + (ii)B both lower zz=1.5	widened	1295	CCL	2021-03-12	Low	0
+1d + (ii)B both lower zz=1.5	widened	1325	LRCX	2021-03-22	Low	0
+1d + (ii)B both lower zz=1.5	widened	1441	NTLA	2021-05-26	Low	0
+1d + (ii)B both lower zz=1.5	widened	1444	BILI	2021-05-28	Low	0
+1d + (ii)B both lower zz=1.5	widened	1470	BNTX	2021-06-21	Medium	0
+1d + (ii)B both lower zz=1.5	widened	1555	LTHM	2021-10-12	High	0
+1d + (ii)B both lower zz=1.5	widened	1597	GME	2021-10-29	Medium	0
+1d + (ii)B both lower zz=1.5	widened	1599	MSTR	2021-11-02	Medium	0
+1d + (ii)B both lower zz=1.5	widened	1627	SLDP	2021-11-15	Low	0
+1d + (ii)B both lower zz=1.5	widened	1648	RIOT	2021-11-29	Low	0
+1d + (ii)B both lower zz=1.5	widened	1656	DVN	2021-12-07	Medium	0
+1d + (ii)B both lower zz=1.5	widened	1683	SNOW	2021-12-22	Low	0
+1d + (ii)B both lower zz=1.5	widened	1691	LI	2021-12-30	Low	0
+1d + (ii)B both lower zz=1.5	widened	1693	XPEV	2021-12-30	Low	0
+1d + (ii)B both lower zz=1.5	widened	1706	LCID	2022-01-07	High	0
+1d + (ii)B both lower zz=1.5	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)B both lower zz=1.5	widened	1735	FCX	2022-02-08	Low	0
+1d + (ii)B both lower zz=2.0	dated	95	ANET	2018-03-12	Low	0
+1d + (ii)B both lower zz=2.0	dated	111	BMA	2019-08-09	High	0
+1d + (ii)B both lower zz=2.0	dated	156	MIK	2019-10-10	Low	0
+1d + (ii)B both lower zz=2.0	dated	173	ACAD	2019-10-21	High	0
+1d + (ii)B both lower zz=2.0	dated	174	MIK	2019-10-21	Low	0
+1d + (ii)B both lower zz=2.0	dated	189	MIK	2019-10-22	High	0
+1d + (ii)B both lower zz=2.0	dated	348	PBYI	2020-01-17	Medium	0
+1d + (ii)B both lower zz=2.0	dated	389	LK	2020-02-18	Low	0
+1d + (ii)B both lower zz=2.0	dated	400	APT	2020-02-21	Low	1
+1d + (ii)B both lower zz=2.0	dated	441	ZS	2020-03-24	Low	0
+1d + (ii)B both lower zz=2.0	dated	461	CODX	2020-04-06	Not	0
+1d + (ii)B both lower zz=2.0	dated	472	TSLA	2020-04-14	Low	0
+1d + (ii)B both lower zz=2.0	dated	498	INO	2020-04-23	Not	0
+1d + (ii)B both lower zz=2.0	dated	496	ZM	2020-04-23	Low	0
+1d + (ii)B both lower zz=2.0	dated	598	BLDP	2020-05-26	High	0
+1d + (ii)B both lower zz=2.0	dated	606	UAL	2020-05-27	Not	0
+1d + (ii)B both lower zz=2.0	dated	676	APT	2020-06-17	Low	1
+1d + (ii)B both lower zz=2.0	dated	681	VIR	2020-06-19	High	0
+1d + (ii)B both lower zz=2.0	dated	682	ACB	2020-06-23	Low	0
+1d + (ii)B both lower zz=2.0	dated	717	MDB	2020-07-08	Medium	0
+1d + (ii)B both lower zz=2.0	dated	718	ARCT	2020-07-09	Low	0
+1d + (ii)B both lower zz=2.0	dated	784	LAKE	2020-07-28	Low	0
+1d + (ii)B both lower zz=2.0	dated	797	PINS	2020-07-31	Not	0
+1d + (ii)B both lower zz=2.0	dated	801	TTD	2020-07-31	Medium	0
+1d + (ii)B both lower zz=2.0	dated	806	WKHS	2020-08-03	High	0
+1d + (ii)B both lower zz=2.0	dated	804	ZM	2020-08-03	Medium	0
+1d + (ii)B both lower zz=2.0	dated	827	BE	2020-08-13	Medium	1
+1d + (ii)B both lower zz=2.0	dated	855	SHOP	2020-08-26	High	0
+1d + (ii)B both lower zz=2.0	dated	1030	JMIA	2020-11-18	Low	1
+1d + (ii)B both lower zz=2.0	dated	1124	APHA	2021-01-06	High	1
+1d + (ii)B both lower zz=2.0	dated	1173	NXH	2021-01-22	Low	1
+1d + (ii)B both lower zz=2.0	dated	1213	XYZ	2021-02-03	Low	0
+1d + (ii)B both lower zz=2.0	dated	1223	MARA	2021-02-08	Not	0
+1d + (ii)B both lower zz=2.0	dated	1224	RIOT	2021-02-08	Not	0
+1d + (ii)B both lower zz=2.0	dated	1221	SEDG	2021-02-08	Low	0
+1d + (ii)B both lower zz=2.0	dated	1229	ENPH	2021-02-10	Medium	0
+1d + (ii)B both lower zz=2.0	dated	1255	AMC	2021-02-22	Low	0
+1d + (ii)B both lower zz=2.0	dated	1260	AMC	2021-02-25	Not	0
+1d + (ii)B both lower zz=2.0	dated	1263	DKNG	2021-02-26	Medium	0
+1d + (ii)B both lower zz=2.0	dated	1264	RKT	2021-03-01	Low	0
+1d + (ii)B both lower zz=2.0	dated	1305	ZKIN	2021-03-15	Not	0
+1d + (ii)B both lower zz=2.0	dated	1323	AMAT	2021-03-22	Medium	0
+1d + (ii)B both lower zz=2.0	dated	1324	APPS	2021-03-22	Medium	0
+1d + (ii)B both lower zz=2.0	dated	1326	ETSY	2021-03-23	Low	0
+1d + (ii)B both lower zz=2.0	dated	1335	AMAT	2021-03-24	Medium	0
+1d + (ii)B both lower zz=2.0	dated	1374	FCX	2021-04-06	Low	0
+1d + (ii)B both lower zz=2.0	dated	1386	RIOT	2021-04-13	Not	0
+1d + (ii)B both lower zz=2.0	dated	1456	SE	2021-06-08	Low	0
+1d + (ii)B both lower zz=2.0	dated	1508	UPST	2021-08-12	Low	0
+1d + (ii)B both lower zz=2.0	dated	1553	MSTR	2021-10-11	Low	0
+1d + (ii)B both lower zz=2.0	dated	1584	LCID	2021-10-25	High	1
+1d + (ii)B both lower zz=2.0	dated	1644	MRNA	2021-11-29	Not	0
+1d + (ii)B both lower zz=2.0	dated	1649	MARA	2021-11-30	Low	0
+1d + (ii)B both lower zz=2.0	dated	1670	VIR	2021-12-15	Low	0
+1d + (ii)B both lower zz=2.0	dated	1822	FREY	2022-11-15	Low	0
+1d + (ii)B both lower zz=2.0	dated	1824	U	2022-11-15	Low	0
+1d + (ii)B both lower zz=2.0	dated	1834	AI	2023-05-17	Low	0
+1d + (ii)B both lower zz=2.0	dated	1869	GME	2023-12-14	Low	0
+1d + (ii)B both lower zz=2.0	widened	169	APPS	2019-10-17	Low	0
+1d + (ii)B both lower zz=2.0	widened	320	PLUG	2020-01-02	Low	0
+1d + (ii)B both lower zz=2.0	widened	375	ACB	2020-02-04	Low	0
+1d + (ii)B both lower zz=2.0	widened	379	BYND	2020-02-07	Low	0
+1d + (ii)B both lower zz=2.0	widened	450	TSLA	2020-03-26	Low	0
+1d + (ii)B both lower zz=2.0	widened	463	JD	2020-04-06	Low	0
+1d + (ii)B both lower zz=2.0	widened	510	TLRY	2020-04-24	Low	0
+1d + (ii)B both lower zz=2.0	widened	608	SWN	2020-05-26	Medium	0
+1d + (ii)B both lower zz=2.0	widened	668	NVAX	2020-06-15	Medium	0
+1d + (ii)B both lower zz=2.0	widened	691	BCRX	2020-06-26	High	0
+1d + (ii)B both lower zz=2.0	widened	747	BILI	2020-07-21	Low	0
+1d + (ii)B both lower zz=2.0	widened	803	BILI	2020-07-31	Medium	0
+1d + (ii)B both lower zz=2.0	widened	853	NCLH	2020-08-24	Low	0
+1d + (ii)B both lower zz=2.0	widened	864	PDD	2020-09-01	Low	0
+1d + (ii)B both lower zz=2.0	widened	884	PLUG	2020-09-15	Low	0
+1d + (ii)B both lower zz=2.0	widened	891	FSLY	2020-09-21	High	0
+1d + (ii)B both lower zz=2.0	widened	894	ZS	2020-09-21	Low	0
+1d + (ii)B both lower zz=2.0	widened	922	APT	2020-10-02	Low	0
+1d + (ii)B both lower zz=2.0	widened	923	BILI	2020-10-05	Low	0
+1d + (ii)B both lower zz=2.0	widened	1021	DOCU	2020-11-18	Low	0
+1d + (ii)B both lower zz=2.0	widened	1053	FSLY	2020-12-04	Low	0
+1d + (ii)B both lower zz=2.0	widened	1060	DQ	2020-12-10	Low	0
+1d + (ii)B both lower zz=2.0	widened	1074	FCEL	2020-12-15	Low	0
+1d + (ii)B both lower zz=2.0	widened	1172	U	2021-01-22	Medium	0
+1d + (ii)B both lower zz=2.0	widened	1195	MARA	2021-01-28	Low	0
+1d + (ii)B both lower zz=2.0	widened	1225	NIO	2021-02-08	Low	0
+1d + (ii)B both lower zz=2.0	widened	1325	LRCX	2021-03-22	Low	0
+1d + (ii)B both lower zz=2.0	widened	1343	LRCX	2021-03-26	Low	0
+1d + (ii)B both lower zz=2.0	widened	1376	TWTR	2021-03-31	Medium	0
+1d + (ii)B both lower zz=2.0	widened	1441	NTLA	2021-05-26	Low	0
+1d + (ii)B both lower zz=2.0	widened	1444	BILI	2021-05-28	Low	0
+1d + (ii)B both lower zz=2.0	widened	1470	BNTX	2021-06-21	Medium	0
+1d + (ii)B both lower zz=2.0	widened	1555	LTHM	2021-10-12	High	0
+1d + (ii)B both lower zz=2.0	widened	1588	MQ	2021-10-26	Low	0
+1d + (ii)B both lower zz=2.0	widened	1627	SLDP	2021-11-15	Low	0
+1d + (ii)B both lower zz=2.0	widened	1656	DVN	2021-12-07	Medium	0
+1d + (ii)B both lower zz=2.0	widened	1691	LI	2021-12-30	Low	0
+1d + (ii)B both lower zz=2.0	widened	1693	XPEV	2021-12-30	Low	0
+1d + (ii)B both lower zz=2.0	widened	1706	LCID	2022-01-07	High	0
+1d + (ii)B both lower zz=2.0	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)B both lower zz=2.0	widened	1735	FCX	2022-02-08	Low	0
+1d + (ii)B both lower zz=2.0	widened	1736	ALB	2022-02-09	Low	0
+1d + (ii)B both lower zz=2.0	widened	1747	MP	2022-02-25	Medium	0
+1d + (ii)B both lower zz=3.0	dated	111	BMA	2019-08-09	High	0
+1d + (ii)B both lower zz=3.0	dated	173	ACAD	2019-10-21	High	0
+1d + (ii)B both lower zz=3.0	dated	189	MIK	2019-10-22	High	0
+1d + (ii)B both lower zz=3.0	dated	402	NVAX	2020-02-24	Medium	0
+1d + (ii)B both lower zz=3.0	dated	406	NVAX	2020-02-26	High	1
+1d + (ii)B both lower zz=3.0	dated	441	ZS	2020-03-24	Low	0
+1d + (ii)B both lower zz=3.0	dated	472	TSLA	2020-04-14	Low	0
+1d + (ii)B both lower zz=3.0	dated	482	EXEL	2020-04-20	Not	0
+1d + (ii)B both lower zz=3.0	dated	498	INO	2020-04-23	Not	0
+1d + (ii)B both lower zz=3.0	dated	533	TSLA	2020-04-30	Low	0
+1d + (ii)B both lower zz=3.0	dated	606	UAL	2020-05-27	Not	0
+1d + (ii)B both lower zz=3.0	dated	676	APT	2020-06-17	Low	1
+1d + (ii)B both lower zz=3.0	dated	685	SRNE	2020-06-24	High	1
+1d + (ii)B both lower zz=3.0	dated	720	ROKU	2020-07-09	High	0
+1d + (ii)B both lower zz=3.0	dated	908	DDOG	2020-09-22	Medium	0
+1d + (ii)B both lower zz=3.0	dated	1048	DOCU	2020-12-04	Low	0
+1d + (ii)B both lower zz=3.0	dated	1070	PTON	2020-12-14	High	1
+1d + (ii)B both lower zz=3.0	dated	1174	CBAT	2021-01-22	Medium	0
+1d + (ii)B both lower zz=3.0	dated	1173	NXH	2021-01-22	Low	1
+1d + (ii)B both lower zz=3.0	dated	1213	XYZ	2021-02-03	Low	0
+1d + (ii)B both lower zz=3.0	dated	1255	AMC	2021-02-22	Low	0
+1d + (ii)B both lower zz=3.0	dated	1260	AMC	2021-02-25	Not	0
+1d + (ii)B both lower zz=3.0	dated	1264	RKT	2021-03-01	Low	0
+1d + (ii)B both lower zz=3.0	dated	1374	FCX	2021-04-06	Low	0
+1d + (ii)B both lower zz=3.0	dated	1478	BILI	2021-06-25	Low	0
+1d + (ii)B both lower zz=3.0	dated	1508	UPST	2021-08-12	Low	0
+1d + (ii)B both lower zz=3.0	dated	1553	MSTR	2021-10-11	Low	0
+1d + (ii)B both lower zz=3.0	dated	1571	BTBT	2021-10-20	Low	0
+1d + (ii)B both lower zz=3.0	dated	1630	ZIM	2021-11-18	Low	0
+1d + (ii)B both lower zz=3.0	dated	1644	MRNA	2021-11-29	Not	0
+1d + (ii)B both lower zz=3.0	dated	1680	MDB	2021-12-27	Low	0
+1d + (ii)B both lower zz=3.0	dated	1822	FREY	2022-11-15	Low	0
+1d + (ii)B both lower zz=3.0	dated	1834	AI	2023-05-17	Low	0
+1d + (ii)B both lower zz=3.0	widened	169	APPS	2019-10-17	Low	0
+1d + (ii)B both lower zz=3.0	widened	375	ACB	2020-02-04	Low	0
+1d + (ii)B both lower zz=3.0	widened	418	LK	2020-03-04	Low	0
+1d + (ii)B both lower zz=3.0	widened	450	TSLA	2020-03-26	Low	0
+1d + (ii)B both lower zz=3.0	widened	463	JD	2020-04-06	Low	0
+1d + (ii)B both lower zz=3.0	widened	510	TLRY	2020-04-24	Low	0
+1d + (ii)B both lower zz=3.0	widened	529	BCRX	2020-04-30	Low	0
+1d + (ii)B both lower zz=3.0	widened	691	BCRX	2020-06-26	High	0
+1d + (ii)B both lower zz=3.0	widened	853	NCLH	2020-08-24	Low	0
+1d + (ii)B both lower zz=3.0	widened	864	PDD	2020-09-01	Low	0
+1d + (ii)B both lower zz=3.0	widened	891	FSLY	2020-09-21	High	0
+1d + (ii)B both lower zz=3.0	widened	922	APT	2020-10-02	Low	0
+1d + (ii)B both lower zz=3.0	widened	923	BILI	2020-10-05	Low	0
+1d + (ii)B both lower zz=3.0	widened	952	MARA	2020-10-20	Low	0
+1d + (ii)B both lower zz=3.0	widened	953	RIOT	2020-10-20	Low	0
+1d + (ii)B both lower zz=3.0	widened	1021	DOCU	2020-11-18	Low	0
+1d + (ii)B both lower zz=3.0	widened	1023	BILI	2020-11-19	Low	0
+1d + (ii)B both lower zz=3.0	widened	1053	FSLY	2020-12-04	Low	0
+1d + (ii)B both lower zz=3.0	widened	1066	DKNG	2020-12-11	Low	0
+1d + (ii)B both lower zz=3.0	widened	1352	NTLA	2021-03-30	Low	0
+1d + (ii)B both lower zz=3.0	widened	1376	TWTR	2021-03-31	Medium	0
+1d + (ii)B both lower zz=3.0	widened	1380	SHOP	2021-04-08	Low	0
+1d + (ii)B both lower zz=3.0	widened	1444	BILI	2021-05-28	Low	0
+1d + (ii)B both lower zz=3.0	widened	1588	MQ	2021-10-26	Low	0
+1d + (ii)B both lower zz=3.0	widened	1597	GME	2021-10-29	Medium	0
+1d + (ii)B both lower zz=3.0	widened	1706	LCID	2022-01-07	High	0
+1d + (ii)B both lower zz=3.0	widened	1712	LI	2022-01-12	Low	0
+1d + (ii)B both lower zz=3.0	widened	1736	ALB	2022-02-09	Low	0
+1d + (ii)B both lower zz=3.0	widened	1747	MP	2022-02-25	Medium	0
+1d + (iii)A swing low zz=1.5 T=-2.52	dated	441	ZS	2020-03-24	Low	0
+1d + (iii)A swing low zz=1.5 T=-2.52	dated	676	APT	2020-06-17	Low	1
+1d + (iii)A swing low zz=1.5 T=-2.52	dated	996	XYZ	2020-11-06	Medium	0
+1d + (iii)A swing low zz=1.5 T=-2.52	dated	1374	FCX	2021-04-06	Low	0
+1d + (iii)A swing low zz=1.5 T=-2.52	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iii)A swing low zz=1.5 T=-2.52	dated	1649	MARA	2021-11-30	Low	0
+1d + (iii)A swing low zz=1.5 T=-2.52	widened	375	ACB	2020-02-04	Low	0
+1d + (iii)A swing low zz=1.5 T=-2.52	widened	450	TSLA	2020-03-26	Low	0
+1d + (iii)A swing low zz=1.5 T=-2.52	widened	510	TLRY	2020-04-24	Low	0
+1d + (iii)A swing low zz=1.5 T=-2.52	widened	922	APT	2020-10-02	Low	0
+1d + (iii)A swing low zz=1.5 T=-2.52	widened	923	BILI	2020-10-05	Low	0
+1d + (iii)A swing low zz=1.5 T=-2.52	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iii)A swing low zz=1.5 T=-2.52	widened	1712	LI	2022-01-12	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	dated	472	TSLA	2020-04-14	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	dated	676	APT	2020-06-17	Low	1
+1d + (iii)A swing low zz=2.0 T=-2.52	dated	827	BE	2020-08-13	Medium	1
+1d + (iii)A swing low zz=2.0 T=-2.52	dated	1465	FUTU	2021-06-14	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	dated	1508	UPST	2021-08-12	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	dated	1553	MSTR	2021-10-11	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iii)A swing low zz=2.0 T=-2.52	dated	1649	MARA	2021-11-30	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	dated	1824	U	2022-11-15	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	320	PLUG	2020-01-02	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	359	SPCE	2020-01-21	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	375	ACB	2020-02-04	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	450	TSLA	2020-03-26	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	510	TLRY	2020-04-24	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	922	APT	2020-10-02	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	923	BILI	2020-10-05	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	1588	MQ	2021-10-26	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	1712	LI	2022-01-12	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	1735	FCX	2022-02-08	Low	0
+1d + (iii)A swing low zz=2.0 T=-2.52	widened	1747	MP	2022-02-25	Medium	0
+1d + (iii)A swing low zz=3.0 T=-2.92	dated	472	TSLA	2020-04-14	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	dated	482	EXEL	2020-04-20	Not	0
+1d + (iii)A swing low zz=3.0 T=-2.92	dated	533	TSLA	2020-04-30	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	dated	1571	BTBT	2021-10-20	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	dated	1644	MRNA	2021-11-29	Not	0
+1d + (iii)A swing low zz=3.0 T=-2.92	widened	375	ACB	2020-02-04	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	widened	450	TSLA	2020-03-26	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	widened	510	TLRY	2020-04-24	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	widened	520	ETSY	2020-04-28	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	widened	922	APT	2020-10-02	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	widened	923	BILI	2020-10-05	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	widened	952	MARA	2020-10-20	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	widened	1053	FSLY	2020-12-04	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	widened	1066	DKNG	2020-12-11	Low	0
+1d + (iii)A swing low zz=3.0 T=-2.92	widened	1712	LI	2022-01-12	Low	0
+1d + (C) p85 out at 4+ flags	dated	472	TSLA	2020-04-14	Low	0
+1d + (C) p85 out at 4+ flags	dated	676	APT	2020-06-17	Low	1
+1d + (C) p85 out at 4+ flags	widened	375	ACB	2020-02-04	Low	0
+1d + (C) p85 out at 4+ flags	widened	450	TSLA	2020-03-26	Low	0
+1d + (C) p85 out at 4+ flags	widened	510	TLRY	2020-04-24	Low	0
+1d + (C) p85 out at 4+ flags	widened	922	APT	2020-10-02	Low	0
+1d + (C) p85 out at 4+ flags	widened	923	BILI	2020-10-05	Low	0
+1d + (C) p85 out at 4+ flags	widened	1021	DOCU	2020-11-18	Low	0
+1d + (C) p85 out at 4+ flags	widened	1053	FSLY	2020-12-04	Low	0
+1d + (C) p85 out at 4+ flags	widened	1444	BILI	2021-05-28	Low	0
+1d + (C) p85 out at 4+ flags	widened	1712	LI	2022-01-12	Low	0
+1d + (C) p90 out at 3+ flags	dated	606	UAL	2020-05-27	Not	0
+1d + (C) p90 out at 3+ flags	dated	676	APT	2020-06-17	Low	1
+1d + (C) p90 out at 3+ flags	dated	1644	MRNA	2021-11-29	Not	0
+1d + (C) p90 out at 3+ flags	dated	1824	U	2022-11-15	Low	0
+1d + (C) p90 out at 3+ flags	dated	1834	AI	2023-05-17	Low	0
+1d + (C) p90 out at 3+ flags	widened	375	ACB	2020-02-04	Low	0
+1d + (C) p90 out at 3+ flags	widened	450	TSLA	2020-03-26	Low	0
+1d + (C) p90 out at 3+ flags	widened	510	TLRY	2020-04-24	Low	0
+1d + (C) p90 out at 3+ flags	widened	922	APT	2020-10-02	Low	0
+1d + (C) p90 out at 3+ flags	widened	923	BILI	2020-10-05	Low	0
+1d + (C) p90 out at 3+ flags	widened	1021	DOCU	2020-11-18	Low	0
+1d + (C) p90 out at 3+ flags	widened	1053	FSLY	2020-12-04	Low	0
+1d + (C) p90 out at 3+ flags	widened	1712	LI	2022-01-12	Low	0
+1d + (C) p95 out at 3+ flags	dated	606	UAL	2020-05-27	Not	0
+1d + (C) p95 out at 3+ flags	dated	676	APT	2020-06-17	Low	1
+1d + (C) p95 out at 3+ flags	widened	375	ACB	2020-02-04	Low	0
+1d + (C) p95 out at 3+ flags	widened	450	TSLA	2020-03-26	Low	0
+1d + (C) p95 out at 3+ flags	widened	510	TLRY	2020-04-24	Low	0
+1d + (C) p95 out at 3+ flags	widened	922	APT	2020-10-02	Low	0
+1d + (C) p95 out at 3+ flags	widened	923	BILI	2020-10-05	Low	0
+1d + (C) p95 out at 3+ flags	widened	1053	FSLY	2020-12-04	Low	0
+1d + (C) p95 out at 3+ flags	widened	1712	LI	2022-01-12	Low	0
+1d + (Cv) p85 out at 3+ flags	dated	95	ANET	2018-03-12	Low	0
+1d + (Cv) p85 out at 3+ flags	dated	441	ZS	2020-03-24	Low	0
+1d + (Cv) p85 out at 3+ flags	dated	472	TSLA	2020-04-14	Low	0
+1d + (Cv) p85 out at 3+ flags	dated	606	UAL	2020-05-27	Not	0
+1d + (Cv) p85 out at 3+ flags	dated	676	APT	2020-06-17	Low	1
+1d + (Cv) p85 out at 3+ flags	dated	1030	JMIA	2020-11-18	Low	1
+1d + (Cv) p85 out at 3+ flags	dated	1255	AMC	2021-02-22	Low	0
+1d + (Cv) p85 out at 3+ flags	dated	1264	RKT	2021-03-01	Low	0
+1d + (Cv) p85 out at 3+ flags	dated	1374	FCX	2021-04-06	Low	0
+1d + (Cv) p85 out at 3+ flags	dated	1508	UPST	2021-08-12	Low	0
+1d + (Cv) p85 out at 3+ flags	dated	1553	MSTR	2021-10-11	Low	0
+1d + (Cv) p85 out at 3+ flags	dated	1644	MRNA	2021-11-29	Not	0
+1d + (Cv) p85 out at 3+ flags	dated	1822	FREY	2022-11-15	Low	0
+1d + (Cv) p85 out at 3+ flags	dated	1824	U	2022-11-15	Low	0
+1d + (Cv) p85 out at 3+ flags	dated	1834	AI	2023-05-17	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	243	LK	2019-11-18	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	375	ACB	2020-02-04	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	450	TSLA	2020-03-26	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	488	SHOP	2020-04-21	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	510	TLRY	2020-04-24	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	520	ETSY	2020-04-28	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	649	BA	2020-06-08	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	853	NCLH	2020-08-24	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	922	APT	2020-10-02	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	923	BILI	2020-10-05	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	953	RIOT	2020-10-20	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	1021	DOCU	2020-11-18	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	1053	FSLY	2020-12-04	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	1588	MQ	2021-10-26	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	1712	LI	2022-01-12	Low	0
+1d + (Cv) p85 out at 3+ flags	widened	1736	ALB	2022-02-09	Low	0
+1d + (Cv) p90 out at 3+ flags	dated	95	ANET	2018-03-12	Low	0
+1d + (Cv) p90 out at 3+ flags	dated	441	ZS	2020-03-24	Low	0
+1d + (Cv) p90 out at 3+ flags	dated	472	TSLA	2020-04-14	Low	0
+1d + (Cv) p90 out at 3+ flags	dated	606	UAL	2020-05-27	Not	0
+1d + (Cv) p90 out at 3+ flags	dated	676	APT	2020-06-17	Low	1
+1d + (Cv) p90 out at 3+ flags	dated	1264	RKT	2021-03-01	Low	0
+1d + (Cv) p90 out at 3+ flags	dated	1374	FCX	2021-04-06	Low	0
+1d + (Cv) p90 out at 3+ flags	dated	1508	UPST	2021-08-12	Low	0
+1d + (Cv) p90 out at 3+ flags	dated	1553	MSTR	2021-10-11	Low	0
+1d + (Cv) p90 out at 3+ flags	dated	1644	MRNA	2021-11-29	Not	0
+1d + (Cv) p90 out at 3+ flags	dated	1822	FREY	2022-11-15	Low	0
+1d + (Cv) p90 out at 3+ flags	dated	1824	U	2022-11-15	Low	0
+1d + (Cv) p90 out at 3+ flags	dated	1834	AI	2023-05-17	Low	0
+1d + (Cv) p90 out at 3+ flags	widened	375	ACB	2020-02-04	Low	0
+1d + (Cv) p90 out at 3+ flags	widened	450	TSLA	2020-03-26	Low	0
+1d + (Cv) p90 out at 3+ flags	widened	488	SHOP	2020-04-21	Low	0
+1d + (Cv) p90 out at 3+ flags	widened	510	TLRY	2020-04-24	Low	0
+1d + (Cv) p90 out at 3+ flags	widened	922	APT	2020-10-02	Low	0
+1d + (Cv) p90 out at 3+ flags	widened	923	BILI	2020-10-05	Low	0
+1d + (Cv) p90 out at 3+ flags	widened	1053	FSLY	2020-12-04	Low	0
+1d + (Cv) p90 out at 3+ flags	widened	1588	MQ	2021-10-26	Low	0
+1d + (Cv) p90 out at 3+ flags	widened	1712	LI	2022-01-12	Low	0
+1d + (Cv) p95 out at 3+ flags	dated	472	TSLA	2020-04-14	Low	0
+1d + (Cv) p95 out at 3+ flags	dated	1508	UPST	2021-08-12	Low	0
+1d + (Cv) p95 out at 3+ flags	dated	1553	MSTR	2021-10-11	Low	0
+1d + (Cv) p95 out at 3+ flags	dated	1644	MRNA	2021-11-29	Not	0
+1d + (Cv) p95 out at 3+ flags	widened	375	ACB	2020-02-04	Low	0
+1d + (Cv) p95 out at 3+ flags	widened	450	TSLA	2020-03-26	Low	0
+1d + (Cv) p95 out at 3+ flags	widened	488	SHOP	2020-04-21	Low	0
+1d + (Cv) p95 out at 3+ flags	widened	510	TLRY	2020-04-24	Low	0
+1d + (Cv) p95 out at 3+ flags	widened	922	APT	2020-10-02	Low	0
+1d + (Cv) p95 out at 3+ flags	widened	923	BILI	2020-10-05	Low	0
+1d + (Cv) p95 out at 3+ flags	widened	1053	FSLY	2020-12-04	Low	0
+1d + (Cv) p95 out at 3+ flags	widened	1712	LI	2022-01-12	Low	0
+1d	widened	375	ACB	2020-02-04	Low	0
+1d	widened	510	TLRY	2020-04-24	Low	0
+1d	widened	922	APT	2020-10-02	Low	0
+1d	widened	923	BILI	2020-10-05	Low	0
+1d	widened	1053	FSLY	2020-12-04	Low	0
+1d	widened	1712	LI	2022-01-12	Low	0
++ (iv)B closes near the level	dated	1264	RKT	2021-03-01	Low	0
++ (iv)B closes near the level	dated	1508	UPST	2021-08-12	Low	0
++ (iv)B closes near the level	dated	1644	MRNA	2021-11-29	Not	0
++ (iv)B closes near the level	widened	243	LK	2019-11-18	Low	0
++ (iv)B closes near the level	widened	375	ACB	2020-02-04	Low	0
++ (iv)B closes near the level	widened	510	TLRY	2020-04-24	Low	0
++ (iv)B closes near the level	widened	649	BA	2020-06-08	Low	0
++ (iv)B closes near the level	widened	818	FVRR	2020-08-06	Low	0
++ (iv)B closes near the level	widened	922	APT	2020-10-02	Low	0
++ (iv)B closes near the level	widened	923	BILI	2020-10-05	Low	0
++ (iv)B closes near the level	widened	1053	FSLY	2020-12-04	Low	0
++ (iv)B closes near the level	widened	1712	LI	2022-01-12	Low	0

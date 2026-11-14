@@ -1,0 +1,160 @@
+BRIDGE: scorecard listed / fired / big winners = 479 / 386 / 26 (expect 479 / 386 / 26); listed High-tier buys 56 (expect 56); era-A fires a day median 68 (expect 68) over 1322 nights; grades 20 no / 11 ok-good / 5 maybe (expect 22 / 11 / 5 = 36... counted from the fixture)
+
+== THRESHOLDS (the extreme of the 56; who sets each; how the 56 and the era-A fires sit) ==
+  (i)A hl10 box                  hl10    max =    4.94  set by BNTX 2021-07-21 (4.94), BLDP 2019-11-12 (4.16), BNTX 2020-06-25 (3.87), MARA 2021-10-11 (3.81) | the 56 median 2.28; fires median 3.03; fires beyond the line 5.3%
+  (i)B hl15 box                  hl15    max =    5.42  set by CRON 2020-11-24 (5.42), NVAX 2021-04-13 (5.32), BNTX 2021-07-21 (4.94), APHA 2021-01-06 (4.71) | the 56 median 3.04; fires median 3.76; fires beyond the line 9.2%
+  (ii)A lower high               lh_2.0  min =   -2.98  set by CCJ 2021-10-12 (-2.98), FUV 2020-12-22 (-2.97), NVAX 2021-04-13 (-2.85), LCID 2022-01-07 (-2.80) | the 56 median -0.40; fires median -0.02; fires beyond the line 8.1%
+  (iii)A swing low not lower     ll_2.0  min =   -2.52  set by APHA 2021-01-06 (-2.52), BCRX 2020-06-26 (-2.46), ACAD 2019-10-21 (-1.51), LCID 2021-10-25 (-1.47) | the 56 median 0.57; fires median 0.37; fires beyond the line 7.7%
+  (iii)B same, 3-range swings    ll_3.0  min =   -2.92  set by SE 2020-05-05 (-2.92), LCID 2022-01-07 (-2.74), PTON 2020-12-14 (-2.52), BCRX 2020-06-26 (-2.46) | the 56 median 1.82; fires median 0.63; fires beyond the line 8.6%
+  (iv)A level under 60d high     off60   max =   20.29  set by APT 2020-05-14 (20.29), SRNE 2020-06-24 (10.88), NVAX 2021-04-13 (9.47), CODX 2020-07-21 (6.52) | the 56 median 1.55; fires median 1.84; fires beyond the line 0.2%
+  (iv)B closes near the level    near10  min =    2.00  set by BNTX 2020-06-25 (2.00), TSLA 2020-11-18 (3.00), BNTX 2021-07-21 (3.00), MARA 2021-10-11 (5.00) | the 56 median 10.00; fires median 9.00; fires beyond the line 1.1%
+  (C) flags of the four A        OUT at 3 flags or more; flags among the 56: {0: 37, 1: 14, 2: 5}; among fires: {0: 44.8, 1: 36.5, 2: 13.0, 3: 4.9, 4: 0.8} %; lines: hl10 > 3.44, lh_2.0 < -2.19, ll_2.0 < -1.13, off60 > 5.47
+  (Cv) flags of the four B       OUT at 3 flags or more; flags among the 56: {0: 31, 1: 20, 2: 5}; among fires: {0: 39.6, 1: 35.3, 2: 20.1, 3: 4.3, 4: 0.7} %; lines: hl15 > 4.43, fixed rule, ll_3.0 < -1.56, near10 < 6.50
+  tier medians (scorecard sessions) — does Qullamaggie's own confidence line up with the measure?
+        hl10  hl15  lh_2.0  ll_2.0  ll_3.0  off60  near10
+tier                                                     
+High    2.30  3.02   -0.32    0.58    1.82   1.45    10.0
+Medium  2.57  3.41   -0.39    0.55    2.37   1.67    10.0
+Low     3.07  3.90   -0.05    0.86    1.74   1.56    10.0
+Not     2.61  3.38   -0.69    0.04    1.52   2.68    10.0
+  era-A fires median:        hl10 3.03  hl15 3.76  lh_2.0 -0.02  ll_2.0 0.37  ll_3.0 0.63  off60 1.84  near10 9.00
+
+== EACH CHECK ALONE on the plain list (baseline first) ==
+check                              | High  | scorecard listed/fired/big | fired buys lost by tier | his eye (IN-SAMPLE): removed of 20 no / 11 ok-good / 5 maybe | fires a day median mean | top-5 dollar-volume picks replaced | names
+baseline (no check)                | 56/56 | 479 / 386 / 26 | lost H0 M0 L0 N0 | no  0/20 ok-good 0/11 maybe 0/5 |   68  118.5 |  0.0% | High dropped: - | no removed: -
+1d (>3% under a falling 50-day)    | 56/56 | 466 / 380 / 26 | lost H0 M0 L6 N0 | no  5/20 ok-good 0/11 maybe 0/5 |   59  103.1 | 11.9% | High dropped: - | no removed: F DVAX DQ TIGR DOCN
+(i)A hl10 box                      | 56/56 | 451 / 364 / 26 | lost H0 M1 L20 N1 | no  1/20 ok-good 0/11 maybe 1/5 |   64  112.2 |  8.1% | High dropped: - | no removed: DVAX | maybe removed: AZUL
+(i)B hl15 box                      | 56/56 | 434 / 350 / 26 | lost H0 M3 L32 N1 | no  3/20 ok-good 1/11 maybe 1/5 |   61  107.6 | 12.8% | High dropped: - | no removed: LCID DVAX BEAM | OK/GOOD REMOVED: CAR | maybe removed: AZUL
+(ii)A lower high                   | 56/56 | 457 / 370 / 24 | lost H0 M2 L13 N1 | no  3/20 ok-good 1/11 maybe 0/5 |   63  109.1 |  7.4% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13 | no removed: DVAX OCGN REN | OK/GOOD REMOVED: MRNA
+(iii)A swing low not lower         | 56/56 | 461 / 371 / 24 | lost H0 M2 L12 N1 | no  2/20 ok-good 1/11 maybe 0/5 |   62  109.7 |  6.4% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13 | no removed: LCID REN | OK/GOOD REMOVED: MRNA
+(iii)B same, 3-range swings        | 56/56 | 466 / 376 / 26 | lost H0 M0 L8 N2 | no  3/20 ok-good 0/11 maybe 0/5 |   63  110.4 |  6.3% | High dropped: - | no removed: LCID F REN
+(iv)A level under 60d high         | 56/56 | 478 / 386 / 26 | lost H0 M0 L0 N0 | no  0/20 ok-good 0/11 maybe 0/5 |   68  118.3 |  0.0% | High dropped: - | no removed: -
+(iv)B closes near the level        | 56/56 | 473 / 380 / 26 | lost H0 M0 L5 N1 | no  1/20 ok-good 0/11 maybe 0/5 |   67  117.3 |  1.2% | High dropped: - | no removed: MVIS
+(ii)B lower high AND lower low     | 43/56 | 366 / 290 / 19 | lost H13 M18 L55 N10 | no  8/20 ok-good 2/11 maybe 1/5 |   51   86.5 | 24.6% | High dropped: BMA 2019-08-09, ACAD 2019-10-21, MIK 2019-10-22, BLDP 2020-05-26, VIR 2020-06-19, WKHS 2020-08-03, SHOP 2020-08-26, APHA 2021-01-06, LCID 2021-10-25, BCRX 2020-06-26, FSLY 2020-09-21, LTHM 2021-10-12, LCID 2022-01-07 | BIG WINNERS LOST: APT 2020-02-21, APT 2020-06-17, BE 2020-08-13, JMIA 2020-11-18, APHA 2021-01-06, NXH 2021-01-22, LCID 2021-10-25 | no removed: ZIM LCID F MVIS DVAX TIGR DOCN REN | OK/GOOD REMOVED: MRNA APHA | maybe removed: CLR
+(C) flags of the four A            | 56/56 | 469 / 379 / 25 | lost H0 M0 L5 N2 | no  2/20 ok-good 1/11 maybe 0/5 |   64  111.7 |  5.2% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17 | no removed: DVAX DOCN | OK/GOOD REMOVED: MRNA
+(Cv) flags of the four B           | 56/56 | 462 / 370 / 25 | lost H0 M0 L14 N2 | no  2/20 ok-good 1/11 maybe 0/5 |   64  112.6 |  5.5% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17 | no removed: ZIM LCID | OK/GOOD REMOVED: MRNA
+
+== EACH CHECK ON TOP OF 1d (the 1d baseline: 56/56, 466 / 380 / 26, 59 a day) ==
+check                              | High  | scorecard listed/fired/big | fired buys lost by tier | his eye (IN-SAMPLE): removed of 20 no / 11 ok-good / 5 maybe | fires a day median mean | top-5 dollar-volume picks replaced | names
+1d + (i)A hl10 box                 | 56/56 | 438 / 358 / 26 | lost H0 M1 L26 N1 | no  5/20 ok-good 0/11 maybe 1/5 |   56   97.1 | 19.6% | High dropped: - | no removed: F DVAX DQ TIGR DOCN | maybe removed: AZUL
+1d + (i)B hl15 box                 | 56/56 | 422 / 344 / 26 | lost H0 M3 L38 N1 | no  7/20 ok-good 1/11 maybe 1/5 |   53   93.4 | 23.3% | High dropped: - | no removed: LCID F DVAX DQ TIGR BEAM DOCN | OK/GOOD REMOVED: CAR | maybe removed: AZUL
+1d + (ii)A lower high              | 56/56 | 451 / 368 / 24 | lost H0 M2 L15 N1 | no  7/20 ok-good 1/11 maybe 0/5 |   56   98.8 | 15.8% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13 | no removed: F DVAX DQ TIGR OCGN DOCN REN | OK/GOOD REMOVED: MRNA
+1d + (iii)A swing low not lower    | 56/56 | 451 / 365 / 24 | lost H0 M2 L18 N1 | no  7/20 ok-good 1/11 maybe 0/5 |   56   98.5 | 15.6% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13 | no removed: LCID F DVAX DQ TIGR DOCN REN | OK/GOOD REMOVED: MRNA
+1d + (iii)B same, 3-range swings   | 56/56 | 457 / 371 / 26 | lost H0 M0 L13 N2 | no  7/20 ok-good 0/11 maybe 0/5 |   57   99.5 | 15.0% | High dropped: - | no removed: LCID F DVAX DQ TIGR DOCN REN
+1d + (iv)A level under 60d high    | 56/56 | 465 / 380 / 26 | lost H0 M0 L6 N0 | no  5/20 ok-good 0/11 maybe 0/5 |   59  103.0 | 11.9% | High dropped: - | no removed: F DVAX DQ TIGR DOCN
+1d + (iv)B closes near the level   | 56/56 | 460 / 374 / 26 | lost H0 M0 L11 N1 | no  6/20 ok-good 0/11 maybe 0/5 |   59  101.9 | 13.0% | High dropped: - | no removed: F MVIS DVAX DQ TIGR DOCN
+1d + (ii)B lower high AND lower low | 43/56 | 360 / 285 / 19 | lost H13 M18 L60 N10 | no  9/20 ok-good 2/11 maybe 1/5 |   46   80.7 | 29.1% | High dropped: BMA 2019-08-09, ACAD 2019-10-21, MIK 2019-10-22, BLDP 2020-05-26, VIR 2020-06-19, WKHS 2020-08-03, SHOP 2020-08-26, APHA 2021-01-06, LCID 2021-10-25, BCRX 2020-06-26, FSLY 2020-09-21, LTHM 2021-10-12, LCID 2022-01-07 | BIG WINNERS LOST: APT 2020-02-21, APT 2020-06-17, BE 2020-08-13, JMIA 2020-11-18, APHA 2021-01-06, NXH 2021-01-22, LCID 2021-10-25 | no removed: ZIM LCID F MVIS DVAX DQ TIGR DOCN REN | OK/GOOD REMOVED: MRNA APHA | maybe removed: CLR
+1d + (C) flags of the four A       | 56/56 | 459 / 373 / 25 | lost H0 M0 L11 N2 | no  5/20 ok-good 1/11 maybe 0/5 |   58  100.2 | 14.2% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17 | no removed: F DVAX DQ TIGR DOCN | OK/GOOD REMOVED: MRNA
+1d + (Cv) flags of the four B      | 56/56 | 450 / 364 / 25 | lost H0 M0 L20 N2 | no  7/20 ok-good 1/11 maybe 0/5 |   57   99.4 | 15.4% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17 | no removed: ZIM LCID F DVAX DQ TIGR DOCN | OK/GOOD REMOVED: MRNA
+
+== PLATEAU, on top of 1d (3 points each; the 2nd / 3rd most extreme of the 56 drop 1 / 2 of his buys BY CONSTRUCTION) ==
+check                              | High  | scorecard listed/fired/big | fired buys lost by tier | his eye (IN-SAMPLE): removed of 20 no / 11 ok-good / 5 maybe | fires a day median mean | top-5 dollar-volume picks replaced | names
+1d + (i)A hl10 box k=1 T=4.94      | 56/56 | 438 / 358 / 26 | lost H0 M1 L26 N1 | no  5/20 ok-good 0/11 maybe 1/5 |   56   97.1 | 19.6% | High dropped: - | no removed: F DVAX DQ TIGR DOCN | maybe removed: AZUL
+1d + (i)A hl10 box k=2 T=4.16      | 55/56 | 403 / 330 / 24 | lost H1 M3 L50 N2 | no  8/20 ok-good 0/11 maybe 1/5 |   49   86.8 | 29.3% | High dropped: BNTX 2021-07-21 | BIG WINNERS LOST: APT 2020-06-17, JMIA 2020-11-18 | no removed: LCID F DVAX DQ TIGR DOCN THC RIOT | maybe removed: AZUL
+1d + (i)A hl10 box k=3 T=3.87      | 54/56 | 381 / 312 / 24 | lost H2 M6 L63 N3 | no 10/20 ok-good 0/11 maybe 1/5 |   46   80.0 | 35.5% | High dropped: BNTX 2021-07-21, BLDP 2019-11-12 | BIG WINNERS LOST: APT 2020-06-17, JMIA 2020-11-18 | no removed: LCID FLGT F DVAX DQ TIGR DOCN THC TWTR RIOT | maybe removed: AZUL
+1d + (i)B hl15 box k=1 T=5.42      | 56/56 | 422 / 344 / 26 | lost H0 M3 L38 N1 | no  7/20 ok-good 1/11 maybe 1/5 |   53   93.4 | 23.3% | High dropped: - | no removed: LCID F DVAX DQ TIGR BEAM DOCN | OK/GOOD REMOVED: CAR | maybe removed: AZUL
+1d + (i)B hl15 box k=2 T=5.32      | 55/56 | 416 / 341 / 26 | lost H1 M4 L39 N1 | no  7/20 ok-good 1/11 maybe 1/5 |   53   92.1 | 25.0% | High dropped: CRON 2020-11-24 | no removed: LCID F DVAX DQ TIGR BEAM DOCN | OK/GOOD REMOVED: CAR | maybe removed: AZUL
+1d + (i)B hl15 box k=3 T=4.94      | 54/56 | 394 / 322 / 24 | lost H2 M5 L55 N2 | no  9/20 ok-good 1/11 maybe 1/5 |   50   86.2 | 31.0% | High dropped: CRON 2020-11-24, NVAX 2021-04-13 | BIG WINNERS LOST: BE 2020-08-13, MDB 2020-09-21 | no removed: ZIM LCID F DVAX DQ TIGR BEAM DOCN THC | OK/GOOD REMOVED: CAR | maybe removed: AZUL
+1d + (ii)A lower high k=1 T=-2.98  | 56/56 | 451 / 368 / 24 | lost H0 M2 L15 N1 | no  7/20 ok-good 1/11 maybe 0/5 |   56   98.8 | 15.8% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13 | no removed: F DVAX DQ TIGR OCGN DOCN REN | OK/GOOD REMOVED: MRNA
+1d + (ii)A lower high k=2 T=-2.97  | 55/56 | 450 / 367 / 24 | lost H1 M2 L15 N1 | no  7/20 ok-good 1/11 maybe 0/5 |   56   98.7 | 15.9% | High dropped: CCJ 2021-10-12 | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13 | no removed: F DVAX DQ TIGR OCGN DOCN REN | OK/GOOD REMOVED: MRNA
+1d + (ii)A lower high k=3 T=-2.85  | 54/56 | 448 / 365 / 24 | lost H2 M2 L16 N1 | no  7/20 ok-good 1/11 maybe 0/5 |   56   98.2 | 16.2% | High dropped: FUV 2020-12-22, CCJ 2021-10-12 | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13 | no removed: F DVAX DQ TIGR OCGN DOCN REN | OK/GOOD REMOVED: MRNA
+1d + (iii)A swing low not k=1 T=-2.52 | 56/56 | 451 / 365 / 24 | lost H0 M2 L18 N1 | no  7/20 ok-good 1/11 maybe 0/5 |   56   98.5 | 15.6% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13 | no removed: LCID F DVAX DQ TIGR DOCN REN | OK/GOOD REMOVED: MRNA
+1d + (iii)A swing low not k=2 T=-2.46 | 55/56 | 450 / 364 / 23 | lost H1 M2 L18 N1 | no  7/20 ok-good 1/11 maybe 0/5 |   56   98.2 | 15.8% | High dropped: APHA 2021-01-06 | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13, APHA 2021-01-06 | no removed: LCID F DVAX DQ TIGR DOCN REN | OK/GOOD REMOVED: MRNA
+1d + (iii)A swing low not k=3 T=-1.51 | 54/56 | 430 / 346 / 22 | lost H2 M2 L32 N4 | no  8/20 ok-good 1/11 maybe 1/5 |   52   91.8 | 21.0% | High dropped: APHA 2021-01-06, BCRX 2020-06-26 | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13, JMIA 2020-11-18, APHA 2021-01-06 | no removed: ZIM LCID F DVAX DQ TIGR DOCN REN | OK/GOOD REMOVED: MRNA | maybe removed: AZUL
+1d + (iii)B same, 3-range k=1 T=-2.92 | 56/56 | 457 / 371 / 26 | lost H0 M0 L13 N2 | no  7/20 ok-good 0/11 maybe 0/5 |   57   99.5 | 15.0% | High dropped: - | no removed: LCID F DVAX DQ TIGR DOCN REN
+1d + (iii)B same, 3-range k=2 T=-2.74 | 55/56 | 453 / 367 / 26 | lost H1 M0 L16 N2 | no  7/20 ok-good 0/11 maybe 0/5 |   56   99.0 | 15.5% | High dropped: SE 2020-05-05 | no removed: LCID F DVAX DQ TIGR DOCN REN
+1d + (iii)B same, 3-range k=3 T=-2.52 | 54/56 | 448 / 362 / 25 | lost H2 M0 L20 N2 | no  7/20 ok-good 1/11 maybe 0/5 |   56   98.3 | 16.2% | High dropped: SE 2020-05-05, LCID 2022-01-07 | BIG WINNERS LOST: APT 2020-06-17 | no removed: LCID F DVAX DQ TIGR DOCN REN | OK/GOOD REMOVED: MRNA
+1d + (iv)A level under 60 k=1 T=20.29 | 56/56 | 465 / 380 / 26 | lost H0 M0 L6 N0 | no  5/20 ok-good 0/11 maybe 0/5 |   59  103.0 | 11.9% | High dropped: - | no removed: F DVAX DQ TIGR DOCN
+1d + (iv)A level under 60 k=2 T=10.88 | 55/56 | 455 / 373 / 26 | lost H1 M1 L8 N3 | no  5/20 ok-good 0/11 maybe 0/5 |   59  102.2 | 12.2% | High dropped: APT 2020-05-14 | no removed: F DVAX DQ TIGR DOCN
+1d + (iv)A level under 60 k=3 T=9.47 | 54/56 | 451 / 369 / 25 | lost H2 M2 L10 N3 | no  5/20 ok-good 0/11 maybe 0/5 |   59  101.6 | 12.4% | High dropped: APT 2020-05-14, SRNE 2020-06-24 | BIG WINNERS LOST: SRNE 2020-06-24 | no removed: F DVAX DQ TIGR DOCN
+1d + (iv)B closes near th k=1 T=2.00 | 56/56 | 460 / 374 / 26 | lost H0 M0 L11 N1 | no  6/20 ok-good 0/11 maybe 0/5 |   59  101.9 | 13.0% | High dropped: - | no removed: F MVIS DVAX DQ TIGR DOCN
+1d + (iv)B closes near th k=2 T=3.00 | 55/56 | 447 / 363 / 26 | lost H1 M0 L19 N3 | no  7/20 ok-good 0/11 maybe 0/5 |   57   99.1 | 15.4% | High dropped: BNTX 2020-06-25 | no removed: LCID F MVIS DVAX DQ TIGR DOCN
+1d + (iv)B closes near th k=3 T=3.00 | 55/56 | 447 / 363 / 26 | lost H1 M0 L19 N3 | no  7/20 ok-good 0/11 maybe 0/5 |   57   99.1 | 15.4% | High dropped: BNTX 2020-06-25 | no removed: LCID F MVIS DVAX DQ TIGR DOCN
+swing reversal 1.5 / 2 / 3 daily ranges (sized at the 56's extreme each time):
+1d + (ii)A lower high zz=1.5 T=-2.97 | 56/56 | 455 / 372 / 24 | lost H0 M1 L12 N1 | no  7/20 ok-good 1/11 maybe 0/5 |   57  100.3 | 14.7% | High dropped: - | BIG WINNERS LOST: BE 2020-08-13, MDB 2020-09-21 | no removed: FLGT F DVAX DQ TIGR BEAM DOCN | OK/GOOD REMOVED: ATOS
+1d + (ii)A lower high zz=2.0 T=-2.98 | 56/56 | 451 / 368 / 24 | lost H0 M2 L15 N1 | no  7/20 ok-good 1/11 maybe 0/5 |   56   98.8 | 15.8% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13 | no removed: F DVAX DQ TIGR OCGN DOCN REN | OK/GOOD REMOVED: MRNA
+1d + (ii)A lower high zz=3.0 T=-5.82 | 56/56 | 462 / 376 / 25 | lost H0 M1 L9 N0 | no  5/20 ok-good 0/11 maybe 0/5 |   59  102.2 | 12.4% | High dropped: - | BIG WINNERS LOST: CODX 2020-07-16 | no removed: F DVAX DQ TIGR DOCN
+1d + (ii)B both lower zz=1.5       | 44/56 | 346 / 275 / 21 | lost H12 M22 L66 N11 | no  9/20 ok-good 2/11 maybe 1/5 |   46   79.4 | 30.4% | High dropped: BMA 2019-08-09, MIK 2019-10-22, BLDP 2020-05-26, BYND 2020-06-08, SHOP 2020-08-26, ENPH 2020-11-05, APHA 2021-01-06, PDD 2023-01-05, BCRX 2020-06-26, DKNG 2020-09-10, LTHM 2021-10-12, LCID 2022-01-07 | BIG WINNERS LOST: APT 2020-06-17, MDB 2020-09-21, JMIA 2020-11-18, APHA 2021-01-06, SICP 2021-01-22 | no removed: ZIM LCID FLGT F MVIS DVAX DQ TIGR DOCN | OK/GOOD REMOVED: MRNA APHA | maybe removed: CLR
+1d + (ii)B both lower zz=2.0       | 43/56 | 360 / 285 / 19 | lost H13 M18 L60 N10 | no  9/20 ok-good 2/11 maybe 1/5 |   46   80.7 | 29.1% | High dropped: BMA 2019-08-09, ACAD 2019-10-21, MIK 2019-10-22, BLDP 2020-05-26, VIR 2020-06-19, WKHS 2020-08-03, SHOP 2020-08-26, APHA 2021-01-06, LCID 2021-10-25, BCRX 2020-06-26, FSLY 2020-09-21, LTHM 2021-10-12, LCID 2022-01-07 | BIG WINNERS LOST: APT 2020-02-21, APT 2020-06-17, BE 2020-08-13, JMIA 2020-11-18, APHA 2021-01-06, NXH 2021-01-22, LCID 2021-10-25 | no removed: ZIM LCID F MVIS DVAX DQ TIGR DOCN REN | OK/GOOD REMOVED: MRNA APHA | maybe removed: CLR
+1d + (ii)B both lower zz=3.0       | 46/56 | 407 / 324 / 21 | lost H10 M6 L41 N5 | no 10/20 ok-good 2/11 maybe 2/5 |   50   86.6 | 26.0% | High dropped: BMA 2019-08-09, ACAD 2019-10-21, MIK 2019-10-22, NVAX 2020-02-26, SRNE 2020-06-24, ROKU 2020-07-09, PTON 2020-12-14, BCRX 2020-06-26, FSLY 2020-09-21, LCID 2022-01-07 | BIG WINNERS LOST: NVAX 2020-02-26, APT 2020-06-17, SRNE 2020-06-24, PTON 2020-12-14, NXH 2021-01-22 | no removed: LCID F MVIS DVAX DQ TIGR DOCN THC CDE REN | OK/GOOD REMOVED: TELL MRNA | maybe removed: FUTU CLR
+1d + (iii)A swing low zz=1.5 T=-2.52 | 56/56 | 457 / 373 / 25 | lost H0 M1 L11 N1 | no  6/20 ok-good 0/11 maybe 0/5 |   57   99.5 | 15.1% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17 | no removed: LCID F DVAX DQ TIGR DOCN
+1d + (iii)A swing low zz=2.0 T=-2.52 | 56/56 | 451 / 365 / 24 | lost H0 M2 L18 N1 | no  7/20 ok-good 1/11 maybe 0/5 |   56   98.5 | 15.6% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17, BE 2020-08-13 | no removed: LCID F DVAX DQ TIGR DOCN REN | OK/GOOD REMOVED: MRNA
+1d + (iii)A swing low zz=3.0 T=-2.92 | 56/56 | 457 / 371 / 26 | lost H0 M0 L13 N2 | no  7/20 ok-good 0/11 maybe 0/5 |   57   99.5 | 15.0% | High dropped: - | no removed: LCID F DVAX DQ TIGR DOCN REN
+(C) / (Cv) at the 85th / 90th / 95th percentile of the 56:
+1d + (C) p85 out at 4+ flags       | 56/56 | 461 / 375 / 25 | lost H0 M0 L11 N0 | no  5/20 ok-good 0/11 maybe 0/5 |   58  101.6 | 12.7% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17 | no removed: F DVAX DQ TIGR DOCN
+1d + (C) p90 out at 3+ flags       | 56/56 | 459 / 373 / 25 | lost H0 M0 L11 N2 | no  5/20 ok-good 1/11 maybe 0/5 |   58  100.2 | 14.2% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17 | no removed: F DVAX DQ TIGR DOCN | OK/GOOD REMOVED: MRNA
+1d + (C) p95 out at 3+ flags       | 56/56 | 463 / 377 / 25 | lost H0 M0 L8 N1 | no  5/20 ok-good 0/11 maybe 0/5 |   58  102.2 | 12.5% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17 | no removed: F DVAX DQ TIGR DOCN
+1d + (Cv) p85 out at 3+ flags      | 56/56 | 441 / 355 / 24 | lost H0 M0 L29 N2 | no  9/20 ok-good 1/11 maybe 1/5 |   54   94.5 | 20.4% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17, JMIA 2020-11-18 | no removed: ZIM LCID F DVAX DQ TIGR DOCN THC CDE | OK/GOOD REMOVED: MRNA | maybe removed: CLR
+1d + (Cv) p90 out at 3+ flags      | 56/56 | 450 / 364 / 25 | lost H0 M0 L20 N2 | no  7/20 ok-good 1/11 maybe 0/5 |   57   99.4 | 15.4% | High dropped: - | BIG WINNERS LOST: APT 2020-06-17 | no removed: ZIM LCID F DVAX DQ TIGR DOCN | OK/GOOD REMOVED: MRNA
+1d + (Cv) p95 out at 3+ flags      | 56/56 | 460 / 374 / 26 | lost H0 M0 L11 N1 | no  6/20 ok-good 0/11 maybe 0/5 |   58  101.9 | 13.0% | High dropped: - | no removed: LCID F DVAX DQ TIGR DOCN
+
+== ATTRIBUTION — the charts whose STATED reason each check mechanises (x = removed) ==
+  (i) choppy / large bars / no tightness     (i)A hl10 box                  SWAV:.  DVAX:x  F:.  FLGT:.  THC:.  CDE:.  TWTR:.  FUTU:.  AZUL:x
+  (i) choppy / large bars / no tightness     (i)B hl15 box                  SWAV:.  DVAX:x  F:.  FLGT:.  THC:.  CDE:.  TWTR:.  FUTU:.  AZUL:x
+  (ii) downtrend / lower high                (ii)A lower high               F:.  DOCN:.  THC:.  REN:x
+  (ii) downtrend / lower high                (ii)B lower high AND lower low F:x  DOCN:x  THC:.  REN:x
+  (iii) no higher lows                       (iii)A swing low not lower     MVIS:.  CDE:.  DOCN:.
+  (iii) no higher lows                       (iii)B same, 3-range swings    MVIS:.  CDE:.  DOCN:.
+  (iv) no breakout / needs more tight days   (iv)A level under 60d high     LCID:.  REN:.  AZUL:.
+  (iv) no breakout / needs more tight days   (iv)B closes near the level    LCID:.  REN:.  AZUL:.
+  all the above                              (C) flags of the four A        AZUL:.  CDE:.  DOCN:x  DVAX:x  F:.  FLGT:.  FUTU:.  LCID:.  MVIS:.  REN:.  SWAV:.  THC:.  TWTR:.
+  all the above                              (Cv) flags of the four B       AZUL:.  CDE:.  DOCN:.  DVAX:.  F:.  FLGT:.  FUTU:.  LCID:x  MVIS:.  REN:.  SWAV:.  THC:.  TWTR:.
+
+== THE 36 GRADED PICKS — the measures, the A-flag count (p90 lines) and whether 1d already removed it ==
+                                                               sheet card ticker         Dd       grade  out_1d  base_len  hl10  hl15  lh_2.0  ll_2.0  ll_3.0  off60  near10  flagsA  flagsB
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    G   AZUL 2022-01-20 conditional   False        45  5.66  5.66    1.35   -1.82   -0.21   1.82       5       2       2
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    C    CLR 2021-12-09 conditional   False        42  3.32  4.45   -0.41   -1.25   -0.89   4.28      10       1       2
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    L   FUTU 2021-06-23 conditional   False        45  2.88  2.97    0.78    3.82   -2.32   0.56       6       0       2
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    C   NVTA 2019-08-06 conditional   False        19  2.72  3.68     NaN    3.85     NaN   0.04       8       0       0
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    L      W 2018-08-22 conditional   False        22  2.47  3.31    0.11    2.75    2.75  -0.00      10       0       0
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    A   MRNA 2021-01-08        good   False        26  2.80  4.62   -4.97   -2.63   -2.63   6.30      10       3       3
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    I   AFRM 2021-09-23          no   False        17  2.65  4.19    0.26    4.77     NaN   0.00       7       0       0
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    K   BEAM 2021-07-21          no   False        12  2.40  6.44    6.24    3.03    3.03   4.51      10       0       1
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    D    CDE 2019-11-05          no   False        30  3.25  4.76    1.38   -1.45   -0.74   0.51       7       1       1
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    H   FLGT 2021-12-10          no   False        16  4.00  4.53    0.35   -0.97   -0.97   3.07      10       1       1
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    F   HAPN 2021-08-25          no   False        10  2.34  2.34   -0.08    5.70     NaN   0.19      10       0       0
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    F   LCID 2021-09-20          no   False        39  4.16  6.10   -0.77   -4.84   -3.60   4.21       2       2       4
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    K   MVIS 2021-04-23          no   False        43  3.29  3.29   -0.08   -0.45   -0.01   1.83       1       0       2
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    H   OCGN 2021-09-10          no   False        22  1.94  2.74   -3.41    0.45    1.77   4.44      10       1       0
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    I    REN 2017-07-27          no   False        44  2.15  4.04   -3.69   -5.37   -3.27   4.97      10       2       2
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    J   RIOT 2021-11-12          no   False        45  4.50  4.68    1.29     NaN     NaN   0.00       4       1       2
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    G   SWAV 2021-08-17          no   False        34  3.40  3.50   -0.96    0.73    0.73   1.15      10       0       0
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    B    THC 2017-05-09          no   False        45  4.67  5.22   -0.78    2.49   -1.20   5.42       6       1       2
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    E   TWTR 2018-02-07          no   False        31  4.05  4.05   -0.19    1.58     NaN  -0.00       8       1       0
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    B      X 2022-03-21          no   False        10  3.09  3.89    0.73    4.63     NaN   0.00       8       0       0
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    C    ZIM 2021-12-28          no   False        24  3.67  5.01   -1.35   -1.97    1.10   1.35       6       2       3
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    L   DOCN 2022-01-11          no    True        35  3.51  3.83   -2.39   -0.64   -0.64  11.04      10       3       1
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    D     DQ 2021-04-19          no    True        43  1.63  2.85   -2.48    0.53   -1.49   8.76      10       2       0
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    B   DVAX 2021-11-17          no    True        37  5.99  5.99   -3.52   -1.68   -0.89   3.65      10       3       2
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    J      F 2022-03-02          no    True        32  3.38  3.58   -0.51   -1.42   -3.80  10.19       9       2       2
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    G   TIGR 2021-04-23          no    True        44  1.68  1.77   -1.10   -1.16   -0.76   5.93      10       2       1
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    H   ADMS 2018-01-17          ok   False        31  2.75  2.75    0.14    0.18    7.09   0.67       9       0       0
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    J   APHA 2021-03-11          ok   False        20  2.56  2.56   -0.97   -0.27    2.46   4.28      10       0       1
+        scripts/probes/_717_pick_model_1113/sheet_template_picks.png    E   ATOS 2021-07-13          ok   False        11  3.11  4.83    2.98    1.13    3.48   3.02      10       0       1
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    A   ATYR 2021-10-08          ok   False        18  1.85  3.73    0.10   -0.05   -0.05   2.75      10       0       0
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    E    CAR 2021-11-16          ok   False        10  2.16 10.68     NaN    4.44    4.44   7.30      10       1       1
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    A   CRWD 2020-10-16          ok   False        31  2.06  3.27    0.13    4.17    3.53   0.81      10       0       0
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    D   TELL 2021-05-12          ok   False        41  2.25  3.08   -2.20    1.61   -1.95   8.40      10       2       1
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    F    TTD 2017-07-26          ok   False        36  3.25  3.69    0.83    0.31    4.10   0.21       6       0       1
+           scripts/probes/_717_pick_model_1113/sheet_model_picks.png    I   VUZI 2021-04-23          ok   False        22  3.20  4.30    0.62    0.04    0.04   3.18      10       0       0
+scripts/probes/_717_reasons_1114/sheet_stack_dollar_volume_picks.png    K    WDC 2019-02-19          ok   False        16  2.33  3.08    0.15    1.16    0.56   0.18      10       0       0
+
+the 56 listed High-tier buys — the same measures (quantiles):
+     hl10  hl15  lh_2.0  ll_2.0  ll_3.0  off60  near10
+min  1.33  2.02   -2.98   -2.52   -2.92  -0.00     2.0
+10%  1.67  2.25   -2.19   -1.13   -1.56   0.14     6.5
+25%  2.09  2.52   -1.22   -0.20    0.03   0.72    10.0
+50%  2.28  3.04   -0.40    0.57    1.82   1.55    10.0
+75%  2.70  3.76    0.33    1.79    4.11   2.72    10.0
+90%  3.44  4.43    1.16    3.67    6.51   5.47    10.0
+max  4.94  5.42    3.91    5.12   10.53  20.29    10.0
+
+== STACK (rule in PREREG), cumulative on top of 1d ==
+checks that pass the rule on top of 1d: (iii)B same, 3-range swings; (iv)B closes near the level
+check                              | High  | scorecard listed/fired/big | fired buys lost by tier | his eye (IN-SAMPLE): removed of 20 no / 11 ok-good / 5 maybe | fires a day median mean | top-5 dollar-volume picks replaced | names
+1d                                 | 56/56 | 466 / 380 / 26 | lost H0 M0 L6 N0 | no  5/20 ok-good 0/11 maybe 0/5 |   59  103.1 | 11.9% | High dropped: - | no removed: F DVAX DQ TIGR DOCN
++ (iii)B same, 3-range swings      | 56/56 | 457 / 371 / 26 | lost H0 M0 L13 N2 | no  7/20 ok-good 0/11 maybe 0/5 |   57   99.5 | 15.0% | High dropped: - | no removed: LCID F DVAX DQ TIGR DOCN REN
++ (iv)B closes near the level      | 56/56 | 452 / 366 / 26 | lost H0 M0 L18 N2 | no  8/20 ok-good 0/11 maybe 0/5 |   56   98.3 | 16.1% | High dropped: - | no removed: LCID F MVIS DVAX DQ TIGR DOCN REN
+
+the full stack stops 20 scorecard buys from firing (03_drops.tsv): by tier {'Low': 18, 'Not': 2}; big winners 0
+  TSLA 2020-04-14 (Low), EXEL 2020-04-20 (Not), TSLA 2020-04-30 (Low), RKT 2021-03-01 (Low), UPST 2021-08-12 (Low), BTBT 2021-10-20 (Low), MRNA 2021-11-29 (Not), LK 2019-11-18 (Low), ACB 2020-02-04 (Low), TSLA 2020-03-26 (Low), TLRY 2020-04-24 (Low), ETSY 2020-04-28 (Low), BA 2020-06-08 (Low), FVRR 2020-08-06 (Low), APT 2020-10-02 (Low), BILI 2020-10-05 (Low), MARA 2020-10-20 (Low), FSLY 2020-12-04 (Low), DKNG 2020-12-11 (Low), LI 2022-01-12 (Low)
