@@ -1,0 +1,61 @@
+ticker	D	grade	src	sheet	is_fire	in_pool	L0	L0b	R0	PM
+ATYR	2021-10-08	ok	drawn from PM	sheet_model_picks.png	True	True	0.8631578947368421	0.8210526315789474	0.5578947368421052	0.9578947368421052
+X	2022-03-21	no	drawn from PM	sheet_model_picks.png	True	True	0.5031055900621118	0.5341614906832298	0.9875776397515528	0.9875776397515528
+ZIM	2021-12-28	no	drawn from PM	sheet_model_picks.png	True	True	0.7857142857142857	0.7142857142857143	0.9523809523809523	0.9523809523809523
+TELL	2021-05-12	ok	drawn from PM	sheet_model_picks.png	True	True	1.0	1.0	0.45833333333333337	0.875
+CAR	2021-11-16	ok	drawn from PM	sheet_model_picks.png	True	True	0.9857142857142858	0.9857142857142858	0.8571428571428572	1.0
+LCID	2021-09-20	no	drawn from PM	sheet_model_picks.png	True	False				
+SWAV	2021-08-17	no	drawn from PM	sheet_model_picks.png	True	True	0.6578947368421053	0.5789473684210527	0.7631578947368421	0.8947368421052632
+FLGT	2021-12-10	no	drawn from PM	sheet_model_picks.png	True	True	0.3846153846153846	0.3846153846153846	0.8076923076923077	0.9615384615384616
+VUZI	2021-04-23	ok	drawn from PM	sheet_model_picks.png	True	True	0.7602996254681648	0.7602996254681648	0.898876404494382	1.0
+F	2022-03-02	no	drawn from PM	sheet_model_picks.png	True	False				
+MVIS	2021-04-23	no	drawn from PM	sheet_model_picks.png	True	True	0.4719101123595506	0.48689138576779023	0.8764044943820225	0.9925093632958801
+FUTU	2021-06-23	conditional	drawn from PM	sheet_model_picks.png	True	True	0.5897435897435898	0.6324786324786325	0.9829059829059829	0.9914529914529915
+MRNA	2021-01-08	good	drawn from PM	sheet_template_picks.png	True	True	0.8	0.8263157894736842	0.9947368421052631	0.9947368421052631
+DVAX	2021-11-17	no	drawn from PM	sheet_template_picks.png	True	False				
+CLR	2021-12-09	conditional	drawn from PM	sheet_template_picks.png	True	True	0.8974358974358975	0.8717948717948718	0.8717948717948718	0.9230769230769231
+DQ	2021-04-19	no	drawn from PM	sheet_template_picks.png	True	False				
+ATOS	2021-07-13	ok	drawn from PM	sheet_template_picks.png	True	True	0.6111111111111112	0.6111111111111112	0.8888888888888888	1.0
+HAPN	2021-08-25	no	drawn from PM	sheet_template_picks.png	True	True	0.946236559139785	0.946236559139785	0.7741935483870968	0.967741935483871
+TIGR	2021-04-23	no	drawn from PM	sheet_template_picks.png	True	False				
+OCGN	2021-09-10	no	drawn from PM	sheet_template_picks.png	True	False				
+AFRM	2021-09-23	no	drawn from PM	sheet_template_picks.png	True	True	0.5921052631578947	0.513157894736842	1.0	0.9868421052631579
+APHA	2021-03-11	ok	drawn from PM	sheet_template_picks.png	True	True	0.9510763209393347	0.9510763209393347	0.949119373776908	0.9980430528375734
+BEAM	2021-07-21	no	drawn from PM	sheet_template_picks.png	True	True	0.8188976377952756	0.8110236220472441	0.8031496062992126	0.9685039370078741
+DOCN	2022-01-11	no	drawn from PM	sheet_template_picks.png	True	False				
+CRWD	2020-10-16	ok	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	True	0.8445945945945946	0.8378378378378378	0.9797297297297297	0.9324324324324325
+THC	2017-05-09	no	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	False				
+NVTA	2019-08-06	conditional	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	True	0.9666666666666667	0.9333333333333333	0.8666666666666667	0.9333333333333333
+CDE	2019-11-05	no	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	True	0.5	0.5	0.9375	0.9375
+TWTR	2018-02-07	no	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	False				
+TTD	2017-07-26	ok	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	True	0.3529411764705882	0.3529411764705882	0.7647058823529411	0.5882352941176471
+AZUL	2022-01-20	conditional	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	False				
+ADMS	2018-01-16	ok	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	True	0.875	0.875	0.875	1.0
+REN	2017-07-27	no	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	False				
+RIOT	2021-11-11	no	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	True	0.033333333333333326	0.033333333333333326	0.9777777777777777	0.9777777777777777
+WDC	2019-02-15	ok	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	True	0.6379310344827587	0.6551724137931034	0.9482758620689655	0.8448275862068966
+W	2018-08-21	conditional	drawn from dollar volume	sheet_stack_dollar_volume_picks.png	True	True	0.8658536585365854	0.8780487804878049	0.9634146341463414	0.8658536585365854
+TDOC	2020-03-19	no	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	False				
+OKTA	2018-03-26	ok	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	True	0.7755102040816326	0.7755102040816326	0.9795918367346939	0.9591836734693877
+PS	2019-05-01	conditional	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	True	0.375	0.375	1.0	0.75
+MELI	2018-09-17	no	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	False				
+GBT	2019-06-24	conditional	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	True	0.5333333333333333	0.4666666666666667	0.8666666666666667	0.8
+MDCO	2018-03-21	conditional	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	True	0.0714285714285714	0.1071428571428571	0.8928571428571429	0.6071428571428572
+RRC	2018-11-12	no	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	False				
+COUP	2019-10-08	conditional	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	False				
+WPX	2018-04-23	no	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	False				
+CHWY	2020-01-03	ok	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	True	0.6296296296296297	0.4814814814814815	0.9259259259259259	0.8148148148148149
+ZS	2019-06-07	ok	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	True	0.703125	0.6875	0.9375	0.96875
+PINS	2020-10-22	no	drawn from dollar volume	sheet_context_a2_dollar_volume_picks.png	True	True	0.14814814814814814	0.14074074074074072	0.9925925925925926	0.8444444444444444
+WPM	2020-05-13	conditional	drawn from dollar volume	sheet_lowline_picks.png	True	True	0.5128205128205128	0.6153846153846154	0.8974358974358975	0.6923076923076923
+AU	2019-09-23	ok	drawn from dollar volume	sheet_lowline_picks.png	True	True	0.8484848484848485	0.8484848484848485	0.9393939393939394	0.9696969696969697
+AKRX	2018-07-30	ok	drawn from dollar volume	sheet_lowline_picks.png	True	True	0.3529411764705882	0.3529411764705882	0.7647058823529411	0.6470588235294117
+RETA	2019-12-09	ok	drawn from dollar volume	sheet_lowline_picks.png	True	True	1.0	1.0	0.9565217391304348	1.0
+CVNA	2019-11-14	ok	drawn from dollar volume	sheet_lowline_picks.png	True	True	0.6415094339622642	0.6603773584905661	0.9245283018867925	0.8867924528301887
+XYZ	2018-04-19	ok	drawn from dollar volume	sheet_lowline_picks.png	True	True	0.625	0.75	0.9583333333333334	0.9583333333333334
+NEM	2020-04-01	no	drawn from dollar volume	sheet_lowline_picks.png	True	True	0.5625	0.65625	0.875	0.90625
+FOUR	2021-04-29	ok	drawn from dollar volume	sheet_lowline_picks.png	True	True	0.6666666666666667	0.5714285714285714	0.9682539682539683	0.8888888888888888
+ONCE	2019-02-06	ok	drawn from dollar volume	sheet_lowline_picks.png	True	True	0.0	0.0	0.7333333333333334	0.19999999999999996
+TAL	2017-09-08	ok	drawn from dollar volume	sheet_lowline_picks.png	True	True	0.38095238095238093	0.38095238095238093	1.0	1.0
+CIG	2018-10-24	ok	drawn from dollar volume	sheet_lowline_picks.png	True	True	0.8	0.8	0.6	0.4
+TRXC	2018-06-25	conditional	drawn from dollar volume	sheet_lowline_picks.png	True	True	0.23809523809523814	0.2857142857142857	0.8571428571428572	1.0

@@ -1,0 +1,84 @@
+== BRIDGE 1 pool: fires -> 1d -> +A2(10) -> +lower line: (156695, 136305, 120872, 114847) (expect 156695, 136305, 120872, 114847)
+== BRIDGE 2 R0 on the 1d pool: [63, 49] total 112 big 5 (expect 63, 49, 112, 5)
+== BRIDGE 3 all test-era fires PM / L0 / R0: [41, 18, 43] (expect 41, 18, 43)
+
+== RESULT TABLE (pool after all three checks; qm_top5 = distinct Qullamaggie buys in the day's top 5; pool_* = what fires in the pool at all) ==
+                                   mode variant              era  qm_top5  high  big  name_days  picks  days  pool_fired_buys  pool_high  pool_big
+      K top 5 fires by rank (best case)      L0 2017-01..2020-12       35    11    5         35   5025  1007              226         39        17
+      K top 5 fires by rank (best case)      L0 2021-01..2022-03       19     3    1         19   1572   315              128         16         9
+      K top 5 fires by rank (best case)     L0b 2017-01..2020-12       36    11    4         36   5025  1007              226         39        17
+      K top 5 fires by rank (best case)     L0b 2021-01..2022-03       21     3    1         21   1572   315              128         16         9
+      K top 5 fires by rank (best case)      R0 2017-01..2020-12       65    12    4         66   5025  1007              226         39        17
+      K top 5 fires by rank (best case)      R0 2021-01..2022-03       47     4    1         48   1572   315              128         16         9
+      K top 5 fires by rank (best case)      PM 2017-01..2020-12       71    13    8         75   5025  1007              226         39        17
+      K top 5 fires by rank (best case)      PM 2021-01..2022-03       41     4    3         40   1572   315              128         16         9
+G open-above first, then rank (bracket)      L0 2017-01..2020-12       28     7    3         28   5025  1007              226         39        17
+G open-above first, then rank (bracket)      L0 2021-01..2022-03        8     1    0          8   1572   315              128         16         9
+G open-above first, then rank (bracket)     L0b 2017-01..2020-12       29     7    3         29   5025  1007              226         39        17
+G open-above first, then rank (bracket)     L0b 2021-01..2022-03        8     1    0          8   1572   315              128         16         9
+G open-above first, then rank (bracket)      R0 2017-01..2020-12       44     7    5         45   5025  1007              226         39        17
+G open-above first, then rank (bracket)      R0 2021-01..2022-03       27     4    0         27   1572   315              128         16         9
+G open-above first, then rank (bracket)      PM 2017-01..2020-12       49     7    5         50   5025  1007              226         39        17
+G open-above first, then rank (bracket)      PM 2021-01..2022-03       24     4    1         24   1572   315              128         16         9
+
+TOTAL both eras
+                                                 qm_top5  ...  picks
+mode                                    variant           ...       
+K top 5 fires by rank (best case)       L0            54  ...   6597
+                                        L0b           57  ...   6597
+                                        R0           112  ...   6597
+                                        PM           112  ...   6597
+G open-above first, then rank (bracket) L0            36  ...   6597
+                                        L0b           37  ...   6597
+                                        R0            71  ...   6597
+                                        PM            73  ...   6597
+
+[8 rows x 5 columns]
+
+== PASS / FAIL (mode K, the registered headline) ==
+  R0 vs L0: 2017-01..2020-12 65 vs 35 (+30); 2021-01..2022-03 47 vs 19 (+28); big 5 vs 6 -> DOES NOT BEAT L0
+  PM vs L0: 2017-01..2020-12 71 vs 35 (+36); 2021-01..2022-03 41 vs 19 (+22); big 11 vs 6 -> BEATS L0
+
+== DAY RESAMPLE, 1,000 draws of days, seed 717: 90% interval of the NAME-DAY difference (additive) ==
+  2017-01..2020-12  R0 minus L0: name-days +31 (90% +16 .. +46) excludes 0 | distinct buys +30 (point only)
+  2017-01..2020-12  PM minus L0: name-days +40 (90% +26 .. +55) excludes 0 | distinct buys +36 (point only)
+  2017-01..2020-12  PM minus R0: name-days +9 (90% -4 .. +22) includes 0 | distinct buys +6 (point only)
+  2017-01..2020-12  R0 minus L0b: name-days +30 (90% +16 .. +45) excludes 0 | distinct buys +29 (point only)
+  2017-01..2020-12  PM minus L0b: name-days +39 (90% +26 .. +53) excludes 0 | distinct buys +35 (point only)
+  2021-01..2022-03  R0 minus L0: name-days +29 (90% +17 .. +42) excludes 0 | distinct buys +28 (point only)
+  2021-01..2022-03  PM minus L0: name-days +21 (90% +12 .. +30) excludes 0 | distinct buys +22 (point only)
+  2021-01..2022-03  PM minus R0: name-days -8 (90% -19 .. +4) includes 0 | distinct buys -6 (point only)
+  2021-01..2022-03  R0 minus L0b: name-days +27 (90% +15 .. +40) excludes 0 | distinct buys +26 (point only)
+  2021-01..2022-03  PM minus L0b: name-days +19 (90% +11 .. +28) excludes 0 | distinct buys +20 (point only)
+  (PM vs R0 tie rule reads the 2021-01..2022-03 line above: PM must be ahead on distinct buys AND the interval must exclude 0; else R0)
+
+== COST: buys one ranking's top 5 holds that the other drops (mode K), by name ==
+  2017-01..2020-12: in L0's top 5, not in R0's: 28 (High 7, big 4): ACH 2020-03-02 (Low); ACMR 2020-02-10 (Medium); AHPIQ 2020-07-22 (Low); APPS 2019-10-18 (Low); APT 2020-05-14 (High); ARCT 2020-07-09 (Low); BE 2019-12-30 (Medium); BNTX 2020-05-18 (Not); CODX 2020-04-06 (Not); CODX 2020-07-16 (Low, BIG); CODX 2020-07-21 (High, BIG); EPZM 2020-01-24 (Low); KOD 2019-12-24 (Medium); MARA 2020-11-16 (Low); MIK 2019-10-21 (Low); MIK 2019-10-22 (High); NIO 2020-09-29 (High, BIG); NVAX 2020-12-17 (Low); PI 2017-07-27 (Low); RH 2020-07-01 (Medium); RIOT 2020-11-13 (Medium); SRNE 2020-06-24 (High, BIG); UCTT 2017-08-29 (Medium); VIR 2020-06-19 (High); W 2020-07-27 (Low); WKHS 2020-07-20 (Low); WKHS 2020-08-03 (High); ZS 2020-09-21 (Low)
+  2021-01..2022-03: in L0's top 5, not in R0's: 12 (High 2, big 1): AMC 2021-02-22 (Low); BTBT 2021-01-28 (Low); CBAT 2021-01-22 (Medium); CBAT 2021-02-16 (Medium); DRK 2021-10-11 (High); FUTU 2021-06-14 (Low); LI 2021-12-30 (Low); NTLA 2021-03-30 (Low); NVAX 2021-04-13 (High); SICP 2021-01-22 (Medium, BIG); SOLO 2021-01-11 (Medium); WWR 2021-01-19 (Low)
+  2017-01..2020-12: in L0's top 5, not in PM's: 15 (High 4, big 1): ACH 2020-03-02 (Low); AHPIQ 2020-07-22 (Low); APPS 2019-10-18 (Low); ARCT 2020-07-09 (Low); BE 2019-12-30 (Medium); CODX 2020-07-21 (High, BIG); MARA 2020-11-16 (Low); MIK 2019-10-22 (High); RH 2020-07-01 (Medium); RIOT 2020-11-13 (Medium); TSLA 2020-06-01 (High); UCTT 2017-08-29 (Medium); VIR 2020-06-19 (High); W 2020-07-27 (Low); ZS 2020-09-21 (Low)
+  2021-01..2022-03: in L0's top 5, not in PM's: 6 (High 0, big 0): CBAT 2021-01-22 (Medium); CBAT 2021-02-16 (Medium); LI 2021-12-30 (Low); NIO 2021-02-08 (Low); WWR 2021-01-19 (Low); ZIM 2021-11-18 (Low)
+  2017-01..2020-12: in R0's top 5, not in PM's: 30 (High 6, big 2): ANET 2018-03-12 (Low); AYX 2020-02-14 (Low); BA 2020-06-08 (Low); CCL 2020-12-28 (Low); DKNG 2020-12-11 (Low); JD 2020-04-06 (Low); MIK 2019-10-10 (Low); NCLH 2020-12-28 (Medium); NVDA 2020-09-25 (Low, BIG); ROKU 2020-07-09 (High); ROKU 2020-07-31 (Low); SE 2020-09-14 (Low); SHOP 2020-04-20 (Low); SHOP 2020-04-21 (Low); SHOP 2020-06-15 (High, BIG); SHOP 2020-08-26 (High); SNAP 2020-11-19 (Low); SRPT 2017-10-02 (High); TSLA 2020-06-01 (High); TSLA 2020-11-18 (High); TSLA 2020-12-03 (Low); TTD 2020-05-22 (Low); TWLO 2020-06-10 (Low); TWLO 2020-08-18 (Low); UBER 2020-11-16 (Low); WORK 2020-03-05 (Medium); XYZ 2020-11-06 (Medium); XYZ 2020-11-17 (Medium); ZM 2020-06-03 (Low); ZM 2020-08-03 (Medium)
+  2021-01..2022-03: in R0's top 5, not in PM's: 26 (High 3, big 1): AAL 2021-03-30 (Low); AMAT 2021-03-22 (Medium); AMAT 2021-03-26 (High); AMD 2021-08-23 (Medium); BIDU 2021-02-02 (Low); BNGO 2021-01-26 (Low); CLF 2021-06-09 (High); COIN 2021-11-01 (Low); DKNG 2021-01-26 (Low); DVN 2021-12-07 (Medium); FCX 2022-02-08 (Low); GME 2021-11-01 (Medium); LCID 2021-10-25 (High, BIG); LRCX 2021-03-22 (Low); LRCX 2021-03-26 (Low); MRNA 2021-11-29 (Not); MU 2021-03-16 (Medium); NIO 2021-02-08 (Low); PDD 2021-01-25 (Medium); SE 2021-06-08 (Low); SNAP 2021-04-29 (Low); TSLA 2021-11-19 (Medium); TWTR 2021-04-06 (Medium); UBER 2021-03-10 (Low); XYZ 2021-02-03 (Low); ZIM 2021-11-18 (Low)
+  2017-01..2020-12: in PM's top 5, not in R0's: 36 (High 7, big 6): ACMR 2020-02-10 (Medium); APT 2020-05-14 (High); BE 2020-08-13 (Medium, BIG); BILI 2020-03-05 (Low); BNTX 2020-05-18 (Not); CODX 2020-04-06 (Not); CODX 2020-07-16 (Low, BIG); DDOG 2020-06-03 (Low); DKNG 2020-06-22 (Medium); DKNG 2020-08-18 (High); DQ 2020-11-24 (Low); ENPH 2020-05-20 (Low); ENPH 2020-11-05 (High); EPZM 2020-01-24 (Low); INO 2020-04-23 (Not); JMIA 2020-11-18 (Low, BIG); KOD 2019-12-24 (Medium); KYNB 2017-08-25 (Low); LVGO 2020-08-05 (Low); LVGO 2020-09-01 (Medium); MIK 2019-10-21 (Low); MRNA 2020-04-02 (Low); MRNA 2020-05-12 (High); NIO 2020-09-29 (High, BIG); NVAX 2020-04-03 (Medium); NVAX 2020-06-15 (Medium); NVAX 2020-12-17 (Low); PDD 2020-08-19 (Medium); PI 2017-07-27 (Low); RUN 2020-11-17 (Low); SRNE 2020-06-24 (High, BIG); SRNE 2020-07-30 (Medium, BIG); SWN 2020-05-27 (Medium); TDOC 2020-05-12 (Low); WKHS 2020-07-20 (Low); WKHS 2020-08-03 (High)
+  2021-01..2022-03: in PM's top 5, not in R0's: 20 (High 3, big 3): AMC 2021-02-22 (Low); APHA 2021-03-02 (Low); APPS 2021-03-22 (Medium); BTBT 2021-01-28 (Low); DRK 2021-10-11 (High); FUTU 2021-06-14 (Low); JMIA 2021-01-12 (Low, BIG); MARA 2021-02-08 (Not); MP 2022-02-28 (Medium); NTLA 2021-03-30 (Low); NVAX 2021-04-13 (High); NVAX 2021-06-29 (Medium); RIOT 2021-02-08 (Not); RIOT 2021-06-28 (Low); RIOT 2021-11-29 (Low); SICP 2021-01-22 (Medium, BIG); SOLO 2021-01-11 (Medium); SOS 2021-03-15 (Not); TLRY 2021-02-02 (High, BIG); VIR 2021-12-15 (Low)
+  big winners in the top 5, by variant: L0: CODX 2020-07-16 (Low, BIG), CODX 2020-07-21 (High, BIG), NIO 2020-09-29 (High, BIG), NVAX 2020-02-26 (High, BIG), SICP 2021-01-22 (Medium, BIG), SRNE 2020-06-24 (High, BIG) | L0b: CODX 2020-07-16 (Low, BIG), CODX 2020-07-21 (High, BIG), NIO 2020-09-29 (High, BIG), SICP 2021-01-22 (Medium, BIG), SRNE 2020-06-24 (High, BIG) | R0: LCID 2021-10-25 (High, BIG), NVAX 2020-02-26 (High, BIG), NVDA 2020-09-25 (Low, BIG), PTON 2020-12-14 (High, BIG), SHOP 2020-06-15 (High, BIG) | PM: BE 2020-08-13 (Medium, BIG), CODX 2020-07-16 (Low, BIG), JMIA 2020-11-18 (Low, BIG), JMIA 2021-01-12 (Low, BIG), NIO 2020-09-29 (High, BIG), NVAX 2020-02-26 (High, BIG), PTON 2020-12-14 (High, BIG), SICP 2021-01-22 (Medium, BIG), SRNE 2020-06-24 (High, BIG), SRNE 2020-07-30 (Medium, BIG), TLRY 2021-02-02 (High, BIG)
+  High-tier in the top 5, by variant: L0: ACAD 2019-10-21 (High), APT 2020-05-14 (High), CODX 2020-07-21 (High, BIG), DRK 2021-10-11 (High), FSLY 2020-09-21 (High), LCID 2022-01-10 (High), MIK 2019-10-22 (High), NIO 2020-09-29 (High, BIG), NVAX 2020-02-26 (High, BIG), NVAX 2021-04-13 (High), SRNE 2020-06-24 (High, BIG), TSLA 2020-06-01 (High), VIR 2020-06-19 (High), WKHS 2020-08-03 (High) | L0b: ACAD 2019-10-21 (High), APT 2020-05-14 (High), BLDP 2020-05-26 (High), CODX 2020-07-21 (High, BIG), DRK 2021-10-11 (High), FSLY 2020-09-21 (High), LCID 2022-01-10 (High), MIK 2019-10-22 (High), NIO 2020-09-29 (High, BIG), NVAX 2021-04-13 (High), SRNE 2020-06-24 (High, BIG), TSLA 2020-06-01 (High), VIR 2020-06-19 (High), WKHS 2020-08-03 (High) | R0: ACAD 2019-10-21 (High), AMAT 2021-03-26 (High), BYND 2020-06-08 (High), CLF 2021-06-09 (High), DKNG 2020-09-11 (High), FSLY 2020-09-21 (High), LCID 2021-10-25 (High, BIG), LCID 2022-01-10 (High), NVAX 2020-02-26 (High, BIG), PTON 2020-12-14 (High, BIG), ROKU 2020-07-09 (High), SHOP 2020-06-15 (High, BIG), SHOP 2020-08-26 (High), SRPT 2017-10-02 (High), TSLA 2020-06-01 (High), TSLA 2020-11-18 (High) | PM: ACAD 2019-10-21 (High), APT 2020-05-14 (High), BYND 2020-06-08 (High), DKNG 2020-08-18 (High), DKNG 2020-09-11 (High), DRK 2021-10-11 (High), ENPH 2020-11-05 (High), FSLY 2020-09-21 (High), LCID 2022-01-10 (High), MRNA 2020-05-12 (High), NIO 2020-09-29 (High, BIG), NVAX 2020-02-26 (High, BIG), NVAX 2021-04-13 (High), PTON 2020-12-14 (High, BIG), SRNE 2020-06-24 (High, BIG), TLRY 2021-02-02 (High, BIG), WKHS 2020-08-03 (High)
+
+== GRADED PICKS: 60 picks, list nights 2017-05-09 .. 2022-03-21 (ALL in era A — they resolve in the era-A capture; no live-list bars needed). IN-SAMPLE + SELECTION-BIASED ==
+grades: {'no': 26, 'ok': 22, 'conditional': 11, 'good': 1} | not a fire row in the capture: [] | removed by the three checks: [['LCID', 'no'], ['F', 'no'], ['DVAX', 'no'], ['DQ', 'no'], ['TIGR', 'no'], ['OCGN', 'no'], ['DOCN', 'no'], ['THC', 'no'], ['TWTR', 'no'], ['AZUL', 'conditional'], ['REN', 'no'], ['TDOC', 'no'], ['MELI', 'no'], ['RRC', 'no'], ['COUP', 'conditional'], ['WPX', 'no']]
+scored (in pool, not conditional): 35  ok/good 23  no 12
+ ALL sheets: ok/good n=23, no n=12
+   L0 : ok/good 0.76  no 0.53  gap +0.23
+   L0b: ok/good 0.76  no 0.52  gap +0.24
+   R0 : ok/good 0.93  no 0.91  gap +0.02
+   PM : ok/good 0.96  no 0.96  gap -0.01
+ drawn from PM: ok/good n=7, no n=8
+   L0 : ok/good 0.86  no 0.62  gap +0.24
+   L0b: ok/good 0.83  no 0.56  gap +0.27
+   R0 : ok/good 0.89  no 0.84  gap +0.05
+   PM : ok/good 1.00  no 0.97  gap +0.03
+ drawn from dollar volume: ok/good n=16, no n=4
+   L0 : ok/good 0.65  no 0.32  gap +0.33
+   L0b: ok/good 0.67  no 0.32  gap +0.35
+   R0 : ok/good 0.94  no 0.96  gap -0.02
+   PM : ok/good 0.91  no 0.92  gap -0.01

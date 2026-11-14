@@ -1,0 +1,17 @@
+mode	variant	era	qm_top5	high	big	name_days	picks	days	pool_fired_buys	pool_high	pool_big
+K top 5 fires by rank (best case)	L0	2017-01..2020-12	35	11	5	35	5025	1007	226	39	17
+K top 5 fires by rank (best case)	L0	2021-01..2022-03	19	3	1	19	1572	315	128	16	9
+K top 5 fires by rank (best case)	L0b	2017-01..2020-12	36	11	4	36	5025	1007	226	39	17
+K top 5 fires by rank (best case)	L0b	2021-01..2022-03	21	3	1	21	1572	315	128	16	9
+K top 5 fires by rank (best case)	R0	2017-01..2020-12	65	12	4	66	5025	1007	226	39	17
+K top 5 fires by rank (best case)	R0	2021-01..2022-03	47	4	1	48	1572	315	128	16	9
+K top 5 fires by rank (best case)	PM	2017-01..2020-12	71	13	8	75	5025	1007	226	39	17
+K top 5 fires by rank (best case)	PM	2021-01..2022-03	41	4	3	40	1572	315	128	16	9
+G open-above first, then rank (bracket)	L0	2017-01..2020-12	28	7	3	28	5025	1007	226	39	17
+G open-above first, then rank (bracket)	L0	2021-01..2022-03	8	1	0	8	1572	315	128	16	9
+G open-above first, then rank (bracket)	L0b	2017-01..2020-12	29	7	3	29	5025	1007	226	39	17
+G open-above first, then rank (bracket)	L0b	2021-01..2022-03	8	1	0	8	1572	315	128	16	9
+G open-above first, then rank (bracket)	R0	2017-01..2020-12	44	7	5	45	5025	1007	226	39	17
+G open-above first, then rank (bracket)	R0	2021-01..2022-03	27	4	0	27	1572	315	128	16	9
+G open-above first, then rank (bracket)	PM	2017-01..2020-12	49	7	5	50	5025	1007	226	39	17
+G open-above first, then rank (bracket)	PM	2021-01..2022-03	24	4	1	24	1572	315	128	16	9
