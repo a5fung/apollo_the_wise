@@ -93,6 +93,7 @@ DEFAULT_RANKING = RANKING_PICK_MODEL
 RANKING_SWITCH = "breakout_v1_ranking"      # mi_safeguard_state(safeguard, 'global').state = one of RANKINGS
 RANKING_READ_TRIES = 3                      # a failed switch read is retried (a transient miss must not un-flip a backup)
 RANKING_READ_PAUSE_S = 1.0
+RANKING_READ_TIMEOUT_S = 10.0               # asyncpg's own bound per try: a hung read must not eat the job's 600 s budget
 RANKING_SCORE_COL = {RANKING_PICK_MODEL: "pick_score", RANKING_ORDER_SCORE: "order_score",
                      RANKING_DOLLAR_VOLUME: "dollar_vol20"}
 RANKING_RANK_COL = {k: "rank_" + k for k in RANKINGS}
@@ -173,7 +174,7 @@ def night_cross_section(members: list, groups: Optional[list] = None) -> tuple:
         xs = {m["ticker"]: {"rs_1m": p21[j], "rs_3m": p63[j], "rs_6m": p126[j], "group_strength": grp[j]}
               for j, m in enumerate(members)}
     except Exception as e:  # loud-ok: the pick model's inputs only — rs_best (the gates) is already computed; rank_all then
-        # gets no inputs (`xs` None -> the job passes no pick inputs), scores no name, falls back to the order score and
+        # gets no inputs (`xs` None -> the job disables the pick inputs), scores no name, falls back to the order score and
         # says so in the audit row. Never an empty dict: the four cross-section ranks would read the neutral 0.5 on
         # every name and the pick model would order the night without its strength inputs, silently.
         logger.error(f"breakout_v1_list: the pick model's cross-section failed (no pick score tonight): {type(e).__name__}: {e}")
@@ -235,7 +236,7 @@ def evaluate_members(members: list, rs_best: list, today: date, removed: Optiona
         if removed is not None and context_only:
             for k in g["failed"]:
                 removed.setdefault(k, []).append(m["ticker"])
-        if pick is not None and context_only:            # off the list, but inside the pick model's rank population
+        if pick is not None and not pick.get("disabled") and context_only:            # off the list, but inside the pick model's rank population
             try:
                 pick.setdefault("extra", []).append(
                     _pick_inputs_for(m["ticker"], g, bv.order_inputs(bars, D, g["adr20"]), pick, bars))
@@ -252,13 +253,16 @@ def evaluate_members(members: list, rs_best: list, today: date, removed: Optiona
                "spread10_adr": oi["spread10_adr"]}
         if pick is not None:
             try:
-                pin = _pick_inputs_for(m["ticker"], g, oi, pick, bars)
+                # `pick["disabled"]` (the night's cross-section failed): no inputs, so no pick score for anyone
+                pin = {} if pick.get("disabled") else _pick_inputs_for(m["ticker"], g, oi, pick, bars)
             except Exception as e:  # the name stays on the list; it has no pick score and ranks last under the model
                 logger.warning(f"breakout_v1_list: pick inputs {m['ticker']} failed: {type(e).__name__}: {e}")
                 pin = {}
             gates["pick_inputs"] = pin
             row["pick_inputs"] = pin
-            row["dollar_vol20"] = pin.get("dollar_vol20")
+            # the dollar-volume backup reads the `universe` gate's own value, NEVER the pick inputs: a pick-model
+            # failure (this name's, or the whole night's) must not blank a ranking that needs none of its code
+            row["dollar_vol20"] = bv._f((((g.get("gates") or {}).get("universe") or {}).get("value") or {}).get("dollar_vol20"))
         row["gates"] = _json_safe(gates)
         rows.append(row)
     return rows, fails, n_eval
@@ -417,7 +421,7 @@ async def get_ranking() -> tuple:
     err = None
     for attempt in range(RANKING_READ_TRIES):
         try:
-            row = await get_safeguard_state("breakout_v1_ranking", "global")
+            row = await get_safeguard_state("breakout_v1_ranking", "global", timeout=RANKING_READ_TIMEOUT_S)
         except Exception as e:  # loud-ok: an order switch for a paper list — retried, then the default, noted in the audit row
             err = e
             logger.warning(f"breakout_v1_list: {RANKING_SWITCH} read failed (try {attempt + 1}/{RANKING_READ_TRIES}): {e}")
@@ -550,8 +554,8 @@ async def _run(today: date, out: dict) -> list:
               for m in members]
     rs_best, xs, n_groups = night_cross_section(members, groups)
     xs_error = None if xs is not None else "the cross-section percentiles raised (see the log)"
-    pick = None if xs is None else {
-        "xs": xs, "long": {t: b for t, (b, _c) in long_series.items() if t not in long_unapplied}, "extra": []}
+    pick = {"xs": xs or {}, "long": {t: b for t, (b, _c) in long_series.items() if t not in long_unapplied},
+            "extra": [], "disabled": xs is None}
     del long_series
     ranking, ranking_source, ranking_note = await get_ranking()
     list_rows, fails, n_eval, removed = [], Counter(), 0, {}
@@ -561,8 +565,8 @@ async def _run(today: date, out: dict) -> list:
         list_rows.extend(r_)
         fails.update(f_)
         n_eval += e_
-    short_fb = sorted(set((pick or {}).get("short_fallback") or []))
-    out["ranking"] = rank_all(list_rows, (pick or {}).get("extra"), ranking)
+    short_fb = sorted(set(pick.get("short_fallback") or []))
+    out["ranking"] = rank_all(list_rows, pick["extra"], ranking)
     out["ranking"].update(source=ranking_source, note=ranking_note, switch=RANKING_SWITCH, sic_error=sic_error,
                           pool_with_industry_code=sum(1 for g_ in groups if g_ is not None), industry_groups=n_groups,
                           listed_with_group_strength=sum(1 for r in list_rows

@@ -361,6 +361,7 @@ def _switch(monkeypatch, *, row="absent", exc=None, fail_first=0):
 
     async def state_f(safeguard, account_mode, timeout=None):
         assert (safeguard, account_mode) == ("breakout_v1_ranking", "global")
+        assert timeout == bl.RANKING_READ_TIMEOUT_S                    # bounded: a hung read cannot eat the job's budget
         calls["n"] += 1
         if exc and (not fail_first or calls["n"] <= fail_first):
             raise exc
@@ -629,6 +630,7 @@ def test_a_pick_model_failure_never_stops_the_list_the_order_score_sets_the_orde
     assert rows and out["error"] is None and out["written"] == len(rows)
     assert rk["ranked_by"] == "order_score" and rk["selected"] == "pick_model" and "scored no name" in rk["fallback"]
     assert "numpy changed" in rk["pick_error"] and all(r["pick_score"] is None and r["list_rank"] == r["rank_order_score"] for r in rows)
+    assert all(r["dollar_vol20"] is not None for r in rows) and rk["scored"]["dollar_volume"] == len(rows)
     monkeypatch.undo()
     # (2) the cross-section's percentile step raises -> rs_best (the gates) still computed, the list written
     #     (`cb.cross_section_one_date` makes the first 3 `percentile_ranks` calls itself — the old path; the pick
@@ -646,6 +648,14 @@ def test_a_pick_model_failure_never_stops_the_list_the_order_score_sets_the_orde
     assert seen["n"] == 4
     assert rows and out["error"] is None and out["ranking"]["ranked_by"] == "order_score" and out["ranking"]["fallback"]
     assert out["ranking"]["xs_error"] and rows[0]["pick_score"] is None      # never scored on neutral 0.5 strength ranks
+    # ... and the dollar-volume backup is untouched by it (stored, ranked, and still selectable that night)
+    assert rows[0]["dollar_vol20"] >= bv.MIN_DOLLAR_VOL and out["ranking"]["scored"]["dollar_volume"] == 1
+    assert rows[0]["gates"]["pick_inputs"] == {}
+    monkeypatch.undo()
+    seen["n"] = 0
+    monkeypatch.setattr(bl.cb, "percentile_ranks", later_calls_fail)
+    f, out, rows = _job(monkeypatch, ranking_state="dollar_volume")
+    assert out["ranking"]["ranked_by"] == "dollar_volume" and out["ranking"]["fallback"] is None and out["ranking"]["xs_error"]
     monkeypatch.undo()
     assert bl.cb.percentile_ranks is real
     # (3) the LONG series build raises (the second build_series call) -> the list written, the pick model still scores
