@@ -2700,7 +2700,10 @@ reviews:
       WHERE event_type IN ('drawdown_reduce_entered', 'drawdown_block_entered')
         AND summary LIKE 'live%'
     threshold: 1
-    earliest_review_date: 2026-07-01
+    # 2026-11-15: re-dated to the next WEEKLY re-read the 11-13 resolution set. The predicate (a live trip) is met for good,
+    # so with a past earliest date it read "ripe 137d" in every weekly review although it was handled 11-13 — surfacing, not
+    # triage. Each re-read moves this date one week; it fires early only by date, never by a new trip.
+    earliest_review_date: 2026-11-20
     action_when_ready: |
       Pull the active-phase record since 2026-06-03: tier-transition audit
       (drawdown_watch/reduce/block_entered + *_released), BLOCKED entries
