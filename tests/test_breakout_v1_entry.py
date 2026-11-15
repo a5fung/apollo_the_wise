@@ -2499,6 +2499,8 @@ async def test_a_7_name_break_day_with_5_free_slots_records_exactly_the_2_lowest
                   "break_high": 10.05, "stop": 9.80, "width": pytest.approx(0.02),
                   "break_cum_volume": 720_000.0, "break_need_volume": pytest.approx(1_200_000.0 * CUM_SHARE[11]),
                   "hold_minute": 13, "hold_clock_et": "09:43", "stop_at_hold": 9.80, "list_rank": 6, "order_score": 0.994,
+                  # a list row with no `ranked_by` (written before 2026-11-14) reads as the order score
+                  "ranked_by": "order_score", "rank_score": 0.994, "pick_score": None, "dollar_vol20": None,
                   "cum_volume": 780_000.0, "need_volume": pytest.approx(1_200_000.0 * CUM_SHARE[12]),
                   "vol_bar": 1_200_000.0, "adr20": 0.06,
                   "reason": "slots_full", "row_status": None, "account_mode": "paper"}
@@ -2736,6 +2738,72 @@ async def test_two_names_break_in_one_minute_with_one_free_slot_the_higher_rank_
     assert rec[0]["break_high"] == 10.05 and rec[0]["stop"] == 9.80 and rec[0]["reason"] == "slots_full"
     assert "broke out at 10:12" in w.ev(be.MISSED_BY_SLOTS)[0][1]
     assert w.pages == []
+
+
+@pytest.mark.asyncio
+async def test_the_slot_goes_by_list_rank_even_when_the_order_score_says_the_opposite(monkeypatch):
+    """2026-11-14 (the pick model orders the list; `breakout_v1_ranking` picks which ranking sets `list_rank`): the
+    entry job seats by `list_rank` ALONE. Here the order score — now only a stored backup — is highest on the
+    WORST-ranked name: R3 and R5 break in the same minute with one slot free; rank 3 still seats, rank 5 is held and,
+    never seating, is the one recorded missed at 15:55. So whichever ranking the switch selects governs the slots."""
+    rows = [dict(r, order_score=round(r["list_rank"] / 10, 3)) for r in _ranked(5)]        # rank 5 has the TOP order score
+    assert max(rows, key=lambda r: r["order_score"])["ticker"] == "R5"
+    names = [r["ticker"] for r in rows]
+    bars = {t: _bars_breaking_in(386, breaks=[42] if t in ("R3", "R5") else []) for t in names}
+    w = World(monkeypatch, list_rows=rows, bars=bars, rows=[_lane_row(f"L{k}", 100 + k) for k in range(1, 5)])
+    out = await w.tick(at=(10, 13))
+    assert _funnel_tickers(w) == ["R3"]
+    assert out["actions"]["R3"] == ep.ACTION_AUTO_ENTERED and out["actions"]["R5"] == "held_slots_full"
+    assert [h["ticker"] for h in _held(w)] == ["R5"] and _held(w)[0]["list_rank"] == 5
+    # the 15:55 candidates are read in list-rank order too, never by a score column
+    first = {"AAA": {"list_rank": 2, "order_score": 0.99, "pick_score": 3.0},
+             "BBB": {"list_rank": 1, "order_score": 0.01, "pick_score": -9.0}}
+    assert be._never_seated(first, {}) == ["BBB", "AAA"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ranked_by,want_score,want_text", [
+    ("pick_model", -6.125, "#5 by pick model score -6.12;"),
+    ("dollar_volume", 45_000_000.0, "#5 by dollar volume $45M;"),
+    ("order_score", 0.5, "#5 by order score 0.50;"),
+    (None, 0.5, "#5 by order score 0.50;"),                          # a list row written before 2026-11-14
+])
+async def test_a_hold_and_a_missed_record_name_the_ranking_that_set_the_rank_and_its_score(monkeypatch, ranked_by,
+                                                                                         want_score, want_text):
+    """Review 2026-11-14 finding 1. WOULD FAIL IF the records carried only `order_score` (they did): under the pick
+    model a name ranked #5 was written "#5, score 0.5" — the BACKUP ranking's score beside a rank the pick model set,
+    with nothing saying which ranking ordered that day. The hold row and the 15:55 missed-by-slots row now carry
+    `ranked_by` and `rank_score` (that ranking's score); `order_score` keeps meaning the order score (#720 reads it)."""
+    rows = [dict(r, order_score=round(r["list_rank"] / 10, 3), pick_score=-6.125 - (5 - r["list_rank"]),
+                 dollar_vol20=45e6 + (5 - r["list_rank"]) * 1e6, ranked_by=ranked_by) for r in _ranked(5)]
+    if ranked_by is None:
+        rows = [{k: v for k, v in r.items() if k not in ("pick_score", "dollar_vol20", "ranked_by")} for r in rows]
+    bars = {r["ticker"]: _bars_breaking_in(386, breaks=[42] if r["ticker"] in ("R3", "R5") else []) for r in rows}
+    w = World(monkeypatch, list_rows=rows, bars=bars, rows=[_lane_row(f"L{k}", 100 + k) for k in range(1, 5)])
+    await w.tick(at=(10, 13))
+    hold = _held(w)[0]
+    assert hold["ticker"] == "R5" and hold["list_rank"] == 5 and hold["order_score"] == 0.5
+    assert hold["ranked_by"] == (ranked_by or "order_score") and hold["rank_score"] == want_score
+    w.rows["R3"] = _placed_row(ticker="R3", tid=23, oid="o-3")
+    w.orders["o-3"] = _order(oid="o-3", ticker="R3")
+    out = await w.tick(at=(15, 55))
+    rec = _missed(w)
+    assert out["missed_by_slots"] == 1 and rec[0]["ticker"] == "R5"
+    assert rec[0]["ranked_by"] == (ranked_by or "order_score") and rec[0]["rank_score"] == want_score
+    assert rec[0]["order_score"] == 0.5 and rec[0]["list_rank"] == 5
+    if ranked_by is not None:
+        assert rec[0]["pick_score"] == -6.125 and rec[0]["dollar_vol20"] == 45e6
+    assert want_text in w.ev(be.MISSED_BY_SLOTS)[0][1]
+
+
+def test_the_list_read_carries_the_ranking_and_its_score_to_the_entry_job():
+    from agents.market_intelligence import db
+    sql = " ".join(db.BV1_LIST_SELECT_SQL.split())
+    for col in ("list_rank", "order_score", "pick_score", "dollar_vol20", "ranked_by"):
+        assert col in sql.split(" FROM ")[0], col
+    assert sql.endswith("FROM mi_breakout_v1_list WHERE scan_date = $1 ORDER BY list_rank")
+    assert be._rank_score_text({"list_rank": 2, "order_score": 0.41}) == "order score 0.41"      # a hold row from before
+    assert be._rank_score_text({"ranked_by": "pick_model", "rank_score": None}) == "pick model score n/a"
 
 
 @pytest.mark.asyncio

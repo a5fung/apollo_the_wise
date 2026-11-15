@@ -12,13 +12,19 @@ The rules are `breakout_v1.py` (PURE); this module is the plumbing around them f
      rs_best. His ruling 2026-10-29 ("Ok a"): the pool the approved 12-of-24 check ranked against; the TYPE rule decides
      only who may be LISTED (a pool-only member is ranked, never given the gates);
   4. `breakout_v1.v1_gates` per member with the 86-session consecutive history; every name passing every gate is a row
-     of `mi_breakout_v1_list` (the night's rows replaced whole — idempotent), carrying its two order inputs
-     (`breakout_v1.order_inputs`) and ranked by the ORDER SCORE over the night's whole list (`rank_rows`; the rebuilt
-     rules his spec sign-off of 2026-11-02 named, `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md` §2);
+     of `mi_breakout_v1_list` (the night's rows replaced whole — idempotent). THREE rankings are computed and stored
+     on every row every night (`rank_all`): the PICK MODEL score (`breakout_v1_pick_model.py`, the live order since
+     2026-11-14, his "pick model, let's continue to eval and keep all the old models we have as backup"), the ORDER
+     SCORE (`rank_rows`, the order from 2026-11-02 to 2026-11-14, unchanged;
+     `docs/analysis/cb_rebuild_from_qm_trades_2026-11-02.md` §2) and the 20-session DOLLAR VOLUME. ONE switch picks
+     which of them sets `list_rank` — the order the paper slots follow (`get_ranking`:
+     `mi_safeguard_state('breakout_v1_ranking', 'global')`, no row = the pick model; flipped with one SQL statement,
+     no deploy; it acts from the next list write);
   5. ONE audit row `breakout_v1_list_run` (universe size, funds kept / excluded and why, names passing, per-gate fail
      counts — the three CONTEXT checks of 2026-11-14 among them — the names those checks alone took off the list
-     (`context_removed`), the message's fate);
-  6. ONE paper-prefixed Telegram message: tonight's TOP 10 by the order score (ticker, level, score, rs_best) and
+     (`context_removed`), the ranking that set the order and all three scores per name (`ranking`), the message's
+     fate);
+  6. ONE paper-prefixed Telegram message: tonight's TOP 10 by the selected ranking (ticker, level, score, rs_best) and
      the night's total count (the rebuilt list holds ~250 names a night — never 250 lines) — ONLY when the list is
      non-empty (an alert that says no action is noise). A failed send is logged and counted in the audit row.
 
@@ -29,7 +35,7 @@ order. No entry / sizing / order / safeguard path reads the list in phase 1.
 Fails OPEN under `BUDGET_S` (a `breakout_v1_list_error` audit row, no raise; the next night rebuilds its own list);
 a crash is re-raised AFTER the audit row so `audit_wrap`'s `notify_job_failure` is the one page.
 Owner doc: docs/setups/consolidation_breakout.md (2026-10-29 "breakout v1 PHASE 1 BUILT"; 2026-11-02 the rebuilt
-rules + the order score).
+rules + the order score; 2026-11-14 the pick model orders the list, the older rankings kept as backups).
 """
 from __future__ import annotations
 
@@ -42,6 +48,7 @@ from datetime import date
 from typing import Optional
 
 from agents.market_intelligence import breakout_v1 as bv
+from agents.market_intelligence import breakout_v1_pick_model as pm
 from agents.market_intelligence import consolidation_breakout as cb
 from agents.market_intelligence.consolidation_breakout_shadow import _json_safe, build_series
 from agents.market_intelligence.db import (
@@ -50,8 +57,10 @@ from agents.market_intelligence.db import (
     bv1_get_security_types_named,
     bv1_replace_list,
     cb_get_calendar,
+    cb_get_sic,
     cb_get_universe_bars,
     get_runtime_toggle,
+    get_safeguard_state,
     get_unapplied_splits,
     log_audit_event,
 )
@@ -74,7 +83,27 @@ PREFILTER_DOLLAR_VOL = 0.7 * bv.MIN_DOLLAR_VOL
 SCAN_CHUNK = 250                      # tickers per to_thread slice: cancellation lands between slices
 FUND_EXCLUDED_LIST_MAX = 60           # fund tickers named in the audit row, per reason
 CONTEXT_REMOVED_LIST_MAX = 60         # names a context check took off the list, named in the audit row, per check
-MESSAGE_TOP_N = 10                    # the nightly message and bare /bgrade show the top 10 by the order score
+SHORT_FALLBACK_LIST_MAX = 60          # names whose 52-week facts came off the short bars, named in the audit row
+MESSAGE_TOP_N = 10                    # the nightly message and bare /bgrade show the top 10 by list rank
+# The list's ORDER (operator-signed 2026-11-14: "pick model, let's continue to eval and keep all the old models we have
+# as backup"). All three are computed and stored every night; the switch only picks which one sets `list_rank`.
+RANKING_PICK_MODEL, RANKING_ORDER_SCORE, RANKING_DOLLAR_VOLUME = "pick_model", "order_score", "dollar_volume"
+RANKINGS = (RANKING_PICK_MODEL, RANKING_ORDER_SCORE, RANKING_DOLLAR_VOLUME)
+DEFAULT_RANKING = RANKING_PICK_MODEL
+RANKING_SWITCH = "breakout_v1_ranking"      # mi_safeguard_state(safeguard, 'global').state = one of RANKINGS
+RANKING_READ_TRIES = 3                      # a failed switch read is retried (a transient miss must not un-flip a backup)
+RANKING_READ_PAUSE_S = 1.0
+RANKING_READ_TIMEOUT_S = 10.0               # asyncpg's own bound per try: a hung read must not eat the job's 600 s budget
+RANKING_SCORE_COL = {RANKING_PICK_MODEL: "pick_score", RANKING_ORDER_SCORE: "order_score",
+                     RANKING_DOLLAR_VOLUME: "dollar_vol20"}
+RANKING_RANK_COL = {k: "rank_" + k for k in RANKINGS}
+RANKING_LABEL = {RANKING_PICK_MODEL: "the pick model", RANKING_ORDER_SCORE: "the order score",
+                 RANKING_DOLLAR_VOLUME: "dollar volume"}
+AUDIT_HEADROOM = 2000                 # chars kept free under mi_audit_log's detail budget (`fit_audit_detail`)
+AUDIT_SCORE_DP = 4                    # decimals of the per-name scores in the audit row
+AUDIT_SCORES_MAX = 300                # names whose three scores ride in the audit row (by list_rank; mi_audit_log's
+                                      # detail budget is 32,000 chars and a busy night lists 1,000+ names). EVERY name's
+                                      # scores and ranks are on its mi_breakout_v1_list row — that table is the record.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -128,10 +157,63 @@ def scan_members(series: dict, *, today_ci: int, types: dict, unapplied: set) ->
     return {"members": members, "counts": counts, "fund_kept": fund_kept, "fund_excluded": fund_excl}
 
 
-def evaluate_members(members: list, rs_best: list, today: date, removed: Optional[dict] = None) -> tuple:
+def night_cross_section(members: list, groups: Optional[list] = None) -> tuple:
+    """The night's cross-section over the WHOLE RS pool -> (rs_best per member, {ticker: the pick model's four
+    cross-section inputs}, the count of industry groups with 10+ members; the dict is None when the pick model's percentile step raised).
+    `members` carry ticker / r21 / r63 / r126;
+    `groups` = each member's SIC 2-digit group or None (default: no groups). rs_best is `cb.cross_section_one_date`'s,
+    exactly as before 2026-11-14 — it is the best of the three return percentiles and never reads the groups. The
+    pick model's inputs (01_build.py::work): rs_1m / rs_3m / rs_6m = `cb.percentile_ranks` of the 21 / 63 / 126-session
+    return over the pool (0-100), group_strength = the percentile of the group's median 63-session return among the
+    night's groups (None with no group, or a group under 10 members)."""
+    groups = list(groups) if groups is not None else [None] * len(members)
+    r21, r63, r126 = ([m[k] for m in members] for k in ("r21", "r63", "r126"))
+    rs_best, _, grp, n_groups = cb.cross_section_one_date(r21, r63, r126, groups)
+    try:
+        p21, p63, p126 = (cb.percentile_ranks(list(r)) for r in (r21, r63, r126))
+        xs = {m["ticker"]: {"rs_1m": p21[j], "rs_3m": p63[j], "rs_6m": p126[j], "group_strength": grp[j]}
+              for j, m in enumerate(members)}
+    except Exception as e:  # loud-ok: the pick model's inputs only — rs_best (the gates) is already computed; rank_all then
+        # gets no inputs (`xs` None -> the job disables the pick inputs), scores no name, falls back to the order score and
+        # says so in the audit row. Never an empty dict: the four cross-section ranks would read the neutral 0.5 on
+        # every name and the pick model would order the night without its strength inputs, silently.
+        logger.error(f"breakout_v1_list: the pick model's cross-section failed (no pick score tonight): {type(e).__name__}: {e}")
+        xs = None
+    return rs_best, xs, n_groups
+
+
+def _pick_inputs_for(ticker: str, g: dict, oi: dict, pick: dict, bars=None) -> dict:
+    """One name's 16 raw pick-model inputs: the gate values + `oi`, the night's cross-section (`pick["xs"]`) and the
+    52-week facts from the LONG bars (`pick["long"]`). A name the long series was built WITHOUT (one NULL / non-finite
+    bar 201-300 sessions back drops the whole ticker in `build_series`; an unapplied split in that older window) reads
+    its facts off its own `bars` — the 200-session series the gates just read — and is named in
+    `pick["short_fallback"]` (review 2026-11-14: it used to get no score and rank last, silently). That is
+    `base_facts`' own rule for a name with under 252 bars: the window is what exists. With no `pick["long"]` at all,
+    or no `bars` passed, a name without long bars has no facts -> no score."""
+    facts = None
+    long = pick.get("long")
+    lb = (long or {}).get(ticker)
+    if lb is None and long is not None and bars is not None:
+        lb = bars
+        pick.setdefault("short_fallback", []).append(ticker)
+    if lb is not None:
+        try:
+            facts = pm.base_facts(lb.h, lb.l, lb.c, len(lb) - 1)
+        except Exception as e:  # one name's odd long bars cost that name its score, never the night
+            logger.warning(f"breakout_v1_list: pick-model base facts {ticker} failed: {type(e).__name__}: {e}")
+    return pm.pick_inputs(g, oi, facts=facts, xs=(pick.get("xs") or {}).get(ticker))
+
+
+def evaluate_members(members: list, rs_best: list, today: date, removed: Optional[dict] = None,
+                     pick: Optional[dict] = None) -> tuple:
     """`v1_gates` per member (with its rs_best) -> (passing list rows unranked, per-gate fail Counter, n evaluated).
     `removed` (optional, filled in place): {context gate: [tickers]} — the names that pass every OTHER gate and are
-    taken off by one of the three context checks (2026-11-14), i.e. the names those checks removed from the list."""
+    taken off by one of the three context checks (2026-11-14), i.e. the names those checks removed from the list.
+    `pick` (optional; None = no pick-model inputs, the rows as before 2026-11-14): {"xs": {ticker: the night's
+    cross-section values}, "long": {ticker: the LONG DailyBars}, "extra": []}. Each passing row then carries
+    `pick_inputs` (also inside `gates`) and `dollar_vol20`; `pick["extra"]` collects (in place) the pick inputs of the
+    names ONLY a context check removed — they are never listed, but they belong to the population the pick model's
+    within-night ranks were fitted on (`breakout_v1_pick_model.py`, "the list")."""
     rows, fails, n_eval = [], Counter(), 0
     for m, rb in zip(members, rs_best):
         if not m.get("listable", True):
@@ -150,18 +232,39 @@ def evaluate_members(members: list, rs_best: list, today: date, removed: Optiona
         n_eval += 1
         for k in g["failed"]:
             fails[k] += 1
-        if removed is not None and g["failed"] and set(g["failed"]) <= set(bv.CONTEXT_GATES):
+        context_only = bool(g["failed"]) and set(g["failed"]) <= set(bv.CONTEXT_GATES)
+        if removed is not None and context_only:
             for k in g["failed"]:
                 removed.setdefault(k, []).append(m["ticker"])
+        if pick is not None and not pick.get("disabled") and context_only:            # off the list, but inside the pick model's rank population
+            try:
+                pick.setdefault("extra", []).append(
+                    _pick_inputs_for(m["ticker"], g, bv.order_inputs(bars, D, g["adr20"]), pick, bars))
+            except Exception as e:
+                logger.warning(f"breakout_v1_list: pick inputs {m['ticker']} failed: {type(e).__name__}: {e}")
         if not g["ok"]:
             continue
         oi = bv.order_inputs(bars, D, g["adr20"])        # the two order-score inputs, bars <= D (passing names only)
         gates = {k: v for k, v in g.items() if k != "pole_idx"}
         gates["order_inputs"] = oi
-        rows.append({"scan_date": today, "ticker": m["ticker"], "level": float(g["level"]),
-                     "vol_bar": float(g["vol_bar"]), "adr20": g["adr20"], "rs_best": float(rb), "close": g["close"],
-                     "security_type": m["security_type"], "runup6m_adr": oi["runup6m_adr"],
-                     "spread10_adr": oi["spread10_adr"], "gates": _json_safe(gates)})
+        row = {"scan_date": today, "ticker": m["ticker"], "level": float(g["level"]),
+               "vol_bar": float(g["vol_bar"]), "adr20": g["adr20"], "rs_best": float(rb), "close": g["close"],
+               "security_type": m["security_type"], "runup6m_adr": oi["runup6m_adr"],
+               "spread10_adr": oi["spread10_adr"]}
+        if pick is not None:
+            try:
+                # `pick["disabled"]` (the night's cross-section failed): no inputs, so no pick score for anyone
+                pin = {} if pick.get("disabled") else _pick_inputs_for(m["ticker"], g, oi, pick, bars)
+            except Exception as e:  # the name stays on the list; it has no pick score and ranks last under the model
+                logger.warning(f"breakout_v1_list: pick inputs {m['ticker']} failed: {type(e).__name__}: {e}")
+                pin = {}
+            gates["pick_inputs"] = pin
+            row["pick_inputs"] = pin
+            # the dollar-volume backup reads the `universe` gate's own value, NEVER the pick inputs: a pick-model
+            # failure (this name's, or the whole night's) must not blank a ranking that needs none of its code
+            row["dollar_vol20"] = bv._f((((g.get("gates") or {}).get("universe") or {}).get("value") or {}).get("dollar_vol20"))
+        row["gates"] = _json_safe(gates)
+        rows.append(row)
     return rows, fails, n_eval
 
 
@@ -205,13 +308,155 @@ def rank_rows(rows: list) -> list:
     return rows
 
 
+def pick_scores(inputs: list) -> list:
+    """The pick model's score per name over ONE night's rank population. `inputs` = each name's raw inputs
+    (`pm.pick_inputs`) for the WHOLE population the ranks are taken in (tonight's passing names + the names only a
+    context check removed). Each of the 15 ranked features becomes its `pct_rank` inside `inputs`; a blank
+    cross-section rank reads 0.5 and a blank bar-derived input leaves the name unscored (`pm.HALF_FILL`). -> one score
+    (log-odds; higher = more like a Qullamaggie buy) or None per name. Comparable only inside one night."""
+    ranks = {f: pct_rank([x.get(f) for x in inputs]) for f in pm.PCT_FEATURES}
+    out = []
+    for i, x in enumerate(inputs):
+        feats = {f: ranks[f][i] for f in pm.PCT_FEATURES}
+        for f in pm.RAW_FEATURES:
+            feats[f] = x.get(f)
+        out.append(pm.score_from_features(feats))
+    return out
+
+
+def _rank_desc(rows: list, col: str) -> dict:
+    """{ticker: 1-based rank} by `col`, the highest first, ties by ticker, a missing value after every scored name
+    (by ticker) — `rank_rows`' rule, for any score column."""
+    order = sorted(rows, key=lambda r: (r.get(col) is None, -(r.get(col) or 0.0), r["ticker"]))
+    return {r["ticker"]: k for k, r in enumerate(order, 1)}
+
+
+def rank_all(rows: list, extra_inputs: Optional[list] = None, ranking: str = DEFAULT_RANKING) -> dict:
+    """ALL THREE rankings on the night's passing list, in place; `ranking` (one of `RANKINGS`) sets `list_rank`.
+      order_score    `rank_rows`, unchanged (the two within-night percentiles over the passing list)
+      pick_score     `pick_scores` over the passing rows' `pick_inputs` + `extra_inputs` (the context-removed names)
+      dollar_vol20   the 20-session median dollar volume (the `universe` gate's value), bigger first
+    Every row gets the three scores, `rank_order_score` / `rank_pick_model` / `rank_dollar_volume`, `ranked_by` and
+    `list_rank` (= the selected ranking's rank); the rows end sorted by `list_rank`. A missing score ranks last, ties
+    by ticker, under every ranking. FALLBACK: if the selected ranking scored NO name on a non-empty list (a broken
+    input, never a normal night) the order score sets `list_rank` instead and the summary says so — the list never
+    silently degrades to alphabetical. Returns the summary for the audit row."""
+    if ranking not in RANKINGS:
+        raise ValueError(f"rank_all: unknown ranking {ranking!r}")
+    rank_rows(rows)                                               # order_score, exactly as before 2026-11-14
+    pick_error = None
+    try:
+        scores = pick_scores([r.get("pick_inputs") or {} for r in rows] + list(extra_inputs or []))
+    except Exception as e:  # loud-ok: the order score and dollar volume need none of the pick model's code — the list is
+        # still ranked and written (the FALLBACK below), and the audit row names the cause
+        pick_error = f"{type(e).__name__}: {e}"
+        logger.error(f"breakout_v1_list: the pick model raised (no pick score tonight): {pick_error}", exc_info=True)
+        scores = [None] * len(rows)
+    for r, s in zip(rows, scores):
+        r["pick_score"] = s
+        r.setdefault("dollar_vol20", (r.get("pick_inputs") or {}).get("dollar_vol20"))
+    for k in RANKINGS:
+        rk = _rank_desc(rows, RANKING_SCORE_COL[k])
+        for r in rows:
+            r[RANKING_RANK_COL[k]] = rk[r["ticker"]]
+    scored = {k: sum(1 for r in rows if r.get(RANKING_SCORE_COL[k]) is not None) for k in RANKINGS}
+    used, fallback = ranking, None
+    if rows and not scored[ranking]:
+        used, fallback = RANKING_ORDER_SCORE, f"{ranking} scored no name; the order score set the order"
+        logger.error(f"breakout_v1_list: ranking {ranking!r} scored 0 of {len(rows)} names - falling back to the order score")
+    for r in rows:
+        r["list_rank"] = r[RANKING_RANK_COL[used]]
+        r["ranked_by"] = used
+    rows.sort(key=lambda r: r["list_rank"])
+
+    def rnd(x):
+        return None if x is None else round(float(x), AUDIT_SCORE_DP)
+    return {"selected": ranking, "ranked_by": used, "fallback": fallback, "pick_error": pick_error, "scored": scored,
+            "population_n": len(rows) + len(extra_inputs or []), "context_removed_in_population": len(extra_inputs or []),
+            "top10": {k: [r["ticker"] for r in sorted(rows, key=lambda r: r[RANKING_RANK_COL[k]])[:MESSAGE_TOP_N]]
+                      for k in RANKINGS},
+            # the three scores of the first AUDIT_SCORES_MAX names by list_rank: [order, pick model, dollar volume ($, whole)]
+            # — a copy for reading the night at a glance; the full record is the list table's own columns
+            "scores": {r["ticker"]: [rnd(r.get("order_score")), rnd(r.get("pick_score")),
+                                     None if r.get("dollar_vol20") is None else int(round(float(r["dollar_vol20"])))]
+                       for r in rows[:AUDIT_SCORES_MAX]},
+            "scores_omitted": max(0, len(rows) - AUDIT_SCORES_MAX)}
+
+
+def fit_audit_detail(pub: dict, budget: Optional[int] = None) -> dict:
+    """The run summary, made to FIT `mi_audit_log`'s detail budget so the row stays queryable JSON (past the budget
+    `db` wraps the payload as a `_head` STRING and `detail->'ranking'` is gone; review 2026-11-14: the whole row read
+    29.8k of 32k on a 1,353-name night). Shed in order, each marked in `audit_shed`, only while over: the per-name
+    copy of the scores (`ranking.scores`; `scores_omitted` then counts every name), then the night's ticker list.
+    Both are copies — the list table carries every name with all three scores and ranks. Returns `pub` (in place)."""
+    if budget is None:
+        from agents.market_intelligence.db import _AUDIT_DETAIL_MAX
+        budget = _AUDIT_DETAIL_MAX - AUDIT_HEADROOM
+    if len(json.dumps(pub)) <= budget:
+        return pub
+    shed = pub.setdefault("audit_shed", [])
+    rk = pub.get("ranking") or {}
+    if rk.get("scores"):
+        rk["scores_omitted"] = int(rk.get("scores_omitted") or 0) + len(rk["scores"])
+        rk["scores"] = {}
+        shed.append("ranking.scores")
+    if len(json.dumps(pub)) > budget and pub.get("tickers"):
+        pub["tickers_omitted"] = len(pub["tickers"])
+        pub["tickers"] = []
+        shed.append("tickers")
+    if len(json.dumps(pub)) > budget:
+        logger.error(f"breakout_v1_list: the audit detail is still {len(json.dumps(pub))} chars after shedding {shed}")
+    return pub
+
+
+async def get_ranking() -> tuple:
+    """Which ranking sets `list_rank` tonight -> (ranking, source, note). ONE source: the
+    `mi_safeguard_state('breakout_v1_ranking', 'global')` row's state; no row = the pick model (source "default").
+    There is NO env fallback (review 2026-11-14: a second source the acting-rules view could not see). A failed read
+    is retried `RANKING_READ_TRIES` times — a row that says `order_score` must not become the pick model for a night
+    on one transient miss; if every try fails, or the state is unknown, the pick model orders the night, the reason is
+    NOTED (the audit row carries it) and logged at ERROR. Nothing here can stop the list. The literal name is passed
+    so `scripts/live_rules.py` sees the switch. Flip (no deploy; acts from the next list write) — SQL in
+    docs/setups/consolidation_breakout.md, 2026-11-14."""
+    err = None
+    for attempt in range(RANKING_READ_TRIES):
+        try:
+            row = await get_safeguard_state("breakout_v1_ranking", "global", timeout=RANKING_READ_TIMEOUT_S)
+        except Exception as e:  # loud-ok: an order switch for a paper list — retried, then the default, noted in the audit row
+            err = e
+            logger.warning(f"breakout_v1_list: {RANKING_SWITCH} read failed (try {attempt + 1}/{RANKING_READ_TRIES}): {e}")
+            if attempt + 1 < RANKING_READ_TRIES:
+                await asyncio.sleep(RANKING_READ_PAUSE_S)
+            continue
+        state = str(row["state"]).strip().lower() if row is not None and row["state"] is not None else ""
+        if state in RANKINGS:
+            return state, "db", None
+        if state:
+            logger.error(f"breakout_v1_list: {RANKING_SWITCH} row carries unknown state {state!r} - the pick model orders tonight")
+            return DEFAULT_RANKING, "default", f"unknown switch state {state!r}"
+        return DEFAULT_RANKING, "default", None
+    logger.error(f"breakout_v1_list: {RANKING_SWITCH} unreadable after {RANKING_READ_TRIES} tries - the pick model "
+                 f"orders tonight whatever the row says: {err}")
+    return DEFAULT_RANKING, "default", f"switch read failed {RANKING_READ_TRIES}x: {type(err).__name__}"
+
+
 def _score_str(x) -> str:
     return "-" if x is None else f"{float(x):.2f}"
 
 
+def _shown_score(r: dict) -> str:
+    """The message's SCORE cell: the score of the ranking that set this row's `list_rank` (dollar volume in $M)."""
+    by = r.get("ranked_by") or RANKING_ORDER_SCORE
+    v = r.get(RANKING_SCORE_COL.get(by, "order_score"))
+    if by == RANKING_DOLLAR_VOLUME:
+        return "-" if v is None else f"{float(v) / 1e6:.0f}M"
+    return _score_str(v)
+
+
 def format_list_message(today: date, rows: list) -> Optional[str]:
     """The ONE Telegram message for a night's list, paper-prefixed (the paper chat); None for an empty list. Shows the
-    TOP `MESSAGE_TOP_N` by the order score (`rows` ranked by `rank_rows`) and the night's total count — the rebuilt
+    TOP `MESSAGE_TOP_N` by list rank (`rows` ranked by `rank_all` / `rank_rows`; the header names the ranking that
+    set it — the pick model, the order score or dollar volume) and the night's total count — the rebuilt
     list holds ~250 names a night, so the full list lives in `mi_breakout_v1_list`, never in the chat. It no longer
     names `/bgrade` (his word 2026-11-05: grades come from chart sheets shown in chat, not Telegram; #717 stage 2) —
     the command itself stays, as the catch-up path."""
@@ -219,14 +464,15 @@ def format_list_message(today: date, rows: list) -> Optional[str]:
         return None
     from agents.market_intelligence.constants import mode_prefix
     shown = sorted(rows, key=lambda r: r.get("list_rank") or 10 ** 9)[:MESSAGE_TOP_N]
-    lines = [f"{'#':>3s} {'TICKER':6s} {'LEVEL':>10s} {'SCORE':>5s} {'RS':>5s}"]
+    lines = [f"{'#':>3s} {'TICKER':6s} {'LEVEL':>10s} {'SCORE':>6s} {'RS':>5s}"]
     for r in shown:
         lines.append(f"{r.get('list_rank') or 0:>3d} {r['ticker']:6s} {r['level']:>10.2f} "
-                     f"{_score_str(r.get('order_score')):>5s} {r['rs_best']:>5.1f}")
+                     f"{_shown_score(r):>6s} {r['rs_best']:>5.1f}")
     n = len(rows)
+    label = RANKING_LABEL.get(shown[0].get("ranked_by"), RANKING_LABEL[RANKING_ORDER_SCORE])
     more = f"\n…and {n - len(shown)} more (mi_breakout_v1_list)" if n > len(shown) else ""
     return (f"{mode_prefix('paper')}*Breakout v1 — watch list for the next session* ({today.isoformat()}, "
-            f"{n} name{'s' if n != 1 else ''}; the top {len(shown)} by the order score)\n"
+            f"{n} name{'s' if n != 1 else ''}; the top {len(shown)} by {label})\n"
             f"A name breaks out when it trades above its level. No order is placed from this message.\n"
             "```\n" + "\n".join(lines) + "\n```" + more)
 
@@ -238,7 +484,7 @@ def _new_out(today: date) -> dict:
     return {"date": today.isoformat(), "skipped": None, "timed_out": False, "error": None,
             "prefilter_tickers": 0, "bad_bars": 0, "universe_n": 0, "listable_n": 0, "evaluated": 0, "passing": 0, "written": 0,
             "counts": {}, "gate_fails": {}, "context_removed_n": {}, "context_removed": {}, "funds_kept": 0, "funds_excluded": 0, "funds_excluded_no_name": 0,
-            "fund_kept_tickers": [], "fund_excluded_tickers": {}, "message": "not_needed", "wall_s": 0.0}
+            "fund_kept_tickers": [], "fund_excluded_tickers": {}, "ranking": {}, "message": "not_needed", "wall_s": 0.0}
 
 
 async def _run(today: date, out: dict) -> list:
@@ -249,15 +495,31 @@ async def _run(today: date, out: dict) -> list:
     cal_index = {d: i for i, d in enumerate(cal)}
     n = len(cal)
     start = cal[max(0, n - HISTORY_SESSIONS)]
+    long_start = cal[max(0, n - max(HISTORY_SESSIONS, pm.HISTORY_SESSIONS))]
     liq_start = cal[max(0, n - cb.DOLLAR_VOL_WINDOW)]
-    rows = await cb_get_universe_bars(today, start, liq_start, min_price=bv.MIN_PRICE,
-                                      prefilter_dollar_vol=PREFILTER_DOLLAR_VOL)
+    # ONE read from `long_start` (the pick model's 52-week facts need 252 bars); every path that existed before
+    # 2026-11-14 — the pool, the gates, the order score — still sees exactly the `start`-bounded rows it always did.
+    long_rows = await cb_get_universe_bars(today, long_start, liq_start, min_price=bv.MIN_PRICE,
+                                           prefilter_dollar_vol=PREFILTER_DOLLAR_VOL)
+    rows = [r for r in long_rows if r[1] >= start]
     tickers = sorted({r[0] for r in rows})
     out["prefilter_tickers"] = len(tickers)
     types = await bv1_get_security_types_named(tickers)
     unapplied = {s["ticker"] for s in await get_unapplied_splits(start, upto=today)}
     series, sstats = await asyncio.to_thread(build_series, rows, cal_index)
-    del rows
+    # The pick model's LONG series, isolated (review 2026-11-14): the list, the order score and dollar volume need
+    # none of it, so a failure here costs the night its 52-week look-back (every name then reads its facts off the
+    # 200-session bars, counted in `ranking.short_bar_facts_n`), never the list.
+    long_error = None
+    try:
+        long_unapplied = (unapplied if long_start == start
+                          else {s["ticker"] for s in await get_unapplied_splits(long_start, upto=today)})
+        long_series, _ = await asyncio.to_thread(build_series, long_rows, cal_index)
+    except Exception as e:  # loud-ok: named in the audit row (`ranking.long_error`) and logged at ERROR
+        long_unapplied, long_series, long_error = set(), {}, f"{type(e).__name__}: {e}"
+        logger.error(f"breakout_v1_list: the pick model's long bar series failed (52-week facts off the short bars "
+                     f"tonight): {long_error}", exc_info=True)
+    del rows, long_rows
     out["bad_bars"] = sstats.get("bad_bars", 0)
     today_ci = cal_index[today]
 
@@ -280,16 +542,42 @@ async def _run(today: date, out: dict) -> list:
     out["fund_kept_tickers"] = sorted(fund_kept)[:FUND_EXCLUDED_LIST_MAX]
     out["fund_excluded_tickers"] = {k: sorted(v)[:FUND_EXCLUDED_LIST_MAX] for k, v in fund_excl.items()}
 
-    rs_best, _, _, _ = cb.cross_section_one_date([m["r21"] for m in members], [m["r63"] for m in members],
-                                                 [m["r126"] for m in members], [None] * len(members))
+    # the pool's industry groups (SIC 2-digit, the shadow's cache `mi_consolidation_breakout_sic`) for the pick model's
+    # group strength; a name with no cached code has no group and its group rank reads 0.5 (the research's fill)
+    sic_error = None
+    try:
+        sic = await cb_get_sic([m["ticker"] for m in members])
+    except Exception as e:  # loud-ok: the group strength is one of 16 inputs; the night's list must still be written
+        sic, sic_error = {}, f"{type(e).__name__}: {e}"
+        logger.warning(f"breakout_v1_list: industry-code read failed (group strength blank tonight): {sic_error}")
+    groups = [(sic.get(m["ticker"]) or {}).get("sic2") or cb.sic2((sic.get(m["ticker"]) or {}).get("sic_code"))
+              for m in members]
+    rs_best, xs, n_groups = night_cross_section(members, groups)
+    xs_error = None if xs is not None else "the cross-section percentiles raised (see the log)"
+    pick = {"xs": xs or {}, "long": {t: b for t, (b, _c) in long_series.items() if t not in long_unapplied},
+            "extra": [], "disabled": xs is None}
+    del long_series
+    ranking, ranking_source, ranking_note = await get_ranking()
     list_rows, fails, n_eval, removed = [], Counter(), 0, {}
     for lo in range(0, len(members), SCAN_CHUNK):
         r_, f_, e_ = await asyncio.to_thread(evaluate_members, members[lo:lo + SCAN_CHUNK],
-                                             rs_best[lo:lo + SCAN_CHUNK], today, removed)
+                                             rs_best[lo:lo + SCAN_CHUNK], today, removed, pick)
         list_rows.extend(r_)
         fails.update(f_)
         n_eval += e_
-    rank_rows(list_rows)
+    short_fb = sorted(set(pick.get("short_fallback") or []))
+    out["ranking"] = rank_all(list_rows, pick["extra"], ranking)
+    out["ranking"].update(source=ranking_source, note=ranking_note, switch=RANKING_SWITCH, sic_error=sic_error,
+                          pool_with_industry_code=sum(1 for g_ in groups if g_ is not None), industry_groups=n_groups,
+                          listed_with_group_strength=sum(1 for r in list_rows
+                                                         if (r.get("pick_inputs") or {}).get("group_strength") is not None),
+                          listed_with_52w_facts=sum(1 for r in list_rows
+                                                    if (r.get("pick_inputs") or {}).get("dist_52w") is not None),
+                          # names whose 52-week facts were read off the 200-session bars (no usable long series: a
+                          # bad bar or an unapplied split 201-300 sessions back, or `long_error`); listed + context-removed
+                          long_error=long_error, xs_error=xs_error, short_bar_facts_n=len(short_fb),
+                          short_bar_facts=short_fb[:SHORT_FALLBACK_LIST_MAX],
+                          model=pm.PROVENANCE)
     out["evaluated"], out["passing"], out["gate_fails"] = n_eval, len(list_rows), dict(fails)
     out["context_removed_n"] = {k: len(v) for k, v in removed.items()}
     out["context_removed"] = {k: sorted(v)[:CONTEXT_REMOVED_LIST_MAX] for k, v in removed.items()}
@@ -342,7 +630,7 @@ async def run_breakout_v1_list(today: Optional[date] = None) -> dict:
             out["message"] = "send_failed"
             logger.warning(f"breakout_v1_list: the list message for {today} raised: {type(e).__name__}: {e}")
     out["wall_s"] = round(time.monotonic() - t0, 1)
-    pub = _json_safe(out)
+    pub = fit_audit_detail(_json_safe(out))
     if out["skipped"]:
         summary = f"{today}: skipped - {out['skipped']}"
     else:
@@ -368,7 +656,7 @@ UNGRADED_NIGHTS = 5
 BGRADE_USAGE = ("Usage: `/bgrade TICKER A+|A|B|C|skip [note]`\n"
                 "Grades a name on the breakout v1 list (the latest night that listed it). "
                 "A grade is a label — it never blocks or places anything.\n"
-                "Bare `/bgrade` shows the top 10 ungraded names by the order score (newest list night first) "
+                "Bare `/bgrade` shows the top 10 ungraded names by list rank (newest list night first) "
                 "and how many of the last 5 list nights' names are ungraded.")
 
 
@@ -394,8 +682,9 @@ def format_ungraded(rows: list) -> str:
     """The bare `/bgrade` reply. `rows` = every ungraded list name of the last 5 list nights, newest night first and
     by list_rank inside a night (`db.bv1_ungraded`). At ~250 names a night that is ~1,250 rows, so the reply shows
     the TOP `MESSAGE_TOP_N`: the newest night's best-scored ungraded names (spilling to the night before when the
-    newest has fewer than 10 left) plus the total ungraded count and the count per night. The order score compares
-    names only within one night, so the newest night is read first."""
+    newest has fewer than 10 left) plus the total ungraded count and the count per night. SCORE is the score of the
+    ranking that set that night's order (`ranked_by`; the order score on rows written before 2026-11-14). A score
+    compares names only within one night, so the newest night is read first."""
     if not rows:
         return f"_No ungraded breakout v1 names in the last {UNGRADED_NIGHTS} list nights._"
 
@@ -405,12 +694,12 @@ def format_ungraded(rows: list) -> str:
     for r in rows:
         per_night[_d(r)] = per_night.get(_d(r), 0) + 1
     shown = rows[:MESSAGE_TOP_N]
-    lines = [f"{'NIGHT':10s} {'#':>3s} {'TICKER':6s} {'LEVEL':>10s} {'SCORE':>5s} {'RS':>5s}"]
+    lines = [f"{'NIGHT':10s} {'#':>3s} {'TICKER':6s} {'LEVEL':>10s} {'SCORE':>6s} {'RS':>5s}"]
     for r in shown:
         lines.append(f"{_d(r):10s} {int(r.get('list_rank') or 0):>3d} {r['ticker']:6s} {float(r['level']):>10.2f} "
-                     f"{_score_str(r.get('order_score')):>5s} {float(r['rs_best']):>5.1f}")
+                     f"{_shown_score(r):>6s} {float(r['rs_best']):>5.1f}")
     n = len(rows)
     nights = ", ".join(f"{d} {k}" for d, k in sorted(per_night.items(), reverse=True))
     return (f"*Breakout v1 — {n} ungraded name{'s' if n != 1 else ''}* (last {UNGRADED_NIGHTS} list nights: "
-            f"{nights}); the top {len(shown)} by the order score:\n```\n" + "\n".join(lines) + "\n```\n"
+            f"{nights}); the top {len(shown)} by list rank:\n```\n" + "\n".join(lines) + "\n```\n"
             "`/bgrade TICKER A+|A|B|C|skip [note]`")

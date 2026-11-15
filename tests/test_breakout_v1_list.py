@@ -105,6 +105,22 @@ class Fakes:
             return self.paper_on
         self.paper_on = True
         monkeypatch.setattr(bl, "get_runtime_toggle", toggle_f)
+
+        # 2026-11-14 (the pick model): the industry-code cache and the ranking switch
+        async def sic_f(tickers):
+            if self.sic_exc:
+                raise self.sic_exc
+            return {t: self.sic[t] for t in tickers if t in self.sic}
+
+        async def state_f(safeguard, account_mode, timeout=None):
+            assert (safeguard, account_mode) == ("breakout_v1_ranking", "global")
+            if self.ranking_exc:
+                raise self.ranking_exc
+            return None if self.ranking_state is None else {"state": self.ranking_state}
+        self.sic, self.sic_exc, self.ranking_state, self.ranking_exc = {}, None, None, None
+        monkeypatch.setattr(bl, "cb_get_sic", sic_f)
+        monkeypatch.setattr(bl, "get_safeguard_state", state_f)
+        monkeypatch.setattr(bl, "RANKING_READ_PAUSE_S", 0.0, raising=False)
         from agents.market_intelligence import briefing
         monkeypatch.setattr(briefing, "send_telegram_message", send_f)
 
@@ -406,6 +422,13 @@ def test_the_ddl_is_idempotent_and_writes_only_its_own_tables():
     for col in ("order_score", "runup6m_adr", "spread10_adr"):         # the 2026-11-02 order score + its two inputs
         assert f"ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS {col} DOUBLE PRECISION" in ddl
         assert col in db.BV1_LIST_COLS and col in db.BV1_LIST_INSERT_SQL
+    # 2026-11-14: all three rankings stored per row (the pick model's score, dollar volume, each one's rank, who ranked)
+    for col, typ in (("pick_score", "DOUBLE PRECISION"), ("dollar_vol20", "DOUBLE PRECISION"), ("rank_pick_model", "INT"),
+                     ("rank_order_score", "INT"), ("rank_dollar_volume", "INT"), ("ranked_by", "TEXT")):
+        assert f"ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS {col} {typ};" in ddl
+        assert col in db.BV1_LIST_COLS and f"{col} = EXCLUDED.{col}" in db.BV1_LIST_INSERT_SQL
+    assert {"pick_score", "dollar_vol20", "ranked_by"} <= set(re.findall(r"l\.(\w+)", db.BV1_UNGRADED_SQL))
+    assert "ORDER BY list_rank" in db.BV1_LIST_SELECT_SQL             # the entry tick reads the list in the SELECTED order
     assert db.BV1_LIST_COLS.index("gates") == 8                         # $9 stays the jsonb param
     assert "order_score" in db.BV1_UNGRADED_SQL
     assert "COALESCE(EXCLUDED.name, mi_security_types.name)" in db.SECURITY_TYPES_UPSERT_SQL

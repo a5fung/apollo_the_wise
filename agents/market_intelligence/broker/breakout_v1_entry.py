@@ -533,6 +533,35 @@ async def _free_slots() -> int | None:
     return max(0, free)
 
 
+# The list's `ranked_by` -> (the column holding that ranking's score, its plain name). `list_rank` is set by ONE of three
+# rankings since 2026-11-14 (`breakout_v1_list.rank_all`, the `breakout_v1_ranking` switch); a hold / missed record
+# must say which, or a rank reads beside a score that did not set it (review 2026-11-14). NULL = a row written before
+# that date: the order score. Literals, not an import: this module runs on apollo-execution and imports no list code.
+DEFAULT_RANKED_BY = "order_score"
+RANKED_BY_SCORE = {"pick_model": ("pick_score", "pick model score"), "order_score": ("order_score", "order score"),
+                   "dollar_volume": ("dollar_vol20", "dollar volume")}
+
+
+def _ranking_facts(lrow: dict) -> dict:
+    """The ranking half of a hold / missed record from a list row: which ranking set `list_rank` (`ranked_by`), THAT
+    ranking's score (`rank_score`), and the other stored scores. `order_score` keeps meaning the order score (#720
+    reads it) and is written by the caller."""
+    by = lrow.get("ranked_by") or DEFAULT_RANKED_BY
+    col = RANKED_BY_SCORE.get(by, RANKED_BY_SCORE[DEFAULT_RANKED_BY])[0]
+    return {"ranked_by": by, "rank_score": lrow.get(col), "pick_score": lrow.get("pick_score"),
+            "dollar_vol20": lrow.get("dollar_vol20")}
+
+
+def _rank_score_text(d: dict) -> str:
+    """'pick model score -6.12' — the score that set a record's rank, named."""
+    by = d.get("ranked_by") or DEFAULT_RANKED_BY
+    label = RANKED_BY_SCORE.get(by, (None, by))[1]
+    v = d["rank_score"] if "rank_score" in d else d.get("order_score")   # a hold row written before this field existed
+    if v is None:
+        return f"{label} n/a"
+    return f"{label} ${float(v) / 1e6:.0f}M" if by == "dollar_volume" else f"{label} {float(v):.2f}"
+
+
 async def _hold_for_slot(today: date, lrow: dict, st: dict, m: int, free: int, seated: int,
                          count_unreadable: bool = False, brk: dict | None = None) -> None:
     """A name that BROKE its level this minute (`brk`, `break_this_minute`) while the paper book is full: HELD — one
@@ -544,6 +573,7 @@ async def _hold_for_slot(today: date, lrow: dict, st: dict, m: int, free: int, s
     open count could not be read — the row's state is `slots_count_unreadable` instead, which 15:55 never records."""
     clock = _clock(today, m)
     rank, score = lrow.get("list_rank"), lrow.get("order_score")
+    rk = _ranking_facts(lrow)
     state = SLOTS_UNREADABLE_STATE if count_unreadable else SLOTS_FULL_STATE
     why = ("the paper book's open count could not be read" if count_unreadable
            else f"the paper book is full ({seated} name(s) seated this minute ahead of it)")
@@ -553,7 +583,7 @@ async def _hold_for_slot(today: date, lrow: dict, st: dict, m: int, free: int, s
                 + f", {why}, ranked #{rank}; seated in the next minute it is through the level with a slot free, "
                   f"judged at that minute's price",
                 {"minute": m, "last_completed": st["last_completed"], "clock_et": clock, "list_rank": rank,
-                 "order_score": score, "level": st["level"], "stop": st["stop"], "width": st["width"],
+                 "order_score": score, **rk, "level": st["level"], "stop": st["stop"], "width": st["width"],
                  "cum_volume": st["cum_volume"], "need_volume": st["need_volume"], "free_slots": int(free),
                  "seated_this_minute": int(seated), "count_unreadable": bool(count_unreadable), "reason": state,
                  "break_minute": (brk or {}).get("minute"), "break_high": (brk or {}).get("high")})
@@ -768,13 +798,15 @@ async def _record_missed_by_slots(today: date, rows: dict[str, dict], first: dic
                "break_cum_volume": brk["cum_volume"], "break_need_volume": brk["need_volume"],
                "hold_minute": d.get("minute"), "hold_clock_et": d.get("clock_et"), "stop_at_hold": d.get("stop"),
                "list_rank": d.get("list_rank"), "order_score": d.get("order_score"),
+               "ranked_by": d.get("ranked_by") or DEFAULT_RANKED_BY, "rank_score": d.get("rank_score"),
+               "pick_score": d.get("pick_score"), "dollar_vol20": d.get("dollar_vol20"),
                "cum_volume": d.get("cum_volume"), "need_volume": d.get("need_volume"),
                "vol_bar": lrow.get("vol_bar"), "adr20": lrow.get("adr20"),
                "reason": SLOTS_FULL_STATE, "row_status": (row or {}).get("status"), "account_mode": ACCOUNT_MODE}
         try:
             ok = await log_audit_event(
                 MISSED_BY_SLOTS,
-                f"{ticker}: broke out at {clock} ET (#{d.get('list_rank')}, score {d.get('order_score')}; no free "
+                f"{ticker}: broke out at {clock} ET (#{d.get('list_rank')} by {_rank_score_text(d)}; no free "
                 f"slot — held since {d.get('clock_et')} ET) and never got a paper slot today — would have bought "
                 f"${float(d.get('level')):.2f} with the stop at ${float(brk['stop']):.2f} ({SLOTS_FULL_STATE})",
                 json.dumps(rec, default=str))

@@ -546,7 +546,7 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
     (
         # a SELECT, registered because it reads the order_score column the 2026-11-02 rebuild added (the list
         # INSERT above writes it too): a schema without it fails HERE, not on his first bare /bgrade
-        "db.bv1_ungraded: bare /bgrade's ungraded names (top 10 by the order score)",
+        "db.bv1_ungraded: bare /bgrade's ungraded names (top 10 by list rank; reads the 2026-11-14 ranking columns)",
         BV1_UNGRADED_SQL,
     ),
     (

@@ -1,0 +1,32 @@
+bars: 12,005,007 rows / 12,532 tickers / 1635 sessions 2016-01-04..2022-06-30 (4s); 5,007 tickers have a missing session inside their span (211,391 holes)
+store A: loaded in 9s; {'raw_factor': 'pre_v2 daily_raw_close.csv.gz per bar (exact)', 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+FIXTURE: [
+ {
+  "ci": 464,
+  "D": "2017-11-03",
+  "E": "2017-11-06",
+  "list_rows": 126,
+  "pool3_rows": 50,
+  "context_removed": 18,
+  "pool_members": 2600
+ },
+ {
+  "ci": 1000,
+  "D": "2019-12-23",
+  "E": "2019-12-24",
+  "list_rows": 173,
+  "pool3_rows": 73,
+  "context_removed": 18,
+  "pool_members": 2866
+ },
+ {
+  "ci": 1349,
+  "D": "2021-05-13",
+  "E": "2021-05-14",
+  "list_rows": 314,
+  "pool3_rows": 106,
+  "context_removed": 75,
+  "pool_members": 3369
+ }
+]
+total pool3 rows 229, list rows 613; sizes: bars.psv.gz 1769 KB, expected.tsv 31 KB, meta.json 16 KB, pool.psv.gz 281 KB
