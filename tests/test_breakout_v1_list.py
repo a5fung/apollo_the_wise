@@ -424,7 +424,8 @@ def test_the_ddl_is_idempotent_and_writes_only_its_own_tables():
         assert col in db.BV1_LIST_COLS and col in db.BV1_LIST_INSERT_SQL
     # 2026-11-14: all three rankings stored per row (the pick model's score, dollar volume, each one's rank, who ranked)
     for col, typ in (("pick_score", "DOUBLE PRECISION"), ("dollar_vol20", "DOUBLE PRECISION"), ("rank_pick_model", "INT"),
-                     ("rank_order_score", "INT"), ("rank_dollar_volume", "INT"), ("ranked_by", "TEXT")):
+                     ("rank_order_score", "INT"), ("rank_dollar_volume", "INT"), ("ranked_by", "TEXT"),
+                     ("grade", "TEXT")):                                  # 2026-11-15: the grade from the pick score
         assert f"ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS {col} {typ};" in ddl
         assert col in db.BV1_LIST_COLS and f"{col} = EXCLUDED.{col}" in db.BV1_LIST_INSERT_SQL
     assert {"pick_score", "dollar_vol20", "ranked_by"} <= set(re.findall(r"l\.(\w+)", db.BV1_UNGRADED_SQL))
