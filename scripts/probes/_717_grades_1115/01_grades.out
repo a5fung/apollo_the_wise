@@ -1,0 +1,104 @@
+== BRIDGE rows / pick-model top-5 buys fit / test: (114698, 71, 41) (expect 114698, 71, 41; the saved pool has 114,847 rows — 149 break out on 2022-04-01, outside this probe's 2022-03-31 line, found at the bridge and disclosed)
+
+== FIT 2017-01..2020-12: 71,600 breakout rows, 238 buy rows, base rate 0.00332 (1 in 301)
+   sensitivity, covered rows only: 0.00497 on 46,913 rows
+   calibration: logit(rate) = -0.7643 + 1.0138 * score  (se 0.196, 0.050; 12 steps)
+   score range in fit: -11.391 .. -0.874; raw cutoffs A+ -3.4942, A -4.1845, B -4.8715
+
+== CUTOFFS (score = the pick model's log-odds, `pick_score`) ==
+   A+: score >=  -3.4942   calibrated rate at the cutoff 0.0133 = 1 in 75 breakouts is his buy (4x base); plain sigmoid(score) 0.02948
+   A : score >=  -4.1845   calibrated rate at the cutoff 0.0066 = 1 in 150 breakouts is his buy (2x base); plain sigmoid(score) 0.01500
+   B : score >=  -4.8715   calibrated rate at the cutoff 0.0033 = 1 in 301 breakouts is his buy (1x base); plain sigmoid(score) 0.00760
+   C : below -4.8715
+
+== CHECK, FIT, empirical per grade (in-sample) ==
+        rows  buy_rows    rate  lift_vs_base     one_in  share_rows
+grade                                                              
+A+      4099       123  0.0300        9.0274    33.3252      0.0572
+A       4999        37  0.0074        2.2267   135.1081      0.0698
+B       7692        41  0.0053        1.6035   187.6098      0.1074
+C      54810        37  0.0007        0.2031  1481.3514      0.7655
+
+== CHECK, FIT, 20 equal-count score bins ==
+        lo     hi  rows  buys   lift
+PM                                  
+0  -11.391 -9.194  3580     0  0.000
+1   -9.194 -8.655  3580     0  0.000
+2   -8.655 -8.265  3580     1  0.084
+3   -8.265 -7.935  3580     0  0.000
+4   -7.935 -7.639  3580     0  0.000
+5   -7.639 -7.356  3580     2  0.168
+6   -7.355 -7.085  3580     2  0.168
+7   -7.085 -6.811  3580     3  0.252
+8   -6.811 -6.548  3580     3  0.252
+9   -6.548 -6.287  3580     1  0.084
+10  -6.287 -6.026  3580     2  0.168
+11  -6.026 -5.766  3580     4  0.336
+12  -5.766 -5.505  3580     2  0.168
+13  -5.505 -5.243  3580     2  0.168
+14  -5.242 -4.960  3580     9  0.756
+15  -4.960 -4.665  3580    20  1.681
+16  -4.665 -4.343  3580    22  1.849
+17  -4.343 -3.964  3580    15  1.261
+18  -3.964 -3.400  3580    38  3.193
+19  -3.399 -0.874  3580   112  9.412
+
+== ABSOLUTE? FIT buy rate per grade by year (rows / rate) ==
+grade    A+     A     B     C
+year                         
+2017   0.54  0.38  0.11  0.00
+2018   0.00  0.23  0.07  0.00
+2019   0.80  0.00  0.28  0.14
+2020   4.53  1.24  0.82  0.08   (percent)
+grade    A+     A     B      C
+year                          
+2017    369   524   905   6047
+2018    548   888  1343   8797
+2019    624   931  1073   8491
+2020   2558  2656  4371  31475   (rows)
+
+== ABSOLUTE? FIT buy rate per grade by tercile of the night's pool size (percent, then rows) ==
+grade    A+     A     B     C
+night                        
+small  0.00  0.20  0.13  0.09
+mid    1.67  0.28  0.52  0.12
+large  3.70  0.96  0.60  0.05
+grade    A+     A     B      C
+night                         
+small   347   491   778   5586
+mid     778  1063  1552  10763
+large  2974  3445  5362  38461
+
+== OUT OF SAMPLE 2021-01..2022-03: 43,098 breakout rows on 314 nights, test base rate 0.00311 (1 in 322); fit base was 0.00332 ==
+   names_a_night_median = names that broke out and pass the checks; whole_list = every listed name (before the context checks)
+grade  rows  names_a_night_median  whole_list_names_a_night_median  qm_buys  buy_rows  buy_rate_pct  one_in  lift_vs_test_base  big_winners  high_tier  share_of_buys_pct
+   A+  2534                   6.0                             25.0       65        64         2.526      40               8.12            4          6               50.8
+    A  2819                   7.0                             30.0       34        37         1.313      76               4.22            3          4               26.6
+    B  3967                  10.0                             42.0       27        27         0.681     147               2.19            2          6               21.1
+    C 33778                  83.5                            347.5        6         6         0.018    5630               0.06            0          0                4.7
+  ALL 43098                 112.5                            449.0      128       134         0.311     322               1.00            9         16              100.0
+
+   nights with NO A+: among breakouts 20 of 314 (6%); on the whole list 0 of 314 (0%)
+   whole list, A+ names a night: min 4, 10th pct 13, median 25, 90th pct 59, max 93
+
+== PASS BAR: rates in order A+ > A > B > C: [np.float64(2.526), np.float64(1.313), np.float64(0.681), np.float64(0.018)] -> YES; A+ rate / C rate = 140.3x, day-resampled 90% 77.4x .. 370.4x (1 draws with no C buy dropped) -> above 1
+   VERDICT: grades SEPARATE his buys out of sample
+
+== TEST by quarter: buy rate percent, then rows ==
+grade     A+     A     B     C
+q                             
+2021Q1  3.41  1.59  1.18  0.01
+2021Q2  2.16  1.24  0.45  0.00
+2021Q3  0.98  1.10  0.00  0.03
+2021Q4  2.79  2.23  0.81  0.07
+2022Q1  1.23  0.20  0.39  0.00
+grade     A+    A     B      C
+q                             
+2021Q1  1084  942  1357  13951
+2021Q2   462  564   888   8209
+2021Q3   305  364   599   3694
+2021Q4   358  449   616   4090
+2022Q1   325  500   507   3834
+
+== DOLLAR VOLUME: A+ rows in the night's dollar-volume top 5: 22%; median dollar-volume percentile in the night's list by grade: A+ 0.92, A 0.87, B 0.81, C 0.41
+   A+ buys out of sample: AMC 2021-02-22, AMC 2021-02-25, AMC 2021-09-10, APHA 2021-03-02, APPS 2021-03-22, BE 2021-01-06, BIDU 2021-02-02, BILI 2021-02-02, BILI 2021-05-28, BNGO 2021-01-26, BNTX 2021-06-21, BTBT 2021-01-28, CAN 2021-03-09, CBAT 2021-01-22, CBAT 2021-02-16, DKNG 2021-02-02, DKNG 2021-02-26, DRK 2021-10-11, DVN 2022-02-11, ENPH 2021-02-10, ETSY 2021-03-23, FUTU 2021-02-09, FUTU 2021-06-14, GMBL 2021-03-02, GME 2021-11-01, JMIA 2021-01-12, LAC 2021-09-30, LCID 2022-01-07, MARA 2021-01-28, MARA 2021-02-08, MARA 2021-10-11, MARA 2021-11-30, MP 2022-02-25, MSTR 2021-01-08, MSTR 2021-01-28, MSTR 2021-08-05, MSTR 2021-11-02, NIO 2021-02-08, NTLA 2021-03-30, NTLA 2021-05-26, NVAX 2021-04-13, NVAX 2021-06-29, PDD 2021-01-25, PDD 2021-02-02, PENN 2021-03-01, PLUG 2021-02-03, RIOT 2021-02-08, RIOT 2021-04-13, RIOT 2021-06-28, RIOT 2021-11-29, SICP 2021-01-22, SICP 2021-03-31, SOLO 2021-01-11, SOS 2021-03-15, SPCE 2021-06-22, TLRY 2021-01-04, TLRY 2021-02-02, TLRY 2021-03-02, TSLA 2021-11-19, VIR 2021-12-15, X 2021-04-23, XPEV 2021-12-30, XPEV 2022-01-12, ZS 2021-12-27

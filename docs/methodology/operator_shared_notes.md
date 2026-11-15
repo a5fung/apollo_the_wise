@@ -3068,3 +3068,6 @@ His words: > "on ranking breakouts, do we keep a record of ranks? Idea, if we re
 
 ## 2026-11-15 — #594 sample 9 grades (outcome-blind)
 Sheet `scripts/probes/_594_sample9_1115/sample9_blind.png` (12 random gap days, seed 1115). His words: > "A good / B ok / C ok / D ok / E 50/50 / F no, gapped into it's choppy range still / G no / H maybe / I ok / J maybe / K no / L no". Key: A TVTX 08-05, B SMWB 08-12, C CRWV 08-12, D UMAC 08-14, E ACN 10-01, F SWIM 08-05, G INTR 10-05, H ANF 08-26, I WOLF 10-08, J CART 08-07, K SGMT 09-30, L TATT 08-05. Filed in `tests/fixtures/must_not_trade_charts.py` (good GOOD, ok OKISH, no BAD; E/H/J undecided, not filed). New reason: F "gapped into its choppy range" — a gap that lands inside old chop is not a breakout from it.
+
+## 2026-11-15 — breakout grades sample read (#717)
+Sheet `scripts/probes/_717_grades_1115/sheet_grades.png` (6 random A+ vs 6 random C, 2021-01..2022-03). His words: > "grades look good except BNGO looks somewhat extended". Read as approval of the grades (cutoffs in `scripts/probes/_717_grades_1115/cutoffs.json`: A+ ≥ -3.4942, A ≥ -4.1845, B ≥ -4.8715 log-odds). BNGO (A+) flagged extended — the extended-pick checks measured 11-14 all dropped 5–29% of Qullamaggie's buys, so it stays an eye note, not a rule.

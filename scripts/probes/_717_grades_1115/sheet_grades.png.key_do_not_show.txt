@@ -1,0 +1,12 @@
+A+ | HAPN | list night 2021-11-12 | breakout day 2021-11-15 | score -2.991 | pick-model rank that night 7 | Qullamaggie bought: no
+A+ | BNGO | list night 2021-01-22 | breakout day 2021-01-25 | score -2.863 | pick-model rank that night 12 | Qullamaggie bought: no
+A+ | RIOT | list night 2021-04-01 | breakout day 2021-04-05 | score -1.187 | pick-model rank that night 1 | Qullamaggie bought: no
+A+ | CHPT | list night 2021-02-03 | breakout day 2021-02-04 | score -3.191 | pick-model rank that night 30 | Qullamaggie bought: no
+A+ | CLF | list night 2021-07-09 | breakout day 2021-07-12 | score -3.287 | pick-model rank that night 5 | Qullamaggie bought: no
+A+ | NCTY | list night 2021-03-12 | breakout day 2021-03-15 | score -2.612 | pick-model rank that night 14 | Qullamaggie bought: no
+C | CARS | list night 2021-03-10 | breakout day 2021-03-11 | score -9.076 | pick-model rank that night 519 | Qullamaggie bought: no
+C | MCRB | list night 2021-05-13 | breakout day 2021-05-14 | score -6.970 | pick-model rank that night 64 | Qullamaggie bought: no
+C | TPC | list night 2021-02-03 | breakout day 2021-02-04 | score -9.012 | pick-model rank that night 499 | Qullamaggie bought: no
+C | OWL | list night 2021-09-13 | breakout day 2021-09-14 | score -6.815 | pick-model rank that night 28 | Qullamaggie bought: no
+C | CVET | list night 2021-01-13 | breakout day 2021-01-14 | score -6.523 | pick-model rank that night 196 | Qullamaggie bought: no
+C | SEEL | list night 2021-10-21 | breakout day 2021-10-22 | score -6.543 | pick-model rank that night 33 | Qullamaggie bought: no

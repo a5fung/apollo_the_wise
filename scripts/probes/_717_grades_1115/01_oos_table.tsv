@@ -1,0 +1,6 @@
+grade	rows	names_a_night_median	whole_list_names_a_night_median	qm_buys	buy_rows	buy_rate_pct	one_in	lift_vs_test_base	big_winners	high_tier	share_of_buys_pct
+A+	2534	6.0	25.0	65	64	2.526	40	8.12	4	6	50.8
+A	2819	7.0	30.0	34	37	1.313	76	4.22	3	4	26.6
+B	3967	10.0	42.0	27	27	0.681	147	2.19	2	6	21.1
+C	33778	83.5	347.5	6	6	0.018	5630	0.06	0	0	4.7
+ALL	43098	112.5	449.0	128	134	0.311	322	1.0	9	16	100.0
