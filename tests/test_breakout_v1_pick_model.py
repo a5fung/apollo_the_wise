@@ -261,6 +261,18 @@ def test_the_switch_value_sets_list_rank_and_every_ranking_is_stored_on_every_ro
     assert summary["top10"]["order_score"] == ["AAA", "BBB", "CCC"] and summary["top10"]["dollar_volume"] == ["CCC", "BBB", "AAA"]
 
 
+def test_the_audit_copy_of_the_scores_is_capped_so_a_busy_night_fits_the_audit_row_budget():
+    """A 1,300-name night (era A's largest list) must not overflow mi_audit_log's 32,000-char detail: the audit row
+    carries the first 300 names' scores by list rank and counts the rest; every ROW still carries all three."""
+    from agents.market_intelligence import db
+    rows = [_row(f"T{k:04d}", runup=float(k % 97), spread=1.0 + (k % 13) / 10, dv=1e7 + k * 12345.678) for k in range(1300)]
+    s = bl.rank_all(rows, [_inputs() for _ in range(300)], "pick_model")
+    assert len(s["scores"]) == bl.AUDIT_SCORES_MAX and s["scores_omitted"] == 1000
+    assert list(s["scores"]) == [r["ticker"] for r in rows[:bl.AUDIT_SCORES_MAX]]          # the best-ranked names
+    assert len(json.dumps(s)) < db._AUDIT_DETAIL_MAX // 2
+    assert all(r["pick_score"] is not None and r["rank_order_score"] and r["rank_dollar_volume"] for r in rows)
+
+
 def test_the_default_ranking_is_the_pick_model_and_an_unknown_one_is_refused():
     assert bl.DEFAULT_RANKING == "pick_model" and bl.RANKINGS == ("pick_model", "order_score", "dollar_volume")
     rows = _three_names()
@@ -470,7 +482,7 @@ def test_the_job_stores_all_three_rankings_per_row_and_in_the_audit_row_with_the
     rk = out["ranking"]
     assert rk["selected"] == rk["ranked_by"] == "pick_model" and rk["source"] == "default" and rk["fallback"] is None
     assert rk["switch"] == "breakout_v1_ranking" and rk["note"] is None and rk["sic_error"] is None
-    assert rk["scores"] == {"ZCSH": [1.0, round(r["pick_score"], 6), round(r["dollar_vol20"], 6)]}
+    assert rk["scores"] == {"ZCSH": [1.0, round(r["pick_score"], 4), int(round(r["dollar_vol20"]))]} and rk["scores_omitted"] == 0
     assert rk["top10"] == {k: ["ZCSH"] for k in bl.RANKINGS} and rk["scored"] == {k: 1 for k in bl.RANKINGS}
     assert rk["listed_with_52w_facts"] == 1 and rk["listed_with_group_strength"] == 0 and rk["pool_with_industry_code"] == 0
     assert rk["model"]["coef_file"].endswith("coef.json")

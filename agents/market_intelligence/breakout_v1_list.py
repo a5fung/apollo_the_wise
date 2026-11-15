@@ -96,7 +96,10 @@ RANKING_SCORE_COL = {RANKING_PICK_MODEL: "pick_score", RANKING_ORDER_SCORE: "ord
 RANKING_RANK_COL = {k: "rank_" + k for k in RANKINGS}
 RANKING_LABEL = {RANKING_PICK_MODEL: "the pick model", RANKING_ORDER_SCORE: "the order score",
                  RANKING_DOLLAR_VOLUME: "dollar volume"}
-AUDIT_SCORE_DP = 6                    # decimals of the per-name scores in the audit row
+AUDIT_SCORE_DP = 4                    # decimals of the per-name scores in the audit row
+AUDIT_SCORES_MAX = 300                # names whose three scores ride in the audit row (by list_rank; mi_audit_log's
+                                      # detail budget is 32,000 chars and a busy night lists 1,000+ names). EVERY name's
+                                      # scores and ranks are on its mi_breakout_v1_list row — that table is the record.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -341,9 +344,12 @@ def rank_all(rows: list, extra_inputs: Optional[list] = None, ranking: str = DEF
             "population_n": len(rows) + len(extra_inputs or []), "context_removed_in_population": len(extra_inputs or []),
             "top10": {k: [r["ticker"] for r in sorted(rows, key=lambda r: r[RANKING_RANK_COL[k]])[:MESSAGE_TOP_N]]
                       for k in RANKINGS},
-            # every listed name's three scores, for the evaluation of all three rankings: [order, pick model, dollar volume]
-            "scores": {r["ticker"]: [rnd(r.get("order_score")), rnd(r.get("pick_score")), rnd(r.get("dollar_vol20"))]
-                       for r in rows}}
+            # the three scores of the first AUDIT_SCORES_MAX names by list_rank: [order, pick model, dollar volume ($, whole)]
+            # — a copy for reading the night at a glance; the full record is the list table's own columns
+            "scores": {r["ticker"]: [rnd(r.get("order_score")), rnd(r.get("pick_score")),
+                                     None if r.get("dollar_vol20") is None else int(round(float(r["dollar_vol20"])))]
+                       for r in rows[:AUDIT_SCORES_MAX]},
+            "scores_omitted": max(0, len(rows) - AUDIT_SCORES_MAX)}
 
 
 async def get_ranking() -> tuple:

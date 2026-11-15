@@ -94,6 +94,17 @@ def live_night(S, facts, rows_at, sic2, ci):
     removed = {}
     rows, fails, n_eval = bl.evaluate_members(live_members, rs_best, D.cal[ci], removed, pick)
     summary = bl.rank_all(rows, pick["extra"], bl.RANKING_PICK_MODEL)
+    # the context-removed names in the order `evaluate_members` appended their inputs to pick["extra"]
+    ctx = {t for v in removed.values() for t in v}
+    pick["extra_tickers"] = [m["ticker"] for m in live_members if m["ticker"] in ctx]
+    assert len(pick["extra_tickers"]) == len(pick["extra"])
+    pick["gap_facts"] = {}
+    for m in live_members:                      # per ranked name: a symbol break on record? bars inside the last 300 sessions?
+        if m.get("bars") is not None and (m["ticker"] in ctx or m["ticker"] in {r["ticker"] for r in rows}):
+            _b, c_all = runner.bars_for(D, D.tid[m["ticker"]])
+            c_to = np.asarray(c_all[:int(np.searchsorted(c_all, ci)) + 1], dtype=np.int64)
+            pick["gap_facts"][m["ticker"]] = {"symbol_break": m["ticker"] in S.breaks, "bars_to_d": int(len(c_to)),
+                                              "bars_in_300": int((c_to > ci - pm.HISTORY_SESSIONS).sum())}
     return rows, removed, pick, members, groups, live_members, summary
 
 
@@ -112,6 +123,7 @@ def compare(ci, cap_n, pool_n, co, rows, removed, pick):
     cn = cap_n.set_index("ticker")
     cn = cn.assign(dist_level=(cn.level / cn.close - 1) / cn.adr20, first_base=(cn.bases_before == 0).astype(float))
     live_in = {r["ticker"]: r["pick_inputs"] for r in rows}
+    live_in.update(dict(zip(pick["extra_tickers"], pick["extra"])))          # the context-removed names rank too
     inp_diff, names_diff = Counter(), set()
     for t, x in live_in.items():
         if t not in cn.index:
@@ -132,6 +144,7 @@ def compare(ci, cap_n, pool_n, co, rows, removed, pick):
             "max_diff": float(diffs.max()) if diffs.size else float("nan"), "bridge_pool3": bridge,
             "pool3_rows": len(pool_n), "pool3_scored_live": len(pool_live),
             "input_diffs": dict(inp_diff), "names_with_input_diff": sorted(names_diff), **order,
+            "diff_name_facts": {t: pick["gap_facts"].get(t) for t in sorted(names_diff)},
             "match": cap_pop == live_pop and not unscored and bool(diffs.size) and float(diffs.max()) <= TOL and bridge <= TOL}
 
 
@@ -180,6 +193,17 @@ def stage_check(a):
     bad = [r for r in out if not r["match"]]
     print(f"  nights that differ: {len(bad)}; names only in the capture {sum(len(r['only_capture']) for r in bad)}, only live {sum(len(r['only_live']) for r in bad)}, "
           f"unscored live {sum(len(r['unscored']) for r in bad)}")
+    facts = {}
+    for r in out:
+        facts.update(r["diff_name_facts"])
+    brk = sorted(t for t, f in facts.items() if f and f["symbol_break"])
+    short = sorted(t for t, f in facts.items() if f and not f["symbol_break"] and f["bars_in_300"] < min(f["bars_to_d"], pm.YEAR))
+    other = sorted(set(facts) - set(brk) - set(short))
+    print(f"  names whose raw inputs differ from the capture on ANY sampled night (listed or context-removed): {len(facts)} — "
+          f"{len(brk)} with a symbol break on record (the ticker was reused / relisted) {brk}; "
+          f"{len(short)} without one but with fewer of their last 252 bars inside the last 300 sessions (missing sessions) {short}; other {other}")
+    unexplained = [r["D"] for r in bad if not r["names_with_input_diff"] and not r["only_capture"] and not r["only_live"]]
+    print(f"  differing nights with NO name whose inputs differ and an identical population (unexplained): {unexplained}")
     if bad:
         print(f"  on the differing nights: names whose raw inputs differ from the capture {sum(len(r['names_with_input_diff']) for r in bad)} of "
               f"{sum(r['cap_n'] for r in bad):,} list rows; by input {dict(sum((Counter(r['input_diffs']) for r in bad), Counter()))}; "
