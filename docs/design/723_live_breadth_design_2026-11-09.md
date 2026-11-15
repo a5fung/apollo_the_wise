@@ -29,6 +29,7 @@ YTD and the stages stay on the last close.
 6. **Staleness:** the file carries `as_of` (ET). The page shows "Live · as of 11:45 ET" when it is ≤ 20 min old on a
    trading day, otherwise the last-close numbers labelled "Last close". A failed refresh never leaves an old number
    shown as live.
+   **#724 (2026-11-14):** the file also carries `final` — true on the read taken at the session close (13:00 on a half day, 16:00 otherwise); the page holds a final read as "Close · <date>, read at HH:MM ET" and never calls it Live.
 7. **Deploy scope:** market-agent (the job runs in the market agent; collector is already there). No execution change.
 
 ## Implementation note (steps 2 + 3, 2026-11-10) — how decision 5's push actually runs
