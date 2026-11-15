@@ -11997,7 +11997,7 @@ async def get_setup_era_trades(lookback_days: int = 90) -> list[dict[str, Any]]:
                    r.peak_r, r.realized_r, r.stop_per_adr
             FROM mi_live_trades t
             LEFT JOIN mi_sell_discipline_records r ON r.trade_id = t.id
-            WHERE t.status = 'closed'
+            WHERE t.status = 'closed' AND t.pnl_attribution IS NULL
               AND t.alert_date >= CURRENT_DATE - $1::int
             """,
             lookback_days,
@@ -12090,6 +12090,7 @@ async def get_setup_performance_review(lookback_days: int = 90) -> list[dict[str
             LEFT JOIN mi_strategies s ON s.signal_type = t.signal_type
             WHERE t.status = 'closed'
               AND t.alert_date >= CURRENT_DATE - $1::int
+              AND t.pnl_attribution IS NULL   -- methodology read: a flawed / bug-attributed trade is not the setup (11-15)
             GROUP BY t.signal_type, t.account_mode, s.phase
             HAVING COUNT(*) > 0
             ORDER BY COUNT(*) DESC
