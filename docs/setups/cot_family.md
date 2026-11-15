@@ -60,3 +60,12 @@ weaker or a correlated position is already on.
 ### 2026-11-15 — family created (operator)
 - Trigger: his words above. Evidence: the research in `~/cmr_lab/docs/` (method.md, index_rebuild.md, step5*.md).
 - Nothing runs; no detector, no alerts, no orders.
+
+## Data — 1-minute archive
+- What: once a week, one gzip CSV of free 1-minute futures bars (extended hours included; columns market,ticker,ts_et,o,h,l,c,v; timestamps in ET) for every COT market (the `=F` continuous contracts; the dollar index is skipped, it has no 1-minute history).
+- Where: `/app/logs/cot_minutes/<run_date_ET>.csv.gz` (bind-mounted host dir, survives deploys). Code: `agents/market_intelligence/cot_minutes_archive.py`. Each run fetches the last 8 days, so files overlap; dedupe on (market, ts_et) at read time.
+- Schedule: Saturdays 10:00 ET, intelligence-owned, one audit row per run (`cot_minutes_archive`); a run where every ticker fails pages.
+- Why: yfinance keeps only ~30 days of 1-minute history; the first-tick news-failure rule needs a true 1-minute test later. Read-only data; no detector, no alerts, no orders.
+
+### 2026-11-15 — 1-minute archive job added (operator "Go")
+- Weekly save of 1-minute futures bars so the first-tick test can run later. Nothing trades off it.
