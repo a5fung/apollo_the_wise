@@ -821,3 +821,35 @@ def test_the_job_sends_the_alert_when_the_pick_model_falls_back(monkeypatch):
 def test_a_normal_night_sends_no_ranking_alert(monkeypatch):
     f, out, rows = _job(monkeypatch)
     assert "ranking_alert" not in out and not any("ranking degraded" in m for m in f.sent)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# Grades (his approval 2026-11-15): A+/A/B/C from the pick score, frozen cutoffs; a label, orders nothing
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def test_grade_cutoffs_are_the_frozen_numbers_and_the_boundaries_are_inclusive():
+    assert bl.GRADE_CUTOFFS == (("A+", -3.4942), ("A", -4.1845), ("B", -4.8715))
+    eps = 1e-9
+    for g, cut, below in (("A+", -3.4942, "A"), ("A", -4.1845, "B"), ("B", -4.8715, "C")):
+        assert bl.grade_for(cut) == g                      # exactly on the cutoff takes the grade
+        assert bl.grade_for(cut - eps) == below            # just under falls to the next
+    assert bl.grade_for(0.0) == "A+" and bl.grade_for(-11.0) == "C"
+    assert bl.grade_for(None) is None
+
+
+def test_the_job_stamps_a_grade_on_every_row_and_the_audit_counts_sum_to_the_list(monkeypatch):
+    from agents.market_intelligence import db
+    f, out, rows = _job(monkeypatch)
+    assert "grade" in db.BV1_LIST_COLS and "grade" not in db.BV1_LIST_SELECT_SQL
+    assert all(r["grade"] == bl.grade_for(r["pick_score"]) for r in rows)
+    g = out["ranking"]["grades"]
+    assert sum(g.values()) == len(rows) and set(g) == {"A+", "A", "B", "C", "none"}
+    assert g["none"] == sum(1 for r in rows if r["pick_score"] is None)
+
+
+def test_the_message_shows_each_names_grade_and_a_dash_when_there_is_none():
+    rows = _three_names()
+    bl.rank_all(rows, [], "pick_model")
+    rows[0]["grade"], rows[1]["grade"], rows[2]["grade"] = "A+", "B", None
+    body = bl.format_list_message(date(2026, 11, 16), rows).split("```")[1].strip().splitlines()
+    assert "GR" in body[0].split()
+    assert [ln.split()[4] for ln in body[1:]] == ["A+", "B", "-"]

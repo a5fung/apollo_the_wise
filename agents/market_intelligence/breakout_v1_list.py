@@ -97,6 +97,21 @@ RANKING_READ_TIMEOUT_S = 10.0               # asyncpg's own bound per try: a hun
 RANKING_SCORE_COL = {RANKING_PICK_MODEL: "pick_score", RANKING_ORDER_SCORE: "order_score",
                      RANKING_DOLLAR_VOLUME: "dollar_vol20"}
 RANKING_RANK_COL = {k: "rank_" + k for k in RANKINGS}
+# The grade cutoffs on `pick_score` (the pick model's log-odds). FROZEN 2026-11-15 from
+# scripts/probes/_717_grades_1115/cutoffs.json (calibrated buy rate >= 4x / 2x / 1x the 2017-2020 fit base rate);
+# approved by the operator 2026-11-15 ("grades look good"). A label only: it orders nothing and removes nothing.
+GRADE_CUTOFFS = (("A+", -3.4942), ("A", -4.1845), ("B", -4.8715))
+GRADE_ORDER = ("A+", "A", "B", "C")
+
+
+def grade_for(score) -> Optional[str]:
+    """A+ / A / B / C from a pick score; None when there is no score."""
+    if score is None:
+        return None
+    for g, cut in GRADE_CUTOFFS:
+        if score >= cut:
+            return g
+    return "C"
 RANKING_LABEL = {RANKING_PICK_MODEL: "the pick model", RANKING_ORDER_SCORE: "the order score",
                  RANKING_DOLLAR_VOLUME: "dollar volume"}
 AUDIT_HEADROOM = 2000                 # chars kept free under mi_audit_log's detail budget (`fit_audit_detail`)
@@ -369,6 +384,7 @@ def rank_all(rows: list, extra_inputs: Optional[list] = None, ranking: str = DEF
         scores = [None] * len(rows)
     for r, s in zip(rows, scores):
         r["pick_score"] = s
+        r["grade"] = grade_for(s)
         r.setdefault("dollar_vol20", (r.get("pick_inputs") or {}).get("dollar_vol20"))
     for k in RANKINGS:
         rk = _rank_desc(rows, RANKING_SCORE_COL[k])
@@ -387,6 +403,8 @@ def rank_all(rows: list, extra_inputs: Optional[list] = None, ranking: str = DEF
     def rnd(x):
         return None if x is None else round(float(x), AUDIT_SCORE_DP)
     return {"selected": ranking, "ranked_by": used, "fallback": fallback, "pick_error": pick_error, "scored": scored,
+            "grades": {**{g: sum(1 for r in rows if r.get("grade") == g) for g in GRADE_ORDER},
+                       "none": sum(1 for r in rows if r.get("grade") is None)},
             "population_n": len(rows) + len(extra_inputs or []), "context_removed_in_population": len(extra_inputs or []),
             "top10": {k: [r["ticker"] for r in sorted(rows, key=lambda r: r[RANKING_RANK_COL[k]])[:MESSAGE_TOP_N]]
                       for k in RANKINGS},
@@ -479,10 +497,10 @@ def format_list_message(today: date, rows: list) -> Optional[str]:
         return None
     from agents.market_intelligence.constants import mode_prefix
     shown = sorted(rows, key=lambda r: r.get("list_rank") or 10 ** 9)[:MESSAGE_TOP_N]
-    lines = [f"{'#':>3s} {'TICKER':6s} {'LEVEL':>10s} {'SCORE':>6s} {'RS':>5s}"]
+    lines = [f"{'#':>3s} {'TICKER':6s} {'LEVEL':>10s} {'SCORE':>6s} {'GR':>2s} {'RS':>5s}"]
     for r in shown:
         lines.append(f"{r.get('list_rank') or 0:>3d} {r['ticker']:6s} {r['level']:>10.2f} "
-                     f"{_shown_score(r):>6s} {r['rs_best']:>5.1f}")
+                     f"{_shown_score(r):>6s} {r.get('grade') or '-':>2s} {r['rs_best']:>5.1f}")
     n = len(rows)
     label = RANKING_LABEL.get(shown[0].get("ranked_by"), RANKING_LABEL[RANKING_ORDER_SCORE])
     more = f"\n…and {n - len(shown)} more (mi_breakout_v1_list)" if n > len(shown) else ""

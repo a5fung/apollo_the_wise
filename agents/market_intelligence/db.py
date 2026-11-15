@@ -19861,6 +19861,7 @@ _BREAKOUT_V1_DDL = """
         rank_order_score INT,
         rank_dollar_volume INT,
         ranked_by   TEXT,                               -- ... and which one set list_rank
+        grade       TEXT,                               -- A+ | A | B | C from pick_score (2026-11-15); orders nothing
         created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         PRIMARY KEY (scan_date, ticker)
     );
@@ -19894,11 +19895,14 @@ _BREAKOUT_V1_DDL = """
     ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS rank_order_score INT;
     ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS rank_dollar_volume INT;
     ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS ranked_by TEXT;
+    -- His 2026-11-15 approval ("grades look good"): a grade stamped from the pick model's score with frozen cutoffs
+    -- (breakout_v1_list.GRADE_CUTOFFS). A label only: orders nothing, removes nothing. NULL = no pick score / old rows.
+    ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS grade TEXT;
 """
 
 BV1_LIST_COLS = ("scan_date", "ticker", "level", "vol_bar", "adr20", "rs_best", "close", "security_type", "gates",
                  "list_rank", "order_score", "runup6m_adr", "spread10_adr",
-                 "pick_score", "dollar_vol20", "rank_pick_model", "rank_order_score", "rank_dollar_volume", "ranked_by")
+                 "pick_score", "dollar_vol20", "rank_pick_model", "rank_order_score", "rank_dollar_volume", "ranked_by", "grade")
 _BV1_LIST_JSONB = frozenset({"gates"})
 BV1_LIST_INSERT_SQL = (
     f"INSERT INTO mi_breakout_v1_list ({', '.join(BV1_LIST_COLS)}) VALUES ("
