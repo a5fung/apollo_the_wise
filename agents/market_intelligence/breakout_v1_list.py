@@ -495,6 +495,27 @@ def format_list_message(today: date, rows: list) -> Optional[str]:
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # The job
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+def ranking_alert_message(today: date, rk: Optional[dict]) -> Optional[str]:
+    """His word 2026-11-14 ("yes" to: a night the pick model fails and the order score takes over should page): one
+    plain message when the selected ranking did not order the list, or ran without part of its inputs. None on a
+    normal night. Sent whether or not breakout paper is on."""
+    if not rk:
+        return None
+    why = []
+    if rk.get("fallback"):
+        why.append(f"the {RANKING_LABEL.get(rk.get('selected'), rk.get('selected'))} scored no stock, so the "
+                   f"{RANKING_LABEL[RANKING_ORDER_SCORE]} ordered tonight's list")
+    for k, what in (("pick_error", "the pick model raised"), ("xs_error", "its strength inputs failed"),
+                    ("long_error", "its 1-year price history failed to load (it ran on 200 days)")):
+        if rk.get(k):
+            why.append(f"{what}: {str(rk[k])[:160]}")
+    if not why:
+        return None
+    from agents.market_intelligence.constants import mode_prefix
+    return (f"{mode_prefix('paper')}*Breakout v1 — the list ranking degraded* ({today.isoformat()})\n- "
+            + "\n- ".join(why) + "\nThe list was still written. Details: the breakout_v1_list_run audit row.")
+
+
 def _new_out(today: date) -> dict:
     return {"date": today.isoformat(), "skipped": None, "timed_out": False, "error": None,
             "prefilter_tickers": 0, "bad_bars": 0, "universe_n": 0, "listable_n": 0, "evaluated": 0, "passing": 0, "written": 0,
@@ -626,6 +647,14 @@ async def run_breakout_v1_list(today: Optional[date] = None) -> dict:
         logger.error(f"breakout_v1_list: failed: {e}", exc_info=True)
         first_exc = e
 
+    alert = ranking_alert_message(today, out.get("ranking")) if (rows and first_exc is None) else None
+    if alert:
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            out["ranking_alert"] = "sent" if await send_telegram_message(alert) else "send_failed"
+        except Exception as e:  # loud-ok: recorded on the audit row; the list is already written
+            out["ranking_alert"] = f"send_failed: {type(e).__name__}"
+            logger.warning(f"breakout_v1_list: the ranking alert for {today} raised: {type(e).__name__}: {e}")
     msg = format_list_message(today, rows) if (rows and not out["timed_out"] and first_exc is None) else None
     # His word 2026-11-10 ("I don't want to see these garbage charts again", after the first paper session bought
     # charts with no higher lows and no surfing average): the message goes out ONLY while breakout paper is on.

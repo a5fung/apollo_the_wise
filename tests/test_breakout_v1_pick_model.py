@@ -800,3 +800,24 @@ def test_the_execution_copy_of_the_ranking_table_matches_the_list_module():
     """breakout_v1_entry keeps literals (execution imports no list code); a renamed or added ranking must update both."""
     from agents.market_intelligence.broker import breakout_v1_entry as be
     assert {k: v[0] for k, v in be.RANKED_BY_SCORE.items()} == dict(bl.RANKING_SCORE_COL)
+
+
+def test_a_degraded_ranking_night_has_one_plain_alert_and_a_normal_night_none():
+    from datetime import date
+    d = date(2026, 11, 16)
+    assert bl.ranking_alert_message(d, {"selected": "pick_model", "fallback": None}) is None
+    m = bl.ranking_alert_message(d, {"selected": "pick_model", "fallback": "x", "pick_error": "ValueError: nan"})
+    assert "scored no stock" in m and "order score" in m and "ValueError" in m and "2026-11-16" in m
+    assert "1-year price history" in bl.ranking_alert_message(d, {"long_error": "Timeout"})
+
+
+def test_the_job_sends_the_alert_when_the_pick_model_falls_back(monkeypatch):
+    monkeypatch.setattr(bl, "pick_scores", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("numpy changed")))
+    f, out, rows = _job(monkeypatch)
+    assert out["ranking"]["fallback"] and out["ranking_alert"] == "sent"
+    assert any("ranking degraded" in m and "numpy changed" in m for m in f.sent)
+
+
+def test_a_normal_night_sends_no_ranking_alert(monkeypatch):
+    f, out, rows = _job(monkeypatch)
+    assert "ranking_alert" not in out and not any("ranking degraded" in m for m in f.sent)
