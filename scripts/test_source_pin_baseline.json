@@ -118,6 +118,7 @@
     "tests/test_profit_trigger_508.py": 14,
     "tests/test_recent_changes.py": 5,
     "tests/test_recorder_failure_rate_593.py": 4,
+    "tests/test_research_bars.py": 5,
     "tests/test_review_registry_dates_are_dates.py": 1,
     "tests/test_reviews_backlog_teeth.py": 1,
     "tests/test_rule_mix.py": 1,
@@ -152,6 +153,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 434,
+  "total": 439,
   "unescaped": 359
 }
