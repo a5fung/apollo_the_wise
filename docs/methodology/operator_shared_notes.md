@@ -3052,3 +3052,7 @@ Fifth sheet `scripts/probes/_717_lowline_1114/sheet_lowline_picks.png` (1d + A2(
 
 ## 2026-11-14 — SIGNED: the #717 rule changes (build today)
 On the sign-off table (rows: 1 skip >3% under a falling 50-day; 2 skip when the 50-day fell over 10 sessions AND the 6-month return is negative; 3 skip a wide re-widening base whose 30-session lower line is flat or falling; 4 slots ranked by dollar volume, unchanged; 5 slots taken only on an actual break, not resting buys on the top 5 at 09:35): > "ok, let's build it today". Paper stays OFF until his "paper on".
+
+## 2026-11-14 — ranking sheets: live order score vs pick model vs dollar volume (#717)
+Sheets `scripts/probes/_717_rank2_1114/sheet_rank_{1,2,3}.png` (list nights 2021-01-15, 2021-06-02, 2021-09-03; rows = live order score / pick model / dollar volume, top 5 each). His words: > "Live ranking isn't bad, most charts look good, XOG looks off, maybe buy out. dac looks extended, clov doesn't look ready. Pick looks good too". Live row reads: XOG (sheet 2) off; DAC (sheet 3) extended; CLOV (sheet 3) not ready. Pick-model rows: good. Counts (`_717_rank2_1114/01_rank2.out`, Era A, after the three checks): Qullamaggie buys in the daily top 5, 2021-01..2022-03 — live 19, pick model 41, dollar volume 47.
+⚠ Correction: row 4 of the 11-14 sign-off table said "slots ranked by dollar volume, unchanged"; the live slot order is the ORDER SCORE (6-month run-up + 10-day tightness, `breakout_v1_list.rank_rows`), not dollar volume. Disclosed to him the same day.
