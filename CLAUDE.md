@@ -273,10 +273,9 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 - #312 (`ladder_watchdog.py`, `ladder_press.py`): a breach pages him once per episode with stats + Demote / No action (tokenized button; one rung, compare-and-set in one transaction); Demote takes effect without a restart (fresh strategy reads on the money path). His rulings: the chat assistant can NOT move a strategy, /resume, /partialnow or /timestop (typed command only; refusal + audit row); /pause and /syncnow stay open. Live probe passed (forged marker refused). #722: the breadth export gains 19 groups. Deployed `e475346e` (both, then execution).
 
-### 2026-11-07 — breakout v1 stage 2 deployed dark; the daily breadth export live
+### 2026-11-14 — breakout v1: three list checks, buys only on a real break, the pick model orders the list
 
-- #717 stage 2 (`broker/breakout_v1_entry.py`, `alpaca_client.get_minute_bars_range_batch`): one batched minute-bar read per tick on its OWN one-thread executor (a tick skips while a page is in flight); paper slots by order score, hold-only, the overflow waits; at 15:55 one `breakout_v1_missed_by_slots` row per name that broke out (level + volume pace) but never got a slot (#720 reads it). `breakout_v1_paper` still OFF. D8: 184 names, 8 requests, 3.1 s. SSoT `docs/setups/consolidation_breakout.md`.
-- #719 `scripts/export_breadth_snapshot.sql` (read-only, guarded step in the nightly export) → the dashboard's Market Breadth tab; first snapshot 11-07 matched an independent recount. Deployed `359fa1d7` (market-agent then execution, his Go).
+- #717 (his signs 11-14): the list skips >3% under a falling 50-day, a 6-month downtrend, and a re-widening base with a flat/falling lower line; paper slots taken only in a minute whose high is strictly through the level (2-minute lookback); the pick model (logistic fitted 2017-2020 on Qullamaggie's buys, frozen) sets `list_rank`, the order score and dollar volume stored nightly as backups behind `mi_safeguard_state('breakout_v1_ranking')`. Deployed `b37ebd01` (market-agent then execution); paper OFF; verify Mon 11-16 17:55 list. SSoT `docs/setups/consolidation_breakout.md`.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
