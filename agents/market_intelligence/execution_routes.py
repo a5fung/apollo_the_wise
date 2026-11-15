@@ -35,7 +35,8 @@ _EXEC_HANDLERS = {
 
 
 def register_execution_routes(app) -> None:
-    """Add POST /exec/{name} to `app`. Call only when runs_execution_jobs()."""
+    """Add POST /exec/{name} and POST /data/bars to `app`. Call only when
+    runs_execution_jobs()."""
     # Route↔client parity holds by construction — _EXEC_HANDLERS is derived from
     # _CROSS_FNS at import, and a convention break fails the getattr there.
 
@@ -65,6 +66,19 @@ def register_execution_routes(app) -> None:
                 "error_message": str(e)[:2000],
             })
         return {"result": result}
+
+    @app.post("/data/bars")
+    async def _research_bars(payload: dict,
+                             _: str = Depends(verify_internal_secret)):
+        """READ-ONLY historical bars for research scripts (2026-11-15). Same
+        internal-secret gate as /exec/*; the body reads market data only
+        (execution_client._research_bars_inprocess -> broker/research_bars.py).
+        Contract: docs/architecture/dual_account.md §Research market data."""
+        try:
+            return await _ec._research_bars_inprocess(payload)
+        except _ec.ResearchBarsRequestError as e:
+            raise HTTPException(status_code=e.status,
+                                detail={"code": e.code, "message": e.message})
 
     logger.info(
         f"Execution routes registered: {len(_EXEC_HANDLERS)} /exec/* endpoints")

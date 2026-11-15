@@ -37,6 +37,7 @@ agents/market_intelligence/broker/lowcap_paper_entry.py
 agents/market_intelligence/broker/orb_extension_shadow.py
 agents/market_intelligence/broker/order_ingest.py
 agents/market_intelligence/broker/order_manager.py
+agents/market_intelligence/broker/research_bars.py
 agents/market_intelligence/broker/sdk_pool_telemetry.py
 agents/market_intelligence/broker/shadow_orb_tracker.py
 agents/market_intelligence/broker/skip_reasons.py

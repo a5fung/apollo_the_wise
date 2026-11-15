@@ -299,6 +299,42 @@ async def get_asset(symbol: str, account_mode: str | None = None):
                            {"account_mode": account_mode})
 
 
+# ── Research market data (read-only; POST /data/bars) ────────────────────────
+# The caps live HERE — the one module both services load — so the paging in
+# research_data.py (market container) cannot drift from what
+# broker/research_bars.py (execution) enforces.
+RESEARCH_BARS_MAX_SYMBOLS = 50
+RESEARCH_BARS_MAX_ROWS = 50_000
+# Calendar days per call. 7 = five trading days plus the weekend, at 1-minute.
+RESEARCH_BARS_MAX_RANGE_DAYS = {
+    "1Min": 7, "5Min": 31, "15Min": 93, "1Hour": 366, "1Day": 3660,
+}
+
+
+class ResearchBarsRequestError(Exception):
+    """A `POST /data/bars` request that execution refused or could not serve.
+    `status` is the HTTP status (400 violation · 429 busy · 502 Alpaca error ·
+    504 Alpaca timeout); `code` names the cause (e.g. `range_too_long`,
+    `row_cap`) so the caller can react without parsing prose."""
+
+    def __init__(self, status: int, code: str, message: str):
+        super().__init__(f"{code}: {message}")
+        self.status = status
+        self.code = code
+        self.message = message
+
+
+async def _research_bars_inprocess(payload):
+    """READ-ONLY historical bars for research (`POST /data/bars` on
+    apollo-execution). Deliberately NOT in `_CROSS_FNS`: it has its own route
+    with 400-class answers, no `/exec/` twin and no dispatcher — the market
+    container reaches it through `research_data.fetch_bars`. The body touches
+    only the market-data client (broker/research_bars.py; pinned by
+    tests/test_research_bars.py)."""
+    from agents.market_intelligence.broker.research_bars import fetch_research_bars
+    return await fetch_research_bars(payload)
+
+
 def get_data_feed_name() -> str:
     """Active market-data feed as a lowercase string ('iex' / 'sip'). PURE
     CONFIG (reads ALPACA_DATA_FEED) — never crosses the execution wire and needs

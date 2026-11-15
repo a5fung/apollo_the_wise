@@ -259,3 +259,55 @@ mode-independent, and only then pin with an annotation.
   `'paper'`). It is a LABEL/fallback resolver only; every trade-bound write/read must
   thread an explicit mode (#444). Any new writer defaulting through it will put rows in
   the dormant paper book — the graduation sweep's dormant-book check is the backstop.
+
+## Research market data — `POST /data/bars` (read-only, 2026-11-15)
+
+**Why.** The Alpaca keys live only in apollo-execution (the market-agent container has them blanked — creds
+isolation), so a research script run with `docker exec apollo-market python ...` cannot read Alpaca market data.
+This is the one sanctioned path: apollo-execution fetches historical bars and returns them. It reads market data
+only — no account, order or position call anywhere in the path, and the creds stay where they are.
+
+**Use it from a docker-exec script** (the helper pages, pauses and retries for you):
+
+```bash
+docker exec apollo-market python -c "
+from agents.market_intelligence.research_data import fetch_bars
+df = fetch_bars(['SPY', 'TLT', 'GLD'], '1Min', '2026-11-09T09:30:00-05:00', '2026-11-13T16:00:00-05:00')
+print(len(df)); print(df.head())"
+```
+
+`fetch_bars(symbols, timeframe, start, end, feed=None, *, adjustment=None, as_frame=True)` → a pandas DataFrame
+`[symbol, ts (UTC), o, h, l, c, v]` sorted by symbol then time (a list of dicts with `as_frame=False`). Any number
+of symbols and any range: it splits them into calls the route allows. `start` inclusive, `end` exclusive; both must
+carry a timezone. It raises (`ResearchBarsRequestError` / `ExecutionUnreachable`) rather than return part of a range.
+
+**The route** (apollo-execution, `http://apollo-execution:8006/data/bars`, header `X-Apollo-Secret` — the same
+internal secret as `/exec/*`; the port is not published outside the compose network):
+
+| Field | Value |
+|---|---|
+| `symbols` | list of 1–50 stock / ETF tickers |
+| `timeframe` | `1Min` · `5Min` · `15Min` · `1Hour` · `1Day` |
+| `start`, `end` | ISO-8601 with a timezone (offset or `Z`); rows are `start <= ts < end` |
+| `feed` (optional) | `iex` · `sip`; omitted = the configured `ALPACA_DATA_FEED` |
+| `adjustment` (optional) | `raw` (default) · `split` · `dividend` · `all` |
+
+- **200** → `{"bars": [{"symbol", "ts" (ISO UTC), "o", "h", "l", "c", "v"}, ...], "count", "symbols", "timeframe",
+  "feed", "adjustment", "start", "end"}`, bars sorted by symbol then `ts`.
+- **Caps per call:** 50 symbols · 50,000 rows · range of 7 calendar days at `1Min` (five trading days), 31 at
+  `5Min`, 93 at `15Min`, 366 at `1Hour`, 3,660 at `1Day`.
+- **Errors** carry `{"detail": {"code", "message"}}`: **400** a request violation (`too_many_symbols`,
+  `bad_symbols`, `bad_timeframe`, `bad_time`, `naive_time`, `bad_range`, `range_too_long`, `row_cap`, `bad_feed`,
+  `bad_adjustment`, `unknown_field`, `bad_body`) · **401** wrong secret · **429** `busy` (one research fetch at a
+  time) · **502** `upstream` (Alpaca refused, e.g. a feed the subscription lacks) · **504** `timeout` (120 s).
+
+**Kept off the money path.** The fetch runs on its own one-thread executor — not the shared SDK pool that live
+order calls use, and not the breakout v1 bars thread — and a second request while one is running is refused, so
+research can occupy one thread and nothing else. It still shares Alpaca's request rate limit with the live data
+reads; the helper pauses 0.4 s between pages for that reason.
+
+**Code + guard.** Route: `execution_routes.py` → `execution_client._research_bars_inprocess` →
+`broker/research_bars.py` (caps live in `execution_client`, the module both services load). Helper:
+`agents/market_intelligence/research_data.py`. `tests/test_research_bars.py` pins the read-only guarantee by AST
+(imports limited to `alpaca.data.*` and `_get_data_client`; every call name in the module pinned; the only method
+called on the client is `get_stock_bars`). **Deploy:** market-agent, then execution (a `broker/` change).

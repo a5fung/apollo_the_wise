@@ -66,6 +66,7 @@ weaker or a correlated position is already on.
 - Where: `/app/logs/cot_minutes/<run_date_ET>.csv.gz` (bind-mounted host dir, survives deploys). Code: `agents/market_intelligence/cot_minutes_archive.py`. Each run fetches the last 8 days, so files overlap; dedupe on (market, ts_et) at read time.
 - Schedule: Saturdays 10:00 ET, intelligence-owned, one audit row per run (`cot_minutes_archive`); a run where every ticker fails pages.
 - Why: yfinance keeps only ~30 days of 1-minute history; the first-tick news-failure rule needs a true 1-minute test later. Read-only data; no detector, no alerts, no orders.
+- Stock / ETF bars (e.g. 1-minute ETF proxies) for this research: `fetch_bars` in `agents/market_intelligence/research_data.py`, run from the market container — it reads Alpaca through apollo-execution's read-only `POST /data/bars` (`docs/architecture/dual_account.md` §Research market data).
 
 ### 2026-11-15 — 1-minute archive job added (operator "Go")
 - Weekly save of 1-minute futures bars so the first-tick test can run later. Nothing trades off it.
