@@ -1149,7 +1149,8 @@ def build_entry_section(res: Resolver) -> list[str]:
     # model — `toggle()` would render "off (no row)" while the pick model is acting.
     L.append("breakout v1 (paper setup; nightly list 5:55 PM ET) — the list's ORDER is set by "
              f"`breakout_v1_ranking`: {_mode_toggle_line(res, 'breakout_v1_ranking', 'pick_model')} "
-             "(pick_model | order_score | dollar_volume; all three are stored every night; a flip acts at the next list write)")
+             "(pick_model | order_score | dollar_volume; all three are stored every night; a flip acts at the next list write; "
+             "ONLY the 'global' row is read, and any other value acts as pick_model)")
     return L
 
 

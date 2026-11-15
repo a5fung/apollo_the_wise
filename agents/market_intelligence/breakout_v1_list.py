@@ -168,7 +168,15 @@ def night_cross_section(members: list, groups: Optional[list] = None) -> tuple:
     night's groups (None with no group, or a group under 10 members)."""
     groups = list(groups) if groups is not None else [None] * len(members)
     r21, r63, r126 = ([m[k] for m in members] for k in ("r21", "r63", "r126"))
-    rs_best, _, grp, n_groups = cb.cross_section_one_date(r21, r63, r126, groups)
+    try:
+        rs_best, _, grp, n_groups = cb.cross_section_one_date(r21, r63, r126, groups)
+    except Exception as e:  # loud-ok: the industry-group step feeds ONLY the pick model (review 2026-11-14): redo the
+        # cross-section without groups for rs_best (the gates), and give the pick model no inputs tonight (`xs` None ->
+        # the order score orders the night, said in the audit row) — a group failure must not stop the list
+        logger.error(f"breakout_v1_list: the cross-section with industry groups failed (no pick score tonight): "
+                     f"{type(e).__name__}: {e}")
+        rs_best, _, _, n_groups = cb.cross_section_one_date(r21, r63, r126, [None] * len(members))
+        return rs_best, None, n_groups
     try:
         p21, p63, p126 = (cb.percentile_ranks(list(r)) for r in (r21, r63, r126))
         xs = {m["ticker"]: {"rs_1m": p21[j], "rs_3m": p63[j], "rs_6m": p126[j], "group_strength": grp[j]}
@@ -325,9 +333,16 @@ def pick_scores(inputs: list) -> list:
 
 
 def _rank_desc(rows: list, col: str) -> dict:
-    """{ticker: 1-based rank} by `col`, the highest first, ties by ticker, a missing value after every scored name
-    (by ticker) — `rank_rows`' rule, for any score column."""
-    order = sorted(rows, key=lambda r: (r.get(col) is None, -(r.get(col) or 0.0), r["ticker"]))
+    """{ticker: 1-based rank} by `col`, the highest first, ties by ticker, a missing value after every scored name —
+    those ordered by the ORDER SCORE (then ticker), so a night where only some names score never degrades to A-Z
+    (review 2026-11-14); for the order score itself that is `rank_rows`' rule unchanged."""
+    def key(r):
+        v = r.get(col)
+        if v is not None:
+            return (False, -v, 0.0, r["ticker"])
+        o = r.get("order_score")
+        return (True, 0.0, -(o if o is not None else float("-inf")), r["ticker"])
+    order = sorted(rows, key=key)
     return {r["ticker"]: k for k, r in enumerate(order, 1)}
 
 
@@ -480,6 +495,27 @@ def format_list_message(today: date, rows: list) -> Optional[str]:
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # The job
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+def ranking_alert_message(today: date, rk: Optional[dict]) -> Optional[str]:
+    """His word 2026-11-14 ("yes" to: a night the pick model fails and the order score takes over should page): one
+    plain message when the selected ranking did not order the list, or ran without part of its inputs. None on a
+    normal night. Sent whether or not breakout paper is on."""
+    if not rk:
+        return None
+    why = []
+    if rk.get("fallback"):
+        why.append(f"the {RANKING_LABEL.get(rk.get('selected'), rk.get('selected'))} scored no stock, so the "
+                   f"{RANKING_LABEL[RANKING_ORDER_SCORE]} ordered tonight's list")
+    for k, what in (("pick_error", "the pick model raised"), ("xs_error", "its strength inputs failed"),
+                    ("long_error", "its 1-year price history failed to load (it ran on 200 days)")):
+        if rk.get(k):
+            why.append(f"{what}: {str(rk[k])[:160]}")
+    if not why:
+        return None
+    from agents.market_intelligence.constants import mode_prefix
+    return (f"{mode_prefix('paper')}*Breakout v1 — the list ranking degraded* ({today.isoformat()})\n- "
+            + "\n- ".join(why) + "\nThe list was still written. Details: the breakout_v1_list_run audit row.")
+
+
 def _new_out(today: date) -> dict:
     return {"date": today.isoformat(), "skipped": None, "timed_out": False, "error": None,
             "prefilter_tickers": 0, "bad_bars": 0, "universe_n": 0, "listable_n": 0, "evaluated": 0, "passing": 0, "written": 0,
@@ -611,6 +647,14 @@ async def run_breakout_v1_list(today: Optional[date] = None) -> dict:
         logger.error(f"breakout_v1_list: failed: {e}", exc_info=True)
         first_exc = e
 
+    alert = ranking_alert_message(today, out.get("ranking")) if (rows and first_exc is None) else None
+    if alert:
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            out["ranking_alert"] = "sent" if await send_telegram_message(alert) else "send_failed"
+        except Exception as e:  # loud-ok: recorded on the audit row; the list is already written
+            out["ranking_alert"] = f"send_failed: {type(e).__name__}"
+            logger.warning(f"breakout_v1_list: the ranking alert for {today} raised: {type(e).__name__}: {e}")
     msg = format_list_message(today, rows) if (rows and not out["timed_out"] and first_exc is None) else None
     # His word 2026-11-10 ("I don't want to see these garbage charts again", after the first paper session bought
     # charts with no higher lows and no surfing average): the message goes out ONLY while breakout paper is on.
