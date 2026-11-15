@@ -356,36 +356,56 @@ def test_the_order_score_is_byte_for_byte_what_the_code_before_the_change_produc
 
 
 # ── the switch read ──────────────────────────────────────────────────────────────────────────────
-def _switch(monkeypatch, *, row="absent", exc=None, env=None):
+def _switch(monkeypatch, *, row="absent", exc=None, fail_first=0):
+    calls = {"n": 0}
+
     async def state_f(safeguard, account_mode, timeout=None):
         assert (safeguard, account_mode) == ("breakout_v1_ranking", "global")
-        if exc:
+        calls["n"] += 1
+        if exc and (not fail_first or calls["n"] <= fail_first):
             raise exc
         return None if row == "absent" else {"state": row}
     monkeypatch.setattr(bl, "get_safeguard_state", state_f)
-    if env is None:
-        monkeypatch.delenv(bl.RANKING_SWITCH_ENV, raising=False)
-    else:
-        monkeypatch.setenv(bl.RANKING_SWITCH_ENV, env)
-    return asyncio.run(bl.get_ranking())
+    monkeypatch.setattr(bl, "RANKING_READ_PAUSE_S", 0.0)
+    return asyncio.run(bl.get_ranking()) + (calls["n"],)
 
 
-def test_the_switch_reads_the_database_row_then_the_env_then_the_pick_model(monkeypatch):
-    assert _switch(monkeypatch) == ("pick_model", "default", None)                    # no row, no env: the pick model
+def test_the_switch_reads_the_database_row_and_nothing_else_no_row_is_the_pick_model(monkeypatch):
+    assert _switch(monkeypatch) == ("pick_model", "default", None, 1)                 # no row: the pick model
     for v in bl.RANKINGS:
-        assert _switch(monkeypatch, row=v) == (v, "db", None)
-        assert _switch(monkeypatch, row=f"  {v.upper()} ") == (v, "db", None)
-        assert _switch(monkeypatch, env=v) == (v, "env", None)
-    assert _switch(monkeypatch, row="order_score", env="dollar_volume")[:2] == ("order_score", "db")   # the row wins
-    # an unknown value / a failed read never stops the list: the next source, and the reason is carried to the audit row
-    r, src, note = _switch(monkeypatch, row="on")
+        assert _switch(monkeypatch, row=v) == (v, "db", None, 1)
+        assert _switch(monkeypatch, row=f"  {v.upper()} ") == (v, "db", None, 1)
+    # ONE source (review 2026-11-14 finding 7): an env var the acting-rules view cannot see must not move the order
+    monkeypatch.setenv("BREAKOUT_V1_RANKING", "dollar_volume")
+    assert _switch(monkeypatch)[:2] == ("pick_model", "default")
+    assert _switch(monkeypatch, row="order_score")[:2] == ("order_score", "db")
+    assert not hasattr(bl, "RANKING_SWITCH_ENV")
+    # an unknown value never stops the list: the pick model, and the reason is carried to the audit row
+    r, src, note, _n = _switch(monkeypatch, row="on")
     assert (r, src) == ("pick_model", "default") and "unknown switch state 'on'" in note
-    r, src, note = _switch(monkeypatch, row="banana", env="order_score")
-    assert (r, src) == ("order_score", "env") and "banana" in note
-    r, src, note = _switch(monkeypatch, exc=RuntimeError("db down"))
-    assert (r, src) == ("pick_model", "default") and "switch read failed" in note
-    r, src, note = _switch(monkeypatch, env="nonsense")
-    assert (r, src) == ("pick_model", "default") and "nonsense" in note
+
+
+def test_a_transient_switch_read_failure_is_retried_so_a_backup_choice_is_not_undone_for_a_night(monkeypatch):
+    """Review 2026-11-14 finding 6. WOULD FAIL IF one failed read fell straight to the default: the row says
+    `order_score`, the first read (or the first two) raises — the night must still be ranked by the order score."""
+    for k in (1, bl.RANKING_READ_TRIES - 1):
+        assert _switch(monkeypatch, row="order_score", exc=RuntimeError("blip"), fail_first=k) == ("order_score", "db", None, k + 1)
+    # every try failing: the pick model, noted — and it tried exactly RANKING_READ_TRIES times
+    r, src, note, n = _switch(monkeypatch, row="order_score", exc=RuntimeError("db down"))
+    assert (r, src, n) == ("pick_model", "default", bl.RANKING_READ_TRIES) and "switch read failed" in note
+
+
+def test_the_acting_rules_view_names_the_ranking_that_is_acting_with_or_without_a_row():
+    """Review 2026-11-14 finding 7 / the disclosed "off (no row)": no row means the PICK MODEL acts, and the view's
+    ENTRY section must say so; a row shows its value."""
+    from scripts import live_rules as lr
+    res = lr.Resolver({}, {}, lr.ProdState(reachable=True))
+    line = [l for l in lr.build_entry_section(res) if "breakout_v1_ranking" in l]
+    assert len(line) == 1 and "global=pick_model [no mi_safeguard_state row — code default]" in line[0]
+    res.prod.toggles = [{"safeguard": "breakout_v1_ranking", "account_mode": "global", "state": "order_score",
+                         "last_transition_at": "2026-11-16 17:00:00+00"}]
+    line = [l for l in lr.build_entry_section(res) if "breakout_v1_ranking" in l]
+    assert "global=order_score [mi_safeguard_state (set 2026-11-16)]" in line[0]
 
 
 def test_the_switch_is_a_database_row_the_acting_rules_view_discovers():
@@ -542,3 +562,201 @@ def test_the_longer_bar_load_feeds_only_the_pick_model_every_older_value_is_unch
     # ... while the 52-week facts DO read the longer load (so the pick model's order differs when it is cut to 200)
     moved = [t for t in r300 if r300[t]["gates"]["pick_inputs"]["since_low"] != r200[t]["gates"]["pick_inputs"]["since_low"]]
     assert moved and any(r300[t]["rank_pick_model"] != r200[t]["rank_pick_model"] for t in r300)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# Review 2026-11-14 (second round): the audit row fits, the pick model cannot stop the list, a bad old bar
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _busy_night_detail(n: int) -> dict:
+    """The WHOLE audit detail of an `n`-name night with real-shaped tickers: `_new_out` filled the way `_run` fills it
+    (the ticker list, the fund lists and the context-removed lists at their caps, the `ranking` block)."""
+    import random
+    import string
+    rng = random.Random(717)
+    tick = sorted({"".join(rng.choice(string.ascii_uppercase) for _ in range(rng.choice((3, 4, 4, 4, 5)))) for _ in range(3 * n)})[:n]
+    rows = [_row(t, runup=float(k % 97), spread=1.0 + (k % 13) / 10, dv=1e7 + k * 12345.678) for k, t in enumerate(tick)]
+    out = bl._new_out(date(2021, 2, 10))
+    out["ranking"] = bl.rank_all(rows, [_inputs() for _ in range(300)], "pick_model")
+    out["ranking"].update(source="default", note=None, switch=bl.RANKING_SWITCH, sic_error=None, pool_with_industry_code=2000,
+                          industry_groups=55, listed_with_group_strength=900, listed_with_52w_facts=n, long_error=None,
+                          short_bar_facts_n=bl.SHORT_FALLBACK_LIST_MAX, short_bar_facts=tick[:bl.SHORT_FALLBACK_LIST_MAX],
+                          model=pm.PROVENANCE)
+    out.update(prefilter_tickers=4000, universe_n=3000, listable_n=2800, evaluated=2700, passing=n, written=n,
+               counts={f"admitted_{k}": 1000 + k for k in range(12)}, gate_fails={f"gate_{k}": 1000 + k for k in range(22)},
+               context_removed_n={k: 400 for k in ("a", "b", "c")},
+               context_removed={k: tick[:bl.CONTEXT_REMOVED_LIST_MAX] for k in ("a", "b", "c")},
+               fund_kept_tickers=tick[:bl.FUND_EXCLUDED_LIST_MAX],
+               fund_excluded_tickers={k: tick[:bl.FUND_EXCLUDED_LIST_MAX] for k in ("fund_leveraged", "fund_no_name", "fund_multi")},
+               tickers=[r["ticker"] for r in rows], message="suppressed_paper_off", wall_s=61.2)
+    return out
+
+
+def test_the_whole_audit_row_fits_the_budget_on_the_busiest_night_and_stays_queryable_json():
+    """Review 2026-11-14 finding 3: the earlier cap test measured only the `ranking` block. The WHOLE detail of a
+    1,353-name night (era A's largest list) and of a night twice that must come out of `fit_audit_detail` under
+    mi_audit_log's budget, so `db` never wraps it as a `_head` string and `detail->'ranking'` stays a JSON object.
+    WOULD FAIL IF nothing were shed: the unfitted 2,700-name detail is over the budget (asserted)."""
+    from agents.market_intelligence import db
+    from agents.market_intelligence.consolidation_breakout_shadow import _json_safe
+    normal = _json_safe(_busy_night_detail(250))
+    assert bl.fit_audit_detail(json.loads(json.dumps(normal))) == normal            # an ordinary night: untouched
+    for n in (1353, 2700, 6000):
+        raw = _json_safe(_busy_night_detail(n))
+        fitted = bl.fit_audit_detail(json.loads(json.dumps(raw)))
+        text = json.dumps(fitted)
+        assert len(text) <= db._AUDIT_DETAIL_MAX - bl.AUDIT_HEADROOM, (n, len(text))
+        stored = json.loads(db._fit_audit_detail(text)) if hasattr(db, "_fit_audit_detail") else fitted
+        assert "_truncated" not in stored and isinstance(stored["ranking"], dict)
+        assert stored["ranking"]["top10"] == raw["ranking"]["top10"] and stored["ranking"]["ranked_by"] == "pick_model"
+        if n >= 2700:
+            assert len(json.dumps(raw)) > db._AUDIT_DETAIL_MAX                       # the unfitted row WOULD overflow
+            assert fitted["audit_shed"][0] == "ranking.scores" and fitted["ranking"]["scores"] == {}
+            assert fitted["ranking"]["scores_omitted"] == n                          # every name's copy is counted gone
+        if "tickers" in fitted.get("audit_shed", []):
+            assert fitted["tickers"] == [] and fitted["tickers_omitted"] == n
+
+
+def test_a_pick_model_failure_never_stops_the_list_the_order_score_sets_the_order_and_the_row_says_why(nights, monkeypatch):
+    """Review 2026-11-14 finding 4. WOULD FAIL IF the new code were unguarded inside the job: each of the pick
+    model's own steps raising — the scoring, the cross-section percentiles, the long bar series, the long splits read —
+    must still leave tonight's list WRITTEN (the order score and dollar volume need none of that code)."""
+    def boom(*a, **k):
+        raise RuntimeError("numpy changed")
+    # (1) the scoring raises -> no pick score, the order score sets the order, said in the audit row
+    monkeypatch.setattr(bl, "pick_scores", boom)
+    f, out, rows = _job(monkeypatch)
+    rk = out["ranking"]
+    assert rows and out["error"] is None and out["written"] == len(rows)
+    assert rk["ranked_by"] == "order_score" and rk["selected"] == "pick_model" and "scored no name" in rk["fallback"]
+    assert "numpy changed" in rk["pick_error"] and all(r["pick_score"] is None and r["list_rank"] == r["rank_order_score"] for r in rows)
+    monkeypatch.undo()
+    # (2) the cross-section's percentile step raises -> rs_best (the gates) still computed, the list written
+    #     (`cb.cross_section_one_date` makes the first 3 `percentile_ranks` calls itself — the old path; the pick
+    #     model's own 3 come after)
+    real = bl.cb.percentile_ranks
+    seen = {"n": 0}
+
+    def later_calls_fail(v):
+        seen["n"] += 1
+        if seen["n"] > 3:
+            raise RuntimeError("numpy changed")
+        return real(v)
+    monkeypatch.setattr(bl.cb, "percentile_ranks", later_calls_fail)
+    f, out, rows = _job(monkeypatch)
+    assert seen["n"] == 4
+    assert rows and out["error"] is None and out["ranking"]["ranked_by"] == "order_score" and out["ranking"]["fallback"]
+    assert out["ranking"]["xs_error"] and rows[0]["pick_score"] is None      # never scored on neutral 0.5 strength ranks
+    monkeypatch.undo()
+    assert bl.cb.percentile_ranks is real
+    # (3) the LONG series build raises (the second build_series call) -> the list written, the pick model still scores
+    #     off the 200-session bars, and the audit row names the cause and counts the names
+    n = {"calls": 0}
+    real_bs = bl.build_series
+
+    def second_fails(rows_, ci):
+        n["calls"] += 1
+        if n["calls"] == 2:
+            raise MemoryError("long series")
+        return real_bs(rows_, ci)
+    monkeypatch.setattr(bl, "build_series", second_fails)
+    f, out, rows = _job(monkeypatch)
+    rk = out["ranking"]
+    assert rows and out["error"] is None and "long series" in rk["long_error"]
+    assert rk["ranked_by"] == "pick_model" and rows[0]["pick_score"] is not None
+    assert rk["short_bar_facts_n"] >= len(rows) and rows[0]["ticker"] in rk["short_bar_facts"]
+    monkeypatch.undo()
+    # (4) the long-window splits read raises (the second get_unapplied_splits call; needs a market longer than 200
+    #     sessions, so a fixture night) -> the list written, the cause named
+    n["calls"] = 0
+    from test_breakout_v1_list import Fakes
+    night = nights[min(nights)]
+    cal = night["cal"]
+    bar_rows = [(t, cal[len(cal) - 1 + x[0]], x[3], x[1], x[2], x[3], x[4]) for t, recs in sorted(night["bars"].items()) for x in recs]
+    f = Fakes(monkeypatch, cal=cal, rows=bar_rows, types={t: ("CS", None) for t in night["bars"]})
+    real_sp = bl.get_unapplied_splits
+
+    async def second_split_read_fails(*a, **k):
+        n["calls"] += 1
+        if n["calls"] == 2:
+            raise RuntimeError("splits table")
+        return await real_sp(*a, **k)
+    monkeypatch.setattr(bl, "get_unapplied_splits", second_split_read_fails)
+    out = asyncio.run(bl.run_breakout_v1_list(cal[-1]))
+    assert n["calls"] == 2 and len(f.lists[cal[-1]]) > 50 and out["error"] is None
+    assert "splits table" in out["ranking"]["long_error"] and out["ranking"]["ranked_by"] == "pick_model"
+
+
+def _gate_stub(monkeypatch):
+    """`evaluate_members` on one synthetic passing name without real gates: returns (member, pick-less gate result)."""
+    g = {"ok": True, "failed": [], "level": 10.0, "vol_bar": 1e6, "adr20": 4.0, "close": 9.9, "gates": {}}
+    monkeypatch.setattr(bl.bv, "v1_gates", lambda bars, D, rs_best, cidx: dict(g))
+    monkeypatch.setattr(bl.bv, "order_inputs", lambda bars, D, adr: {"runup6m_adr": 5.0, "spread10_adr": 1.0})
+    seen = {}
+
+    def facts(h, l, c, D):
+        seen["n"] = D + 1
+        return (0.9, 7, 0)
+    monkeypatch.setattr(bl.pm, "base_facts", facts)
+    monkeypatch.setattr(bl.pm, "pick_inputs", lambda g_, oi, facts, xs: {"dist_52w": None if facts is None else facts[0]})
+    return seen
+
+
+class _Bars:
+    def __init__(self, n):
+        self.h = self.l = self.c = np.ones(n)
+
+    def __len__(self):
+        return len(self.c)
+
+
+def test_a_name_dropped_from_the_long_series_reads_its_52_week_facts_off_the_short_bars_and_is_named(monkeypatch):
+    """Review 2026-11-14 finding 5: one NULL / non-finite bar 201-300 sessions back drops the WHOLE ticker from the
+    long series (`build_series`), and an unapplied split in that window is taken out of it too. WOULD FAIL IF such a
+    name got no facts (it was unscored and ranked last, with no trace): it reads its facts off the 200-session bars
+    the gates read and is named in `pick["short_fallback"]`. A name WITH long bars reads the long bars, and with no
+    long series supplied at all nothing falls back (the old 'no long bars -> no facts')."""
+    seen = _gate_stub(monkeypatch)
+    short = _Bars(200)
+    members = [{"ticker": "AAA", "security_type": "CS", "listable": True, "history": True, "bars": short, "cidx": None}]
+    pick = {"xs": {}, "long": {"ZZZ": _Bars(300)}, "extra": []}                    # a long series WITHOUT AAA
+    rows, _f, _n = bl.evaluate_members(members, [90.0], date(2026, 11, 16), {}, pick)
+    assert rows[0]["pick_inputs"]["dist_52w"] == 0.9 and seen["n"] == 200 and pick["short_fallback"] == ["AAA"]
+    pick = {"xs": {}, "long": {"AAA": _Bars(300)}, "extra": []}                    # the long bars exist: they are read
+    rows, _f, _n = bl.evaluate_members(members, [90.0], date(2026, 11, 16), {}, pick)
+    assert seen["n"] == 300 and "short_fallback" not in pick
+    pick = {"xs": {}, "extra": []}                                                 # no long series at all: no fallback
+    rows, _f, _n = bl.evaluate_members(members, [90.0], date(2026, 11, 16), {}, pick)
+    assert rows[0]["pick_inputs"]["dist_52w"] is None and "short_fallback" not in pick
+
+
+def test_the_job_scores_a_name_whose_older_bars_carry_one_bad_bar_and_the_audit_row_names_it(nights, monkeypatch):
+    """Finding 5 end to end, on a fixture night through the whole job: one listed name gets a NULL close 250 sessions
+    back. Its 200-session series is clean, so it is listed exactly as before; the long series drops it — it must STILL
+    get a pick score (it had none and ranked last), every other name's row is unchanged, and the audit row names it."""
+    from test_breakout_v1_list import Fakes
+    ci = min(nights)
+    night = nights[ci]
+    cal = night["cal"]
+    bar_rows = [(t, cal[len(cal) - 1 + x[0]], x[3], x[1], x[2], x[3], x[4]) for t, recs in sorted(night["bars"].items()) for x in recs]
+    types = {t: ("CS", None) for t in night["bars"]}
+
+    def run(rows_):
+        f = Fakes(monkeypatch, cal=cal, rows=rows_, types=types)
+        out = asyncio.run(bl.run_breakout_v1_list(cal[-1]))
+        return out, {r["ticker"]: r for r in f.lists[cal[-1]]}
+    out0, base = run(bar_rows)
+    assert out0["ranking"]["short_bar_facts_n"] == 0 and out0["ranking"]["long_error"] is None
+    bad_day = cal[-250]
+    victim = next(t for t in sorted(base, key=lambda t: base[t]["list_rank"])
+                  if sum(1 for x in night["bars"][t]) >= 290 and base[t]["gates"]["pick_inputs"]["since_low"] < 150)
+    hurt = [(r[0], r[1], r[2], r[3], r[4], None, r[6]) if (r[0] == victim and r[1] == bad_day) else r for r in bar_rows]
+    assert hurt != bar_rows
+    out1, got = run(hurt)
+    assert set(got) == set(base) and got[victim]["pick_score"] is not None
+    assert got[victim]["gates"]["pick_inputs"]["dist_52w"] is not None
+    assert got[victim]["rank_pick_model"] < len(got)                                  # scored: not parked last
+    rk = out1["ranking"]
+    assert rk["short_bar_facts"] == [victim] and rk["short_bar_facts_n"] == 1 and rk["long_error"] is None
+    assert rk["ranked_by"] == "pick_model" and rk["listed_with_52w_facts"] == out0["ranking"]["listed_with_52w_facts"]
+    old_cols = ("level", "vol_bar", "adr20", "rs_best", "close", "order_score", "rank_order_score", "dollar_vol20")
+    assert all({k: got[t][k] for k in old_cols} == {k: base[t][k] for k in old_cols} for t in base)

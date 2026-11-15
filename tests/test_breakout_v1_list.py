@@ -120,7 +120,7 @@ class Fakes:
         self.sic, self.sic_exc, self.ranking_state, self.ranking_exc = {}, None, None, None
         monkeypatch.setattr(bl, "cb_get_sic", sic_f)
         monkeypatch.setattr(bl, "get_safeguard_state", state_f)
-        monkeypatch.delenv(bl.RANKING_SWITCH_ENV, raising=False)
+        monkeypatch.setattr(bl, "RANKING_READ_PAUSE_S", 0.0)
         from agents.market_intelligence import briefing
         monkeypatch.setattr(briefing, "send_telegram_message", send_f)
 

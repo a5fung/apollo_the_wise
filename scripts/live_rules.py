@@ -1143,6 +1143,13 @@ def build_entry_section(res: Resolver) -> list[str]:
              f"{_fmt(res.const('_MIN_DOLLAR_VOL_ANTICIPATION'))} (anticipation)")
     L.append(f"  direction: gap ≥ {_fmt(res.const('_MIN_GAP_PCT'), '%')} OR intraday gain ≥ {_fmt(res.const('_MIN_INTRADAY_GAIN_PCT'), '%')}; "
              f"volume anomaly ≥ {_fmt(res.const('_ADV_ANOMALY_MULTIPLIER'), '× 20-day average')}")
+    L.append("")
+    # #717 (2026-11-14): which of the three stored rankings sets the nightly list's order (and so the paper
+    # slot order). A VALUE switch with ONE source (the DB row; no env fallback) whose no-row state is the pick
+    # model — `toggle()` would render "off (no row)" while the pick model is acting.
+    L.append("breakout v1 (paper setup; nightly list 5:55 PM ET) — the list's ORDER is set by "
+             f"`breakout_v1_ranking`: {_mode_toggle_line(res, 'breakout_v1_ranking', 'pick_model')} "
+             "(pick_model | order_score | dollar_volume; all three are stored every night; a flip acts at the next list write)")
     return L
 
 

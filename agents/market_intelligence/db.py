@@ -19960,14 +19960,19 @@ async def bv1_replace_list(scan_date: date, rows: list[dict]) -> int:
 # BV1_UNGRADED_SQL: it reads the 2026-11-02 order_score column (since #717 stage 2), so a deploy whose schema lacks it
 # fails at the gate instead of at the first 09:35 tick.
 BV1_LIST_SELECT_SQL = """
-    SELECT scan_date, ticker, level, vol_bar, adr20, rs_best, close, security_type, list_rank, order_score
+    SELECT scan_date, ticker, level, vol_bar, adr20, rs_best, close, security_type, list_rank, order_score,
+           pick_score, dollar_vol20, ranked_by
       FROM mi_breakout_v1_list WHERE scan_date = $1 ORDER BY list_rank
 """
 
 
 async def bv1_get_list(scan_date: date) -> list[dict]:
     """The night's list in rank order (the entry tick's one read; `order_score` rides along since #717 stage 2 for the
-    missed-by-slots record — the column exists since the 2026-11-02 rebuild, NULL on rows written before it)."""
+    missed-by-slots record — the column exists since the 2026-11-02 rebuild, NULL on rows written before it; since
+    2026-11-14 `ranked_by` (which ranking set `list_rank`; NULL = the order score, rows before that date) and that
+    ranking's score `pick_score` / `dollar_vol20` ride along too, so a hold / missed record names the score that
+    actually set its rank. ⚠ These columns are added by the market-agent's boot DDL: deploy market-agent BEFORE
+    execution, or this read fails on the missing columns)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(BV1_LIST_SELECT_SQL, scan_date)

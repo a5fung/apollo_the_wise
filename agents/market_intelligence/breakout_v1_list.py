@@ -83,6 +83,7 @@ PREFILTER_DOLLAR_VOL = 0.7 * bv.MIN_DOLLAR_VOL
 SCAN_CHUNK = 250                      # tickers per to_thread slice: cancellation lands between slices
 FUND_EXCLUDED_LIST_MAX = 60           # fund tickers named in the audit row, per reason
 CONTEXT_REMOVED_LIST_MAX = 60         # names a context check took off the list, named in the audit row, per check
+SHORT_FALLBACK_LIST_MAX = 60          # names whose 52-week facts came off the short bars, named in the audit row
 MESSAGE_TOP_N = 10                    # the nightly message and bare /bgrade show the top 10 by list rank
 # The list's ORDER (operator-signed 2026-11-14: "pick model, let's continue to eval and keep all the old models we have
 # as backup"). All three are computed and stored every night; the switch only picks which one sets `list_rank`.
@@ -90,12 +91,14 @@ RANKING_PICK_MODEL, RANKING_ORDER_SCORE, RANKING_DOLLAR_VOLUME = "pick_model", "
 RANKINGS = (RANKING_PICK_MODEL, RANKING_ORDER_SCORE, RANKING_DOLLAR_VOLUME)
 DEFAULT_RANKING = RANKING_PICK_MODEL
 RANKING_SWITCH = "breakout_v1_ranking"      # mi_safeguard_state(safeguard, 'global').state = one of RANKINGS
-RANKING_SWITCH_ENV = "BREAKOUT_V1_RANKING"  # the fallback when no row exists; unset = DEFAULT_RANKING
+RANKING_READ_TRIES = 3                      # a failed switch read is retried (a transient miss must not un-flip a backup)
+RANKING_READ_PAUSE_S = 1.0
 RANKING_SCORE_COL = {RANKING_PICK_MODEL: "pick_score", RANKING_ORDER_SCORE: "order_score",
                      RANKING_DOLLAR_VOLUME: "dollar_vol20"}
 RANKING_RANK_COL = {k: "rank_" + k for k in RANKINGS}
 RANKING_LABEL = {RANKING_PICK_MODEL: "the pick model", RANKING_ORDER_SCORE: "the order score",
                  RANKING_DOLLAR_VOLUME: "dollar volume"}
+AUDIT_HEADROOM = 2000                 # chars kept free under mi_audit_log's detail budget (`fit_audit_detail`)
 AUDIT_SCORE_DP = 4                    # decimals of the per-name scores in the audit row
 AUDIT_SCORES_MAX = 300                # names whose three scores ride in the audit row (by list_rank; mi_audit_log's
                                       # detail budget is 32,000 chars and a busy night lists 1,000+ names). EVERY name's
@@ -155,7 +158,8 @@ def scan_members(series: dict, *, today_ci: int, types: dict, unapplied: set) ->
 
 def night_cross_section(members: list, groups: Optional[list] = None) -> tuple:
     """The night's cross-section over the WHOLE RS pool -> (rs_best per member, {ticker: the pick model's four
-    cross-section inputs}, the count of industry groups with 10+ members). `members` carry ticker / r21 / r63 / r126;
+    cross-section inputs}, the count of industry groups with 10+ members; the dict is None when the pick model's percentile step raised).
+    `members` carry ticker / r21 / r63 / r126;
     `groups` = each member's SIC 2-digit group or None (default: no groups). rs_best is `cb.cross_section_one_date`'s,
     exactly as before 2026-11-14 — it is the best of the three return percentiles and never reads the groups. The
     pick model's inputs (01_build.py::work): rs_1m / rs_3m / rs_6m = `cb.percentile_ranks` of the 21 / 63 / 126-session
@@ -164,17 +168,33 @@ def night_cross_section(members: list, groups: Optional[list] = None) -> tuple:
     groups = list(groups) if groups is not None else [None] * len(members)
     r21, r63, r126 = ([m[k] for m in members] for k in ("r21", "r63", "r126"))
     rs_best, _, grp, n_groups = cb.cross_section_one_date(r21, r63, r126, groups)
-    p21, p63, p126 = (cb.percentile_ranks(list(r)) for r in (r21, r63, r126))
-    xs = {m["ticker"]: {"rs_1m": p21[j], "rs_3m": p63[j], "rs_6m": p126[j], "group_strength": grp[j]}
-          for j, m in enumerate(members)}
+    try:
+        p21, p63, p126 = (cb.percentile_ranks(list(r)) for r in (r21, r63, r126))
+        xs = {m["ticker"]: {"rs_1m": p21[j], "rs_3m": p63[j], "rs_6m": p126[j], "group_strength": grp[j]}
+              for j, m in enumerate(members)}
+    except Exception as e:  # loud-ok: the pick model's inputs only — rs_best (the gates) is already computed; rank_all then
+        # gets no inputs (`xs` None -> the job passes no pick inputs), scores no name, falls back to the order score and
+        # says so in the audit row. Never an empty dict: the four cross-section ranks would read the neutral 0.5 on
+        # every name and the pick model would order the night without its strength inputs, silently.
+        logger.error(f"breakout_v1_list: the pick model's cross-section failed (no pick score tonight): {type(e).__name__}: {e}")
+        xs = None
     return rs_best, xs, n_groups
 
 
-def _pick_inputs_for(ticker: str, g: dict, oi: dict, pick: dict) -> dict:
+def _pick_inputs_for(ticker: str, g: dict, oi: dict, pick: dict, bars=None) -> dict:
     """One name's 16 raw pick-model inputs: the gate values + `oi`, the night's cross-section (`pick["xs"]`) and the
-    52-week facts from the LONG bars (`pick["long"]`; a name with no usable long bars has no facts -> no score)."""
+    52-week facts from the LONG bars (`pick["long"]`). A name the long series was built WITHOUT (one NULL / non-finite
+    bar 201-300 sessions back drops the whole ticker in `build_series`; an unapplied split in that older window) reads
+    its facts off its own `bars` — the 200-session series the gates just read — and is named in
+    `pick["short_fallback"]` (review 2026-11-14: it used to get no score and rank last, silently). That is
+    `base_facts`' own rule for a name with under 252 bars: the window is what exists. With no `pick["long"]` at all,
+    or no `bars` passed, a name without long bars has no facts -> no score."""
     facts = None
-    lb = (pick.get("long") or {}).get(ticker)
+    long = pick.get("long")
+    lb = (long or {}).get(ticker)
+    if lb is None and long is not None and bars is not None:
+        lb = bars
+        pick.setdefault("short_fallback", []).append(ticker)
     if lb is not None:
         try:
             facts = pm.base_facts(lb.h, lb.l, lb.c, len(lb) - 1)
@@ -218,7 +238,7 @@ def evaluate_members(members: list, rs_best: list, today: date, removed: Optiona
         if pick is not None and context_only:            # off the list, but inside the pick model's rank population
             try:
                 pick.setdefault("extra", []).append(
-                    _pick_inputs_for(m["ticker"], g, bv.order_inputs(bars, D, g["adr20"]), pick))
+                    _pick_inputs_for(m["ticker"], g, bv.order_inputs(bars, D, g["adr20"]), pick, bars))
             except Exception as e:
                 logger.warning(f"breakout_v1_list: pick inputs {m['ticker']} failed: {type(e).__name__}: {e}")
         if not g["ok"]:
@@ -232,7 +252,7 @@ def evaluate_members(members: list, rs_best: list, today: date, removed: Optiona
                "spread10_adr": oi["spread10_adr"]}
         if pick is not None:
             try:
-                pin = _pick_inputs_for(m["ticker"], g, oi, pick)
+                pin = _pick_inputs_for(m["ticker"], g, oi, pick, bars)
             except Exception as e:  # the name stays on the list; it has no pick score and ranks last under the model
                 logger.warning(f"breakout_v1_list: pick inputs {m['ticker']} failed: {type(e).__name__}: {e}")
                 pin = {}
@@ -320,7 +340,14 @@ def rank_all(rows: list, extra_inputs: Optional[list] = None, ranking: str = DEF
     if ranking not in RANKINGS:
         raise ValueError(f"rank_all: unknown ranking {ranking!r}")
     rank_rows(rows)                                               # order_score, exactly as before 2026-11-14
-    scores = pick_scores([r.get("pick_inputs") or {} for r in rows] + list(extra_inputs or []))
+    pick_error = None
+    try:
+        scores = pick_scores([r.get("pick_inputs") or {} for r in rows] + list(extra_inputs or []))
+    except Exception as e:  # loud-ok: the order score and dollar volume need none of the pick model's code — the list is
+        # still ranked and written (the FALLBACK below), and the audit row names the cause
+        pick_error = f"{type(e).__name__}: {e}"
+        logger.error(f"breakout_v1_list: the pick model raised (no pick score tonight): {pick_error}", exc_info=True)
+        scores = [None] * len(rows)
     for r, s in zip(rows, scores):
         r["pick_score"] = s
         r.setdefault("dollar_vol20", (r.get("pick_inputs") or {}).get("dollar_vol20"))
@@ -340,7 +367,7 @@ def rank_all(rows: list, extra_inputs: Optional[list] = None, ranking: str = DEF
 
     def rnd(x):
         return None if x is None else round(float(x), AUDIT_SCORE_DP)
-    return {"selected": ranking, "ranked_by": used, "fallback": fallback, "scored": scored,
+    return {"selected": ranking, "ranked_by": used, "fallback": fallback, "pick_error": pick_error, "scored": scored,
             "population_n": len(rows) + len(extra_inputs or []), "context_removed_in_population": len(extra_inputs or []),
             "top10": {k: [r["ticker"] for r in sorted(rows, key=lambda r: r[RANKING_RANK_COL[k]])[:MESSAGE_TOP_N]]
                       for k in RANKINGS},
@@ -352,31 +379,61 @@ def rank_all(rows: list, extra_inputs: Optional[list] = None, ranking: str = DEF
             "scores_omitted": max(0, len(rows) - AUDIT_SCORES_MAX)}
 
 
+def fit_audit_detail(pub: dict, budget: Optional[int] = None) -> dict:
+    """The run summary, made to FIT `mi_audit_log`'s detail budget so the row stays queryable JSON (past the budget
+    `db` wraps the payload as a `_head` STRING and `detail->'ranking'` is gone; review 2026-11-14: the whole row read
+    29.8k of 32k on a 1,353-name night). Shed in order, each marked in `audit_shed`, only while over: the per-name
+    copy of the scores (`ranking.scores`; `scores_omitted` then counts every name), then the night's ticker list.
+    Both are copies — the list table carries every name with all three scores and ranks. Returns `pub` (in place)."""
+    if budget is None:
+        from agents.market_intelligence.db import _AUDIT_DETAIL_MAX
+        budget = _AUDIT_DETAIL_MAX - AUDIT_HEADROOM
+    if len(json.dumps(pub)) <= budget:
+        return pub
+    shed = pub.setdefault("audit_shed", [])
+    rk = pub.get("ranking") or {}
+    if rk.get("scores"):
+        rk["scores_omitted"] = int(rk.get("scores_omitted") or 0) + len(rk["scores"])
+        rk["scores"] = {}
+        shed.append("ranking.scores")
+    if len(json.dumps(pub)) > budget and pub.get("tickers"):
+        pub["tickers_omitted"] = len(pub["tickers"])
+        pub["tickers"] = []
+        shed.append("tickers")
+    if len(json.dumps(pub)) > budget:
+        logger.error(f"breakout_v1_list: the audit detail is still {len(json.dumps(pub))} chars after shedding {shed}")
+    return pub
+
+
 async def get_ranking() -> tuple:
-    """Which ranking sets `list_rank` tonight -> (ranking, source, note). Precedence: the
-    `mi_safeguard_state('breakout_v1_ranking', 'global')` row's state -> the BREAKOUT_V1_RANKING env var -> the pick
-    model. An unknown value or a failed read falls to the next source and is NOTED (the audit row carries it); nothing
-    here can stop the list. The literal name is passed so `scripts/live_rules.py` sees the switch. Flip (no deploy;
-    acts from the next list write) — SQL in docs/setups/consolidation_breakout.md, 2026-11-14."""
-    import os
-    note = None
-    try:
-        row = await get_safeguard_state("breakout_v1_ranking", "global")
+    """Which ranking sets `list_rank` tonight -> (ranking, source, note). ONE source: the
+    `mi_safeguard_state('breakout_v1_ranking', 'global')` row's state; no row = the pick model (source "default").
+    There is NO env fallback (review 2026-11-14: a second source the acting-rules view could not see). A failed read
+    is retried `RANKING_READ_TRIES` times — a row that says `order_score` must not become the pick model for a night
+    on one transient miss; if every try fails, or the state is unknown, the pick model orders the night, the reason is
+    NOTED (the audit row carries it) and logged at ERROR. Nothing here can stop the list. The literal name is passed
+    so `scripts/live_rules.py` sees the switch. Flip (no deploy; acts from the next list write) — SQL in
+    docs/setups/consolidation_breakout.md, 2026-11-14."""
+    err = None
+    for attempt in range(RANKING_READ_TRIES):
+        try:
+            row = await get_safeguard_state("breakout_v1_ranking", "global")
+        except Exception as e:  # loud-ok: an order switch for a paper list — retried, then the default, noted in the audit row
+            err = e
+            logger.warning(f"breakout_v1_list: {RANKING_SWITCH} read failed (try {attempt + 1}/{RANKING_READ_TRIES}): {e}")
+            if attempt + 1 < RANKING_READ_TRIES:
+                await asyncio.sleep(RANKING_READ_PAUSE_S)
+            continue
         state = str(row["state"]).strip().lower() if row is not None and row["state"] is not None else ""
         if state in RANKINGS:
             return state, "db", None
         if state:
-            note = f"unknown switch state {state!r}"
-            logger.warning(f"breakout_v1_list: {RANKING_SWITCH} row carries unknown state {state!r}")
-    except Exception as e:  # loud-ok: an order switch for a paper list — fail to the env / default, noted in the audit row
-        note = f"switch read failed: {type(e).__name__}"
-        logger.warning(f"breakout_v1_list: {RANKING_SWITCH} read failed -> env/default: {e}")
-    env = (os.environ.get(RANKING_SWITCH_ENV) or "").strip().lower()
-    if env in RANKINGS:
-        return env, "env", note
-    if env:
-        note = "; ".join(x for x in (note, f"unknown env value {env!r}") if x)
-    return DEFAULT_RANKING, "default", note
+            logger.error(f"breakout_v1_list: {RANKING_SWITCH} row carries unknown state {state!r} - the pick model orders tonight")
+            return DEFAULT_RANKING, "default", f"unknown switch state {state!r}"
+        return DEFAULT_RANKING, "default", None
+    logger.error(f"breakout_v1_list: {RANKING_SWITCH} unreadable after {RANKING_READ_TRIES} tries - the pick model "
+                 f"orders tonight whatever the row says: {err}")
+    return DEFAULT_RANKING, "default", f"switch read failed {RANKING_READ_TRIES}x: {type(err).__name__}"
 
 
 def _score_str(x) -> str:
@@ -445,10 +502,19 @@ async def _run(today: date, out: dict) -> list:
     out["prefilter_tickers"] = len(tickers)
     types = await bv1_get_security_types_named(tickers)
     unapplied = {s["ticker"] for s in await get_unapplied_splits(start, upto=today)}
-    long_unapplied = (unapplied if long_start == start
-                      else {s["ticker"] for s in await get_unapplied_splits(long_start, upto=today)})
     series, sstats = await asyncio.to_thread(build_series, rows, cal_index)
-    long_series, _ = await asyncio.to_thread(build_series, long_rows, cal_index)
+    # The pick model's LONG series, isolated (review 2026-11-14): the list, the order score and dollar volume need
+    # none of it, so a failure here costs the night its 52-week look-back (every name then reads its facts off the
+    # 200-session bars, counted in `ranking.short_bar_facts_n`), never the list.
+    long_error = None
+    try:
+        long_unapplied = (unapplied if long_start == start
+                          else {s["ticker"] for s in await get_unapplied_splits(long_start, upto=today)})
+        long_series, _ = await asyncio.to_thread(build_series, long_rows, cal_index)
+    except Exception as e:  # loud-ok: named in the audit row (`ranking.long_error`) and logged at ERROR
+        long_unapplied, long_series, long_error = set(), {}, f"{type(e).__name__}: {e}"
+        logger.error(f"breakout_v1_list: the pick model's long bar series failed (52-week facts off the short bars "
+                     f"tonight): {long_error}", exc_info=True)
     del rows, long_rows
     out["bad_bars"] = sstats.get("bad_bars", 0)
     today_ci = cal_index[today]
@@ -483,7 +549,9 @@ async def _run(today: date, out: dict) -> list:
     groups = [(sic.get(m["ticker"]) or {}).get("sic2") or cb.sic2((sic.get(m["ticker"]) or {}).get("sic_code"))
               for m in members]
     rs_best, xs, n_groups = night_cross_section(members, groups)
-    pick = {"xs": xs, "long": {t: b for t, (b, _c) in long_series.items() if t not in long_unapplied}, "extra": []}
+    xs_error = None if xs is not None else "the cross-section percentiles raised (see the log)"
+    pick = None if xs is None else {
+        "xs": xs, "long": {t: b for t, (b, _c) in long_series.items() if t not in long_unapplied}, "extra": []}
     del long_series
     ranking, ranking_source, ranking_note = await get_ranking()
     list_rows, fails, n_eval, removed = [], Counter(), 0, {}
@@ -493,13 +561,18 @@ async def _run(today: date, out: dict) -> list:
         list_rows.extend(r_)
         fails.update(f_)
         n_eval += e_
-    out["ranking"] = rank_all(list_rows, pick["extra"], ranking)
+    short_fb = sorted(set((pick or {}).get("short_fallback") or []))
+    out["ranking"] = rank_all(list_rows, (pick or {}).get("extra"), ranking)
     out["ranking"].update(source=ranking_source, note=ranking_note, switch=RANKING_SWITCH, sic_error=sic_error,
                           pool_with_industry_code=sum(1 for g_ in groups if g_ is not None), industry_groups=n_groups,
                           listed_with_group_strength=sum(1 for r in list_rows
                                                          if (r.get("pick_inputs") or {}).get("group_strength") is not None),
                           listed_with_52w_facts=sum(1 for r in list_rows
                                                     if (r.get("pick_inputs") or {}).get("dist_52w") is not None),
+                          # names whose 52-week facts were read off the 200-session bars (no usable long series: a
+                          # bad bar or an unapplied split 201-300 sessions back, or `long_error`); listed + context-removed
+                          long_error=long_error, xs_error=xs_error, short_bar_facts_n=len(short_fb),
+                          short_bar_facts=short_fb[:SHORT_FALLBACK_LIST_MAX],
                           model=pm.PROVENANCE)
     out["evaluated"], out["passing"], out["gate_fails"] = n_eval, len(list_rows), dict(fails)
     out["context_removed_n"] = {k: len(v) for k, v in removed.items()}
@@ -553,7 +626,7 @@ async def run_breakout_v1_list(today: Optional[date] = None) -> dict:
             out["message"] = "send_failed"
             logger.warning(f"breakout_v1_list: the list message for {today} raised: {type(e).__name__}: {e}")
     out["wall_s"] = round(time.monotonic() - t0, 1)
-    pub = _json_safe(out)
+    pub = fit_audit_detail(_json_safe(out))
     if out["skipped"]:
         summary = f"{today}: skipped - {out['skipped']}"
     else:
