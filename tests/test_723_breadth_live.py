@@ -446,8 +446,9 @@ def test_a_good_refresh_writes_the_contract_and_one_audit_row(paths):
     res = asyncio.run(bl.refresh_once(NOW, TODAY, fetch=_fetch_ok, ref_path=paths.ref_path, out_dir=paths.out_dir))
     live = json.loads((paths.out_dir / bl.LIVE_NAME).read_text())
     assert set(live) == {"version", "as_of", "reference_as_of", "universe_n", "read_n", "missing_n", "highs_lows",
-                         "adv_dec", "ecosystems_1d", "themes_1d"}
+                         "adv_dec", "ecosystems_1d", "themes_1d", "final"}
     assert live["as_of"] == "2026-11-10T11:45:03 ET" and live["reference_as_of"] == "2026-11-09"
+    assert live["final"] is False                                   # 11:45 is not the close slot (#724)
     assert live["highs_lows"] == {"eligible_n": 5, "new_highs": 1, "new_lows": 2}
     assert live["universe_n"] == 51 and live["read_n"] == 48 and live["missing_n"] == 3
     assert res["read_n"] == 48 and res["push_problem"] is None
@@ -1054,3 +1055,14 @@ def test_snapshot_batch_exposes_the_daily_bar_high_and_low(monkeypatch):
     sn = out["AAA"]
     assert sn["daily_bar_high"] == 12.25 and sn["daily_bar_low"] == 10.75
     assert sn["daily_bar_close"] == 11.5 and sn["price"] == 12.0        # pre-#723 keys unchanged
+
+
+# ═══════════════════════════════════════════════════════════════════════════ #724 the session's final read
+
+@pytest.mark.parametrize("d,hm,final", [((2026, 11, 27), (12, 45), False), ((2026, 11, 27), (13, 0), True),
+                                        ((2026, 11, 10), (13, 0), False), ((2026, 11, 10), (15, 45), False),
+                                        ((2026, 11, 10), (16, 0), True)])
+def test_the_close_slot_is_the_final_read(d, hm, final):
+    """#724: the read at the session close (13:00 on the 11-27 half day, 16:00 otherwise) is marked final, so the
+    dashboard holds it as today's close whatever its clock time."""
+    assert bl.is_final_read(datetime(*d, *hm, 2, tzinfo=_ET)) is final

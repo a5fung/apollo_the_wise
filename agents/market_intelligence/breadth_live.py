@@ -138,6 +138,12 @@ def in_refresh_window(now_et: datetime) -> bool:
     return WINDOW_START <= hm <= window_end(now_et.date())
 
 
+def is_final_read(now_et: datetime) -> bool:
+    """True for the read taken at (or after) the session close — the last refresh in_refresh_window allows."""
+    n = now_et.astimezone(_ET)
+    return (n.hour, n.minute) >= window_end(n.date())
+
+
 # ── reference ────────────────────────────────────────────────────────────────────────────────────
 
 def load_reference(path: Path | None = None) -> dict:
@@ -417,6 +423,9 @@ async def refresh_once(now_et: datetime, today: date, *, fetch=None, ref_path: P
         "version": 1,
         "as_of": now_et.astimezone(_ET).strftime("%Y-%m-%dT%H:%M:%S") + " ET",
         "reference_as_of": ref["as_of"],
+        # #724: the session's last read (the close slot: 16:00, or 13:00 on a half day). The dashboard holds a final
+        # read as today's close whatever its clock time, so a 13:00 half-day close is not mistaken for a mid-day read.
+        "final": is_final_read(now_et),
         **numbers,
     }
     write_live(payload, out_dir)
