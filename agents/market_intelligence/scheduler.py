@@ -229,6 +229,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "model_resolution_refresh", "judge_eval_divergence_check",
     "missed_job_recovery",  # #672 2026-09-20 — the ledger-derived re-run of missed daily jobs; INTELLIGENCE by construction (it excludes EXECUTION_OWNED_JOB_IDS itself and never touches the broker)
     "breadth_live_refresh",  # #723 2026-11-10 — live market breadth (Today view): Alpaca SIP snapshot READ, one JSON file + ONE audit row WRITTEN under /app/logs; no DB table, no broker import, no money path
+    "cot_minutes_archive",  # 2026-11-15 - weekly COT 1-minute futures archive: yfinance READ, one gzip CSV + ONE audit row WRITTEN under /app/logs; no DB table, no broker import, no money path
 })
 
 
@@ -7077,6 +7078,13 @@ async def _telegram_poll_watchdog_job():
         logger.warning(f"telegram poll watchdog error: {e}")
 
 
+async def _cot_minutes_archive_job():
+    """Weekly (Sat 10:00 ET) save of 1-minute futures bars for the COT family. Read-only; no money path.
+    SSoT: docs/setups/cot_family.md."""
+    from agents.market_intelligence import cot_minutes_archive
+    return await cot_minutes_archive.run_scheduled()
+
+
 async def _breadth_live_refresh_job():
     """Every 15 min, 09:45-16:00 ET on trading days (#723). Recounts the Market Breadth page's TODAY
     numbers (new highs / lows, advances / declines, group + theme 1-day returns) from real-time
@@ -7748,6 +7756,16 @@ def start_scheduler() -> AsyncIOScheduler:
         id="breadth_live_refresh",
         replace_existing=True,
         misfire_grace_time=120,
+    )
+
+    # COT 1-minute archive (2026-11-15): Saturdays 10:00 ET; yfinance keeps ~30 days of 1m bars, a weekly 8-day
+    # save loses nothing. Intelligence-owned, read-only.
+    _scheduler.add_job(
+        audit_wrap(_cot_minutes_archive_job, "cot_minutes_archive"),
+        CronTrigger(day_of_week="sat", hour=10, minute=0, timezone="America/New_York"),
+        id="cot_minutes_archive",
+        replace_existing=True,
+        misfire_grace_time=3600,
     )
 
     # Stop-coverage repair RETRY: every 5 min, 09:31-15:55 ET (#596). The
