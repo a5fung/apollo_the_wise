@@ -607,3 +607,15 @@ def test_deploy_routes_the_change_to_execution():
     assert "agents/market_intelligence/broker/research_bars.py" in listed
     assert "agents/market_intelligence/execution_client.py" in listed
     assert "agents/market_intelligence/execution_routes.py" in listed
+
+
+
+def test_research_is_refused_during_the_orb_window():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from agents.market_intelligence.execution_routes import research_blocked_now
+    et = ZoneInfo("America/New_York")
+    assert research_blocked_now(datetime(2026, 11, 16, 9, 30, tzinfo=et))          # Monday, ORB
+    assert not research_blocked_now(datetime(2026, 11, 16, 10, 5, tzinfo=et))      # window over
+    assert not research_blocked_now(datetime(2026, 11, 16, 9, 24, tzinfo=et))
+    assert not research_blocked_now(datetime(2026, 11, 15, 9, 30, tzinfo=et))      # Sunday
