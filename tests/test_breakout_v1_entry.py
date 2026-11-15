@@ -2739,6 +2739,27 @@ async def test_two_names_break_in_one_minute_with_one_free_slot_the_higher_rank_
 
 
 @pytest.mark.asyncio
+async def test_the_slot_goes_by_list_rank_even_when_the_order_score_says_the_opposite(monkeypatch):
+    """2026-11-14 (the pick model orders the list; `breakout_v1_ranking` picks which ranking sets `list_rank`): the
+    entry job seats by `list_rank` ALONE. Here the order score — now only a stored backup — is highest on the
+    WORST-ranked name: R3 and R5 break in the same minute with one slot free; rank 3 still seats, rank 5 is held and,
+    never seating, is the one recorded missed at 15:55. So whichever ranking the switch selects governs the slots."""
+    rows = [dict(r, order_score=round(r["list_rank"] / 10, 3)) for r in _ranked(5)]        # rank 5 has the TOP order score
+    assert max(rows, key=lambda r: r["order_score"])["ticker"] == "R5"
+    names = [r["ticker"] for r in rows]
+    bars = {t: _bars_breaking_in(386, breaks=[42] if t in ("R3", "R5") else []) for t in names}
+    w = World(monkeypatch, list_rows=rows, bars=bars, rows=[_lane_row(f"L{k}", 100 + k) for k in range(1, 5)])
+    out = await w.tick(at=(10, 13))
+    assert _funnel_tickers(w) == ["R3"]
+    assert out["actions"]["R3"] == ep.ACTION_AUTO_ENTERED and out["actions"]["R5"] == "held_slots_full"
+    assert [h["ticker"] for h in _held(w)] == ["R5"] and _held(w)[0]["list_rank"] == 5
+    # the 15:55 candidates are read in list-rank order too, never by a score column
+    first = {"AAA": {"list_rank": 2, "order_score": 0.99, "pick_score": 3.0},
+             "BBB": {"list_rank": 1, "order_score": 0.01, "pick_score": -9.0}}
+    assert be._never_seated(first, {}) == ["BBB", "AAA"]
+
+
+@pytest.mark.asyncio
 async def test_a_held_name_seats_only_in_a_later_minute_that_is_again_through_the_level_with_a_slot_free(monkeypatch):
     """A name that broke with the book full is held; a slot freeing while it trades back UNDER its level seats nothing
     (no resting buy); it goes to the funnel in the first later minute whose bar is through the level again."""

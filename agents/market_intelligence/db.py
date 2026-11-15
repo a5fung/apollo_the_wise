@@ -19850,7 +19850,8 @@ _BREAKOUT_V1_DDL = """
         close       DOUBLE PRECISION,
         security_type TEXT,                             -- CS / ADRC / ETV (a kept single-asset fund) / '' (unknown)
         gates       JSONB NOT NULL,                     -- breakout_v1.v1_gates: every gate's pass + value
-        list_rank   INT NOT NULL,                       -- 1 = the highest order_score that night (rs_best before 2026-11-02)
+        list_rank   INT NOT NULL,                       -- 1 = first in the night's order: the rank under `ranked_by` (the pick
+                                                        -- model since 2026-11-14; the order score 11-02..11-14; rs_best before)
         order_score DOUBLE PRECISION,                   -- the night's order score (2026-11-02; see the ALTERs below)
         runup6m_adr DOUBLE PRECISION,                   -- its input: the 6-month run-up in daily ranges
         spread10_adr DOUBLE PRECISION,                  -- its input: the last-10-close spread in daily ranges
@@ -19875,10 +19876,23 @@ _BREAKOUT_V1_DDL = """
     ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS order_score DOUBLE PRECISION;
     ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS runup6m_adr DOUBLE PRECISION;
     ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS spread10_adr DOUBLE PRECISION;
+    -- The list's ORDER since 2026-11-14 (operator-signed: "pick model, let's continue to eval and keep all the old
+    -- models we have as backup"): THREE rankings are stored on every row every night so any of them can be evaluated
+    -- later — the pick model's score (breakout_v1_pick_model.py; log-odds, comparable only inside one scan_date), the
+    -- order score above, and the 20-session median dollar volume — each with its 1-based rank that night. `ranked_by`
+    -- names the one that set list_rank ('pick_model' | 'order_score' | 'dollar_volume'; the switch is
+    -- mi_safeguard_state('breakout_v1_ranking', 'global')). All NULL on rows written before the change.
+    ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS pick_score DOUBLE PRECISION;
+    ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS dollar_vol20 DOUBLE PRECISION;
+    ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS rank_pick_model INT;
+    ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS rank_order_score INT;
+    ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS rank_dollar_volume INT;
+    ALTER TABLE mi_breakout_v1_list ADD COLUMN IF NOT EXISTS ranked_by TEXT;
 """
 
 BV1_LIST_COLS = ("scan_date", "ticker", "level", "vol_bar", "adr20", "rs_best", "close", "security_type", "gates",
-                 "list_rank", "order_score", "runup6m_adr", "spread10_adr")
+                 "list_rank", "order_score", "runup6m_adr", "spread10_adr",
+                 "pick_score", "dollar_vol20", "rank_pick_model", "rank_order_score", "rank_dollar_volume", "ranked_by")
 _BV1_LIST_JSONB = frozenset({"gates"})
 BV1_LIST_INSERT_SQL = (
     f"INSERT INTO mi_breakout_v1_list ({', '.join(BV1_LIST_COLS)}) VALUES ("
@@ -19895,7 +19909,8 @@ BV1_GRADE_UPSERT_SQL = (
 # deploy whose schema lacks it fails at the gate instead of on his first bare /bgrade).
 BV1_UNGRADED_SQL = """
     WITH n AS (SELECT DISTINCT scan_date FROM mi_breakout_v1_list ORDER BY scan_date DESC LIMIT $1)
-    SELECT l.scan_date, l.ticker, l.level, l.rs_best, l.list_rank, l.order_score
+    SELECT l.scan_date, l.ticker, l.level, l.rs_best, l.list_rank, l.order_score,
+           l.pick_score, l.dollar_vol20, l.ranked_by
       FROM mi_breakout_v1_list l JOIN n ON n.scan_date = l.scan_date
      WHERE NOT EXISTS (SELECT 1 FROM mi_breakout_v1_grades g
                         WHERE g.scan_date = l.scan_date AND g.ticker = l.ticker)
