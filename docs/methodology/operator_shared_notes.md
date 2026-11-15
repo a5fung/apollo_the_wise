@@ -3062,3 +3062,6 @@ Sheet `scripts/probes/_717_rank2_1114/sheet_missed_by_live.png` (12 of 50 buys t
 
 ## 2026-11-14 — SIGNED: the pick model orders the breakout list (#717)
 His words: > "pick model, let's continue to eval and keep all the old models we have as backup". Built: the pick model sets list_rank; order score and dollar volume computed and stored nightly as switchable backups (`mi_safeguard_state` breakout_v1_ranking). Paper stays OFF.
+
+## 2026-11-14 — breakout setup grades A+ / A / B / C (#717)
+His words: > "on ranking breakouts, do we keep a record of ranks? Idea, if we record whats an A+ setup, A, B, C, setup etc. we can go back to review if our ranking/rating is good, and I can review charts of A+ vs others to help refine as we gather breakouts each week". Agreed plan ("aligned"): grade by pick-model SCORE (not nightly position) with cutoffs from the research's Qullamaggie buy rates per score band, shown to him before live; a weekly A+ vs B/C chart sheet for his eye. Cutoffs + a sample sheet Sun 11-15 with the #594 sheet.
