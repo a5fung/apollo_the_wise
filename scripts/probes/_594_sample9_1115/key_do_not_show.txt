@@ -1,0 +1,14 @@
+#594 sample #9 key: page letter -> arm and outcome. NOT shown to him (outcome-blind, his 10-10 ruling).
+RULE: sample 8's query with sample 8's pairs excluded, every ruled (ticker, date) excluded, tickers in his notes / labelled EPs / ruled charts / breakout grades excluded; one row per ticker; 12 drawn AT RANDOM across both arms (seed 1115). Page: ~2 years of history, the gap day the last bar.
+A|TVTX|2026-08-05|ARM_D|pct_20d=8
+B|SMWB|2026-08-12|ARM_D|pct_20d=1
+C|CRWV|2026-08-12|ARM_C|pct_20d=-18
+D|UMAC|2026-08-14|ARM_D|pct_20d=-29
+E|ACN|2026-10-01|ARM_C|pct_20d=14
+F|SWIM|2026-08-05|ARM_D|pct_20d=-1
+G|INTR|2026-10-05|ARM_D|pct_20d=-38
+H|ANF|2026-08-26|ARM_D|pct_20d=2
+I|WOLF|2026-10-08|ARM_C|pct_20d=-42
+J|CART|2026-08-07|ARM_D|pct_20d=2
+K|SGMT|2026-09-30|ARM_D|pct_20d=1
+L|TATT|2026-08-05|ARM_C|pct_20d=-25

@@ -107,7 +107,7 @@ RULING_DATE = "2026-08-25"          # session 1 — the original eleven
 # review sample #1 (ten names where our score and the outcome disagreed). Every member
 # carries its own `ruling_date`; this set is what a test may check membership against, so
 # a typo cannot invent a session that never happened.
-RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06", "2026-09-23", "2026-10-05", "2026-10-29", "2026-11-02", "2026-11-04", "2026-11-07", "2026-11-09"})
+RULING_SESSIONS = frozenset({"2026-08-25", "2026-09-06", "2026-09-23", "2026-10-05", "2026-10-29", "2026-11-02", "2026-11-04", "2026-11-07", "2026-11-09", "2026-11-15"})
 # The eleven BAD_CHART members of session 1 are the population the v3 backtest measured.
 # Later BAD_CHART rulings are NOT in it — the doc's numbers are against these only.
 V3_MEASURED_POPULATION_SIZE = 11
@@ -1065,6 +1065,73 @@ CHART_RULINGS: list[ChartRuling] = [
         operator_words="no, worse of group",
         gap_open_pct=11.3, ret_5d=None,
         prior_runup_note='WE SKIPPED IT: best score 30.0, catalyst=routine. 20 sessions later 4%. Volume 3.5x. Ruled outcome-blind (sample 8, card L).',
+    ),
+    # ── #594 sample #9 (2026-11-15), ruled OUTCOME-BLIND on the 2-year page (`scripts/probes/_594_sample9_1115/sample9_blind.png`,
+    #    the gap day the last bar). Drawn AT RANDOM (seed 1115) from both arms; sample 8's query with sample 8's pairs excluded,
+    #    and tickers in his notes / labelled EPs / ruled charts / breakout grades excluded. "good" GOOD_CHART, "ok" OKISH_CHART,
+    #    "no" BAD_CHART; his "maybe" (H, J) and "50/50" (E) are NOT filed — no verdict class holds an undecided call. ──
+    ChartRuling(
+        ticker='TVTX', alert_date='2026-08-05', verdict=GOOD_CHART,
+        label_source="operator", ruling_date="2026-11-15",
+        operator_words='good',
+        gap_open_pct=10.7, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 38.9, catalyst=strong. 20 sessions later 8%. Volume 4.6x. Ruled outcome-blind (sample 9, card A).',
+    ),
+    ChartRuling(
+        ticker='SMWB', alert_date='2026-08-12', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-11-15",
+        operator_words='ok',
+        gap_open_pct=10.3, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 18.0, catalyst=routine. 20 sessions later 1%. Volume 7.1x. Ruled outcome-blind (sample 9, card B).',
+    ),
+    ChartRuling(
+        ticker='CRWV', alert_date='2026-08-12', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-11-15",
+        operator_words='ok',
+        gap_open_pct=20.3, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 51.6, catalyst=routine. 20 sessions later -18%. Volume 3.2x. Ruled outcome-blind (sample 9, card C).',
+    ),
+    ChartRuling(
+        ticker='UMAC', alert_date='2026-08-14', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-11-15",
+        operator_words='ok',
+        gap_open_pct=16.9, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 14.4, catalyst=routine. 20 sessions later -29%. Volume 4.3x. Ruled outcome-blind (sample 9, card D).',
+    ),
+    ChartRuling(
+        ticker='SWIM', alert_date='2026-08-05', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-15",
+        operator_words="no, gapped into it's choppy range still",
+        gap_open_pct=22.3, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 36.0, catalyst=routine. 20 sessions later -1%. Volume 6.0x. Ruled outcome-blind (sample 9, card F).',
+    ),
+    ChartRuling(
+        ticker='INTR', alert_date='2026-10-05', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-15",
+        operator_words='no',
+        gap_open_pct=18.8, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 33.8, catalyst=routine. 20 sessions later -38%. Volume 6.1x. Ruled outcome-blind (sample 9, card G).',
+    ),
+    ChartRuling(
+        ticker='WOLF', alert_date='2026-10-08', verdict=OKISH_CHART,
+        label_source="operator", ruling_date="2026-11-15",
+        operator_words='ok',
+        gap_open_pct=11.6, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 73.8, catalyst=strong. 20 sessions later -42%. Volume 8.0x. Ruled outcome-blind (sample 9, card I).',
+    ),
+    ChartRuling(
+        ticker='SGMT', alert_date='2026-09-30', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-15",
+        operator_words='no',
+        gap_open_pct=13.7, ret_5d=None,
+        prior_runup_note='WE SKIPPED IT: best score 27.5, catalyst=routine. 20 sessions later 1%. Volume 4.7x. Ruled outcome-blind (sample 9, card K).',
+    ),
+    ChartRuling(
+        ticker='TATT', alert_date='2026-08-05', verdict=BAD_CHART,
+        label_source="operator", ruling_date="2026-11-15",
+        operator_words='no',
+        gap_open_pct=18.3, ret_5d=None,
+        prior_runup_note='WE ALERTED HIGH: score 61.9, catalyst=strong. 20 sessions later -25%. Volume 4.4x. Ruled outcome-blind (sample 9, card L).',
     ),
 ]
 
