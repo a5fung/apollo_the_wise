@@ -168,7 +168,15 @@ def night_cross_section(members: list, groups: Optional[list] = None) -> tuple:
     night's groups (None with no group, or a group under 10 members)."""
     groups = list(groups) if groups is not None else [None] * len(members)
     r21, r63, r126 = ([m[k] for m in members] for k in ("r21", "r63", "r126"))
-    rs_best, _, grp, n_groups = cb.cross_section_one_date(r21, r63, r126, groups)
+    try:
+        rs_best, _, grp, n_groups = cb.cross_section_one_date(r21, r63, r126, groups)
+    except Exception as e:  # loud-ok: the industry-group step feeds ONLY the pick model (review 2026-11-14): redo the
+        # cross-section without groups for rs_best (the gates), and give the pick model no inputs tonight (`xs` None ->
+        # the order score orders the night, said in the audit row) — a group failure must not stop the list
+        logger.error(f"breakout_v1_list: the cross-section with industry groups failed (no pick score tonight): "
+                     f"{type(e).__name__}: {e}")
+        rs_best, _, _, n_groups = cb.cross_section_one_date(r21, r63, r126, [None] * len(members))
+        return rs_best, None, n_groups
     try:
         p21, p63, p126 = (cb.percentile_ranks(list(r)) for r in (r21, r63, r126))
         xs = {m["ticker"]: {"rs_1m": p21[j], "rs_3m": p63[j], "rs_6m": p126[j], "group_strength": grp[j]}
@@ -325,9 +333,16 @@ def pick_scores(inputs: list) -> list:
 
 
 def _rank_desc(rows: list, col: str) -> dict:
-    """{ticker: 1-based rank} by `col`, the highest first, ties by ticker, a missing value after every scored name
-    (by ticker) — `rank_rows`' rule, for any score column."""
-    order = sorted(rows, key=lambda r: (r.get(col) is None, -(r.get(col) or 0.0), r["ticker"]))
+    """{ticker: 1-based rank} by `col`, the highest first, ties by ticker, a missing value after every scored name —
+    those ordered by the ORDER SCORE (then ticker), so a night where only some names score never degrades to A-Z
+    (review 2026-11-14); for the order score itself that is `rank_rows`' rule unchanged."""
+    def key(r):
+        v = r.get(col)
+        if v is not None:
+            return (False, -v, 0.0, r["ticker"])
+        o = r.get("order_score")
+        return (True, 0.0, -(o if o is not None else float("-inf")), r["ticker"])
+    order = sorted(rows, key=key)
     return {r["ticker"]: k for k, r in enumerate(order, 1)}
 
 
