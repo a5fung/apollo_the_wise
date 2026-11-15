@@ -92,6 +92,17 @@ else
        "keeping the last published $BREADTH — the other three snapshots continue." >&2
 fi
 
+# RS Leaders page's snapshot (top 50 by 1W / 1M / 3M / 6M return). GUARDED exactly like the breadth one: a
+# failure leaves the last published file untouched and never blocks the others.
+# SSoT: docs/architecture/rs_leaders_snapshot.md.
+RSL=apollo_rs_leaders_snapshot.json
+if guarded_export "$APOLLO/scripts/export_rs_leaders_snapshot.sql" "$RSL"; then
+  SNAPSHOTS+=("$RSL")
+else
+  echo "auto-export: RS leaders export FAILED or truncated (${GUARD_BYTES:-0} bytes);" \
+       "keeping the last published $RSL — the other snapshots continue." >&2
+fi
+
 # Stage first, then ask the index: `git diff --cached` sees the breadth file's FIRST publish (a new
 # file), which a plain `git diff --quiet` would not.
 git add -- "${SNAPSHOTS[@]}"
