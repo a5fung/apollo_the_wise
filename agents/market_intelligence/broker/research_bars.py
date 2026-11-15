@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
@@ -149,9 +150,15 @@ def _num(x):
     return int(f) if f.is_integer() else f
 
 
-def _fetch_rows(client, req: dict) -> list[dict]:
-    """Runs ON the research thread: one SDK call (the SDK pages inside it, capped by `limit`) and the
-    bar -> dict conversion. Rows are HALF-OPEN on time: start <= ts < end."""
+def _fetch_body(client, req: dict) -> bytes:
+    """Runs ON the research thread, start to finish: one SDK call (the SDK pages inside it, capped by
+    `limit`), the bar -> dict conversion AND the JSON encoding — so a 50,000-row answer costs the
+    execution event loop nothing but handing the bytes back. Rows are HALF-OPEN on time:
+    start <= ts < end.
+
+    The row cap is judged on what Alpaca RETURNED, before the half-open filter: Alpaca's `end` is
+    inclusive, so a fetch cut off at cap+1 that holds a bar exactly on `end` would otherwise filter
+    back under the cap and pass as complete with the later symbols missing."""
     request = StockBarsRequest(
         symbol_or_symbols=req["symbols"],
         timeframe=_TIMEFRAMES[req["timeframe"]],
@@ -163,6 +170,9 @@ def _fetch_rows(client, req: dict) -> list[dict]:
     )
     bars = client.get_stock_bars(request)
     data = bars.data if hasattr(bars, "data") else bars
+    fetched = sum(len(data.get(sym, []) or []) for sym in req["symbols"])
+    if fetched > RESEARCH_BARS_MAX_ROWS:
+        raise _bad("row_cap", f"more than {RESEARCH_BARS_MAX_ROWS} rows; ask for a shorter range or fewer symbols")
     rows: list[dict] = []
     for sym in req["symbols"]:
         for b in data.get(sym, []) or []:
@@ -175,21 +185,28 @@ def _fetch_rows(client, req: dict) -> list[dict]:
                          "o": float(b.open), "h": float(b.high), "l": float(b.low), "c": float(b.close),
                          "v": _num(b.volume)})
     rows.sort(key=lambda r: (r["symbol"], r["ts"]))
-    return rows
+    return json.dumps({
+        "bars": rows, "count": len(rows), "symbols": req["symbols"], "timeframe": req["timeframe"],
+        "feed": req["feed"], "adjustment": req["adjustment"],
+        "start": req["start"].isoformat(), "end": req["end"].isoformat(),
+    }, separators=(",", ":")).encode("utf-8")
 
 
-async def fetch_research_bars(payload) -> dict:
-    """The whole `POST /data/bars` body. -> {"bars": [...], "count", "symbols", "timeframe", "feed",
-    "adjustment", "start", "end"}; raises `ResearchBarsRequestError` carrying the HTTP status:
-    400 (a named request violation, incl. `row_cap`), 429 (`busy`), 502 (`upstream`), 504 (`timeout`)."""
+async def fetch_research_bars(payload) -> bytes:
+    """The whole `POST /data/bars` body, as encoded JSON: {"bars": [...], "count", "symbols",
+    "timeframe", "feed", "adjustment", "start", "end"}; raises `ResearchBarsRequestError` carrying the
+    HTTP status: 400 (a named request violation, incl. `row_cap`), 429 (`busy`), 502 (`upstream`),
+    504 (`timeout`)."""
     global _page
     req = validate_request(payload)
     if research_bars_in_flight():
         raise ResearchBarsRequestError(429, "busy", "a research bars request is still running; retry shortly")
     try:
         client = _get_data_client()
-        _page = page = _EXECUTOR.submit(_fetch_rows, client, req)
-        rows = await asyncio.wait_for(asyncio.wrap_future(page), RESEARCH_BARS_TIMEOUT_S)
+        _page = page = _EXECUTOR.submit(_fetch_body, client, req)
+        return await asyncio.wait_for(asyncio.wrap_future(page), RESEARCH_BARS_TIMEOUT_S)
+    except ResearchBarsRequestError:
+        raise                                   # the row cap, judged on the research thread
     except (asyncio.TimeoutError, TimeoutError):
         logger.error(f"research bars: no answer in {RESEARCH_BARS_TIMEOUT_S:.0f}s "
                      f"({len(req['symbols'])} symbols, {req['timeframe']}) — the research thread stays busy until "
@@ -199,10 +216,3 @@ async def fetch_research_bars(payload) -> dict:
     except Exception as e:  # loud-ok: logged and re-shaped into a 502 the caller sees with the upstream message
         logger.error(f"research bars: upstream failure {type(e).__name__}: {e}")
         raise ResearchBarsRequestError(502, "upstream", f"{type(e).__name__}: {str(e)[:500]}") from e
-    if len(rows) > RESEARCH_BARS_MAX_ROWS:
-        raise _bad("row_cap", f"more than {RESEARCH_BARS_MAX_ROWS} rows; ask for a shorter range or fewer symbols")
-    return {
-        "bars": rows, "count": len(rows), "symbols": req["symbols"], "timeframe": req["timeframe"],
-        "feed": req["feed"], "adjustment": req["adjustment"],
-        "start": req["start"].isoformat(), "end": req["end"].isoformat(),
-    }

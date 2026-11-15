@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Response
 
 from agents.base import verify_internal_secret
 from agents.market_intelligence import execution_client as _ec
@@ -75,10 +75,13 @@ def register_execution_routes(app) -> None:
         (execution_client._research_bars_inprocess -> broker/research_bars.py).
         Contract: docs/architecture/dual_account.md §Research market data."""
         try:
-            return await _ec._research_bars_inprocess(payload)
+            # Already-encoded JSON bytes (built on the research thread): handed
+            # back as-is so a large answer is never encoded on this event loop.
+            body = await _ec._research_bars_inprocess(payload)
         except _ec.ResearchBarsRequestError as e:
             raise HTTPException(status_code=e.status,
                                 detail={"code": e.code, "message": e.message})
+        return Response(content=body, media_type="application/json")
 
     logger.info(
         f"Execution routes registered: {len(_EXEC_HANDLERS)} /exec/* endpoints")

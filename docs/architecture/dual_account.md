@@ -294,7 +294,7 @@ internal secret as `/exec/*`; the port is not published outside the compose netw
 
 - **200** → `{"bars": [{"symbol", "ts" (ISO UTC), "o", "h", "l", "c", "v"}, ...], "count", "symbols", "timeframe",
   "feed", "adjustment", "start", "end"}`, bars sorted by symbol then `ts`.
-- **Caps per call:** 50 symbols · 50,000 rows · range of 7 calendar days at `1Min` (five trading days), 31 at
+- **Caps per call:** 50 symbols · 50,000 rows (counted on what Alpaca returned) · range of 7 calendar days at `1Min` (five trading days), 31 at
   `5Min`, 93 at `15Min`, 366 at `1Hour`, 3,660 at `1Day`.
 - **Errors** carry `{"detail": {"code", "message"}}`: **400** a request violation (`too_many_symbols`,
   `bad_symbols`, `bad_timeframe`, `bad_time`, `naive_time`, `bad_range`, `range_too_long`, `row_cap`, `bad_feed`,
@@ -303,7 +303,7 @@ internal secret as `/exec/*`; the port is not published outside the compose netw
 
 **Kept off the money path.** The fetch runs on its own one-thread executor — not the shared SDK pool that live
 order calls use, and not the breakout v1 bars thread — and a second request while one is running is refused, so
-research can occupy one thread and nothing else. It still shares Alpaca's request rate limit with the live data
+research can occupy one thread and nothing else (the JSON answer is built on that thread too). It still shares Alpaca's request rate limit with the live data
 reads; the helper pauses 0.4 s between pages for that reason.
 
 **Code + guard.** Route: `execution_routes.py` → `execution_client._research_bars_inprocess` →

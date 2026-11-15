@@ -50,23 +50,29 @@ def _as_utc(name: str, value) -> datetime:
     return value.astimezone(timezone.utc)
 
 
+def _service_url() -> str:
+    """The apollo-execution base URL, or a loud config error (never retried)."""
+    from agents.market_intelligence.constants import EXECUTION_SERVICE_URL
+    if not EXECUTION_SERVICE_URL:
+        raise RuntimeError(
+            "EXECUTION_SERVICE_URL is unset — fetch_bars must run where apollo-execution is "
+            "reachable (e.g. docker exec apollo-market ...)")
+    return EXECUTION_SERVICE_URL
+
+
 def _post(body: dict) -> dict:
     """ONE `POST /data/bars`. -> the response dict; raises `ResearchBarsRequestError` for any
     non-200 answer and `ExecutionUnreachable` when the service could not be reached."""
     import httpx
 
-    from agents.market_intelligence.constants import EXECUTION_SERVICE_URL
     from shared.secrets import get_secrets
 
-    if not EXECUTION_SERVICE_URL:
-        raise ExecutionUnreachable(
-            "EXECUTION_SERVICE_URL is unset — fetch_bars must run where apollo-execution is "
-            "reachable (e.g. docker exec apollo-market ...)")
+    base_url = _service_url()
     timeout = httpx.Timeout(connect=_CONNECT_TIMEOUT_SECONDS, read=_READ_TIMEOUT_SECONDS,
                             write=_CONNECT_TIMEOUT_SECONDS, pool=_CONNECT_TIMEOUT_SECONDS)
     try:
         resp = httpx.post(
-            f"{EXECUTION_SERVICE_URL}/data/bars", json=body, timeout=timeout,
+            f"{base_url}/data/bars", json=body, timeout=timeout,
             headers={"X-Apollo-Secret": get_secrets().internal_api_secret})
     except Exception as e:
         raise ExecutionUnreachable(f"/data/bars failed over HTTP: {type(e).__name__}: {e}") from e
@@ -116,7 +122,8 @@ def fetch_bars(symbols, timeframe: str, start, end, feed: str | None = None, *,
     -> a pandas DataFrame [symbol, ts (UTC), o, h, l, c, v] sorted by symbol then ts; a list of
     dicts (ts an ISO UTC string) when pandas is missing or `as_frame=False`.
     Raises `ResearchBarsRequestError` (the route refused: bad request, or still failing after
-    the retries) or `ExecutionUnreachable` — never a silent partial result.
+    the retries), `ExecutionUnreachable`, or RuntimeError when EXECUTION_SERVICE_URL is unset —
+    never a silent partial result.
     """
     if isinstance(symbols, str):
         symbols = [symbols]
@@ -128,6 +135,7 @@ def fetch_bars(symbols, timeframe: str, start, end, feed: str | None = None, *,
     start_utc, end_utc = _as_utc("start", start), _as_utc("end", end)
     if end_utc <= start_utc:
         raise ValueError("end must be after start")
+    _service_url()                           # a config error fails here, at once, not after the retries
 
     span = timedelta(days=RESEARCH_BARS_MAX_RANGE_DAYS[timeframe])
     seen: dict[tuple[str, str], dict] = {}   # (symbol, ts) -> row: a bar on a chunk seam is kept once

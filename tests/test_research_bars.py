@@ -187,6 +187,38 @@ def test_row_cap_is_a_400(client, monkeypatch):
     assert client.post("/data/bars", json=_body()).json()["count"] == 3
 
 
+def test_row_cap_is_judged_before_the_half_open_filter(client, monkeypatch):
+    """Alpaca's `end` is inclusive. A fetch cut off at cap+1 whose last bar sits exactly ON `end`
+    must still be `row_cap` — filtered first, it would drop to the cap and return 200 with the
+    later symbols silently missing."""
+    monkeypatch.setattr(rb, "RESEARCH_BARS_MAX_ROWS", 3)
+    t0 = datetime(2026, 11, 13, 14, 30, tzinfo=UTC)
+    fake = _FakeDataClient({"SPY": [_bar(t0), _bar(t0 + timedelta(minutes=1)), _bar(t0 + timedelta(minutes=2)),
+                                    _bar(t0 + timedelta(hours=1))]})        # 4 fetched; the 4th is exactly `end`
+    monkeypatch.setattr(rb, "_get_data_client", lambda: fake)
+    r = client.post("/data/bars", json=_body(symbols=["SPY", "TLT"]))
+    assert r.status_code == 400 and r.json()["detail"]["code"] == "row_cap"
+
+
+def test_the_answer_is_encoded_on_the_research_thread(client, monkeypatch):
+    """A 50,000-row answer must not be JSON-encoded on the execution event loop: the body leaves
+    the research thread as bytes and the route hands them back untouched."""
+    import json as _json
+    seen = {}
+    real = _json.dumps
+
+    def spy(obj, **kw):
+        if isinstance(obj, dict) and "bars" in obj:
+            seen["thread"] = threading.current_thread().name
+        return real(obj, **kw)
+
+    monkeypatch.setattr(rb.json, "dumps", spy)
+    monkeypatch.setattr(rb, "_get_data_client", lambda: _FakeDataClient())
+    r = client.post("/data/bars", json=_body())
+    assert r.status_code == 200 and r.headers["content-type"] == "application/json"
+    assert seen["thread"].startswith(rb.RESEARCH_BARS_THREAD_PREFIX)
+
+
 def test_alpaca_error_is_a_502_with_the_message(client, monkeypatch):
     monkeypatch.setattr(rb, "_get_data_client",
                         lambda: _FakeDataClient(raises=RuntimeError("subscription does not permit SIP")))
@@ -311,6 +343,7 @@ def test_research_bars_module_is_market_data_only():
         "StockBarsRequest", "TimeFrame", "get_data_feed_name", "ResearchBarsRequestError",
         "ThreadPoolExecutor", "submit", "wait_for", "wrap_future", "done",       # its own thread
         "_bad", "_parse_ts", "_num", "type", "validate_request", "research_bars_in_flight",
+        "dumps", "encode", "sum",
         "compile", "match", "getLogger", "error", "fromisoformat", "astimezone", "utcoffset",
         "isoformat", "total_seconds", "timedelta", "is_integer", "strip", "upper", "lower", "endswith",
         "get", "append", "sort", "isinstance", "hasattr", "len", "set", "sorted", "list", "float", "int", "str",
@@ -329,7 +362,7 @@ def test_research_data_helper_is_market_data_only_and_broker_free():
     urls = set()
     for node in ast.walk(ast.parse(src)):
         if isinstance(node, ast.JoinedStr):               # every f-string that builds a service URL
-            if any(isinstance(v, ast.FormattedValue) and getattr(v.value, "id", "") == "EXECUTION_SERVICE_URL"
+            if any(isinstance(v, ast.FormattedValue) and getattr(v.value, "id", "") == "base_url"
                    for v in node.values):
                 urls.add("".join(v.value for v in node.values if isinstance(v, ast.Constant)))
     assert urls == {"/data/bars"}                         # the one endpoint it knows
@@ -410,6 +443,8 @@ def wire(monkeypatch):
         state.calls.append(body)
         return state.handler(body)
 
+    from agents.market_intelligence import constants
+    monkeypatch.setattr(constants, "EXECUTION_SERVICE_URL", "http://exec:8006")
     monkeypatch.setattr(rd, "_post", _post)
     monkeypatch.setattr(rd, "_sleep", state.sleeps.append)
     return state
@@ -518,8 +553,13 @@ def test_fetch_bars_rejects_naive_times_and_an_unset_url(monkeypatch):
         rd.fetch_bars("SPY", "1Min", "2026-11-13T09:30:00", "2026-11-13T10:30:00-05:00")
     from agents.market_intelligence import constants
     monkeypatch.setattr(constants, "EXECUTION_SERVICE_URL", "")
-    with pytest.raises(ec.ExecutionUnreachable, match="EXECUTION_SERVICE_URL"):
+    slept = []
+    monkeypatch.setattr(rd, "_sleep", slept.append)
+    with pytest.raises(RuntimeError, match="EXECUTION_SERVICE_URL"):       # a config error: at once, no retries
+        rd.fetch_bars("SPY", "1Min", "2026-11-13T09:30:00-05:00", "2026-11-13T10:30:00-05:00")
+    with pytest.raises(RuntimeError, match="EXECUTION_SERVICE_URL"):
         rd._post({})
+    assert slept == []
 
 
 def test_post_maps_the_route_error_body(monkeypatch):
