@@ -19855,6 +19855,12 @@ _BREAKOUT_V1_DDL = """
         order_score DOUBLE PRECISION,                   -- the night's order score (2026-11-02; see the ALTERs below)
         runup6m_adr DOUBLE PRECISION,                   -- its input: the 6-month run-up in daily ranges
         spread10_adr DOUBLE PRECISION,                  -- its input: the last-10-close spread in daily ranges
+        pick_score  DOUBLE PRECISION,                   -- the pick model's score that night (2026-11-14; the ALTERs below)
+        dollar_vol20 DOUBLE PRECISION,                  -- the 20-session median dollar volume (the third ranking)
+        rank_pick_model INT,                            -- the name's 1-based rank that night under each ranking ...
+        rank_order_score INT,
+        rank_dollar_volume INT,
+        ranked_by   TEXT,                               -- ... and which one set list_rank
         created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         PRIMARY KEY (scan_date, ticker)
     );
