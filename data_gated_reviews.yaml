@@ -13079,6 +13079,11 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_11_15: >-
+      RAN 2026-11-15 (Sun OPEN, main loop, read-only, the 11-10 recipe unchanged: scripts/probes/_rank_shadow_running_read_1115/).
+      n = 40 sessions (was 37), 94 rows; 22 more rows matured at 5 days, none in the top quartile reached 8x. Cells: 5-day 8x top
+      0 of 9 vs rest 3 of 76 (KOD, MRNA, GMAB), broke the day-0 low 6 of 9 vs 44 of 76; 20-day top 1 of 6 (VICR) vs rest 2 of 44.
+      Conclusion UNCHANGED: the ranking does not pick the tail (both directions LOSS at 5 and 20 days).
     resolution_2026_11_10: >-
       RAN 2026-11-10 (scripts/probes/_rank_shadow_running_read_1110/, the 11-07 recipe unchanged). n = 37 sessions (new:
       11-09 QXO, a pool of ONE, which can never enter the top quartile; unmatured). No row matured since 11-07. Cells
