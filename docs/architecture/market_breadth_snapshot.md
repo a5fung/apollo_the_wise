@@ -178,7 +178,7 @@ The `regime` object (when not null):
 | field | type | meaning |
 |---|---|---|
 | `date` | date | the newest `regime_date` at or before today's ET date (may differ from `as_of`) |
-| `label` | string | `mi_market_regime.regime` — e.g. `Bullish`, `Cautious`, `Correcting`, `Crisis` |
+| `label` | string | `mi_market_regime.regime` — one of `Bull`, `Choppy`, `Correcting`, `Crisis` (`regime.py::_determine_regime`) |
 | `days_in_label` | int | consecutive newest rows carrying `label` (≥ 1) |
 | `summary` | string \| null | the net-score line of the description (the morning brief's line) |
 | `spy_vs_50ma` | number \| null | SPY vs its 50-day average, percent, 1 decimal |
