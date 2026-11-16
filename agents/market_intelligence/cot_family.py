@@ -719,6 +719,8 @@ def format_daily_message(day: date, report_date: date, alerts: list[dict]) -> Op
                   f"  {'main' if a['level'] == 'main' else 'close-list'} set up, {_index_line(a)}",
                   f"  entry: today's close {_px(a['close'])} (or the next open)",
                   f"  stop: {a['stop_rule']}"]
+        if a.get("bar_suspect"):
+            lines.append("  price bar looks broken (close or open outside the day's range): check the stop on a chart")
         if a.get("peer_z") is not None and "correlation" in a["kinds"]:
             lines.append(f"  peers closed {a['peer_z']:+.2f} of a day's range the crowd's way")
         if "news" in a["kinds"]:
@@ -1099,12 +1101,20 @@ def _events_by_day(cal_rows: list[dict], market: str) -> dict[date, list[dict]]:
 def _alert_row(day: date, a: dict, kind: str, level: str, report_date: date, ix: dict, entry_note: str,
                failure_day: Optional[date] = None) -> dict:
     fm = a.get("first_minute") or {}
+    detail = {"kinds": a["kinds"], "first_minute": fm, "news": a.get("news_detail"), "atr": a.get("atr")}
+    if a.get("bar_suspect"):
+        detail["bar_suspect"] = True
+    # A Friday confirmation is entered at the NEXT open, a price not known yet: no entry price is stored (the failure
+    # day's close is kept in `detail`, it is not the entry).
+    entry = a["close"]
+    if kind == "friday":
+        entry, detail["failure_day_close"] = None, a["close"]
     return {"alert_date": day, "market": a["market"], "direction": a["direction"], "kind": kind, "level": level,
             "report_date": report_date, "events": ";".join(a["events"]), "z": a["z"], "peer_z": a["peer_z"],
-            "entry_price": a["close"], "entry_note": entry_note, "stop_price": a["stop"], "stop_rule": a["stop_rule"],
+            "entry_price": entry, "entry_note": entry_note, "stop_price": a["stop"], "stop_rule": a["stop_rule"],
             "failure_day": failure_day, "comm": ix["comm"], "lspec": ix["lspec"], "sspec": ix["sspec"],
             "first_minute": fm.get("move"), "first_minute_big": fm.get("big"), "news_class": a.get("news_class"),
-            "detail": {"kinds": a["kinds"], "first_minute": fm, "news": a.get("news_detail"), "atr": a.get("atr")}}
+            "detail": detail}
 
 
 US_SOURCE = "fxempire.com economic calendar (united-states)"
@@ -1190,9 +1200,14 @@ async def refresh_calendar(io: Io, today: date, fx_ok: bool = True) -> dict:
     return {"rows": n, "errors": errors}
 
 
-async def ensure_week(io: Io, today: date) -> dict:
+_READ_IT = object()
+
+
+async def ensure_week(io: Io, today: date, calendar_error=_READ_IT) -> dict:
     """Fetch the CFTC report, and when it holds a week not yet messaged: compute, store, run the Friday check, send
-    the ONE weekly message. Returns a summary; raises CotError when the data could not be fetched or the send failed."""
+    the ONE weekly message. Returns a summary; raises CotError when the data could not be fetched or the send failed.
+    `calendar_error`: the outcome of THIS run's read of this week's calendar (None = read fine, a string = it failed);
+    left out, the Friday check makes that read itself when it needs it (cot_weekly)."""
     cache = await io.load_nets()
     latest = await io.latest_week()
     have = max((d for rows in cache.values() for d in rows), default=None)
@@ -1224,7 +1239,18 @@ async def ensure_week(io: Io, today: date) -> dict:
         prd = next(iter(prev.values()))["report_date"]
         await io.store_week(prd, tuesday_of(prd) + timedelta(days=3), prev)
     age = (today - cur_w).days
-    await io.store_week(report, cur_w + timedelta(days=3) if age > LATE_FIRST_SIGHT_DAYS else today, rows)
+    # known_from. Only the FIRST run may back-date (the report was public long before we existed). Later, a report
+    # first seen today was not in hand before today's session, however old its date (a backlog release after a CFTC
+    # outage): it is known from today, and so are the weeks between it and the last one stored.
+    known_from = cur_w + timedelta(days=3) if latest is None and age > LATE_FIRST_SIGHT_DAYS else today
+    if latest is not None:
+        for w in weeks[:-1]:
+            if table[w] and (wrd := next(iter(table[w].values()))["report_date"]) > latest["report_date"]:
+                await io.store_week(wrd, today, table[w])
+    await io.store_week(report, known_from, rows)
+    # A message retried on a later day keeps its Friday rows under the day the week was FIRST held (one row per
+    # market, updated), instead of leaving unsent rows behind under the earlier date.
+    first_seen = latest["known_from"] if latest and latest["report_date"] == report else known_from
     missing = sorted(set(MARKETS) - set(rows))
 
     # ── Friday confirmation: a MAIN set up that was not main last week ──
@@ -1232,6 +1258,13 @@ async def ensure_week(io: Io, today: date) -> dict:
     friday, errors = [], {}
     check_friday = age <= FRIDAY_CHECK_MAX_AGE_DAYS
     if new_main and check_friday:
+        if calendar_error is _READ_IT:
+            try:
+                await refresh_this_week(io, today)
+                calendar_error = None
+            except Exception as e:  # loud-ok: named in the weekly message and the audit row; the stored rows still serve
+                logger.warning(f"cot: the Friday check could not read this week's calendar: {type(e).__name__}: {e}")
+                calendar_error = f"{type(e).__name__}: {e}"[:200]
         bars = await _bars_for(io, _with_peers(new_main), errors)
         start = cur_w + timedelta(days=1)
         cal = await io.calendar(start, today)
@@ -1251,11 +1284,15 @@ async def ensure_week(io: Io, today: date) -> dict:
     entry_label = "Sunday open" if today.weekday() == 4 else "the next open"
     stored = []
     if friday:
-        stored = await io.store_alerts([_alert_row(today, a, "friday", "main", report, rows[a["market"]],
+        stored = await io.store_alerts([_alert_row(first_seen, a, "friday", "main", report, rows[a["market"]],
                                                    entry_label, a["failure_day"]) for a in friday])
     notes = []
     if new_main and not check_friday:
         notes.append(f"This report is {age} days old, so the Friday confirmation check was not run.")
+    cal_err = calendar_error if isinstance(calendar_error, str) else None
+    if new_main and check_friday and cal_err:
+        notes.append("This week's calendar could not be read today, so the Friday check may have missed a news "
+                     "failure day.")
     if errors:
         notes.append("Friday check could not read prices for: " + ", ".join(name_of(m) for m in sorted(errors)) + ".")
     if missing:
@@ -1268,7 +1305,7 @@ async def ensure_week(io: Io, today: date) -> dict:
     await io.mark_alerts_sent([r["id"] for r in stored])
     return {**res, "status": "sent", "setups": sum(1 for r in rows.values() if r["setup"]),
             "close": sum(1 for r in rows.values() if r["close_setup"]), "friday": len(friday),
-            "errors": errors, "missing": missing}
+            "errors": errors, "missing": missing, "calendar_error": cal_err}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -1288,39 +1325,9 @@ async def run_weekly(today: date, io: Optional[Io] = None) -> dict:
     return res
 
 
-def bar_is_final(day: date, now_et: datetime) -> bool:
-    """The day's futures bar is final after the 17:00 ET close (5 minutes of margin)."""
-    return now_et >= datetime.combine(day, time(17, 5), _ET)
-
-
-async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datetime] = None) -> dict:
-    """cot_daily. ONE audit row per run. One market's error never stops the rest; a run where every set-up market
-    failed, or whose calendar / CFTC catch-up failed, raises AFTER the audit row."""
-    io = io or Io()
-    now = now_et or datetime.now(_ET)
-    res: dict = {"day": today, "alerts": 0, "sent": False}
-    problems: list[str] = []
-
-    if today.weekday() >= 5 or not bar_is_final(today, now):
-        res["status"] = "skipped: weekend" if today.weekday() >= 5 else "skipped: the day's bar is not final yet"
-        await io.audit(EVT_DAILY, f"{today}: {res['status']}", res)
-        return res
-
-    # A #672 recovery re-run of a missed day: its Telegrams are HELD at the httpx layer (the send still answers
-    # "ok"), so it must neither run the weekly catch-up (that week's one message would be swallowed) nor mark an
-    # alert as sent.
-    held = recovery_pin() is not None
-    res["held"] = held
-
-    # 1. a holiday-delayed CFTC release (Mon-Thu; Friday belongs to cot_weekly)
-    if today.weekday() < 4 and not held:
-        try:
-            res["catch_up"] = await ensure_week(io, today)
-        except Exception as e:  # loud-ok: recorded in the audit row; the run raises after it
-            res["catch_up"] = {"status": "FAILED", "error": f"{type(e).__name__}: {e}"[:200]}
-            problems.append(f"CFTC catch-up failed: {type(e).__name__}: {e}")
-
-    # 2. the calendar. Every day: this week's US releases, read fresh (also the day's actual-vs-consensus numbers).
+async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held: bool) -> None:
+    """Everything cot_daily does after its gates. Fills `res` and `problems`; run_daily writes the audit row."""
+    # 1. the calendar. Every day: this week's US releases, read fresh (also the day's actual-vs-consensus numbers).
     #    Mondays, or when the weekly refresh is over a week old: everything beyond this week.
     week_events: Optional[list[dict]] = None
     fx_ok = True
@@ -1341,7 +1348,32 @@ async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datet
         res["calendar"] = {"error": f"{type(e).__name__}: {e}"[:200]}
         problems.append(f"calendar refresh failed (news alerts may be blind): {type(e).__name__}: {e}")
 
-    # 3. the week known BEFORE today
+    # 2. a holiday-delayed CFTC release (Mon-Thu; Friday belongs to cot_weekly). AFTER the calendar read: its Friday
+    #    check reads this week's events, and is told whether today's read failed.
+    if today.weekday() < 4 and not held:
+        try:
+            res["catch_up"] = await ensure_week(io, today, (res.get("calendar_today") or {}).get("error"))
+        except Exception as e:  # loud-ok: recorded in the audit row; the run raises after it
+            res["catch_up"] = {"status": "FAILED", "error": f"{type(e).__name__}: {e}"[:200]}
+            problems.append(f"CFTC catch-up failed: {type(e).__name__}: {e}")
+
+    # 3. stale COT data. Keyed on the NEWEST STORED report (not the week usable today: on the day a fresh report
+    #    lands, the week known BEFORE today is still the old one). The CFTC API can keep answering 200 with old rows,
+    #    so every run reads "no new report" and the alerts go dark with a normal-looking audit row. Paged on MONDAYS
+    #    only while it lasts: report Tuesday + 18 days is a Saturday, so the first stale run is always a Monday.
+    latest = await io.latest_week()
+    newest = latest["report_date"] if latest else None
+    res["newest_report"] = newest
+    res["stale"] = newest is None or (today - newest).days > MAX_WEEK_AGE_DAYS
+    if newest is None and today.weekday() == 4:
+        pass        # nothing stored yet on a Friday: cot_weekly stores the first week at 17:40 (and pages if it cannot)
+    elif newest is None:
+        problems.append("no COT report is stored: the daily alerts cannot run")
+    elif res["stale"] and today.weekday() == 0:
+        problems.append(f"the newest COT report is {newest}, {(today - newest).days} days old: the daily alerts are "
+                        "off until a newer report is stored (the CFTC source may be stuck)")
+
+    # 4. the week known BEFORE today
     known = await io.known_week(today)
     if known is None or (today - known[0]).days > MAX_WEEK_AGE_DAYS:
         res["status"] = "no usable COT week" if known is None else f"COT week {known[0]} is too old to use"
@@ -1358,7 +1390,7 @@ async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datet
             bars = await _bars_for(io, _with_peers(setups), errors)
             z = {m: f["z"] for m, bs in bars.items() if (f := features_at(bs, today))}
             cal = await io.calendar(today, today)
-            no_bar = []
+            no_bar, closes, suspect = [], {}, []
             for m, (direction, level) in sorted(setups.items()):
                 if m in errors:
                     continue
@@ -1367,20 +1399,39 @@ async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datet
                     if feat is None:
                         no_bar.append(m)
                         continue
+                    # Yahoo's newest daily close is the last trade (restated later to a settlement-like value);
+                    # tomorrow's prev_close against today's close measures that gap. Recorded, never used to decide.
+                    closes[m] = {"close": feat["close"], "prev_close": feat["prev_close"], "z": feat["z"]}
+                    # A bar whose close or open is outside its own high-low is broken data. The research kept such
+                    # rows, so it is still judged as it comes, but flagged: the printed stop may already be crossed.
+                    _d, o, h, l, c = next(b for b in bars[m] if b[0] == today)
+                    broken = not (l <= c <= h and l <= o <= h)
+                    if broken:
+                        suspect.append(m)
                     ev_rows = _events_by_day(cal, m).get(today, [])
                     hit = detect(m, direction, feat, [r["event_type"] for r in ev_rows], z)
                     if hit:
-                        found.append({**hit, "level": level, "event_rows": ev_rows, **{
+                        found.append({**hit, "level": level, "bar_suspect": broken, "event_rows": ev_rows, **{
                             k: index_rows[m][k] for k in ("comm", "lspec", "sspec")}})
                 except Exception as e:  # loud-ok: counted in the audit row; an all-fail run raises after it
                     errors[m] = f"{type(e).__name__}: {e}"[:160]
             res["no_bar_today"] = no_bar
             res["errors"] = errors
-            if len(errors) + len(no_bar) == len(setups):
+            res["closes"] = closes
+            if suspect:
+                res["suspect_bars"] = suspect
+            # a peer with no reading today drops out of the correlation median (as in the research): recorded only
+            res["peers_unread"] = sorted(p for p in _with_peers(setups) - set(setups) if p not in z)
+            unread = sorted(m for m in setups if m in errors or m in no_bar)
+            if unread and len(unread) == len(setups):
                 if not errors and io.is_stock_holiday(today):
                     res["holiday"] = True       # no futures session today: nothing to read, nothing to page
                 else:
                     problems.append(f"no set-up market could be read today (errors {len(errors)}, no bar {len(no_bar)})")
+            elif unread:
+                # the readable markets alert and send below; the gap pages after, because nothing re-reads it
+                problems.append(f"{len(unread)} of {len(setups)} set-up markets could not be read today: "
+                                + ", ".join(name_of(m) for m in unread) + " (no alert for them today)")
             await _label(io, today, [a for a in found if "news" in a["kinds"]], res, week_events)
             rows = []
             for a in found:
@@ -1398,6 +1449,40 @@ async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datet
                 else:
                     problems.append("the daily COT alert message was not delivered")
         res["status"] = "ok"
+
+
+def bar_is_final(day: date, now_et: datetime) -> bool:
+    """The day's futures bar is final after the 17:00 ET close (5 minutes of margin)."""
+    return now_et >= datetime.combine(day, time(17, 5), _ET)
+
+
+async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datetime] = None) -> dict:
+    """cot_daily. ONE audit row per run. One market's error never stops the rest; a run where ANY set-up market could
+    not be read, whose calendar / CFTC catch-up failed, or whose COT data is stale, raises AFTER the audit row."""
+    io = io or Io()
+    now = now_et or datetime.now(_ET)
+    res: dict = {"day": today, "alerts": 0, "sent": False}
+    problems: list[str] = []
+
+    if today.weekday() >= 5 or not bar_is_final(today, now):
+        res["status"] = "skipped: weekend" if today.weekday() >= 5 else "skipped: the day's bar is not final yet"
+        await io.audit(EVT_DAILY, f"{today}: {res['status']}", res)
+        return res
+
+    # A #672 recovery re-run of a missed day: its Telegrams are HELD at the httpx layer (the send still answers
+    # "ok"), so it must neither run the weekly catch-up (that week's one message would be swallowed) nor mark an
+    # alert as sent.
+    held = recovery_pin() is not None
+    res["held"] = held
+
+    try:
+        await _daily_body(io, today, res, problems, held)
+    except Exception as e:
+        # one audit row EVERY run, also when something outside the per-market guards broke (a database read, the
+        # alert store); audit_wrap pages on the re-raise
+        res["problems"] = problems
+        await io.audit(EVT_DAILY, f"{today}: FAILED {type(e).__name__}: {e}", {**res, "error": str(e)})
+        raise
     res["problems"] = problems
     await io.audit(EVT_DAILY, f"{today}: {res['status']}; week {res.get('report_date')}; set-up markets "
                               f"{res.get('set_up_markets', 0)}; alerts {res['alerts']}; sent {res['sent']}"

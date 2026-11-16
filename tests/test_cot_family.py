@@ -608,8 +608,59 @@ def test_one_markets_error_never_stops_the_rest():
     io.bars.update({"CL=F": bars_to(WED, 99.0), "HO=F": bars_to(WED, 100.0), "RB=F": bars_to(WED, 100.0)})
     io.cal.append({"event_date": WED, "event_type": "EIA_PETRO", "release_et": _t(10, 30), "source": "s"})
     io.bar_fail = {"GC=F"}
-    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))             # no raise: crude was read
-    assert set(res["errors"]) == {"gold"} and {k[1] for k in io.alerts} == {"crude_oil"} and len(io.sent) == 1
+    with pytest.raises(cf.CotError, match="1 of 2 set-up markets could not be read today: GOLD"):
+        _run(cf.run_daily(WED, io, AFTER_CLOSE))               # crude was read and alerted FIRST; gold's gap then pages
+    assert set(io.audits[0][2]["errors"]) == {"gold"} and {k[1] for k in io.alerts} == {"crude_oil"} and len(io.sent) == 1
+    assert io.alerts[(WED, "crude_oil", "short", "news")]["sent"] is True and len(io.audits) == 1
+
+
+def test_a_set_up_market_with_no_bar_today_pages_after_the_others_alert():
+    """Yahoo has not posted today's bar for ONE of two set-up markets: the other still alerts, and the gap pages
+    (nothing re-reads it later). A missing PEER is recorded, not paged (the research drops it from the median too)."""
+    io = _daily_io()
+    io.weeks[REPORT]["rows"]["crude_oil"] = _ix(2, 99, 99, "short")
+    io.bars.update({"CL=F": bars_to(WED, 99.0)[:-1], "HO=F": bars_to(WED, 100.0), "RB=F": bars_to(WED, 100.0)})
+    io.bars["PA=F"] = io.bars["PA=F"][:-1]                     # a peer of gold without today's bar
+    with pytest.raises(cf.CotError, match="1 of 2 set-up markets could not be read today: CRUDE OIL"):
+        _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    d = io.audits[0][2]
+    assert d["no_bar_today"] == ["crude_oil"] and d["peers_unread"] == ["palladium"] and len(io.audits) == 1
+    assert {k[1] for k in io.alerts} == {"gold"} and len(io.sent) == 1
+    io = _daily_io()
+    io.bars["PA=F"] = io.bars["PA=F"][:-1]                     # only a peer missing: no page
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["peers_unread"] == ["palladium"] and res["alerts"] == 1
+
+
+def test_the_audit_row_carries_each_set_up_markets_close_and_previous_close():
+    """Yahoo's newest daily close is the last trade and is restated later; tomorrow's `prev_close` against today's
+    `close` is the measurement of that gap (finding: the research compared settlement with settlement)."""
+    io = _daily_io()
+    _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert io.audits[0][2]["closes"] == {"gold": {"close": 99.0, "prev_close": 100.0, "z": pytest.approx(-0.5)}}
+
+
+def test_a_bar_whose_close_is_outside_its_own_range_is_flagged_not_dropped():
+    io = _daily_io()
+    io.bars["GC=F"] = bars_to(WED, 99.0, last=(WED, 100.0, 98.5, 98.0, 99.0))    # high 98.5 under the close 99.0
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["alerts"] == 1 and res["suspect_bars"] == ["gold"]               # still alerted: the research keeps such rows
+    assert "price bar looks broken" in io.sent[0] and "check the stop on a chart" in io.sent[0]
+    assert io.alerts[(WED, "gold", "short", "news")]["detail"]["bar_suspect"] is True
+    io = _daily_io()
+    _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert "suspect_bars" not in io.audits[0][2] and "price bar looks broken" not in io.sent[0]
+
+
+def test_an_exception_outside_the_per_market_guards_still_leaves_one_audit_row():
+    io = _daily_io()
+
+    async def boom(day):
+        raise RuntimeError("db down")
+    io.known_week = boom
+    with pytest.raises(RuntimeError, match="db down"):
+        _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert len(io.audits) == 1 and "FAILED RuntimeError: db down" in io.audits[0][1]
 
 
 def test_an_all_fail_run_raises_after_its_audit_row():
@@ -638,8 +689,31 @@ def test_a_week_older_than_the_research_carry_is_not_used():
     io = _daily_io()
     late = date(2026, 11, 23)                                   # 20 days after the 11-03 report
     io.bars = {t: bars_to(late, 99.0 if t == "GC=F" else 100.0) for t in io.bars}
-    res = _run(cf.run_daily(late, io, datetime(2026, 11, 23, 17, 15, tzinfo=_ET)))
-    assert "too old" in res["status"] and io.sent == [] and io.alerts == {} and len(io.audits) == 1
+    with pytest.raises(cf.CotError, match="newest COT report is 2026-11-03, 20 days old"):
+        _run(cf.run_daily(late, io, datetime(2026, 11, 23, 17, 15, tzinfo=_ET)))
+    assert "too old" in io.audits[0][2]["status"] and io.sent == [] and io.alerts == {} and len(io.audits) == 1
+    # the page repeats on MONDAYS only (the first stale run is always a Monday: report Tuesday + 18 is a Saturday)
+    io = _daily_io()
+    tue = date(2026, 11, 24)
+    io.bars = {t: bars_to(tue, 99.0 if t == "GC=F" else 100.0) for t in io.bars}
+    res = _run(cf.run_daily(tue, io, datetime(2026, 11, 24, 17, 15, tzinfo=_ET)))
+    assert "too old" in res["status"] and res["stale"] is True and io.sent == [] and io.alerts == {}
+
+
+def test_stale_cot_data_pages_even_when_the_cftc_keeps_answering():
+    """The CFTC API answers 200 with the same old rows for weeks: every status is a quiet 'no new report'. The page
+    keys on the age of the NEWEST STORED report, so it must NOT fire on the day a fresh report arrived (that day the
+    week known BEFORE today is still the old one)."""
+    mon = date(2026, 11, 23)
+    io = _daily_io()
+    io.weeks.clear()                                             # nothing ever stored and the catch-up finds nothing usable
+    io.cftc_exc = RuntimeError("cftc down")
+    with pytest.raises(cf.CotError, match="no COT report is stored"):
+        _run(cf.run_daily(mon, io, datetime(2026, 11, 23, 17, 15, tzinfo=_ET)))
+    io = _daily_io(weeks={date(2026, 11, 17): {"known_from": mon, "sent": "x", "rows": {"gold": _ix(3, 97, 96, "short")}}})
+    io.cftc_rows = [("088691", date(2026, 11, 17), 1, 2, 3, 4)]
+    res = _run(cf.run_daily(mon, io, datetime(2026, 11, 23, 17, 15, tzinfo=_ET)))
+    assert "COT week 2026-11-03 is too old" in res["status"] and res["stale"] is False and res["problems"] == []
 
 
 def test_a_blind_calendar_pages_after_the_alerts():
@@ -701,9 +775,82 @@ def test_weekly_stores_the_index_and_sends_one_message_per_report():
     fa = io.alerts[(FRI, "wheat", "long", "friday")]
     assert fa["failure_day"] == date(2026, 11, 5) and fa["stop_price"] == 99.0 and fa["entry_note"] == "Sunday open"
     assert fa["sent"] is True
+    # the entry is the NEXT open, not known yet: no price is stored as the entry; the failure day's close is in detail
+    assert fa["entry_price"] is None and fa["detail"]["failure_day_close"] == 101.0
+    assert io.fx_calls == [("united-states", date(2026, 11, 2))]      # the Friday check read this week's calendar itself
     # the retry slot: nothing new, no second message, an audit row all the same
     res = _run(cf.run_weekly(FRI, io))
     assert res["status"] == "no new report" and len(io.sent) == 1 and [a[0] for a in io.audits] == ["cot_weekly"] * 2
+    assert len(io.fx_calls) == 1                                      # ... and no calendar request
+
+
+def _wheat_week_io(end):
+    io = _weekly_io()
+    days = weekdays_to(end, 30)
+    wheat = [(d, 100.0, 101.0, 99.0, 100.0) for d in days]
+    i = days.index(date(2026, 11, 5))
+    wheat[i] = (days[i], 100.0, 101.5, 99.0, 101.0)             # Thursday 11-05: an UP close in a market set up LONG
+    io.bars = {"ZW=F": wheat, "ZS=F": bars_to(end, 100.0), "ZM=F": bars_to(end, 100.0), "ZC=F": bars_to(end, 100.0)}
+    io.cal = [{"event_date": date(2026, 11, 5), "event_type": "WASDE", "release_et": None, "source": "s"}]
+    return io
+
+
+def test_the_friday_check_says_so_when_it_could_not_read_the_calendar():
+    """The Friday check reads mi_cot_calendar, which only the daily job filled. It now reads this week's calendar
+    itself, and a failed read is named in the weekly message and the audit row (stored rows still serve)."""
+    io = _wheat_week_io(FRI)
+    io.fx_exc = RuntimeError("fxempire down")
+    res = _run(cf.run_weekly(FRI, io))
+    assert res["status"] == "sent" and res["friday"] == 1 and "fxempire down" in res["calendar_error"]
+    assert "calendar could not be read today" in io.sent[0] and "may have missed a news failure day" in io.sent[0]
+    assert len(io.fx_calls) == 1
+    ok = _wheat_week_io(FRI)
+    _run(cf.run_weekly(FRI, ok))
+    assert "calendar could not be read" not in ok.sent[0]
+
+
+def test_the_daily_catch_up_checks_friday_on_a_calendar_read_today():
+    """Mon-Thu the delayed-release catch-up runs AFTER the day's calendar read (one request, shared), never before."""
+    mon = date(2026, 11, 9)
+    io = _wheat_week_io(mon)
+    seen = []
+    real = io.calendar
+
+    async def calendar(d0, d1):
+        seen.append(len(io.fx_calls))
+        return await real(d0, d1)
+    io.calendar = calendar
+    res = _run(cf.run_daily(mon, io, datetime(2026, 11, 9, 17, 15, tzinfo=_ET)))
+    assert res["catch_up"]["status"] == "sent" and res["catch_up"]["friday"] == 1
+    assert seen and min(seen) >= 1 and io.fx_calls.count(("united-states", mon)) == 1
+
+
+def test_a_weekly_message_retried_on_a_later_day_keeps_one_friday_row():
+    """Friday's send failed twice; Monday's daily catch-up retries it. The Friday row is keyed on the day the week
+    was FIRST held, so the retry updates that row instead of leaving an unsent one behind under Friday's date."""
+    mon = date(2026, 11, 9)
+    io = _wheat_week_io(mon)
+    io.send_ok = False
+    with pytest.raises(cf.CotError, match="not delivered"):
+        _run(cf.ensure_week(io, FRI))
+    assert [k for k in io.alerts if k[3] == "friday"] == [(FRI, "wheat", "long", "friday")]
+    io.send_ok = True
+    assert _run(cf.ensure_week(io, mon))["status"] == "sent"
+    assert [k for k in io.alerts if k[3] == "friday"] == [(FRI, "wheat", "long", "friday")]
+    assert io.alerts[(FRI, "wheat", "long", "friday")]["sent"] is True and "entry: the next open" in io.sent[-1]
+
+
+def test_a_backlog_report_published_late_is_not_used_on_the_day_it_lands():
+    """NOT the first run: a week is already stored, then the CFTC publishes a 13-day-old report on a Monday (as after
+    a shutdown). It was not in hand before today's session, so it is known from TODAY; the weeks between are stored
+    too. (The first run keeps the scheduled-Friday stamp: see the test above.)"""
+    mon = date(2026, 11, 16)
+    io = _weekly_io()
+    io.weeks[date(2026, 10, 20)] = {"known_from": date(2026, 10, 23), "sent": "x", "rows": {"corn": _ix(50, 50, 50)}}
+    res = _run(cf.run_daily(mon, io, datetime(2026, 11, 16, 17, 15, tzinfo=_ET)))
+    assert io.weeks[REPORT]["known_from"] == mon and io.weeks[date(2026, 10, 27)]["known_from"] == mon
+    assert io.weeks[date(2026, 10, 27)]["rows"] and res["report_date"] == date(2026, 10, 20) and io.alerts == {}
+    assert "too old" in res["status"] and res["stale"] is False        # the fresh report arrived: no stale page
 
 
 def test_weekly_retries_an_undelivered_message_and_pages_a_failed_fetch():

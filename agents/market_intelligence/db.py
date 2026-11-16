@@ -20107,7 +20107,7 @@ _COT_FAMILY_DDL = """
         events           TEXT,                        -- ';'-joined scheduled events of the failure day
         z                DOUBLE PRECISION,            -- the day's close move in 20-day daily ranges
         peer_z           DOUBLE PRECISION,            -- the peers' median move, + = the crowd's way
-        entry_price      DOUBLE PRECISION,            -- the failure day's close
+        entry_price      DOUBLE PRECISION,            -- the failure day's close; NULL on a 'friday' row (entry = the next open)
         entry_note       TEXT,
         stop_price       DOUBLE PRECISION,            -- a daily CLOSE beyond this stops the trade
         stop_rule        TEXT,

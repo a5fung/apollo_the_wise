@@ -71,9 +71,11 @@ refuses to run on a bar that is not final.
 
 **No look-ahead.** A week is stored with `known_from` = the ET day we first held it; a day's alerts use the latest
 week with `known_from` BEFORE that day (the research's timing: the issue in hand before the session). A week older
-than 17 days (the research's 12-day carry past the issue Sunday) is not used. A report first seen more than a week
-after its date (the first run, or after an outage) is stamped known from its scheduled Friday and gets no
-Friday-confirmation check — that moment has passed.
+than 17 days (the research's 12-day carry past the issue Sunday) is not used. On the FIRST run only, a report more
+than a week old is stamped known from its scheduled Friday (it was public long before the job existed). After that,
+a report first seen today is known from today however old its date — a backlog release after a CFTC outage is not
+used on the day it lands — and the weeks between it and the last stored one are stored too (no message for those).
+A report more than 10 days old gets no Friday-confirmation check — that moment has passed.
 
 **What a daily alert is (feed A, as scored in the research — 11.7 alerts / month there):**
 - News failure (N1): the market has a scheduled event today and closed AGAINST the crowd (down for a short set up).
@@ -94,6 +96,9 @@ index values and whether the set up is main or close-list, and two LABELS on new
 **Friday confirmation:** a market that is a main set up this week and was not last week, with a failure day (N1 or
 C1) between the Wednesday after the report date and the release day, whose stop has not since been closed through.
 Entry "Sunday open" (or "the next open" in a delayed week), stop = a close beyond the failure day's high / low.
+The row stores NO entry price (the open is not known yet; the failure day's close is in `detail`), and is dated the
+day the week was first held, so a message retried on a later day updates that row. The check reads this week's
+calendar itself (the daily catch-up runs it after the day's calendar read); a failed read is named in the message.
 
 **Exit signal in the weekly message:** "left" = was a main set up last week and is not now; "neutral ~50" = the first
 week since its last main set up (within 26 weeks) that Commercials (stock indices) or any group (others) is back at 50.
@@ -107,16 +112,28 @@ release dates; yfinance earnings dates for NVDA MSFT AAPL AMZN GOOGL META TSLA M
 `mi_cot_index_weekly` (report_date, market, comm, lspec, sspec, setup, close_setup), `mi_cot_calendar` (scheduled
 events), `mi_cot_alerts` (one row per alert day / market / direction / kind, with entry, stop and the two labels).
 
-**Failure handling:** one market's error never stops the rest. A day when no set-up market could be read, a CFTC
-fetch that failed, a calendar source that failed or refused (news alerts may be blind), or an undelivered message
-raises AFTER the audit row, which pages. An undelivered message is retried on the next run; a re-run never sends
-the same alert twice.
+**Failure handling:** one market's error never stops the rest: the readable markets alert and send first. Then any
+of these raises AFTER the audit row, which pages: ANY set-up market with no bar today or a failed read (nothing
+re-reads it; a day when none has a bar and the stock market is shut is a quiet holiday), a CFTC fetch that failed,
+a calendar source that failed or refused (news alerts may be blind), an undelivered message, or STALE COT data —
+no report stored, or the newest stored report more than 17 days old (the CFTC source can keep answering with old
+rows; paged on Mondays while it lasts, and the first stale run is always a Monday). A missing peer only drops out
+of the correlation median (`peers_unread` in the audit row). An exception anywhere else still leaves the run's one
+audit row (FAILED). An undelivered message is retried on the next run; a re-run never sends the same alert twice.
 
 **Known limits (state them when reading the alerts):**
 - The research alert rates were measured on the newsletter's official index (with its small price adjustment). Live
   uses our rebuilt index without it, so a market within a few points of 5 / 95 can be in or out differently.
-- Yahoo's daily close is the last trade, not the exchange settlement; a close within a tick of the previous close
-  can read the wrong side.
+- **Close basis (OPEN, measured 2026-11-15 in review).** Yahoo restates PAST daily closes to a settlement-like
+  value, but the newest bar's close is the last trade near 17:00 (ES 11-12: 7615.25 restated vs 7621.75 last trade;
+  ZW 584.25 vs 582.50; GC 3885.3 vs 3881.7). So at 17:15 the job compares today's last trade with yesterday's
+  settlement, where the research compared settlement with settlement: a market that settled one side of the prior
+  close and traded to the other by 17:00 reads the wrong side. Detection is unchanged (a different close source is
+  a rule change). The daily audit row now carries `closes` = each set-up market's close and previous close; one
+  day's `close` against the next day's `prev_close` is the size of the gap, and how often the sign of the move flips.
+- Yahoo bars can be broken (a close or open outside the day's own high-low; seen on Bitcoin and Coffee). The
+  research data has the same rows, so they are judged as they come; the alert says "price bar looks broken" and the
+  audit row lists `suspect_bars`.
 - The calendar comes from FXEmpire, not the official schedules the research used. Measured in the research
   (2023-08 → 2026-11): it carried CPI 39 of 39, PPI 38 of 39, jobs 39 of 39, retail sales 39 of 42, GDP 37 of 40,
   Fed 26 of 26, EIA petroleum 170 of 172, EIA natural gas 169 of 172. It lists a release only a week or two ahead
@@ -136,6 +153,12 @@ the same alert twice.
 data fetched live; feed A, the Friday rule and the two label rules are the research's, unchanged (see Findings). Not a
 criteria change — nothing trades. A dry run on real data for 2026-11-09..13 gave 2 alerts (Nasdaq and Wheat on
 the 11-10 CPI / WASDE day).
+
+**Review fixes, same day (before any deploy)**: stale COT data pages; any unread set-up market pages after the
+others alert; a backlog report is known from the day it lands (back-dating only on the first run); the Friday check
+reads the calendar itself and says when it could not; a Friday row stores no entry price and keeps one row across
+a retry; broken bars are flagged; the audit row carries the closes that measure the last-trade-vs-settlement gap
+(left open, see Known limits).
 
 **Anticipated effect**: one message every Friday evening; about 12 daily alert rows a month if live matches the
 research rate (it was measured on the official index, so expect a difference); nothing in the main chat.
