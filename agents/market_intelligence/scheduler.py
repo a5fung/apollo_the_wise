@@ -230,6 +230,8 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "missed_job_recovery",  # #672 2026-09-20 — the ledger-derived re-run of missed daily jobs; INTELLIGENCE by construction (it excludes EXECUTION_OWNED_JOB_IDS itself and never touches the broker)
     "breadth_live_refresh",  # #723 2026-11-10 — live market breadth (Today view): Alpaca SIP snapshot READ, one JSON file + ONE audit row WRITTEN under /app/logs; no DB table, no broker import, no money path
     "cot_minutes_archive",  # 2026-11-15 - weekly COT 1-minute futures archive: yfinance READ, one gzip CSV + ONE audit row WRITTEN under /app/logs; no DB table, no broker import, no money path
+    "cot_weekly",  # 2026-11-15 - COT family live ALERTS (no orders): CFTC public report READ, mi_cot_nets_weekly / mi_cot_weeks / mi_cot_index_weekly (+ mi_cot_alerts for a Friday confirmation) + ONE audit row WRITTEN, ONE paper-chat Telegram per report week; no strategy row, no broker import, no money path
+    "cot_daily",  # 2026-11-15 - COT family live ALERTS (no orders): yfinance futures bars + free public calendars READ, mi_cot_calendar / mi_cot_alerts + ONE audit row WRITTEN, ONE paper-chat Telegram only when a set-up market had a failure day; no strategy row, no broker import, no money path
 })
 
 
@@ -7085,6 +7087,29 @@ async def _cot_minutes_archive_job():
     return await cot_minutes_archive.run_scheduled()
 
 
+async def _cot_weekly_job():
+    """Fri 17:40 + 18:40 ET — COT family live alerts (`cot_family.py`): the new CFTC report -> the rebuilt index ->
+    this week's set ups, the markets that left / reached neutral and the Friday-confirmation alerts, in ONE
+    paper-chat message per report week (the second slot is a no-op once the first has sent). No order path.
+    Imported INSIDE the function: `scheduler.py` is on the execution image's module list. SSoT:
+    docs/setups/cot_family.md §Live alerts."""
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence import cot_family
+    res = await cot_family.run_weekly(et_today())
+    logger.info(f"cot weekly: report {res['report_date']} - {res['status']}")
+
+
+async def _cot_daily_job():
+    """Mon-Fri 17:15 ET — COT family live alerts (`cot_family.py`): for every market set up in the COT week known
+    BEFORE today, today's futures bar against feed A (a news day closing against the crowd; peers closing the
+    crowd's way). ONE paper-chat message only when there is an alert; ONE audit row every run. No order path. The
+    date comes from `et_today()` (the #672 recovery pin reaches it)."""
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence import cot_family
+    res = await cot_family.run_daily(et_today())
+    logger.info(f"cot daily: {res['status']}, alerts {res['alerts']}, sent {res['sent']}")
+
+
 async def _breadth_live_refresh_job():
     """Every 15 min, 09:45-16:00 ET on trading days (#723). Recounts the Market Breadth page's TODAY
     numbers (new highs / lows, advances / declines, group + theme 1-day returns) from real-time
@@ -7766,6 +7791,26 @@ def start_scheduler() -> AsyncIOScheduler:
         id="cot_minutes_archive",
         replace_existing=True,
         misfire_grace_time=3600,
+    )
+
+    # COT family live ALERTS, no orders (2026-11-15). cot_daily 17:15 ET mon-fri: after the 17:00 ET futures daily
+    # close (the day's bar must be final) and clear of the 17:00 nightly pull's first minutes; it reads no Apollo
+    # table but its own. cot_weekly Fri 17:40 + 18:40 ET: after the CFTC's 15:30 ET release AND after the 17:00 close
+    # (the Friday-confirmation check needs Friday's bar); the second slot retries a report that was not out, and is
+    # a no-op once the week's message has gone. A holiday-delayed release is picked up by cot_daily Mon-Thu.
+    _scheduler.add_job(
+        audit_wrap(_cot_daily_job, "cot_daily"),
+        CronTrigger(day_of_week="mon-fri", hour=17, minute=15, timezone="America/New_York"),
+        id="cot_daily",
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+    _scheduler.add_job(
+        audit_wrap(_cot_weekly_job, "cot_weekly"),
+        CronTrigger(day_of_week="fri", hour="17-18", minute=40, timezone="America/New_York"),
+        id="cot_weekly",
+        replace_existing=True,
+        misfire_grace_time=1800,
     )
 
     # Stop-coverage repair RETRY: every 5 min, 09:31-15:55 ET (#596). The

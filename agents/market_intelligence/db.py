@@ -5561,6 +5561,11 @@ async def initialize_schema() -> None:
         # (`_LADDER_DDL`, end of this file). Owner doc: docs/architecture/dual_account.md §Demotion.
         await conn.execute(_LADDER_DDL)
 
+        # COT family live alerts (2026-11-15) — the weekly index, the forward news calendar and the alerts. Read by
+        # no entry / sizing / order / safeguard path. Idempotent (`_COT_FAMILY_DDL`, end of this file). Owner doc:
+        # docs/setups/cot_family.md §Live alerts.
+        await conn.execute(_COT_FAMILY_DDL)
+
         # ── One-time cleanup: delete auto-generated descriptions for tickers ──
         # that now have authoritative static entries in universe.py.
         # These corrupted rows were created by _ensure_descriptions when
@@ -20040,4 +20045,82 @@ _LADDER_DDL = """
     );
     ALTER TABLE mi_ladder_pages ADD COLUMN IF NOT EXISTS token TEXT;
     CREATE INDEX IF NOT EXISTS idx_ladder_pages_open_episode ON mi_ladder_pages (strategy_id, episode_on, as_of);
+"""
+
+
+# ── COT family — live ALERTS, no orders (operator "Go", 2026-11-15) ─────────────────────────────────────────────
+# Owner doc: docs/setups/cot_family.md §Live alerts. The rules + the two jobs are agents/market_intelligence/
+# cot_family.py. Five tables, all research rows: nothing here is read by an entry, sizing, order or safeguard path.
+_COT_FAMILY_DDL = """
+    -- The CFTC legacy Futures-Only weekly nets we index (a cache of a free public report).
+    CREATE TABLE IF NOT EXISTS mi_cot_nets_weekly (
+        code          TEXT NOT NULL,                  -- CFTC contract market code
+        report_date   DATE NOT NULL,                  -- the report's as-of date (a Tuesday; Monday in a holiday week)
+        comm_net      BIGINT NOT NULL,                -- Commercials long - short
+        lspec_net     BIGINT NOT NULL,                -- Non-commercial (large speculators)
+        sspec_net     BIGINT NOT NULL,                -- Non-reportable (small speculators)
+        open_interest BIGINT,
+        PRIMARY KEY (code, report_date)
+    );
+    -- One row per report week we stored. known_from = the ET day we first held it (a first-run backfill: its
+    -- scheduled Friday release). The daily job may use a week only on days AFTER known_from (no look-ahead).
+    CREATE TABLE IF NOT EXISTS mi_cot_weeks (
+        report_date     DATE PRIMARY KEY,
+        known_from      DATE NOT NULL,
+        message_sent_at TIMESTAMPTZ,                  -- NULL = the weekly message has not gone out (it is retried)
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    -- The rebuilt COT index, one row per (report week, market). 0 = most short in the lookback, 100 = most long.
+    CREATE TABLE IF NOT EXISTS mi_cot_index_weekly (
+        report_date    DATE NOT NULL,
+        market         TEXT NOT NULL,                 -- cot_family.MARKETS key
+        comm           INT NOT NULL,
+        lspec          INT,
+        sspec          INT,
+        setup          TEXT CHECK (setup IN ('short', 'long')),         -- the main rule; the direction to FADE into
+        close_setup    TEXT CHECK (close_setup IN ('short', 'long')),   -- the close list (research-approximate rule)
+        comm_net       BIGINT,
+        lspec_net      BIGINT,
+        sspec_net      BIGINT,
+        lookback_weeks INT,
+        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (report_date, market)
+    );
+    -- The forward calendar of scheduled events (event_date = the daily futures session the release belongs to).
+    CREATE TABLE IF NOT EXISTS mi_cot_calendar (
+        event_date   DATE NOT NULL,
+        event_type   TEXT NOT NULL,                   -- CPI / NFP / FOMC / EIA_PETRO / WASDE / BOE / EARN_NVDA ...
+        release_et   TIMESTAMPTZ,
+        source       TEXT NOT NULL,
+        refreshed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (event_date, event_type)
+    );
+    -- One row per alert (alert day, market, direction, kind). A LABEL for forward scoring: orders nothing.
+    CREATE TABLE IF NOT EXISTS mi_cot_alerts (
+        id               SERIAL PRIMARY KEY,
+        alert_date       DATE NOT NULL,
+        market           TEXT NOT NULL,
+        direction        TEXT NOT NULL CHECK (direction IN ('short', 'long')),
+        kind             TEXT NOT NULL CHECK (kind IN ('news', 'correlation', 'friday')),
+        level            TEXT NOT NULL,               -- main / close
+        report_date      DATE NOT NULL,               -- the COT week the alert was judged on
+        events           TEXT,                        -- ';'-joined scheduled events of the failure day
+        z                DOUBLE PRECISION,            -- the day's close move in 20-day daily ranges
+        peer_z           DOUBLE PRECISION,            -- the peers' median move, + = the crowd's way
+        entry_price      DOUBLE PRECISION,            -- the failure day's close; NULL on a 'friday' row (entry = the next open)
+        entry_note       TEXT,
+        stop_price       DOUBLE PRECISION,            -- a daily CLOSE beyond this stops the trade
+        stop_rule        TEXT,
+        failure_day      DATE,                        -- Friday confirmation: the earlier failure day
+        comm             INT,
+        lspec            INT,
+        sspec            INT,
+        first_minute     DOUBLE PRECISION,            -- first minute after the release, daily ranges, + = crowd's way
+        first_minute_big BOOLEAN,
+        news_class       TEXT,                        -- WITH / AGAINST / INLINE / AMBIG / UNKNOWN (vs consensus)
+        detail           JSONB,
+        sent_at          TIMESTAMPTZ,                 -- NULL = not yet in a Telegram message
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (alert_date, market, direction, kind)
+    );
 """

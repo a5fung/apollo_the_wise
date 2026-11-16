@@ -58,6 +58,7 @@
     "tests/test_chart_axis_shadow_paused.py": 4,
     "tests/test_check_plan_stale_deploy.py": 1,
     "tests/test_close_evidence_gate.py": 1,
+    "tests/test_cot_family.py": 1,
     "tests/test_crypto_two_bucket_board.py": 4,
     "tests/test_daily_ohlc_range_contract.py": 1,
     "tests/test_dated_marker_freshness.py": 1,
@@ -153,6 +154,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 439,
+  "total": 440,
   "unescaped": 359
 }

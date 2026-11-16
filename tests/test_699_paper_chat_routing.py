@@ -356,6 +356,12 @@ _BUILDERS_VIA_SENDER = {
     ("agents/market_intelligence/breakout_v1_list.py", "format_list_message"),
     # the degraded-ranking alert (2026-11-14, his "yes"): paper-tagged ON PURPOSE; run_breakout_v1_list sends it
     ("agents/market_intelligence/breakout_v1_list.py", "ranking_alert_message"),
+    # COT family live alerts (2026-11-15, his "Go": alerts only, no orders): research alerts for a setup family Apollo
+    # cannot trade yet (futures), paper-tagged ON PURPOSE so they sit with the other not-live setup output (like the
+    # breakout list) and add nothing to the main chat; the header says "research alerts, no orders". Both builders are
+    # pure; cot_family._send hands the text to send_telegram_message
+    ("agents/market_intelligence/cot_family.py", "format_daily_message"),
+    ("agents/market_intelligence/cot_family.py", "format_weekly_message"),
     # naked-position L1 (2026-11-10, ZYME): the paper book's page is paper-tagged ON PURPOSE (-> the paper chat);
     # _emit_l1 hands each book's text to send_telegram_message
     ("agents/market_intelligence/system_audit.py", "_format_naked_position_alert"),
