@@ -1326,13 +1326,14 @@ _READ_IT = object()
 
 
 def no_price_data(markets, bars: dict[str, list[tuple]]) -> list[str]:
-    """The markets (of `markets`) whose 3-month daily series was read but is too short to EVER give a reading (fewer
-    than MIN_BARS sessions: a ticker the price source no longer serves, e.g. OJ=F answering with one bar). Such a
-    market is named once in the weekly message and skipped daily without a page. Judged only when some series in the
-    same read IS usable: when nothing is, the source is down and nothing is excused (the run pages as before)."""
+    """The markets (of `markets`) whose 3-month daily series was read, holds SOME bars, and is too short to EVER give
+    a reading (1..MIN_BARS-1 sessions: a ticker the price source no longer serves, e.g. OJ=F answering with one bar).
+    Such a market is named once in the weekly message and skipped daily without a page. An EMPTY answer is never
+    excused — that is also how a rate-limited read looks, so it stays a no-bar and pages. Judged only when some
+    series in the same read IS usable: when nothing is, the source is down and the run pages as before."""
     if not any(len(b) >= MIN_BARS for b in bars.values()):
         return []
-    return sorted(m for m in set(markets) if m in bars and len(bars[m]) < MIN_BARS)
+    return sorted(m for m in set(markets) if 0 < len(bars.get(m) or []) < MIN_BARS)
 
 
 async def ensure_week(io: Io, today: date, calendar_error=_READ_IT, fx_ok: bool = True) -> dict:
@@ -1551,7 +1552,7 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
             cal = await io.calendar(today, today)
             no_bar, closes, suspect = [], {}, []
             # a set-up market the price source no longer serves (OJ=F: one bar): recorded, skipped, never paged; the
-            # weekly message named it. One transient short answer for one market is skipped the same way for that day.
+            # weekly message named it. An EMPTY answer is not this: it stays a no-bar below and pages.
             dead = no_price_data(setups, bars)
             res["no_price_data"] = dead
             for m, (direction, level) in sorted(setups.items()):

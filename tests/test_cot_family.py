@@ -1151,6 +1151,18 @@ def test_a_set_up_market_with_no_usable_price_series_is_skipped_without_a_page()
         _run(cf.run_daily(WED, io, AFTER_CLOSE))
 
 
+def test_an_empty_price_answer_is_never_taken_for_a_dead_ticker():
+    """fix 3 guard: an empty frame is also how a rate-limited read looks. Only a series that HOLDS bars and is too
+    short is a dead ticker; an empty one stays a no-bar and pages, while the readable markets alert first."""
+    io = _daily_io()
+    io.weeks[REPORT]["rows"]["orange_juice"] = _ix(2, 99, 99, "short")
+    io.bars["OJ=F"] = []
+    with pytest.raises(cf.CotError, match="1 of 2 set-up markets could not be read today: ORANGE JUICE"):
+        _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    d = io.audits[0][2]
+    assert d["no_price_data"] == [] and d["no_bar_today"] == ["orange_juice"] and len(io.sent) == 1
+
+
 def test_a_source_that_serves_no_usable_series_at_all_still_pages():
     """fix 3 guard: Yahoo answering short / empty for EVERYTHING is an outage, not a list of dead tickers."""
     io = _daily_io()

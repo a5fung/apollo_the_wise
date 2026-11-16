@@ -67,7 +67,10 @@ read-only command.
 the book its phase resolves to, it computes the four signed M1f demotion triggers (6 consecutive
 losses · trailing-20 expectancy < −0.3R · −10R drawdown from the cumulative-R peak · 1 harmful
 auto-action — the last is "not measurable yet": nothing auto-executes) over its closed methodology
-trades (R = `kill_scale_bands.risk_placed`) and writes ONE `ladder_demotion_shadow` audit row with
+trades (R = `kill_scale_bands.risk_placed`; a trade tagged `pnl_attribution` is never one — since 2026-11-15 the
+UPWARD ladder reads the same way: `strategies/adapters._adapter_live_trades` and the paired-R gate in
+`strategies/promotion.py` filter `pnl_attribution IS NULL`, for every strategy they read, pinned by
+`tests/test_pnl_attribution_methodology_reads.py`) and writes ONE `ladder_demotion_shadow` audit row with
 each trigger's value, threshold and `would_demote`, plus the open positions and what it paged.
 **The job cannot move a phase**: the module has no `update_strategy`, no UPDATE on `mi_strategies`,
 no sizing/toggle/order path (`tests/test_ladder_watchdog.py` spies the DB layer). **The act step is

@@ -136,12 +136,13 @@ problems path. The Monday refresh replaces each of the three forward US weeks on
 answer holds a trigger row; a far week the source does not list yet (it lists ~2 weeks out) replaces nothing.
 
 **A set-up market with no usable price series (2026-11-15, OJ=F).** Yahoo answers ORANGE JUICE with one bar. A
-set-up market whose 3-month daily read holds fewer than 21 sessions (the 20 a reading needs, plus the day) can
-never alert, so it does not page: the weekly message names it once ("No usable price data for: …"), the weekly and
+set-up market whose 3-month daily read holds SOME bars but fewer than 21 sessions (the 20 a reading needs, plus
+the day) can never alert, so it does not page: the weekly message names it once ("No usable price data for: …"), the weekly and
 daily audit rows list it (`no_price_data`), and the daily job skips it. It stays in the index and the set-up list.
-This is judged only when some other series in the same run IS usable — if nothing is, the source is down and the
-run pages as before. Cost, stated: one day's transient short answer for ONE market is skipped that day without a
-page (it is in the audit row). A usable series that only lacks today's bar still pages.
+An EMPTY answer is never excused (that is also how a rate-limited read looks): it stays a no-bar and pages. The
+rule is judged only when some other series in the same run IS usable — if nothing is, the source is down and the
+run pages as before. A usable series that only lacks today's bar still pages. Cost, stated: a day on which Yahoo
+serves a market 1-20 bars instead of its ~65 is skipped for that market without a page (it is in the audit row).
 
 **Known limits (state them when reading the alerts):**
 - The research alert rates were measured on the newsletter's official index (with its small price adjustment). Live
