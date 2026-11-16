@@ -94,6 +94,7 @@ from agents.market_intelligence.audit_events import (
     THEME_MOVE_REJECTED_BY_DESCRIPTION,
     THEME_SMALL_FOLDED, THEME_SMALL_FOLD_RAN, THEME_SMALL_FOLD_ERROR,
     THEME_PASS1_5_OPERATOR_EXEMPT, THEME_PASS1_5_OPERATOR_EXEMPT_ERROR,
+    THEME_SECTOR_FILTER_FLOOR_KEPT, THEME_SECTOR_FILTER_OPERATOR_EXEMPT,
 )
 from shared.llm_response import content_block_types, first_text, is_truncated, stop_reason
 from shared.output_ceilings import max_tokens_for
@@ -5802,8 +5803,24 @@ async def _apply_carryforward_deterministic_filter(
     stocks_by_ticker: dict[str, dict],
     comove_ctx: ComoveContext | None = None,
     as_of=None,
+    operator_exempt: "OperatorExempt | None" = None,
 ) -> int:
     """Daily strip-only filter for theme carryforward members (2026-05-15).
+
+    #727 (a) (2026-11-16) — THE SECTOR ARM (arm 3: `sector_outlier` + `comove_below_bar`, both start
+    from the singleton-sector label) STANDS DOWN FOR A THEME, removing nothing, in two cases:
+      * FLOOR — it can never take a theme under PRUNE_MIN_TICKERS (2). Counted on what the hard arms
+        (ban / cooldown / deal pin) leave: if `members - hard removals - sector removals` < 2, the
+        sector arm removes NOBODY from that theme tonight. "Odd one out" needs a group to be odd
+        against; where every member carries a different sector every member is the odd one, and
+        the arm emptied his 11-02 promotion (ROL / RTO / SMG, three sectors) on 11-03 and 11-05.
+        A theme with a real majority is untouched by this rule: 2 + 1 still loses the 1.
+      * HIS PROMOTION — a theme whose exact name is in `operator_exempt.nights_left` (the #655 (c)
+        3-engine-night window, the SAME set Pass 1.5 reads; None = nothing exempt) is not judged
+        by the sector arm at all; from night 4 it is filtered like any other theme.
+    The hard arms are unaffected by both (a banned name still leaves his promotion, and bans can
+    still empty a theme — STRIP-ONLY below). One audit row per theme per run, only when the arm
+    WOULD have removed someone: `theme_sector_filter_floor_kept` / `theme_sector_filter_operator_exempt`.
 
     2026-09-13 (operator-signed): arm 3 is no longer a sector-IDENTITY test when `comove_ctx`
     is given. A singleton-sector member is KEPT when it co-moves with the rest of the theme
@@ -5914,6 +5931,49 @@ async def _apply_carryforward_deterministic_filter(
                 f"Carryforward filter: '{theme_name}' keeps cross-sector member(s) {comove_kept} — "
                 f"co-move with the theme at >= {ASSIGN_COMOVE_BAR}")
         pinned_hits = [t for t in tickers if t in deal_pinned]
+
+        # #727 (a): the sector arm stands down (see the docstring). Promotion first — it is the
+        # stronger statement and the row then says whose theme it is.
+        hard = set(banned_hits) | set(cooldown_hits) | set(pinned_hits)
+        sector_arm = set(sector_outliers) | set(comove_below_bar)
+        if sector_arm:
+            left = (operator_exempt.nights_left.get(theme_name)
+                    if operator_exempt is not None else None)
+            would_remain = len(tickers) - len(hard | sector_arm)
+            stood_down = (
+                f"theme={theme_name}\npre_size={len(tickers)}\n"
+                f"would_have_removed={sorted(sector_arm)}\n"
+                f"sector_outlier={sorted(sector_outliers)}\n"
+                f"comove_below_bar={sorted(comove_below_bar)}\n"
+                f"would_have_remained={would_remain} floor={PRUNE_MIN_TICKERS}\n"
+                f"hard_arm_removals={sorted(hard)}"
+            )
+            if left:
+                k = OPERATOR_PASS1_5_EXEMPT_NIGHTS - left + 1
+                logger.info(
+                    f"Carryforward filter: '{theme_name}' sector arm SKIPPED — operator-promoted, "
+                    f"night {k} of {OPERATOR_PASS1_5_EXEMPT_NIGHTS}; kept {sorted(sector_arm)}")
+                await log_audit_event(
+                    THEME_SECTOR_FILTER_OPERATOR_EXEMPT,
+                    summary=(f"{theme_name}: sector filter skipped (operator-promoted, night {k} of "
+                             f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS}); kept {len(sector_arm)} member(s)"),
+                    detail=stood_down + f"\nnight={k} of {OPERATOR_PASS1_5_EXEMPT_NIGHTS}",
+                )
+                sector_outliers, comove_below_bar = [], []
+            elif would_remain < PRUNE_MIN_TICKERS:
+                logger.info(
+                    f"Carryforward filter: '{theme_name}' sector arm STOOD DOWN — removing "
+                    f"{sorted(sector_arm)} would leave {would_remain} member(s) "
+                    f"(floor {PRUNE_MIN_TICKERS})")
+                await log_audit_event(
+                    THEME_SECTOR_FILTER_FLOOR_KEPT,
+                    summary=(f"{theme_name}: sector filter kept {len(sector_arm)} member(s) — "
+                             f"removing them would leave {would_remain} "
+                             f"(floor {PRUNE_MIN_TICKERS})"),
+                    detail=stood_down,
+                )
+                sector_outliers, comove_below_bar = [], []
+
         to_remove = (set(banned_hits) | set(cooldown_hits) | set(sector_outliers)
                      | set(comove_below_bar) | set(pinned_hits))
         if not to_remove:
@@ -11041,10 +11101,17 @@ async def run_theme_engine(
     # members and removes 1 (AGRO, 0.09, which the label removes anyway). `comove_ctx=None`
     # (toggle off / context load failed) is the byte-identical pre-change path. See
     # docs/architecture/theme_engine.md change log 2026-09-25.
+    #
+    # #655 (c) + #727 (a): the names the operator promoted within their first 3 theme nights, read
+    # ONCE per run HERE (hoisted 2026-11-16 from just above the first merge) and shared by this
+    # filter's sector arm and both merge passes (Pass 1.5 does not absorb them). Fail-open: a read
+    # error = nothing exempt tonight + a `theme_pass1_5_operator_exempt_error` row.
+    operator_exempt = await _load_operator_exempt(today)
     await _apply_carryforward_deterministic_filter(
         updated_themes, globally_banned, cooldown_set, stocks_by_ticker,
         comove_ctx=comove_ctx,
         as_of=today,          # #671 arm 4: a bought-out name leaves the themes it is ALREADY in
+        operator_exempt=operator_exempt,   # #727 (a): his promotion's first 3 nights skip the sector arm
     )
 
     # --- Step 2a.5: RE-HOMING PASS (#491, 2026-10-03, operator-signed "Rec on all") ---
@@ -11371,11 +11438,8 @@ async def run_theme_engine(
         ),
     )
 
-    # #655 (c): the names the operator promoted within their first 3 theme nights, read ONCE and
-    # shared by both merge passes (Pass 1.5 does not absorb them). Fail-open: a read error = nothing
-    # exempt tonight (today's behaviour) + a `theme_pass1_5_operator_exempt_error` row.
-    operator_exempt = await _load_operator_exempt(today)
-
+    # #655 (c): `operator_exempt` (his promotions inside their first 3 theme nights) was read ONCE
+    # above Step 2a and is shared by both merge passes — Pass 1.5 does not absorb them.
     all_themes = await _merge_overlapping_themes(
         updated_themes + new_themes,
         stocks_by_ticker,

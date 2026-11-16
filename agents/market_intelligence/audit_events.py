@@ -419,6 +419,17 @@ THEME_SMALL_FOLD_ERROR = "theme_small_fold_error"
 THEME_PASS1_5_OPERATOR_EXEMPT = "theme_pass1_5_operator_exempt"
 THEME_PASS1_5_OPERATOR_EXEMPT_ERROR = "theme_pass1_5_operator_exempt_error"
 
+# ── #727 (a) (2026-11-16): the nightly carry-forward filter's SECTOR arm stands down for a theme.
+# Both are written by `_apply_carryforward_deterministic_filter`, one row per theme per run, and ONLY
+# on a night the arm WOULD have removed a member (the detail names them) — nothing is removed by the
+# sector arm on that theme that night; a ban / cooldown / deal pin still applies and still writes its
+# own `theme_carryforward_filter_stripped` row. FLOOR_KEPT: removing the outliers would have left the
+# theme under PRUNE_MIN_TICKERS (every member a different sector = every member "the odd one out").
+# OPERATOR_EXEMPT: the theme is the operator's promotion inside its first 3 engine nights (the #655 (c)
+# window). Neither name is read by the quality check's departure parser — these members were KEPT.
+THEME_SECTOR_FILTER_FLOOR_KEPT = "theme_sector_filter_floor_kept"
+THEME_SECTOR_FILTER_OPERATOR_EXEMPT = "theme_sector_filter_operator_exempt"
+
 # #312 (2026-10-16) — written by `job_recovery.ensure_first_seen`, read back by `fetch_first_seen`:
 # summary = job id, detail = the boot time (tz-aware ISO) the job was first registered. One row per
 # job, ever — the recovery planner skips every slot earlier than it.
