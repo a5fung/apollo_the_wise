@@ -141,6 +141,7 @@
     "tests/test_theme_axis_eod_unscored.py": 4,
     "tests/test_theme_axis_shadow.py": 4,
     "tests/test_theme_birth_gate.py": 3,
+    "tests/test_theme_carryforward_filter.py": 1,
     "tests/test_theme_count_active_metric.py": 5,
     "tests/test_theme_notification.py": 2,
     "tests/test_theme_quality_check.py": 3,
@@ -154,6 +155,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 440,
+  "total": 441,
   "unescaped": 359
 }

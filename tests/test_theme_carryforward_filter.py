@@ -341,3 +341,242 @@ async def test_the_strip_reason_names_the_tickers(monkeypatch):
     assert rows, "no audit row for the strip"
     assert "deal_pinned" in rows[0][2] and "CBZ" in rows[0][2], (
         f"the reason must name the arm and the ticker; got {rows[0][2]!r}")
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────────────────
+# #727 (a) — the sector arm can never empty a theme, and his promotions get 3 nights
+# ─────────────────────────────────────────────────────────────────────────────────────────
+#
+# Prod, 2026-11-03 (audit id 66326) and 11-05 (id 69172): his 11-02 promotion 'Home Pest Control &
+# Lawn/Garden Residential Services' (ROL Consumer Cyclical / RTO Industrials / SMG Basic Materials)
+# lost all three members on its first engine night. In a small theme where every member carries a
+# different sector, every member is "the odd one out", so the arm removed the whole theme.
+
+from datetime import date  # noqa: E402
+
+PEST = "Home Pest Control & Lawn/Garden Residential Services"
+PEST_SECTORS = {
+    "ROL": {"sector": "Consumer Cyclical"},
+    "RTO": {"sector": "Industrials"},
+    "SMG": {"sector": "Basic Materials"},
+}
+FLOOR_EVENT = "theme_sector_filter_floor_kept"
+EXEMPT_EVENT = "theme_sector_filter_operator_exempt"
+STRIP_EVENT = "theme_carryforward_filter_stripped"
+
+
+def test_727_the_event_names_are_the_registered_constants():
+    from agents.market_intelligence import audit_events
+    assert audit_events.THEME_SECTOR_FILTER_FLOOR_KEPT == FLOOR_EVENT
+    assert audit_events.THEME_SECTOR_FILTER_OPERATOR_EXEMPT == EXEMPT_EVENT
+
+
+def _audit(monkeypatch):
+    rows: list[tuple[str, str, str]] = []
+
+    async def fake_audit(event_type, summary=None, detail=None):
+        rows.append((event_type, summary or "", detail or ""))
+
+    monkeypatch.setattr(theme_engine, "log_audit_event", fake_audit)
+    return rows
+
+
+def _pest():
+    return [{"name": PEST, "tickers": ["ROL", "RTO", "SMG"], "score": 60.0, "stage": "Nascent"}]
+
+
+@pytest.mark.asyncio
+async def test_727_three_members_three_sectors_survive(monkeypatch):
+    """THE PROD CASE: nobody is the odd one out when everybody is. The theme is kept whole and
+    ONE floor row names what the arm would have removed; no strip row is written."""
+    rows = _audit(monkeypatch)
+    themes = _pest()
+
+    stripped = await theme_engine._apply_carryforward_deterministic_filter(
+        themes, set(), set(), PEST_SECTORS,
+    )
+
+    assert stripped == 0
+    assert themes[0]["tickers"] == ["ROL", "RTO", "SMG"]
+    kept = [r for r in rows if r[0] == FLOOR_EVENT]
+    assert len(kept) == 1
+    assert PEST in kept[0][1]
+    for t in ("ROL", "RTO", "SMG"):
+        assert t in kept[0][2]
+    assert not [r for r in rows if r[0] == STRIP_EVENT]
+
+
+@pytest.mark.asyncio
+async def test_727_survives_when_the_tape_rejects_every_member(monkeypatch):
+    """Same shape with the co-movement test ON and saying no to all three (`comove_below_bar`
+    starts from the same singleton label, so it is the same arm and the same floor)."""
+    rows = _audit(monkeypatch)
+    monkeypatch.setattr(
+        theme_engine, "_comove_verdict",
+        lambda t, members, ctx: theme_engine.ComoveVerdict(
+            admit=False, corr=0.1, overlap=60, basket_n=2, reason="below_bar"))
+    themes = _pest()
+
+    stripped = await theme_engine._apply_carryforward_deterministic_filter(
+        themes, set(), set(), PEST_SECTORS, comove_ctx=object(),
+    )
+
+    assert stripped == 0
+    assert themes[0]["tickers"] == ["ROL", "RTO", "SMG"]
+    assert len([r for r in rows if r[0] == FLOOR_EVENT]) == 1
+
+
+@pytest.mark.asyncio
+async def test_727_two_known_sectors_and_an_unknown_survive(monkeypatch):
+    """A / B / Unknown: the arm would leave ONE member — under the floor, so nothing is removed."""
+    rows = _audit(monkeypatch)
+    themes = [{"name": "T", "tickers": ["A", "B", "U"]}]
+    stocks = {"A": {"sector": "Tech"}, "B": {"sector": "Energy"}}
+
+    stripped = await theme_engine._apply_carryforward_deterministic_filter(themes, set(), set(), stocks)
+
+    assert stripped == 0 and themes[0]["tickers"] == ["A", "B", "U"]
+    assert len([r for r in rows if r[0] == FLOOR_EVENT]) == 1
+
+
+@pytest.mark.asyncio
+async def test_727_a_clear_majority_still_loses_its_true_outlier(monkeypatch):
+    """The filter's purpose is intact, down to the smallest theme it runs on: 2 + 1 loses the 1
+    (2 survive = the engine's floor) and no floor row is written."""
+    rows = _audit(monkeypatch)
+    themes = [{"name": "Chips", "tickers": ["NVDA", "AMD", "JPM"]}]
+    stocks = {"NVDA": {"sector": "Technology"}, "AMD": {"sector": "Technology"},
+              "JPM": {"sector": "Financial Services"}}
+
+    stripped = await theme_engine._apply_carryforward_deterministic_filter(themes, set(), set(), stocks)
+
+    assert stripped == 1 and themes[0]["tickers"] == ["NVDA", "AMD"]
+    assert [r[0] for r in rows] == [STRIP_EVENT]
+
+
+@pytest.mark.asyncio
+async def test_727_the_floor_counts_what_the_hard_arms_leave(monkeypatch):
+    """4 members: one banned, one true outlier, a majority of two. Banned goes; the outlier would
+    leave 2 = the floor, so it goes too. Then the same theme with TWO banned: the sector strip would
+    leave 1, so the sector arm stands down — the ban still applies."""
+    rows = _audit(monkeypatch)
+    stocks = {"A": {"sector": "Tech"}, "B": {"sector": "Tech"}, "C": {"sector": "Tech"},
+              "X": {"sector": "Energy"}}
+    themes = [{"name": "T", "tickers": ["A", "B", "C", "X"]}]
+    assert await theme_engine._apply_carryforward_deterministic_filter(themes, {"C"}, set(), stocks) == 2
+    assert themes[0]["tickers"] == ["A", "B"]
+
+    rows.clear()
+    themes = [{"name": "T", "tickers": ["A", "B", "C", "X"]}]
+    assert await theme_engine._apply_carryforward_deterministic_filter(themes, {"B", "C"}, set(), stocks) == 2
+    assert themes[0]["tickers"] == ["A", "X"]
+    assert len([r for r in rows if r[0] == FLOOR_EVENT]) == 1
+    strip = [r for r in rows if r[0] == STRIP_EVENT]
+    assert len(strip) == 1 and "sector_outlier" not in strip[0][2]
+
+
+@pytest.mark.asyncio
+async def test_727_hard_arms_can_still_empty_a_theme(monkeypatch):
+    """The floor guards the SECTOR arm only: banned / cooldown / deal-pinned still strip to zero."""
+    _audit(monkeypatch)
+    themes = _pest()
+    stripped = await theme_engine._apply_carryforward_deterministic_filter(
+        themes, {"ROL", "RTO", "SMG"}, set(), PEST_SECTORS)
+    assert stripped == 3 and themes[0]["tickers"] == []
+
+
+def _promoted_theme():
+    # A clear majority + one true outlier: OUTSIDE the window this loses JPM, so the exemption
+    # (not the floor) is what a kept JPM proves.
+    return [{"name": PEST, "tickers": ["NVDA", "AMD", "INTC", "JPM"]}]
+
+
+PROMO_STOCKS = {"NVDA": {"sector": "Technology"}, "AMD": {"sector": "Technology"},
+                "INTC": {"sector": "Technology"}, "JPM": {"sector": "Financial Services"}}
+
+
+def _exempt(nights_left):
+    return theme_engine.OperatorExempt(nights_left=nights_left)
+
+
+@pytest.mark.asyncio
+async def test_727_a_promoted_theme_inside_its_window_is_untouched(monkeypatch):
+    rows = _audit(monkeypatch)
+    themes = _promoted_theme()
+    exempt = _exempt({PEST: 3})
+
+    stripped = await theme_engine._apply_carryforward_deterministic_filter(
+        themes, set(), set(), PROMO_STOCKS, operator_exempt=exempt)
+
+    assert stripped == 0 and themes[0]["tickers"] == ["NVDA", "AMD", "INTC", "JPM"]
+    ex = [r for r in rows if r[0] == EXEMPT_EVENT]
+    assert len(ex) == 1 and PEST in ex[0][1] and "night 1 of 3" in ex[0][1] and "JPM" in ex[0][2]
+    assert not [r for r in rows if r[0] in (STRIP_EVENT, FLOOR_EVENT)]
+    # Pass 1.5's own once-per-run written-set is NOT used up by this row.
+    assert exempt.logged == set()
+
+
+@pytest.mark.asyncio
+async def test_727_a_promoted_theme_with_nothing_to_strip_writes_no_row(monkeypatch):
+    rows = _audit(monkeypatch)
+    themes = [{"name": PEST, "tickers": ["NVDA", "AMD", "INTC"]}]
+    await theme_engine._apply_carryforward_deterministic_filter(
+        themes, set(), set(), PROMO_STOCKS, operator_exempt=_exempt({PEST: 2}))
+    assert rows == []
+
+
+@pytest.mark.asyncio
+async def test_727_a_promoted_theme_still_loses_a_banned_member(monkeypatch):
+    """Only the sector arm is exempt — a ban, a cooldown or a deal pin still applies to his theme."""
+    rows = _audit(monkeypatch)
+    themes = _promoted_theme()
+
+    stripped = await theme_engine._apply_carryforward_deterministic_filter(
+        themes, {"AMD"}, set(), PROMO_STOCKS, operator_exempt=_exempt({PEST: 1}))
+
+    assert stripped == 1 and themes[0]["tickers"] == ["NVDA", "INTC", "JPM"]
+    assert len([r for r in rows if r[0] == EXEMPT_EVENT]) == 1
+
+
+@pytest.mark.asyncio
+async def test_727_nights_1_to_3_exempt_and_night_4_filtered_normally(monkeypatch):
+    """Driven through the SAME window helper Pass 1.5 uses (`_operator_exempt_nights_left`): his
+    Mon 11-02 promotion is untouched on engine nights 11-03 / 11-04 / 11-05 and filtered on 11-06."""
+    rows = _audit(monkeypatch)
+    mon, tue, wed, thu, fri = (date(2026, 11, d) for d in (2, 3, 4, 5, 6))
+    promos = [(theme_engine._OPERATOR_PROMOTED_SUMMARY.format(name=PEST, n=4), mon)]
+    nights = [mon, tue, wed, thu, fri]
+
+    for k, today in enumerate((tue, wed, thu), start=1):
+        rows.clear()
+        themes = _promoted_theme()
+        exempt = _exempt(theme_engine._operator_exempt_nights_left(promos, nights, today))
+        assert await theme_engine._apply_carryforward_deterministic_filter(
+            themes, set(), set(), PROMO_STOCKS, operator_exempt=exempt) == 0
+        assert "JPM" in themes[0]["tickers"]
+        assert f"night {k} of 3" in rows[0][1]
+
+    rows.clear()
+    themes = _promoted_theme()
+    exempt = _exempt(theme_engine._operator_exempt_nights_left(promos, nights, fri))
+    assert exempt.nights_left == {}
+    assert await theme_engine._apply_carryforward_deterministic_filter(
+        themes, set(), set(), PROMO_STOCKS, operator_exempt=exempt) == 1
+    assert themes[0]["tickers"] == ["NVDA", "AMD", "INTC"]
+    assert [r[0] for r in rows] == [STRIP_EVENT]
+
+
+def test_727_the_nightly_hands_the_filter_the_runs_one_exemption_set():
+    """Wiring: the nightly's filter call passes `operator_exempt=`, and the exemption set is read
+    ONCE per run, before the filter (a second read = a second query and a duplicate error row)."""
+    # source-pin-ok: wiring — a correct filter the nightly never hands the exemption set is the failure; exercising it means running the whole nightly (LLM + DB)
+    import ast
+    import inspect
+    tree = ast.parse(inspect.getsource(theme_engine))
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]
+    filt = [c for c in calls if c.func.id == "_apply_carryforward_deterministic_filter"]
+    assert filt and all("operator_exempt" in {k.arg for k in c.keywords} for c in filt)
+    loads = [c for c in calls if c.func.id == "_load_operator_exempt"]
+    assert len(loads) == 1
+    assert loads[0].lineno < min(c.lineno for c in filt)
