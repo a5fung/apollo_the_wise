@@ -1422,12 +1422,13 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
                 res["suspect_bars"] = suspect
             # a peer with no reading today drops out of the correlation median (as in the research): recorded only
             res["peers_unread"] = sorted(p for p in _with_peers(setups) - set(setups) if p not in z)
-            unread = sorted(m for m in setups if m in errors or m in no_bar)
+            # A weekday the stock market is shut: futures trade a short session or none, so a market with no bar is a
+            # quiet no-bar (recorded above), not a gap. A failed READ is never excused by the calendar.
+            if no_bar and io.is_stock_holiday(today):
+                res["holiday"] = True
+            unread = sorted(m for m in setups if m in errors or (m in no_bar and not res.get("holiday")))
             if unread and len(unread) == len(setups):
-                if not errors and io.is_stock_holiday(today):
-                    res["holiday"] = True       # no futures session today: nothing to read, nothing to page
-                else:
-                    problems.append(f"no set-up market could be read today (errors {len(errors)}, no bar {len(no_bar)})")
+                problems.append(f"no set-up market could be read today (errors {len(errors)}, no bar {len(no_bar)})")
             elif unread:
                 # the readable markets alert and send below; the gap pages after, because nothing re-reads it
                 problems.append(f"{len(unread)} of {len(setups)} set-up markets could not be read today: "

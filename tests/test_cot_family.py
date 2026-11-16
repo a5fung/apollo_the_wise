@@ -632,6 +632,21 @@ def test_a_set_up_market_with_no_bar_today_pages_after_the_others_alert():
     assert res["peers_unread"] == ["palladium"] and res["alerts"] == 1
 
 
+def test_a_stock_holiday_excuses_a_market_with_no_bar_but_never_a_failed_read():
+    """A US holiday: some futures trade a short session, others (grains, softs) are shut. The shut ones are a quiet
+    no-bar, recorded; the open one still alerts. A fetch ERROR on the same day still pages."""
+    io = _daily_io()
+    io.holiday = True
+    io.weeks[REPORT]["rows"]["crude_oil"] = _ix(2, 99, 99, "short")
+    io.bars.update({"CL=F": bars_to(WED, 99.0)[:-1], "HO=F": bars_to(WED, 100.0), "RB=F": bars_to(WED, 100.0)})
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["holiday"] is True and res["no_bar_today"] == ["crude_oil"] and res["problems"] == []
+    assert {k[1] for k in io.alerts} == {"gold"} and len(io.sent) == 1
+    io.bar_fail = {"GC=F"}
+    with pytest.raises(cf.CotError, match="1 of 2 set-up markets could not be read today: GOLD"):
+        _run(cf.run_daily(WED, io, AFTER_CLOSE))
+
+
 def test_the_audit_row_carries_each_set_up_markets_close_and_previous_close():
     """Yahoo's newest daily close is the last trade and is restated later; tomorrow's `prev_close` against today's
     `close` is the measurement of that gap (finding: the research compared settlement with settlement)."""

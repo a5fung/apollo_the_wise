@@ -64,7 +64,7 @@ forward. No strategy row, no order, no sizing, no broker import. Code: `agents/m
 | Job | When (ET) | What it does |
 |---|---|---|
 | `cot_weekly` | Fri 17:40, retry 18:40 | Reads the CFTC report (released Fri 15:30), computes the index for 40 markets (Oats left out: no longer reported), stores the week, sends ONE message: this week's set ups (main rule, and the close list by the research-approximate rule), markets that LEFT a set up or reached neutral ~50 (the exit signal for anyone holding), and the Friday-confirmation alerts. One message per report week; the retry is a no-op once it has gone. |
-| `cot_daily` | Mon–Fri 17:15 | For each market set up (main or close list) in the week **known before today**: today's daily bar, today's scheduled events, feed A. ONE message when there is an alert; silence otherwise; one audit row every run. Mon–Thu it first picks up a holiday-delayed CFTC release (and then sends that week's message, entry "the next open"). |
+| `cot_daily` | Mon–Fri 17:15 | For each market set up (main or close list) in the week **known before today**: today's daily bar, today's scheduled events, feed A. ONE message when there is an alert; silence otherwise; one audit row every run. Mon–Thu, after the day's calendar read and before the alerts, it picks up a holiday-delayed CFTC release (and then sends that week's message, entry "the next open"). |
 
 Why after 17:00: the futures daily bar ends at 17:00 ET, and the Friday check needs Friday's bar. The daily job
 refuses to run on a bar that is not final.
@@ -114,7 +114,7 @@ events), `mi_cot_alerts` (one row per alert day / market / direction / kind, wit
 
 **Failure handling:** one market's error never stops the rest: the readable markets alert and send first. Then any
 of these raises AFTER the audit row, which pages: ANY set-up market with no bar today or a failed read (nothing
-re-reads it; a day when none has a bar and the stock market is shut is a quiet holiday), a CFTC fetch that failed,
+re-reads it; on a weekday the stock market is shut a market with no bar is a quiet no-bar, a failed read still pages), a CFTC fetch that failed,
 a calendar source that failed or refused (news alerts may be blind), an undelivered message, or STALE COT data —
 no report stored, or the newest stored report more than 17 days old (the CFTC source can keep answering with old
 rows; paged on Mondays while it lasts, and the first stale run is always a Monday). A missing peer only drops out
