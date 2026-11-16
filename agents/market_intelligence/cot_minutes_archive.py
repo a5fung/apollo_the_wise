@@ -21,6 +21,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from agents.market_intelligence import cot_family
 from shared.dates import _ET
 
 logger = logging.getLogger(__name__)
@@ -32,20 +33,11 @@ COLUMNS = ["market", "ticker", "ts_et", "o", "h", "l", "c", "v"]
 REPO = Path(__file__).resolve().parents[2]          # /app in the container
 ENV_DIR = "COT_MINUTES_DIR"
 
-# market -> yfinance ticker. Copied 2026-11-15 from ~/cmr_lab/scripts/markets.py (the `M` table; snake_case keys
-# kept). dollar_index (DX-Y.NYB) is not a futures contract and has no 1-minute history on yfinance, so it is skipped.
-MARKET_TICKERS: dict[str, str] = {
-    "sp500": "ES=F", "nasdaq": "NQ=F", "dow": "YM=F", "russell": "RTY=F",
-    "bonds_30y": "ZB=F", "notes_10y": "ZN=F", "notes_5y": "ZF=F", "notes_2y": "ZT=F",
-    "australian_dollar": "6A=F", "british_pound": "6B=F", "canadian_dollar": "6C=F", "euro": "6E=F",
-    "japanese_yen": "6J=F", "swiss_franc": "6S=F", "new_zealand_dollar": "6N=F",
-    "crude_oil": "CL=F", "heating_oil": "HO=F", "unleaded_gas": "RB=F", "natural_gas": "NG=F",
-    "corn": "ZC=F", "oats": "ZO=F", "soybean_meal": "ZM=F", "soybean_oil": "ZL=F", "soybeans": "ZS=F",
-    "wheat": "ZW=F", "lean_hogs": "HE=F", "live_cattle": "LE=F",
-    "copper": "HG=F", "gold": "GC=F", "palladium": "PA=F", "platinum": "PL=F", "silver": "SI=F",
-    "cocoa": "CC=F", "coffee": "KC=F", "cotton": "CT=F", "lumber": "LBR=F", "orange_juice": "OJ=F", "sugar": "SB=F",
-    "bitcoin": "BTC=F", "ethereum": "ETH=F",
-}
+# market -> yfinance ticker, DERIVED from the COT family's own market table (review 2026-11-15: it was a hand copy).
+# So it holds exactly the markets the alerts cover: the dollar index is IN (DX-Y.NYB does serve 1-minute bars —
+# 8,003 rows over 8 days, checked 2026-11-15), and oats (ZO=F) is OUT (the CFTC no longer reports it, so it has no
+# index, no set up and no alert to test).
+MARKET_TICKERS: dict[str, str] = {m: cot_family.ticker_of(m) for m in cot_family.MARKETS}
 
 
 class CotMinutesArchiveError(RuntimeError):
@@ -57,19 +49,15 @@ def out_dir() -> Path:
 
 
 def _fetch_one(ticker: str):
-    import yfinance as yf  # lazy, like collector.py
-    return yf.Ticker(ticker).history(period=f"{LOOKBACK_DAYS}d", interval="1m", prepost=True, auto_adjust=False)
+    """cot_family's own 1-minute pull, over the archive's longer window."""
+    return cot_family.fetch_minute_frame(ticker, f"{LOOKBACK_DAYS}d")
 
 
 def _rows_for(market: str, ticker: str, df) -> list[list]:
     if df is None or len(df) == 0:
         return []
-    idx = df.index
-    if getattr(idx, "tz", None) is None:
-        idx = idx.tz_localize("UTC")
-    idx = idx.tz_convert(_ET)
     out = []
-    for ts, (o, h, l, c, v) in zip(idx, df[["Open", "High", "Low", "Close", "Volume"]].itertuples(index=False)):
+    for ts, (o, h, l, c, v) in zip(cot_family.et_index(df), df[["Open", "High", "Low", "Close", "Volume"]].itertuples(index=False)):
         if c != c:  # NaN close: no bar
             continue
         out.append([market, ticker, ts.isoformat(), o, h, l, c, v])

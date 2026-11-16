@@ -56,6 +56,10 @@ def _normalize_live_status(status: str | None) -> str:
 
 
 async def _adapter_live_trades(window_days: int, *, signal_type: str) -> list[OutcomeRow]:
+    """The promotion ladder's read of a strategy's trades — a METHODOLOGY read, so a trade whose
+    P&L came from a defect (`pnl_attribution` non-NULL) is not counted (operator ruling 2026-11-15:
+    the flawed pre-fix breakout_v1 paper trades are out of strategy measurement). Account
+    accounting (`db.get_closed_pnl_by_account_mode`) keeps every trade, by design."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -65,6 +69,7 @@ async def _adapter_live_trades(window_days: int, *, signal_type: str) -> list[Ou
             FROM mi_live_trades
             WHERE signal_type = $1
               AND alert_date >= CURRENT_DATE - $2::int
+              AND pnl_attribution IS NULL
             """,
             signal_type, window_days,
         )

@@ -616,6 +616,25 @@ def test_research_is_refused_during_the_orb_window():
     from agents.market_intelligence.execution_routes import research_blocked_now
     et = ZoneInfo("America/New_York")
     assert research_blocked_now(datetime(2026, 11, 16, 9, 30, tzinfo=et))          # Monday, ORB
+    assert research_blocked_now(datetime(2026, 11, 16, 9, 20, tzinfo=et))          # the lead margin (review 11-15)
+    assert research_blocked_now(datetime(2026, 11, 16, 10, 4, 59, tzinfo=et))
     assert not research_blocked_now(datetime(2026, 11, 16, 10, 5, tzinfo=et))      # window over
-    assert not research_blocked_now(datetime(2026, 11, 16, 9, 24, tzinfo=et))
+    assert not research_blocked_now(datetime(2026, 11, 16, 9, 19, 59, tzinfo=et))
     assert not research_blocked_now(datetime(2026, 11, 15, 9, 30, tzinfo=et))      # Sunday
+
+
+def test_fetch_bars_fails_fast_on_the_orb_window_refusal(monkeypatch):
+    """Review 11-15: `orb_window` is a 429, so the helper retried it 5 times (30 s of backoff, each try one more
+    request inside the window) and then threw the pull away. It now stops on the FIRST refusal with a plain message."""
+    calls, slept = [], []
+
+    def _post(body):
+        calls.append(body)
+        raise ec.ResearchBarsRequestError(429, "orb_window", "research data is refused 09:20-10:05 ET on weekdays")
+    monkeypatch.setattr(rd, "_service_url", lambda: "http://x")
+    monkeypatch.setattr(rd, "_post", _post)
+    monkeypatch.setattr(rd, "_sleep", slept.append)
+    with pytest.raises(ec.ResearchBarsRequestError) as e:
+        rd.fetch_bars(["SPY"], "1Min", "2026-11-16T09:30:00-05:00", "2026-11-16T16:00:00-05:00")
+    assert e.value.code == "orb_window" and len(calls) == 1 and slept == []
+    assert "10:05" in str(e.value) and "nothing was returned" in str(e.value)

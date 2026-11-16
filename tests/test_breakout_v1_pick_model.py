@@ -811,6 +811,35 @@ def test_a_degraded_ranking_night_has_one_plain_alert_and_a_normal_night_none():
     assert "1-year price history" in bl.ranking_alert_message(d, {"long_error": "Timeout"})
 
 
+def test_the_ranking_alert_also_names_a_blank_group_read_an_unreadable_switch_and_partial_scoring():
+    """Review 11-15: three more degraded nights that wrote a normal-looking list and paged nobody."""
+    from datetime import date
+    d = date(2026, 11, 16)
+    ok = {"selected": "pick_model", "fallback": None, "listed_n": 200, "scored": {"pick_model": 200}}
+    assert bl.ranking_alert_message(d, ok) is None
+    assert bl.ranking_alert_message(d, {**ok, "scored": {"pick_model": 100}}) is None       # exactly half: not partial
+    m = bl.ranking_alert_message(d, {**ok, "sic_error": "TimeoutError: pool"})
+    assert "industry" in m and "TimeoutError" in m
+    m = bl.ranking_alert_message(d, {**ok, "note": "switch read failed 3x: TimeoutError"})
+    assert "ranking switch" in m and "switch read failed 3x" in m and "pick model" in m
+    m = bl.ranking_alert_message(d, {**ok, "scored": {"pick_model": 99}})
+    assert "99 of 200" in m
+    # ONE message for all of them; a full fallback is not also reported as "0 of N"
+    m = bl.ranking_alert_message(d, {**ok, "fallback": "x", "scored": {"pick_model": 0}, "sic_error": "E", "note": "n"})
+    assert m.count("Breakout v1") == 1 and "scored no stock" in m and "0 of 200" not in m and m.count("\n- ") == 3
+    # the pick model scored nothing while another ranking was selected: no fallback line exists, so say it
+    m = bl.ranking_alert_message(d, {"selected": "order_score", "fallback": None, "listed_n": 50, "scored": {"pick_model": 0}})
+    assert "0 of 50" in m
+
+
+def test_the_run_summary_carries_the_listed_count_the_alert_reads():
+    rows = [{"ticker": t, "order_score": 1.0, "pick_inputs": {}} for t in ("AAA", "BBB")]
+    import unittest.mock as um
+    with um.patch.object(bl, "rank_rows", lambda r: None), um.patch.object(bl, "pick_scores", lambda xs: [0.5, None]):
+        rk = bl.rank_all(rows, [], "pick_model")
+    assert rk["listed_n"] == 2 and rk["scored"]["pick_model"] == 1
+
+
 def test_the_job_sends_the_alert_when_the_pick_model_falls_back(monkeypatch):
     monkeypatch.setattr(bl, "pick_scores", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("numpy changed")))
     f, out, rows = _job(monkeypatch)

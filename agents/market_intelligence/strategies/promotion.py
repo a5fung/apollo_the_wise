@@ -120,11 +120,13 @@ async def _eval_paired_r(strategy_id: str, rows: list[OutcomeRow], thresholds: d
             live_count = await conn.fetchval("""
                 SELECT COUNT(*) FROM mi_live_trades
                 WHERE status='closed' AND alert_date >= CURRENT_DATE - $1::int
+                  AND pnl_attribution IS NULL
             """, WINDOW_DAYS) or 0
             shadow_tickers = [r.ticker for r in rows if r.status == "closed"][:3]
             live_tickers_rows = await conn.fetch("""
                 SELECT DISTINCT ticker FROM mi_live_trades
                 WHERE status='closed' AND alert_date >= CURRENT_DATE - $1::int
+                  AND pnl_attribution IS NULL
                 ORDER BY ticker LIMIT 3
             """, WINDOW_DAYS)
             live_tickers = [r["ticker"] for r in live_tickers_rows]
@@ -148,6 +150,7 @@ async def _eval_paired_r(strategy_id: str, rows: list[OutcomeRow], thresholds: d
             FROM mi_live_trades
             WHERE status = 'closed' AND risk_dollars > 0
               AND alert_date >= CURRENT_DATE - $1::int
+              AND pnl_attribution IS NULL   -- methodology read: a bug-attributed trade is not the setup (11-15)
             """,
             WINDOW_DAYS,
         )

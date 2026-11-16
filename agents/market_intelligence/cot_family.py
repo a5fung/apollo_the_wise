@@ -99,7 +99,10 @@ MARKETS: dict[str, tuple[str, tuple[str, ...], int, str, str]] = {
     "ethereum": ("ETHEREUM", ("146021",), 89, "ETH=F", "crypto"),
 }
 EQUITIES = frozenset({"sp500", "nasdaq", "dow", "russell"})
-NO_MINUTE_BARS = frozenset({"dollar_index"})        # DX-Y.NYB has no 1-minute history on yfinance
+# Markets whose first-minute label is not read. NOTE (review 2026-11-15): the original reason — "DX-Y.NYB has no
+# 1-minute history on yfinance" — no longer holds (8,003 one-minute rows over 8 days that day; the weekly archive
+# saves them). The label is left off for it until that is ruled on; this set changes no alert.
+NO_MINUTE_BARS = frozenset({"dollar_index"})
 
 
 def name_of(m: str) -> str:
@@ -145,6 +148,7 @@ for _k in _FI:
     PEERS[_k] = [(p, 1) for p in _FI if p != _k]
 C1_THRESHOLD = 0.5            # median peer move the crowd's way, in each peer's own 20-day range (detector.py C1)
 ATR_DAYS = 20
+MIN_BARS = ATR_DAYS + 1       # features_at needs ATR_DAYS sessions BEFORE the day: a shorter 3-month series can never be read
 FIRST_MINUTE_BIG = 0.25       # of a day's range, the crowd's way (first_tick_1min.py F25)
 SURPRISE_DEAD_ZONE = 0.25     # |z| below this = in line (surprise_rules.py DEAD)
 MAX_WEEK_AGE_DAYS = 17        # the research carries an issue at most 12 days past its Sunday = report Tuesday + 17
@@ -826,10 +830,18 @@ def fetch_fxempire(country: str, d0: date, d1: date, get=_http_get, sleep=_time.
             raise CalendarRefused(f"fxempire calendar refused the request ({r.status_code}) for {country}")
         if r.status_code != 200:
             raise CotError(f"fxempire calendar answered {r.status_code} for {country}")
-        j = r.json()
-        for day in j.get("calendar", []):
+        try:
+            j = r.json()
+        except ValueError as e:
+            raise CotError(f"fxempire calendar for {country}: the answer is not JSON ({type(e).__name__})") from e
+        # An HTTP 200 whose body is empty or reshaped must never read as "no events" (the caller would then drop the
+        # stored future rows). The real answer always carries both keys, also for an empty range (seen 2026-11-15).
+        if not isinstance(j, dict) or not isinstance(j.get("calendar"), list) or "last" not in j:
+            raise CotError(f"fxempire calendar for {country}: the answer has no 'calendar' list / 'last' flag "
+                           "(the body changed shape)")
+        for day in j["calendar"]:
             out.extend(day.get("events", []))
-        if j.get("last", True):
+        if j["last"]:
             return out
         page += 1
         sleep(1.5)
@@ -853,16 +865,25 @@ def fetch_daily_bars(ticker: str) -> list[tuple]:
     return _bars_from_frame(yf.Ticker(ticker).history(period="3mo", interval="1d", auto_adjust=False))
 
 
-def fetch_minute_bars(ticker: str) -> list[tuple]:
+def fetch_minute_frame(ticker: str, period: str = "5d"):
+    """The ONE 1-minute pull (extended hours included). cot_minutes_archive reads the same frame over 8 days."""
     import yfinance as yf
-    df = yf.Ticker(ticker).history(period="5d", interval="1m", prepost=True, auto_adjust=False)
-    if df is None or len(df) == 0:
-        return []
+    return yf.Ticker(ticker).history(period=period, interval="1m", prepost=True, auto_adjust=False)
+
+
+def et_index(df):
+    """The frame's bar times in ET (a naive index is UTC)."""
     idx = df.index
     if getattr(idx, "tz", None) is None:
         idx = idx.tz_localize("UTC")
-    idx = idx.tz_convert(_ET)
-    return [(ts.to_pydatetime(), float(c)) for ts, c in zip(idx, df["Close"]) if c == c]
+    return idx.tz_convert(_ET)
+
+
+def fetch_minute_bars(ticker: str) -> list[tuple]:
+    df = fetch_minute_frame(ticker)
+    if df is None or len(df) == 0:
+        return []
+    return [(ts.to_pydatetime(), float(c)) for ts, c in zip(et_index(df), df["Close"]) if c == c]
 
 
 def fetch_earnings(ticker: str) -> list[dict]:
@@ -1039,6 +1060,13 @@ class Io:
                                     "WHERE event_date BETWEEN $1 AND $2 ORDER BY event_date, event_type", d0, d1)
         return [dict(r) for r in rows]
 
+    async def calendar_first_date(self) -> Optional[date]:
+        """The earliest stored event date; None = the table is empty. The Friday check reads the sources itself for
+        any part of its window that lies before this (a new install holds nothing before its first day)."""
+        pool = await self._pool()
+        async with pool.acquire() as conn:
+            return await conn.fetchval("SELECT MIN(event_date) FROM mi_cot_calendar")
+
     async def store_alerts(self, rows: list[dict]) -> list[dict]:
         """Upsert; returns the rows NOT yet sent, each with its id."""
         out = []
@@ -1121,15 +1149,76 @@ US_SOURCE = "fxempire.com economic calendar (united-states)"
 FAR = date(2099, 12, 31)
 
 
-async def refresh_this_week(io: Io, today: date) -> list[dict]:
-    """EVERY day: this week's US calendar, read fresh (the source lists a release only a week or two ahead, and can
-    move one). Returns the raw events — the same read carries the day's actual-vs-consensus numbers. Raises."""
-    monday = today - timedelta(days=today.weekday())
+async def read_us_week(io: Io, monday: date) -> tuple[list[dict], list[dict]]:
+    """One whole US week from the source -> (raw events, trigger rows dated in that week). A week with NO trigger row
+    is a FAILED read (CotError): every real week lists the EIA releases, so an empty answer means the source answered
+    200 with an empty or renamed body — and reading it as "no events" would drop the stored rows. (Checked on the
+    weeks of 2026-11-09 / 11-16 / 11-23: 2-3 trigger rows each.)"""
     sunday = monday + timedelta(days=6)
     events = await asyncio.to_thread(io.fxempire, "united-states", monday, sunday)
     rows = [r for r in calendar_rows_from_fx(events) if monday <= r["event_date"] <= sunday]
-    await io.replace_calendar(today, rows, [US_SOURCE], sunday)
+    if not rows:
+        raise CotError(f"fxempire listed no trigger event for the US week of {monday} ({len(events)} events read): "
+                       "taken as a failed read, the stored rows are kept")
+    return events, rows
+
+
+async def refresh_this_week(io: Io, today: date) -> list[dict]:
+    """EVERY day: this week's US calendar, read fresh (the source lists a release only a week or two ahead, and can
+    move one). Returns the raw events — the same read carries the day's actual-vs-consensus numbers. Raises, and
+    then nothing stored is touched."""
+    monday = today - timedelta(days=today.weekday())
+    events, rows = await read_us_week(io, monday)
+    await io.replace_calendar(today, rows, [US_SOURCE], monday + timedelta(days=6))
     return events
+
+
+async def read_past_calendar(io: Io, d0: date, d1: date, fx_ok: bool = True) -> tuple[list[dict], list[str]]:
+    """The news days d0..d1 read from the SOURCES instead of the table, for a Friday check whose window starts before
+    the table does (a new install). US weeks before this one (this week's is read fresh every day), the central-bank
+    decisions, WASDE and the earnings dates. -> (rows, the sources that could not be read, in plain words). Nothing
+    is stored. `fx_ok=False`: FXEmpire refused a request earlier in this run, so it is not asked again."""
+    rows: list[dict] = []
+    failed: list[str] = []
+    this_monday = d1 - timedelta(days=d1.weekday())
+    if fx_ok:
+        try:
+            monday = d0 - timedelta(days=d0.weekday())
+            while monday < this_monday:
+                rows += (await read_us_week(io, monday))[1]
+                await asyncio.to_thread(io.pause, 1.5)
+                monday += timedelta(days=7)
+        except Exception as e:  # loud-ok: named in the weekly message (the blind line) and the audit row
+            logger.warning(f"cot: past US calendar {d0}..{d1} could not be read: {type(e).__name__}: {e}")
+            failed.append("US releases")
+            fx_ok = not isinstance(e, CalendarRefused)
+    else:
+        failed.append("US releases")
+    if fx_ok:
+        try:
+            for country in FX_CENTRAL_BANKS:
+                rows += calendar_rows_from_fx(await asyncio.to_thread(io.fxempire, country, d0, d1), country)
+                await asyncio.to_thread(io.pause, 1.5)
+        except Exception as e:  # loud-ok: named in the weekly message (the blind line) and the audit row
+            logger.warning(f"cot: past central-bank calendar {d0}..{d1} could not be read: {type(e).__name__}: {e}")
+            failed.append("central-bank decisions")
+    else:
+        failed.append("central-bank decisions")
+    try:
+        rows += calendar_rows_from_wasde(await asyncio.to_thread(io.wasde_dates))
+    except Exception as e:  # loud-ok: named in the weekly message (the blind line) and the audit row
+        logger.warning(f"cot: past WASDE dates could not be read: {type(e).__name__}: {e}")
+        failed.append("WASDE")
+    bad = 0
+    for tk in EARNINGS_TICKERS:
+        try:
+            rows += calendar_rows_from_earnings(tk, [e["ts"] for e in await asyncio.to_thread(io.earnings, tk)])
+        except Exception as e:  # loud-ok: counted; named in the weekly message (the blind line) and the audit row
+            logger.warning(f"cot: past earnings dates for {tk} could not be read: {type(e).__name__}: {e}")
+            bad += 1
+    if bad:
+        failed.append(f"earnings dates ({bad} of {len(EARNINGS_TICKERS)} companies)")
+    return [r for r in rows if d0 <= r["event_date"] <= d1], failed
 
 
 async def refresh_calendar(io: Io, today: date, fx_ok: bool = True) -> dict:
@@ -1160,12 +1249,45 @@ async def refresh_calendar(io: Io, today: date, fx_ok: bool = True) -> dict:
         await io.replace_calendar(floor, got, [source], FAR if whole else floor)
         n += len(got)
 
-    def us():
-        ev = []
-        for w in (1, 2, 3):
-            ev += io.fxempire("united-states", monday + timedelta(days=7 * w), monday + timedelta(days=7 * w + 6))
-            io.pause(1.5)
-        return calendar_rows_from_fx(ev), True
+    async def take_us():
+        """The 3 US weeks after this one, each replaced ON ITS OWN and only when its read holds a trigger row. The
+        source lists a release only ~2 weeks out, so a FAR week with no row is normal: it replaces nothing (its
+        stored rows stay). NEXT week with no row is a failed read (review 2026-11-15: an HTTP-200 answer with an
+        empty or renamed body used to delete every stored future US row)."""
+        nonlocal n
+        label = "fxempire united-states"
+        weeks = []
+        try:
+            for w in (1, 2, 3):
+                m = monday + timedelta(days=7 * w)
+                ev = await asyncio.to_thread(io.fxempire, "united-states", m, m + timedelta(days=6))
+                await asyncio.to_thread(io.pause, 1.5)
+                weeks.append((m, [r for r in calendar_rows_from_fx(ev) if r["event_date"] >= m]))
+        except CalendarRefused as e:
+            errors[label] = f"REFUSED: {e}"[:160]
+            raise
+        except Exception as e:  # loud-ok: recorded per source; the run raises after its audit row when one failed
+            logger.warning(f"cot: calendar source {label} failed: {type(e).__name__}: {e}")
+            errors[label] = f"{type(e).__name__}: {e}"[:160]
+            return
+        if not weeks[0][1]:
+            errors[label] = (f"no trigger event listed for next week ({weeks[0][0]}): taken as a failed read, "
+                             "the stored rows are kept")
+            return
+        rows = [r for _m, got in weeks for r in got]
+        placed = 0
+        for m, got in weeks:
+            if not got:
+                continue
+            s_ = m + timedelta(days=6)
+            mine = [r for r in rows if m <= r["event_date"] <= s_]
+            await io.replace_calendar(m - timedelta(days=1), mine, [US_SOURCE], s_)
+            placed += len(mine)
+        # a row whose session falls in a week that answered empty (or past the last week read): added, nothing deleted
+        rest = [r for r in rows if not any(got and m <= r["event_date"] <= m + timedelta(days=6) for m, got in weeks)]
+        if rest:
+            await io.replace_calendar(today, rest, [US_SOURCE], today)
+        n += placed + len(rest)
 
     def bank(country):
         def f():
@@ -1188,7 +1310,7 @@ async def refresh_calendar(io: Io, today: date, fx_ok: bool = True) -> dict:
 
     if fx_ok:
         try:
-            await take("fxempire united-states", us, US_SOURCE, sunday + timedelta(days=1))
+            await take_us()
             for country in FX_CENTRAL_BANKS:
                 await take(f"fxempire {country}", bank(country), f"fxempire.com economic calendar ({country})", today)
         except CalendarRefused:  # loud-ok: recorded in `errors` above (the run raises after its audit row); no further fxempire request this run
@@ -1203,11 +1325,23 @@ async def refresh_calendar(io: Io, today: date, fx_ok: bool = True) -> dict:
 _READ_IT = object()
 
 
-async def ensure_week(io: Io, today: date, calendar_error=_READ_IT) -> dict:
+def no_price_data(markets, bars: dict[str, list[tuple]]) -> list[str]:
+    """The markets (of `markets`) whose 3-month daily series was read, holds SOME bars, and is too short to EVER give
+    a reading (1..MIN_BARS-1 sessions: a ticker the price source no longer serves, e.g. OJ=F answering with one bar).
+    Such a market is named once in the weekly message and skipped daily without a page. An EMPTY answer is never
+    excused — that is also how a rate-limited read looks, so it stays a no-bar and pages. Judged only when some
+    series in the same read IS usable: when nothing is, the source is down and the run pages as before."""
+    if not any(len(b) >= MIN_BARS for b in bars.values()):
+        return []
+    return sorted(m for m in set(markets) if 0 < len(bars.get(m) or []) < MIN_BARS)
+
+
+async def ensure_week(io: Io, today: date, calendar_error=_READ_IT, fx_ok: bool = True) -> dict:
     """Fetch the CFTC report, and when it holds a week not yet messaged: compute, store, run the Friday check, send
     the ONE weekly message. Returns a summary; raises CotError when the data could not be fetched or the send failed.
     `calendar_error`: the outcome of THIS run's read of this week's calendar (None = read fine, a string = it failed);
-    left out, the Friday check makes that read itself when it needs it (cot_weekly)."""
+    left out, the Friday check makes that read itself when it needs it (cot_weekly). `fx_ok=False`: FXEmpire refused
+    a request earlier in this run (no further request is sent to it)."""
     cache = await io.load_nets()
     latest = await io.latest_week()
     have = max((d for rows in cache.values() for d in rows), default=None)
@@ -1256,6 +1390,8 @@ async def ensure_week(io: Io, today: date, calendar_error=_READ_IT) -> dict:
     # ── Friday confirmation: a MAIN set up that was not main last week ──
     new_main = [m for m, r in rows.items() if r["setup"] and (prev.get(m) or {}).get("setup") != r["setup"]]
     friday, errors = [], {}
+    bars: dict[str, list[tuple]] = {}
+    backfill: Optional[dict] = None
     check_friday = age <= FRIDAY_CHECK_MAX_AGE_DAYS
     if new_main and check_friday:
         if calendar_error is _READ_IT:
@@ -1265,9 +1401,18 @@ async def ensure_week(io: Io, today: date, calendar_error=_READ_IT) -> dict:
             except Exception as e:  # loud-ok: named in the weekly message and the audit row; the stored rows still serve
                 logger.warning(f"cot: the Friday check could not read this week's calendar: {type(e).__name__}: {e}")
                 calendar_error = f"{type(e).__name__}: {e}"[:200]
+                fx_ok = fx_ok and not isinstance(e, CalendarRefused)
         bars = await _bars_for(io, _with_peers(new_main), errors)
         start = cur_w + timedelta(days=1)
         cal = await io.calendar(start, today)
+        # A new install: the table holds nothing before its first day, so the window's earlier news days (last week's,
+        # on a report that lands on a Monday) are read from the sources. Whatever cannot be read is SAID in the message.
+        first = await io.calendar_first_date()
+        if first is None or first > start:
+            past, failed = await read_past_calendar(io, start, today, fx_ok)
+            have = {(r["event_date"], r["event_type"]) for r in cal}
+            cal = cal + [r for r in past if (r["event_date"], r["event_type"]) not in have]
+            backfill = {"from": start, "to": today, "stored_from": first, "rows": len(past), "failed": failed}
         days = sorted({b[0] for bs in bars.values() for b in bs if start <= b[0] <= today})
         z_by_day = {d: {m: f["z"] for m, bs in bars.items() if (f := features_at(bs, d))} for d in days}
         for m in sorted(new_main):
@@ -1286,9 +1431,21 @@ async def ensure_week(io: Io, today: date, calendar_error=_READ_IT) -> dict:
     if friday:
         stored = await io.store_alerts([_alert_row(first_seen, a, "friday", "main", report, rows[a["market"]],
                                                    entry_label, a["failure_day"]) for a in friday])
+    # Set-up markets whose price series can never be read (review 2026-11-15, OJ=F): one read of every set-up market
+    # not read above; a failed read here is not "no price data" (the daily job pages a market it cannot read).
+    setup_markets = sorted(m for m, r in rows.items() if r["setup"] or r["close_setup"])
+    scan = await _bars_for(io, [m for m in setup_markets if m not in bars and m not in errors], {})
+    dead = no_price_data(setup_markets, {**bars, **scan})
     notes = []
     if new_main and not check_friday:
         notes.append(f"This report is {age} days old, so the Friday confirmation check was not run.")
+    if backfill and backfill["failed"]:
+        notes.append(f"The Friday check could not read {', '.join(backfill['failed'])} for {backfill['from']:%m-%d} to "
+                     f"{backfill['to']:%m-%d} (days before this calendar was first stored), so it may have missed a "
+                     "news failure day.")
+    if dead:
+        notes.append("No usable price data for: " + ", ".join(name_of(m) for m in dead)
+                     + " (the daily alerts skip them; the set up stays listed).")
     cal_err = calendar_error if isinstance(calendar_error, str) else None
     if new_main and check_friday and cal_err:
         notes.append("This week's calendar could not be read today, so the Friday check may have missed a news "
@@ -1305,7 +1462,8 @@ async def ensure_week(io: Io, today: date, calendar_error=_READ_IT) -> dict:
     await io.mark_alerts_sent([r["id"] for r in stored])
     return {**res, "status": "sent", "setups": sum(1 for r in rows.values() if r["setup"]),
             "close": sum(1 for r in rows.values() if r["close_setup"]), "friday": len(friday),
-            "errors": errors, "missing": missing, "calendar_error": cal_err}
+            "errors": errors, "missing": missing, "calendar_error": cal_err, "no_price_data": dead,
+            **({"calendar_backfill": backfill} if backfill else {})}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -1352,7 +1510,9 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
     #    check reads this week's events, and is told whether today's read failed.
     if today.weekday() < 4 and not held:
         try:
-            res["catch_up"] = await ensure_week(io, today, (res.get("calendar_today") or {}).get("error"))
+            refused = any(str(v).startswith("REFUSED") for v in ((res.get("calendar") or {}).get("errors") or {}).values())
+            res["catch_up"] = await ensure_week(io, today, (res.get("calendar_today") or {}).get("error"),
+                                                fx_ok and not refused)
         except Exception as e:  # loud-ok: recorded in the audit row; the run raises after it
             res["catch_up"] = {"status": "FAILED", "error": f"{type(e).__name__}: {e}"[:200]}
             problems.append(f"CFTC catch-up failed: {type(e).__name__}: {e}")
@@ -1391,8 +1551,12 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
             z = {m: f["z"] for m, bs in bars.items() if (f := features_at(bs, today))}
             cal = await io.calendar(today, today)
             no_bar, closes, suspect = [], {}, []
+            # a set-up market the price source no longer serves (OJ=F: one bar): recorded, skipped, never paged; the
+            # weekly message named it. An EMPTY answer is not this: it stays a no-bar below and pages.
+            dead = no_price_data(setups, bars)
+            res["no_price_data"] = dead
             for m, (direction, level) in sorted(setups.items()):
-                if m in errors:
+                if m in errors or m in dead:
                     continue
                 try:
                     feat = features_at(bars.get(m, []), today)
@@ -1427,7 +1591,7 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
             if no_bar and io.is_stock_holiday(today):
                 res["holiday"] = True
             unread = sorted(m for m in setups if m in errors or (m in no_bar and not res.get("holiday")))
-            if unread and len(unread) == len(setups):
+            if unread and len(unread) == len(setups) - len(dead):
                 problems.append(f"no set-up market could be read today (errors {len(errors)}, no bar {len(no_bar)})")
             elif unread:
                 # the readable markets alert and send below; the gap pages after, because nothing re-reads it
