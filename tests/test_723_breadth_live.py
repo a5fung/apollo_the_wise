@@ -328,6 +328,9 @@ def test_compute_live_matches_the_hand_worked_fixture():
     assert out["adv_dec"] == {"advances": 4, "declines": 2, "unchanged": 1, "no_prior": 1, "missing": 3}
     assert out["adv_dec"]["advances"] + out["adv_dec"]["declines"] + out["adv_dec"]["unchanged"] \
         + out["adv_dec"]["no_prior"] + out["adv_dec"]["missing"] == out["universe_n"]
+    # up 4%: AAA +10, DDD +25, JJJ +10, KKK +6.67. down 4%: BBB -5, EEE -50. OUT (+10, outside the universe), FFF (no
+    # prev close) and the three missing names are in neither.
+    assert out["moves_4pct"] == {"up": 4, "down": 2}
     themes = {t["name"]: t for t in out["themes_1d"]}
     # Alpha: AAA +10, BBB -5, CCC 0 -> mean 1.67 over 3
     assert themes["Alpha"] == {"idx": 0, "name": "Alpha", "n_members": 3, "ret_1d": 1.67, "n_1d": 3}
@@ -359,6 +362,26 @@ def test_alpacas_own_prev_close_is_never_the_base():
     snaps = {"AAA": {**_snap(11.0, high=11.0, low=11.0), "prev_close": 11.0}}   # Alpaca says unchanged
     out = bl.compute_live({**ref, "stocks": {"AAA": ref["stocks"]["AAA"]}}, snaps, TODAY)
     assert out["adv_dec"]["advances"] == 1 and out["adv_dec"]["unchanged"] == 0
+
+
+def test_moves_4pct_is_at_or_beyond_four_percent_on_the_adv_dec_base():
+    """The nightly's expression (close >= prev * 1.04 / close <= prev * 0.96) on the reference prev_close, over the
+    names adv_dec counts. MUTATION: `>` for `>=` drops EXACT (and EXACTDN); counting before the universe / missing /
+    no_prior exits adds OUTSIDE, STALE or NOPREV — each reddens here."""
+    row = lambda prev, uni=True: [prev, None, None, False, uni, []]          # noqa: E731
+    ref = {"as_of": PREV.isoformat(), "themes": [], "ecosystems": [], "stocks": {
+        "EXACT": row(100.0), "JUSTUNDER": row(100.0), "SMALLUP": row(100.0),
+        "EXACTDN": row(100.0), "JUSTOVER": row(100.0), "SMALLDN": row(100.0), "BIGDN": row(100.0),
+        "OUTSIDE": row(100.0, uni=False), "NOPREV": row(None), "STALE": row(100.0), "ABSENT": row(100.0)}}
+    snaps = {"EXACT": _snap(104.0), "JUSTUNDER": _snap(103.99), "SMALLUP": _snap(101.0),
+             "EXACTDN": _snap(96.0), "JUSTOVER": _snap(96.01), "SMALLDN": _snap(99.0), "BIGDN": _snap(80.0),
+             "OUTSIDE": _snap(150.0), "NOPREV": _snap(150.0), "STALE": _snap(150.0, day=PREV),
+             "prev_close_decoy": _snap(1.0)}
+    out = bl.compute_live(ref, snaps, TODAY)
+    assert out["moves_4pct"] == {"up": 1, "down": 2}                       # EXACT · EXACTDN, BIGDN
+    assert out["adv_dec"] == {"advances": 3, "declines": 4, "unchanged": 0, "no_prior": 1, "missing": 2}
+    assert out["moves_4pct"]["up"] <= out["adv_dec"]["advances"]
+    assert out["moves_4pct"]["down"] <= out["adv_dec"]["declines"]
 
 
 def test_a_nan_or_zero_live_value_never_enters_a_test():
@@ -446,7 +469,8 @@ def test_a_good_refresh_writes_the_contract_and_one_audit_row(paths):
     res = asyncio.run(bl.refresh_once(NOW, TODAY, fetch=_fetch_ok, ref_path=paths.ref_path, out_dir=paths.out_dir))
     live = json.loads((paths.out_dir / bl.LIVE_NAME).read_text())
     assert set(live) == {"version", "as_of", "reference_as_of", "universe_n", "read_n", "missing_n", "highs_lows",
-                         "adv_dec", "ecosystems_1d", "themes_1d", "final"}
+                         "adv_dec", "moves_4pct", "ecosystems_1d", "themes_1d", "final"}
+    assert live["moves_4pct"] == {"up": 4, "down": 2}               # the hand-worked twelve; the padding is flat
     assert live["as_of"] == "2026-11-10T11:45:03 ET" and live["reference_as_of"] == "2026-11-09"
     assert live["final"] is False                                   # 11:45 is not the close slot (#724)
     assert live["highs_lows"] == {"eligible_n": 5, "new_highs": 1, "new_lows": 2}
@@ -454,6 +478,7 @@ def test_a_good_refresh_writes_the_contract_and_one_audit_row(paths):
     assert res["read_n"] == 48 and res["push_problem"] is None
     assert [r[0] for r in paths.audit.rows] == [bl.EVT_REFRESH]
     assert "highs 1 lows 2 of 5" in paths.audit.rows[0][1] and "missing 3" in paths.audit.rows[0][1]
+    assert "up4 4 dn4 2" in paths.audit.rows[0][1]
     assert not (paths.out_dir / f"{bl.LIVE_NAME}.tmp").exists()
 
 

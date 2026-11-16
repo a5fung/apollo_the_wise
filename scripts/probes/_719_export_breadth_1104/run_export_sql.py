@@ -41,6 +41,15 @@ Fixture (every number invented; seeded):
   scores   2026-10-28..11-03: 2,400 rows a day; 2026-11-04: ONE stray row -> score_date must be 2026-11-03.
   empty    mi_security_types deleted (inside a rolled-back transaction) -> no session -> ZERO rows, never an all-null file.
   removal  each hand-made ticker deleted in turn (rolled back): the counts must move by exactly its expected cells.
+  4% moves (2026-11-16) UP4 closes at exactly 1.04x the previous close (counts up), UP399 at 1.0399x (does not),
+           DN4 at exactly 0.96x (counts down), DN399 at 0.9601x (does not); NOPRIOR rose but has no previous bar
+           (in neither). Removal deltas pin UP4 / DN4 to the moves_4pct cells.
+  regime   (2026-11-16) mi_market_regime: 75 weekday rows ending 2026-11-03 — the newest 4 'Cautious', the 9 before
+           'Bullish', the rest 'Correcting' — plus ONE row dated 30 days after the real clock ('FUTURE': must never be
+           the label). The newest row has a CRLF description with a leading blank line and a blank line before the
+           net-score line, a NULL qqq_vs_50ma, a NaN vix and an Infinity spy_vs_200ma (all three -> null). Rolled-back
+           variants: an empty table and a future-only table (regime null), one label throughout (streak = every
+           row), a one-line description (summary null).
 """
 from __future__ import annotations
 
@@ -72,6 +81,9 @@ CREATE TABLE mi_themes (id SERIAL PRIMARY KEY, theme_date DATE NOT NULL, name TE
   created_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE mi_theme_ecosystems (theme_name TEXT PRIMARY KEY, e_code TEXT NOT NULL, method TEXT,
   assigned_at TIMESTAMPTZ DEFAULT now());
+CREATE TABLE mi_market_regime (regime_date DATE PRIMARY KEY, regime TEXT NOT NULL, spy_vs_50ma FLOAT,
+  spy_vs_200ma FLOAT, qqq_vs_50ma FLOAT, vix FLOAT, breadth_pct_above_40ma FLOAT, t2108 FLOAT, description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE mi_stock_scores (ticker TEXT NOT NULL, score_date DATE NOT NULL, rs_composite FLOAT, rs_rank INT,
   sector TEXT, close FLOAT, sma_50 FLOAT, PRIMARY KEY (ticker, score_date));
 """
@@ -161,9 +173,36 @@ def build_fixture():
     path("S4DN", "", [50 * (0.997 ** k) for k in range(n)])
     path("S3TOP", "", [20 + 0.2 * min(k, n - 200) for k in range(n)])    # advance, then flat for 200 sessions
     path("S1BASE", "", [80 - 0.2 * min(k, n - 200) for k in range(n)])   # decline, then flat for 200 sessions
-    for t in ("NEWHI", "NEWLO", "S2UP", "S4DN", "S3TOP", "S1BASE", "PENNY"):
+    # 4% moves: flat at 100, then the as_of close lands exactly on / just inside the 4% lines.
+    for t, last in (("UP4", 104.0), ("UP399", 103.99), ("DN4", 96.0), ("DN399", 96.01)):
+        path(t, "", [100.0] * (n - 1) + [last])
+    for t in ("NEWHI", "NEWLO", "S2UP", "S4DN", "S3TOP", "S1BASE", "PENNY", "UP4", "UP399", "DN4", "DN399"):
         types.setdefault(t, "CS")
     return days, rows, types
+
+
+# mi_market_regime fixture: (regime_date, regime, spy50, spy200, qqq50, vix, t2108, description), oldest first.
+REGIME_DESC = ("\r\nMarket cautious — be selective.\r\n\r\n"
+               "  Net score -1  (3 bullish · 4 bearish · 2 neutral)  \r\n🔴 Bearish:\r\n  • VIX elevated")
+FUTURE_DAY = dt.date.today() + dt.timedelta(days=30)
+
+
+def build_regime():
+    days = weekdays(dt.date(2026, 6, 1), AS_OF)[-75:]
+    out = []
+    for i, d in enumerate(days):
+        back = len(days) - 1 - i                      # 0 = newest
+        label = "Cautious" if back < 4 else "Bullish" if back < 13 else "Correcting"
+        desc = f"Verdict for {d}.\nNet score {(-1) ** i * (i % 5):+d}  ({i % 4} bullish · {i % 3} bearish · 0 neutral)"
+        out.append((d, label, 1.0 + 0.137 * back, -2.0 + 0.071 * back, 0.5 - 0.033 * back, 15.0 + 0.219 * back,
+                    60.0 - 0.347 * back, desc))
+    d, label, *_ = out[-1]
+    out[-1] = (d, label, 2.3456, float("inf"), None, float("nan"), 61.3499, REGIME_DESC)
+    out.append((FUTURE_DAY, "FUTURE", 9.9, 9.9, 9.9, 9.9, 9.9, "Future verdict.\nNet score +9"))
+    return out
+
+
+REGIME = build_regime()
 
 
 THEMES = [
@@ -208,6 +247,8 @@ def load(cur, rows, types, *, copy_rows=True):
         cur.executemany("INSERT INTO mi_stock_scores (ticker, score_date, rs_rank) VALUES (%s,%s,%s)",
                         [(t, sd, i + 1 + back) for i, t in enumerate(scored)])
     cur.execute("INSERT INTO mi_stock_scores (ticker, score_date, rs_rank) VALUES ('NEWHI', %s, 1)", (PARTIAL_TAIL,))
+    cur.executemany("INSERT INTO mi_market_regime (regime_date, regime, spy_vs_50ma, spy_vs_200ma, qqq_vs_50ma, vix, "
+                    "t2108, description) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)", REGIME)
     cur.execute("ANALYZE")
     return {t: i + 1 for i, t in enumerate(scored)}
 
@@ -249,6 +290,7 @@ def recompute(rows, types, ranks):
 
     hl = {"eligible_n": 0, "new_highs": 0, "new_lows": 0}
     ad = {"advances": 0, "declines": 0, "unchanged": 0, "no_prior": 0}
+    mv = {"up": 0, "down": 0}
     stg = {"1": 0, "2": 0, "3": 0, "4": 0, "unstaged": 0}
     for t in universe:
         b = bars[t]
@@ -262,6 +304,8 @@ def recompute(rows, types, ranks):
         else:
             k = "advances" if b[0][0] > b[1][0] else "declines" if b[0][0] < b[1][0] else "unchanged"
             ad[k] += 1
+            mv["up"] += b[0][0] >= b[1][0] * 1.04       # closed up 4% or more vs the previous session
+            mv["down"] += b[0][0] <= b[1][0] * 0.96
         s = stage_of(t)
         stg["unstaged" if s is None else str(s)] += 1
 
@@ -320,15 +364,42 @@ def recompute(rows, types, ranks):
     stocks = {t: [stage_of(t), ranks.get(t), sorted(member_of.get(t, []))]
               for t in sorted(set(universe) | set(member_of))}
     return {"as_of": str(as_of), "prev_session": str(prev), "prior_year_end": str(pye),
-            "universe": {"n": len(universe)}, "highs_lows": hl, "adv_dec": ad, "stages": stg,
+            "universe": {"n": len(universe)}, "highs_lows": hl, "adv_dec": ad, "moves_4pct": mv, "stages": stg,
+            "regime": recompute_regime(REGIME, dt.date.today()),
             "themes": themes, "ecosystems": ecosystems, "stocks": stocks}
+
+
+def recompute_regime(regime_rows, today):
+    """From the written rule (SSoT §Market regime), not the SQL: newest row at or before today; the streak walks
+    back while the label holds; summary by briefing.py's own expression; readings to 1 decimal, non-finite -> None.
+    `today` is this machine's date — the fixture's dated rows sit weeks before it and the future row 30 days after,
+    so the ET / local difference cannot change which rows qualify."""
+    rows = sorted((r for r in regime_rows if r[0] <= today), key=lambda r: r[0], reverse=True)
+    if not rows:
+        return None
+    d, label, spy50, spy200, qqq50, vix, t2108, desc = rows[0]
+    streak = 0
+    for r in rows:
+        if r[1] != label:
+            break
+        streak += 1
+    lines = [ln.strip() for ln in (desc or "").strip().splitlines()[1:] if ln.strip()]   # briefing.py, verbatim
+
+    def r1(x):
+        return None if x is None or not math.isfinite(x) else round(x, 1)
+
+    return {"date": str(d), "label": label, "days_in_label": streak, "summary": lines[0] if lines else None,
+            "spy_vs_50ma": r1(spy50), "spy_vs_200ma": r1(spy200), "qqq_vs_50ma": r1(qqq50), "vix": r1(vix),
+            "t2108": r1(t2108),
+            "history": [{"date": str(r[0]), "label": r[1]} for r in reversed(rows[:60])]}
 
 
 def compare(got, want) -> list[str]:
     bad = []
-    for k in ("as_of", "prev_session", "prior_year_end", "universe", "highs_lows", "adv_dec", "stages"):
-        if got[k] != want[k]:
-            bad.append(f"{k}: sql={got[k]} python={want[k]}")
+    for k in ("as_of", "prev_session", "prior_year_end", "universe", "highs_lows", "adv_dec", "moves_4pct", "stages",
+              "regime"):
+        if got.get(k) != want[k]:
+            bad.append(f"{k}: sql={got.get(k)} python={want[k]}")
     if len(got["themes"]) != len(want["themes"]):
         bad.append(f"themes: sql {len(got['themes'])} python {len(want['themes'])}")
     for g, w in zip(got["themes"], want["themes"]):
@@ -379,8 +450,11 @@ def run_correctness():
     want = recompute(rows, types, ranks)
     print(f"export ran in {took:.2f}s inside a READ ONLY transaction | {len(text):,} bytes")
     for k in ("version", "generated_at", "as_of", "prev_session", "prior_year_end", "score_date", "theme_membership",
-              "universe", "highs_lows", "adv_dec", "stages"):
+              "universe", "highs_lows", "adv_dec", "moves_4pct", "stages"):
         print(f"  {k}: {got[k]}")
+    rg = got["regime"]
+    print("  regime:", {k: v for k, v in rg.items() if k != "history"})
+    print("  regime.history:", len(rg["history"]), "rows,", rg["history"][0], "..", rg["history"][-1])
     print("  stages sum to universe:", sum(got["stages"].values()) == got["universe"]["n"])
     for th in got["themes"]:
         print("  theme", {k: th[k] for k in th if k != "members"}, "members", th["members"])
@@ -422,8 +496,10 @@ def run_correctness():
         cur.execute(SQL.strip().rstrip(";"))
         out = cur.fetchone()[0]
         cur.execute("ROLLBACK")
-        flat = {**out["highs_lows"], **out["adv_dec"], **{f"stage_{k}": v for k, v in out["stages"].items()}}
-        base = {**got["highs_lows"], **got["adv_dec"], **{f"stage_{k}": v for k, v in got["stages"].items()}}
+        flat = {**out["highs_lows"], **out["adv_dec"], **{f"stage_{k}": v for k, v in out["stages"].items()},
+                **{f"{k}_4pct": v for k, v in out["moves_4pct"].items()}}
+        base = {**got["highs_lows"], **got["adv_dec"], **{f"stage_{k}": v for k, v in got["stages"].items()},
+                **{f"{k}_4pct": v for k, v in got["moves_4pct"].items()}}
         return {k: flat[k] - base[k] for k in base if flat[k] != base[k]}
 
     expect_delta = {
@@ -440,6 +516,56 @@ def run_correctness():
         # UNCH's as_of high TIES the previous session's high: "at or above" counts it as a new high.
         "UNCH": {"eligible_n": -1, "new_highs": -1, "unchanged": -1, "stage_3": -1},
     }
+    # 2026-11-16 — the regime block, stated directly, plus its rolled-back variants.
+    def regime_after(*statements):
+        cur.execute("BEGIN")
+        for st in statements:
+            cur.execute(st)
+        cur.execute(SQL.strip().rstrip(";"))
+        out = cur.fetchone()[0]
+        cur.execute("ROLLBACK")
+        return out
+
+    rg = got["regime"]
+    hand.update({
+        "regime: the newest row at or before today, never the future-dated one":
+            rg["date"] == "2026-11-03" and rg["label"] == "Cautious",
+        "regime: 4 Cautious rows in a row (9 Bullish before them are not counted)": rg["days_in_label"] == 4,
+        "regime: summary is the net-score line (CRLF, leading blank line, blank line before it; trimmed)":
+            rg["summary"] == "Net score -1  (3 bullish · 4 bearish · 2 neutral)",
+        "regime: readings to 1 decimal; NULL, NaN and Infinity are null": (
+            rg["spy_vs_50ma"], rg["spy_vs_200ma"], rg["qqq_vs_50ma"], rg["vix"], rg["t2108"])
+            == (2.3, None, None, None, 61.3),
+        "regime: history is 60 rows, oldest first, ending on the shown row, no future row":
+            len(rg["history"]) == 60 and rg["history"][-1] == {"date": "2026-11-03", "label": "Cautious"}
+            and [h["date"] for h in rg["history"]] == sorted(h["date"] for h in rg["history"])
+            and all(h["label"] != "FUTURE" for h in rg["history"]),
+        "regime: history shows the label change (4 Cautious, 9 Bullish, then Correcting)":
+            [h["label"] for h in rg["history"][-14:]] == ["Correcting"] + ["Bullish"] * 9 + ["Cautious"] * 4,
+        "no regime row -> regime is JSON null and every other key is unchanged": (lambda o: o["regime"] is None and all(
+            o[k] == got[k] for k in got if k not in ("regime", "generated_at")))(
+            regime_after("DELETE FROM mi_market_regime")),
+        "only a future-dated regime row -> regime is null": regime_after(
+            "DELETE FROM mi_market_regime WHERE regime <> 'FUTURE'")["regime"] is None,
+        "one label on every row -> the streak is every row (75), history still 60": (
+            lambda r: r["days_in_label"] == 75 and len(r["history"]) == 60)(regime_after(
+                "UPDATE mi_market_regime SET regime = 'Bullish' WHERE regime <> 'FUTURE'")["regime"]),
+        "a one-line description -> summary null": regime_after(
+            "UPDATE mi_market_regime SET description = 'Verdict only.'")["regime"]["summary"] is None,
+        "a NULL description -> summary null": regime_after(
+            "UPDATE mi_market_regime SET description = NULL")["regime"]["summary"] is None,
+        "moves_4pct: up never exceeds advances, down never exceeds declines":
+            got["moves_4pct"]["up"] <= got["adv_dec"]["advances"]
+            and got["moves_4pct"]["down"] <= got["adv_dec"]["declines"],
+    })
+    expect_delta.update({
+        # Flat at 100 for the whole fixture, then the as_of close. The line is flat (well inside 1%); the last close lifts
+        # it a hair above where it stood 60 sessions earlier for the UP names (stage 3) and drops it for the DN names (1).
+        "UP4": {"eligible_n": -1, "new_highs": -1, "advances": -1, "stage_3": -1, "up_4pct": -1},     # exactly +4%
+        "UP399": {"eligible_n": -1, "new_highs": -1, "advances": -1, "stage_3": -1},                  # +3.99%: not up 4%
+        "DN4": {"eligible_n": -1, "new_lows": -1, "declines": -1, "stage_1": -1, "down_4pct": -1},    # exactly -4%
+        "DN399": {"eligible_n": -1, "new_lows": -1, "declines": -1, "stage_1": -1},                   # -3.99%
+    })
     # No session at all (security types gone -> no date reaches 3,000) must return ZERO rows, never an all-null object.
     cur.execute("BEGIN")
     cur.execute("DELETE FROM mi_security_types")

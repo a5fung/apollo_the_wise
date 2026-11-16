@@ -67,6 +67,30 @@ calendar date is not a trading day.
 greater = advance, lower = decline, equal = unchanged. A stock with no bar on `prev_session` counts
 in `no_prior` instead, so `advances + declines + unchanged + no_prior = universe.n`.
 
+**Up 4% / down 4%** (`moves_4pct`, added 2026-11-16; over the same universe and the same two closes as
+advances / declines): **up** = the as_of close is at or above **1.04 ×** the `prev_session` close (closed up
+4% or more); **down** = at or below **0.96 ×** it (closed down 4% or more). A stock with no bar on
+`prev_session` is in neither. So `up ≤ advances` and `down ≤ declines`. The bar DeepVue's breadth page shows.
+
+**Market regime** (`regime`, added 2026-11-16; read from `mi_market_regime`, one row per trading day — NOT
+recomputed here). Apollo's regime label from index trend (SPY and QQQ vs their 50-day averages, SPY vs its
+200-day), the VIX and the share of stocks above their 40-day average (`regime.py::_determine_regime`); the same
+label the morning brief shows. Display only on the page.
+
+- **The row** — the newest `regime_date` **at or before today's ET date** (the export's future-date ceiling:
+  a stray future-dated row never becomes the label). ⚠ This is the one block whose date is NOT `as_of`: it is
+  the regime table's own newest day, carried in `regime.date`.
+- **days_in_label** — how many of the newest rows, walking back by `regime_date`, carry that same label before
+  a different one appears (all of them if none differs). Rows are one per trading day, so it reads as trading
+  days; a day the regime job did not write is simply not counted.
+- **summary** — the net-score line of `description`, by the morning brief's rule (`briefing.py`): the
+  description trimmed, its first line (the verdict) skipped, then the first non-empty line, trimmed — e.g.
+  `Net score -1  (3 bullish · 4 bearish · 2 neutral)`. Null when the description has no second line.
+- **The five readings** — `spy_vs_50ma`, `spy_vs_200ma`, `qqq_vs_50ma`, `vix`, `t2108`, each **rounded to one
+  decimal**; a null, NaN or infinite stored value is null.
+- **history** — the newest 60 rows' `{date, label}`, **oldest first**.
+- **No row** at or before today → `regime` is JSON `null`, and the page omits the strip.
+
 **Weinstein stage** (over the universe; the 30-week line = the 150-session SMA of close):
 
 - **sma_now** — the mean close over sessions 0-149. **sma_20** — the same mean ending 20 sessions
@@ -141,11 +165,28 @@ One object. Types are JSON types; "date" = a `YYYY-MM-DD` string.
 | `universe` | object | `{ "n": int }` |
 | `highs_lows` | object | `{ "eligible_n": int, "new_highs": int, "new_lows": int }` |
 | `adv_dec` | object | `{ "advances": int, "declines": int, "unchanged": int, "no_prior": int }` |
+| `moves_4pct` | object | OPTIONAL (2026-11-16; an older file lacks it and the page omits the bar) — `{ "up": int, "down": int }`: universe stocks that closed up / down 4% or more vs `prev_session` |
+| `regime` | object \| null | OPTIONAL (2026-11-16; an older file lacks it) — Apollo's market regime (see below); `null` when `mi_market_regime` has no row at or before today |
 | `stages` | object | `{ "1": int, "2": int, "3": int, "4": int, "unstaged": int }` — sums to `universe.n` |
 | `themes` | array | one object per active theme, ordered by name (see below) |
 | `ecosystems` | array | #722 — one object per ecosystem group holding an exported theme, ordered by code (see below) |
 | `stocks` | object | `{ "<TICKER>": [stage int \| null, rs_rank int \| null, [int, ...]] }` |
-| `definitions` | object | the rules above in plain words, keyed `session`, `as_of`, `universe`, `new_highs_lows`, `advances_declines`, `stage`, `themes`, `ecosystems`, `theme_returns`, `theme_membership`, `stocks`, `not_claimed` — the page prints them |
+| `definitions` | object | the rules above in plain words, keyed `session`, `as_of`, `universe`, `new_highs_lows`, `advances_declines`, `moves_4pct`, `regime`, `stage`, `themes`, `ecosystems`, `theme_returns`, `theme_membership`, `stocks`, `not_claimed` — the page prints them |
+
+The `regime` object (when not null):
+
+| field | type | meaning |
+|---|---|---|
+| `date` | date | the newest `regime_date` at or before today's ET date (may differ from `as_of`) |
+| `label` | string | `mi_market_regime.regime` — e.g. `Bullish`, `Cautious`, `Correcting`, `Crisis` |
+| `days_in_label` | int | consecutive newest rows carrying `label` (≥ 1) |
+| `summary` | string \| null | the net-score line of the description (the morning brief's line) |
+| `spy_vs_50ma` | number \| null | SPY vs its 50-day average, percent, 1 decimal |
+| `spy_vs_200ma` | number \| null | SPY vs its 200-day average, percent, 1 decimal |
+| `qqq_vs_50ma` | number \| null | QQQ vs its 50-day average, percent, 1 decimal |
+| `vix` | number \| null | the VIX, 1 decimal |
+| `t2108` | number \| null | share of stocks above their 40-day average, percent, 1 decimal |
+| `history` | array | `[{ "date": date, "label": string }, ...]` — the newest 60 rows, oldest first; its last entry is `date` / `label` |
 
 Each `themes[]` object:
 
@@ -241,8 +282,11 @@ theme_idx}` (the nightly's grouping and names: `E-UNASSIGNED` → `Other`), `sto
 | `universe_n` / `read_n` / `missing_n` | universe size; names with a daily bar DATED TODAY (ET) carrying a close; the rest |
 | `highs_lows` | `{eligible_n, new_highs, new_lows}` — the nightly's names. Eligible = reference-eligible AND a usable bar today; new high = today's high ≥ `hi252`; new low = today's low ≤ `lo252` |
 | `adv_dec` | `{advances, declines, unchanged, no_prior, missing}` — today's bar close vs the reference `prev_close` (never Alpaca's `previous_daily_bar`, which pre-open holds T-2 — #490). `no_prior` as the nightly; `missing` as above. The five sum to `universe_n` |
+| `moves_4pct` | `{up, down}` (2026-11-16) — the nightly's rule on the SAME names and the SAME reference `prev_close` as `adv_dec`: up = today's close ≥ 1.04 × `prev_close`, down = ≤ 0.96 × it. A `missing` or `no_prior` name is in neither. The page overlays it on Today when live, as it does `adv_dec` |
 | `ecosystems_1d` | `[{code, name, n_members, ret_1d, n_1d, up_1d}]` — the groups' equal-weighted 1-day return over unique members with both closes, 2 decimals; `n_1d` had the data, `up_1d` were positive |
 | `themes_1d` | `[{idx, name, n_members, ret_1d, n_1d}]` — the themes' 1-day return on the same rule |
+
+The live file carries **no `regime`** — the regime is computed once a day and stays the nightly snapshot's.
 
 Rules the counts follow: a name Alpaca did not return, or returned with a bar from an earlier day or without a
 close, is **missing — counted, never guessed** (a stale bar would otherwise read as "unchanged"); a NaN or zero
@@ -288,6 +332,14 @@ never moves after the market has shut.
 
 ## Change log
 
+- **2026-11-16** — two OPTIONAL display-only keys, `version` stays 1 (an older file lacks them; the page omits the
+  section). `moves_4pct` `{up, down}` — universe stocks that closed up / down 4% or more vs the previous session
+  (the DeepVue bar), in the nightly snapshot AND the live file (same names and base as each one's `adv_dec`).
+  `regime` — the label, how long it has held, the brief's net-score line, five readings and 60 days of labels,
+  read from `mi_market_regime` (nightly only; null with no row). No existing CTE or key moved; the export now
+  reads `now()` a third time (the future-date ceiling on the regime rows). Probe fixture extended (4% boundary
+  names; a regime streak, a label change, 60+ rows, a future-dated row, a NaN reading, CRLF description, and the
+  empty table). ⚠ The contract's "(rounded to 1 decimal)" was read as applying to all five readings.
 - **2026-11-10 (review fixes)** — the live job refuses a partial read (any lost batch, or under 85 % of the universe
   read — nothing written, counted toward the page); the fetch runs on the job's own one-thread executor, skips while
   a previous call is still hung, and stops after 3 lost chunks (`collector.get_alpaca_snapshots_batch` gained

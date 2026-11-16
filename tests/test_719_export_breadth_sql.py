@@ -84,9 +84,11 @@ def test_dates_come_from_the_data_never_the_clock():
     """The cron also runs Saturday and Sunday: as_of is the newest 3,000-row session, never the calendar date."""
     code = _code()
     assert not re.search(r"(?i)\bcurrent_date\b", code), "as_of / windows must never read the clock"
-    # now() twice: generated_at, and a CEILING on the newest stored date (review 2026-11-04: one stray
-    # future-dated row must not move the calendar window). Neither picks as_of — the data does.
-    assert len(re.findall(r"(?i)\bnow\(\)", code)) == 2, "now() is for generated_at and the future-date ceiling only"
+    # now() three times: generated_at, a CEILING on the newest stored date (review 2026-11-04: one stray
+    # future-dated row must not move the calendar window), and the same ceiling on the regime rows (2026-11-16: a
+    # future-dated mi_market_regime row must not become the label shown). None picks as_of — the data does.
+    assert len(re.findall(r"(?i)\bnow\(\)", code)) == 3, "now() is for generated_at and the two future-date ceilings"
+    assert "WHERE r.regime_date <= (now() AT TIME ZONE 'America/New_York')::date" in _norm(_cte("regime_rows"))
     assert re.search(r"(?i)WHERE trade_date <= \(now\(\) AT TIME ZONE 'America/New_York'\)::date", code)
     assert re.search(r"(?i)'generated_at',\s*to_char\(now\(\) AT TIME ZONE 'America/New_York'", code)
     # review 2026-11-07: the ceiling also caps the calendar itself, not only where its window starts —
@@ -109,24 +111,28 @@ def test_a_nan_price_never_enters_the_universe_or_a_high_low_test():
 # ----------------------------------------------------------------------------------------------------- the JSON contract
 
 TOP_KEYS = ("version", "generated_at", "as_of", "prev_session", "prior_year_end", "score_date", "theme_membership",
-            "universe", "highs_lows", "adv_dec", "stages", "themes", "ecosystems", "stocks", "definitions")
+            "universe", "highs_lows", "adv_dec", "moves_4pct", "regime", "stages", "themes", "ecosystems", "stocks",
+            "definitions")
 NESTED_KEYS = ("n", "eligible_n", "new_highs", "new_lows", "advances", "declines", "unchanged", "no_prior",
-               "1", "2", "3", "4", "unstaged")
+               "up", "down", "1", "2", "3", "4", "unstaged")
+REGIME_KEYS = ("date", "label", "days_in_label", "summary", "spy_vs_50ma", "spy_vs_200ma", "qqq_vs_50ma", "vix",
+               "t2108", "history")
 THEME_KEYS = ("idx", "name", "stage", "e_code", "theme_date", "n_members", "members",
               "ret_1d", "n_1d", "ret_5d", "n_5d", "ret_21d", "n_21d", "ret_ytd", "n_ytd")
 ECOSYSTEM_KEYS = ("code", "name", "theme_idx", "n_members",
                   "ret_1d", "n_1d", "up_1d", "ret_5d", "n_5d", "up_5d",
                   "ret_21d", "n_21d", "up_21d", "ret_ytd", "n_ytd", "up_ytd")
-DEFINITION_KEYS = ("session", "as_of", "universe", "new_highs_lows", "advances_declines", "stage", "themes",
+DEFINITION_KEYS = ("session", "as_of", "universe", "new_highs_lows", "advances_declines", "moves_4pct", "regime",
+                   "stage", "themes",
                    "ecosystems", "theme_returns", "theme_membership", "stocks", "not_claimed")
 
 
-@pytest.mark.parametrize("key", TOP_KEYS + NESTED_KEYS + THEME_KEYS + ECOSYSTEM_KEYS + DEFINITION_KEYS)
+@pytest.mark.parametrize("key", TOP_KEYS + NESTED_KEYS + REGIME_KEYS + THEME_KEYS + ECOSYSTEM_KEYS + DEFINITION_KEYS)
 def test_emits_every_contract_key(key):
     assert re.search(rf"'{re.escape(key)}',", _code()), f"the export no longer emits `{key}`"
 
 
-@pytest.mark.parametrize("key", TOP_KEYS + THEME_KEYS + ECOSYSTEM_KEYS + DEFINITION_KEYS)
+@pytest.mark.parametrize("key", TOP_KEYS + REGIME_KEYS + THEME_KEYS + ECOSYSTEM_KEYS + DEFINITION_KEYS)
 def test_every_contract_key_is_documented_in_the_ssot(key):
     assert f"`{key}`" in SSOT_PATH.read_text(), f"`{key}` is emitted but not in the SSoT's JSON contract"
 
@@ -209,6 +215,64 @@ def test_advances_declines_compare_with_the_previous_session():
     for key, cmp in (("advances", "c0 > c1"), ("declines", "c0 < c1"), ("unchanged", "c0 = c1")):
         assert f"'{key}', count(*) FILTER (WHERE c1 IS NOT NULL AND {cmp})" in code
     assert "'no_prior', count(*) FILTER (WHERE c1 IS NULL)" in code
+
+
+# ------------------------------------------------------------------------------- up / down 4% and the regime (2026-11-16)
+
+def test_moves_4pct_counts_the_adv_dec_stocks_at_four_percent():
+    """Same universe (`uni`) and the same two closes as adv_dec; at-or-beyond 4%, a stock with no previous bar in
+    neither. The two definitions say the same thing in words."""
+    code = _norm(_code())
+    m = re.search(r"'moves_4pct', \( SELECT json_build_object\((.*?)\) FROM uni\)", code)
+    assert m, "moves_4pct must be counted over uni, as adv_dec is"
+    assert m.group(1).strip() == ("'up', count(*) FILTER (WHERE c1 IS NOT NULL AND c0 >= c1 * 1.04), "
+                                  "'down', count(*) FILTER (WHERE c1 IS NOT NULL AND c0 <= c1 * 0.96)")
+    d = re.search(r"'moves_4pct',\s*'((?:[^']|'')*)'", _code())
+    assert d and "4% or more above" in d.group(1) and "4% or more below" in d.group(1) \
+        and "previous session" in d.group(1)
+
+
+def test_regime_is_the_newest_row_at_or_before_today_and_null_without_one():
+    """A scalar subquery over rn = 1: no row => JSON null (an aggregate there would emit an object of nulls). The
+    newest row is ranked by regime_date DESC under the ET today ceiling."""
+    rows = _norm(_cte("regime_rows"))
+    assert "(row_number() OVER (ORDER BY r.regime_date DESC))::int AS rn" in rows
+    assert "FROM mi_market_regime r WHERE r.regime_date <= (now() AT TIME ZONE 'America/New_York')::date" in rows
+    code = _norm(_code())
+    m = re.search(r"'regime', \( SELECT json_build_object\((.*?)\) FROM regime_rows r WHERE r\.rn = 1\),", code)
+    assert m, "regime must be one object read from the newest row (rn = 1), never an aggregate"
+    body = m.group(1)
+    assert "'date', r.regime_date" in body and "'label', r.regime," in body
+
+
+def test_regime_streak_history_and_summary_rules():
+    code = _norm(_code())
+    # days_in_label: the rank of the first row carrying a DIFFERENT label, minus one; every row when none differs.
+    assert ("'days_in_label', COALESCE((SELECT min(x.rn) - 1 FROM regime_rows x WHERE x.regime <> r.regime), "
+            "(SELECT count(*) FROM regime_rows))") in code
+    # history: the newest 60 rows, emitted oldest first.
+    assert ("'history', (SELECT json_agg(json_build_object('date', h.regime_date, 'label', h.regime) "
+            "ORDER BY h.regime_date) FROM regime_rows h WHERE h.rn <= 60)") in code
+    # summary: the brief's line — the first line skipped, then the first non-empty one.
+    rows = _norm(_cte("regime_rows"))
+    assert "WITH ORDINALITY AS l(line, n) WHERE l.n > 1 AND btrim(l.line, ' ' || chr(9) || chr(13)) <> '' " \
+           "ORDER BY l.n LIMIT 1) AS summary" in rows
+
+
+@pytest.mark.parametrize("col", ["spy_vs_50ma", "spy_vs_200ma", "qqq_vs_50ma", "vix", "t2108"])
+def test_regime_readings_are_rounded_to_one_decimal_and_never_nan(col):
+    rows = _norm(_cte("regime_rows"))
+    assert (f"CASE WHEN r.{col} IN ('NaN', 'Infinity', '-Infinity') THEN NULL "
+            f"ELSE round(r.{col}::numeric, 1) END AS {col}") in rows
+    assert f"'{col}', r.{col}" in _norm(_code())
+
+
+def test_the_regime_definition_names_its_inputs_and_says_display_only():
+    d = re.search(r"'regime',\s*'((?:[^']|'')*)'", _code())
+    assert d, "definitions.regime is missing"
+    text = d.group(1)
+    for needle in ("SPY", "QQQ", "50-day", "200-day", "VIX", "40-day", "morning brief", "Display only"):
+        assert needle in text, f"definitions.regime no longer mentions {needle}"
 
 
 # ----------------------------------------------------------------------------------------------------------- stages

@@ -18,6 +18,11 @@
 -- group's UNIQUE members (a stock in three of its themes counts once) returned on the same bases the
 -- themes use. Nothing else in the file moved.
 --
+-- 2026-11-16 added two OPTIONAL top-level keys (version stays 1; an older file simply lacks them): `moves_4pct`
+-- (universe stocks that closed up / down 4% or more vs the previous session, two more counts over `uni`) and
+-- `regime` (Apollo's market regime label, how long it has held, its net-score line and five readings, plus the
+-- newest 60 labels, read from mi_market_regime). No existing CTE or key moved.
+--
 -- ⚠ DATES ARE TAKEN FROM THE DATA, NEVER FROM THE CLOCK. The cron also runs on Saturday and
 -- Sunday, so the calendar date is not a trading day. A "session" is a trade_date carrying at
 -- least 3,000 rows that join mi_security_types as CS/ADRC; as_of is the newest one. The
@@ -270,6 +275,27 @@ ranks AS (
       FROM mi_stock_scores
      WHERE score_date = (SELECT score_date FROM usable_score_date)
        AND ticker IN (SELECT ticker FROM interest)
+),
+-- Apollo's market regime, one row per trading day, newest first (rn 1 = the newest row dated at or before today's
+-- ET date: one stray future-dated row must not become the label shown). The five readings are rounded to one
+-- decimal; a NaN or infinite reading is null, never the string 'NaN'. `summary` is the morning brief's line
+-- (briefing.py): the description trimmed, its first line (the verdict) skipped, then the first non-empty line.
+regime_rows AS (
+    SELECT r.regime_date, r.regime,
+           (row_number() OVER (ORDER BY r.regime_date DESC))::int AS rn,
+           (SELECT btrim(l.line, ' ' || chr(9) || chr(13))
+              FROM regexp_split_to_table(btrim(r.description, ' ' || chr(9) || chr(10) || chr(13)), chr(10))
+                   WITH ORDINALITY AS l(line, n)
+             WHERE l.n > 1 AND btrim(l.line, ' ' || chr(9) || chr(13)) <> ''
+             ORDER BY l.n
+             LIMIT 1) AS summary,
+           CASE WHEN r.spy_vs_50ma  IN ('NaN', 'Infinity', '-Infinity') THEN NULL ELSE round(r.spy_vs_50ma::numeric, 1)  END AS spy_vs_50ma,
+           CASE WHEN r.spy_vs_200ma IN ('NaN', 'Infinity', '-Infinity') THEN NULL ELSE round(r.spy_vs_200ma::numeric, 1) END AS spy_vs_200ma,
+           CASE WHEN r.qqq_vs_50ma  IN ('NaN', 'Infinity', '-Infinity') THEN NULL ELSE round(r.qqq_vs_50ma::numeric, 1)  END AS qqq_vs_50ma,
+           CASE WHEN r.vix          IN ('NaN', 'Infinity', '-Infinity') THEN NULL ELSE round(r.vix::numeric, 1)          END AS vix,
+           CASE WHEN r.t2108        IN ('NaN', 'Infinity', '-Infinity') THEN NULL ELSE round(r.t2108::numeric, 1)        END AS t2108
+      FROM mi_market_regime r
+     WHERE r.regime_date <= (now() AT TIME ZONE 'America/New_York')::date
 )
 SELECT json_build_object(
     'version', 1,
@@ -294,6 +320,30 @@ SELECT json_build_object(
             'unchanged', count(*) FILTER (WHERE c1 IS NOT NULL AND c0 = c1),
             'no_prior',  count(*) FILTER (WHERE c1 IS NULL))
           FROM uni),
+    'moves_4pct', (
+        SELECT json_build_object(
+            'up',   count(*) FILTER (WHERE c1 IS NOT NULL AND c0 >= c1 * 1.04),
+            'down', count(*) FILTER (WHERE c1 IS NOT NULL AND c0 <= c1 * 0.96))
+          FROM uni),
+    -- No regime row at or before today => this subquery returns no row => JSON null (the page omits the strip).
+    -- days_in_label = how many of the newest rows carry the newest label before a different one appears.
+    'regime', (
+        SELECT json_build_object(
+            'date', r.regime_date,
+            'label', r.regime,
+            'days_in_label', COALESCE((SELECT min(x.rn) - 1 FROM regime_rows x WHERE x.regime <> r.regime),
+                                      (SELECT count(*) FROM regime_rows)),
+            'summary', r.summary,
+            'spy_vs_50ma', r.spy_vs_50ma,
+            'spy_vs_200ma', r.spy_vs_200ma,
+            'qqq_vs_50ma', r.qqq_vs_50ma,
+            'vix', r.vix,
+            't2108', r.t2108,
+            'history', (SELECT json_agg(json_build_object('date', h.regime_date, 'label', h.regime)
+                                        ORDER BY h.regime_date)
+                          FROM regime_rows h WHERE h.rn <= 60))
+          FROM regime_rows r
+         WHERE r.rn = 1),
     'stages', (
         SELECT json_build_object(
             '1', count(*) FILTER (WHERE stage = 1),
@@ -351,6 +401,10 @@ SELECT json_build_object(
             'A new high: the as_of high is at or above the highest high of the 252 sessions before as_of (as_of itself excluded). A new low: the as_of low is at or below the lowest low of those 252 sessions. Only universe stocks with a usable bar (high and low above zero) on at least 245 of those 252 sessions, and on as_of, are eligible (eligible_n). A missing or zero high or low never counts.',
         'advances_declines',
             'A universe stock advances if its as_of close is above its close on the previous session, declines if below, unchanged if equal. A stock with no bar on the previous session is counted in no_prior, not in the three.',
+        'moves_4pct',
+            'Up 4%: a universe stock whose as_of close is 4% or more above its close on the previous session (at or above 1.04 times it). Down 4%: its as_of close is 4% or more below (at or below 0.96 times it). A stock with no bar on the previous session is in neither.',
+        'regime',
+            'Apollo''s market regime, from index trend (SPY and QQQ against their 50-day averages, SPY against its 200-day), the VIX and the share of stocks above their 40-day average. It is the same label the morning brief shows. date is the day it was last computed, days_in_label counts the trading days in a row it has held, summary is the brief''s net-score line, and history is the newest 60 days, oldest first. Display only here.',
         'stage',
             'Weinstein stage on the 30-week line: the average close of the 150 sessions ending as_of. Its slope compares it with the same average ending 20 sessions earlier: rising if more than 1% higher, falling if more than 1% lower, flat otherwise. Rising: stage 2 if the as_of close is at or above the line, else stage 3. Falling: stage 4 if the close is at or below the line, else stage 1. Flat: stage 3 if the line is above where it stood 60 sessions earlier (it came from an advance), else stage 1. A stock missing more than 7 of the 210 sessions ending as_of (or listed for fewer) is unstaged. Stages 1-4 plus unstaged add up to the universe.',
         'themes',

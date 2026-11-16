@@ -35,6 +35,9 @@ RULES (the nightly's, applied to today's bar)
   advance/decline today's bar close vs the REFERENCE prev_close (never Alpaca's previous_daily_bar,
                   which pre-open deterministically holds T-2 — the #490 finding). no_prior = a
                   universe name with no prev_close, as in the nightly.
+  up / down 4%    moves_4pct, counted on the SAME names and the SAME reference prev_close as
+                  advance/decline: up = close >= prev_close * 1.04, down = close <= prev_close * 0.96
+                  (the nightly's expression). A missing or no_prior name is in neither.
   new high / low  today's high >= hi252 / today's low <= lo252, for names that are hl_eligible in the
                   reference AND have a usable bar today (high and low > 0) — the nightly's two halves.
   groups / themes equal-weighted 1-day return over today's members with both closes, counted once
@@ -195,6 +198,7 @@ def compute_live(ref: dict, snaps: dict[str, dict], today: date) -> dict:
     universe_n = read_n = 0
     eligible_n = new_highs = new_lows = 0
     advances = declines = unchanged = no_prior = 0
+    up_4pct = down_4pct = 0
     theme_members: dict[int, int] = {}            # idx -> distinct members (the reference lists each once)
     theme_rets: dict[int, list[float]] = {}
     ticker_ret: dict[str, float] = {}             # ticker -> today's 1-day return in percent
@@ -233,6 +237,11 @@ def compute_live(ref: dict, snaps: dict[str, dict], today: date) -> dict:
             declines += 1
         else:
             unchanged += 1
+        if prev is not None:                           # the nightly's expression, on the adv/dec base
+            if close >= prev * 1.04:
+                up_4pct += 1
+            elif close <= prev * 0.96:
+                down_4pct += 1
         if hl_eligible and high is not None and low is not None:
             eligible_n += 1
             h252, l252 = _num(hi252), _num(lo252)
@@ -267,6 +276,7 @@ def compute_live(ref: dict, snaps: dict[str, dict], today: date) -> dict:
         "highs_lows": {"eligible_n": eligible_n, "new_highs": new_highs, "new_lows": new_lows},
         "adv_dec": {"advances": advances, "declines": declines, "unchanged": unchanged,
                     "no_prior": no_prior, "missing": universe_n - read_n},
+        "moves_4pct": {"up": up_4pct, "down": down_4pct},
         "ecosystems_1d": ecosystems_1d,
         "themes_1d": themes_1d,
     }
@@ -430,12 +440,13 @@ async def refresh_once(now_et: datetime, today: date, *, fetch=None, ref_path: P
     }
     write_live(payload, out_dir)
     total = time.monotonic() - t0
-    hl, ad = numbers["highs_lows"], numbers["adv_dec"]
+    hl, ad, mv = numbers["highs_lows"], numbers["adv_dec"], numbers["moves_4pct"]
     await log_audit_event(
         EVT_REFRESH,
         (f"{payload['as_of']} vs {ref['as_of']}: universe {numbers['universe_n']}, read {numbers['read_n']}, "
          f"missing {numbers['missing_n']}; highs {hl['new_highs']} lows {hl['new_lows']} of {hl['eligible_n']}; "
          f"adv {ad['advances']} dec {ad['declines']} unch {ad['unchanged']}; "
+         f"up4 {mv['up']} dn4 {mv['down']}; "
          f"{len(numbers['ecosystems_1d'])} groups, {len(numbers['themes_1d'])} themes; "
          f"fetch {t_fetch:.1f}s total {total:.1f}s, batches failed {stats.get('batches_failed', 0)}")[:300],
         json.dumps({"fetch_s": round(t_fetch, 2), "total_s": round(total, 2), "stats": stats,
