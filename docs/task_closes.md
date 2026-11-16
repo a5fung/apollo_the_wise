@@ -2598,3 +2598,13 @@ EVIDENCE:
 - **After the export (11-11 18:50 ET):** snapshot as_of 2026-11-11 → holds_close False, the page reads "Last close · 2026-11-11" (`after_export.out`). The load error of 11-10 was a stale module on Streamlit Cloud, cleared by his reboot; no code path changed since.
 - **What this does NOT show:** both after-close states were COMPUTED by running the page's own `holds_close` on the live files, not seen on the rendered page; a stale-module load error (11-10) is invisible to that. His phone check of the page tonight is the observed half.
 - **Known, filed separately:** the 11-27 half day (last read 13:00) is not held as "Close" before the export — the page falls back to the labelled previous close, so no unlabelled or wrong number shows.
+
+## #655 — theme ecosystems programme: every DoD item has a prod read or his recorded decision (2026-11-16)
+BAR: "every item below has a prod read or his recorded decision"
+ACCEPTED-PARTIAL: the rest of the DoD is the item list (1)-(8) itself; each item is answered one by one in EVIDENCE below rather than quoted, and the carried items are MOVED to #727.
+EVIDENCE:
+- (1) renaming merge stores description + lineage row: 13 of 13 renaming merges with their `arm_b_merge_rename` row (prod read 10-31).
+- (2c) Pass 1.5 exemption for his promotions: never exercised — 0 exempt and 0 error rows since 10-17 across his 7 promotions; none was a Pass 1.5 candidate inside its 3 nights (`scripts/probes/_655_1116/q.out`, `q2.out`, `q3.out`: the 11-12 Bitcoin promotion's RIOT / SECZ are unique to it). HIS RECORDED DECISION 11-16: "ok" to closing it as unexercised (unit tests cover the path; the #540 precedent).
+- (2d) merge validated against the merged name: 13 of 13 (prod read 10-31).
+- (3) theme-guard check: PASS 10-20. (4) row (a) re-read: his "yes" 10-20, shipped 10-23, read 10-27. (5) birth-gate accuracy: 9 of 9 vs the 85% bar (10-31). (6) fewer-unrelated decision: his "Go with rec", leave (10-31). (7) `lane2_widen_reconsider`: carried by its own review (his 11-04 ruling).
+- (8) the four carried items re-filed as #727 (b), with the sector-filter wipe found in this read as #727 (a).
