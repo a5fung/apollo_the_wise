@@ -2737,6 +2737,7 @@ async def _aggregate_shadow_orb_outcomes(window_days: int) -> dict:
                     AND shadow.alert_date >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
                     AND shadow.status = 'closed'
                     AND live.status   = 'closed'
+                    AND live.pnl_attribution IS NULL
                     AND shadow.risk_dollars > 0
                     AND live.risk_dollars > 0
                     AND NOT shadow.quarantined

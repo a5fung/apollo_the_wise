@@ -421,6 +421,11 @@ class FakeIo(cf.Io):
         self.cal, self.cal_age, self.fx, self.fx_exc = [], 1, [], None
         self.alerts, self.sent, self.audits, self.send_ok = {}, [], [], True
         self.bar_calls, self.fx_calls, self.holiday = [], [], False
+        # fx_eia: every US week read also lists that week's Thursday EIA release, as every real week does (an answer
+        # with no trigger row is a FAILED read). fx_weeks: {monday: events} overrides one week's answer whole.
+        self.fx_eia, self.fx_weeks, self.fx_bank = True, {}, {}
+        self.wasde, self.wasde_exc, self.earn = [date(2026, 12, 10)], None, {}
+        self.cal_first = date(2020, 1, 1)      # the stored calendar reaches far back (a long-running install); None = read off self.cal
 
     def cftc(self, since, today):
         if self.cftc_exc:
@@ -440,13 +445,21 @@ class FakeIo(cf.Io):
         self.fx_calls.append((country, d0))
         if self.fx_exc:
             raise self.fx_exc
-        return list(self.fx) if country == "united-states" else []
+        if country != "united-states":
+            return list(self.fx_bank.get(country, []))
+        if d0 in self.fx_weeks:
+            return list(self.fx_weeks[d0])
+        thu = d0 - timedelta(days=d0.weekday()) + timedelta(days=3)
+        return list(self.fx) + ([_fx("EIA Natural Gas Stocks Change", None, None, f"{thu.isoformat()}T15:30:00.000Z")]
+                                if self.fx_eia else [])
 
     def wasde_dates(self):
-        return [date(2026, 12, 10)]
+        if self.wasde_exc:
+            raise self.wasde_exc
+        return list(self.wasde)
 
     def earnings(self, ticker):
-        return []
+        return list(self.earn.get(ticker, []))
 
     def pause(self, seconds):
         pass
@@ -487,6 +500,9 @@ class FakeIo(cf.Io):
 
     async def calendar(self, d0, d1):
         return [r for r in self.cal if d0 <= r["event_date"] <= d1]
+
+    async def calendar_first_date(self):
+        return self.cal_first or min((r["event_date"] for r in self.cal), default=None)
 
     async def store_alerts(self, rows):
         out = []
@@ -753,7 +769,8 @@ def test_the_calendar_is_read_fresh_every_day_and_in_full_weekly():
     io.fx = [_fx("Inflation Rate MoM", "0.4%", "0.2%")]         # CPI is today; the PPI the source no longer lists is gone
     res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
     assert res["alerts"] == 1 and "calendar" not in res and io.fx_calls == [("united-states", date(2026, 11, 9))]
-    assert {(r["event_date"], r["event_type"]) for r in io.cal} == {(WED, "CPI"), (date(2026, 11, 10), "WASDE")}
+    assert {(r["event_date"], r["event_type"]) for r in io.cal} == {
+        (WED, "CPI"), (date(2026, 11, 12), "EIA_NATGAS"), (date(2026, 11, 10), "WASDE")}
     io = _daily_io()
     io.cal_age = 8
     res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
@@ -1013,3 +1030,143 @@ def test_the_module_has_no_broker_or_order_path():
             "print(bad); sys.exit(1 if bad else 0)")
     r = subprocess.run([sys.executable, "-c", code], cwd=REPO, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+# ── review fixes 2026-11-15 ──────────────────────────────────────────────────────────────────
+
+class _R:
+    def __init__(self, code, body=None):
+        self.status_code, self._b = code, body
+
+    def json(self):
+        if self._b is None:
+            raise ValueError("no json")
+        return self._b
+
+
+@pytest.mark.parametrize("body", [{}, {"last": True}, {"calendar": []}, {"calendar": {"x": 1}, "last": True}, [], None])
+def test_a_200_answer_with_a_reshaped_or_empty_body_is_a_failed_read(body):
+    """fix 1: an HTTP 200 whose body lost 'calendar' / 'last' (or is not JSON) was read as 'no events'."""
+    with pytest.raises(cf.CotError):
+        cf.fetch_fxempire("united-states", WED, WED, get=lambda *a, **k: _R(200, body), sleep=lambda s: None)
+
+
+def test_a_us_week_with_no_trigger_row_keeps_the_stored_rows_and_pages():
+    """fix 1: the source answers 200 with no release at all for THIS week. Every real week lists the EIA releases, so
+    it is a failed read: the stored future rows stay, the run pages through its problems path."""
+    io = _daily_io()
+    io.fx_eia, io.fx = False, []
+    io.cal.append({"event_date": date(2026, 11, 13), "event_type": "PPI", "release_et": None, "source": cf.US_SOURCE})
+    with pytest.raises(cf.CotError, match="this week's US calendar could not be read"):
+        _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert (date(2026, 11, 13), "PPI") in {(r["event_date"], r["event_type"]) for r in io.cal}
+    assert "no trigger" in io.audits[0][2]["calendar_today"]["error"] and len(io.sent) == 1    # today's alert still went
+
+
+def test_an_empty_forward_week_never_deletes_stored_rows_and_an_empty_next_week_pages():
+    """fix 1, the weekly forward read. The source lists a release only ~2 weeks out, so a FAR week with no row is
+    normal and replaces nothing; NEXT week with no row is a failed read (rows kept, the run pages)."""
+    def io_with(weeks):
+        io = _daily_io()
+        io.cal_age = 8
+        io.cal += [{"event_date": date(2026, 11, 18), "event_type": "RETAIL", "release_et": None, "source": cf.US_SOURCE},
+                   {"event_date": date(2026, 11, 25), "event_type": "GDP", "release_et": None, "source": cf.US_SOURCE}]
+        io.fx_weeks = weeks
+        return io
+    have = lambda io: {(r["event_date"], r["event_type"]) for r in io.cal}  # noqa: E731
+    # next week answers with its rows (the RETAIL date moved), the week after answers empty: its GDP row is kept
+    io = io_with({date(2026, 11, 16): [_fx("Retail Sales MoM", None, "0.1%", "2026-11-17T13:30:00.000Z")],
+                  date(2026, 11, 23): [], date(2026, 11, 30): []})
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["calendar"]["errors"] == {} and res["problems"] == []
+    assert (date(2026, 11, 17), "RETAIL") in have(io) and (date(2026, 11, 18), "RETAIL") not in have(io)
+    assert (date(2026, 11, 25), "GDP") in have(io)
+    # every forward week answers empty: nothing is deleted, and the run pages
+    io = io_with({date(2026, 11, 16): [], date(2026, 11, 23): [], date(2026, 11, 30): []})
+    with pytest.raises(cf.CotError, match="calendar source failed"):
+        _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert {(date(2026, 11, 18), "RETAIL"), (date(2026, 11, 25), "GDP")} <= have(io)
+    assert "no trigger" in io.audits[0][2]["calendar"]["errors"]["fxempire united-states"]
+
+
+def _first_run_io(mon):
+    """A FIRST run on Monday 11-09: the 11-03 report (wheat newly set up long) lands today, and the calendar table
+    holds nothing before today. Wheat's failure day (Thu 11-05, a WASDE day) is known only from the source."""
+    io = _wheat_week_io(mon)
+    io.cal, io.cal_first = [], None
+    io.wasde = [date(2026, 11, 5), date(2026, 12, 10)]
+    return io
+
+
+def test_the_first_run_friday_check_reads_last_weeks_news_from_the_source():
+    """fix 2: the Friday check's window (Wed 11-04 .. today) starts before the stored calendar's first date, so the
+    news days in it are read from the sources (past FXEmpire weeks, WASDE, earnings dates)."""
+    mon = date(2026, 11, 9)
+    io = _first_run_io(mon)
+    res = _run(cf.run_daily(mon, io, datetime(2026, 11, 9, 17, 15, tzinfo=_ET)))
+    cu = res["catch_up"]
+    assert cu["status"] == "sent" and cu["friday"] == 1 and cu["calendar_backfill"]["failed"] == []
+    assert "WHEAT LONG  failure day Thu 11-05: news (WASDE)" in io.sent[0] and "could not read" not in io.sent[0]
+    assert ("united-states", date(2026, 11, 2)) in io.fx_calls            # last week's US releases, from the source
+    # a long-running install (the table reaches back past the window) makes no such request
+    io = _wheat_week_io(mon)
+    _run(cf.run_daily(mon, io, datetime(2026, 11, 9, 17, 15, tzinfo=_ET)))
+    assert ("united-states", date(2026, 11, 2)) not in io.fx_calls
+
+
+def test_the_first_run_friday_check_says_which_days_it_was_blind_for():
+    """fix 2: a source that cannot be read back is named in the weekly message with the days; a refusal earlier in
+    the run sends no further FXEmpire request."""
+    mon = date(2026, 11, 9)
+    io = _first_run_io(mon)
+    io.wasde_exc = RuntimeError("usda down")
+    with pytest.raises(cf.CotError, match="calendar source failed"):       # the forward WASDE refresh pages as before
+        _run(cf.run_daily(mon, io, datetime(2026, 11, 9, 17, 15, tzinfo=_ET)))
+    cu = io.audits[0][2]["catch_up"]
+    assert cu["status"] == "sent" and cu["friday"] == 0 and cu["calendar_backfill"]["failed"] == ["WASDE"]
+    assert "could not read WASDE for 11-04 to 11-09" in io.sent[0] and "may have missed a news failure day" in io.sent[0]
+    io = _first_run_io(mon)
+    io.fx_exc = cf.CalendarRefused("refused (429)")
+    with pytest.raises(cf.CotError):
+        _run(cf.run_daily(mon, io, datetime(2026, 11, 9, 17, 15, tzinfo=_ET)))
+    assert io.fx_calls == [("united-states", mon)]                         # refused once: nothing more was asked
+    assert "could not read US releases, central-bank decisions for 11-04 to 11-09" in io.sent[0]
+    assert "WHEAT LONG  failure day Thu 11-05: news (WASDE)" in io.sent[0]  # the sources that answered still served
+
+
+def test_a_set_up_market_with_no_usable_price_series_is_skipped_without_a_page():
+    """fix 3: OJ=F answers with one bar. Such a market can never be read, so it must not page every day: it is
+    recorded and skipped; the other set-up markets alert as usual."""
+    io = _daily_io()
+    io.weeks[REPORT]["rows"]["orange_juice"] = _ix(2, 99, 99, "short")
+    io.bars["OJ=F"] = bars_to(WED, 100.0)[-1:]
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["no_price_data"] == ["orange_juice"] and res["problems"] == [] and res["no_bar_today"] == []
+    assert res["alerts"] == 1 and len(io.sent) == 1 and io.audits[0][2]["no_price_data"] == ["orange_juice"]
+    # a USABLE series that only lacks today's bar still pages (it is a gap, not a dead ticker)
+    io = _daily_io()
+    io.weeks[REPORT]["rows"]["orange_juice"] = _ix(2, 99, 99, "short")
+    io.bars["OJ=F"] = bars_to(WED, 100.0)[:-1]
+    with pytest.raises(cf.CotError, match="1 of 2 set-up markets could not be read today: ORANGE JUICE"):
+        _run(cf.run_daily(WED, io, AFTER_CLOSE))
+
+
+def test_a_source_that_serves_no_usable_series_at_all_still_pages():
+    """fix 3 guard: Yahoo answering short / empty for EVERYTHING is an outage, not a list of dead tickers."""
+    io = _daily_io()
+    io.bars = {t: b[-1:] for t, b in io.bars.items()}
+    with pytest.raises(cf.CotError, match="no set-up market could be read today"):
+        _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert io.audits[0][2]["no_price_data"] == []
+
+
+def test_the_weekly_message_names_a_set_up_market_with_no_price_data_once():
+    """fix 3: the weekly message and its audit row say it; the market stays in the index and the set-up list."""
+    io = _wheat_week_io(FRI)
+    io.bars["ZW=F"] = io.bars["ZW=F"][-1:]
+    res = _run(cf.run_weekly(FRI, io))
+    assert res["status"] == "sent" and res["no_price_data"] == ["wheat"] and io.audits[0][2]["no_price_data"] == ["wheat"]
+    assert "No usable price data for: WHEAT" in io.sent[0] and re.search(r"WHEAT\s+long", io.sent[0])
+    assert "wheat" in io.weeks[REPORT]["rows"]
+    ok = _wheat_week_io(FRI)
+    assert _run(cf.run_weekly(FRI, ok))["no_price_data"] == [] and "No usable price data" not in ok.sent[0]

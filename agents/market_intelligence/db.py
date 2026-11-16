@@ -15371,6 +15371,7 @@ async def get_shadow_outcomes_window(window_days: int = 30,
             LEFT JOIN mi_live_trades live
               ON live.ticker = shadow.ticker
              AND live.alert_date = shadow.alert_date
+             AND live.pnl_attribution IS NULL   -- methodology read (11-15): a bug-attributed live trade is no pair; the shadow row stays
             WHERE shadow.bar_size_minutes = $1
               AND shadow.alert_date >= CURRENT_DATE - ($2 || ' days')::interval
               AND shadow.status IN ('closed', 'no_entry', 'gate_blocked')

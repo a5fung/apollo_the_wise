@@ -299,7 +299,14 @@ internal secret as `/exec/*`; the port is not published outside the compose netw
 - **Errors** carry `{"detail": {"code", "message"}}`: **400** a request violation (`too_many_symbols`,
   `bad_symbols`, `bad_timeframe`, `bad_time`, `naive_time`, `bad_range`, `range_too_long`, `row_cap`, `bad_feed`,
   `bad_adjustment`, `unknown_field`, `bad_body`) · **401** wrong secret · **429** `busy` (one research fetch at a
-  time) · **502** `upstream` (Alpaca refused, e.g. a feed the subscription lacks) · **504** `timeout` (120 s).
+  time) or `orb_window` (below) · **502** `upstream` (Alpaca refused, e.g. a feed the subscription lacks) · **504**
+  `timeout` (120 s).
+- **Refused 09:20–10:05 ET, Mon–Fri — 429 `orb_window`** (2026-11-15). The ORB entries share Alpaca's data rate
+  limit, so research is kept off it for the entry window. It starts at 09:20, five minutes before the 09:25
+  pre-open work, because one request may run up to 120 s. Holidays are not excluded. **The helper does not retry
+  it:** `fetch_bars` raises on the FIRST `orb_window` refusal with a plain message (the window outlasts every
+  backoff; retrying only sent more requests into the window and then discarded the pull). A pull that was part-way
+  returns nothing — run the script again after 10:05 ET.
 
 **Kept off the money path.** The fetch runs on its own one-thread executor — not the shared SDK pool that live
 order calls use, and not the breakout v1 bars thread — and a second request while one is running is refused, so

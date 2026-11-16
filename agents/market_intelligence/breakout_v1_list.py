@@ -403,6 +403,7 @@ def rank_all(rows: list, extra_inputs: Optional[list] = None, ranking: str = DEF
     def rnd(x):
         return None if x is None else round(float(x), AUDIT_SCORE_DP)
     return {"selected": ranking, "ranked_by": used, "fallback": fallback, "pick_error": pick_error, "scored": scored,
+            "listed_n": len(rows),
             "grades": {**{g: sum(1 for r in rows if r.get("grade") == g) for g in GRADE_ORDER},
                        "none": sum(1 for r in rows if r.get("grade") is None)},
             "population_n": len(rows) + len(extra_inputs or []), "context_removed_in_population": len(extra_inputs or []),
@@ -516,7 +517,10 @@ def format_list_message(today: date, rows: list) -> Optional[str]:
 def ranking_alert_message(today: date, rk: Optional[dict]) -> Optional[str]:
     """His word 2026-11-14 ("yes" to: a night the pick model fails and the order score takes over should page): one
     plain message when the selected ranking did not order the list, or ran without part of its inputs. None on a
-    normal night. Sent whether or not breakout paper is on."""
+    normal night. Sent whether or not breakout paper is on. Review 2026-11-15 added three more degraded nights to
+    the SAME message: the industry-code read failed (`sic_error`: group strength blank for every name), the ranking
+    switch could not be read or held an unknown value (`note`: the pick model ordered the night whatever the row
+    says), and PARTIAL pick scoring (the pick model scored fewer than half the listed names)."""
     if not rk:
         return None
     why = []
@@ -524,9 +528,18 @@ def ranking_alert_message(today: date, rk: Optional[dict]) -> Optional[str]:
         why.append(f"the {RANKING_LABEL.get(rk.get('selected'), rk.get('selected'))} scored no stock, so the "
                    f"{RANKING_LABEL[RANKING_ORDER_SCORE]} ordered tonight's list")
     for k, what in (("pick_error", "the pick model raised"), ("xs_error", "its strength inputs failed"),
-                    ("long_error", "its 1-year price history failed to load (it ran on 200 days)")):
+                    ("long_error", "its 1-year price history failed to load (it ran on 200 days)"),
+                    ("sic_error", "the industry-code read failed (group strength is blank for every name tonight)"),
+                    ("note", f"the ranking switch ({RANKING_SWITCH}) could not be used, so "
+                             f"{RANKING_LABEL[DEFAULT_RANKING]} ordered tonight's list whatever the switch says")):
         if rk.get(k):
             why.append(f"{what}: {str(rk[k])[:160]}")
+    listed = int(rk.get("listed_n") or 0)
+    picked = (rk.get("scored") or {}).get(RANKING_PICK_MODEL)
+    # a full fallback (the pick model selected and scoring nobody) is already the first line: not said twice
+    if listed and picked is not None and 2 * int(picked) < listed and not rk.get("fallback"):
+        why.append(f"the pick model scored only {int(picked)} of {listed} listed names (fewer than half); the rest "
+                   f"follow the {RANKING_LABEL[RANKING_ORDER_SCORE]} behind the scored ones")
     if not why:
         return None
     from agents.market_intelligence.constants import mode_prefix

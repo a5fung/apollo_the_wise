@@ -35,6 +35,7 @@ _CONNECT_TIMEOUT_SECONDS = 5.0
 _READ_TIMEOUT_SECONDS = 150.0  # above the route's own 120s Alpaca budget
 _MIN_CHUNK = timedelta(minutes=30)
 _RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
+ORB_WINDOW_CODE = "orb_window"  # the route's 429 for 09:20-10:05 ET weekdays: never retried (fail fast)
 
 _sleep = time.sleep            # tests replace this
 
@@ -89,11 +90,18 @@ def _post(body: dict) -> dict:
 
 def _post_with_retry(body: dict) -> dict:
     """A page with backoff. Retries busy / upstream / transport failures; a 400 (the request
-    itself is wrong) is raised at once."""
+    itself is wrong) is raised at once. So is `orb_window` (09:20-10:05 ET on weekdays): the
+    window outlasts every backoff, so retrying only sent more requests into the ORB entries and
+    then threw the pull away. It fails on the FIRST refusal — run the script again after 10:05."""
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             return _post(body)
         except ResearchBarsRequestError as e:
+            if e.code == ORB_WINDOW_CODE:
+                raise ResearchBarsRequestError(
+                    e.status, e.code,
+                    f"{e.message} — not retried; nothing was returned (a pull that was part-way is discarded). "
+                    "Run it again after 10:05 ET.") from e
             if e.status not in _RETRY_STATUSES or attempt == MAX_ATTEMPTS:
                 raise
             why = f"{e.status} {e.code}"
@@ -121,9 +129,10 @@ def fetch_bars(symbols, timeframe: str, start, end, feed: str | None = None, *,
     over its row cap), pauses between pages, retries with backoff.
     -> a pandas DataFrame [symbol, ts (UTC), o, h, l, c, v] sorted by symbol then ts; a list of
     dicts (ts an ISO UTC string) when pandas is missing or `as_frame=False`.
-    Raises `ResearchBarsRequestError` (the route refused: bad request, or still failing after
-    the retries), `ExecutionUnreachable`, or RuntimeError when EXECUTION_SERVICE_URL is unset —
-    never a silent partial result.
+    Raises `ResearchBarsRequestError` (the route refused: bad request, the 09:20-10:05 ET
+    weekday `orb_window` — at once, no retry — or still failing after the retries),
+    `ExecutionUnreachable`, or RuntimeError when EXECUTION_SERVICE_URL is unset — never a
+    silent partial result.
     """
     if isinstance(symbols, str):
         symbols = [symbols]

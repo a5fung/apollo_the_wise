@@ -99,6 +99,12 @@ Entry "Sunday open" (or "the next open" in a delayed week), stop = a close beyon
 The row stores NO entry price (the open is not known yet; the failure day's close is in `detail`), and is dated the
 day the week was first held, so a message retried on a later day updates that row. The check reads this week's
 calendar itself (the daily catch-up runs it after the day's calendar read); a failed read is named in the message.
+**New install (2026-11-15):** the calendar table holds nothing before its first day, so when the check's window
+starts before the earliest stored event date it reads those days from the sources itself — the past US weeks (whole
+weeks, same empty-week rule as below), the six central banks, the WASDE dates and the earnings dates — and uses
+them for this check only (nothing is stored). A source that cannot be read back is named in the weekly message with
+the days ("The Friday check could not read WASDE for 11-11 to 11-16 …"); a refusal earlier in the run sends no
+further FXEmpire request. The audit row carries `calendar_backfill` (from, to, stored_from, rows, failed).
 
 **Exit signal in the weekly message:** "left" = was a main set up last week and is not now; "neutral ~50" = the first
 week since its last main set up (within 26 weeks) that Commercials (stock indices) or any group (others) is back at 50.
@@ -120,6 +126,22 @@ no report stored, or the newest stored report more than 17 days old (the CFTC so
 rows; paged on Mondays while it lasts, and the first stale run is always a Monday). A missing peer only drops out
 of the correlation median (`peers_unread` in the audit row). An exception anywhere else still leaves the run's one
 audit row (FAILED). An undelivered message is retried on the next run; a re-run never sends the same alert twice.
+
+**An empty calendar answer is a failed read (2026-11-15).** An HTTP-200 answer from FXEmpire is taken as real only
+when the body is JSON with a `calendar` list and a `last` flag (both are present even for an empty range). A US
+WEEK with no trigger row at all — this week's daily read, or NEXT week's in the Monday refresh — is a failed read:
+every real week lists the EIA releases (the weeks of 11-09, 11-16 and 11-23 read whole on 2026-11-15 held 2-3
+trigger rows each). The stored rows are kept, the reason is in the audit row, and the run pages through its normal
+problems path. The Monday refresh replaces each of the three forward US weeks on its own, and only a week whose
+answer holds a trigger row; a far week the source does not list yet (it lists ~2 weeks out) replaces nothing.
+
+**A set-up market with no usable price series (2026-11-15, OJ=F).** Yahoo answers ORANGE JUICE with one bar. A
+set-up market whose 3-month daily read holds fewer than 21 sessions (the 20 a reading needs, plus the day) can
+never alert, so it does not page: the weekly message names it once ("No usable price data for: …"), the weekly and
+daily audit rows list it (`no_price_data`), and the daily job skips it. It stays in the index and the set-up list.
+This is judged only when some other series in the same run IS usable — if nothing is, the source is down and the
+run pages as before. Cost, stated: one day's transient short answer for ONE market is skipped that day without a
+page (it is in the audit row). A usable series that only lacks today's bar still pages.
 
 **Known limits (state them when reading the alerts):**
 - The research alert rates were measured on the newsletter's official index (with its small price adjustment). Live
@@ -144,6 +166,25 @@ audit row (FAILED). An undelivered message is retried on the next run; a re-run 
 - A federal-holiday week moves the CFTC release; the daily job picks it up the day it lands.
 
 ## Change log
+
+### 2026-11-15 — review fixes: empty calendar answers, the first-run Friday check, a dead price ticker
+
+**Trigger**: verified review findings 2026-11-15 (before the first live Monday run).
+
+**Evidence**: BUG FIXES, not criteria changes — the index window, rounding, lookbacks, contract codes and the feed A
+thresholds are untouched. (1) A 200 answer with an empty or renamed body was read as "no events" and deleted the
+stored future US rows. (2) On the first run the Friday check could not see last week's news days (the 11-10 report
+lands Mon 11-16: its window is Wed 11-11 → Mon 11-16 and the table starts 11-16). (3) OJ=F serves one bar, so a set
+up in ORANGE JUICE would have paged every day. Each has a test that fails on the old code
+(`tests/test_cot_family.py`, "review fixes 2026-11-15").
+
+**Anticipated effect**: no change on a normal day. A broken calendar answer now pages instead of silently blinding
+the news alerts; Monday 11-16's weekly message either carries last week's news failure days or says which days it
+could not read; ORANGE JUICE is named in the weekly message and never pages.
+
+**Reversion-flag**: NEW.
+
+**Status**: built, not deployed (deploy scope: market-agent).
 
 ### 2026-11-15 — live alerts added, no orders (operator "Go")
 
@@ -172,7 +213,7 @@ research rate (it was measured on the official index, so expect a difference); n
 - Nothing runs; no detector, no alerts, no orders.
 
 ## Data — 1-minute archive
-- What: once a week, one gzip CSV of free 1-minute futures bars (extended hours included; columns market,ticker,ts_et,o,h,l,c,v; timestamps in ET) for every COT market (the `=F` continuous contracts; the dollar index is skipped, it has no 1-minute history).
+- What: once a week, one gzip CSV of free 1-minute futures bars (extended hours included; columns market,ticker,ts_et,o,h,l,c,v; timestamps in ET) for every COT market. The ticker list is DERIVED from the family's own market table (`cot_family.MARKETS`), and the pull and the ET conversion are `cot_family`'s (`fetch_minute_frame`, `et_index`) — no second copy. Since 2026-11-15 that means: the dollar index is IN (DX-Y.NYB does serve 1-minute bars — 8,003 rows over 8 days that day; the earlier "no 1-minute history" note was wrong), and OATS (ZO=F) is OUT (the CFTC no longer reports it, so it has no index and no alert to test; 1-minute history not saved cannot be recovered later — say so if oats is wanted back). OPEN: the alerts' first-minute label still skips the dollar index (`NO_MINUTE_BARS`), on the same wrong note; left as is until ruled.
 - Where: `/app/logs/cot_minutes/<run_date_ET>.csv.gz` (bind-mounted host dir, survives deploys). Code: `agents/market_intelligence/cot_minutes_archive.py`. Each run fetches the last 8 days, so files overlap; dedupe on (market, ts_et) at read time.
 - Schedule: Saturdays 10:00 ET, intelligence-owned, one audit row per run (`cot_minutes_archive`); a run where every ticker fails pages.
 - Why: yfinance keeps only ~30 days of 1-minute history; the first-tick news-failure rule needs a true 1-minute test later. Read-only data; no detector, no alerts, no orders.

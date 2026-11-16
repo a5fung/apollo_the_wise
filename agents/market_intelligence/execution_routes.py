@@ -35,13 +35,16 @@ _EXEC_HANDLERS = {
 
 
 def research_blocked_now(now=None) -> bool:
-    """True 09:25-10:05 ET Mon-Fri: research bar pulls stay off the Alpaca data
-    budget while the ORB entries run (2026-11-15). Holidays are not excluded —
-    a refusal on a closed day costs a retry, nothing more."""
+    """True 09:20-10:05 ET Mon-Fri: research bar pulls stay off the Alpaca data
+    budget while the ORB entries run (2026-11-15). It starts 5 minutes BEFORE the
+    09:25 pre-open work as a lead margin: one request may run up to 120 s, so a
+    pull admitted at 09:24 could still be on Alpaca's rate limit at 09:26.
+    Holidays are not excluded — a refusal on a closed day costs a re-run, nothing
+    more."""
     from datetime import datetime, time
     from zoneinfo import ZoneInfo
     n = (now or datetime.now(ZoneInfo("America/New_York"))).astimezone(ZoneInfo("America/New_York"))
-    return n.weekday() < 5 and time(9, 25) <= n.time() < time(10, 5)
+    return n.weekday() < 5 and time(9, 20) <= n.time() < time(10, 5)
 
 
 def register_execution_routes(app) -> None:
@@ -84,12 +87,13 @@ def register_execution_routes(app) -> None:
         internal-secret gate as /exec/*; the body reads market data only
         (execution_client._research_bars_inprocess -> broker/research_bars.py).
         Contract: docs/architecture/dual_account.md §Research market data.
-        Refused 09:25-10:05 ET on weekdays (the ORB entry window, where live
-        entries share the Alpaca data rate limit) — 429 `orb_window`."""
+        Refused 09:20-10:05 ET on weekdays (the ORB entry window plus a 5-minute
+        lead, where live entries share the Alpaca data rate limit) — 429
+        `orb_window`, which the helper does NOT retry."""
         if research_blocked_now():
             raise HTTPException(status_code=429, detail={
                 "code": "orb_window",
-                "message": "research data is refused 09:25-10:05 ET on weekdays (ORB entries); retry after 10:05"})
+                "message": "research data is refused 09:20-10:05 ET on weekdays (ORB entries); run it again after 10:05 ET"})
         try:
             # Already-encoded JSON bytes (built on the research thread): handed
             # back as-is so a large answer is never encoded on this event loop.

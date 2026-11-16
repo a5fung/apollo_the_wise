@@ -77,3 +77,27 @@ def test_registered_saturday_10_et_intelligence_owned():
     assert c["day_of_week"] == "sat" and c["hour"] == 10 and c["minute"] == 0
     assert c["timezone"] == "America/New_York"
     assert cma.JOB_ID in sched.INTELLIGENCE_OWNED_JOB_IDS and cma.JOB_ID not in sched.EXECUTION_OWNED_JOB_IDS
+
+
+def test_the_ticker_table_is_derived_from_the_cot_market_table():
+    """Review 11-15: no hand copy. Every COT market, the dollar index included (DX-Y.NYB does serve 1-minute bars:
+    checked 2026-11-15, 8,003 rows over 8 days)."""
+    from agents.market_intelligence import cot_family as cf
+    assert cma.MARKET_TICKERS == {m: cf.ticker_of(m) for m in cf.MARKETS}
+    assert cma.MARKET_TICKERS["dollar_index"] == "DX-Y.NYB" and len(cma.MARKET_TICKERS) == len(cf.MARKETS)
+
+
+def test_the_pull_and_the_et_conversion_are_cot_familys(monkeypatch, tmp_path, audit):
+    from agents.market_intelligence import cot_family as cf
+    seen = []
+
+    def frame(ticker, period="5d"):
+        seen.append((ticker, period))
+        return _df()
+    monkeypatch.setattr(cf, "fetch_minute_frame", frame)
+    asyncio.run(cma.run_scheduled(NOW, tickers={"gold": "GC=F"}, directory=tmp_path))
+    assert seen == [("GC=F", f"{cma.LOOKBACK_DAYS}d")]
+    with gzip.open(tmp_path / "2026-11-14.csv.gz", "rt", newline="") as fh:
+        assert list(csv.reader(fh))[1][2] == "2026-11-13T09:30:00-05:00"
+    # cot_family's own minute read goes through the same pull and the same conversion
+    assert cf.fetch_minute_bars("GC=F")[0][0].isoformat() == "2026-11-13T09:30:00-05:00" and seen[-1] == ("GC=F", "5d")
