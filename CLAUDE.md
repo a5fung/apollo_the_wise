@@ -269,13 +269,9 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ## Changes Made — Recent
 
-### 2026-11-08 — #312 demote page live; the chat route closed to money commands; breadth groups
+### 2026-11-15 — COT family (futures) live alerts; RS Leaders + COT dashboard pages; breakout grades
 
-- #312 (`ladder_watchdog.py`, `ladder_press.py`): a breach pages him once per episode with stats + Demote / No action (tokenized button; one rung, compare-and-set in one transaction); Demote takes effect without a restart (fresh strategy reads on the money path). His rulings: the chat assistant can NOT move a strategy, /resume, /partialnow or /timestop (typed command only; refusal + audit row); /pause and /syncnow stay open. Live probe passed (forged marker refused). #722: the breadth export gains 19 groups. Deployed `e475346e` (both, then execution).
-
-### 2026-11-14 — breakout v1: three list checks, buys only on a real break, the pick model orders the list
-
-- #717 (his signs 11-14): the list skips >3% under a falling 50-day, a 6-month downtrend, and a re-widening base with a flat/falling lower line; paper slots taken only in a minute whose high is strictly through the level (2-minute lookback); the pick model (logistic fitted 2017-2020 on Qullamaggie's buys, frozen) sets `list_rank`, the order score and dollar volume stored nightly as backups behind `mi_safeguard_state('breakout_v1_ranking')`. Deployed `b37ebd01` (market-agent then execution); paper OFF; verify Mon 11-16 17:55 list. SSoT `docs/setups/consolidation_breakout.md`.
+- COT family (his word; SSoT `docs/setups/cot_family.md`, research `~/cmr_lab`): Shapiro's COT index rebuilt exactly from CFTC data; `cot_weekly` Fri 17:40 / `cot_daily` Mon-Fri 17:15 ET alerts to the paper chat (no orders); Sat 1-minute futures archive; read-only `POST /data/bars` on execution (keys stay in execution; refused 09:20-10:05 ET). Breakout list rows carry grades A+/A/B/C; flawed pre-fix breakout paper trades tagged `pnl_attribution` and excluded from methodology reads. Deployed `3af0b701`. #717 target restated 445/362/26; #725/#726 filed on his carryover.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
