@@ -379,6 +379,7 @@ def test_daily_message_is_paper_tagged_plain_and_silent_when_empty():
     assert "first minute: 0.54 of a day's range AGAINST the crowd" in cf.format_daily_message(
         WED, REPORT, [_alert(first_minute={"status": "ok", "move": -0.54, "big": False})])
     assert "news vs consensus: with the crowd" in text and "main set up, C  3 L 97 S 96" in text
+    assert "close-list set up" in cf.format_daily_message(WED, REPORT, [_alert(level="close")])
     outside = re.sub(r"```.*?```", "", text, flags=re.S)
     assert "_" not in outside                              # a bare underscore outside the block breaks Telegram Markdown
     unread = cf.format_daily_message(WED, REPORT, [_alert(first_minute={"status": "no minute bars"}, news_class="UNKNOWN", news_text=[])])
@@ -718,6 +719,58 @@ def test_weekly_retries_an_undelivered_message_and_pages_a_failed_fetch():
     with pytest.raises(RuntimeError):
         _run(cf.run_weekly(FRI, io))
     assert len(io.audits) == 1 and io.sent == []
+
+
+def test_a_report_first_seen_late_is_known_from_its_friday_and_gets_no_friday_alert():
+    """First run on Mon 11-16 while the newest report is still 11-03 (13 days old): it was released on 11-06, not
+    today, so Monday's bar may use it; and a 'set up just completed' alert ten days late would be wrong."""
+    io = _weekly_io()
+    mon = date(2026, 11, 16)
+    wheat = bars_to(mon, 101.0)                                  # an UP close today in a market set up long, on a news day
+    days = [b[0] for b in wheat]
+    wheat[days.index(date(2026, 11, 10))] = (date(2026, 11, 10), 100.0, 101.5, 99.0, 101.0)
+    wheat[-1] = (mon, 101.0, 103.0, 100.5, 102.5)
+    io.bars = {"ZW=F": wheat, "ZS=F": bars_to(mon, 100.0), "ZM=F": bars_to(mon, 100.0), "ZC=F": bars_to(mon, 100.0)}
+    io.cal = [{"event_date": date(2026, 11, 10), "event_type": "WASDE", "release_et": None, "source": "s"},
+              {"event_date": mon, "event_type": "WASDE", "release_et": None, "source": "s"}]
+    res = _run(cf.run_daily(mon, io, datetime(2026, 11, 16, 17, 15, tzinfo=_ET)))
+    assert io.weeks[REPORT]["known_from"] == date(2026, 11, 6)
+    assert res["catch_up"]["friday"] == 0 and not any(k[3] == "friday" for k in io.alerts)
+    assert "13 days old, so the Friday confirmation check was not run" in io.sent[0]
+    assert res["report_date"] == REPORT and (mon, "wheat", "long", "news") in io.alerts     # Monday IS judged on it
+    assert len(io.sent) == 2
+
+
+def test_a_recovery_rerun_neither_catches_up_the_week_nor_marks_a_held_alert_sent(monkeypatch):
+    monkeypatch.setattr(cf, "recovery_pin", lambda: object())   # the #672 sweep is re-running this slot; sends are held
+    io = _daily_io()
+    io.cftc_exc = AssertionError("the weekly catch-up must not run inside a recovery re-run")
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["alerts"] == 1 and res["sent"] is False and res["held"] is True and "catch_up" not in res
+    assert io.alerts[(WED, "gold", "short", "news")]["sent"] is None
+
+
+def test_the_real_sender_puts_the_alert_in_the_paper_chat_with_its_block_intact(monkeypatch):
+    """Every other test replaces cf._send. This one drives the REAL briefing.send_telegram_message (httpx recorded)."""
+    from unittest.mock import AsyncMock
+    from agents.market_intelligence import briefing
+    from tests.test_699_paper_chat_routing import MAIN, PAPER, _Router
+    monkeypatch.undo()                                           # drop the autouse fake: the real cf._send
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", str(MAIN))
+    monkeypatch.setenv("TELEGRAM_PAPER_CHAT_ID", str(PAPER))
+    r = _Router()
+    monkeypatch.setattr(briefing.httpx, "AsyncClient", r)
+    monkeypatch.setattr(briefing, "log_audit_event", AsyncMock())
+    row = lambda c, l, s, setup=None, close=None: {"comm": c, "lspec": l, "sspec": s, "setup": setup, "close_setup": close}  # noqa: E731
+    daily = cf.format_daily_message(WED, REPORT, [_alert()])
+    weekly = cf.format_weekly_message(REPORT, {"sp500": row(3, 50, 50, "short")}, {}, [], [], "Sunday open", [])
+    assert _run(cf._send(daily)) is True and _run(cf._send(weekly)) is True
+    assert r.chats() == [PAPER, PAPER]
+    for p in r.posts:
+        assert p["parse_mode"] == "HTML" and "<pre>" in p["text"] and "```" not in p["text"]
+    assert "GOLD SHORT  news + correlation (CPI, earnings NVDA)" in r.posts[0]["text"]
+    assert "S&amp;P 500" in r.posts[1]["text"]                  # an ampersand in a market name is escaped, not dropped
 
 
 def test_a_delayed_release_is_caught_up_by_the_daily_job_with_next_open():

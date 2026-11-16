@@ -71,7 +71,9 @@ refuses to run on a bar that is not final.
 
 **No look-ahead.** A week is stored with `known_from` = the ET day we first held it; a day's alerts use the latest
 week with `known_from` BEFORE that day (the research's timing: the issue in hand before the session). A week older
-than 17 days (the research's 12-day carry past the issue Sunday) is not used.
+than 17 days (the research's 12-day carry past the issue Sunday) is not used. A report first seen more than a week
+after its date (the first run, or after an outage) is stamped known from its scheduled Friday and gets no
+Friday-confirmation check — that moment has passed.
 
 **What a daily alert is (feed A, as scored in the research — 11.7 alerts / month there):**
 - News failure (N1): the market has a scheduled event today and closed AGAINST the crowd (down for a short set up).
@@ -115,8 +117,13 @@ the same alert twice.
   uses our rebuilt index without it, so a market within a few points of 5 / 95 can be in or out differently.
 - Yahoo's daily close is the last trade, not the exchange settlement; a close within a tick of the previous close
   can read the wrong side.
-- The calendar is thinner than the research's: FXEmpire lists a release only a week or two ahead and, on
-  2026-11-15, showed no Bank of Canada / RBA / SNB decision rows (those names are unverified until one appears).
+- The calendar comes from FXEmpire, not the official schedules the research used. Measured in the research
+  (2023-08 → 2026-11): it carried CPI 39 of 39, PPI 38 of 39, jobs 39 of 39, retail sales 39 of 42, GDP 37 of 40,
+  Fed 26 of 26, EIA petroleum 170 of 172, EIA natural gas 169 of 172. It lists a release only a week or two ahead
+  (so this week is re-read every day), and on 2026-11-15 it showed no Bank of Canada / RBA / SNB decision rows
+  (those three event names are unverified until one appears).
+- A missed day re-run by the job-recovery sweep holds its Telegram (the sweep's summary names it); it does not run
+  the weekly catch-up and leaves the alert rows unmarked.
 - A federal-holiday week moves the CFTC release; the daily job picks it up the day it lands.
 
 ## Change log

@@ -39,7 +39,7 @@ from datetime import date, datetime, time, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from shared.dates import _ET
+from shared.dates import _ET, recovery_pin
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +148,11 @@ ATR_DAYS = 20
 FIRST_MINUTE_BIG = 0.25       # of a day's range, the crowd's way (first_tick_1min.py F25)
 SURPRISE_DEAD_ZONE = 0.25     # |z| below this = in line (surprise_rules.py DEAD)
 MAX_WEEK_AGE_DAYS = 17        # the research carries an issue at most 12 days past its Sunday = report Tuesday + 17
+# A report is normally released 3 days after its Tuesday, a holiday-delayed one within a week. One FIRST SEEN later
+# than that was not released today: it is stamped known from its scheduled Friday, and its Friday check is skipped
+# (the "set up just completed" moment has passed).
+LATE_FIRST_SIGHT_DAYS = 7
+FRIDAY_CHECK_MAX_AGE_DAYS = 10
 
 # Scheduled-event types -> the markets they are news for (news_calendar.py REL). PCE / ISM were never N1 triggers.
 _US_TYPES = ("CPI", "PPI", "NFP", "RETAIL", "GDP", "FOMC")
@@ -711,7 +716,7 @@ def format_daily_message(day: date, report_date: date, alerts: list[dict]) -> Op
     for a in sorted(alerts, key=lambda a: a["market"]):
         what = " + ".join(a["kinds"]) + (f" ({_event_words(a['events'])})" if a["events"] else "")
         lines += [f"{name_of(a['market'])} {a['direction'].upper()}  {what}",
-                  f"  {a['level']} set up, {_index_line(a)}",
+                  f"  {'main' if a['level'] == 'main' else 'close-list'} set up, {_index_line(a)}",
                   f"  entry: today's close {_px(a['close'])} (or the next open)",
                   f"  stop: {a['stop_rule']}"]
         if a.get("peer_z") is not None and "correlation" in a["kinds"]:
@@ -1218,13 +1223,15 @@ async def ensure_week(io: Io, today: date) -> dict:
         # week it may use before this one becomes usable.
         prd = next(iter(prev.values()))["report_date"]
         await io.store_week(prd, tuesday_of(prd) + timedelta(days=3), prev)
-    await io.store_week(report, today, rows)
+    age = (today - cur_w).days
+    await io.store_week(report, cur_w + timedelta(days=3) if age > LATE_FIRST_SIGHT_DAYS else today, rows)
     missing = sorted(set(MARKETS) - set(rows))
 
     # ── Friday confirmation: a MAIN set up that was not main last week ──
     new_main = [m for m, r in rows.items() if r["setup"] and (prev.get(m) or {}).get("setup") != r["setup"]]
     friday, errors = [], {}
-    if new_main:
+    check_friday = age <= FRIDAY_CHECK_MAX_AGE_DAYS
+    if new_main and check_friday:
         bars = await _bars_for(io, _with_peers(new_main), errors)
         start = cur_w + timedelta(days=1)
         cal = await io.calendar(start, today)
@@ -1247,6 +1254,8 @@ async def ensure_week(io: Io, today: date) -> dict:
         stored = await io.store_alerts([_alert_row(today, a, "friday", "main", report, rows[a["market"]],
                                                    entry_label, a["failure_day"]) for a in friday])
     notes = []
+    if new_main and not check_friday:
+        notes.append(f"This report is {age} days old, so the Friday confirmation check was not run.")
     if errors:
         notes.append("Friday check could not read prices for: " + ", ".join(name_of(m) for m in sorted(errors)) + ".")
     if missing:
@@ -1297,8 +1306,14 @@ async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datet
         await io.audit(EVT_DAILY, f"{today}: {res['status']}", res)
         return res
 
+    # A #672 recovery re-run of a missed day: its Telegrams are HELD at the httpx layer (the send still answers
+    # "ok"), so it must neither run the weekly catch-up (that week's one message would be swallowed) nor mark an
+    # alert as sent.
+    held = recovery_pin() is not None
+    res["held"] = held
+
     # 1. a holiday-delayed CFTC release (Mon-Thu; Friday belongs to cot_weekly)
-    if today.weekday() < 4:
+    if today.weekday() < 4 and not held:
         try:
             res["catch_up"] = await ensure_week(io, today)
         except Exception as e:  # loud-ok: recorded in the audit row; the run raises after it
@@ -1377,8 +1392,9 @@ async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datet
             text = format_daily_message(today, report, to_send)
             if text:
                 if await _send(text):
-                    await io.mark_alerts_sent([u["id"] for u in unsent])
-                    res["sent"] = True
+                    if not held:
+                        await io.mark_alerts_sent([u["id"] for u in unsent])
+                    res["sent"] = not held
                 else:
                     problems.append("the daily COT alert message was not delivered")
         res["status"] = "ok"
