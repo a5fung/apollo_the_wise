@@ -41,6 +41,10 @@ from agents.market_intelligence.db import (
     PS_SHADOW_INSERT_SQL, SHADOW_HOUR_LANE_CANDIDATES_SQL, SHADOW_TRADE_EXIT_STEP_UPDATE_SQL,
     SHADOW_TRADE_INSERT_SQL,
     get_pool)
+from agents.market_intelligence.cot_family import (
+    _COT_ALERT_UPSERT_SQL, _COT_ALERTS_SENT_SQL, _COT_CALENDAR_UPSERT_SQL, _COT_INDEX_UPSERT_SQL,
+    _COT_KNOWN_WEEK_SQL, _COT_NETS_UPSERT_SQL, _COT_WEEK_SENT_SQL, _COT_WEEK_UPSERT_SQL,
+)
 from agents.market_intelligence.ladder_press import _DECIDE_PAGE_SQL as _LADDER_DECIDE_PAGE_SQL
 from agents.market_intelligence.ladder_watchdog import (
     _CLOSE_EPISODE_SQL as _LADDER_CLOSE_EPISODE_SQL,
@@ -559,6 +563,18 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         "db.upsert_security_types_batch: mi_security_types refresh (type, exchange, name)",
         SECURITY_TYPES_UPSERT_SQL,
     ),
+    # COT family live alerts (2026-11-15): every parameterized statement of the two jobs, imported from the module
+    # that executes them. cot_daily is SILENT on a day with no alert and cot_weekly writes once a week, so a
+    # type-deduction failure (the alert row's jsonb `detail` beside 20 plain params) would otherwise first show on
+    # the first real alert day.
+    ("cot_family.Io.upsert_nets: the CFTC weekly nets cache", _COT_NETS_UPSERT_SQL),
+    ("cot_family.Io.store_week: the report week (known_from)", _COT_WEEK_UPSERT_SQL),
+    ("cot_family.Io.store_week: the weekly index rows", _COT_INDEX_UPSERT_SQL),
+    ("cot_family.Io.mark_week_sent: the weekly message marked sent", _COT_WEEK_SENT_SQL),
+    ("cot_family.Io.known_week: the week known before a day (no look-ahead)", _COT_KNOWN_WEEK_SQL),
+    ("cot_family.Io.replace_calendar: the forward calendar rows", _COT_CALENDAR_UPSERT_SQL),
+    ("cot_family.Io.store_alerts: an alert row (a ::jsonb detail param)", _COT_ALERT_UPSERT_SQL),
+    ("cot_family.Io.mark_alerts_sent: alerts marked sent", _COT_ALERTS_SENT_SQL),
     (
         # #314 (2026-10-17): the parabolic-short shadow's one writer - arm / trigger / outcome rows, INSERT
         # ONCE (ON CONFLICT DO NOTHING ... RETURNING id). Nightly inside the 17:15 scan job and fail-open

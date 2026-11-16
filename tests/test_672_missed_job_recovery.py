@@ -66,6 +66,7 @@ _ADDED_SINCE_LEDGER = {
     "ladder_watchdog": "#312 build 2026-10-15: new 16:17 ET mon-fri job (ADR 0022 L2, dark)",
     "consolidation_breakout_shadow": "#702 P6 build 2026-10-17: new 17:48 ET mon-fri job (Consolidation Breakout forward shadow, dark)",
     "breakout_v1_list": "breakout v1 phase 1 build 2026-10-29: new 17:55 ET mon-fri job (the nightly list, no orders)",
+    "cot_daily": "COT family live alerts build 2026-11-15: new 17:15 ET mon-fri job (research alerts, no orders)",
 }
 
 
