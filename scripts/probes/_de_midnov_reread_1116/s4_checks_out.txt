@@ -1,0 +1,3 @@
+parsed: trigger rows 285 daily rows 12938 tickers 83 campaigns 84
+created-minus-fire lag (days, UTC stamp) by group: [(('G1', 0), 25), (('G1', 3), 5), (('G2', 0), 48), (('G2', 1), 2), (('G3', 0), 47), (('G3', 1), 4), (('G4', 0), 38), (('G5', 0), 116)]
+fires before 2026-08-31: [('CHRN', '2026-08-28', 'ep_close_620_prox', '2026-08-31'), ('CHRN', '2026-08-28', 'ep_low_reclaim', '2026-08-31'), ('OKTA', '2026-08-28', 'ep_close_620_prox', '2026-08-31'), ('VEEV', '2026-08-28', 'ep_close_620_prox', '2026-08-31'), ('VEEV', '2026-08-28', 'ep_close_reclaim', '2026-08-31')]

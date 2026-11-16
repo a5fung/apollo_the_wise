@@ -1,0 +1,7 @@
+G3 09-14..10-03 n 27 trail mean 2.2 | ex-VICR n 24 -0.51 >=3R names ['ACN', 'VICR']
+   ex-VICR realized_r_trail_075 n 21 0.33 vs incumbent same rows -0.59 >=3R ['ACN', 'ONON']
+   ex-VICR realized_r_trail_100 n 23 0.27 vs incumbent same rows -0.52 >=3R ['ONON']
+ALL n 86 trail mean 0.08 | ex-VICR n 83 -0.78 >=3R names ['ACN', 'VICR']
+   ex-VICR realized_r_trail_075 n 67 -0.33 vs incumbent same rows -0.79 >=3R ['ACN', 'ONON']
+   ex-VICR realized_r_trail_100 n 69 -0.27 vs incumbent same rows -0.76 >=3R ['ONON']
+campaigns with a first fire >=3R on trail arm by stop: {'realized_r_trail': [('ACN', 'G3'), ('VICR', 'G3')], 'realized_r_trail_025': [('ACN', 'G3'), ('IONQ', 'G2'), ('VICR', 'G3')], 'realized_r_trail_075': [('ACN', 'G3'), ('ONON', 'G3'), ('VICR', 'G3')], 'realized_r_trail_100': [('ONON', 'G3'), ('VICR', 'G3')]}

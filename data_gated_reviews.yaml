@@ -10087,7 +10087,15 @@ reviews:
       H6's slow-move question (moves starting in sessions 21-40) look different on current rules?
     predicate_sql: null
     threshold: 0
-    earliest_review_date: 2026-11-16
+    resolution_2026_11_16: >-
+      RAN 2026-11-16 (scripts/probes/_de_midnov_reread_1116/; prod read-only). NOT READABLE on every
+      pre-registered bar (327_hypotheses_2026-09-27.md §7, per group, never pooled): 44 live EP campaigns with
+      15+ sessions (84 since 08-22), 0 winners by the fast or slow price label in any group (21 have 40
+      sessions), 1 by his label (PENG 10-07: 5 lane fires, all stopped -1R). 82 of 86 mature first fires
+      stopped at -1R; every positive mean is VICR (3 fires +50.9 / +15.6 / +5.1R); without it -0.51R and -0.78R
+      a fire. Direction cells max 10 fires (bar 30); H6 launch census 2 of 21 (bar 10). Nothing graduates; the
+      lane keeps recording (his 10-08 word). Next re-read when the 09-14 / 10-04 groups reach 40 sessions.
+    earliest_review_date: 2026-12-16
     discriminates_on: [mi_delayed_entry_trigger.fire_date, mi_delayed_entry_trigger.realized_r]
     action_when_ready: |
       Run EXACTLY the re-read pre-registered in docs/analysis/327_hypotheses_2026-09-27.md §7 (unit =
@@ -14099,7 +14107,11 @@ reviews:
         censored at a median of 8 of 20 - the instrument was not broken, it was IMMATURE, which
         is the p74 class in the other direction). mi_intraday_bars persists alert-ticker-days
         only, so the targeted minute pull is still owed for approach days."
-    earliest_review_date: 2026-11-16
+    resolution_2026_11_16: >-
+      CHECKED 2026-11-16 (docs + YAML; one prod schema read): NOT YET again — no selective pool has appeared
+      since the 10-17 ruling (cooldown-only feeder stall arm fires 2027-01-05; the cap-floor names go to the #624
+      paper lane, 0 settled at >= +3R). The targeted minute pull is not scoped; mi_intraday_bars keeps accruing.
+    earliest_review_date: 2026-12-16
     status: pending
     resolution_2026_10_17: |
       CHECK-IN RUN on its date. ** ANSWER: NOT YET — both halves of the proposed selective subset now have their own live
@@ -14250,7 +14262,35 @@ reviews:
         compute_settlement from stored daily bars (the same path #616's variants use). No fill
         is simulated - the rung fire price is the recorded entry - and the settle writes NULL
         rather than a substitute on a data gap. Verified populated through 2026-09-17."
-    earliest_review_date: 2026-11-16
+    resolution_2026_11_16: >-
+      RAN 2026-11-16 (scripts/probes/_delayed_entry_shadow_first_read_1116/; prod read-only, one pull):
+      158 mature settled live fires from 37 campaigns (EP 08-27..10-14, fires 08-31..10-16), 142 stops at
+      -1R, 16 held to the window close, 0 open, sum -91R. Genuine tails (harvested R >= 4): 2 of 158 -
+      CRWD (EP 08-27, a re-entry, +22.4R, screen membership unknown) and ACN (EP 10-01, a first attempt,
+      +9.4R, REJECTED by the screen). Screened names: 0 tails in 93 fires. 13 fires touched 4R, 2 kept it.
+      BANDS APPLIED AS PRE-REGISTERED, per cell, floor 30 fires: EP-close reclaim raw 0 of 40 and 620
+      screened 0 of 33 -> under 1.3% -> "say so and stop (selection must improve first)". 620 raw 1 of 56
+      and EP-low reclaim raw 1 of 56 (1.8% each) fall BETWEEN 1.3% and 2%, where the plan registered no
+      band - not resolved here; one fire either way flips each (0 of 56 = stop, 2 of 56 = simple policy).
+      Too few -> extend: EP-close reclaim screened 0 of 26, EP-low reclaim screened 0 of 29, EP-high break
+      0 of 6 raw / 0 of 5 screened. No cell reaches the 2-10% or the >= 10% band. First attempts only:
+      1 tail in 81 (cells 24 / 22 / 29 / 6, all under 30). Splits fixed in October: EP before 08-29 1 of
+      25, 08-29..09-13 0 of 50, from 09-14 1 of 83; admission also changed inside the sample on 10-04
+      (deal filter) and 10-10 (shortlist ranking): 09-14..10-03 1 of 47, 10-04..10-09 0 of 35, from 10-10
+      0 of 1. ⚠ The bands were NOT re-registered on the real-EP break-even rate as the 10-09 resolution
+      required (calibration-era break-even: 7.0% close reclaim, 9.4% low reclaim, 10.8% 620, 10.5% high
+      break - _de_first_read/pstar_277_out.txt); every original band sits at or below break-even and
+      every observed cell is far under it. Any re-registration from here is after the data was seen.
+      ⚠ Screen membership is still unknown on 63 of the 158 fires (17 from EP dates >= 09-14), so
+      raw-minus-screened is not yet "the value of selection". ⚠ Fires are not independent (158 fires,
+      37 campaigns; a new-high re-entry is written under two patterns). The plan file
+      ~/.claude/plans/crystalline-waddling-charm.md is absent on this machine; bands taken from
+      action_when_ready. FOR HIM: (1) how the 1.3-2% gap reads; (2) whether the bands are re-set, knowing
+      it is post-data; (3) close on the two "stop" cells or extend - the screened EP-low reclaim and
+      EP-close reclaim cells reach 30 mature fires 11-18 and 11-26, EP-high break not before ~January
+      (22 raw fires recorded in total). Proposed re-gate if extended: 2026-11-30. Nothing graduates,
+      nothing changes; the lane stays shadow (his 10-08 "leave it recording").
+    earliest_review_date: 2026-11-30
     regated_on: 2026-10-09
     regate_kind: date
     status: pending

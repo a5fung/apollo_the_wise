@@ -1,0 +1,24 @@
+SET
+== A live themes holding RIOT / SECZ / CSQR on 11-12 and 11-13
+theme_date|source|name|stage|score|members|tickers
+2026-11-12|live|AI data-center power buildout|Fading|8.8|12|{ANET,ALAB,BE,CIEN,COHR,CRWV,CRDO,MRVL,CSQR,AAOI,VRT,NBIS}
+2026-11-12|shadow_promoted|Digital Asset & Bitcoin Infrastructure Re-Rating|Nascent|72.7|3|{RIOT,SECZ,CSQR}
+2026-11-13|live|AI data-center power buildout|Fading|7.0|13|{ANET,ALAB,BE,COHR,CRWV,CRDO,CSQR,AAOI,VRT,NBIS,CIEN,MRVL,INIO}
+2026-11-13|live|Digital Asset & Bitcoin Infrastructure Re-Rating|Fading|58.2|2|{RIOT,SECZ}
+(4 rows)
+== B sectors of the Home Pest Control members
+ticker|sector
+SMG|Basic Materials
+RTO|Industrials
+ROL|Consumer Cyclical
+(3 rows)
+== C exempt read as the engine would run it tonight (promos in lookback + night dates)
+d|summary
+2026-10-22|Operator promoted 'Software & Data Platforms Re-Rating for the AI Era' (8 members)
+2026-10-29|Operator promoted 'Natural Gas Producers & Midstream Pipelines' (4 members)
+2026-11-02|Operator promoted 'Home Pest Control & Lawn/Garden Residential Services' (3 members)
+2026-11-05|Operator promoted 'Self-Storage REIT Re-Rating' (4 members)
+2026-11-06|Operator promoted 'Packaged Food, Agri-Inputs & Consumer Staples Rotation' (7 members)
+2026-11-09|Operator promoted 'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' (8 members)
+2026-11-12|Operator promoted 'Digital Asset & Bitcoin Infrastructure Re-Rating' (3 members)
+(7 rows)

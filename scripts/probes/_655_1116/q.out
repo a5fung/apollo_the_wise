@@ -1,0 +1,61 @@
+SET
+== Q1 operator promotions since 10-10
+id|et|summary
+55881|2026-10-12 18:36:34|Operator promoted 'Cruise Lines & Leisure Travel Rebound' (5 members)
+55882|2026-10-12 18:36:36|Operator promoted 'Capital Markets & Deal-Flow Re-Rating' (3 members)
+60593|2026-10-22 18:07:00|Operator promoted 'Software & Data Platforms Re-Rating for the AI Era' (8 members)
+64021|2026-10-29 18:09:52|Operator promoted 'Natural Gas Producers & Midstream Pipelines' (4 members)
+65663|2026-11-02 18:15:38|Operator promoted 'Home Pest Control & Lawn/Garden Residential Services' (3 members)
+69420|2026-11-05 18:19:20|Operator promoted 'Self-Storage REIT Re-Rating' (4 members)
+71627|2026-11-06 18:06:49|Operator promoted 'Packaged Food, Agri-Inputs & Consumer Staples Rotation' (7 members)
+72572|2026-11-09 18:15:11|Operator promoted 'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' (8 members)
+75971|2026-11-12 18:13:16|Operator promoted 'Digital Asset & Bitcoin Infrastructure Re-Rating' (3 members)
+(9 rows)
+== Q2 exempt / exempt_error rows since 10-17
+id|event_type|et|left
+(0 rows)
+== Q3 pass1.5 absorption rows since 10-17 full (is a promoted theme on the LEFT inside its 3-night window?)
+id|et|left
+59941|2026-10-21 17:10:20|Pass1.5: 'Franchised Auto Dealership Groups' -> 'Auto Aftermarket, Powertrain & Preventive Maintenance Services'
+60470|2026-10-22 17:05:26|Pass1.5: 'Customer Experience, Digital Promotions & Commerce Engagement Software' -> 'Small-Cap Digital Commerce & Promotions Platforms'
+61073|2026-10-23 17:08:02|Pass1.5: 'Cancer Diagnostics & Pathology Testing' -> 'AI-Driven Diagnostics & Imaging Re-Rating'
+61074|2026-10-23 17:08:02|Pass1.5: 'Gold Mining: Africa & Emerging-Market Producers' -> 'Precious Metals Miners — Monetary Easing Tailwind'
+62407|2026-10-27 17:04:56|Pass1.5: 'Genomic Diagnostics & Computational Drug Discovery Platforms' -> 'Genomics & DNA Sequencing Tools'
+63127|2026-10-28 17:07:51|Pass1.5: 'Brazil & Latin America Equities Rally (Energy, Fintech, E-Commerce)' -> 'Oil & Gas Producers and Oilfield Services Leveraged to Commodity Prices'
+64559|2026-10-30 17:08:04|Pass1.5: 'Life & Supplemental Health Insurers' -> 'Annuity-Focused Insurers'
+65533|2026-11-02 17:08:14|Pass1.5: 'Contract Drilling Services (Land & Offshore)' -> 'Offshore Contract Drillers'
+65534|2026-11-02 17:08:14|Pass1.5: 'Alternative Consumer Finance: BNPL & Rent-to-Own' -> 'Fintech & Digital Finance Sector Re-rating on Fed Easing'
+65535|2026-11-02 17:08:14|Pass1.5: 'Agency & Commercial Mortgage REITs (mREITs)' -> 'Agency & Hybrid Mortgage REIT Rate-Sensitive Cohort'
+67832|2026-11-04 17:08:00|Pass1.5: 'Natural Gas Producers & Midstream Pipelines' -> 'Appalachian Natural Gas E&Ps'
+67833|2026-11-04 17:08:00|Pass1.5: 'Lease-to-Own & Consumer Point-of-Sale Financing' -> 'Fintech & Digital Finance Sector Re-rating on Fed Easing'
+69261|2026-11-05 17:04:19|Pass1.5: 'Surgical Robotics & Specialty Medical Device Procedure Growth' -> 'Surgical Nerve Repair & Orthopedic/Rehab Device Rotation'
+72430|2026-11-09 17:07:14|Pass1.5: 'Clinical-Stage Antibody, Peptide & Retinal Biotech Momentum' -> 'Clinical-Stage Rare Disease & Hematology Biotech Breakouts'
+72431|2026-11-09 17:07:14|Pass1.5: 'Solar Module & Equipment Makers Re-Acceleration' -> 'Residential & Commercial Solar Equipment and Installers'
+75163|2026-11-11 17:06:16|Pass1.5: 'Gold Developers & Junior/Mid-Tier Gold Miners' -> 'Gold & Silver Streaming Royalty and Precious-Metals Mining Complex'
+76615|2026-11-13 17:08:28|Pass1.5: 'Quick-Service Restaurant & Foodservice Equipment Strength' -> 'Leisure, Hospitality & Travel Cyclical Recovery'
+76616|2026-11-13 17:08:28|Pass1.5: 'Fixed-Facility & Airport Infrastructure Concessions' -> 'Infrastructure Engineering, Construction & Project Management'
+76617|2026-11-13 17:08:28|Pass1.5: 'Silver-Focused Primary Silver Miners' -> 'Precious Metals Miners – Monetary Easing Cycle'
+(19 rows)
+== Q4 engine nights since 10-17
+theme_date|count
+2026-10-19|123
+2026-10-20|120
+2026-10-21|121
+2026-10-22|125
+2026-10-23|134
+2026-10-26|126
+2026-10-27|123
+2026-10-28|126
+2026-10-29|127
+2026-10-30|138
+2026-11-02|137
+2026-11-03|139
+2026-11-04|141
+2026-11-05|142
+2026-11-06|149
+2026-11-09|146
+2026-11-10|143
+2026-11-11|140
+2026-11-12|144
+2026-11-13|151
+(20 rows)

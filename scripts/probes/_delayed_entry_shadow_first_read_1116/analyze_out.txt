@@ -1,0 +1,306 @@
+prospective rows 280
+by maturity/settled: Counter({(True, True, 'stop'): 142, (False, True, 'stop'): 83, (False, False, 'OPEN'): 39, (True, True, 'time_exit'): 16})
+MATURE settled 158
+mature all (incl unsettled): Counter({'stop': 142, 'time_exit': 16})
+fire_date range 2026-08-31 2026-10-16
+ep_date range 2026-08-27 2026-10-14
+campaigns (ticker,ep_date): 37
+rung {'ep_close_reclaim': 40, 'ep_close_620_prox': 56, 'ep_low_reclaim': 56, 'ep_high_break': 6}
+pattern_version {'v2': 158}
+screen_version {'screen_v1': 158}
+screen_member {'': 63, 't': 93, 'f': 2}
+reentry_shape {'first': 81, 'same_pattern': 49, 'new_high_break': 28}
+outcome {'stop': 142, 'time_exit': 16}
+settle_version {'settle_v3': 153, 'settle_v2': 5}
+resolution {'minute_5': 126, 'daily': 32}
+catalyst_grade {'': 25, 'strong': 105, 'game_changer': 26, 'routine': 2}
+
+rung x screen x outcome
+ep_close_620_prox      raw    n= 56 tail(realized>=4)=1 reached_4r=2 stops=54 other=Counter({'time_exit': 2}) sumR=-41.69 maxR=9.3668
+ep_close_620_prox      screen n= 33 tail(realized>=4)=0 reached_4r=1 stops=32 other=Counter({'time_exit': 1}) sumR=-29.05 maxR=2.9459
+ep_close_reclaim       raw    n= 40 tail(realized>=4)=0 reached_4r=4 stops=37 other=Counter({'time_exit': 3}) sumR=-31.08 maxR=3.0545
+ep_close_reclaim       screen n= 26 tail(realized>=4)=0 reached_4r=4 stops=25 other=Counter({'time_exit': 1}) sumR=-23.12 maxR=1.8769
+ep_high_break          raw    n=  6 tail(realized>=4)=0 reached_4r=1 stops=5 other=Counter({'time_exit': 1}) sumR=-2.74 maxR=2.2581
+ep_high_break          screen n=  5 tail(realized>=4)=0 reached_4r=1 stops=4 other=Counter({'time_exit': 1}) sumR=-1.74 maxR=2.2581
+ep_low_reclaim         raw    n= 56 tail(realized>=4)=1 reached_4r=6 stops=46 other=Counter({'time_exit': 10}) sumR=-15.75 maxR=22.4048
+ep_low_reclaim         screen n= 29 tail(realized>=4)=0 reached_4r=3 stops=26 other=Counter({'time_exit': 3}) sumR=-23.41 maxR=2.9459
+
+ALL rungs raw/screen
+raw 158 tails 2 reached4 13 first-only 81
+screen 93 tails 0 reached4 9 first-only 51
+
+CRWD 2026-08-27 ep_low_reclaim 2026-09-03 same_pattern  time_exit 22.4048 trail 1.2105 mfe 23.639 r4 t 075 8.5109 t 100 6.3832 t
+ACN 2026-10-01 ep_close_620_prox 2026-10-12 first f time_exit 9.3668 trail 4.8785 mfe 13.4299 r4 t 075 7.4729 t 100 5.6047 t
+OKTA 2026-08-27 ep_close_reclaim 2026-09-10 same_pattern  time_exit 3.0545 trail -0.4309 mfe 3.4588 r4 f 075 -1 f 100 6.1029 t
+ONON 2026-09-22 ep_close_620_prox 2026-10-05 new_high_break t time_exit 2.9459 trail 2.0676 mfe 3.3243 r4 f 075 6.9129 t 100 5.1847 t
+ONON 2026-09-22 ep_low_reclaim 2026-10-05 new_high_break t time_exit 2.9459 trail 2.0676 mfe 3.3243 r4 f 075 6.9129 t 100 5.1847 t
+VEEV 2026-08-27 ep_low_reclaim 2026-09-24 same_pattern  time_exit 2.8137 trail -0.0884 mfe 3.0165 r4 f 075 6.8661 t 100 5.1496 t
+SEI 2026-09-08 ep_high_break 2026-09-09 first t time_exit 2.2581 trail 0.0827 mfe 3.0282 r4 f 075 -1 f 100 -1 f
+SEI 2026-09-08 ep_close_reclaim 2026-09-16 same_pattern t time_exit 1.8769 trail 0.5363 mfe 5.8299 r4 t 075 1.8783 t 100 1.4087 t
+ACN 2026-10-01 ep_low_reclaim 2026-10-12 first f time_exit 1.7007 trail 0.861 mfe 2.4608 r4 f 075   100 5.4393 t
+CRWD 2026-08-27 ep_close_reclaim 2026-09-14 new_high_break  time_exit 0.9895 trail 0.9895 mfe 1.804 r4 f 075 -1 f 100 -1 f
+CRWD 2026-08-27 ep_low_reclaim 2026-09-14 new_high_break  time_exit 0.9895 trail 0.9895 mfe 1.804 r4 f 075 -1 f 100 -1 f
+ALAB 2026-09-04 ep_low_reclaim 2026-09-17 same_pattern t time_exit 0.3939 trail 1.7323 mfe 3.1554 r4 f 075 1.0526 t 100 0.7895 t
+QCOM 2026-09-08 ep_low_reclaim 2026-09-14 same_pattern  time_exit 0.1395 trail 1.0959 mfe 9.2742 r4 t 075 0.1259 t 100 0.0944 t
+DG 2026-08-27 ep_low_reclaim 2026-10-15 new_high_break  time_exit 0.0473 trail -0.556 mfe 1.0219 r4 f 075 -1 f 100 -1 f
+CHRN 2026-08-27 ep_low_reclaim 2026-09-08 same_pattern  time_exit -0.4327 trail -0.7479 mfe 0.5137 r4 f 075 -1 f 100 -1 f
+ERO 2026-09-08 ep_low_reclaim 2026-09-22 first t time_exit -0.7515 trail -0.1893 mfe 0.4606 r4 f 075 -1 f 100 -1 f
+CRWD 2026-08-27 ep_close_reclaim 2026-08-31 first  stop -1 trail -1 mfe 0.0266 r4 f 075   100  
+DG 2026-08-27 ep_close_620_prox 2026-08-31 first  stop -1 trail -0.4788 mfe 2.2203 r4 f 075   100  
+DG 2026-08-27 ep_low_reclaim 2026-08-31 first  stop -1 trail -0.1387 mfe 2.4093 r4 f 075   100  
+OKTA 2026-08-27 ep_close_620_prox 2026-08-31 same_pattern  stop -1 trail -1 mfe 0.6251 r4 f 075   100  
+OKTA 2026-08-27 ep_close_reclaim 2026-08-31 first  stop -1 trail -1 mfe 0.1062 r4 f 075   100  
+SOLS 2026-08-28 ep_close_620_prox 2026-08-31 first  stop -1 trail -1 mfe 0.08 r4 f 075   100  
+SOLS 2026-08-28 ep_close_reclaim 2026-08-31 first  stop -1 trail -1 mfe 0.3586 r4 f 075   100  
+SOLS 2026-08-28 ep_low_reclaim 2026-08-31 first  stop -1 trail -1 mfe 0.6098 r4 f 075   100  
+VEEV 2026-08-27 ep_close_620_prox 2026-08-31 same_pattern  stop -1 trail -1 mfe 2.7447 r4 f 075   100  
+VEEV 2026-08-27 ep_low_reclaim 2026-08-31 first  stop -1 trail -1 mfe 2.7447 r4 f 075   100  
+SOLS 2026-08-28 ep_low_reclaim 2026-09-01 same_pattern  stop -1 trail -1 mfe 0.0242 r4 f 075   100  
+CRWD 2026-08-27 ep_low_reclaim 2026-09-02 first  stop -1 trail -1 mfe 0.6572 r4 f 075 7.9934 t 100 5.995 t
+AGX 2026-09-03 ep_close_620_prox 2026-09-04 first  stop -1 trail -1 mfe -0.0635 r4 f 075 -1 f 100 -1 f
+CHRN 2026-08-27 ep_close_620_prox 2026-09-04 same_pattern  stop -1 trail -1 mfe 0.1299 r4 f 075 -1 f 100 -1 f
+HOOD 2026-09-03 ep_close_620_prox 2026-09-04 first t stop -1 trail -1 mfe 0.6555 r4 f 075 -1 f 100 -1 f
+SOLS 2026-08-28 ep_close_620_prox 2026-09-04 same_pattern  stop -1 trail -1 mfe 0.8205 r4 f 075 -1 f 100 -1 f
+AGX 2026-09-03 ep_close_620_prox 2026-09-08 new_high_break  stop -1 trail 0.1321 mfe 0.4977 r4 f 075 -1 f 100 -1 f
+AGX 2026-09-03 ep_high_break 2026-09-08 first  stop -1 trail 0.1321 mfe 0.4977 r4 f 075 -1 f 100 -1 f
+AGX 2026-09-03 ep_close_620_prox 2026-09-09 same_pattern  stop -1 trail -1 mfe 0.207 r4 f 075 -1 f 100 -1 f
+AGX 2026-09-03 ep_close_reclaim 2026-09-09 first  stop -1 trail -1 mfe 0.9852 r4 f 075 -1 f 100 -1 f
+AGX 2026-09-03 ep_low_reclaim 2026-09-09 first  stop -1 trail -1 mfe 1.2186 r4 f 075 -1 f 100 -1 f
+ERO 2026-09-08 ep_close_620_prox 2026-09-09 first t stop -1 trail -1 mfe 0.0612 r4 f 075 -1 f 100 -1 f
+ERO 2026-09-08 ep_close_reclaim 2026-09-09 first t stop -1 trail -1 mfe 3.3772 r4 f 075 -1 f 100 -1 f
+IONQ 2026-09-08 ep_low_reclaim 2026-09-09 first  stop -1 trail -1 mfe 0.4264 r4 f 075 -1 f 100 -1 f
+PHVS 2026-09-08 ep_close_620_prox 2026-09-09 first t stop -1 trail -1 mfe 1.4 r4 f 075 -1 f 100 -1 f
+PHVS 2026-09-08 ep_low_reclaim 2026-09-09 first t stop -1 trail -1 mfe 0.0484 r4 f 075 -1 f 100 -1 f
+QCOM 2026-09-08 ep_close_620_prox 2026-09-09 first  stop -1 trail -1 mfe 2.047 r4 f 075 -1 f 100 -1 f
+QCOM 2026-09-08 ep_close_reclaim 2026-09-09 first  stop -1 trail -1 mfe 0.1863 r4 f 075 0.7801 t 100 0.5851 t
+ROIV 2026-09-08 ep_close_620_prox 2026-09-09 first t stop -1 trail -1 mfe 0.4153 r4 f 075 -1 f 100 -1 f
+ROIV 2026-09-08 ep_close_reclaim 2026-09-09 first t stop -1 trail -1 mfe 0.4894 r4 f 075 -1 f 100 -1 f
+AGX 2026-09-03 ep_low_reclaim 2026-09-10 same_pattern  stop -1 trail -1 mfe 1.5931 r4 f 075 -1 f 100 -1 f
+ALAB 2026-09-04 ep_low_reclaim 2026-09-10 first t stop -1 trail -0.5074 mfe 1.1034 r4 f 075 -1 f 100 -1 f
+HOOD 2026-09-03 ep_low_reclaim 2026-09-10 first t stop -1 trail -1 mfe 1.3687 r4 f 075 -1 f 100 -1 f
+OKTA 2026-08-27 ep_close_620_prox 2026-09-10 new_high_break  stop -1 trail -1 mfe 0.6711 r4 f 075 -1 f 100 -1 f
+OKTA 2026-08-27 ep_close_reclaim 2026-09-10 new_high_break  stop -1 trail -1 mfe 0.6711 r4 f 075 -1 f 100 -1 f
+PHVS 2026-09-08 ep_low_reclaim 2026-09-10 same_pattern t stop -1 trail -1 mfe 4.1429 r4 t 075 -1 f 100 -1 f
+QCOM 2026-09-08 ep_low_reclaim 2026-09-10 first  stop -1 trail -1 mfe 4.0756 r4 f 075 0.9886 t 100 0.7414 t
+SEI 2026-09-08 ep_close_reclaim 2026-09-10 first t stop -1 trail -1 mfe 15.5711 r4 t 075 -1 f 100 2.4163 t
+QCOM 2026-09-08 ep_close_620_prox 2026-09-11 new_high_break  stop -1 trail -1 mfe 0.1577 r4 f 075 -1 f 100 -1 f
+QCOM 2026-09-08 ep_close_reclaim 2026-09-11 new_high_break  stop -1 trail -1 mfe 0.1577 r4 f 075 -1 f 100 -1 f
+QCOM 2026-09-08 ep_low_reclaim 2026-09-11 new_high_break  stop -1 trail -1 mfe 0.1577 r4 f 075 -1 f 100 -1 f
+ROIV 2026-09-08 ep_close_reclaim 2026-09-11 same_pattern t stop -1 trail -1 mfe 0.1495 r4 f 075   100 -1 f
+HOOD 2026-09-03 ep_low_reclaim 2026-09-14 same_pattern t stop -1 trail -1 mfe 0.0196 r4 f 075 -1 f 100 -1 f
+ROIV 2026-09-08 ep_close_620_prox 2026-09-14 same_pattern t stop -1 trail -1 mfe 1.0351 r4 f 075 -1 f 100 -1 f
+DG 2026-08-27 ep_close_620_prox 2026-09-15 same_pattern  stop -1 trail -1 mfe 2.3761 r4 f 075 -1 f 100 -1 f
+PHVS 2026-09-08 ep_close_620_prox 2026-09-15 same_pattern t stop -1 trail -1 mfe 0.5424 r4 f 075 -1 f 100 -1 f
+SEI 2026-09-08 ep_close_620_prox 2026-09-15 first t stop -1 trail -1 mfe 0.1932 r4 f 075 5.5152 t 100 4.1364 t
+CIFR 2026-09-16 ep_close_620_prox 2026-09-17 first t stop -1 trail -0.7589 mfe 3.5035 r4 f 075 -1 f 100 -1 f
+CIFR 2026-09-16 ep_close_reclaim 2026-09-17 first t stop -1 trail -1 mfe 0.1315 r4 f 075 -1 f 100 -1 f
+CIFR 2026-09-16 ep_high_break 2026-09-17 first t stop -1 trail -0.48 mfe 1.2371 r4 f 075 -1 f 100 -1 f
+DFTX 2026-09-14 ep_low_reclaim 2026-09-17 first  stop -1 trail -0.3004 mfe 0.3039 r4 f 075   100 -1 f
+IONQ 2026-09-08 ep_low_reclaim 2026-09-17 same_pattern  stop -1 trail -0.0799 mfe 1.8762 r4 f 075 -1 f 100 -1 f
+GNRC 2026-09-17 ep_low_reclaim 2026-09-18 first t stop -1 trail -1 mfe 3.8969 r4 f 075 -1 f 100 -1 f
+SEI 2026-09-08 ep_close_620_prox 2026-09-18 new_high_break t stop -1 trail -1 mfe 0.3185 r4 f 075 -1 f 100 -1 f
+SEI 2026-09-08 ep_close_reclaim 2026-09-18 new_high_break t stop -1 trail -1 mfe 0.3185 r4 f 075 -1 f 100 -1 f
+VICR 2026-09-17 ep_close_620_prox 2026-09-18 first t stop -1 trail 50.8971 mfe 86.3529 r4 t 075 -1 t 100 -1 t
+VICR 2026-09-17 ep_close_reclaim 2026-09-18 first t stop -1 trail 15.6071 mfe 26.9529 r4 t 075 -1 t 100 -1 t
+VICR 2026-09-17 ep_high_break 2026-09-18 first t stop -1 trail 5.1155 mfe 8.984 r4 t 075 -1 t 100 -1 t
+ALAB 2026-09-04 ep_low_reclaim 2026-09-21 new_high_break t stop -1 trail 1.0181 mfe 2.8431 r4 f 075 -1 t 100 -1 t
+CIFR 2026-09-16 ep_close_reclaim 2026-09-21 new_high_break t stop -1 trail -1 mfe 0.9383 r4 f 075 -1 f 100 -1 f
+GNRC 2026-09-17 ep_close_620_prox 2026-09-21 first t stop -1 trail -1 mfe 1.2951 r4 f 075 -1 f 100 -1 f
+HOOD 2026-09-03 ep_close_620_prox 2026-09-21 same_pattern t stop -1 trail -1 mfe 0.6385 r4 f 075 -1 f 100 -1 f
+HOOD 2026-09-03 ep_close_620_prox 2026-09-21 new_high_break t stop -1 trail -0.6195 mfe 0.105 r4 f 075 -1 f 100 -1 f
+HOOD 2026-09-03 ep_low_reclaim 2026-09-21 new_high_break t stop -1 trail -0.6195 mfe 0.105 r4 f 075 -1 f 100 -1 f
+GNRC 2026-09-17 ep_low_reclaim 2026-09-22 same_pattern t stop -1 trail -1 mfe 3.93 r4 f 075 -1 f 100 -1 f
+INTC 2026-09-21 ep_close_620_prox 2026-09-22 first  stop -1 trail -1 mfe 1.1465 r4 f 075 -1 f 100 -1 f
+INTC 2026-09-21 ep_close_reclaim 2026-09-22 first  stop -1 trail -1 mfe 1.3259 r4 f 075 -1 f 100 -1 f
+IONQ 2026-09-08 ep_close_620_prox 2026-09-22 first  stop -1 trail -1 mfe 0.1429 r4 f 075 -1 t 100 -1 f
+MSTR 2026-09-21 ep_close_620_prox 2026-09-22 first  stop -1 trail -1 mfe 0.75 r4 f 075 -1 f 100 -1 f
+MSTR 2026-09-21 ep_close_reclaim 2026-09-22 first  stop -1 trail -1 mfe 0.5666 r4 f 075 -1 f 100 -1 f
+ROIV 2026-09-08 ep_low_reclaim 2026-09-22 first t stop -1 trail -0.6615 mfe 1.0923 r4 f 075 -1 f 100 -1 f
+SEI 2026-09-08 ep_close_620_prox 2026-09-22 same_pattern t stop -1 trail 0.4464 mfe 4.5893 r4 f 075 -1 t 100 -1 t
+GNRC 2026-09-17 ep_close_620_prox 2026-09-23 same_pattern t stop -1 trail -1 mfe 0.4038 r4 f 075 -1 f 100 -1 f
+IONQ 2026-09-08 ep_close_620_prox 2026-09-23 new_high_break  stop -1 trail -0.3202 mfe 0.7632 r4 f 075 -1 f 100 -1 f
+IONQ 2026-09-08 ep_low_reclaim 2026-09-23 new_high_break  stop -1 trail -0.3202 mfe 0.7632 r4 f 075 -1 f 100 -1 f
+MSTR 2026-09-21 ep_low_reclaim 2026-09-23 first  stop -1 trail -1 mfe -0.0409 r4 f 075 -1 f 100 -1 f
+SRRK 2026-09-14 ep_low_reclaim 2026-09-23 first  stop -1 trail -0.3093 mfe 0.0182 r4 f 075   100  
+DG 2026-08-27 ep_low_reclaim 2026-09-24 same_pattern  stop -1 trail -1 mfe 0.1443 r4 f 075 -1 f 100 -1 f
+INTC 2026-09-21 ep_close_620_prox 2026-09-24 same_pattern  stop -1 trail -1 mfe 1.104 r4 f 075 -1 f 100 -1 f
+INTC 2026-09-21 ep_close_620_prox 2026-09-24 new_high_break  stop -1 trail -1 mfe 0.5131 r4 f 075 -1 f 100 -1 f
+INTC 2026-09-21 ep_close_reclaim 2026-09-24 same_pattern  stop -1 trail -1 mfe 1.1153 r4 f 075 -1 f 100 -1 f
+INTC 2026-09-21 ep_close_reclaim 2026-09-24 new_high_break  stop -1 trail -1 mfe 0.5131 r4 f 075 -1 f 100 -1 f
+MSTR 2026-09-21 ep_low_reclaim 2026-09-24 same_pattern  stop -1 trail -1 mfe -0.0019 r4 f 075 -1 f 100 -1 f
+ERO 2026-09-08 ep_close_620_prox 2026-09-25 same_pattern t stop -1 trail -1 mfe 0.5054 r4 f 075 -1 f 100 -1 f
+AKAM 2026-09-25 ep_low_reclaim 2026-09-28 first  stop -1 trail -1 mfe 0.0037 r4 f 075 -1 f 100 -1 f
+CIFR 2026-09-16 ep_close_reclaim 2026-09-28 same_pattern t stop -1 trail -1 mfe 5.2941 r4 t 075 -1 f 100 -1 f
+INTC 2026-09-21 ep_low_reclaim 2026-09-28 first  stop -1 trail -1 mfe 1.2638 r4 f 075 -1 f 100 -1 f
+ONON 2026-09-22 ep_close_620_prox 2026-09-28 first t stop -1 trail -1 mfe 1.8336 r4 f 075 5.6207 t 100 4.2155 t
+ONON 2026-09-22 ep_low_reclaim 2026-09-28 first t stop -1 trail -1 mfe 5.11 r4 t 075 5.914 t 100 4.4355 t
+INTC 2026-09-21 ep_low_reclaim 2026-09-29 same_pattern  stop -1 trail 0.0077 mfe 5.1851 r4 t 075 -1 f 100 -1 f
+KOD 2026-09-28 ep_close_reclaim 2026-09-29 first t stop -1 trail 0.2217 mfe 2.1132 r4 f 075 -1 f 100 -1 f
+CIFR 2026-09-16 ep_close_620_prox 2026-09-30 same_pattern t stop -1 trail -1 mfe 0.3478 r4 f 075 -1 f 100 -1 f
+KOD 2026-09-28 ep_close_620_prox 2026-09-30 first t stop -1 trail -1 mfe 3.2814 r4 f 075 -1 f 100 -1 f
+CIFR 2026-09-16 ep_low_reclaim 2026-10-02 first t stop -1 trail -0.2783 mfe 0.3391 r4 f 075 -1 f 100 -1 f
+SNPS 2026-10-01 ep_close_620_prox 2026-10-02 first t stop -1 trail -1 mfe 0.6692 r4 f 075 -1 f 100 -1 f
+SNPS 2026-10-01 ep_close_reclaim 2026-10-02 first t stop -1 trail -1 mfe 0.8944 r4 f 075 -1 f 100 -1 f
+SNPS 2026-10-01 ep_close_620_prox 2026-10-05 same_pattern t stop -1 trail -1 mfe 1.4906 r4 f 075 -1 f 100 -1 f
+SNPS 2026-10-01 ep_close_620_prox 2026-10-05 new_high_break t stop -1 trail -1 mfe 0.4978 r4 f 075 -1 f 100 -1 f
+SNPS 2026-10-01 ep_close_reclaim 2026-10-05 same_pattern t stop -1 trail -1 mfe 2.4823 r4 f 075 -1 f 100 -1 f
+SNPS 2026-10-01 ep_close_reclaim 2026-10-05 new_high_break t stop -1 trail -1 mfe 0.4978 r4 f 075 -1 f 100 -1 f
+ITUB 2026-10-05 ep_high_break 2026-10-06 first t stop -1 trail -1 mfe 0.0263 r4 f 075 -1 f 100 -1 f
+MSTR 2026-09-21 ep_close_620_prox 2026-10-06 same_pattern  stop -1 trail -1 mfe 0.2985 r4 f 075 -1 f 100 -1 f
+NU 2026-10-05 ep_high_break 2026-10-06 first t stop -1 trail -1 mfe 1.1774 r4 f 075 -1 f 100 -1 f
+CEG 2026-10-06 ep_low_reclaim 2026-10-07 first t stop -1 trail -1 mfe 2.6867 r4 f 075 -1 f 100 -1 f
+ITUB 2026-10-05 ep_close_620_prox 2026-10-07 first t stop -1 trail -1 mfe 0.7143 r4 f 075 -1 f 100 -1 f
+ITUB 2026-10-05 ep_close_reclaim 2026-10-07 first t stop -1 trail -1 mfe 0.2727 r4 f 075 -1 f 100 -1 f
+KOD 2026-09-28 ep_close_620_prox 2026-10-07 same_pattern t stop -1 trail -1 mfe 3.1311 r4 f 075 -1 f 100 -1 f
+PBR 2026-10-05 ep_close_reclaim 2026-10-07 first t stop -1 trail -1 mfe 1.2432 r4 f 075 -1 f 100 -1 f
+QCOM 2026-09-08 ep_close_620_prox 2026-10-07 same_pattern  stop -1 trail 0.5734 mfe 1.1514 r4 f 075 -1 f 100 -1 f
+TLN 2026-10-06 ep_close_reclaim 2026-10-07 first t stop -1 trail -1 mfe 0.4679 r4 f 075 -1 f 100 -1 f
+VST 2026-10-06 ep_close_reclaim 2026-10-07 first t stop -1 trail -1 mfe 0.9703 r4 f 075 -1 f 100 -1 f
+IONQ 2026-09-08 ep_close_620_prox 2026-10-08 same_pattern  stop -1 trail -1 mfe 0.2689 r4 f 075 -1 f 100 -1 f
+ITUB 2026-10-05 ep_close_620_prox 2026-10-08 same_pattern t stop -1 trail -1 mfe 1.1379 r4 f 075 -1 f 100 -1 f
+ITUB 2026-10-05 ep_low_reclaim 2026-10-08 first t stop -1 trail -1 mfe 1.3846 r4 f 075 -1 f 100 -1 f
+PBR 2026-10-05 ep_low_reclaim 2026-10-08 first t stop -1 trail -1 mfe 2.1702 r4 f 075 -1 t 100 -1 f
+PENG 2026-10-07 ep_close_620_prox 2026-10-08 first t stop -1 trail -1 mfe 0.4465 r4 f 075 -1 f 100 -1 f
+PENG 2026-10-07 ep_close_reclaim 2026-10-08 first t stop -1 trail -1 mfe 0.49 r4 f 075 -1 f 100 -1 f
+TLN 2026-10-06 ep_close_620_prox 2026-10-08 first t stop -1 trail -1 mfe 1.9535 r4 f 075 -1 f 100 -1 f
+CEG 2026-10-06 ep_low_reclaim 2026-10-09 same_pattern t stop -1 trail -1 mfe 0.3936 r4 f 075 -1 f 100 -1 f
+PBR 2026-10-05 ep_close_reclaim 2026-10-09 new_high_break t stop -1 trail -1 mfe 1.0694 r4 f 075 -1 f 100 -1 f
+PENG 2026-10-07 ep_close_620_prox 2026-10-09 new_high_break t stop -1 trail -1 mfe 0.7248 r4 f 075 -1 f 100 -1 f
+PENG 2026-10-07 ep_close_reclaim 2026-10-09 same_pattern t stop -1 trail -1 mfe 0.5441 r4 f 075 -1 f 100 -1 f
+PENG 2026-10-07 ep_close_reclaim 2026-10-09 new_high_break t stop -1 trail -1 mfe 0.7248 r4 f 075 -1 f 100 -1 f
+TLN 2026-10-06 ep_close_reclaim 2026-10-09 same_pattern t stop -1 trail -1 mfe 1.5146 r4 f 075 -1 f 100 -1 f
+WOLF 2026-10-08 ep_close_reclaim 2026-10-09 first  stop -1 trail -1 mfe 0.8095 r4 f 075 -1 f 100 -1 f
+HUM 2026-10-09 ep_close_reclaim 2026-10-12 first t stop -1 trail -1 mfe 1.9857 r4 f 075 -1 f 100 -1 f
+HUM 2026-10-09 ep_low_reclaim 2026-10-12 first t stop -1 trail -1 mfe 2.3047 r4 f 075 -1 f 100 -1 f
+TLN 2026-10-06 ep_close_620_prox 2026-10-12 same_pattern t stop -1 trail -1 mfe 2.5199 r4 f 075 -1 f 100 -1 f
+TLN 2026-10-06 ep_close_620_prox 2026-10-12 new_high_break t stop -1 trail -1 mfe 0.5204 r4 f 075 -1 f 100 -1 f
+TLN 2026-10-06 ep_close_reclaim 2026-10-12 new_high_break t stop -1 trail -1 mfe 0.5204 r4 f 075 -1 f 100 -1 f
+VST 2026-10-06 ep_close_620_prox 2026-10-12 first t stop -1 trail -1 mfe 1.0715 r4 f 075 -1 f 100 -1 f
+HUM 2026-10-09 ep_close_620_prox 2026-10-13 first t stop -1 trail -0.8213 mfe 0.831 r4 f 075 -1 f 100 -1 f
+HUM 2026-10-09 ep_low_reclaim 2026-10-14 same_pattern t stop -1 trail -1 mfe 0.6766 r4 f 075 -1 f 100 -1 f
+NU 2026-10-05 ep_low_reclaim 2026-10-14 first t stop -1 trail 0.2692 mfe 1.5769 r4 f 075 -1 f 100 -1 f
+VST 2026-10-06 ep_low_reclaim 2026-10-14 first t stop -1 trail -1 mfe 1.5122 r4 f 075 -1 f 100 -1 f
+BSP 2026-10-14 ep_close_reclaim 2026-10-15 first t stop -1 trail -1 mfe 0.8885 r4 f 075 -1 f 100 -1 f
+SNPS 2026-10-01 ep_low_reclaim 2026-10-15 first t stop -1 trail -1 mfe 0.1325 r4 f 075 -1 f 100 -1 f
+TLN 2026-10-06 ep_low_reclaim 2026-10-15 first t stop -1 trail -1 mfe 0.4625 r4 f 075 -1 f 100 -1 f
+VST 2026-10-06 ep_low_reclaim 2026-10-15 same_pattern t stop -1 trail 0.415 mfe 0.6116 r4 f 075 -1 f 100 -1 f
+NU 2026-10-05 ep_low_reclaim 2026-10-16 same_pattern t stop -1 trail -1 mfe 0.6207 r4 f 075 -1 f 100 -1 f
+SNPS 2026-10-01 ep_low_reclaim 2026-10-16 same_pattern t stop -1 trail -1 mfe 0.0708 r4 f 075 -1 f 100 -1 f
+TLN 2026-10-06 ep_low_reclaim 2026-10-16 same_pattern t stop -1 trail 2.6089 mfe 8.1341 r4 t 075 -1 f 100 -1 f
+
+created lag days (created - fire): Counter({0: 152, 1: 6})
+non-mature rows by fire_date month: Counter({('2026-11', 'stop'): 53, ('2026-11', 'OPEN'): 33, ('2026-10', 'stop'): 30, ('2026-10', 'OPEN'): 6})
+
+=== ERA SPLITS by ep_date (08-29, 09-14) and extras ===
+raw          ep_close_620_prox    a:<08-29         n=  8 tails=0 rate=  0.0% camps=5 tailcamps=0 sumR=-8.0 meanR=-1.000
+raw          ep_close_620_prox    b:08-29..09-13   n= 21 tails=0 rate=  0.0% camps=8 tailcamps=0 sumR=-21.0 meanR=-1.000
+raw          ep_close_620_prox    c:>=09-14        n= 27 tails=1 rate=  3.7% camps=14 tailcamps=1 sumR=-12.7 meanR=-0.470
+raw          ep_close_620_prox    pooled           n= 56 tails=1 rate=  1.8% camps=27 tailcamps=1 sumR=-41.7 meanR=-0.744
+raw          ep_close_reclaim     a:<08-29         n=  6 tails=0 rate=  0.0% camps=3 tailcamps=0 sumR=+0.0 meanR=+0.007
+raw          ep_close_reclaim     b:08-29..09-13   n=  9 tails=0 rate=  0.0% camps=5 tailcamps=0 sumR=-6.1 meanR=-0.680
+raw          ep_close_reclaim     c:>=09-14        n= 25 tails=0 rate=  0.0% camps=14 tailcamps=0 sumR=-25.0 meanR=-1.000
+raw          ep_close_reclaim     pooled           n= 40 tails=0 rate=  0.0% camps=22 tailcamps=0 sumR=-31.1 meanR=-0.777
+raw          ep_high_break        a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+raw          ep_high_break        b:08-29..09-13   n=  2 tails=0 rate=  0.0% camps=2 tailcamps=0 sumR=+1.3 meanR=+0.629
+raw          ep_high_break        c:>=09-14        n=  4 tails=0 rate=  0.0% camps=4 tailcamps=0 sumR=-4.0 meanR=-1.000
+raw          ep_high_break        pooled           n=  6 tails=0 rate=  0.0% camps=6 tailcamps=0 sumR=-2.7 meanR=-0.457
+raw          ep_low_reclaim       a:<08-29         n= 11 tails=1 rate=  9.1% camps=5 tailcamps=1 sumR=+19.8 meanR=+1.802
+raw          ep_low_reclaim       b:08-29..09-13   n= 18 tails=0 rate=  0.0% camps=8 tailcamps=0 sumR=-15.2 meanR=-0.845
+raw          ep_low_reclaim       c:>=09-14        n= 27 tails=0 rate=  0.0% camps=17 tailcamps=0 sumR=-20.4 meanR=-0.754
+raw          ep_low_reclaim       pooled           n= 56 tails=1 rate=  1.8% camps=30 tailcamps=1 sumR=-15.7 meanR=-0.281
+raw          ALL                  a:<08-29         n= 25 tails=1 rate=  4.0% camps=6 tailcamps=1 sumR=+11.9 meanR=+0.475
+raw          ALL                  b:08-29..09-13   n= 50 tails=0 rate=  0.0% camps=9 tailcamps=0 sumR=-41.1 meanR=-0.822
+raw          ALL                  c:>=09-14        n= 83 tails=1 rate=  1.2% camps=22 tailcamps=1 sumR=-62.0 meanR=-0.747
+raw          ALL                  pooled           n=158 tails=2 rate=  1.3% camps=37 tailcamps=2 sumR=-91.3 meanR=-0.578
+screen       ep_close_620_prox    a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen       ep_close_620_prox    b:08-29..09-13   n= 12 tails=0 rate=  0.0% camps=5 tailcamps=0 sumR=-12.0 meanR=-1.000
+screen       ep_close_620_prox    c:>=09-14        n= 21 tails=0 rate=  0.0% camps=11 tailcamps=0 sumR=-17.1 meanR=-0.812
+screen       ep_close_620_prox    pooled           n= 33 tails=0 rate=  0.0% camps=16 tailcamps=0 sumR=-29.1 meanR=-0.880
+screen       ep_close_reclaim     a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen       ep_close_reclaim     b:08-29..09-13   n=  6 tails=0 rate=  0.0% camps=3 tailcamps=0 sumR=-3.1 meanR=-0.521
+screen       ep_close_reclaim     c:>=09-14        n= 20 tails=0 rate=  0.0% camps=11 tailcamps=0 sumR=-20.0 meanR=-1.000
+screen       ep_close_reclaim     pooled           n= 26 tails=0 rate=  0.0% camps=14 tailcamps=0 sumR=-23.1 meanR=-0.889
+screen       ep_high_break        a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen       ep_high_break        b:08-29..09-13   n=  1 tails=0 rate=  0.0% camps=1 tailcamps=0 sumR=+2.3 meanR=+2.258
+screen       ep_high_break        c:>=09-14        n=  4 tails=0 rate=  0.0% camps=4 tailcamps=0 sumR=-4.0 meanR=-1.000
+screen       ep_high_break        pooled           n=  5 tails=0 rate=  0.0% camps=5 tailcamps=0 sumR=-1.7 meanR=-0.348
+screen       ep_low_reclaim       a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen       ep_low_reclaim       b:08-29..09-13   n= 10 tails=0 rate=  0.0% camps=5 tailcamps=0 sumR=-8.4 meanR=-0.836
+screen       ep_low_reclaim       c:>=09-14        n= 19 tails=0 rate=  0.0% camps=11 tailcamps=0 sumR=-15.1 meanR=-0.792
+screen       ep_low_reclaim       pooled           n= 29 tails=0 rate=  0.0% camps=16 tailcamps=0 sumR=-23.4 meanR=-0.807
+screen       ALL                  a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen       ALL                  b:08-29..09-13   n= 29 tails=0 rate=  0.0% camps=6 tailcamps=0 sumR=-21.2 meanR=-0.732
+screen       ALL                  c:>=09-14        n= 64 tails=0 rate=  0.0% camps=15 tailcamps=0 sumR=-56.1 meanR=-0.877
+screen       ALL                  pooled           n= 93 tails=0 rate=  0.0% camps=21 tailcamps=0 sumR=-77.3 meanR=-0.832
+first        ep_close_620_prox    a:<08-29         n=  2 tails=0 rate=  0.0% camps=2 tailcamps=0 sumR=-2.0 meanR=-1.000
+first        ep_close_620_prox    b:08-29..09-13   n=  8 tails=0 rate=  0.0% camps=8 tailcamps=0 sumR=-8.0 meanR=-1.000
+first        ep_close_620_prox    c:>=09-14        n= 14 tails=1 rate=  7.1% camps=14 tailcamps=1 sumR=-3.6 meanR=-0.260
+first        ep_close_620_prox    pooled           n= 24 tails=1 rate=  4.2% camps=24 tailcamps=1 sumR=-13.6 meanR=-0.568
+first        ep_close_reclaim     a:<08-29         n=  3 tails=0 rate=  0.0% camps=3 tailcamps=0 sumR=-3.0 meanR=-1.000
+first        ep_close_reclaim     b:08-29..09-13   n=  5 tails=0 rate=  0.0% camps=5 tailcamps=0 sumR=-5.0 meanR=-1.000
+first        ep_close_reclaim     c:>=09-14        n= 14 tails=0 rate=  0.0% camps=14 tailcamps=0 sumR=-14.0 meanR=-1.000
+first        ep_close_reclaim     pooled           n= 22 tails=0 rate=  0.0% camps=22 tailcamps=0 sumR=-22.0 meanR=-1.000
+first        ep_high_break        a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+first        ep_high_break        b:08-29..09-13   n=  2 tails=0 rate=  0.0% camps=2 tailcamps=0 sumR=+1.3 meanR=+0.629
+first        ep_high_break        c:>=09-14        n=  4 tails=0 rate=  0.0% camps=4 tailcamps=0 sumR=-4.0 meanR=-1.000
+first        ep_high_break        pooled           n=  6 tails=0 rate=  0.0% camps=6 tailcamps=0 sumR=-2.7 meanR=-0.457
+first        ep_low_reclaim       a:<08-29         n=  4 tails=0 rate=  0.0% camps=4 tailcamps=0 sumR=-4.0 meanR=-1.000
+first        ep_low_reclaim       b:08-29..09-13   n=  8 tails=0 rate=  0.0% camps=8 tailcamps=0 sumR=-7.8 meanR=-0.969
+first        ep_low_reclaim       c:>=09-14        n= 17 tails=0 rate=  0.0% camps=17 tailcamps=0 sumR=-14.3 meanR=-0.841
+first        ep_low_reclaim       pooled           n= 29 tails=0 rate=  0.0% camps=29 tailcamps=0 sumR=-26.1 meanR=-0.898
+first        ALL                  a:<08-29         n=  9 tails=0 rate=  0.0% camps=5 tailcamps=0 sumR=-9.0 meanR=-1.000
+first        ALL                  b:08-29..09-13   n= 23 tails=0 rate=  0.0% camps=9 tailcamps=0 sumR=-19.5 meanR=-0.848
+first        ALL                  c:>=09-14        n= 49 tails=1 rate=  2.0% camps=22 tailcamps=1 sumR=-35.9 meanR=-0.733
+first        ALL                  pooled           n= 81 tails=1 rate=  1.2% camps=36 tailcamps=1 sumR=-64.4 meanR=-0.795
+screen_false ep_close_620_prox    a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_close_620_prox    b:08-29..09-13   n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_close_620_prox    c:>=09-14        n=  1 tails=1 rate=100.0% camps=1 tailcamps=1 sumR=+9.4 meanR=+9.367
+screen_false ep_close_620_prox    pooled           n=  1 tails=1 rate=100.0% camps=1 tailcamps=1 sumR=+9.4 meanR=+9.367
+screen_false ep_close_reclaim     a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_close_reclaim     b:08-29..09-13   n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_close_reclaim     c:>=09-14        n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_close_reclaim     pooled           n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_high_break        a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_high_break        b:08-29..09-13   n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_high_break        c:>=09-14        n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_high_break        pooled           n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_low_reclaim       a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_low_reclaim       b:08-29..09-13   n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ep_low_reclaim       c:>=09-14        n=  1 tails=0 rate=  0.0% camps=1 tailcamps=0 sumR=+1.7 meanR=+1.701
+screen_false ep_low_reclaim       pooled           n=  1 tails=0 rate=  0.0% camps=1 tailcamps=0 sumR=+1.7 meanR=+1.701
+screen_false ALL                  a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ALL                  b:08-29..09-13   n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_false ALL                  c:>=09-14        n=  2 tails=1 rate= 50.0% camps=1 tailcamps=1 sumR=+11.1 meanR=+5.534
+screen_false ALL                  pooled           n=  2 tails=1 rate= 50.0% camps=1 tailcamps=1 sumR=+11.1 meanR=+5.534
+screen_null  ep_close_620_prox    a:<08-29         n=  8 tails=0 rate=  0.0% camps=5 tailcamps=0 sumR=-8.0 meanR=-1.000
+screen_null  ep_close_620_prox    b:08-29..09-13   n=  9 tails=0 rate=  0.0% camps=3 tailcamps=0 sumR=-9.0 meanR=-1.000
+screen_null  ep_close_620_prox    c:>=09-14        n=  5 tails=0 rate=  0.0% camps=2 tailcamps=0 sumR=-5.0 meanR=-1.000
+screen_null  ep_close_620_prox    pooled           n= 22 tails=0 rate=  0.0% camps=10 tailcamps=0 sumR=-22.0 meanR=-1.000
+screen_null  ep_close_reclaim     a:<08-29         n=  6 tails=0 rate=  0.0% camps=3 tailcamps=0 sumR=+0.0 meanR=+0.007
+screen_null  ep_close_reclaim     b:08-29..09-13   n=  3 tails=0 rate=  0.0% camps=2 tailcamps=0 sumR=-3.0 meanR=-1.000
+screen_null  ep_close_reclaim     c:>=09-14        n=  5 tails=0 rate=  0.0% camps=3 tailcamps=0 sumR=-5.0 meanR=-1.000
+screen_null  ep_close_reclaim     pooled           n= 14 tails=0 rate=  0.0% camps=8 tailcamps=0 sumR=-8.0 meanR=-0.568
+screen_null  ep_high_break        a:<08-29         n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_null  ep_high_break        b:08-29..09-13   n=  1 tails=0 rate=  0.0% camps=1 tailcamps=0 sumR=-1.0 meanR=-1.000
+screen_null  ep_high_break        c:>=09-14        n=  0 tails=0 rate=  0.0% camps=0 tailcamps=0 sumR=+0.0 meanR=+0.000
+screen_null  ep_high_break        pooled           n=  1 tails=0 rate=  0.0% camps=1 tailcamps=0 sumR=-1.0 meanR=-1.000
+screen_null  ep_low_reclaim       a:<08-29         n= 11 tails=1 rate=  9.1% camps=5 tailcamps=1 sumR=+19.8 meanR=+1.802
+screen_null  ep_low_reclaim       b:08-29..09-13   n=  8 tails=0 rate=  0.0% camps=3 tailcamps=0 sumR=-6.9 meanR=-0.858
+screen_null  ep_low_reclaim       c:>=09-14        n=  7 tails=0 rate=  0.0% camps=5 tailcamps=0 sumR=-7.0 meanR=-1.000
+screen_null  ep_low_reclaim       pooled           n= 26 tails=1 rate=  3.8% camps=13 tailcamps=1 sumR=+6.0 meanR=+0.229
+screen_null  ALL                  a:<08-29         n= 25 tails=1 rate=  4.0% camps=6 tailcamps=1 sumR=+11.9 meanR=+0.475
+screen_null  ALL                  b:08-29..09-13   n= 21 tails=0 rate=  0.0% camps=3 tailcamps=0 sumR=-19.9 meanR=-0.946
+screen_null  ALL                  c:>=09-14        n= 17 tails=0 rate=  0.0% camps=6 tailcamps=0 sumR=-17.0 meanR=-1.000
+screen_null  ALL                  pooled           n= 63 tails=1 rate=  1.6% camps=15 tailcamps=1 sumR=-25.0 meanR=-0.397
+mature unsettled: 0 []
+versions among mature: Counter({('v2', 'screen_v1', 'settle_v3'): 153, ('v2', 'screen_v1', 'settle_v2'): 5})
+raw/ep_close_620_prox 1 56 95% CI 0.0%..9.6%
+raw/ep_close_reclaim 0 40 95% CI 0.0%..8.8%
+raw/ep_high_break 0 6 95% CI 0.0%..45.9%
+raw/ep_low_reclaim 1 56 95% CI 0.0%..9.6%
+raw/ALL 2 158 95% CI 0.2%..4.5%
+screen/ep_close_620_prox 0 33 95% CI 0.0%..10.6%
+screen/ep_close_reclaim 0 26 95% CI 0.0%..13.2%
+screen/ep_high_break 0 5 95% CI 0.0%..52.2%
+screen/ep_low_reclaim 0 29 95% CI 0.0%..11.9%
+screen/ALL 0 93 95% CI 0.0%..3.9%

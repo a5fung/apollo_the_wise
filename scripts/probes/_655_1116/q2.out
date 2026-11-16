@@ -1,0 +1,361 @@
+SET
+== A pass1_5 event-type counts since 10-17 (do skip rows exist; is the exempt event ever written)
+event_type|count|min|max
+theme_pass1_5_absorption|19|2026-10-21|2026-11-13
+theme_pass1_5_skip|28|2026-10-19|2026-11-13
+(2 rows)
+== B every theme audit row naming a promoted theme in the 12 days from its promotion
+id|event_type|et|summary|detail
+60591|theme_synthesis_run|2026-10-22 18:05:09|62 candidates → 1 proposed → 1 kept|{"run_date": "2026-10-22", "n_candidates": 62, "n_proposed": 1, "n_kept": 1, "stop_reason": "tool_use", "kept": [{"name": "Software & Data Platforms Re-Rating for the AI Era", "tickers": ["ADSK", "BL", "VERX", "LZ", "VYX", "KD", "UPWK", "YELP"], "confidence": 
+60593|theme_operator_promoted|2026-10-22 18:07:00|Operator promoted 'Software & Data Platforms Re-Rating for the AI Era' (8 members)|query='Software & Data Platforms Re-Rating for the AI Era' candidate='Software & Data Platforms Re-Rating for the AI Era' final='Software & Data Platforms Re-Rating for the AI Era' tickers=['ADSK', 'BL', 'VERX', 'LZ', 'VYX', 'KD', 'UPWK', 'YELP'] cand_source=r
+60594|theme_ecosystem_assigned|2026-10-22 18:07:03|'Software & Data Platforms Re-Rating for the AI Era' → E-SAAS (haiku)|members=ADSK, BL, VERX, LZ, VYX, KD, UPWK, YELP | 
+60933|theme_stage_flip_held|2026-10-23 17:03:10|Software & Data Platforms Re-Rating for the AI Era: Nascent→Fading held; y_Δ=+0.0|
+61079|theme_score_ties|2026-10-23 17:08:05|18 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=78.5: ['Banking Software for Financial Institutions', 'Brazil Fintech & Digital Banking Rally']
+score=78.0: ['Data Backup & Cyber Resiliency Software', 'Enterprise HR & Workforce Management SaaS', 'Software Development & DevOps Collab
+61082|theme_score_ties|2026-10-23 17:08:05|18 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=78.5: ['Banking Software for Financial Institutions', 'Brazil Fintech & Digital Banking Rally']
+score=78.0: ['Data Backup & Cyber Resiliency Software', 'Enterprise HR & Workforce Management SaaS', 'Software Development & DevOps Collabor
+61088|theme_score_ties|2026-10-23 17:08:32|20 score-tie group(s) after stage 'after_split'|stage=after_split
+score=79.6: ['Work Management & Team Collaboration SaaS', 'Work Management & Team Collaboration Software']
+score=78.5: ['Banking Software for Financial Institutions', 'Brazil Fintech & Digital Banking Rally']
+score=78.0: ['Data Backup & Cyber
+61091|theme_score_ties|2026-10-23 17:08:32|20 score-tie group(s) after stage 'after_merge_2'|stage=after_merge_2
+score=79.6: ['Work Management & Team Collaboration SaaS', 'Work Management & Team Collaboration Software']
+score=78.5: ['Banking Software for Financial Institutions', 'Brazil Fintech & Digital Banking Rally']
+score=78.0: ['Data Backup & Cyb
+61094|theme_score_ties|2026-10-23 17:08:32|19 score-tie group(s) after stage 'after_cap_2'|stage=after_cap_2
+score=78.5: ['Banking Software for Financial Institutions', 'Brazil Fintech & Digital Banking Rally']
+score=78.0: ['Data Backup & Cyber Resiliency Software', 'Enterprise HR & Workforce Management SaaS', 'Software Development & DevOps Collabor
+61111|theme_parent_pass_distinct|2026-10-23 17:09:26|Parent pass: 'Cloud Content, Nonprofit & SMB Software Re-Rating' vs 'Software & Data Platforms Re-Rating for the AI Era' PEERS — no containment, 30d pair cooldown|child='Cloud Content, Nonprofit & SMB Software Re-Rating' parent='Software & Data Platforms Re-Rating for the AI Era' same ecosystem E-SAAS; parent 5 vs child 4 members; shared tickers 1; shared name tokens 2; industry overlap 0.50; word similarity 0.044 verdi
+61112|theme_parent_pass_linked|2026-10-23 17:09:31|Parent pass: 'Cloud Financial Automation & Insurance Core Platform Software' → sub-theme of 'Software & Data Platforms Re-Rating for the AI Era'|child='Cloud Financial Automation & Insurance Core Platform Software' parent='Software & Data Platforms Re-Rating for the AI Era' same ecosystem E-SAAS; parent 5 vs child 3 members; shared tickers 1; shared name tokens 1; industry overlap 1.00; word similarity
+61113|theme_parent_pass_distinct|2026-10-23 17:09:34|Parent pass: 'Software & Data Platforms Re-Rating for the AI Era' vs 'Data Analytics, Verification & Compliance Information Services' PEERS — no containment, 30d pair cooldown|child='Software & Data Platforms Re-Rating for the AI Era' parent='Data Analytics, Verification & Compliance Information Services' same ecosystem E-SAAS; parent 11 vs child 5 members; shared tickers 1; shared name tokens 0; industry overlap 0.80; word similari
+61115|theme_parent_pass_linked|2026-10-23 17:09:40|Parent pass: 'Cloud Application Software Rotation (Oversold Turning Up)' → sub-theme of 'Software & Data Platforms Re-Rating for the AI Era'|child='Cloud Application Software Rotation (Oversold Turning Up)' parent='Software & Data Platforms Re-Rating for the AI Era' same ecosystem E-SAAS; parent 5 vs child 3 members; shared tickers 0; shared name tokens 1; industry overlap 1.00; word similarity 0.0
+61117|theme_parent_pass_ran|2026-10-23 17:09:44|Parent pass: 6 candidate(s) adjudicated — 2 linked, 4 no containment (peers/unrelated), 0 inverted, 0 error|'Cloud Content, Nonprofit & SMB Software Re-Rating' → 'Software & Data Platforms Re-Rating for the AI Era' [PEERS] same ecosystem E-SAAS; parent 5 vs child 4 members; shared tickers 1; shared name tokens 2; industry overlap 0.50; word similarity 0.044
+'Cloud F
+61166|theme_correctness_check|2026-10-23 17:31:04|G1 644/681 (94.6% bar 90.0%) · G2 14/681 (2.1% bar<= 5.0%) · G3 101/121 (83.5% bar 90.0%) · G4 14/121 small (11.6% bar<= 10.0%; settled 9/116 7.8%) · latency median 5.5 sessions (n=10)|{"n_board": 121, "g1": {"pass": 644, "n": 681, "rate_pct": 94.6, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 14, "n": 681, "rate_pct": 2.1, "bar_pct": 5.0, "pass_bar": true, "list": [["PLNT", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+61735|theme_score_ties|2026-10-26 17:06:33|20 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=78.8: ['Customer Engagement & Marketing/CX SaaS Platforms', 'IT Consulting & Business Process Outsourcing Services', 'Life Sciences & Healthcare Data/CRM Platforms']
+score=78.5: ['Banking Software for Financial Institutions', 'Small-C
+61737|theme_score_ties|2026-10-26 17:06:33|20 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=78.8: ['Customer Engagement & Marketing/CX SaaS Platforms', 'IT Consulting & Business Process Outsourcing Services', 'Life Sciences & Healthcare Data/CRM Platforms']
+score=78.5: ['Banking Software for Financial Institutions', 'Small-Cap
+61742|theme_score_ties|2026-10-26 17:06:55|20 score-tie group(s) after stage 'after_split'|stage=after_split
+score=78.8: ['Customer Engagement & Marketing/CX SaaS Platforms', 'IT Consulting & Business Process Outsourcing Services', 'Life Sciences & Healthcare Data/CRM Platforms']
+score=78.5: ['Banking Software for Financial Institutions', 'Small-Cap
+61744|theme_score_ties|2026-10-26 17:06:55|20 score-tie group(s) after stage 'after_merge_2'|stage=after_merge_2
+score=78.8: ['Customer Engagement & Marketing/CX SaaS Platforms', 'IT Consulting & Business Process Outsourcing Services', 'Life Sciences & Healthcare Data/CRM Platforms']
+score=78.5: ['Banking Software for Financial Institutions', 'Small-C
+61745|theme_score_ties|2026-10-26 17:06:55|20 score-tie group(s) after stage 'after_cap_2'|stage=after_cap_2
+score=78.8: ['Customer Engagement & Marketing/CX SaaS Platforms', 'IT Consulting & Business Process Outsourcing Services', 'Life Sciences & Healthcare Data/CRM Platforms']
+score=78.5: ['Banking Software for Financial Institutions', 'Small-Cap
+61759|theme_parent_pass_distinct|2026-10-26 17:07:53|Parent pass: 'Software & Data Platforms Re-Rating for the AI Era' vs 'Enterprise HR & Workforce Management SaaS' PEERS — no containment, 30d pair cooldown|child='Software & Data Platforms Re-Rating for the AI Era' parent='Enterprise HR & Workforce Management SaaS' same ecosystem E-SAAS; parent 8 vs child 5 members; shared tickers 0; shared name tokens 0; industry overlap 0.60; word similarity 0.068 verdict='PEER
+61762|theme_parent_pass_ran|2026-10-26 17:07:59|Parent pass: 6 candidate(s) adjudicated — 1 linked, 5 no containment (peers/unrelated), 0 inverted, 0 error|'Regional Bank Stocks: Strong-RS Mid-Cap Franchises' → 'Bank Stocks: Rising-Rate NIM Expansion' [PEERS] same ecosystem E-BANKFIN; parent 41 vs child 4 members; shared tickers 0; shared name tokens 1; industry overlap 1.00; word similarity 0.164
+'Cloud Content,
+61813|theme_correctness_check|2026-10-26 17:31:04|G1 628/666 (94.3% bar 90.0%) · G2 24/666 (3.6% bar<= 5.0%) · G3 104/115 (90.4% bar 90.0%) · G4 12/115 small (10.4% bar<= 10.0%; settled 8/111 7.2%) · latency median 5.5 sessions (n=10)|{"n_board": 115, "g1": {"pass": 628, "n": 666, "rate_pct": 94.3, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 24, "n": 666, "rate_pct": 3.6, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+62316|theme_rehome_judged|2026-10-27 17:01:31|HOG stays — the judgement did not place it (offered on tape 0.56 to 'Software & Data Platforms Re-Rating for the AI Era', own_unjudgeable:thin_basket)|{"ticker": "HOG", "homes": ["Recreational Vehicle & Outdoor Leisure Cyclicals"], "target": "Software & Data Platforms Re-Rating for the AI Era", "target_corr": 0.5576, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "verdict": "stay", "removed_by_valid
+62398|theme_score_ties|2026-10-27 17:04:35|21 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.3: ['Cloud Content, Nonprofit & SMB Software Re-Rating', 'Work Management & Team Collaboration SaaS']
+score=78.4: ['Cloud Supply Chain & Warehouse Management Software', 'Customer Engagement & Marketing/CX SaaS Platforms']
+score=78.
+62402|theme_score_ties|2026-10-27 17:04:35|21 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.3: ['Cloud Content, Nonprofit & SMB Software Re-Rating', 'Work Management & Team Collaboration SaaS']
+score=78.4: ['Cloud Supply Chain & Warehouse Management Software', 'Customer Engagement & Marketing/CX SaaS Platforms']
+score=78.2:
+62406|theme_score_ties|2026-10-27 17:04:56|22 score-tie group(s) after stage 'after_split'|stage=after_split
+score=79.3: ['Cloud Content, Nonprofit & SMB Software Re-Rating', 'Work Management & Team Collaboration SaaS']
+score=78.4: ['Cloud Supply Chain & Warehouse Management Software', 'Customer Engagement & Marketing/CX SaaS Platforms']
+score=78.2:
+62410|theme_score_ties|2026-10-27 17:04:56|22 score-tie group(s) after stage 'after_merge_2'|stage=after_merge_2
+score=79.3: ['Cloud Content, Nonprofit & SMB Software Re-Rating', 'Work Management & Team Collaboration SaaS']
+score=78.4: ['Cloud Supply Chain & Warehouse Management Software', 'Customer Engagement & Marketing/CX SaaS Platforms']
+score=78.
+62411|theme_score_ties|2026-10-27 17:04:56|22 score-tie group(s) after stage 'after_cap_2'|stage=after_cap_2
+score=79.3: ['Cloud Content, Nonprofit & SMB Software Re-Rating', 'Work Management & Team Collaboration SaaS']
+score=78.4: ['Cloud Supply Chain & Warehouse Management Software', 'Customer Engagement & Marketing/CX SaaS Platforms']
+score=78.2:
+62480|theme_correctness_check|2026-10-27 17:31:03|G1 647/685 (94.5% bar 90.0%) · G2 20/685 (2.9% bar<= 5.0%) · G3 104/119 (87.4% bar 90.0%) · G4 11/119 small (9.2% bar<= 10.0%; settled 9/117 7.7%) · latency median 5.5 sessions (n=10)|{"n_board": 119, "g1": {"pass": 647, "n": 685, "rate_pct": 94.5, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 20, "n": 685, "rate_pct": 2.9, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+63131|theme_score_ties|2026-10-28 17:07:51|21 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.0: ['Life Sciences & Healthcare Data/CRM Platforms', 'Work Management & Team Collaboration SaaS']
+score=77.9: ['IT Consulting & Business Process Outsourcing Services', 'Management & Business Process Consulting Services']
+score=77.8
+63134|theme_score_ties|2026-10-28 17:07:51|21 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.0: ['Life Sciences & Healthcare Data/CRM Platforms', 'Work Management & Team Collaboration SaaS']
+score=77.9: ['IT Consulting & Business Process Outsourcing Services', 'Management & Business Process Consulting Services']
+score=77.8: 
+63138|theme_score_ties|2026-10-28 17:08:10|21 score-tie group(s) after stage 'after_split'|stage=after_split
+score=79.0: ['Life Sciences & Healthcare Data/CRM Platforms', 'Work Management & Team Collaboration SaaS']
+score=77.9: ['IT Consulting & Business Process Outsourcing Services', 'Management & Business Process Consulting Services']
+score=77.8: 
+63142|theme_score_ties|2026-10-28 17:08:10|21 score-tie group(s) after stage 'after_merge_2'|stage=after_merge_2
+score=79.0: ['Life Sciences & Healthcare Data/CRM Platforms', 'Work Management & Team Collaboration SaaS']
+score=77.9: ['IT Consulting & Business Process Outsourcing Services', 'Management & Business Process Consulting Services']
+score=77.8
+63143|theme_score_ties|2026-10-28 17:08:10|21 score-tie group(s) after stage 'after_cap_2'|stage=after_cap_2
+score=79.0: ['Life Sciences & Healthcare Data/CRM Platforms', 'Work Management & Team Collaboration SaaS']
+score=77.9: ['IT Consulting & Business Process Outsourcing Services', 'Management & Business Process Consulting Services']
+score=77.8: 
+63207|theme_correctness_check|2026-10-28 17:31:06|G1 668/702 (95.2% bar 90.0%) · G2 20/702 (2.8% bar<= 5.0%) · G3 112/123 (91.1% bar 90.0%) · G4 12/123 small (9.8% bar<= 10.0%; settled 8/119 6.7%) · latency median 5.5 sessions (n=12)|{"n_board": 123, "g1": {"pass": 668, "n": 702, "rate_pct": 95.2, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 20, "n": 702, "rate_pct": 2.8, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+63802|theme_stage_flip_held|2026-10-29 17:00:49|Software & Data Platforms Re-Rating for the AI Era: Nascent→Fading held; y_Δ=-7.3|
+63927|theme_parent_pass_distinct|2026-10-29 17:05:07|Parent pass: 'Cloud Supply Chain & Warehouse Management Software' vs 'Software & Data Platforms Re-Rating for the AI Era' PEERS — no containment, 30d pair cooldown|child='Cloud Supply Chain & Warehouse Management Software' parent='Software & Data Platforms Re-Rating for the AI Era' same ecosystem E-SAAS; parent 5 vs child 3 members; shared tickers 0; shared name tokens 1; industry overlap 1.00; word similarity 0.049 verd
+63929|theme_parent_pass_ran|2026-10-29 17:05:11|Parent pass: 3 candidate(s) adjudicated — 0 linked, 3 no containment (peers/unrelated), 0 inverted, 0 error|'Clinical-Stage & Commercial Biotech Platform Leaders' → 'Clinical-Stage Biotech Breakouts: Rare Blood, Autoimmune & Thyroid Eye Disease' [PEERS] same ecosystem E-BIO; parent 7 vs child 5 members; shared tickers 0; shared name tokens 3; industry overlap 0.80; 
+63980|theme_correctness_check|2026-10-29 17:31:07|G1 676/708 (95.5% bar 90.0%) · G2 19/708 (2.7% bar<= 5.0%) · G3 110/129 (85.3% bar 90.0%) · G4 13/130 small (10.0% bar<= 10.0%; settled 8/125 6.4%) · latency median 5.5 sessions (n=12)|{"n_board": 130, "g1": {"pass": 676, "n": 708, "rate_pct": 95.5, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 19, "n": 708, "rate_pct": 2.7, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+64576|theme_score_ties|2026-10-30 17:08:06|24 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.1: ['Cloud Content, Nonprofit & SMB Software Re-Rating', 'Contract Drilling Services (Land & Offshore)']
+score=78.7: ['Management & Business Process Consulting Services', 'Offshore Contract Drillers']
+score=77.4: ['Behavioral Healt
+64579|theme_score_ties|2026-10-30 17:08:06|24 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.1: ['Cloud Content, Nonprofit & SMB Software Re-Rating', 'Contract Drilling Services (Land & Offshore)']
+score=78.7: ['Management & Business Process Consulting Services', 'Offshore Contract Drillers']
+score=77.4: ['Behavioral Health 
+64657|theme_correctness_check|2026-10-30 17:31:12|G1 700/729 (96.0% bar 90.0%) · G2 19/729 (2.6% bar<= 5.0%) · G3 118/132 (89.4% bar 90.0%) · G4 8/132 small (6.1% bar<= 10.0%; settled 5/129 3.9%) · latency median 5.5 sessions (n=12)|{"n_board": 132, "g1": {"pass": 700, "n": 729, "rate_pct": 96.0, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 19, "n": 729, "rate_pct": 2.6, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+65453|theme_rehome_judged|2026-11-02 17:05:06|NCNO stays — the judgement did not place it (offered on tape 0.76 to 'Software & Data Platforms Re-Rating for the AI Era', own_unjudgeable:thin_basket)|{"ticker": "NCNO", "homes": ["Banking Software for Financial Institutions"], "target": "Software & Data Platforms Re-Rating for the AI Era", "target_corr": 0.7621, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "verdict": "stay", "removed_by_validatio
+65543|theme_score_ties|2026-11-02 17:08:15|24 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=77.6: ['Life Sciences & Healthcare Data/CRM Platforms', 'Small-Cap Digital Commerce & Promotions Platforms']
+score=77.4: ['Cloud Supply Chain & Warehouse Management Software', 'Exchange, Options Trading & Alternative Consumer Credit F
+65546|theme_score_ties|2026-11-02 17:08:15|23 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=77.6: ['Life Sciences & Healthcare Data/CRM Platforms', 'Small-Cap Digital Commerce & Promotions Platforms']
+score=77.4: ['Cloud Supply Chain & Warehouse Management Software', 'Exchange, Options Trading & Alternative Consumer Credit Fin
+65615|theme_correctness_check|2026-11-02 17:31:08|G1 699/730 (95.8% bar 90.0%) · G2 18/730 (2.5% bar<= 5.0%) · G3 116/134 (86.6% bar 90.0%) · G4 13/135 small (9.6% bar<= 10.0%; settled 6/128 4.7%) · latency median 6.5 sessions (n=12)|{"n_board": 135, "g1": {"pass": 699, "n": 730, "rate_pct": 95.8, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 18, "n": 730, "rate_pct": 2.5, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+64018|theme_synthesis_run|2026-10-29 18:05:08|52 candidates → 1 proposed → 1 kept|{"run_date": "2026-10-29", "n_candidates": 52, "n_proposed": 1, "n_kept": 1, "stop_reason": "tool_use", "kept": [{"name": "Natural Gas Producers & Midstream Pipelines", "tickers": ["RRC", "TRP", "VIST", "MGY"], "confidence": "low"}], "dropped": []}
+64021|theme_operator_promoted|2026-10-29 18:09:52|Operator promoted 'Natural Gas Producers & Midstream Pipelines' (4 members)|query='Natural Gas Producers & Midstream Pipelines' candidate='Natural Gas Producers & Midstream Pipelines' final='Natural Gas Producers & Midstream Pipelines' tickers=['RRC', 'TRP', 'VIST', 'MGY'] cand_source=rs_slope_synthesis
+64022|theme_ecosystem_assigned|2026-10-29 18:09:54|'Natural Gas Producers & Midstream Pipelines' → E-ENER (haiku)|members=RRC, TRP, VIST, MGY | 
+64574|theme_sector_cap_kept_distinct|2026-10-30 17:08:06|Pass2: 'Natural Gas Producers & Midstream Pipelines' kept distinct from 'Contract Drilling Services (Land & Offshore)' — 4 of 4 member(s) judged, none admitted (tape passed 3, description check refused 3, on cooldown 0; sector gro|{"source": "Natural Gas Producers & Midstream Pipelines", "target": "Contract Drilling Services (Land & Offshore)", "group": "oil_gas", "judged": 4, "judged_tape": 4, "judged_cooldown": 0, "passed": 0, "bar": 0.35, "tape_admitted": ["MGY", "RRC", "VIST"], "des
+64576|theme_score_ties|2026-10-30 17:08:06|24 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.1: ['Cloud Content, Nonprofit & SMB Software Re-Rating', 'Contract Drilling Services (Land & Offshore)']
+score=78.7: ['Management & Business Process Consulting Services', 'Offshore Contract Drillers']
+score=77.4: ['Behavioral Healt
+64579|theme_score_ties|2026-10-30 17:08:06|24 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.1: ['Cloud Content, Nonprofit & SMB Software Re-Rating', 'Contract Drilling Services (Land & Offshore)']
+score=78.7: ['Management & Business Process Consulting Services', 'Offshore Contract Drillers']
+score=77.4: ['Behavioral Health 
+64582|theme_merge_pairs_proposed|2026-10-30 17:08:14|Arm B Stage A: 8 candidate pair(s) for adjudication|'Defense Electronics & Aircraft Aftermarket Services' × 'Defense & Aerospace Contractors & Suppliers'
+'Natural Gas Producers & Midstream Pipelines' × 'Oil & Gas Producers and Oilfield Services Leveraged to Commodity Prices'
+'Industrial Warehouse & Logistics RE
+64584|theme_merge_distinct|2026-10-30 17:08:25|Arm B: 'Natural Gas Producers & Midstream Pipelines' vs 'Oil & Gas Producers and Oilfield Services Leveraged to Commodity Prices' DISTINCT — 30d pair cooldown|driver_a='Crude oil price surge driven by Middle East geopolitical supply concerns' driver_b='Natural gas production/midstream fundamentals and pipeline tailwinds' reason='Both energy themes, but distinct commodity drivers: crude oil geopolitical shock vs. nat
+64594|theme_parent_pass_distinct|2026-10-30 17:09:08|Parent pass: 'Natural Gas Producers & Midstream Pipelines' vs 'Energy Supply Disruption: Middle East Geopolitical Risk' UNRELATED — no containment, 30d pair cooldown|child='Natural Gas Producers & Midstream Pipelines' parent='Energy Supply Disruption: Middle East Geopolitical Risk' same ecosystem E-ENER; parent 22 vs child 4 members; shared tickers 2; shared name tokens 0; industry overlap 0.75; word similarity 0.036 verdi
+64597|theme_parent_pass_ran|2026-10-30 17:09:15|Parent pass: 3 candidate(s) adjudicated — 0 linked, 3 no containment (peers/unrelated), 0 inverted, 0 error|'Natural Gas Producers & Midstream Pipelines' → 'Energy Supply Disruption: Middle East Geopolitical Risk' [UNRELATED] same ecosystem E-ENER; parent 22 vs child 4 members; shared tickers 2; shared name tokens 0; industry overlap 0.75; word similarity 0.036
+'Ind
+64657|theme_correctness_check|2026-10-30 17:31:12|G1 700/729 (96.0% bar 90.0%) · G2 19/729 (2.6% bar<= 5.0%) · G3 118/132 (89.4% bar 90.0%) · G4 8/132 small (6.1% bar<= 10.0%; settled 5/129 3.9%) · latency median 5.5 sessions (n=12)|{"n_board": 132, "g1": {"pass": 700, "n": 729, "rate_pct": 96.0, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 19, "n": 729, "rate_pct": 2.6, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+65615|theme_correctness_check|2026-11-02 17:31:08|G1 699/730 (95.8% bar 90.0%) · G2 18/730 (2.5% bar<= 5.0%) · G3 116/134 (86.6% bar 90.0%) · G4 13/135 small (9.6% bar<= 10.0%; settled 6/128 4.7%) · latency median 6.5 sessions (n=12)|{"n_board": 135, "g1": {"pass": 699, "n": 730, "rate_pct": 95.8, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 18, "n": 730, "rate_pct": 2.5, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+66507|theme_correctness_check|2026-11-03 17:31:05|G1 713/747 (95.4% bar 90.0%) · G2 18/747 (2.4% bar<= 5.0%) · G3 117/135 (86.7% bar 90.0%) · G4 7/135 small (5.2% bar<= 10.0%; settled 2/130 1.5%) · latency median 6.5 sessions (n=12)|{"n_board": 135, "g1": {"pass": 713, "n": 747, "rate_pct": 95.4, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 18, "n": 747, "rate_pct": 2.4, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+67832|theme_pass1_5_absorption|2026-11-04 17:08:00|Pass1.5: 'Natural Gas Producers & Midstream Pipelines' -> 'Appalachian Natural Gas E&Ps'|t='Natural Gas Producers & Midstream Pipelines' t_score=35.942400000000006 t_protected=True t_size=2 unique_count=0 target='Appalachian Natural Gas E&Ps' target_score=58.24 target_protected=True
+67856|theme_auto_retired|2026-11-04 17:09:00|Auto-retired 9 theme(s) dropped during merge passes (2 with successor pointer)|'Biotech & Specialty Healthcare Drug Delivery/Immunology Leaders' -> parent='(unknown)'
+'Brazil & Latin America Fintech, Banking & Digital Platforms' -> parent='(unknown)'
+'For-Profit Postsecondary & Vocational Education' -> parent='(unknown)'
+'Healthcare & Se
+65655|theme_synthesis_run|2026-11-02 18:05:07|56 candidates → 1 proposed → 1 kept|{"run_date": "2026-11-02", "n_candidates": 56, "n_proposed": 1, "n_kept": 1, "stop_reason": "tool_use", "kept": [{"name": "Home Pest Control & Lawn/Garden Residential Services", "tickers": ["ROL", "RTO", "SMG"], "confidence": "low"}], "dropped": []}
+65663|theme_operator_promoted|2026-11-02 18:15:38|Operator promoted 'Home Pest Control & Lawn/Garden Residential Services' (3 members)|query='Home Pest Control & Lawn/Garden Residential Services' candidate='Home Pest Control & Lawn/Garden Residential Services' final='Home Pest Control & Lawn/Garden Residential Services' tickers=['ROL', 'RTO', 'SMG'] cand_source=rs_slope_synthesis
+65664|theme_ecosystem_assigned|2026-11-02 18:15:40|'Home Pest Control & Lawn/Garden Residential Services' → E-UNASSIGNED (unassigned)|members=ROL, RTO, SMG | no keyword/exemplar match
+66326|theme_carryforward_filter_stripped|2026-11-03 17:01:02|Home Pest Control & Lawn/Garden Residential Services: stripped 3 ticker(s) (sector_outlier)|theme=Home Pest Control & Lawn/Garden Residential Services
+pre_size=3 post_size=0
+sector_outlier=['ROL', 'RTO', 'SMG']
+66436|theme_empty_tickers|2026-11-03 17:04:05|2 theme(s) with empty ticker list after 'after_merge_1'|stage=after_merge_1
+empties=['Home Pest Control & Lawn/Garden Residential Services', 'Rare Earth & Nuclear Energy Materials Supply Chain']
+66437|theme_cap_drop|2026-11-03 17:04:05|Cap: 3 theme(s) dropped below PRUNE_MIN_TICKERS=2|dropped 'Software Development & DevOps Collaboration Platforms' size 1->1
+dropped 'Home Pest Control & Lawn/Garden Residential Services' size 0->0
+dropped 'Rare Earth & Nuclear Energy Materials Supply Chain' size 0->0
+66453|theme_auto_retired|2026-11-03 17:05:01|Auto-retired 10 theme(s) dropped during merge passes (0 with successor pointer)|'Agency & Hybrid Mortgage REIT Rate-Sensitive Cohort' -> parent='(unknown)'
+'AI data-center power buildout' -> parent='(unknown)'
+'Clinical-Stage Biotech Breakouts: Rare Blood, Autoimmune & Thyroid Eye Disease' -> parent='(unknown)'
+'European & UK Diversified 
+66478|theme_birth_gate|2026-11-03 17:06:12|2026-11-03 [promote/dedup_only] birth-gate: 2 birth / 10 join / 5 awaiting-2nd-sighting / 1 held-floor · ⚠ 83 previously-held later PASSED|[{"outcome": "join", "reason": "join", "join_target": "Multifamily REIT Recovery", "join_overlap": 0.75, "ledger_overlap": 1.0, "sightings": 14, "rs_avg": 32.74999999999999, "traj5": -9.916666666666671, "mode": "dedup_only", "name": "Apartment REIT Multifamily
+67884|theme_birth_gate|2026-11-04 17:10:09|2026-11-04 [promote/dedup_only] birth-gate: 3 birth / 14 join / 5 awaiting-2nd-sighting / 2 held-floor · ⚠ 86 previously-held later PASSED|[{"outcome": "held_floor", "reason": "held_floor", "join_target": null, "join_overlap": null, "ledger_overlap": 0.5833333333333334, "sightings": 14, "rs_avg": 11.516666666666666, "traj5": -5.783333333333331, "mode": "dedup_only", "name": "AI data-center power 
+67912|theme_correctness_check|2026-11-04 17:31:06|G1 748/786 (95.2% bar 90.0%) · G2 21/786 (2.7% bar<= 5.0%) · G3 119/141 (84.4% bar 90.0%) · G4 9/141 small (6.4% bar<= 10.0%; settled 7/139 5.0%) · latency median 8.5 sessions (n=10)|{"n_board": 141, "g1": {"pass": 748, "n": 786, "rate_pct": 95.2, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 21, "n": 786, "rate_pct": 2.7, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+69172|theme_carryforward_filter_stripped|2026-11-05 17:01:25|Home Pest Control & Lawn/Garden Residential Services: stripped 3 ticker(s) (sector_outlier)|theme=Home Pest Control & Lawn/Garden Residential Services
+pre_size=3 post_size=0
+sector_outlier=['ROL', 'RTO', 'SMG']
+69267|theme_score_ties|2026-11-05 17:04:19|25 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=77.9: ['Banking Software for Financial Institutions', 'Management & Business Process Consulting Services', 'Software & Data Platforms Re-Rating for the AI Era']
+score=77.7: ['Behavioral Health & Transplant/MSK Care Delivery Re-Rating'
+69268|theme_empty_tickers|2026-11-05 17:04:19|2 theme(s) with empty ticker list after 'after_merge_1'|stage=after_merge_1
+empties=['Home Pest Control & Lawn/Garden Residential Services', 'South African & Andean Gold/Silver Miners (SBSW, ARIS, AGI, BVN)']
+69269|theme_cap_drop|2026-11-05 17:04:19|Cap: 3 theme(s) dropped below PRUNE_MIN_TICKERS=2|dropped 'Home Pest Control & Lawn/Garden Residential Services' size 0->0
+dropped 'Auto Dealership Groups Rotation Turn (Franchised & Used Retail)' size 1->1
+dropped 'South African & Andean Gold/Silver Miners (SBSW, ARIS, AGI, BVN)' size 0->0
+69304|theme_auto_retired|2026-11-05 17:05:10|Auto-retired 11 theme(s) dropped during merge passes (3 with successor pointer)|'Auto Dealership Groups Rotation Turn (Franchised & Used Retail)' -> parent='Auto Dealership Groups (Franchised New & Used Vehicle Retail)'
+'Building Materials, Distribution & Security Products for Construction' -> parent='(unknown)'
+'Clinical-Stage Antibody, 
+69412|theme_synthesis_run|2026-11-05 18:05:07|51 candidates → 1 proposed → 1 kept|{"run_date": "2026-11-05", "n_candidates": 51, "n_proposed": 1, "n_kept": 1, "stop_reason": "tool_use", "kept": [{"name": "Self-Storage REIT Re-Rating", "tickers": ["CUBE", "EXR", "PSA", "LINE"], "confidence": "medium"}], "dropped": []}
+69420|theme_operator_promoted|2026-11-05 18:19:20|Operator promoted 'Self-Storage REIT Re-Rating' (4 members)|query='Self-Storage REIT Re-Rating' candidate='Self-Storage REIT Re-Rating' final='Self-Storage REIT Re-Rating' tickers=['CUBE', 'EXR', 'PSA', 'LINE'] cand_source=rs_slope_synthesis
+69421|theme_ecosystem_assigned|2026-11-05 18:19:22|'Self-Storage REIT Re-Rating' → E-REIT (haiku)|members=CUBE, EXR, PSA, LINE | 
+71358|theme_stage_flip_held|2026-11-06 17:04:45|Self-Storage REIT Re-Rating: Nascent→Fading held; y_Δ=+0.0|
+71386|theme_rehome_judged|2026-11-06 17:08:37|EXR stays — the judgement did not place it (offered on tape 0.73 to 'Insurance Brokerage & Employee Benefits Advisory', own_unjudgeable:thin_basket)|{"ticker": "EXR", "homes": ["Self-Storage REIT Re-Rating"], "target": "Insurance Brokerage & Employee Benefits Advisory", "target_corr": 0.7325, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "verdict": "stay", "removed_by_validation": false}
+71388|theme_rehome_judged|2026-11-06 17:08:37|CUBE stays — the judgement did not place it (offered on tape 0.72 to 'Frozen & Ice Cream Packaged Food Manufacturers', own_unjudgeable:thin_basket)|{"ticker": "CUBE", "homes": ["Self-Storage REIT Re-Rating"], "target": "Frozen & Ice Cream Packaged Food Manufacturers", "target_corr": 0.724, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "verdict": "stay", "removed_by_validation": false}
+71392|theme_rehome_judged|2026-11-06 17:08:37|PSA stays — the judgement did not place it (offered on tape 0.70 to 'Regulated Electric Utilities Defensive Rotation', own_unjudgeable:thin_basket)|{"ticker": "PSA", "homes": ["Self-Storage REIT Re-Rating"], "target": "Regulated Electric Utilities Defensive Rotation", "target_corr": 0.6976, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "verdict": "stay", "removed_by_validation": false}
+71588|theme_correctness_check|2026-11-06 17:31:06|G1 713/748 (95.3% bar 90.0%) · G2 21/748 (2.8% bar<= 5.0%) · G3 119/143 (83.2% bar 90.0%) · G4 13/143 small (9.1% bar<= 10.0%; settled 6/136 4.4%) · latency median 8.5 sessions (n=10)|{"n_board": 143, "g1": {"pass": 713, "n": 748, "rate_pct": 95.3, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 21, "n": 748, "rate_pct": 2.8, "bar_pct": 5.0, "pass_bar": true, "list": [["YETI", "Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands
+72338|theme_rehome_judged|2026-11-09 17:04:48|SNY stays — the judgement did not place it (offered on tape 0.68 to 'Self-Storage REIT Re-Rating', own_unjudgeable:thin_basket)|{"ticker": "SNY", "homes": ["Late-Stage Oncology Biotech & Biopharma Catalyst Names"], "target": "Self-Storage REIT Re-Rating", "target_corr": 0.6836, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "verdict": "stay", "removed_by_validation": false}
+72439|theme_score_ties|2026-11-09 17:07:14|22 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.2: ['Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Small Household Appliances & Home Consumer Durables']
+score=78.8: ['Behavioral Health & Transplant/MSK Care Delivery Re-Rating', 'Luxury & Branded Consumer Goods Retai
+72442|theme_score_ties|2026-11-09 17:07:14|22 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.2: ['Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Small Household Appliances & Home Consumer Durables']
+score=78.8: ['Behavioral Health & Transplant/MSK Care Delivery Re-Rating', 'Luxury & Branded Consumer Goods Retail/
+72468|theme_parent_pass_distinct|2026-11-09 17:08:37|Parent pass: 'Self-Storage REIT Re-Rating' vs 'Industrial Warehouse & Logistics REITs' PEERS — no containment, 30d pair cooldown|child='Self-Storage REIT Re-Rating' parent='Industrial Warehouse & Logistics REITs' same ecosystem E-REIT; parent 7 vs child 4 members; shared tickers 0; shared name tokens 0; industry overlap 1.00; word similarity 0.143 verdict='PEERS' reason="Self-storage an
+72470|theme_parent_pass_ran|2026-11-09 17:08:40|Parent pass: 6 candidate(s) adjudicated — 0 linked, 5 no containment (peers/unrelated), 1 inverted, 0 error|'Management & Business Process Consulting Services' → 'IT Consulting & Business Process Outsourcing Services' [PEERS] same ecosystem E-SAAS; parent 13 vs child 8 members; shared tickers 2; shared name tokens 4; industry overlap 0.38; word similarity 0.102
+'Cyb
+72528|theme_correctness_check|2026-11-09 17:31:10|G1 753/790 (95.3% bar 90.0%) · G2 24/790 (3.0% bar<= 5.0%) · G3 117/141 (83.0% bar 90.0%) · G4 8/141 small (5.7% bar<= 10.0%; settled 6/139 4.3%) · latency median 8.5 sessions (n=10)|{"n_board": 141, "g1": {"pass": 753, "n": 790, "rate_pct": 95.3, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 24, "n": 790, "rate_pct": 3.0, "bar_pct": 5.0, "pass_bar": true, "list": [["HTFL", "AI-Driven Diagnostics & Imaging Re-Rating", "Clinical-Sta
+73873|theme_merge_pairs_proposed|2026-11-10 17:04:13|Arm B Stage A: 8 candidate pair(s) for adjudication|'Aviation Leasing, Rental & Electric Aircraft Aerospace Suppliers' × 'Defense & Aerospace Contractors, Electronics & Aftermarket Services'
+'Liquid Biopsy & Molecular Cancer Diagnostics Testing' × 'Specialty & Mid-Cap Biopharma Commercial-Stage Leaders (Oncolog
+73876|theme_merge_distinct|2026-11-10 17:04:21|Arm B: 'Multifamily REIT Recovery' vs 'Self-Storage REIT Re-Rating' DISTINCT — 30d pair cooldown|driver_a='Self-storage occupancy stabilization and raised 2026 outlooks' driver_b='Yield-driven REIT rally plus company-specific apartment beats' reason='Self-storage and multifamily have different demand drivers. The shared element is only a generic Treasury-
+73947|theme_correctness_check|2026-11-10 17:31:10|G1 737/773 (95.3% bar 90.0%) · G2 22/773 (2.8% bar<= 5.0%) · G3 117/139 (84.2% bar 90.0%) · G4 6/139 small (4.3% bar<= 10.0%; settled 4/137 2.9%) · latency median 8.5 sessions (n=10)|{"n_board": 139, "g1": {"pass": 737, "n": 773, "rate_pct": 95.3, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 22, "n": 773, "rate_pct": 2.8, "bar_pct": 5.0, "pass_bar": true, "list": [["DGX", "AI-Driven Diagnostics & Imaging Re-Rating", "Active Lifest
+75170|theme_score_ties|2026-11-11 17:06:17|22 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.2: ['Programmatic & Mobile Ad-Tech Platforms', 'Small-Cap Digital Commerce & Promotions Platforms']
+score=79.0: ['AI-native software platform adoption', 'Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Small Household Ap
+75173|theme_score_ties|2026-11-11 17:06:17|21 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.2: ['Programmatic & Mobile Ad-Tech Platforms', 'Small-Cap Digital Commerce & Promotions Platforms']
+score=79.0: ['AI-native software platform adoption', 'Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Small Household Appl
+75243|theme_correctness_check|2026-11-11 17:31:07|G1 721/753 (95.8% bar 90.0%) · G2 18/753 (2.4% bar<= 5.0%) · G3 116/141 (82.3% bar 90.0%) · G4 7/141 small (5.0% bar<= 10.0%; settled 4/138 2.9%) · latency median 8.5 sessions (n=10)|{"n_board": 141, "g1": {"pass": 721, "n": 753, "rate_pct": 95.8, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 18, "n": 753, "rate_pct": 2.4, "bar_pct": 5.0, "pass_bar": true, "list": [["DGX", "AI-Driven Diagnostics & Imaging Re-Rating", "Active Lifest
+75930|theme_correctness_check|2026-11-12 17:31:08|G1 747/779 (95.9% bar 90.0%) · G2 21/779 (2.7% bar<= 5.0%) · G3 126/146 (86.3% bar 90.0%) · G4 9/146 small (6.2% bar<= 10.0%; settled 7/144 4.9%) · latency median 8.5 sessions (n=10)|{"_truncated": true, "_original_len": 32098, "_note": "payload exceeded the mi_audit_log detail budget; head kept, row still queryable", "_head": "{\"n_board\": 146, \"g1\": {\"pass\": 747, \"n\": 779, \"rate_pct\": 95.9, \"bar_pct\": 90.0, \"pass_bar\": true}
+76637|theme_score_ties|2026-11-13 17:08:37|25 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.5: ['AI-native software platform adoption', 'Mobility Technology & Autonomous Perception Platforms']
+score=79.3: ['Programmatic & Mobile Ad-Tech Platforms', 'Small Household Appliances & Home Consumer Durables']
+score=79.2: ['Antib
+76640|theme_score_ties|2026-11-13 17:08:37|25 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.5: ['AI-native software platform adoption', 'Mobility Technology & Autonomous Perception Platforms']
+score=79.3: ['Programmatic & Mobile Ad-Tech Platforms', 'Small Household Appliances & Home Consumer Durables']
+score=79.2: ['Antibod
+76714|theme_correctness_check|2026-11-13 17:31:09|G1 742/773 (96.0% bar 90.0%) · G2 21/773 (2.7% bar<= 5.0%) · G3 125/145 (86.2% bar 90.0%) · G4 10/145 small (6.9% bar<= 10.0%; settled 6/141 4.3%) · latency median 8.5 sessions (n=8)|{"n_board":145,"g1":{"pass":742,"n":773,"rate_pct":96.0,"bar_pct":90.0,"pass_bar":true},"g2":{"flagged":21,"n":773,"rate_pct":2.7,"bar_pct":5.0,"pass_bar":true,"list":[["DGX","AI-Driven Diagnostics & Imaging Re-Rating","Active Lifestyle, Fitness & Pet/Nutritio
+71625|theme_synthesis_run|2026-11-06 18:05:08|57 candidates → 1 proposed → 1 kept|{"run_date": "2026-11-06", "n_candidates": 57, "n_proposed": 1, "n_kept": 1, "stop_reason": "tool_use", "kept": [{"name": "Packaged Food, Agri-Inputs & Consumer Staples Rotation", "tickers": ["CPB", "MCD", "MOS", "SMG", "GPK", "SLVM", "AVNT"], "confidence": "l
+71627|theme_operator_promoted|2026-11-06 18:06:49|Operator promoted 'Packaged Food, Agri-Inputs & Consumer Staples Rotation' (7 members)|query='Packaged Food, Agri-Inputs & Consumer Staples Rotation' candidate='Packaged Food, Agri-Inputs & Consumer Staples Rotation' final='Packaged Food, Agri-Inputs & Consumer Staples Rotation' tickers=['CPB', 'MCD', 'MOS', 'SMG', 'GPK', 'SLVM', 'AVNT'] cand_so
+71628|theme_ecosystem_assigned|2026-11-06 18:06:51|'Packaged Food, Agri-Inputs & Consumer Staples Rotation' → E-CONS (keyword)|members=CPB, MCD, MOS, SMG, GPK, SLVM, AVNT | keyword score 2.5
+72319|theme_stage_flip_held|2026-11-09 17:02:35|Packaged Food, Agri-Inputs & Consumer Staples Rotation: Nascent→Fading held; y_Δ=+0.0|
+72439|theme_score_ties|2026-11-09 17:07:14|22 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.2: ['Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Small Household Appliances & Home Consumer Durables']
+score=78.8: ['Behavioral Health & Transplant/MSK Care Delivery Re-Rating', 'Luxury & Branded Consumer Goods Retai
+72442|theme_score_ties|2026-11-09 17:07:14|22 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.2: ['Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Small Household Appliances & Home Consumer Durables']
+score=78.8: ['Behavioral Health & Transplant/MSK Care Delivery Re-Rating', 'Luxury & Branded Consumer Goods Retail/
+72528|theme_correctness_check|2026-11-09 17:31:10|G1 753/790 (95.3% bar 90.0%) · G2 24/790 (3.0% bar<= 5.0%) · G3 117/141 (83.0% bar 90.0%) · G4 8/141 small (5.7% bar<= 10.0%; settled 6/139 4.3%) · latency median 8.5 sessions (n=10)|{"n_board": 141, "g1": {"pass": 753, "n": 790, "rate_pct": 95.3, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 24, "n": 790, "rate_pct": 3.0, "bar_pct": 5.0, "pass_bar": true, "list": [["HTFL", "AI-Driven Diagnostics & Imaging Re-Rating", "Clinical-Sta
+73947|theme_correctness_check|2026-11-10 17:31:10|G1 737/773 (95.3% bar 90.0%) · G2 22/773 (2.8% bar<= 5.0%) · G3 117/139 (84.2% bar 90.0%) · G4 6/139 small (4.3% bar<= 10.0%; settled 4/137 2.9%) · latency median 8.5 sessions (n=10)|{"n_board": 139, "g1": {"pass": 737, "n": 773, "rate_pct": 95.3, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 22, "n": 773, "rate_pct": 2.8, "bar_pct": 5.0, "pass_bar": true, "list": [["DGX", "AI-Driven Diagnostics & Imaging Re-Rating", "Active Lifest
+75170|theme_score_ties|2026-11-11 17:06:17|22 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.2: ['Programmatic & Mobile Ad-Tech Platforms', 'Small-Cap Digital Commerce & Promotions Platforms']
+score=79.0: ['AI-native software platform adoption', 'Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Small Household Ap
+75173|theme_score_ties|2026-11-11 17:06:17|21 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.2: ['Programmatic & Mobile Ad-Tech Platforms', 'Small-Cap Digital Commerce & Promotions Platforms']
+score=79.0: ['AI-native software platform adoption', 'Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Small Household Appl
+75243|theme_correctness_check|2026-11-11 17:31:07|G1 721/753 (95.8% bar 90.0%) · G2 18/753 (2.4% bar<= 5.0%) · G3 116/141 (82.3% bar 90.0%) · G4 7/141 small (5.0% bar<= 10.0%; settled 4/138 2.9%) · latency median 8.5 sessions (n=10)|{"n_board": 141, "g1": {"pass": 721, "n": 753, "rate_pct": 95.8, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 18, "n": 753, "rate_pct": 2.4, "bar_pct": 5.0, "pass_bar": true, "list": [["DGX", "AI-Driven Diagnostics & Imaging Re-Rating", "Active Lifest
+75849|theme_score_ties|2026-11-12 17:04:32|22 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=78.7: ['Behavioral Health & Transplant/MSK Care Delivery Re-Rating', 'Software & Data Platforms Re-Rating for the AI Era']
+score=76.8: ['Exchange, Options Trading & Alternative Consumer Credit Financials', 'Security & Public Safety Sy
+75850|theme_score_ties|2026-11-12 17:04:32|22 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=78.7: ['Behavioral Health & Transplant/MSK Care Delivery Re-Rating', 'Software & Data Platforms Re-Rating for the AI Era']
+score=76.8: ['Exchange, Options Trading & Alternative Consumer Credit Financials', 'Security & Public Safety Syst
+75930|theme_correctness_check|2026-11-12 17:31:08|G1 747/779 (95.9% bar 90.0%) · G2 21/779 (2.7% bar<= 5.0%) · G3 126/146 (86.3% bar 90.0%) · G4 9/146 small (6.2% bar<= 10.0%; settled 7/144 4.9%) · latency median 8.5 sessions (n=10)|{"_truncated": true, "_original_len": 32098, "_note": "payload exceeded the mi_audit_log detail budget; head kept, row still queryable", "_head": "{\"n_board\": 146, \"g1\": {\"pass\": 747, \"n\": 779, \"rate_pct\": 95.9, \"bar_pct\": 90.0, \"pass_bar\": true}
+76637|theme_score_ties|2026-11-13 17:08:37|25 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.5: ['AI-native software platform adoption', 'Mobility Technology & Autonomous Perception Platforms']
+score=79.3: ['Programmatic & Mobile Ad-Tech Platforms', 'Small Household Appliances & Home Consumer Durables']
+score=79.2: ['Antib
+76640|theme_score_ties|2026-11-13 17:08:37|25 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.5: ['AI-native software platform adoption', 'Mobility Technology & Autonomous Perception Platforms']
+score=79.3: ['Programmatic & Mobile Ad-Tech Platforms', 'Small Household Appliances & Home Consumer Durables']
+score=79.2: ['Antibod
+76714|theme_correctness_check|2026-11-13 17:31:09|G1 742/773 (96.0% bar 90.0%) · G2 21/773 (2.7% bar<= 5.0%) · G3 125/145 (86.2% bar 90.0%) · G4 10/145 small (6.9% bar<= 10.0%; settled 6/141 4.3%) · latency median 8.5 sessions (n=8)|{"n_board":145,"g1":{"pass":742,"n":773,"rate_pct":96.0,"bar_pct":90.0,"pass_bar":true},"g2":{"flagged":21,"n":773,"rate_pct":2.7,"bar_pct":5.0,"pass_bar":true,"list":[["DGX","AI-Driven Diagnostics & Imaging Re-Rating","Active Lifestyle, Fitness & Pet/Nutritio
+72564|theme_synthesis_run|2026-11-09 18:05:07|57 candidates → 1 proposed → 1 kept|{"run_date": "2026-11-09", "n_candidates": 57, "n_proposed": 1, "n_kept": 1, "stop_reason": "tool_use", "kept": [{"name": "Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)", "tickers": ["LEN", "PHM", "MTH", "RKT", "LOW", "QXO", "FBIN", "CW
+72572|theme_operator_promoted|2026-11-09 18:15:11|Operator promoted 'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' (8 members)|query='Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' candidate='Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' final='Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' tickers=['LEN', 'PHM',
+72573|theme_ecosystem_assigned|2026-11-09 18:15:13|'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' → E-REIT (haiku)|members=LEN, PHM, MTH, RKT, LOW, QXO, FBIN, CWK | 
+73751|theme_stage_flip_held|2026-11-10 17:01:00|Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services): Nascent→Fading held; y_Δ=+0.0|
+73866|theme_score_ties|2026-11-10 17:04:05|25 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.2: ['Beauty Specialty Retail & Distribution', 'Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Clinical-Stage Rare Endocrine & Metabolic Disease Biotech']
+score=77.4: ['AI-Driven Diagnostics & Imaging Re-Rating', 'Cell &
+73870|theme_score_ties|2026-11-10 17:04:05|25 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.2: ['Beauty Specialty Retail & Distribution', 'Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Clinical-Stage Rare Endocrine & Metabolic Disease Biotech']
+score=77.4: ['AI-Driven Diagnostics & Imaging Re-Rating', 'Cell & R
+73895|theme_parent_pass_distinct|2026-11-10 17:04:56|Parent pass: 'Commercial Real Estate Services & Brokerage' vs 'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' PEERS — no containment, 30d pair cooldown|child='Commercial Real Estate Services & Brokerage' parent='Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' same ecosystem E-REIT; parent 8 vs child 3 members; shared tickers 1; shared name tokens 1; industry overlap 1.00; word similarit
+73901|theme_parent_pass_ran|2026-11-10 17:05:11|Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error|'Commercial Real Estate Services & Brokerage' → 'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' [PEERS] same ecosystem E-REIT; parent 8 vs child 3 members; shared tickers 1; shared name tokens 1; industry overlap 1.00; word similarity 0
+73947|theme_correctness_check|2026-11-10 17:31:10|G1 737/773 (95.3% bar 90.0%) · G2 22/773 (2.8% bar<= 5.0%) · G3 117/139 (84.2% bar 90.0%) · G4 6/139 small (4.3% bar<= 10.0%; settled 4/137 2.9%) · latency median 8.5 sessions (n=10)|{"n_board": 139, "g1": {"pass": 737, "n": 773, "rate_pct": 95.3, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 22, "n": 773, "rate_pct": 2.8, "bar_pct": 5.0, "pass_bar": true, "list": [["DGX", "AI-Driven Diagnostics & Imaging Re-Rating", "Active Lifest
+75170|theme_score_ties|2026-11-11 17:06:17|22 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.2: ['Programmatic & Mobile Ad-Tech Platforms', 'Small-Cap Digital Commerce & Promotions Platforms']
+score=79.0: ['AI-native software platform adoption', 'Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Small Household Ap
+75173|theme_score_ties|2026-11-11 17:06:17|21 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.2: ['Programmatic & Mobile Ad-Tech Platforms', 'Small-Cap Digital Commerce & Promotions Platforms']
+score=79.0: ['AI-native software platform adoption', 'Clinical-Stage Immunology & Autoimmune Biotech Rotation', 'Small Household Appl
+75176|theme_merge_pairs_proposed|2026-11-11 17:06:23|Arm B Stage A: 8 candidate pair(s) for adjudication|'Aerospace & Rail Engineered Industrial Components' × 'Space Launch & Satellite Intelligence/Communications'
+'Aviation Leasing, Rental & Electric Aircraft Aerospace Suppliers' × 'Space Launch & Satellite Intelligence/Communications'
+'Government Services Contra
+75183|theme_merge_distinct|2026-11-11 17:06:38|Arm B: 'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' vs 'Leisure, Hospitality & Travel Cyclical Recovery' DISTINCT — 30d pair cooldown|driver_a='Consumer leisure and travel spending recovery' driver_b='Mortgage-rate relief and housing affordability policy' reason='Different demand drivers: discretionary leisure spending versus rate-sensitive housing. Shared consumer-cyclical label is only a s
+75196|theme_parent_pass_inverted|2026-11-11 17:06:58|Parent pass: adjudicator says the BROADER 'U.S. Homebuilders & Manufactured Housing' actually sits inside 'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' — no link written|child='Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' parent='U.S. Homebuilders & Manufactured Housing' same ecosystem E-REIT; parent 8 vs child 7 members; shared tickers 3; shared name tokens 1; industry overlap 0.43; word similarity 0
+75200|theme_parent_pass_ran|2026-11-11 17:07:08|Parent pass: 4 candidate(s) adjudicated — 0 linked, 3 no containment (peers/unrelated), 1 inverted, 0 error|'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' → 'U.S. Homebuilders & Manufactured Housing' [INVERTED] same ecosystem E-REIT; parent 8 vs child 7 members; shared tickers 3; shared name tokens 1; industry overlap 0.43; word similarity 0
+75243|theme_correctness_check|2026-11-11 17:31:07|G1 721/753 (95.8% bar 90.0%) · G2 18/753 (2.4% bar<= 5.0%) · G3 116/141 (82.3% bar 90.0%) · G4 7/141 small (5.0% bar<= 10.0%; settled 4/138 2.9%) · latency median 8.5 sessions (n=10)|{"n_board": 141, "g1": {"pass": 721, "n": 753, "rate_pct": 95.8, "bar_pct": 90.0, "pass_bar": true}, "g2": {"flagged": 18, "n": 753, "rate_pct": 2.4, "bar_pct": 5.0, "pass_bar": true, "list": [["DGX", "AI-Driven Diagnostics & Imaging Re-Rating", "Active Lifest
+75749|theme_rehome_judged|2026-11-12 17:01:53|WD stays — the judgement did not place it (offered on tape 0.79 to 'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)', own_unjudgeable:thin_basket)|{"ticker": "WD", "homes": ["Online Lending Marketplaces & Mortgage Finance Platforms"], "target": "Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)", "target_corr": 0.7902, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "verdict":
+75849|theme_score_ties|2026-11-12 17:04:32|22 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=78.7: ['Behavioral Health & Transplant/MSK Care Delivery Re-Rating', 'Software & Data Platforms Re-Rating for the AI Era']
+score=76.8: ['Exchange, Options Trading & Alternative Consumer Credit Financials', 'Security & Public Safety Sy
+75850|theme_score_ties|2026-11-12 17:04:32|22 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=78.7: ['Behavioral Health & Transplant/MSK Care Delivery Re-Rating', 'Software & Data Platforms Re-Rating for the AI Era']
+score=76.8: ['Exchange, Options Trading & Alternative Consumer Credit Financials', 'Security & Public Safety Syst
+75930|theme_correctness_check|2026-11-12 17:31:08|G1 747/779 (95.9% bar 90.0%) · G2 21/779 (2.7% bar<= 5.0%) · G3 126/146 (86.3% bar 90.0%) · G4 9/146 small (6.2% bar<= 10.0%; settled 7/144 4.9%) · latency median 8.5 sessions (n=10)|{"_truncated": true, "_original_len": 32098, "_note": "payload exceeded the mi_audit_log detail budget; head kept, row still queryable", "_head": "{\"n_board\": 146, \"g1\": {\"pass\": 747, \"n\": 779, \"rate_pct\": 95.9, \"bar_pct\": 90.0, \"pass_bar\": true}
+76637|theme_score_ties|2026-11-13 17:08:37|25 score-tie group(s) after stage 'after_merge_1'|stage=after_merge_1
+score=79.5: ['AI-native software platform adoption', 'Mobility Technology & Autonomous Perception Platforms']
+score=79.3: ['Programmatic & Mobile Ad-Tech Platforms', 'Small Household Appliances & Home Consumer Durables']
+score=79.2: ['Antib
+76640|theme_score_ties|2026-11-13 17:08:37|25 score-tie group(s) after stage 'after_cap_1'|stage=after_cap_1
+score=79.5: ['AI-native software platform adoption', 'Mobility Technology & Autonomous Perception Platforms']
+score=79.3: ['Programmatic & Mobile Ad-Tech Platforms', 'Small Household Appliances & Home Consumer Durables']
+score=79.2: ['Antibod
+76714|theme_correctness_check|2026-11-13 17:31:09|G1 742/773 (96.0% bar 90.0%) · G2 21/773 (2.7% bar<= 5.0%) · G3 125/145 (86.2% bar 90.0%) · G4 10/145 small (6.9% bar<= 10.0%; settled 6/141 4.3%) · latency median 8.5 sessions (n=8)|{"n_board":145,"g1":{"pass":742,"n":773,"rate_pct":96.0,"bar_pct":90.0,"pass_bar":true},"g2":{"flagged":21,"n":773,"rate_pct":2.7,"bar_pct":5.0,"pass_bar":true,"list":[["DGX","AI-Driven Diagnostics & Imaging Re-Rating","Active Lifestyle, Fitness & Pet/Nutritio
+75967|theme_synthesis_run|2026-11-12 18:05:07|59 candidates → 1 proposed → 1 kept|{"run_date": "2026-11-12", "n_candidates": 59, "n_proposed": 1, "n_kept": 1, "stop_reason": "tool_use", "kept": [{"name": "Digital Asset & Bitcoin Infrastructure Re-Rating", "tickers": ["RIOT", "SECZ", "CSQR"], "confidence": "low"}], "dropped": []}
+75971|theme_operator_promoted|2026-11-12 18:13:16|Operator promoted 'Digital Asset & Bitcoin Infrastructure Re-Rating' (3 members)|query='Digital Asset & Bitcoin Infrastructure Re-Rating' candidate='Digital Asset & Bitcoin Infrastructure Re-Rating' final='Digital Asset & Bitcoin Infrastructure Re-Rating' tickers=['RIOT', 'SECZ', 'CSQR'] cand_source=rs_slope_synthesis
+75972|theme_ecosystem_assigned|2026-11-12 18:13:17|'Digital Asset & Bitcoin Infrastructure Re-Rating' → E-CRYPTO (haiku)|members=RIOT, SECZ, CSQR | 
+76714|theme_correctness_check|2026-11-13 17:31:09|G1 742/773 (96.0% bar 90.0%) · G2 21/773 (2.7% bar<= 5.0%) · G3 125/145 (86.2% bar 90.0%) · G4 10/145 small (6.9% bar<= 10.0%; settled 6/141 4.3%) · latency median 8.5 sessions (n=8)|{"n_board":145,"g1":{"pass":742,"n":773,"rate_pct":96.0,"bar_pct":90.0,"pass_bar":true},"g2":{"flagged":21,"n":773,"rate_pct":2.7,"bar_pct":5.0,"pass_bar":true,"list":[["DGX","AI-Driven Diagnostics & Imaging Re-Rating","Active Lifestyle, Fitness & Pet/Nutritio
+(145 rows)
+== C board presence + member count of each promoted theme by night (check column names with
+Table "public.mi_themes"
+Column|Type|Collation|Nullable|Default
+id|integer||not null|nextval('mi_themes_id_seq'::regclass)
+theme_date|date||not null|
+name|text||not null|
+stage|text||not null|
+score|double precision|||
+description|text|||
+tickers|text[]|||
+created_at|timestamp with time zone|||now()
+rs_avg|double precision|||
+parent_theme|text|||
+days_active|integer||not null|0
+consecutive_accelerating|integer||not null|0
+pct_above_20sma|real|||
+source|text||not null|'live'::text
+Indexes:
+    "mi_themes_pkey" PRIMARY KEY, btree (id)
+    "idx_themes_date_name" UNIQUE, btree (theme_date, name)
+    "idx_themes_theme_date" btree (theme_date)
+nm|theme_date|source|members|tickers
+Software & Data Platforms Re-Rating for the AI Era|2026-10-22|shadow_promoted|8|{ADSK,BL,VERX,LZ,VYX,KD,UPWK,YELP}
+Software & Data Platforms Re-Rating for the AI Era|2026-10-23|live|5|{VYX,ADSK,VERX,BL,LZ}
+Software & Data Platforms Re-Rating for the AI Era|2026-10-26|live|5|{LZ,ADSK,BL,VYX,VERX}
+Software & Data Platforms Re-Rating for the AI Era|2026-10-27|live|5|{LZ,VERX,VYX,ADSK,BL}
+Software & Data Platforms Re-Rating for the AI Era|2026-10-28|live|5|{ADSK,VERX,LZ,VYX,BL}
+Software & Data Platforms Re-Rating for the AI Era|2026-10-29|live|5|{BL,LZ,ADSK,VYX,VERX}
+Software & Data Platforms Re-Rating for the AI Era|2026-10-30|live|5|{VERX,VYX,LZ,BL,ADSK}
+Natural Gas Producers & Midstream Pipelines|2026-10-29|shadow_promoted|4|{RRC,TRP,VIST,MGY}
+Natural Gas Producers & Midstream Pipelines|2026-10-30|live|4|{MGY,RRC,VIST,TRP}
+Natural Gas Producers & Midstream Pipelines|2026-11-02|live|4|{MGY,RRC,VIST,TRP}
+Natural Gas Producers & Midstream Pipelines|2026-11-03|live|4|{MGY,RRC,VIST,TRP}
+Natural Gas Producers & Midstream Pipelines|2026-11-04|live|0|{}
+Home Pest Control & Lawn/Garden Residential Services|2026-11-02|shadow_promoted|3|{ROL,RTO,SMG}
+Home Pest Control & Lawn/Garden Residential Services|2026-11-03|live|0|{}
+Home Pest Control & Lawn/Garden Residential Services|2026-11-04|shadow_promoted|3|{ROL,RTO,SMG}
+Home Pest Control & Lawn/Garden Residential Services|2026-11-05|live|0|{}
+Self-Storage REIT Re-Rating|2026-11-05|shadow_promoted|4|{CUBE,EXR,PSA,LINE}
+Self-Storage REIT Re-Rating|2026-11-06|live|4|{EXR,PSA,CUBE,SMA}
+Self-Storage REIT Re-Rating|2026-11-09|live|4|{SMA,EXR,CUBE,PSA}
+Self-Storage REIT Re-Rating|2026-11-10|live|4|{EXR,CUBE,SMA,PSA}
+Self-Storage REIT Re-Rating|2026-11-11|live|3|{CUBE,EXR,PSA}
+Self-Storage REIT Re-Rating|2026-11-12|live|3|{PSA,CUBE,EXR}
+Self-Storage REIT Re-Rating|2026-11-13|live|3|{PSA,EXR,CUBE}
+Packaged Food, Agri-Inputs & Consumer Staples Rotation|2026-11-06|shadow_promoted|7|{CPB,MCD,MOS,SMG,GPK,SLVM,AVNT}
+Packaged Food, Agri-Inputs & Consumer Staples Rotation|2026-11-09|live|5|{MOS,CPB,MCD,SMG,GPK}
+Packaged Food, Agri-Inputs & Consumer Staples Rotation|2026-11-10|live|5|{SMG,GPK,MOS,MCD,CPB}
+Packaged Food, Agri-Inputs & Consumer Staples Rotation|2026-11-11|live|4|{MOS,CPB,SMG,GPK}
+Packaged Food, Agri-Inputs & Consumer Staples Rotation|2026-11-12|live|4|{MOS,CPB,SMG,GPK}
+Packaged Food, Agri-Inputs & Consumer Staples Rotation|2026-11-13|live|4|{MOS,SMG,CPB,GPK}
+Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)|2026-11-09|shadow_promoted|8|{LEN,PHM,MTH,RKT,LOW,QXO,FBIN,CWK}
+Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)|2026-11-10|live|8|{CWK,LEN,MTH,QXO,LOW,PHM,FBIN,RKT}
+Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)|2026-11-11|live|7|{RKT,LOW,LEN,FBIN,QXO,PHM,MTH}
+Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)|2026-11-12|live|7|{LEN,MTH,FBIN,PHM,QXO,LOW,RKT}
+Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)|2026-11-13|live|7|{LOW,MTH,LEN,PHM,QXO,RKT,FBIN}
+Digital Asset & Bitcoin Infrastructure Re-Rating|2026-11-12|shadow_promoted|3|{RIOT,SECZ,CSQR}
+Digital Asset & Bitcoin Infrastructure Re-Rating|2026-11-13|live|2|{RIOT,SECZ}
+(36 rows)
+\d: extra argument "first)" ignored

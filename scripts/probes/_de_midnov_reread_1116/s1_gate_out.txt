@@ -1,0 +1,53 @@
+last bar 2026-11-13 calendar days 158
+campaigns (live alerts >= 08-22): 84
+campaigns with no EP-day bar: [('HELP', datetime.date(2026, 11, 16))]
+with >= 15 sessions by 2026-11-13 : 44  label computable (15 complete bars): 44
+last EP date with 15 sessions: 2026-10-23  with 40: 2026-09-17
+lane campaigns not in live alerts: []
+
+group | campaigns>=15s | tiers | with lane fire | first fires (settled/open) | all fires | n40 | FAST | ran+50 | SLOW | his
+G1 08-22..08-28 | 6 | {'HIGH': 6} | 6 | 14 (14/0) | 30 | 6 | [] | [] | [] | []
+G2 08-29..09-13 | 10 | {'HIGH': 8, 'MODERATE': 2} | 9 | 23 (23/0) | 50 | 10 | [] | [] | [] | []
+G3 09-14..10-03 | 12 | {'HIGH': 9, 'none': 1, 'MODERATE': 2} | 12 | 27 (27/0) | 51 | 5 | [] | ['VICR'] | [] | []
+G4 10-04..10-09 | 10 | {'HIGH': 6, 'MODERATE': 4} | 9 | 22 (22/0) | 38 | 0 | [] | [] | [] | ['PENG']
+G5 10-10+ | 6 | {'MODERATE': 2, 'HIGH': 4} | 5 | 10 (9/1) | 19 | 0 | [] | [] | [] | []
+
+young campaigns (< 15 sessions, outside the population): 40
+
+first-attempt fires per cell (pattern x group), settled+mature-20s / all:
+  G1 08-22..08-28  ep_low_reclaim     first fires   5  with 20 sessions after the fire   5  settled   5
+  G1 08-22..08-28  ep_close_reclaim   first fires   4  with 20 sessions after the fire   4  settled   4
+  G1 08-22..08-28  ep_close_620_prox  first fires   5  with 20 sessions after the fire   5  settled   5
+  G1 08-22..08-28  ep_high_break      first fires   0  with 20 sessions after the fire   0  settled   0
+  G2 08-29..09-13  ep_low_reclaim     first fires   8  with 20 sessions after the fire   8  settled   8
+  G2 08-29..09-13  ep_close_reclaim   first fires   5  with 20 sessions after the fire   5  settled   5
+  G2 08-29..09-13  ep_close_620_prox  first fires   8  with 20 sessions after the fire   8  settled   8
+  G2 08-29..09-13  ep_high_break      first fires   2  with 20 sessions after the fire   2  settled   2
+  G3 09-14..10-03  ep_low_reclaim     first fires  10  with 20 sessions after the fire  10  settled  10
+  G3 09-14..10-03  ep_close_reclaim   first fires   6  with 20 sessions after the fire   6  settled   6
+  G3 09-14..10-03  ep_close_620_prox  first fires   9  with 20 sessions after the fire   9  settled   9
+  G3 09-14..10-03  ep_high_break      first fires   2  with 20 sessions after the fire   2  settled   2
+  G4 10-04..10-09  ep_low_reclaim     first fires   7  with 20 sessions after the fire   7  settled   7
+  G4 10-04..10-09  ep_close_reclaim   first fires   7  with 20 sessions after the fire   7  settled   7
+  G4 10-04..10-09  ep_close_620_prox  first fires   6  with 20 sessions after the fire   5  settled   6
+  G4 10-04..10-09  ep_high_break      first fires   2  with 20 sessions after the fire   2  settled   2
+  G5 10-10+        ep_low_reclaim     first fires   3  with 20 sessions after the fire   0  settled   3
+  G5 10-10+        ep_close_reclaim   first fires   4  with 20 sessions after the fire   1  settled   3
+  G5 10-10+        ep_close_620_prox  first fires   3  with 20 sessions after the fire   0  settled   3
+  G5 10-10+        ep_high_break      first fires   0  with 20 sessions after the fire   0  settled   0
+
+ALL-GROUPS labelled count only: first fires by pattern {'ep_close_620_prox': 31, 'ep_low_reclaim': 33, 'ep_close_reclaim': 26, 'ep_high_break': 6}
+
+top campaigns by 15-session peak:
+   VICR 2026-09-17 G3 HIGH max15 +53% s15 +21% n_sess 41 s40 -24% slow=False max40 +53% lane fires 5
+   ACN 2026-10-01 G3 HIGH max15 +22% s15 +22% n_sess 31  lane fires 2
+   ONON 2026-09-22 G3 HIGH max15 +22% s15 +21% n_sess 38  lane fires 4
+   ALAB 2026-09-04 G2 MODERATE max15 +22% s15 +13% n_sess 49 s40 -26% slow=False max40 +29% lane fires 3
+   MANE 2026-10-19 G5 HIGH max15 +20% s15 +18% n_sess 19  lane fires 1
+   IONQ 2026-09-08 G2 HIGH max15 +18% s15 +9% n_sess 48 s40 -26% slow=False max40 +18% lane fires 6
+   QCOM 2026-09-08 G2 HIGH max15 +18% s15 +6% n_sess 48 s40 -6% slow=False max40 +18% lane fires 8
+   CIFR 2026-09-16 G3 MODERATE max15 +18% s15 -13% n_sess 42 s40 -57% slow=False max40 +18% lane fires 7
+   KOD 2026-09-28 G3 HIGH max15 +16% s15 +2% n_sess 34  lane fires 5
+   SEI 2026-09-08 G2 HIGH max15 +13% s15 +7% n_sess 48 s40 +8% slow=False max40 +26% lane fires 7
+   OKTA 2026-08-27 G1 HIGH max15 +11% s15 +5% n_sess 55 s40 +23% slow=False max40 +36% lane fires 6
+   BSP 2026-10-14 G5 MODERATE max15 +11% s15 -13% n_sess 22  lane fires 2
