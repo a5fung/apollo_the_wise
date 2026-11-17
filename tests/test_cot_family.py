@@ -1194,3 +1194,65 @@ def test_the_weekly_message_names_a_set_up_market_with_no_price_data_once():
     assert "wheat" in io.weeks[REPORT]["rows"]
     ok = _wheat_week_io(FRI)
     assert _run(cf.run_weekly(FRI, ok))["no_price_data"] == [] and "No usable price data" not in ok.sent[0]
+
+
+# ── 2026-11-17: Fed minutes + Australian news (names read from the served answers, scripts/probes/_cot_events_1117) ──
+_PROBE = Path(__file__).resolve().parent.parent / "scripts" / "probes" / "_cot_events_1117"
+
+
+def _probe(country):
+    import json
+    return json.loads((_PROBE / f"{country}.json").read_text())
+
+
+def test_new_event_types_map_to_the_right_markets():
+    macro = cf.markets_for_event("CPI")
+    assert cf.markets_for_event("FED_MINUTES") == macro and "gold" in macro
+    for t in ("RBA_MINUTES", "AU_JOBS", "AU_WAGES"):
+        assert cf.markets_for_event(t) == ("australian_dollar",)
+        assert cf.RELEASE_CONVENTION[t] == (11, 30, "Australia/Sydney")
+    assert cf.RELEASE_CONVENTION["FED_MINUTES"] == (14, 0, "America/New_York")
+
+
+def test_fx_parser_emits_the_new_types_from_the_real_answers():
+    au = {(r["event_date"], r["event_type"]) for r in cf.calendar_rows_from_fx(_probe("australia"), "australia")}
+    types = {t for _d, t in au}
+    assert {"RBA", "RBA_MINUTES", "AU_JOBS", "AU_WAGES"} <= types
+    assert (date(2026, 11, 17), "RBA_MINUTES") in au and (date(2026, 11, 19), "AU_JOBS") in au
+    assert (date(2026, 11, 18), "AU_WAGES") in au and (date(2026, 11, 3), "RBA") in au
+    jobs = [d for d, t in au if t == "AU_JOBS"]
+    assert len(jobs) == len(set(jobs)) == 5                   # one row per release: the other jobs series are not read
+    us = {(r["event_date"], r["event_type"]) for r in cf.calendar_rows_from_fx(_probe("united-states"))}
+    assert (date(2026, 11, 18), "FED_MINUTES") in us and (date(2026, 10, 7), "FED_MINUTES") in us
+    assert not any(t in ("RBA_MINUTES", "AU_JOBS", "AU_WAGES") for _d, t in us)
+    # a name is only read on its own country's page
+    assert cf.calendar_rows_from_fx([_fx("RBA Meeting Minutes", None, "")], "united-states") == []
+    assert cf.calendar_rows_from_fx([_fx("FOMC Minutes", None, "")], "australia") == []
+
+
+def test_existing_types_unchanged_by_the_country_generalisation():
+    assert cf.FX_COUNTRY_EVENTS["euro-area"] == {"ECB Interest Rate Decision": "ECB"}
+    assert cf.FX_COUNTRY_EVENTS["switzerland"] == {"SNB Interest Rate Decision": "SNB"}
+    assert set(cf.FX_CENTRAL_BANKS) == {"euro-area", "united-kingdom", "japan", "canada", "australia", "switzerland"}
+    assert cf.FX_US_TRIGGERS["Fed Interest Rate Decision"] == "FOMC" and cf.FX_US_TRIGGERS["FOMC Minutes"] == "FED_MINUTES"
+
+
+def test_a_type_without_surprise_components_gives_no_label_and_does_not_break():
+    for t in ("FED_MINUTES", "RBA_MINUTES", "AU_JOBS", "AU_WAGES"):
+        assert t not in cf.SURPRISE_COMPONENTS
+    s = cf.surprises_from_fx([_fx("FOMC Minutes", None, ""), _fx("Employment Change", "76.3K", "15K")])
+    assert s == {}
+    assert cf.news_class("FED_MINUTES", "gold", "short", WED, s)["cls"] == "UNKNOWN"
+    assert cf.news_class("AU_JOBS", "australian_dollar", "long", WED, s)["cls"] == "UNKNOWN"
+
+
+def test_daily_alert_on_a_fed_minutes_day_sends_with_an_unknown_label():
+    io = _daily_io()
+    io.minutes["GC=F"] = [(_t(14, 0), 100.0), (_t(14, 1), 101.0)]
+    io.cal = [{"event_date": WED, "event_type": "FED_MINUTES", "release_et": _t(14, 0), "source": "s"}]
+    io.fx = [_fx("FOMC Minutes", None, "", "2026-11-11T19:00:00.000Z")]
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["alerts"] == 1 and res["sent"] is True
+    row = io.alerts[(WED, "gold", "short", "news")]
+    assert row["events"] == "FED_MINUTES" and row["news_class"] == "UNKNOWN"
+    assert "FED MINUTES" in io.sent[0]

@@ -97,6 +97,8 @@ index values and whether the set up is main or close-list, and two LABELS on new
 - *News vs consensus:* with the crowd / against the crowd / in line / unknown, from actual vs forecast
   (surprise ÷ the series' 2023–2026 typical surprise, in line under 0.25; the research's mapping of which way a
   surprise pushes each market). Central-bank decisions other than the Fed, and WASDE, have no consensus: unknown.
+  Fed minutes, RBA minutes, Australian jobs (Employment Change) and Australian wages (Wage Price Index QoQ) are
+  watched news days too (2026-11-17) with no consensus read: unknown.
 
 **Friday confirmation:** a market that is a main set up this week and was not last week, with a failure day (N1 or
 C1) between the Wednesday after the report date and the release day, whose stop has not since been closed through.
@@ -116,7 +118,7 @@ week since its last main set up (within 26 weeks) that Commercials (stock indice
 
 **Sources (all free, read-only):** CFTC public reporting API (legacy futures-only; the yearly history zip as the
 fallback); Yahoo continuous futures via yfinance for daily and 1-minute bars; FXEmpire's economic calendar for US
-macro, EIA and central-bank decisions (this week re-read every day, three more weeks every Monday); USDA's WASDE
+macro, EIA, Fed minutes, central-bank decisions and the Australian minutes / jobs / wages (this week re-read every day, three more weeks every Monday); USDA's WASDE
 release dates; yfinance earnings dates for NVDA MSFT AAPL AMZN GOOGL META TSLA MU INTC AVGO.
 
 **Tables:** `mi_cot_nets_weekly` (CFTC nets cache), `mi_cot_weeks` (report week, known_from, message sent),
@@ -172,6 +174,26 @@ serves a market 1-20 bars instead of its ~65 is skipped for that market without 
 - A federal-holiday week moves the CFTC release; the daily job picks it up the day it lands.
 
 ## Change log
+
+### 2026-11-17 — four more watched news events: Fed minutes, RBA minutes, Australian jobs, Australian wages (operator "go")
+
+**Trigger**: his 11-16 issue named RBA minutes, Australian wages, Fed minutes and Australian employment as
+news-failure triggers for AUD; our calendar watched rate decisions only.
+
+**Evidence**: names read from the live FXEmpire answers 2026-11-17 (`scripts/probes/_cot_events_1117/`, 2026-07-20 to
+2026-11-20): `FOMC Minutes` (US page, 3 releases, 14:00 ET), `RBA Meeting Minutes` (3), `Employment Change` (5, one
+row per release; the Full Time / Part Time / Unemployment / Participation rows are not read) and `Wage Price Index
+QoQ` (2; the YoY row is not read), all on the australia page already read for the RBA decision. Types FED_MINUTES
+(same markets as the other US macro types), RBA_MINUTES / AU_JOBS / AU_WAGES (Australian Dollar). Release times by
+convention: 14:00 New York, 11:30 Sydney. The country map is now name -> type per country; existing types unchanged.
+
+**Anticipated effect**: news alerts on Australian Dollar rise on the roughly 3 AU release days a month beyond the RBA
+decision, and the Fed-minutes day (~8 a year) is a news day for every US macro market. These types carry no
+actual-vs-consensus read, so their news label reads "unknown". No orders, no sizing.
+
+**Reversion-flag**: NEW (additive; the existing events are untouched).
+
+**Status**: built; deploy scope market-agent.
 
 ### 2026-11-16 — close-to-a-set-up rule rebuilt from his own definition (operator "ok")
 
