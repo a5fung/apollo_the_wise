@@ -2608,3 +2608,9 @@ EVIDENCE:
 - (2d) merge validated against the merged name: 13 of 13 (prod read 10-31).
 - (3) theme-guard check: PASS 10-20. (4) row (a) re-read: his "yes" 10-20, shipped 10-23, read 10-27. (5) birth-gate accuracy: 9 of 9 vs the 85% bar (10-31). (6) fewer-unrelated decision: his "Go with rec", leave (10-31). (7) `lane2_widen_reconsider`: carried by its own review (his 11-04 ruling).
 - (8) the four carried items re-filed as #727 (b), with the sector-filter wipe found in this read as #727 (a).
+
+## #726 — RS Leaders dashboard page + nightly export (2026-11-16)
+BAR: "two consecutive nightly files published and the page read on his phone"
+EVIDENCE:
+- Two nightly files: 11-15 18:30 ET (as_of 2026-11-13) and 11-16 (portfolio-app2 `93ea638`, `apollo_rs_leaders_snapshot.json` as_of 2026-11-16, 50 rows in each of 1w / 1m / 3m / 6m).
+- His phone read 11-16 evening: "rS leaders looks fine" (with one catch, BRZE a buyout → fixed the same night: deal-pinned names leave the board, `scripts/export_rs_leaders_snapshot.sql`; read-only prod run `scripts/probes/_726_mna_1116/export_new.out` removes all six pinned top-50 names, 27 pinned in the universe).

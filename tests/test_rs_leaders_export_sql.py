@@ -71,13 +71,23 @@ def test_active_themes_latest_row_first_then_drop_retired():
 
 KEYS = ("rank", "ticker", "name", "close", "ret", "pct_from_high", "adr20", "dollar_volume", "sector", "themes",
         "version", "generated_at", "as_of", "universe", "n_liquid", "periods", "sessions", "n_ranked", "rows",
-        "definitions")
+        "definitions", "n_deal_pinned", "deal_pinned")
 
 
 @pytest.mark.parametrize("key", KEYS)
 def test_contract_key_emitted_and_documented(key):
     assert re.search(rf"'{key}',", CODE), key
     assert f"`{key}`" in SSOT_PATH.read_text(), key
+
+
+def test_deal_pinned_names_leave_the_board():
+    """BRZE 11-16: the same two legs as db.get_deal_pinned_tickers, applied before ranking."""
+    assert "bool_and((high_price - low_price) / NULLIF(close, 0) < 0.02)" in CODE
+    assert "HAVING count(*) = 4" in CODE
+    assert "pct >= 15 AND rvol >= 10" in CODE
+    assert "ROWS BETWEEN 21 PRECEDING AND 1 PRECEDING" in CODE
+    assert "k.as_of - 180" in CODE
+    assert "p.ticker NOT IN (SELECT ticker FROM deal_pinned)" in CODE
 
 
 # ------------------------------------------------------------------------------------------- the shell: behaviour

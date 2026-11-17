@@ -94,10 +94,43 @@ px AS (
        AND d.ticker IN (SELECT ticker FROM universe)
      GROUP BY d.ticker
 ),
+-- DEAL-PINNED: a stock whose price is held by an announced buyout leaves the board (operator
+-- 2026-11-16, BRZE: "looks like a buy out? Do we filter m&a?"). The SAME free two-leg rule as
+-- db.get_deal_pinned_tickers, which every RS pool already applies (keep the two in step):
+--   1. the pin: each of the last 4 sessions trades inside 2% of its close;
+--   2. the announcement: within 180 calendar days, one day up >= 15% on >= 10x its own trailing
+--      21-day average volume.
+-- Both legs, because a low range alone is just a sleepy stock.
+pin_recent AS (
+    SELECT d.ticker, d.trade_date, d.close, d.high_price, d.low_price, d.volume,
+           row_number() OVER (PARTITION BY d.ticker ORDER BY d.trade_date DESC) AS rn
+      FROM mi_daily_closes d
+     CROSS JOIN k
+     WHERE d.trade_date <= k.as_of AND d.trade_date > k.as_of - 180
+       AND d.ticker IN (SELECT ticker FROM universe)
+),
+pin_leg AS (
+    SELECT ticker FROM pin_recent WHERE rn <= 4
+     GROUP BY ticker
+    HAVING count(*) = 4
+       AND bool_and((high_price - low_price) / NULLIF(close, 0) < 0.02)
+),
+pin_chg AS (
+    SELECT ticker,
+           100.0 * (close / NULLIF(lag(close) OVER (PARTITION BY ticker ORDER BY trade_date), 0) - 1) AS pct,
+           volume::numeric / NULLIF(avg(volume) OVER (PARTITION BY ticker ORDER BY trade_date
+                                     ROWS BETWEEN 21 PRECEDING AND 1 PRECEDING), 0) AS rvol
+      FROM pin_recent
+     WHERE ticker IN (SELECT ticker FROM pin_leg)
+),
+deal_pinned AS (
+    SELECT DISTINCT ticker FROM pin_chg WHERE pct >= 15 AND rvol >= 10
+),
 liquid AS (
     SELECT p.*
       FROM px p
      WHERE p.c0 IS NOT NULL AND p.n_dv >= 15 AND p.dv20 >= 5000000
+       AND p.ticker NOT IN (SELECT ticker FROM deal_pinned)
 ),
 usable_score_date AS (
     SELECT score_date
@@ -163,7 +196,8 @@ SELECT json_build_object(
     'as_of', (SELECT as_of FROM k),
     'universe', json_build_object('n', (SELECT count(*) FROM universe),
                                   'n_liquid', (SELECT count(*) FROM liquid),
-                                  'min_dollar_volume', 5000000),
+                                  'min_dollar_volume', 5000000,
+                                  'n_deal_pinned', (SELECT count(*) FROM deal_pinned)),
     'periods', json_build_object(
         '1w', json_build_object('sessions', 5,   'n_ranked', (SELECT max(n_ranked) FROM per WHERE period = '1w'),
                                 'rows', COALESCE((SELECT rows FROM rows_json WHERE period = '1w'), '[]'::json)),
@@ -186,6 +220,8 @@ SELECT json_build_object(
             'Average daily range: the mean of high divided by low over the last 20 sessions, as a percent above 1.',
         'dollar_volume',
             'Median of close times volume over the last 20 sessions.',
+        'deal_pinned',
+            'Left out: a stock held at a buyout price. Each of the last 4 sessions traded inside 2 percent of the close, and within 180 days one day rose 15 percent or more on at least 10 times its 21-day average volume.',
         'sector',
             'The nightly RS run''s sector when the stock is in it, else the cached sector; empty when neither has one.',
         'themes',
