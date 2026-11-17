@@ -3079,3 +3079,9 @@ His words on the first paper buys' chart sheet (`scripts/probes/_717_paper_1117/
 - The buy level the list used, 63.87, is the HIGH of that red bar, not the base's top (about 66.9-68.4). Bought 11-17 09:38 at 64.32, stopped at 62.18 (-$550).
 - Lesson as a label: a big down bar inside the base breaks the tightness; the name is not a breakout set-up until it re-tightens. A labelled NO for the breakout detector; no rule change made on one example.
 - His refinement, same thread: *"If it rebuilds tightness after that, maybe ok, but need a few days."* So the big red bar resets the clock: the base qualifies again only after a few tight days AFTER that bar (ANDG had one bounce day, 11-16, then bought 11-17).
+
+## 2026-11-17 — breakout paper buy read: PPC is not ok (#717)
+
+His words on the same sheet: *"Ppc looks choppy, I don't like it."*
+- The daily chart: no run-up before the base; a wide, overlapping range around 26-33 for months with big bars both ways; bought 11-17 10:50 at 29.35 (level 29.13, stop 28.45).
+- A labelled NO: choppy price action is not a consolidation after a run-up. Same family lesson as his structure rule (a runup plus a flat, holding base is the gate). No rule change on one example.
