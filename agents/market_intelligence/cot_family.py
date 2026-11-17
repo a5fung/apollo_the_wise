@@ -172,6 +172,9 @@ EVENT_MARKETS: dict[str, tuple[str, ...]] = {
     "EIA_NATGAS": ("natural_gas",),
     "BOE": ("british_pound",), "ECB": ("euro",), "BOJ": ("japanese_yen",), "BOC": ("canadian_dollar",),
     "RBA": ("australian_dollar",), "SNB": ("swiss_franc",),
+    # Named in Shapiro's 2026-11-16 issue as news-failure triggers (no actual-vs-consensus label: see SURPRISE_COMPONENTS)
+    "FED_MINUTES": _MACRO_MARKETS,
+    "RBA_MINUTES": ("australian_dollar",), "AU_JOBS": ("australian_dollar",), "AU_WAGES": ("australian_dollar",),
 }
 EARNINGS_TICKERS = ("NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "META", "TSLA", "MU", "INTC", "AVGO")
 EARNINGS_MARKETS = ("nasdaq", "sp500", "dow")
@@ -186,22 +189,29 @@ FX_US_TRIGGERS = {
     "Inflation Rate MoM": "CPI", "PPI MoM": "PPI", "Non Farm Payrolls": "NFP", "Retail Sales MoM": "RETAIL",
     "GDP Growth Rate QoQ Adv": "GDP", "GDP Growth Rate QoQ 2nd Est": "GDP", "GDP Growth Rate QoQ Final": "GDP",
     "Fed Interest Rate Decision": "FOMC", "EIA Crude Oil Stocks Change": "EIA_PETRO",
-    "EIA Natural Gas Stocks Change": "EIA_NATGAS",
+    "EIA Natural Gas Stocks Change": "EIA_NATGAS", "FOMC Minutes": "FED_MINUTES",
 }
-# country slug -> (exact event name, type). ECB / BoE / BoJ names were seen on the calendar 2026-11-15; the BoC / RBA /
-# SNB names follow the same pattern but no such row was listed that day (coverage gap until one is seen).
-FX_CENTRAL_BANKS = {
-    "euro-area": ("ECB Interest Rate Decision", "ECB"), "united-kingdom": ("BoE Interest Rate Decision", "BOE"),
-    "japan": ("BoJ Interest Rate Decision", "BOJ"), "canada": ("BoC Interest Rate Decision", "BOC"),
-    "australia": ("RBA Interest Rate Decision", "RBA"), "switzerland": ("SNB Interest Rate Decision", "SNB"),
+# country slug -> {exact event name: type}: that country's rate decision plus any other watched release. ECB / BoE /
+# BoJ names were seen on the calendar 2026-11-15; the BoC / SNB names follow the same pattern but no such row was listed
+# that day (coverage gap until one is seen). The Australian names were read from the served answer 2026-11-17
+# (scripts/probes/_cot_events_1117/australia.json); "Employment Change" is the headline jobs series (one row per release).
+FX_COUNTRY_EVENTS: dict[str, dict[str, str]] = {
+    "euro-area": {"ECB Interest Rate Decision": "ECB"}, "united-kingdom": {"BoE Interest Rate Decision": "BOE"},
+    "japan": {"BoJ Interest Rate Decision": "BOJ"}, "canada": {"BoC Interest Rate Decision": "BOC"},
+    "australia": {"RBA Interest Rate Decision": "RBA", "RBA Meeting Minutes": "RBA_MINUTES",
+                  "Employment Change": "AU_JOBS", "Wage Price Index QoQ": "AU_WAGES"},
+    "switzerland": {"SNB Interest Rate Decision": "SNB"},
 }
+FX_CENTRAL_BANKS = FX_COUNTRY_EVENTS   # the countries read besides the US (loops iterate the keys)
 # Standing release times (news_calendar_times.csv conventions) — used when a source gives a date without a time.
 RELEASE_CONVENTION: dict[str, tuple[int, int, str]] = {
     "CPI": (8, 30, "America/New_York"), "PPI": (8, 30, "America/New_York"), "NFP": (8, 30, "America/New_York"),
     "RETAIL": (8, 30, "America/New_York"), "GDP": (8, 30, "America/New_York"), "FOMC": (14, 0, "America/New_York"),
     "EIA_PETRO": (10, 30, "America/New_York"), "EIA_NATGAS": (10, 30, "America/New_York"),
     "WASDE": (12, 0, "America/New_York"), "BOC": (9, 45, "America/Toronto"), "BOE": (12, 0, "Europe/London"),
-    "ECB": (14, 15, "Europe/Berlin"), "RBA": (14, 30, "Australia/Sydney"), "SNB": (9, 30, "Europe/Zurich"),
+    "ECB": (14, 15, "Europe/Berlin"), "RBA": (14, 30, "Australia/Sydney"),
+    "FED_MINUTES": (14, 0, "America/New_York"), "RBA_MINUTES": (11, 30, "Australia/Sydney"),
+    "AU_JOBS": (11, 30, "Australia/Sydney"), "AU_WAGES": (11, 30, "Australia/Sydney"), "SNB": (9, 30, "Europe/Zurich"),
     "EARN": (16, 0, "America/New_York"),
 }
 
@@ -622,8 +632,7 @@ def calendar_rows_from_fx(events: list[dict], country: str = "united-states") ->
         if country == "united-states":
             typ = FX_US_TRIGGERS.get(name)
         else:
-            want = FX_CENTRAL_BANKS.get(country)
-            typ = want[1] if want and want[0] == name else None
+            typ = FX_COUNTRY_EVENTS.get(country, {}).get(name)
         ts = _fx_ts(e)
         if typ is None or ts is None:
             continue
