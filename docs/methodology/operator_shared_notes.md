@@ -3071,3 +3071,11 @@ Sheet `scripts/probes/_594_sample9_1115/sample9_blind.png` (12 random gap days, 
 
 ## 2026-11-15 — breakout grades sample read (#717)
 Sheet `scripts/probes/_717_grades_1115/sheet_grades.png` (6 random A+ vs 6 random C, 2021-01..2022-03). His words: > "grades look good except BNGO looks somewhat extended". Read as approval of the grades (cutoffs in `scripts/probes/_717_grades_1115/cutoffs.json`: A+ ≥ -3.4942, A ≥ -4.1845, B ≥ -4.8715 log-odds). BNGO (A+) flagged extended — the extended-pick checks measured 11-14 all dropped 5–29% of Qullamaggie's buys, so it stays an eye note, not a rule.
+
+## 2026-11-17 — breakout paper buy read: ANDG is not ok (#717)
+
+His words on the first paper buys' chart sheet (`scripts/probes/_717_paper_1117/buys_1117.png`): *"Andg doesn't look ok, large red bar the day before, breaking the tightness."*
+- The bar: Fri 11-13 opened 62.82 (gap down from 65.42), range 8.9% of close, closed 60.06 (-8.2%) on 1.03M shares (about 1.7x the prior week). The base before it had traded 64-68 for two weeks on 2.6-4.2% ranges. Mon 11-16 bounced to 62.85.
+- The buy level the list used, 63.87, is the HIGH of that red bar, not the base's top (about 66.9-68.4). Bought 11-17 09:38 at 64.32, stopped at 62.18 (-$550).
+- Lesson as a label: a big down bar inside the base breaks the tightness; the name is not a breakout set-up until it re-tightens. A labelled NO for the breakout detector; no rule change made on one example.
+- His refinement, same thread: *"If it rebuilds tightness after that, maybe ok, but need a few days."* So the big red bar resets the clock: the base qualifies again only after a few tight days AFTER that bar (ANDG had one bounce day, 11-16, then bought 11-17).
