@@ -4669,8 +4669,24 @@ async def _consolidation_readiness_job():
             digest.append(f"🚩 *HTF breakouts settled* ({len(htf_settled)} · {hcap} capture) — SHADOW (#356)")
             digest.append("")
         # Both Family-A entry modes surface, SEPARATELY tagged (#327 shadow-fix §3 — never blended):
-        ant_fired = [x for x in entries_fired if x[2] == "anticipate"]
-        conf_fired = [x for x in entries_fired if x[2] == "confirm"]
+        # Fires outside breakout v1's signed universe (his 10-29 ruling: stocks + single-asset funds;
+        # leveraged / inverse / basket funds and general ETFs out) stay RECORDED — the #327 A/B writes
+        # both cohorts — but never reach his push (operator 11-17, FNGD: "Fngd is a levered etf").
+        # Unknown type passes, as everywhere else.
+        from agents.market_intelligence.breakout_v1 import security_admitted
+        from agents.market_intelligence.db import bv1_get_security_types_named
+        try:
+            _types = await bv1_get_security_types_named(sorted({x[0] for x in entries_fired}))
+        except Exception as _ne:   # loud-ok: digest-only filter; a failed read shows the unfiltered list
+            logger.warning(f"anticipation digest: security-type read failed ({_ne}); list unfiltered")
+            _types = {}
+
+        def _listable(tk):
+            st, nm = _types.get(tk, (None, None))
+            return security_admitted(tk, st, nm)[0]
+
+        ant_fired = [x for x in entries_fired if x[2] == "anticipate" and _listable(x[0])]
+        conf_fired = [x for x in entries_fired if x[2] == "confirm" and _listable(x[0])]
         if ant_fired:
             digest.append(f"🎯 *Anticipate entry fired today* ({len(ant_fired)}) — in-coil (N≥{de.ENTRY_TIGHT_N} tight days at apex)")
             for ticker, origin, _m, sig in ant_fired[:12]:

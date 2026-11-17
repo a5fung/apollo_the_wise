@@ -284,6 +284,10 @@ adapters). U&R: `anticipation.detect_gdl_reclaim`, the `fishhook_detector` recla
 
 ## Change log
 
+### 2026-11-17 — the Family A daily push drops fires outside breakout v1's universe (his "Fngd is a levered etf")
+
+The 11-17 push listed a Confirm fire on FNGD (a −3× leveraged ETN). The push now shows only fires that breakout v1's universe would admit (`breakout_v1.security_admitted`: common stock / ADRs, single-asset funds per his 10-29 ruling, unknown type passes; leveraged / inverse / basket funds and general ETFs out). **Display only:** every fire is still RECORDED with its `is_common_stock` flag (the #327 A/B writes both cohorts); no detection or entry gate changed. Test: `tests/test_consolidation_scan_timeout.py::test_non_stock_confirm_fire_not_pushed`.
+
 ### 2026-06-27 — RMV recalibration (min-max → ratio-to-baseline) + #327 entry gate moved to `rmv_15d`
 
 **What & why.** The RMV tightness primitive (`flag_detector._compute_rmv`) was rewritten from min-max

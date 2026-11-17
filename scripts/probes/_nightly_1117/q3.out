@@ -1,0 +1,22 @@
+SET
+ticker|security_type
+BULZ|ETN
+FNGD|ETN
+FNGU|ETN
+SOXL|ETF
+TQQQ|ETF
+(5 rows)
+security_type|count
+ETF|5854
+CS|5706
+WARRANT|547
+PFD|465
+ADRC|398
+UNIT|351
+FUND|345
+RIGHT|172
+SP|171
+ETS|117
+ETV|92
+ETN|52
+(12 rows)

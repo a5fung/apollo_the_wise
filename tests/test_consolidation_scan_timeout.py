@@ -1296,3 +1296,33 @@ async def test_701c_a_skipped_name_is_not_rewritten_so_it_leaves_the_board(monke
     assert stats["stale_bars"] == 1 and stats["written"] == 1
     assert await _board_tickers() == ["LIVE"]                     # tonight: only the rewritten row
     assert pool.row("QRVO", _HELD_ANCHOR) == ((_TODAY - timedelta(days=1)).isoformat(), None)
+
+
+# ── 11-17 (operator: "Fngd is a levered etf"): an ETN fire stays recorded but is not pushed ──
+@pytest.mark.asyncio
+async def test_non_stock_confirm_fire_not_pushed(monkeypatch):
+    import agents.market_intelligence.db as db
+    audits, telegrams, settle_calls = _patch_job_shell(monkeypatch)
+    sig = {"entry_price": 35.09, "stop_price": 29.36}
+
+    async def scan(today, stats, transitions, entries_fired):
+        entries_fired.append(("FNGD", "family_a", "confirm", sig))
+
+    async def types_named(tickers):
+        return {"FNGD": ("ETN", "MicroSectors FANG+ Index -3X Inverse Leveraged ETN"),
+                "ZCSH": ("ETV", "Grayscale Zcash Trust")}
+
+    monkeypatch.setattr(sched, "_consolidation_readiness_scan", scan)
+    monkeypatch.setattr(db, "bv1_get_security_types_named", types_named)
+    await sched._consolidation_readiness_job()
+    assert telegrams == []          # the only fire was an ETN: nothing notable to push
+
+    async def scan2(today, stats, transitions, entries_fired):
+        entries_fired.append(("FNGD", "family_a", "confirm", sig))
+        entries_fired.append(("NVDA", "family_a", "confirm", sig))
+        entries_fired.append(("ZCSH", "family_a", "confirm", sig))
+
+    monkeypatch.setattr(sched, "_consolidation_readiness_scan", scan2)
+    await sched._consolidation_readiness_job()
+    assert len(telegrams) == 1 and "NVDA" in telegrams[0] and "FNGD" not in telegrams[0]
+    assert "ZCSH" in telegrams[0]     # a single-asset fund stays, per his 10-29 breakout ruling
