@@ -211,7 +211,7 @@ could not read; ORANGE JUICE is named in the weekly message and never pages.
 
 **Reversion-flag**: NEW.
 
-**Status**: built, not deployed (deploy scope: market-agent).
+**Status**: deployed 2026-11-15 `3af0b701` (market-agent then execution); live since the 11-16 catch-up run.
 
 ### 2026-11-15 — live alerts added, no orders (operator "Go")
 
@@ -233,7 +233,7 @@ research rate (it was measured on the official index, so expect a difference); n
 
 **Reversion-flag**: NEW.
 
-**Status**: built, not deployed. To revert: remove the two `add_job` blocks in `scheduler.py`; the tables are inert.
+**Status**: deployed 2026-11-15 `3af0b701`; first live run 11-16 (`cot_daily` catch-up, 40 markets stored). To revert: remove the two `add_job` blocks in `scheduler.py`; the tables are inert.
 
 ### 2026-11-15 — family created (operator)
 - Trigger: his words above. Evidence: the research in `~/cmr_lab/docs/` (method.md, index_rebuild.md, step5*.md).
