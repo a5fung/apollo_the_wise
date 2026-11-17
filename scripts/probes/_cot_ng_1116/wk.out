@@ -1,0 +1,20 @@
+SET
+market|comm|lspec|sspec|setup|close_setup
+australian_dollar|100|0|49||
+cocoa|100|0|0|long|
+coffee|100|0|45||
+crude_oil|92|7|17||
+euro|94|6|29||
+heating_oil|100|19|7||
+japanese_yen|3|100|4||
+lean_hogs|100|3|22||
+live_cattle|100|0|48||
+lumber|95|4|64||
+natural_gas|100|0|16||
+platinum|97|10|0||long
+russell|2|100|46|short|
+silver|100|0|5|long|
+soybean_oil|100|0|1|long|
+swiss_franc|0|100|48||
+wheat|98|3|0|long|
+(17 rows)

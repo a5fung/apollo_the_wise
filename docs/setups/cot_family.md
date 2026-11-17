@@ -32,6 +32,11 @@ weaker or a correlated position is already on.
   inclusive of the current week; rounded half up. 0 = max crowded short, 100 = max crowded long.
 - Set up: Commercials ≤ 5 and both speculator groups ≥ 95 (short), or the mirror (long); equity indices on
   Commercials alone.
+- Close to a set up (his footnote: "markets of interest based on Jason's review and Commercials reaching max or very
+  close to max crowded levels and waiting for both speculators to reach max levels"; operator: a speculator group at
+  the opposite extreme is not a set up): not a set up, Commercials ≥ 95, Large Specs ≤ 15, Small Specs ≤ 80 (long),
+  or the mirror (short: ≤ 5, ≥ 85, ≥ 20). Equity indices: Commercials 90–94 / 6–10. His review drops a few each week;
+  the rule cannot see that.
 - Lookbacks (weeks): equities 26–27; Pound / Yen / CAD / Swiss 30; AUD / NZD ~80; Euro / Dollar Index 90; bonds ~97;
   Crude / Heating Oil / Gasoline 40; Natural Gas 68; Gold 24, Silver 23, Platinum 16, Copper 86; Coffee / OJ 8,
   Cocoa 10, Cotton 40, Sugar 131; Wheat 10, Meal 30, Bean Oil 34, Corn 86, Soybeans 127; Hogs / Cattle 13;
@@ -63,7 +68,7 @@ forward. No strategy row, no order, no sizing, no broker import. Code: `agents/m
 
 | Job | When (ET) | What it does |
 |---|---|---|
-| `cot_weekly` | Fri 17:40, retry 18:40 | Reads the CFTC report (released Fri 15:30), computes the index for 40 markets (Oats left out: no longer reported), stores the week, sends ONE message: this week's set ups (main rule, and the close list by the research-approximate rule), markets that LEFT a set up or reached neutral ~50 (the exit signal for anyone holding), and the Friday-confirmation alerts. One message per report week; the retry is a no-op once it has gone. |
+| `cot_weekly` | Fri 17:40, retry 18:40 | Reads the CFTC report (released Fri 15:30), computes the index for 40 markets (Oats left out: no longer reported), stores the week, sends ONE message: this week's set ups (main rule, and the close list: Commercials at max, waiting on the speculators), markets that LEFT a set up or reached neutral ~50 (the exit signal for anyone holding), and the Friday-confirmation alerts. One message per report week; the retry is a no-op once it has gone. |
 | `cot_daily` | Mon–Fri 17:15 | For each market set up (main or close list) in the week **known before today**: today's daily bar, today's scheduled events, feed A. ONE message when there is an alert; silence otherwise; one audit row every run. Mon–Thu, after the day's calendar read and before the alerts, it picks up a holiday-delayed CFTC release (and then sends that week's message, entry "the next open"). |
 
 Why after 17:00: the futures daily bar ends at 17:00 ET, and the Friday check needs Friday's bar. The daily job
@@ -167,6 +172,27 @@ serves a market 1-20 bars instead of its ~65 is skipped for that market without 
 - A federal-holiday week moves the CFTC release; the daily job picks it up the day it lands.
 
 ## Change log
+
+### 2026-11-16 — close-to-a-set-up rule rebuilt from his own definition (operator "ok")
+
+**Trigger**: he asked why Natural Gas was not a close set up (Shapiro on Discord 11-16: "close set up"); the alert
+listed 0 of his 9 close set ups for the 11-10 report. He then shared the heat-map footnote and ruled "specs shouldn't
+be opposite of max".
+
+**Evidence**: `~/cmr_lab/docs/close_rule_study.md` (pre-registered time split, frozen before scoring: fit 2024-03 →
+2025-12, 73 issues; holdout 2026, 42 issues; 135 candidates; blind re-computation matched). On the prod (pre-algo)
+index, 2026 holdout: old rule catches 20% of his close list (84% of flags on his lists, 2.0 a week); new rule 78% /
+92% / 6.8 a week. Large Specs cutoff is a plateau from 15 to 40. Counting 4 off-schedule issues that can never be
+scored lowers recall a few points for every rule. The 11-10 week on prod: main list identical to his (5 of 5); close
+7 of his 9 (misses Euro, Commercials 94; Heating Oil, Large Specs 19), 1 extra (Platinum).
+
+**Anticipated effect**: the weekly message's close list grows from ~2 to ~7 markets a week and matches his; the daily
+job watches those markets too, so news / correlation-failure alerts on close-list markets rise in proportion. No
+orders, no sizing. Unintended: more daily bar reads (a dead ticker on a newly listed market pages).
+
+**Reversion-flag**: NEW (replaces the research-approximate "both speculators ≤ 15 / ≥ 85" close rule).
+
+**Status**: built; deploy scope market-agent.
 
 ### 2026-11-15 — review fixes: empty calendar answers, the first-run Friday check, a dead price ticker
 

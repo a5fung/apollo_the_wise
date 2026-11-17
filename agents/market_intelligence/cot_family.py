@@ -99,6 +99,10 @@ MARKETS: dict[str, tuple[str, tuple[str, ...], int, str, str]] = {
     "ethereum": ("ETHEREUM", ("146021",), 89, "ETH=F", "crypto"),
 }
 EQUITIES = frozenset({"sp500", "nasdaq", "dow", "russell"})
+# Close-to-a-set-up thresholds (non-equity; operator "ok" 2026-11-16, see classify). Long side shown; short mirrors.
+CLOSE_COMM_BAND = 5          # Commercials >= 95 (long) / <= 5 (short): at or very close to max crowded
+CLOSE_LSPEC_BAND = 15        # Large Specs <= 15 (long) / >= 85 (short): leaning the crowded way (plateau 15-40)
+CLOSE_SSPEC_OPPOSITE = 80    # Small Specs <= 80 (long) / >= 20 (short): not at the opposite extreme
 # Markets whose first-minute label is not read. NOTE (review 2026-11-15): the original reason — "DX-Y.NYB has no
 # 1-minute history on yfinance" — no longer holds (8,003 one-minute rows over 8 days that day; the weekly archive
 # saves them). The label is left off for it until that is ruled on; this set changes no alert.
@@ -290,8 +294,13 @@ def classify(market: str, comm, lspec, sspec) -> tuple[Optional[str], Optional[s
     """(setup, close_setup), each 'short' / 'long' / None.
 
     MAIN: Commercials <= 5 and both speculator groups >= 95 -> short (fade a crowd that is long); the mirror -> long;
-    equity indices on Commercials alone. CLOSE (research-approximate, detector.py `rule`): not main, Commercials
-    <= 10 and both speculators >= 85 -> short; Commercials >= 90 and both <= 15 -> long."""
+    equity indices on Commercials alone.
+    CLOSE (operator "ok" 2026-11-16; his heat-map footnote: Commercials at or very close to max, WAITING for both
+    speculator groups; his note: a speculator group at the OPPOSITE extreme is not a set up): not main, Commercials
+    <= 5 and Large Specs >= 85 and Small Specs >= 20 -> short; Commercials >= 95 and Large Specs <= 15 and Small
+    Specs <= 80 -> long. Equity indices keep the Commercials-only 6-10 / 90-94 band. Study: ~/cmr_lab
+    docs/close_rule_study.md (2026 holdout: catches 78% of his close list, 92% of flags on his lists, ~6.8 a week;
+    the old both-specs rule caught 20%)."""
     if comm is None:
         return None, None
     eq = market in EQUITIES
@@ -308,9 +317,17 @@ def classify(market: str, comm, lspec, sspec) -> tuple[Optional[str], Optional[s
         return "short", None
     if comm >= 95 and both(hi=5):
         return "long", None
-    if comm <= 10 and both(lo=85):
+    if eq:
+        if comm <= 10:
+            return None, "short"
+        if comm >= 90:
+            return None, "long"
+        return None, None
+    if not have:
+        return None, None
+    if comm <= CLOSE_COMM_BAND and lspec >= 100 - CLOSE_LSPEC_BAND and sspec >= 100 - CLOSE_SSPEC_OPPOSITE:
         return None, "short"
-    if comm >= 90 and both(hi=15):
+    if comm >= 100 - CLOSE_COMM_BAND and lspec <= CLOSE_LSPEC_BAND and sspec <= CLOSE_SSPEC_OPPOSITE:
         return None, "long"
     return None, None
 
@@ -692,7 +709,7 @@ def format_weekly_message(report_date: date, rows: dict[str, dict], prev: dict[s
 
     body = block("SET UP (fade the crowd)", main, "setup") if main else ["SET UP: none this week"]
     if close:
-        body += [""] + block("CLOSE TO A SET UP (approximate rule)", close, "close_setup")
+        body += [""] + block("CLOSE TO A SET UP (Commercials at max, speculators not there yet)", close, "close_setup")
     if exits:
         body += ["", "LEFT A SET UP / BACK TO NEUTRAL (exit signal if held)"]
         for x in exits:

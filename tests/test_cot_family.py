@@ -116,16 +116,25 @@ def test_market_table_is_whole():
     ("gold", (5, 95, 95), ("short", None)),
     ("gold", (95, 5, 5), ("long", None)),
     ("gold", (5, 95, 94), (None, "short")),          # one speculator group short of 95 -> the close list
-    ("gold", (6, 99, 99), (None, "short")),
-    ("gold", (10, 85, 85), (None, "short")),
-    ("gold", (11, 99, 99), (None, None)),
-    ("gold", (90, 15, 15), (None, "long")),
-    ("gold", (90, 16, 15), (None, None)),
-    ("gold", (0, 100, 50), (None, None)),            # Commercials alone are not enough outside stock indices
+    ("gold", (6, 99, 99), (None, None)),             # close needs Commercials at max (<= 5), 11-16 rule
+    ("gold", (5, 85, 20), (None, "short")),
+    ("gold", (5, 84, 50), (None, None)),             # Large Specs not yet leaning the crowded way
+    ("gold", (3, 100, 4), (None, None)),             # Small Specs at the OPPOSITE extreme (Yen 11-10): not a set up
+    ("gold", (95, 15, 80), (None, "long")),
+    ("gold", (95, 16, 50), (None, None)),
+    ("gold", (94, 0, 0), (None, None)),              # Commercials below 95 (Euro 11-10): not close outside stock indices
+    ("gold", (0, 100, 50), (None, "short")),         # Commercials at max, waiting on Small Specs (Swiss franc 11-10)
+    ("natural_gas", (100, 0, 16), (None, "long")),   # his 11-16 Discord: "close set up"; the old rule missed it
+    ("natural_gas", (100, 0, 81), (None, None)),
+    ("gold", (95, None, 10), (None, None)),          # a missing group never makes a close set up
     ("nasdaq", (5, 10, 10), ("short", None)),        # stock indices: Commercials alone
     ("nasdaq", (95, 99, 99), ("long", None)),
     ("nasdaq", (6, 84, 76), (None, "short")),
     ("nasdaq", (50, 99, 99), (None, None)),
+    ("nasdaq", (10, 50, 50), (None, "short")),       # stock indices keep the Commercials-only 6-10 / 90-94 close band
+    ("nasdaq", (11, 50, 50), (None, None)),
+    ("nasdaq", (90, None, None), (None, "long")),
+    ("nasdaq", (89, 50, 50), (None, None)),
     ("gold", (3, None, 99), (None, None)),           # a group with no index cannot complete a set up
     ("gold", (None, 99, 99), (None, None)),
 ])
@@ -400,7 +409,7 @@ def test_weekly_message_lists_set_ups_exits_and_the_friday_alert():
     _no_pipe_table(text)
     assert re.search(r"GOLD\s+short C  3 L 97 S 96\n", text)                # carried from last week: not 'new'
     assert re.search(r"WHEAT\s+long  C100 L  0 S  0  new", text)
-    assert "CLOSE TO A SET UP (approximate rule)" in text and re.search(r"NASDAQ\s+short C  6 L 84 S 76", text)
+    assert "CLOSE TO A SET UP (Commercials at max, speculators not there yet)" in text and re.search(r"NASDAQ\s+short C  6 L 84 S 76", text)
     assert "CORN" not in text
     assert re.search(r"CRUDE OIL\s+was short C 52 L 47 S 60  left \+ neutral ~50", text)
     assert "WHEAT LONG  failure day Wed 11-11: news (WASDE)" in text and "entry: Sunday open   stop: a close below 540.25" in text
@@ -792,7 +801,8 @@ def test_weekly_stores_the_index_and_sends_one_message_per_report():
     days = weekdays_to(FRI, 30)
     wheat = [(d, 100.0, 101.0, 99.0, 100.0) for d in days]
     wheat[-2] = (days[-2], 100.0, 101.5, 99.0, 101.0)           # Thursday 11-05: an UP close in a market set up LONG
-    io.bars = {"ZW=F": wheat, "ZS=F": bars_to(FRI, 100.0), "ZM=F": bars_to(FRI, 100.0), "ZC=F": bars_to(FRI, 100.0)}
+    io.bars = {"ZW=F": wheat, "ZS=F": bars_to(FRI, 100.0), "ZM=F": bars_to(FRI, 100.0), "ZC=F": bars_to(FRI, 100.0),
+               "HE=F": bars_to(FRI, 100.0), "LE=F": bars_to(FRI, 100.0)}  # lean hogs (97/4/44) is a close set up since 11-16
     io.cal = [{"event_date": date(2026, 11, 5), "event_type": "WASDE", "release_et": None, "source": "s"}]
     res = _run(cf.run_weekly(FRI, io))
     assert res["status"] == "sent" and res["report_date"] == REPORT and res["setups"] == 1 and res["friday"] == 1
@@ -822,7 +832,8 @@ def _wheat_week_io(end):
     wheat = [(d, 100.0, 101.0, 99.0, 100.0) for d in days]
     i = days.index(date(2026, 11, 5))
     wheat[i] = (days[i], 100.0, 101.5, 99.0, 101.0)             # Thursday 11-05: an UP close in a market set up LONG
-    io.bars = {"ZW=F": wheat, "ZS=F": bars_to(end, 100.0), "ZM=F": bars_to(end, 100.0), "ZC=F": bars_to(end, 100.0)}
+    io.bars = {"ZW=F": wheat, "ZS=F": bars_to(end, 100.0), "ZM=F": bars_to(end, 100.0), "ZC=F": bars_to(end, 100.0),
+               "HE=F": bars_to(end, 100.0), "LE=F": bars_to(end, 100.0)}  # lean hogs (97/4/44) is a close set up since 11-16
     io.cal = [{"event_date": date(2026, 11, 5), "event_type": "WASDE", "release_et": None, "source": "s"}]
     return io
 
@@ -909,7 +920,8 @@ def test_a_report_first_seen_late_is_known_from_its_friday_and_gets_no_friday_al
     days = [b[0] for b in wheat]
     wheat[days.index(date(2026, 11, 10))] = (date(2026, 11, 10), 100.0, 101.5, 99.0, 101.0)
     wheat[-1] = (mon, 101.0, 103.0, 100.5, 102.5)
-    io.bars = {"ZW=F": wheat, "ZS=F": bars_to(mon, 100.0), "ZM=F": bars_to(mon, 100.0), "ZC=F": bars_to(mon, 100.0)}
+    io.bars = {"ZW=F": wheat, "ZS=F": bars_to(mon, 100.0), "ZM=F": bars_to(mon, 100.0), "ZC=F": bars_to(mon, 100.0),
+               "HE=F": bars_to(mon, 100.0), "LE=F": bars_to(mon, 100.0)}  # lean hogs (97/4/44) is a close set up since 11-16
     io.cal = [{"event_date": date(2026, 11, 10), "event_type": "WASDE", "release_et": None, "source": "s"},
               {"event_date": mon, "event_type": "WASDE", "release_et": None, "source": "s"}]
     res = _run(cf.run_daily(mon, io, datetime(2026, 11, 16, 17, 15, tzinfo=_ET)))
@@ -955,7 +967,7 @@ def test_the_real_sender_puts_the_alert_in_the_paper_chat_with_its_block_intact(
 def test_a_delayed_release_is_caught_up_by_the_daily_job_with_next_open():
     io = _weekly_io()
     mon = date(2026, 11, 9)
-    io.bars = {"ZW=F": bars_to(mon, 100.0)}
+    io.bars = {"ZW=F": bars_to(mon, 100.0), "HE=F": bars_to(mon, 100.0), "LE=F": bars_to(mon, 100.0)}
     res = _run(cf.run_daily(mon, io, datetime(2026, 11, 9, 17, 15, tzinfo=_ET)))
     assert res["catch_up"]["status"] == "sent" and io.weeks[REPORT]["known_from"] == mon and len(io.sent) == 1
     assert res["report_date"] == date(2026, 10, 27)             # Monday's own bar is judged on the week known before Monday

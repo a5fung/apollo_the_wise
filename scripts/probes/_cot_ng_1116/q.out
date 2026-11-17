@@ -1,0 +1,26 @@
+SET
+Table "public.mi_cot_index_weekly"
+Column|Type|Collation|Nullable|Default
+report_date|date||not null|
+market|text||not null|
+comm|integer||not null|
+lspec|integer|||
+sspec|integer|||
+setup|text|||
+close_setup|text|||
+comm_net|bigint|||
+lspec_net|bigint|||
+sspec_net|bigint|||
+lookback_weeks|integer|||
+created_at|timestamp with time zone||not null|now()
+Indexes:
+    "mi_cot_index_weekly_pkey" PRIMARY KEY, btree (report_date, market)
+Check constraints:
+    "mi_cot_index_weekly_close_setup_check" CHECK (close_setup = ANY (ARRAY['short'::text, 'long'::text]))
+    "mi_cot_index_weekly_setup_check" CHECK (setup = ANY (ARRAY['short'::text, 'long'::text]))
+report_date|market|comm|lspec|sspec|setup|close_setup|comm_net|lspec_net|sspec_net|lookback_weeks|created_at
+2026-11-10|unleaded_gas|59|44|18|||-80498|70023|10475|40|2026-11-16 22:15:37.733067+00
+2026-11-10|natural_gas|100|0|16|||261335|-269998|8663|68|2026-11-16 22:15:37.733067+00
+2026-11-03|unleaded_gas|66|41|11|||-76931|68151|8780|40|2026-11-16 22:15:37.727859+00
+2026-11-03|natural_gas|100|0|59|||243049|-258863|15814|68|2026-11-16 22:15:37.727859+00
+(4 rows)
