@@ -1,0 +1,16 @@
+SET
+ERROR:  column "exit_reason" does not exist
+LINE 1: SELECT id, ticker, status, skip_reason, exit_reason, updated...
+                                                ^
+HINT:  Perhaps you meant to reference the column "mi_live_trades.skip_reason".
+timezone|event_type|summary
+2026-11-17 09:45:10.169078|exposure_family_checked|CYRX (paper/Breakout v1 (paper)): no theme membership — nothing to compare
+2026-11-17 09:45:11.289461|breakout_v1_entry_order|CYRX → auto_entered trade_id=786 level=$20.37 broke 09:44 (high $20.39) stop=$19.57 vol 62,558 vs pace 101,417 (UNDER pace; not a gate)
+2026-11-17 10:00:00.450731|order_status_reconciled|CYRX order=bd10cfd1: new -> held (paper)
+2026-11-17 10:00:00.562038|order_status_reconciled|CYRX order=c06e39bd: pending_new -> new (paper)
+2026-11-17 15:55:10.106536|breakout_v1_planned_entry_cancel|CYRX: cancelling breakout v1 buy c06e39bd on purpose (cancel: window:breakout_unfilled_eod: unfilled at 15:55 ET)
+2026-11-17 15:55:14.744226|breakout_v1_cancel_failed|CYRX: order c06e39bd cancel cancel not confirmed (accepted=True, state=open) — retried next minute
+2026-11-17 15:55:21.486408|breakout_v1_planned_cancel_seen|CYRX [paper] order c06e39bd cancelled by the breakout v1 job on purpose — the job settles the row
+2026-11-17 16:05:00.029541|eod_unfilled_cancelled|CYRX entry cancelled: EOD unfilled
+2026-11-17 16:25:00.080773|orb_cancellation_reclassified|CYRX 2026-11-17: would_have_filled
+(9 rows)

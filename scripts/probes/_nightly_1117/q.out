@@ -1,0 +1,8 @@
+SET
+timezone|summary|left
+2026-11-17 15:55:14.744226|CYRX: order c06e39bd cancel cancel not confirmed (accepted=True, state=open) — retried next minute|{"trade_id": 786, "order_id": "c06e39bd-ae5e-4d3a-a48b-0f7760e5b0c7", "reason": "window:breakout_unfilled_eod: unfilled at 15:55 ET"}
+(1 row)
+id|created_at|jsonb_typeof|left
+2|2026-11-17 22:15:06.961982+00|string|"{\"kinds\": [\"news\"], \"first_minute\": {\"status\": \"ok\", \"move\": 0.06534387792173317, \"big\": false}, \"news\": [{\"event\": \"RETAIL\", \"first_minute\": {\"status\": \"ok\", \"move\": 0.06
+1|2026-11-17 22:15:06.958811+00|string|"{\"kinds\": [\"news\"], \"first_minute\": {\"status\": \"ok\", \"move\": -0.003373279303201588, \"big\": false}, \"news\": [{\"event\": \"RETAIL\", \"first_minute\": {\"status\": \"ok\", \"move\": -0
+(2 rows)

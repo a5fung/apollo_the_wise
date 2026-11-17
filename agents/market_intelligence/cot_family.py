@@ -1100,7 +1100,10 @@ class Io:
         async with pool.acquire() as conn:
             for r in rows:
                 rec = await conn.fetchrow(_COT_ALERT_UPSERT_SQL, *[
-                    json.dumps(r.get(c), default=str) if c == "detail" else r.get(c) for c in _COT_ALERT_COLS])
+                    # the pool's jsonb codec json.dumps()es the bind itself; a string here is stored as a JSON
+                    # string (double-encoded, 11-17). Round-trip to plain JSON types (dates -> str) and pass the object.
+                    json.loads(json.dumps(r.get(c), default=str)) if c == "detail" else r.get(c)
+                    for c in _COT_ALERT_COLS])
                 if rec["sent_at"] is None:
                     out.append({**r, "id": rec["id"]})
         return out

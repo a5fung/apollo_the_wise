@@ -1256,3 +1256,38 @@ def test_daily_alert_on_a_fed_minutes_day_sends_with_an_unknown_label():
     row = io.alerts[(WED, "gold", "short", "news")]
     assert row["events"] == "FED_MINUTES" and row["news_class"] == "UNKNOWN"
     assert "FED MINUTES" in io.sent[0]
+
+
+def test_store_alerts_binds_detail_as_an_object_not_a_string():
+    """The pool's jsonb codec encodes the bind; a pre-dumped string was stored double-encoded (11-17)."""
+    import asyncio
+    from datetime import date as _d
+    from agents.market_intelligence import cot_family as cf
+
+    seen = []
+
+    class _Conn:
+        async def fetchrow(self, sql, *args):
+            seen.append(args)
+            return {"id": 1, "sent_at": None}
+
+    class _Acq:
+        async def __aenter__(self):
+            return _Conn()
+
+        async def __aexit__(self, *a):
+            return False
+
+    class _Pool:
+        def acquire(self):
+            return _Acq()
+
+    class _Io(cf.Io):
+        async def _pool(self):
+            return _Pool()
+
+    row = {c: None for c in cf._COT_ALERT_COLS}
+    row["detail"] = {"kinds": ["news"], "when": _d(2026, 11, 17)}
+    asyncio.run(_Io().store_alerts([row]))
+    detail = seen[0][cf._COT_ALERT_COLS.index("detail")]
+    assert isinstance(detail, dict) and detail["when"] == "2026-11-17"
