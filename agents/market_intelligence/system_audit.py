@@ -174,13 +174,25 @@ async def _today_audit_errors(conn) -> float:
     return float(row["n"] or 0)
 
 
+# Breakout v1 abstains when the stop (level - day low) is wider than the stock's
+# ADR20 — an as-designed skip that fires on ~130-210 names every breakout day
+# (11-10: 134, 11-17: 212). Counted alongside the EP pipeline's ~1/day it paged
+# skip_count_setup at 213x on breakout v1's first paper day (2026-11-17): an alert
+# whose only action is "ignore it". Only that one reason is excluded; any other
+# breakout_v1 setup:/infra: skip still counts.
+_AS_DESIGNED_SKIP_SQL = (
+    "NOT (signal_type = 'breakout_v1' AND skip_reason LIKE 'setup:stop_too_wide%')"
+)
+
+
 async def _today_skip_count(conn, *, category: str) -> float:
     row = await conn.fetchrow(
-        """
+        f"""
         SELECT COUNT(*) AS n FROM mi_live_trades
         WHERE alert_date = CURRENT_DATE
           AND status = 'skipped'
           AND split_part(skip_reason, ':', 1) = $1
+          AND {_AS_DESIGNED_SKIP_SQL}
         """,
         category,
     )
@@ -469,7 +481,9 @@ _TRADE_METRICS: list[MetricSpec] = [
         "skip_count_setup", lambda conn: _today_skip_count(conn, category="setup"),
         "SELECT skip_reason, COUNT(*) FROM mi_live_trades "
         "WHERE alert_date=CURRENT_DATE AND status='skipped' "
-        "  AND skip_reason LIKE 'setup:%' GROUP BY 1 ORDER BY 2 DESC;",
+        "  AND skip_reason LIKE 'setup:%' "
+        "  AND NOT (signal_type = 'breakout_v1' AND skip_reason LIKE 'setup:stop_too_wide%') "
+        "GROUP BY 1 ORDER BY 2 DESC;",
         ["agents/market_intelligence/broker/order_manager.py::prepare_orb_order"],
     ),
     MetricSpec(
