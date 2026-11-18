@@ -3085,3 +3085,7 @@ His words on the first paper buys' chart sheet (`scripts/probes/_717_paper_1117/
 His words on the same sheet: *"Ppc looks choppy, I don't like it."*
 - The daily chart: no run-up before the base; a wide, overlapping range around 26-33 for months with big bars both ways; bought 11-17 10:50 at 29.35 (level 29.13, stop 28.45).
 - A labelled NO: choppy price action is not a consolidation after a run-up. Same family lesson as his structure rule (a runup plus a flat, holding base is the gate). No rule change on one example.
+
+## 2026-11-17 — Family A push: FNGD is not a set up (a leveraged ETF)
+
+His words on the 11-17 Family A push (Confirm fire FNGD, buy 35.09, stop 29.36): *"Fngd is a levered etf"*. FNGD is the −3× inverse FANG+ ETN. Applied as a display rule: the push and `/anticipation` show only names breakout v1's universe admits (stocks, single-asset funds per his 10-29 ruling); the shadow still records every fire. Replay of 60 days of fires: 5 dropped (FNGD, MSFL, MSFU, MUU, AIS — all funds), no stock lost.

@@ -1,0 +1,8 @@
+SET
+row_to_json
+{"id":786,"ticker":"CYRX","alert_date":"2026-11-17","ep_score":null,"catalyst_quality":null,"gap_pct":0.15151515151514694,"regime":"Crisis","status":"cancelled","orb_high":20.37,"orb_low":19.575,"atr_14":null,"entry_price":20.37,"entry_shares":538,"stop_price":19.57,"hard_stop":19.57,"position_size":10959.06,"risk_dollars":430.76,"entry_order_id":"c06e39bd-ae5e-4d3a-a48b-0f7760e5b0c7","stop_order_id":"bd10cfd1-dc8a-483d-92c1-2110f4bc2513","exits":[],"remaining_shares":0,"total_pnl":0,"hold_days":0,"partial_taken":false,"breakeven_active":false,"running_closes":[],"proposed_at":"2026-11-17T14:45:10.698561+00:00","confirmed_at":"2026-11-17T14:45:10.698561+00:00","skip_reason":"EOD unfilled","created_at":"2026-11-17T14:45:10.698561+00:00","filled_at":null,"closed_at":null,"entry_attempt":1,"signal_type":"breakout_v1","account_mode":"paper","lowest_price_seen":null,"highest_price_seen":null,"pnl_attribution":null,"risk_dollars_actual":430.4,"dead_stop_price":null,"dead_stop_order_id":null,"dead_stop_status":null,"dead_stop_recorded_at":null,"exit_rule":"breakout_pp","depth_sell_pending_on":null,"breakout_day0_pp":null}
+(1 row)
+timezone|event_type|left
+2026-11-17 16:25:00.080773|orb_cancellation_reclassified|{"trade_id": 786, "ticker": "CYRX", "alert_date": "2026-11-17", "classification": "would_have_filled", "prior_intraday": null, "flipped_from_clean_miss": false, "trigger_price": 20.37, "limit_price": 20.37, "window": "canonical_0931_1000_complete_bars"}
+2026-11-17 09:45:11.289461|breakout_v1_entry_order|{"level": 20.37, "orh5": 20.2801, "orl5": 19.575, "stop": 19.57, "width": 0.03927344133529704, "cum_volume": 62558.0, "need_volume": 101417.41551708001, "last_completed": 14, "break_minute": 14, "break_high": 20.3949}
+(2 rows)
