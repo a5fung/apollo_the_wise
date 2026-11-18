@@ -294,9 +294,12 @@ def test_renderer_full_surface():
     assert "trail tighten at +2.7R" in out                               # judge verdict, spelled out
     assert "peak may be understated" in out                              # inline, where the ~ used to be
     assert "market condition when entered" in out and "Correcting 6" in out
-    assert "consolidation, early entry" in out and "118 trades" in out
-    assert "wick" not in out.lower()                                     # wick-fill retired 2026-10-17: no simulation row
-    assert "MAGNA53 EP (paper trading)" in out and "26 trades" in out
+    # 2026-11-18: paper setups + simulations render in the PAPER message, never the live one.
+    paper = format_sell_discipline_section(_render_data(), "paper")
+    assert "consolidation, early entry" in paper and "118 trades" in paper
+    assert "consolidation" not in out and "MAGNA53 EP (paper trading)" not in out
+    assert "wick" not in paper.lower()                                   # wick-fill retired 2026-10-17: no simulation row
+    assert "MAGNA53 EP (paper trading)" in paper and "26 trades" in paper
     assert "WOULD A DIFFERENT EXIT HAVE KEPT MORE" in out                # #631: every arm, one block
     assert "swing-stop rule" in out and "character-based rule" in out
     assert "the old rule (partial at +2R)" in out                         # old vs new, every close
@@ -484,8 +487,8 @@ async def test_mgmt_judge_appends_section_when_no_positions(monkeypatch):
     monkeypatch.setattr("agents.market_intelligence.collector.et_today",
                         lambda: date(2026, 7, 30))
     monkeypatch.setattr(
-        "agents.market_intelligence.sell_discipline.build_sell_discipline_section",
-        AsyncMock(return_value="📼 SECTION"))
+        "agents.market_intelligence.sell_discipline.build_sell_discipline_sections",
+        AsyncMock(return_value=("📼 SECTION", "")))
     text = await mj.run_position_mgmt_judge(send=False)
     assert "no open positions" in text
     assert text.endswith("📼 SECTION")                                    # unified surface, one message
@@ -499,7 +502,7 @@ async def test_mgmt_judge_section_failure_is_loud_not_blocking(monkeypatch):
     monkeypatch.setattr("agents.market_intelligence.collector.et_today",
                         lambda: date(2026, 7, 30))
     monkeypatch.setattr(
-        "agents.market_intelligence.sell_discipline.build_sell_discipline_section",
+        "agents.market_intelligence.sell_discipline.build_sell_discipline_sections",
         AsyncMock(side_effect=RuntimeError("boom")))
     audit = AsyncMock()
     monkeypatch.setattr("agents.market_intelligence.db.log_audit_event", audit)
@@ -589,7 +592,7 @@ def test_deprecated_cohorts_are_labelled_not_hidden():
             {"signal_type": "magna53", "account_mode": "paper", "n": 24,
              "reached_avg": 2.3, "kept_avg": -0.8},
         ],
-    })
+    }, "paper")
     dep = [l for l in txt.splitlines() if "9M Day 2" in l][0]
     live = [l for l in txt.splitlines() if "MAGNA53 EP" in l][0]
     assert "deprecated" in dep and "cannot trade" in dep
@@ -652,3 +655,61 @@ def test_partial_decision_is_announced_before_the_sell():
     assert notify < sell, "the sell must not run before the operator is told why"
     guard = seg[notify:sell]
     assert "except Exception" in guard, "a notify failure must never abort the partial"
+
+
+# ── 2026-11-18: paper never mixes into the live close digest ────────────────────────────
+
+def _two_book_data():
+    rec = lambda tk, mode, st: {"ticker": tk, "account_mode": mode, "signal_type": st,
+                                "close_day": date(2026, 11, 17), "peak_r": 0.2, "realized_r": -1.0}
+    return {
+        "live_cohort": {"n": 44, "wins": 11, "reached_avg": 1.9, "kept_avg": -0.1,
+                        "partials": 8, "stop_above": 12, "regimes": []},
+        "provisional": [
+            {"ticker": "GSHD", "account_mode": "paper", "signal_type": "breakout_v1",
+             "peak_r": 0.3, "realized_r": -1.1},
+            {"ticker": "LIVX", "account_mode": "live", "signal_type": "magna53",
+             "peak_r": 1.0, "realized_r": 0.5},
+        ],
+        "recorded": [rec("ACHC", "paper", "breakout_v1"), rec("CRWV", "live", "magna53")],
+        "cohorts": [{"signal_type": "breakout_v1", "account_mode": "paper", "n": 9,
+                     "reached_avg": 0.4, "kept_avg": -0.9}],
+        "shadow": {"consol": [("anticipation", 161, 2.1, -1.0)]},
+    }
+
+
+def test_live_digest_carries_no_paper_rows():
+    from agents.market_intelligence.sell_discipline import format_sell_discipline_section
+    live = format_sell_discipline_section(_two_book_data(), "live")
+    assert "LIVX" in live and "CRWV" in live and "LIVE MONEY" in live
+    for paper_only in ("GSHD", "ACHC", "paper", "Breakout v1", "consolidation"):
+        assert paper_only not in live, paper_only
+
+
+def test_paper_digest_is_its_own_paper_tagged_message():
+    from agents.market_intelligence.constants import is_paper_message
+    from agents.market_intelligence.sell_discipline import format_sell_discipline_section
+    paper = format_sell_discipline_section(_two_book_data(), "paper")
+    assert is_paper_message(paper)                   # the sender routes it to the paper chat
+    assert "GSHD" in paper and "ACHC" in paper and "Breakout v1" in paper
+    assert "Breakout v1 (paper)" not in paper        # no doubled label
+    for live_only in ("LIVX", "CRWV", "LIVE MONEY"):
+        assert live_only not in paper, live_only
+
+
+@pytest.mark.asyncio
+async def test_mgmt_judge_sends_paper_as_a_second_message(monkeypatch):
+    from agents.market_intelligence import mgmt_judge as mj
+    monkeypatch.setattr("agents.market_intelligence.db.get_open_live_trades",
+                        AsyncMock(return_value=[]))
+    monkeypatch.setattr("agents.market_intelligence.collector.et_today",
+                        lambda: date(2026, 11, 18))
+    monkeypatch.setattr(
+        "agents.market_intelligence.sell_discipline.build_sell_discipline_sections",
+        AsyncMock(return_value=("📼 LIVE", "📄 PAPER 📼 P")))
+    sent = AsyncMock(return_value=True)
+    monkeypatch.setattr("agents.market_intelligence.briefing.send_telegram_message", sent)
+    text = await mj.run_position_mgmt_judge(send=True)
+    assert "📄 PAPER" not in text
+    bodies = [c.args[0] for c in sent.await_args_list]
+    assert len(bodies) == 2 and "LIVE" in bodies[0] and bodies[1].startswith("📄 PAPER")

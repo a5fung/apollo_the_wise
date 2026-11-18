@@ -1,0 +1,21 @@
+SET
+ticker|signal_type|account_mode|d
+ARDT|breakout_v1|paper|2026-11-17
+ANDG|breakout_v1|paper|2026-11-17
+ACHC|breakout_v1|paper|2026-11-17
+PPC|breakout_v1|paper|2026-11-17
+GSHD|breakout_v1|paper|2026-11-18
+KNSA|breakout_v1|paper|2026-11-18
+(6 rows)
+close_day|ticker|signal_type|account_mode
+2026-11-17|ARDT|breakout_v1|paper
+2026-11-17|ANDG|breakout_v1|paper
+2026-11-17|ACHC|breakout_v1|paper
+2026-11-17|PPC|breakout_v1|paper
+2026-11-13|AMLX|breakout_v1|paper
+2026-11-12|CRWV|magna53|live
+2026-11-11|RSKD|magna53|live
+2026-11-11|ZYME|breakout_v1|paper
+2026-11-10|ABCL|breakout_v1|paper
+2026-11-10|OUST|breakout_v1|paper
+(10 rows)

@@ -241,13 +241,15 @@ async def _fetch_entry_thesis(ticker, alert_date) -> Optional[dict]:
     return dict(row) if row else None
 
 
-async def _sell_discipline_tail(positions: list, snaps: dict, today) -> str:
-    """#508 WS1: the unified sell-discipline section that rides this Telegram surface.
+async def _sell_discipline_tail(positions: list, snaps: dict, today) -> tuple[str, str]:
+    """#508 WS1: the sell-discipline sections — (live, paper). The live one rides this
+    Telegram surface; the paper one is its own message to the paper chat (operator
+    2026-11-18: paper must not be mixed into the live close digest).
     Fail-open LOUDLY (audit + log) — a surface failure must never block the judge digest."""
     from agents.market_intelligence.db import log_audit_event
     try:
-        from agents.market_intelligence.sell_discipline import build_sell_discipline_section
-        return await build_sell_discipline_section(positions, snaps, today)
+        from agents.market_intelligence.sell_discipline import build_sell_discipline_sections
+        return await build_sell_discipline_sections(positions, snaps, today)
     except Exception as e:
         logger.error(f"sell-discipline surface failed: {e}", exc_info=True)
         try:
@@ -255,7 +257,7 @@ async def _sell_discipline_tail(positions: list, snaps: dict, today) -> str:
                 "sell_discipline_surface_error", f"{today}: {type(e).__name__}: {e}")
         except Exception:  # loud-ok: audit-of-the-audit; logger.error above already fired
             pass
-        return "📼 Sell discipline: surface failed (see audit log)."
+        return "📼 Sell discipline: surface failed (see audit log).", ""
 
 
 async def run_position_mgmt_judge(send: bool = False) -> str:
@@ -318,7 +320,7 @@ async def run_position_mgmt_judge(send: bool = False) -> str:
             text = (f"🧭 Mgmt-judge — SHADOW, zero authority · {len(positions)} open\n\n"
                     + "\n\n".join(lines))
 
-    section = await _sell_discipline_tail(positions, snaps, today)
+    section, paper_section = await _sell_discipline_tail(positions, snaps, today)
     if section:
         text += "\n\n" + section
     if send:
@@ -327,4 +329,7 @@ async def run_position_mgmt_judge(send: bool = False) -> str:
         # #647: HTML layer — a verdict like TRAIL_TIGHTEN is one bare `_`, which 400'd the
         # legacy-Markdown send on 4 of the last 14 days. The sell-discipline fence rides <pre>.
         await send_telegram_message(md_to_html(text), parse_mode="HTML")
+        if paper_section:
+            # Its own message, paper-tagged, so the sender routes it to the paper chat.
+            await send_telegram_message(md_to_html(paper_section), parse_mode="HTML")
     return text

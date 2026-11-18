@@ -37,6 +37,7 @@ from typing import Any, Iterable, Optional
 from shared.dates import _ET
 
 from agents.market_intelligence.db import _f, get_pool, log_audit_event
+from agents.market_intelligence.constants import mode_prefix
 from agents.market_intelligence.rule_eras import exit_era_label
 
 logger = logging.getLogger(__name__)
@@ -579,7 +580,7 @@ async def _exit_counterfactual_running_read(conn, exit_era: str) -> Optional[dic
 # underscored id, so a new strategy can't reintroduce the same lingo this cleanup removes.
 _SIGNAL_DISPLAY = {"magna53": "MAGNA53 EP", "9m_day2": "9M Day 2",
                    "magna53_smallcap": "MAGNA53 small-cap (paper)",  # #624 paper lane
-                   "breakout_v1": "Breakout v1 (paper)"}  # breakout v1 paper (2026-10-30)
+                   "breakout_v1": "Breakout v1"}  # breakout v1 paper (2026-10-30)
 
 # entry_mode values on mi_consolidation_entry_shadow — display words only.
 _CONSOL_MODE_DISPLAY = {"anticipate": "early entry", "confirm": "confirmed entry"}
@@ -632,7 +633,7 @@ def _fmt_open_line(pos: dict, current_price: Optional[float]) -> Optional[str]:
             f"peak {_r(peak_r)} → now {_r(now_r)}  stop {_r(stop_r)}{flag_s}")
 
 
-def _fmt_recorded_line(rec: dict) -> str:
+def _fmt_recorded_line(rec: dict, show_mode: bool = True, show_setup: bool = False) -> str:
     """One recorded round trip: when it closed, what it reached (and when), what it kept,
     plus the judge's last shadow verdict if one exists. An extremes-sourced peak carries
     the estimate note inline (see `_APPROX_NOTE`)."""
@@ -651,12 +652,14 @@ def _fmt_recorded_line(rec: dict) -> str:
         judge = f" — judge: {verdict_words} at {_r(rec.get('judge_last_verdict_r'))}"
     close_day = rec.get("close_day")
     close_s = close_day.strftime("%m-%d") if close_day else "?"
-    mode = _mode_tag(rec.get("account_mode"))
+    mode = _mode_tag(rec.get("account_mode")) if show_mode else ""
+    if show_setup:
+        mode += f"  {_signal_display(rec.get('signal_type'))}"
     return (f" {close_s} {rec.get('ticker', ''):<5} reached {_r(rec.get('peak_r'))}{detail}"
             f" → kept {_r(rec.get('realized_r'))}{judge}{mode}")
 
 
-def format_sell_discipline_section(data: dict) -> str:
+def format_sell_discipline_section(data: dict, book: str = "live") -> str:
     """Pure renderer. Monospace code block, no pipe tables, one idea per line, plain words
     (no d10/n=/p1-p2/@-tag shorthand — operator 2026-08-16: "really hard to read"). Blocks
     are separated by a single-space line, never a bare blank line — `send_telegram_message`
@@ -666,8 +669,17 @@ def format_sell_discipline_section(data: dict) -> str:
     live_cohort {n,wins,reached_avg,kept_avg,partials,stop_above,regimes:[(name,n,kept)]},
     cohorts [dict], shadow {consol:[(mode,n,reached,kept)], htf,
     exit_cf {n, era, arms:[{arm,n,unscoreable,delta_pct,changed}]}} (#631).
-    Returns "" when there is nothing at all to show."""
+    `book` = "live" or "paper": the two books render as SEPARATE messages (operator
+    2026-11-18: "Close digest for paper should not be mixed in to live, if needed, separate
+    one sent to paper telegram"). live = the live headline, OPEN NOW, live closes and the
+    live-fill exit replay; paper = paper closes, the paper setups' averages and the
+    simulation-only cohorts, headed with the paper tag so the sender routes it to the paper
+    chat. Returns "" when the book has nothing to show."""
     sections: list[list[str]] = []
+    live_book = book == "live"
+    if not live_book:
+        data = {k: v for k, v in data.items()
+                if k not in ("live_cohort", "open_lines")}
 
     # Lead with the live-money headline right under the header (operator: "the most
     # important number is buried in the middle") — this block renders FIRST, before OPEN.
@@ -690,20 +702,30 @@ def format_sell_discipline_section(data: dict) -> str:
     if data.get("open_lines"):
         sections.append(["OPEN NOW"] + data["open_lines"])
 
-    if data.get("provisional"):
-        prov = ["CLOSED TODAY (not yet finalized — recorded tonight)"]
-        for p in data["provisional"]:
-            prov.append(f" {p.get('ticker', ''):<5} reached {_r(p.get('peak_r'))}"
-                        f" ({_APPROX_NOTE}) → kept {_r(p.get('realized_r'))}")
-        sections.append(prov)
+    # Live and paper rows render in SEPARATE blocks, each headed with its book (operator
+    # 2026-11-18: "Paper trades are showing up in my close alerts, plus it doesn't say they
+    # are paper" — the paper rows sat under the live-money headline, CLOSED TODAY carried no
+    # tag at all, and a tag at the end of a long line is lost on a phone).
+    def _is_live(row: dict) -> bool:
+        return (row.get("account_mode") or "live") == "live"
 
-    if data.get("recorded"):
-        rec_lines = ["RECORDED ROUND TRIPS, LAST 7 DAYS — reached vs kept"]
-        rec_lines.extend(_fmt_recorded_line(rec) for rec in data["recorded"])
+    prov_rows = [p for p in data.get("provisional") or [] if _is_live(p) == live_book]
+    if prov_rows:
+        prov = ["CLOSED TODAY (not yet finalized — recorded tonight)"]
+        for p in prov_rows:
+            setup = "" if live_book else f"  {_signal_display(p.get('signal_type'))}"
+            prov.append(f" {p.get('ticker', ''):<5} reached {_r(p.get('peak_r'))}"
+                        f" ({_APPROX_NOTE}) → kept {_r(p.get('realized_r'))}{setup}")
+        sections.append(prov)
+    rec_rows = [r for r in data.get("recorded") or [] if _is_live(r) == live_book][:8]
+    if rec_rows:
+        rec_lines = ["ROUND TRIPS, LAST 7 DAYS — reached vs kept"]
+        rec_lines.extend(_fmt_recorded_line(rec, show_mode=False, show_setup=not live_book)
+                         for rec in rec_rows)
         sections.append(rec_lines)
 
-    if data.get("cohorts"):
-        coh = ["OTHER SETUPS, NOT LIVE MONEY — average reached vs kept"]
+    if not live_book and data.get("cohorts"):
+        coh = ["BY SETUP, ALL PAPER TRADES — average reached vs kept"]
         labels = [_signal_display(c.get("signal_type")) + _mode_tag(c.get("account_mode"))
                   for c in data["cohorts"]]
         label_w = max((len(l) for l in labels), default=0)
@@ -725,10 +747,10 @@ def format_sell_discipline_section(data: dict) -> str:
 
     sh = data.get("shadow") or {}
     shadow_rows = []  # (label, n, reached_str, kept_str)
-    for mode, n, reached, kept in sh.get("consol", []):
+    for mode, n, reached, kept in (sh.get("consol", []) if not live_book else []):
         shadow_rows.append((f"consolidation, {_CONSOL_MODE_DISPLAY.get(mode, mode)}",
                             n, _r(reached), _r(kept)))
-    if sh.get("htf"):
+    if not live_book and sh.get("htf"):
         n, reached, kept = sh["htf"]
         shadow_rows.append(("higher-timeframe breakout", n, _r(reached), _r(kept)))
     if shadow_rows:
@@ -740,7 +762,7 @@ def format_sell_discipline_section(data: dict) -> str:
         sections.append(
             ["SIMULATION ONLY, CANNOT TRADE — typical (median) reached vs kept"] + shadow_lines)
 
-    cf = sh.get("exit_cf") or {}
+    cf = (sh.get("exit_cf") or {}) if live_book else {}
     if cf.get("n"):
         # #631: one line per arm of the ONE exit-counterfactual recorder, current exit era
         # only. The CHANGED count is the load-bearing number, not the average: "changed 0
@@ -816,6 +838,10 @@ def format_sell_discipline_section(data: dict) -> str:
     # wall of text. A visible rule separates them. The lone-space line is KEPT (it is what
     # keeps this body out of "\n\n" splits downstream) — the rule is added, not swapped in.
     body = f"\n \n{_SECTION_RULE}\n".join("\n".join(s) for s in sections)
+    if not live_book:
+        # Starts with the paper tag, so `send_telegram_message` routes it to the paper chat.
+        return (f"{mode_prefix('paper')}📼 *Sell discipline — paper trading, not real money*"
+                " (recorder only, no rule)\n```\n" + body + "\n```")
     return ("📼 *Sell discipline — reached vs kept* (recorder only, no rule)\n"
             "```\n" + body + "\n```")
 
@@ -823,6 +849,14 @@ def format_sell_discipline_section(data: dict) -> str:
 async def build_sell_discipline_section(
     open_positions: list[dict], snaps: dict, today: date,
 ) -> str:
+    """The LIVE book's section only (back-compat). See `build_sell_discipline_sections`."""
+    live, _paper = await build_sell_discipline_sections(open_positions, snaps, today)
+    return live
+
+
+async def build_sell_discipline_sections(
+    open_positions: list[dict], snaps: dict, today: date,
+) -> tuple[str, str]:
     """Assemble the unified surface data (records + regime reconstruction + shadow-cohort
     aggregates) and render it. Read-only. Raises to the caller on DB failure — the caller
     (run_position_mgmt_judge) fail-opens loudly so the judge digest always sends."""
@@ -833,10 +867,10 @@ async def build_sell_discipline_section(
         recorded = await conn.fetch("""
             SELECT * FROM mi_sell_discipline_records
             WHERE close_day >= ($1::date - 7) AND pnl_attribution IS NULL
-            ORDER BY close_day DESC, ticker LIMIT 8
-        """, today)
+            ORDER BY close_day DESC, ticker LIMIT 40
+        """, today)  # the render caps each book at 8
         provisional = await conn.fetch("""
-            SELECT t.id, t.ticker, t.entry_price, t.hard_stop, t.orb_low,
+            SELECT t.id, t.ticker, t.signal_type, t.account_mode, t.entry_price, t.hard_stop, t.orb_low,
                    t.entry_shares, t.total_pnl, t.highest_price_seen
             FROM mi_live_trades t
             WHERE t.status = 'closed'
@@ -942,6 +976,8 @@ async def build_sell_discipline_section(
         hps = _f(t.get("highest_price_seen"))
         prov.append({
             "ticker": t["ticker"],
+            "signal_type": t.get("signal_type"),
+            "account_mode": t.get("account_mode"),
             "peak_r": (hps - entry) / risk if hps is not None else None,
             "realized_r": trade_realized_r(t),
         })
@@ -968,4 +1004,5 @@ async def build_sell_discipline_section(
             "exit_cf": exit_cf,
         },
     }
-    return format_sell_discipline_section(data)
+    return (format_sell_discipline_section(data, "live"),
+            format_sell_discipline_section(data, "paper"))
