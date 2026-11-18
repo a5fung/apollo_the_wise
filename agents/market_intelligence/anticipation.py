@@ -1502,3 +1502,20 @@ def sip_payload(*, state, gap_day_iso, entry_tactic=None, entry_price=None,
         "stop_price": float(stop_price) if stop_price is not None else None,
     }
     return reason, signal
+
+
+async def listable_tickers(tickers) -> set:
+    """The subset of `tickers` breakout v1's signed universe admits (`breakout_v1.security_admitted`:
+    stocks / ADRs, single-asset funds per his 10-29 ruling, unknown type passes; leveraged / inverse /
+    basket funds and general ETFs out). DISPLAY filter for the Family A push and `/anticipation`
+    (operator 11-17, FNGD: "Fngd is a levered etf") — the shadow still RECORDS every fire (#327 A/B).
+    A failed type read returns every ticker (fail-open: an unfiltered list beats a silent one)."""
+    from agents.market_intelligence.breakout_v1 import security_admitted
+    from agents.market_intelligence.db import bv1_get_security_types_named
+    tickers = sorted(set(tickers))
+    try:
+        types = await bv1_get_security_types_named(tickers)
+    except Exception as e:   # loud-ok: display-only filter; the unfiltered list is shown
+        logger.warning(f"family A listable: security-type read failed ({e}); list unfiltered")
+        return set(tickers)
+    return {t for t in tickers if security_admitted(t, *types.get(t, (None, None)))[0]}

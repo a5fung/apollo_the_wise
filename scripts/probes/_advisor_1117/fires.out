@@ -1,0 +1,22 @@
+SET
+ticker|security_type|name
+AIS|ETF|VistaShares Artificial Intelligence Supercycle ETF
+AJG|CS|Arthur J. Gallagher & Co.
+AMPL|CS|Amplitude, Inc. Class A Common Stock
+AMRX|CS|Amneal Pharmaceuticals, Inc. Class A Common Stock
+ANDG|CS|Andersen Group Inc.
+ASO|CS|Academy Sports and Outdoors, Inc.
+FNGD|ETN|MicroSectors FANG+ Index -3X Inverse Leveraged ETNs due January 8, 2038
+GO|CS|Grocery Outlet Holding Corp. Common Stock
+GRAL|CS|GRAIL, Inc. Common Stock
+HURN|CS|Huron Consulting Group Inc.
+KMB|CS|Kimberly-Clark Corp.
+KTB|CS|Kontoor Brands, Inc. Common Stock
+MANH|CS|Manhattan Associates Inc
+MSFL|ETF|GraniteShares 2x Long MSFT Daily ETF
+MSFU|ETF|Direxion Shares ETF Trust Direxion Daily MSFT Bull 2X ETF
+MUU|ETF|Direxion Shares ETF Trust Direxion Daily MU Bull 2X ETF
+PRGO|CS|PERRIGO COMPANY PLC
+TWLO|CS|Twilio Inc.
+ZETA|CS|Zeta Global Holdings Corp.
+(19 rows)

@@ -1326,3 +1326,22 @@ async def test_non_stock_confirm_fire_not_pushed(monkeypatch):
     await sched._consolidation_readiness_job()
     assert len(telegrams) == 1 and "NVDA" in telegrams[0] and "FNGD" not in telegrams[0]
     assert "ZCSH" in telegrams[0]     # a single-asset fund stays, per his 10-29 breakout ruling
+
+
+@pytest.mark.asyncio
+async def test_non_stock_settle_not_pushed(monkeypatch):
+    """A recorded ETN shadow settles days later — it must not reach the push then either."""
+    import agents.market_intelligence.db as db
+    audits, telegrams, settle_calls = _patch_job_shell(
+        monkeypatch, settled=[("FNGD", {"outcome": "stop", "realized_r": -1.0})])
+
+    async def scan(today, stats, transitions, entries_fired):
+        pass
+
+    async def types_named(tickers):
+        return {"FNGD": ("ETN", "MicroSectors FANG+ Index -3X Inverse Leveraged ETN")}
+
+    monkeypatch.setattr(sched, "_consolidation_readiness_scan", scan)
+    monkeypatch.setattr(db, "bv1_get_security_types_named", types_named)
+    await sched._consolidation_readiness_job()
+    assert settle_calls == [_TODAY] and telegrams == []

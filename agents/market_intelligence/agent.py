@@ -3744,6 +3744,12 @@ class MarketIntelligenceAgent(BaseAgent):
             get_consolidation_entry_shadows(status="settled", limit=8),
             get_consolidation_entry_shadow_summary(),
             get_open_shadow_tickers())
+        # leveraged / general ETFs off the board too (display only; operator 11-17 "Fngd is a levered etf")
+        from agents.market_intelligence.anticipation import listable_tickers
+        _ok = await listable_tickers([r["ticker"] for r in (*board, *fired, *settled)])
+        board = [r for r in board if r["ticker"] in _ok]
+        fired = [r for r in fired if r["ticker"] in _ok]
+        settled = [r for r in settled if r["ticker"] in _ok]
 
         if not (board or fired or settled):
             return self._ok(request, result=(

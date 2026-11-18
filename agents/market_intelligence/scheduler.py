@@ -4653,6 +4653,16 @@ async def _consolidation_readiness_job():
                     f"{len(just_settled)} settled"
                     + (" [SCAN TIMED OUT — partial]" if scan_timed_out else ""))
 
+        # Fires AND settles outside breakout v1's signed universe (his 10-29 ruling: stocks + single-asset funds;
+        # leveraged / inverse / basket funds and general ETFs out) stay RECORDED — the #327 A/B writes
+        # both cohorts — but never reach his push (operator 11-17, FNGD: "Fngd is a levered etf").
+        # Unknown type passes, as everywhere else.
+        _ok = await de.listable_tickers({x[0] for x in entries_fired} | {t for t, _ in just_settled})
+
+        def _listable(tk):
+            return tk in _ok
+
+        just_settled = [x for x in just_settled if _listable(x[0])]   # display only; settlement already ran
         digest = []
         if scan_timed_out:
             digest.append(f"⚠️ Readiness SCAN hit its {_CONS_SCAN_BUDGET_S // 60}-min budget — "
@@ -4669,22 +4679,6 @@ async def _consolidation_readiness_job():
             digest.append(f"🚩 *HTF breakouts settled* ({len(htf_settled)} · {hcap} capture) — SHADOW (#356)")
             digest.append("")
         # Both Family-A entry modes surface, SEPARATELY tagged (#327 shadow-fix §3 — never blended):
-        # Fires outside breakout v1's signed universe (his 10-29 ruling: stocks + single-asset funds;
-        # leveraged / inverse / basket funds and general ETFs out) stay RECORDED — the #327 A/B writes
-        # both cohorts — but never reach his push (operator 11-17, FNGD: "Fngd is a levered etf").
-        # Unknown type passes, as everywhere else.
-        from agents.market_intelligence.breakout_v1 import security_admitted
-        from agents.market_intelligence.db import bv1_get_security_types_named
-        try:
-            _types = await bv1_get_security_types_named(sorted({x[0] for x in entries_fired}))
-        except Exception as _ne:   # loud-ok: digest-only filter; a failed read shows the unfiltered list
-            logger.warning(f"anticipation digest: security-type read failed ({_ne}); list unfiltered")
-            _types = {}
-
-        def _listable(tk):
-            st, nm = _types.get(tk, (None, None))
-            return security_admitted(tk, st, nm)[0]
-
         ant_fired = [x for x in entries_fired if x[2] == "anticipate" and _listable(x[0])]
         conf_fired = [x for x in entries_fired if x[2] == "confirm" and _listable(x[0])]
         if ant_fired:
