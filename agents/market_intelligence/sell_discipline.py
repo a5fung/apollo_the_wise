@@ -37,7 +37,6 @@ from typing import Any, Iterable, Optional
 from shared.dates import _ET
 
 from agents.market_intelligence.db import _f, get_pool, log_audit_event
-from agents.market_intelligence.constants import mode_prefix
 from agents.market_intelligence.rule_eras import exit_era_label
 
 logger = logging.getLogger(__name__)
@@ -839,8 +838,9 @@ def format_sell_discipline_section(data: dict, book: str = "live") -> str:
     # keeps this body out of "\n\n" splits downstream) — the rule is added, not swapped in.
     body = f"\n \n{_SECTION_RULE}\n".join("\n".join(s) for s in sections)
     if not live_book:
-        # Starts with the paper tag, so `send_telegram_message` routes it to the paper chat.
-        return (f"{mode_prefix('paper')}📼 *Sell discipline — paper trading, not real money*"
+        # The caller (mgmt_judge) puts the paper tag in front, so the sender routes it to the
+        # paper chat — the tag is added where the send happens (tests/test_699 population pin).
+        return ("📼 *Sell discipline — paper trading, not real money*"
                 " (recorder only, no rule)\n```\n" + body + "\n```")
     return ("📼 *Sell discipline — reached vs kept* (recorder only, no rule)\n"
             "```\n" + body + "\n```")

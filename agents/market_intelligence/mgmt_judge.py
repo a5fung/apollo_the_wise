@@ -331,5 +331,7 @@ async def run_position_mgmt_judge(send: bool = False) -> str:
         await send_telegram_message(md_to_html(text), parse_mode="HTML")
         if paper_section:
             # Its own message, paper-tagged, so the sender routes it to the paper chat.
-            await send_telegram_message(md_to_html(paper_section), parse_mode="HTML")
+            from agents.market_intelligence.constants import mode_prefix
+            await send_telegram_message(md_to_html(mode_prefix("paper") + paper_section),
+                                        parse_mode="HTML")
     return text

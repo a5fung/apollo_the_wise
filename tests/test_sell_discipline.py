@@ -690,7 +690,7 @@ def test_paper_digest_is_its_own_paper_tagged_message():
     from agents.market_intelligence.constants import is_paper_message
     from agents.market_intelligence.sell_discipline import format_sell_discipline_section
     paper = format_sell_discipline_section(_two_book_data(), "paper")
-    assert is_paper_message(paper)                   # the sender routes it to the paper chat
+    assert not is_paper_message(paper)               # untagged body; mgmt_judge adds the paper tag at send
     assert "GSHD" in paper and "ACHC" in paper and "Breakout v1" in paper
     assert "Breakout v1 (paper)" not in paper        # no doubled label
     for live_only in ("LIVX", "CRWV", "LIVE MONEY"):
@@ -706,10 +706,12 @@ async def test_mgmt_judge_sends_paper_as_a_second_message(monkeypatch):
                         lambda: date(2026, 11, 18))
     monkeypatch.setattr(
         "agents.market_intelligence.sell_discipline.build_sell_discipline_sections",
-        AsyncMock(return_value=("📼 LIVE", "📄 PAPER 📼 P")))
+        AsyncMock(return_value=("📼 LIVE", "📼 P")))
     sent = AsyncMock(return_value=True)
     monkeypatch.setattr("agents.market_intelligence.briefing.send_telegram_message", sent)
+    from agents.market_intelligence.constants import is_paper_message
     text = await mj.run_position_mgmt_judge(send=True)
     assert "📄 PAPER" not in text
     bodies = [c.args[0] for c in sent.await_args_list]
-    assert len(bodies) == 2 and "LIVE" in bodies[0] and bodies[1].startswith("📄 PAPER")
+    assert len(bodies) == 2 and "LIVE" in bodies[0]
+    assert is_paper_message(bodies[1])               # routed to the paper chat by the sender
