@@ -1,0 +1,12 @@
+SET
+event_type|mode|count|max
+stop_update_failed|live|9|2026-09-04
+stop_update_failed|paper|1|2026-11-18
+stop_update_retry_succeeded|live|52|2026-10-30
+stop_update_retry_succeeded|paper|1|2026-11-18
+stop_update_retry_triggered|live|43|2026-10-30
+stop_update_retry_triggered|paper|2|2026-11-18
+(6 rows)
+detail
+{"day": "2026-11-18", "alerts": 0, "sent": false, "held": false, "catch_up": {"report_date": "2026-11-10", "source": "api", "fetched": 200, "status": "no new report"}, "newest_report": "2026-11-10", "stale": false, "report_date": "2026-11-10", "set_up_markets": 6, "no_price_data": [], "no_bar_today": [], "errors": {}, "closes": {"cocoa": {"close": 5027.0, "prev_close": 5030.0, "z": -0.013976240391334731}, "platinum": {"close": 1366.199951171875, "prev_close": 1426.199951171875, "z": -1.8717829444670502}, "russell": {"close": 2722.699951171875, "prev_close": 2711.199951171875, "z": 0.19579463842586164}, "silver": {"close": 44.974998474121094, "prev_close": 47.28799819946289, "z": -1.5181144243641818}, "soybean_oil": {"close": 60.04999923706055, "prev_close": 62.130001068115234, "z": -1.6646682364075576}, "wheat": {"close": 586.75, "prev_close": 595.25, "z": -0.6137184115523466}}, "peers_unread": [], "status": "ok", "problems": []}
+(1 row)
