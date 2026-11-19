@@ -9735,7 +9735,7 @@ reviews:
       CLOSED (operator 7/4): the 6/3 resolution stands (entry-side fill-rate class, order-record-grounded; exit-side activation is broker-identical paper/live + covered by #123 + never-naked). Successor = PLAN #414 (gated entry-tuning: widen limit vs stop-market-with-chase-cap, CHANGE_PROCESS, composes with #180).
   - review_id: orb_entry_stuck_pending_new
     resolution_2026_11_19: >-
-      FIRED 2026-11-19 on a population mismatch, not a stall: order 502, trade 786 CYRX paper breakout v1, buy stop-limit 20.37 submitted 09:45 ET 2026-11-17, never triggered, cancelled 15:55 ET by the end-of-day sweep. Breakout v1 orders rest all session by design (no 10:00 ORB cleanup), so >4h unfilled is normal for them. Predicate now excludes breakout_v1 trades; ORB-entry orders since 05-28 still read 0. Whether CYRX should have filled is #720's question, not this review's.
+      FIRED 2026-11-19 on a possible real miss, NOT a population mismatch (corrected the same day; my first write-up called it one and was wrong): order 502, trade 786 CYRX paper breakout v1, buy stop-limit 20.37 / limit 20.47 submitted 09:45 ET 2026-11-17, broker status pending_new the whole session, cancelled 15:55 ET unfilled. Prod's own orb_cancellation_reclassified row classed it would_have_filled (trigger 20.37 crossed), and coverage_drift_detected D3_db_open_no_broker fired at 16:00. Whether it truly should have filled is PLAN #720's open question (that label uses the 09:31-10:00 window, which includes bars before the 09:45 submission; the broker shows limit 20.47); this order is excluded by id so the next count is new. ORB-entry orders since 05-28 otherwise still read 0.
     can_fire:
       predicate_runs: >-
         Ran 2026-09-11 via operator_asks.py --audit against prod and returned 0; chased by hand
@@ -9833,8 +9833,8 @@ reviews:
         AND o.status IN ('expired', 'cancelled', 'canceled')
         AND o.cancelled_at IS NOT NULL
         AND EXTRACT(EPOCH FROM (o.cancelled_at - o.submitted_at)) > 4 * 3600
-        -- 2026-11-19: breakout v1 buy orders rest all session by design (no 10:00 cleanup) — not an ORB stall.
-        AND NOT EXISTS (SELECT 1 FROM mi_live_trades t WHERE t.id = o.trade_id AND t.signal_type = 'breakout_v1')
+        -- 2026-11-19: order 502 (CYRX 11-17, a real miss) is owned by PLAN #720; excluded by id so the next count is new.
+        AND o.id <> 502
         AND o.submitted_at > '2026-05-28';  -- post-fix only (was NOW()-90d, pre-fix-contaminated)
     threshold: 1
     earliest_review_date: 2026-05-28
