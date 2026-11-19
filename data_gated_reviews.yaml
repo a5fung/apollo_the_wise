@@ -11106,6 +11106,16 @@ reviews:
       (removals < 15, from Mon 10-12) is where a remaining wrong removal surfaces.
     added_on: 2026-09-15
   - review_id: b6_gate_inversion_post_rescale
+    resolution_2026_11_19_backtest: >-
+      FORK B BACKTESTED 2026-11-19 on his "aligned on backtest" ($0; prereg frozen before the data:
+      docs/analysis/b6_forkB_backtest_prereg_2026-11-19.md; result docs/analysis/b6_forkB_backtest_2026-11-19.md;
+      driver scripts/probes/_b6_backtest_1119/run_backtest.py, re-run by Opus, identical output). All five fidelity
+      checks pass (re-score 3268/3268, alert rebuild 26/26, harness validate, entry agreement 54/56, abstain 0%).
+      Neutralising the downgrade adds 62 HIGH alerts / 27 entries in 12 weeks: 3 reached +3R, 15 full losers,
+      total -5.2R (-13.3R without the Oct 26-30 week). Frozen rule reads CLOSE (gate stays 22), by a one-trade
+      margin; against a like-for-like pre-judge comparator it reads IN BETWEEN. Ruled (Opus, status quo either way,
+      nothing live): gate stays 22; ONE re-read at 30 added entries (~2026-12-07) on the same frozen rule, then close
+      for good unless it reads bring.
     resolution_2026_11_19: >-
       RE-READ at the pre-declared 50 settled PASS rows, 2026-11-19 ($0; scripts/probes/_review_1119/b6/stats.out). 5-session tail, post-rescale: PASS 2 of 65 reached +20% (3.1%) vs DOWNGRADE 12 of 164 (7.3%); p90 +14.5% vs +15.7%; median +0.2% vs +1.5%. Pre-rescale shown separately, not pooled: PASS 7%, DOWNGRADE 7%. PASS's share is under half DOWNGRADE's (3.1% < 3.7%), so the 11-10 pre-declared rule says BRING FORK B to the operator (neutralise the composite's tier-downgrade authority via CHANGE_PROCESS). Strength caveat stated with it: at DOWNGRADE's rate, 2-or-fewer of 65 happens 14% of the time. His call; nothing changed.
     # FILED 2026-09-15 on closing b6_gate_inversion_recheck. That entry answered its question
@@ -11179,7 +11189,7 @@ reviews:
         mi_daily_closes for the tail. ⚠ Known population caveat, inherited and named in the
         action: scored rows with NO mi_ep_alerts record (6 of 46 pre-rescale) - explain before
         use.
-    earliest_review_date: 2026-09-15
+    earliest_review_date: 2026-12-07
     action_when_ready: >-
       Re-run scripts/_b6_forward_backtest.py on the POST-RESCALE cohort only and produce the same
       live-verdict crosstab, reporting the TAIL (count and share >=+20% and >=+40%, p90) BEFORE any

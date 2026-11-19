@@ -1,0 +1,219 @@
+B6 fork-B backtest — run 2026-11-19 | rule-set as_of_2026-11-19 | settle horizon 2026-11-18
+
+══ POPULATION (printed first) ══
+  post DOWNGRADE        alerted   4
+  post DOWNGRADE        no_alert  171
+  post PASS             alerted   26
+  post PASS             no_alert  46
+  pre  DOWNGRADE        alerted   15
+  pre  DOWNGRADE        no_alert  135
+  pre  PASS             alerted   51
+  pre  PASS             no_alert  6
+  from_quality (post composite downgrades): {'strong': 173, 'game_changer': 3}
+  ticker-days with NO scan tick at all: {}
+  ticker-days with no 09:30 minute bar: {('pre', 'DOWN'): 3, ('post', 'DOWN'): 2, ('post', 'PASS'): 1}
+  arms: post DOWNGRADE 176  post PASS 72  pre DOWNGRADE 150  pre PASS 57
+
+══ FIDELITY CHECKS (before any return) ══
+  1 re-scorer: stored breakdown x multiplier reproduces the stored score on 3268 of 3268 scored ticks (100.0%; bar 98%) -> PASS; misses {}
+    multiplier vs regime table (prior-day match, same-day match): {(True, True): 3268}
+  2 alert reconstruction (post PASS, n=72): real floor-HIGH alerts rebuilt 26 of 26 (100%; bar 90%); predicted-but-no-alert 0; overall agreement 100% -> PASS
+  4 entered/not-entered vs real trade rows (real post HIGH alerts): 54 of 56 agree (96%; bar 95%) -> PASS; with today's rules on every date instead 51 of 56; excluded {'not_replayable_skip(infra:no_bar)': 2, 'not_replayable_skip(setup:size_too_small)': 1}
+    era-correct gates (4a from 2026-11-03, 4b from 2026-08-02); pull_6 wired (1503 ticks, 70 events); names with flip events/ticks available: 59 of 59
+    replay entry types among real-HIGH alerts: {None: 29, 'stop_limit': 25, 'limit_fallback': 5}
+      miss AEHR 2026-11-03: real entered vs replay no_trade/gap_below_floor_at_submit
+      miss PENG 2026-10-07: real entered vs replay no_trade/chase_cap_exceeded
+
+══ COUNTERFACTUAL FUNNEL — post-rescale composite downgrades ══
+  downgraded names 176 -> counterfactual HIGH 64 (of which 2 were HIGH anyway — the downgrade did not act; ADDED 62)
+  methods: {'exact': 58, 'additive_no_breakdown': 4, 'factual': 2}; band-straddle abstains: 0
+  why the other 112 never reach HIGH: {'restored grade still under the bar': 97, 'killed by a grade-blind gate: quality_filter': 9, 'killed by a grade-blind gate: gap_floor': 3, 'killed by a grade-blind gate: shortlist_cap': 1, 'no_scan_ticks': 1, 'grade already restored by the corrector, still under the bar': 1}
+  best counterfactual score of the names that stay under 65: n=97 median 55.0 max 63.0; within 5 points of the bar: 14
+  cooldown_ambiguous (left out of primary): []
+  submit times of the ADDED set: {'09:31': 49, '09:45': 3, '09:35': 6, '09:50': 3, '09:55': 1}
+
+══ RESULTS (post-rescale; R per campaign, one risk unit; rule-set = today's) ══
+
+[A — ADDED by fork B, mechanism B1 (primary)] campaigns walked 62 (of 176 names)
+  ABSTAIN 0 of 62 (0%)  reasons {}
+  funnel: entered 27 (settled 26, open 1), no_entry 8, no_trade 27 {'window_out_of_orb': 7, 'setup:stop_too_wide': 6, 'open_below_gap_floor': 10, 'gap_below_floor_at_submit': 4}
+  TAIL (settled): >=3R 3  >=5R 0  best +4.13R  share>=3R 12%   | incl. open marks: >=3R 3 of 27 (11%)
+  BOTH WAYS (entered, open at mark): losers<=-0.9R 15  negative 20  positive 5  total -5.17R  mean -0.19R  median -1.00R
+  still open: APP 2026-11-05 mark +0.97R
+  per alert week: 2026-W35: n3 >=3R 0 -1.0R  2026-W40: n1 >=3R 0 -1.0R  2026-W43: n1 >=3R 0 -1.0R  2026-W44: n8 >=3R 3 +8.1R  2026-W45: n11 >=3R 0 -8.3R  2026-W46: n3 >=3R 0 -2.0R
+  total without best week (2026-W44): -13.26R; >=3R campaigns sit in 1 week(s)
+
+[A with era-correct gates (sensitivity only)] campaigns walked 62
+  ABSTAIN 0 of 62 (0%)  reasons {}
+  funnel: entered 29 (settled 28, open 1), no_entry 8, no_trade 25 {'window_out_of_orb': 7, 'setup:stop_too_wide': 6, 'open_below_gap_floor': 4, 'gap_below_floor_at_submit': 8}
+  TAIL (settled): >=3R 3  >=5R 0  best +4.13R  share>=3R 11%   | incl. open marks: >=3R 3 of 29 (10%)
+  BOTH WAYS (entered, open at mark): losers<=-0.9R 16  negative 21  positive 6  total -5.69R  mean -0.20R  median -1.00R
+  still open: APP 2026-11-05 mark +0.97R
+
+[A-B2 — rubric gate off, 5% revenue net takes over] campaigns walked 50
+  ABSTAIN 0 of 50 (0%)  reasons {}
+  funnel: entered 18 (settled 17, open 1), no_entry 6, no_trade 26 {'window_out_of_orb': 7, 'setup:stop_too_wide': 5, 'open_below_gap_floor': 10, 'gap_below_floor_at_submit': 4}
+  TAIL (settled): >=3R 1  >=5R 0  best +3.81R  share>=3R 6%   | incl. open marks: >=3R 1 of 18 (6%)
+  BOTH WAYS (entered, open at mark): losers<=-0.9R 11  negative 14  positive 3  total -7.38R  mean -0.41R  median -1.00R
+  still open: APP 2026-11-05 mark +0.97R
+
+[P-floor — PASS names rebuilt the same way] campaigns walked 26 (of 72 names)
+  ABSTAIN 1 of 26 (4%)  reasons {'no_930_bar_for_orb': 1}
+  funnel: entered 4 (settled 4, open 0), no_entry 3, no_trade 18 {'gap_below_floor_at_submit': 1, 'open_below_gap_floor': 14, 'window_out_of_orb': 3}
+  TAIL (settled): >=3R 0  >=5R 0  best +1.62R  share>=3R 0%   | incl. open marks: >=3R 0 of 4 (0%)
+  BOTH WAYS (entered, open at mark): losers<=-0.9R 3  negative 3  positive 1  total -2.12R  mean -0.53R  median -1.00R
+  per alert week: 2026-W44: n1 >=3R 0 +1.6R  2026-W45: n1 >=3R 0 -1.0R  2026-W46: n2 >=3R 0 -2.7R
+  total without best week (2026-W44): -3.74R; >=3R campaigns sit in 0 week(s)
+
+[P-actual — PASS names that really alerted HIGH after the judge] campaigns walked 22
+  ABSTAIN 1 of 22 (5%)  reasons {'no_930_bar_for_orb': 1}
+  funnel: entered 4 (settled 4, open 0), no_entry 3, no_trade 14 {'gap_below_floor_at_submit': 1, 'open_below_gap_floor': 12, 'window_out_of_orb': 1}
+  TAIL (settled): >=3R 0  >=5R 0  best +1.62R  share>=3R 0%   | incl. open marks: >=3R 0 of 4 (0%)
+  BOTH WAYS (entered, open at mark): losers<=-0.9R 3  negative 3  positive 1  total -2.12R  mean -0.53R  median -1.00R
+
+[ALL-HIGH — every real post-rescale HIGH alert] campaigns walked 59
+  ABSTAIN 1 of 59 (2%)  reasons {'no_930_bar_for_orb': 1}
+  funnel: entered 15 (settled 15, open 0), no_entry 6, no_trade 37 {'window_out_of_orb': 12, 'gap_below_floor_at_submit': 4, 'open_below_gap_floor': 19, 'setup:stop_too_wide': 2}
+  TAIL (settled): >=3R 2  >=5R 2  best +6.01R  share>=3R 13%   | incl. open marks: >=3R 2 of 15 (13%)
+  BOTH WAYS (entered, open at mark): losers<=-0.9R 8  negative 9  positive 4  total +5.16R  mean +0.34R  median -1.00R
+  per alert week: 2026-W35: n3 >=3R 0 -1.1R  2026-W37: n2 >=3R 0 -1.0R  2026-W38: n2 >=3R 1 +5.0R  2026-W40: n1 >=3R 1 +5.8R  2026-W41: n1 >=3R 0 -1.0R  2026-W43: n2 >=3R 0 -0.4R  2026-W44: n1 >=3R 0 +1.6R  2026-W45: n1 >=3R 0 -1.0R  2026-W46: n2 >=3R 0 -2.7R
+  total without best week (2026-W40): -0.61R; >=3R campaigns sit in 2 week(s)
+
+[UPPER BOUND — every post downgraded name walked as if admitted at 09:31, submission gates off] campaigns walked 176
+  ABSTAIN 10 of 176 (6%)  reasons {'no_930_bar_for_orb': 3, 'entry_window_gaps': 5, 'day0_fill_bar_stop_and_target': 1, 'fwd_stop_and_breakeven_same_day': 1}
+  funnel: entered 107 (settled 96, open 11), no_entry 26, no_trade 32 {'setup:stop_too_wide': 29, 'chase_cap_exceeded': 1, 'setup:zero_range': 2}, near-zero-stop excluded 1
+  TAIL (settled): >=3R 13  >=5R 0  best +4.67R  share>=3R 14%   | incl. open marks: >=3R 14 of 107 (13%)
+  BOTH WAYS (entered, open at mark): losers<=-0.9R 47  negative 59  positive 40  total +27.11R  mean +0.25R  median -0.42R
+  still open: AAON 2026-11-10 mark +1.10R, ACM 2026-11-17 mark -0.06R, ADMA 2026-11-05 mark +1.23R, APP 2026-11-05 mark +0.97R, AXGN 2026-10-28 mark +2.95R, AZTA 2026-11-11 mark +0.49R, BRBR 2026-11-18 mark +0.36R, FCN 2026-10-29 mark +2.25R, FIGR 2026-11-12 mark +0.08R, LINC 2026-11-09 mark +0.90R, ONEW 2026-11-17 mark +4.08R
+  per alert week: 2026-W35: n4 >=3R 0 -2.0R  2026-W36: n3 >=3R 1 +1.8R  2026-W37: n3 >=3R 0 -0.6R  2026-W38: n4 >=3R 2 +7.1R  2026-W40: n1 >=3R 0 -1.0R  2026-W41: n1 >=3R 0 -1.0R  2026-W42: n1 >=3R 0 +1.8R  2026-W43: n3 >=3R 1 +1.8R  2026-W44: n30 >=3R 7 +23.5R  2026-W45: n35 >=3R 2 -4.0R  2026-W46: n18 >=3R 0 -3.6R  2026-W47: n4 >=3R 1 +3.4R
+  total without best week (2026-W44): +3.64R; >=3R campaigns sit in 6 week(s)
+
+[PRE-RESCALE upper bound (separate column, never pooled)] campaigns walked 150
+  ABSTAIN 15 of 150 (10%)  reasons {'day0_stop_and_breakeven_same_bar': 2, 'day0_fill_bar_stop_and_target': 1, 'entry_window_gaps': 3, 'no_930_bar_for_orb': 3, 'day0_fill_bar_straddles_stop': 5, 'fwd_stop_and_breakeven_same_day': 1}
+  funnel: entered 96 (settled 96, open 0), no_entry 18, no_trade 20 {'chase_cap_exceeded': 2, 'setup:zero_range': 8, 'setup:stop_too_wide': 10}, near-zero-stop excluded 1
+  TAIL (settled): >=3R 8  >=5R 2  best +8.38R  share>=3R 8%   | incl. open marks: >=3R 8 of 96 (8%)
+  BOTH WAYS (entered, open at mark): losers<=-0.9R 35  negative 48  positive 32  total +19.13R  mean +0.20R  median -0.03R
+
+── the ADDED names, each (operator reviews the list; not classified here) ──
+  ANF    2026-08-26 composite  19.0 strong       gap   11.0 first HIGH 07:40 (additive_no_breakdown) -> settled +1.04R sma_trail_stop
+  AFRM   2026-08-28 composite  20.0 strong       gap  12.79 first HIGH 07:00 (additive_no_breakdown) -> no_trade/setup:stop_too_wide
+  ESTC   2026-08-28 composite  18.0 strong       gap  20.61 first HIGH 07:00 (additive_no_breakdown) -> settled -1.00R stop_hit
+  GAP    2026-08-28 composite   8.0 strong       gap   14.0 first HIGH 07:00 (additive_no_breakdown) -> settled -1.00R stop_hit [B2: still downgraded]
+  DELL   2026-09-02 composite  17.0 game_changer gap    9.0 first HIGH 08:10 (exact) -> no_trade/open_below_gap_floor
+  GTLB   2026-09-02 composite  20.0 strong       gap  18.72 first HIGH 07:00 (exact) -> no_trade/setup:stop_too_wide
+  NTSK   2026-09-03 composite 21.79 strong       gap  11.64 first HIGH 07:00 (exact) -> no_entry/never_crossed_orb_high
+  PCTY   2026-09-08 composite  9.75 strong       gap  11.65 first HIGH 07:05 (exact) -> no_trade/gap_below_floor_at_submit
+  HPE    2026-09-11 composite 21.79 strong       gap   9.94 first HIGH 09:50 (exact) -> no_trade/window_out_of_orb
+  CIEN   2026-09-17 composite 16.06 game_changer gap   9.84 first HIGH 09:50 (exact) -> no_trade/window_out_of_orb
+  ACN    2026-10-01 composite  12.1 strong       gap  15.61 first HIGH 07:10 (exact) -> settled -1.00R stop_hit
+  CCI    2026-10-23 composite   9.0 strong       gap  12.34 first HIGH 08:25 (exact) -> no_entry/never_crossed_orb_high [B2: still downgraded]
+  RNG    2026-10-23 composite  18.0 strong       gap  15.31 first HIGH 07:00 (exact) -> settled -1.00R stop_hit
+  RCL    2026-10-27 composite  11.0 strong       gap   9.08 first HIGH 09:31 (exact) -> no_trade/open_below_gap_floor
+  SOFI   2026-10-27 composite  21.0 strong       gap   9.06 first HIGH 07:35 (exact) -> no_trade/gap_below_floor_at_submit
+  AXGN   2026-10-28 composite  20.0 strong       gap  16.63 first HIGH 09:45 (exact) -> no_trade/window_out_of_orb
+  ENSG   2026-10-28 composite  17.0 strong       gap   9.14 first HIGH 09:45 (exact) -> no_trade/window_out_of_orb
+  EVR    2026-10-28 composite 16.14 strong       gap  10.67 first HIGH 09:35 (exact) -> no_trade/open_below_gap_floor
+  GEHC   2026-10-28 composite  17.0 strong       gap   9.51 first HIGH 08:15 (exact) -> no_trade/open_below_gap_floor
+  BOOT   2026-10-29 composite  10.0 strong       gap  11.52 first HIGH 09:55 (exact) -> no_trade/window_out_of_orb
+  CROX   2026-10-29 composite  15.0 strong       gap  17.39 first HIGH 07:10 (exact) -> settled +3.27R stop_hit [B2: still downgraded]
+  CVNA   2026-10-29 composite  17.0 strong       gap  10.13 first HIGH 08:45 (exact) -> settled +3.81R stop_hit
+  DASH   2026-10-29 composite 14.37 strong       gap   9.15 first HIGH 07:30 (exact) -> no_trade/gap_below_floor_at_submit
+  FCN    2026-10-29 composite  15.0 strong       gap  11.22 first HIGH 09:31 (exact) -> no_trade/open_below_gap_floor
+  HII    2026-10-29 composite  19.0 strong       gap   9.22 first HIGH 09:25 (exact) -> settled -1.00R stop_hit
+  MAX    2026-10-29 composite  18.0 strong       gap  13.48 first HIGH 07:00 (exact) -> settled -1.00R stop_hit
+  NCLH   2026-10-29 composite  15.0 strong       gap   9.28 first HIGH 07:00 (exact) -> settled +0.00R stop_hit [B2: still downgraded]
+  SIMO   2026-10-29 composite  20.0 strong       gap   9.28 first HIGH 08:40 (exact) -> no_trade/open_below_gap_floor
+  AN     2026-10-30 composite  3.25 strong       gap  12.93 first HIGH 09:35 (exact) -> settled -0.44R stop_hit [B2: still downgraded]
+  CDNA   2026-10-30 composite  17.0 strong       gap  14.16 first HIGH 07:00 (exact) -> settled -0.67R stop_hit
+  CPRI   2026-10-30 composite  16.0 strong       gap  13.01 first HIGH 08:55 (exact) -> settled +4.13R stop_hit [B2: still downgraded]
+  OSPN   2026-10-30 composite  20.0 strong       gap  22.03 first HIGH 07:00 (exact) -> no_trade/setup:stop_too_wide
+  EVER   2026-11-03 composite  18.0 strong       gap   9.19 first HIGH 08:50 (exact) -> no_trade/gap_below_floor_at_submit
+  IBTA   2026-11-03 composite  21.0 strong       gap  18.23 first HIGH 07:05 (exact) -> no_trade/setup:stop_too_wide
+  MDGL   2026-11-03 composite 21.52 strong       gap  10.17 first HIGH 07:15 (exact) -> no_trade/open_below_gap_floor
+  RVTY   2026-11-03 composite  19.0 strong       gap   9.56 first HIGH 07:50 (exact) -> no_trade/open_below_gap_floor
+  BRKR   2026-11-04 composite   9.0 strong       gap  15.01 first HIGH 08:50 (exact) -> settled -1.00R stop_hit [B2: still downgraded]
+  DUOL   2026-11-04 composite  12.0 strong       gap  15.59 first HIGH 07:00 (exact) -> settled -1.00R stop_hit
+  OUST   2026-11-04 composite  20.0 strong       gap  13.53 first HIGH 07:05 (exact) -> no_entry/never_crossed_orb_high
+  RIOT   2026-11-04 composite  12.1 strong       gap  15.19 first HIGH 09:10 (exact) -> settled -1.32R stop_hit [B2: still downgraded]
+  TREX   2026-11-04 composite  20.0 strong       gap    9.0 first HIGH 08:05 (exact) -> no_trade/open_below_gap_floor
+  W      2026-11-04 composite 17.48 strong       gap  10.48 first HIGH 09:35 (exact) -> settled -0.79R sma_trail_stop
+  XYZ    2026-11-04 composite  16.0 strong       gap   9.46 first HIGH 07:00 (exact) -> settled -0.75R stop_hit
+  ZBH    2026-11-04 composite  12.0 strong       gap  13.31 first HIGH 09:35 (exact) -> no_trade/setup:stop_too_wide [B2: still downgraded]
+  ACHC   2026-11-05 composite  12.0 strong       gap  15.57 first HIGH 09:45 (exact) -> no_trade/window_out_of_orb
+  APP    2026-11-05 composite 20.65 strong       gap  19.96 first HIGH 07:00 (exact) -> open_at_horizon +0.97R None
+  CPAY   2026-11-05 composite  17.0 strong       gap  12.68 first HIGH 09:35 (exact) -> no_trade/open_below_gap_floor
+  EPAM   2026-11-05 composite  14.0 strong       gap  17.21 first HIGH 07:00 (exact) -> settled -0.42R stop_hit [B2: still downgraded]
+  GCT    2026-11-05 composite  21.0 strong       gap  10.49 first HIGH 07:10 (exact) -> settled -1.00R stop_hit
+  SEZL   2026-11-05 composite  20.0 game_changer gap  26.56 first HIGH 07:00 (exact) -> no_entry/never_crossed_orb_high
+  TASK   2026-11-05 composite  14.0 strong       gap  11.01 first HIGH 07:20 (exact) -> no_trade/setup:stop_too_wide
+  TPR    2026-11-05 composite  13.0 strong       gap  11.32 first HIGH 07:25 (exact) -> settled -1.00R stop_hit
+  ABNB   2026-11-06 composite  20.0 strong       gap  12.72 first HIGH 07:00 (exact) -> no_entry/never_crossed_orb_high
+  AMD    2026-11-06 composite 21.12 strong       gap  12.94 first HIGH 09:50 (exact) -> no_trade/window_out_of_orb
+  IREN   2026-11-06 composite  2.69 strong       gap  17.91 first HIGH 07:00 (exact) -> settled -1.00R stop_hit [B2: still downgraded]
+  NET    2026-11-06 composite 20.65 strong       gap  19.43 first HIGH 07:00 (exact) -> no_entry/never_crossed_orb_high
+  SITM   2026-11-06 composite 18.35 strong       gap  10.14 first HIGH 07:00 (exact) -> no_entry/never_crossed_orb_high
+  SNDK   2026-11-06 composite 16.42 strong       gap  12.01 first HIGH 07:25 (exact) -> settled -1.00R stop_hit
+  LITE   2026-11-11 composite  13.0 strong       gap   9.47 first HIGH 07:05 (exact) -> settled +0.00R stop_hit
+  CBRS   2026-11-13 composite 20.17 strong       gap  16.62 first HIGH 07:00 (exact) -> settled -1.00R stop_hit
+  LFTO   2026-11-13 composite  19.5 strong       gap  20.26 first HIGH 07:00 (exact) -> settled -1.00R stop_hit
+  ACM    2026-11-17 composite   6.5 strong       gap   10.6 first HIGH 09:35 (exact) -> no_entry/never_crossed_orb_high [B2: still downgraded]
+
+── slot cap / breakers (separate column — never drops a row above) ──
+  ANF    2026-08-26: open positions {'live': 2}; block reasons that day []; real HIGH alerts that day 0, ranked ahead on RS 0 -> room
+  ESTC   2026-08-28: open positions {'live': 4}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 0 -> room
+  GAP    2026-08-28: open positions {'live': 4}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 0 -> room
+  ACN    2026-10-01: open positions {'live': 2}; block reasons that day []; real HIGH alerts that day 2, ranked ahead on RS 0 -> room
+  RNG    2026-10-23: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 0, ranked ahead on RS 0 -> room
+  CROX   2026-10-29: open positions {'live': 2}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 1 -> room
+  CVNA   2026-10-29: open positions {'live': 2}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 1 -> room
+  HII    2026-10-29: open positions {'live': 2}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 1 -> room
+  MAX    2026-10-29: open positions {'live': 2}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 0 -> room
+  NCLH   2026-10-29: open positions {'live': 2}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 1 -> room
+  AN     2026-10-30: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 1 -> room
+  CDNA   2026-10-30: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 0 -> room
+  CPRI   2026-10-30: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 1 -> room
+  BRKR   2026-11-04: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 3, ranked ahead on RS 2 -> room
+  DUOL   2026-11-04: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 3, ranked ahead on RS 2 -> room
+  RIOT   2026-11-04: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 3, ranked ahead on RS 3 -> room
+  W      2026-11-04: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 3, ranked ahead on RS 1 -> room
+  XYZ    2026-11-04: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 3, ranked ahead on RS 2 -> room
+  APP    2026-11-05: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 3, ranked ahead on RS 3 -> room
+  EPAM   2026-11-05: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 3, ranked ahead on RS 1 -> room
+  GCT    2026-11-05: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 3, ranked ahead on RS 1 -> room
+  TPR    2026-11-05: open positions {'live': 1}; block reasons that day []; real HIGH alerts that day 3, ranked ahead on RS 3 -> room
+  IREN   2026-11-06: open positions {}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 1 -> room
+  SNDK   2026-11-06: open positions {}; block reasons that day []; real HIGH alerts that day 1, ranked ahead on RS 1 -> room
+  LITE   2026-11-11: open positions {'paper': 2}; block reasons that day []; real HIGH alerts that day 4, ranked ahead on RS 1 -> room
+  CBRS   2026-11-13: open positions {'paper': 1}; block reasons that day []; real HIGH alerts that day 0, ranked ahead on RS 0 -> room
+  LFTO   2026-11-13: open positions {'paper': 1}; block reasons that day []; real HIGH alerts that day 0, ranked ahead on RS 0 -> room
+
+── judge bound: of 90 real post-rescale floor-HIGH alerts the judge kept 61 HIGH (68%); A entered x that rate = 18.3 expected post-judge entries
+   earnings PASS names only: judge kept 22 of 26
+
+══ DECISION RULE (frozen 2026-11-19, before the data) ══
+  comparator C = ALL-HIGH (fallback — P-floor under 15 entered): entered 15; A entered 27; counterfactual HIGH added 62
+  checks: 1 PASS, 2 PASS, 4 PASS; abstain A 0% C 2% (ceiling 30%)
+  BRANCH FIRED: CLOSE fork B — gate stays 22
+  rate: 27 added entries in 12.1 weeks (2026-08-26..2026-11-19) = 28.9 per quarter; counterfactual HIGHs 66.4 per quarter
+
+══ SENSITIVITIES (not part of the frozen rule) ══
+
+[PRE-JUDGE comparator — every real post-rescale alert with floor tier HIGH (judge demotions kept in)] campaigns walked 85
+  ABSTAIN 2 of 85 (2%)  reasons {'no_930_bar_for_orb': 1, 'entry_window_gaps': 1}
+  funnel: entered 19 (settled 19, open 0), no_entry 8, no_trade 56 {'open_below_gap_floor': 29, 'window_out_of_orb': 19, 'gap_below_floor_at_submit': 5, 'setup:stop_too_wide': 3}
+  TAIL (settled): >=3R 2  >=5R 2  best +6.01R  share>=3R 11%   | incl. open marks: >=3R 2 of 19 (11%)
+  BOTH WAYS (entered, open at mark): losers<=-0.9R 10  negative 11  positive 4  total +3.16R  mean +0.17R  median -1.00R
+  per alert week: 2026-W35: n3 >=3R 0 -1.1R  2026-W37: n2 >=3R 0 -1.0R  2026-W38: n2 >=3R 1 +5.0R  2026-W40: n1 >=3R 1 +5.8R  2026-W41: n3 >=3R 0 -2.0R  2026-W43: n2 >=3R 0 -0.4R  2026-W44: n2 >=3R 0 +1.6R  2026-W45: n2 >=3R 0 -2.0R  2026-W46: n2 >=3R 0 -2.7R
+  total without best week (2026-W40): -2.61R; >=3R campaigns sit in 2 week(s)
+  missing minute bars among floor-HIGH names: 0 of 85
+  frozen tests against the PRE-JUDGE comparator: A share 0.111 vs 0.105; -> IN BETWEEN — keep 22
+
+── where the upper bound's R sits (post downgraded names entered with gates off, split by why fork B does NOT add them) ──
+  restored grade still under the bar                             n 55  >=3R  8  total  +17.9R  mean +0.33R
+  ADDED and entered                                              n 27  >=3R  3  total   -5.0R  mean -0.18R
+  would alert, refused at submission: open_below_gap_floor       n  8  >=3R  0  total   +1.2R  mean +0.15R
+  grade-blind gate / other                                       n  7  >=3R  2  total   +7.8R  mean +1.12R
+  would alert, refused at submission: window_out_of_orb          n  5  >=3R  1  total   +8.1R  mean +1.62R
+  alerted anyway                                                 n  2  >=3R  0  total   -2.0R  mean -1.01R
+  would alert, refused at submission: gap_below_floor_at_submit  n  2  >=3R  0  total   -0.8R  mean -0.42R
+  would alert, refused at submission: never_crossed_orb_high     n  1  >=3R  0  total   -0.1R  mean -0.06R

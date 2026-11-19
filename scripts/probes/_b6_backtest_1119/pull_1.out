@@ -1,0 +1,1452 @@
+SET
+=== SCHEMA ===
+table_name|column_name|data_type
+mi_audit_log|id|integer
+mi_audit_log|created_at|timestamp with time zone
+mi_audit_log|event_type|text
+mi_audit_log|summary|text
+mi_audit_log|detail|text
+mi_catalyst_tier_shadow|id|integer
+mi_catalyst_tier_shadow|scan_date|date
+mi_catalyst_tier_shadow|ticker|text
+mi_catalyst_tier_shadow|first_seen_et|timestamp with time zone
+mi_catalyst_tier_shadow|last_seen_et|timestamp with time zone
+mi_catalyst_tier_shadow|live_quality_first|text
+mi_catalyst_tier_shadow|live_quality_last|text
+mi_catalyst_tier_shadow|shadow_tier_first|text
+mi_catalyst_tier_shadow|shadow_tier_last|text
+mi_catalyst_tier_shadow|rule_first|text
+mi_catalyst_tier_shadow|rule_last|text
+mi_catalyst_tier_shadow|regrade_count|integer
+mi_catalyst_tier_shadow|expct_sched|text
+mi_catalyst_tier_shadow|expct_sched_src|text
+mi_catalyst_tier_shadow|expct_looking|text
+mi_catalyst_tier_shadow|expct_combined|text
+mi_catalyst_tier_shadow|expct_beat|boolean
+mi_catalyst_tier_shadow|expct_growth_yoy|double precision
+mi_catalyst_tier_shadow|demotion_marker|boolean
+mi_catalyst_tier_shadow|concrete_event|boolean
+mi_catalyst_tier_shadow|sector|text
+mi_catalyst_tier_shadow|sector_n|integer
+mi_catalyst_tier_shadow|board_n|integer
+mi_catalyst_tier_shadow|sector_share|double precision
+mi_catalyst_tier_shadow|sector_confirm|boolean
+mi_catalyst_tier_shadow|gap_pct_first|double precision
+mi_catalyst_tier_shadow|gap_pct_last|double precision
+mi_catalyst_tier_shadow|adv_dollar|double precision
+mi_catalyst_tier_shadow|rel_volume|double precision
+mi_catalyst_tier_shadow|projected_vol_multiple|double precision
+mi_catalyst_tier_shadow|live_ep_score|double precision
+mi_catalyst_tier_shadow|live_tier|text
+mi_catalyst_tier_shadow|grounded_len|integer
+mi_catalyst_tier_shadow|live_side|text
+mi_catalyst_tier_shadow|created_at|timestamp with time zone
+mi_catalyst_tier_shadow|claude_analysis|text
+mi_catalyst_tier_shadow|news_summary|text
+mi_catalyst_tier_shadow|grounded_head|text
+mi_catalyst_tier_shadow|deal_role|text
+mi_catalyst_tier_shadow|deal_status|text
+mi_catalyst_tier_shadow|deal_consideration|text
+mi_catalyst_tier_shadow|deal_counterparty|text
+mi_daily_closes|trade_date|date
+mi_daily_closes|ticker|text
+mi_daily_closes|close|double precision
+mi_daily_closes|volume|bigint
+mi_daily_closes|open_price|double precision
+mi_daily_closes|high_price|double precision
+mi_daily_closes|low_price|double precision
+mi_ep_alerts|id|integer
+mi_ep_alerts|ticker|text
+mi_ep_alerts|alert_date|date
+mi_ep_alerts|gap_pct|double precision
+mi_ep_alerts|rel_volume|double precision
+mi_ep_alerts|ep_score|double precision
+mi_ep_alerts|score_tier|text
+mi_ep_alerts|catalyst|text
+mi_ep_alerts|catalyst_quality|text
+mi_ep_alerts|claude_analysis|text
+mi_ep_alerts|gemini_validation|text
+mi_ep_alerts|confidence_multiplier|double precision
+mi_ep_alerts|vol_percentile|double precision
+mi_ep_alerts|created_at|timestamp with time zone
+mi_ep_alerts|source|text
+mi_ep_alerts|pm_rvol|double precision
+mi_ep_alerts|pm_rvol_baseline_n|integer
+mi_ep_alerts|detected_at|timestamp with time zone
+mi_ep_alerts|catalyst_type|text
+mi_ep_alerts|catalyst_type_rationale|text
+mi_ep_alerts|theme_gated_tier|text
+mi_ep_alerts|theme_gated_score|double precision
+mi_ep_alerts|in_active_theme|boolean
+mi_ep_alerts|in_narrative_cohort|boolean
+mi_ep_alerts|fire_status|text
+mi_ep_alerts|fire_axes|ARRAY
+mi_ep_alerts|materiality_tier|text
+mi_ep_alerts|materiality_source|text
+mi_ep_alerts|fire_status_mat_shadow|text
+mi_ep_alerts|grounded_text|text
+mi_ep_alerts|baseline_floor_tier|text
+mi_ep_alerts|judge_tier|text
+mi_ep_alerts|judge_direction|text
+mi_ep_alerts|judge_rationale|text
+mi_ep_alerts|judge_materiality_tier|text
+mi_ep_alerts|grade_engine_authority|text
+mi_ep_alerts|rubric_version|text
+mi_ep_alerts|setup_class|text
+mi_ep_alerts|tape_tier|text
+mi_ep_alerts|tape_spike_ct|integer
+mi_ep_alerts|tape_held|integer
+mi_ep_alerts|tape_rev|integer
+mi_ep_alerts|tape_bmr2|double precision
+mi_ep_alerts|tape_ntr_med|double precision
+mi_ep_alerts|vol_hist_n|integer
+mi_ep_alerts|vol_r5_50|double precision
+mi_ep_alerts|vol_lab50|integer
+mi_ep_alerts|vol_lab50_ratio|double precision
+mi_ep_alerts|vol_alert_vs_max|double precision
+mi_ep_alerts|judge_grade|text
+mi_ep_alerts|judge_grade_reason|text
+mi_ep_alerts|judge_tier_reason|text
+mi_ep_catalyst_metrics|ticker|text
+mi_ep_catalyst_metrics|alert_date|date
+mi_ep_catalyst_metrics|q_revenue_yoy_pct|double precision
+mi_ep_catalyst_metrics|extraction_quality|text
+mi_ep_catalyst_metrics|raw_json|jsonb
+mi_ep_catalyst_metrics|extracted_at|timestamp with time zone
+mi_ep_catalyst_metrics|raw_polygon_news_json|jsonb
+mi_ep_catalyst_metrics|raw_alpaca_news_json|jsonb
+mi_ep_catalyst_metrics|raw_fmp_news_json|jsonb
+mi_ep_catalyst_metrics|raw_perplexity_text|text
+mi_ep_catalyst_metrics|raw_claude_analysis_text|text
+mi_ep_catalyst_metrics|yoy_recovered_json|jsonb
+mi_ep_scan_log|id|integer
+mi_ep_scan_log|scan_date|date
+mi_ep_scan_log|ticker|text
+mi_ep_scan_log|gap_pct|double precision
+mi_ep_scan_log|prev_close|double precision
+mi_ep_scan_log|rel_volume|double precision
+mi_ep_scan_log|filter_reason|text
+mi_ep_scan_log|ep_score|double precision
+mi_ep_scan_log|score_tier|text
+mi_ep_scan_log|catalyst_quality|text
+mi_ep_scan_log|created_at|timestamp with time zone
+mi_ep_scan_log|scan_time_et|timestamp with time zone
+mi_ep_scan_log|rank_by_gap|integer
+mi_ep_scan_log|projected_vol_multiple|double precision
+mi_ep_scan_log|pm_rvol|double precision
+mi_ep_scan_log|adv|double precision
+mi_ep_scan_log|adv_source|text
+mi_ep_scan_log|minutes_since_open|integer
+mi_ep_scan_log|gap_pct_rt|double precision
+mi_ep_scan_log|gap_pct_delayed|double precision
+mi_ep_scan_log|price_source|text
+mi_ep_scan_log|rt_price_age_s|double precision
+mi_ep_scan_log|prev_close_alpaca|double precision
+mi_ep_scan_log|reject_stage|text
+mi_ep_scan_log|current_price|double precision
+mi_ep_scan_log|prev_day_volume|bigint
+mi_ep_scan_log|today_volume|bigint
+mi_ep_scan_log|pm_rvol_baseline_n|integer
+mi_ep_scan_log|days_since_prior_alert|integer
+mi_ep_scan_log|extension_pct|double precision
+mi_ep_scan_log|quality_adv_dollar|double precision
+mi_ep_scan_log|atr_pct|double precision
+mi_ep_scan_log|market_cap|double precision
+mi_ep_scan_log|vol_percentile|double precision
+mi_ep_scan_log|prior_3m_change|double precision
+mi_ep_scan_log|float_shares|double precision
+mi_ep_scan_log|in_active_theme|boolean
+mi_ep_scan_log|llm_catalyst_quality|text
+mi_ep_scan_log|score_breakdown|jsonb
+mi_ep_scan_log|ep_bar|double precision
+mi_ep_scan_log|score_side|text
+mi_ep_scan_log|rank_by_prescore|integer
+mi_ep_score_shadow|id|integer
+mi_ep_score_shadow|scan_date|date
+mi_ep_score_shadow|ticker|text
+mi_ep_score_shadow|first_seen_et|timestamp with time zone
+mi_ep_score_shadow|last_seen_et|timestamp with time zone
+mi_ep_score_shadow|sep_score_first|double precision
+mi_ep_score_shadow|sep_score_last|double precision
+mi_ep_score_shadow|sep_tier_first|text
+mi_ep_score_shadow|sep_tier_last|text
+mi_ep_score_shadow|legacy_score_first|double precision
+mi_ep_score_shadow|legacy_score_last|double precision
+mi_ep_score_shadow|legacy_tier_first|text
+mi_ep_score_shadow|legacy_tier_last|text
+mi_ep_score_shadow|sep_bar|integer
+mi_ep_score_shadow|legacy_bar|integer
+mi_ep_score_shadow|live_side|text
+mi_ep_score_shadow|gap_pct_first|double precision
+mi_ep_score_shadow|gap_pct_last|double precision
+mi_ep_score_shadow|catalyst_quality_last|text
+mi_ep_score_shadow|created_at|timestamp with time zone
+mi_intraday_bars|ticker|text
+mi_intraday_bars|bar_time|timestamp with time zone
+mi_intraday_bars|open|double precision
+mi_intraday_bars|high|double precision
+mi_intraday_bars|low|double precision
+mi_intraday_bars|close|double precision
+mi_intraday_bars|volume|bigint
+mi_intraday_bars|vwap|double precision
+mi_live_trades|id|integer
+mi_live_trades|ticker|text
+mi_live_trades|alert_date|date
+mi_live_trades|ep_score|double precision
+mi_live_trades|catalyst_quality|text
+mi_live_trades|gap_pct|double precision
+mi_live_trades|regime|text
+mi_live_trades|status|text
+mi_live_trades|orb_high|double precision
+mi_live_trades|orb_low|double precision
+mi_live_trades|atr_14|double precision
+mi_live_trades|entry_price|double precision
+mi_live_trades|entry_shares|double precision
+mi_live_trades|stop_price|double precision
+mi_live_trades|hard_stop|double precision
+mi_live_trades|position_size|double precision
+mi_live_trades|risk_dollars|double precision
+mi_live_trades|entry_order_id|text
+mi_live_trades|stop_order_id|text
+mi_live_trades|exits|jsonb
+mi_live_trades|remaining_shares|double precision
+mi_live_trades|total_pnl|double precision
+mi_live_trades|hold_days|integer
+mi_live_trades|partial_taken|boolean
+mi_live_trades|breakeven_active|boolean
+mi_live_trades|running_closes|jsonb
+mi_live_trades|proposed_at|timestamp with time zone
+mi_live_trades|confirmed_at|timestamp with time zone
+mi_live_trades|skip_reason|text
+mi_live_trades|created_at|timestamp with time zone
+mi_live_trades|filled_at|timestamp with time zone
+mi_live_trades|closed_at|timestamp with time zone
+mi_live_trades|entry_attempt|integer
+mi_live_trades|signal_type|text
+mi_live_trades|account_mode|text
+mi_live_trades|lowest_price_seen|numeric
+mi_live_trades|highest_price_seen|numeric
+mi_live_trades|pnl_attribution|text
+mi_live_trades|risk_dollars_actual|double precision
+mi_live_trades|dead_stop_price|double precision
+mi_live_trades|dead_stop_order_id|text
+mi_live_trades|dead_stop_status|text
+mi_live_trades|dead_stop_recorded_at|timestamp with time zone
+mi_live_trades|exit_rule|text
+mi_live_trades|depth_sell_pending_on|date
+mi_live_trades|breakout_day0_pp|jsonb
+mi_market_regime|regime_date|date
+mi_market_regime|regime|text
+mi_market_regime|spy_vs_50ma|double precision
+mi_market_regime|spy_vs_200ma|double precision
+mi_market_regime|qqq_vs_50ma|double precision
+mi_market_regime|vix|double precision
+mi_market_regime|breadth_pct_above_40ma|double precision
+mi_market_regime|bo_bd_ratio_5d|double precision
+mi_market_regime|pct4_ratio_10d|double precision
+mi_market_regime|description|text
+mi_market_regime|ep_threshold|integer
+mi_market_regime|created_at|timestamp with time zone
+mi_market_regime|t2108|double precision
+mi_market_regime|pradeep_1m_50|integer
+mi_market_regime|pradeep_3m_25|integer
+mi_market_regime|full_up4_count|integer
+mi_market_regime|full_down4_count|integer
+mi_market_regime|consec_breakdown_days|integer
+mi_market_regime|breadth_monitor|jsonb
+mi_market_regime|qqq_ema_10|double precision
+mi_market_regime|qqq_ema_20|double precision
+mi_market_regime|qqq_ema_bullish|boolean
+mi_stock_scores|ticker|text
+mi_stock_scores|score_date|date
+mi_stock_scores|rs_1m|double precision
+mi_stock_scores|rs_3m|double precision
+mi_stock_scores|rs_6m|double precision
+mi_stock_scores|rs_composite|double precision
+mi_stock_scores|rs_rank|integer
+mi_stock_scores|sector|text
+mi_stock_scores|adv_20|double precision
+mi_stock_scores|sma_10|double precision
+mi_stock_scores|sma_20|double precision
+mi_stock_scores|sma_50|double precision
+mi_stock_scores|close|double precision
+mi_stock_scores|raw_1m|double precision
+mi_stock_scores|raw_3m|double precision
+mi_stock_scores|raw_6m|double precision
+mi_stock_scores|sma_40|double precision
+(273 rows)
+=== LASTBAR ===
+last_daily_bar|last_minute_bar_et
+2026-11-18|2026-11-19 12:54
+(1 row)
+=== POP ===
+ticker|alert_date|era|q_revenue_yoy_pct|extraction_quality|has_metrics_row|has_yoy_recovery|has_alert|n_downgrade_events
+CAVA|2026-05-20|pre|32.2|high|t|f|f|7
+AAP|2026-05-21|pre|1.2|high|t|f|f|4
+ENS|2026-05-21|pre|1.4|medium|t|f|f|1
+WDAY|2026-05-22|pre|13.5|medium|t|f|f|1
+ZM|2026-05-22|pre|5.5|medium|t|f|f|2
+PONY|2026-05-26|pre|400|medium|t|f|t|0
+ANF|2026-05-27|pre|1.5|medium|t|f|t|1
+DY|2026-05-27|pre|56.1|high|t|f|t|0
+OOMA|2026-05-27|pre|25|high|t|f|f|0
+SMTC|2026-05-27|pre|15.9|high|t|f|f|0
+A|2026-05-28|pre|10|high|t|f|f|1
+BBY|2026-05-28|pre|1.9|high|t|f|f|1
+DLTR|2026-05-28|pre|7.2|high|t|f|f|1
+HEI|2026-05-28|pre|25.3|high|t|f|f|0
+KSS|2026-05-28|pre|-2|high|t|f|t|1
+NCNO|2026-05-28|pre|10.6|high|t|f|f|1
+PHR|2026-05-28|pre|13|high|t|f|t|1
+UMAC|2026-05-28|pre|296|medium|t|f|f|1
+ASAN|2026-05-29|pre|9.5|high|t|f|t|1
+CHA|2026-05-29|pre|4.5|medium|t|f|t|1
+DELL|2026-05-29|pre|88|medium|t|f|t|0
+NTAP|2026-05-29|pre|12.5|high|t|f|f|1
+OKTA|2026-05-29|pre|11.2|high|t|f|f|1
+PD|2026-05-29|pre|0|medium|t|f|t|1
+EWTX|2026-06-01|pre|0|medium|t|f|f|1
+SAIC|2026-06-01|pre|1.5|high|t|f|t|1
+AVAH|2026-06-02|pre|15.9|medium|t|f|f|1
+HPE|2026-06-02|pre|40|high|t|f|t|0
+GME|2026-06-03|pre|14.05|high|t|f|f|1
+AGX|2026-06-05|pre|50|high|t|f|t|0
+TTAN|2026-06-05|pre|25|high|t|f|t|0
+ACLS|2026-06-09|pre|3.3|medium|t|f|f|1
+AVO|2026-06-09|pre|-23.5|medium|t|f|f|1
+VSH|2026-06-09|pre|18|medium|t|f|f|1
+CBRL|2026-06-10|pre|-2.9|high|t|f|t|1
+NAVN|2026-06-11|pre|40|high|t|f|t|0
+ATRO|2026-06-15|pre|12|medium|t|f|f|1
+SWBI|2026-06-18|pre|26.7|high|t|f|t|0
+WDC|2026-06-18|pre|45.5|high|t|f|f|1
+KBH|2026-06-24|pre|-27.3|medium|t|f|f|1
+RUN|2026-06-24|pre|-2|medium|t|f|f|1
+AYI|2026-06-25|pre|1.6|medium|t|f|f|1
+BB|2026-06-25|pre|26|high|t|f|f|1
+MLKN|2026-06-25|pre|4.4|high|t|f|f|1
+MU|2026-06-25|pre|346|high|t|f|t|0
+SNDK|2026-06-25|pre|251|medium|t|f|f|1
+SNX|2026-06-25|pre|31|high|t|f|t|0
+WGO|2026-06-25|pre|-9.9|high|t|f|f|1
+VSAT|2026-06-29|pre|4|medium|t|f|f|1
+AVAV|2026-06-30|pre|133|high|t|f|t|1
+ENPH|2026-06-30|pre|-59|medium|t|f|f|1
+PRGS|2026-07-01|pre|7|high|t|f|f|1
+PENG|2026-07-08|pre|48|high|t|f|t|0
+ALNY|2026-07-09|pre|96.4|medium|t|f|f|1
+SMPL|2026-07-09|pre|-6.3|high|t|f|f|1
+WDFC|2026-07-10|pre|24|high|t|f|t|0
+AEHR|2026-07-15|pre|33|high|t|f|t|0
+ANGO|2026-07-15|pre|8|high|t|f|f|1
+ABT|2026-07-16|pre|13|medium|t|f|f|1
+MAN|2026-07-16|pre|8|high|t|f|f|1
+DCBO|2026-07-17|pre|12.7|medium|t|f|f|1
+PLOW|2026-07-20|pre|20|low|t|f|f|1
+HAS|2026-07-21|pre|16|high|t|f|t|0
+PKE|2026-07-21|pre|18.9|high|t|f|f|1
+PAG|2026-07-22|pre|-1.1|medium|t|f|f|1
+ALLE|2026-07-23|pre|12.7|high|t|f|f|1
+DGX|2026-07-23|pre|10.2|high|t|f|f|1
+LMT|2026-07-23|pre|10.5|high|t|f|f|1
+MEDP|2026-07-23|pre|17.2|high|t|f|f|1
+NVCR|2026-07-23|pre|16|high|t|f|t|0
+OII|2026-07-23|pre|10|high|t|f|f|1
+TMO|2026-07-23|pre|10|high|t|f|f|1
+URI|2026-07-23|pre|11.8|high|t|f|f|1
+RNG|2026-07-24|pre|5.9|high|t|f|f|1
+SSNC|2026-07-24|pre|10.3|high|t|f|f|1
+WKC|2026-07-24|pre|50.3|high|t|f|t|0
+GENI|2026-07-27|pre|30|medium|t|f|f|1
+AWI|2026-07-28|pre|11.2|high|t|f|f|1
+CORZ|2026-07-28|pre|108.9|medium|t|f|t|0
+IQV|2026-07-28|pre|8.7|high|t|f|f|1
+ITRI|2026-07-28|pre|-7.2|high|t|f|f|1
+KNSA|2026-07-28|pre|55|high|t|f|f|1
+AVTR|2026-07-29|pre|0|high|t|f|f|1
+CBZ|2026-07-29|pre|-0.2|medium|t|f|f|1
+GEHC|2026-07-29|pre|5.7|medium|t|f|f|1
+GNRC|2026-07-29|pre|10.6|high|t|f|f|1
+GRMN|2026-07-29|pre|11|high|t|f|f|1
+HURN|2026-07-29|pre|15.7|high|t|f|f|1
+LFUS|2026-07-29|pre|20|high|t|f|f|1
+MANH|2026-07-29|pre|9.3|high|t|f|f|1
+MBIN|2026-07-29|pre|1.7|medium|t|f|f|1
+NEO|2026-07-29|pre|11|high|t|f|f|1
+TER|2026-07-29|pre|104|high|t|f|t|0
+AVY|2026-07-30|pre|10.9|high|t|f|f|1
+BAX|2026-07-30|pre|5|high|t|f|f|1
+CORT|2026-07-30|pre|32|high|t|f|t|0
+EFOR|2026-07-30|pre|-1.3|high|t|f|f|1
+FORM|2026-07-30|pre|31.9|high|t|f|f|1
+FTNT|2026-07-30|pre|26|high|t|f|t|0
+GKOS|2026-07-30|pre|50|high|t|f|f|0
+HII|2026-07-30|pre|10.9|high|t|f|f|1
+MKTX|2026-07-30|pre|0|low|t|f|f|1
+NPKI|2026-07-30|pre|20|high|t|f|f|1
+PRCH|2026-07-30|pre|12|high|t|f|f|1
+PWR|2026-07-30|pre|41|high|t|f|t|0
+SFM|2026-07-30|pre|5|high|t|f|f|1
+SIMO|2026-07-30|pre|127|high|t|f|t|0
+STGW|2026-07-30|pre|11|high|t|f|f|1
+AMZN|2026-07-31|pre|20|high|t|f|f|1
+COHR|2026-07-31|pre|20.5|high|t|f|f|1
+COHU|2026-07-31|pre|38|high|t|f|t|0
+CSTL|2026-07-31|pre|20|high|t|f|f|1
+DXCM|2026-07-31|pre|13|high|t|f|f|1
+MPWR|2026-07-31|pre|47.6|high|t|f|t|0
+NVT|2026-07-31|pre|53|high|t|f|f|1
+NXT|2026-07-31|pre|8.2|high|t|f|f|1
+PWP|2026-07-31|pre|1|medium|t|f|f|1
+SPSC|2026-07-31|pre|6|high|t|f|f|1
+SPXC|2026-07-31|pre|22.9|high|t|f|f|1
+CNH|2026-08-03|pre|2.5|medium|t|f|f|1
+LIND|2026-08-03|pre|18.6|high|t|f|t|0
+AEIS|2026-08-04|pre|30|high|t|f|t|0
+AMRC|2026-08-04|pre|9.1|high|t|f|t|1
+BLZE|2026-08-04|pre|18|high|t|f|t|0
+CAT|2026-08-04|pre|23.5|high|t|f|t|0
+COHR|2026-08-04|pre|20.5|medium|t|f|f|1
+DORM|2026-08-04|pre|0.7|high|t|f|f|1
+FN|2026-08-04|pre|39|medium|t|f|f|1
+IBTA|2026-08-04|pre|3.3|high|t|f|f|1
+INSP|2026-08-04|pre|-7.6|medium|t|f|t|1
+LIFE|2026-08-04|pre|113|high|t|f|t|0
+MED|2026-08-04|pre|-27.6|medium|t|f|f|1
+PAY|2026-08-04|pre|28.8|high|t|f|f|1
+PLTR|2026-08-04|pre|93|high|t|f|t|0
+UFPT|2026-08-04|pre|15.1|medium|t|f|f|1
+W|2026-08-04|pre|7.5|high|t|f|f|1
+WGS|2026-08-04|pre|11|medium|t|f|f|1
+WIX|2026-08-04|pre|15|medium|t|f|f|1
+ZBRA|2026-08-04|pre|20.4|high|t|f|t|0
+AMPX|2026-08-05|pre|126|high|t|f|f|1
+ANET|2026-08-05|pre|37.7|high|t|f|f|1
+APPS|2026-08-05|pre|27|high|t|f|t|0
+BLMN|2026-08-05|pre|1.3|medium|t|f|f|1
+DT|2026-08-05|pre|16|medium|t|f|f|1
+ECG|2026-08-05|pre|33.7|high|t|f|t|0
+FRPT|2026-08-05|pre|15.5|high|t|f|f|1
+INTA|2026-08-05|pre|13|high|t|f|f|1
+KMT|2026-08-05|pre|43|medium|t|f|t|0
+KODK|2026-08-05|pre|18|high|t|f|t|0
+KTOS|2026-08-05|pre|30.5|high|t|f|t|0
+PGEN|2026-08-05|pre|145|high|t|f|f|1
+QLYS|2026-08-05|pre|11|high|t|f|f|1
+ROCK|2026-08-05|pre|64.6|high|t|f|t|0
+SHOP|2026-08-05|pre|33.7|high|t|f|f|1
+SWIM|2026-08-05|pre|14.4|high|t|f|f|1
+TBI|2026-08-05|pre|12|medium|t|f|f|1
+UPST|2026-08-05|pre|42|high|t|f|f|1
+YOU|2026-08-05|pre|26.6|medium|t|f|f|0
+CAI|2026-08-06|pre|45|high|t|f|t|1
+LFST|2026-08-06|pre|26|high|t|f|t|0
+MGNI|2026-08-06|pre|11.2|high|t|f|f|1
+ORA|2026-08-06|pre|10.6|high|t|f|f|1
+PAYC|2026-08-06|pre|9.8|high|t|f|f|1
+RDW|2026-08-06|pre|89.6|high|t|f|t|0
+RELY|2026-08-06|pre|20.2|high|t|f|f|1
+SITM|2026-08-06|pre|127|high|t|f|t|0
+U|2026-08-06|pre|24|medium|t|f|t|0
+WPP|2026-08-06|pre|-4.4|medium|t|f|f|1
+FLR|2026-08-07|pre|9|medium|t|f|f|1
+MTW|2026-08-07|pre|10.3|high|t|f|t|1
+NTRA|2026-08-07|pre|37.7|high|t|f|f|1
+ONTO|2026-08-07|pre|35.3|high|t|f|t|0
+PSIX|2026-08-07|pre|-21|high|t|f|t|1
+ROAD|2026-08-07|pre|28.2|high|t|f|f|1
+NESR|2026-08-10|pre|59.1|high|t|f|t|0
+TH|2026-08-10|pre|39|high|t|f|t|0
+ACVA|2026-08-11|pre|10.4|high|t|f|f|1
+AP|2026-08-11|pre|-9|high|t|f|f|1
+APEI|2026-08-11|pre|5.5|high|t|f|f|1
+BW|2026-08-11|pre|130|high|t|f|t|0
+NIQ|2026-08-11|pre|8|high|t|f|f|1
+ATRO|2026-08-12|pre|27|high|t|f|t|0
+CAVA|2026-08-12|pre|31.3|high|t|f|f|1
+CRWV|2026-08-12|pre|112.5|high|t|f|t|1
+RSKD|2026-08-12|pre|22|medium|t|f|f|1
+SMWB|2026-08-12|pre|9|high|t|f|f|1
+AEBI|2026-08-13|pre|9|high|t|f|f|1
+AVAH|2026-08-13|pre|15.9|high|t|f|f|1
+BIRK|2026-08-13|pre|13|high|t|f|f|1
+ELMT|2026-08-13|pre|35.2|medium|t|f|f|1
+ENS|2026-08-13|pre|4.8|high|t|f|f|1
+TBBB|2026-08-13|pre|38.7|medium|t|f|f|1
+WWW|2026-08-13|pre|6.8|high|t|f|f|1
+ETON|2026-08-14|pre|99|high|t|f|t|0
+HTFL|2026-08-14|pre|48|high|t|f|t|0
+NMAX|2026-08-14|pre|16.5|high|t|f|t|0
+NU|2026-08-14|pre|39|high|t|f|f|1
+RCAT|2026-08-14|pre|527|high|t|f|f|1
+UMAC|2026-08-14|pre|687|medium|t|f|f|1
+CBRS|2026-08-17|pre|103|medium|t|f|t|0
+EL|2026-08-19|pre|6|high|t|f|f|1
+KC|2026-08-19|pre|30.8|high|t|f|f|1
+MRK|2026-08-19|pre|5|medium|t|f|f|1
+MRVI|2026-08-19|pre|8.5|high|t|f|f|1
+BULL|2026-08-20|pre|51|high|t|f|t|0
+FUTU|2026-08-20|pre|35.6|medium|t|f|f|0
+MRVI|2026-08-20|pre|8.5|medium|t|f|f|1
+ANF|2026-08-26|post|5|high|t|f|f|1
+BZ|2026-08-26|post|14.1|high|t|f|f|1
+OOMA|2026-08-27|post|25|high|t|f|f|1
+AFRM|2026-08-28|post|33|high|t|f|f|1
+BEKE|2026-08-28|post|-5.7|high|t|f|f|1
+ESTC|2026-08-28|post|15.1|high|t|f|f|1
+GAP|2026-08-28|post|-2|medium|t|f|f|1
+SAIC|2026-08-31|post|6.3|medium|t|f|f|1
+YEXT|2026-09-01|post|-1.77|high|t|f|f|1
+DAKT|2026-09-02|post|7.1|medium|t|f|f|1
+DELL|2026-09-02|post|58|high|t|f|f|1
+GTLB|2026-09-02|post|21|high|t|f|f|1
+AGX|2026-09-03|post|62|high|t|f|t|0
+NTSK|2026-09-03|post|29|high|t|f|f|1
+SNOW|2026-09-03|post|35|high|t|f|t|0
+IOT|2026-09-04|post|30|high|t|f|f|1
+NX|2026-09-04|post|1.3|high|t|f|f|1
+PL|2026-09-04|post|58|high|t|f|f|0
+SWBI|2026-09-04|post|32.3|high|t|f|f|0
+VBNK|2026-09-04|post|23|high|t|f|f|1
+PCTY|2026-09-08|post|11|high|t|f|f|1
+ASO|2026-09-09|post|3|high|t|f|f|1
+AVO|2026-09-09|post|26|high|t|f|f|1
+CGNT|2026-09-09|post|12|medium|t|f|f|1
+INNV|2026-09-09|post|18|high|t|f|f|1
+FEIM|2026-09-11|post|70|high|t|f|f|0
+HPE|2026-09-11|post|33.7|high|t|f|f|1
+NTSK|2026-09-14|post|29|medium|t|f|f|1
+FPS|2026-09-15|post|94|medium|t|f|f|1
+CIEN|2026-09-17|post|37|high|t|f|f|1
+XE|2026-09-17|post|154|medium|t|f|f|1
+WOR|2026-09-23|post|13.2|high|t|f|f|1
+KMX|2026-09-29|post|19.5|high|t|f|f|0
+ACN|2026-10-01|post|6|medium|t|f|t|1
+RXO|2026-10-05|post|25|medium|t|f|f|1
+NEOG|2026-10-07|post|6.5|high|t|f|f|1
+PENG|2026-10-07|post|68|high|t|f|t|0
+HELE|2026-10-08|post|2.1|high|t|f|f|1
+BETR|2026-10-15|post|8.6|medium|t|f|f|1
+ERIC|2026-10-15|post|6|medium|t|f|f|1
+CLF|2026-10-19|post|18.6|medium|t|f|f|1
+EFX|2026-10-20|post|10|high|t|f|f|1
+SPCX|2026-10-21|post|161|high|t|f|t|0
+CCI|2026-10-23|post|-7.2|high|t|f|f|1
+RHI|2026-10-23|post|0.37|medium|t|f|f|1
+RNG|2026-10-23|post|5.9|high|t|f|f|1
+EAF|2026-10-26|post|-3|medium|t|f|f|1
+CLS|2026-10-27|post|83|high|t|f|t|0
+HRI|2026-10-27|post|5|medium|t|f|f|1
+HWKN|2026-10-27|post|12|high|t|f|f|1
+INIO|2026-10-27|post|57|high|t|f|t|0
+KNSA|2026-10-27|post|58|high|t|f|f|0
+PII|2026-10-27|post|11|high|t|f|f|1
+RCL|2026-10-27|post|9|medium|t|f|f|1
+SOFI|2026-10-27|post|44|high|t|f|t|1
+AXGN|2026-10-28|post|26.2|medium|t|f|f|1
+ENSG|2026-10-28|post|14.5|medium|t|f|f|1
+EVR|2026-10-28|post|12|high|t|f|f|1
+EXTR|2026-10-28|post|10|high|t|f|f|1
+FLEX|2026-10-28|post|25|high|t|f|f|1
+GEHC|2026-10-28|post|7.2|high|t|f|f|1
+HAYW|2026-10-28|post|6|high|t|f|f|1
+ICLR|2026-10-28|post|-2.9|high|t|f|f|1
+OSW|2026-10-28|post|7|high|t|f|f|1
+ROG|2026-10-28|post|9.3|high|t|f|f|1
+TEX|2026-10-28|post|58.4|medium|t|f|f|0
+UCTT|2026-10-28|post|48.8|high|t|f|f|0
+ULCC|2026-10-28|post|53|high|t|f|f|0
+VRT|2026-10-28|post|61|high|t|f|t|0
+BHC|2026-10-29|post|9.7|high|t|f|f|1
+BOOT|2026-10-29|post|15.1|high|t|f|f|1
+CHDN|2026-10-29|post|1.9|medium|t|f|f|1
+CLMB|2026-10-29|post|37|high|t|f|f|0
+COHU|2026-10-29|post|37|high|t|f|f|1
+CROX|2026-10-29|post|4.6|medium|t|f|f|1
+CVNA|2026-10-29|post|42|high|t|f|f|1
+DASH|2026-10-29|post|34|medium|t|f|f|1
+DRS|2026-10-29|post|11|high|t|f|f|1
+FCN|2026-10-29|post|5.9|high|t|f|f|1
+FVRR|2026-10-29|post|-15.8|medium|t|f|f|1
+GATX|2026-10-29|post|36|high|t|f|f|1
+GEN|2026-10-29|post|12|high|t|f|f|1
+GKOS|2026-10-29|post|58|high|t|f|t|0
+HII|2026-10-29|post|10.8|high|t|f|f|1
+MAX|2026-10-29|post|22.7|high|t|f|f|1
+MBIN|2026-10-29|post|31.5|high|t|f|f|0
+NCLH|2026-10-29|post|0.3|medium|t|f|f|1
+NVCR|2026-10-29|post|16|medium|t|f|f|0
+PHAT|2026-10-29|post|71|high|t|f|f|1
+PI|2026-10-29|post|16.7|high|t|f|f|0
+PRCH|2026-10-29|post|25|medium|t|f|f|0
+PWP|2026-10-29|post|53|medium|t|f|f|0
+SIMO|2026-10-29|post|131|high|t|f|f|1
+TDOC|2026-10-29|post|-3.4|high|t|f|f|1
+TXT|2026-10-29|post|4|medium|t|f|f|1
+AN|2026-10-30|post|0|medium|t|f|f|1
+BTSG|2026-10-30|post|26.4|high|t|f|f|1
+CDNA|2026-10-30|post|39|high|t|f|f|1
+CPRI|2026-10-30|post|-5.5|medium|t|f|f|1
+CVCO|2026-10-30|post|17.9|high|t|f|f|1
+CVEO|2026-10-30|post|13|high|t|f|f|1
+FDXF|2026-10-30|post|8|high|t|f|f|1
+GDYN|2026-10-30|post|9.7|high|t|f|f|1
+OSPN|2026-10-30|post|12|high|t|f|f|1
+REAL|2026-10-30|post|18.8|high|t|f|f|0
+REGN|2026-10-30|post|36|high|t|f|t|0
+IDXX|2026-11-02|post|10|high|t|f|f|1
+TATT|2026-11-02|post|20.2|medium|t|f|f|1
+AEHR|2026-11-03|post|200|high|t|f|t|0
+AEIS|2026-11-03|post|50.3|high|t|f|t|0
+BETA|2026-11-03|post|98|high|t|f|f|0
+BLZE|2026-11-03|post|26|high|t|f|f|0
+EVER|2026-11-03|post|25.4|high|t|f|f|1
+FN|2026-11-03|post|51|high|t|f|t|0
+HLF|2026-11-03|post|6|high|t|f|f|1
+HLIT|2026-11-03|post|64|high|t|f|f|0
+IBTA|2026-11-03|post|17|high|t|f|f|1
+LIFE|2026-11-03|post|151|high|t|f|f|0
+LSCC|2026-11-03|post|118.3|high|t|f|t|0
+MDGL|2026-11-03|post|50.2|medium|t|f|f|1
+NBIX|2026-11-03|post|41.2|high|t|f|f|0
+RVTY|2026-11-03|post|7|medium|t|f|f|1
+SRAD|2026-11-03|post|24|high|t|f|f|1
+ALIT|2026-11-04|post|-6.2|medium|t|f|f|1
+ANET|2026-11-04|post|58.5|high|t|f|t|0
+BRKR|2026-11-04|post|1.6|medium|t|f|f|1
+CDW|2026-11-04|post|17.7|high|t|f|f|1
+CPNG|2026-11-04|post|7.5|high|t|f|f|1
+CRCT|2026-11-04|post|11|high|t|f|f|1
+DUOL|2026-11-04|post|13.7|high|t|f|f|1
+ENLT|2026-11-04|post|40|high|t|f|f|1
+FLYW|2026-11-04|post|25.1|high|t|f|f|1
+FTK|2026-11-04|post|104|high|t|f|f|0
+GIC|2026-11-04|post|10.2|high|t|f|f|1
+JKS|2026-11-04|post|-10.5|medium|t|f|f|1
+LIVN|2026-11-04|post|9.9|high|t|f|f|1
+LMB|2026-11-04|post|24.9|high|t|f|f|1
+MDLN|2026-11-04|post|10.4|high|t|f|f|1
+NVTS|2026-11-04|post|38|high|t|f|f|0
+OPRT|2026-11-04|post|3|high|t|f|f|1
+OUST|2026-11-04|post|50|high|t|f|f|1
+PCOR|2026-11-04|post|19|high|t|f|t|0
+RIOT|2026-11-04|post|0.6|medium|t|f|f|1
+SWK|2026-11-04|post|-1|medium|t|f|f|1
+TREX|2026-11-04|post|26|high|t|f|f|1
+VSH|2026-11-04|post|24|medium|t|f|f|1
+W|2026-11-04|post|9.7|high|t|f|f|1
+XYZ|2026-11-04|post|9.9|high|t|f|f|1
+ZBH|2026-11-04|post|3.1|medium|t|f|f|1
+ACHC|2026-11-05|post|5.1|high|t|f|f|1
+ADMA|2026-11-05|post|5|high|t|f|f|1
+APP|2026-11-05|post|55.5|high|t|f|f|1
+APPN|2026-11-05|post|25|medium|t|f|t|0
+ARDT|2026-11-05|post|3.1|high|t|f|f|1
+CHYM|2026-11-05|post|32|high|t|f|t|0
+CPAY|2026-11-05|post|17.9|high|t|f|f|1
+DLX|2026-11-05|post|2.5|medium|t|f|f|1
+EPAM|2026-11-05|post|2.3|high|t|f|f|1
+GCT|2026-11-05|post|27.4|high|t|f|f|1
+JOBY|2026-11-05|post|144.1|medium|t|f|f|0
+LEGH|2026-11-05|post|72.2|high|t|f|f|0
+LYNX|2026-11-05|post|90|high|t|f|f|0
+MDA|2026-11-05|post|21.5|high|t|f|f|1
+PKOH|2026-11-05|post|15|high|t|f|f|0
+RPD|2026-11-05|post|-2.5|medium|t|f|f|1
+RUN|2026-11-05|post|51.7|medium|t|f|f|1
+SBGI|2026-11-05|post|16|high|t|f|f|1
+SEZL|2026-11-05|post|42.6|high|t|f|f|1
+TASK|2026-11-05|post|5.4|high|t|f|f|1
+TBI|2026-11-05|post|21|high|t|f|f|0
+TPR|2026-11-05|post|11|high|t|f|f|1
+U|2026-11-05|post|32|medium|t|f|t|0
+VERX|2026-11-05|post|11|high|t|f|f|1
+VSEC|2026-11-05|post|91.2|high|t|f|f|0
+WRBY|2026-11-05|post|10.4|high|t|f|f|1
+WU|2026-11-05|post|-2.3|high|t|f|f|1
+WW|2026-11-05|post|-11.1|medium|t|f|f|1
+ABNB|2026-11-06|post|19|high|t|f|f|1
+ALAB|2026-11-06|post|153.7|high|t|f|t|0
+AMAT|2026-11-06|post|24.8|medium|t|f|t|1
+AMD|2026-11-06|post|45|medium|t|f|f|1
+AOSL|2026-11-06|post|-2.6|medium|t|f|f|1
+COHR|2026-11-06|post|50|high|t|f|t|0
+EVC|2026-11-06|post|88|high|t|f|f|1
+FORM|2026-11-06|post|38.4|high|t|f|f|1
+FROG|2026-11-06|post|31|high|t|f|f|0
+IREN|2026-11-06|post|-5|high|t|f|f|1
+LASR|2026-11-06|post|10.5|high|t|f|f|0
+MKSI|2026-11-06|post|43|high|t|f|f|1
+MRNA|2026-11-06|post|29|medium|t|f|t|0
+MTSI|2026-11-06|post|62.7|high|t|f|f|1
+NET|2026-11-06|post|39|high|t|f|f|1
+RCEL|2026-11-06|post|53|high|t|f|f|0
+SIMO|2026-11-06|post|131|high|t|f|t|1
+SITM|2026-11-06|post|257|high|t|f|f|1
+SNDK|2026-11-06|post|378|medium|t|f|f|1
+TMDX|2026-11-06|post|41.2|high|t|f|f|0
+CECO|2026-11-09|post|104.7|medium|t|f|f|1
+CTEV|2026-11-09|post|9.1|high|t|f|f|1
+DCTH|2026-11-09|post|70.4|medium|t|f|f|0
+FERG|2026-11-09|post|9.5|high|t|f|f|1
+GFR|2026-11-09|post|112.8|medium|t|f|f|1
+LINC|2026-11-09|post|12.6|high|t|f|f|1
+PANL|2026-11-09|post|29.9|medium|t|f|f|1
+VIR|2026-11-09|post|-178.3|medium|t|f|f|1
+WRBY|2026-11-09|post|10.4|high|t|f|f|1
+AAON|2026-11-10|post|84.1|high|t|f|f|1
+AMRC|2026-11-10|post|10.3|high|t|f|f|0
+CSQR|2026-11-10|post|25.6|medium|t|f|f|1
+ELMT|2026-11-10|post|55.6|high|t|f|f|0
+HROW|2026-11-10|post|38.6|high|t|f|f|1
+QMCO|2026-11-10|post|42.9|high|t|f|f|0
+SANM|2026-11-10|post|84|high|t|f|f|0
+SECZ|2026-11-10|post|13|medium|t|f|f|1
+SENS|2026-11-10|post|140|high|t|f|f|1
+AII|2026-11-11|post|83.1|high|t|f|t|0
+ASPN|2026-11-11|post|17|high|t|f|f|0
+AZTA|2026-11-11|post|5.1|high|t|f|f|1
+CARL|2026-11-11|post|64.8|high|t|f|f|0
+CECO|2026-11-11|post|105|high|t|f|f|1
+CRDO|2026-11-11|post|157|medium|t|f|t|0
+CRWV|2026-11-11|post|168|high|t|f|t|0
+DCTH|2026-11-11|post|71|high|t|f|f|1
+DOCN|2026-11-11|post|40|medium|t|f|f|1
+ELMT|2026-11-11|post|55.6|high|t|f|f|0
+FOSL|2026-11-11|post|0.4|medium|t|f|f|1
+LITE|2026-11-11|post|136.5|medium|t|f|f|1
+LMRI|2026-11-11|post|5|medium|t|f|f|1
+RSKD|2026-11-11|post|41|high|t|f|t|0
+AVEX|2026-11-12|post|56.5|high|t|f|f|0
+DPC|2026-11-12|post|39|medium|t|f|f|0
+FIGR|2026-11-12|post|84|high|t|f|f|1
+MBGL|2026-11-12|post|7.4|high|t|f|f|1
+ACCV|2026-11-13|post|65.9|high|t|f|f|0
+CBRS|2026-11-13|post|55|medium|t|f|f|1
+HAWK|2026-11-13|post|84|high|t|f|f|0
+LFTO|2026-11-13|post|32|high|t|f|f|1
+MOD|2026-11-13|post|34.6|medium|t|f|t|0
+NMAX|2026-11-13|post|52.5|high|t|f|f|0
+STN|2026-11-13|post|9.4|high|t|f|f|1
+ACM|2026-11-17|post|-7|high|t|f|f|1
+ONEW|2026-11-17|post|-7.4|medium|t|f|f|1
+SCZM|2026-11-17|post|92|medium|t|f|f|0
+SMWB|2026-11-17|post|16|high|t|f|f|1
+BRBR|2026-11-18|post|7|high|t|f|f|1
+FIRY|2026-11-18|post|14|high|t|f|f|1
+IIIV|2026-11-18|post|1|high|t|f|f|1
+(454 rows)
+=== DOWNGRADES ===
+event_id|created_et|ticker|alert_date|from_quality|to_quality|reason|q_revenue_yoy_pct|guidance_midpoint_yoy_pct|extraction_quality|composite_scaled|rubric_label|caps_applied|axes_scored|earnings_source|gap_pct
+9127|2026-05-20 08:22:21|IMVT|2026-05-20|strong|routine|q_rev_yoy_unextractable_quality_low|||low|||||earnings_dates|28.6
+9131|2026-05-20 08:25:17|IMVT|2026-05-20|strong|routine|q_rev_yoy_unextractable_quality_low|||low|||||earnings_dates|27.81
+9140|2026-05-20 08:30:29|ROIV|2026-05-20|strong|routine|q_rev_yoy_unextractable_quality_medium|||medium|||||earnings_dates|14.25
+9184|2026-05-20 09:20:22|CAVA|2026-05-20|strong|routine|rubric_composite_20.0_below_22_label_routine_correct|32.2||high|20.0|routine_correct|[]|{"a1": 4, "a2": 0, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|10.34
+9188|2026-05-20 09:25:02|CAVA|2026-05-20|strong|routine|rubric_composite_20.0_below_22_label_routine_correct|32.2||high|20.0|routine_correct|[]|{"a1": 4, "a2": 0, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|10.79
+9191|2026-05-20 09:30:04|CAVA|2026-05-20|strong|routine|rubric_composite_20.0_below_22_label_routine_correct|32.2||high|20.0|routine_correct|[]|{"a1": 4, "a2": 0, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|11.37
+9197|2026-05-20 09:31:32|CAVA|2026-05-20|strong|routine|rubric_composite_20.0_below_22_label_routine_correct|32.2||high|20.0|routine_correct|[]|{"a1": 4, "a2": 0, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|12.01
+9201|2026-05-20 09:35:50|CAVA|2026-05-20|strong|routine|rubric_composite_20.0_below_22_label_routine_correct|32.2||high|20.0|routine_correct|[]|{"a1": 4, "a2": 0, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|11.37
+9208|2026-05-20 09:40:24|CAVA|2026-05-20|strong|routine|rubric_composite_20.0_below_22_label_routine|32.2||high|20.0|routine|[]|{"a1": 4, "a2": 0, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|10.75
+9216|2026-05-20 09:45:52|CAVA|2026-05-20|strong|routine|rubric_composite_20.0_below_22_label_routine|32.2||high|20.0|routine|[]|{"a1": 4, "a2": 0, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|12.84
+9410|2026-05-20 18:41:04|TATT|2026-05-20|strong|routine|q_rev_yoy_unextractable_quality_medium|||medium|||||earnings_dates|21.57
+9509|2026-05-21 09:15:28|RL|2026-05-21|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.17
+9513|2026-05-21 09:20:37|RL|2026-05-21|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.69
+9516|2026-05-21 09:25:19|RL|2026-05-21|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.25
+9519|2026-05-21 09:30:05|RL|2026-05-21|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|13.74
+9535|2026-05-21 09:31:14|RL|2026-05-21|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|13.74
+9543|2026-05-21 09:40:46|AAP|2026-05-21|strong|routine|rubric_composite_12.0_below_22_label_weak|1.2||high|12.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 2, "a5": 2, "a6": 0}|earnings_dates|11.46
+9546|2026-05-21 09:40:46|RL|2026-05-21|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.17
+9549|2026-05-21 09:45:07|AAP|2026-05-21|strong|routine|rubric_composite_12.0_below_22_label_weak|1.2||high|12.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 2, "a5": 2, "a6": 0}|earnings_dates|13.39
+9551|2026-05-21 09:45:07|RL|2026-05-21|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.02
+9554|2026-05-21 09:50:54|ENS|2026-05-21|strong|routine|rubric_composite_15.0_below_22_label_routine|1.4||medium|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|11.36
+9557|2026-05-21 09:50:55|AAP|2026-05-21|strong|routine|rubric_composite_12.0_below_22_label_weak|1.2||high|12.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 2, "a5": 2, "a6": 0}|earnings_dates|11.26
+9560|2026-05-21 09:55:26|AAP|2026-05-21|strong|routine|rubric_composite_12.0_below_22_label_weak|1.2||high|12.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 2, "a5": 2, "a6": 0}|earnings_dates|12.12
+9932|2026-05-22 07:05:13|WDAY|2026-05-22|strong|routine|rubric_composite_17.2_below_22_label_routine|13.5||medium|17.21|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 5, "a3": 2, "a4": null, "a5": 2, "a6": 0}|earnings_dates|10.12
+10003|2026-05-22 09:50:54|ZM|2026-05-22|strong|routine|rubric_composite_13.8_below_22_label_weak|5.5||medium|13.76|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": null, "a5": 3, "a6": 0}|earnings_dates|15.34
+10006|2026-05-22 09:51:17|LION|2026-05-22|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|13.63
+10015|2026-05-22 09:55:13|ZM|2026-05-22|strong|routine|rubric_composite_13.8_below_22_label_weak|5.5||medium|13.76|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": null, "a5": 3, "a6": 0}|earnings_dates|15.13
+10558|2026-05-26 07:01:25|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.09
+10562|2026-05-26 07:05:18|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.09
+10565|2026-05-26 07:10:19|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.09
+10567|2026-05-26 07:15:04|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.09
+10569|2026-05-26 07:20:04|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.09
+10572|2026-05-26 07:25:21|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.09
+10574|2026-05-26 07:30:04|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.09
+10576|2026-05-26 07:35:17|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.09
+10579|2026-05-26 07:40:16|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.09
+10592|2026-05-26 07:50:39|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.14
+10603|2026-05-26 07:55:18|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.14
+10611|2026-05-26 08:00:24|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.14
+10615|2026-05-26 08:05:12|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.14
+10622|2026-05-26 08:10:16|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.72
+10637|2026-05-26 08:20:23|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.34
+10650|2026-05-26 08:25:37|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.34
+10677|2026-05-26 08:45:52|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.34
+10684|2026-05-26 08:50:55|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|15.98
+10686|2026-05-26 08:51:15|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.34
+10692|2026-05-26 08:55:06|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|16.5
+10694|2026-05-26 08:55:15|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.33
+10696|2026-05-26 08:55:15|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.44
+10705|2026-05-26 09:00:33|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|17.07
+10707|2026-05-26 09:00:33|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.33
+10709|2026-05-26 09:00:37|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|17.46
+10711|2026-05-26 09:00:38|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.33
+10713|2026-05-26 09:00:40|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.44
+10715|2026-05-26 09:00:44|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.44
+10720|2026-05-26 09:05:13|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|17.46
+10722|2026-05-26 09:05:13|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.81
+10724|2026-05-26 09:05:24|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.44
+10728|2026-05-26 09:10:22|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|17.8
+10730|2026-05-26 09:10:22|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.32
+10732|2026-05-26 09:10:46|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.44
+10736|2026-05-26 09:15:38|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|18.22
+10738|2026-05-26 09:15:38|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.32
+10740|2026-05-26 09:16:01|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.44
+10742|2026-05-26 09:20:12|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|18.05
+10745|2026-05-26 09:20:13|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.32
+10747|2026-05-26 09:20:31|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.44
+10750|2026-05-26 09:25:13|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|18.61
+10753|2026-05-26 09:25:13|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.92
+10755|2026-05-26 09:25:14|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.44
+10767|2026-05-26 09:31:06|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|18.23
+10769|2026-05-26 09:31:07|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.77
+10774|2026-05-26 09:32:00|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|18.23
+10776|2026-05-26 09:32:00|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.68
+10778|2026-05-26 09:32:01|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.44
+10780|2026-05-26 09:32:02|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.44
+10785|2026-05-26 09:35:42|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|18.15
+10788|2026-05-26 09:35:42|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.68
+10791|2026-05-26 09:35:42|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.8
+10797|2026-05-26 09:40:11|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|17.79
+10800|2026-05-26 09:40:11|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.68
+10803|2026-05-26 09:40:11|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.99
+10809|2026-05-26 09:45:45|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|17.84
+10812|2026-05-26 09:45:45|JOYY|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.09
+10814|2026-05-26 09:45:45|ESLT|2026-05-26|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|11.91
+10849|2026-05-26 09:51:15|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|18.99
+10877|2026-05-26 09:55:21|MOD|2026-05-26|strong|routine|news_corpus_sparse_no_q_rev||22.5|low|||||earnings_dates|20.42
+11123|2026-05-27 07:20:49|BBWI|2026-05-27|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.75
+11208|2026-05-27 09:45:30|QFIN|2026-05-27|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|10.56
+11243|2026-05-27 09:55:31|ANF|2026-05-27|strong|routine|rubric_composite_8.0_below_22_label_weak|1.5||medium|8.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 2, "a4": 0, "a5": 2, "a6": 0}|calendar|11.23
+11488|2026-05-28 07:00:18|SNOW|2026-05-28|game_changer|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|37.54
+11489|2026-05-28 07:00:33|UMAC|2026-05-28|strong|routine|rubric_composite_12.3_below_22_label_weak|296.0||medium|12.32|weak|[]|{"a1": 2, "a2": null, "a3": 2, "a4": null, "a5": null, "a6": 0}|no_match|32.34
+11490|2026-05-28 07:00:51|PHR|2026-05-28|strong|routine|rubric_composite_15.0_below_22_label_routine|13.0||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 2, "a4": 1, "a5": 2, "a6": 1}|earnings_dates|16.87
+11491|2026-05-28 07:01:17|NCNO|2026-05-28|strong|routine|rubric_composite_15.0_below_22_label_routine|10.6||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|12.57
+11493|2026-05-28 07:01:42|A|2026-05-28|strong|routine|rubric_composite_17.0_below_22_label_routine|10.0||high|17.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 4, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|11.6
+11507|2026-05-28 07:20:45|DLTR|2026-05-28|strong|routine|rubric_composite_13.0_below_22_label_weak|7.2||high|13.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|11.61
+11510|2026-05-28 07:40:44|BBY|2026-05-28|strong|routine|rubric_composite_11.0_below_22_label_weak|1.9||high|11.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": 2, "a6": 0}|earnings_dates|10.01
+11518|2026-05-28 08:25:27|KSS|2026-05-28|strong|routine|rubric_composite_11.0_below_22_label_weak|-2.0||high|11.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 1, "a3": 2, "a4": 4, "a5": 2, "a6": 0}|earnings_dates|12.99
+11590|2026-05-28 09:51:50|IMOS|2026-05-28|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|13.7
+11887|2026-05-29 07:00:59|BRUN|2026-05-29|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|17.93
+11888|2026-05-29 07:01:15|NTAP|2026-05-29|strong|routine|rubric_composite_16.0_below_22_label_routine|12.5||high|16.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|17.16
+11894|2026-05-29 07:05:26|PD|2026-05-29|strong|routine|rubric_composite_14.0_below_22_label_routine|0.0||medium|14.0|routine|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 3, "a3": 2, "a4": 2, "a5": 3, "a6": 1}|earnings_dates|12.61
+11907|2026-05-29 07:45:20|CHA|2026-05-29|strong|routine|rubric_composite_13.4_below_22_label_weak|4.5||medium|13.45|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 3, "a4": 5, "a5": null, "a6": 0}|earnings_dates|12.48
+11916|2026-05-29 08:30:37|OKTA|2026-05-29|strong|routine|rubric_composite_16.0_below_22_label_routine|11.2||high|16.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 2, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|10.12
+11947|2026-05-29 09:45:39|ASAN|2026-05-29|strong|routine|rubric_composite_18.0_below_22_label_routine|9.5||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 2, "a4": 2, "a5": 3, "a6": 1}|earnings_dates|11.56
+12281|2026-06-01 07:45:33|JBIO|2026-06-01|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|14.07
+12284|2026-06-01 08:05:27|SAIC|2026-06-01|strong|routine|rubric_composite_18.0_below_22_label_routine|1.5||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|10.36
+12290|2026-06-01 08:50:35|EWTX|2026-06-01|strong|routine|rubric_composite_0.0_below_22_label_weak|0.0||medium|0.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": null, "a4": null, "a5": null, "a6": 0}|no_match|17.1
+12644|2026-06-02 07:55:16|HSAI|2026-06-02|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||no_match|10.33
+12649|2026-06-02 08:15:17|AVAH|2026-06-02|strong|routine|rubric_composite_18.8_below_22_label_routine|15.9||medium|18.83|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": null, "a3": 2, "a4": null, "a5": 3, "a6": 0}|no_match|12.14
+12961|2026-06-03 07:30:16|GME|2026-06-03|strong|routine|rubric_composite_17.5_below_22_label_routine|14.05||high|17.48|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 4, "a4": 4, "a5": null, "a6": 0}|earnings_dates|10.13
+12964|2026-06-03 07:55:28|NN|2026-06-03|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|12.22
+13181|2026-06-04 08:15:22|ELPC|2026-06-04|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|14.52
+14409|2026-06-09 07:15:33|VSH|2026-06-09|strong|routine|rubric_composite_18.8_below_22_label_routine|18.0||medium|18.83|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": null, "a3": 2, "a4": null, "a5": 3, "a6": 0}|no_match|10.1
+14425|2026-06-09 08:00:40|CECO|2026-06-09|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|13.62
+14486|2026-06-09 09:55:53|ACLS|2026-06-09|strong|routine|rubric_composite_14.0_below_22_label_routine|3.3||medium|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 2, "a4": 2, "a5": 4, "a6": 0}|no_match|12.15
+14488|2026-06-09 09:56:27|AVO|2026-06-09|strong|routine|rubric_composite_2.7_below_22_label_weak|-23.5||medium|2.69|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 0, "a5": null, "a6": 0}|earnings_dates|11.18
+14689|2026-06-10 08:35:20|CBRL|2026-06-10|strong|routine|rubric_composite_11.0_below_22_label_weak|-2.9||high|11.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|12.4
+14741|2026-06-10 09:50:32|CASY|2026-06-10|game_changer|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.39
+15400|2026-06-15 07:25:32|ATRO|2026-06-15|strong|routine|rubric_composite_13.4_below_22_label_weak|12.0||medium|13.45|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": null, "a3": 2, "a4": null, "a5": 3, "a6": 0}|no_match|13.03
+15459|2026-06-15 08:05:39|IDR|2026-06-15|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|13.69
+15674|2026-06-15 09:51:30|AUGO|2026-06-15|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|13.39
+15682|2026-06-15 09:52:32|MMYT|2026-06-15|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||low|||||no_match|12.81
+15732|2026-06-15 09:56:39|USAS|2026-06-15|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|13.06
+16083|2026-06-17 07:00:23|LZB|2026-06-17|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|16.94
+16393|2026-06-18 07:01:02|BFLY|2026-06-18|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|13.49
+16500|2026-06-18 09:51:26|WDC|2026-06-18|strong|routine|rubric_composite_17.0_below_22_label_routine|45.5|40.0|high|17.0|routine|["all_margins_contracting"]|{"a1": 3, "a2": 2, "a3": 0, "a4": 3, "a5": 3, "a6": 0}|no_match|10.31
+16505|2026-06-18 09:56:05|CHRN|2026-06-18|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|12.91
+16745|2026-06-22 07:01:56|FRVO|2026-06-22|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||low|||||earnings_dates|12.43
+16937|2026-06-22 09:50:49|NUAI|2026-06-22|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|13.12
+17373|2026-06-24 07:00:30|WEN|2026-06-24|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|16.55
+17389|2026-06-24 08:20:37|RUN|2026-06-24|strong|routine|rubric_composite_5.4_below_22_label_weak|-2.0||medium|5.38|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 2, "a5": null, "a6": 0}|no_match|20.05
+17444|2026-06-24 09:50:36|KBH|2026-06-24|strong|routine|rubric_composite_2.0_below_22_label_weak|-27.3||medium|2.0|weak|["rev_contracting", "guidance_lowered", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 0, "a5": 0, "a6": 0}|earnings_dates|13.79
+17588|2026-06-25 07:01:31|SNDK|2026-06-25|strong|routine|rubric_composite_19.5_below_22_label_routine|251.0||medium|19.5|routine|[]|{"a1": 2, "a2": 5, "a3": 2, "a4": null, "a5": null, "a6": 1}|no_match|14.91
+17591|2026-06-25 07:02:15|WDC|2026-06-25|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|12.22
+17639|2026-06-25 08:00:52|BB|2026-06-25|strong|routine|rubric_composite_21.0_below_22_label_routine|26.0||high|21.0|routine|["all_margins_contracting"]|{"a1": 4, "a2": 2, "a3": 0, "a4": 5, "a5": 3, "a6": 0}|earnings_dates|10.21
+17764|2026-06-25 09:56:24|AYI|2026-06-25|strong|routine|rubric_composite_9.4_below_22_label_weak|1.6||medium|9.41|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": null, "a6": 0}|earnings_dates|16.24
+17767|2026-06-25 09:56:47|MLKN|2026-06-25|strong|routine|rubric_composite_10.0_below_22_label_weak|4.4||high|10.0|weak|["guidance_lowered", "no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 3, "a5": 0, "a6": 1}|earnings_dates|14.73
+17770|2026-06-25 09:57:16|WGO|2026-06-25|strong|routine|rubric_composite_2.0_below_22_label_weak|-9.9||high|2.0|weak|["rev_contracting", "guidance_lowered", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 0, "a5": 0, "a6": 0}|earnings_dates|13.27
+18179|2026-06-29 07:10:48|CHTR|2026-06-29|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||low|||||no_match|13.0
+18457|2026-06-29 09:51:37|VSAT|2026-06-29|strong|routine|rubric_composite_9.4_below_22_label_weak|4.0||medium|9.41|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 0, "a5": null, "a6": 1}|no_match|13.01
+18631|2026-06-30 07:00:29|AVAV|2026-06-30|game_changer|routine|rubric_composite_17.9_below_22_label_routine|133.0|8.0|high|17.88|routine|[]|{"a1": 2, "a2": null, "a3": 3, "a4": 4, "a5": null, "a6": 0}|earnings_dates|25.3
+18680|2026-06-30 07:45:40|ENPH|2026-06-30|strong|routine|rubric_composite_5.4_below_22_label_weak|-59.0||medium|5.38|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 2, "a5": null, "a6": 0}|no_match|17.91
+18969|2026-07-01 09:50:41|PRGS|2026-07-01|strong|routine|rubric_composite_16.0_below_22_label_routine|7.0||high|16.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|11.67
+19133|2026-07-02 09:15:31|NEXA|2026-07-02|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|12.13
+19932|2026-07-09 07:00:33|ALNY|2026-07-09|strong|routine|rubric_composite_20.2_below_22_label_routine|96.4||medium|20.17|routine|[]|{"a1": 2, "a2": 5, "a3": 2, "a4": 3, "a5": null, "a6": 1}|no_match|17.47
+19937|2026-07-09 07:25:23|SMPL|2026-07-09|strong|routine|rubric_composite_12.0_below_22_label_weak|-6.3||high|12.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|16.24
+19972|2026-07-09 09:45:36|UCTT|2026-07-09|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|14.52
+20111|2026-07-10 07:00:31|EQPT|2026-07-10|strong|routine|news_corpus_sparse_no_q_rev|||low|||||no_match|17.12
+20914|2026-07-15 09:55:31|ANGO|2026-07-15|strong|routine|rubric_composite_18.4_below_22_label_routine|8.0||high|18.35|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": null, "a4": 4, "a5": 3, "a6": 1}|earnings_dates|10.54
+21076|2026-07-16 08:00:24|MAN|2026-07-16|strong|routine|rubric_composite_21.0_below_22_label_routine|8.0||high|21.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 2, "a4": 3, "a5": 4, "a6": 1}|earnings_dates|10.46
+21105|2026-07-16 09:50:37|ABT|2026-07-16|strong|routine|rubric_composite_15.0_below_22_label_routine|13.0||medium|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|calendar|10.59
+21245|2026-07-17 09:50:43|DCBO|2026-07-17|strong|routine|rubric_composite_16.1_below_22_label_routine|12.7||medium|16.14|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": null, "a3": 2, "a4": null, "a5": 3, "a6": 0}|no_match|11.65
+21455|2026-07-20 07:45:33|PLOW|2026-07-20|strong|routine|rubric_composite_18.8_below_22_label_routine|20.0||low|18.83|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": null, "a3": 2, "a4": null, "a5": 3, "a6": 0}|no_match|10.06
+21763|2026-07-21 07:35:24|PKE|2026-07-21|strong|routine|rubric_composite_16.1_below_22_label_routine|18.9||high|16.14|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 2, "a3": 3, "a4": 3, "a5": null, "a6": 0}|earnings_dates|12.61
+22058|2026-07-22 09:51:11|PAG|2026-07-22|strong|routine|rubric_composite_5.4_below_22_label_weak|-1.1||medium|5.38|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 2, "a5": null, "a6": 0}|no_match|10.17
+22229|2026-07-23 07:05:23|ALLE|2026-07-23|strong|routine|rubric_composite_15.0_below_22_label_routine|12.7||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|11.11
+22247|2026-07-23 07:35:22|MEDP|2026-07-23|strong|routine|rubric_composite_18.0_below_22_label_routine|17.2||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|18.34
+22361|2026-07-23 09:50:28|DGX|2026-07-23|strong|routine|rubric_composite_14.0_below_22_label_routine|10.2||high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|11.12
+22363|2026-07-23 09:50:53|URI|2026-07-23|strong|routine|rubric_composite_16.0_below_22_label_routine|11.8||high|16.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|10.93
+22365|2026-07-23 09:51:13|TMO|2026-07-23|strong|routine|rubric_composite_14.0_below_22_label_routine|10.0||high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|10.56
+22367|2026-07-23 09:51:33|LMT|2026-07-23|game_changer|routine|rubric_composite_18.0_below_22_label_routine|10.5||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|10.11
+22373|2026-07-23 09:55:29|OII|2026-07-23|strong|routine|rubric_composite_14.8_below_22_label_routine|10.0||high|14.79|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 3, "a4": 3, "a5": null, "a6": 0}|earnings_dates|12.36
+22619|2026-07-24 09:50:36|RNG|2026-07-24|strong|routine|rubric_composite_15.0_below_22_label_routine|5.9||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 3, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|14.79
+22625|2026-07-24 09:55:30|SSNC|2026-07-24|strong|routine|rubric_composite_13.0_below_22_label_weak|10.3||high|13.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|10.52
+23082|2026-07-27 09:56:47|GENI|2026-07-27|strong|routine|rubric_composite_12.3_below_22_label_weak|30.0||medium|12.32|weak|[]|{"a1": 2, "a2": null, "a3": 2, "a4": null, "a5": null, "a6": 0}|no_match|10.03
+23337|2026-07-28 08:30:28|KNSA|2026-07-28|game_changer|routine|rubric_composite_17.0_below_22_label_routine|55.0||high|17.0|routine|[]|{"a1": 2, "a2": 2, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|10.18
+23342|2026-07-28 08:40:21|IQV|2026-07-28|strong|routine|rubric_composite_13.0_below_22_label_weak|8.7||high|13.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|10.21
+23372|2026-07-28 09:50:41|ITRI|2026-07-28|strong|routine|rubric_composite_9.0_below_22_label_weak|-7.2||high|9.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 1, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|18.77
+23379|2026-07-28 09:55:38|AWI|2026-07-28|strong|routine|rubric_composite_13.0_below_22_label_weak|11.2||high|13.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|10.14
+23697|2026-07-29 07:00:52|MANH|2026-07-29|strong|routine|rubric_composite_14.0_below_22_label_routine|9.3||high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|10.61
+23715|2026-07-29 07:30:18|GEHC|2026-07-29|strong|routine|rubric_composite_11.0_below_22_label_weak|5.7||medium|11.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": 2, "a6": 0}|earnings_dates|13.09
+23741|2026-07-29 08:15:23|LFUS|2026-07-29|strong|routine|rubric_composite_21.0_below_22_label_routine|20.0||high|21.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 4, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|10.96
+23763|2026-07-29 08:35:27|CBZ|2026-07-29|strong|routine|rubric_composite_2.7_below_22_label_weak|-0.2||medium|2.69|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 0, "a5": null, "a6": 0}|earnings_dates|17.77
+23777|2026-07-29 09:00:31|AVTR|2026-07-29|strong|routine|rubric_composite_16.0_below_22_label_routine|0.5||medium|16.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|10.87
+23795|2026-07-29 09:25:31|GNRC|2026-07-29|game_changer|routine|rubric_composite_15.0_below_22_label_routine|10.6||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|10.03
+23866|2026-07-29 09:50:47|NEO|2026-07-29|strong|routine|rubric_composite_21.0_below_22_label_routine|11.0||high|21.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 5, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|13.43
+23891|2026-07-29 09:55:38|HURN|2026-07-29|strong|routine|rubric_composite_20.0_below_22_label_routine|15.7||high|20.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|21.92
+23895|2026-07-29 09:56:02|MBIN|2026-07-29|strong|routine|rubric_composite_14.8_below_22_label_routine|1.7||medium|14.79|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 2, "a4": 2, "a5": null, "a6": 0}|earnings_dates|12.77
+23898|2026-07-29 09:56:23|GRMN|2026-07-29|game_changer|routine|rubric_composite_21.0_below_22_label_routine|11.0||high|21.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 4, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|12.5
+24072|2026-07-30 07:00:59|PRCH|2026-07-30|game_changer|routine|rubric_composite_20.6_below_22_label_routine|12.0||high|20.65|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": null, "a3": 3, "a4": 5, "a5": 3, "a6": 0}|earnings_dates|18.53
+24080|2026-07-30 07:01:38|TAL|2026-07-30|strong|routine|q_rev_yoy_-5.5pct_below_5pct_recovered|||medium|||||earnings_dates|12.58
+24129|2026-07-30 07:25:45|BDC|2026-07-30|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||low|||||earnings_dates|10.75
+24137|2026-07-30 07:35:25|BAX|2026-07-30|strong|routine|rubric_composite_19.0_below_22_label_routine|5.0||high|19.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|13.04
+24142|2026-07-30 07:35:41|AVY|2026-07-30|strong|routine|rubric_composite_15.0_below_22_label_routine|10.9||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|11.88
+24145|2026-07-30 07:36:06|HII|2026-07-30|strong|routine|rubric_composite_20.0_below_22_label_routine|10.9||high|20.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 3, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|10.56
+24177|2026-07-30 08:00:34|NPKI|2026-07-30|strong|routine|rubric_composite_16.0_below_22_label_routine|20.0||high|16.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 2, "a4": 3, "a5": 2, "a6": 0}|earnings_dates|11.95
+24198|2026-07-30 08:15:31|STGW|2026-07-30|strong|routine|rubric_composite_17.0_below_22_label_routine|11.0||high|17.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|12.5
+24208|2026-07-30 08:20:41|MKTX|2026-07-30|strong|routine|rubric_composite_4.9_below_22_label_weak|0.0||low|4.88|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 1, "a3": 2, "a4": null, "a5": null, "a6": 0}|no_match|29.16
+24628|2026-07-30 09:50:38|FORM|2026-07-30|game_changer|routine|rubric_composite_21.0_below_22_label_routine|31.9||high|21.0|routine|[]|{"a1": 2, "a2": 5, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|21.04
+24634|2026-07-30 09:50:58|EFOR|2026-07-30|strong|routine|rubric_composite_12.0_below_22_label_weak|-1.3||high|12.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 3, "a3": 2, "a4": 3, "a5": 2, "a6": 0}|earnings_dates|16.74
+24699|2026-07-30 09:55:45|SFM|2026-07-30|strong|routine|rubric_composite_7.0_below_22_label_weak|5.0||high|7.0|weak|["guidance_lowered", "no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": 0, "a6": 0}|earnings_dates|17.07
+25001|2026-07-31 07:01:24|AMZN|2026-07-31|game_changer|routine|rubric_composite_20.2_below_22_label_routine|20.0||high|20.17|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 5, "a3": 2, "a4": 2, "a5": null, "a6": 0}|earnings_dates|12.74
+25006|2026-07-31 07:02:03|NVT|2026-07-31|game_changer|routine|rubric_composite_20.0_below_22_label_routine|53.0||high|20.0|routine|[]|{"a1": 2, "a2": 4, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|11.57
+25045|2026-07-31 07:20:39|NXT|2026-07-31|strong|routine|rubric_composite_12.0_below_22_label_weak|8.2||high|12.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 3, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|10.94
+25088|2026-07-31 08:15:39|DXCM|2026-07-31|strong|routine|rubric_composite_16.0_below_22_label_routine|13.0|12.0|high|16.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 2, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|10.01
+25248|2026-07-31 09:50:33|PWP|2026-07-31|strong|routine|rubric_composite_12.1_below_22_label_weak|1.0||medium|12.1|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": null, "a6": 0}|calendar|13.68
+25253|2026-07-31 09:50:55|SPXC|2026-07-31|strong|routine|rubric_composite_18.0_below_22_label_routine|22.9||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 1, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|12.86
+25257|2026-07-31 09:51:34|COHR|2026-07-31|strong|routine|rubric_composite_15.0_below_22_label_routine|20.5||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 2, "a3": 2, "a4": 2, "a5": 2, "a6": 1}|no_match|12.52
+25260|2026-07-31 09:51:58|CSTL|2026-07-31|game_changer|routine|rubric_composite_19.0_below_22_label_routine|20.0||high|19.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 0, "a3": 2, "a4": 5, "a5": 3, "a6": 0}|earnings_dates|12.43
+25276|2026-07-31 09:56:23|SPSC|2026-07-31|strong|routine|rubric_composite_9.0_below_22_label_weak|6.0||high|9.0|weak|["guidance_lowered", "no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": 0, "a6": 0}|earnings_dates|10.83
+25829|2026-08-03 09:55:32|CNH|2026-08-03|strong|routine|rubric_composite_15.0_below_22_label_routine|2.5||medium|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 3, "a4": 4, "a5": 3, "a6": 0}|calendar|15.66
+26118|2026-08-04 07:00:32|AMRC|2026-08-04|strong|routine|rubric_composite_14.0_below_22_label_routine|9.1||high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|no_match|28.86
+26132|2026-08-04 07:02:31|IBTA|2026-08-04|strong|routine|rubric_composite_16.1_below_22_label_routine|3.3||high|16.14|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 5, "a5": null, "a6": 0}|calendar|15.83
+26138|2026-08-04 07:03:29|COHR|2026-08-04|strong|routine|rubric_composite_14.8_below_22_label_routine|20.5||medium|14.79|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 2, "a3": 2, "a4": 2, "a5": null, "a6": 1}|no_match|12.8
+26143|2026-08-04 07:04:15|WIX|2026-08-04|strong|routine|rubric_composite_17.0_below_22_label_routine|15.0||medium|17.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 3, "a3": 2, "a4": 2, "a5": 2, "a6": 0}|earnings_dates|10.31
+26173|2026-08-04 07:10:34|LWLG|2026-08-04|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||no_match|12.32
+26289|2026-08-04 08:10:43|FN|2026-08-04|strong|routine|rubric_composite_21.0_below_22_label_routine|39.0|40.0|medium|21.0|routine|[]|{"a1": 2, "a2": 2, "a3": 2, "a4": 3, "a5": 5, "a6": 0}|no_match|14.22
+26300|2026-08-04 08:15:21|WGS|2026-08-04|strong|routine|rubric_composite_14.0_below_22_label_routine|11.0||medium|14.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 0, "a3": 3, "a4": 3, "a5": 2, "a6": 0}|no_match|12.0
+26376|2026-08-04 08:45:38|W|2026-08-04|strong|routine|rubric_composite_16.0_below_22_label_routine|7.5||high|16.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 3, "a4": 2, "a5": 2, "a6": 0}|earnings_dates|19.79
+26657|2026-08-04 09:45:45|INSP|2026-08-04|strong|routine|rubric_composite_16.1_below_22_label_routine|-7.6||medium|16.06|routine|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 5, "a3": 2, "a4": null, "a5": 3, "a6": 1}|no_match|22.29
+26703|2026-08-04 09:50:58|PAY|2026-08-04|strong|routine|rubric_composite_19.0_below_22_label_routine|28.8||high|19.0|routine|[]|{"a1": 2, "a2": 4, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|no_match|15.79
+26706|2026-08-04 09:51:28|DORM|2026-08-04|strong|routine|rubric_composite_14.0_below_22_label_routine|0.7||high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 4, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|no_match|15.13
+26709|2026-08-04 09:51:52|ARVN|2026-08-04|game_changer|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||calendar|13.21
+26733|2026-08-04 09:55:35|MED|2026-08-04|strong|routine|rubric_composite_8.1_below_22_label_weak|-27.6||medium|8.07|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 4, "a5": null, "a6": 0}|calendar|32.65
+26736|2026-08-04 09:55:59|UFPT|2026-08-04|strong|routine|rubric_composite_20.2_below_22_label_routine|15.1||medium|20.17|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 3, "a3": 2, "a4": 4, "a5": null, "a6": 0}|no_match|21.25
+27164|2026-08-05 07:01:20|ANET|2026-08-05|game_changer|routine|rubric_composite_21.0_below_22_label_routine|37.7|40.0|high|21.0|routine|[]|{"a1": 3, "a2": 3, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|no_match|15.47
+27172|2026-08-05 07:02:02|BLMN|2026-08-05|strong|routine|rubric_composite_14.0_below_22_label_routine|1.3||medium|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|12.33
+27201|2026-08-05 07:05:39|UPST|2026-08-05|game_changer|routine|rubric_composite_16.0_below_22_label_routine|42.0||high|16.0|routine|[]|{"a1": 2, "a2": 3, "a3": 3, "a4": 2, "a5": 2, "a6": 0}|no_match|10.16
+27215|2026-08-05 07:15:28|DT|2026-08-05|strong|routine|rubric_composite_19.0_below_22_label_routine|16.0||medium|19.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 5, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|11.57
+27234|2026-08-05 07:20:31|SHOP|2026-08-05|game_changer|routine|rubric_composite_13.0_below_22_label_weak|33.7||high|13.0|weak|["all_margins_contracting"]|{"a1": 2, "a2": 0, "a3": 0, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|20.84
+27237|2026-08-05 07:20:54|PGEN|2026-08-05|game_changer|routine|rubric_composite_20.2_below_22_label_routine|145.0||high|20.17|routine|[]|{"a1": 2, "a2": 3, "a3": 2, "a4": 5, "a5": null, "a6": 1}|calendar|12.23
+27295|2026-08-05 07:36:20|INTA|2026-08-05|strong|routine|rubric_composite_18.0_below_22_label_routine|13.0||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 2, "a4": 2, "a5": 3, "a6": 1}|no_match|10.28
+27314|2026-08-05 07:45:30|SWIM|2026-08-05|strong|routine|rubric_composite_11.0_below_22_label_weak|14.4|11.7|high|11.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 3, "a4": 0, "a5": 3, "a6": 0}|no_match|12.98
+27318|2026-08-05 07:45:52|FRPT|2026-08-05|strong|routine|rubric_composite_20.0_below_22_label_routine|15.5||high|20.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 2, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|10.45
+27334|2026-08-05 07:55:33|TBI|2026-08-05|strong|routine|rubric_composite_18.0_below_22_label_routine|12.0||medium|18.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 4, "a5": 3, "a6": 1}|no_match|12.48
+27347|2026-08-05 08:00:34|QLYS|2026-08-05|strong|routine|rubric_composite_17.0_below_22_label_routine|11.0||high|17.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 4, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|no_match|12.36
+27624|2026-08-05 09:45:42|AMPX|2026-08-05|game_changer|routine|rubric_composite_19.0_below_22_label_routine|126.0||high|19.0|routine|[]|{"a1": 2, "a2": 3, "a3": 3, "a4": 2, "a5": 3, "a6": 1}|calendar|12.3
+27912|2026-08-06 07:01:47|WPP|2026-08-06|strong|routine|rubric_composite_5.4_below_22_label_weak|-4.4||medium|5.38|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": null, "a4": null, "a5": 2, "a6": 0}|earnings_dates|25.62
+27924|2026-08-06 07:03:11|PAYC|2026-08-06|strong|routine|rubric_composite_16.0_below_22_label_routine|9.8|7.5|high|16.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|no_match|13.09
+27929|2026-08-06 07:04:07|RELY|2026-08-06|game_changer|routine|rubric_composite_18.0_below_22_label_routine|20.2||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|no_match|10.3
+27961|2026-08-06 07:15:33|MGNI|2026-08-06|strong|routine|rubric_composite_15.0_below_22_label_routine|11.2||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|no_match|11.8
+28080|2026-08-06 09:20:15|CAI|2026-08-06|game_changer|routine|rubric_composite_17.5_below_22_label_routine|45.0|27.5|high|17.48|routine|[]|{"a1": 2, "a2": null, "a3": 3, "a4": null, "a5": 3, "a6": 0}|no_match|15.68
+28083|2026-08-06 09:20:45|ORA|2026-08-06|strong|routine|rubric_composite_17.0_below_22_label_routine|10.6||high|17.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 1, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|no_match|10.16
+28212|2026-08-06 09:36:11|ASPN|2026-08-06|strong|routine|extraction_failed_extraction_call_failed|||low|||||calendar|37.1
+28221|2026-08-06 09:37:30|SOUN|2026-08-06|strong|routine|extraction_failed_extraction_call_failed|||low|||||no_match|26.27
+28362|2026-08-06 09:46:35|DCTH|2026-08-06|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|12.83
+28366|2026-08-06 09:47:34|TASK|2026-08-06|strong|routine|extraction_failed_extraction_call_failed|||low|||||no_match|11.39
+28426|2026-08-06 09:51:40|PAYS|2026-08-06|game_changer|routine|extraction_failed_extraction_call_failed|||low|||||calendar|18.4
+28429|2026-08-06 09:52:35|TRUP|2026-08-06|strong|routine|extraction_failed_extraction_call_failed|||low|||||no_match|18.0
+28434|2026-08-06 09:53:14|CDRE|2026-08-06|game_changer|routine|extraction_failed_extraction_call_failed|||low|||||no_match|16.02
+28482|2026-08-06 09:56:15|TPC|2026-08-06|game_changer|routine|extraction_failed_extraction_call_failed|||low|||||no_match|15.86
+28723|2026-08-07 07:01:05|DOCS|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|92.93
+28727|2026-08-07 07:01:56|PUBM|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|34.27
+28731|2026-08-07 07:02:49|TEAM|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|31.92
+28734|2026-08-07 07:03:37|FIGS|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|26.78
+28738|2026-08-07 07:04:22|QNST|2026-08-07|game_changer|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|26.48
+28746|2026-08-07 07:05:34|CRSR|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|17.53
+28751|2026-08-07 07:06:20|TWLO|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|17.48
+28760|2026-08-07 07:07:28|NET|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|15.67
+28769|2026-08-07 07:08:30|INOD|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|14.46
+28775|2026-08-07 07:09:18|AKAM|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|13.45
+28795|2026-08-07 07:10:47|CART|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|14.28
+28813|2026-08-07 07:20:33|FROG|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|18.02
+28817|2026-08-07 07:21:33|ACMR|2026-08-07|strong|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|14.59
+28933|2026-08-07 08:30:46|WLDN|2026-08-07|game_changer|routine|extraction_failed_extraction_call_failed|||low|||||earnings_dates|14.26
+29244|2026-08-07 09:10:44|PSIX|2026-08-07|strong|routine|rubric_composite_9.4_below_22_label_weak|-21.0||high|9.41|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 5, "a5": null, "a6": 0}|no_match|18.08
+29248|2026-08-07 09:11:07|NTRA|2026-08-07|strong|routine|rubric_composite_19.0_below_22_label_routine|37.7||high|19.0|routine|[]|{"a1": 2, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|16.06
+29506|2026-08-07 09:40:44|FLR|2026-08-07|strong|routine|rubric_composite_9.4_below_22_label_weak|9.0||medium|9.41|weak|["all_margins_contracting", "no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 0, "a4": 5, "a5": null, "a6": 0}|calendar|13.44
+29593|2026-08-07 09:50:29|MTW|2026-08-07|game_changer|routine|rubric_composite_17.0_below_22_label_routine|10.3||high|17.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|33.08
+29609|2026-08-07 09:51:53|ROAD|2026-08-07|strong|routine|rubric_composite_16.0_below_22_label_routine|28.2||high|16.0|routine|[]|{"a1": 2, "a2": 2, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|calendar|15.23
+30158|2026-08-10 08:20:46|ACHR|2026-08-10|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||low|||||earnings_dates|15.95
+30615|2026-08-11 07:01:34|NIQ|2026-08-11|strong|routine|rubric_composite_18.0_below_22_label_routine|8.0||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": 4, "a6": 1}|earnings_dates|13.78
+30620|2026-08-11 07:01:59|APEI|2026-08-11|strong|routine|rubric_composite_14.0_below_22_label_routine|5.5||high|14.0|routine|["all_margins_contracting", "no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 0, "a4": 2, "a5": 3, "a6": 1}|earnings_dates|12.89
+30641|2026-08-11 07:05:25|AP|2026-08-11|strong|routine|rubric_composite_14.6_below_22_label_routine|-9.0||high|14.62|routine|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 5, "a3": 3, "a4": null, "a5": null, "a6": 1}|earnings_dates|14.99
+30678|2026-08-11 07:40:27|ACVA|2026-08-11|strong|routine|rubric_composite_10.0_below_22_label_weak|10.4||high|10.0|weak|["no_milestone_low_growth"]|{"a1": 2, "a2": 0, "a3": 2, "a4": 0, "a5": 2, "a6": 0}|earnings_dates|13.09
+30821|2026-08-11 09:50:58|CODI|2026-08-11|strong|routine|q_rev_yoy_-11.4pct_below_5pct_recovered|||medium|||||earnings_dates|12.55
+31056|2026-08-12 07:00:30|CRWV|2026-08-12|strong|routine|rubric_composite_18.8_below_22_label_routine|112.5||high|18.83|routine|[]|{"a1": 3, "a2": null, "a3": 2, "a4": null, "a5": 3, "a6": 0}|earnings_dates|18.47
+31068|2026-08-12 07:01:31|CAVA|2026-08-12|strong|routine|rubric_composite_12.1_below_22_label_weak|31.3||high|12.1|weak|[]|{"a1": 2, "a2": 1, "a3": 2, "a4": 2, "a5": null, "a6": 0}|earnings_dates|11.33
+31079|2026-08-12 07:05:42|RSKD|2026-08-12|strong|routine|rubric_composite_20.0_below_22_label_routine|22.0||medium|20.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 3, "a3": 2, "a4": 2, "a5": 3, "a6": 1}|earnings_dates|12.34
+31114|2026-08-12 07:21:05|SMWB|2026-08-12|strong|routine|rubric_composite_19.0_below_22_label_routine|9.0||high|19.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|11.86
+31253|2026-08-12 09:30:42|BE|2026-08-12|game_changer|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||no_match|10.41
+31620|2026-08-13 07:00:47|OMER|2026-08-13|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||no_match|18.38
+31634|2026-08-13 07:05:33|ENS|2026-08-13|strong|routine|rubric_composite_11.0_below_22_label_weak|4.8||high|11.0|weak|["guidance_lowered", "no_milestone_low_growth"]|{"a1": 1, "a2": 4, "a3": 3, "a4": 2, "a5": 0, "a6": 0}|no_match|12.47
+31657|2026-08-13 07:20:24|WWW|2026-08-13|strong|routine|rubric_composite_13.0_below_22_label_weak|6.8||high|13.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|14.62
+31668|2026-08-13 07:25:32|BIRK|2026-08-13|strong|routine|rubric_composite_11.0_below_22_label_weak|13.0||high|11.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|11.32
+31684|2026-08-13 07:45:31|AVAH|2026-08-13|strong|routine|rubric_composite_19.0_below_22_label_routine|15.9||high|19.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 2, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|11.49
+31726|2026-08-13 08:30:26|ELMT|2026-08-13|strong|routine|rubric_composite_19.5_below_22_label_routine|35.2||medium|19.5|routine|[]|{"a1": 3, "a2": null, "a3": null, "a4": null, "a5": null, "a6": 1}|earnings_dates|10.16
+31863|2026-08-13 09:51:19|TBBB|2026-08-13|strong|routine|rubric_composite_20.2_below_22_label_routine|38.7||medium|20.17|routine|[]|{"a1": 4, "a2": 4, "a3": 2, "a4": 0, "a5": null, "a6": 1}|calendar|11.11
+31879|2026-08-13 09:55:31|AEBI|2026-08-13|strong|routine|rubric_composite_15.0_below_22_label_routine|9.0||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 3, "a5": 2, "a6": 1}|earnings_dates|13.66
+31883|2026-08-13 09:56:02|BLSH|2026-08-13|strong|routine|q_rev_yoy_-99.8pct_below_5pct_recovered|||medium|||||earnings_dates|12.4
+32124|2026-08-14 07:01:22|UMAC|2026-08-14|strong|routine|rubric_composite_12.3_below_22_label_weak|687.0||medium|12.32|weak|[]|{"a1": 2, "a2": null, "a3": 2, "a4": null, "a5": null, "a6": 0}|no_match|12.92
+32176|2026-08-14 07:55:28|NU|2026-08-14|strong|routine|rubric_composite_14.8_below_22_label_routine|39.0||high|14.79|routine|["all_margins_contracting"]|{"a1": 2, "a2": 4, "a3": 0, "a4": 3, "a5": null, "a6": 0}|calendar|10.41
+32201|2026-08-14 08:30:23|RCAT|2026-08-14|strong|routine|rubric_composite_13.4_below_22_label_weak|527.0||high|13.45|weak|[]|{"a1": 2, "a2": null, "a3": 2, "a4": null, "a5": 2, "a6": 0}|no_match|10.98
+32704|2026-08-17 07:35:12|OCUL|2026-08-17|strong|routine|q_rev_yoy_-0.2pct_below_5pct_recovered|||medium|||||no_match|16.04
+33589|2026-08-19 08:15:27|MRVI|2026-08-19|strong|routine|rubric_composite_18.0_below_22_label_routine|8.5||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 4, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|no_match|13.24
+33628|2026-08-19 09:00:44|EL|2026-08-19|strong|routine|rubric_composite_17.0_below_22_label_routine|6.0|4.0|high|17.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 2, "a4": 3, "a5": 2, "a6": 1}|earnings_dates|11.3
+33636|2026-08-19 09:05:27|KC|2026-08-19|strong|routine|rubric_composite_17.5_below_22_label_routine|30.8||high|17.48|routine|[]|{"a1": 2, "a2": 4, "a3": 2, "a4": 2, "a5": null, "a6": 1}|earnings_dates|15.2
+33669|2026-08-19 09:31:08|DRD|2026-08-19|strong|routine|news_corpus_sparse_no_q_rev|||low|||||earnings_dates|10.04
+33709|2026-08-19 09:46:14|TWST|2026-08-19|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||no_match|10.42
+33740|2026-08-19 09:55:30|MRK|2026-08-19|strong|routine|rubric_composite_13.4_below_22_label_weak|5.0||medium|13.45|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": null, "a3": 2, "a4": null, "a5": 3, "a6": 0}|no_match|10.21
+34394|2026-08-20 09:55:36|MRVI|2026-08-20|strong|routine|rubric_composite_18.0_below_22_label_routine|8.5||medium|18.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 4, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|no_match|11.77
+35238|2026-08-24 09:30:07|NSSC|2026-08-24|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|20.77
+35940|2026-08-26 07:05:23|PLAB|2026-08-26|strong|routine|q_rev_yoy_2.7pct_below_5pct_recovered|||medium|||||earnings_dates|10.61
+35964|2026-08-26 07:40:30|ANF|2026-08-26|strong|routine|rubric_composite_19.0_below_22_label_routine|5.0||high|19.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": 5, "a6": 0}|earnings_dates|11.0
+36054|2026-08-26 09:50:33|BZ|2026-08-26|strong|routine|rubric_composite_8.1_below_22_label_weak|14.1||high|8.12|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": null, "a3": 3, "a4": 0, "a5": null, "a6": 0}|earnings_dates|12.28
+36354|2026-08-27 07:00:53|CRM|2026-08-27|strong|routine|news_corpus_sparse_no_q_rev|||low|||||earnings_dates|11.47
+36611|2026-08-27 09:55:50|OOMA|2026-08-27|strong|routine|rubric_composite_18.0_below_22_label_routine|25.0||high|18.0|routine|[]|{"a1": 3, "a2": 2, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|27.01
+36882|2026-08-28 07:00:35|AFRM|2026-08-28|strong|routine|rubric_composite_20.0_below_22_label_routine|33.0||high|20.0|routine|[]|{"a1": 3, "a2": 2, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|12.79
+36884|2026-08-28 07:01:10|ESTC|2026-08-28|strong|routine|rubric_composite_18.0_below_22_label_routine|15.1||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 2, "a3": 3, "a4": 2, "a5": 3, "a6": 1}|earnings_dates|20.61
+36886|2026-08-28 07:01:45|GAP|2026-08-28|strong|routine|rubric_composite_8.0_below_22_label_weak|-2.0||medium|8.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|14.0
+36911|2026-08-28 07:35:21|BEKE|2026-08-28|strong|routine|rubric_composite_8.1_below_22_label_weak|-5.7||high|8.07|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 3, "a4": 3, "a5": null, "a6": 0}|no_match|12.58
+37333|2026-08-31 07:55:34|SAIC|2026-08-31|strong|routine|rubric_composite_14.0_below_22_label_routine|6.3||medium|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|9.38
+37414|2026-08-31 09:40:37|GPRK|2026-08-31|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||no_match|9.87
+37841|2026-09-01 09:10:27|YEXT|2026-09-01|strong|routine|rubric_composite_8.1_below_22_label_weak|-1.77||high|8.07|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 3, "a3": 3, "a4": 0, "a5": null, "a6": 0}|earnings_dates|14.62
+38374|2026-09-02 07:00:33|GTLB|2026-09-02|strong|routine|rubric_composite_20.0_below_22_label_routine|21.0||high|20.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 3, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|18.72
+38397|2026-09-02 07:50:27|DAKT|2026-09-02|strong|routine|rubric_composite_12.1_below_22_label_weak|7.1||medium|12.1|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 3, "a4": 2, "a5": null, "a6": 0}|earnings_dates|9.5
+38407|2026-09-02 08:10:28|DELL|2026-09-02|game_changer|routine|rubric_composite_17.0_below_22_label_routine|58.0|69.0|high|17.0|routine|[]|{"a1": 2, "a2": 2, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|calendar|9.0
+38464|2026-09-02 09:35:55|YEXT|2026-09-02|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|12.17
+39027|2026-09-03 07:00:32|NTSK|2026-09-03|strong|routine|rubric_composite_21.8_below_22_label_routine|29.0||high|21.79|routine|[]|{"a1": 3, "a2": null, "a3": 4, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|11.64
+39608|2026-09-04 07:00:45|IOT|2026-09-04|strong|routine|rubric_composite_20.0_below_22_label_routine|30.0||high|20.0|routine|[]|{"a1": 2, "a2": 3, "a3": 2, "a4": 4, "a5": 3, "a6": 1}|earnings_dates|15.15
+39688|2026-09-04 09:40:43|NX|2026-09-04|strong|routine|rubric_composite_10.8_below_22_label_weak|1.3||high|10.76|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": null, "a6": 1}|earnings_dates|13.22
+39708|2026-09-04 09:55:35|VBNK|2026-09-04|strong|routine|rubric_composite_13.4_below_22_label_weak|23.0||high|13.45|weak|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 3, "a4": 0, "a5": null, "a6": 0}|earnings_dates|10.1
+40562|2026-09-08 07:05:25|PCTY|2026-09-08|strong|routine|rubric_composite_9.8_below_22_label_weak|11.0||high|9.75|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": null, "a5": null, "a6": 0}|no_match|11.65
+41194|2026-09-09 07:00:39|INNV|2026-09-09|strong|routine|rubric_composite_16.1_below_22_label_routine|18.0|7.86|high|16.14|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 3, "a3": 2, "a4": 0, "a5": null, "a6": 1}|earnings_dates|16.63
+41205|2026-09-09 07:05:33|ODD|2026-09-09|strong|routine|q_rev_yoy_-25.1pct_below_5pct_recovered|||medium|||||earnings_dates|22.38
+41207|2026-09-09 07:06:03|SIG|2026-09-09|strong|routine|q_rev_yoy_-0.5pct_below_5pct_recovered|||medium|||||earnings_dates|13.71
+41229|2026-09-09 07:50:29|CGNT|2026-09-09|strong|routine|rubric_composite_13.0_below_22_label_weak|12.0||medium|13.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": 2, "a6": 0}|earnings_dates|11.66
+41242|2026-09-09 08:10:30|ASO|2026-09-09|strong|routine|rubric_composite_11.0_below_22_label_weak|3.0||high|11.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|12.93
+41328|2026-09-09 09:40:34|AVO|2026-09-09|strong|routine|rubric_composite_19.0_below_22_label_routine|26.0||high|19.0|routine|[]|{"a1": 4, "a2": 0, "a3": 2, "a4": 5, "a5": 2, "a6": 0}|earnings_dates|9.4
+42274|2026-09-11 09:50:53|HPE|2026-09-11|strong|routine|rubric_composite_21.8_below_22_label_routine|33.7||high|21.79|routine|[]|{"a1": 3, "a2": 5, "a3": 2, "a4": null, "a5": 3, "a6": 0}|no_match|9.94
+42938|2026-09-14 09:55:29|NTSK|2026-09-14|strong|routine|rubric_composite_16.1_below_22_label_routine|29.0||medium|16.14|routine|[]|{"a1": 2, "a2": null, "a3": 2, "a4": null, "a5": 3, "a6": 0}|no_match|10.27
+43320|2026-09-15 07:00:34|FPS|2026-09-15|strong|routine|rubric_composite_16.1_below_22_label_routine|94.0||medium|16.14|routine|[]|{"a1": 2, "a2": null, "a3": 2, "a4": null, "a5": 3, "a6": 0}|earnings_dates|10.34
+44446|2026-09-17 09:50:40|CIEN|2026-09-17|game_changer|routine|rubric_composite_16.1_below_22_label_routine|37.0|30.0|high|16.06|routine|[]|{"a1": 2, "a2": 2, "a3": 2, "a4": null, "a5": 3, "a6": 0}|no_match|9.84
+44460|2026-09-17 09:55:56|XE|2026-09-17|strong|routine|rubric_composite_18.5_below_22_label_routine|154.0||medium|18.47|routine|[]|{"a1": 4, "a2": null, "a3": null, "a4": 0, "a5": null, "a6": 1}|no_match|10.16
+46791|2026-09-23 07:00:44|WOR|2026-09-23|strong|routine|rubric_composite_14.8_below_22_label_routine|13.2||high|14.79|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 2, "a3": 2, "a4": 3, "a5": null, "a6": 0}|earnings_dates|14.61
+49253|2026-09-29 09:25:22|CCL|2026-09-29|strong|routine|q_rev_yoy_3.5pct_below_5pct_recovered|||medium|||||earnings_dates|10.69
+50289|2026-10-01 07:10:15|ACN|2026-10-01|strong|routine|rubric_composite_12.1_below_22_label_weak|6.0||medium|12.1|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": null, "a6": 0}|earnings_dates|15.61
+51709|2026-10-05 07:01:20|PCVX|2026-10-05|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||no_match|60.8
+51737|2026-10-05 07:05:42|RXO|2026-10-05|strong|routine|rubric_composite_18.8_below_22_label_routine|25.0||medium|18.83|routine|[]|{"a1": 2, "a2": 3, "a3": 2, "a4": 4, "a5": null, "a6": 1}|no_match|19.76
+53309|2026-10-07 07:00:21|NEOG|2026-10-07|strong|routine|rubric_composite_14.0_below_22_label_routine|6.5||high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|11.04
+54021|2026-10-08 08:05:23|HELE|2026-10-08|strong|routine|rubric_composite_14.0_below_22_label_routine|2.1||high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 3, "a4": 0, "a5": 3, "a6": 1}|earnings_dates|9.59
+56979|2026-10-15 07:00:22|ERIC|2026-10-15|strong|routine|rubric_composite_10.8_below_22_label_weak|6.0||medium|10.76|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 2, "a4": 4, "a5": null, "a6": 0}|earnings_dates|12.11
+57098|2026-10-15 09:40:29|BETR|2026-10-15|strong|routine|rubric_composite_8.2_below_22_label_weak|8.6||medium|8.21|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": null, "a3": 2, "a4": null, "a5": null, "a6": 0}|no_match|14.78
+58175|2026-10-19 07:00:28|CLF|2026-10-19|strong|routine|rubric_composite_20.2_below_22_label_routine|18.6||medium|20.17|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 5, "a3": 3, "a4": 0, "a5": null, "a6": 1}|earnings_dates|13.45
+58991|2026-10-20 09:45:36|EFX|2026-10-20|strong|routine|rubric_composite_12.0_below_22_label_weak|10.0||high|12.0|weak|["guidance_lowered", "no_milestone_low_growth"]|{"a1": 2, "a2": 4, "a3": 2, "a4": 2, "a5": 0, "a6": 0}|earnings_dates|10.34
+60626|2026-10-23 07:00:22|RNG|2026-10-23|strong|routine|rubric_composite_18.0_below_22_label_routine|5.9||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 3, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|15.31
+60677|2026-10-23 08:25:25|CCI|2026-10-23|strong|routine|rubric_composite_9.0_below_22_label_weak|-7.2||high|9.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 1, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|no_match|12.34
+60731|2026-10-23 09:31:25|RHI|2026-10-23|strong|routine|rubric_composite_10.8_below_22_label_weak|0.37||medium|10.76|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 3, "a4": 2, "a5": null, "a6": 0}|earnings_dates|12.79
+61408|2026-10-26 09:40:30|EAF|2026-10-26|strong|routine|rubric_composite_8.0_below_22_label_weak|-3.0||medium|8.0|weak|["rev_contracting", "all_margins_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 0, "a4": 4, "a5": 2, "a6": 0}|no_match|17.05
+61914|2026-10-27 07:35:22|SOFI|2026-10-27|strong|routine|rubric_composite_21.0_below_22_label_routine|44.0||high|21.0|routine|[]|{"a1": 3, "a2": 4, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|9.06
+62037|2026-10-27 09:31:28|RCL|2026-10-27|strong|routine|rubric_composite_11.0_below_22_label_weak|9.0||medium|11.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|9.08
+62041|2026-10-27 09:31:54|PII|2026-10-27|strong|routine|rubric_composite_17.0_below_22_label_routine|11.0||high|17.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 4, "a5": 3, "a6": 1}|earnings_dates|9.45
+62045|2026-10-27 09:32:12|HWKN|2026-10-27|strong|routine|rubric_composite_10.8_below_22_label_weak|12.0||high|10.76|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 3, "a5": null, "a6": 0}|earnings_dates|14.01
+62077|2026-10-27 09:40:38|HRI|2026-10-27|strong|routine|rubric_composite_14.0_below_22_label_routine|5.0||medium|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|11.23
+62109|2026-10-27 09:50:31|SXC|2026-10-27|strong|routine|q_rev_yoy_-0.2pct_below_5pct_recovered|||medium|||||earnings_dates|12.03
+62580|2026-10-28 07:10:22|AXGN|2026-10-28|strong|routine|rubric_composite_20.0_below_22_label_routine|26.2|29.0|medium|20.0|routine|[]|{"a1": 3, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|16.63
+62598|2026-10-28 07:25:24|FLEX|2026-10-28|strong|routine|rubric_composite_18.4_below_22_label_routine|25.0||high|18.35|routine|[]|{"a1": 1, "a2": 5, "a3": null, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|9.19
+62601|2026-10-28 07:25:44|EXTR|2026-10-28|strong|routine|rubric_composite_16.0_below_22_label_routine|10.0||high|16.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 2, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|10.15
+62637|2026-10-28 08:15:20|GEHC|2026-10-28|strong|routine|rubric_composite_17.0_below_22_label_routine|7.2||high|17.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|9.51
+62713|2026-10-28 09:31:41|SKHY|2026-10-28|game_changer|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|9.8
+62717|2026-10-28 09:32:01|ROG|2026-10-28|strong|routine|rubric_composite_15.0_below_22_label_routine|9.3||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 3, "a4": 0, "a5": 4, "a6": 0}|earnings_dates|11.47
+62743|2026-10-28 09:35:29|EVR|2026-10-28|strong|routine|rubric_composite_16.1_below_22_label_routine|12.0||high|16.14|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 1, "a3": 2, "a4": 5, "a5": null, "a6": 0}|earnings_dates|10.67
+62761|2026-10-28 09:40:50|ICLR|2026-10-28|strong|routine|rubric_composite_15.0_below_22_label_routine|-2.9||high|15.0|routine|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 5, "a3": 2, "a4": 1, "a5": 3, "a6": 1}|earnings_dates|12.25
+62765|2026-10-28 09:41:07|OSW|2026-10-28|strong|routine|rubric_composite_16.0_below_22_label_routine|7.0||high|16.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 3, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|11.34
+62767|2026-10-28 09:41:29|HAYW|2026-10-28|strong|routine|rubric_composite_16.0_below_22_label_routine|6.0|5.5|high|16.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|10.4
+62780|2026-10-28 09:45:42|ENSG|2026-10-28|strong|routine|rubric_composite_17.0_below_22_label_routine|14.5||medium|17.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 2, "a4": 0, "a5": 4, "a6": 0}|earnings_dates|9.14
+63279|2026-10-29 07:00:33|MAX|2026-10-29|strong|routine|rubric_composite_18.0_below_22_label_routine|22.7||high|18.0|routine|["all_margins_contracting", "no_milestone_low_growth"]|{"a1": 2, "a2": 2, "a3": 0, "a4": 4, "a5": 4, "a6": 0}|earnings_dates|13.48
+63283|2026-10-29 07:01:15|NCLH|2026-10-29|strong|routine|rubric_composite_15.0_below_22_label_routine|0.3||medium|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 2, "a4": 3, "a5": 4, "a6": 0}|earnings_dates|9.28
+63302|2026-10-29 07:02:37|FVRR|2026-10-29|strong|routine|rubric_composite_17.0_below_22_label_routine|-15.8||medium|17.0|routine|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 5, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|10.89
+63317|2026-10-29 07:05:40|TDOC|2026-10-29|strong|routine|rubric_composite_16.0_below_22_label_routine|-3.4||high|16.0|routine|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 3, "a3": 3, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|12.06
+63328|2026-10-29 07:10:26|CROX|2026-10-29|strong|routine|rubric_composite_15.0_below_22_label_routine|4.6|3.0|medium|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|17.39
+63352|2026-10-29 07:30:25|DASH|2026-10-29|strong|routine|rubric_composite_14.4_below_22_label_routine|34.0||medium|14.37|routine|[]|{"a1": 2, "a2": null, "a3": 3, "a4": null, "a5": null, "a6": 0}|earnings_dates|9.15
+63373|2026-10-29 07:55:22|PHAT|2026-10-29|strong|routine|rubric_composite_17.0_below_22_label_routine|71.0||high|17.0|routine|[]|{"a1": 2, "a2": 5, "a3": 3, "a4": 0, "a5": 2, "a6": 1}|earnings_dates|14.97
+63390|2026-10-29 08:20:18|COHU|2026-10-29|strong|routine|rubric_composite_20.0_below_22_label_routine|37.0||high|20.0|routine|[]|{"a1": 2, "a2": 3, "a3": 2, "a4": 4, "a5": 3, "a6": 1}|earnings_dates|11.57
+63393|2026-10-29 08:20:39|BHC|2026-10-29|strong|routine|rubric_composite_16.0_below_22_label_routine|9.7||high|16.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|10.12
+63412|2026-10-29 08:40:24|SIMO|2026-10-29|strong|routine|rubric_composite_20.0_below_22_label_routine|131.0||high|20.0|routine|[]|{"a1": 3, "a2": 2, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|9.28
+63420|2026-10-29 08:45:24|CVNA|2026-10-29|strong|routine|rubric_composite_17.0_below_22_label_routine|42.0||high|17.0|routine|[]|{"a1": 2, "a2": 4, "a3": 3, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|10.13
+63441|2026-10-29 09:00:28|GATX|2026-10-29|strong|routine|rubric_composite_17.0_below_22_label_routine|36.0||high|17.0|routine|[]|{"a1": 2, "a2": 3, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|11.34
+63474|2026-10-29 09:25:24|HII|2026-10-29|strong|routine|rubric_composite_19.0_below_22_label_routine|10.8||high|19.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|calendar|9.22
+63516|2026-10-29 09:31:34|FCN|2026-10-29|strong|routine|rubric_composite_15.0_below_22_label_routine|5.9||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|calendar|11.22
+63542|2026-10-29 09:35:31|GEN|2026-10-29|strong|routine|rubric_composite_14.0_below_22_label_routine|12.0||high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|11.09
+63544|2026-10-29 09:35:47|TXT|2026-10-29|strong|routine|rubric_composite_11.0_below_22_label_weak|4.0||medium|11.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|10.97
+63547|2026-10-29 09:36:06|CHDN|2026-10-29|strong|routine|rubric_composite_11.4_below_22_label_weak|1.9||medium|11.38|weak|["all_margins_contracting", "no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 0, "a4": null, "a5": null, "a6": 0}|earnings_dates|13.53
+63572|2026-10-29 09:40:41|DRS|2026-10-29|strong|routine|rubric_composite_15.0_below_22_label_routine|11.0||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|9.61
+63621|2026-10-29 09:50:30|LXU|2026-10-29|strong|routine|q_rev_yoy_2.1pct_below_5pct_recovered|||medium|||||earnings_dates|12.1
+63645|2026-10-29 09:55:38|BOOT|2026-10-29|strong|routine|rubric_composite_10.0_below_22_label_weak|15.1||high|10.0|weak|["guidance_lowered", "no_milestone_low_growth"]|{"a1": 2, "a2": 2, "a3": 2, "a4": 2, "a5": 0, "a6": 0}|earnings_dates|11.52
+64050|2026-10-30 07:00:28|CDNA|2026-10-30|strong|routine|rubric_composite_17.0_below_22_label_routine|39.0||high|17.0|routine|["all_margins_contracting"]|{"a1": 2, "a2": 2, "a3": 0, "a4": 5, "a5": 3, "a6": 0}|earnings_dates|14.16
+64053|2026-10-30 07:00:51|OSPN|2026-10-30|strong|routine|rubric_composite_20.0_below_22_label_routine|12.0||high|20.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 2, "a4": 5, "a5": 3, "a6": 0}|earnings_dates|22.03
+64056|2026-10-30 07:01:14|CVEO|2026-10-30|strong|routine|rubric_composite_20.0_below_22_label_routine|13.0||high|20.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 3, "a4": 5, "a5": 3, "a6": 1}|earnings_dates|17.84
+64128|2026-10-30 08:55:17|CPRI|2026-10-30|strong|routine|rubric_composite_16.0_below_22_label_routine|-5.5||medium|16.0|routine|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 5, "a3": 1, "a4": 3, "a5": 3, "a6": 1}|calendar|13.01
+64165|2026-10-30 09:30:25|CVCO|2026-10-30|strong|routine|rubric_composite_11.4_below_22_label_weak|17.9||high|11.38|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": null, "a4": 4, "a5": null, "a6": 0}|earnings_dates|12.16
+64182|2026-10-30 09:31:25|BTSG|2026-10-30|strong|routine|rubric_composite_19.0_below_22_label_routine|26.4||high|19.0|routine|[]|{"a1": 3, "a2": 2, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|calendar|13.63
+64207|2026-10-30 09:35:43|FDXF|2026-10-30|strong|routine|rubric_composite_20.2_below_22_label_routine|8.0||high|20.17|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": null, "a3": null, "a4": 3, "a5": 5, "a6": 0}|earnings_dates|12.25
+64210|2026-10-30 09:35:58|GDYN|2026-10-30|strong|routine|rubric_composite_16.0_below_22_label_routine|9.7||high|16.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 3, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|15.49
+64214|2026-10-30 09:36:20|AN|2026-10-30|strong|routine|rubric_composite_3.2_below_22_label_weak|0.0||medium|3.25|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 1, "a3": null, "a4": 1, "a5": null, "a6": 0}|earnings_dates|12.93
+64902|2026-11-02 07:55:20|TATT|2026-11-02|strong|routine|rubric_composite_16.1_below_22_label_routine|20.2||medium|16.14|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 2, "a3": 2, "a4": 4, "a5": null, "a6": 0}|earnings_dates|9.53
+64966|2026-11-02 09:20:22|IDXX|2026-11-02|strong|routine|rubric_composite_13.0_below_22_label_weak|10.0||high|13.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|10.67
+65738|2026-11-03 07:05:37|IBTA|2026-11-03|strong|routine|rubric_composite_21.0_below_22_label_routine|17.0||high|21.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 3, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|18.23
+65750|2026-11-03 07:15:14|MDGL|2026-11-03|strong|routine|rubric_composite_21.5_below_22_label_routine|50.2||medium|21.52|routine|[]|{"a1": 2, "a2": 5, "a3": 2, "a4": 4, "a5": null, "a6": 1}|earnings_dates|10.17
+65779|2026-11-03 07:50:36|RVTY|2026-11-03|strong|routine|rubric_composite_19.0_below_22_label_routine|7.0||medium|19.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|9.56
+65850|2026-11-03 08:50:16|EVER|2026-11-03|strong|routine|rubric_composite_18.0_below_22_label_routine|25.4||high|18.0|routine|["all_margins_contracting"]|{"a1": 3, "a2": 3, "a3": 0, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|9.19
+65864|2026-11-03 09:00:38|SRAD|2026-11-03|strong|routine|rubric_composite_18.0_below_22_label_routine|24.0|20.0|high|18.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 3, "a3": 2, "a4": 3, "a5": 2, "a6": 0}|earnings_dates|9.95
+65963|2026-11-03 09:35:50|GPK|2026-11-03|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||earnings_dates|15.01
+66007|2026-11-03 09:45:50|HLF|2026-11-03|strong|routine|rubric_composite_15.0_below_22_label_routine|6.0||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|10.47
+66598|2026-11-04 07:00:30|XYZ|2026-11-04|strong|routine|rubric_composite_16.0_below_22_label_routine|9.9||high|16.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 1, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|9.46
+66603|2026-11-04 07:01:13|DUOL|2026-11-04|strong|routine|rubric_composite_12.0_below_22_label_weak|13.7||high|12.0|weak|["no_milestone_low_growth"]|{"a1": 2, "a2": 0, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|15.59
+66605|2026-11-04 07:01:47|HL|2026-11-04|strong|routine|q_rev_yoy_-3.6pct_below_5pct_recovered|||medium|||||earnings_dates|10.52
+66613|2026-11-04 07:03:05|LMB|2026-11-04|strong|routine|rubric_composite_21.0_below_22_label_routine|24.9||high|21.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 3, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|14.82
+66615|2026-11-04 07:03:23|CRCT|2026-11-04|strong|routine|rubric_composite_10.8_below_22_label_weak|11.0||high|10.76|weak|["all_margins_contracting", "no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 0, "a4": 4, "a5": null, "a6": 0}|earnings_dates|13.9
+66618|2026-11-04 07:03:43|OUST|2026-11-04|strong|routine|rubric_composite_20.0_below_22_label_routine|50.0||high|20.0|routine|[]|{"a1": 2, "a2": 3, "a3": 2, "a4": 4, "a5": 3, "a6": 1}|earnings_dates|13.53
+66620|2026-11-04 07:04:06|FLYW|2026-11-04|strong|routine|rubric_composite_21.0_below_22_label_routine|25.1||high|21.0|routine|[]|{"a1": 2, "a2": 5, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|9.97
+66625|2026-11-04 07:04:41|ENLT|2026-11-04|strong|routine|rubric_composite_18.0_below_22_label_routine|40.0||high|18.0|routine|[]|{"a1": 2, "a2": 2, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|9.3
+66646|2026-11-04 07:05:04|ALIT|2026-11-04|strong|routine|rubric_composite_13.8_below_22_label_weak|-6.2||medium|13.76|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 3, "a3": 2, "a4": null, "a5": 3, "a6": 1}|earnings_dates|17.39
+66679|2026-11-04 07:15:18|KD|2026-11-04|strong|routine|q_rev_yoy_-1.9pct_below_5pct_recovered|||medium|||||earnings_dates|12.06
+66694|2026-11-04 07:25:24|VSH|2026-11-04|strong|routine|rubric_composite_18.8_below_22_label_routine|24.0||medium|18.83|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 2, "a3": 3, "a4": 2, "a5": null, "a6": 1}|earnings_dates|12.71
+66697|2026-11-04 07:25:43|LIVN|2026-11-04|strong|routine|rubric_composite_15.0_below_22_label_routine|9.9|9.5|high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|12.65
+66740|2026-11-04 08:00:27|MDLN|2026-11-04|strong|routine|rubric_composite_18.0_below_22_label_routine|10.4||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 3, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|9.56
+66751|2026-11-04 08:05:33|TREX|2026-11-04|strong|routine|rubric_composite_20.0_below_22_label_routine|26.0||high|20.0|routine|[]|{"a1": 4, "a2": 1, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|9.0
+66759|2026-11-04 08:10:26|RIOT|2026-11-04|strong|routine|rubric_composite_12.1_below_22_label_weak|0.6||medium|12.1|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 2, "a4": 5, "a5": null, "a6": 0}|earnings_dates|15.19
+66818|2026-11-04 08:50:19|BRKR|2026-11-04|strong|routine|rubric_composite_9.0_below_22_label_weak|1.6||medium|9.0|weak|["guidance_lowered", "no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 3, "a4": 2, "a5": 0, "a6": 1}|earnings_dates|15.01
+66821|2026-11-04 08:50:42|OPRT|2026-11-04|strong|routine|rubric_composite_19.0_below_22_label_routine|3.0||high|19.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|14.74
+66934|2026-11-04 09:30:51|NXT|2026-11-04|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||no_match|12.86
+66973|2026-11-04 09:31:07|GIC|2026-11-04|strong|routine|rubric_composite_5.4_below_22_label_weak|10.2||high|5.38|weak|["all_margins_contracting", "no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 0, "a4": 0, "a5": null, "a6": 0}|earnings_dates|10.67
+67089|2026-11-04 09:35:46|W|2026-11-04|strong|routine|rubric_composite_17.5_below_22_label_routine|9.7||high|17.48|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 3, "a4": 2, "a5": null, "a6": 1}|calendar|10.48
+67091|2026-11-04 09:36:00|ZBH|2026-11-04|strong|routine|rubric_composite_12.0_below_22_label_weak|3.1||medium|12.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 1, "a5": 3, "a6": 0}|earnings_dates|13.31
+67094|2026-11-04 09:36:27|SWK|2026-11-04|strong|routine|rubric_composite_13.0_below_22_label_weak|-1.0||medium|13.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 5, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|14.1
+67098|2026-11-04 09:36:48|JKS|2026-11-04|strong|routine|rubric_composite_12.1_below_22_label_weak|-10.5||medium|12.1|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 4, "a3": 4, "a4": 0, "a5": null, "a6": 1}|no_match|14.57
+67239|2026-11-04 09:45:58|EXPE|2026-11-04|strong|routine|news_corpus_sparse_no_q_rev|||low|||||earnings_dates|9.44
+67345|2026-11-04 09:51:16|CDW|2026-11-04|strong|routine|rubric_composite_16.1_below_22_label_routine|17.7||high|16.14|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 1, "a3": 2, "a4": 3, "a5": null, "a6": 0}|earnings_dates|9.52
+67414|2026-11-04 09:55:45|CPNG|2026-11-04|strong|routine|rubric_composite_10.8_below_22_label_weak|7.5||high|10.76|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 3, "a4": 3, "a5": null, "a6": 0}|earnings_dates|12.71
+68003|2026-11-05 07:00:39|APP|2026-11-05|strong|routine|rubric_composite_20.6_below_22_label_routine|55.5||high|20.65|routine|[]|{"a1": 3, "a2": 4, "a3": 2, "a4": null, "a5": 3, "a6": 0}|earnings_dates|19.96
+68006|2026-11-05 07:01:39|EPAM|2026-11-05|strong|routine|rubric_composite_14.0_below_22_label_routine|2.3|3.6|high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 3, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|17.21
+68008|2026-11-05 07:03:58|SEZL|2026-11-05|game_changer|routine|rubric_composite_20.0_below_22_label_routine|42.6|42.5|high|20.0|routine|[]|{"a1": 2, "a2": 4, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|26.56
+68016|2026-11-05 07:04:37|RUN|2026-11-05|strong|routine|rubric_composite_14.0_below_22_label_routine|51.7||medium|14.0|routine|["guidance_lowered"]|{"a1": 2, "a2": 3, "a3": 2, "a4": 5, "a5": 0, "a6": 0}|earnings_dates|15.13
+68020|2026-11-05 07:04:57|WRBY|2026-11-05|strong|routine|rubric_composite_9.0_below_22_label_weak|10.4||high|9.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 1, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|15.08
+68024|2026-11-05 07:05:25|RPD|2026-11-05|strong|routine|rubric_composite_16.0_below_22_label_routine|-2.5||medium|16.0|routine|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 5, "a3": 3, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|12.97
+68026|2026-11-05 07:05:46|VERX|2026-11-05|strong|routine|rubric_composite_15.0_below_22_label_routine|11.0||high|15.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|12.81
+68030|2026-11-05 07:06:20|ADMA|2026-11-05|strong|routine|rubric_composite_18.0_below_22_label_routine|5.0||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 4, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|21.28
+68032|2026-11-05 07:06:44|MDA|2026-11-05|strong|routine|rubric_composite_17.0_below_22_label_routine|21.5||high|17.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 1, "a3": 2, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|11.7
+68061|2026-11-05 07:11:26|GCT|2026-11-05|strong|routine|rubric_composite_21.0_below_22_label_routine|27.4||high|21.0|routine|[]|{"a1": 2, "a2": 4, "a3": 3, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|10.49
+68084|2026-11-05 07:20:25|TASK|2026-11-05|strong|routine|rubric_composite_14.0_below_22_label_routine|5.4||high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|11.01
+68107|2026-11-05 07:25:32|TPR|2026-11-05|strong|routine|rubric_composite_13.0_below_22_label_weak|11.0||high|13.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 2, "a3": 1, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|11.32
+68116|2026-11-05 07:26:27|DLX|2026-11-05|strong|routine|rubric_composite_12.0_below_22_label_weak|2.5||medium|12.0|weak|["all_margins_contracting", "no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 0, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|14.65
+68188|2026-11-05 07:45:29|WW|2026-11-05|strong|routine|rubric_composite_15.0_below_22_label_routine|-11.1||medium|15.0|routine|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 5, "a3": 3, "a4": 2, "a5": 2, "a6": 1}|earnings_dates|17.48
+68651|2026-11-05 09:31:43|ARDT|2026-11-05|strong|routine|rubric_composite_21.0_below_22_label_routine|3.1||high|21.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 3, "a4": 2, "a5": 4, "a6": 1}|earnings_dates|14.86
+68656|2026-11-05 09:32:34|TM|2026-11-05|strong|routine|news_corpus_sparse_no_q_rev|||low|||||earnings_dates|9.99
+68710|2026-11-05 09:35:49|CPAY|2026-11-05|strong|routine|rubric_composite_17.0_below_22_label_routine|17.9||high|17.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|12.68
+68789|2026-11-05 09:41:07|SBGI|2026-11-05|strong|routine|rubric_composite_21.0_below_22_label_routine|16.0||high|21.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 1}|earnings_dates|11.24
+68833|2026-11-05 09:45:53|ACHC|2026-11-05|strong|routine|rubric_composite_12.0_below_22_label_weak|5.1||high|12.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|15.57
+68871|2026-11-05 09:50:52|WU|2026-11-05|strong|routine|rubric_composite_8.0_below_22_label_weak|-2.3||high|8.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|12.75
+68909|2026-11-05 09:56:08|SVCO|2026-11-05|strong|routine|q_rev_yoy_-12.9pct_below_5pct_recovered|||medium|||||earnings_dates|9.45
+69509|2026-11-06 07:02:18|IREN|2026-11-06|strong|routine|rubric_composite_2.7_below_22_label_weak|-5.0||high|2.69|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": 2, "a4": 0, "a5": null, "a6": 0}|no_match|17.91
+69512|2026-11-06 07:02:44|NET|2026-11-06|strong|routine|rubric_composite_20.6_below_22_label_routine|39.0||high|20.65|routine|[]|{"a1": 3, "a2": null, "a3": 3, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|19.43
+69518|2026-11-06 07:03:24|ABNB|2026-11-06|strong|routine|rubric_composite_20.0_below_22_label_routine|19.0||high|20.0|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|12.72
+69525|2026-11-06 07:04:16|SITM|2026-11-06|strong|routine|rubric_composite_18.4_below_22_label_routine|257.0||high|18.35|routine|[]|{"a1": 1, "a2": 5, "a3": null, "a4": 3, "a5": 3, "a6": 0}|no_match|10.14
+69754|2026-11-06 07:25:21|SNDK|2026-11-06|strong|routine|rubric_composite_16.4_below_22_label_routine|378.0||medium|16.42|routine|[]|{"a1": 3, "a2": null, "a3": 2, "a4": null, "a5": null, "a6": 0}|no_match|12.01
+70025|2026-11-06 08:05:34|SIMO|2026-11-06|strong|routine|rubric_composite_17.9_below_22_label_routine|131.0||high|17.88|routine|[]|{"a1": 2, "a2": 5, "a3": 2, "a4": null, "a5": null, "a6": 0}|no_match|9.43
+70083|2026-11-06 08:15:35|FORM|2026-11-06|strong|routine|rubric_composite_16.1_below_22_label_routine|38.4||high|16.06|routine|[]|{"a1": 2, "a2": 2, "a3": 2, "a4": null, "a5": 3, "a6": 0}|no_match|10.01
+70347|2026-11-06 08:55:41|AMAT|2026-11-06|strong|routine|rubric_composite_14.8_below_22_label_routine|24.8||medium|14.79|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 2, "a4": 2, "a5": null, "a6": 0}|no_match|9.11
+70429|2026-11-06 09:05:35|MKSI|2026-11-06|strong|routine|rubric_composite_14.9_below_22_label_routine|43.0||high|14.91|routine|[]|{"a1": 1, "a2": 2, "a3": null, "a4": 3, "a5": 3, "a6": 0}|no_match|11.97
+70465|2026-11-06 09:10:36|MTSI|2026-11-06|strong|routine|rubric_composite_13.8_below_22_label_weak|62.7||high|13.76|weak|[]|{"a1": 1, "a2": 2, "a3": null, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|9.27
+70723|2026-11-06 09:31:36|OKLO|2026-11-06|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||calendar|12.77
+70787|2026-11-06 09:36:02|AOSL|2026-11-06|strong|routine|rubric_composite_12.0_below_22_label_weak|-2.6||medium|12.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 1, "a3": 3, "a4": 2, "a5": 3, "a6": 0}|earnings_dates|16.34
+70857|2026-11-06 09:40:46|KINS|2026-11-06|strong|routine|q_rev_yoy_missing_no_prior_year_comparable|||medium|||||calendar|9.44
+70975|2026-11-06 09:50:35|AMD|2026-11-06|strong|routine|rubric_composite_21.1_below_22_label_routine|45.0||medium|21.12|routine|[]|{"a1": 3, "a2": 5, "a3": 2, "a4": null, "a5": null, "a6": 0}|no_match|12.94
+71036|2026-11-06 09:55:42|EVC|2026-11-06|strong|routine|rubric_composite_14.6_below_22_label_routine|88.0||high|14.62|routine|[]|{"a1": 2, "a2": 2, "a3": 2, "a4": null, "a5": null, "a6": 1}|calendar|10.13
+71699|2026-11-09 07:00:35|VIR|2026-11-09|strong|routine|rubric_composite_0.0_below_22_label_weak|-178.3||medium|0.0|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 0, "a3": null, "a4": 0, "a5": null, "a6": 0}|no_match|21.21
+71708|2026-11-09 07:05:44|CECO|2026-11-09|strong|routine|rubric_composite_20.0_below_22_label_routine|104.7||medium|20.0|routine|[]|{"a1": 5, "a2": 3, "a3": 2, "a4": 0, "a5": 2, "a6": 1}|earnings_dates|22.4
+71753|2026-11-09 08:15:26|LINC|2026-11-09|strong|routine|rubric_composite_18.0_below_22_label_routine|12.6||high|18.0|routine|["no_milestone_low_growth"]|{"a1": 2, "a2": 3, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|10.42
+71870|2026-11-09 09:35:29|FERG|2026-11-09|strong|routine|rubric_composite_13.0_below_22_label_weak|9.5||high|13.0|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": 3, "a6": 0}|calendar|10.33
+71874|2026-11-09 09:35:36|GFR|2026-11-09|strong|routine|rubric_composite_21.1_below_22_label_routine|112.8||medium|21.12|routine|[]|{"a1": 5, "a2": 0, "a3": 2, "a4": null, "a5": null, "a6": 1}|earnings_dates|38.04
+71881|2026-11-09 09:35:54|SGRY|2026-11-09|strong|routine|news_corpus_sparse_no_q_rev|||low|||||earnings_dates|12.11
+71884|2026-11-09 09:36:20|CTEV|2026-11-09|strong|routine|rubric_composite_14.0_below_22_label_routine|9.1||high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 2, "a5": 3, "a6": 1}|earnings_dates|16.49
+71933|2026-11-09 09:45:35|WRBY|2026-11-09|strong|routine|rubric_composite_13.8_below_22_label_weak|10.4||high|13.76|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": null, "a4": 0, "a5": 3, "a6": 1}|no_match|12.09
+71985|2026-11-09 09:51:22|PANL|2026-11-09|strong|routine|rubric_composite_21.5_below_22_label_routine|29.9||medium|21.52|routine|[]|{"a1": 4, "a2": 2, "a3": 2, "a4": 4, "a5": null, "a6": 0}|no_match|9.78
+72619|2026-11-10 07:01:12|SENS|2026-11-10|strong|routine|rubric_composite_19.0_below_22_label_routine|140.0||high|19.0|routine|[]|{"a1": 5, "a2": 0, "a3": 3, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|12.24
+72625|2026-11-10 07:01:50|AAON|2026-11-10|strong|routine|rubric_composite_20.0_below_22_label_routine|84.1|73.5|high|20.0|routine|[]|{"a1": 2, "a2": 2, "a3": 3, "a4": 5, "a5": 3, "a6": 0}|earnings_dates|18.5
+72777|2026-11-10 09:30:29|HROW|2026-11-10|strong|routine|rubric_composite_15.0_below_22_label_routine|38.6||high|15.0|routine|[]|{"a1": 4, "a2": 0, "a3": 2, "a4": 0, "a5": 2, "a6": 1}|earnings_dates|20.13
+72778|2026-11-10 09:30:36|SECZ|2026-11-10|strong|routine|rubric_composite_4.1_below_22_label_weak|13.0||medium|4.11|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": null, "a3": null, "a4": 0, "a5": null, "a6": 0}|earnings_dates|26.11
+72800|2026-11-10 09:35:21|CSQR|2026-11-10|strong|routine|rubric_composite_16.1_below_22_label_routine|25.6||medium|16.14|routine|[]|{"a1": 3, "a2": null, "a3": null, "a4": 0, "a5": 3, "a6": 0}|earnings_dates|12.61
+74057|2026-11-11 07:01:59|FOSL|2026-11-11|strong|routine|rubric_composite_19.0_below_22_label_routine|0.4||medium|19.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 1, "a4": 4, "a5": 3, "a6": 1}|earnings_dates|25.92
+74075|2026-11-11 07:05:29|LITE|2026-11-11|strong|routine|rubric_composite_13.0_below_22_label_weak|136.5||medium|13.0|weak|[]|{"a1": 2, "a2": 2, "a3": 2, "a4": null, "a5": null, "a6": 0}|no_match|9.47
+74386|2026-11-11 08:55:25|CECO|2026-11-11|strong|routine|rubric_composite_10.3_below_22_label_weak|105.0||high|10.32|weak|[]|{"a1": 1, "a2": 3, "a3": null, "a4": 0, "a5": 2, "a6": 0}|no_match|12.08
+74614|2026-11-11 09:35:27|DOCN|2026-11-11|strong|routine|rubric_composite_20.6_below_22_label_routine|40.0||medium|20.65|routine|[]|{"a1": 3, "a2": 4, "a3": 2, "a4": null, "a5": 3, "a6": 0}|no_match|9.07
+74620|2026-11-11 09:35:50|LMRI|2026-11-11|strong|routine|rubric_composite_17.2_below_22_label_routine|5.0||medium|17.21|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": null, "a3": 3, "a4": 2, "a5": 4, "a6": 0}|earnings_dates|14.55
+74674|2026-11-11 09:45:28|AZTA|2026-11-11|strong|routine|rubric_composite_9.4_below_22_label_weak|5.1||high|9.41|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 2, "a4": 3, "a5": null, "a6": 0}|earnings_dates|17.24
+74703|2026-11-11 09:50:32|DCTH|2026-11-11|strong|routine|rubric_composite_19.5_below_22_label_routine|71.0||high|19.5|routine|[]|{"a1": 3, "a2": 2, "a3": 2, "a4": null, "a5": 3, "a6": 1}|no_match|9.73
+75320|2026-11-12 07:00:29|FIGR|2026-11-12|strong|routine|rubric_composite_13.4_below_22_label_weak|84.0||high|13.45|weak|["all_margins_contracting"]|{"a1": 2, "a2": 1, "a3": 0, "a4": 5, "a5": null, "a6": 0}|earnings_dates|12.03
+75329|2026-11-12 07:05:16|TTEK|2026-11-12|strong|routine|q_rev_yoy_0.7pct_below_5pct_recovered|||medium|||||no_match|9.68
+75434|2026-11-12 09:35:24|MBGL|2026-11-12|strong|routine|rubric_composite_13.4_below_22_label_weak|7.4||high|13.45|weak|["no_milestone_low_growth"]|{"a1": 1, "a2": null, "a3": null, "a4": 2, "a5": 3, "a6": 0}|calendar|13.13
+76001|2026-11-13 07:00:27|CBRS|2026-11-13|strong|routine|rubric_composite_20.2_below_22_label_routine|55.0||medium|20.17|routine|[]|{"a1": 4, "a2": null, "a3": null, "a4": 0, "a5": 3, "a6": 1}|calendar|16.62
+76013|2026-11-13 07:01:50|LFTO|2026-11-13|strong|routine|rubric_composite_19.5_below_22_label_routine|32.0||high|19.5|routine|[]|{"a1": 2, "a2": null, "a3": 3, "a4": 4, "a5": 3, "a6": 0}|earnings_dates|20.26
+76124|2026-11-13 09:30:36|STN|2026-11-13|strong|routine|rubric_composite_14.0_below_22_label_routine|9.4||high|14.0|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 1, "a3": 2, "a4": 3, "a5": 3, "a6": 0}|earnings_dates|11.78
+76894|2026-11-16 08:05:25|CGON|2026-11-16|strong|routine|q_rev_yoy_-5.9pct_below_5pct_recovered|||medium|||||no_match|37.07
+76910|2026-11-16 08:25:32|BXDC|2026-11-16|strong|routine|news_corpus_sparse_no_q_rev|||low|||||earnings_dates|9.7
+77620|2026-11-17 07:25:09|SMWB|2026-11-17|strong|routine|rubric_composite_21.8_below_22_label_routine|16.0||high|21.79|routine|["no_milestone_low_growth"]|{"a1": 3, "a2": 3, "a3": 3, "a4": null, "a5": 3, "a6": 1}|earnings_dates|10.23
+77922|2026-11-17 09:35:21|ACM|2026-11-17|strong|routine|rubric_composite_6.5_below_22_label_weak|-7.0||high|6.5|weak|["rev_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 1, "a3": 3, "a4": null, "a5": null, "a6": 0}|earnings_dates|10.6
+78073|2026-11-17 09:50:44|ONEW|2026-11-17|strong|routine|rubric_composite_8.1_below_22_label_weak|-7.4||medium|8.07|weak|["rev_contracting", "all_margins_contracting", "no_milestone_low_growth"]|{"a1": 0, "a2": 5, "a3": 0, "a4": 0, "a5": null, "a6": 1}|earnings_dates|15.38
+78829|2026-11-18 07:40:12|BRBR|2026-11-18|strong|routine|rubric_composite_5.4_below_22_label_weak|7.0|-1.2|high|5.38|weak|["all_margins_contracting", "no_milestone_low_growth"]|{"a1": 1, "a2": 0, "a3": 0, "a4": 2, "a5": null, "a6": 0}|earnings_dates|12.17
+78887|2026-11-18 09:10:20|IIIV|2026-11-18|strong|routine|rubric_composite_11.4_below_22_label_weak|1.0||high|11.38|weak|["all_margins_contracting", "no_milestone_low_growth"]|{"a1": 1, "a2": 5, "a3": 0, "a4": null, "a5": null, "a6": 0}|earnings_dates|13.07
+79240|2026-11-18 09:55:27|FIRY|2026-11-18|strong|routine|rubric_composite_12.3_below_22_label_weak|14.0||high|12.32|weak|["no_milestone_low_growth"]|{"a1": 2, "a2": null, "a3": 2, "a4": null, "a5": null, "a6": 0}|no_match|10.67
+80426|2026-11-19 09:46:06|KRNT|2026-11-19|strong|routine|rubric_composite_16.1_below_22_label_routine|9.8||medium|16.14|routine|["no_milestone_low_growth"]|{"a1": 1, "a2": 3, "a3": 2, "a4": 4, "a5": null, "a6": 1}|earnings_dates|16.85
+80468|2026-11-19 09:50:41|PDD|2026-11-19|strong|routine|news_corpus_sparse_no_q_rev|||low|||||earnings_dates|12.45
+(494 rows)
+=== RUBRIC_PASSED ===
+event_id|created_et|ticker|alert_date|composite_scaled|rubric_label|gap_pct
+42173|2026-09-11 07:00:31|FEIM|2026-09-11|27.0|strong|30.04
+49269|2026-09-29 09:31:23|KMX|2026-09-29|22.86|strong|9.09
+53438|2026-10-07 09:35:25|PENG|2026-10-07|28.0|strong|13.08
+59472|2026-10-21 08:40:30|SPCX|2026-10-21|28.74|strong|9.02
+61885|2026-10-27 07:00:31|CLS|2026-10-27|26.0|strong|17.3
+61922|2026-10-27 07:40:16|INIO|2026-10-27|25.55|strong|9.74
+61935|2026-10-27 07:45:21|KNSA|2026-10-27|24.0|strong|12.94
+62556|2026-10-28 07:00:28|VRT|2026-10-28|28.0|strong|15.54
+62559|2026-10-28 07:00:49|UCTT|2026-10-28|28.0|strong|15.09
+62664|2026-10-28 09:05:30|ULCC|2026-10-28|22.0|routine|9.22
+62746|2026-10-28 09:35:52|TEX|2026-10-28|23.0|strong|9.9
+63281|2026-10-29 07:00:50|GKOS|2026-10-29|31.0|game_changer|17.46
+63294|2026-10-29 07:02:14|PRCH|2026-10-29|26.0|strong|19.2
+63321|2026-10-29 07:06:01|NVCR|2026-10-29|22.0|strong|12.84
+63495|2026-10-29 09:30:37|PI|2026-10-29|23.0|strong|10.56
+63521|2026-10-29 09:31:53|MBIN|2026-10-29|25.55|strong|10.48
+63522|2026-10-29 09:32:02|CLMB|2026-10-29|24.21|strong|13.4
+63549|2026-10-29 09:36:23|PWP|2026-10-29|28.24|strong|14.98
+64202|2026-10-30 09:35:24|REGN|2026-10-30|25.55|strong|11.65
+64263|2026-10-30 09:50:38|REAL|2026-10-30|25.0|strong|9.69
+65699|2026-11-03 07:00:28|FN|2026-11-03|22.0|strong|10.99
+65702|2026-11-03 07:00:46|LSCC|2026-11-03|28.0|strong|10.02
+65704|2026-11-03 07:01:04|AEHR|2026-11-03|29.0|strong|11.91
+65707|2026-11-03 07:01:27|LIFE|2026-11-03|26.38|routine|12.39
+65712|2026-11-03 07:02:11|HLIT|2026-11-03|27.0|strong|16.29
+65729|2026-11-03 07:02:47|BLZE|2026-11-03|23.0|strong|33.51
+65780|2026-11-03 07:50:47|AEIS|2026-11-03|28.0|strong|10.35
+65844|2026-11-03 08:45:15|BETA|2026-11-03|22.0|strong|9.08
+65961|2026-11-03 09:35:36|NBIX|2026-11-03|22.0|strong|13.04
+66600|2026-11-04 07:00:48|ANET|2026-11-04|27.0|strong|9.46
+66607|2026-11-04 07:02:12|NVTS|2026-11-04|24.0|strong|10.34
+66610|2026-11-04 07:02:33|FTK|2026-11-04|23.0|strong|21.82
+66664|2026-11-04 07:10:24|PCOR|2026-11-04|22.0|strong|12.55
+68011|2026-11-05 07:04:17|LYNX|2026-11-05|24.21|strong|24.17
+68037|2026-11-05 07:07:33|TBI|2026-11-05|26.0|strong|29.78
+68058|2026-11-05 07:10:50|U|2026-11-05|22.58|strong|22.47
+68110|2026-11-05 07:25:57|APPN|2026-11-05|24.0|strong|14.23
+68269|2026-11-05 08:15:27|JOBY|2026-11-05|23.0|strong|12.28
+68328|2026-11-05 08:35:22|CHYM|2026-11-05|26.0|strong|10.08
+68593|2026-11-05 09:30:50|PKOH|2026-11-05|22.0|strong|14.94
+68619|2026-11-05 09:31:08|LEGH|2026-11-05|28.24|routine|17.5
+68716|2026-11-05 09:36:09|VSEC|2026-11-05|28.0|strong|10.25
+69515|2026-11-06 07:03:05|ALAB|2026-11-06|22.0|strong|9.62
+69633|2026-11-06 07:10:35|MRNA|2026-11-06|30.0|game_changer|9.31
+70055|2026-11-06 08:10:35|FROG|2026-11-06|25.0|strong|22.39
+70782|2026-11-06 09:35:36|RCEL|2026-11-06|28.0|strong|11.61
+70789|2026-11-06 09:36:24|TMDX|2026-11-06|22.0|strong|16.61
+70795|2026-11-06 09:36:58|LASR|2026-11-06|22.0|routine|22.0
+70977|2026-11-06 09:50:45|COHR|2026-11-06|23.0|strong|12.6
+71745|2026-11-09 08:05:33|DCTH|2026-11-09|28.0|strong|13.63
+72613|2026-11-10 07:00:32|SANM|2026-11-10|30.93|game_changer|19.95
+72616|2026-11-10 07:00:50|ELMT|2026-11-10|30.88|game_changer|9.1
+72776|2026-11-10 09:30:18|QMCO|2026-11-10|27.0|strong|13.59
+73342|2026-11-10 09:45:27|AMRC|2026-11-10|22.0|strong|9.58
+74030|2026-11-11 07:00:33|CRWV|2026-11-11|23.0|strong|15.45
+74040|2026-11-11 07:01:26|RSKD|2026-11-11|26.0|strong|23.83
+74077|2026-11-11 07:05:58|CRDO|2026-11-11|26.0|strong|9.4
+74461|2026-11-11 09:20:28|AII|2026-11-11|26.9|routine|10.16
+74624|2026-11-11 09:36:20|CARL|2026-11-11|22.0|strong|11.18
+74646|2026-11-11 09:40:40|ELMT|2026-11-11|30.88|game_changer|10.66
+74727|2026-11-11 09:55:32|ASPN|2026-11-11|25.0|strong|11.19
+75325|2026-11-12 07:01:25|AVEX|2026-11-12|22.86|strong|13.93
+75343|2026-11-12 07:25:22|DPC|2026-11-12|24.21|strong|15.15
+76006|2026-11-13 07:00:44|MOD|2026-11-13|22.75|strong|30.43
+76008|2026-11-13 07:01:09|NMAX|2026-11-13|27.53|strong|15.78
+76026|2026-11-13 07:10:36|HAWK|2026-11-13|25.55|strong|9.0
+76087|2026-11-13 08:55:22|ACCV|2026-11-13|24.38|strong|10.81
+77726|2026-11-17 09:31:21|SCZM|2026-11-17|30.88|game_changer|9.5
+79954|2026-11-19 07:00:28|PANW|2026-11-19|22.0|strong|10.04
+80421|2026-11-19 09:45:31|P|2026-11-19|26.0|strong|11.42
+(70 rows)
+=== REGIME ===
+regime_date|regime|ep_threshold
+2026-05-01|Bull|65
+2026-05-04|Bull|65
+2026-05-05|Bull|65
+2026-05-06|Bull|65
+2026-05-07|Bull|65
+2026-05-08|Bull|65
+2026-05-11|Bull|65
+2026-05-12|Bull|65
+2026-05-13|Bull|65
+2026-05-14|Bull|65
+2026-05-15|Bull|65
+2026-05-18|Bull|65
+2026-05-19|Bull|65
+2026-05-20|Bull|65
+2026-05-21|Bull|65
+2026-05-22|Bull|65
+2026-05-25|Bull|65
+2026-05-26|Bull|65
+2026-05-27|Bull|65
+2026-05-28|Bull|65
+2026-05-29|Bull|65
+2026-06-01|Bull|65
+2026-06-02|Bull|65
+2026-06-03|Bull|65
+2026-06-04|Bull|65
+2026-06-05|Choppy|70
+2026-06-08|Bull|65
+2026-06-09|Bull|65
+2026-06-10|Choppy|70
+2026-06-11|Bull|65
+2026-06-12|Bull|65
+2026-06-15|Bull|65
+2026-06-16|Choppy|70
+2026-06-17|Choppy|70
+2026-06-18|Choppy|70
+2026-06-22|Bull|65
+2026-06-23|Bull|65
+2026-06-24|Choppy|70
+2026-06-25|Choppy|70
+2026-06-26|Correcting|75
+2026-06-29|Bull|65
+2026-06-30|Bull|65
+2026-07-01|Bull|65
+2026-07-02|Choppy|70
+2026-07-06|Bull|65
+2026-07-07|Choppy|70
+2026-07-08|Correcting|75
+2026-07-09|Choppy|70
+2026-07-10|Choppy|70
+2026-07-13|Correcting|75
+2026-07-14|Choppy|70
+2026-07-15|Choppy|70
+2026-07-16|Correcting|75
+2026-07-17|Correcting|75
+2026-07-20|Correcting|75
+2026-07-21|Correcting|75
+2026-07-22|Correcting|75
+2026-07-23|Correcting|75
+2026-07-24|Correcting|75
+2026-07-27|Correcting|75
+2026-07-28|Correcting|75
+2026-07-29|Crisis|80
+2026-07-30|Correcting|75
+2026-07-31|Correcting|75
+2026-08-03|Choppy|70
+2026-08-04|Bull|65
+2026-08-05|Bull|65
+2026-08-06|Bull|65
+2026-08-07|Bull|65
+2026-08-10|Bull|65
+2026-08-11|Bull|65
+2026-08-12|Bull|65
+2026-08-13|Bull|65
+2026-08-14|Bull|65
+2026-08-17|Bull|65
+2026-08-18|Bull|65
+2026-08-19|Bull|65
+2026-08-20|Choppy|70
+2026-08-21|Choppy|70
+2026-08-24|Choppy|70
+2026-08-25|Choppy|70
+2026-08-26|Choppy|70
+2026-08-27|Bull|65
+2026-08-28|Choppy|70
+2026-08-31|Choppy|70
+2026-09-01|Correcting|75
+2026-09-02|Correcting|75
+2026-09-03|Choppy|70
+2026-09-04|Choppy|70
+2026-09-08|Choppy|70
+2026-09-09|Correcting|75
+2026-09-10|Crisis|80
+2026-09-11|Correcting|75
+2026-09-14|Crisis|80
+2026-09-15|Crisis|80
+2026-09-16|Crisis|80
+2026-09-17|Correcting|75
+2026-09-18|Correcting|75
+2026-09-21|Choppy|70
+2026-09-22|Choppy|70
+2026-09-23|Correcting|75
+2026-09-24|Correcting|75
+2026-09-25|Correcting|75
+2026-09-28|Correcting|75
+2026-09-29|Correcting|75
+2026-09-30|Correcting|75
+2026-10-01|Correcting|75
+2026-10-02|Correcting|75
+2026-10-05|Choppy|70
+2026-10-06|Choppy|70
+2026-10-07|Choppy|70
+2026-10-08|Correcting|75
+2026-10-09|Choppy|70
+2026-10-12|Correcting|75
+2026-10-13|Correcting|75
+2026-10-14|Correcting|75
+2026-10-15|Correcting|75
+2026-10-16|Crisis|80
+2026-10-19|Crisis|80
+2026-10-20|Correcting|75
+2026-10-21|Correcting|75
+2026-10-22|Correcting|75
+2026-10-23|Correcting|75
+2026-10-26|Correcting|75
+2026-10-27|Correcting|75
+2026-10-28|Choppy|70
+2026-10-29|Choppy|70
+2026-10-30|Correcting|75
+2026-11-02|Crisis|80
+2026-11-03|Crisis|80
+2026-11-04|Choppy|70
+2026-11-05|Crisis|80
+2026-11-06|Crisis|80
+2026-11-09|Correcting|75
+2026-11-10|Correcting|75
+2026-11-11|Correcting|75
+2026-11-12|Correcting|75
+2026-11-13|Correcting|75
+2026-11-16|Crisis|80
+2026-11-17|Crisis|80
+2026-11-18|Crisis|80
+(141 rows)

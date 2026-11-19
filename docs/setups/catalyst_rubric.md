@@ -414,6 +414,11 @@ trade reactions.
 
 ## Change log (newest first)
 
+### 2026-11-19 — fork B (neutralise the composite's downgrade) BACKTESTED; no change — gate stays 22
+- **What:** measurement only, on his "aligned on backtest". Prereg `docs/analysis/b6_forkB_backtest_prereg_2026-11-19.md` (frozen before the data); result `docs/analysis/b6_forkB_backtest_2026-11-19.md`.
+- **Result:** the downgraded names that would have entered (27 in 12 weeks) total −5.2R, 3 at +3R, all three in one earnings week. Frozen rule: CLOSE, by one trade; a like-for-like comparator reads IN BETWEEN. One re-read at 30 added entries (`b6_gate_inversion_post_rescale`, ~12-07).
+- **Reversion-flag:** none (nothing changed). **Evidence:** N=27 added entries, all five replay fidelity checks passed.
+
 ### 2026-09-04 — Scoring order: #321 recovery now runs before the beat+guidance carve-out (operator-approved)
 
 **Trigger**: the operator's 2026-09-04 approval ("go with rec") of the scoring-order recommendation
