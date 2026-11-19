@@ -86,6 +86,7 @@ Weekend 11-07/08 DONE: #717 stage 2 deployed dark; #312 demote page + the chat r
 - **Fri 11-13:** #146 weekly flag re-read (undercut & rally silence = an empty input pool, not a fault).
 - **Sat 11-14 / Sun 11-15:** #314 re-read; the next chart session (#594 sample 9 + a breakout sheet) if he wants it.
 - **Tue 11-17 DONE:** first breakout paper day read (ANDG/PPC 'no'); 3 fixes live (skip alarm ignores breakout wide-stop abstains, COT detail stored as object, Family A push drops leveraged/basket ETFs — his 'Fngd is a levered etf'); RS Leaders + breadth verified; 0 closes (verifies due Wed–Fri); board 16.
+- **Wed 11-18 DONE:** skip alarm verified (175 breakout wide-stop abstains, reading 0, no page); close digest split — paper rows go to the paper chat (his 'should not be mixed in to live'); CAKE 788 stop-to-fill race fixed via price-only replace + resting partial no longer 'failed' (#717 EXPECT); both deployed 23:10 ET on his 'Deploy anytime'; #728 filed on his 'File' (carryover 1); pushes pre-approved (his 'Aligned'); board 16 -> 17.
 
 ## Launch — 6/22 GO/NO-GO (the long-horizon plan, as dated tasks · SSoT-spec: docs/roadmap/launch-2026-06-22.md)
 
