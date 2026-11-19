@@ -391,7 +391,7 @@ what any live position does.
   order exists the row is `profit_trigger_resting` (detail adds `pending_order_id`, `pending_purpose`; result action
   `partial_resting`). A failed read keeps `profit_trigger_failed` (the louder label); a placement that went out is still
   `profit_trigger_fired`. `_profit_trigger_already_announced` counts the new row, so the Telegram stays once per trade.
-- **Reversion-flag:** NEW. **Status:** built, tests green, NOT deployed. **Evidence:** single incident (CAKE 788) — a label fix, no rule
+- **Reversion-flag:** NEW. **Status:** deployed 2026-11-18 23:10 ET (`1f0b2286`, market-agent + execution); verify-live on the next resting partial (#717). **Evidence:** single incident (CAKE 788) — a label fix, no rule
   touched.
 - **Same incident, the stop move after the third:** owner `docs/setups/consolidation_breakout.md` change log 2026-11-18.
 - **Tests:** `tests/test_breakout_stop_to_fill_replace_1118.py`.
