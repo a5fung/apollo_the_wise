@@ -791,6 +791,8 @@ reviews:
       N>=10 backtest and operator sign-off before anything moves (THE LINE).
 
   - review_id: extension_cap_75_recheck
+    resolution_2026_11_19: >-
+      FIRED and NOT YET READ, 2026-11-19. The corrected predicate now holds 15 distinct names in the 50-75% band (AEHL, PCLA, GTBP, MKDW, BIAF, USDE, AVX, GIBO, APUS, ATGL, SAIQ, RPGL, MF, TANH, FLY; scan dates 09-03..11-13; probe scripts/probes/_review_1119/rows.out). The minute-bar replay through the live bracket (method of docs/analysis/577_extension_cap_recheck_2026-08-29.md) has not run yet; until it does, the 09-21 answer stands (the stop binds, not the cap). Reports only; the cap is his (THE LINE).
     status: pending
     title: "The 50-75% extension band now holds 94 scoreable names (bar was 15) — does it carry edge, or is the STOP still the binding constraint?"
     question: |
@@ -3789,6 +3791,8 @@ reviews:
       doesn't need this strip. Confirmed by grep.
 
   - review_id: trade_stream_stop_placement_without_orders_row
+    resolution_2026_11_19: >-
+      FIRED 2026-11-19 on ONE known row, not a new class: mi_audit_log 79200, naked_position_detected, trade 788 CAKE (paper, breakout v1), 2026-11-18 09:45 ET, source update_stop. Cause = the stop-to-fill-after-the-third cancel-then-place refused by Alpaca (shares held by the cancelling stop); fixed by the price-only replace in 1f0b2286 (deployed 2026-11-18 23:10 ET, verify on the next breakout partial under #717). The predicate is a 14-day window, so this row ages out by 2026-12-02; any OTHER row before then is new and must be read.
 
 
     can_fire:
@@ -9191,6 +9195,8 @@ reviews:
     closed_on: 2026-09-09
 
   - review_id: partial_exit_new_failure_class
+    resolution_2026_11_19: >-
+      FIRED 2026-11-19 on the same single row as trade_stream_stop_placement_without_orders_row: audit 79200, naked_position_detected on trade 788 CAKE (paper) 2026-11-18 09:45 ET, within a day of its partial — the known stop-to-fill-after-the-third refusal fixed in 1f0b2286 (#717 verifies). That row is now excluded by id in the predicate, so the next count is a NEW shape. Nothing else since 2026-09-21 matched.
     title: "Partial exit — a failure shape we have NOT already seen and ruled safe"
     question: >-
       The operator closed partial_exit_hardening_n7_clean_cycles on 2026-09-21 with
@@ -9221,6 +9227,7 @@ reviews:
     predicate_sql: >-
       SELECT COUNT(*) FROM mi_audit_log
        WHERE created_at >= DATE '2026-09-21'
+         AND id <> 79200
          AND (
               event_type IN ('partial_exit_sell_failed', 'partial_exit_rollback_failed')
            OR (event_type = 'partial_exit_aborted'
@@ -9727,6 +9734,8 @@ reviews:
     resolution_2026_07_04: |
       CLOSED (operator 7/4): the 6/3 resolution stands (entry-side fill-rate class, order-record-grounded; exit-side activation is broker-identical paper/live + covered by #123 + never-naked). Successor = PLAN #414 (gated entry-tuning: widen limit vs stop-market-with-chase-cap, CHANGE_PROCESS, composes with #180).
   - review_id: orb_entry_stuck_pending_new
+    resolution_2026_11_19: >-
+      FIRED 2026-11-19 on a population mismatch, not a stall: order 502, trade 786 CYRX paper breakout v1, buy stop-limit 20.37 submitted 09:45 ET 2026-11-17, never triggered, cancelled 15:55 ET by the end-of-day sweep. Breakout v1 orders rest all session by design (no 10:00 ORB cleanup), so >4h unfilled is normal for them. Predicate now excludes breakout_v1 trades; ORB-entry orders since 05-28 still read 0. Whether CYRX should have filled is #720's question, not this review's.
     can_fire:
       predicate_runs: >-
         Ran 2026-09-11 via operator_asks.py --audit against prod and returned 0; chased by hand
@@ -9824,6 +9833,8 @@ reviews:
         AND o.status IN ('expired', 'cancelled', 'canceled')
         AND o.cancelled_at IS NOT NULL
         AND EXTRACT(EPOCH FROM (o.cancelled_at - o.submitted_at)) > 4 * 3600
+        -- 2026-11-19: breakout v1 buy orders rest all session by design (no 10:00 cleanup) — not an ORB stall.
+        AND NOT EXISTS (SELECT 1 FROM mi_live_trades t WHERE t.id = o.trade_id AND t.signal_type = 'breakout_v1')
         AND o.submitted_at > '2026-05-28';  -- post-fix only (was NOW()-90d, pre-fix-contaminated)
     threshold: 1
     earliest_review_date: 2026-05-28
@@ -11095,6 +11106,8 @@ reviews:
       (removals < 15, from Mon 10-12) is where a remaining wrong removal surfaces.
     added_on: 2026-09-15
   - review_id: b6_gate_inversion_post_rescale
+    resolution_2026_11_19: >-
+      RE-READ at the pre-declared 50 settled PASS rows, 2026-11-19 ($0; scripts/probes/_review_1119/b6/stats.out). 5-session tail, post-rescale: PASS 2 of 65 reached +20% (3.1%) vs DOWNGRADE 12 of 164 (7.3%); p90 +14.5% vs +15.7%; median +0.2% vs +1.5%. Pre-rescale shown separately, not pooled: PASS 7%, DOWNGRADE 7%. PASS's share is under half DOWNGRADE's (3.1% < 3.7%), so the 11-10 pre-declared rule says BRING FORK B to the operator (neutralise the composite's tier-downgrade authority via CHANGE_PROCESS). Strength caveat stated with it: at DOWNGRADE's rate, 2-or-fewer of 65 happens 14% of the time. His call; nothing changed.
     # FILED 2026-09-15 on closing b6_gate_inversion_recheck. That entry answered its question
     # three times over — but on an admission system replaced on 2026-08-22, and the handful of
     # rows from the CURRENT system point the other way. Closing without this would lose that.
@@ -13089,6 +13102,8 @@ reviews:
     discriminates_on: [api_usage.caller, api_usage.stop_reason]
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
+    resolution_2026_11_19: >-
+      RUNNING READ 2026-11-19 (scripts/probes/_review_1119/rank/score.txt): 42 sessions, 96 rows, 92 matured at 5 days. Top quartile 0 of 11 reached 8x ADR vs 3 of 81 for the rest, and 8 of 11 broke the day-0 low vs 49 of 81. Verdict unchanged: LOSS — the ranking does not pick the tail. 4 rows (LUNR, MOD, HELP, SLS) not yet matured.
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
     resolution_2026_11_15: >-
       RAN 2026-11-15 (Sun OPEN, main loop, read-only, the 11-10 recipe unchanged: scripts/probes/_rank_shadow_running_read_1115/).

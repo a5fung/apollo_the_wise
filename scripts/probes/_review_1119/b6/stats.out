@@ -1,0 +1,112 @@
+OTHER-reason rows: 0 []
+
+== 5-session return from alert-day open ==
+pre PASS               n= 57  >=+20%: 4 (7%)  >=+40%: 0 (0%)  p90 +15.5%  median -3.0%  win 44%
+pre DOWNGRADE          n=150  >=+20%: 10 (7%)  >=+40%: 0 (0%)  p90 +15.8%  median +1.1%  win 58%
+post PASS              n= 65  >=+20%: 2 (3%)  >=+40%: 0 (0%)  p90 +14.5%  median +0.2%  win 51%
+post DOWNGRADE         n=164  >=+20%: 12 (7%)  >=+40%: 1 (1%)  p90 +15.7%  median +1.5%  win 55%
+
+== 20-session return from alert-day open ==
+pre PASS               n= 57  >=+20%: 5 (9%)  >=+40%: 0 (0%)  p90 +16.7%  median -8.3%  win 28%
+pre DOWNGRADE          n=150  >=+20%: 16 (11%)  >=+40%: 2 (1%)  p90 +20.3%  median +0.1%  win 52%
+post PASS              n=  8  >=+20%: 0 (0%)  >=+40%: 0 (0%)  p90 -9.1%  median -10.4%  win 12%
+post DOWNGRADE         n= 35  >=+20%: 4 (11%)  >=+40%: 1 (3%)  p90 +20.6%  median -3.2%  win 40%
+
+post PASS rows with no live alert record: [('PL', '2026-09-04'), ('SWBI', '2026-09-04'), ('FEIM', '2026-09-11'), ('KMX', '2026-09-29'), ('KNSA', '2026-10-27'), ('TEX', '2026-10-28'), ('UCTT', '2026-10-28'), ('ULCC', '2026-10-28'), ('CLMB', '2026-10-29'), ('MBIN', '2026-10-29'), ('NVCR', '2026-10-29'), ('PI', '2026-10-29'), ('PRCH', '2026-10-29'), ('PWP', '2026-10-29'), ('REAL', '2026-10-30'), ('BETA', '2026-11-03'), ('BLZE', '2026-11-03'), ('HLIT', '2026-11-03'), ('LIFE', '2026-11-03'), ('NBIX', '2026-11-03'), ('FTK', '2026-11-04'), ('NVTS', '2026-11-04'), ('JOBY', '2026-11-05'), ('LEGH', '2026-11-05'), ('LYNX', '2026-11-05'), ('PKOH', '2026-11-05'), ('TBI', '2026-11-05'), ('VSEC', '2026-11-05'), ('FROG', '2026-11-06'), ('LASR', '2026-11-06'), ('RCEL', '2026-11-06'), ('TMDX', '2026-11-06'), ('DCTH', '2026-11-09'), ('AMRC', '2026-11-10'), ('ELMT', '2026-11-10'), ('QMCO', '2026-11-10'), ('SANM', '2026-11-10'), ('ASPN', '2026-11-11'), ('CARL', '2026-11-11'), ('ELMT', '2026-11-11'), ('AVEX', '2026-11-12'), ('DPC', '2026-11-12'), ('ACCV', '2026-11-13'), ('HAWK', '2026-11-13'), ('NMAX', '2026-11-13'), ('SCZM', '2026-11-17')]
+post PASS settled 5d, each:
+  AGX    2026-09-03  5d -3.2%  20d -10.2%
+  SNOW   2026-09-03  5d -12.8%  20d -9.6%
+  PL     2026-09-04  5d -17.5%  20d -11.6%  [no alert row]
+  SWBI   2026-09-04  5d -6.5%  20d +4.1%  [no alert row]
+  FEIM   2026-09-11  5d +3.5%  20d -9.1%  [no alert row]
+  KMX    2026-09-29  5d -8.5%  20d -10.8%  [no alert row]
+  PENG   2026-10-07  5d +0.4%  20d -28.2%
+  SPCX   2026-10-21  5d -9.5%  20d -10.6%
+  CLS    2026-10-27  5d -1.7%
+  INIO   2026-10-27  5d +6.8%
+  KNSA   2026-10-27  5d +9.8%  [no alert row]
+  TEX    2026-10-28  5d +6.3%  [no alert row]
+  UCTT   2026-10-28  5d -18.3%  [no alert row]
+  ULCC   2026-10-28  5d +12.2%  [no alert row]
+  VRT    2026-10-28  5d -15.4%
+  CLMB   2026-10-29  5d +10.3%  [no alert row]
+  GKOS   2026-10-29  5d +4.3%
+  MBIN   2026-10-29  5d -6.9%  [no alert row]
+  NVCR   2026-10-29  5d +7.5%  [no alert row]
+  PI     2026-10-29  5d -16.8%  [no alert row]
+  PRCH   2026-10-29  5d +4.4%  [no alert row]
+  PWP    2026-10-29  5d -5.5%  [no alert row]
+  REAL   2026-10-30  5d +14.5%  [no alert row]
+  REGN   2026-10-30  5d +4.0%
+  AEHR   2026-11-03  5d +4.5%
+  AEIS   2026-11-03  5d -4.7%
+  BETA   2026-11-03  5d +25.1%  [no alert row]
+  BLZE   2026-11-03  5d -17.4%  [no alert row]
+  FN     2026-11-03  5d +5.6%
+  HLIT   2026-11-03  5d -16.0%  [no alert row]
+  LIFE   2026-11-03  5d -27.9%  [no alert row]
+  LSCC   2026-11-03  5d +4.0%
+  NBIX   2026-11-03  5d +6.4%  [no alert row]
+  ANET   2026-11-04  5d +9.9%
+  FTK    2026-11-04  5d -11.3%  [no alert row]
+  NVTS   2026-11-04  5d +7.5%  [no alert row]
+  PCOR   2026-11-04  5d +15.8%
+  APPN   2026-11-05  5d +1.0%
+  CHYM   2026-11-05  5d +3.9%
+  JOBY   2026-11-05  5d -7.5%  [no alert row]
+  LEGH   2026-11-05  5d -24.0%  [no alert row]
+  LYNX   2026-11-05  5d +26.3%  [no alert row]
+  PKOH   2026-11-05  5d -6.2%  [no alert row]
+  TBI    2026-11-05  5d -8.4%  [no alert row]
+  U      2026-11-05  5d +4.4%
+  VSEC   2026-11-05  5d +4.8%  [no alert row]
+  ALAB   2026-11-06  5d +13.5%
+  COHR   2026-11-06  5d +15.1%
+  FROG   2026-11-06  5d +19.6%  [no alert row]
+  LASR   2026-11-06  5d +11.8%  [no alert row]
+  MRNA   2026-11-06  5d -9.0%
+  RCEL   2026-11-06  5d -9.1%  [no alert row]
+  TMDX   2026-11-06  5d +15.5%  [no alert row]
+  DCTH   2026-11-09  5d +7.0%  [no alert row]
+  AMRC   2026-11-10  5d -4.2%  [no alert row]
+  ELMT   2026-11-10  5d -11.8%  [no alert row]
+  QMCO   2026-11-10  5d -24.5%  [no alert row]
+  SANM   2026-11-10  5d -8.2%  [no alert row]
+  AII    2026-11-11  5d -8.2%
+  ASPN   2026-11-11  5d -17.5%  [no alert row]
+  CARL   2026-11-11  5d +8.6%  [no alert row]
+  CRDO   2026-11-11  5d -12.1%
+  CRWV   2026-11-11  5d -14.5%
+  ELMT   2026-11-11  5d +0.2%  [no alert row]
+  RSKD   2026-11-11  5d -6.8%
+post PASS, alerted only n= 25  >=+20%: 0 (0%)  >=+40%: 0 (0%)  p90 +13.5%  median +1.0%  win 56%
+
+== alerted rows only (a live alert record exists) ==
+c5 pre PASS               n= 51  >=+20%: 4 (8%)  >=+40%: 0 (0%)  p90 +16.0%  median -2.4%  win 47%
+c5 pre DOWNGRADE          n= 22  >=+20%: 2 (9%)  >=+40%: 0 (0%)  p90 +16.7%  median -1.3%  win 41%
+c5 post PASS              n= 25  >=+20%: 0 (0%)  >=+40%: 0 (0%)  p90 +13.5%  median +1.0%  win 56%
+c5 post DOWNGRADE         n=  4  >=+20%: 0 (0%)  >=+40%: 0 (0%)  p90 +7.0%  median +2.6%  win 75%
+c20 pre PASS               n= 51  >=+20%: 5 (10%)  >=+40%: 0 (0%)  p90 +16.9%  median -10.1%  win 29%
+c20 pre DOWNGRADE          n= 22  >=+20%: 3 (14%)  >=+40%: 0 (0%)  p90 +24.2%  median -1.0%  win 50%
+c20 post PASS              n=  4  >=+20%: 0 (0%)  >=+40%: 0 (0%)  p90 -9.6%  median -10.4%  win 0%
+c20 post DOWNGRADE         n=  1  >=+20%: 0 (0%)  >=+40%: 0 (0%)  p90 +14.5%  median +14.5%  win 100%
+pre PASS: 57 rows, 51 with an alert record
+pre DOWNGRADE: 150 rows, 22 with an alert record
+post PASS: 72 rows, 26 with an alert record
+post DOWNGRADE: 175 rows, 4 with an alert record
+
+chance of 0 of 24 at the DOWNGRADE tail rate: 0.124
+
+post DOWNGRADE rows that rose >= +20% in 5 sessions:
+  NTSK   2026-09-14  5d +22.3%  20d +37.1%
+  FPS    2026-09-15  5d +24.5%  20d +16.9%
+  BETR   2026-10-15  5d +106.0%  20d +94.8%
+  EAF    2026-10-26  5d +29.3%
+  HRI    2026-10-27  5d +22.4%
+  HAYW   2026-10-28  5d +23.0%
+  GDYN   2026-10-30  5d +25.1%
+  CRCT   2026-11-04  5d +26.9%
+  ARDT   2026-11-05  5d +20.7%
+  AMD    2026-11-06  5d +20.2%
+  AOSL   2026-11-06  5d +24.2%
+  EVC    2026-11-06  5d +36.5%

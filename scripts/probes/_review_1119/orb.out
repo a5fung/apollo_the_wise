@@ -1,0 +1,21 @@
+SET
+id|502
+trade_id|786
+alpaca_order_id|c06e39bd-ae5e-4d3a-a48b-0f7760e5b0c7
+ticker|CYRX
+side|buy
+order_type|stop_limit
+qty|538
+stop_price|20.37
+limit_price|20.47
+status|cancelled
+filled_qty|0
+filled_avg_price|
+submitted_at|2026-11-17 14:45:11.285175+00
+filled_at|
+cancelled_at|2026-11-17 20:55:21.485098+00
+raw_response|{"id": "c06e39bd-ae5e-4d3a-a48b-0f7760e5b0c7", "qty": 538.0, "legs": [{"id": "bd10cfd1-dc8a-483d-92c1-2110f4bc2513", "qty": 538.0, "legs": [], "side": "sell", "type": "stop", "status": "held", "symbol": "CYRX", "filled_at": null, "created_at": "2026-11-17T14:45:11.280379+00:00", "filled_qty": 0.0, "stop_price": 19.57, "limit_price": null, "order_class": "oto", "client_order_id": "af3d033b-1f12-418c-a3b7-82f1f29c81c4", "filled_avg_price": null}], "side": "buy", "type": "stop_limit", "status": "pending_new", "symbol": "CYRX", "filled_at": null, "created_at": "2026-11-17T14:45:11.280379+00:00", "filled_qty": 0.0, "stop_price": 20.37, "limit_price": 20.47, "order_class": "oto", "client_order_id": "apollo_paper_breakout_v1_CYRX_1794926711274", "filled_avg_price": null}
+purpose|
+exit_reason|
+sub_et|2026-11-17 09:45:11.285175
+can_et|2026-11-17 15:55:21.485098
