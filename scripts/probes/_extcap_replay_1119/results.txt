@@ -1,0 +1,192 @@
+Extension-cap band replay | rule-set as_of_2026-11-19 | settle horizon 2026-11-18
+POPULATION: ticker-days 80 (50-75% band n = 16, >=75% n = 64); distinct names band 15, >=75 40
+scan rows 1918; rows with a stored ep_score: 0 -> NO score on any extended-rejected tick; submit 09:31 (upper bound on admission, flagged)
+ticker-days with no 09:30 minute bar: band 0, >=75 0
+
+[BAND 50-75%] gates=LIVE(gap>=9% at submit)  n = 16 ticker-days
+  funnel: entered 4, abstain 0 (0%) {}, no_trade/no_entry 12 {'never_crossed_orb_high': 2, 'gap_below_floor_at_submit': 9, 'orb_validation:setup': 1}, near-zero-stop excluded 0
+  TAIL: >=3R 0 (open-mark incl. 0), best -1.00R, full losers (<=-0.9R) 4 of 4, total -4.00R, mean -1.00R, median -1.00R
+  weeks with a >=3R campaign: []  (distinct 0)
+  total without best week (2026-W42): -3.00R
+  per name:
+    2026-09-03 AEHL   pct=    53 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-11 PCLA   pct=    54 settled         -1.00R stop_limit stop_hit
+    2026-09-14 GTBP   pct=    64 no_trade           -    gap_below_floor_at_submit
+    2026-09-17 MKDW   pct=    53 no_trade           -    gap_below_floor_at_submit
+    2026-09-18 BIAF   pct=    64 settled         -1.00R stop_limit stop_hit
+    2026-09-21 USDE   pct=    67 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-29 AVX    pct=    54 no_trade           -    gap_below_floor_at_submit
+    2026-10-07 GIBO   pct=    51 no_trade           -    gap_below_floor_at_submit
+    2026-10-12 APUS   pct=    56 settled         -1.00R stop_limit stop_hit
+    2026-10-21 ATGL   pct=    57 no_trade           -    gap_below_floor_at_submit
+    2026-10-23 SAIQ   pct=    67 settled         -1.00R stop_limit stop_hit
+    2026-11-02 RPGL   pct=    53 no_trade           -    gap_below_floor_at_submit
+    2026-11-10 MF     pct=    73 no_trade           -    orb_validation:setup
+    2026-11-10 TANH   pct=    66 no_trade           -    gap_below_floor_at_submit
+    2026-11-11 FLY    pct=    56 no_trade           -    gap_below_floor_at_submit
+    2026-11-13 AEHL   pct=    61 no_trade           -    gap_below_floor_at_submit
+
+[>=75%] gates=LIVE(gap>=9% at submit)  n = 64 ticker-days
+  funnel: entered 25, abstain 4 (6%) {'fwd_stop_and_breakeven_same_day': 1, 'entry_window_gaps': 2, 'day0_fill_bar_straddles_stop': 1}, no_trade/no_entry 35 {'gap_below_floor_at_submit': 26, 'never_crossed_orb_high': 7, 'setup:stop_too_wide: 2.20 > 1.5x ATR 1.00': 1, 'setup:stop_too_wide: 1.92 > 1.5x ATR 0.86': 1}, near-zero-stop excluded 0
+  TAIL: >=3R 1 (open-mark incl. 0), best +3.65R, full losers (<=-0.9R) 15 of 25, total -11.96R, mean -0.48R, median -1.00R
+  weeks with a >=3R campaign: ['2026-W39']  (distinct 1)
+  total without best week (2026-W39): -15.94R
+  per name:
+    2026-08-25 REAX   pct=   900 no_trade           -    gap_below_floor_at_submit
+    2026-08-26 BRNX   pct=   110 settled         +0.00R stop_limit stop_hit
+    2026-08-26 SDOT   pct=    94 no_entry           -   stop_limit never_crossed_orb_high
+    2026-08-27 BRNX   pct=   135 no_entry           -   stop_limit never_crossed_orb_high
+    2026-08-27 DAIC   pct=  1126 no_trade           -    gap_below_floor_at_submit
+    2026-08-27 PMI    pct=   223 no_trade           -    gap_below_floor_at_submit
+    2026-08-27 USDE   pct=   114 no_trade           -    gap_below_floor_at_submit
+    2026-08-27 ZSTK   pct=   212 no_trade           -    gap_below_floor_at_submit
+    2026-08-28 XPON   pct=   132 settled         +0.00R stop_limit stop_hit
+    2026-08-31 HCWC   pct=  3400 no_trade           -    gap_below_floor_at_submit
+    2026-09-03 BIAF   pct=   114 abstain            -   stop_limit fwd_stop_and_breakeven_same_day:2026-09-04
+    2026-09-09 BIAF   pct=    96 settled         -1.00R limit_fallback stop_hit
+    2026-09-11 TANH   pct=   107 no_trade           -    gap_below_floor_at_submit
+    2026-09-11 TNON   pct=   117 settled         -1.00R stop_limit stop_hit
+    2026-09-15 GTBP   pct=   122 no_trade           -    gap_below_floor_at_submit
+    2026-09-15 TNON   pct=   128 abstain            -   stop_limit day0_fill_bar_straddles_stop
+    2026-09-16 FTFT   pct=   338 settled         -1.00R stop_limit stop_hit
+    2026-09-17 AEHL   pct=    79 settled         -1.00R stop_limit stop_hit
+    2026-09-17 MEDS   pct=   613 no_trade           -    gap_below_floor_at_submit
+    2026-09-17 VEEA   pct=   291 settled         -1.65R stop_limit stop_hit
+    2026-09-21 AEMD   pct=   341 no_trade           -    gap_below_floor_at_submit
+    2026-09-21 SVRN   pct=    83 settled         +3.65R stop_limit stop_hit
+    2026-09-22 GRML   pct=   231 no_trade           -   stop_limit setup:stop_too_wide: 2.20 > 1.5x ATR 1.00
+    2026-09-22 SVRN   pct=   166 settled         -1.00R stop_limit stop_hit
+    2026-09-22 USDE   pct=   106 no_trade           -    gap_below_floor_at_submit
+    2026-09-23 GRML   pct=   396 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-24 GRML   pct=   293 settled         +1.33R stop_limit stop_hit
+    2026-09-24 SECZ   pct=    85 no_trade           -    gap_below_floor_at_submit
+    2026-09-24 SVRN   pct=   193 no_trade           -    gap_below_floor_at_submit
+    2026-09-25 GLND   pct=   346 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-25 GRML   pct=   422 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-25 JAGX   pct=   164 settled         +0.00R stop_limit stop_hit
+    2026-09-25 SVRN   pct=   280 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-25 USDE   pct=   132 no_trade           -    gap_below_floor_at_submit
+    2026-09-28 SVRN   pct=   133 no_trade           -    gap_below_floor_at_submit
+    2026-09-29 ONMD   pct=   900 no_trade           -    gap_below_floor_at_submit
+    2026-09-30 SVRN   pct=   128 no_trade           -    gap_below_floor_at_submit
+    2026-10-02 XRPN   pct=   122 settled         -1.00R stop_limit stop_hit
+    2026-10-05 RPGL   pct=   203 no_trade           -    gap_below_floor_at_submit
+    2026-10-05 SDEV   pct=   402 abstain            -   stop_limit entry_window_gaps:17_of_29
+    2026-10-07 APUS   pct=   121 settled         +0.00R stop_limit stop_hit
+    2026-10-07 LONA   pct=   100 no_trade           -    gap_below_floor_at_submit
+    2026-10-08 XRPN   pct=   137 no_trade           -    gap_below_floor_at_submit
+    2026-10-09 SAIQ   pct=   198 settled         -1.00R stop_limit stop_hit
+    2026-10-12 WFF    pct=   511 no_trade           -    gap_below_floor_at_submit
+    2026-10-20 MBRX   pct=  1900 settled         -2.29R stop_limit stop_hit
+    2026-10-22 SAIQ   pct=    76 settled         +0.00R stop_limit stop_hit
+    2026-10-23 PASW   pct=  5726 abstain            -   stop_limit entry_window_gaps:20_of_29
+    2026-10-26 SAIQ   pct=    94 settled         -1.00R stop_limit stop_hit
+    2026-10-27 AIOK   pct=   130 settled         +0.00R stop_limit stop_hit
+    2026-10-27 SAIQ   pct=    97 settled         -1.00R stop_limit stop_hit
+    2026-10-28 AIOK   pct=   237 settled         -1.00R stop_limit stop_hit
+    2026-10-29 NUWE   pct=    95 no_entry           -   stop_limit never_crossed_orb_high
+    2026-10-30 AIOK   pct=   344 settled         +0.00R stop_limit stop_hit
+    2026-11-04 VCIG   pct=    87 no_trade           -    gap_below_floor_at_submit
+    2026-11-09 AEHL   pct=    99 no_trade           -    gap_below_floor_at_submit
+    2026-11-09 OMH    pct=   157 settled         -1.00R stop_limit stop_hit
+    2026-11-10 OMH    pct=   785 no_trade           -    gap_below_floor_at_submit
+    2026-11-10 SMX    pct=   692 no_trade           -   stop_limit setup:stop_too_wide: 1.92 > 1.5x ATR 0.86
+    2026-11-11 OMH    pct=   469 settled         -1.00R stop_limit stop_hit
+    2026-11-11 TANH   pct=   162 no_trade           -    gap_below_floor_at_submit
+    2026-11-12 RETO   pct=    88 settled         +0.00R limit_fallback stop_hit
+    2026-11-13 OPTX   pct=    81 no_trade           -    gap_below_floor_at_submit
+    2026-11-13 TANH   pct=   241 settled         -1.00R stop_limit stop_hit
+
+[BAND 50-75%] gates=OFF (upper bound)  n = 16 ticker-days
+  funnel: entered 8, abstain 2 (12%) {'fwd_stop_and_breakeven_same_day': 1, 'day0_fill_bar_straddles_stop': 1}, no_trade/no_entry 6 {'never_crossed_orb_high': 2, 'setup:zero_range': 1, 'orb_validation:setup': 2, 'triggered_above_limit_never_filled': 1}, near-zero-stop excluded 0
+  TAIL: >=3R 0 (open-mark incl. 0), best +0.00R, full losers (<=-0.9R) 6 of 8, total -6.30R, mean -0.79R, median -1.00R
+  weeks with a >=3R campaign: []  (distinct 0)
+  total without best week (2026-W40): -6.30R
+  per name:
+    2026-09-03 AEHL   pct=    53 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-11 PCLA   pct=    54 settled         -1.00R stop_limit stop_hit
+    2026-09-14 GTBP   pct=    64 settled         -0.30R stop_limit stop_hit
+    2026-09-17 MKDW   pct=    53 settled         -1.00R stop_limit stop_hit
+    2026-09-18 BIAF   pct=    64 settled         -1.00R stop_limit stop_hit
+    2026-09-21 USDE   pct=    67 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-29 AVX    pct=    54 settled         +0.00R stop_limit stop_hit
+    2026-10-07 GIBO   pct=    51 no_trade           -    orb_validation:setup
+    2026-10-12 APUS   pct=    56 settled         -1.00R stop_limit stop_hit
+    2026-10-21 ATGL   pct=    57 abstain            -   stop_limit fwd_stop_and_breakeven_same_day:2026-10-22
+    2026-10-23 SAIQ   pct=    67 settled         -1.00R stop_limit stop_hit
+    2026-11-02 RPGL   pct=    53 no_entry           -   stop_limit triggered_above_limit_never_filled
+    2026-11-10 MF     pct=    73 no_trade           -    orb_validation:setup
+    2026-11-10 TANH   pct=    66 abstain            -   stop_limit day0_fill_bar_straddles_stop
+    2026-11-11 FLY    pct=    56 settled         -1.00R stop_limit stop_hit
+    2026-11-13 AEHL   pct=    61 no_trade           -   stop_limit setup:zero_range
+
+[>=75%] gates=OFF (upper bound)  n = 64 ticker-days
+  funnel: entered 38, abstain 10 (16%) {'fwd_stop_and_breakeven_same_day': 1, 'entry_window_gaps': 8, 'day0_fill_bar_straddles_stop': 1}, no_trade/no_entry 16 {'never_crossed_orb_high': 11, 'setup:stop_too_wide: 2.20 > 1.5x ATR 1.00': 1, 'setup:zero_range': 1, 'triggered_above_limit_never_filled': 1, 'setup:stop_too_wide: 1.92 > 1.5x ATR 0.86': 1, 'orb_validation:setup': 1}, near-zero-stop excluded 0
+  TAIL: >=3R 1 (open-mark incl. 0), best +3.65R, full losers (<=-0.9R) 22 of 38, total -14.92R, mean -0.39R, median -1.00R
+  weeks with a >=3R campaign: ['2026-W39']  (distinct 1)
+  total without best week (2026-W39): -16.98R
+  per name:
+    2026-08-25 REAX   pct=   900 settled         +0.00R stop_limit stop_hit
+    2026-08-26 BRNX   pct=   110 settled         +0.00R stop_limit stop_hit
+    2026-08-26 SDOT   pct=    94 no_entry           -   stop_limit never_crossed_orb_high
+    2026-08-27 BRNX   pct=   135 no_entry           -   stop_limit never_crossed_orb_high
+    2026-08-27 DAIC   pct=  1126 settled         -1.00R stop_limit stop_hit
+    2026-08-27 PMI    pct=   223 settled         -1.00R stop_limit stop_hit
+    2026-08-27 USDE   pct=   114 no_entry           -   stop_limit never_crossed_orb_high
+    2026-08-27 ZSTK   pct=   212 settled         -1.00R stop_limit stop_hit
+    2026-08-28 XPON   pct=   132 settled         +0.00R stop_limit stop_hit
+    2026-08-31 HCWC   pct=  3400 abstain            -   stop_limit entry_window_gaps:5_of_29
+    2026-09-03 BIAF   pct=   114 abstain            -   stop_limit fwd_stop_and_breakeven_same_day:2026-09-04
+    2026-09-09 BIAF   pct=    96 settled         -1.00R limit_fallback stop_hit
+    2026-09-11 TANH   pct=   107 abstain            -   stop_limit entry_window_gaps:19_of_29
+    2026-09-11 TNON   pct=   117 settled         -1.00R stop_limit stop_hit
+    2026-09-15 GTBP   pct=   122 abstain            -   stop_limit entry_window_gaps:10_of_29
+    2026-09-15 TNON   pct=   128 abstain            -   stop_limit day0_fill_bar_straddles_stop
+    2026-09-16 FTFT   pct=   338 settled         -1.00R stop_limit stop_hit
+    2026-09-17 AEHL   pct=    79 settled         -1.00R stop_limit stop_hit
+    2026-09-17 MEDS   pct=   613 abstain            -   stop_limit entry_window_gaps:22_of_29
+    2026-09-17 VEEA   pct=   291 settled         -1.65R stop_limit stop_hit
+    2026-09-21 AEMD   pct=   341 settled         -1.00R stop_limit stop_hit
+    2026-09-21 SVRN   pct=    83 settled         +3.65R stop_limit stop_hit
+    2026-09-22 GRML   pct=   231 no_trade           -   stop_limit setup:stop_too_wide: 2.20 > 1.5x ATR 1.00
+    2026-09-22 SVRN   pct=   166 settled         -1.00R stop_limit stop_hit
+    2026-09-22 USDE   pct=   106 settled         +0.07R stop_limit sma_trail_stop
+    2026-09-23 GRML   pct=   396 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-24 GRML   pct=   293 settled         +1.33R stop_limit stop_hit
+    2026-09-24 SECZ   pct=    85 settled         -1.00R stop_limit stop_hit
+    2026-09-24 SVRN   pct=   193 settled         +0.00R stop_limit stop_hit
+    2026-09-25 GLND   pct=   346 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-25 GRML   pct=   422 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-25 JAGX   pct=   164 settled         +0.00R stop_limit stop_hit
+    2026-09-25 SVRN   pct=   280 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-25 USDE   pct=   132 no_entry           -   stop_limit never_crossed_orb_high
+    2026-09-28 SVRN   pct=   133 settled         +1.33R stop_limit stop_hit
+    2026-09-29 ONMD   pct=   900 abstain            -   stop_limit entry_window_gaps:10_of_29
+    2026-09-30 SVRN   pct=   128 abstain            -   stop_limit entry_window_gaps:8_of_29
+    2026-10-02 XRPN   pct=   122 settled         -1.00R stop_limit stop_hit
+    2026-10-05 RPGL   pct=   203 no_entry           -   stop_limit triggered_above_limit_never_filled
+    2026-10-05 SDEV   pct=   402 abstain            -   stop_limit entry_window_gaps:17_of_29
+    2026-10-07 APUS   pct=   121 settled         +0.00R stop_limit stop_hit
+    2026-10-07 LONA   pct=   100 no_trade           -   stop_limit setup:zero_range
+    2026-10-08 XRPN   pct=   137 no_entry           -   stop_limit never_crossed_orb_high
+    2026-10-09 SAIQ   pct=   198 settled         -1.00R stop_limit stop_hit
+    2026-10-12 WFF    pct=   511 settled         +1.30R stop_limit stop_hit
+    2026-10-20 MBRX   pct=  1900 settled         -2.29R stop_limit stop_hit
+    2026-10-22 SAIQ   pct=    76 settled         +0.00R stop_limit stop_hit
+    2026-10-23 PASW   pct=  5726 abstain            -   stop_limit entry_window_gaps:20_of_29
+    2026-10-26 SAIQ   pct=    94 settled         -1.00R stop_limit stop_hit
+    2026-10-27 AIOK   pct=   130 settled         +0.00R stop_limit stop_hit
+    2026-10-27 SAIQ   pct=    97 settled         -1.00R stop_limit stop_hit
+    2026-10-28 AIOK   pct=   237 settled         -1.00R stop_limit stop_hit
+    2026-10-29 NUWE   pct=    95 no_entry           -   stop_limit never_crossed_orb_high
+    2026-10-30 AIOK   pct=   344 settled         +0.00R stop_limit stop_hit
+    2026-11-04 VCIG   pct=    87 settled         -1.00R stop_limit stop_hit
+    2026-11-09 AEHL   pct=    99 settled         -1.00R stop_limit stop_hit
+    2026-11-09 OMH    pct=   157 settled         -1.00R stop_limit stop_hit
+    2026-11-10 OMH    pct=   785 settled         +1.33R stop_limit stop_hit
+    2026-11-10 SMX    pct=   692 no_trade           -   stop_limit setup:stop_too_wide: 1.92 > 1.5x ATR 0.86
+    2026-11-11 OMH    pct=   469 settled         -1.00R stop_limit stop_hit
+    2026-11-11 TANH   pct=   162 no_trade           -    orb_validation:setup
+    2026-11-12 RETO   pct=    88 settled         +0.00R limit_fallback stop_hit
+    2026-11-13 OPTX   pct=    81 no_entry           -   stop_limit never_crossed_orb_high
+    2026-11-13 TANH   pct=   241 settled         -1.00R stop_limit stop_hit

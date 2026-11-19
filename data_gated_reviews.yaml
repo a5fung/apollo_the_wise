@@ -792,7 +792,7 @@ reviews:
 
   - review_id: extension_cap_75_recheck
     resolution_2026_11_19: >-
-      FIRED and NOT YET READ, 2026-11-19. The corrected predicate now holds 15 distinct names in the 50-75% band (AEHL, PCLA, GTBP, MKDW, BIAF, USDE, AVX, GIBO, APUS, ATGL, SAIQ, RPGL, MF, TANH, FLY; scan dates 09-03..11-13; probe scripts/probes/_review_1119/rows.out). The minute-bar replay through the live bracket (method of docs/analysis/577_extension_cap_recheck_2026-08-29.md) has not run yet; until it does, the 09-21 answer stands (the stop binds, not the cap). Reports only; the cap is his (THE LINE).
+      READ 2026-11-19 ($0; docs/analysis/extension_cap_band_replay_2026-11-19.md; scripts/probes/_extcap_replay_1119/, re-run by Opus, identical). The 50-75% band (n = 16 ticker-days, 15 names, 08-23..11-13) replayed through the live entry, stop and exit ladder, submit 09:31 (upper bound: the cap rejects before scoring, so no stored score): 4 entered, all 4 full losers, total -4.0R, 0 at +3R; with the gap floor off 8 entered, -6.3R, 0 at +3R. The >=75% group (context, n = 64): 25 entered, -12.0R, one +3R (SVRN 09-21). The pre-declared reopen bar (band total R > 0 and 2+ at +3R in 2+ weeks) did not fire: the 09-21 answer stands, the cap is not what costs us. Nothing changed; re-armed for one quarter (earliest 2027-02-19).
     status: pending
     title: "The 50-75% extension band now holds 94 scoreable names (bar was 15) — does it carry edge, or is the STOP still the binding constraint?"
     question: |
@@ -872,7 +872,7 @@ reviews:
         21 -> 12. So the action does NOT trust it as an outcome source: it filters on
         last_refreshed_at (the #583 stale-row class) and replays on minute bars fetched from
         Alpaca instead."
-    earliest_review_date: 2026-09-15
+    earliest_review_date: 2027-02-19
     action_when_ready: |
       ⚠ Read the band as it stands under the LIVE 50% cap — NOT as "names the
       75% raise admitted", which is a population that stopped existing on
