@@ -3193,6 +3193,37 @@ async def _breaker_already_alerted(trade_id: int) -> bool:
         return False
 
 
+# 2026-11-18: the poll re-selected a trade whose partial / full exit order is ALREADY working at
+# the broker and placed nothing new. Not a failure, so the name carries neither `_failed` nor
+# `error` (the nightly sweep keys on those). Literal kept in step with the SQL in
+# `_profit_trigger_already_announced`.
+PROFIT_TRIGGER_RESTING = "profit_trigger_resting"
+
+
+async def _pending_exit_order_for(trade_id: int) -> "dict | None":
+    """The trade's still-working partial/full exit order row (`alpaca_order_id`, `purpose`), or
+    None. The SAME read as `execute_partial_exit`'s dedup guard (`PENDING_EXIT_TERMINAL_STATUSES`
+    is the single source for "terminal"). Read-only; LABELS the poll's audit row and decides
+    nothing — the guard under the per-trade lock stays the authority. Fails to None (logged),
+    which keeps the pre-existing `profit_trigger_failed` label."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT alpaca_order_id, purpose FROM mi_live_orders
+                WHERE trade_id = $1
+                  AND purpose IN ('partial_exit', 'full_exit')
+                  AND status != ALL($2::text[])
+                LIMIT 1
+            """, trade_id, list(PENDING_EXIT_TERMINAL_STATUSES))
+        if not row:
+            return None
+        return {"alpaca_order_id": row["alpaca_order_id"], "purpose": row["purpose"]}
+    except Exception as e:  # loud-ok: logged; a failed read only keeps the old (louder) label
+        logger.warning(f"profit trigger: pending-exit read failed for trade {trade_id}: {e}")
+        return None
+
+
 async def _profit_trigger_already_announced(trade_id: int) -> bool:
     """Has the 💰 profit-target-hit Telegram already gone out for this trade?
 
@@ -3213,6 +3244,10 @@ async def _profit_trigger_already_announced(trade_id: int) -> bool:
     record stays complete, and only the Telegram is deduped. Fails OPEN (returns False, i.e.
     announce) — a duplicate message is a nuisance; a missed one on a live money path is not.
 
+    `profit_trigger_resting` (2026-11-18 — the poll re-selected a trade whose exit order is already
+    working, see `scan_profit_triggers`) counts too: it is the row such a trade writes every cycle,
+    and when the working order did not come from this poll it is the ONLY profit-trigger row.
+
     Note the ordering difference from `_breaker_already_alerted`: that one runs AFTER its own audit
     row is written, so it tests > 1. This one runs BEFORE the cycle's row, so ANY prior row means
     already announced — hence > 0."""
@@ -3221,7 +3256,8 @@ async def _profit_trigger_already_announced(trade_id: int) -> bool:
         async with pool.acquire() as conn:
             n = await conn.fetchval(
                 "SELECT COUNT(*) FROM mi_audit_log "
-                "WHERE event_type IN ('profit_trigger_fired', 'profit_trigger_failed') "
+                "WHERE event_type IN ('profit_trigger_fired', 'profit_trigger_failed', "
+                "'profit_trigger_resting') "
                 "AND detail::jsonb ->> 'trade_id' = $1::text", str(trade_id))
         return bool(n and int(n) > 0)
     except Exception as e:  # loud-ok: logged; failing open only risks a duplicate alert
@@ -4790,7 +4826,8 @@ _BREAKOUT_PP_STOP_TO_FILL = "breakout_pp_stop_to_fill"
 
 async def _breakout_pp_stop_to_fill_after_third(trade_id: int, order_id: str, filled_qty) -> None:
     """Breakout v1 PAPER: after a third of a 'breakout_pp' row FILLED, raise the stop on the rest to the fill (cost) —
-    `breakout_pp_rules.stop_after_third`, raise-only (`update_stop` never lowers). Only when the order that sold it
+    `breakout_pp_rules.stop_after_third`, raise-only. Since 2026-11-18 the move is a price-only replace on the live
+    stop (`_breakout_pp_replace_stop_price`); `update_stop` (which never lowers either) is the fallback. Only when the order that sold it
     filled IN FULL: a partly filled order cancelled by the broker or by the 15:45 step is the trade stream's re-protect
     path (`_handle_cancel_or_reject` §3), so this step stays out of its way and the 16:45 job lifts the stop that evening.
     Paper only. NEVER raises — the fill is already booked; a failed move is audited + paged and the 16:45 job retries."""
@@ -4798,7 +4835,8 @@ async def _breakout_pp_stop_to_fill_after_third(trade_id: int, order_id: str, fi
         pool = await get_pool()
         async with pool.acquire() as conn:
             trade = await conn.fetchrow(
-                "SELECT id, ticker, entry_price, stop_price, remaining_shares, status, exit_rule, account_mode "
+                "SELECT id, ticker, entry_price, stop_price, remaining_shares, status, exit_rule, account_mode, "
+                "stop_order_id, signal_type "
                 "FROM mi_live_trades WHERE id = $1", trade_id)
             order_row = await conn.fetchrow(
                 "SELECT qty, status FROM mi_live_orders WHERE alpaca_order_id = $1", order_id)
@@ -4842,14 +4880,47 @@ async def _breakout_pp_stop_to_fill_after_third(trade_id: int, order_id: str, fi
         stop_now = float(trade["stop_price"] or 0)
         if not entry or not (float(trade["remaining_shares"] or 0) > 0) or stop_now >= round(entry, 2) - 0.005:
             return
-        result = await update_stop(trade_id, round(entry, 2), stop_source="breakeven")
+        # 2026-11-18 (CAKE 788): the move is an atomic PRICE-ONLY replace on the live stop — no cancel, so the
+        # broker never holds the old stop's shares against the new one (`update_stop`'s cancel-then-place was refused
+        # twice with 40310000 and left the rest without a stop for ~20 s). Same price, same share count, raise-only.
+        # `update_stop` stays the fallback whenever the replace cannot be attempted or the broker refuses it.
+        rep_out = await _breakout_pp_replace_stop_price(trade, round(entry, 2))
+        mechanism = "price_only_replace"
+        if rep_out["outcome"] == "fallback":
+            mechanism = "update_stop"
+            result = await update_stop(trade_id, round(entry, 2), stop_source="breakeven")
+        else:
+            result = rep_out["outcome"] == "moved"
+        detail = {"trade_id": trade_id, "ticker": ticker, "order_id": order_id, "old_stop": stop_now,
+                  "new_stop": round(entry, 2), "moved": bool(result), "mechanism": mechanism}
+        for k in ("replace_skipped", "old_stop_id", "new_stop_id", "replace_outcome", "last_status"):
+            if rep_out.get(k) is not None:
+                detail[k] = rep_out[k]
         await log_audit_event(
             "breakout_pp_stop_to_fill_after_third",
             f"{ticker} #{trade_id}: a third sold (order {str(order_id)[:8]}) — the stop on the rest "
-            f"${stop_now:.2f} -> the fill ${round(entry, 2):.2f} ({'moved' if result else 'NOT moved'})",
-            json.dumps({"trade_id": trade_id, "ticker": ticker, "order_id": order_id, "old_stop": stop_now,
-                        "new_stop": round(entry, 2), "moved": bool(result)}))
-        if not result:
+            f"${stop_now:.2f} -> the fill ${round(entry, 2):.2f} ({'moved' if result else 'NOT moved'}, {mechanism})",
+            json.dumps(detail))
+        # A confirmed move sends no Telegram — as before (a first-attempt `update_stop` success was silent too:
+        # its cancel event reaches the stream after the pointer already names the new stop). The audit row records it.
+        if rep_out["outcome"] == "unverified" and rep_out.get("replace_outcome") == "raised_ambiguous":
+            await send_telegram_message(
+                f"{mode_prefix(BREAKOUT_V1_ACCOUNT_MODE)}⚠️ {ticker}: a third sold; the stop move to the fill "
+                f"(${round(entry, 2):.2f}) returned an error and the old stop is no longer confirmed live "
+                f"(status={rep_out.get('last_status')}). Verify the stop on Alpaca; the sync reconciles.")
+        elif rep_out["outcome"] == "unverified":
+            await send_telegram_message(
+                f"{mode_prefix(BREAKOUT_V1_ACCOUNT_MODE)}⚠️ {ticker}: a third sold and the broker accepted the stop move "
+                f"to the fill (${round(entry, 2):.2f}) but it is not confirmed live (status={rep_out.get('last_status')}). "
+                f"Verify the stop on Alpaca.")
+        elif rep_out["outcome"] == "dead":
+            _cov_line = rep_out.get("coverage_msg") or (
+                "_Re-protect deferred (coverage already met, or broker read failed) — verify the stop covers the "
+                "position on Alpaca; the coverage retry reconciles._")
+            await send_telegram_message(
+                f"{mode_prefix(BREAKOUT_V1_ACCOUNT_MODE)}🚨 *{ticker}: a third sold, the stop move to the fill FAILED and "
+                f"the stop read back dead* — the remaining shares may be unprotected.\n{_cov_line}")
+        elif not result:
             await send_telegram_message(
                 f"{mode_prefix(BREAKOUT_V1_ACCOUNT_MODE)}⚠️ {ticker}: a third sold but its stop could not be moved to the fill "
                 f"(${round(entry, 2):.2f}) — it stays at ${stop_now:.2f}; the 16:45 job retries. Check it.")
@@ -4860,6 +4931,146 @@ async def _breakout_pp_stop_to_fill_after_third(trade_id: int, order_id: str, fi
             f"trade #{trade_id}: moving the stop to the fill after a third raised ({type(e).__name__}) — "
             f"the 16:45 job lifts it",
             json.dumps({"trade_id": trade_id, "order_id": order_id, "error": str(e)[:300]}))
+
+
+async def _breakout_pp_replace_stop_price(trade, be: float) -> dict:
+    """Breakout v1 PAPER, 2026-11-18: raise the trade's LIVE stop to `be` with one atomic PRICE-ONLY
+    `alpaca.replace_order` — the #548 `partial_exit_breakeven_armed` / #545 `breakeven_armed` mechanism. The share
+    count is never sent, so the broker's share reservation is never released and re-taken (the CAKE 788 refusal).
+
+    Returns `{"outcome": ...}`:
+      * "fallback"   — nothing was changed at the broker by this function (no stop pointer, the stop not readable /
+                       not live / already at or above `be`, its share count not the rest of the position, or the
+                       broker REFUSED the replace): the caller runs today's `update_stop` unchanged. `replace_skipped`
+                       names why.
+      * "moved"      — the successor is CONFIRMED live; pointer + price written (`_mark_breakeven_armed`, the
+                       registered pointer+price writer — `breakeven_active` is already TRUE on a row whose third
+                       has just been committed) and its `mi_live_orders` row inserted.
+      * "unverified" — the broker accepted the replace but the successor was not confirmed live inside ~3 s: the
+                       pointer follows the broker, the price is withheld (the DB understating protection is the
+                       safe direction); the operator is asked to verify the stop.
+      * "dead"       — the successor read back terminal: pointer nulled, re-protected to broker truth at the DB stop.
+    `update_stop` is never called after an ACCEPTED replace: the old stop is already consumed, so a cancel-then-place
+    there could only double the stop or be refused."""
+    trade_id, ticker = trade["id"], trade["ticker"]
+    account_mode = trade["account_mode"]
+    signal_type = trade.get("signal_type") or "unknown"
+    stop_id = trade.get("stop_order_id")
+    if not stop_id:
+        return {"outcome": "fallback", "replace_skipped": "no_stop_pointer"}
+    try:
+        held = await get_pending_exit_qty(trade_id)
+        effective_qty = int(trade["remaining_shares"]) - held
+        live = await alpaca.get_order(stop_id, account_mode=account_mode)
+    except Exception as e:  # loud-ok: named in the caller's audit row; the caller then runs update_stop as before
+        logger.warning(f"breakout pp stop-to-fill: pre-replace read failed for {ticker} #{trade_id}: {e}")
+        return {"outcome": "fallback", "replace_skipped": f"read_failed:{type(e).__name__}", "old_stop_id": stop_id}
+    status = _canonical_order_status(live.get("status") if live else None)
+    broker_stop_raw = live.get("stop_price") if live else None
+    if status not in _STOP_CONFIRMED_LIVE_STATUSES or broker_stop_raw is None:
+        return {"outcome": "fallback", "replace_skipped": "stop_not_live_or_unreadable", "old_stop_id": stop_id,
+                "last_status": status}
+    broker_stop = float(broker_stop_raw)
+    if broker_stop >= be - 1e-9:      # raise-only against the BROKER: update_stop's own floor records the refusal
+        return {"outcome": "fallback", "replace_skipped": "broker_stop_at_or_above_fill", "old_stop_id": stop_id}
+    live_qty = live.get("qty")
+    if effective_qty <= 0 or live_qty is None or abs(float(live_qty) - effective_qty) > 0.5:
+        return {"outcome": "fallback", "replace_skipped": "stop_qty_not_the_rest", "old_stop_id": stop_id}
+    try:
+        coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+        new_order = await alpaca.replace_order(
+            stop_id, stop_price=be, account_mode=account_mode, client_order_id=coid,
+        )
+        new_id = new_order["id"]
+    except Exception as e:  # loud-ok: named in the caller's audit row
+        logger.warning(f"breakout pp stop-to-fill: price-only replace raised for {ticker} #{trade_id}: {e}")
+        # A raise is NOT proof of a refusal (a write timeout can land after the broker accepted). Read the old stop
+        # back, as #545 does: only a stop still live at its old price proves nothing changed -> today's update_stop.
+        # Anything else (consumed, or unreadable) means the replace may have gone through: never cancel-then-place on
+        # top of it; leave the pointer, ask the operator to verify, and let the sync / 16:45 pass reconcile.
+        try:
+            _back = await alpaca.get_order(stop_id, account_mode=account_mode)
+        except Exception as _be:  # loud-ok: treated as ambiguous below, paged by the caller
+            logger.warning(f"breakout pp stop-to-fill: read-back after a raised replace failed for {ticker}: {_be}")
+            _back = None
+        _back_status = _canonical_order_status(_back.get("status") if _back else None)
+        _back_px = _back.get("stop_price") if _back else None
+        if (_back_status in _STOP_CONFIRMED_LIVE_STATUSES and _back_px is not None
+                and abs(float(_back_px) - broker_stop) < 1e-6):
+            return {"outcome": "fallback", "replace_skipped": f"replace_refused:{type(e).__name__}",
+                    "old_stop_id": stop_id}
+        return {"outcome": "unverified", "replace_outcome": "raised_ambiguous", "old_stop_id": stop_id,
+                "last_status": _back_status, "replace_skipped": f"replace_raised:{type(e).__name__}"}
+
+    out = {"old_stop_id": stop_id, "new_stop_id": new_id, "qty": float(effective_qty), "broker_stop": broker_stop}
+    # Bounded verify — the successor must be CONFIRMED live before the DB says so (the precedents' ~3 s poll).
+    succ_status, succ_outcome = None, "unverified"
+    try:
+        for _ in range(_BREAKEVEN_ARM_VERIFY_POLLS):
+            _chk = await alpaca.get_order(new_id, account_mode=account_mode)
+            succ_status = _canonical_order_status(_chk.get("status") if _chk else None)
+            if succ_status in _STOP_CONFIRMED_LIVE_STATUSES:
+                succ_outcome = "moved"
+                break
+            if succ_status in _STOP_DEAD_STATUSES or succ_status == "filled":
+                succ_outcome = "dead"
+                break
+            await asyncio.sleep(_BREAKEVEN_ARM_VERIFY_INTERVAL_S)
+    except Exception as e:  # loud-ok: the replace was ACCEPTED, so this falls to the "unverified" branch (paged)
+        logger.warning(f"breakout pp stop-to-fill: verify read raised for {ticker} #{trade_id}: {e}")
+        succ_status, succ_outcome = f"verify_raised:{type(e).__name__}", "unverified"
+    out.update({"outcome": succ_outcome, "replace_outcome": succ_outcome, "last_status": succ_status})
+    if succ_outcome == "moved":
+        try:
+            await _mark_breakeven_armed(trade_id, new_stop_id=new_id, new_stop_price=be)
+        except Exception as e:  # loud-ok: point at the live successor at least; paged as unverified by the caller
+            logger.error(f"breakout pp stop-to-fill: pointer+price write raised for {ticker} #{trade_id}: {e}")
+            out.update({"outcome": "unverified", "last_status": f"db_write_raised:{type(e).__name__}"})
+            await set_stop_order_id(trade_id, new_id, reason="breakout_pp_stop_to_fill_unverified",
+                                    account_mode=account_mode)
+            return out
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO mi_live_orders
+                    (trade_id, alpaca_order_id, ticker, side, order_type,
+                     qty, stop_price, status, raw_response, purpose, exit_reason)
+                VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb,
+                        'stop_loss', 'stop_hit')
+                ON CONFLICT (alpaca_order_id) DO NOTHING
+            """, trade_id, new_id, ticker, float(effective_qty), be,
+                new_order.get("status", "new"),
+                _jsonb_param(new_order))  # #216: codec single-encodes; do NOT pre-dumps
+    elif succ_outcome == "dead":
+        # broker-confirmed: reached ONLY on an ACTUAL terminal status read of the successor. The replace consumed
+        # the old stop, so the pointer is nulled and cover is rebuilt from broker truth at the DB stop (unchanged —
+        # the price is written only on a confirmed move). No trade lock is held here.
+        await set_stop_order_id(trade_id, None, reason="breakout_pp_stop_to_fill_failed", account_mode=account_mode)
+        coverage_msg = None
+        try:
+            _pos = await alpaca.get_position(ticker, account_mode=account_mode)
+            _broker_qty = float(_pos.get("qty")) if _pos and _pos.get("qty") is not None else None
+            if _broker_qty and _broker_qty > 0:
+                coverage_msg = await _ensure_stop_coverage(
+                    trade_id, ticker, _broker_qty,
+                    float(trade["stop_price"]) if trade["stop_price"] else None,
+                    signal_type, account_mode,
+                )
+        except Exception as _re:  # loud-ok: audited; the caller pages with this text
+            logger.error(f"breakout pp stop-to-fill: re-protect raised for {ticker}: {_re}")
+            await log_audit_event(
+                "breakout_pp_stop_to_fill_reprotect_failed",
+                f"{ticker} #{trade_id}: re-protect after a dead replacement stop raised ({type(_re).__name__}) — "
+                f"the coverage retry / next sync remediates",
+                json.dumps({"trade_id": trade_id, "ticker": ticker, "error": str(_re)[:500]}))
+            coverage_msg = f"⚠️ re-protect call raised: {_re}"
+        out["coverage_msg"] = coverage_msg
+    else:
+        # Still settling after the budget: the successor LIKELY lives — the pointer follows the broker (the old id
+        # is consumed by the replace), the price is withheld.
+        await set_stop_order_id(trade_id, new_id, reason="breakout_pp_stop_to_fill_unverified",
+                                account_mode=account_mode)
+    return out
 
 
 async def _finalize_partial_exit_locked(
@@ -10223,6 +10434,14 @@ async def scan_profit_triggers() -> list[dict]:
         except Exception:  # loud-ok: notification must never abort the money action below
             logger.warning(f"profit-trigger context build failed for {t['ticker']}", exc_info=True)
             _trigger_ctx = None
+        # 2026-11-18 (CAKE 788): a partial already RESTING at the broker leaves `partial_taken`
+        # false until it fills, so every 5-minute poll re-selects the trade and
+        # `execute_partial_exit` stops at its dedup guard (`partial_exit_aborted`,
+        # stage=dedup_pending_exit) — designed, and nothing failed. Read the pending exit order
+        # BEFORE the call so that outcome is recorded as `profit_trigger_resting` below, not as
+        # `profit_trigger_failed` (which the nightly `*_failed` sweep pages on). The call itself
+        # is unchanged: its under-lock check and its abort row still happen.
+        _pending_exit = await _pending_exit_order_for(t["id"])
         ok = await execute_partial_exit(
             t["id"], shares, limit_price=round(target, 2), trigger=_trigger_ctx,
         )
@@ -10251,15 +10470,29 @@ async def scan_profit_triggers() -> list[dict]:
                 )
             except Exception:  # loud-ok: notification must never abort the money action below
                 logger.warning(f"profit-trigger notify failed for {t['ticker']}", exc_info=True)
+        _trigger_event = "profit_trigger_fired" if ok else "profit_trigger_failed"
+        _trigger_detail = {"trade_id": t["id"], "shares": shares, "entry": entry,
+                           "target": target, "high": float(hi),
+                           "r_multiple": r_multiple}
+        _exit_pending = (not ok) and _pending_exit is not None
+        if _exit_pending:
+            # Nothing was placed because an exit order for this trade is already working at the
+            # broker — not a failure. A failed read above leaves `_pending_exit` None, i.e.
+            # today's `profit_trigger_failed` label.
+            _trigger_event = PROFIT_TRIGGER_RESTING
+            _trigger_detail["pending_order_id"] = _pending_exit["alpaca_order_id"]
+            _trigger_detail["pending_purpose"] = _pending_exit["purpose"]
         await log_audit_event(
-            "profit_trigger_fired" if ok else "profit_trigger_failed",
-            f"{t['ticker']}: high ${float(hi):.2f} >= {r_multiple:g}R target ${target:.2f}",
-            json.dumps({"trade_id": t["id"], "shares": shares, "entry": entry,
-                        "target": target, "high": float(hi),
-                        "r_multiple": r_multiple}),
+            _trigger_event,
+            f"{t['ticker']}: high ${float(hi):.2f} >= {r_multiple:g}R target ${target:.2f}"
+            + (f" — {_pending_exit['purpose']} order already working, nothing new placed"
+               if _exit_pending else ""),
+            json.dumps(_trigger_detail),
         )
         results.append({"ticker": t["ticker"],
-                        "action": "partial_submitted" if ok else "partial_failed",
+                        "action": ("partial_submitted" if ok
+                                   else "partial_resting" if _exit_pending
+                                   else "partial_failed"),
                         "shares": shares})
     return results
 

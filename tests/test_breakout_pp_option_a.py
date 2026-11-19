@@ -170,6 +170,9 @@ def _wire_fin(monkeypatch, row, *, order_qty=3.0, order_status="filled"):
     monkeypatch.setattr(om, "send_telegram_message", AsyncMock())
     upd = AsyncMock(return_value=True)
     monkeypatch.setattr(om, "update_stop", upd)
+    # 2026-11-18: the move is a price-only replace on the live stop first (tests/test_breakout_stop_to_fill_replace_1118.py).
+    # Here the broker stop cannot be read, so every test in this block pins the `update_stop` FALLBACK.
+    monkeypatch.setattr(om.alpaca, "get_order", AsyncMock(return_value=None))
     return conn, audited, upd
 
 

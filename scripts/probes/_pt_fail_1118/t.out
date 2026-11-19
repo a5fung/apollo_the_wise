@@ -1,0 +1,31 @@
+SET
+id|ticker|signal_type|account_mode|status|entry_price|entry_shares|partial_taken|highest_price_seen|stop_price|f|c
+785|CBRL|breakout_v1|paper|filled|68.84|251|t|74.4899999999999948840923025272786617279052734375|68.84|2026-11-17 09:46:04.011425|
+788|CAKE|breakout_v1|paper|filled|111.86|154|t|120.78239999999999554347596131265163421630859375|111.86|2026-11-17 09:46:13.221873|
+(2 rows)
+et|event_type|left
+2026-11-18 09:35:10.765195|breakout_v1_entry_abstain|{"level": 14.015, "orh5": 14.015, "orl5": 12.91, "day_low": 12.91, "width": 0.07884409561184448}
+2026-11-18 09:35:10.809189|breakout_v1_entry_abstain|{"level": 10.4766, "orh5": 9.8904, "orl5": 9.65, "day_low": 9.65, "width": 0.07889964301395483}
+2026-11-18 09:35:10.842641|breakout_v1_entry_abstain|{"level": 11.33, "orh5": 10.07, "orl5": 9.94, "day_low": 9.94, "width": 0.12268314210061788}
+2026-11-18 09:37:10.200317|breakout_v1_entry_hold|{"minute": 7, "last_completed": 6, "clock_et": "09:37", "list_rank": 70, "order_score": 0.819327731092437, "ranked_by": "pick_model", "rank_score": -5.524624788021911, "pick_score": -5.524624788021911, "dollar_vol20": 46355847.95, "level": 70.68, "stop": 69.39, "width": 0.018251273344652038, "cum_vo
+2026-11-18 09:37:10.2041|breakout_v1_entry_hold|{"minute": 7, "last_completed": 6, "clock_et": "09:37", "list_rank": 112, "order_score": 0.47478991596638653, "ranked_by": "pick_model", "rank_score": -6.219795878820475, "pick_score": -6.219795878820475, "dollar_vol20": 33508638.07, "level": 17.0, "stop": 16.88, "width": 0.007058823529411823, "cum_
+2026-11-18 09:40:00.169925|partial_exit_started|{"trade_id": 788, "ticker": "CAKE", "shares": 51, "full_remaining": 154, "new_remaining": 103, "stop_price": 109.63, "old_stop_id": "1d8e7eb3-e686-4f3f-9750-b45d564f4c23"}
+2026-11-18 09:40:00.255955|stop_order_id_changed|{"trade_id": 788, "account_mode": "paper", "new_id": "5424cc74-ae18-484b-a9e8-2c2e5f794227", "reason": "partial_replacement"}
+2026-11-18 09:40:00.258694|partial_exit_stop_replaced|{"trade_id": 788, "ticker": "CAKE", "new_stop_id": "5424cc74-ae18-484b-a9e8-2c2e5f794227", "new_remaining": 103, "stop_price": 109.63, "mechanism": "replace"}
+2026-11-18 09:40:00.374227|partial_exit_sell_placed|{"trade_id": 788, "ticker": "CAKE", "shares": 51, "order_id": "5376a9f7-0402-4680-b7e4-95a8c649d6cb", "order_status": "pending_new", "order_type": "limit", "order_class": "oco", "limit_price": 116.32, "oco_stop_price": 109.63, "oco_stop_leg_id": "ae0cbc39-a3a3-4daa-87f7-afa4d45fd1b6"}
+2026-11-18 09:40:00.375415|breakout_pp_stop_held_at_placement|{"trade_id": 788, "ticker": "CAKE", "stop_price": 109.63, "stop_id": "5424cc74-ae18-484b-a9e8-2c2e5f794227", "oco_stop_price": 109.63, "limit_price": 116.32}
+2026-11-18 09:40:00.779921|profit_trigger_fired|{"trade_id": 788, "shares": 51, "entry": 111.86, "target": 116.32000000000001, "high": 116.405, "r_multiple": 2.0}
+2026-11-18 09:45:00.044946|order_status_reconciled|order_id=5376a9f7-0402-4680-b7e4-95a8c649d6cb trade_id=788 purpose=partial_exit db_was='pending_new' alpaca_now=new filled_qty=0.0 filled_avg_price=None
+2026-11-18 09:45:01.271781|partial_exit_aborted|{"trade_id": 788, "ticker": "CAKE", "pending_order_id": "5376a9f7-0402-4680-b7e4-95a8c649d6cb", "pending_purpose": "partial_exit", "stage": "dedup_pending_exit"}
+2026-11-18 09:45:01.273543|profit_trigger_failed|{"trade_id": 788, "shares": 51, "entry": 111.86, "target": 116.32000000000001, "high": 116.5375, "r_multiple": 2.0}
+2026-11-18 09:45:06.269173|partial_exit_committed|{"trade_id": 788, "ticker": "CAKE", "account_mode": "paper", "shares": 51, "fill_price": 116.39, "pnl": 231.03000000000006, "total_pnl": 231.03000000000006, "new_remaining": 103, "closed": false, "order_id": "5376a9f7-0402-4680-b7e4-95a8c649d6cb"}
+2026-11-18 09:45:06.717894|stop_update_started|{"trade_id": 788, "ticker": "CAKE", "old_stop_id": "5424cc74-ae18-484b-a9e8-2c2e5f794227", "old_stop_price": 109.63, "new_stop_price": 111.86, "remaining_shares": 103.0, "pending_exit_qty": 0, "effective_qty": 103}
+2026-11-18 09:45:06.900054|stop_update_retry_triggered|{"trade_id": 788, "ticker": "CAKE", "new_stop_price": 111.86, "attempt": 1, "old_cancel_ok": true, "error": "{\"available\":\"0\",\"code\":40310000,\"existing_qty\":\"103\",\"held_for_orders\":\"103\",\"message\":\"insufficient qty available for order (requested: 103, available: 0)\",\"related_order
+2026-11-18 09:45:09.916349|stop_order_id_changed|{"trade_id": 788, "account_mode": "paper", "new_id": null, "reason": "stop_update_failed"}
+2026-11-18 09:45:09.917804|stop_update_failed|{"trade_id": 788, "ticker": "CAKE", "new_stop_price": 111.86, "attempt": 2, "old_cancel_ok": true, "stale_stop_id_cleared": "5424cc74-ae18-484b-a9e8-2c2e5f794227", "error_first": "{\"available\":\"0\",\"code\":40310000,\"existing_qty\":\"103\",\"held_for_orders\":\"103\",\"message\":\"insufficient q
+2026-11-18 09:45:09.918972|naked_position_detected|{"trade_id": 788, "ticker": "CAKE", "stop_price": 111.86, "remaining_shares": 103.0, "source": "update_stop"}
+2026-11-18 09:45:10.32724|breakout_pp_stop_to_fill_after_third|{"trade_id": 788, "ticker": "CAKE", "order_id": "5376a9f7-0402-4680-b7e4-95a8c649d6cb", "old_stop": 109.63, "new_stop": 111.86, "moved": false}
+2026-11-18 09:45:30.029889|stop_order_id_changed|{"trade_id": 788, "account_mode": "paper", "new_id": "e5f38f52-1cad-4c16-b65d-60e92467f873", "reason": "stop_ack_timeout"}
+2026-11-18 09:45:30.031165|stop_ack_timeout_remediated|{"trade_id": 788, "ticker": "CAKE", "account_mode": "paper", "filled_at": "2026-11-17 14:46:13.221873+00:00", "qty": 103.0, "stop_target": 109.63, "fallback_order_id": "e5f38f52-1cad-4c16-b65d-60e92467f873"}
+2026-11-18 09:53:10.101165|breakout_v1_entry_abstain|{"level": 20.8, "orh5": 19.899, "orl5": 19.65, "day_low": 19.39, "width": 0.06778846153846155}
+(24 rows)

@@ -1,0 +1,20 @@
+SET
+column_name
+id
+expected_min_rows
+created_at
+scheduled_for
+started_at
+finished_at
+duration_s
+rows_written
+job_id
+error_message
+status
+(11 rows)
+et|event_type|left
+2026-11-18 17:15:11.133351|cot_daily|{"day": "2026-11-18", "alerts": 0, "sent": false, "held": false, "catch_up": {"report_date": "2026-11-10", "source": "api", "fetched": 200, "status": "no new report"}, "newest_report": "2026-11-10", "stale": false, "report_date": "2026-11-10", "set_up_markets": 6, "no_price_data": [], "no_bar_today": [], "errors": {}, "closes": {"cocoa": {"close": 5027.0, "prev_close": 5030.0, "z": -0.013976240391
+(1 row)
+ticker|entry_mode|is_common_stock|outcome|created_at
+FNGD|confirm|f||2026-11-17
+(1 row)

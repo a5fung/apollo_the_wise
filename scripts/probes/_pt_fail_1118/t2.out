@@ -1,0 +1,31 @@
+SET
+id|ticker|status|entry_shares|remaining_shares|stop_price|stop_order_id|hard_stop
+785|CBRL|filled|251|168|68.84|21ab50be-a67e-4e86-a39c-b320e17b2ffa|67.35
+788|CAKE|filled|154|103|111.86|88c034b9-4096-4022-beaa-75e80a044244|109.63
+(2 rows)
+et|event_type|left
+2026-11-18 14:37:10.385648|exposure_family_checked|{"ticker": "NET", "account_mode": "paper", "strategy": "Breakout v1 (paper)", "candidate_themes": ["Network Security & Zero-Trust Edge"], "same_family_opens": [], "open_positions": ["CBRL", "CAKE", "BRKR", "LYFT"], "breach": false, "threshold": 1, "no_data": false, "shadow": true}
+2026-11-18 14:37:10.421156|exposure_family_checked|{"ticker": "LTH", "account_mode": "paper", "strategy": "Breakout v1 (paper)", "candidate_themes": ["Active Lifestyle, Fitness & Pet/Nutrition Consumer Brands"], "same_family_opens": [], "open_positions": ["CBRL", "CAKE", "BRKR", "LYFT"], "breach": false, "threshold": 1, "no_data": false, "shadow": true}
+2026-11-18 15:55:10.456549|breakout_v1_entry_day|{"date": "2026-11-18", "minute": 385, "names": 238, "actions": {"NTSK": "row_skipped", "CDNA": "row_skipped", "AMD": "row_skipped", "KOD": "row_skipped", "GKOS": "row_skipped", "GMAB": "row_skipped", "SEZL": "row_skipped", "ENTG": "row_skipped", "WING": "row_skipped", "NXPI": "row_skipped", "CRL": "never_placed", "NET": "row_skipped", "U": "row_skipped", "XMTR": "row_skipped", "MPWR": "row_skipped
+2026-11-18 16:17:00.552638|ladder_demotion_shadow|{"as_of": "2026-11-18", "ran_at_et": "2026-11-18T16:17:00-05:00", "mode": "page", "thresholds": {"consec_losses": 6, "trailing20_expectancy_r": -0.3, "dd_from_peak_r": -10.0, "harmful_auto_action": 1}, "min_closed_trades": 6, "evaluated": [{"strategy_id": "breakout_v1", "phase": "paper", "account_mode": "paper", "would_demote_to": "shadow", "n_closed": 6, "rows_without_r_frame": 0, "era": "under t
+2026-11-18 16:20:00.067969|stop_refresh_ran|{"pass": "post-close", "examined": 5, "placed": 0, "placed_tickers": [], "already_covered": ["CBRL", "CAKE", "BRKR", "LYFT", "LTH"], "skipped": [], "unprotected": []}
+2026-11-18 16:45:01.320972|stop_update_started|{"trade_id": 788, "ticker": "CAKE", "old_stop_id": "e5f38f52-1cad-4c16-b65d-60e92467f873", "old_stop_price": 109.63, "new_stop_price": 111.86, "remaining_shares": 103.0, "pending_exit_qty": 0, "effective_qty": 103}
+2026-11-18 16:45:01.340522|stop_updated|{"trade_id": 788, "ticker": "CAKE", "old_stop_id": "e5f38f52-1cad-4c16-b65d-60e92467f873", "old_stop_price": 109.63, "new_stop_id": "88c034b9-4096-4022-beaa-75e80a044244", "new_stop_price": 111.86, "remaining_shares": 103.0, "pending_exit_qty": 0, "effective_qty": 103, "old_cancel_ok": true}
+2026-11-18 17:06:40.311789|theme_split|Tickers: ['BLMN', 'CAKE', 'CBRL', 'DIN', 'DRI', 'TXRH']
+Thesis: Sit-down, full-service casual dining chains share the same traffic, check-growth and beef/labor cost dynamics. They trade differently from QSR/fast-casual and online travel names.
+2026-11-18 17:07:32.380125|theme_ecosystem_assigned|members=BLMN, CAKE, CBRL, DIN, DRI, TXRH | 
+(9 rows)
+et|event_type|left
+2026-11-18 09:45:00.221991|partial_exit_started|{"trade_id": 785, "ticker": "CBRL", "shares": 83, "full_remaining": 251, "new_remaining": 168, "stop_price": 67.35, "old_stop_id": "48b0c34d-1e5a-4c78-ad32-0a82922dba92"}
+2026-11-18 09:45:00.35816|stop_order_id_changed|{"trade_id": 785, "account_mode": "paper", "new_id": "5661c5d3-7511-44a7-af49-824419f2eacb", "reason": "partial_replacement"}
+2026-11-18 09:45:00.362648|partial_exit_stop_replaced|{"trade_id": 785, "ticker": "CBRL", "new_stop_id": "5661c5d3-7511-44a7-af49-824419f2eacb", "new_remaining": 168, "stop_price": 67.35, "mechanism": "replace"}
+2026-11-18 09:45:00.82571|partial_exit_sell_placed|{"trade_id": 785, "ticker": "CBRL", "shares": 83, "order_id": "108a0aca-7ac4-41dd-bf26-65b00b936c41", "order_status": "pending_new", "order_type": "limit", "order_class": "oco", "limit_price": 71.82, "oco_stop_price": 67.35, "oco_stop_leg_id": "eac4cd6b-b75a-448b-b4c5-d5fa874c46bf"}
+2026-11-18 09:45:00.826909|breakout_pp_stop_held_at_placement|{"trade_id": 785, "ticker": "CBRL", "stop_price": 67.35, "stop_id": "5661c5d3-7511-44a7-af49-824419f2eacb", "oco_stop_price": 67.35, "limit_price": 71.82}
+2026-11-18 09:45:01.236727|profit_trigger_fired|{"trade_id": 785, "shares": 83, "entry": 68.84, "target": 71.82000000000002, "high": 72.47, "r_multiple": 2.0}
+2026-11-18 09:45:01.509937|partial_exit_committed|{"trade_id": 785, "ticker": "CBRL", "account_mode": "paper", "shares": 83, "fill_price": 72.05, "pnl": 266.4299999999995, "total_pnl": 266.4299999999995, "new_remaining": 168, "closed": false, "order_id": "108a0aca-7ac4-41dd-bf26-65b00b936c41"}
+2026-11-18 09:45:02.060989|stop_update_started|{"trade_id": 785, "ticker": "CBRL", "old_stop_id": "5661c5d3-7511-44a7-af49-824419f2eacb", "old_stop_price": 67.35, "new_stop_price": 68.84, "remaining_shares": 168.0, "pending_exit_qty": 0, "effective_qty": 168}
+2026-11-18 09:45:02.278262|stop_update_retry_triggered|{"trade_id": 785, "ticker": "CBRL", "new_stop_price": 68.84, "attempt": 1, "old_cancel_ok": true, "error": "{\"available\":\"0\",\"code\":40310000,\"existing_qty\":\"168\",\"held_for_orders\":\"168\",\"message\":\"insufficient qty available for order (requested: 168, available: 0)\",\"related_orders
+2026-11-18 09:45:05.3045|stop_update_retry_succeeded|{"trade_id": 785, "ticker": "CBRL", "new_stop_price": 68.84, "new_stop_id": "21ab50be-a67e-4e86-a39c-b320e17b2ffa"}
+2026-11-18 09:45:05.733497|stop_updated|{"trade_id": 785, "ticker": "CBRL", "old_stop_id": "5661c5d3-7511-44a7-af49-824419f2eacb", "old_stop_price": 67.35, "new_stop_id": "21ab50be-a67e-4e86-a39c-b320e17b2ffa", "new_stop_price": 68.84, "remaining_shares": 168.0, "pending_exit_qty": 0, "effective_qty": 168, "old_cancel_ok": true}
+2026-11-18 09:45:05.7347|breakout_pp_stop_to_fill_after_third|{"trade_id": 785, "ticker": "CBRL", "order_id": "108a0aca-7ac4-41dd-bf26-65b00b936c41", "old_stop": 67.35, "new_stop": 68.84, "moved": true}
+(12 rows)

@@ -1,0 +1,21 @@
+SET
+id|et|jsonb_typeof
+2|2026-11-17 17:15:06.961982|string
+1|2026-11-17 17:15:06.958811|string
+(2 rows)
+ticker|entry_mode|is_common_stock|et
+GFF|confirm|t|2026-11-18 17:35:29.45107
+(1 row)
+et|event_type|left
+2026-11-18 17:35:29.635582|anticipation_mna_pin_held|{"ticker": "SYNA", "detector": "anticipation", "scan_date": "2026-11-18", "screened_on": "2026-10-08", "anchor_date": "2026-10-02", "pin": {"window": "day", "range_pct": 0.4844, "threshold_pct": 2.0, "bars_n": 1, "readable": true, "why": "", "as_of": "2026-11-18", "pinned": true}, "news": {"source":
+2026-11-18 17:35:29.052429|anticipation_mna_check_capped|
+2026-11-18 17:35:09.504184|anticipation_mna_pin_held|{"ticker": "PTC", "detector": "anticipation", "scan_date": "2026-11-18", "screened_on": "2026-10-15", "anchor_date": "2026-11-10", "pin": {"window": "day", "range_pct": 0.2502, "threshold_pct": 2.0, "bars_n": 1, "readable": true, "why": "", "as_of": "2026-11-18", "pinned": true}, "news": {"source": 
+2026-11-18 17:35:09.451575|anticipation_mna_pin_held|{"ticker": "PCRX", "detector": "anticipation", "scan_date": "2026-11-18", "screened_on": "2026-10-29", "anchor_date": "2026-11-10", "pin": {"window": "day", "range_pct": null, "threshold_pct": 2.0, "bars_n": 0, "readable": false, "why": "no_own_day_bar", "as_of": "2026-11-18", "pinned": false}, "new
+2026-11-18 17:35:06.569347|anticipation_stale_bars_skipped|{"scan_date": "2026-11-18", "cutoff": "2026-11-13", "sessions": 3, "stale": {"ACA": "2026-10-22", "ACVA": "2026-10-15", "APGE": "2026-09-02", "ATAI": "2026-09-10", "ATKR": "2026-10-16", "CBZ": "2026-10-30", "CRNX": "2026-08-31", "FBRX": "2026-08-26", "KXIAY": "2026-10-09", "NUVL": "2026-07-14", "QRV
+2026-11-18 17:35:06.200297|anticipation_coil_buyout_pin_rejected|{'ticker': 'ADT', 'reason': 'stop_floor'}
+2026-11-18 17:35:05.980913|anticipation_coil_buyout_pin_rejected|{'ticker': 'OPCH', 'reason': 'stop_floor'}
+2026-11-18 17:35:05.106966|anticipation_coil_buyout_pin_rejected|{'ticker': 'CCC', 'reason': 'stop_floor'}
+(8 rows)
+ERROR:  column "run_at" does not exist
+LINE 1: SELECT run_at AT TIME ZONE 'America/New_York', status FROM m...
+               ^

@@ -380,6 +380,25 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-11-18 — the +2R poll records a third that is ALREADY RESTING as `profit_trigger_resting`, not `profit_trigger_failed` (BUG FIX in the record only — no order, price, share count, target or trigger changed; built, not deployed)
+
+- **Incident (paper, CAKE trade 788, 09:45:01 ET; `scripts/probes/_pt_fail_1118/t.out`):** the third's limit had been resting since
+  09:40. `partial_taken` stays false until it fills, so the next 5-minute poll re-selected the trade, `execute_partial_exit` stopped at
+  its dedup guard (`partial_exit_aborted`, `stage=dedup_pending_exit` — designed), and `scan_profit_triggers` wrote
+  `profit_trigger_failed`, which the nightly `%_failed%` sweep pages on. Nothing had failed.
+- **Fix:** before the (unchanged) `execute_partial_exit` call the poll reads the trade's non-terminal partial/full exit order
+  (`_pending_exit_order_for` — the dedup guard's own query, `PENDING_EXIT_TERMINAL_STATUSES`). When the call returns False AND that
+  order exists the row is `profit_trigger_resting` (detail adds `pending_order_id`, `pending_purpose`; result action
+  `partial_resting`). A failed read keeps `profit_trigger_failed` (the louder label); a placement that went out is still
+  `profit_trigger_fired`. `_profit_trigger_already_announced` counts the new row, so the Telegram stays once per trade.
+- **Reversion-flag:** NEW. **Status:** built, tests green, NOT deployed. **Evidence:** single incident (CAKE 788) — a label fix, no rule
+  touched.
+- **Same incident, the stop move after the third:** owner `docs/setups/consolidation_breakout.md` change log 2026-11-18.
+- **Tests:** `tests/test_breakout_stop_to_fill_replace_1118.py`.
+- **EXPECT (BASELINE: 1 false `profit_trigger_failed`, CAKE 11-18):** a trade with a resting third writes `profit_trigger_resting`
+  each poll until it fills and no `profit_trigger_failed`. **WOULD-FAIL-IF:** a `profit_trigger_failed` row within 5 minutes after a
+  `partial_exit_aborted` `dedup_pending_exit` row for the same trade; or a second "Profit target hit" Telegram for one trade.
+
 ### 2026-10-28 — the trailing line governs only after the trade was ABOVE it (OPERATOR-SIGNED "clear + fix + read" 2026-10-28, on live CLS; BUILT, DEPLOYED 2026-10-29 12:00-12:06 ET, VERIFIED LIVE 10-29 16:45 ET (status corrected 2026-10-30 at the #687 close) — deploy Thu 10-29 12:00 ET: `deploy.sh execution` FIRST, then `deploy.sh market-agent`)
 
 - **Trigger (his words):** *"I think this is a bug, cls has always been under 10ma, never above when we entered, and we just set
@@ -2804,6 +2823,7 @@ dedupe **survives a service restart** (a process-local set would re-arm the loop
 Both fail OPEN: on a read error the message still goes out, because a duplicate is a nuisance and a
 missed one on a money path is not. **Only the Telegram is deduped — the `profit_trigger_fired` /
 `profit_trigger_failed` audit rows still land every cycle**, so the durable record stays complete.
+(2026-11-18: `profit_trigger_resting` — a third already resting — is a third such row and is counted by the dedupe.)
 
 **Not a rule change**: no threshold, fraction, target or stop is touched. This is notification
 behaviour on a fail-safe path. Tests: `tests/test_profit_trigger_508.py` (6 added, all fail against
