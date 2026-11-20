@@ -43,6 +43,59 @@ logger = logging.getLogger(__name__)
 # How long (seconds) to wait between "typing..." indicator updates
 TYPING_INTERVAL = 4
 
+# ── Which BOOK a command answers from (2026-11-19) ────────────────────────────
+# The "Apollo Paper" group (env TELEGRAM_PAPER_CHAT_ID, the same variable the market agent's sender
+# routes paper alerts with — agents/market_intelligence/constants.PAPER_CHAT_ENV, kept equal by a
+# test) answers book-reading commands from the PAPER book; every other chat is the live book,
+# exactly as before. Unset / blank / malformed variable -> live, never an exception.
+PAPER_CHAT_ENV = "TELEGRAM_PAPER_CHAT_ID"
+BOOK_PAPER = "paper"
+BOOK_LIVE = "live"
+# trailing callback_data token that carries the book (a button pressed in the paper chat stays paper)
+_PAPER_CB_SUFFIX = ":paper"
+
+
+def paper_chat_id() -> Optional[int]:
+    """The paper chat's id from the environment, or None when unset/blank/not a plain number."""
+    import os
+    raw = (os.environ.get(PAPER_CHAT_ENV) or "").strip()
+    try:
+        return int(raw) if raw else None
+    except ValueError:
+        return None
+
+
+def book_for_chat(chat_id: Optional[int]) -> str:
+    """'paper' iff `chat_id` is the configured paper chat, else 'live'."""
+    paper = paper_chat_id()
+    return BOOK_PAPER if (paper is not None and chat_id is not None and chat_id == paper) else BOOK_LIVE
+
+
+def book_for_update(update) -> str:
+    chat = getattr(update, "effective_chat", None)
+    return book_for_chat(getattr(chat, "id", None))
+
+
+def _trades_keyboard(today_str: str, book: str, with_summary: bool = False) -> InlineKeyboardMarkup:
+    """The /trades drill-down buttons. In the paper book every callback_data carries the `:paper`
+    suffix (<=64 bytes: the longest is `trades:scanned:YYYY-MM-DD:paper`, 31). Single builder for the
+    command and the in-place drill-down so the two can never drift."""
+    sfx = _PAPER_CB_SUFFIX if book == BOOK_PAPER else ""
+    rows = [
+        [
+            InlineKeyboardButton("Closed Trades", callback_data=f"trades:closed:{today_str}{sfx}"),
+            InlineKeyboardButton("Skipped", callback_data=f"trades:skipped{sfx}"),
+        ],
+        [
+            # Paper (legacy) button removed 2026-08-24 (1 paper trade in 45 days) — the
+            # trades:paper view itself is retained so old pinned messages still answer.
+            InlineKeyboardButton("Scanned (what was cut)", callback_data=f"trades:scanned:{today_str}{sfx}"),
+        ],
+    ]
+    if with_summary:
+        rows.append([InlineKeyboardButton("← Summary", callback_data=f"trades:summary{sfx}")])
+    return InlineKeyboardMarkup(rows)
+
 # ── Webhook registration at boot (#312 re-review 2026-11-07, finding 3) ──────
 # `channels/webhooks.py` drops every update without the secret header that `set_webhook` registers.
 # So in WEBHOOK mode a `set_webhook` that fails at boot is no longer harmless: Telegram keeps posting
@@ -522,7 +575,7 @@ class TelegramChannel:
             "/hud — pinned snapshot; buttons for Regime/Themes/9M/Clusters/Watchlist\n"
             "/pregame — trade-ready shortlist (themes, HIGH EPs, MA pullbacks, sugar babies)\n"
             "/ep — EP alerts today (MAGNA53) · buttons: [HIGH] [MODERATE]\n"
-            "/trades — positions + P&L · buttons: [Closed] [Skipped] [Paper]\n"
+            "/trades — positions + P&L · buttons: [Closed] [Skipped] [Scanned] (typed in the Apollo Paper chat: the PAPER book)\n"
             "/status — system health + API spend\n"
             "/help — this reference\n"
             "\n"
@@ -1074,6 +1127,8 @@ class TelegramChannel:
         from shared.dates import last_trading_day
 
         today_str = last_trading_day().isoformat()
+        book = book_for_update(update)           # paper chat -> the paper book; anywhere else -> live
+        book_arg = f" {BOOK_PAPER}" if book == BOOK_PAPER else ""
 
         # `/trades FIGS` — a TICKER argument (operator 2026-08-08: *"the /trades FIGS command
         # just return /trades"*). This handler HARDCODED the summary task and never read
@@ -1088,7 +1143,7 @@ class TelegramChannel:
         _tk = _args[0].strip().upper() if _args else ""
         if _tk.isalpha() and 2 <= len(_tk) <= 5:
             detail = await self._post_market_task_or_reply(
-                update, f"/trades_detail {_tk} {today_str}", update.effective_user.id,
+                update, f"/trades_detail {_tk} {today_str}{book_arg}", update.effective_user.id,
                 f"No trades found for {_tk}.",
             )
             if detail is not None:
@@ -1098,23 +1153,12 @@ class TelegramChannel:
             return
 
         summary_text = await self._post_market_task_or_reply(
-            update, f"/trades_detail summary {today_str}", update.effective_user.id, "No trade data."
+            update, f"/trades_detail summary {today_str}{book_arg}", update.effective_user.id, "No trade data."
         )
         if summary_text is None:
             return
 
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("Closed Trades", callback_data=f"trades:closed:{today_str}"),
-                InlineKeyboardButton("Skipped", callback_data="trades:skipped"),
-            ],
-            [
-                # Paper (legacy) button removed 2026-08-24 (1 paper trade in
-                # 45 days) — the trades:paper view itself is retained so old
-                # pinned messages still answer.
-                InlineKeyboardButton("Scanned (what was cut)", callback_data=f"trades:scanned:{today_str}"),
-            ],
-        ])
+        keyboard = _trades_keyboard(today_str, book)
         # Any unmatched `_` or `*` in dynamic content (e.g. exit reasons like `stop_hit`)
         # makes Telegram reject the whole message; _reply_with_fallback retries plain
         # text so the user always sees something instead of silence.
@@ -1519,6 +1563,15 @@ class TelegramChannel:
             await query.edit_message_text("Market agent not available.")
             return
 
+        # The book rides as a trailing `:paper` token (set by `_trades_keyboard`); a press in the paper
+        # chat is paper regardless (an old unsuffixed button there must not flip to the live book).
+        book = BOOK_LIVE
+        if callback_data.startswith("trades:"):
+            if callback_data.endswith(_PAPER_CB_SUFFIX):
+                book = BOOK_PAPER
+                callback_data = callback_data[: -len(_PAPER_CB_SUFFIX)]
+            elif book_for_chat(getattr(getattr(query, "message", None), "chat_id", None)) == BOOK_PAPER:
+                book = BOOK_PAPER
         parts = callback_data.split(":", 2)
         prefix = parts[0]  # eps, trades
 
@@ -1531,6 +1584,11 @@ class TelegramChannel:
             view = parts[1] if len(parts) > 1 else "summary"
             date_str = parts[2] if len(parts) > 2 else ""
             task = f"/trades_detail {view} {date_str}".strip()
+            if book == BOOK_PAPER:
+                if not date_str:       # `trades:summary` / `trades:skipped` carry no date: keep the token positional
+                    from shared.dates import last_trading_day
+                    date_str = last_trading_day().isoformat()
+                task = f"/trades_detail {view} {date_str} {BOOK_PAPER}"
 
         user_id = query.from_user.id if query.from_user else 0
         req = AgentRequest(task=task, user_id=user_id, conversation_id=str(user_id))
@@ -1551,17 +1609,7 @@ class TelegramChannel:
         if prefix == "trades":
             from shared.dates import et_today
             today_str = et_today().isoformat()  # ET trading day (UTC date is tomorrow after 8pm ET)
-            markup = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton("Closed Trades", callback_data=f"trades:closed:{today_str}"),
-                    InlineKeyboardButton("Skipped", callback_data="trades:skipped"),
-                ],
-                [
-                    # Paper (legacy) button removed 2026-08-24 — view retained.
-                    InlineKeyboardButton("Scanned (what was cut)", callback_data=f"trades:scanned:{today_str}"),
-                ],
-                [InlineKeyboardButton("← Summary", callback_data="trades:summary")],
-            ])
+            markup = _trades_keyboard(today_str, book, with_summary=True)
         elif prefix == "eps" and parts[1] != "SUMMARY":
             date_str = parts[2] if len(parts) > 2 else ""
             back_data = f"eps:SUMMARY:{date_str}"

@@ -4960,7 +4960,8 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("\n_Use `/why TICKER` for the full reason + lifecycle._")
         return self._ok(request, result="\n".join(lines))
 
-    async def _handle_trades_query(self, request: AgentRequest, ticker: str | None = None) -> AgentResponse:
+    async def _handle_trades_query(self, request: AgentRequest, ticker: str | None = None,
+                                   book: str | None = None) -> AgentResponse:
         """
         Show paper trade history with entry/exit prices, P&L, stops.
         'my trades' / 'show trades'     — recent 20 trades (all statuses)
@@ -4975,6 +4976,10 @@ class MarketIntelligenceAgent(BaseAgent):
         low-cap paper lane (`magna53_smallcap`, paper since 2026-10-11) keeps its positions in
         mi_live_trades with account_mode='paper' (#624) and would otherwise be unreachable.
         When false, queries mi_paper_trades (EOD sim).
+
+        `book="paper"` (2026-11-19, typed in the Apollo Paper chat) narrows EVERYTHING — the ticker
+        rows, the totals footer, the broker reads — to the paper book and badges the page paper.
+        Anything else is the unchanged live behaviour.
         """
         from agents.market_intelligence.constants import LIVE_TRADING_ENABLED, strategy_mode_prefix
         task = request.task.lower()
@@ -4989,12 +4994,20 @@ class MarketIntelligenceAgent(BaseAgent):
 
         where_clauses = ["1=1"]
         params: list = []
+        paper_book = bool(LIVE_TRADING_ENABLED and book == "paper")
 
         if LIVE_TRADING_ENABLED:
             # mi_live_trades: "open" = filled + remaining_shares > 0
             table = "mi_live_trades"
             entry_col = "entry_price"
-            if ticker:
+            if paper_book:
+                # the PAPER chat's book: one named mode, bound as a parameter (never an absent condition)
+                where_clauses.append(f"account_mode = ${len(params)+1}")
+                params.append("paper")
+                if ticker:
+                    where_clauses.append(f"ticker = ${len(params)+1}")
+                    params.append(ticker.upper())
+            elif ticker:
                 # both books, named explicitly (never an absent condition) — see the docstring.
                 where_clauses.append("account_mode IN ('live', 'paper')")
                 where_clauses.append(f"ticker = ${len(params)+1}")
@@ -5012,6 +5025,8 @@ class MarketIntelligenceAgent(BaseAgent):
             open_statuses = ("filled", "order_placed", "pending_confirmation", "confirmed")
             label = ("Trade History (live + paper books · totals = live book)" if ticker
                      else "Live Trade History (Alpaca · real money)")
+            if paper_book:
+                label = "📄 PAPER — not real money · Trade History (paper book)"
         else:
             table = "mi_paper_trades"
             entry_col = "last_entry_price"
@@ -5057,7 +5072,10 @@ class MarketIntelligenceAgent(BaseAgent):
 
             # Running totals
             if LIVE_TRADING_ENABLED:
-                totals = await conn.fetchrow("""
+                # the book literal comes from a closed two-value choice (never user text); #447: live
+                # unless the paper chat asked
+                _totals_book = "paper" if paper_book else "live"
+                totals = await conn.fetchrow(f"""
                     SELECT
                         COUNT(*) FILTER (WHERE status NOT IN ('skipped','cancelled','order_failed')) as total,
                         COUNT(*) FILTER (WHERE status IN ('filled','order_placed') AND remaining_shares > 0) as open_count,
@@ -5066,7 +5084,7 @@ class MarketIntelligenceAgent(BaseAgent):
                         COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl,
                         COUNT(*) FILTER (WHERE status IN ('skipped','cancelled','order_failed')) as filtered_count
                     FROM mi_live_trades
-                    WHERE account_mode = 'live'  -- mode-ok: #447 real-money book only
+                    WHERE account_mode = '{_totals_book}'  -- mode-ok: #447 one named book, chosen by the chat
                 """)
             else:
                 totals = await conn.fetchrow("""
@@ -5083,6 +5101,8 @@ class MarketIntelligenceAgent(BaseAgent):
         if not rows and not ticker:
             return self._ok(request, result="No paper trades recorded yet.")
         if not rows and ticker:
+            if paper_book:
+                return self._ok(request, result=f"📄 PAPER — no trades found for {ticker.upper()} in the paper book.")
             if tag_rows:
                 return self._ok(request, result=f"No trades found for {ticker.upper()} in the live or paper book.")
             return self._ok(request, result=f"No paper trades found for {ticker.upper()}.")
@@ -5109,7 +5129,7 @@ class MarketIntelligenceAgent(BaseAgent):
             from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2)
             _items, _eq_by_mode = await read_open_position_stats(
                 [{"ticker": rows[i]["ticker"], "stop_price": rows[i]["stop_price"],
-                  "account_mode": (rows[i]["account_mode"] if tag_rows else "live")} for i in _stat_idx],
+                  "account_mode": (rows[i]["account_mode"] if tag_rows else ("paper" if paper_book else "live"))} for i in _stat_idx],
                 get_position=alpaca.get_position, get_account=alpaca.get_account, default_mode="live",
             )
             for i, _it in zip(_stat_idx, _items):
@@ -7590,7 +7610,12 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result=render_scanned_day(query_date, data))
 
     async def _handle_trades_detail(self, request: AgentRequest) -> AgentResponse:
-        """Inline keyboard detail: /trades_detail {view} [{date}]"""
+        """Inline keyboard detail: /trades_detail {view} [{date}] [paper|live]
+
+        The optional trailing `paper` token (2026-11-19) is how a command typed in the Apollo Paper
+        chat asks for the PAPER book (channels/telegram.py appends it); absent = the live book,
+        byte-for-byte the old behaviour. The legacy `/trades_detail paper` VIEW (parts[1], the dead
+        EOD-sim table) is a different thing and is untouched."""
         from agents.market_intelligence.collector import last_trading_day
         from agents.market_intelligence.closed_trade_line import fmt_closed_line, parse_exits
         from agents.market_intelligence.trade_stats import fmt_size_stop_lines, read_open_position_stats
@@ -7598,6 +7623,10 @@ class MarketIntelligenceAgent(BaseAgent):
         parts = request.task.strip().split()
         view = parts[1].lower() if len(parts) > 1 else "summary"
         date_str = parts[2] if len(parts) > 2 else last_trading_day().isoformat()
+        # the book: ONLY a literal trailing `paper` token flips it; anything else (incl. a date) = live
+        book = "paper" if (len(parts) > 2 and parts[-1].lower() == "paper") else "live"
+        if book == "paper" and not re.match(r"\d{4}-\d{2}-\d{2}$", date_str):
+            date_str = last_trading_day().isoformat()   # `/trades_detail summary paper` (no date)
 
         # /trades [Scanned] button → the /scanned screen. Checked before the
         # pool acquire — this view has its own data path (_handle_scanned_query
@@ -7625,35 +7654,35 @@ class MarketIntelligenceAgent(BaseAgent):
                            catalyst_quality, exits, stop_order_id
                     FROM mi_live_trades
                     WHERE status = 'filled' AND remaining_shares > 0
-                      AND account_mode = 'live'  -- mode-ok: #447 real-money book only
+                      AND account_mode = $1  -- the book (#447: live unless the paper chat asked)
                     ORDER BY alert_date ASC
-                """)
+                """, book)
                 pending_rows = await conn.fetch("""
                     SELECT ticker, alert_date, status, entry_shares, orb_high,
                            orb_low, stop_price, ep_score, catalyst_quality
                     FROM mi_live_trades
                     WHERE status IN ('order_placed', 'pending_confirmation')
-                      AND account_mode = 'live'  -- mode-ok: #447 real-money book only
+                      AND account_mode = $1  -- the book
                     ORDER BY alert_date ASC, ticker
-                """)
+                """, book)
                 closed_rows = await conn.fetch("""
                     SELECT ticker, entry_price, total_pnl, hold_days,
                            exits, ep_score, closed_at,
                            hard_stop, orb_low, entry_shares  -- #696: the R frame
                     FROM mi_live_trades
                     WHERE status = 'closed'
-                      AND account_mode = 'live'  -- mode-ok: #447 real-money book only
+                      AND account_mode = $1  -- the book
                     ORDER BY closed_at DESC NULLS LAST
                     LIMIT 5
-                """)
+                """, book)
                 stats = await conn.fetchrow("""
                     SELECT
                         COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0) AS winners,
                         COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) AS losers,
                         COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) AS realized
                     FROM mi_live_trades
-                    WHERE account_mode = 'live'  -- mode-ok: #447 real-money book only
-                """)
+                    WHERE account_mode = $1  -- the book
+                """, book)
                 # Per-ticker closed-attempt history — feeds the open-row "prior
                 # P&L" suffix (closed rows no longer show attempts, #696). Bounded
                 # query over the open tickers.
@@ -7666,9 +7695,9 @@ class MarketIntelligenceAgent(BaseAgent):
                                COALESCE(SUM(total_pnl), 0) AS realized
                         FROM mi_live_trades
                         WHERE status = 'closed' AND ticker = ANY($1)
-                          AND account_mode = 'live'  -- mode-ok: #447 real-money book only
+                          AND account_mode = $2  -- the book
                         GROUP BY ticker
-                    """, relevant_tickers)
+                    """, relevant_tickers, book)
                     ticker_history = {h["ticker"]: dict(h) for h in hist_rows}
 
             # #706: every open position is read from the LIVE account (this page is the real-money
@@ -7677,9 +7706,9 @@ class MarketIntelligenceAgent(BaseAgent):
             # read -> None -> that position's % prints "—", never a number off a guessed denominator.
             _items, _equity_by_mode = await read_open_position_stats(
                 [dict(r) for r in open_rows],
-                get_position=alpaca.get_position, get_account=alpaca.get_account, default_mode="live",
+                get_position=alpaca.get_position, get_account=alpaca.get_account, default_mode=book,
             )
-            equity = _equity_by_mode.get("live")
+            equity = _equity_by_mode.get(book)
 
             enriched = []
             unreal_total = 0.0
@@ -7701,7 +7730,10 @@ class MarketIntelligenceAgent(BaseAgent):
                 enriched.append(d)
 
             lines: list[str] = []
-            lines.append(f"📊 *Positions — {date_str}* · 💰 LIVE (real money)")  # the live badge every page uses (mode_prefix), not a P&L colour
+            if book == "paper":
+                lines.append(f"📊 *Positions — {date_str}* · 📄 PAPER — not real money")   # the paper chat's book; never the LIVE badge
+            else:
+                lines.append(f"📊 *Positions — {date_str}* · 💰 LIVE (real money)")  # the live badge every page uses (mode_prefix), not a P&L colour
 
             if enriched:
                 lines.append("")
@@ -7856,14 +7888,14 @@ class MarketIntelligenceAgent(BaseAgent):
                            status, skip_reason, orb_high, orb_low, atr_14
                     FROM mi_live_trades
                     WHERE status IN ('skipped', 'cancelled', 'order_failed')
-                      AND account_mode = 'live'   -- mode-ok: #447 live book (consistent w/ the main summary)
+                      AND account_mode = $1   -- the book (#447 live unless the paper chat asked)
                     ORDER BY alert_date DESC, ticker
                     LIMIT 15
-                """)
+                """, book)
             if not rows:
-                return self._ok(request, result="No skipped trades recorded.")
+                return self._ok(request, result=("📄 PAPER — no skipped trades recorded." if book == "paper" else "No skipped trades recorded."))
             from agents.market_intelligence.broker.skip_reasons import humanize
-            lines = [f"⊘ *Skipped Trades* (last {len(rows)})"]
+            lines = [f"⊘ *Skipped Trades* (last {len(rows)})" + (" · 📄 PAPER — not real money" if book == "paper" else "")]
             for r in rows:
                 d_str = r["alert_date"].strftime("%b %d")
                 gap = f" gap={r['gap_pct']:.1f}%" if r['gap_pct'] else ""
@@ -7886,18 +7918,18 @@ class MarketIntelligenceAgent(BaseAgent):
                            hard_stop, orb_low, entry_shares  -- #696: the R frame
                     FROM mi_live_trades
                     WHERE status = 'closed'
-                      AND account_mode = 'live'   -- mode-ok: #447 live book (consistent w/ the main summary)
+                      AND account_mode = $1   -- the book (#447 live unless the paper chat asked)
                     ORDER BY closed_at DESC NULLS LAST
                     LIMIT 20
-                """)
+                """, book)
             if not rows:
-                return self._ok(request, result="No closed trades recorded yet.")
+                return self._ok(request, result=("📄 PAPER — no closed trades recorded yet." if book == "paper" else "No closed trades recorded yet."))
 
             net = sum(float(r["total_pnl"] or 0) for r in rows)
             wins = sum(1 for r in rows if float(r["total_pnl"] or 0) > 0)
             losses = len(rows) - wins
             lines = [
-                f"📊 *Closed Trades* (last {len(rows)})",
+                f"📊 *Closed Trades* (last {len(rows)})" + (" · 📄 PAPER — not real money" if book == "paper" else ""),
                 f"  W/L {wins}/{losses} · net ${net:+,.0f}",
                 "",
             ]
@@ -7912,6 +7944,8 @@ class MarketIntelligenceAgent(BaseAgent):
         # routed to fundamentals instead. The obvious thing to type now does the obvious thing.
         # Checked LAST so it can never shadow a real view name.
         if view.isalpha() and 2 <= len(view) <= 5:
+            if book == "paper":
+                return await self._handle_trades_query(request, ticker=view.upper(), book="paper")
             return await self._handle_trades_query(request, ticker=view.upper())
 
         return self._ok(request, result=f"Unknown view: {view}")
