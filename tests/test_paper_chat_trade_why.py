@@ -264,3 +264,22 @@ def test_main_chat_why_reads_a_paper_row_and_names_its_book(monkeypatch):
     _db_with_rows(monkeypatch, [_row("live", 9)])
     res = _agent_call("_handle_why_query", "/why CAKE 2026-11-18", {"book": "paper", "reply_in_place": True}).result
     assert "Book:" not in res          # paper chat: paper-only, and a live row is invisible there
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cmd", ["/timestop", "/partialnow"])
+async def test_manual_overrides_refuse_in_the_paper_chat_and_act_elsewhere(cmd):
+    # His ruling 2026-11-19: paper trades run on their own, so the real-money overrides refuse
+    # in the paper chat (no task reaches the market agent) and still work in the main chat.
+    ch = _channel()
+    upd = _update(PAPER)
+    upd.message.text = f"{cmd} FIGS"
+    await ch._dispatch_market_slash(upd, SimpleNamespace(args=["FIGS"]))
+    ch._post_market_task.assert_not_awaited()
+    assert "not available in the paper chat" in upd.message.reply_text.await_args.args[0]
+
+    ch = _channel()
+    upd = _update(MAIN)
+    upd.message.text = f"{cmd} FIGS"
+    await ch._dispatch_market_slash(upd, SimpleNamespace(args=["FIGS"]))
+    ch._post_market_task.assert_awaited_once()

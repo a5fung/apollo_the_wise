@@ -71,6 +71,9 @@ def book_for_chat(chat_id: Optional[int]) -> str:
     return BOOK_PAPER if (paper is not None and chat_id is not None and chat_id == paper) else BOOK_LIVE
 
 
+_LIVE_ONLY_COMMANDS = frozenset({"/timestop", "/partialnow"})
+
+
 def book_for_update(update) -> str:
     chat = getattr(update, "effective_chat", None)
     return book_for_chat(getattr(chat, "id", None))
@@ -1043,6 +1046,13 @@ class TelegramChannel:
         # RETURNED so it lands in the chat it was typed in — the agent used to post them itself to the
         # first allowed user's chat. The keyword-router / chat-assistant routes never set these.
         _book = book_for_update(update)
+        # Manual trade overrides are real-money tools; paper trades run on their own. In the paper
+        # chat they refuse instead of acting on whichever book holds the ticker (his ruling 2026-11-19).
+        if _book == BOOK_PAPER and cmd in _LIVE_ONLY_COMMANDS:
+            await update.message.reply_text(
+                f"{cmd} is not available in the paper chat — paper trades run on their own. "
+                "Use it in the main chat for a real-money position.")
+            return
         if cmd in ("/trade", "/why"):
             if _book == BOOK_PAPER:
                 _ctx["book"] = BOOK_PAPER
