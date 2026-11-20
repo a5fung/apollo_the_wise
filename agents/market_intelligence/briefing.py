@@ -12,6 +12,7 @@ Both send directly via Telegram Bot API (no dependency on Apollo orchestrator).
 from __future__ import annotations
 
 import asyncio
+import time
 import logging
 import re
 import os
@@ -2658,12 +2659,23 @@ def _chunk_plain(text: str) -> list[str]:
 # lost to ConnectTimeout/ReadTimeout). Per chunk: 3 attempts total, backoff 2 s then 5 s. A
 # ReadTimeout retry can rarely duplicate a message (Telegram may have accepted the first POST) —
 # accepted: a duplicate alert beats a lost one.
-_TG_RETRY_BACKOFF: tuple[float, ...] = (2.0, 5.0)
+_TG_RETRY_BACKOFF: tuple[float, ...] = (1.0, 3.0)
+# Per-chunk wall-clock budget (first attempt -> give-up). The money path awaits this sender INLINE
+# (trade-stream handler, entry_pipeline, order_manager), so a Telegram outage must not block a
+# caller for ~52 s per chunk: a retry happens only if budget remains after the backoff, and each
+# attempt's request timeout is min(15, remaining budget). Worst case per chunk ~= this budget.
+_TG_RETRY_BUDGET_S = 20.0
+_TG_REQUEST_TIMEOUT_S = 15.0
 _TG_RETRY_AFTER_CAP = 10.0
 _TG_TRANSIENT_ERRORS = (
     httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout,
     httpx.PoolTimeout, httpx.RemoteProtocolError,
 )
+
+
+def _tg_clock() -> float:
+    """Patchable monotonic-clock seam so tests can fake elapsed time."""
+    return time.monotonic()
 
 
 async def _tg_retry_sleep(seconds: float) -> None:
@@ -2786,7 +2798,7 @@ async def send_telegram_message(
         return chunk
 
     async def _post(client: httpx.AsyncClient, chunk: str, formatted: bool,
-                     markup: dict | None) -> httpx.Response:
+                     markup: dict | None, timeout: "httpx.Timeout | None" = None) -> httpx.Response:
         payload: dict[str, Any] = {
             "chat_id": chat_id,
             "text": chunk if formatted else _to_plain(chunk),
@@ -2796,12 +2808,17 @@ async def send_telegram_message(
             payload["parse_mode"] = mode
         if markup:
             payload["reply_markup"] = _json.dumps(markup)
+        extra = {"timeout": timeout} if timeout is not None else {}
         return await client.post(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage", json=payload
+            f"https://api.telegram.org/bot{bot_token}/sendMessage", json=payload, **extra
         )
 
     max_attempts = len(_TG_RETRY_BACKOFF) + 1
     attempts_used = 0                    # highest attempt count any chunk needed (for the failed row)
+
+    def _budget_left(started: float, attempt: int, resp: "httpx.Response | None") -> bool:
+        """True when a retry is still affordable: budget remains AFTER the backoff."""
+        return (_tg_clock() - started) + _tg_retry_delay(resp, attempt) < _TG_RETRY_BUDGET_S
 
     async def _post_retry(client: httpx.AsyncClient, chunk: str, formatted: bool,
                           markup: dict | None) -> httpx.Response:
@@ -2810,13 +2827,17 @@ async def send_telegram_message(
         unchanged); re-raises the last transport error once attempts are exhausted."""
         nonlocal attempts_used
         last_err = ""
+        started = _tg_clock()
         for attempt in range(max_attempts):
+            req_timeout = max(0.1, min(_TG_REQUEST_TIMEOUT_S,
+                                       _TG_RETRY_BUDGET_S - (_tg_clock() - started)))
             attempts_used = max(attempts_used, attempt + 1)
             last_resp: httpx.Response | None = None
             try:
-                r = await _post(client, chunk, formatted, markup)
+                r = await _post(client, chunk, formatted, markup,
+                                timeout=httpx.Timeout(req_timeout) if attempt else None)
             except _TG_TRANSIENT_ERRORS as e:
-                if attempt == max_attempts - 1:
+                if attempt == max_attempts - 1 or not _budget_left(started, attempt, None):
                     raise
                 last_err = type(e).__name__
             else:
@@ -2831,7 +2852,7 @@ async def send_telegram_message(
                         except Exception:  # loud-ok: the send itself succeeded; audit is best-effort
                             logger.warning("telegram_send_retried audit write failed")
                     return r
-                if attempt == max_attempts - 1:
+                if attempt == max_attempts - 1 or not _budget_left(started, attempt, r):
                     return r             # caller's raise_for_status reports the final status
                 last_err = f"HTTP{r.status_code}"
                 last_resp = r

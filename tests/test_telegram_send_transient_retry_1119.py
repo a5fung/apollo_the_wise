@@ -31,7 +31,8 @@ class _Resp:
 
 
 class _Client:
-    def __init__(self, steps):
+    def __init__(self, steps, clock=None, costs=()):
+        self.clock, self.costs, self.timeouts = clock, list(costs), []
         self.steps = list(steps)
         self.posts: list[dict] = []
 
@@ -44,8 +45,13 @@ class _Client:
     async def __aexit__(self, *a):
         return False
 
-    async def post(self, url, json=None):
+    async def post(self, url, json=None, timeout=None):
         self.posts.append(json)
+        self.timeouts.append(timeout)
+        if self.clock is not None:
+            cost = self.costs.pop(0) if self.costs else 0.0
+            # a real httpx timeout caps how long the request can take
+            self.clock.t += min(cost, timeout.read) if timeout is not None else cost
         step = self.steps.pop(0) if self.steps else 200
         if isinstance(step, Exception):
             raise step
@@ -74,7 +80,7 @@ async def _run(client, text="hello", **kw):
 async def test_connect_timeout_then_200_delivers_and_logs_retried_row():
     c = _Client([httpx.ConnectTimeout("t"), 200])
     ok, rows, sleeps = await _run(c)
-    assert ok is True and len(c.posts) == 2 and sleeps == [2.0]
+    assert ok is True and len(c.posts) == 2 and sleeps == [1.0]
     retried = [r for r in rows if r[0] == "telegram_send_retried"]
     assert len(retried) == 1
     assert "attempts=2" in retried[0][2] and "ConnectTimeout" in retried[0][2] and f"chat={CHAT}" in retried[0][2]
@@ -85,7 +91,7 @@ async def test_connect_timeout_then_200_delivers_and_logs_retried_row():
 async def test_read_timeout_three_times_fails_with_attempts_3():
     c = _Client([httpx.ReadTimeout("t")] * 3)
     ok, rows, sleeps = await _run(c)
-    assert ok is False and len(c.posts) == 3 and sleeps == [2.0, 5.0]
+    assert ok is False and len(c.posts) == 3 and sleeps == [1.0, 3.0]
     failed = [r for r in rows if r[0] == "telegram_send_failed"]
     assert len(failed) == 1 and "attempts=3" in failed[0][2] and "ReadTimeout" in failed[0][2]
     assert not [r for r in rows if r[0] == "telegram_send_retried"]
@@ -132,3 +138,58 @@ async def test_non_transient_4xx_is_not_retried():
     ok, rows, sleeps = await _run(c)
     assert ok is False and len(c.posts) == 1 and sleeps == []
     assert any(r[0] == "telegram_send_failed" for r in rows)
+
+
+class _Clock:
+    def __init__(self):
+        self.t = 0.0
+
+
+async def _run_clocked(client, clock):
+    audit = AsyncMock()
+
+    async def _sleep(s):
+        clock.t += s
+        slept.append(s)
+
+    slept: list[float] = []
+    with patch.object(briefing.httpx, "AsyncClient", client), \
+         patch.object(briefing, "log_audit_event", audit), \
+         patch.object(briefing, "_tg_clock", lambda: clock.t), \
+         patch.object(briefing, "_tg_retry_sleep", _sleep):
+        ok = await briefing.send_telegram_message("hello")
+    return ok, slept, [c.args for c in audit.await_args_list]
+
+
+@pytest.mark.asyncio
+async def test_a_15s_read_timeout_leaves_budget_for_one_short_retry_only():
+    clk = _Clock()
+    c = _Client([httpx.ReadTimeout("t")] * 3, clock=clk, costs=[15.0, 4.0, 4.0])
+    ok, slept, rows = await _run_clocked(c, clk)
+    # attempt 1 burns 15 s; after the 1 s backoff 4 s remain -> a 2nd attempt with a 4 s timeout;
+    # that burns 4 s (t=20) so no budget remains for a 3rd.
+    assert ok is False and len(c.posts) == 2 and slept == [1.0]
+    assert c.timeouts[0] is None and c.timeouts[1].read == pytest.approx(4.0)
+    assert clk.t <= briefing._TG_RETRY_BUDGET_S + 1e-9
+    assert any(r[0] == "telegram_send_failed" and "attempts=2" in r[2] for r in rows)
+
+
+@pytest.mark.asyncio
+async def test_total_simulated_wait_never_exceeds_budget_on_a_full_outage():
+    clk = _Clock()
+    c = _Client([httpx.ConnectTimeout("t")] * 3, clock=clk, costs=[15.0, 15.0, 15.0])
+    ok, _, _ = await _run_clocked(c, clk)
+    assert ok is False and len(c.posts) == 2 and clk.t <= briefing._TG_RETRY_BUDGET_S
+    clk2 = _Clock()
+    c2 = _Client([httpx.ConnectError("x")] * 3, clock=clk2, costs=[0.1, 0.1, 0.1])
+    ok2, slept2, _ = await _run_clocked(c2, clk2)
+    assert ok2 is False and len(c2.posts) == 3 and slept2 == [1.0, 3.0]
+    assert clk2.t <= briefing._TG_RETRY_BUDGET_S
+
+
+@pytest.mark.asyncio
+async def test_fast_blip_is_still_retried_within_budget():
+    clk = _Clock()
+    c = _Client([httpx.ConnectError("x"), 200], clock=clk, costs=[0.1, 0.1])
+    ok, slept, rows = await _run_clocked(c, clk)
+    assert ok is True and slept == [1.0] and any(r[0] == "telegram_send_retried" for r in rows)
