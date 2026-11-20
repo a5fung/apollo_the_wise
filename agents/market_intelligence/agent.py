@@ -6661,8 +6661,8 @@ class MarketIntelligenceAgent(BaseAgent):
             except Exception as _se:
                 logger.warning(f"/why {ticker}: short layout failed, using the full view: {_se}")
             else:
-                if book != "paper" and trade:
-                    # both books are read outside the paper chat: say which one this row is
+                if book != "paper" and trade and trade.get("account_mode") == "paper":
+                    # both books are read outside the paper chat: a PAPER row says so (a live row keeps the #716 layout)
                     short_body = f"📒 Book: {_book_tag(trade.get('account_mode')).strip()}\n{short_body}"
                 return await self._why_deliver(request, ticker, short_body)
 
@@ -6773,7 +6773,7 @@ class MarketIntelligenceAgent(BaseAgent):
         # 💰 Outcome
         lines.append("")
         if trade:
-            if book != "paper":
+            if book != "paper" and trade.get("account_mode") == "paper":
                 lines.append(f"📒 Book: {_book_tag(trade.get('account_mode')).strip()}")   # both books are read here
             status = trade.get("status") or "?"
             reason = trade.get("skip_reason")

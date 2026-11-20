@@ -260,7 +260,7 @@ def test_main_chat_why_reads_a_paper_row_and_names_its_book(monkeypatch):
     assert "Book: 📄 PAPER" in res and "no mi_live_trades row" not in res
     _db_with_rows(monkeypatch, [_row("live", 9)])
     res = _agent_call("_handle_why_query", "/why CAKE 2026-11-18", {"reply_in_place": True}).result
-    assert "Book: 💰 LIVE-$" in res
+    assert "Book:" not in res          # a live row keeps the #716 layout (no book line; live is the default)
     _db_with_rows(monkeypatch, [_row("live", 9)])
     res = _agent_call("_handle_why_query", "/why CAKE 2026-11-18", {"book": "paper", "reply_in_place": True}).result
     assert "Book:" not in res          # paper chat: paper-only, and a live row is invisible there
