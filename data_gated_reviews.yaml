@@ -16023,6 +16023,48 @@ reviews:
          sign-off on the tables, as on 2026-10-03). The display of the score stays regardless.
     added_on: 2026-10-03
     cross_refs: ["task #394", "docs/analysis/394_coil_tuning_methodology_2026-07-11.md"]
+  - review_id: telegram_send_retry_first_fire_1119
+    title: "Telegram sender retry (2026-11-19) — the first transient blip it saved, or failed on"
+    question: >-
+      On 2026-11-19 a HIGH EP alert (P) and its follow-up to the live chat were lost to httpx
+      ConnectTimeout / ReadTimeout, because send_telegram_message never retried. Deployed 8b93dbf6
+      (2026-11-19 ~23:40 ET): per chunk, retries on connect/read/pool timeouts, ConnectError,
+      RemoteProtocolError, 429 and 5xx inside a 20 s budget; a save writes `telegram_send_retried`,
+      a final failure writes `telegram_send_failed` with `attempts=N`. EXPECT: the next blip writes
+      a telegram_send_retried row and the message lands. WOULD-FAIL-IF: a timeout-class
+      telegram_send_failed row after the deploy with no `attempts=` field, or with attempts=1 (the
+      retry path never ran). DONE-WHEN: the first such row is read and matches one of the two.
+    predicate_sql: |
+      SELECT count(*) FROM mi_audit_log
+       WHERE created_at >= TIMESTAMPTZ '2026-11-20 05:00:00+00'
+         AND (event_type = 'telegram_send_retried'
+              OR (event_type = 'telegram_send_failed'
+                  AND (detail ILIKE '%Timeout%' OR detail ILIKE '%ConnectError%')))
+    threshold: 1
+    zero_verdict: "2026-11-19 WAITING — a tripwire: base rate is 3 lost sends in 30 days (11-16, 11-19 x2); it fires on the next blip."
+    discriminates_on: [event_type, attempts]
+    earliest_review_date: 2026-11-20
+    status: pending
+    kind: tripwire
+    added_on: 2026-11-19
+    can_fire:
+      predicate_runs: >-
+        Same shape run 2026-11-19 (scripts/probes/_thu_verify_1119/tg.sql): 3 timeout-class failed rows in
+        30 days before the deploy, so the event class is real.
+      nonzero_possible: >-
+        Writers: briefing.send_telegram_message (_post_retry writes telegram_send_retried; the exception
+        path writes telegram_send_failed with attempts=N).
+      lane_live: >-
+        Every Telegram send in market-agent and execution goes through this function.
+      threshold_vs_observed: >-
+        Threshold 1; observed base rate about one blip a week.
+      era_scoped: >-
+        From the deploy (2026-11-20 05:00 UTC), so the three pre-fix rows do not count.
+      population_actionable: >-
+        Counts exactly the sends the retry path acts on (timeouts / connect errors) and its saves.
+      instrument_trusted: >-
+        The failed row existed before the fix and recorded all three known losses; the retried row is new
+        and unit-tested (tests/test_telegram_send_transient_retry_1119.py).
   - review_id: evening_stop_gap_first_fire_646_649
     title: "#646/#649 — the evening stop-coverage checks have found a REAL gap for the first time"
     question: >-
