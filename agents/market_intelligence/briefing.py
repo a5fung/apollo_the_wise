@@ -2654,6 +2654,35 @@ def _chunk_plain(text: str) -> list[str]:
     return chunks
 
 
+# Transient-failure retry for the Telegram POST (2026-11-19: a HIGH EP alert and its follow-up were
+# lost to ConnectTimeout/ReadTimeout). Per chunk: 3 attempts total, backoff 2 s then 5 s. A
+# ReadTimeout retry can rarely duplicate a message (Telegram may have accepted the first POST) —
+# accepted: a duplicate alert beats a lost one.
+_TG_RETRY_BACKOFF: tuple[float, ...] = (2.0, 5.0)
+_TG_RETRY_AFTER_CAP = 10.0
+_TG_TRANSIENT_ERRORS = (
+    httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout,
+    httpx.PoolTimeout, httpx.RemoteProtocolError,
+)
+
+
+async def _tg_retry_sleep(seconds: float) -> None:
+    """Patchable seam so tests do not wait."""
+    await asyncio.sleep(seconds)
+
+
+def _tg_retry_delay(resp: "httpx.Response | None", attempt: int) -> float:
+    """Backoff before retry number `attempt` (0-based); a 429's retry_after wins, capped."""
+    delay = _TG_RETRY_BACKOFF[min(attempt, len(_TG_RETRY_BACKOFF) - 1)]
+    if resp is not None and resp.status_code == 429:
+        try:
+            ra = resp.json()["parameters"]["retry_after"]
+            delay = min(float(ra), _TG_RETRY_AFTER_CAP)
+        except Exception:  # loud-ok: malformed/absent retry_after — keep the default backoff
+            pass
+    return delay
+
+
 async def send_telegram_message(
     text: str, chat_id: int | None = None, parse_mode: "str | None" = _CONVERT,
     reply_markup: dict | None = None,
@@ -2771,13 +2800,54 @@ async def send_telegram_message(
             f"https://api.telegram.org/bot{bot_token}/sendMessage", json=payload
         )
 
+    max_attempts = len(_TG_RETRY_BACKOFF) + 1
+    attempts_used = 0                    # highest attempt count any chunk needed (for the failed row)
+
+    async def _post_retry(client: httpx.AsyncClient, chunk: str, formatted: bool,
+                          markup: dict | None) -> httpx.Response:
+        """_post with per-chunk retry on transient network errors and 429/5xx. Returns the
+        response of the attempt that got through (any status, so the 400 -> plain-text path is
+        unchanged); re-raises the last transport error once attempts are exhausted."""
+        nonlocal attempts_used
+        last_err = ""
+        for attempt in range(max_attempts):
+            attempts_used = max(attempts_used, attempt + 1)
+            last_resp: httpx.Response | None = None
+            try:
+                r = await _post(client, chunk, formatted, markup)
+            except _TG_TRANSIENT_ERRORS as e:
+                if attempt == max_attempts - 1:
+                    raise
+                last_err = type(e).__name__
+            else:
+                if not (r.status_code == 429 or 500 <= r.status_code < 600):
+                    if attempt:
+                        try:
+                            await log_audit_event(
+                                "telegram_send_retried",
+                                f"Telegram send landed after {attempt + 1} attempts",
+                                f"attempts={attempt + 1} | error={last_err} | chat={chat_id}",
+                            )
+                        except Exception:  # loud-ok: the send itself succeeded; audit is best-effort
+                            logger.warning("telegram_send_retried audit write failed")
+                    return r
+                if attempt == max_attempts - 1:
+                    return r             # caller's raise_for_status reports the final status
+                last_err = f"HTTP{r.status_code}"
+                last_resp = r
+            delay = _tg_retry_delay(last_resp, attempt)
+            logger.warning(f"Telegram send transient failure ({last_err}) chat={chat_id} — "
+                           f"retry {attempt + 1}/{max_attempts - 1} in {delay:.0f}s")
+            await _tg_retry_sleep(delay)
+        raise RuntimeError("unreachable")  # pragma: no cover
+
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             last_idx = len(chunks) - 1
             for idx, chunk in enumerate(chunks):
                 # Only the LAST chunk carries the markup — never duplicated across a split.
                 chunk_markup = reply_markup if idx == last_idx else None
-                r = await _post(client, chunk, formatted=True, markup=chunk_markup)
+                r = await _post_retry(client, chunk, formatted=True, markup=chunk_markup)
                 if r.status_code == 400:
                     # Likely malformed markup — retry as plain text so the alert
                     # still lands. Parse failures otherwise vanish silently.
@@ -2806,12 +2876,12 @@ async def send_telegram_message(
                         f"Telegram 400 with {mode_label} — retrying plain text. "
                         f"body={body} offset_snippet={snippet!r}"
                     )
-                    r2 = await _post(client, chunk, formatted=False, markup=chunk_markup)
+                    r2 = await _post_retry(client, chunk, formatted=False, markup=chunk_markup)
                     if r2.status_code >= 400:
                         await log_audit_event(
                             "telegram_send_failed",
                             "Telegram send failed after plain-text retry",
-                            f"md_body={body} | mode={mode_label} | plain_status={r2.status_code} | plain_body={r2.text[:400]} | offset_snippet={snippet!r} | chunk={chunk[:300]}",
+                            f"md_body={body} | mode={mode_label} | attempts={attempts_used} | plain_status={r2.status_code} | plain_body={r2.text[:400]} | offset_snippet={snippet!r} | chunk={chunk[:300]}",
                         )
                         r2.raise_for_status()
                     else:
@@ -2829,7 +2899,7 @@ async def send_telegram_message(
             await log_audit_event(
                 "telegram_send_failed",
                 "Telegram send exception",
-                f"{type(e).__name__}: {e} | chat={chat_id} | first_chunk={chunks[0][:300] if chunks else ''}",
+                f"{type(e).__name__}: {e} | attempts={attempts_used} | chat={chat_id} | first_chunk={chunks[0][:300] if chunks else ''}",
             )
         except Exception:  # loud-ok: fallback-of-the-fallback — the primary
             pass          # failure is already logger.error'd above; the audit

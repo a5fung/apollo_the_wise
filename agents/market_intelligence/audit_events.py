@@ -248,6 +248,8 @@ UNIFIED_ALLOCATION_DECIDED = "unified_allocation_decided"
 # ── Lifecycle / telegram ────────────────────────────────────────────────────
 TRADE_LIFECYCLE_TELEGRAM_ATTEMPTED = "trade_lifecycle_telegram_attempted"
 TELEGRAM_SEND_FAILED = "telegram_send_failed"
+# A chunk that only landed after a transient-error retry (timeout / 429 / 5xx) — 2026-11-19.
+TELEGRAM_SEND_RETRIED = "telegram_send_retried"
 
 # ── Crypto / data ingest ────────────────────────────────────────────────────
 CRYPTO_INGEST_ERROR = "crypto_ingest_error"
