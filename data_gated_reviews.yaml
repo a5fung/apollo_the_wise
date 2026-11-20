@@ -792,7 +792,7 @@ reviews:
 
   - review_id: extension_cap_75_recheck
     resolution_2026_11_19: >-
-      READ 2026-11-19 ($0; docs/analysis/extension_cap_band_replay_2026-11-19.md; scripts/probes/_extcap_replay_1119/, re-run by Opus, identical). The 50-75% band (n = 16 ticker-days, 15 names, 08-23..11-13) replayed through the live entry, stop and exit ladder, submit 09:31 (upper bound: the cap rejects before scoring, so no stored score): 4 entered, all 4 full losers, total -4.0R, 0 at +3R; with the gap floor off 8 entered, -6.3R, 0 at +3R. The >=75% group (context, n = 64): 25 entered, -12.0R, one +3R (SVRN 09-21). The pre-declared reopen bar (band total R > 0 and 2+ at +3R in 2+ weeks) did not fire: the 09-21 answer stands, the cap is not what costs us. Nothing changed; re-armed for one quarter (earliest 2027-02-19).
+      READ 2026-11-19 ($0; docs/analysis/extension_cap_band_replay_2026-11-19.md; scripts/probes/_extcap_replay_1119/, re-run by Opus: reproducible (same output), not an independent correctness check). The 50-75% band (n = 16 ticker-days, 15 names, 08-23..11-13) replayed through the live entry, stop and exit ladder, submit 09:31 (upper bound: the cap rejects before scoring, so no stored score): 4 entered, all 4 full losers, total -4.0R, 0 at +3R; with the gap floor off 8 entered, -6.3R, 0 at +3R. The >=75% group (context, n = 64): 25 entered, -12.0R, one +3R (SVRN 09-21). The pre-declared reopen bar (band total R > 0 and 2+ at +3R in 2+ weeks) did not fire: the 09-21 answer stands, the cap is not what costs us. Nothing changed; re-armed for one quarter (earliest 2027-02-19).
     status: pending
     title: "The 50-75% extension band now holds 94 scoreable names (bar was 15) — does it carry edge, or is the STOP still the binding constraint?"
     question: |
@@ -3792,7 +3792,7 @@ reviews:
 
   - review_id: trade_stream_stop_placement_without_orders_row
     resolution_2026_11_19: >-
-      FIRED 2026-11-19 on ONE known row, not a new class: mi_audit_log 79200, naked_position_detected, trade 788 CAKE (paper, breakout v1), 2026-11-18 09:45 ET, source update_stop. Cause = the stop-to-fill-after-the-third cancel-then-place refused by Alpaca (shares held by the cancelling stop); fixed by the price-only replace in 1f0b2286 (deployed 2026-11-18 23:10 ET, verify on the next breakout partial under #717). The predicate is a 14-day window, so this row ages out by 2026-12-02; any OTHER row before then is new and must be read.
+      FIRED 2026-11-19 on ONE known row, not a new class: mi_audit_log 79200, naked_position_detected, trade 788 CAKE (paper, breakout v1), 2026-11-18 09:45 ET, source update_stop. Cause = the stop-to-fill-after-the-third cancel-then-place refused by Alpaca (shares held by the cancelling stop); fixed by the price-only replace in 1f0b2286 (deployed 2026-11-18 23:10 ET, verify on the next breakout partial under #717). Row 79200 is now excluded by id, so any count is a new row.
 
 
     can_fire:
@@ -3877,7 +3877,8 @@ reviews:
       WHERE event_type IN ('naked_position_detected',
                             'stop_placement_failed_after_partial',
                             'entry_fill_stop_remediated')
-        AND created_at > NOW() - INTERVAL '14 days';
+        AND created_at > NOW() - INTERVAL '14 days'
+        AND id <> 79200;  -- 2026-11-19: CAKE 788, read + fixed (1f0b2286); excluded so the next count is new
     threshold: 1
     earliest_review_date: 2026-05-22
     action_when_ready: |
@@ -11109,7 +11110,7 @@ reviews:
     resolution_2026_11_19_backtest: >-
       FORK B BACKTESTED 2026-11-19 on his "aligned on backtest" ($0; prereg frozen before the data:
       docs/analysis/b6_forkB_backtest_prereg_2026-11-19.md; result docs/analysis/b6_forkB_backtest_2026-11-19.md;
-      driver scripts/probes/_b6_backtest_1119/run_backtest.py, re-run by Opus, identical output). All five fidelity
+      driver scripts/probes/_b6_backtest_1119/run_backtest.py, re-run by Opus: reproducible (same output), which proves reproducibility, not correctness — the three winners and two losers get a hand walk before the 12-07 re-read). All five fidelity
       checks pass (re-score 3268/3268, alert rebuild 26/26, harness validate, entry agreement 54/56, abstain 0%).
       Neutralising the downgrade adds 62 HIGH alerts / 27 entries in 12 weeks: 3 reached +3R, 15 full losers,
       total -5.2R (-13.3R without the Oct 26-30 week). Frozen rule reads CLOSE (gate stays 22), by a one-trade

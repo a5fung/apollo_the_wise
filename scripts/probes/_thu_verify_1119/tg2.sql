@@ -1,0 +1,1 @@
+SET default_transaction_read_only = on; SELECT created_at AT TIME ZONE 'America/New_York', left(detail::text,120) FROM mi_audit_log WHERE event_type='telegram_send_failed' AND created_at > now()-interval '24 hours';

@@ -1,0 +1,133 @@
+SET
+job_id|status|timezone|duration_s|left
+9m_ep_scan|success|2026-11-19 15:35:00.001736|0|
+flag_break_scan|success|2026-11-19 15:35:00.002136|0|
+ma_pullback_scan|success|2026-11-19 15:35:00.002647|0|
+low_vol_rest_scan|success|2026-11-19 15:35:00.003216|0|
+support_test_scan|success|2026-11-19 15:35:00.00381|0|
+stop_coverage_repair_retry|success|2026-11-19 15:35:00.004198|0|
+undercut_rally_scan|success|2026-11-19 15:35:00.004457|0|
+stream_health_watchdog|success|2026-11-19 15:35:00.004738|0|
+track_position_extremes|success|2026-11-19 15:35:00.006503|0|
+stream_health_watchdog|success|2026-11-19 15:40:00.004908|0|
+track_position_extremes|success|2026-11-19 15:40:00.005111|0|
+9m_ep_scan|success|2026-11-19 15:40:00.007592|0|
+flag_break_scan|success|2026-11-19 15:40:00.007862|0|
+support_test_scan|success|2026-11-19 15:40:00.00806|0|
+ma_pullback_scan|success|2026-11-19 15:40:00.008344|0|
+low_vol_rest_scan|success|2026-11-19 15:40:00.008352|0|
+stop_coverage_repair_retry|success|2026-11-19 15:40:00.00898|0|
+undercut_rally_scan|success|2026-11-19 15:40:00.014153|0|
+order_status_reconcile|success|2026-11-19 15:45:00.003043|0|
+partial_exit_scan|success|2026-11-19 15:45:00.00371|3|
+9m_ep_scan|success|2026-11-19 15:45:00.004041|0|
+breadth_live_refresh|success|2026-11-19 15:45:00.004262|1|
+flag_break_scan|success|2026-11-19 15:45:00.004799|0|
+low_vol_rest_scan|success|2026-11-19 15:45:00.005063|0|
+ma_pullback_scan|success|2026-11-19 15:45:00.005511|0|
+track_position_extremes|success|2026-11-19 15:45:00.010331|0|
+stop_coverage_repair_retry|success|2026-11-19 15:45:00.011015|0|
+stream_health_watchdog|success|2026-11-19 15:45:00.011372|0|
+position_coverage_check|success|2026-11-19 15:45:00.012132|0|
+support_test_scan|success|2026-11-19 15:45:00.024462|0|
+undercut_rally_scan|success|2026-11-19 15:45:00.026955|0|
+9m_ep_scan|success|2026-11-19 15:50:00.002265|0|
+flag_break_scan|success|2026-11-19 15:50:00.002777|0|
+low_vol_rest_scan|success|2026-11-19 15:50:00.003539|0|
+stop_coverage_repair_retry|success|2026-11-19 15:50:00.003745|0|
+ma_pullback_scan|success|2026-11-19 15:50:00.004296|0|
+missed_job_recovery|success|2026-11-19 15:50:00.004446|0|
+stream_health_watchdog|success|2026-11-19 15:50:00.004447|0|
+track_position_extremes|success|2026-11-19 15:50:00.007608|0|
+support_test_scan|success|2026-11-19 15:50:00.008079|0|
+undercut_rally_scan|success|2026-11-19 15:50:00.010684|0|
+flag_break_scan|success|2026-11-19 15:55:00.004863|0|
+stop_coverage_repair_retry|success|2026-11-19 15:55:00.004925|0|
+track_position_extremes|success|2026-11-19 15:55:00.00508|0|
+stream_health_watchdog|success|2026-11-19 15:55:00.005423|0|
+low_vol_rest_scan|success|2026-11-19 15:55:00.006084|0|
+ma_pullback_scan|success|2026-11-19 15:55:00.00621|0|
+naked_position_pre_close_check|success|2026-11-19 15:55:00.006529|0|
+9m_ep_scan|success|2026-11-19 15:55:00.010009|0|
+undercut_rally_scan|success|2026-11-19 15:55:00.012922|0|
+support_test_scan|success|2026-11-19 15:55:00.013775|0|
+order_status_reconcile|success|2026-11-19 16:00:00.001658|0|
+breadth_live_refresh|success|2026-11-19 16:00:00.002973|1|
+intraday_signals_eod_digest|success|2026-11-19 16:00:00.003912|0|
+position_mgmt_judge|success|2026-11-19 16:02:00.001435|1|
+eod_cleanup|success|2026-11-19 16:05:00.002526|1|
+position_path_eod_sweep|success|2026-11-19 16:10:00.001949|0|
+eod_ep_recap|success|2026-11-19 16:10:00.007505|0|
+(58 rows)
+event_type|timezone|left
+sdk_pool_rollup|2026-11-19 15:35:00.002784|{"service_role": "execution", "pool_max": 7, "interval_s": 300.0, "calls": 12, "queued_calls": 0, "max_depth": 1, "max_pending": 1, "max_backlog": 0, "wait_max_ms": 0.7, "wait_mean_ms": 0.25, "wait_hi
+sdk_pool_rollup|2026-11-19 15:40:00.001715|{"service_role": "execution", "pool_max": 7, "interval_s": 300.0, "calls": 5, "queued_calls": 0, "max_depth": 1, "max_pending": 1, "max_backlog": 0, "wait_max_ms": 0.3, "wait_mean_ms": 0.25, "wait_his
+entry_partial_fill|2026-11-19 15:40:43.26081|{"trade_id": 1019, "order_id": "c1850c24-4d29-4365-afd9-facbef0aef61", "ticker": "LTH", "side": "sell", "event_qty": 204.0, "cum_filled": 204.0, "total_qty": 324.0, "avg_price": 46.45, "account_mode":
+entry_partial_fill|2026-11-19 15:40:44.211344|{"trade_id": 1019, "order_id": "c1850c24-4d29-4365-afd9-facbef0aef61", "ticker": "LTH", "side": "sell", "event_qty": 50.0, "cum_filled": 254.0, "total_qty": 324.0, "avg_price": 46.45, "account_mode": 
+entry_partial_fill|2026-11-19 15:40:44.644913|{"trade_id": 1019, "order_id": "c1850c24-4d29-4365-afd9-facbef0aef61", "ticker": "LTH", "side": "sell", "event_qty": 58.0, "cum_filled": 312.0, "total_qty": 324.0, "avg_price": 46.45, "account_mode": 
+trade_lifecycle_telegram_attempted|2026-11-19 15:40:45.413742|trade_id=1019 account=paper reason=stop hit (0d) message_len=66
+orb_bar_fetched|2026-11-19 15:41:10.634263|
+orb_skipped|2026-11-19 15:41:10.690505|
+breakout_v1_entry_order|2026-11-19 15:41:10.692047|{"level": 6.14, "orh5": 6.14, "orl5": 5.85, "stop": 5.85, "width": 0.047231270358306196, "cum_volume": 1683604.0, "need_volume": 994681.5547806, "last_completed": 370, "break_minute": 370, "break_high
+orb_bar_fetched|2026-11-19 15:43:10.5479|
+entry_ask_above_trigger|2026-11-19 15:43:10.592758|{"ticker": "RZLT", "orb_high": 4.3, "ask": 4.31, "last_trade": 4.3, "account_mode": "paper"}
+orb_order_placed|2026-11-19 15:43:10.623892|
+breakout_v1_entry_order|2026-11-19 15:43:10.62523|{"level": 4.3, "orh5": 4.27, "orl5": 4.17, "stop": 3.95, "width": 0.08139534883720922, "cum_volume": 2049419.0, "need_volume": 2000382.3885511197, "last_completed": 372, "break_minute": 372, "break_hi
+entry_partial_fill|2026-11-19 15:43:11.070334|{"trade_id": 1235, "order_id": "71d606e1-aedf-46aa-90bd-cffba17e36b3", "ticker": "RZLT", "side": "buy", "event_qty": 411.0, "cum_filled": 411.0, "total_qty": 1203.0, "avg_price": 4.31, "account_mode":
+trade_lifecycle_telegram_attempted|2026-11-19 15:43:11.692633|trade_id=1235 account=paper attempt=1 message_len=75
+breakout_v1_fill_stop_checked|2026-11-19 15:44:10.520997|{"fill": 4.31, "fill_minute": 373, "filled_at": "2026-11-19 20:43:11.681214+00:00", "true_low": 3.955, "width": 0.08236658932714608, "placed_stop": 3.95, "fill_bar_seen": true, "trade_id": 1235, "tick
+breakout_v1_entry_abstain|2026-11-19 15:44:10.532904|{"level": 51.58, "orh5": 50.39, "orl5": 49.91, "day_low": 49.42, "width": 0.04187669639395108}
+sdk_pool_rollup|2026-11-19 15:45:00.005454|{"service_role": "execution", "pool_max": 7, "interval_s": 300.0, "calls": 14, "queued_calls": 0, "max_depth": 1, "max_pending": 1, "max_backlog": 0, "wait_max_ms": 0.3, "wait_mean_ms": 0.22, "wait_hi
+order_status_reconciled|2026-11-19 15:45:00.049166|order_id=71d606e1-aedf-46aa-90bd-cffba17e36b3 trade_id=1235 purpose=None db_was='pending_new' alpaca_now=filled filled_qty=1203.0 filled_avg_price=4.31
+breadth_live_refresh|2026-11-19 15:45:01.356529|{"fetch_s": 1.3, "total_s": 1.35, "stats": {"batches_total": 50, "batches_failed": 0}, "universe_n": 4938, "read_n": 4870}
+breakout_v1_entry_abstain|2026-11-19 15:48:10.505614|{"level": 11.51, "orh5": 11.45, "orl5": 11.435, "day_low": 10.975, "width": 0.04691572545612503}
+breakout_v1_entry_abstain|2026-11-19 15:49:10.495294|{"level": 22.215, "orh5": 22.215, "orl5": 21.935, "day_low": 21.09, "width": 0.05064145847400405}
+sdk_pool_rollup|2026-11-19 15:50:00.00226|{"service_role": "execution", "pool_max": 7, "interval_s": 300.0, "calls": 14, "queued_calls": 0, "max_depth": 1, "max_pending": 1, "max_backlog": 0, "wait_max_ms": 2.0, "wait_mean_ms": 0.47, "wait_hi
+sdk_pool_rollup|2026-11-19 15:55:00.002024|{"service_role": "execution", "pool_max": 7, "interval_s": 300.0, "calls": 5, "queued_calls": 0, "max_depth": 1, "max_pending": 1, "max_backlog": 0, "wait_max_ms": 0.2, "wait_mean_ms": 0.2, "wait_hist
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.423157|{"ticker": "OKTA", "day": "2026-11-19", "minute": 5, "clock_et": "09:35", "break_price": 211.97, "break_high": 211.98, "stop": 202.0, "width": 0.04703495777704392, "break_cum_volume": 297108.0, "break
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.4254|{"ticker": "CRWD", "day": "2026-11-19", "minute": 5, "clock_et": "09:35", "break_price": 254.0, "break_high": 254.06, "stop": 244.4, "width": 0.03779527559055116, "break_cum_volume": 856911.0, "break_
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.427265|{"ticker": "NTSK", "day": "2026-11-19", "minute": 12, "clock_et": "09:42", "break_price": 25.48, "break_high": 25.625, "stop": 24.25, "width": 0.04827315541601258, "break_cum_volume": 649572.0, "break
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.428713|{"ticker": "TENB", "day": "2026-11-19", "minute": 5, "clock_et": "09:35", "break_price": 47.18, "break_high": 47.2311, "stop": 45.41, "width": 0.03751589656634174, "break_cum_volume": 130639.0, "break
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.430542|{"ticker": "NET", "day": "2026-11-19", "minute": 6, "clock_et": "09:36", "break_price": 319.915, "break_high": 320.0, "stop": 309.03, "width": 0.034024662801056677, "break_cum_volume": 446240.0, "brea
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.43249|{"ticker": "FROG", "day": "2026-11-19", "minute": 6, "clock_et": "09:36", "break_price": 121.4925, "break_high": 121.8229, "stop": 117.67, "width": 0.03146284750087458, "break_cum_volume": 137061.0, "
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.434056|{"ticker": "ADPT", "day": "2026-11-19", "minute": 130, "clock_et": "11:40", "break_price": 29.7843, "break_high": 29.795, "stop": 28.54, "width": 0.04177704361022427, "break_cum_volume": 330544.0, "br
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.435474|{"ticker": "RVTY", "day": "2026-11-19", "minute": 46, "clock_et": "10:16", "break_price": 155.54, "break_high": 155.68, "stop": 152.61, "width": 0.0188375980455187, "break_cum_volume": 84170.0, "break
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.436845|{"ticker": "BRKR", "day": "2026-11-19", "minute": 21, "clock_et": "09:51", "break_price": 65.27, "break_high": 65.4, "stop": 63.27, "width": 0.03064194882794535, "break_cum_volume": 182827.0, "break_n
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.438331|{"ticker": "TGTX", "day": "2026-11-19", "minute": 35, "clock_et": "10:05", "break_price": 66.79, "break_high": 66.805, "stop": 65.83, "width": 0.01437340919299308, "break_cum_volume": 243963.0, "break
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.43984|{"ticker": "RPD", "day": "2026-11-19", "minute": 12, "clock_et": "09:42", "break_price": 16.0, "break_high": 16.12, "stop": 15.24, "width": 0.04749999999999999, "break_cum_volume": 144622.0, "break_ne
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.441282|{"ticker": "AXGN", "day": "2026-11-19", "minute": 5, "clock_et": "09:35", "break_price": 57.585, "break_high": 57.63, "stop": 57.4, "width": 0.003212642181123596, "break_cum_volume": 6484.0, "break_ne
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.442693|{"ticker": "TTAN", "day": "2026-11-19", "minute": 5, "clock_et": "09:35", "break_price": 84.18, "break_high": 84.26, "stop": 81.81, "width": 0.028153955808980807, "break_cum_volume": 12348.0, "break_n
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.444217|{"ticker": "SAIL", "day": "2026-11-19", "minute": 11, "clock_et": "09:41", "break_price": 23.02, "break_high": 23.07, "stop": 22.28, "width": 0.03214596003475232, "break_cum_volume": 294122.0, "break_
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.445948|{"ticker": "FTRE", "day": "2026-11-19", "minute": 37, "clock_et": "10:07", "break_price": 21.16, "break_high": 21.2, "stop": 20.51, "width": 0.03071833648393188, "break_cum_volume": 53892.0, "break_ne
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.447474|{"ticker": "EXTR", "day": "2026-11-19", "minute": 20, "clock_et": "09:50", "break_price": 27.49, "break_high": 27.5, "stop": 27.16, "width": 0.012004365223717655, "break_cum_volume": 88403.0, "break_n
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.448859|{"ticker": "CBRL", "day": "2026-11-19", "minute": 20, "clock_et": "09:50", "break_price": 74.49, "break_high": 74.61, "stop": 72.13, "width": 0.031682104980534295, "break_cum_volume": 50054.0, "break_
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.450287|{"ticker": "AZTA", "day": "2026-11-19", "minute": 21, "clock_et": "09:51", "break_price": 49.355, "break_high": 49.6, "stop": 48.33, "width": 0.020767905987235307, "break_cum_volume": 102392.0, "break
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.451865|{"ticker": "OSPN", "day": "2026-11-19", "minute": 13, "clock_et": "09:43", "break_price": 23.6, "break_high": 23.7, "stop": 22.87, "width": 0.030932203389830524, "break_cum_volume": 22326.0, "break_ne
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.453228|{"ticker": "VIA", "day": "2026-11-19", "minute": 14, "clock_et": "09:44", "break_price": 47.77, "break_high": 47.88, "stop": 46.5, "width": 0.026585723257274502, "break_cum_volume": 80794.0, "break_ne
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.45477|{"ticker": "ATEN", "day": "2026-11-19", "minute": 5, "clock_et": "09:35", "break_price": 33.0778, "break_high": 33.105, "stop": 32.75, "width": 0.009909969828706969, "break_cum_volume": 36063.0, "brea
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.456232|{"ticker": "RDWR", "day": "2026-11-19", "minute": 90, "clock_et": "11:00", "break_price": 34.74, "break_high": 34.75, "stop": 33.97, "width": 0.022164651698330543, "break_cum_volume": 112795.0, "break
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.457557|{"ticker": "CSTL", "day": "2026-11-19", "minute": 47, "clock_et": "10:17", "break_price": 34.68, "break_high": 34.75, "stop": 33.45, "width": 0.03546712802768157, "break_cum_volume": 71974.0, "break_n
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.458896|{"ticker": "TDC", "day": "2026-11-19", "minute": 13, "clock_et": "09:43", "break_price": 36.92, "break_high": 36.99, "stop": 36.05, "width": 0.0235644637053089, "break_cum_volume": 46165.0, "break_nee
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.460031|{"ticker": "UI", "day": "2026-11-19", "minute": 6, "clock_et": "09:36", "break_price": 694.5, "break_high": 696.6754, "stop": 690.83, "width": 0.005284377249819955, "break_cum_volume": 1175.0, "break_
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.461406|{"ticker": "PUBM", "day": "2026-11-19", "minute": 47, "clock_et": "10:17", "break_price": 21.13, "break_high": 21.14, "stop": 20.44, "width": 0.03265499290108839, "break_cum_volume": 78886.0, "break_n
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.462901|{"ticker": "PRCT", "day": "2026-11-19", "minute": 38, "clock_et": "10:08", "break_price": 25.84, "break_high": 25.97, "stop": 25.05, "width": 0.030572755417956624, "break_cum_volume": 66656.0, "break_
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.46418|{"ticker": "OPRT", "day": "2026-11-19", "minute": 21, "clock_et": "09:51", "break_price": 11.51, "break_high": 11.5413, "stop": 11.3, "width": 0.018245004344048573, "break_cum_volume": 8788.0, "break_
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.465499|{"ticker": "TREE", "day": "2026-11-19", "minute": 6, "clock_et": "09:36", "break_price": 36.65, "break_high": 36.66, "stop": 35.77, "width": 0.024010914051841623, "break_cum_volume": 9844.0, "break_ne
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.466862|{"ticker": "OABI", "day": "2026-11-19", "minute": 41, "clock_et": "10:11", "break_price": 5.1737, "break_high": 5.175, "stop": 5.01, "width": 0.0316407986547346, "break_cum_volume": 95959.0, "break_ne
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.468117|{"ticker": "JACK", "day": "2026-11-19", "minute": 70, "clock_et": "10:40", "break_price": 14.88, "break_high": 14.98, "stop": 14.05, "width": 0.05577956989247312, "break_cum_volume": 61906.0, "break_n
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.469523|{"ticker": "CTKB", "day": "2026-11-19", "minute": 20, "clock_et": "09:50", "break_price": 6.14, "break_high": 6.16, "stop": 5.85, "width": 0.047231270358306196, "break_cum_volume": 305719.0, "break_ne
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.470989|{"ticker": "TLS", "day": "2026-11-19", "minute": 51, "clock_et": "10:21", "break_price": 7.79, "break_high": 7.81, "stop": 7.53, "width": 0.03337612323491653, "break_cum_volume": 160851.0, "break_need
+breakout_v1_missed_by_slots|2026-11-19 15:55:10.472166|{"ticker": "FLGT", "day": "2026-11-19", "minute": 46, "clock_et": "10:16", "break_price": 25.81, "break_high": 25.815, "stop": 25.14, "width": 0.02595893064703596, "break_cum_volume": 21822.0, "break_
+breakout_v1_entry_day|2026-11-19 15:55:10.47457|{"date": "2026-11-19", "minute": 385, "names": 273, "actions": {"OKTA": "never_placed", "CRWD": "never_placed", "U": "row_skipped", "GKOS": "row_skipped", "AMD": "row_skipped", "NTSK": "never_placed",
+entry_partial_fill|2026-11-19 15:55:36.56319|{"trade_id": 788, "order_id": "88c034b9-4096-4022-beaa-75e80a044244", "ticker": "CAKE", "side": "sell", "event_qty": 101.0, "cum_filled": 101.0, "total_qty": 103.0, "avg_price": 111.8, "account_mode":
+entry_partial_fill|2026-11-19 15:55:38.381469|{"trade_id": 788, "order_id": "88c034b9-4096-4022-beaa-75e80a044244", "ticker": "CAKE", "side": "sell", "event_qty": 1.0, "cum_filled": 102.0, "total_qty": 103.0, "avg_price": 111.8, "account_mode": "
+trade_lifecycle_telegram_attempted|2026-11-19 15:55:42.003796|trade_id=788 account=paper reason=stop hit (1d) message_len=66
+sdk_pool_rollup|2026-11-19 16:00:00.002618|{"service_role": "execution", "pool_max": 7, "interval_s": 300.0, "calls": 1, "queued_calls": 0, "max_depth": 1, "max_pending": 1, "max_backlog": 0, "wait_max_ms": 0.2, "wait_mean_ms": 0.2, "wait_hist
+order_status_reconciled|2026-11-19 16:00:00.044708|order_id=88c034b9-4096-4022-beaa-75e80a044244 trade_id=788 purpose=stop_loss db_was='new' alpaca_now=filled filled_qty=103.0 filled_avg_price=111.8
+breadth_live_refresh|2026-11-19 16:00:01.360295|{"fetch_s": 1.31, "total_s": 1.35, "stats": {"batches_total": 50, "batches_failed": 0}, "universe_n": 4938, "read_n": 4879}
+dead_stop_price_preserved|2026-11-19 16:01:27.988913|{"trade_id": 1235, "account_mode": "paper", "order_id": "ae25b1f7-0707-496d-89fd-b926110307cf", "status": "OrderStatus.EXPIRED", "price": 3.95}
+stop_order_id_changed|2026-11-19 16:01:27.993641|{"trade_id": 1235, "account_mode": "paper", "new_id": null, "reason": "cancel_or_reject_null"}
+sdk_pool_rollup|2026-11-19 16:05:00.008266|{"service_role": "execution", "pool_max": 7, "interval_s": 300.0, "calls": 8, "queued_calls": 0, "max_depth": 1, "max_pending": 1, "max_backlog": 0, "wait_max_ms": 0.2, "wait_mean_ms": 0.21, "wait_his
+stop_order_id_changed|2026-11-19 16:05:00.100425|{"trade_id": 1235, "account_mode": "paper", "new_id": "b506462a-d9c9-48c5-9556-789e66174846", "reason": "sync_remediation"}
+sdk_pool_rollup|2026-11-19 16:10:00.003412|{"service_role": "execution", "pool_max": 7, "interval_s": 300.0, "calls": 11, "queued_calls": 0, "max_depth": 1, "max_pending": 1, "max_backlog": 0, "wait_max_ms": 0.3, "wait_mean_ms": 0.2, "wait_his
+(70 rows)

@@ -1,0 +1,24 @@
+SET
+JOB
+CLOSED_TODAY
+ticker|signal_type|account_mode|timezone
+LTH|breakout_v1|paper|2026-11-19 15:40:45.4116
+CAKE|breakout_v1|paper|2026-11-19 15:55:42.001491
+(2 rows)
+AUDIT
+ERROR:  column "job_name" does not exist
+LINE 1: SELECT job_name, status, started_at AT TIME ZONE 'America/Ne...
+               ^
+event_type|timezone|left
+telegram_send_failed|2026-11-19 09:46:36.873555|ConnectTimeout:  | chat=7694000192 | first_chunk=<b>EP ALERT 🔥</b>
+
+<b>P</b> 🔥 Judge: alert tier HIGH (held)
+▫️ Type: <b>Sales Acceleration</b>
+Gap: <b>11.4%</b> | pm RVOL: <b>4.0x</b> (intensity <b>6x</b>) | Score: <b>90</b>
+🔥 Fire (judge): catalyst · materiality material · direct-source present
+📊 
+telegram_send_failed|2026-11-19 09:46:52.086939|ReadTimeout:  | chat=7694000192 | first_chunk=💰 LIVE-$ ⏰ <b>P</b> HIGH EP arrived 09:46 ET — ORB window closed, no order
+trade_lifecycle_telegram_attempted|2026-11-19 15:40:45.413742|trade_id=1019 account=paper reason=stop hit (0d) message_len=66
+trade_lifecycle_telegram_attempted|2026-11-19 15:43:11.692633|trade_id=1235 account=paper attempt=1 message_len=75
+trade_lifecycle_telegram_attempted|2026-11-19 15:55:42.003796|trade_id=788 account=paper reason=stop hit (1d) message_len=66
+(5 rows)
