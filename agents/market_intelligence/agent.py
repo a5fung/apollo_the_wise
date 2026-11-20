@@ -1030,6 +1030,24 @@ def _strip_lifecycle_summary(summary: str, ticker: str) -> str:
     return s.strip(" -—:·()")
 
 
+def _request_book(request) -> str:
+    """The book a typed command answers from: 'paper' only when the orchestrator stamped
+    context['book']='paper' (the Apollo Paper chat, channels/telegram.py::book_for_update); every
+    other route (other chats, the keyword router, the chat assistant) is 'live' (2026-11-19)."""
+    ctx = getattr(request, "context", None)
+    return "paper" if isinstance(ctx, dict) and ctx.get("book") == "paper" else "live"
+
+
+def _reply_in_place(request) -> bool:
+    """True when the typed command wants its answer RETURNED (the orchestrator replies in the chat
+    it was typed in) instead of posted by the agent to the first allowed user's chat."""
+    ctx = getattr(request, "context", None)
+    return isinstance(ctx, dict) and ctx.get("reply_in_place") is True
+
+
+PAPER_BOOK_BADGE = "📄 PAPER — not real money"
+
+
 class MarketIntelligenceAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(AgentName.MARKET_INTELLIGENCE)
@@ -6526,6 +6544,7 @@ class MarketIntelligenceAgent(BaseAgent):
             except ValueError:
                 continue
 
+        book = _request_book(request)     # paper chat -> 'paper'; everything else -> 'live'
         pool = await get_pool()
         if target_date is None:
             # No date given → resolve to the most-recent activity for this
@@ -6541,14 +6560,14 @@ class MarketIntelligenceAgent(BaseAgent):
                     SELECT MAX(d) AS d FROM (
                         SELECT MAX(alert_date) AS d FROM mi_ep_alerts WHERE ticker = $1
                         UNION ALL
-                        SELECT MAX(alert_date) FROM mi_live_trades WHERE ticker = $1
+                        SELECT MAX(alert_date) FROM mi_live_trades WHERE ticker = $1 AND account_mode = $2
                         UNION ALL
                         SELECT MAX((created_at AT TIME ZONE 'America/New_York')::date)
                           FROM mi_audit_log WHERE summary ~* ('\m' || $1 || '\M')
                         UNION ALL
                         SELECT MAX(scan_date) FROM mi_ep_scan_log WHERE ticker = $1
                     ) u
-                """, ticker)
+                """, ticker, book)
             _resolved = latest["d"] if latest else None
             # #593 — a name that was GRADED but never ALERTED has no alert row, no trade
             # row and (often) no audit row, so the union above returns nothing and the
@@ -6580,8 +6599,8 @@ class MarketIntelligenceAgent(BaseAgent):
                        stop_price, entry_shares, total_pnl, proposed_at,
                        confirmed_at, closed_at, entry_order_id
                 FROM mi_live_trades
-                WHERE ticker = $1 AND alert_date = $2
-            """, ticker, target_date)
+                WHERE ticker = $1 AND alert_date = $2 AND account_mode = $3
+            """, ticker, target_date, book)
             events = await conn.fetch(r"""
                 SELECT created_at, event_type, summary, detail
                 FROM mi_audit_log
@@ -6613,7 +6632,8 @@ class MarketIntelligenceAgent(BaseAgent):
         if not alert and not trade and not events and not scan and not grade:
             return self._ok(
                 request,
-                result=f"🔍 {ticker} — no alert / trade / audit events on {target_date}.",
+                result=(f"{PAPER_BOOK_BADGE}\n" if book == "paper" else "")
+                + f"🔍 {ticker} — no alert / trade / audit events on {target_date}.",
             )
 
         if not want_full:
@@ -6762,7 +6782,9 @@ class MarketIntelligenceAgent(BaseAgent):
                 tail = f" — {humanize(reason)}" if reason else ""
                 lines.append(f"💰 OUTCOME — {status.replace('_', ' ')}{tail}")
         else:
-            lines.append("💰 OUTCOME — no mi_live_trades row (silent drop — see lifecycle)")
+            lines.append("💰 OUTCOME — no paper trade row (the paper book never took it — see lifecycle)"
+                         if book == "paper"
+                         else "💰 OUTCOME — no mi_live_trades row (silent drop — see lifecycle)")
 
         # 🔍 Fill diagnosis — cancelled/rejected/skipped trades with an entry price. Moved into
         # `_why_fill_diagnosis_lines` for #716 (the short layout reuses its verdict line); the
@@ -6907,12 +6929,16 @@ class MarketIntelligenceAgent(BaseAgent):
         )
         from agents.market_intelligence.briefing import send_telegram_message
 
+        if _request_book(request) == "paper":
+            body_text = f"{PAPER_BOOK_BADGE}\n{body_text}"
         # TradingView chart button — matches /setup.
         try:
             ex_map = await get_security_exchange_map([ticker])
             tv_prefix = _TV_EXCHANGE_MAP.get(ex_map.get(ticker, ""), "NASDAQ")
             tv_url = f"https://www.tradingview.com/chart/?symbol={tv_prefix}:{ticker}"
             keyboard = [[{"text": f"📈 {ticker} chart", "url": tv_url}]]
+            if _reply_in_place(request):
+                return self._ok(request, result=body_text + f"\n📈 {ticker} chart: {tv_url}")
 
             if len(body_text) <= _TG_SAFE_LIMIT:
                 delivered = await _send_plain_with_keyboard(body_text, keyboard)
@@ -6992,6 +7018,7 @@ class MarketIntelligenceAgent(BaseAgent):
             except ValueError:
                 continue
 
+        book = _request_book(request)     # paper chat -> 'paper'; everything else -> 'live'
         pool = await get_pool()
         async with pool.acquire() as conn:
             if target_date:
@@ -7000,9 +7027,9 @@ class MarketIntelligenceAgent(BaseAgent):
                            stop_price, entry_shares, remaining_shares,
                            total_pnl, hold_days, exits, closed_at, entry_attempt
                     FROM mi_live_trades
-                    WHERE ticker=$1 AND alert_date=$2
+                    WHERE ticker=$1 AND alert_date=$2 AND account_mode=$3
                     ORDER BY id DESC LIMIT 1
-                """, ticker, target_date)
+                """, ticker, target_date, book)
             else:
                 # Prefer the most recent trade that actually entered (not skipped/
                 # cancelled with zero shares). Falls back to most-recent if none
@@ -7014,24 +7041,25 @@ class MarketIntelligenceAgent(BaseAgent):
                            stop_price, entry_shares, remaining_shares,
                            total_pnl, hold_days, exits, closed_at, entry_attempt
                     FROM mi_live_trades
-                    WHERE ticker=$1
+                    WHERE ticker=$1 AND account_mode=$2
                       AND status NOT IN ('skipped','cancelled','rejected')
                     ORDER BY alert_date DESC, id DESC LIMIT 1
-                """, ticker)
+                """, ticker, book)
                 if not trade:
                     trade = await conn.fetchrow("""
                         SELECT id, ticker, alert_date, status, entry_price,
                                stop_price, entry_shares, remaining_shares,
                                total_pnl, hold_days, exits, closed_at, entry_attempt
                         FROM mi_live_trades
-                        WHERE ticker=$1
+                        WHERE ticker=$1 AND account_mode=$2
                         ORDER BY alert_date DESC, id DESC LIMIT 1
-                    """, ticker)
+                    """, ticker, book)
             if not trade:
                 tail = f" on {target_date}" if target_date else ""
                 return self._ok(
                     request,
-                    result=f"📋 {ticker} — no trade row{tail}. Try /why for skip/cancel diagnosis.",
+                    result=(f"{PAPER_BOOK_BADGE}\n" if book == "paper" else "")
+                    + f"📋 {ticker} — no {'paper ' if book == 'paper' else ''}trade row{tail}. Try /why for skip/cancel diagnosis.",
                 )
 
             orders = await conn.fetch("""
@@ -7085,7 +7113,7 @@ class MarketIntelligenceAgent(BaseAgent):
         attempt = trade.get("entry_attempt") or 1
 
         attempt_tag = f" · attempt {attempt}" if attempt and attempt > 1 else ""
-        lines = [
+        lines = ([PAPER_BOOK_BADGE] if book == "paper" else []) + [
             f"📋 {ticker} — trade #{trade['id']} · {entry_date.strftime('%m/%d')} → {close_str}{attempt_tag}",
             f"   {pnl_emoji} P&L ${pnl_v:+,.2f}  ·  status={status}  ·  {entry_sh} sh entered, {remaining} remaining",
         ]
@@ -7287,6 +7315,10 @@ class MarketIntelligenceAgent(BaseAgent):
             tv_prefix = _TV_EXCHANGE_MAP.get(ex_map.get(ticker, ""), "NASDAQ")
             tv_url = f"https://www.tradingview.com/chart/?symbol={tv_prefix}:{ticker}"
             keyboard = [[{"text": f"📈 {ticker} chart", "url": tv_url}]]
+            if _reply_in_place(request):
+                # typed in a chat: the orchestrator replies THERE (no direct post to the first allowed
+                # user's chat). The chart button cannot ride a returned string, so the link is a plain line.
+                return self._ok(request, result=body_text + f"\n📈 {ticker} chart: {tv_url}")
             if len(body_text) <= _TG_SAFE_LIMIT:
                 delivered = await _send_plain_with_keyboard(body_text, keyboard)
             else:
@@ -7811,7 +7843,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     )
             else:
                 lines.append("")
-                lines.append("_No open positions._")
+                lines.append("_No paper positions._" if book == "paper" else "_No open positions._")
 
             if pending_rows:
                 lines.append("")

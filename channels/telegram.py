@@ -1037,9 +1037,20 @@ class TelegramChannel:
         # this marker alone and refuses everything else, so `/strategy <id> promote` typed here
         # still moves and the same text from the chat assistant does not.
         from shared.models import ORIGIN_OPERATOR_COMMAND, REQUEST_ORIGIN_KEY
+        _ctx = {REQUEST_ORIGIN_KEY: ORIGIN_OPERATOR_COMMAND}
+        # 2026-11-19: /trade and /why are book-aware. The paper chat stamps context['book']='paper'
+        # (absent = live); /trade ALWAYS (and /why when typed in the paper chat) asks for the answer to be
+        # RETURNED so it lands in the chat it was typed in — the agent used to post them itself to the
+        # first allowed user's chat. The keyword-router / chat-assistant routes never set these.
+        _book = book_for_update(update)
+        if cmd in ("/trade", "/why"):
+            if _book == BOOK_PAPER:
+                _ctx["book"] = BOOK_PAPER
+            if cmd == "/trade" or _book == BOOK_PAPER:
+                _ctx["reply_in_place"] = True
         try:
             result = await self._post_market_task(
-                task, update.effective_user.id, context={REQUEST_ORIGIN_KEY: ORIGIN_OPERATOR_COMMAND})
+                task, update.effective_user.id, context=_ctx)
         except Exception as e:
             logger.error(f"{cmd} failed: {e}")
             result = f"Error: {e}"
