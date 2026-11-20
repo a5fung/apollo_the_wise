@@ -1038,6 +1038,19 @@ def _request_book(request) -> str:
     return "paper" if isinstance(ctx, dict) and ctx.get("book") == "paper" else "live"
 
 
+def _request_books(request) -> list[str]:
+    """The books a typed /trade or /why READS: the paper chat is paper-only; every other route reads
+    BOTH, each row tagged by its account_mode (every breakout v1 / small-cap lane trade is paper, so a
+    live-only read would lose answers those routes gave before 2026-11-19). Always bound explicitly."""
+    return ["paper"] if _request_book(request) == "paper" else ["live", "paper"]
+
+
+def _book_tag(account_mode) -> str:
+    """'📄 PAPER ' / '💰 LIVE-$ ' for a row (the existing mode_prefix, trailing space)."""
+    from agents.market_intelligence.constants import mode_prefix
+    return mode_prefix("paper" if account_mode == "paper" else "live")
+
+
 def _reply_in_place(request) -> bool:
     """True when the typed command wants its answer RETURNED (the orchestrator replies in the chat
     it was typed in) instead of posted by the agent to the first allowed user's chat."""
@@ -6544,7 +6557,8 @@ class MarketIntelligenceAgent(BaseAgent):
             except ValueError:
                 continue
 
-        book = _request_book(request)     # paper chat -> 'paper'; everything else -> 'live'
+        book = _request_book(request)     # 'paper' only in the paper chat (badge wording)
+        books = _request_books(request)   # paper chat -> ['paper']; elsewhere both books, rows tagged
         pool = await get_pool()
         if target_date is None:
             # No date given → resolve to the most-recent activity for this
@@ -6560,14 +6574,14 @@ class MarketIntelligenceAgent(BaseAgent):
                     SELECT MAX(d) AS d FROM (
                         SELECT MAX(alert_date) AS d FROM mi_ep_alerts WHERE ticker = $1
                         UNION ALL
-                        SELECT MAX(alert_date) FROM mi_live_trades WHERE ticker = $1 AND account_mode = $2
+                        SELECT MAX(alert_date) FROM mi_live_trades WHERE ticker = $1 AND account_mode = ANY($2)
                         UNION ALL
                         SELECT MAX((created_at AT TIME ZONE 'America/New_York')::date)
                           FROM mi_audit_log WHERE summary ~* ('\m' || $1 || '\M')
                         UNION ALL
                         SELECT MAX(scan_date) FROM mi_ep_scan_log WHERE ticker = $1
                     ) u
-                """, ticker, book)
+                """, ticker, books)
             _resolved = latest["d"] if latest else None
             # #593 — a name that was GRADED but never ALERTED has no alert row, no trade
             # row and (often) no audit row, so the union above returns nothing and the
@@ -6597,10 +6611,12 @@ class MarketIntelligenceAgent(BaseAgent):
             trade = await conn.fetchrow("""
                 SELECT status, skip_reason, orb_high, orb_low, entry_price,
                        stop_price, entry_shares, total_pnl, proposed_at,
-                       confirmed_at, closed_at, entry_order_id
+                       confirmed_at, closed_at, entry_order_id, account_mode
                 FROM mi_live_trades
-                WHERE ticker = $1 AND alert_date = $2 AND account_mode = $3
-            """, ticker, target_date, book)
+                WHERE ticker = $1 AND alert_date = $2 AND account_mode = ANY($3)
+                ORDER BY id DESC
+                LIMIT 1
+            """, ticker, target_date, books)
             events = await conn.fetch(r"""
                 SELECT created_at, event_type, summary, detail
                 FROM mi_audit_log
@@ -6645,6 +6661,9 @@ class MarketIntelligenceAgent(BaseAgent):
             except Exception as _se:
                 logger.warning(f"/why {ticker}: short layout failed, using the full view: {_se}")
             else:
+                if book != "paper" and trade:
+                    # both books are read outside the paper chat: say which one this row is
+                    short_body = f"📒 Book: {_book_tag(trade.get('account_mode')).strip()}\n{short_body}"
                 return await self._why_deliver(request, ticker, short_body)
 
         from agents.market_intelligence.broker.skip_reasons import humanize
@@ -6754,6 +6773,8 @@ class MarketIntelligenceAgent(BaseAgent):
         # 💰 Outcome
         lines.append("")
         if trade:
+            if book != "paper":
+                lines.append(f"📒 Book: {_book_tag(trade.get('account_mode')).strip()}")   # both books are read here
             status = trade.get("status") or "?"
             reason = trade.get("skip_reason")
             ep_pr = trade.get("entry_price")
@@ -7018,18 +7039,19 @@ class MarketIntelligenceAgent(BaseAgent):
             except ValueError:
                 continue
 
-        book = _request_book(request)     # paper chat -> 'paper'; everything else -> 'live'
+        book = _request_book(request)     # 'paper' only in the paper chat (badge wording)
+        books = _request_books(request)   # paper chat -> ['paper']; elsewhere both books, rows tagged
         pool = await get_pool()
         async with pool.acquire() as conn:
             if target_date:
                 trade = await conn.fetchrow("""
                     SELECT id, ticker, alert_date, status, entry_price,
                            stop_price, entry_shares, remaining_shares,
-                           total_pnl, hold_days, exits, closed_at, entry_attempt
+                           total_pnl, hold_days, exits, closed_at, entry_attempt, account_mode
                     FROM mi_live_trades
-                    WHERE ticker=$1 AND alert_date=$2 AND account_mode=$3
+                    WHERE ticker=$1 AND alert_date=$2 AND account_mode = ANY($3)
                     ORDER BY id DESC LIMIT 1
-                """, ticker, target_date, book)
+                """, ticker, target_date, books)
             else:
                 # Prefer the most recent trade that actually entered (not skipped/
                 # cancelled with zero shares). Falls back to most-recent if none
@@ -7039,21 +7061,21 @@ class MarketIntelligenceAgent(BaseAgent):
                 trade = await conn.fetchrow("""
                     SELECT id, ticker, alert_date, status, entry_price,
                            stop_price, entry_shares, remaining_shares,
-                           total_pnl, hold_days, exits, closed_at, entry_attempt
+                           total_pnl, hold_days, exits, closed_at, entry_attempt, account_mode
                     FROM mi_live_trades
-                    WHERE ticker=$1 AND account_mode=$2
+                    WHERE ticker=$1 AND account_mode = ANY($2)
                       AND status NOT IN ('skipped','cancelled','rejected')
                     ORDER BY alert_date DESC, id DESC LIMIT 1
-                """, ticker, book)
+                """, ticker, books)
                 if not trade:
                     trade = await conn.fetchrow("""
                         SELECT id, ticker, alert_date, status, entry_price,
                                stop_price, entry_shares, remaining_shares,
-                               total_pnl, hold_days, exits, closed_at, entry_attempt
+                               total_pnl, hold_days, exits, closed_at, entry_attempt, account_mode
                         FROM mi_live_trades
-                        WHERE ticker=$1 AND account_mode=$2
+                        WHERE ticker=$1 AND account_mode = ANY($2)
                         ORDER BY alert_date DESC, id DESC LIMIT 1
-                    """, ticker, book)
+                    """, ticker, books)
             if not trade:
                 tail = f" on {target_date}" if target_date else ""
                 return self._ok(
@@ -7114,7 +7136,7 @@ class MarketIntelligenceAgent(BaseAgent):
 
         attempt_tag = f" · attempt {attempt}" if attempt and attempt > 1 else ""
         lines = ([PAPER_BOOK_BADGE] if book == "paper" else []) + [
-            f"📋 {ticker} — trade #{trade['id']} · {entry_date.strftime('%m/%d')} → {close_str}{attempt_tag}",
+            f"📋 {'' if book == 'paper' else _book_tag(trade.get('account_mode'))}{ticker} — trade #{trade['id']} · {entry_date.strftime('%m/%d')} → {close_str}{attempt_tag}",
             f"   {pnl_emoji} P&L ${pnl_v:+,.2f}  ·  status={status}  ·  {entry_sh} sh entered, {remaining} remaining",
         ]
 

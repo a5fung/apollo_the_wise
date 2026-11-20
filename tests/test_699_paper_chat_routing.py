@@ -373,6 +373,10 @@ _BUILDERS_NOT_ROUTED = {
     # opens with its own header (never the paper tag, pinned in tests/test_trades_ticker_both_books.py)
     # and returns through AgentResponse to the chat he asked in
     ("agents/market_intelligence/agent.py", "_handle_trades_query"),
+    # the per-row book tag for `/trade` and `/why` (both books are read outside the paper chat): a
+    # one-line label placed AFTER a header (`📋 …` / `📒 Book: …`), never the start of a message, and the
+    # reply returns to the chat he typed in
+    ("agents/market_intelligence/agent.py", "_book_tag"),
     # folded into the 16:55 Market Close Digest (a composite message that starts with the digest
     # header, so it is untagged and stays in the main chat by design)
     ("agents/market_intelligence/broker/live_tracker.py", "send_live_trade_summary"),

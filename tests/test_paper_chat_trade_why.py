@@ -62,7 +62,7 @@ def _agent_call(method, task, context=None):
 def _bound_modes(seen):
     out = []
     for sql, args in seen:
-        m = re.search(r"account_mode\s*=\s*\$(\d+)", sql)
+        m = re.search(r"account_mode\s*=\s*(?:ANY\()?\$(\d+)", sql)
         assert m, f"mi_live_trades query with no bound account_mode:\n{sql}"
         out.append(args[int(m.group(1)) - 1])
     return out
@@ -72,20 +72,20 @@ def _bound_modes(seen):
 def test_trade_binds_the_book_on_every_trade_query(monkeypatch, task):
     seen = _wire_agent_db(monkeypatch)
     res = _agent_call("_handle_trade_query", task, {"book": "paper"})
-    assert seen and set(_bound_modes(seen)) == {"paper"}
+    assert seen and {tuple(m) for m in _bound_modes(seen)} == {("paper",)}
     assert "PAPER" in res.result and "no paper trade row" in res.result
     seen.clear()
-    res = _agent_call("_handle_trade_query", task)             # no context -> live
-    assert seen and set(_bound_modes(seen)) == {"live"}
+    res = _agent_call("_handle_trade_query", task)             # no context -> BOTH books, bound explicitly
+    assert seen and {tuple(m) for m in _bound_modes(seen)} == {("live", "paper")}
     assert "PAPER" not in res.result
 
 
 def test_why_binds_the_book_on_every_trade_query(monkeypatch):
-    for ctx, mode in (({"book": "paper"}, "paper"), ({}, "live")):
+    for ctx, mode in (({"book": "paper"}, ("paper",)), ({}, ("live", "paper"))):
         seen = _wire_agent_db(monkeypatch)
         _agent_call("_handle_why_query", "/why FIGS", ctx)                 # no date: latest-day arm + trade arm
         _agent_call("_handle_why_query", "/why FIGS 2026-11-18", ctx)      # dated: trade arm
-        assert len(seen) >= 2 and set(_bound_modes(seen)) == {mode}
+        assert len(seen) >= 2 and {tuple(m) for m in _bound_modes(seen)} == {mode}
 
 
 def test_why_empty_answer_is_badged_paper_only_in_the_paper_book(monkeypatch):
@@ -187,3 +187,80 @@ def test_paper_summary_empty_state_says_no_paper_positions():
     assert "No paper positions." in asyncio.run(go("/trades_detail summary 2026-11-19 paper")).result
     live = asyncio.run(go("/trades_detail summary 2026-11-19")).result
     assert "No open positions." in live and "No paper positions." not in live
+
+
+# ── outside the paper chat BOTH books are read, each row tagged ──────────────
+
+def _row(mode, rid, d=date(2026, 11, 18)):
+    return {"id": rid, "ticker": "CAKE", "alert_date": d, "status": "filled", "entry_price": 10.0,
+            "stop_price": 9.0, "entry_shares": 10, "remaining_shares": 10, "total_pnl": 0.0,
+            "hold_days": 1, "exits": None, "closed_at": None, "entry_attempt": 1, "account_mode": mode,
+            "skip_reason": None, "orb_high": 10.0, "orb_low": 9.5, "proposed_at": None,
+            "confirmed_at": None, "entry_order_id": None}
+
+
+def _db_with_rows(monkeypatch, rows):
+    """A fake DB that honours `account_mode = ANY($n)` against `rows`, newest id first."""
+    pool, conn = make_mock_pool()
+
+    async def _fetchrow(sql, *args):
+        if "mi_live_trades" not in sql:
+            return None
+        m = re.search(r"account_mode\s*=\s*ANY\(\$(\d+)\)", sql)
+        assert m, f"unbound account_mode:\n{sql}"
+        modes = args[int(m.group(1)) - 1]
+        hit = sorted((r for r in rows if r["account_mode"] in modes), key=lambda r: -r["id"])
+        if "MAX(d)" in sql:
+            return {"d": hit[0]["alert_date"] if hit else None}
+        return hit[0] if hit else None
+
+    conn.fetchrow = _fetchrow
+    conn.fetch = AsyncMock(return_value=[])
+    conn.fetchval = AsyncMock(return_value=None)
+    monkeypatch.setattr("agents.market_intelligence.db.get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr("agents.market_intelligence.db.get_security_exchange_map", AsyncMock(return_value={}))
+    monkeypatch.setattr("agents.market_intelligence.db.get_latest_catalyst_grade_date", AsyncMock(return_value=None))
+    monkeypatch.setattr("agents.market_intelligence.db.get_catalyst_grade_record", AsyncMock(return_value=None))
+    monkeypatch.setattr("agents.market_intelligence.catalyst_metrics_extractor.lookup_cached_metrics",
+                        AsyncMock(return_value=None))
+    monkeypatch.setattr("agents.market_intelligence.agent._send_plain_with_keyboard",
+                        AsyncMock(return_value=False))
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_ALLOWED_USER_IDS", raising=False)
+
+
+def test_main_chat_trade_finds_a_paper_only_name_and_tags_it_paper(monkeypatch):
+    _db_with_rows(monkeypatch, [_row("paper", 7)])
+    res = _agent_call("_handle_trade_query", "/trade CAKE", {"reply_in_place": True})     # no book stamp
+    assert "trade #7" in res.result and "📄 PAPER " in res.result and "LIVE" not in res.result
+
+
+def test_paper_chat_trade_is_paper_only(monkeypatch):
+    _db_with_rows(monkeypatch, [_row("live", 9), _row("paper", 7)])
+    res = _agent_call("_handle_trade_query", "/trade CAKE", {"book": "paper", "reply_in_place": True})
+    assert "trade #7" in res.result and "trade #9" not in res.result and "not real money" in res.result
+    _db_with_rows(monkeypatch, [_row("live", 9)])
+    res = _agent_call("_handle_trade_query", "/trade CAKE", {"book": "paper", "reply_in_place": True})
+    assert "no paper trade row" in res.result
+
+
+def test_main_chat_trade_with_both_books_dated_tags_each_row(monkeypatch):
+    rows = [_row("live", 9), _row("paper", 7)]
+    _db_with_rows(monkeypatch, rows)
+    live = _agent_call("_handle_trade_query", "/trade CAKE 2026-11-18", {"reply_in_place": True}).result
+    assert "trade #9" in live and "💰 LIVE-$ " in live          # newest id first; its own book's tag
+    _db_with_rows(monkeypatch, rows[1:])
+    paper = _agent_call("_handle_trade_query", "/trade CAKE 2026-11-18", {"reply_in_place": True}).result
+    assert "trade #7" in paper and "📄 PAPER " in paper
+
+
+def test_main_chat_why_reads_a_paper_row_and_names_its_book(monkeypatch):
+    _db_with_rows(monkeypatch, [_row("paper", 7)])
+    res = _agent_call("_handle_why_query", "/why CAKE 2026-11-18", {"reply_in_place": True}).result
+    assert "Book: 📄 PAPER" in res and "no mi_live_trades row" not in res
+    _db_with_rows(monkeypatch, [_row("live", 9)])
+    res = _agent_call("_handle_why_query", "/why CAKE 2026-11-18", {"reply_in_place": True}).result
+    assert "Book: 💰 LIVE-$" in res
+    _db_with_rows(monkeypatch, [_row("live", 9)])
+    res = _agent_call("_handle_why_query", "/why CAKE 2026-11-18", {"book": "paper", "reply_in_place": True}).result
+    assert "Book:" not in res          # paper chat: paper-only, and a live row is invisible there
