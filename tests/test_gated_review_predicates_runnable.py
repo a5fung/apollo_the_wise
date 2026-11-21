@@ -112,7 +112,6 @@ _DYNAMIC_EVENT_PREFIXES = {
 _KNOWN_WRITERLESS_EVENT_REVIEWS = {
     "phase6_meta_rubric_gating": "2026-09-09 #633: 'meta_rubric_score_advisory' — what the "
         "composite emits once #335 flips it is #335's decision; predicate moves in that commit.",
-    "catalyst_rubric_quarterly": "2026-09-09 #633: same event as phase6; earliest 2026-12-29.",
     "trade_stream_stop_placement_without_orders_row": "2026-09-09 #633: "
         "'stop_placement_failed_after_partial' has no emitter in agents/ — flagged in the #633 "
         "report for the caller to route; outside the eleven ruled that day.",
