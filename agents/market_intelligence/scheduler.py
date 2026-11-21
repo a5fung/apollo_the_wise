@@ -2766,7 +2766,7 @@ _COVERAGE_SLOTS = {
         "🚨 *STILL UNPROTECTED AFTER THE 9 PM REPAIR*",
         "The 9:00 PM sync already tried and did not fix this.\n"
         "Nothing else runs automatically until *9:00 AM ET*, when the stop watchdog "
-        "re-arms — at the ORIGINAL stop, not the trailed one.",
+        "re-arms — at the trade's last stop (#728, 2026-11-21).",
         False,
     ),
 }
