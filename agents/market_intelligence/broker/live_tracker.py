@@ -57,7 +57,7 @@ from agents.market_intelligence.broker.order_manager import (
     execute_partial_exit,
     execute_full_exit,
     finalize_stop_fill,
-    update_stop,
+    move_stop_price_only,
 )
 from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_CIRCUIT_BREAKER,
@@ -1085,7 +1085,7 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
             if (today == trade["alert_date"] and trade.get("partial_taken")
                     and float(trade.get("remaining_shares") or 0) > 0 and trade.get("entry_price")
                     and float(trade.get("stop_price") or 0) < round(float(trade["entry_price"]), 2) - 0.005):
-                await update_stop(trade["id"], round(float(trade["entry_price"]), 2), stop_source="breakeven")
+                await move_stop_price_only(trade["id"], round(float(trade["entry_price"]), 2), stop_source="breakeven")
         state, daily_bars, skip = await _load_exit_state(trade, today)
         if skip == "silent":
             continue
@@ -1221,7 +1221,7 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
             current_stop = float(trade["stop_price"] or 0)
             if (trade.get("partial_taken") and step.new_remaining > 0
                     and _bpp_rules.stop_after_third(current_stop, _entry) > current_stop + 0.01):
-                await update_stop(trade["id"], round(_entry, 2), stop_source="breakeven")
+                await move_stop_price_only(trade["id"], round(_entry, 2), stop_source="breakeven")
             async with pool.acquire() as conn:
                 await conn.execute("""
                     UPDATE mi_live_trades SET
@@ -1310,14 +1310,14 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
                 adr20_pct=state.get("adr20_pct"),
             )
             if depth_stop > current_stop + 0.01 and step.new_remaining > 0:
-                await update_stop(trade["id"], depth_stop, stop_source="depth_trail")
+                await move_stop_price_only(trade["id"], depth_stop, stop_source="depth_trail")
         elif step.effective_stop > current_stop + 0.01 and step.new_remaining > 0:
             # #560: tell update_stop WHICH ladder input raised the stop (trail /
             # breakeven / hard_stop / giveback_floor) so the operator-facing
             # "Stop confirmed" Telegram (retry-recovered path) can say why —
             # presentation only, does not touch the price being set.
-            await update_stop(trade["id"], round(step.effective_stop, 2),
-                               stop_source=step.stop_source)
+            await move_stop_price_only(trade["id"], round(step.effective_stop, 2),
+                                       stop_source=step.stop_source)
 
         # #361 (2026-06-23): the partial branch moved to run_partial_exits()
         # (3:45 PM), and this job now passes skip_partial_decision=True, so
@@ -2089,8 +2089,11 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
                 already_covered.append(ticker)
                 continue
 
-        # Re-place stop
-        success = await update_stop(trade["id"], stop_price)
+        # Re-place stop. #728 (2026-11-21): through `move_stop_price_only` like every stop move — it
+        # replaces a LIVE stop's price in place and otherwise hands straight to `update_stop` (whose
+        # return comes back unchanged). Here the stop is normally dead (that is why this line is
+        # reached), so this is `update_stop`'s re-protect, as before.
+        success = await move_stop_price_only(trade["id"], stop_price)
         if success is _om.STOP_SOLD_AT_MARKET:
             # #687 ruling (iii): price through the stop → `update_stop` sold at market and paged
             # it. Not a "No stop on X" gap: the sale fills in milliseconds, so the broker re-check

@@ -116,7 +116,7 @@ async def test_eod_still_open_running_closes_param_is_list(monkeypatch):
     monkeypatch.setattr(lt, "get_index_history",
                         AsyncMock(return_value=[{"l": 108.0, "c": 110.0, "h": 111.0, "o": 109.0}]))
     monkeypatch.setattr(lt, "apply_daily_exit_step", lambda *a, **k: _still_open_step())
-    monkeypatch.setattr(lt, "update_stop", AsyncMock(return_value=True))
+    monkeypatch.setattr(lt, "move_stop_price_only", AsyncMock(return_value=True))
 
     await lt.update_open_positions_live(today=date(2026, 6, 24))
 

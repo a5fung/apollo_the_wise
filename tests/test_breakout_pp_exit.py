@@ -705,7 +705,7 @@ def _install(monkeypatch, row, *, today, today_bar, fwd_bars=(), prior_close=10.
     monkeypatch.setattr(bpe, "get_index_history", _bpe_hist)
     if step is not None:
         monkeypatch.setattr(lt, "apply_daily_exit_step", lambda *a, **k: step)
-    calls = {"update_stop": AsyncMock(return_value=True), "execute_full_exit": AsyncMock(return_value=True),
+    calls = {"move_stop_price_only": AsyncMock(return_value=True), "execute_full_exit": AsyncMock(return_value=True),
              "execute_partial_exit": AsyncMock(return_value=True), "send_telegram_message": AsyncMock(),
              "log_audit_event": AsyncMock(), "finalize_stop_fill": AsyncMock()}
     for name, mock in calls.items():
@@ -732,7 +732,7 @@ def test_1645_a_session3_close_under_the_20day_is_marked_for_the_next_open_not_s
     out = asyncio.run(lt.update_open_positions_live(S3))
     assert out == [{"ticker": "BRK", "action": "breakout_pp_sell_pending", "session": 3}]
     calls["execute_full_exit"].assert_not_awaited()
-    calls["update_stop"].assert_not_awaited()
+    calls["move_stop_price_only"].assert_not_awaited()
     marks = [a for a in conn.executed if "depth_sell_pending_on" in a[0]]
     assert len(marks) == 1 and marks[0][4] == S3
     assert any(c.args[0] == "breakout_pp_close_below_sma20" for c in calls["log_audit_event"].await_args_list)
@@ -746,7 +746,7 @@ def test_1645_a_close_above_the_20day_rests_no_trail_stop(monkeypatch):
                            fwd_bars=[(10.40, 10.55, 10.35, 10.50), (10.45, 10.50, 10.30, 10.40)], step=_step(close=10.45))
     out = asyncio.run(lt.update_open_positions_live(S3))
     assert out[0]["action"] == "breakout_pp_held" and out[0]["trail_live"] is True
-    calls["update_stop"].assert_not_awaited()
+    calls["move_stop_price_only"].assert_not_awaited()
     calls["execute_full_exit"].assert_not_awaited()
     assert not [a for a in conn.executed if "depth_sell_pending_on" in a[0]]
     assert [a for a in conn.executed if "breakeven_active = (breakeven_active OR $3)" in a[0]]
@@ -768,8 +768,8 @@ def test_1645_after_a_third_a_stop_still_under_the_fill_is_lifted_to_the_fill(mo
     _conn, calls = _install(monkeypatch, _row(partial_taken=True, remaining_shares=6, stop_price=STOP0), today=d1,
                             today_bar=tb, prior_close=10.0, step=_step(close=10.78))
     asyncio.run(lt.update_open_positions_live(d1))
-    calls["update_stop"].assert_awaited_once()
-    assert calls["update_stop"].await_args.args == (701, 10.30)
+    calls["move_stop_price_only"].assert_awaited_once()
+    assert calls["move_stop_price_only"].await_args.args == (701, 10.30)
 
 
 def test_1645_the_breakout_day_records_the_day0_facts_from_the_minutes(monkeypatch):
@@ -799,7 +799,7 @@ def test_1645_and_1545_refuse_a_breakout_row_that_is_not_paper(monkeypatch):
                                 step=_step(close=10.25))
         out = asyncio.run(job(S3))
         assert out == [{"ticker": "BRK", "action": "breakout_pp_refused"}]
-        for k in ("execute_full_exit", "execute_partial_exit", "update_stop"):
+        for k in ("execute_full_exit", "execute_partial_exit", "move_stop_price_only"):
             calls[k].assert_not_awaited()
         assert any(c.args[0] == "breakout_pp_refused_not_paper" for c in calls["bpe_audit"].await_args_list)
         assert calls["bpe_page"].await_args.args[0].startswith(lt.mode_prefix("paper"))
@@ -1230,10 +1230,10 @@ def test_1645_on_the_breakout_day_a_third_that_sold_lifts_a_stop_still_under_the
     tb = {"o": 10.2, "h": 10.8, "l": 10.1, "c": 10.55}
     _conn, calls = _install(monkeypatch, _row(partial_taken=True, remaining_shares=6), today=ALERT, today_bar=tb)
     assert asyncio.run(lt.update_open_positions_live(ALERT)) == []
-    calls["update_stop"].assert_awaited_once_with(701, 10.30, stop_source="breakeven")
+    calls["move_stop_price_only"].assert_awaited_once_with(701, 10.30, stop_source="breakeven")
     _conn, calls = _install(monkeypatch, _row(), today=ALERT, today_bar=tb)
     asyncio.run(lt.update_open_positions_live(ALERT))
-    calls["update_stop"].assert_not_awaited()
+    calls["move_stop_price_only"].assert_not_awaited()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════

@@ -56,13 +56,15 @@ def test_the_MORNING_pass_still_excludes_same_day_fills():
 def test_the_two_passes_share_one_body():
     """Two hand-maintained copies of a stop-placement loop is how they drift. The ONLY
     difference between the passes must be the same-day scope."""
+    # source-pin-ok: "the callers hold no placement loop of their own" is the absence of code — only the source decides it.
     shared = _fn("_stop_refresh")
     src = ast.get_source_segment(SRC, shared)
-    assert "update_stop(" in src, "the shared body owns the actual placement"
+    assert "move_stop_price_only(" in src, "the shared body owns the actual placement (#728: the one stop mover)"
     for caller in ("post_close_stop_refresh", "morning_stop_refresh"):
         body = ast.get_source_segment(SRC, _fn(caller))
         assert "_stop_refresh(" in body
-        assert "update_stop(" not in body, f"{caller} must delegate, not re-implement"
+        assert "update_stop(" not in body and "move_stop_price_only(" not in body, (
+            f"{caller} must delegate, not re-implement")
 
 
 def test_the_same_day_scope_actually_changes_the_QUERY():

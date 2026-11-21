@@ -209,7 +209,7 @@ async def test_1645_a_smallcap_paper_depth_row_closing_below_the_line_is_marked_
     out = await lt.update_open_positions_live()
 
     calls["execute_full_exit"].assert_not_awaited()      # today's 16:45 queued market sale: NOT used
-    calls["update_stop"].assert_not_awaited()
+    calls["move_stop_price_only"].assert_not_awaited()
     marks = [a for a in conn.executed if "depth_sell_pending_on" in a[0]]
     assert len(marks) == 1 and marks[0][4] == TODAY, marks
     assert out == [{"ticker": "KOD", "action": "depth_sell_pending", "hold_days": 8}]
@@ -227,8 +227,8 @@ async def test_1645_a_smallcap_paper_depth_row_still_open_raises_the_depth_stop(
 
     await lt.update_open_positions_live()
 
-    calls["update_stop"].assert_awaited_once()
-    args, kwargs = calls["update_stop"].await_args
+    calls["move_stop_price_only"].assert_awaited_once()
+    args, kwargs = calls["move_stop_price_only"].await_args
     assert args == (501, 67.58) and kwargs.get("stop_source") == "depth_trail"
 
 

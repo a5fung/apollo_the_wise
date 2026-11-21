@@ -469,6 +469,26 @@ not impossible.
 
 ## Change log (newest first)
 
+### 2026-11-21 — Stop-ACK watchdog: the fallback stop goes at the trade's LAST stop, not `orb_low` (OPERATOR RULING 2026-11-20 (1), PLAN #728; built, not deployed)
+
+**Trigger / ruling**: his ruling (1) of 2026-11-20 (PLAN.md #728): *the stop-ACK watchdog fallback places at the
+trade's own LAST stop, not `orb_low`.* Found in the 2026-11-18 review: `orb_low` sits ABOVE a MAGNA53 `entry − 2R`
+stop (so the fallback was tighter than the signed stop) and far BELOW a trailed stop (the 2026-05-18 GOOGL catch
+placed at `orb_low` and waited for the 09:35 refresh to restore the trail).
+
+**Change**: `scheduler._stop_ack_timeout_watchdog_job` places the fallback at the row's `stop_price`, passed through
+`order_manager._apply_reprotect_floor(…, consult_dead_stop=True)` — never below the last level the broker held (#600).
+That is the same price the coverage repair and the position sync's orphan repair place at, chosen so the three
+re-protect paths cannot disagree. `orb_low` is used ONLY when the row carries no stop price; the audit rows
+(`stop_ack_timeout_remediated`, `stop_ack_breach_sold_at_market`, `stop_ack_remediation_failed`) carry
+`stop_target_source` = `last_stop` / `last_stop+broker_floor` / `orb_low_no_last_stop`, and the remediation page
+names which. Neither → the existing "NO FALLBACK" page (reason `missing_qty_or_stop`). The predicate, cadence, dedup,
+try-lock, broker-coverage check and the ruling (iii) sale / extended-hours deferral are unchanged.
+
+**Evidence**: operator ruling; no threshold moved, no backtest applies. **Reversion-flag**: REFINEMENT of the
+2026-05-17 entry (the fallback's level). **Tests**: `tests/test_stop_price_only_replace_728.py` (watchdog block);
+owner of the wider change: `docs/setups/exit_discipline.md` 2026-11-21 (#728).
+
 ### 2026-11-21 — Stop-ACK watchdog: a fallback stop refused as "above the market" BEFORE THE OPEN no longer sells and no longer spends the day's one attempt (operator ruling 2026-11-20; bug fix on #687 ruling (iii)'s trigger)
 
 **Trigger / ruling**: EVER 1427, `docs/setups/exit_discipline.md` change log 2026-11-21 (the owner of this change).

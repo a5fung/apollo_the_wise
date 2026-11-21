@@ -101,8 +101,12 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # breakeven_active in a single UPDATE, written ONLY after the successor stop is
     # broker-confirmed live (same rule as execute_partial_exit's write above). Dark
     # until `mi_strategies.breakeven_arm_r` is set; docs/setups/exit_discipline.md.
+    # #728 (2026-11-21): `_mark_stop_replaced` — pointer + price after a CONFIRMED-live price-only
+    # replace by `move_stop_price_only` (the 16:45 trail / breakeven lifts): the same two columns
+    # update_stop writes, without its cancel-then-new window; never `breakeven_active`.
     "stop_price":         {"entry_pipeline._skip", "order_manager.update_stop", "order_manager.check_fills",
-                           "order_manager.execute_partial_exit", "order_manager._mark_breakeven_armed"},
+                           "order_manager.execute_partial_exit", "order_manager._mark_breakeven_armed",
+                           "order_manager._mark_stop_replaced"},
     # hard_stop: the INSERT writer (entry_pipeline._skip) for every strategy. Per Gate 3
     # initial-stop modeling (2026-05-18) — hard_stop is the risk-basis for the
     # R-expectancy calc, set at INSERT and never updated BY THE SHARED PATHS.
@@ -163,6 +167,7 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         "trade_stream._process_entry_fill", "trade_stream._process_stop_fill",
         # #545 (2026-09-06): price-armed breakeven — pointer+price+flag atomic (see stop_price).
         "order_manager._mark_breakeven_armed",
+        "order_manager._mark_stop_replaced",  # #728: pointer+price after a confirmed price-only replace
     },
 
     # ── Exit lifecycle ─────────────────────────────────────────────────

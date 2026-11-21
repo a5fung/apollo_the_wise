@@ -71,6 +71,14 @@ future caller inherits it; callers may still DECIDE against `mi_live_trades.stop
 deliberately allowed to UNDERSTATE protection (#548 uncertain branch). Defect story: change log
 2026-08-10. Tests: `tests/test_update_stop_raise_only_floor.py`.
 
+**Stop-move mechanism (2026-11-21, #728): a PRICE-ONLY move replaces the live stop in place.** Every
+stop move from `live_tracker` (the 16:45 trail / breakeven / depth lifts, the stop refresh) calls
+`order_manager.move_stop_price_only`: one atomic price-only `alpaca.replace_order` on the live stop
+(same price, same share count, raise-only against the broker stop). `update_stop`'s cancel-then-place
+runs only when nothing was changed at the broker — no live stop (the re-protect), a share-count
+change, not a raise, or a provably refused replace — and never after an accepted replace. Change log
+2026-11-21 (#728). Tests: `tests/test_stop_price_only_replace_728.py`.
+
 ### 0. Initial protective stop — `entry − 2R` (MAGNA53, operator-signed 2026-08-16)
 
 **`R = entry − ORB_low` and the ORB low still DEFINES R, but the placed stop is `entry − 2R`
@@ -380,6 +388,89 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-11-21 — #728: a PRICE-ONLY stop move is ONE atomic price-only replace on the live stop, not cancel-then-place; the stop-ACK watchdog's fallback goes at the trade's LAST stop (BUG FIX + OPERATOR RULING 2026-11-20 (1) — no stop price, share count, raise-only rule, target or safeguard changed; built, not deployed)
+
+**Classification** (CHANGE_PROCESS): BUG FIX in the MECHANISM of an already-signed rule (the trail / breakeven /
+depth stop is raised to the same price, on the same share count, raise-only) plus his ruling (1) of 2026-11-20 on
+the watchdog's fallback level — not a criteria or threshold change, so no N≥10 backtest applies.
+
+**Trigger**: the 2026-11-18 advisor review of the CAKE 788 fix (entry of that date / `1f0b2286`): only the breakout
+stop-to-fill and the on-partial breakeven used the atomic replace; the 16:45 job's four stop moves and the stop
+refresh still went through `update_stop`, which CANCELS the old stop and then PLACES a new one. The broker can still
+hold the cancelled stop's shares when the placement arrives.
+
+**Evidence** (prod, 90 days to 11-18 — `scripts/probes/_advisor_1118/q.out`, `live.out`): 43 LIVE first-attempt
+refusals (40310000, shares held by the cancelled stop; the 3-second retry recovered them) and 9 LIVE
+`stop_update_failed` — no stop at all until the next pass (ABCL 08-21, AMLX 08-25..08-28, MRNA 08-31..09-02, OKTA
+09-04).
+
+**Change (A) — `order_manager.move_stop_price_only(trade_id, price, stop_source)`**, the one entry point
+`live_tracker` now calls for every stop move (5 call sites: the 16:45 trail raise, the depth stop, the breakout
+stop-to-the-fill on a later day and on the breakout day, and `_stop_refresh`; `live_tracker` no longer imports
+`update_stop`):
+- It reads the live stop and, when that stop is live, below the new price and sized to exactly the rest of the
+  position (remaining − pending exits), sends ONE `alpaca.replace_order(stop_id, stop_price=…)` — the share count is
+  not sent, so the broker never releases and re-takes the shares. The mechanism is `_replace_stop_price_only`, the
+  2026-11-18 breakout helper generalised (`_breakout_pp_replace_stop_price` is now a thin wrapper over it; #545 /
+  #548 pattern: read-back on a raised replace, ~3 s confirm-live, the unverified branch).
+- **Confirmed live** → pointer + price written by `_mark_stop_replaced` (those two columns ONLY — it never sets
+  `breakeven_active`, which the breakout writer does), the `mi_live_orders` row inserted, audit `stop_updated` with
+  `mechanism: "price_only_replace"`. Silent, as a first-attempt `update_stop` success was.
+- **`update_stop` — untouched — still runs, and its return comes back unchanged**, whenever nothing was changed at
+  the broker: no stop pointer / the stop is not live (the re-protect after a dead stop — the stop refresh's ordinary
+  case), the price is not a raise against the BROKER stop (its raise-only floor records the refusal, as before), the
+  stop's share count is not the rest of the position (a share-count change needs cancel-place), or the broker
+  PROVABLY refused the replace (it raised and the old stop read back live at its old price). A share-count
+  mismatch, a refused replace and a failed read write `stop_price_replace_fallback` (why) first; the routine
+  re-protect and a not-a-raise write nothing extra (`update_stop`'s own rows record them).
+- **After an ACCEPTED replace `update_stop` is never called** (the old stop is consumed; a cancel-then-place could
+  only double the stop or be refused). Successor not confirmed live in ~3 s, or the replace raised and the old stop
+  no longer reads live at its old price → the pointer follows the broker where known, the PRICE IS WITHHELD (the
+  books understating the stop is the safe side), audit `stop_price_replace_unconfirmed`, one page asking him to
+  verify. Successor read back dead → pointer nulled, re-protected from broker truth at the unchanged row stop
+  (`_ensure_stop_coverage`), paged. The entry point never raises (the 16:45 loop has no per-trade try).
+- **#687 ruling (iii) is reached exactly as before** (site 3, `order_manager.update_stop`): a raise the broker
+  refuses as "above the market" is a provably refused replace → `update_stop` → cancel, two refused placements →
+  `_sell_at_market_for_refused_stop` — sold in the regular session, deferred outside it (the 2026-11-21 entry
+  below). The sale is never called from the replace step: the old stop still holds the shares there.
+  ⚠ **For him (not decided here):** the 16:45 job runs after hours, so on that path the fallback cancels a stop
+  that is still live and — deferred — leaves NO stop resting until the next pass, exactly as before #728. The
+  replace now tells us the raise is refused BEFORE anything is cancelled, so keeping the old stop resting after
+  hours is possible; that is a change to what ruling (iii) / the 11-20 ruling do and is his call.
+
+**Change (B) — the stop-ACK watchdog** (`scheduler._stop_ack_timeout_watchdog_job`; his ruling (1), 2026-11-20:
+*the fallback places at the trade's own LAST stop, not `orb_low`*): the fallback stop goes at the row's `stop_price`,
+passed through `_apply_reprotect_floor(…, consult_dead_stop=True)` — never below the last level the broker held —
+which is exactly how the coverage repair and the sync's orphan repair place (so all three re-protect at one level).
+`orb_low` is used only when the row has no stop price; the audit rows carry `stop_target_source`
+(`last_stop` / `last_stop+broker_floor` / `orb_low_no_last_stop`) and the page names which. Why it mattered: `orb_low`
+is ABOVE a MAGNA53 `entry − 2R` stop (a tighter stop than the signed one) and far BELOW a trailed stop.
+
+**Anticipated effect**: live `stop_update_retry_triggered` / `stop_update_failed` rows on a trail or breakeven move
+stop appearing; `stop_updated` rows from the 16:45 job carry `mechanism: "price_only_replace"`. No stop level, share
+count or exit decision changes.
+
+**Known, to watch at the first live move**: the replace is sent at 16:45 ET (after hours). If the broker leaves the
+successor in a not-yet-live status past the ~3 s check, the move is recorded as unconfirmed (page, price withheld)
+rather than moved — the stop IS at the broker; the row understates it until a later pass.
+
+**Reversion-flag**: REFINEMENT of 2026-11-18 (the same mechanism, extended from the breakout stop-to-fill to every
+price-only move); (B) REFINEMENT of the 2026-05-17 watchdog entry in `safeguards.md` by his ruling.
+
+**EXPECT (BASELINE, 90 d: 43 live first-attempt refusals, 9 live `stop_update_failed`):** the next live trail /
+breakeven move writes `stop_updated` with `mechanism: "price_only_replace"` and no `stop_update_retry_triggered`
+for it. **WOULD-FAIL-IF:** a live `stop_update_retry_triggered` on a price-only move (no
+`stop_price_replace_fallback` row naming a share-count change or a refused replace before it).
+
+**Tests**: `tests/test_stop_price_only_replace_728.py` (28: one per caller — no `cancel_order` / `place_stop_order`
+on a price-only move; the dead-stop re-protect, a share-count change, not-a-raise and a refused replace still
+`update_stop`; ruling (iii) sold in session / deferred outside it / from the 16:45 job; accepted-but-unconfirmed,
+ambiguous and dead successors never cancel-then-place; the watchdog at the last stop, the broker floor, the
+`orb_low` fallback named). The #687 convergence harness gained a real `replace_order`; its baseline was re-captured
+(scenarios byte-identical) and four differences from main are pinned by name (s16 / s36 watchdog level, s27 the
+16:45 raise, s35 one more read). Mutation-checked: with the replace disabled and the watchdog back on `orb_low`,
+19 of the 28 fail. Deploy: `broker/` + `scheduler.py` → `deploy.sh market-agent && deploy.sh execution`.
+
 ### 2026-11-21 — #687 ruling (iii): a stop refused as "above the market" OUTSIDE the regular session does NOT sell (OPERATOR RULING 2026-11-20; BUG FIX on the rule's trigger — no stop price, share count, target or safeguard changed; built, not deployed)
 
 **Classification** (CHANGE_PROCESS): BUG FIX on the trigger of a signed rule, by his ruling — not a criteria or
@@ -434,8 +525,8 @@ the price outside regular hours is below it, NO sale was queued, no stop is rest
 - 16:20 ET `post_close_stop_refresh` (`live_tracker._stop_refresh` → `update_stop`), both accounts.
 - 17:00 / 19:00 ET coverage slots (`scheduler._coverage_watch_job` → `_ensure_stop_coverage`), LIVE account only.
 - 21:00 ET `sync_positions` (orphan repair + coverage pass), both accounts.
-- Next session 09:00–09:29 ET the stop-ACK watchdog, every 30 s (places at the entry's `orb_low` until his 11-20
-  ruling (1) — last stop — is built under #728).
+- Next session 09:00–09:29 ET the stop-ACK watchdog, every 30 s (at the trade's last stop since #728, the entry
+  above; it placed at the entry's `orb_low` before).
 - Each places the stop at the trade's own stop price (`_apply_reprotect_floor`: never below the last level the
   broker held) as soon as the extended-hours price is back above it. A refused 16:45 TRAIL RAISE never moved
   `stop_price` (only a placed stop writes it), so the later passes re-place at the OLD level and the next 16:45 run
@@ -1215,7 +1306,7 @@ The sites:
    09:35 the sale fills in milliseconds, so the broker re-check would find neither a stop nor a covering order).
    No lock is held here today; the sale replaces the placement in the same context, as ruling (3)'s stream site.
 4. **The stop-ACK watchdog's fallback** (`scheduler._stop_ack_timeout_watchdog_job`, the stop at the entry's
-   `orb_low` when a fresh fill has no stop), under its per-trade try-lock (#687 e). Sold → audit
+   `orb_low` when a fresh fill has no stop — at the trade's LAST stop since 2026-11-21, #728), under its per-trade try-lock (#687 e). Sold → audit
    `stop_ack_breach_sold_at_market` (summary `"{ticker} #{trade_id}: …"`, added to the once-per-day dedup set, so
    the next 30-second tick does not act again), no CRITICAL page. The sale fails → today's `stop_ack_remediation_failed`
    + "CRITICAL: POSITION NAKED" page. A documented safeguard: `docs/setups/safeguards.md` change log 2026-10-03.

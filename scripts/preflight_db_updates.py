@@ -157,6 +157,11 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         "UPDATE mi_live_trades SET breakeven_active = TRUE WHERE id = $1",
     ),
     (
+        # #728 (2026-11-21): pointer + price after a confirmed-live price-only stop replace.
+        "order_manager._mark_stop_replaced: confirmed price-only replace (#728)",
+        "UPDATE mi_live_trades SET stop_order_id = $2, stop_price = $3 WHERE id = $1",
+    ),
+    (
         # #545: the confirmed-live shape — pointer + price + flag in ONE statement.
         "order_manager._mark_breakeven_armed: confirmed-successor branch (#545)",
         """

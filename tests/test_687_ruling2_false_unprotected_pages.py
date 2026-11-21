@@ -191,7 +191,7 @@ async def _run_refresh(monkeypatch, open_orders, *, queued_ids=(), orders_raise=
     trade = {"id": 404, "ticker": "KOD", "remaining_shares": 1, "stop_price": 63.15,
              "stop_order_id": None, "account_mode": "live"}
     monkeypatch.setattr(lt, "get_pool", AsyncMock(return_value=_RPool(_RConn([trade]))))
-    monkeypatch.setattr(lt, "update_stop", AsyncMock(return_value=False))
+    monkeypatch.setattr(lt, "move_stop_price_only", AsyncMock(return_value=False))
     sent: list = []
     monkeypatch.setattr(lt, "send_telegram_message",
                         AsyncMock(side_effect=lambda m, *a, **k: sent.append(m)))

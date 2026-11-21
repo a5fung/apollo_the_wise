@@ -622,7 +622,7 @@ async def test_a_live_positions_stop_is_checked_on_the_live_account_after_demote
     monkeypatch.setattr(lt, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(lt, "et_today", lambda: dt.date(2026, 10, 16))
     monkeypatch.setattr(lt.alpaca, "get_order", get_order)
-    monkeypatch.setattr(lt, "update_stop", update_stop)
+    monkeypatch.setattr(lt, "move_stop_price_only", update_stop)   # #728: the tracker's stop mover
     monkeypatch.setattr(lt, "get_same_day_excluded_stop_candidates", AsyncMock(return_value=[]))
     monkeypatch.setattr(lt, "log_audit_event", AsyncMock())
     await lt.morning_stop_refresh()

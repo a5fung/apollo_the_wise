@@ -117,6 +117,7 @@ class World:
         self.close_errors: list = []          # raised by successive close_position calls (None = ok)
         self.place_errors: list = []          # raised by successive place_stop_order calls
         self.opg_errors: list = []
+        self.replace_errors: list = []        # raised by successive replace_order calls (#728)
         # ruling (i) 2026-10-02 worlds: `list_errors` are raised by successive get_all_positions
         # calls (an UNREADABLE broker); `vanish_on_sell` drops the position the moment a sale is
         # sent (the stop filled between the cancel and the sell — a FLAT broker at the restore).
@@ -491,6 +492,29 @@ def _broker_impl(w: World):
         o = _new_sell(ticker, qty, "stop", "new", stop_price=float(stop_price))
         return {"id": o["id"], "status": "new", "stop_price": float(stop_price)}
 
+    async def replace_order(order_id, qty=None, stop_price=None, limit_price=None,
+                            account_mode=None, client_order_id=None, **k):
+        """#728: the atomic replace — the old order becomes 'replaced', the successor carries its
+        share count (or `qty`), and the position's free shares do not move."""
+        err = w.replace_errors.pop(0) if w.replace_errors else None
+        if err:
+            raise err
+        o = w.broker_order(order_id)
+        if not o or not _live(o):
+            raise Exception('{"code":42210000,"message":"order is not open"}')
+        o["status"] = "replaced"
+        # its own id prefix: `next_id("stop")` would re-issue "stop-1", the fixtures' resting stop
+        new = {**o, "id": w.next_id("replaced-stop" if o["type"] == "stop" else "replaced-sell"),
+               "status": "new", "filled_qty": 0.0}
+        if qty is not None:
+            new["qty"] = float(qty)
+        if stop_price is not None:
+            new["stop_price"] = float(stop_price)
+        if limit_price is not None:
+            new["limit_price"] = float(limit_price)
+        w.broker_orders.append(new)
+        return dict(new)
+
     async def place_market_on_open_sell(ticker, qty, account_mode=None, client_order_id=None):
         if w.vanish_on_sell:
             w.positions.pop(ticker, None)
@@ -505,7 +529,7 @@ def _broker_impl(w: World):
 
     return {f.__name__: f for f in (get_position, get_all_positions, get_open_orders, get_order,
                                     cancel_order, close_position, place_stop_order,
-                                    place_market_on_open_sell, get_account)}
+                                    replace_order, place_market_on_open_sell, get_account)}
 
 
 def _install(w: World):

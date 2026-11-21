@@ -283,7 +283,7 @@ def _install_1645(monkeypatch, row, step):
 
     monkeypatch.setattr(lt, "get_index_history", _hist)
     monkeypatch.setattr(lt, "apply_daily_exit_step", lambda *a, **k: step)
-    calls = {"update_stop": AsyncMock(return_value=True),
+    calls = {"move_stop_price_only": AsyncMock(return_value=True),
              "execute_full_exit": AsyncMock(return_value=True),
              "send_telegram_message": AsyncMock(), "log_audit_event": AsyncMock()}
     for name, mock in calls.items():
@@ -306,7 +306,7 @@ async def test_a_depth_trade_closing_below_the_line_is_marked_not_sold(monkeypat
     out = await lt.update_open_positions_live()
 
     calls["execute_full_exit"].assert_not_awaited()
-    calls["update_stop"].assert_not_awaited()
+    calls["move_stop_price_only"].assert_not_awaited()
     marks = [a for a in conn.executed if "depth_sell_pending_on" in a[0]]
     assert len(marks) == 1 and marks[0][4] == TODAY, marks
     assert out == [{"ticker": "KOD", "action": "depth_sell_pending", "hold_days": 8}]
@@ -332,8 +332,8 @@ async def test_a_depth_trade_still_open_raises_the_stop_to_the_depth_level(monke
 
     await lt.update_open_positions_live()
 
-    calls["update_stop"].assert_awaited_once()
-    args, kwargs = calls["update_stop"].await_args
+    calls["move_stop_price_only"].assert_awaited_once()
+    args, kwargs = calls["move_stop_price_only"].await_args
     assert args == (501, 67.58)
     assert kwargs.get("stop_source") == "depth_trail"
     assert args[1] == el.depth_stop_price(line=70.40, hard_stop=58.08, entry_price=63.15,
@@ -346,7 +346,7 @@ async def test_todays_rule_still_rests_the_stop_on_the_line(monkeypatch):
 
     await lt.update_open_positions_live()
 
-    assert calls["update_stop"].await_args.args == (501, 70.40)
+    assert calls["move_stop_price_only"].await_args.args == (501, 70.40)
 
 
 @pytest.mark.asyncio
@@ -356,7 +356,7 @@ async def test_a_depth_stop_never_lowers(monkeypatch):
     _conn, calls = _install_1645(monkeypatch, _row("depth", stop_price=68.00),
                                  _step("updated", 70.40, 72.00))
     await lt.update_open_positions_live()
-    calls["update_stop"].assert_not_awaited()
+    calls["move_stop_price_only"].assert_not_awaited()
 
 
 # ══════════════════════════════════════════════════════════════════════════════════════════

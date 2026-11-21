@@ -112,7 +112,7 @@ def _install_common(monkeypatch, step, exec_spy, *, captured_kwargs=None):
     monkeypatch.setattr(live_tracker, "execute_partial_exit",
                         lambda *a, **k: exec_spy(*a, **k))
     # Suppress real broker / telegram side effects in the 4:45 path.
-    monkeypatch.setattr(live_tracker, "update_stop",
+    monkeypatch.setattr(live_tracker, "move_stop_price_only",
                         lambda *a, **k: asyncio.sleep(0, result=True))
     monkeypatch.setattr(live_tracker, "execute_full_exit",
                         lambda *a, **k: asyncio.sleep(0, result=True))
@@ -294,7 +294,7 @@ def test_both_jobs_route_through_the_same_shared_loader(monkeypatch):
                         lambda state, bar, today, **kw: _partial_step())
     monkeypatch.setattr(live_tracker, "execute_partial_exit",
                         lambda *a, **k: asyncio.sleep(0, result=True))
-    monkeypatch.setattr(live_tracker, "update_stop",
+    monkeypatch.setattr(live_tracker, "move_stop_price_only",
                         lambda *a, **k: asyncio.sleep(0, result=True))
     monkeypatch.setattr(live_tracker, "execute_full_exit",
                         lambda *a, **k: asyncio.sleep(0, result=True))

@@ -2122,8 +2122,12 @@ async def _stop_ack_timeout_watchdog_job():
     stop_order_id IS NULL AND filled_at < NOW() - INTERVAL '30 seconds'.
 
     Runs every 30s during market hours. On detection, submits a fallback
-    stop-market at trade['orb_low'] (mirroring Gate 5 A pattern). On
-    fallback failure: escalates to CRITICAL Telegram + audit event.
+    stop-market at the trade's own LAST stop — the row's `stop_price`, never
+    below the last level the broker held (`_apply_reprotect_floor`, as the
+    coverage repair and the sync's orphan repair place) — operator ruling
+    2026-11-20 (#728). `orb_low` only when the row has no stop price, named in
+    the audit row (`stop_target_source`). On fallback failure: escalates to
+    CRITICAL Telegram + audit event.
 
     Env flag STOP_ACK_TIMEOUT_GATE_ENABLED=false disables the gate for
     fast rollback (default true).
@@ -2138,6 +2142,7 @@ async def _stop_ack_timeout_watchdog_job():
     from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: moves-with-job (W2)
     from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
         STOP_BREACH_SALE_DEFERRED,
+        _apply_reprotect_floor,
         _sell_at_market_for_refused_stop,
         _trade_advisory_try_lock,
         stop_breach_deferred_note,
@@ -2146,7 +2151,7 @@ async def _stop_ack_timeout_watchdog_job():
     async with pool.acquire() as conn:
         stuck = await conn.fetch(
             """
-            SELECT id, ticker, account_mode, orb_low, entry_shares,
+            SELECT id, ticker, account_mode, orb_low, stop_price, entry_shares,
                    remaining_shares, filled_at, entry_order_id
             FROM mi_live_trades
             WHERE status = 'filled'
@@ -2216,7 +2221,17 @@ async def _stop_ack_timeout_watchdog_job():
                     continue
 
                 qty = float(row["remaining_shares"] or row["entry_shares"] or 0)
-                stop_target = float(row["orb_low"]) if row["orb_low"] is not None else None
+                # ⚖ Operator ruling 2026-11-20 (#728): the fallback goes at the trade's own LAST
+                # stop, not `orb_low` (which sits ABOVE a MAGNA53 entry − 2R stop, and below a
+                # trailed one). `orb_low` only when the row carries no stop price. The floor is
+                # applied just before the placement below.
+                _last_stop = row.get("stop_price")
+                if _last_stop is not None and float(_last_stop) > 0:
+                    stop_target, stop_target_source = float(_last_stop), "last_stop"
+                elif row["orb_low"] is not None:
+                    stop_target, stop_target_source = float(row["orb_low"]), "orb_low_no_last_stop"
+                else:
+                    stop_target, stop_target_source = None, "none"
 
                 # Broker-side coverage check (#128, 2026-05-27): DB stop_order_id
                 # being NULL is a flawed proxy for "naked". After partial-exit
@@ -2330,23 +2345,33 @@ async def _stop_ack_timeout_watchdog_job():
                 if qty <= 0 or stop_target is None:
                     await log_audit_event(
                         "stop_ack_remediation_failed",
-                        f"{ticker} #{trade_id}: cannot remediate — qty={qty}, orb_low={stop_target}",
+                        f"{ticker} #{trade_id}: cannot remediate — qty={qty}, stop={stop_target}",
                         detail=_json.dumps({
                             "trade_id": trade_id,
                             "ticker": ticker,
                             "account_mode": account_mode,
                             "filled_at": str(row["filled_at"]),
-                            "reason": "missing_qty_or_orb_low",
+                            "reason": "missing_qty_or_stop",
                         }),
                     )
                     await send_telegram_message(
                         f"{mode_prefix(account_mode)}🚨🚨 *CRITICAL: STOP-ACK TIMEOUT + NO FALLBACK* {ticker}\n"
                         f"Trade #{trade_id} filled at {row['filled_at'].astimezone(_ET):%H:%M:%S} ET, "
-                        f"no stop_order_id, can't remediate (qty={qty}, orb_low={stop_target}).\n"
+                        f"no stop_order_id, can't remediate (qty={qty}, stop={stop_target}).\n"
                         f"MANUAL INTERVENTION REQUIRED on Alpaca dashboard."
                     )
                     continue
 
+                # #600, as the coverage repair and the sync's orphan repair: never BELOW the last
+                # level the broker held (the pointer is NULL here, so the price preserved when it
+                # was nulled). Raise-only and fail-open — no data returns the price unchanged.
+                _row_stop = stop_target
+                stop_target = await _apply_reprotect_floor(
+                    trade_id, ticker, stop_target, None, account_mode,
+                    site="scheduler.stop_ack_watchdog", consult_dead_stop=True,
+                )
+                if stop_target > _row_stop + 1e-9:
+                    stop_target_source += "+broker_floor"
                 try:
                     fallback = await alpaca.place_stop_order(
                         ticker, qty, stop_target, account_mode=account_mode,
@@ -2370,6 +2395,7 @@ async def _stop_ack_timeout_watchdog_job():
                             "filled_at": str(row["filled_at"]),
                             "qty": qty,
                             "stop_target": stop_target,
+                            "stop_target_source": stop_target_source,
                             "fallback_order_id": fallback["id"],
                         }),
                     )
@@ -2377,7 +2403,8 @@ async def _stop_ack_timeout_watchdog_job():
                         f"{mode_prefix(account_mode)}🛡 *STOP-ACK TIMEOUT — REMEDIATED:* {ticker}\n"
                         f"Trade #{trade_id} filled at {row['filled_at'].astimezone(_ET):%H:%M:%S} ET, "
                         f"stop_order_id never populated.\n"
-                        f"Fallback stop placed at ${stop_target:.2f}. Original OTO child "
+                        f"Fallback stop placed at ${stop_target:.2f} "
+                        f"({'the opening-range low — the trade had no stop price on record' if stop_target_source.startswith('orb_low') else 'the trade’s last stop'}). Original OTO child "
                         f"stop-leg likely failed silently on Alpaca side."
                     )
                 except Exception as stop_err:
@@ -2401,6 +2428,7 @@ async def _stop_ack_timeout_watchdog_job():
                                 "ticker": ticker,
                                 "account_mode": account_mode,
                                 "stop_target": stop_target,
+                                "stop_target_source": stop_target_source,
                                 "sold_qty": sold_qty,
                                 "sale_order_id": sold_order["id"],
                                 "stop_error": f"{type(stop_err).__name__}: {str(stop_err)[:200]}",
@@ -2449,6 +2477,7 @@ async def _stop_ack_timeout_watchdog_job():
                             "ticker": ticker,
                             "account_mode": account_mode,
                             "stop_target": stop_target,
+                            "stop_target_source": stop_target_source,
                             "stop_error": f"{type(stop_err).__name__}: {str(stop_err)[:200]}",
                         }),
                     )
