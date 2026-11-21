@@ -145,6 +145,38 @@
 #   - earliest_review_date: bump to 2026-06-22 (will re-surface then)
 
 reviews:
+  - review_id: trade_review_monthly_720
+    status: pending
+    kind: cadence
+    title: "Monthly comprehensive trade review (#720 cadence, his ruling 2026-11-06)"
+    question: |
+      His ruling 2026-11-06: buy point / stop / partial / exit questions are answered in ONE periodic
+      comprehensive review of every closed live + paper trade, never as one-off forks. First run 2026-11-21
+      (`scripts/probes/_720_monthly/runs/2026-11-21/`, #720 closed against its DoD). Runs the last weekend of
+      each month: capture (read-only), `run_review.py --report ... --prev-capture 2026-11-21`, write the
+      per-trade forensic column, one page to him. Read every returns number against the regime (his
+      2026-11-21 note: bear market, momentum expected not to work).
+    predicate_sql: >-
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE status = 'closed' AND closed_at >= TIMESTAMPTZ '2026-11-21 00:00:00-05'
+    threshold: 1
+    earliest_review_date: 2026-12-26
+    discriminates_on: [mi_live_trades.status, mi_live_trades.closed_at]
+    action_when_ready: |
+      scripts/probes/_720_monthly/README.md run-day steps 0-3 with --prev-capture = the last run's date;
+      fill the per-trade forensic column; report the one page; re-anchor this predicate and
+      earliest_review_date to the next month's last weekend.
+    can_fire:
+      predicate_runs: "2026-11-21: written against mi_live_trades.closed_at/status, the same columns the 720 capture trades.sql reads; returns 0 today by construction (anchor = today)."
+      nonzero_possible: "mi_live_trades closes are written by the order manager on every exit; 39 trades closed in the 2026-08-16..11-21 window, so the first close after today makes it fire."
+      lane_live: "n/a - counts closed trades across both books; MAGNA53 EP (live) and breakout v1 (paper) are enabled."
+      threshold_vs_observed: "Bar 1 closed trade against ~3 a week lately; the gate is the date (last weekend of the month), not the count."
+      era_scoped: "The runner splits by exit era and lane from the row (rule_eras), never pooled - plan docs/analysis/720_monthly_review_plan_2026-11-08.md section 1.3."
+      population_actionable: "The predicate counts closed trades in both modes; the review reads exactly those (trades.sql), lanes kept apart."
+      instrument_trusted: "Run 2026-11-21 captured all 17 files whole (MANIFEST.txt md5s), replay fidelity 20 of 22 fills; the recorder heartbeat missed 1 of 55 sessions (09-18)."
+    added_on: 2026-11-21
+    cadence: monthly  # re-arm after each review
+
   - review_id: chart_reading_review_cycle
     resolution_2026_10_05: >-
       Sample #3 built and RULED the same day. The first build was withdrawn on his catch ("there's no EP or gap

@@ -1,0 +1,18 @@
+captured_at: 2026-11-21T16:05:39.284331-05:00
+admitted_magna53.csv: rows 34 md5 934694ac056fe3acc3de8ca0f3ee91e3
+audit_breakout.csv: rows 809 md5 9e158cc25165d5cbd67ebbeaf7fd6408
+audit_recorder.csv: rows 56 md5 d228036a358c7f8084a813e1f05b966e
+breakout_list.csv: rows 3008 md5 fea0cff3ed7d93b5afae4bedde07c32b
+cf_arms.csv: rows 351 md5 cbf496ec1df5c2a8eab48748dd967afd
+daily_bars.csv: rows 22109 md5 a84144a9bb7bb26e1305ab1ff776feee
+ep_alerts.csv: rows 185 md5 ddbde33b0943e2a4161064c6ae6c643b
+legacy_paper_count.csv: rows 1 md5 b4deed4cf16972ec888aac5a338a6e89
+pre_window_closes.csv: rows 1 md5 b871bd2cfb1ed31973f8da9942c4950c
+predicates.csv: rows 5 md5 b56544d91cceeb47655ce3d6f45bd95e
+safeguard_transitions.csv: rows 19 md5 2181cbc33048343672e3130f5c5d968d
+sell_discipline.csv: rows 39 md5 2dd96e8f1bc4ef3e6a0381177d99030e
+skips_stop_too_wide.csv: rows 12 md5 75d035b45929bd582ea6c75f14849d54
+skips_window.csv: rows 1033 md5 7fdde8b798fa69d55ed5248a055aa06b
+strategies.csv: rows 10 md5 72eb01f0a1215f7320b925d86ec21073
+strategy_toggles.csv: rows 3 md5 2ff08685c4480274b4d062bf552ff1d3
+trades.csv: rows 42 md5 45d26b3911567f31aa32bb30a20c6879

@@ -1,0 +1,11 @@
+strategy_id,name,family,phase,enabled,live_real_enabled,signal_type,max_concurrent_positions,profit_trigger_r,breakeven_arm_r
+9m_day2,9M Day 2 ORB,orb_long,deprecated,f,f,9m_day2,,,
+breakout_v1,Breakout v1 (paper),long_setup,paper,t,f,breakout_v1,,,
+fishhook_v3,Fishhook (Gap-Up Undercut & Reclaim),long,deprecated,f,f,fishhook_v3,,,
+flag_continuation,Continuation Flag (post-runup tightening),long_setup,deprecated,f,f,flag_continuation,,,
+magna53,MAGNA53 EP,orb_long,live,t,t,magna53,,8.0,3.0
+magna53_lowcap,MAGNA53 low-cap lane (shadow),orb_long,shadow,t,f,magna53_lowcap,,,
+magna53_smallcap,MAGNA53 small-cap lane (paper),orb_long,paper,t,f,magna53_smallcap,5,8.0,3.0
+parabolic_short,Parabolic Short,short,shadow,t,f,parabolic_short,,,
+shadow_orb_5m,Shadow ORB 5-min,orb_long,shadow,t,f,shadow_orb_5m,,,
+wick_fill,Wick-Fill (Negated Shooting Star),orb_long,deprecated,f,f,wick_fill,,,

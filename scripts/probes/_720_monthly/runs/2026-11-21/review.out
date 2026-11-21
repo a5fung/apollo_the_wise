@@ -1,0 +1,257 @@
+calendar: trading_calendar
+buy_point entry_first_hour_bar         era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ -1.63 drop-best -2.64 R_own Δ -3.53 tail-clip 1 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+buy_point entry_first_hour_bar         era_d: n 8 (pre-11-04 8 / post 0; baseline=replay on 1) R_cap Δ -1.02 drop-best -1.90 R_own Δ -7.41 tail-clip 1 arm≥4R 1 live≥4R 2 engine agrees won False excluded {}
+buy_point entry_first_hour_bar         era_e: n 4 (pre-11-04 3 / post 1; baseline=replay on 0) R_cap Δ +0.74 drop-best +0.31 R_own Δ +0.60 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won True excluded {'fidelity_fail': 1, 'abstain': 2}
+buy_point book_first_hour_low_of_day   era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ -1.80 drop-best -2.81 R_own Δ -4.03 tail-clip 1 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+buy_point book_first_hour_low_of_day   era_d: n 8 (pre-11-04 8 / post 0; baseline=replay on 1) R_cap Δ +0.23 drop-best -0.64 R_own Δ -2.94 tail-clip 1 arm≥4R 1 live≥4R 2 engine disagrees won False excluded {}
+buy_point book_first_hour_low_of_day   era_e: n 4 (pre-11-04 3 / post 1; baseline=replay on 0) R_cap Δ +0.29 drop-best -0.05 R_own Δ -0.48 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1, 'abstain': 2}
+admission buy_point entry_first_hour_bar         era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ -0.68 won None
+admission buy_point entry_first_hour_bar         era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +1.01 won None
+admission buy_point entry_first_hour_bar         era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ +0.31 won None
+admission buy_point entry_first_hour_bar         era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ -2.27 won False
+admission buy_point entry_first_hour_bar         era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 8 R_cap Δ -1.02 won False
+admission buy_point entry_first_hour_bar         era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 3 R_cap Δ +0.31 won False
+admission buy_point entry_first_hour_bar         era_e adm_2026-11-04_open_below_floor post-11-04: n 1 R_cap Δ +0.43 won None
+admission buy_point book_first_hour_low_of_day   era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ -0.99 won None
+admission buy_point book_first_hour_low_of_day   era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +1.01 won None
+admission buy_point book_first_hour_low_of_day   era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ +0.08 won None
+admission buy_point book_first_hour_low_of_day   era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ -1.91 won False
+admission buy_point book_first_hour_low_of_day   era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 8 R_cap Δ +0.23 won False
+admission buy_point book_first_hour_low_of_day   era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 3 R_cap Δ +0.22 won False
+admission buy_point book_first_hour_low_of_day   era_e adm_2026-11-04_open_below_floor post-11-04: n 1 R_cap Δ +0.08 won None
+stop      stop_orb_low                 era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ -0.73 drop-best -1.88 R_own Δ -0.84 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+stop      stop_orb_low                 era_d: n 8 (pre-11-04 8 / post 0; baseline=replay on 1) R_cap Δ +4.73 drop-best +1.94 R_own Δ +11.55 tail-clip 0 arm≥4R 2 live≥4R 2 engine agrees won True excluded {}
+stop      stop_orb_low                 era_e: n 6 (pre-11-04 3 / post 3; baseline=replay on 0) R_cap Δ +0.69 drop-best +0.18 R_own Δ -1.18 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+stop      stop_adr_050                 era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ -3.67 drop-best -4.35 R_own Δ -4.91 tail-clip 1 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+stop      stop_adr_050                 era_d: n 6 (pre-11-04 6 / post 0; baseline=replay on 1) R_cap Δ +6.47 drop-best +0.56 R_own Δ +11.44 tail-clip 0 arm≥4R 2 live≥4R 2 engine agrees won True excluded {'rcap_uncomputable': 1, 'abstain': 1}
+stop      stop_adr_050                 era_e: n 5 (pre-11-04 2 / post 3; baseline=replay on 0) R_cap Δ +0.49 drop-best +0.13 R_own Δ -1.16 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1, 'abstain': 1}
+stop      stop_adr_075                 era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ -1.05 drop-best -2.19 R_own Δ -0.68 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+stop      stop_adr_075                 era_d: n 6 (pre-11-04 6 / post 0; baseline=replay on 1) R_cap Δ +3.59 drop-best +0.69 R_own Δ +5.27 tail-clip 0 arm≥4R 2 live≥4R 2 engine agrees won True excluded {'rcap_uncomputable': 1, 'abstain': 1}
+stop      stop_adr_075                 era_e: n 5 (pre-11-04 2 / post 3; baseline=replay on 0) R_cap Δ +0.04 drop-best -0.16 R_own Δ -0.31 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'abstain': 1, 'fidelity_fail': 1}
+stop      stop_orb_3r                  era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ -1.43 drop-best -1.77 R_own Δ -1.19 tail-clip 1 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+stop      stop_orb_3r                  era_d: n 8 (pre-11-04 8 / post 0; baseline=replay on 1) R_cap Δ -1.02 drop-best -1.53 R_own Δ -3.40 tail-clip 1 arm≥4R 1 live≥4R 2 engine agrees won False excluded {}
+stop      stop_orb_3r                  era_e: n 6 (pre-11-04 3 / post 3; baseline=replay on 0) R_cap Δ -0.28 drop-best -0.55 R_own Δ +0.10 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+stop      stop_low_of_day              era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ -0.73 drop-best -1.88 R_own Δ -1.14 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+stop      stop_low_of_day              era_d: n 8 (pre-11-04 8 / post 0; baseline=replay on 1) R_cap Δ +4.73 drop-best +1.94 R_own Δ +11.55 tail-clip 0 arm≥4R 2 live≥4R 2 engine agrees won True excluded {}
+stop      stop_low_of_day              era_e: n 6 (pre-11-04 3 / post 3; baseline=replay on 0) R_cap Δ +0.69 drop-best +0.18 R_own Δ -1.18 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+admission stop      stop_orb_low                 era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ +0.08 won None
+admission stop      stop_orb_low                 era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +0.40 won None
+admission stop      stop_orb_low                 era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ -0.38 won None
+admission stop      stop_orb_low                 era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ -0.83 won False
+admission stop      stop_orb_low                 era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 8 R_cap Δ +4.73 won True
+admission stop      stop_orb_low                 era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 3 R_cap Δ -0.26 won False
+admission stop      stop_orb_low                 era_e adm_2026-11-04_open_below_floor post-11-04: n 3 R_cap Δ +0.95 won True
+admission stop      stop_adr_050                 era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ +0.08 won None
+admission stop      stop_adr_050                 era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +0.68 won None
+admission stop      stop_adr_050                 era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ +0.10 won None
+admission stop      stop_adr_050                 era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ -4.53 won False
+admission stop      stop_adr_050                 era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 6 R_cap Δ +6.47 won True
+admission stop      stop_adr_050                 era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 2 R_cap Δ -0.32 won None
+admission stop      stop_adr_050                 era_e adm_2026-11-04_open_below_floor post-11-04: n 3 R_cap Δ +0.81 won True
+admission stop      stop_adr_075                 era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ +0.08 won None
+admission stop      stop_adr_075                 era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +0.52 won None
+admission stop      stop_adr_075                 era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ -0.38 won None
+admission stop      stop_adr_075                 era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ -1.26 won False
+admission stop      stop_adr_075                 era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 6 R_cap Δ +3.59 won True
+admission stop      stop_adr_075                 era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 2 R_cap Δ -0.24 won None
+admission stop      stop_adr_075                 era_e adm_2026-11-04_open_below_floor post-11-04: n 3 R_cap Δ +0.28 won True
+admission stop      stop_orb_3r                  era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ -0.19 won None
+admission stop      stop_orb_3r                  era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +0.01 won None
+admission stop      stop_orb_3r                  era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ +0.34 won None
+admission stop      stop_orb_3r                  era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ -1.59 won False
+admission stop      stop_orb_3r                  era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 8 R_cap Δ -1.02 won False
+admission stop      stop_orb_3r                  era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 3 R_cap Δ -0.26 won False
+admission stop      stop_orb_3r                  era_e adm_2026-11-04_open_below_floor post-11-04: n 3 R_cap Δ -0.02 won False
+admission stop      stop_low_of_day              era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ +0.08 won None
+admission stop      stop_low_of_day              era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +0.40 won None
+admission stop      stop_low_of_day              era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ -0.38 won None
+admission stop      stop_low_of_day              era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ -0.83 won False
+admission stop      stop_low_of_day              era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 8 R_cap Δ +4.73 won True
+admission stop      stop_low_of_day              era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 3 R_cap Δ -0.26 won False
+admission stop      stop_low_of_day              era_e adm_2026-11-04_open_below_floor post-11-04: n 3 R_cap Δ +0.95 won True
+partials  harvest_no_breakeven         era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ -0.48 drop-best -0.49 R_own Δ -0.49 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+partials  harvest_no_breakeven         era_d: n 8 (pre-11-04 8 / post 0; baseline=replay on 1) R_cap Δ -0.73 drop-best -0.89 R_own Δ -2.03 tail-clip 1 arm≥4R 2 live≥4R 2 engine agrees won False excluded {}
+partials  harvest_no_breakeven         era_e: n 6 (pre-11-04 3 / post 3; baseline=replay on 0) R_cap Δ +0.55 drop-best +0.13 R_own Δ +1.43 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won True excluded {'fidelity_fail': 1}
+partials  harvest_trail_only           era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ -0.42 drop-best -0.59 R_own Δ -0.48 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+partials  harvest_trail_only           era_d: n 8 (pre-11-04 8 / post 0; baseline=replay on 1) R_cap Δ +0.55 drop-best +0.27 R_own Δ +1.66 tail-clip 0 arm≥4R 2 live≥4R 2 engine agrees won True excluded {}
+partials  harvest_trail_only           era_e: n 6 (pre-11-04 3 / post 3; baseline=replay on 0) R_cap Δ -0.14 drop-best -0.14 R_own Δ -0.30 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+partials  harvest_t3                   era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ +0.32 drop-best -0.61 R_own Δ +0.32 tail-clip 1 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+partials  harvest_t3                   era_d: n 8 (pre-11-04 8 / post 0; baseline=replay on 1) R_cap Δ -0.95 drop-best -0.97 R_own Δ -2.39 tail-clip 0 arm≥4R 2 live≥4R 2 engine agrees won False excluded {}
+partials  harvest_t3                   era_e: n 6 (pre-11-04 3 / post 3; baseline=replay on 0) R_cap Δ +0.55 drop-best +0.13 R_own Δ +1.43 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won True excluded {'fidelity_fail': 1}
+partials  harvest_legacy_2r            era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ -0.30 drop-best -0.30 R_own Δ -0.29 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+partials  harvest_legacy_2r            era_d: n 8 (pre-11-04 8 / post 0; baseline=replay on 1) R_cap Δ -0.95 drop-best -0.97 R_own Δ -2.32 tail-clip 1 arm≥4R 2 live≥4R 2 engine agrees won False excluded {}
+partials  harvest_legacy_2r            era_e: n 6 (pre-11-04 3 / post 3; baseline=replay on 0) R_cap Δ +0.73 drop-best +0.31 R_own Δ +2.10 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won True excluded {'fidelity_fail': 1}
+admission partials  harvest_no_breakeven         era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ -0.19 won None
+admission partials  harvest_no_breakeven         era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +0.00 won None
+admission partials  harvest_no_breakeven         era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ -0.01 won None
+admission partials  harvest_no_breakeven         era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ -0.30 won False
+admission partials  harvest_no_breakeven         era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 8 R_cap Δ -0.73 won False
+admission partials  harvest_no_breakeven         era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 3 R_cap Δ +0.18 won True
+admission partials  harvest_no_breakeven         era_e adm_2026-11-04_open_below_floor post-11-04: n 3 R_cap Δ +0.37 won False
+admission partials  harvest_trail_only           era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ -0.65 won None
+admission partials  harvest_trail_only           era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +0.00 won None
+admission partials  harvest_trail_only           era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ -0.01 won None
+admission partials  harvest_trail_only           era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ +0.23 won True
+admission partials  harvest_trail_only           era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 8 R_cap Δ +0.55 won True
+admission partials  harvest_trail_only           era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 3 R_cap Δ -0.03 won False
+admission partials  harvest_trail_only           era_e adm_2026-11-04_open_below_floor post-11-04: n 3 R_cap Δ -0.11 won False
+admission partials  harvest_t3                   era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ +0.09 won None
+admission partials  harvest_t3                   era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +0.00 won None
+admission partials  harvest_t3                   era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ -0.01 won None
+admission partials  harvest_t3                   era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ +0.23 won False
+admission partials  harvest_t3                   era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 8 R_cap Δ -0.95 won False
+admission partials  harvest_t3                   era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 3 R_cap Δ +0.18 won True
+admission partials  harvest_t3                   era_e adm_2026-11-04_open_below_floor post-11-04: n 3 R_cap Δ +0.37 won False
+admission partials  harvest_legacy_2r            era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ +0.00 won None
+admission partials  harvest_legacy_2r            era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +0.00 won None
+admission partials  harvest_legacy_2r            era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ -0.01 won None
+admission partials  harvest_legacy_2r            era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ -0.30 won False
+admission partials  harvest_legacy_2r            era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 8 R_cap Δ -0.95 won False
+admission partials  harvest_legacy_2r            era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 3 R_cap Δ +0.36 won True
+admission partials  harvest_legacy_2r            era_e adm_2026-11-04_open_below_floor post-11-04: n 3 R_cap Δ +0.37 won False
+exits     trail_pivot_swing            era_c: n 6 (pre-11-04 6 / post 0; baseline=replay on 0) R_cap Δ -1.51 drop-best -1.51 R_own Δ -1.49 tail-clip 1 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+exits     trail_pivot_swing            era_d: n 8 (pre-11-04 8 / post 0; baseline=replay on 1) R_cap Δ -0.51 drop-best -1.31 R_own Δ -2.63 tail-clip 2 arm≥4R 1 live≥4R 2 engine agrees won False excluded {}
+exits     trail_pivot_swing            era_e: n 6 (pre-11-04 3 / post 3; baseline=replay on 0) R_cap Δ -0.16 drop-best -0.16 R_own Δ -0.37 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won False excluded {'fidelity_fail': 1}
+exits     trail_character_ma           era_c: n 1 (pre-11-04 1 / post 0; baseline=replay on 0) R_cap Δ -0.04 drop-best +0.00 R_own Δ -0.05 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won None excluded {'unscoreable': 5, 'fidelity_fail': 1}
+exits     trail_character_ma           era_d: n 5 (pre-11-04 5 / post 0; baseline=replay on 1) R_cap Δ -1.36 drop-best -1.38 R_own Δ -4.22 tail-clip 1 arm≥4R 0 live≥4R 1 engine agrees won False excluded {'unscoreable': 2, 'pending': 1}
+exits     trail_character_ma           era_e: n 2 (pre-11-04 0 / post 2; baseline=replay on 0) R_cap Δ -0.05 drop-best -0.05 R_own Δ -0.07 tail-clip 0 arm≥4R 0 live≥4R 0 engine agrees won None excluded {'unscoreable': 4, 'fidelity_fail': 1}
+admission exits     trail_pivot_swing            era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 1 R_cap Δ +0.00 won None
+admission exits     trail_pivot_swing            era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 1 R_cap Δ +0.00 won None
+admission exits     trail_pivot_swing            era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 1 R_cap Δ -0.12 won None
+admission exits     trail_pivot_swing            era_c adm_pre_2026-08-20 pre-11-04: n 3 R_cap Δ -1.40 won False
+admission exits     trail_pivot_swing            era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 8 R_cap Δ -0.51 won False
+admission exits     trail_pivot_swing            era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 3 R_cap Δ -0.05 won False
+admission exits     trail_pivot_swing            era_e adm_2026-11-04_open_below_floor post-11-04: n 3 R_cap Δ -0.11 won False
+admission exits     trail_character_ma           era_c adm_2026-08-26_rt_universe_authoritative pre-11-04: n 0 R_cap Δ +0.00 won None
+admission exits     trail_character_ma           era_c adm_2026-08-28_rubric_v4_rt_gap_authority pre-11-04: n 0 R_cap Δ +0.00 won None
+admission exits     trail_character_ma           era_c adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 0 R_cap Δ +0.00 won None
+admission exits     trail_character_ma           era_c adm_pre_2026-08-20 pre-11-04: n 1 R_cap Δ -0.04 won None
+admission exits     trail_character_ma           era_d adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 5 R_cap Δ -1.36 won False
+admission exits     trail_character_ma           era_e adm_2026-08-31_extension_cap_50_slot_rank_rs pre-11-04: n 0 R_cap Δ +0.00 won None
+admission exits     trail_character_ma           era_e adm_2026-11-04_open_below_floor post-11-04: n 2 R_cap Δ -0.05 won None
+regime stop_orb_low                 era_c Bull      : n 4 THIN R_cap Δ -0.43 won False
+regime stop_orb_low                 era_c Choppy    : n 1 THIN R_cap Δ +0.08 won None
+regime stop_orb_low                 era_c Correcting: n 1 THIN R_cap Δ -0.38 won None
+regime stop_orb_low                 era_d Choppy    : n 4 THIN R_cap Δ +0.35 won False
+regime stop_orb_low                 era_d Correcting: n 3 THIN R_cap Δ +2.90 won True
+regime stop_orb_low                 era_d Crisis    : n 1 THIN R_cap Δ +1.48 won None
+regime stop_orb_low                 era_e Choppy    : n 1 THIN R_cap Δ +0.29 won None
+regime stop_orb_low                 era_e Correcting: n 3 THIN R_cap Δ +0.84 won True
+regime stop_orb_low                 era_e Crisis    : n 2 THIN R_cap Δ -0.43 won None
+regime stop_adr_050                 era_c Bull      : n 4 THIN R_cap Δ -3.85 won False
+regime stop_adr_050                 era_c Choppy    : n 1 THIN R_cap Δ +0.08 won None
+regime stop_adr_050                 era_c Correcting: n 1 THIN R_cap Δ +0.10 won None
+regime stop_adr_050                 era_d Choppy    : n 3 THIN R_cap Δ -0.26 won False
+regime stop_adr_050                 era_d Correcting: n 2 THIN R_cap Δ +5.98 won None
+regime stop_adr_050                 era_d Crisis    : n 1 THIN R_cap Δ +0.76 won None
+regime stop_adr_050                 era_e Choppy    : n 1 THIN R_cap Δ +0.36 won None
+regime stop_adr_050                 era_e Correcting: n 3 THIN R_cap Δ +0.52 won True
+regime stop_adr_050                 era_e Crisis    : n 1 THIN R_cap Δ -0.39 won None
+regime stop_adr_075                 era_c Bull      : n 4 THIN R_cap Δ -0.75 won False
+regime stop_adr_075                 era_c Choppy    : n 1 THIN R_cap Δ +0.08 won None
+regime stop_adr_075                 era_c Correcting: n 1 THIN R_cap Δ -0.38 won None
+regime stop_adr_075                 era_d Choppy    : n 3 THIN R_cap Δ +0.67 won True
+regime stop_adr_075                 era_d Correcting: n 2 THIN R_cap Δ +2.88 won None
+regime stop_adr_075                 era_d Crisis    : n 1 THIN R_cap Δ +0.04 won None
+regime stop_adr_075                 era_e Choppy    : n 1 THIN R_cap Δ +0.20 won None
+regime stop_adr_075                 era_e Correcting: n 3 THIN R_cap Δ -0.15 won False
+regime stop_adr_075                 era_e Crisis    : n 1 THIN R_cap Δ -0.01 won None
+regime stop_orb_3r                  era_c Bull      : n 4 THIN R_cap Δ -1.59 won False
+regime stop_orb_3r                  era_c Choppy    : n 1 THIN R_cap Δ -0.19 won None
+regime stop_orb_3r                  era_c Correcting: n 1 THIN R_cap Δ +0.34 won None
+regime stop_orb_3r                  era_d Choppy    : n 4 THIN R_cap Δ +0.53 won True
+regime stop_orb_3r                  era_d Correcting: n 3 THIN R_cap Δ -1.12 won False
+regime stop_orb_3r                  era_d Crisis    : n 1 THIN R_cap Δ -0.43 won None
+regime stop_orb_3r                  era_e Choppy    : n 1 THIN R_cap Δ -0.11 won None
+regime stop_orb_3r                  era_e Correcting: n 3 THIN R_cap Δ -0.11 won False
+regime stop_orb_3r                  era_e Crisis    : n 2 THIN R_cap Δ -0.06 won None
+regime stop_low_of_day              era_c Bull      : n 4 THIN R_cap Δ -0.43 won False
+regime stop_low_of_day              era_c Choppy    : n 1 THIN R_cap Δ +0.08 won None
+regime stop_low_of_day              era_c Correcting: n 1 THIN R_cap Δ -0.38 won None
+regime stop_low_of_day              era_d Choppy    : n 4 THIN R_cap Δ +0.35 won False
+regime stop_low_of_day              era_d Correcting: n 3 THIN R_cap Δ +2.90 won True
+regime stop_low_of_day              era_d Crisis    : n 1 THIN R_cap Δ +1.48 won None
+regime stop_low_of_day              era_e Choppy    : n 1 THIN R_cap Δ +0.29 won None
+regime stop_low_of_day              era_e Correcting: n 3 THIN R_cap Δ +0.84 won True
+regime stop_low_of_day              era_e Crisis    : n 2 THIN R_cap Δ -0.43 won None
+regime harvest_no_breakeven         era_c Bull      : n 4 THIN R_cap Δ -0.29 won False
+regime harvest_no_breakeven         era_c Choppy    : n 1 THIN R_cap Δ -0.19 won None
+regime harvest_no_breakeven         era_c Correcting: n 1 THIN R_cap Δ -0.01 won None
+regime harvest_no_breakeven         era_d Choppy    : n 4 THIN R_cap Δ +0.19 won True
+regime harvest_no_breakeven         era_d Correcting: n 3 THIN R_cap Δ -0.70 won False
+regime harvest_no_breakeven         era_d Crisis    : n 1 THIN R_cap Δ -0.23 won None
+regime harvest_no_breakeven         era_e Choppy    : n 1 THIN R_cap Δ -0.05 won None
+regime harvest_no_breakeven         era_e Correcting: n 3 THIN R_cap Δ +0.42 won True
+regime harvest_no_breakeven         era_e Crisis    : n 2 THIN R_cap Δ +0.18 won None
+regime harvest_trail_only           era_c Bull      : n 4 THIN R_cap Δ +0.24 won True
+regime harvest_trail_only           era_c Choppy    : n 1 THIN R_cap Δ -0.65 won None
+regime harvest_trail_only           era_c Correcting: n 1 THIN R_cap Δ -0.01 won None
+regime harvest_trail_only           era_d Choppy    : n 4 THIN R_cap Δ +0.05 won False
+regime harvest_trail_only           era_d Correcting: n 3 THIN R_cap Δ +0.22 won True
+regime harvest_trail_only           era_d Crisis    : n 1 THIN R_cap Δ +0.28 won None
+regime harvest_trail_only           era_e Choppy    : n 1 THIN R_cap Δ -0.05 won None
+regime harvest_trail_only           era_e Correcting: n 3 THIN R_cap Δ -0.06 won False
+regime harvest_trail_only           era_e Crisis    : n 2 THIN R_cap Δ -0.03 won None
+regime harvest_t3                   era_c Bull      : n 4 THIN R_cap Δ +0.24 won False
+regime harvest_t3                   era_c Choppy    : n 1 THIN R_cap Δ +0.09 won None
+regime harvest_t3                   era_c Correcting: n 1 THIN R_cap Δ -0.01 won None
+regime harvest_t3                   era_d Choppy    : n 4 THIN R_cap Δ -0.20 won False
+regime harvest_t3                   era_d Correcting: n 3 THIN R_cap Δ -0.45 won False
+regime harvest_t3                   era_d Crisis    : n 1 THIN R_cap Δ -0.30 won None
+regime harvest_t3                   era_e Choppy    : n 1 THIN R_cap Δ -0.05 won None
+regime harvest_t3                   era_e Correcting: n 3 THIN R_cap Δ +0.42 won True
+regime harvest_t3                   era_e Crisis    : n 2 THIN R_cap Δ +0.18 won None
+regime harvest_legacy_2r            era_c Bull      : n 4 THIN R_cap Δ -0.29 won False
+regime harvest_legacy_2r            era_c Choppy    : n 1 THIN R_cap Δ +0.00 won None
+regime harvest_legacy_2r            era_c Correcting: n 1 THIN R_cap Δ -0.01 won None
+regime harvest_legacy_2r            era_d Choppy    : n 4 THIN R_cap Δ -0.02 won False
+regime harvest_legacy_2r            era_d Correcting: n 3 THIN R_cap Δ -0.70 won False
+regime harvest_legacy_2r            era_d Crisis    : n 1 THIN R_cap Δ -0.23 won None
+regime harvest_legacy_2r            era_e Choppy    : n 1 THIN R_cap Δ -0.05 won None
+regime harvest_legacy_2r            era_e Correcting: n 3 THIN R_cap Δ +0.42 won True
+regime harvest_legacy_2r            era_e Crisis    : n 2 THIN R_cap Δ +0.36 won None
+regime trail_pivot_swing            era_c Bull      : n 4 THIN R_cap Δ -1.39 won False
+regime trail_pivot_swing            era_c Choppy    : n 1 THIN R_cap Δ +0.00 won None
+regime trail_pivot_swing            era_c Correcting: n 1 THIN R_cap Δ -0.12 won None
+regime trail_pivot_swing            era_d Choppy    : n 4 THIN R_cap Δ +0.62 won False
+regime trail_pivot_swing            era_d Correcting: n 3 THIN R_cap Δ -0.52 won False
+regime trail_pivot_swing            era_d Crisis    : n 1 THIN R_cap Δ -0.61 won None
+regime trail_pivot_swing            era_e Choppy    : n 1 THIN R_cap Δ -0.05 won None
+regime trail_pivot_swing            era_e Correcting: n 3 THIN R_cap Δ -0.06 won False
+regime trail_pivot_swing            era_e Crisis    : n 2 THIN R_cap Δ -0.05 won None
+regime trail_character_ma           era_c Bull      : n 1 THIN R_cap Δ -0.04 won None
+regime trail_character_ma           era_c Choppy    : n 0 THIN R_cap Δ +0.00 won None
+regime trail_character_ma           era_c Correcting: n 0 THIN R_cap Δ +0.00 won None
+regime trail_character_ma           era_d Choppy    : n 4 THIN R_cap Δ -0.49 won False
+regime trail_character_ma           era_d Correcting: n 0 THIN R_cap Δ +0.00 won None
+regime trail_character_ma           era_d Crisis    : n 1 THIN R_cap Δ -0.87 won None
+regime trail_character_ma           era_e Choppy    : n 1 THIN R_cap Δ -0.05 won None
+regime trail_character_ma           era_e Correcting: n 1 THIN R_cap Δ -0.00 won None
+regime trail_character_ma           era_e Crisis    : n 0 THIN R_cap Δ +0.00 won None
+regime entry_first_hour_bar         era_c Bull      : n 4 THIN R_cap Δ -1.26 won False
+regime entry_first_hour_bar         era_c Choppy    : n 1 THIN R_cap Δ -0.68 won None
+regime entry_first_hour_bar         era_c Correcting: n 1 THIN R_cap Δ +0.31 won None
+regime entry_first_hour_bar         era_d Choppy    : n 4 THIN R_cap Δ +1.32 won False
+regime entry_first_hour_bar         era_d Correcting: n 3 THIN R_cap Δ -1.97 won False
+regime entry_first_hour_bar         era_d Crisis    : n 1 THIN R_cap Δ -0.37 won None
+regime entry_first_hour_bar         era_e Choppy    : n 0 THIN R_cap Δ +0.00 won None
+regime entry_first_hour_bar         era_e Correcting: n 2 THIN R_cap Δ +0.78 won None
+regime entry_first_hour_bar         era_e Crisis    : n 2 THIN R_cap Δ -0.04 won None
+regime book_first_hour_low_of_day   era_c Bull      : n 4 THIN R_cap Δ -0.90 won False
+regime book_first_hour_low_of_day   era_c Choppy    : n 1 THIN R_cap Δ -0.99 won None
+regime book_first_hour_low_of_day   era_c Correcting: n 1 THIN R_cap Δ +0.08 won None
+regime book_first_hour_low_of_day   era_d Choppy    : n 4 THIN R_cap Δ +1.40 won False
+regime book_first_hour_low_of_day   era_d Correcting: n 3 THIN R_cap Δ -1.91 won False
+regime book_first_hour_low_of_day   era_d Crisis    : n 1 THIN R_cap Δ +0.74 won None
+regime book_first_hour_low_of_day   era_e Choppy    : n 0 THIN R_cap Δ +0.00 won None
+regime book_first_hour_low_of_day   era_e Correcting: n 2 THIN R_cap Δ +0.42 won None
+regime book_first_hour_low_of_day   era_e Crisis    : n 2 THIN R_cap Δ -0.13 won None
+recorder check: stop_low_of_day = stop_orb_low on 20 of 22 settled fills
+admission mix L1 era_c: adm_2026-08-26_rt_universe_authoritative 2, adm_2026-08-28_rubric_v4_rt_gap_authority 1, adm_2026-08-31_extension_cap_50_slot_rank_rs 1, adm_pre_2026-08-20 3; post-11-04 0 of 7
+admission mix L1 era_d: adm_2026-08-31_extension_cap_50_slot_rank_rs 8; post-11-04 0 of 8
+admission mix L1 era_e: adm_2026-08-31_extension_cap_50_slot_rank_rs 5, adm_2026-11-04_open_below_floor 2; post-11-04 3 of 7
+admission mix L3 bp1: None 12; post-11-04 12 of 12
+admission stamp vs derived: APPN trade 462 (alert 2026-11-05): stamp adm_2026-08-31_extension_cap_50_slot_rank_rs vs derived adm_2026-11-04_open_below_floor — cell key uses derived (I16)
+recorder heartbeat: ran 54 of 55 sessions; missing 2026-09-18; error rows 0
+fidelity per fill: AMLX pass stored Δ -0.00 tol +0.25; MRVL pass stored Δ -0.05 tol +0.25; MRNA pass stored Δ -0.24 tol +0.25; CRWD pass stored Δ +0.00 tol +0.25; OKTA FAIL exit_session_differs Δ -1.44 tol +0.25; SOLS pass stored Δ +0.00 tol +0.25; HOOD pass stored Δ -0.01 tol +0.25; PHVS pass stored Δ +0.02 tol +0.25; SEI pass stored Δ +0.02 tol +0.25; DFTX pass stored Δ +0.01 tol +0.25; VICR pass reweighted Δ -1.11 (re-weighted Δ +0.07, live fraction +0.00) tol +0.73; KOD pass stored Δ -0.29 tol +0.59; CEG pass stored Δ +0.00 tol +0.25; PENG pass stored Δ +0.01 tol +0.25; HUM pass stored Δ +0.01 tol +0.25; IRON pass stored Δ +0.00 tol +0.25; SMCI pass stored Δ +0.01 tol +0.25; CLS FAIL exit_session_differs Δ +1.15 tol +0.25; AEHR pass stored Δ -0.02 tol +0.25; APPN pass stored Δ -0.07 tol +0.25; CRWV pass stored Δ -0.11 tol +0.25; RSKD pass stored Δ -0.00 tol +0.25
+safeguard voids: none

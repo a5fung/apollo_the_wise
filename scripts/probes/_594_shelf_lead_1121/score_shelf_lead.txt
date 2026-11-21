@@ -1,0 +1,17 @@
+ticker|date|verdict|yes|dmin_adr|held|into|structure|null|shelf_date|shelf|adr20_pct
+TVTX|2026-08-05|GOOD_CHART|True|8.935|1|0|ok||2026-02-02|33.135|4.528
+SMWB|2026-08-12|OKISH_CHART|True|-8.479|0|0|ok||2025-07-24|9.260|5.770
+CRWV|2026-08-12|OKISH_CHART|True|-7.702|0|0|no_breakout(P<=shelf)||2025-07-03|166.220|8.254
+UMAC|2026-08-14|OKISH_CHART|True|-3.163|0|0|ok||2026-03-12|23.380|10.277
+SWIM|2026-08-05|BAD_CHART|False|-6.422|0|0|ok||2025-12-03|7.390|4.425
+INTR|2026-10-05|BAD_CHART|False|-13.319|0|0|ok||2025-11-13|10.220|3.857
+WOLF|2026-10-08|OKISH_CHART|True|0.561|1|1|ok||2026-03-02|22.190|7.071
+SGMT|2026-09-30|BAD_CHART|False|-3.933|0|0|no_breakout(P<=shelf)||2025-07-25|11.410|6.072
+TATT|2026-08-05|BAD_CHART|False|-3.248|0|0|ok||2025-10-29|45.829|5.152
+
+yes n=5 no n=4 pairs=20 dropped(NULL)=[]
+P(yes dmin > no dmin) = 0.700  (bar >= 0.65; directional only)
+VERDICT: HOLDS on fresh labels (directional)
+median dmin: yes -3.16 ADR, no -5.18 ADR
+
+POOLED samples 6+7+8+9 (description only): yes n=21 no n=23 pairs=483 P = 0.729
