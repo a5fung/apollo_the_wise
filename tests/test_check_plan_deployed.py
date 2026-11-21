@@ -29,6 +29,13 @@ def _run_main(monkeypatch, tmp_path, plan_text: str, argv=None, baseline: str | 
     if baseline is not None:
         base.write_text(baseline, encoding="utf-8")
     monkeypatch.setattr(cp, "BASELINE", base)
+    # Freeze main()'s clock to TODAY (noon PT): TODAY is read at import, and a suite that crosses PT
+    # midnight otherwise compares yesterday's fixtures against today's clock (CI red 2026-11-20).
+    class _FrozenDT(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime.combine(TODAY, datetime.min.time().replace(hour=12), tzinfo=cp._OPERATOR_TZ)
+    monkeypatch.setattr(cp, "datetime", _FrozenDT)
     return cp.main(argv or [])
 
 

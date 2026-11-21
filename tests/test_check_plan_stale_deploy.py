@@ -26,7 +26,7 @@ from scripts.check_plan import (
 # borrowing it) rather than hand-rolling a second copy of "run main() against a throwaway PLAN.md".
 from tests.test_check_plan_deployed import _run_main
 
-TODAY = datetime.now(cp._OPERATOR_TZ).date()
+from tests.test_check_plan_deployed import TODAY  # one clock for both files: _run_main freezes main() to it
 FUTURE = (TODAY + timedelta(days=60)).isoformat()
 
 
