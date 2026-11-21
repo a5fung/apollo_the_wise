@@ -16023,6 +16023,42 @@ reviews:
          sign-off on the tables, as on 2026-10-03). The display of the score stays regardless.
     added_on: 2026-10-03
     cross_refs: ["task #394", "docs/analysis/394_coil_tuning_methodology_2026-07-11.md"]
+  - review_id: cot_close_rule_vs_issue_1122
+    title: "COT close-to-a-set-up rule (rebuilt 11-16, live 11-17) — its first list vs his 11-22 issue"
+    question: >-
+      #725 closed 2026-11-20 on its DoD (clean week; set-ups 5 of 5 vs his 11-15 issue). Its close-rule
+      EXPECT is carried here: the rebuilt rule (Commercials >= 95, Large Specs <= 15, Small Specs <= 80;
+      mirror) listed 13 markets for report 11-17 on 11-20. EXPECT: overlap with his 11-22 issue's close
+      list >= 60%; main set-up list unchanged. WOULD-FAIL-IF: our close list is empty or <= 2 while 5+
+      markets have Commercials >= 95 / <= 5, or overlap < 60%. Score in ~/cmr_lab (private) once the
+      11-22 issue is ingested; the market list comes from the 11-20 paper-chat message or a rebuild from
+      CFTC report 11-17 (the audit row holds counts only).
+    predicate_sql: |
+      SELECT count(*) FROM mi_audit_log
+       WHERE event_type = 'cot_weekly' AND detail::jsonb->>'status' = 'sent'
+         AND created_at >= TIMESTAMPTZ '2026-11-27 00:00:00+00'
+    threshold: 1
+    zero_verdict: "2026-11-20 WAITING — his 11-22 issue arrives Sunday; the predicate fires once the next weekly run sends (11-27), by which time the 11-22 issue must be scored."
+    discriminates_on: []
+    earliest_review_date: 2026-11-23
+    status: pending
+    kind: tripwire
+    added_on: 2026-11-20
+    can_fire:
+      predicate_runs: >-
+        Same shape read 2026-11-20: 1 sent cot_weekly row on 11-20 (report 11-17), so the event is real and weekly.
+      nonzero_possible: >-
+        Writer: scheduler._cot_weekly_job, Fri 17:40 ET (+18:40 retry), audit row cot_weekly every run.
+      lane_live: >-
+        COT family alerts live to the paper chat since 2026-11-15.
+      threshold_vs_observed: >-
+        Threshold 1; one sent run per report week.
+      era_scoped: >-
+        From 11-27, after the 11-22 issue, so the read is never made before the issue exists.
+      population_actionable: >-
+        The review's work is the scoring itself; the predicate only times it.
+      instrument_trusted: >-
+        The 11-15 issue scored 5 of 5 on set-ups with the same pipeline (~/cmr_lab/docs/score_week_2026-11-16.md).
   - review_id: telegram_send_retry_first_fire_1119
     title: "Telegram sender retry (2026-11-19) — the first transient blip it saved, or failed on"
     question: >-

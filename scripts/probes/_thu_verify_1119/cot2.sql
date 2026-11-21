@@ -1,0 +1,1 @@
+SET default_transaction_read_only = on; SELECT created_at AT TIME ZONE 'America/New_York', left(detail::text,300) FROM mi_audit_log WHERE event_type='cot_weekly' AND created_at > now()-interval '30 hours';

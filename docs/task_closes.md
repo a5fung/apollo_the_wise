@@ -2614,3 +2614,10 @@ BAR: "two consecutive nightly files published and the page read on his phone"
 EVIDENCE:
 - Two nightly files: 11-15 18:30 ET (as_of 2026-11-13) and 11-16 (portfolio-app2 `93ea638`, `apollo_rs_leaders_snapshot.json` as_of 2026-11-16, 50 rows in each of 1w / 1m / 3m / 6m).
 - His phone read 11-16 evening: "rS leaders looks fine" (with one catch, BRZE a buyout → fixed the same night: deal-pinned names leave the board, `scripts/export_rs_leaders_snapshot.sql`; read-only prod run `scripts/probes/_726_mna_1116/export_new.out` removes all six pinned top-50 names, 27 pinned in the universe).
+
+## #725 — COT family live alerts: one clean week, scored against his issue of that week (2026-11-20)
+BAR: "alerts running clean for one full week and scored against his issue of that week"
+EVIDENCE:
+- **Clean week:** `cot_daily` success 5 of 5 (11-16..11-20, 17:15 ET; status ok, no errors, catch-up of report 11-10 sent 11-16 with 5 set-ups); `cot_weekly` 11-20 17:40 ET sent report 11-17 (4 set-ups, 13 close, no errors; the 18:40 retry read "no new report" by design). Every row since 11-17 stores `detail` as a JSON object (prod read 11-20, `jsonb_typeof` = object on cot_daily and both cot_weekly rows) — the 11-17 codec fix holds.
+- **Scored vs his 11-15 issue** (private, `~/cmr_lab/docs/score_week_2026-11-16.md`): set-ups for report 11-10 — his 5, ours 5, both 5 (precision and recall 100%); the three failure alerts (Russell short, silver long, wheat long) are all on markets he listed crowded in that direction.
+- **What this does NOT show:** the close-to-a-set-up list scored 0 of his 9 — that run (11-16) used the OLD close rule; the rebuilt rule went live 11-17 and its first list (13 markets, report 11-17) is scored against his 11-22 issue by the review `cot_close_rule_vs_issue_1122` (its EXPECT: overlap >= 60%; WOULD-FAIL-IF: <= 2 or empty).
