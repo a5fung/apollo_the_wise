@@ -632,6 +632,14 @@ reviews:
     #    denominator, so it is NOT comparable to today's corrected figure. 08-30 is the first
     #    comparable snapshot.
     status: pending
+    can_fire:
+      predicate_runs: "2026-11-21 read-only against prod, run exactly as written, returns 44 closed live-account trades with total_pnl set (bar 20)."
+      nonzero_possible: "mi_live_trades closed rows are written by the live trade tracker as positions close; the band evaluator that this review audits runs as scheduler.py job kill_scale_band_eval (scheduler.py:8140, Mon-Fri 16:13 ET, reads kill_scale_bands.py:236-244). The count already exceeds the bar, so the floor is met; the review is gated by earliest_review_date 2026-11-26, not by the count."
+      lane_live: "MAGNA53 EP live account is the population (signal_type is the only discriminator); the 44 live closes as of 2026-11-21 show the lane has been trading live since the June cutover."
+      threshold_vs_observed: "Bar 20 against observed 44, so the count is 24 past the floor (it read 23 on 2026-08-26; about 21 closes in 12 weeks, roughly 1.75 a week). Accrual is not the constraint; only the 2026-11-26 date is. Not measured 2026-11-21 - needs a query of how many of the 44 closed under the 2R stop (the 08-26 run had 1 of 23)."
+      era_scoped: "Era mix not re-measured 2026-11-21. The 08-26 run found 22 of 23 closes pre-2R and the #268b calibration itself simulated on stop-model orb_low, so re-deriving bands from live trades straddles the 2R stop change; the action must split pre-2R vs 2R closes. The evaluator also excludes pnl_attribution-tagged rows (kill_scale_bands.py:241, tagging era from 2026-06-19) which the YAML predicate does not."
+      population_actionable: "The predicate counts status closed, account_mode live, total_pnl not null; the evaluator the action re-derives from additionally filters pnl_attribution IS NULL, so the predicate can overcount by the tagged rows (the 08-26 note recorded the two agreeing only because the book was clean). Overcount only matters for the floor, which is cleared by 24, so the ruling is not affected."
+      instrument_trusted: "Reads mi_live_trades via kill_scale_bands.assemble_band_inputs and scripts/evaluate_kill_scale_bands.py (ran against prod 2026-08-26, module md5 matched). Known defects per the 08-26 run, unfixed: risk_dollars_actual NULL on all rows so the fallback carries every row, and the scale arm equity_above_start compares to a 0 bootstrap snapshot so it can almost never read False. Not re-verified 2026-11-21."
     action_when_ready: |
       Part of the operator's QUARTERLY RULE REVIEW (rides the same 8/1 session
       as model_selection_quarterly_review; quarterly sweep cadence Feb/May/Aug/
@@ -6251,14 +6259,14 @@ reviews:
       coverage gaps, threshold drift candidates (with N≥30 evidence
       per feedback_sample_size_discipline). Decisions: ship tweak /
       keep / file for next quarter.
-    # NOTE 2026-08-15 (sweep): same as phase6 above — 'meta_rubric_score_advisory'
-    # has no writer yet (Phase 5/#329 unbuilt); 0 rows all-time. Correctly dark.
+    # RE-POINTED 2026-11-21 (can_fire backlog sweep): it counted 'meta_rubric_score_advisory',
+    # an event with NO writer anywhere (Path-B artefact superseded 07-07, ADR 0035 §7 F-D) — a
+    # gate that could never open. It now counts EP alerts that carry a catalyst rubric read
+    # (`mi_ep_alerts.catalyst_quality`) in the last 90 days: 90 on prod 2026-11-21 (08-27..11-19).
+    # The quarterly cadence (earliest date) is unchanged; the count is the N>=30 evidence floor.
     predicate_sql: |
-      -- Fires every 90 days starting Phase 6 ship + 90d.
-      -- Initial earliest_review_date estimated; resets after each
-      -- review completes.
-      SELECT COUNT(*) FROM mi_audit_log
-      WHERE event_type = 'meta_rubric_score_advisory'
+      SELECT COUNT(*) FROM mi_ep_alerts
+      WHERE catalyst_quality IS NOT NULL
         AND created_at >= CURRENT_DATE - INTERVAL '90 days';
     threshold: 30
     earliest_review_date: 2026-12-29
@@ -6276,6 +6284,14 @@ reviews:
       Logged in docs/setups/catalyst_rubric.md change log.
       Decisions go through standard SSoT change-process flow.
     status: pending
+    can_fire:
+      predicate_runs: "2026-11-21 read-only against prod: the OLD predicate returned 0 (dead event); the re-pointed one returns 90 EP alerts with catalyst_quality set, 2026-08-27..11-19."
+      nonzero_possible: "mi_ep_alerts.catalyst_quality is written by ep_detector on every graded EP alert; 90 rows in the last 90 days, so non-zero is routine."
+      lane_live: "n/a - a rubric-quality review, not a strategy lane; MAGNA53 EP (the lane whose alerts carry the read) is live and enabled."
+      threshold_vs_observed: "Bar 30 against an observed 90 in 90 days (~7 a week); the gate is the quarterly date 2026-12-29, not the count."
+      era_scoped: "Not measured 2026-11-21: catalyst_quality has changed under catalyst-rubric revisions (docs/setups/catalyst_rubric.md change log); the action must split by rubric version before cross-tabbing outcomes."
+      population_actionable: "The action reviews per-axis catalyst outcomes on EP alerts; the predicate counts exactly those alerts (catalyst_quality set). Safeguard-blocked alerts are included deliberately (real EPs regardless of safeguards)."
+      instrument_trusted: "catalyst_quality is the live rubric output on mi_ep_alerts (verified populated 2026-11-21). The action script scripts/quarterly_rubric_review.py was never built; the first review builds it or runs the read by hand."
     added_on: 2026-05-17
     cadence: quarterly  # re-arm after each review
 
@@ -9991,6 +10007,14 @@ reviews:
     # manufactured a HIGH without a source, which is the good outcome, not neglect.
     zero_verdict: "2026-09-09 WAITING — emitter live (71 rows, last 08-27; boost simply has not fired since); HIGH-without-direct-source is 0 of 50 HIGHs. Good news, not neglect."
     status: pending
+    can_fire:
+      predicate_runs: "2026-11-21 read-only against prod, run exactly as written, returns 0 (bar 1): no HIGH boost row with direct=False."
+      nonzero_possible: "Writer is ep_detector.py:6406-6423, which logs one perplexity_boost_shadow audit row per boosted ticker per day when confidence_multiplier >= 1.2 and the direct-source flag is known (emitter present since 2026-06-07, commit 858ff520); the summary string carries tier and direct=, so both LIKE filters can match. It runs inside the EP grade tick, so no separate job. A zero means the boost has never manufactured a HIGH without a direct source, not a dead emitter. Not measured 2026-11-21: total row count and date of the last row (needs SELECT count(*), max(created_at) on the event; the 09-09 verdict recorded 71 rows, last 08-27)."
+      lane_live: "MAGNA53 EP alerting is live and the emitter sits in its grading path; the 1.2x agreement boost only fires when sources agree, which had stopped firing after 08-27 per the 09-09 verdict, not re-measured since."
+      threshold_vs_observed: "Bar 1 against 0; the slice of interest (HIGH without a direct source) was 0 of 50 HIGHs as of 09-09 and 0 of 44 boost rows on 08-06. A tripwire, so there is no accrual rate - it fires on a single event. Not measured 2026-11-21: HIGH count since 09-09."
+      era_scoped: "Single table, mi_audit_log from 2026-06-07. The judge became load-bearing for the final tier on 2026-06-10 (per the action note), so the boost now acts on the floor/fallback path and judge input only; rows before and after 06-10 mean different things and the action says to re-scope Part 2 against that. Not otherwise era-split."
+      population_actionable: "Predicate counts exactly the Part-2 target slice (tier HIGH and direct=False), the same filter the action applies in step 2 (N >= 5 to build); note the predicate fires at 1 while the build bar is 5, so a READY read means look at the cohort, not build."
+      instrument_trusted: "Reads mi_audit_log summary text by LIKE, so a format change in the ep_detector.py:6423 summary string would silently zero it; the string format is the one that wrote 5 MODERATE and 44 HIGH rows that matched, per the 09-09 verdict. Last verified emitter in code 2026-11-21."
     kind: tripwire
     regated_on: 2026-08-06
     regate_kind: predicate
@@ -10580,6 +10604,14 @@ reviews:
     # runs. Zero breaches = no same-family stacking has occurred on the live book. The truth.
     zero_verdict: "2026-09-09 WAITING — the check runs on every entry (09-08 heartbeat rows prove it); zero breaches means no same-family stacking has happened. Action re-aligned to his 09-07 ruling."
     status: pending
+    can_fire:
+      predicate_runs: "2026-11-21 read-only against prod, run exactly as written, returns 1 (bar 3): one breach has been emitted."
+      nonzero_possible: "Writer is exposure_family.py:86 shadow_check_and_emit, called from broker/entry_pipeline.py:910-911 on every entry submission; it logs exposure_family_breach at exposure_family.py:131 when same-family open positions exceed the threshold (emitter since 2026-07-12, commit 0f3b1099). The 1 row proves it can write."
+      lane_live: "Shadow-only: it observes every entry submission on both account modes and blocks nothing; entries flow through entry_pipeline so it runs whenever any strategy submits."
+      threshold_vs_observed: "Bar 3 against 1 breach in about 19 weeks since 07-12 (about 0.05 a week), so 2 more would take on the order of 40 weeks at that rate - an estimate from the one row, not a trend. Not measured 2026-11-21: that row's date and whether it was paper or live (needs SELECT created_at, payload FROM mi_audit_log WHERE event_type='exposure_family_breach')."
+      era_scoped: "Reads mi_audit_log (from 2026-07-12) and, in the action, same-family entry R from mi_live_trades vs solo entries; the action must split pre-2R vs 2R closes and the breakout paper trades tagged pnl_attribution on 2026-11-15, which the predicate does not. Not measured 2026-11-21."
+      population_actionable: "Predicate counts breach rows across both account modes and all strategies (payload carries account_mode); the action judges each flagged family per event and then compares same-family vs solo realised R, so a paper-only breach is actionable for the family-key check but thin for the R comparison."
+      instrument_trusted: "The check is proven to run by exposure_family_checked heartbeat rows (5 on 2026-09-08, one per submission). Known gaps recorded in round 1: same-day theme-birth blindness and about 22 percent candidate theme coverage, so a zero can understate real stacking; the single row has not been eyeballed 2026-11-21."
     added_on: 2026-08-11
     cross_refs: ["task #452", "exposure_family_cap_promotion (r1)", "docs/analysis/452_r1_stage2_design_2026-07-17.md"]
 
@@ -14611,6 +14643,14 @@ reviews:
     discriminates_on: []
     earliest_review_date: 2026-09-27
     status: pending
+    can_fire:
+      predicate_runs: "2026-11-21 read-only against prod, run exactly as written, returns 5 settled multi-alert mornings (bar 10)."
+      nonzero_possible: "Writer is ep_slot_rank_shadow.snapshot_slot_rank_board, called from broker/live_tracker.py:711 on each morning slot decision; the table mi_ep_slot_rank_shadow was created 2026-08-30 (commit 66372f8c, db.py:4695) and the 5 count proves rows land. No separate scheduler job - it rides the live tracker."
+      lane_live: "MAGNA53 EP is live and RS-rank slot allocation (ep_slot_rank_rs) is the acting ordering since the 2026-08-30 flip; the table is recorded counterfactually for all six rankings on every row."
+      threshold_vs_observed: "Bar 10 against 5 mornings with 3 or more distinct tickers, settled 8+ days, in about 12 weeks since 08-30 - roughly 0.4 qualifying mornings a week, so the 5 still missing are about 12 weeks out (around February 2027). That is my arithmetic from the one count; the per-week distribution was not measured 2026-11-21."
+      era_scoped: "Single table from 2026-08-30 (the RS flip), so every row is post-flip by construction; vol_percentile column added 2026-09-04 (#624) so that ranking has no data for mornings before that. The action joins mi_daily_closes for ret5 from the day-0 open - price history with no rule era - and dedups to the earliest invocation per morning."
+      population_actionable: "Predicate counts mornings with at least 3 distinct tickers on the board that are 8+ days old, matching the action's decision-day bar and its settled ret5 window; mornings with fewer than 3 names cannot yield a top-2 vs rest comparison and are rightly excluded."
+      instrument_trusted: "Reads mi_ep_slot_rank_shadow plus mi_daily_closes; registered in health_checks.py:1769 as a liveness table. Not measured 2026-11-21: that the six ranking columns are populated on the latest rows and that rank_vol_pct is non-null since 09-04 (needs a null-count query)."
     kind: accrual
     added_on: 2026-08-30
     action_when_ready: >-
@@ -14998,6 +15038,14 @@ reviews:
     discriminates_on: []
     earliest_review_date: 2026-11-30
     status: pending
+    can_fire:
+      predicate_runs: "2026-11-21 read-only against prod, run exactly as written, returns 56 distinct as_of_date values (bar 60)."
+      nonzero_possible: "Writer is analyst_estimates_recorder.run_analyst_estimates_snapshot, registered as scheduler.py job analyst_estimates_snapshot (scheduler.py:7430-7432, 18:12 ET, silent capture-only; job body at scheduler.py:5833-5854); the table was created 2026-08-31 (commit a27e6d38, db.py:4826). 56 distinct days in about 82 calendar days is roughly one per trading day, so the writer is healthy."
+      lane_live: "n/a - a data-capture recorder with no strategy lane; it records the consensus estimates for the alert population and trades nothing."
+      threshold_vs_observed: "Bar 60 against 56, at about one new day per trading day, so 4 more trading days - about 2026-11-27 allowing for the Thanksgiving closure (11-26); the 2026-11-30 earliest date sits just after. Rate inferred from 56 days over 08-31 to 11-21, not a per-day gap check; not measured 2026-11-21: whether any weekday was skipped (needs the sorted distinct as_of_date list)."
+      era_scoped: "One table from 2026-08-31, single capture era; the action reads db.get_analyst_estimates_asof (the honest-window read) and estimate_for_scoring with the n_analysts under 3 rule, so lookahead is handled in the reader. Backfill reach is limited (docs/analysis/analyst_estimates_backfill_reach_2026-08-31.md), so the forward returns in STEP-0 start at 2026-08-31 and settle slowly - the 60 days is a capture count, not a count of settled outcomes."
+      population_actionable: "Counts snapshot days over all tickers and both period types, while STEP-0 needs ticker-days with at least 3 analysts and a settled forward return; 60 days is therefore necessary and likely not sufficient. Not measured 2026-11-21: the number of ticker-snapshot rows with n_analysts >= 3 (needs that count)."
+      instrument_trusted: "Reads mi_analyst_estimates, which is registered in the detector-liveness registry as the watchdog for a dead writer; FMP and yfinance legs share one row shape. Last verified: the writer's job exists and the table holds 56 days as of 2026-11-21; row-level correctness of estimates (e.g. null revenue fields) was not audited today."
     kind: accrual
     added_on: 2026-08-31
     action_when_ready: >-
@@ -15368,6 +15416,14 @@ reviews:
     # so silence here is the base rate, not a defect.
     zero_verdict: "2026-09-09 WAITING — emitter exists (order_manager `_REPROTECT_FLOOR_EVENT`); 0 rows verified 09-09; the repair path fired twice in the system's life."
     status: pending
+    can_fire:
+      predicate_runs: "2026-11-21 read-only against prod, run exactly as written, returns 0 (bar 1)."
+      nonzero_possible: "Writer is broker/order_manager.py:2231-2233 (event constant _REPROTECT_FLOOR_EVENT at order_manager.py:1972), emitted when a re-armed stop price is raised to the last broker stop; the emitter has been in code since 2026-09-03 (commit 46ae2c1a) and runs inside apollo-execution on whatever path re-protects a stop - no scheduler job. The zero is the event not having happened: the repair path it sits on has fired twice in the system life (both 2026-06-23, paper). Not measured 2026-11-21: that the running execution image still contains this emitter after the 11-20 / 11-21 deploys (needs a grep inside the running container)."
+      lane_live: "Applies to protective stops on live and paper positions alike; both accounts trade, and the path triggers only when a stop dies and its pointer survives, so it depends on a stop failure rather than on a lane being on."
+      threshold_vs_observed: "Bar 1 against 0; a tripwire with a base rate of about 2 firings in the system life, so there is no accrual rate and no date to project. The 2026-09-04 verify confirmed the floor function raises 10.00 to 10.75 inside the image."
+      era_scoped: "Single audit event from 2026-09-03. #728 (11-20/21) changed stop moves to one atomic replace and the stop-ACK watchdog fallback to the trade last stop, so the stop-death paths that could feed this floor are now different from the ones the 09-04 verify covered; not re-verified 2026-11-21 that the floor path is still reached after #728."
+      population_actionable: "Predicate counts the event rows regardless of account mode; the action reads each row for DB price vs placed price vs pointer and confirms the position ended protected, so any row is actionable."
+      instrument_trusted: "Reads one mi_audit_log row whose payload carries db_price, placed_price, broker_stop_price and the pointer; payload shape verified in code (order_manager.py:2233-2240) on 2026-11-21, no live row exists to read yet. The four dead_stop_* columns were verified in prod on 2026-09-04."
     kind: tripwire
     added_on: 2026-09-04
     action_when_ready: >-

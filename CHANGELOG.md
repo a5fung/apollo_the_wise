@@ -1,3 +1,11 @@
+### 2026-11-19 — Telegram sends retry blips; the paper chat answers from the paper book
+
+- Telegram: a HIGH EP alert was lost to a timeout 11-19; each message chunk now retries ConnectError/timeouts/429/5xx inside a 20 s budget (trade-stream callers await it inline); `telegram_send_retried` on a save, `attempts=N` on a final failure. Paper chat: /trades (+ buttons), /trade, /why answer from the paper book there (`book_for_update`); elsewhere /trade and /why show both books tagged. B6 fork B backtested (demotion kept), extension-cap band replayed (cap answer unchanged). Deployed `8b93dbf6` both + execution on his "deploy anytime".
+
+### 2026-11-15 — COT family (futures) live alerts; RS Leaders + COT dashboard pages; breakout grades
+
+- COT family (SSoT `docs/setups/cot_family.md`, research `~/cmr_lab`): Shapiro's COT index rebuilt from CFTC data; `cot_weekly` Fri 17:40 / `cot_daily` Mon-Fri 17:15 ET alerts to the paper chat (no orders); Sat 1-minute futures archive; read-only `POST /data/bars` on execution (refused 09:20-10:05 ET). Breakout rows graded A+/A/B/C; flawed pre-fix breakout paper trades tagged `pnl_attribution`. Deployed `3af0b701`.
+
 ### 2026-11-08 — #312 demote page live; the chat route closed to money commands; breadth groups
 
 - #312 (`ladder_watchdog.py`, `ladder_press.py`): a breach pages him once per episode with stats + Demote / No action (tokenized button; one rung, compare-and-set in one transaction); Demote takes effect without a restart (fresh strategy reads on the money path). His rulings: the chat assistant can NOT move a strategy, /resume, /partialnow or /timestop (typed command only; refusal + audit row); /pause and /syncnow stay open. Live probe passed (forged marker refused). #722: the breadth export gains 19 groups. Deployed `e475346e` (both, then execution).
