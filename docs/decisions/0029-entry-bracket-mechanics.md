@@ -84,7 +84,7 @@ ceiling for any candidate.
 
 `scripts/probes/_414_entry_mechanics_backtest.py` (read-only, prod): cohort = cancelled entries
 with EOD reclassification (`orb_cancellation_reclassified` audit, the authoritative SIP-complete
-labels; 90d+ history — the join is already specced in the #414 brief). Then:
+labels, judged only on bars from the order's own submission to its cancel; `window_basis` in the detail says which window — fixed 2026-11-21 after CYRX was labelled off a pre-submission bar; rows before that may over-state would_have_filled; 90d+ history — the join is already specced in the #414 brief). Then:
 1. **Report the split first**: would_have_filled (paper artifact — counted, excluded from
    mechanics decisions, with the #182 citation) vs gap_through vs clean_miss. If gap_through
    N < 10 → **park**: no live-mechanics change on thin evidence; re-arm the measurement as a

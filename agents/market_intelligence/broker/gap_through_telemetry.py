@@ -205,6 +205,32 @@ def _classify_canonical(
     return "would_have_filled" if min(l for _, _, l in after) <= limit else "gap_through"
 
 
+def _order_window(submitted_at, cancelled_at):
+    """Wall-clock (ET) bar window [start, end] for judging whether an entry order
+    could have filled, plus the basis label recorded in the audit detail.
+
+    Only bars at/after the order's own submission minute can fill it: CYRX
+    2026-11-17 (submitted 09:45, level 20.37) was labelled would_have_filled off
+    a 09:44 bar (high 20.3949) printed BEFORE submission; every bar after peaked
+    at 20.29. Orders submitted after 10:00 (breakout v1) run submission -> cancel
+    (else -> 16:00), not the 09:31-10:00 ORB window.
+    """
+    def _et(x):
+        return x.astimezone(_ET) if x.tzinfo else x
+
+    if submitted_at is None:
+        return _CANON_OPEN_T, _CANON_CUTOFF_T, "orb_window_no_submit_time"
+    sub = _et(submitted_at)
+    start = max(_CANON_OPEN_T, _time(sub.hour, sub.minute))
+    if cancelled_at is not None:
+        end = _et(cancelled_at).time()
+    elif sub.time() >= _CANON_CUTOFF_T:
+        end = _time(16, 0)
+    else:
+        end = _CANON_CUTOFF_T
+    return start, end, "post_submit"
+
+
 async def reclassify_orb_cancellations_eod(alert_date: date) -> dict:
     """#183 — EOD re-classification of the day's cancelled ORB entries on
     COMPLETE bars over the canonical [9:31, 10:00] window.
@@ -222,10 +248,13 @@ async def reclassify_orb_cancellations_eod(alert_date: date) -> dict:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT id, ticker, orb_high, entry_price
-            FROM mi_live_trades
-            WHERE status = 'cancelled' AND entry_order_id IS NOT NULL
-              AND orb_high IS NOT NULL AND alert_date = $1
+            SELECT t.id, t.ticker, t.orb_high, t.entry_price,
+                   o.submitted_at AS order_submitted_at,
+                   o.cancelled_at AS order_cancelled_at
+            FROM mi_live_trades t
+            LEFT JOIN mi_live_orders o ON o.alpaca_order_id = t.entry_order_id
+            WHERE t.status = 'cancelled' AND t.entry_order_id IS NOT NULL
+              AND t.orb_high IS NOT NULL AND t.alert_date = $1
         """, alert_date)
 
     summary: Counter = Counter()
@@ -242,6 +271,8 @@ async def reclassify_orb_cancellations_eod(alert_date: date) -> dict:
         except Exception as e:
             logger.warning(f"reclassify: bar fetch failed for {ticker}: {e}")
             bars = None
+        w_start, w_end, window_basis = _order_window(
+            r["order_submitted_at"], r["order_cancelled_at"])
         if not bars:
             cls = "data_unavailable"
         else:
@@ -250,7 +281,7 @@ async def reclassify_orb_cancellations_eod(alert_date: date) -> dict:
                 (t, float(b["h"]), float(b["l"]))
                 for b in bars
                 for t in (datetime.fromtimestamp(b["t"] / 1000, tz=_ET),)
-                if _CANON_OPEN_T <= t.time() <= _CANON_CUTOFF_T
+                if w_start <= t.time() <= w_end
             ]
             # _classify_canonical sorts internally — window filter is order-free.
             cls = _classify_canonical(canon, trigger, limit) if canon else "data_unavailable"
@@ -286,6 +317,9 @@ async def reclassify_orb_cancellations_eod(alert_date: date) -> dict:
                 "flipped_from_clean_miss": flipped,
                 "trigger_price": trigger, "limit_price": limit,
                 "window": "canonical_0931_1000_complete_bars",
+                "window_basis": window_basis,
+                "window_start": w_start.strftime("%H:%M"),
+                "window_end": w_end.strftime("%H:%M"),
             }),
         )
 
