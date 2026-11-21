@@ -57,6 +57,7 @@ from agents.market_intelligence.audit_events import (
     SIZING_REGIME_FALLBACK,
     SIZING_NOTIONAL_CAP_TRUNCATED,
     STOP_UPDATE_RETRY_TRIGGERED,
+    STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS,
     STOP_UPDATE_FAILED,
     ORDER_STATUS_RECONCILE_MODE_ERROR,
     PARTIAL_FILL_CLOSE_ERROR,
@@ -2260,9 +2261,68 @@ class _StopSoldAtMarket:
 STOP_SOLD_AT_MARKET = _StopSoldAtMarket()
 
 
+class _StopBreachSaleDeferred:
+    """`_sell_at_market_for_refused_stop`'s (and `update_stop`'s) return when the broker refused a
+    stop as above the market OUTSIDE the regular session and the #687 ruling (iii) sale was
+    therefore NOT placed (operator ruling 2026-11-20, EVER 1427: an after-hours print is not a
+    regular-session breach). FALSY — nothing was sold and no stop was placed, so every
+    `if sold:` / "placed?" reader behaves as on None/False; callers tell it apart by identity
+    only to word their page truthfully."""
+    __slots__ = ()
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __repr__(self) -> str:
+        return "STOP_BREACH_SALE_DEFERRED"
+
+
+STOP_BREACH_SALE_DEFERRED = _StopBreachSaleDeferred()
+
+_REGULAR_OPEN_ET = datetime_time(9, 30)
+_REGULAR_CLOSE_ET = datetime_time(16, 0)
+
+
+def _regular_session_open_now(now_et: "datetime | None" = None) -> bool:
+    """True iff `now` is inside the REGULAR session in ET: a trading day, 09:30 <= now < the
+    session close (16:00; 13:00 on an NYSE half day). The one clock read behind the 2026-11-20
+    extended-hours gate in `_sell_at_market_for_refused_stop` (tests patch this name).
+
+    Not `trading_calendar.is_market_hours_now_et`: that hardcodes 16:00 (a half-day afternoon
+    would read as in-session), counts the whole 16:00 minute, and returns False on a calendar
+    error — which would switch the signed in-session sale OFF. Here a calendar failure degrades
+    to the plain weekday 09:30-16:00 clock instead."""
+    now_et = now_et or datetime.now(_ET)
+    if now_et.weekday() >= 5:
+        return False
+    close = _REGULAR_CLOSE_ET
+    try:
+        from agents.market_intelligence.broker.hour_bar_walk import session_close_et
+        from agents.market_intelligence.trading_calendar import get_market_status
+        if not get_market_status(now_et.date()).is_trading_day:
+            return False
+        close = session_close_et(now_et.date())
+    except Exception as e:   # loud-ok: logged; the plain weekday clock below still decides
+        logger.warning(f"regular-session read: calendar unreadable ({e}); using the plain "
+                       f"09:30-16:00 weekday clock")
+    return _REGULAR_OPEN_ET <= now_et.time().replace(tzinfo=None) < close
+
+
+def stop_breach_deferred_note(stop_price: float) -> str:
+    """The plain-words line every ruling (iii) site uses when the sale was deferred (one wording,
+    so the pages agree). The retry passes it names are traced in docs/setups/exit_discipline.md
+    (2026-11-21)."""
+    return (
+        f"the stop at ${float(stop_price):.2f} could not be placed — the price outside regular "
+        f"hours is below it. NO sale was queued (an after-hours price is not a stop-out) and no "
+        f"stop is resting now. The stop is retried at the next scheduled pass (4:20 PM refresh, "
+        f"9:00 PM sync, the 9:00 AM watchdog, the 9:35 AM refresh); if the price is still below "
+        f"it once the regular session is open, the shares are sold at market then.")
+
+
 async def update_stop(
     trade_id: int, new_stop_price: float, stop_source: str | None = None,
-) -> bool | _StopSoldAtMarket:
+) -> "bool | _StopSoldAtMarket | _StopBreachSaleDeferred":
     """Cancel old stop order and place new one at updated price.
 
     Sizes the stop against `remaining_shares` MINUS any pending partial/full
@@ -2556,6 +2616,10 @@ async def update_stop(
                 sold = None
             if sold:
                 return STOP_SOLD_AT_MARKET
+            # 2026-11-20 ruling: refused against an extended-hours print → no sale. The position
+            # IS without a stop (the old one was cancelled), so everything below still runs; only
+            # the page wording and the return value differ.
+            sale_deferred = sold is STOP_BREACH_SALE_DEFERRED
             # Null stop_order_id so sync_positions Path C (4:05 PM + 9:00 PM)
             # can detect the orphan and remediate. Leaving the stale ID in place
             # silently masks the naked state and blocks Path C's orphan check.
@@ -2600,6 +2664,13 @@ async def update_stop(
             # #433: THIS is the genuinely-naked case (BOTH attempts failed) — it
             # was audit-only before, so the real emergency was quieter than the
             # false attempt-1 alarm. Alarm LOUD here: this is the one that means it.
+            if sale_deferred:
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}⏸ *No stop resting, no sale queued:* {ticker}\n"
+                    f"{float(trade['remaining_shares']):.0f} sh — "
+                    f"{stop_breach_deferred_note(new_stop_price)}"
+                )
+                return STOP_BREACH_SALE_DEFERRED
             await send_telegram_message(
                 f"{mode_prefix(account_mode)}🚨 *STOP FAILED — position NAKED:* {ticker}\n"
                 f"Both attempts to place @ ${new_stop_price:.2f} failed ({type(e2).__name__}).\n"
@@ -5474,7 +5545,7 @@ async def _sell_at_market_for_refused_stop(
     trade_id: int, ticker: str, account_mode: str, *,
     stop_price: float, site: str, refusal: "BaseException | None", exclude_ids=(),
     clear_stop_pointer: bool = False, context: str | None = None,
-) -> "tuple[dict, int] | None":
+) -> "tuple[dict, int] | _StopBreachSaleDeferred | None":
     """⚖ #687 RULING (iii), operator 2026-10-02 ("the rest is ok" to extending ruling (3)): a stop
     the broker refuses BECAUSE the price is already through it → the free shares are SOLD AT
     MARKET, as the triggered stop would have. Ruling (3)'s own two sites call
@@ -5489,17 +5560,42 @@ async def _sell_at_market_for_refused_stop(
     sale already placed by any site holds the shares at the broker, is a pending `full_exit` row,
     or has closed the row — each reads as 0 free, so a second site in the same tick sells nothing.
 
-    The SALE is ruling (3)'s helper unchanged (`full_exit` row labelled `stop_hit`; outside market
-    hours it queues for the next open). It PAGES itself: some callers discard the message they get
+    REGULAR SESSION ONLY (operator ruling 2026-11-20, EVER 1427): outside 09:30-close ET on a
+    trading day (`_regular_session_open_now`) the refusal is against an extended-hours print, not
+    a regular-session breach — NOTHING is sold, a `stop_breach_sale_deferred_extended_hours` row
+    is written and the falsy `STOP_BREACH_SALE_DEFERRED` comes back so the caller can say so. The
+    gate lives here, so every ruling (iii) site has it. Ruling (3)'s two DIRECT callers of
+    `_sell_free_shares_after_stop_breach` are NOT gated: there an exit rule had already decided
+    to sell, after hours by design.
+
+    The SALE is ruling (3)'s helper unchanged (`full_exit` row labelled `stop_hit`). It PAGES itself: some callers discard the message they get
     back, and a real-money sale is never silent. `clear_stop_pointer` nulls `stop_order_id` after
     the sale, for callers that cancelled the stop it named (else the 16:05/21:00 sync reads the
     dead id and pages NAKED, #401).
 
-    Returns `(order, qty)` when a sale was placed; None otherwise — the caller then does exactly
-    what it did before ruling (iii)."""
+    Returns `(order, qty)` when a sale was placed; a falsy value otherwise (None, or
+    `STOP_BREACH_SALE_DEFERRED`) — the caller then does exactly what it did before ruling (iii),
+    wording its page with `stop_breach_deferred_note` on a deferral."""
     if refusal is None or not _is_stop_above_market(refusal):
         return None
     error = str(refusal)
+    if not _regular_session_open_now():
+        # ⚖ Operator ruling 2026-11-20 (EVER 1427, PLAN #728): outside the regular session the
+        # broker's "above the market" refusal is measured against an EXTENDED-HOURS print — not
+        # a regular-session breach. No sale; the stop is retried by the next scheduled pass and
+        # the first in-session refusal still sells (docs/setups/exit_discipline.md 2026-11-21).
+        logger.warning(f"{site}: {ticker} stop ${float(stop_price):.2f} refused as above the "
+                       f"market OUTSIDE the regular session — no sale (deferred)")
+        await log_audit_event(
+            STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS,
+            f"{ticker}: stop ${float(stop_price):.2f} refused as above the market outside the "
+            f"regular session — no sale queued; the stop is retried at the next pass",
+            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "stop_price": float(stop_price), "site": site,
+                        "at_et": datetime.now(_ET).isoformat(timespec="seconds"),
+                        "stop_error": error[:300]}),
+        )
+        return STOP_BREACH_SALE_DEFERRED
     fallback = 0.0
     try:
         pool = await get_pool()
@@ -8213,6 +8309,15 @@ async def _ensure_stop_coverage_outcome(
                         f"(order {str(sold_order['id'])[:8]}), as the triggered stop would have.",
                         "stop_breach_sold_at_market",
                     )
+                if sold is STOP_BREACH_SALE_DEFERRED:
+                    # 2026-11-20 ruling: refused against an extended-hours print — not a breach.
+                    # No `stop_coverage_breach` row (the position is not "through the stop"); the
+                    # helper wrote `stop_breach_sale_deferred_extended_hours`.
+                    return CoverageOutcome(
+                        COVERAGE_FLAGGED,
+                        f"⏸ {ticker}: {stop_breach_deferred_note(place_price)}",
+                        "stop_breach_sale_deferred_extended_hours",
+                    )
                 # BREACH: the protective trigger is at/above current price. NOT
                 # retryable. ONE alert, converge, leave for operator. Do NOT
                 # auto-market-exit and do NOT write stop_order_id.
@@ -9556,6 +9661,13 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
             msg = f"🛡 Orphaned stop remediated: {ticker} qty={qty:.0f} stop=${stop:.2f}"
             discrepancies.append(msg)
             logger.warning(f"sync_positions: placed remediation stop for {ticker} trade_id={trade['id']} stop={stop:.2f}")
+        elif sold is STOP_BREACH_SALE_DEFERRED:
+            # 2026-11-20 ruling (EVER 1427): the refusal was against an extended-hours print. No
+            # sale and no "failed to remediate" row — the helper's deferred row is the record.
+            msg = f"⏸ Orphaned position {ticker} ({qty:.0f} sh): {stop_breach_deferred_note(stop)}"
+            discrepancies.append(msg)
+            logger.warning(f"sync_positions: {ticker} orphan stop refused outside the regular "
+                           f"session — no sale, retried at the next pass trade_id={trade['id']}")
         else:
             msg = f"⚠️ Failed to remediate orphaned stop for {ticker} after 3 attempts: {last_err}"
             discrepancies.append(msg)

@@ -557,6 +557,10 @@ def _install(w: World):
         return [dict(b) for b in w.index_prior]
 
     patch(lt, "get_index_history", _index_history)
+    # 2026-11-21: the #687 ruling (iii) sale acts only inside the regular session (operator ruling
+    # 2026-11-20). The fake world has no wall clock, so every scenario runs IN session unless a
+    # test sets `w.regular_session = False` (tests/test_stop_breach_extended_hours_1121.py).
+    patch(om, "_regular_session_open_now", lambda *a, **k: getattr(w, "regular_session", True))
     patch(collector, "et_today", lambda: TODAY)
     patch(lt, "et_today", lambda: TODAY)
     patch(lt, "LIVE_TRADING_ENABLED", True)

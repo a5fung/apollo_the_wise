@@ -199,6 +199,17 @@ PARTIAL_EXIT_ABORTED = "partial_exit_aborted"
 #     path).
 STOP_UPDATE_RETRY_TRIGGERED = "stop_update_retry_triggered"
 STOP_UPDATE_FAILED = "stop_update_failed"
+# 2026-11-21 (operator ruling 2026-11-20, EVER 1427 / PLAN #728): a stop refused as "above the
+# market" OUTSIDE the regular session did NOT trigger the #687 ruling (iii) market sale — the
+# refusal was against an extended-hours print. One row per refused attempt, written by
+# `order_manager._sell_at_market_for_refused_stop`; detail {trade_id, ticker, account_mode,
+# stop_price, site, at_et, stop_error}. A `stop_breach_market_sale` row from a ruling (iii) site
+# stamped outside 09:30-close ET after this date means the gate failed.
+STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS = "stop_breach_sale_deferred_extended_hours"
+# The stop-ACK watchdog's own marker for the same case (pre-market 09:00-09:29, or a half-day
+# afternoon). Deliberately NOT in the watchdog's once-per-day dedup set: the next 30-second tick
+# tries again, so the first tick inside the regular session acts. 1-hour dedup on the row + page.
+STOP_ACK_DEFERRED_EXTENDED_HOURS = "stop_ack_deferred_extended_hours"
 STOP_UPDATE_ABORTED = "stop_update_aborted"
 STOP_ACK_REMEDIATION_FAILED = "stop_ack_remediation_failed"
 ORDER_STATUS_RECONCILE_FAILED = "order_status_reconcile_failed"

@@ -2137,8 +2137,10 @@ async def _stop_ack_timeout_watchdog_job():
     from agents.market_intelligence.constants import mode_prefix
     from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: moves-with-job (W2)
     from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+        STOP_BREACH_SALE_DEFERRED,
         _sell_at_market_for_refused_stop,
         _trade_advisory_try_lock,
+        stop_breach_deferred_note,
     )
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -2404,6 +2406,40 @@ async def _stop_ack_timeout_watchdog_job():
                                 "stop_error": f"{type(stop_err).__name__}: {str(stop_err)[:200]}",
                             }),
                         )
+                        continue
+                    if sold is STOP_BREACH_SALE_DEFERRED:
+                        # 2026-11-20 ruling (EVER 1427): the fallback stop was refused against an
+                        # extended-hours print (this job's cron starts 09:00, before the open).
+                        # No sale, and NOT `stop_ack_remediation_failed` — that row is in the
+                        # once-per-day dedup set above and would stand this watchdog down for
+                        # the whole session. The next 30-second tick tries again, so the first
+                        # tick inside the regular session places the stop or (still refused)
+                        # sells. Row + page deduped to one an hour, as the two deferrals above.
+                        recently_deferred = await conn.fetchval(
+                            "SELECT 1 FROM mi_audit_log "
+                            "WHERE event_type = 'stop_ack_deferred_extended_hours' "
+                            "AND summary LIKE $1 "
+                            "AND created_at > NOW() - INTERVAL '1 hour' LIMIT 1",
+                            f"{ticker} #{trade_id}%",
+                        )
+                        if not recently_deferred:
+                            await log_audit_event(
+                                "stop_ack_deferred_extended_hours",
+                                f"{ticker} #{trade_id}: fallback stop ${stop_target:.2f} refused "
+                                f"as above the market outside the regular session — no sale, "
+                                f"retrying every 30 s",
+                                detail=_json.dumps({
+                                    "trade_id": trade_id, "ticker": ticker,
+                                    "account_mode": account_mode, "stop_target": stop_target,
+                                    "stop_error": f"{type(stop_err).__name__}: {str(stop_err)[:200]}",
+                                }),
+                            )
+                            await send_telegram_message(
+                                f"{mode_prefix(account_mode)}⏸ *No stop resting, no sale queued:* "
+                                f"{ticker}\nTrade #{trade_id}: "
+                                f"{stop_breach_deferred_note(stop_target)}\n"
+                                f"The stop watchdog retries every 30 seconds."
+                            )
                         continue
                     await log_audit_event(
                         "stop_ack_remediation_failed",

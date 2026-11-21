@@ -380,6 +380,96 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-11-21 — #687 ruling (iii): a stop refused as "above the market" OUTSIDE the regular session does NOT sell (OPERATOR RULING 2026-11-20; BUG FIX on the rule's trigger — no stop price, share count, target or safeguard changed; built, not deployed)
+
+**Classification** (CHANGE_PROCESS): BUG FIX on the trigger of a signed rule, by his ruling — not a criteria or
+threshold change, so no N≥10 backtest applies. Single-incident (EVER 1427), flagged as such.
+
+**Trigger**: EVER, paper trade 1427, Fri 2026-11-20. Its entry bracket's DAY stop leg expired at 16:00 ET. At 16:05
+the position sync's orphan repair (site 2 below, 2026-10-03) re-placed the stop at $28.68; the broker refused it as
+"stop price must be less than current price" against an AFTER-HOURS print of $27.50 — the regular close was $29.00
+and the regular session never traded through the stop. Ruling (iii) queued a market sale for Monday's open (order
+76faeb36). His ruling 2026-11-20 (PLAN.md #728, "so with rec" / "aligned"): *an after-hours / extended-session
+"stop above market" refusal must not trigger the #687 market sale — leave it to the 16:20 post-close refresh / next
+session.*
+
+**Why the 2026-10-03 text was wrong, not just incomplete** (this REVERSES one bullet of that entry): its "After
+hours" bullet said the sale queues for the next open at ruling (iii)'s sites and called that "the same property
+ruling (3) has … Not a new decision". The two are not the same. At ruling (3)'s sites an EXIT RULE had already
+decided to sell and the refusal only changes how. At ruling (iii)'s sites the refusal is the ONLY evidence of a
+breach — and outside the regular session that evidence is one extended-hours print on thin volume, which a resting
+stop would not have triggered on (a stop order triggers in the regular session only).
+
+**Change** — one gate, inside `order_manager._sell_at_market_for_refused_stop`, so all six ruling (iii) sites have it:
+- The refusal is still recognised by `_is_stop_above_market`. When it is, and now is NOT inside the regular session
+  (`order_manager._regular_session_open_now`: a trading day, 09:30 ≤ now < the session close in ET — 16:00, 13:00 on
+  a half day; a calendar failure degrades to the plain weekday 09:30–16:00 clock, never to "closed"), NOTHING is
+  sold: audit `stop_breach_sale_deferred_extended_hours` (detail: trade, site, stop price, ET time, the broker's
+  error) and the falsy marker `STOP_BREACH_SALE_DEFERRED` comes back.
+- Inside the regular session: unchanged — sized, sold, paged and de-duped exactly as 2026-10-03.
+- Any other refusal: unchanged, whatever the clock says.
+- **NOT gated — ruling (3)'s two direct sites** (`_restore_stop_after_failed_exit`, the stream's dead full-exit
+  restore — they call `_sell_free_shares_after_stop_breach` themselves): there an exit rule (the 16:45 close-below
+  sale, the 19:01 depth sale) had already decided to sell, after hours by design; the refusal is not the trigger.
+  ⚠ For him: those restores can therefore still queue a sale off an after-hours print. Not ruled on 11-20.
+
+**What each site says on a deferral** (one shared wording, `stop_breach_deferred_note`: the stop could not be placed,
+the price outside regular hours is below it, NO sale was queued, no stop is resting, when it is retried):
+1. Coverage reconciler → `COVERAGE_FLAGGED`, reason `stop_breach_sale_deferred_extended_hours`, and NO
+   `stop_coverage_breach` row (the position is not "through the stop").
+2. Position sync orphan repair → a digest line "⏸ Orphaned position X …"; no "Failed to remediate" line and no
+   `stop_ack_remediation_failed` row. The pointer stays NULL, so the next pass sees the orphan again.
+3. `update_stop` → the pointer is nulled and `stop_update_failed` / `naked_position_detected` are written exactly as
+   on any failed re-place (the position IS without a stop); the page reads "No stop resting, no sale queued" instead
+   of "STOP FAILED — position NAKED"; returns `STOP_BREACH_SALE_DEFERRED` (falsy). The stop refresh records it under
+   `no_stop_sale_deferred_extended_hours` and does not add its own "No stop on X" page.
+4. Stop-ACK watchdog (cron from 09:00 ET, so 09:00–09:29 is pre-market) → audit `stop_ack_deferred_extended_hours`
+   + one page, both deduped to one an hour. Deliberately NOT `stop_ack_remediation_failed`: that row is in the
+   once-per-day dedup set and would stand the watchdog down for the session. It retries every 30 seconds.
+5. Stream partial-exit restore → "Partial exit CANCELED, no stop resting, no sale queued"; the pointer keeps naming
+   the cancelled stop, so the sync's orphan repair picks it up.
+6. OCO-cancel handler → inherits site 1's line.
+
+**What re-places the stop afterwards** (traced, all existing jobs — nothing new was scheduled):
+- 16:20 ET `post_close_stop_refresh` (`live_tracker._stop_refresh` → `update_stop`), both accounts.
+- 17:00 / 19:00 ET coverage slots (`scheduler._coverage_watch_job` → `_ensure_stop_coverage`), LIVE account only.
+- 21:00 ET `sync_positions` (orphan repair + coverage pass), both accounts.
+- Next session 09:00–09:29 ET the stop-ACK watchdog, every 30 s (places at the entry's `orb_low` until his 11-20
+  ruling (1) — last stop — is built under #728).
+- Each places the stop at the trade's own stop price (`_apply_reprotect_floor`: never below the last level the
+  broker held) as soon as the extended-hours price is back above it. A refused 16:45 TRAIL RAISE never moved
+  `stop_price` (only a placed stop writes it), so the later passes re-place at the OLD level and the next 16:45 run
+  re-evaluates the raise.
+- **The first in-session act, if it is still refused:** the watchdog's 09:30:00 tick (site 4), then 09:35
+  `morning_stop_refresh` → `_stop_refresh` → `update_stop` (site 3) → the ruling (iii) sale, in the regular session.
+  The signed rule still acts; it only waits for a regular-session price.
+
+**Known, not changed here** (reported to him): a deferred position pages about once per pass through the evening
+(16:05 digest, 16:20, and on the live account 17:00 / 19:00 / 21:10 "UNPROTECTED" pages whose wording does not name
+the reason; 21:00 digest), and it has no resting stop through extended hours until a pass succeeds.
+
+**Evidence**: operator ruling on one incident (single-case). No backtest: no threshold moved.
+
+**Anticipated effect**: rare. A `stop_breach_market_sale` row from a ruling (iii) site can no longer be stamped
+outside the regular session. On the evenings it would have been, the position keeps its shares and the stop is
+re-placed by the next pass that the broker accepts.
+
+**Reversion-flag**: PARTIAL REVERSAL of 2026-10-03's "After hours" bullet (see above); the rest of that entry stands.
+
+**EXPECT (BASELINE: 1 after-hours ruling (iii) sale, EVER 11-20 16:05 ET):** the next extended-hours "above the
+market" refusal writes `stop_breach_sale_deferred_extended_hours` and no order. **WOULD-FAIL-IF:** a
+`stop_breach_market_sale` row whose `site` is not `…failed_exit…` / `trade_stream.full_exit_cancel_restore`, created
+outside 09:30–close ET on a trading day, after the deploy.
+
+**Tests**: `tests/test_stop_breach_extended_hours_1121.py` (28: the clock edges incl. the half day and an unreadable
+calendar; per site — sync orphan, reconciler, `update_stop` / the refresh, watchdog, partial restore — after hours no
+sale + the deferred row + the wording, in-session the sale unchanged, any other refusal unchanged; the next
+session's 09:35 refresh still sells; ruling (3)'s failed 16:45 sale still sells after hours). The #687 harness
+runs every existing scenario in-session (`World.regular_session`, default True). Mutation-checked: with the gate
+disabled the 9 after-hours tests fail. Deploy: `broker/` + `scheduler.py` → market-agent, then execution.
+
+**EVER itself** (his call, not this change): cancel order 76faeb36 and put the $28.68 stop back before Mon 09:30 ET.
+
 ### 2026-11-18 — the +2R poll records a third that is ALREADY RESTING as `profit_trigger_resting`, not `profit_trigger_failed` (BUG FIX in the record only — no order, price, share count, target or trigger changed; built, not deployed)
 
 - **Incident (paper, CAKE trade 788, 09:45:01 ET; `scripts/probes/_pt_fail_1118/t.out`):** the third's limit had been resting since
@@ -1094,7 +1184,8 @@ and acting only when `_is_stop_above_market` recognises it (the check lives in t
   coverage slots discard the reconciler's message and re-check the broker, which counts our queued sale as
   coverage — so without its own page the sale would be silent there. Where a site also pages or digests, the sale
   is mentioned twice; that is accepted.
-- **After hours** (the 16:05/21:00 sync, the 17:00/19:00 coverage slots, the 16:20 refresh, the 16:45 trail) the
+- ⚠ **SUPERSEDED 2026-11-21 (his ruling 2026-11-20, change log above): outside the regular session these sites
+  no longer sell.** As written 2026-10-03: **After hours** (the 16:05/21:00 sync, the 17:00/19:00 coverage slots, the 16:20 refresh, the 16:45 trail) the
   market order queues and sells at the next open, at the opening price even on a gap back above the stop — the
   same property ruling (3) has and his 09-29 auction ruling accepted. Not a new decision.
 - **De-dupe**: a sale already placed by any site — ruling (3)'s included — is (a) a live sell order holding the

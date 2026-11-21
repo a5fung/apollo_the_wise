@@ -469,6 +469,20 @@ not impossible.
 
 ## Change log (newest first)
 
+### 2026-11-21 — Stop-ACK watchdog: a fallback stop refused as "above the market" BEFORE THE OPEN no longer sells and no longer spends the day's one attempt (operator ruling 2026-11-20; bug fix on #687 ruling (iii)'s trigger)
+
+**Trigger / ruling**: EVER 1427, `docs/setups/exit_discipline.md` change log 2026-11-21 (the owner of this change).
+
+**Change**: the watchdog's cron starts 09:00 ET. A fallback stop refused through the price between 09:00 and 09:29
+(or after a half-day close) is refused against an extended-hours print: `_sell_at_market_for_refused_stop` sells
+nothing and returns `STOP_BREACH_SALE_DEFERRED`. The watchdog then writes `stop_ack_deferred_extended_hours` and
+pages once (both deduped to one an hour) and tries again on the next 30-second tick. It does NOT write
+`stop_ack_remediation_failed`, which is in its once-per-day dedup set — so the first tick inside the regular session
+still places the stop or, still refused, sells (2026-10-03 entry below, unchanged in-session). No stop price, share
+count or threshold changed.
+
+**Reversion-flag**: REFINEMENT of the 2026-10-03 entry below. **Tests**: `tests/test_stop_breach_extended_hours_1121.py`.
+
 ### 2026-10-10 — `get_open_position_count` (the allocator's reader of the cap vocabulary) now counts the PRE-ENTRY LIVE book (#312 Step A, operator-signed 2026-09-14 — NO safeguard behaviour change)
 
 **What changed**: `db.get_open_position_count` gained two optional, parameter-bound filters — `account_mode` and `before_alert_date` — and the shadow allocator passes `("live", target_date)`; the unfiltered call is unchanged. **What did NOT change (THE LINE)**: the cap VALUE (5), the open-status vocabulary `db.OPEN_POSITION_STATUSES`, and the safeguard's own count — `_check_safeguards` and the #461 insert-time recheck count through `live_tracker.count_open_positions`, which this function never fed. **Why**: the allocator ranked at 09:35 against a live count that already held the 09:31 fills, so a filled candidate consumed a slot AND won one (6 of 7 winners, 2026-09-14 read); the ranking now runs at 09:28 against positions whose `alert_date` precedes the day, live book only (the lowcap paper lane's `account_mode='paper'` rows share `mi_live_trades`, #624). Owner of the rest: `docs/architecture/cross_strategy_allocator.md`.

@@ -2681,18 +2681,35 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 # `_sell_at_market_for_refused_stop`), excluding the reduced stop this path just
                 # cancelled. Nothing sold → today's page.
                 from agents.market_intelligence.broker.order_manager import (
+                    STOP_BREACH_SALE_DEFERRED,
                     _sell_at_market_for_refused_stop,
+                    stop_breach_deferred_note,
                 )
-                if await _sell_at_market_for_refused_stop(
+                _sold = await _sell_at_market_for_refused_stop(
                         trade_row["id"], trade_row["ticker"], account_mode,
                         stop_price=restore_price,
                         site="trade_stream.partial_exit_cancel_restore", refusal=e,
                         exclude_ids=(trade_row["stop_order_id"],), clear_stop_pointer=True,
                         context=f"The partial sale did not fill ({event_norm}), and the stop "
-                                f"for the remaining shares could not be put back."):
+                                f"for the remaining shares could not be put back.")
+                if _sold:
                     logger.warning(
                         f"WS [{account_mode}]: partial exit {event_norm} for {symbol}, "
                         f"stop breached — market sale placed")
+                    return
+                if _sold is STOP_BREACH_SALE_DEFERRED:
+                    # 2026-11-20 ruling: refused against an extended-hours print — no sale. The
+                    # pointer still names the cancelled stop, so the 16:05/21:00 sync's orphan
+                    # repair picks the position up (dead stop → re-place).
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}⏸ *Partial exit {event_norm.upper()}, no "
+                        f"stop resting, no sale queued:* {symbol}\n"
+                        f"The partial sale did not fill, and "
+                        f"{stop_breach_deferred_note(restore_price)}"
+                    )
+                    logger.warning(
+                        f"WS [{account_mode}]: partial exit {event_norm} for {symbol}, stop "
+                        f"refused outside the regular session — no sale, retried at the next pass")
                     return
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}🚨 *PARTIAL EXIT {event_norm.upper()} + "

@@ -2054,6 +2054,7 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     already_covered: list[str] = []
     covered_by_resting_exit: list[str] = []  # #687 ruling (2): no new stop, broker-covered
     sold_at_market: list[str] = []  # #687 ruling (iii): price through the stop → sold, paged
+    sale_deferred: list[str] = []  # 2026-11-20: refused on an extended-hours print → no sale, paged
     skipped: list[dict] = []  # [{"ticker": ..., "reason": "no_stop_price" | "no_remaining_shares"}]
     for trade in trades:
         ticker = trade["ticker"]
@@ -2095,6 +2096,11 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
             # it. Not a "No stop on X" gap: the sale fills in milliseconds, so the broker re-check
             # below would find neither a stop nor a covering order.
             sold_at_market.append(ticker)
+        elif success is _om.STOP_BREACH_SALE_DEFERRED:
+            # 2026-11-20 ruling (EVER 1427): the stop was refused against an extended-hours print
+            # and no sale was queued. `update_stop` paged it in plain words (no stop resting,
+            # when it is retried), so it is recorded here and not paged a second time below.
+            sale_deferred.append(ticker)
         elif success:
             refreshed += 1
             refreshed_tickers.append(ticker)
@@ -2154,6 +2160,8 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
         detail["covered_by_resting_exit"] = covered_by_resting_exit
     if sold_at_market:
         detail["sold_at_market"] = sold_at_market
+    if sale_deferred:
+        detail["no_stop_sale_deferred_extended_hours"] = sale_deferred
     # #414 — only the morning pass excludes anything, and only when the read above
     # succeeded. `same_day_excluded is None` covers BOTH the post-close pass
     # (nothing to exclude by construction) and a failed read on the morning pass
