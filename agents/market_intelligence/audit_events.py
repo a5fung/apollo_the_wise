@@ -214,6 +214,9 @@ STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS = "stop_breach_sale_deferred_extended_h
 # new_stop_price, old_stop_price, broker_stop_price, old_stop_id, stop_source, at_et, stop_error}.
 # A `stop_update_started` row for the same trade right after it, outside the session, means the
 # old stop was cancelled anyway (the gate failed).
+# READ BACK (2026-11-21 follow-up): the 09:35 morning stop refresh replays `new_stop_price` +
+# `stop_source` from the trade's latest such row, in the regular session
+# (`live_tracker._deferred_stop_raises`) — those two keys are load-bearing.
 STOP_RAISE_DEFERRED_EXTENDED_HOURS = "stop_raise_deferred_extended_hours"
 # The stop-ACK watchdog's own marker for the same case (pre-market 09:00-09:29, or a half-day
 # afternoon). Deliberately NOT in the watchdog's once-per-day dedup set: the next 30-second tick

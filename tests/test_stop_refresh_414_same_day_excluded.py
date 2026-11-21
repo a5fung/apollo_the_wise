@@ -44,6 +44,10 @@ def _wire(monkeypatch, *, same_day_rows=None, trades=None, same_day_raises=None)
     monkeypatch.setattr(lt, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(lt, "et_today", lambda: date(2026, 9, 8))
     monkeypatch.setattr(lt, "log_audit_event", _audit)
+    # 2026-11-21: in the regular session the morning pass makes a THIRD read (the deferred stop
+    # raises to retry). These tests feed exactly two, so the clock is pinned outside the session.
+    from agents.market_intelligence.broker import order_manager as _om
+    monkeypatch.setattr(_om, "_regular_session_open_now", lambda *a, **k: False)
     return audited
 
 

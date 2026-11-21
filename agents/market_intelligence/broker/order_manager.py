@@ -2321,6 +2321,58 @@ def stop_breach_deferred_note(stop_price: float) -> str:
         f"it once the regular session is open, the shares are sold at market then.")
 
 
+# 2026-11-21 follow-up: what the evening coverage pages read to say WHY a position has no stop.
+# The two deferrals that leave NO stop resting (a raise deferred after hours keeps its old stop, so
+# `stop_raise_deferred_extended_hours` is not one of them), and the events that end one: a stop
+# placed or adopted afterwards, or the shares sold. `stop_update_failed` /
+# `naked_position_detected` are deliberately absent — `update_stop` writes them right AFTER its
+# own deferral row, about the same refusal.
+_NO_STOP_DEFERRAL_LOOKBACK_SQL = """
+    SELECT event_type, detail FROM mi_audit_log
+    WHERE event_type IN ('stop_breach_sale_deferred_extended_hours',
+                         'stop_ack_deferred_extended_hours', 'stop_updated',
+                         'stop_update_retry_succeeded', 'stop_coverage_repaired',
+                         'stop_coverage_adopted', 'stop_ack_timeout_remediated',
+                         'breakeven_armed', 'partial_exit_breakeven_armed',
+                         'stop_breach_market_sale', 'stop_ack_breach_sold_at_market')
+      AND created_at > NOW() - INTERVAL '8 hours'
+    ORDER BY id DESC
+"""
+_NO_STOP_DEFERRAL_EVENTS = frozenset({
+    STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS, "stop_ack_deferred_extended_hours"})
+
+
+async def stop_deferral_reasons(trade_ids) -> dict[int, str]:
+    """{trade_id: the `stop_breach_deferred_note` line} for each of `trade_ids` whose LATEST stop
+    event in the last 8 hours is an extended-hours deferral — the stop was refused against a price
+    outside regular hours, nothing was sold and no stop is resting. For the 17:00 / 19:00 / 21:10
+    coverage pages, which found the gap from broker truth and add this as the reason.
+    Read-only. NEVER raises: an unreadable log means a page without the reason, never no page."""
+    wanted = {int(t) for t in trade_ids if t is not None}
+    if not wanted:
+        return {}
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(_NO_STOP_DEFERRAL_LOOKBACK_SQL)
+        latest: dict[int, "str | None"] = {}
+        for row in rows:
+            try:
+                detail = json.loads(row["detail"] or "{}")
+                trade_id = int(detail["trade_id"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if trade_id not in wanted or trade_id in latest:
+                continue
+            price = detail.get("stop_price") or detail.get("stop_target")
+            latest[trade_id] = (stop_breach_deferred_note(float(price))
+                                if row["event_type"] in _NO_STOP_DEFERRAL_EVENTS and price else None)
+        return {tid: note for tid, note in latest.items() if note}
+    except Exception as e:  # loud-ok: the page is sent without the reason
+        logger.warning(f"stop_deferral_reasons: read failed ({e}) — pages go without the reason")
+        return {}
+
+
 async def update_stop(
     trade_id: int, new_stop_price: float, stop_source: str | None = None,
 ) -> "bool | _StopSoldAtMarket | _StopBreachSaleDeferred":
@@ -5200,7 +5252,9 @@ async def move_stop_price_only(
 
     OUTSIDE the regular session (operator 2026-11-21) a raise provably refused as "above the market" stops HERE:
     `update_stop` is NOT called, so the old stop is not cancelled and keeps resting; the row's `stop_order_id` /
-    `stop_price` are untouched; audit `stop_raise_deferred_extended_hours`; returns False; the next pass retries.
+    `stop_price` are untouched; audit `stop_raise_deferred_extended_hours`; returns False. The 09:35
+    `morning_stop_refresh` replays that row's `new_stop_price` / `stop_source` in the regular session
+    (`live_tracker._deferred_stop_raises`) — keep both keys on the row.
 
     After an ACCEPTED replace `update_stop` is never called. True only when the successor is confirmed live
     (`stop_updated`, mechanism `price_only_replace`); unconfirmed / dead → False, audited and paged.
@@ -5233,7 +5287,7 @@ async def move_stop_price_only(
             # ⚖ Operator 2026-11-21: after hours, a RAISE the broker refuses must leave the OLD stop
             # resting. The replace was provably refused (the old stop read back live at its old
             # price) against an extended-hours print: nothing is cancelled, placed or sold, the row
-            # keeps the resting stop's id and price, and the next pass retries the raise. In the
+            # keeps the resting stop's id and price, and the 09:35 refresh retries the raise. In the
             # regular session the fallback below is unchanged (update_stop → ruling (iii)).
             logger.warning(f"move_stop_price_only: {ticker} raise to ${new_stop_price:.2f} refused as "
                            f"above the market OUTSIDE the regular session — old stop left resting")

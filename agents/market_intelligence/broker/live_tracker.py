@@ -59,6 +59,7 @@ from agents.market_intelligence.broker.order_manager import (
     finalize_stop_fill,
     move_stop_price_only,
 )
+from agents.market_intelligence.audit_events import STOP_RAISE_DEFERRED_EXTENDED_HOURS
 from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_CIRCUIT_BREAKER,
     BLOCK_DAILY_LOSS,
@@ -1994,6 +1995,80 @@ async def morning_stop_refresh() -> int:
     return await _stop_refresh(include_same_day=False, label="Morning")
 
 
+# 2026-11-21 follow-up (operator "Let's do it"): the stop moves that supersede a deferred raise. Each
+# writes `stop_price` on a confirmed move and carries `trade_id` in its detail. A plain re-protect
+# at the same price (`stop_coverage_repaired`, the sync's orphan repair) is not a move and does not.
+_DEFERRED_RAISE_LOOKBACK_SQL = """
+    SELECT event_type, detail FROM mi_audit_log
+    WHERE event_type IN ('stop_raise_deferred_extended_hours', 'stop_updated',
+                         'stop_update_retry_succeeded', 'breakeven_armed',
+                         'partial_exit_breakeven_armed', 'breakout_pp_stop_to_fill_after_third')
+      AND created_at > NOW() - INTERVAL '5 days'
+    ORDER BY id DESC
+"""
+
+
+async def _deferred_stop_raises(conn) -> dict[int, dict]:
+    """{trade_id: deferral detail} for every trade whose LATEST stop-move event is an after-hours
+    deferred raise (`stop_raise_deferred_extended_hours`, written by `move_stop_price_only` when the
+    broker refused the raise against an extended-hours print and the old stop was left resting).
+
+    One read, newest first; the first row seen for a trade decides — so a deferral followed by any
+    successful stop move is superseded, and a second deferral replaces the first. The 5-day window
+    covers a long weekend (Thu 16:45 -> Tue 09:35) and keeps an old row from being replayed.
+    The detail carries the target (`new_stop_price`) and its `stop_source`: the retry replays the
+    recorded level, it never recomputes a trail."""
+    latest: dict[int, dict | None] = {}
+    for row in await conn.fetch(_DEFERRED_RAISE_LOOKBACK_SQL):
+        try:
+            event_type = row["event_type"]
+            detail = json.loads(row["detail"] or "{}")
+            trade_id = int(detail["trade_id"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if trade_id in latest:
+            continue
+        if event_type == "breakout_pp_stop_to_fill_after_third" and not detail.get("moved"):
+            continue   # that row is written whether or not the stop moved
+        latest[trade_id] = detail if event_type == STOP_RAISE_DEFERRED_EXTENDED_HOURS else None
+    return {tid: d for tid, d in latest.items() if d and d.get("new_stop_price")}
+
+
+def _deferred_raise_target(deferral: dict | None, stop_price, live_order: dict) -> float | None:
+    """The recorded target of a deferred raise, or None when there is nothing to retry: no deferral,
+    or the target is no longer above the stop (the row's price, and the price the broker shows on
+    the live stop). Raise-only is enforced again inside `move_stop_price_only` / `update_stop`."""
+    if not deferral:
+        return None
+    try:
+        target = round(float(deferral["new_stop_price"]), 2)
+        resting = float(stop_price)
+        broker = live_order.get("stop_price")
+        if broker is not None:
+            resting = max(resting, float(broker))
+    except (KeyError, TypeError, ValueError):
+        return None
+    return target if target > resting + 0.005 else None
+
+
+async def _stop_resting_now(trade_id: int, account_mode: str) -> bool:
+    """True iff the trade row names a stop the broker shows live — read after a deferred raise
+    came back False, to tell "not raised, the old stop still rests" from "no stop"."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            stop_id = await conn.fetchval(
+                "SELECT stop_order_id FROM mi_live_trades WHERE id = $1", trade_id)
+        if not stop_id:
+            return False
+        order = await alpaca.get_order(stop_id, account_mode=account_mode)
+        return bool(order) and str(order.get("status", "")).split(".")[-1].lower() in (
+            "new", "accepted", "held")
+    except Exception as e:  # loud-ok: unreadable is never "resting" — the caller records and pages it
+        logger.warning(f"deferred-raise retry: stop read failed for trade {trade_id}: {e}")
+        return False
+
+
 async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     """Shared body for both stop-refresh passes. The ONLY difference between them is
     whether same-day fills are in scope — see each caller's docstring for why.
@@ -2025,6 +2100,8 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     today = et_today()
     pool = await get_pool()
     same_day_excluded: list[str] | None = None
+    deferred_raises: dict[int, dict] = {}
+    deferred_raise_read_error: str | None = None
     async with pool.acquire() as conn:
         if include_same_day:
             trades = await conn.fetch("""
@@ -2046,6 +2123,16 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
                 WHERE status = 'filled' AND remaining_shares > 0
                   AND alert_date <> $1
             """, today)
+            # 2026-11-21 follow-up: a stop RAISE deferred after hours (the old stop left resting) is
+            # retried HERE, in the regular session — the 16:45 run that would otherwise retry it is
+            # itself after hours. Morning pass only, and only inside the session (the cron also
+            # fires on a market holiday). A failed read means no retry this morning, never no refresh.
+            if trades and _om._regular_session_open_now():
+                try:
+                    deferred_raises = await _deferred_stop_raises(conn)
+                except Exception as e:  # loud-ok: recorded on the stop_refresh_ran row below; the refresh must run
+                    logger.warning(f"{label}: deferred-raise read failed (non-fatal): {e}")
+                    deferred_raise_read_error = f"{type(e).__name__}: {str(e)[:200]}"
 
     examined = len(trades)
     refreshed = 0
@@ -2055,6 +2142,7 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
     covered_by_resting_exit: list[str] = []  # #687 ruling (2): no new stop, broker-covered
     sold_at_market: list[str] = []  # #687 ruling (iii): price through the stop → sold, paged
     sale_deferred: list[str] = []  # 2026-11-20: refused on an extended-hours print → no sale, paged
+    deferred_raise_retried: list[dict] = []  # 2026-11-21: an after-hours deferred raise, retried in session
     skipped: list[dict] = []  # [{"ticker": ..., "reason": "no_stop_price" | "no_remaining_shares"}]
     for trade in trades:
         ticker = trade["ticker"]
@@ -2086,7 +2174,42 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
             )
             if order and str(order.get("status", "")).split(".")[-1].lower() in ("new", "accepted", "held"):
                 logger.debug(f"Stop still active for {ticker}")
-                already_covered.append(ticker)
+                raise_target = _deferred_raise_target(deferred_raises.get(trade["id"]), stop_price, order)
+                if raise_target is None:
+                    already_covered.append(ticker)
+                    continue
+                # ⚖ Operator 2026-11-21: the raise the broker refused after hours is made now, in
+                # the regular session, to the level RECORDED on the deferral row (no trail is
+                # recomputed). `move_stop_price_only` is the same entry point the 16:45 job used.
+                # If the broker still refuses it as above the market, that is today's in-session
+                # path — `update_stop` → #687 ruling (iii): the shares are sold at market.
+                _src = deferred_raises[trade["id"]].get("stop_source")
+                moved = await move_stop_price_only(trade["id"], raise_target, stop_source=_src)
+                if moved is _om.STOP_SOLD_AT_MARKET:
+                    outcome = "sold_at_market"
+                    sold_at_market.append(ticker)
+                elif moved is _om.STOP_BREACH_SALE_DEFERRED:
+                    outcome = "sale_deferred_extended_hours"
+                    sale_deferred.append(ticker)
+                elif moved:
+                    outcome = "raised"
+                    already_covered.append(ticker)
+                    logger.info(f"{label}: deferred stop raise made in session: {ticker} "
+                                f"${float(stop_price):.2f} → ${raise_target:.2f}")
+                elif await _stop_resting_now(trade["id"], trade["account_mode"]):
+                    outcome = "not_raised_stop_resting"
+                    already_covered.append(ticker)
+                elif await _om._resting_exits_cover_position(
+                        trade["id"], ticker, float(trade["remaining_shares"]), trade["account_mode"]):
+                    outcome = "not_raised_covered_by_resting_exit"
+                    covered_by_resting_exit.append(ticker)
+                else:
+                    # the fallback cancelled the old stop and could not place the new one
+                    outcome = "not_raised_no_stop"
+                    unprotected.append(ticker)
+                deferred_raise_retried.append({
+                    "ticker": ticker, "trade_id": trade["id"], "from": float(stop_price),
+                    "target": raise_target, "stop_source": _src, "outcome": outcome})
                 continue
 
         # Re-place stop. #728 (2026-11-21): through `move_stop_price_only` like every stop move — it
@@ -2165,6 +2288,10 @@ async def _stop_refresh(*, include_same_day: bool, label: str) -> int:
         detail["sold_at_market"] = sold_at_market
     if sale_deferred:
         detail["no_stop_sale_deferred_extended_hours"] = sale_deferred
+    if deferred_raise_retried:
+        detail["deferred_raise_retried"] = deferred_raise_retried
+    if deferred_raise_read_error:
+        detail["deferred_raise_read_error"] = deferred_raise_read_error
     # #414 — only the morning pass excludes anything, and only when the read above
     # succeeded. `same_day_excluded is None` covers BOTH the post-close pass
     # (nothing to exclude by construction) and a failed read on the morning pass

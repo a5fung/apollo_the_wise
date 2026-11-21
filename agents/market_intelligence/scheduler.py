@@ -2867,6 +2867,13 @@ async def _coverage_watch_job(slot: str = "evening"):
                 )
                 return
 
+        # 2026-11-21 follow-up: when the position has no stop BECAUSE a stop was refused against
+        # an after-hours price (no sale queued, retried at the next pass), the page says so. The
+        # page is still sent, at the same slots; a gap with no such deferral reads as before.
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
+            stop_deferral_reasons,
+        )
+        why = await stop_deferral_reasons([g.get("trade_id") for g in gaps])
         lines = []
         for gap in gaps:
             if str(gap.get("ticker")) in broker_flat:
@@ -2880,6 +2887,8 @@ async def _coverage_watch_job(slot: str = "evening"):
                 f"• {gap.get('ticker')}: holds {float(gap.get('target') or 0):.0f} sh, "
                 f"live stop covers {float(gap.get('live_qty') or 0):.0f} sh"
             )
+            if why.get(gap.get("trade_id")):
+                lines.append(f"  Why: {why[gap.get('trade_id')]}")
         for bad in failed:
             lines.append(f"• {bad.get('ticker')}: broker read FAILED — coverage unknown")
         await send_telegram_message(

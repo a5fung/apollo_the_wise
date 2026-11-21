@@ -78,8 +78,9 @@ stop move from `live_tracker` (the 16:45 trail / breakeven / depth lifts, the st
 runs only when nothing was changed at the broker — no live stop (the re-protect), a share-count
 change, not a raise, or a provably refused replace — and never after an accepted replace. **Outside the
 regular session a raise the broker refuses as "above the market" stops at the replace: nothing is
-cancelled, the OLD stop keeps resting, the row's stop is unchanged, the next pass retries (operator
-2026-11-21).** Change log 2026-11-21 (#728, and the after-hours entry above it). Tests:
+cancelled, the OLD stop keeps resting, the row's stop is unchanged, and the 09:35 `morning_stop_refresh`
+makes the recorded raise in the regular session — refused there, it follows the in-session path
+(`update_stop` → the #687 ruling (iii) sale) (operator 2026-11-21).** Change log 2026-11-21 (#728, and the after-hours entry above it). Tests:
 `tests/test_stop_price_only_replace_728.py`.
 
 ### 0. Initial protective stop — `entry − 2R` (MAGNA53, operator-signed 2026-08-16)
@@ -391,6 +392,85 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-11-21 — Follow-ups to the after-hours stop deferrals: a deferred RAISE is made at the 09:35 refresh, in the regular session; the evening "UNPROTECTED" pages name the reason (OPERATOR "Let's do it" 2026-11-21; BUG FIX — no stop level, share count, raise-only rule or safeguard changed; built, not deployed)
+
+**Classification** (CHANGE_PROCESS): BUG FIX on the two entries below, approved by him today. No criteria or
+threshold moved, so no N≥10 backtest applies.
+
+**Trigger**: (a) a raise the broker refuses at 16:45 keeps the old stop resting (entry below, change B) and was
+retried only by the next 16:45 run — which is itself after hours, so on a stock that keeps printing lower after the
+close it could defer every evening and never be made. (b) the "Known, not changed" line of the #687 entry below:
+the live 17:00 / 19:00 / 21:10 "UNPROTECTED" pages did not say why a deferred position has no stop.
+
+**Change (a) — the 09:35 `morning_stop_refresh`** (`live_tracker._stop_refresh`, morning pass only, and only while
+`order_manager._regular_session_open_now()` is True — the cron also fires on a market holiday). For each open trade
+whose stop is live, it reads the trade's LATEST stop-move event of the last 5 days (`_deferred_stop_raises`: one
+read of `stop_raise_deferred_extended_hours` against `stop_updated`, `stop_update_retry_succeeded`,
+`breakeven_armed`, `partial_exit_breakeven_armed`, and a `breakout_pp_stop_to_fill_after_third` that moved). If
+that latest event is the deferral, and the level RECORDED on it (`new_stop_price`, already written by the deferral;
+nothing is recomputed) is still above both the row's stop and the price the broker shows on the live stop, it calls
+`move_stop_price_only` to that level with the recorded `stop_source`. Raise-only is enforced again inside.
+- **⚠ Stated plainly — in the regular session a refusal sells.** If the broker still refuses the raise as above
+  the market at 09:35, the move follows today's in-session path: `update_stop` cancels the old stop, two refused
+  placements, then #687 ruling (iii) — the shares are sold at market. That is exactly what a refused 16:45 raise did
+  before 2026-11-21 (then against an after-hours price); it now happens at the open, against a regular-session
+  price. No new rule: the level is the one the 16:45 job chose, the sale is the signed one.
+- Outcomes are recorded on the pass's `stop_refresh_ran` row (`deferred_raise_retried`: ticker, from, target,
+  stop source, outcome `raised` / `sold_at_market` / `not_raised_stop_resting` /
+  `not_raised_covered_by_resting_exit` / `not_raised_no_stop`). A retry that leaves no stop is paged "No stop on X"
+  like any position the refresh cannot protect. A failed log read skips the retry (`deferred_raise_read_error` on
+  the row) and never the refresh.
+- Not retried: at 16:20 (after hours); when a later stop move succeeded; when the stop is already at or above the
+  recorded level; a deferral older than 5 days. The next 16:45 run still re-evaluates the trail as before.
+
+**Change (b) — the coverage pages** (`scheduler._coverage_watch_job`, all three slots): each gap line is followed
+by `Why: ` + the shared `stop_breach_deferred_note` wording when the trade's latest stop event in the last 8 hours
+is `stop_breach_sale_deferred_extended_hours` or `stop_ack_deferred_extended_hours`
+(`order_manager.stop_deferral_reasons`). A stop placed or adopted afterwards, or a sale, ends the deferral
+(`stop_updated`, `stop_update_retry_succeeded`, `stop_coverage_repaired`, `stop_coverage_adopted`,
+`stop_ack_timeout_remediated`, `breakeven_armed`, `partial_exit_breakeven_armed`, `stop_breach_market_sale`,
+`stop_ack_breach_sold_at_market`); `stop_update_failed` / `naked_position_detected` do not (`update_stop` writes
+them right after its own deferral row). The pages are NOT suppressed, their slots and cadence are unchanged, a gap
+with no deferral reads byte-for-byte as before, and an unreadable log sends the page without the reason. A deferred
+RAISE is never given as the reason — its old stop is resting.
+
+**(c) NOT changed — the breakout stop-to-the-fill at a third's fill** (`_breakout_pp_stop_to_fill_after_third`):
+it still calls `update_stop` on a refused replace. It runs only when a third FILLS, in full, on the paper account,
+and no order this system places is eligible to fill outside the regular session (no `extended_hours` order
+anywhere in `broker/`, pinned by a test), so the after-hours rule could never act there. Routing it through
+`move_stop_price_only` would also swap its `_mark_breakeven_armed` write and its own pages — not a clean change
+for no effect.
+
+**Reported, not changed**: the 21:10 page's closing line still says the 09:00 watchdog re-arms "at the ORIGINAL
+stop, not the trailed one" — false since #728 (it goes at the trade's last stop).
+
+**Evidence**: operator approval; no backtest (no threshold moved).
+
+**Reversion-flag**: REFINEMENT of the two entries below (supersedes "It is not retried in the morning session" and
+"whose wording does not name the reason").
+
+**EXPECT (BASELINE: 0 `stop_refresh_ran` rows carrying `deferred_raise_retried`; 0 coverage pages with a `Why:`
+line):** (a) the morning after a `stop_raise_deferred_extended_hours` row, the 09:35 `stop_refresh_ran` row
+carries `deferred_raise_retried` for that trade, and either a `stop_updated` row (mechanism `price_only_replace`)
+at the recorded level or a `stop_breach_market_sale` row with site `order_manager.update_stop` stamped inside
+09:30–close ET. Unintended to watch for: a retry on a trade whose stop already moved (none expected — superseded).
+(b) the evening after a `stop_breach_sale_deferred_extended_hours` row on a live position still without a stop,
+the 17:00 / 19:00 / 21:10 page carries the `Why:` line. **WOULD-FAIL-IF:** (a) a deferral row is the trade's latest
+stop-move event at 09:36 on a trading day, the recorded level is above its stop, and that morning's
+`stop_refresh_ran` row has no `deferred_raise_retried` entry for it; (b) a `coverage_*` page for a trade whose
+latest stop event is a deferral has no `Why:` line, or a slot that found a gap sent no page. **DONE-WHEN:** the
+first deferred raise is seen retried at 09:35 and its outcome checked against the broker, and the first deferred
+live position's evening page is read.
+
+**Tests**: `tests/test_stop_deferral_followups_1121.py` (26: the real 16:45 deferral then the morning retry — one
+price-only replace at the recorded level; still refused in session → the ruling (iii) sale; the newest of two
+deferrals; no retry after hours, on a holiday, at 16:20, after a later move, or at/above the level by row or by
+broker; a book with no deferral makes no broker write; unreadable log; a retry that leaves no stop is paged; the
+real 16:20 refusal then each coverage slot's page with the reason; a gap with no deferral byte-identical; the
+watchdog's deferral; a later placement ends it; a deferred raise is never the reason; another trade's row is not
+borrowed; unreadable log still pages; the no-extended-hours-orders premise of (c)). Mutation-checked: each new
+guard disabled → its tests fail. Deploy: `broker/` + `scheduler.py` → market-agent, then execution.
+
 ### 2026-11-21 — After hours: a DEAD queued sale's stop restore refused "above the market" queues NO new sale; a refused stop RAISE leaves the OLD stop resting (OPERATOR "ok and deploy" 2026-11-21; BUG FIX on the triggers of signed rules — no stop price, share count, target or safeguard changed; built, not deployed)
 
 **Classification** (CHANGE_PROCESS): BUG FIX, the same class as the two 2026-11-21 entries below, each approved by
@@ -433,7 +513,8 @@ back live at its old price), the refusal is "above the market", and now is outsi
 and nothing waits on him). In the regular session: unchanged — `update_stop` → cancel, two refused placements →
 ruling (iii)'s sale. Any other refused replace (held shares): unchanged, at any hour.
 - **What retries the raise**: the next 16:45 run re-evaluates it from that day's close (the stop refresh skips a
-  stop that is live). It is not retried in the morning session.
+  stop that is live). ~~It is not retried in the morning session.~~ **SUPERSEDED the same day (entry above): the
+  09:35 `morning_stop_refresh` makes the recorded raise in the regular session; refused there, it sells.**
 - **Not covered, reported to him**: when the replace is not attempted at all (the stop's share count is not the
   rest of the position, or the stop cannot be read) `update_stop` still cancels first, after hours too; and the
   breakout stop-to-the-fill at a third's fill (`finalize_partial_exit`) calls `update_stop` directly on a refused
@@ -620,6 +701,7 @@ the price outside regular hours is below it, NO sale was queued, no stop is rest
 **Known, not changed here** (reported to him): a deferred position pages about once per pass through the evening
 (16:05 digest, 16:20, and on the live account 17:00 / 19:00 / 21:10 "UNPROTECTED" pages whose wording does not name
 the reason; 21:00 digest), and it has no resting stop through extended hours until a pass succeeds.
+✅ **CHANGED 2026-11-21 (follow-up entry at the top): those three pages now name the reason; still sent, same slots.**
 
 **Evidence**: operator ruling on one incident (single-case). No backtest: no threshold moved.
 
