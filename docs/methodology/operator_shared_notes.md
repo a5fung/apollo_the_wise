@@ -3089,3 +3089,8 @@ His words on the same sheet: *"Ppc looks choppy, I don't like it."*
 ## 2026-11-17 — Family A push: FNGD is not a set up (a leveraged ETF)
 
 His words on the 11-17 Family A push (Confirm fire FNGD, buy 35.09, stop 29.36): *"Fngd is a levered etf"*. FNGD is the −3× inverse FANG+ ETN. Applied as a display rule: the push and `/anticipation` show only names breakout v1's universe admits (stocks, single-asset funds per his 10-29 ruling); the shadow still records every fire. Replay of 60 days of fires: 5 dropped (FNGD, MSFL, MSFU, MUU, AIS — all funds), no stock lost.
+
+## 2026-11-21 — Bear market: momentum strategies are expected not to work
+
+His words (Sat 11-21, Apollo session chat): *"We are in bear market and I expect momentum strategies to not work during the period fyi"*
+- A standing frame, not a rule change: returns from this period are read against the regime; a losing stretch in a bear market does not by itself mean a setup is broken. Mechanics defects (fills, stops, exits) are still judged on their own.
