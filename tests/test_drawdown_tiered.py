@@ -269,3 +269,48 @@ def test_drawdown_first_ever_ok_baseline_does_not_alert(monkeypatch):
 
     assert (prev, new) == (_STATE_OK, _STATE_OK)
     assert sent == [] and audited == []
+
+
+def _tier_alert_text(mode):
+    """Drive a real OK -> WATCH transition for `mode` and return the one Telegram text sent."""
+    sent = []
+    pool, conn = make_mock_pool()
+    conn.fetchrow = AsyncMock(return_value={"state": "OK"})
+    conn.execute = AsyncMock(return_value=None)
+
+    async def fake_compute(m):
+        return _dd_state(-0.06)
+
+    async def fake_claim(safeguard, account_mode, new_state):
+        return True
+
+    async def fake_audit(evt, summary, detail):
+        return None
+
+    async def fake_send(msg, **kwargs):
+        sent.append(msg)
+        return True
+
+    with patch.object(dd, "compute_drawdown_state", fake_compute), \
+         patch.object(dd, "get_pool", AsyncMock(return_value=pool)), \
+         patch.object(dd, "claim_safeguard_state_transition", fake_claim), \
+         patch.object(dd, "log_audit_event", fake_audit), \
+         patch("agents.market_intelligence.briefing.send_telegram_message", fake_send):
+        asyncio.run(dd.recompute_drawdown_state(mode))
+    assert len(sent) == 1
+    return sent[0]
+
+
+def test_paper_drawdown_tier_alert_leads_with_the_paper_tag_so_it_routes_to_the_paper_chat():
+    from agents.market_intelligence import constants
+    text = _tier_alert_text("paper")
+    assert text.startswith(constants.mode_prefix("paper"))
+    assert constants.is_paper_message(text)
+    assert "DRAWDOWN TIER" in text and "(paper)" in text
+
+
+def test_live_drawdown_tier_alert_text_is_unchanged_and_untagged():
+    from agents.market_intelligence import constants
+    text = _tier_alert_text("live")
+    assert text.startswith("🟡 <b>DRAWDOWN TIER</b> (live): OK → WATCH\n")
+    assert not constants.is_paper_message(text)

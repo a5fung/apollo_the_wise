@@ -45,6 +45,7 @@ from typing import Optional
 from agents.market_intelligence.audit_events import DRAWDOWN_BREAKER_READ_ERROR
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.constants import (
+    mode_prefix,
     DRAWDOWN_PEAK_WINDOW_DAYS,
     DRAWDOWN_WATCH_TRIP_PCT,
     DRAWDOWN_WATCH_RELEASE_PCT,
@@ -460,6 +461,9 @@ async def recompute_drawdown_state(mode: str) -> tuple[str, str, dict]:
             }
             head = "DRAWDOWN TIER" if direction_is_deeper else "DRAWDOWN RECOVERY"
             await send_telegram_message(
+                # paper leads with the paper tag so the sender routes it to the paper chat (the
+                # "(paper)" label alone never did, 2026-11-20); live text is unchanged
+                f"{mode_prefix(mode) if mode == 'paper' else ''}"
                 f"{tier_icons.get(new_state, 'ℹ️')} {b(head)} ({esc(mode)}): "
                 f"{esc(prev_state)} → {esc(new_state)}\n"
                 f"Drawdown {state_obj.drawdown_pct*100:.2f}% "
@@ -515,6 +519,7 @@ async def _note_breaker_read_failure(mode: str, exc: Exception, page: bool) -> b
         from agents.market_intelligence.briefing import send_telegram_message
         from shared.telegram_format import b, esc
         await send_telegram_message(
+            f"{mode_prefix(mode) if mode == 'paper' else ''}"
             f"⚠️ {b('DRAWDOWN BREAKER READ FAILED')} ({esc(mode)}) - the drawdown breaker's "
             f"state could not be read; it defaulted to OK (the ruled fail-open). "
             f"If it was really in REDUCE or BLOCK, this read did not see it.\n"

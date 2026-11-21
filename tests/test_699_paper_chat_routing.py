@@ -699,3 +699,71 @@ def test_staging_never_gets_the_paper_chat():
 def test_the_var_is_documented_where_operators_look():
     for rel in (".env.example", "docs/architecture/market_agent_reference.md"):
         assert "TELEGRAM_PAPER_CHAT_ID" in (REPO / rel).read_text(encoding="utf-8"), rel
+
+
+# ── 2026-11-20: a send site that labels paper some OTHER way is invisible to the tests above ──────────
+# The drawdown tier alert said "(paper)" in its body but never LED with the paper tag, so it reached the main
+# chat (operator, twice). The population test above only walks functions that CALL mode_prefix; this one walks
+# the other side: every function that calls a Telegram sender and is paper-capable (has an account_mode/mode/
+# book name, or a send argument mentioning "paper") must route through a tag builder, or be allowlisted.
+_ALL_SENDERS = {"send_telegram_message", "send_telegram_photo", "send_trade_proposal"}
+_MODE_NAMES = {"account_mode", "mode", "book", "acct_mode", "_mode", "trade_mode"}
+
+_PAPER_CAPABLE_ALLOWLIST = {
+    # the sender itself: `mode` there is the parse/chunk mode, and it IS the routing switch
+    ("agents/market_intelligence/briefing.py", "send_telegram_message"),
+    # `mode` is the brief's full/delta mode, not an account book
+    ("agents/market_intelligence/briefing.py", "send_evening_briefing"),
+    # `mode` = a dormant-book name in a system-wide graduation sweep; one composite system message
+    ("agents/market_intelligence/health_checks.py", "_run"),
+    # system L1 breach pages: the naked-position text is tagged per book by _format_naked_position_alert
+    # (builder pinned above); every other L1 is a system message, deliberately untagged
+    ("agents/market_intelligence/system_audit.py", "_emit_l1"),
+    # an interactive /trade reply to the chat he typed in (see _book_tag above)
+    ("agents/market_intelligence/agent.py", "_handle_trade_query"),
+    # tagged by the builder _cleanup_cancel_label (pinned above), which the sender call interpolates
+    ("agents/market_intelligence/broker/order_manager.py", "cancel_unfilled_entries"),
+    # tagged by the builder _full_exit_restore_page (pinned above)
+    ("agents/market_intelligence/broker/trade_stream.py", "_restore_stop_after_dead_sale_in_background"),
+}
+
+
+def _paper_capable_untagged_senders() -> set[tuple[str, str]]:
+    out = set()
+    for root in ROOTS:
+        for p in sorted((REPO / root).rglob("*.py")):
+            src = p.read_text(encoding="utf-8")
+            if "send_telegram" not in src and "send_trade_proposal" not in src:
+                continue
+            tree = ast.parse(src)
+            parents = {c: n for n in ast.walk(tree) for c in ast.iter_child_nodes(n)}
+            for n in ast.walk(tree):
+                if not (isinstance(n, ast.Call) and _callname(n) in _ALL_SENDERS):
+                    continue
+                fn = n
+                while fn in parents:
+                    fn = parents[fn]
+                    if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        break
+                else:
+                    continue
+                names = ({x.id for x in ast.walk(fn) if isinstance(x, ast.Name)}
+                         | {x.arg for x in ast.walk(fn) if isinstance(x, ast.arg)})
+                paper_word = any(isinstance(x, ast.Constant) and isinstance(x.value, str)
+                                 and "paper" in x.value.lower() for x in ast.walk(n))
+                tagged = bool(_calls_in(fn) & _TAG_BUILDERS)
+                if (names & _MODE_NAMES or paper_word) and not tagged:
+                    out.add((str(p.relative_to(REPO)), fn.name))
+    return out
+
+
+def test_every_paper_capable_send_site_routes_through_a_tag_builder_or_is_allowlisted():
+    found = _paper_capable_untagged_senders()
+    leaks = found - _PAPER_CAPABLE_ALLOWLIST
+    assert not leaks, (
+        f"{sorted(leaks)} send a Telegram message from a function that knows an account mode (or says "
+        "'paper') but never leads with mode_prefix(<mode>): a paper alert there reaches the MAIN chat. "
+        "Lead the text with `mode_prefix(mode) if mode == 'paper' else ''` (live text unchanged), or add "
+        "the function to _PAPER_CAPABLE_ALLOWLIST with the reason.")
+    stale = _PAPER_CAPABLE_ALLOWLIST - found
+    assert not stale, f"allowlisted but no longer a paper-capable untagged sender (remove): {sorted(stale)}"

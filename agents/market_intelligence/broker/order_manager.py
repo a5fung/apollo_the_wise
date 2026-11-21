@@ -7369,6 +7369,7 @@ async def _maybe_alert_stuck_pending_new(
             f"age_minutes={age_minutes:.1f}",
         )
         await send_telegram_message(
+            f"{mode_prefix(account_mode) if account_mode == 'paper' else ''}"
             f"⚠️ *Order stuck pending_new — {ticker}*\n"
             f"Alpaca {account_mode} hasn't routed the order in "
             f"{age_minutes:.0f} min. Apollo's submission was clean; "
@@ -7548,6 +7549,7 @@ async def _note_mode_reconcile_failure(mode: str, exc: Exception,
     try:
         from shared.telegram_format import b, esc
         await send_telegram_message(
+            f"{mode_prefix(mode) if mode == 'paper' else ''}"
             f"🔴 {b(f'{mode.upper()} ORDER RECONCILE DOWN')} — the 15-minute DB↔Alpaca "
             f"reconcile has failed {n}× in a row for the {esc(mode)} account, before "
             f"reaching a single order. Silent stops and stuck orders in that account "

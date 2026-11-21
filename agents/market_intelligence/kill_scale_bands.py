@@ -415,7 +415,9 @@ async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) 
             if send and notable:
                 from agents.market_intelligence.briefing import send_telegram_message
                 arrow = f"{prev_band or '∅'} → {verdict.band}"
+                from agents.market_intelligence.constants import mode_prefix
                 await send_telegram_message(
+                    f"{mode_prefix(account_mode) if account_mode == 'paper' else ''}"
                     f"📊 *Kill/scale band change* ({account_mode}): {arrow}\n"
                     + format_band_line(verdict, override, inputs.get("open_positions")))
         return {"band": verdict.band, "prev_band": prev_band, "transitioned": claimed,
