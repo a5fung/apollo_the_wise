@@ -58,6 +58,7 @@ from agents.market_intelligence.audit_events import (
     SIZING_NOTIONAL_CAP_TRUNCATED,
     STOP_UPDATE_RETRY_TRIGGERED,
     STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS,
+    STOP_RAISE_DEFERRED_EXTENDED_HOURS,
     STOP_UPDATE_FAILED,
     ORDER_STATUS_RECONCILE_MODE_ERROR,
     PARTIAL_FILL_CLOSE_ERROR,
@@ -5093,7 +5094,8 @@ async def _replace_stop_price_only(
         if (_back_status in _STOP_CONFIRMED_LIVE_STATUSES and _back_px is not None
                 and abs(float(_back_px) - broker_stop) < 1e-6):
             return {"outcome": "fallback", "replace_skipped": f"replace_refused:{type(e).__name__}",
-                    "old_stop_id": stop_id}
+                    "old_stop_id": stop_id, "broker_stop": broker_stop,
+                    "refused_above_market": _is_stop_above_market(e), "refusal": str(e)[:300]}
         return {"outcome": "unverified", "replace_outcome": "raised_ambiguous", "old_stop_id": stop_id,
                 "last_status": _back_status, "replace_skipped": f"replace_raised:{type(e).__name__}"}
 
@@ -5193,8 +5195,12 @@ async def move_stop_price_only(
     (the re-protect after a dead stop), a stop whose share count is not the rest of the position (a share-count
     change needs cancel-place), a price that is not a raise (its floor records the refusal), or a replace the
     broker PROVABLY refused (the old stop read back live at its old price). So a raise the broker refuses as
-    "above the market" still reaches #687 ruling (iii) — and its 2026-11-20 extended-hours deferral — through
-    `update_stop`, exactly as before; the sale is never called from here (the old stop still holds the shares).
+    "above the market" IN THE REGULAR SESSION still reaches #687 ruling (iii) through `update_stop`, exactly as
+    before; the sale is never called from here (the old stop still holds the shares).
+
+    OUTSIDE the regular session (operator 2026-11-21) a raise provably refused as "above the market" stops HERE:
+    `update_stop` is NOT called, so the old stop is not cancelled and keeps resting; the row's `stop_order_id` /
+    `stop_price` are untouched; audit `stop_raise_deferred_extended_hours`; returns False; the next pass retries.
 
     After an ACCEPTED replace `update_stop` is never called. True only when the successor is confirmed live
     (`stop_updated`, mechanism `price_only_replace`); unconfirmed / dead → False, audited and paged.
@@ -5223,6 +5229,28 @@ async def move_stop_price_only(
     outcome = rep["outcome"]
     if outcome == "fallback":
         skipped = rep.get("replace_skipped")
+        if rep.get("refused_above_market") and not _regular_session_open_now():
+            # ⚖ Operator 2026-11-21: after hours, a RAISE the broker refuses must leave the OLD stop
+            # resting. The replace was provably refused (the old stop read back live at its old
+            # price) against an extended-hours print: nothing is cancelled, placed or sold, the row
+            # keeps the resting stop's id and price, and the next pass retries the raise. In the
+            # regular session the fallback below is unchanged (update_stop → ruling (iii)).
+            logger.warning(f"move_stop_price_only: {ticker} raise to ${new_stop_price:.2f} refused as "
+                           f"above the market OUTSIDE the regular session — old stop left resting")
+            try:
+                await log_audit_event(
+                    STOP_RAISE_DEFERRED_EXTENDED_HOURS,
+                    f"{ticker}: stop raise to ${new_stop_price:.2f} refused as above the market outside "
+                    f"the regular session — the old stop stays resting; retried at the next pass",
+                    json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                                "new_stop_price": new_stop_price, "old_stop_price": old_stop_price,
+                                "broker_stop_price": rep.get("broker_stop"),
+                                "old_stop_id": rep.get("old_stop_id"), "stop_source": stop_source,
+                                "at_et": datetime.now(_ET).isoformat(timespec="seconds"),
+                                "stop_error": rep.get("refusal")}))
+            except Exception as e:  # loud-ok: nothing changed at the broker; never raise into the 16:45 loop
+                logger.error(f"move_stop_price_only: {ticker} #{trade_id} deferral row raised ({e})")
+            return False
         if skipped not in _REPLACE_ROUTINE_SKIPS:
             await log_audit_event(
                 STOP_PRICE_REPLACE_FALLBACK_EVENT,
@@ -5583,6 +5611,9 @@ RESTORE_COVERED = "covered"     # the broker shows every share held by live rest
 RESTORE_FAILED = "failed"
 RESTORE_SOLD = "sold_at_market"  # #687 ruling (3): price already through the stop → market sale
 RESTORE_FLAT = "broker_flat"     # #687 ruling (i): the broker shows NO position → nothing placed
+# 2026-11-21 (operator "ok" 11-21): the stream's DEAD full-exit restore was refused as above the
+# market OUTSIDE the regular session → no sale, no stop; the next scheduled pass retries the stop.
+RESTORE_DEFERRED = "deferred_extended_hours"
 
 # ⚖ #687 ruling (i) — the ONE sentence both flat pages carry (the failed-exit page via
 # `_restore_outcome_line`, the stream's dead-sale page in `trade_stream`), so they cannot drift
@@ -5668,6 +5699,26 @@ async def _sell_free_shares_after_stop_breach(
     return order
 
 
+async def _audit_stop_breach_sale_deferred(
+    trade_id: int, ticker: str, account_mode: str, *, stop_price: float, site: str, error: str,
+) -> None:
+    """The ONE `stop_breach_sale_deferred_extended_hours` row (+ its log line): a stop refused as
+    above the market outside the regular session, no sale placed. Written by the ruling (iii) gate
+    below and, since 2026-11-21, by the stream's dead full-exit restore (inline and its background
+    held-shares retry). `site` names which."""
+    logger.warning(f"{site}: {ticker} stop ${float(stop_price):.2f} refused as above the "
+                   f"market OUTSIDE the regular session — no sale (deferred)")
+    await log_audit_event(
+        STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS,
+        f"{ticker}: stop ${float(stop_price):.2f} refused as above the market outside the "
+        f"regular session — no sale queued; the stop is retried at the next pass",
+        json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                    "stop_price": float(stop_price), "site": site,
+                    "at_et": datetime.now(_ET).isoformat(timespec="seconds"),
+                    "stop_error": error[:300]}),
+    )
+
+
 async def _sell_at_market_for_refused_stop(
     trade_id: int, ticker: str, account_mode: str, *,
     stop_price: float, site: str, refusal: "BaseException | None", exclude_ids=(),
@@ -5691,9 +5742,11 @@ async def _sell_at_market_for_refused_stop(
     trading day (`_regular_session_open_now`) the refusal is against an extended-hours print, not
     a regular-session breach — NOTHING is sold, a `stop_breach_sale_deferred_extended_hours` row
     is written and the falsy `STOP_BREACH_SALE_DEFERRED` comes back so the caller can say so. The
-    gate lives here, so every ruling (iii) site has it. Ruling (3)'s two DIRECT callers of
-    `_sell_free_shares_after_stop_breach` are NOT gated: there an exit rule had already decided
-    to sell, after hours by design.
+    gate lives here, so every ruling (iii) site has it. Of ruling (3)'s DIRECT callers of
+    `_sell_free_shares_after_stop_breach`, the stream's DEAD full-exit restore defers the same way
+    since 2026-11-21 (its own check, same audit row); `_restore_stop_after_failed_exit` (the 16:45
+    close-below / 19:01 depth sale that FAILED) is NOT gated: there the exit rule decided to sell
+    moments ago, after hours by design.
 
     The SALE is ruling (3)'s helper unchanged (`full_exit` row labelled `stop_hit`). It PAGES itself: some callers discard the message they get
     back, and a real-money sale is never silent. `clear_stop_pointer` nulls `stop_order_id` after
@@ -5711,17 +5764,8 @@ async def _sell_at_market_for_refused_stop(
         # broker's "above the market" refusal is measured against an EXTENDED-HOURS print — not
         # a regular-session breach. No sale; the stop is retried by the next scheduled pass and
         # the first in-session refusal still sells (docs/setups/exit_discipline.md 2026-11-21).
-        logger.warning(f"{site}: {ticker} stop ${float(stop_price):.2f} refused as above the "
-                       f"market OUTSIDE the regular session — no sale (deferred)")
-        await log_audit_event(
-            STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS,
-            f"{ticker}: stop ${float(stop_price):.2f} refused as above the market outside the "
-            f"regular session — no sale queued; the stop is retried at the next pass",
-            json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
-                        "stop_price": float(stop_price), "site": site,
-                        "at_et": datetime.now(_ET).isoformat(timespec="seconds"),
-                        "stop_error": error[:300]}),
-        )
+        await _audit_stop_breach_sale_deferred(
+            trade_id, ticker, account_mode, stop_price=stop_price, site=site, error=error)
         return STOP_BREACH_SALE_DEFERRED
     fallback = 0.0
     try:
@@ -5844,6 +5888,7 @@ async def _retry_restore_while_shares_held(
     trade_id: int, ticker: str, shares: float, stop_price: float, account_mode: str, *,
     qty: int, first_error: BaseException, cancelled_stop_id: "str | None", reason: str,
     signal_type: "str | None", also_exclude_ids: tuple = (),
+    defer_breach_sale_outside_session_site: "str | None" = None,
 ) -> _RestoreRetry:
     """The broker refused the restore because the cancelled stop's shares are still HELD (#687,
     ruling 2026-10-06). Poll the position every `_RESTORE_RETRY_SLEEP_S`, at most
@@ -5868,7 +5913,12 @@ async def _retry_restore_while_shares_held(
     `also_exclude_ids` (#687, 2026-10-10) — orders besides `cancelled_stop_id` that are DEAD but may
     still be listed live for a moment, excluded from this retry's own free-share read. The stream's
     full-exit cancel/expire branch passes the dead sale's id (it has no per-trade lock and runs this
-    in a background task); the failed-exit restore passes nothing and reads exactly as before."""
+    in a background task); the failed-exit restore passes nothing and reads exactly as before.
+
+    `defer_breach_sale_outside_session_site` (2026-11-21) — ONLY the stream's dead full-exit restore
+    passes it (its own site name): a re-attempt refused as above the market OUTSIDE the regular
+    session sells nothing, writes `stop_breach_sale_deferred_extended_hours` under that site and
+    ends RESTORE_DEFERRED. None (the failed-exit restore) → ruling (3)'s sale, exactly as before."""
     started = time.monotonic()
     attempts, polls, last_error = 1, 0, str(first_error)
 
@@ -5914,6 +5964,11 @@ async def _retry_restore_while_shares_held(
             logger.error(f"_restore_stop_after_failed_exit: re-placing {ticker} stop FAILED again "
                          f"(attempt {attempts}) — {e}")
             if _is_stop_above_market(e):
+                if defer_breach_sale_outside_session_site and not _regular_session_open_now():
+                    await _audit_stop_breach_sale_deferred(
+                        trade_id, ticker, account_mode, stop_price=stop_price,
+                        site=defer_breach_sale_outside_session_site, error=str(e))
+                    return _end(RESTORE_DEFERRED)
                 sold = await _sell_free_shares_after_stop_breach(
                     trade_id, ticker, qty, reason, account_mode, stop_price=stop_price,
                     site=_RESTORE_SITE, error=str(e))

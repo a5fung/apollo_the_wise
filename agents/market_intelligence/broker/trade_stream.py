@@ -1465,11 +1465,18 @@ def _full_exit_restore_page(
     from agents.market_intelligence.broker.order_manager import (
         FLAT_RESTORE_PAGE_BODY,
         RESTORE_COVERED,
+        RESTORE_DEFERRED,
         RESTORE_FLAT,
         RESTORE_PLACED,
         RESTORE_SOLD,
+        stop_breach_deferred_note,
     )
     prefix = mode_prefix(account_mode)
+    if outcome == RESTORE_DEFERRED:
+        # 2026-11-21: refused as above the market outside the regular session — no sale queued.
+        return (f"{prefix}⏸ *Close order {event_norm.upper()}, no stop resting, no sale queued:* "
+                f"{symbol}\nPosition still open ({restore_qty} sh), and "
+                f"{stop_breach_deferred_note(restore_price)}")
     if outcome == RESTORE_PLACED:
         return (f"{prefix}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
                 f"Position still open. Stop re-placed @${restore_price:.2f} for {restore_qty} sh.")
@@ -1654,6 +1661,7 @@ async def _restore_stop_after_dead_sale_in_background(
     in the existing STOP RESTORE FAILED page: a background task must never fail silently."""
     from agents.market_intelligence.broker.order_manager import (
         RESTORE_COVERED,
+        RESTORE_DEFERRED,
         RESTORE_FAILED,
         RESTORE_FLAT,
         RESTORE_PLACED,
@@ -1673,7 +1681,9 @@ async def _restore_stop_after_dead_sale_in_background(
         retry = await _retry_restore_while_shares_held(
             trade_id, ticker, fallback_qty, restore_price, account_mode, qty=restore_qty,
             first_error=first_error, cancelled_stop_id=cancelled_stop_id,
-            reason=_exit_reason, signal_type=signal_type, also_exclude_ids=(order_id,))
+            reason=_exit_reason, signal_type=signal_type, also_exclude_ids=(order_id,),
+            # 2026-11-21: outside the regular session an above-the-market refusal sells nothing.
+            defer_breach_sale_outside_session_site="trade_stream.full_exit_cancel_restore")
         audit = dict(stop_price=restore_price, qty=restore_qty, retry=retry,
                      cancelled_stop_id=cancelled_stop_id)
         if retry.outcome is None and (retry.placed or {}).get("id"):
@@ -1701,6 +1711,10 @@ async def _restore_stop_after_dead_sale_in_background(
             await send_telegram_message(_full_exit_restore_page(RESTORE_FLAT, **page))
         elif outcome == RESTORE_COVERED:
             await send_telegram_message(_full_exit_restore_page(RESTORE_COVERED, **page))
+        elif outcome == RESTORE_DEFERRED:
+            await send_telegram_message(_full_exit_restore_page(RESTORE_DEFERRED, **page))
+            logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, stop refused "
+                           f"outside the regular session — no sale, retried at the next pass")
         else:
             await send_telegram_message(
                 _full_exit_restore_page(RESTORE_FAILED, error=retry.last_error, **page))
@@ -2822,7 +2836,10 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                 # the price is already through the stop → sell the shares it would have covered
                 # at market now, as the triggered stop would have. The exit rule had already
                 # decided to sell (that is what the dead order was).
+                from agents.market_intelligence.broker import order_manager as _om
                 from agents.market_intelligence.broker.order_manager import (
+                    RESTORE_DEFERRED,
+                    _audit_stop_breach_sale_deferred,
                     _is_shares_held_refusal,
                     _is_stop_above_market,
                     _sell_free_shares_after_stop_breach,
@@ -2843,6 +2860,22 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, "
                                    f"broker still holds the shares — stop re-place retrying in "
                                    f"the background")
+                    return
+                if (restore_qty > 0 and _is_stop_above_market(e)
+                        and not _om._regular_session_open_now()):
+                    # ⚖ Operator 2026-11-21 ("ok"): the dead sale's restore refused against an
+                    # EXTENDED-HOURS print is not a stop-out — no sale is queued (EVER 1427: a
+                    # cancelled after-hours breach sale would otherwise re-queue itself here). The
+                    # same row + wording as the 2026-11-20 ruling (iii) deferral; the next
+                    # scheduled pass re-places the stop, the first in-session refusal still sells.
+                    await _audit_stop_breach_sale_deferred(
+                        trade_row["id"], trade_row["ticker"], account_mode,
+                        stop_price=restore_price, site="trade_stream.full_exit_cancel_restore",
+                        error=str(e))
+                    await send_telegram_message(_full_exit_restore_page(RESTORE_DEFERRED, **_page))
+                    logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, stop "
+                                   f"refused outside the regular session — no sale, retried at "
+                                   f"the next pass")
                     return
                 if restore_qty > 0 and _is_stop_above_market(e):
                     _exit_reason = await _dead_sale_exit_reason(

@@ -206,6 +206,15 @@ STOP_UPDATE_FAILED = "stop_update_failed"
 # stop_price, site, at_et, stop_error}. A `stop_breach_market_sale` row from a ruling (iii) site
 # stamped outside 09:30-close ET after this date means the gate failed.
 STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS = "stop_breach_sale_deferred_extended_hours"
+# 2026-11-21 (operator "ok" 11-21): the same row is also written by the stream's DEAD full-exit
+# restore (site `trade_stream.full_exit_cancel_restore`, inline and its background retry).
+# And: a stop RAISE (`order_manager.move_stop_price_only`) whose price-only replace the broker
+# provably refused as "above the market" OUTSIDE the regular session — nothing cancelled, the OLD
+# stop keeps resting, the row's stop id/price unchanged; detail {trade_id, ticker, account_mode,
+# new_stop_price, old_stop_price, broker_stop_price, old_stop_id, stop_source, at_et, stop_error}.
+# A `stop_update_started` row for the same trade right after it, outside the session, means the
+# old stop was cancelled anyway (the gate failed).
+STOP_RAISE_DEFERRED_EXTENDED_HOURS = "stop_raise_deferred_extended_hours"
 # The stop-ACK watchdog's own marker for the same case (pre-market 09:00-09:29, or a half-day
 # afternoon). Deliberately NOT in the watchdog's once-per-day dedup set: the next 30-second tick
 # tries again, so the first tick inside the regular session acts. 1-hour dedup on the row + page.

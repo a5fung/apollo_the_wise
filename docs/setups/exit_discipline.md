@@ -76,8 +76,11 @@ stop move from `live_tracker` (the 16:45 trail / breakeven / depth lifts, the st
 `order_manager.move_stop_price_only`: one atomic price-only `alpaca.replace_order` on the live stop
 (same price, same share count, raise-only against the broker stop). `update_stop`'s cancel-then-place
 runs only when nothing was changed at the broker — no live stop (the re-protect), a share-count
-change, not a raise, or a provably refused replace — and never after an accepted replace. Change log
-2026-11-21 (#728). Tests: `tests/test_stop_price_only_replace_728.py`.
+change, not a raise, or a provably refused replace — and never after an accepted replace. **Outside the
+regular session a raise the broker refuses as "above the market" stops at the replace: nothing is
+cancelled, the OLD stop keeps resting, the row's stop is unchanged, the next pass retries (operator
+2026-11-21).** Change log 2026-11-21 (#728, and the after-hours entry above it). Tests:
+`tests/test_stop_price_only_replace_728.py`.
 
 ### 0. Initial protective stop — `entry − 2R` (MAGNA53, operator-signed 2026-08-16)
 
@@ -388,6 +391,81 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-11-21 — After hours: a DEAD queued sale's stop restore refused "above the market" queues NO new sale; a refused stop RAISE leaves the OLD stop resting (OPERATOR "ok and deploy" 2026-11-21; BUG FIX on the triggers of signed rules — no stop price, share count, target or safeguard changed; built, not deployed)
+
+**Classification** (CHANGE_PROCESS): BUG FIX, the same class as the two 2026-11-21 entries below, each approved by
+him today. No criteria or threshold moved, so no N≥10 backtest applies. (A) is single-incident (EVER 1427), flagged.
+
+**Trigger (A)**: EVER paper trade 1427 still has the market sale the 16:05 after-hours refusal queued on 11-20 (order
+76faeb36). He cancels it at the weekend. The cancel event reaches the stream's dead full-exit restore
+(`trade_stream._handle_cancel_or_reject` §3, site `trade_stream.full_exit_cancel_restore`), which re-places the stop
+at $28.68; the broker refuses it against the after-hours $27.50 — and ruling (3)'s direct sale there would queue the
+same sale again. **Trigger (B)**: the "for him" line of the #728 entry below — at 16:45 (after hours) a raise the
+broker refuses fell back to `update_stop`, which cancels the live stop first and, deferred, left none resting.
+
+**Why the earlier text was wrong, not just incomplete** (this REVERSES part of the "NOT gated" bullet in the entry
+below): it treated both of ruling (3)'s sites as "an exit rule had already decided to sell". That holds for a sale
+that FAILED at 16:45 / 19:01 (decided moments ago). It does not hold for a queued sale that DIED later — cancelled
+by him, expired, rejected: the decision to sell is exactly what was just withdrawn or lapsed, so the after-hours
+refusal is again the only evidence of a breach, the case his 11-20 ruling excludes.
+
+**Change (A) — the stream's dead full-exit restore** (inline first attempt AND its background held-shares retry,
+`_restore_stop_after_dead_sale_in_background` → `order_manager._retry_restore_while_shares_held` with the stream's
+opt-in `defer_breach_sale_outside_session_site`): refused as above the market while
+`order_manager._regular_session_open_now()` is False → nothing sold; audit `stop_breach_sale_deferred_extended_hours`
+with `site: trade_stream.full_exit_cancel_restore` (one shared writer, `_audit_stop_breach_sale_deferred`; the
+background path also ends its `stop_restore_retry_ended` row with outcome `deferred_extended_hours`); page "Close
+order CANCELLED, no stop resting, no sale queued" + the shared `stop_breach_deferred_note` wording. In the regular
+session, and for any other refusal: unchanged (pages frozen by `tests/test_687_stream_restore_pages_frozen.py`).
+- **NOT changed: `_restore_stop_after_failed_exit`** (the 16:45 close-below / 19:01 depth sale that failed). It shares
+  the retry helper; without the opt-in argument that helper sells after hours exactly as before (tested).
+- **The dead sale's own row is terminal before the restore runs** (the claim writes `cancelled` / `expired` /
+  `rejected`, all in `PENDING_EXIT_TERMINAL_STATUSES`), so no later pass counts it as a pending exit:
+  `get_pending_exit_qty`, the sync's `_pending_exit_reservation`, `_queued_full_exit_qty` (also needs the order live
+  at the broker). The stop is then re-placed by the same passes as the entry below: 16:20 refresh, 21:00 sync, the
+  09:00 watchdog, 09:35 refresh; the first in-session refusal still sells.
+
+**Change (B) — `order_manager.move_stop_price_only`**: when the price-only replace is PROVABLY refused (old stop read
+back live at its old price), the refusal is "above the market", and now is outside the regular session →
+`update_stop` is NOT called. Nothing is cancelled, placed or sold; the old stop keeps resting; `stop_order_id` and
+`stop_price` are untouched (the row still describes the resting stop); audit `stop_raise_deferred_extended_hours`
+(new/old price, the broker's stop price, the old stop id, the error); returns False; no page (nothing is unprotected
+and nothing waits on him). In the regular session: unchanged — `update_stop` → cancel, two refused placements →
+ruling (iii)'s sale. Any other refused replace (held shares): unchanged, at any hour.
+- **What retries the raise**: the next 16:45 run re-evaluates it from that day's close (the stop refresh skips a
+  stop that is live). It is not retried in the morning session.
+- **Not covered, reported to him**: when the replace is not attempted at all (the stop's share count is not the
+  rest of the position, or the stop cannot be read) `update_stop` still cancels first, after hours too; and the
+  breakout stop-to-the-fill at a third's fill (`finalize_partial_exit`) calls `update_stop` directly on a refused
+  replace (fills happen in the regular session).
+
+**Evidence**: operator approval on one incident (A) and on the open fork of #728 (B). No backtest: no threshold moved.
+
+**Anticipated effect**: (A) EVER's weekend cancel leaves the position open with no sale queued; Monday's 09:00
+watchdog / 09:35 refresh place the stop, or sell in the regular session if the price is still below it. (B) on an
+evening the after-hours price is below a raised trail level, the position keeps its old stop instead of none.
+
+**Reversion-flag**: (A) PARTIAL REVERSAL of the "NOT gated" bullet of the entry below (the stream site only);
+(B) REFINEMENT of #728, resolving its open "for him" line.
+
+**EXPECT (BASELINE: 0 `stop_raise_deferred_extended_hours` rows; 1 queued after-hours sale, EVER 76faeb36):**
+(A) cancelling 76faeb36 outside the session writes `stop_breach_sale_deferred_extended_hours` with site
+`trade_stream.full_exit_cancel_restore` and no new order — or, if the broker accepts the stop, a "Stop re-placed"
+page. (B) a refused after-hours raise writes `stop_raise_deferred_extended_hours` and the old stop id is still live
+at the broker. **WOULD-FAIL-IF:** (A) a new `stop_breach_market_sale` row for trade 1427 stamped outside 09:30–close
+ET; (B) a `stop_update_started` row for the same trade and price right after a refused after-hours replace.
+**DONE-WHEN:** (A) the EVER cancel is observed; (B) the first `stop_raise_deferred_extended_hours` row is checked
+against the broker (old stop live).
+
+**Tests**: `tests/test_stop_breach_extended_hours_1121.py` (+7: dead full-exit cancel after hours → no
+`close_position`, the deferred row, the wording, the dead row terminal; in session the sale unchanged; another
+refusal unchanged; the background retry after hours / in session; a later refresh re-places the stop; the shared
+retry helper still sells without the opt-in) and `tests/test_stop_price_only_replace_728.py` (two tests rewritten to
+the new contract, +2: refused raise after hours → no `cancel_order`, stop id and price unchanged, the new row;
+a held-shares refusal after hours still falls back; the next pass completes the raise; in session unchanged).
+Mutation-checked: with the three new checks disabled, 7 of the new tests fail. Deploy: `broker/` → market-agent,
+then execution.
+
 ### 2026-11-21 — #728: a PRICE-ONLY stop move is ONE atomic price-only replace on the live stop, not cancel-then-place; the stop-ACK watchdog's fallback goes at the trade's LAST stop (BUG FIX + OPERATOR RULING 2026-11-20 (1) — no stop price, share count, raise-only rule, target or safeguard changed; built, not deployed)
 
 **Classification** (CHANGE_PROCESS): BUG FIX in the MECHANISM of an already-signed rule (the trail / breakeven /
@@ -433,7 +511,8 @@ stop-to-the-fill on a later day and on the breakout day, and `_stop_refresh`; `l
   refuses as "above the market" is a provably refused replace → `update_stop` → cancel, two refused placements →
   `_sell_at_market_for_refused_stop` — sold in the regular session, deferred outside it (the 2026-11-21 entry
   below). The sale is never called from the replace step: the old stop still holds the shares there.
-  ⚠ **For him (not decided here):** the 16:45 job runs after hours, so on that path the fallback cancels a stop
+  ✅ **DECIDED 2026-11-21 (his "ok", entry above): after hours the refused raise keeps the old stop resting —
+  `update_stop` is not called.** As written before his ruling: ⚠ **For him (not decided here):** the 16:45 job runs after hours, so on that path the fallback cancels a stop
   that is still live and — deferred — leaves NO stop resting until the next pass, exactly as before #728. The
   replace now tells us the raise is refused BEFORE anything is cancelled, so keeping the old stop resting after
   hours is possible; that is a change to what ruling (iii) / the 11-20 ruling do and is his call.
@@ -499,6 +578,8 @@ stop would not have triggered on (a stop order triggers in the regular session o
   error) and the falsy marker `STOP_BREACH_SALE_DEFERRED` comes back.
 - Inside the regular session: unchanged — sized, sold, paged and de-duped exactly as 2026-10-03.
 - Any other refusal: unchanged, whatever the clock says.
+- ✅ **CHANGED 2026-11-21 (his "ok", entry above): the stream's dead full-exit restore now defers outside the
+  regular session too; `_restore_stop_after_failed_exit` stays ungated.** As written before:
 - **NOT gated — ruling (3)'s two direct sites** (`_restore_stop_after_failed_exit`, the stream's dead full-exit
   restore — they call `_sell_free_shares_after_stop_breach` themselves): there an exit rule (the 16:45 close-below
   sale, the 19:01 depth sale) had already decided to sell, after hours by design; the refusal is not the trigger.
@@ -530,7 +611,8 @@ the price outside regular hours is below it, NO sale was queued, no stop is rest
 - Each places the stop at the trade's own stop price (`_apply_reprotect_floor`: never below the last level the
   broker held) as soon as the extended-hours price is back above it. A refused 16:45 TRAIL RAISE never moved
   `stop_price` (only a placed stop writes it), so the later passes re-place at the OLD level and the next 16:45 run
-  re-evaluates the raise.
+  re-evaluates the raise. (Since the 2026-11-21 entry above, a raise refused after hours no longer cancels the old
+  stop at all, so there is nothing for these passes to re-place.)
 - **The first in-session act, if it is still refused:** the watchdog's 09:30:00 tick (site 4), then 09:35
   `morning_stop_refresh` → `_stop_refresh` → `update_stop` (site 3) → the ruling (iii) sale, in the regular session.
   The signed rule still acts; it only waits for a regular-session price.
@@ -549,8 +631,8 @@ re-placed by the next pass that the broker accepts.
 
 **EXPECT (BASELINE: 1 after-hours ruling (iii) sale, EVER 11-20 16:05 ET):** the next extended-hours "above the
 market" refusal writes `stop_breach_sale_deferred_extended_hours` and no order. **WOULD-FAIL-IF:** a
-`stop_breach_market_sale` row whose `site` is not `…failed_exit…` / `trade_stream.full_exit_cancel_restore`, created
-outside 09:30–close ET on a trading day, after the deploy.
+`stop_breach_market_sale` row whose `site` is not `…failed_exit…` (and, until the 2026-11-21 entry above deploys,
+not `trade_stream.full_exit_cancel_restore`), created outside 09:30–close ET on a trading day, after the deploy.
 
 **Tests**: `tests/test_stop_breach_extended_hours_1121.py` (28: the clock edges incl. the half day and an unreadable
 calendar; per site — sync orphan, reconciler, `update_stop` / the refresh, watchdog, partial restore — after hours no
@@ -1276,7 +1358,8 @@ and acting only when `_is_stop_above_market` recognises it (the check lives in t
   coverage — so without its own page the sale would be silent there. Where a site also pages or digests, the sale
   is mentioned twice; that is accepted.
 - ⚠ **SUPERSEDED 2026-11-21 (his ruling 2026-11-20, change log above): outside the regular session these sites
-  no longer sell.** As written 2026-10-03: **After hours** (the 16:05/21:00 sync, the 17:00/19:00 coverage slots, the 16:20 refresh, the 16:45 trail) the
+  no longer sell** — nor, since his "ok" of 2026-11-21, does ruling (3)'s stream site (a queued sale that died
+  unfilled); only `_restore_stop_after_failed_exit` still sells after hours. As written 2026-10-03: **After hours** (the 16:05/21:00 sync, the 17:00/19:00 coverage slots, the 16:20 refresh, the 16:45 trail) the
   market order queues and sells at the next open, at the opening price even on a gap back above the stop — the
   same property ruling (3) has and his 09-29 auction ruling accepted. Not a new decision.
 - **De-dupe**: a sale already placed by any site — ruling (3)'s included — is (a) a live sell order holding the

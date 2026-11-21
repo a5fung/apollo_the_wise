@@ -122,6 +122,9 @@ def _stream(monkeypatch, *, place_exc, close_exc=None):
         position_qty=6.0,
     )
     h["conn"].fetchval = AsyncMock(return_value="sma_trail_stop")
+    # 2026-11-21: outside the regular session this restore defers instead of selling
+    # (tests/test_stop_breach_extended_hours_1121.py) — these tests are the in-session rule.
+    monkeypatch.setattr(om, "_regular_session_open_now", lambda *a, **k: True)
     monkeypatch.setattr(ts.alpaca, "get_open_orders", AsyncMock(return_value=[]))
     monkeypatch.setattr(om, "get_pending_exit_qty", AsyncMock(return_value=0))
     h["place_stop"].side_effect = place_exc

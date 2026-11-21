@@ -264,7 +264,7 @@ async def test_a_provably_refused_replace_falls_back_to_update_stop():
     assert w.trades[401]["stop_price"] == 61.5
 
 
-# ── #687 ruling (iii) is still reached, with its 2026-11-20 extended-hours deferral ───────────
+# ── #687 ruling (iii) is still reached IN SESSION; after hours a refused raise keeps the old stop ──
 
 def _refused_through_the_price(*, in_session):
     w = World()
@@ -291,32 +291,72 @@ async def test_a_replace_refused_as_above_the_market_still_sells_in_the_regular_
     assert m == ["replace_order", "cancel_order", "place_stop_order", "place_stop_order", "close_position"]
 
 
+def _old_stop_still_resting(w, out):
+    """Operator 2026-11-21: after hours a refused RAISE leaves the OLD stop resting — nothing
+    cancelled, placed or sold, and the row still names the resting stop at its price."""
+    assert out is False
+    for forbidden in ("cancel_order", "place_stop_order", "close_position"):
+        assert forbidden not in _methods(w), (forbidden, w.calls)
+    assert _methods(w).count("replace_order") == 1
+    old = w.broker_order("stop-1")
+    assert old["status"] in H.LIVE_ORDER_STATUSES and old["stop_price"] == 58.0, old
+    t = w.trades[401]
+    assert t["stop_order_id"] == "stop-1" and t["stop_price"] == 58.0, t
+    [row] = _audits(w, "stop_raise_deferred_extended_hours")
+    assert (row["new_stop_price"], row["old_stop_price"], row["old_stop_id"]) == (61.5, 58.0, "stop-1")
+    assert row["broker_stop_price"] == 58.0 and "must be less than" in row["stop_error"]
+    for quiet in ("stop_update_started", "stop_update_failed", "naked_position_detected",
+                  "stop_breach_sale_deferred_extended_hours", "stop_breach_market_sale",
+                  "stop_price_replace_fallback", "stop_updated"):
+        assert not _audits(w, quiet), (quiet, w.audits)
+    assert w.pages == [], w.pages
+
+
 @pytest.mark.asyncio
-async def test_a_replace_refused_as_above_the_market_outside_the_session_sells_nothing():
-    """Operator ruling 2026-11-20 (EVER 1427): an extended-hours print is not a stop-out."""
+async def test_a_raise_refused_as_above_the_market_outside_the_session_keeps_the_old_stop():
     w = _refused_through_the_price(in_session=False)
     [out] = await _drive(w, lambda: om.move_stop_price_only(401, 61.5, stop_source="trail"))
-    assert out is om.STOP_BREACH_SALE_DEFERRED and not out
-    assert _calls(w, "close_position") == [] and not _audits(w, "stop_breach_market_sale")
-    [row] = _audits(w, "stop_breach_sale_deferred_extended_hours")
-    assert row["site"] == "order_manager.update_stop" and row["stop_price"] == 61.5
-    assert len(w.pages) == 1 and "No stop resting, no sale queued" in w.pages[0], w.pages
-    assert w.trades[401]["stop_price"] == 58.0, "a refused raise never moves the level"
+    _old_stop_still_resting(w, out)
 
 
 @pytest.mark.asyncio
-async def test_the_1645_job_itself_defers_after_hours_and_does_not_raise():
+async def test_any_other_refused_replace_outside_the_session_still_falls_back():
+    """Only the above-the-market refusal is deferred; a held-shares refusal is unchanged."""
+    w = _refused_through_the_price(in_session=False)
+    w.replace_errors, w.place_errors = [Exception(HELD)], []
+    [out] = await _drive(w, lambda: om.move_stop_price_only(401, 61.5, stop_source="trail"))
+    assert out is True and "cancel_order" in _methods(w)
+    assert not _audits(w, "stop_raise_deferred_extended_hours")
+    assert w.trades[401]["stop_price"] == 61.5
+
+
+@pytest.mark.asyncio
+async def test_the_1645_job_itself_keeps_the_old_stop_after_hours_and_does_not_raise():
     """The real setting: 16:45 ET is outside the regular session. The trail raise is refused
-    through an after-hours price -> no sale, the deferral row, and the job finishes."""
+    through an after-hours price -> the old stop rests, nothing sold, and the job finishes."""
     w = _open_trade(World())
     w.regular_session = False
     w.replace_errors = [Exception(BREACH)]
     w.place_errors = [Exception(BREACH) for _ in range(6)]
     [out] = await _drive(w, _job())
     assert out and out[0]["action"] == "updated"
-    assert _calls(w, "close_position") == []
-    assert _audits(w, "stop_breach_sale_deferred_extended_hours")[0]["site"] == "order_manager.update_stop"
-    assert w.trades[401]["stop_price"] == 58.0
+    for forbidden in ("cancel_order", "place_stop_order", "close_position"):
+        assert forbidden not in _methods(w), (forbidden, w.calls)
+    assert w.broker_order("stop-1")["status"] in H.LIVE_ORDER_STATUSES
+    assert len(_audits(w, "stop_raise_deferred_extended_hours")) == 1
+    assert (w.trades[401]["stop_order_id"], w.trades[401]["stop_price"]) == ("stop-1", 58.0)
+
+
+@pytest.mark.asyncio
+async def test_the_next_pass_retries_a_deferred_raise():
+    """Deferred after hours, then the same raise on a later pass the broker accepts."""
+    w = _refused_through_the_price(in_session=False)
+    w.place_errors = []
+    move = lambda: om.move_stop_price_only(401, 61.5, stop_source="trail")  # noqa: E731
+    out1, out2 = await _drive(w, move, move)
+    assert out1 is False and out2 is True
+    assert "cancel_order" not in _methods(w)
+    assert w.trades[401]["stop_price"] == 61.5 and w.broker_order("stop-1")["status"] == "replaced"
 
 
 @pytest.mark.asyncio
