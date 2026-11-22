@@ -1,0 +1,329 @@
+# STAGE 5 — THE ONE CONFIRM RUN (E >= 2021-01-01)
+prereg sha256 6c581b6a2d6750489cbee3ee908e04c5c08879c44171cde56bc6b0fbace231a6 (ASSERT begins 6c581b6a: OK — the frozen document of commit 3e6396c7)
+inputs: feature_table.tsv.gz ade1d780… · h_reads.tsv.gz 0b995389… · confirm_n.tsv a7ebd5cd… · stage3/discovery.txt 2bd0b0d3… (ASSERT OK)
+code sha256: this script 5776dde3f6ea5e5a09f12b8a3964dbba6a5c66837e9a67e17989e72ad2b0abc1 | stage1 stats.py ee31bf9d6fbab5c9a5ec0f0a2de73bee8de866a1c607a4b1d445f9fdde067468 | common.py cf5f35b9f3769a9e297f32ca8660063c5ac0d35ff3938b61ad2203697bec0d8a | features.py 373abf6ae0950c2c1abb0ed6a43fa7586ef7e9909bec952a7d90d4d3856f47ed
+carried list, directions and the combination definition equal stage3/discovery.txt (ASSERT OK)
+
+## APPLIED READINGS (fixed here, BEFORE any confirm outcome is computed)
+ C1  Layout = stage1/stats.py (imported) used exactly as stage4_freeze/02_preconfirm_n.py (copied): thirds within (era, month) with
+     >= 6 scored events, mid-rank ties; H1-H3 two-group = months with >= 6 scored and >= 2 of each. Asserted equal to every row of
+     stage4_freeze/confirm_n.tsv before any bar is loaded.
+ C2  THE RATIO, in the frozen direction (>= 1.2 = the frozen direction wins): thirds members = smoothed rates (winners + 0.5) /
+     (n + 1) (§5.1, stage 3's R2), winning third / losing third (f02, f18: bottom / top; f03, f09, combo, H4: top / bottom); the raw
+     ratio is printed beside it. H1-H3 = Mantel-Haenszel ratio by (era, month) (A1; §11.1): H1, H2 rate(no) / rate(yes), H3
+     rate(yes) / rate(no). The §5.3 bars (1.2, 1.0) are judged on this ratio.
+ C3  Permutation (§5.1): U = np.random.default_rng(1121).random((10000, 2251)); row = shuffle, column = confirm event in the fixed
+     order (era, E, ticker). Within each (era, month) the events assigned on the member are sorted by key; the k-th event in key
+     order receives the label of the k-th event in fixed order (stage 3's R4). One-sided p = (1 + #(d x permuted log ratio >=
+     d x observed log ratio)) / 10001, d = the frozen direction.
+ C4  Holm over the family of 9 (§11.2): p sorted ascending p(1..9); adjusted p(i) = max over j <= i of min(1, (9 - j + 1) x p(j)).
+ C5  Per era: the same ratio restricted to era-A events / era-B events (MH over that era's months). "Same direction in both" =
+     both ratios > 1.0; an undefined per-era ratio counts as NOT the same direction. A qualifier only (§5.3).
+ C6  90% interval: (era, month) blocks resampled with replacement, 2,000 draws, a fresh default_rng(1121) per member (stage 3's
+     R7); for a LOW / NO member the draws are inverted before the 5th-95th percentiles are taken.
+ C7  ADR-neutral (§2): ADR20 third = thirds of the table's adr20_raw within (era, quarter) over ALL confirm events; the member's
+     thirds within (era, quarter, ADR third), strata with >= 9 scored events; H1-H3: Mantel-Haenszel over those strata (>= 9 scored
+     and >= 2 of each; stage 3's R3). H4: printed n/a (§11.3).
+ C8  Tag "— a volatility proxy" (§2) = the confirm ADR-neutral ratio under 1.2 OR the confirm ADR-scaled-tail ratio under 1.10,
+     both as C2 in the frozen direction. Not applied to H4. Per §11.3 it is a DESCRIPTION, NOT a negative verdict: it changes no
+     verdict word.
+ C9  §5.5 extra readings are description; NONE is a bar. Per year / common stock / untyped / one-per-identity / gap >= 10% are
+     MASKS over the member's main (era, month) layout (thirds are not re-formed), the way stage 3 read ex-2020 and per-year.
+     One event per identity per 60 sessions: identity = stage 1's identity_alt (A2); events of ALL 4,665 (discovery included, §3 b)
+     are walked in (E, era, ticker) order and an event is kept when no KEPT event of the same identity lies within the 60 sessions
+     before it (sessions counted on the union of the two era calendars); the reading uses the kept confirm events.
+     Within shelf-distance thirds: dmin third = thirds of B1 within (era, quarter) over confirm events scored on B1; the member's
+     thirds (or yes / no) within (era, quarter, dmin third), strata >= 9; pooled, and per dmin third.
+     Feature 12 within vr20_mean halves: applies to no family member (f12 was not carried) -> n/a.
+     Window length +/-50%, DISCOVERY only: every window scaled by 0.5 and 1.5 (n -> int(n x s + 0.5)). f03, f09 through
+     stage1/features.py WINDOW_SCALE; f02 = gap % / ADR over the scaled 20-session window (10, 30); H4 = that scaled ADR; f18 has
+     no window (n/a); combination = its members at the same scale; H1-H3 = a scaled copy of stage4_freeze/hreads.py (200 -> 100 /
+     300, the 20-session lag -> 10 / 30, SMA50 -> 25 / 75, EMA10 / EMA21 -> 5 / 11 and 15 / 32), asserted to reproduce the frozen
+     H1-H3 at scale 1.0. "fragile" = the discovery ratio in the frozen direction under 1.2 (a flip is under 1.0) at either scale.
+ C10 B1 (shelf distance) pooled reproduction (§4.1, §6 step 8): thirds of B1 within (era, month) >= 6 scored, PRE-REG 6's ticker
+     tie-break (midrank=False), over ALL 4,665 events (discovery + confirm = RESULT 8's set). HARD GATE, checked before any family
+     number is derived or written: bottom 0.096, top 0.129, ratio within 0.005 of 1.355 ("12.9% vs 9.6% = 1.36x"). A miss stops
+     the run with only the B1 lines written. Scored n 3,671, 87 months, middle 0.113, era A 1.48, era B 1.08 are printed MATCH /
+     MISS beside it (RESULT 8's text; not the prereg's assert). RESULT 8's p is not recomputed (its shuffle convention differs).
+ C11 Outcome window (stage 3's R8): bars with the event's OWN era calendar index in [ci(E), ci(E)+60]; big winner = max close >=
+     1.5 x open(E); monster >= 2.0 x; ADR tail >= open(E) x (1 + 8 x ADR20 / 100), ADR20 = adr20_raw; no survivorship drop.
+     GATE: the discovery outcomes recomputed here must equal stage3/discovery_outcomes.tsv.gz on all 2,414 events.
+ C12 H1-H3 discovery ratios are printed last as description, labelled "seen" (§5.7, §11.1); H4's discovery reading is stage 3's B2
+     block (5.78x), not recomputed.
+ C13 GATE — this script's copies of stage 3's statistics must reproduce stage3/discovery.txt on the (seen) discovery outcomes before
+     any family number is derived: f03 ratio 2.430, two-sided p 0.0001, interval 1.99-3.00; f02 ratio 0.355, interval 0.26-0.49 and
+     its inverse under the LOW orientation; f01 ratio 1.321, p 0.0224; f09 ratio 5.443; f16 (two-group) MH 1.540, p 0.0080, interval
+     1.14-2.02; the x1.0 rows of the window reading f03 2.430, f09 5.443. A miss stops the run with no confirm number written.
+ C14 GUARD on C2: §5.1 read literally smooths only when a third holds zero winners. The verdict word is therefore ALSO computed
+     on the raw ratio (thirds members; for H1-H3 the MH ratio is the only ratio). If the two words differ for any member, both
+     are printed and flagged as a frozen-rule ambiguity for the caller — neither is picked silently.
+
+## POPULATION (outcome-free): study population 4665 events · DISCOVERY 2414 (E <= 2020-12-31, era A) · CONFIRM 2251 (era A 867, E 2021-01-04..2022-04-04 · era B 1384, E 2022-04-05..2024-09-30)
+## CONFIRM n per row — must equal stage4_freeze/confirm_n.tsv (low / high = bottom / top third, or yes / no for H1-H3)
+         name                                    era  events  scored  months  in test  bottom|yes  middle  top|no
+   f02   gap size in daily ranges                  A     867     867      15      865         294     287     284
+   f02   gap size in daily ranges                  B    1384    1382      30     1382         469     461     452
+   f02   gap size in daily ranges                A+B    2251    2249      45     2247         763     748     736
+   f03   short run-up (20)                         A     867     867      15      865         294     287     284
+   f03   short run-up (20)                         B    1384    1382      30     1382         469     461     452
+   f03   short run-up (20)                       A+B    2251    2249      45     2247         763     748     736
+   f09   base depth (40)                           A     867     855      15      853         289     285     279
+   f09   base depth (40)                           B    1384    1378      30     1378         467     460     451
+   f09   base depth (40)                         A+B    2251    2233      45     2231         756     745     730
+   f18   price (raw)                               A     867     867      15      865         294     287     284
+   f18   price (raw)                               B    1384    1384      30     1384         471     461     452
+   f18   price (raw)                             A+B    2251    2251      45     2249         765     748     736
+   combo combination f02+f03+f09+f18               A     867     855      15      853         289     284     280
+   combo combination f02+f03+f09+f18               B    1384    1378      30     1378         470     460     448
+   combo combination f02+f03+f09+f18             A+B    2251    2233      45     2231         759     744     728
+   H1    below the 200-day at the open             A     867     760      13      589         202       -     387
+   H1    below the 200-day at the open             B    1384    1248      26     1226         345       -     881
+   H1    below the 200-day at the open           A+B    2251    2008      39     1815         547       -    1268
+   H2    in a downtrend                            A     867     748      12      539         156       -     383
+   H2    in a downtrend                            B    1384    1185      25     1163         287       -     876
+   H2    in a downtrend                          A+B    2251    1933      37     1702         443       -    1259
+   H3    above all moving averages at open         A     867     760      14      663         424       -     239
+   H3    above all moving averages at open         B    1384    1248      27     1248         861       -     387
+   H3    above all moving averages at open       A+B    2251    2008      41     1911        1285       -     626
+   H4    ADR20 (= B2)                              A     867     867      15      865         294     287     284
+   H4    ADR20 (= B2)                              B    1384    1382      30     1382         469     461     452
+   H4    ADR20 (= B2)                            A+B    2251    2249      45     2247         763     748     736
+   ASSERT OK: all 27 rows (9 members x era A / B / A+B) equal stage4_freeze/confirm_n.tsv.
+   tags that could apply: 'shelf relative — confirm partly seen' applies to no family member (shelf relatives = f05, f07, neither carried); 'era-B population thinned of later reverse-splitters' is NOT triggered (stage 1 D2: 0 excluded days vs the trigger of 20).
+   §5.5 masks (outcome-free, confirm events): common stock 1891 · untyped 233 (ADR 127) · one event per identity per 60 sessions 2005 (of all 4,665: 4187 kept) · gap >= 10% 1954 · scored on shelf distance 1771
+   §5.5 window +/-50% (outcome-free build, DISCOVERY events only): at scale 1.0 the scaled code reproduces the frozen f03, f09, H1, H2, H3 on all 2414 discovery events (values and NULL pattern) and ADR20 on the 2407 events scored by both (ASSERT OK; NULL pattern differs on 0 events — the scaled ADR adds hreads' bad_price rule).
+   every layout above was formed before any outcome was computed.
+
+======================================================================================================================
+## OUTCOMES computed for all 4665 events from each event's own era file (E..E+60, calendar-indexed; no survivorship drop).
+   C11 GATE PASSED: the 2414 discovery outcomes (big winner, monster, ADR tail, failure pool, forward bars, max-close ratio) equal stage3/discovery_outcomes.tsv.gz (033b7fac…).
+   sealed cut (#710): every era-B series in the bar store ends <= 2024-12-31 (ASSERT OK); latest forward bar read for an era-B event <= 2024-12-31 (ASSERT OK).
+   C10 GATE (B1 pooled reproduction of RESULT 8) PASSED before any family number was derived — detail in the B1 block near the end.
+   C13 GATE (copied statistics reproduce stage3/discovery.txt on discovery): f03 ratio 2.430 vs 2.430 OK · f03 two-sided p 0.0001 vs 0.0001 OK · f03 interval low 1.99 vs 1.99 OK · f03 interval high 3.00 vs 3.00 OK · f02 ratio 0.355 vs 0.355 OK · f02 two-sided p 0.0001 vs 0.0001 OK · f02 interval low 0.26 vs 0.26 OK · f02 interval high 0.49 vs 0.49 OK · f02 interval inverted under LOW (low = 1/high, high = 1/low) 2.043-3.857 vs 2.043-3.857 OK · f02 oriented ratio J(d=-1) = 1 / ratio 2.8166 vs 2.8166 OK · f01 ratio 1.321 vs 1.321 OK · f01 two-sided p 0.0224 vs 0.0224 OK · f09 ratio 5.443 vs 5.443 OK · f16 MH ratio 1.540 vs 1.540 OK · f16 two-sided p 0.0080 vs 0.0080 OK · f16 interval low 1.14 vs 1.14 OK · f16 interval high 2.02 vs 2.02 OK · window x1.0 f03 2.430 vs 2.430 OK · window x1.0 f09 5.443 vs 5.443 OK
+   C13 GATE PASSED.
+
+======================================================================================================================
+## CONFIRM base rates: events | big winners (>= 1.5x) | monsters (>= 2.0x) | ADR-scaled tail | failure pool (max close < 1.10x) | close(E+5) < open | mean 60-session return
+   A 2021   n  707 | big  97 (0.137) | monster  33 (0.047) | ADR tail 108 (0.153) | fail pool  343 (0.485) | fail5 0.557 | ret60 mean -0.125
+   A 2022   n  160 | big  10 (0.062) | monster   2 (0.013) | ADR tail   8 (0.050) | fail pool   75 (0.469) | fail5 0.490 | ret60 mean -0.142
+   B 2022   n  344 | big  36 (0.105) | monster   9 (0.026) | ADR tail  37 (0.108) | fail pool  132 (0.384) | fail5 0.445 | ret60 mean +0.003
+   B 2023   n  527 | big  53 (0.101) | monster  15 (0.028) | ADR tail 122 (0.231) | fail pool  196 (0.372) | fail5 0.459 | ret60 mean +0.073
+   B 2024   n  513 | big  56 (0.109) | monster   8 (0.016) | ADR tail 111 (0.216) | fail pool  218 (0.425) | fail5 0.477 | ret60 mean +0.010
+   era A    n  867 | big 107 (0.123) | monster  35 (0.040) | ADR tail 116 (0.134) | fail pool  418 (0.482) | fail5 0.545 | ret60 mean -0.128
+   era B    n 1384 | big 145 (0.105) | monster  32 (0.023) | ADR tail 270 (0.195) | fail pool  546 (0.395) | fail5 0.462 | ret60 mean +0.032
+   ALL      n 2251 | big 252 (0.112) | monster  67 (0.030) | ADR tail 386 (0.171) | fail pool  964 (0.428) | fail5 0.494 | ret60 mean -0.029
+   events with fewer than 61 bars in E..E+60 (kept, no survivorship drop): 70; no bar at E+5: 4; no bar at E+60: 66
+
+======================================================================================================================
+## §5.3 CONFIRM — the family of 9, one run, one-sided in the frozen direction, Holm over 9
+   permutation: 10000 shuffles, rng 1121; confirm events 2251; big winners 252; monsters 67
+   NOTE (§11.3, his ruling): the suffix '— a volatility proxy' is a DESCRIPTION, not a negative verdict; it changes no verdict word.
+
+f02 — gap size in daily ranges | frozen direction: LOW third wins | thirds within (era, month) | carried feature
+   big winner: bottom 142/763 = 0.186 | middle 63/748 = 0.084 | top 47/736 = 0.064 | RATIO in the frozen direction (bottom/top) 2.894 (raw 2.914)
+   90% bootstrap interval 2.26-3.87 | one-sided permutation p 0.0001 | Holm-adjusted p (family of 9; rank 1 of 9) 0.0009 | null 95% band of the ratio 0.76-1.33
+   per era (ratio in the frozen direction): era A 3.28 (raw 3.35; bottom 59/294, top 17/284) | era B 2.64 (raw 2.67; bottom 83/469, top 30/452) -> same direction in both: yes
+   §5.5 extras (description; none is a bar):
+     per year: A 2021 4.47 (raw 4.61; bottom 57/240, top 12/233) · A 2022 0.43 (raw 0.38; bottom 2/54, top 5/51) · B 2022 2.05 (raw 2.11; bottom 22/117, top 10/112) · B 2023 2.35 (raw 2.40; bottom 30/179, top 12/172) · B 2024 3.60 (raw 3.76; bottom 31/173, top 8/168)
+     common stock only: 2.72 (raw 2.74; bottom 110/611, top 41/624) | untyped only: 4.40 (raw 4.99; bottom 19/99, top 3/78)
+     one event per identity per 60 sessions: 3.09 (raw 3.11; bottom 112/637, top 38/673) | gap >= 10% only: 2.95 (raw 2.96; bottom 117/592, top 47/705)
+     ADR-neutral (thirds within era-quarter-ADR third): 1.36 (raw 1.36; bottom 101/765, top 71/731)
+     ADR-SCALED TAIL (>= 8 daily ranges above the open): 0.89 (raw 0.89; bottom 127/763, top 138/736)
+     MONSTER tier (>= 2.0x; never a bar): 3.20 (raw 3.30; bottom 41/763, top 12/736)  [67 monsters]
+     within shelf-distance thirds (strata era-quarter-dmin third): pooled 3.60 (raw 3.65; bottom 104/603, top 27/572) | lowest dmin third 3.65 (raw 3.82; bottom 32/201, top 8/192) | middle 3.63 (raw 3.78; bottom 36/201, top 9/190) | highest 3.29 (raw 3.40; bottom 36/201, top 10/190)
+     feature 12 within vr20_mean halves: n/a (f12 is not in the family)
+     failed (description): close(E+5) < open — winning side 0.500 vs losing side 0.512 | mean 60-session return — winning side -0.056 vs losing side -0.003
+   VERDICT f02 gap size in daily ranges [LOW third wins]: PICKS THE TAIL — a volatility proxy | ratio 2.89 (raw 2.914) (90% 2.26-3.87) | one-sided p 0.0001 | Holm p 0.0009 | era A 3.28 · era B 2.64 | monster 3.20 | ADR-scaled tail 0.89 | ADR-neutral 1.36 | tag fires: ADR-scaled tail 0.89 < 1.10
+
+f03 — short run-up (20) | frozen direction: HIGH third wins | thirds within (era, month) | carried feature
+   big winner: bottom 55/763 = 0.072 | middle 65/748 = 0.087 | top 132/736 = 0.179 | RATIO in the frozen direction (top/bottom) 2.475 (raw 2.488)
+   90% bootstrap interval 1.88-3.18 | one-sided permutation p 0.0001 | Holm-adjusted p (family of 9; rank 2 of 9) 0.0009 | null 95% band of the ratio 0.76-1.32
+   per era (ratio in the frozen direction): era A 3.06 (raw 3.11; bottom 21/294, top 63/284) | era B 2.09 (raw 2.11; bottom 34/469, top 69/452) -> same direction in both: yes
+   §5.5 extras (description; none is a bar):
+     per year: A 2021 3.78 (raw 3.86; bottom 16/240, top 60/233) · A 2022 0.67 (raw 0.64; bottom 5/54, top 3/51) · B 2022 1.54 (raw 1.57; bottom 10/117, top 15/112) · B 2023 1.73 (raw 1.76; bottom 13/179, top 22/172) · B 2024 2.91 (raw 3.00; bottom 11/173, top 32/168)
+     common stock only: 2.30 (raw 2.32; bottom 50/666, top 101/581) | untyped only: 4.64 (raw 5.27; bottom 3/73, top 21/97)
+     one event per identity per 60 sessions: 2.50 (raw 2.52; bottom 47/724, top 96/587) | gap >= 10% only: 2.30 (raw 2.31; bottom 49/645, top 116/661)
+     ADR-neutral (thirds within era-quarter-ADR third): 1.13 (raw 1.13; bottom 86/765, top 93/731)
+     ADR-SCALED TAIL (>= 8 daily ranges above the open): 1.06 (raw 1.06; bottom 129/763, top 132/736)
+     MONSTER tier (>= 2.0x; never a bar): 8.95 (raw 9.74; bottom 5/763, top 47/736)  [67 monsters]
+     within shelf-distance thirds (strata era-quarter-dmin third): pooled 2.49 (raw 2.50; bottom 40/603, top 95/572) | lowest dmin third 1.70 (raw 1.72; bottom 17/201, top 28/192) | middle 2.75 (raw 2.82; bottom 12/201, top 32/190) | highest 3.26 (raw 3.37; bottom 11/201, top 35/190)
+     feature 12 within vr20_mean halves: n/a (f12 is not in the family)
+     failed (description): close(E+5) < open — winning side 0.543 vs losing side 0.480 | mean 60-session return — winning side -0.074 vs losing side -0.003
+   VERDICT f03 short run-up (20) [HIGH third wins]: PICKS THE TAIL — a volatility proxy | ratio 2.47 (raw 2.488) (90% 1.88-3.18) | one-sided p 0.0001 | Holm p 0.0009 | era A 3.06 · era B 2.09 | monster 8.95 | ADR-scaled tail 1.06 | ADR-neutral 1.13 | tag fires: ADR-neutral 1.13 < 1.2 and ADR-scaled tail 1.06 < 1.10
+
+f09 — base depth (40) | frozen direction: HIGH third wins | thirds within (era, month) | carried feature
+   big winner: bottom 21/756 = 0.028 | middle 75/745 = 0.101 | top 152/730 = 0.208 | RATIO in the frozen direction (top/bottom) 7.345 (raw 7.496)
+   90% bootstrap interval 5.16-12.74 | one-sided permutation p 0.0001 | Holm-adjusted p (family of 9; rank 3 of 9) 0.0009 | null 95% band of the ratio 0.75-1.32
+   per era (ratio in the frozen direction): era A 4.93 (raw 5.09; bottom 12/289, top 59/279) | era B 10.19 (raw 10.70; bottom 9/467, top 93/451) -> same direction in both: yes
+   §5.5 extras (description; none is a bar):
+     per year: A 2021 4.79 (raw 4.97; bottom 11/235, top 53/228) · A 2022 4.58 (raw 6.35; bottom 1/54, top 6/51) · B 2022 7.25 (raw 8.29; bottom 3/116, top 24/112) · B 2023 25.32 (raw 37.47; bottom 1/179, top 36/172) · B 2024 6.27 (raw 6.80; bottom 5/172, top 33/167)
+     common stock only: 9.51 (raw 9.79; bottom 15/681, top 122/566) | untyped only: 2.42 (raw 2.72; bottom 3/49, top 18/108)
+     one event per identity per 60 sessions: 7.73 (raw 7.91; bottom 18/730, top 113/579) | gap >= 10% only: 6.82 (raw 6.98; bottom 18/618, top 134/659)
+     ADR-neutral (thirds within era-quarter-ADR third): 2.01 (raw 2.02; bottom 55/759, top 106/725)
+     ADR-SCALED TAIL (>= 8 daily ranges above the open): 1.00 (raw 1.00; bottom 132/756, top 127/730)
+     MONSTER tier (>= 2.0x; never a bar): 32.79 (raw 48.67; bottom 1/756, top 47/730)  [65 monsters]
+     within shelf-distance thirds (strata era-quarter-dmin third): pooled 16.51 (raw 17.62; bottom 7/603, top 117/572) | lowest dmin third 16.54 (raw 20.41; bottom 2/201, top 39/192) | middle 9.05 (raw 10.05; bottom 4/201, top 38/190) | highest 28.55 (raw 42.32; bottom 1/201, top 40/190)
+     feature 12 within vr20_mean halves: n/a (f12 is not in the family)
+     failed (description): close(E+5) < open — winning side 0.530 vs losing side 0.471 | mean 60-session return — winning side -0.069 vs losing side -0.002
+   VERDICT f09 base depth (40) [HIGH third wins]: PICKS THE TAIL — a volatility proxy | ratio 7.35 (raw 7.496) (90% 5.16-12.74) | one-sided p 0.0001 | Holm p 0.0009 | era A 4.93 · era B 10.19 | monster 32.79 | ADR-scaled tail 1.00 | ADR-neutral 2.01 | tag fires: ADR-scaled tail 1.00 < 1.10
+
+f18 — price (raw) | frozen direction: LOW third wins | thirds within (era, month) | carried feature
+   big winner: bottom 144/765 = 0.188 | middle 61/748 = 0.082 | top 47/736 = 0.064 | RATIO in the frozen direction (bottom/top) 2.927 (raw 2.948)
+   90% bootstrap interval 2.16-4.24 | one-sided permutation p 0.0001 | Holm-adjusted p (family of 9; rank 4 of 9) 0.0009 | null 95% band of the ratio 0.75-1.32
+   per era (ratio in the frozen direction): era A 2.43 (raw 2.46; bottom 56/294, top 22/284) | era B 3.33 (raw 3.38; bottom 88/471, top 25/452) -> same direction in both: yes
+   §5.5 extras (description; none is a bar):
+     per year: A 2021 2.28 (raw 2.31; bottom 50/240, top 21/233) · A 2022 4.10 (raw 5.67; bottom 6/54, top 1/51) · B 2022 5.21 (raw 5.74; bottom 24/117, top 4/112) · B 2023 3.05 (raw 3.15; bottom 33/180, top 10/172) · B 2024 2.65 (raw 2.72; bottom 31/174, top 11/168)
+     common stock only: 2.85 (raw 2.88; bottom 112/601, top 42/648) | untyped only: 5.59 (raw 8.07; bottom 20/114, top 1/46)
+     one event per identity per 60 sessions: 2.90 (raw 2.93; bottom 114/655, top 40/673) | gap >= 10% only: 2.62 (raw 2.64; bottom 126/683, top 43/616)
+     ADR-neutral (thirds within era-quarter-ADR third): 1.58 (raw 1.59; bottom 113/766, top 68/732)
+     ADR-SCALED TAIL (>= 8 daily ranges above the open): 1.01 (raw 1.01; bottom 145/765, top 138/736)
+     MONSTER tier (>= 2.0x; never a bar): 4.35 (raw 4.52; bottom 47/765, top 10/736)  [67 monsters]
+     within shelf-distance thirds (strata era-quarter-dmin third): pooled 3.61 (raw 3.65; bottom 108/604, top 28/572) | lowest dmin third 6.10 (raw 6.53; bottom 41/201, top 6/192) | middle 3.32 (raw 3.45; bottom 33/202, top 9/190) | highest 2.42 (raw 2.47; bottom 34/201, top 13/190)
+     feature 12 within vr20_mean halves: n/a (f12 is not in the family)
+     failed (description): close(E+5) < open — winning side 0.505 vs losing side 0.457 | mean 60-session return — winning side -0.051 vs losing side +0.003
+   VERDICT f18 price (raw) [LOW third wins]: PICKS THE TAIL — a volatility proxy | ratio 2.93 (raw 2.948) (90% 2.16-4.24) | one-sided p 0.0001 | Holm p 0.0009 | era A 2.43 · era B 3.33 | monster 4.35 | ADR-scaled tail 1.01 | ADR-neutral 1.58 | tag fires: ADR-scaled tail 1.01 < 1.10
+
+combo — combination f02+f03+f09+f18 | frozen direction: HIGH third wins | thirds within (era, month) | COMBINATION (§5.6)
+   big winner: bottom 20/759 = 0.026 | middle 77/744 = 0.103 | top 151/728 = 0.207 | RATIO in the frozen direction (top/bottom) 7.705 (raw 7.871)
+   90% bootstrap interval 5.19-12.63 | one-sided permutation p 0.0001 | Holm-adjusted p (family of 9; rank 5 of 9) 0.0009 | null 95% band of the ratio 0.75-1.34
+   per era (ratio in the frozen direction): era A 6.14 (raw 6.40; bottom 10/289, top 62/280) | era B 8.94 (raw 9.34; bottom 10/470, top 89/448) -> same direction in both: yes
+   §5.5 extras (description; none is a bar):
+     per year: A 2021 6.32 (raw 6.61; bottom 9/235, top 58/229) · A 2022 3.17 (raw 4.24; bottom 1/54, top 4/51) · B 2022 4.99 (raw 5.48; bottom 4/117, top 21/112) · B 2023 9.53 (raw 10.94; bottom 3/180, top 31/170) · B 2024 11.16 (raw 12.85; bottom 3/173, top 37/166)
+     common stock only: 7.22 (raw 7.38; bottom 19/678, top 117/566) | untyped only: 22.70 (raw inf; bottom 0/55, top 22/110)
+     one event per identity per 60 sessions: 6.99 (raw 7.13; bottom 20/728, top 115/587) | gap >= 10% only: 6.71 (raw 6.86; bottom 20/654, top 134/639)
+     ADR-neutral (thirds within era-quarter-ADR third): 1.74 (raw 1.74; bottom 64/763, top 105/718)
+     ADR-SCALED TAIL (>= 8 daily ranges above the open): 1.00 (raw 1.00; bottom 132/759, top 126/728)
+     MONSTER tier (>= 2.0x; never a bar): 35.10 (raw 52.13; bottom 1/759, top 50/728)  [65 monsters]
+     within shelf-distance thirds (strata era-quarter-dmin third): pooled 8.64 (raw 8.92; bottom 14/604, top 118/571) | lowest dmin third 9.70 (raw 10.79; bottom 4/201, top 41/191) | middle 4.67 (raw 4.89; bottom 8/201, top 37/190) | highest 17.22 (raw 21.26; bottom 2/202, top 40/190)
+     feature 12 within vr20_mean halves: n/a (f12 is not in the family)
+     failed (description): close(E+5) < open — winning side 0.532 vs losing side 0.472 | mean 60-session return — winning side -0.071 vs losing side +0.012
+   VERDICT combo combination f02+f03+f09+f18 [HIGH third wins]: PICKS THE TAIL — a volatility proxy | ratio 7.70 (raw 7.871) (90% 5.19-12.63) | one-sided p 0.0001 | Holm p 0.0009 | era A 6.14 · era B 8.94 | monster 35.10 | ADR-scaled tail 1.00 | ADR-neutral 1.74 | tag fires: ADR-scaled tail 1.00 < 1.10
+
+H1 — below the 200-day at the open | frozen direction: NO wins | two-group, Mantel-Haenszel by (era, month) | his read (§11)
+   big winner: YES 74/547 = 0.135 | NO 96/1268 = 0.076 | MH ratio yes/no 1.97 (pooled, biased: 1.79) | RATIO in the frozen direction (no/yes) 0.507
+   90% bootstrap interval 0.39-0.65 | one-sided permutation p 1.0000 | Holm-adjusted p (family of 9; rank 8 of 9) 1.0000 | null 95% band of the ratio 0.72-1.40
+   per era (ratio in the frozen direction): era A 0.45 (yes 21/202, no 25/387) | era B 0.53 (yes 53/345, no 71/881) -> same direction in both: no
+   §5.5 extras (description; none is a bar):
+     per year: A 2021 0.39 (yes 17/108, no 23/336) · A 2022 1.02 (yes 4/94, no 2/51) · B 2022 0.44 (yes 15/111, no 8/123) · B 2023 0.60 (yes 21/143, no 27/355) · B 2024 0.51 (yes 17/91, no 36/403)
+     common stock only: 0.52 (yes 62/460, no 83/1111) | untyped only: 0.30 (yes 7/42, no 8/101)
+     one event per identity per 60 sessions: 0.50 (yes 65/509, no 80/1140) | gap >= 10% only: 0.53 (yes 66/474, no 86/1103)
+     ADR-neutral (thirds within era-quarter-ADR third): 0.66 (yes 74/550, no 121/1385)
+     ADR-SCALED TAIL (>= 8 daily ranges above the open): 0.93 (yes 94/547, no 224/1268)
+     MONSTER tier (>= 2.0x; never a bar): 0.24 (yes 26/547, no 15/1268)  [thin: 41 monsters in the set under test, < 60]
+     within shelf-distance thirds (strata era-quarter-dmin third): pooled 0.43 (yes 56/428, no 86/994) | lowest dmin third 0.26 (yes 36/245, no 26/345) | middle 0.41 (yes 18/135, no 31/382) | highest 2.19 (yes 2/48, no 29/267)
+     feature 12 within vr20_mean halves: n/a (f12 is not in the family)
+     failed (description): close(E+5) < open — winning side 0.482 vs losing side 0.469 | mean 60-session return — winning side -0.021 vs losing side -0.002
+   VERDICT H1 below the 200-day at the open [NO wins]: REVERSED — a volatility proxy | ratio 0.51 (90% 0.39-0.65) | one-sided p 1.0000 | Holm p 1.0000 | era A 0.45 · era B 0.53 | monster 0.24 (thin) | ADR-scaled tail 0.93 | ADR-neutral 0.66 | tag fires: ADR-neutral 0.66 < 1.2 and ADR-scaled tail 0.93 < 1.10
+
+H2 — in a downtrend | frozen direction: NO wins | two-group, Mantel-Haenszel by (era, month) | his read (§11)
+   big winner: YES 55/443 = 0.124 | NO 99/1259 = 0.079 | MH ratio yes/no 1.76 (pooled, biased: 1.58) | RATIO in the frozen direction (no/yes) 0.568
+   90% bootstrap interval 0.45-0.71 | one-sided permutation p 0.9993 | Holm-adjusted p (family of 9; rank 7 of 9) 1.0000 | null 95% band of the ratio 0.70-1.47
+   per era (ratio in the frozen direction): era A 0.50 (yes 15/156, no 24/383) | era B 0.59 (yes 40/287, no 75/876) -> same direction in both: no
+   §5.5 extras (description; none is a bar):
+     per year: A 2021 0.45 (yes 11/73, no 22/321) · A 2022 0.80 (yes 4/83, no 2/62) · B 2022 0.31 (yes 10/81, no 4/91) · B 2023 0.74 (yes 17/130, no 31/368) · B 2024 0.56 (yes 13/76, no 40/417)
+     common stock only: 0.59 (yes 45/371, no 87/1108) | untyped only: 0.33 (yes 5/33, no 9/93)
+     one event per identity per 60 sessions: 0.58 (yes 47/412, no 83/1135) | gap >= 10% only: 0.57 (yes 50/386, no 89/1095)
+     ADR-neutral (thirds within era-quarter-ADR third): 0.68 (yes 55/443, no 103/1281)
+     ADR-SCALED TAIL (>= 8 daily ranges above the open): 0.90 (yes 78/443, no 228/1259)
+     MONSTER tier (>= 2.0x; never a bar): 0.29 (yes 20/443, no 17/1259)  [thin: 37 monsters in the set under test, < 60]
+     within shelf-distance thirds (strata era-quarter-dmin third): pooled 0.45 (yes 44/358, no 71/850) | lowest dmin third 0.28 (yes 35/234, no 26/354) | middle 0.62 (yes 9/101, no 30/337) | highest inf (yes 0/23, no 15/159)
+     feature 12 within vr20_mean halves: n/a (f12 is not in the family)
+     failed (description): close(E+5) < open — winning side 0.477 vs losing side 0.490 | mean 60-session return — winning side -0.013 vs losing side +0.001
+   VERDICT H2 in a downtrend [NO wins]: REVERSED — a volatility proxy | ratio 0.57 (90% 0.45-0.71) | one-sided p 0.9993 | Holm p 1.0000 | era A 0.50 · era B 0.59 | monster 0.29 (thin) | ADR-scaled tail 0.90 | ADR-neutral 0.68 | tag fires: ADR-neutral 0.68 < 1.2 and ADR-scaled tail 0.90 < 1.10
+
+H3 — above all moving averages at open | frozen direction: YES wins | two-group, Mantel-Haenszel by (era, month) | his read (§11)
+   big winner: YES 113/1285 = 0.088 | NO 87/626 = 0.139 | MH ratio yes/no 0.49 (pooled, biased: 0.63) | RATIO in the frozen direction (yes/no) 0.495
+   90% bootstrap interval 0.39-0.61 | one-sided permutation p 1.0000 | Holm-adjusted p (family of 9; rank 9 of 9) 1.0000 | null 95% band of the ratio 0.74-1.37
+   per era (ratio in the frozen direction): era A 0.57 (yes 47/424, no 25/239) | era B 0.47 (yes 66/861, no 62/387) -> same direction in both: no
+   §5.5 extras (description; none is a bar):
+     per year: A 2021 0.52 (yes 45/374, no 21/144) · A 2022 1.07 (yes 2/50, no 4/95) · B 2022 0.38 (yes 7/119, no 16/115) · B 2023 0.43 (yes 24/354, no 28/166) · B 2024 0.55 (yes 35/388, no 18/106)
+     common stock only: 0.51 (yes 94/1123, no 72/518) | untyped only: 0.45 (yes 12/103, no 8/59)
+     one event per identity per 60 sessions: 0.51 (yes 88/1140, no 74/579) | gap >= 10% only: 0.52 (yes 103/1117, no 75/539)
+     ADR-neutral (thirds within era-quarter-ADR third): 0.69 (yes 122/1379, no 87/627)
+     ADR-SCALED TAIL (>= 8 daily ranges above the open): 0.90 (yes 235/1285, no 114/626)
+     MONSTER tier (>= 2.0x; never a bar): 0.32 (yes 28/1285, no 27/626)  [thin: 55 monsters in the set under test, < 60]
+     within shelf-distance thirds (strata era-quarter-dmin third): pooled 0.43 (yes 112/1260, no 70/499) | lowest dmin third 0.26 (yes 24/339, no 38/251) | middle 0.47 (yes 38/427, no 21/158) | highest 0.72 (yes 50/494, no 11/90)
+     feature 12 within vr20_mean halves: n/a (f12 is not in the family)
+     failed (description): close(E+5) < open — winning side 0.478 vs losing side 0.476 | mean 60-session return — winning side -0.015 vs losing side -0.002
+   VERDICT H3 above all moving averages at open [YES wins]: REVERSED — a volatility proxy | ratio 0.49 (90% 0.39-0.61) | one-sided p 1.0000 | Holm p 1.0000 | era A 0.57 · era B 0.47 | monster 0.32 (thin) | ADR-scaled tail 0.90 | ADR-neutral 0.69 | tag fires: ADR-neutral 0.69 < 1.2 and ADR-scaled tail 0.90 < 1.10
+
+H4 — ADR20 (= B2) | frozen direction: HIGH third wins | thirds within (era, month) | his ruling, = benchmark B2 (§11)
+   big winner: bottom 20/763 = 0.026 | middle 68/748 = 0.091 | top 164/736 = 0.223 | RATIO in the frozen direction (top/bottom) 8.318 (raw 8.501)
+   90% bootstrap interval 6.18-12.67 | one-sided permutation p 0.0001 | Holm-adjusted p (family of 9; rank 6 of 9) 0.0009 | null 95% band of the ratio 0.76-1.33
+   per era (ratio in the frozen direction): era A 5.99 (raw 6.21; bottom 11/294, top 66/284) | era B 10.76 (raw 11.30; bottom 9/469, top 98/452) -> same direction in both: yes
+   §5.5 extras (description; none is a bar):
+     per year: A 2021 6.56 (raw 6.87; bottom 9/240, top 60/233) · A 2022 2.75 (raw 3.18; bottom 2/54, top 6/51) · B 2022 7.01 (raw 8.01; bottom 3/117, top 23/112) · B 2023 28.09 (raw 41.63; bottom 1/179, top 40/172) · B 2024 6.65 (raw 7.21; bottom 5/173, top 35/168)
+     common stock only: 10.33 (raw 10.66; bottom 14/660, top 130/575) | untyped only: 2.80 (raw 3.06; bottom 4/66, top 20/108)
+     one event per identity per 60 sessions: 9.96 (raw 10.25; bottom 15/721, top 128/600) | gap >= 10% only: 7.20 (raw 7.37; bottom 18/619, top 144/672)
+     ADR-neutral (thirds within era-quarter-ADR third): n/a for H4 (thirds of ADR within ADR thirds, §11.3)
+     ADR-SCALED TAIL (>= 8 daily ranges above the open): 0.92 (raw 0.92; bottom 138/763, top 123/736)
+     MONSTER tier (>= 2.0x; never a bar): 12.55 (raw 14.00; bottom 4/763, top 54/736)  [67 monsters]
+     within shelf-distance thirds (strata era-quarter-dmin third): pooled 12.30 (raw 12.86; bottom 10/603, top 122/572) | lowest dmin third 17.79 (raw 21.98; bottom 2/201, top 42/192) | middle 6.59 (raw 7.05; bottom 6/201, top 40/190) | highest 17.13 (raw 21.16; bottom 2/201, top 40/190)
+     feature 12 within vr20_mean halves: n/a (f12 is not in the family)
+     failed (description): close(E+5) < open — winning side 0.509 vs losing side 0.482 | mean 60-session return — winning side -0.065 vs losing side +0.005
+   VERDICT H4 ADR20 (= B2) [HIGH third wins]: PICKS THE TAIL | ratio 8.32 (raw 8.501) (90% 6.18-12.67) | one-sided p 0.0001 | Holm p 0.0009 | era A 5.99 · era B 10.76 | monster 12.55 | ADR-scaled tail 0.92 | ADR-neutral n/a | tag not applied to H4 (§11.3)
+
+======================================================================================================================
+## VERDICT LINES (§5.3) — '— a volatility proxy' is printed as defined in §2 but per §11.3 is NOT a negative verdict
+   VERDICT f02 gap size in daily ranges [LOW third wins]: PICKS THE TAIL — a volatility proxy | ratio 2.89 (raw 2.914) (90% 2.26-3.87) | one-sided p 0.0001 | Holm p 0.0009 | era A 3.28 · era B 2.64 | monster 3.20 | ADR-scaled tail 0.89 | ADR-neutral 1.36 | tag fires: ADR-scaled tail 0.89 < 1.10
+   VERDICT f03 short run-up (20) [HIGH third wins]: PICKS THE TAIL — a volatility proxy | ratio 2.47 (raw 2.488) (90% 1.88-3.18) | one-sided p 0.0001 | Holm p 0.0009 | era A 3.06 · era B 2.09 | monster 8.95 | ADR-scaled tail 1.06 | ADR-neutral 1.13 | tag fires: ADR-neutral 1.13 < 1.2 and ADR-scaled tail 1.06 < 1.10
+   VERDICT f09 base depth (40) [HIGH third wins]: PICKS THE TAIL — a volatility proxy | ratio 7.35 (raw 7.496) (90% 5.16-12.74) | one-sided p 0.0001 | Holm p 0.0009 | era A 4.93 · era B 10.19 | monster 32.79 | ADR-scaled tail 1.00 | ADR-neutral 2.01 | tag fires: ADR-scaled tail 1.00 < 1.10
+   VERDICT f18 price (raw) [LOW third wins]: PICKS THE TAIL — a volatility proxy | ratio 2.93 (raw 2.948) (90% 2.16-4.24) | one-sided p 0.0001 | Holm p 0.0009 | era A 2.43 · era B 3.33 | monster 4.35 | ADR-scaled tail 1.01 | ADR-neutral 1.58 | tag fires: ADR-scaled tail 1.01 < 1.10
+   VERDICT combo combination f02+f03+f09+f18 [HIGH third wins]: PICKS THE TAIL — a volatility proxy | ratio 7.70 (raw 7.871) (90% 5.19-12.63) | one-sided p 0.0001 | Holm p 0.0009 | era A 6.14 · era B 8.94 | monster 35.10 | ADR-scaled tail 1.00 | ADR-neutral 1.74 | tag fires: ADR-scaled tail 1.00 < 1.10
+   VERDICT H1 below the 200-day at the open [NO wins]: REVERSED — a volatility proxy | ratio 0.51 (90% 0.39-0.65) | one-sided p 1.0000 | Holm p 1.0000 | era A 0.45 · era B 0.53 | monster 0.24 (thin) | ADR-scaled tail 0.93 | ADR-neutral 0.66 | tag fires: ADR-neutral 0.66 < 1.2 and ADR-scaled tail 0.93 < 1.10
+   VERDICT H2 in a downtrend [NO wins]: REVERSED — a volatility proxy | ratio 0.57 (90% 0.45-0.71) | one-sided p 0.9993 | Holm p 1.0000 | era A 0.50 · era B 0.59 | monster 0.29 (thin) | ADR-scaled tail 0.90 | ADR-neutral 0.68 | tag fires: ADR-neutral 0.68 < 1.2 and ADR-scaled tail 0.90 < 1.10
+   VERDICT H3 above all moving averages at open [YES wins]: REVERSED — a volatility proxy | ratio 0.49 (90% 0.39-0.61) | one-sided p 1.0000 | Holm p 1.0000 | era A 0.57 · era B 0.47 | monster 0.32 (thin) | ADR-scaled tail 0.90 | ADR-neutral 0.69 | tag fires: ADR-neutral 0.69 < 1.2 and ADR-scaled tail 0.90 < 1.10
+   VERDICT H4 ADR20 (= B2) [HIGH third wins]: PICKS THE TAIL | ratio 8.32 (raw 8.501) (90% 6.18-12.67) | one-sided p 0.0001 | Holm p 0.0009 | era A 5.99 · era B 10.76 | monster 12.55 | ADR-scaled tail 0.92 | ADR-neutral n/a | tag not applied to H4 (§11.3)
+
+## HOLM TABLE (family of 9, sorted by one-sided p)
+   1. f02   p 0.0001 x 9 -> Holm 0.0009  ratio 2.89  PICKS THE TAIL
+   2. f03   p 0.0001 x 8 -> Holm 0.0009  ratio 2.47  PICKS THE TAIL
+   3. f09   p 0.0001 x 7 -> Holm 0.0009  ratio 7.35  PICKS THE TAIL
+   4. f18   p 0.0001 x 6 -> Holm 0.0009  ratio 2.93  PICKS THE TAIL
+   5. combo p 0.0001 x 5 -> Holm 0.0009  ratio 7.70  PICKS THE TAIL
+   6. H4    p 0.0001 x 4 -> Holm 0.0009  ratio 8.32  PICKS THE TAIL
+   7. H2    p 0.9993 x 3 -> Holm 1.0000  ratio 0.57  REVERSED
+   8. H1    p 1.0000 x 2 -> Holm 1.0000  ratio 0.51  REVERSED
+   9. H3    p 1.0000 x 1 -> Holm 1.0000  ratio 0.49  REVERSED
+   C14 guard: the verdict word is the same on the smoothed and on the raw ratio for all 9 members.
+   H1-H3 are close to one read, not three (§11.2); Holm counts them as three. Power at a family of 9 was not simulated (§11.2).
+
+======================================================================================================================
+## §5.5 WINDOW LENGTH +/-50% — DISCOVERY ONLY (description; discovery outcomes are 'seen'). Ratio in the frozen direction; 'fragile' = under 1.2 at either scale.
+   f02   gap size in daily ranges            : x1.0: 2.82 (n in test 2407) | x0.5: 3.12 (n in test 2408) | x1.5: 2.90 (n in test 2373) -> not fragile
+   f03   short run-up (20)                   : x1.0: 2.43 (n in test 2407) | x0.5: 2.17 (n in test 2408) | x1.5: 2.48 (n in test 2373) -> not fragile
+   f09   base depth (40)                     : x1.0: 5.44 (n in test 2338) | x0.5: 4.94 (n in test 2407) | x1.5: 4.45 (n in test 2308) -> not fragile
+   f18   price (raw)                         : n/a (a price on E-1 has no window to scale)
+   combo combination f02+f03+f09+f18         : x1.0: 4.82 (n in test 2338) | x0.5: 4.28 (n in test 2407) | x1.5: 5.62 (n in test 2308) -> not fragile
+   H1    below the 200-day at the open       : x1.0: 0.87 (n in test 1990) | x0.5: 0.76 (n in test 2007) | x1.5: 0.92 (n in test 1795) -> FRAGILE
+   H2    in a downtrend                      : x1.0: 0.82 (n in test 1865) | x0.5: 0.71 (n in test 1968) | x1.5: 0.91 (n in test 1707) -> FRAGILE
+   H3    above all moving averages at open   : x1.0: 0.79 (n in test 1990) | x0.5: 0.73 (n in test 2007) | x1.5: 0.86 (n in test 1812) -> FRAGILE
+   H4    ADR20 (= B2)                        : x1.0: 5.78 (n in test 2407) | x0.5: 5.43 (n in test 2408) | x1.5: 5.94 (n in test 2373) -> not fragile
+   (x1.0 = the frozen definition recomputed on discovery; for f02 / H4 / the combination the x1.0 row uses the scaled-ADR code and can differ from stage 3 by the bad_price NULL rule only.)
+
+======================================================================================================================
+## POOLED B1 (shelf distance) REPRODUCTION — §4.1 / §6 step 8 (benchmark, already seen: RESULT 8). All 4,665 events, thirds within (era, month), ticker tie-break.
+   here     : scored in test 3671 in 87 months | bottom 120/1256 = 0.096 | middle 139/1225 = 0.113 | top 154/1190 = 0.129 | ratio top/bottom 1.355
+   RESULT 8 : 3,671 EPs in 87 months | bottom 9.6% | middle 11.3% | top 12.9% | ratio 1.36 (1.355)
+   HARD GATE (prereg: '12.9% vs 9.6% = 1.36x'): bottom MATCH · top MATCH · ratio MATCH  -> PASSED
+   beside it (RESULT 8's text, not the prereg's assert): n MATCH · months MATCH · middle MATCH · era A 1.48 vs 1.48 MATCH · era B 1.08 vs 1.08 MATCH
+   per era: A bottom 83/895 top 116/847 ratio 1.48 | B bottom 37/361 top 38/343 ratio 1.08
+   per era-year (ratio, winners top:bottom): A2017 1.30 (6:5) · A2018 1.78 (5:3) · A2019 1.61 (9:6) · A2020 1.57 (70:46) · A2021 1.25 (25:21) · A2022 0.52 (1:2) · B2022 1.07 (2:2) · B2023 0.95 (17:19) · B2024 1.23 (19:16)
+   by set: DISCOVERY bottom 60/652 top 90/616 ratio 1.59 (stage 3 printed 60/652, 90/616, 1.59) | CONFIRM bottom 60/604 top 64/574 ratio 1.12
+   B1-clean (dmin with the §4.0 NULL rules 3-4; description only): all years bottom 113/1228 = 0.092 top 143/1168 = 0.122 ratio 1.33 | CONFIRM bottom 58/590 top 63/563 ratio 1.14
+
+======================================================================================================================
+## H1-H3 ON DISCOVERY — DESCRIPTION, 'SEEN' (§5.7, §11.1: he named these reads after looking at the discovery winners; these numbers are not a test)
+   H1 below the 200-day at the open [NO wins] seen: YES 67/490 = 0.137 | NO 168/1500 = 0.112 | MH ratio in his direction (no/yes) 0.87 (pooled, biased: 0.82) | months in test 48, events 1990
+        ex-2020 (2016-19): 0.96 (yes 16/321, no 45/958) | 2020 only: 0.85 (yes 51/169, no 123/542) | monster: 0.82 (yes 23/490, no 52/1500) | ADR-scaled tail: 1.07 (yes 103/490, no 370/1500)
+        per year: 2016 1.21 (yes 1/16, no 5/75) · 2017 1.04 (yes 4/67, no 16/261) · 2018 0.74 (yes 5/109, no 10/317) · 2019 1.03 (yes 6/129, no 14/305) · 2020 0.85 (yes 51/169, no 123/542)
+   H2 in a downtrend [NO wins] seen: YES 64/433 = 0.148 | NO 161/1432 = 0.112 | MH ratio in his direction (no/yes) 0.82 (pooled, biased: 0.76) | months in test 44, events 1865
+        ex-2020 (2016-19): 0.83 (yes 15/273, no 38/885) | 2020 only: 0.82 (yes 49/160, no 123/547) | monster: 0.78 (yes 22/433, no 51/1432) | ADR-scaled tail: 1.10 (yes 91/433, no 360/1432)
+        per year: 2016 n/a (yes 0/0, no 0/0) · 2017 0.78 (yes 4/57, no 14/246) · 2018 0.75 (yes 5/97, no 10/326) · 2019 0.95 (yes 6/119, no 14/313) · 2020 0.82 (yes 49/160, no 123/547)
+   H3 above all moving averages at open [YES wins] seen: YES 159/1454 = 0.109 | NO 76/536 = 0.142 | MH ratio in his direction (yes/no) 0.79 (pooled, biased: 0.77) | months in test 48, events 1990
+        ex-2020 (2016-19): 0.79 (yes 41/924, no 20/355) | 2020 only: 0.80 (yes 118/530, no 56/181) | monster: 0.84 (yes 51/1454, no 24/536) | ADR-scaled tail: 1.02 (yes 358/1454, no 115/536)
+        per year: 2016 0.89 (yes 4/67, no 2/24) · 2017 0.86 (yes 15/256, no 5/72) · 2018 0.63 (yes 9/303, no 6/123) · 2019 0.86 (yes 13/298, no 7/136) · 2020 0.80 (yes 118/530, no 56/181)
+   H4 (ADR20) on discovery = stage 3's B2 block, 'seen' and disclosed in §11.2: top third 179/783 = 0.229 vs bottom 32/819 = 0.039, ratio 5.78; not recomputed here.
+
+## END OF CONFIRM — this run is not repeated (prereg §5.3). Next per §6: the blind recount of this step; blind sheets B only for members that reached PICKS THE TAIL.
+wrote confirm_outcomes.tsv.gz (2251 confirm rows; grp_* = the layout used: thirds 0/1/2, two-group 2 = yes / 0 = no, -1 = not in test), sha256 d31416d2174bbb39c5998065762aed324f18f2988c9cd77f0cf65ec9e67af6f5

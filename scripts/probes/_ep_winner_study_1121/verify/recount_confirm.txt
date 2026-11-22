@@ -1,0 +1,142 @@
+# BLIND RECOUNT — EP winner study CONFIRM (E >= 2021-01-01)
+prereg sha256 6c581b6a2d6750489cbee3ee908e04c5c08879c44171cde56bc6b0fbace231a6
+prereg hash gate OK (begins 6c581b6a)
+input build/stage1/feature_table.tsv.gz sha256 ade1d7802eaf70aa…
+input build/stage1/population.tsv sha256 8b1c1a127513a4d7…
+input build/stage4_freeze/h_reads.tsv.gz sha256 0b995389a41fc462…
+input build/stage4_freeze/confirm_n.tsv sha256 a7ebd5cd401c6ce3…
+input build/stage3/discovery_outcomes.tsv.gz sha256 033b7facbcb08500…
+H4 == stage-1 B2 on every confirm row (ASSERT OK)
+
+## outcome-free gate: confirm n per test per era vs stage4_freeze/confirm_n.tsv (BEFORE any label)
+   f02   A   events/scored/months/in_test/bottom|yes/middle/top|no mine (867, 867, 15, 865, 294, 287, 284) ref (867, 867, 15, 865, 294, 287, 284) -> MATCH
+   f02   B   events/scored/months/in_test/bottom|yes/middle/top|no mine (1384, 1382, 30, 1382, 469, 461, 452) ref (1384, 1382, 30, 1382, 469, 461, 452) -> MATCH
+   f02   A+B events/scored/months/in_test/bottom|yes/middle/top|no mine (2251, 2249, 45, 2247, 763, 748, 736) ref (2251, 2249, 45, 2247, 763, 748, 736) -> MATCH
+   f03   A   events/scored/months/in_test/bottom|yes/middle/top|no mine (867, 867, 15, 865, 294, 287, 284) ref (867, 867, 15, 865, 294, 287, 284) -> MATCH
+   f03   B   events/scored/months/in_test/bottom|yes/middle/top|no mine (1384, 1382, 30, 1382, 469, 461, 452) ref (1384, 1382, 30, 1382, 469, 461, 452) -> MATCH
+   f03   A+B events/scored/months/in_test/bottom|yes/middle/top|no mine (2251, 2249, 45, 2247, 763, 748, 736) ref (2251, 2249, 45, 2247, 763, 748, 736) -> MATCH
+   f09   A   events/scored/months/in_test/bottom|yes/middle/top|no mine (867, 855, 15, 853, 289, 285, 279) ref (867, 855, 15, 853, 289, 285, 279) -> MATCH
+   f09   B   events/scored/months/in_test/bottom|yes/middle/top|no mine (1384, 1378, 30, 1378, 467, 460, 451) ref (1384, 1378, 30, 1378, 467, 460, 451) -> MATCH
+   f09   A+B events/scored/months/in_test/bottom|yes/middle/top|no mine (2251, 2233, 45, 2231, 756, 745, 730) ref (2251, 2233, 45, 2231, 756, 745, 730) -> MATCH
+   f18   A   events/scored/months/in_test/bottom|yes/middle/top|no mine (867, 867, 15, 865, 294, 287, 284) ref (867, 867, 15, 865, 294, 287, 284) -> MATCH
+   f18   B   events/scored/months/in_test/bottom|yes/middle/top|no mine (1384, 1384, 30, 1384, 471, 461, 452) ref (1384, 1384, 30, 1384, 471, 461, 452) -> MATCH
+   f18   A+B events/scored/months/in_test/bottom|yes/middle/top|no mine (2251, 2251, 45, 2249, 765, 748, 736) ref (2251, 2251, 45, 2249, 765, 748, 736) -> MATCH
+   combo A   events/scored/months/in_test/bottom|yes/middle/top|no mine (867, 855, 15, 853, 289, 284, 280) ref (867, 855, 15, 853, 289, 284, 280) -> MATCH
+   combo B   events/scored/months/in_test/bottom|yes/middle/top|no mine (1384, 1378, 30, 1378, 470, 460, 448) ref (1384, 1378, 30, 1378, 470, 460, 448) -> MATCH
+   combo A+B events/scored/months/in_test/bottom|yes/middle/top|no mine (2251, 2233, 45, 2231, 759, 744, 728) ref (2251, 2233, 45, 2231, 759, 744, 728) -> MATCH
+   H1    A   events/scored/months/in_test/bottom|yes/middle/top|no mine (867, 760, 13, 589, 202, 0, 387) ref (867, 760, 13, 589, 202, 0, 387) -> MATCH
+   H1    B   events/scored/months/in_test/bottom|yes/middle/top|no mine (1384, 1248, 26, 1226, 345, 0, 881) ref (1384, 1248, 26, 1226, 345, 0, 881) -> MATCH
+   H1    A+B events/scored/months/in_test/bottom|yes/middle/top|no mine (2251, 2008, 39, 1815, 547, 0, 1268) ref (2251, 2008, 39, 1815, 547, 0, 1268) -> MATCH
+   H2    A   events/scored/months/in_test/bottom|yes/middle/top|no mine (867, 748, 12, 539, 156, 0, 383) ref (867, 748, 12, 539, 156, 0, 383) -> MATCH
+   H2    B   events/scored/months/in_test/bottom|yes/middle/top|no mine (1384, 1185, 25, 1163, 287, 0, 876) ref (1384, 1185, 25, 1163, 287, 0, 876) -> MATCH
+   H2    A+B events/scored/months/in_test/bottom|yes/middle/top|no mine (2251, 1933, 37, 1702, 443, 0, 1259) ref (2251, 1933, 37, 1702, 443, 0, 1259) -> MATCH
+   H3    A   events/scored/months/in_test/bottom|yes/middle/top|no mine (867, 760, 14, 663, 424, 0, 239) ref (867, 760, 14, 663, 424, 0, 239) -> MATCH
+   H3    B   events/scored/months/in_test/bottom|yes/middle/top|no mine (1384, 1248, 27, 1248, 861, 0, 387) ref (1384, 1248, 27, 1248, 861, 0, 387) -> MATCH
+   H3    A+B events/scored/months/in_test/bottom|yes/middle/top|no mine (2251, 2008, 41, 1911, 1285, 0, 626) ref (2251, 2008, 41, 1911, 1285, 0, 626) -> MATCH
+   H4    A   events/scored/months/in_test/bottom|yes/middle/top|no mine (867, 867, 15, 865, 294, 287, 284) ref (867, 867, 15, 865, 294, 287, 284) -> MATCH
+   H4    B   events/scored/months/in_test/bottom|yes/middle/top|no mine (1384, 1382, 30, 1382, 469, 461, 452) ref (1384, 1382, 30, 1382, 469, 461, 452) -> MATCH
+   H4    A+B events/scored/months/in_test/bottom|yes/middle/top|no mine (2251, 2249, 45, 2247, 763, 748, 736) ref (2251, 2249, 45, 2247, 763, 748, 736) -> MATCH
+   all 27 rows reproduce (ASSERT OK)
+era A daily read: rows 12005007, dropped after 2024-12-31 at read 0, off-calendar 0, kept 2040912, latest kept 2022-06-30
+era B daily read: rows 13830569, dropped after 2024-12-31 at read 5210943, off-calendar 0, kept 628838, latest kept 2024-12-31
+
+## positive control (label function on the 2,414 discovery events vs stage3/discovery_outcomes): big 302 (stage3 302), mismatching labels 0
+confirm labels: every event has a bar on E (ASSERT OK); bar open(E) vs population open mismatches (>1e-6): 12 (max relative difference 5.0e-06: 6-significant-digit rounding in the event file; labels use the population open); events with < 61 bars in E..E+60 (kept): 70 (A 25, B 45)
+
+## big-winner base rate (confirm; highest close E..E+60 >= 1.5 x open(E))
+   era A (2021-01-01..2022-04-04)   n   867 | big  107 (0.123) | monster   35 (0.040) | ADR tail  116 (0.134)
+   era B (2022-04-05..2024-09-30)   n  1384 | big  145 (0.105) | monster   32 (0.023) | ADR tail  270 (0.195)
+   pooled                           n  2251 | big  252 (0.112) | monster   67 (0.030) | ADR tail  386 (0.171)
+   2021 n  707 big   97 (0.137)
+   2022 n  504 big   46 (0.091)
+   2023 n  527 big   53 (0.101)
+   2024 n  513 big   56 (0.109)
+
+## permutation: U = np.random.default_rng(1121).random((10000, 2251)); rows = shuffles, columns = confirm events in order (era, E, ticker); within (era, month) the in-test events are sorted by key and the k-th in key order gets the k-th label in fixed order. One-sided in the frozen direction: p = (1 + #(perm stat >= obs)) / 10001.
+
+## CONFIRM — 9 tests, one Holm family (§11.2), one-sided in the frozen direction, 10,000 within-(era, month) shuffles each
+
+f02 — gap size in daily ranges | LOW third wins | n in test 2247
+   big winner: bottom 142/763 = 0.186 | middle 63/748 = 0.084 | top 47/736 = 0.064
+   ratio (frozen direction) 2.894 (smoothed; raw 2.914) | 90% block-bootstrap 2.26-3.87 (2000 draws)
+   one-sided p 0.0001 (0 of 10,000 shuffles >= observed) | Holm-adjusted p (family of 9) 0.0009
+   per era: A 3.285 [bottom 59/294 top 17/284] | B 2.639 [bottom 83/469 top 30/452] | raw A 3.353 B 2.666
+   monster ratio 3.30 | ADR-scaled tail ratio 0.89 | ADR-neutral 1.340
+   VERDICT: PICKS THE TAIL — a volatility proxy (description only, §11.3)
+
+f03 — short run-up (20) | HIGH third wins | n in test 2247
+   big winner: bottom 55/763 = 0.072 | middle 65/748 = 0.087 | top 132/736 = 0.179
+   ratio (frozen direction) 2.475 (smoothed; raw 2.488) | 90% block-bootstrap 1.88-3.18 (2000 draws)
+   one-sided p 0.0001 (0 of 10,000 shuffles >= observed) | Holm-adjusted p (family of 9) 0.0009
+   per era: A 3.057 [bottom 21/294 top 63/284] | B 2.090 [bottom 34/469 top 69/452] | raw A 3.106 B 2.106
+   monster ratio 9.74 | ADR-scaled tail ratio 1.06 | ADR-neutral 1.130
+   VERDICT: PICKS THE TAIL — a volatility proxy (description only, §11.3)
+
+f09 — base depth (40) | HIGH third wins | n in test 2231
+   big winner: bottom 21/756 = 0.028 | middle 75/745 = 0.101 | top 152/730 = 0.208
+   ratio (frozen direction) 7.345 (smoothed; raw 7.496) | 90% block-bootstrap 5.16-12.74 (2000 draws)
+   one-sided p 0.0001 (0 of 10,000 shuffles >= observed) | Holm-adjusted p (family of 9) 0.0009
+   per era: A 4.930 [bottom 12/289 top 59/279] | B 10.190 [bottom 9/467 top 93/451] | raw A 5.093 B 10.700
+   monster ratio 48.67 | ADR-scaled tail ratio 1.00 | ADR-neutral 2.006
+   VERDICT: PICKS THE TAIL — a volatility proxy (description only, §11.3)
+
+f18 — price (raw) | LOW third wins | n in test 2249
+   big winner: bottom 144/765 = 0.188 | middle 61/748 = 0.082 | top 47/736 = 0.064
+   ratio (frozen direction) 2.927 (smoothed; raw 2.948) | 90% block-bootstrap 2.16-4.24 (2000 draws)
+   one-sided p 0.0001 (0 of 10,000 shuffles >= observed) | Holm-adjusted p (family of 9) 0.0009
+   per era: A 2.426 [bottom 56/294 top 22/284] | B 3.331 [bottom 88/471 top 25/452] | raw A 2.459 B 3.378
+   monster ratio 4.52 | ADR-scaled tail ratio 1.01 | ADR-neutral 1.583
+   VERDICT: PICKS THE TAIL — a volatility proxy (description only, §11.3)
+
+combo — combination f02+f03+f09+f18 | HIGH third wins | n in test 2231
+   big winner: bottom 20/759 = 0.026 | middle 77/744 = 0.103 | top 151/728 = 0.207
+   ratio (frozen direction) 7.705 (smoothed; raw 7.871) | 90% block-bootstrap 5.19-12.63 (2000 draws)
+   one-sided p 0.0001 (0 of 10,000 shuffles >= observed) | Holm-adjusted p (family of 9) 0.0009
+   per era: A 6.143 [bottom 10/289 top 62/280] | B 8.941 [bottom 10/470 top 89/448] | raw A 6.399 B 9.337
+   monster ratio 52.13 | ADR-scaled tail ratio 1.00 | ADR-neutral 1.758
+   VERDICT: PICKS THE TAIL — a volatility proxy (description only, §11.3)
+
+H1 — below the 200-day at the open | NO wins (rate no / rate yes, MH) | n in test 1815
+   big winner: yes 74/547 = 0.135 | no 96/1268 = 0.076 | pooled (unstratified) no/yes 0.560
+   ratio (frozen direction) 0.507 (Mantel-Haenszel by (era, month)) | 90% block-bootstrap 0.39-0.65 (2000 draws)
+   one-sided p 1.0000 (10000 of 10,000 shuffles >= observed) | Holm-adjusted p (family of 9) 1.0000
+   per era: A 0.454 [yes 21/202 no 25/387] | B 0.528 [yes 53/345 no 71/881]
+   monster ratio 0.24 | ADR-scaled tail ratio 0.93 | ADR-neutral 0.664
+   VERDICT: REVERSED — a volatility proxy (description only, §11.3)
+
+H2 — in a downtrend | NO wins (rate no / rate yes, MH) | n in test 1702
+   big winner: yes 55/443 = 0.124 | no 99/1259 = 0.079 | pooled (unstratified) no/yes 0.633
+   ratio (frozen direction) 0.568 (Mantel-Haenszel by (era, month)) | 90% block-bootstrap 0.45-0.71 (2000 draws)
+   one-sided p 0.9993 (9993 of 10,000 shuffles >= observed) | Holm-adjusted p (family of 9) 1.0000
+   per era: A 0.500 [yes 15/156 no 24/383] | B 0.594 [yes 40/287 no 75/876]
+   monster ratio 0.29 | ADR-scaled tail ratio 0.90 | ADR-neutral 0.686
+   VERDICT: REVERSED — a volatility proxy (description only, §11.3)
+
+H3 — above all moving averages at the open | YES wins (rate yes / rate no, MH) | n in test 1911
+   big winner: yes 113/1285 = 0.088 | no 87/626 = 0.139 | pooled (unstratified) yes/no 0.633
+   ratio (frozen direction) 0.495 (Mantel-Haenszel by (era, month)) | 90% block-bootstrap 0.39-0.61 (2000 draws)
+   one-sided p 1.0000 (10000 of 10,000 shuffles >= observed) | Holm-adjusted p (family of 9) 1.0000
+   per era: A 0.569 [yes 47/424 no 25/239] | B 0.466 [yes 66/861 no 62/387]
+   monster ratio 0.32 | ADR-scaled tail ratio 0.90 | ADR-neutral 0.688
+   VERDICT: REVERSED — a volatility proxy (description only, §11.3)
+
+H4 — ADR20 (his ruling) | HIGH third wins | n in test 2247
+   big winner: bottom 20/763 = 0.026 | middle 68/748 = 0.091 | top 164/736 = 0.223
+   ratio (frozen direction) 8.318 (smoothed; raw 8.501) | 90% block-bootstrap 6.18-12.67 (2000 draws)
+   one-sided p 0.0001 (0 of 10,000 shuffles >= observed) | Holm-adjusted p (family of 9) 0.0009
+   per era: A 5.986 [bottom 11/294 top 66/284] | B 10.758 [bottom 9/469 top 98/452] | raw A 6.211 B 11.298
+   monster ratio 14.00 | ADR-scaled tail ratio 0.92 | ADR-neutral n/a
+   VERDICT: PICKS THE TAIL
+
+## SUMMARY (ratio in frozen direction; thirds = smoothed rates, raw in brackets; H1-H3 = MH)
+test   dir            ratio     90% int p (1-sided)  Holm p   era A   era B monster ADRtail ADRneut  verdict
+f02    LOW    2.894 [2.914]  2.26-3.87       0.0001  0.0009   3.285   2.639    3.30    0.89   1.340  PICKS THE TAIL
+f03    HIGH   2.475 [2.488]  1.88-3.18       0.0001  0.0009   3.057   2.090    9.74    1.06   1.130  PICKS THE TAIL
+f09    HIGH   7.345 [7.496]  5.16-12.74      0.0001  0.0009   4.930  10.190   48.67    1.00   2.006  PICKS THE TAIL
+f18    LOW    2.927 [2.948]  2.16-4.24       0.0001  0.0009   2.426   3.331    4.52    1.01   1.583  PICKS THE TAIL
+combo  HIGH   7.705 [7.871]  5.19-12.63      0.0001  0.0009   6.143   8.941   52.13    1.00   1.758  PICKS THE TAIL
+H1     NO             0.507  0.39-0.65       1.0000  1.0000   0.454   0.528    0.24    0.93   0.664  REVERSED
+H2     NO             0.568  0.45-0.71       0.9993  1.0000   0.500   0.594    0.29    0.90   0.686  REVERSED
+H3     YES            0.495  0.39-0.61       1.0000  1.0000   0.569   0.466    0.32    0.90   0.688  REVERSED
+H4     HIGH   8.318 [8.501]  6.18-12.67      0.0001  0.0009   5.986  10.758   14.00    0.92     n/a  PICKS THE TAIL
+tags: no shelf-relative among the 9 (shelf relatives are f05, f07); 'era-B population thinned…' not applied (§10: D2 0 excluded days).
