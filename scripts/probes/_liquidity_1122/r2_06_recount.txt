@@ -1,0 +1,41 @@
+votes differing from build_r2/legs_votes.csv: 0 of 38488
+E2/E3 recount (kept legs + the three that failed): leg half tight% easy% median run
+  M1 H1 n=1210 tight 60.2 easy 39.8 med_run 41.0
+  M1 H2 n=1005 tight 53.7 easy 46.3 med_run 34.5
+  F1 H1 n=1210 tight 55.3 easy 44.7 med_run 28
+  F1 H2 n=1005 tight 48.0 easy 52.0 med_run 23.0
+  F2 H1 n=1210 tight 65.7 easy 32.4 med_run 10
+  F2 H2 n=1005 tight 50.6 easy 25.1 med_run 26
+  R1 H1 n=1210 tight 42.3 easy 57.4 med_run 24
+  R1 H2 n=1005 tight 57.6 easy 42.3 med_run 39
+  D1 H1 n=1210 tight 53.4 easy 46.4 med_run 26.0
+  D1 H2 n=1005 tight 67.8 easy 32.2 med_run 37.0
+  K1 H1 n=1210 tight 52.8 easy 47.2 med_run 35.5
+  K1 H2 n=1005 tight 57.7 easy 42.3 med_run 32.0
+  C3 H1 n=1210 tight 34.3 easy 65.6 med_run 35
+  C3 H2 n=1005 tight 37.5 easy 62.5 med_run 38
+  R2 H1 n=1210 tight 55.6 easy 44.2 med_run 20.0
+  R2 H2 n=1005 tight 67.8 easy 32.1 med_run 47
+  K5 H1 n=1210 tight 32.4 easy 67.6 med_run 26.5
+  K5 H2 n=1005 tight 68.2 easy 31.8 med_run 34
+  M2 H1 n=1210 tight 53.3 easy 46.7 med_run 40.5
+  M2 H2 n=1005 tight 54.0 easy 46.0 med_run 34.5
+  C1 H1 n=1210 tight 21.7 easy 78.3 med_run 44
+  C1 H2 n=1005 tight 33.5 easy 66.5 med_run 33
+  C2 H1 n=1210 tight 26.4 easy 73.6 med_run 48
+  C2 H2 n=1005 tight 27.4 easy 72.6 med_run 31
+  D3 H1 n=1210 tight 56.7 easy 43.3 med_run 40
+  D3 H2 n=1005 tight 26.6 easy 73.4 med_run 42.5
+state days differing from composite.csv: 0 of 2215
+validation n=1937: Draining 730 (37.7%), Neutral 744, Easing 463
+word changes per year: {'2016': 12, '2017': 16, '2018': 7, '2019': 18, '2020': 8, '2021': 6, '2022': 8, '2023': 12, '2024': 12} | median 2017-23: 8
+spells 82 median dwell 18.5 | without first and last 18.5
+  Q1: n=241 Draining 26 (10.8%) Easing 74 (30.7%)
+  Q5: n=102 Draining 30 (29.4%) Easing 39 (38.2%)
+  S2: n=26 Draining 21 (80.8%) Easing 0 (0.0%)
+W2 (a) Draining 32.9% (n=730) vs other 13.0% (n=1207) ratio 2.53
+W2 (c) H1 37.0% (n=297) vs 8.7% (n=700) ratio 4.25 | H2 30.0% (n=433) vs 18.9% (n=507) ratio 1.59
+W2 (d) Easing 14.7% (n=463) vs Neutral 12.0% (n=744)
+W3 (c) breadth<0: Draining 34.2% (n=301) vs rest 27.5% (n=120) ratio 1.2443
+P2 EP: Draining 154 of 1256 (12.26%) vs rest 269 of 2250 (11.96%)
+P2 breakout: Draining 50 of 5312 (0.94%) vs rest 184 of 16057 (1.15%)

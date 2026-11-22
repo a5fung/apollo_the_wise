@@ -1,0 +1,84 @@
+validation window 2017-01-18 -> 2024-09-27 n=1937; Draining 730, Neutral 744, Easing 463; base rate of a 10% IWM drop within 63 sessions: 20.5% (n=1937)
+
+W2 FORWARD RISK (IWM lowest adjusted close over the next 63 sessions at least 10% below the day's close)
+  (a) Draining vs other: ratio 2.53 = 32.9% (n=730) vs 13.0% (n=1207); bar >= 1.5 -> PASS
+  (b) quarter-block bootstrap (31 quarters, 10,000 resamples, 0 dropped): 95% interval of the difference +4.5 to +36.0 points; bar excludes 0 -> PASS
+  (b2) circular shift (1686 offsets): shifted ratios median 0.86, 95th percentile 1.89; observed 2.53; 0.4% of shifts reach the observed ratio -> PASS
+  (c) H1 (to 2020-12-31): ratio 4.25 = 37.0% (n=297) vs 8.7% (n=700) | H2 (from 2021-01-04): ratio 1.59 = 30.0% (n=433) vs 18.9% (n=507); bar >= 1.2 in each -> PASS
+  (d) press: Easing 14.7% (n=463) vs Neutral 12.0% (n=744); bar Easing <= Neutral -> FAIL
+  floor Draining: merged episodes H1 4, H2 2 (bar 2 each, 4 pooled); sessions by calendar date H1/H2 (297, 433), inside episodes by assigned half (294, 433) (bar 60) -> met
+      2017-01-18 -> 2017-05-26 (26 sessions in state) H1
+      2018-03-21 -> 2019-01-11 (183 sessions in state) H1
+      2019-05-15 -> 2019-10-03 (34 sessions in state) H1
+      2020-02-12 -> 2020-05-01 (51 sessions in state) H1
+      2021-07-02 -> 2022-11-14 (262 sessions in state) H2
+      2023-03-20 -> 2024-08-01 (171 sessions in state) H2
+  floor Easing: merged episodes H1 5, H2 3 (bar 2 each, 4 pooled); sessions by calendar date H1/H2 (285, 178), inside episodes by assigned half (349, 107) (bar 60) -> met
+      2017-02-02 -> 2017-03-10 (26 sessions in state) H1
+      2017-08-01 -> 2017-10-05 (44 sessions in state) H1
+      2019-02-21 -> 2019-03-22 (15 sessions in state) H1
+      2019-08-13 -> 2020-01-30 (60 sessions in state) H1
+      2020-05-19 -> 2021-06-04 (204 sessions in state) H1
+      2022-11-30 -> 2023-02-24 (49 sessions in state) H2
+      2023-07-21 -> 2023-08-16 (19 sessions in state) H2
+      2023-12-01 -> 2024-01-29 (39 sessions in state) H2
+  W2: FAIL
+
+  reported, not judged (10% drop share / 10% gain share / mean / median forward return; n):
+   IWM 63 sessions: drop D vs other ratio 2.53 = 32.9% (n=730) vs 13.0% (n=1207); gain D vs other ratio 1.19 = 33.4% (n=730) vs 28.0% (n=1207)
+       D: drop 32.9% gain 33.4% mean +2.2% median +2.5% (n=730)
+       N: drop 12.0% gain 21.4% mean +2.7% median +2.0% (n=744)
+       E: drop 14.7% gain 38.7% mean +3.2% median +4.0% (n=463)
+   IWM 21 sessions: drop D vs other ratio 3.49 = 13.0% (n=730) vs 3.7% (n=1207); gain D vs other ratio 1.19 = 10.3% (n=730) vs 8.6% (n=1207)
+       D: drop 13.0% gain 10.3% mean +0.1% median +0.7% (n=730)
+       N: drop 4.8% gain 6.9% mean +0.7% median +0.9% (n=744)
+       E: drop 1.9% gain 11.4% mean +2.3% median +2.4% (n=463)
+   SPY 63 sessions: drop D vs other ratio 3.54 = 23.2% (n=730) vs 6.5% (n=1207); gain D vs other ratio 1.09 = 24.9% (n=730) vs 22.9% (n=1207)
+       D: drop 23.2% gain 24.9% mean +2.9% median +4.1% (n=730)
+       N: drop 6.3% gain 20.8% mean +4.0% median +4.3% (n=744)
+       E: drop 6.9% gain 26.3% mean +4.5% median +6.5% (n=463)
+   SPY 21 sessions: drop D vs other ratio 3.78 = 6.6% (n=730) vs 1.7% (n=1207); gain D vs other ratio 2.66 = 4.0% (n=730) vs 1.5% (n=1207)
+       D: drop 6.6% gain 4.0% mean +0.7% median +1.6% (n=730)
+       N: drop 2.8% gain 2.3% mean +1.3% median +2.0% (n=744)
+       E: drop 0.0% gain 0.2% mean +2.0% median +2.4% (n=463)
+   QQQ 63 sessions: drop D vs other ratio 2.40 = 29.6% (n=730) vs 12.3% (n=1207); gain D vs other ratio 0.89 = 38.5% (n=730) vs 43.2% (n=1207)
+       D: drop 29.6% gain 38.5% mean +3.5% median +4.6% (n=730)
+       N: drop 13.7% gain 39.2% mean +5.6% median +5.7% (n=744)
+       E: drop 10.2% gain 49.7% mean +7.0% median +7.7% (n=463)
+   QQQ 21 sessions: drop D vs other ratio 3.21 = 13.3% (n=730) vs 4.1% (n=1207); gain D vs other ratio 1.29 = 8.4% (n=730) vs 6.5% (n=1207)
+       D: drop 13.3% gain 8.4% mean +0.9% median +1.7% (n=730)
+       N: drop 5.1% gain 6.0% mean +1.7% median +2.4% (n=744)
+       E: drop 2.6% gain 7.1% mean +3.0% median +3.4% (n=463)
+
+W3 BASELINES (same window; k = 730 flagged sessions for the k-matched forms)
+  k-matched B1 SPY trend: ratio 1.32 = 24.1% (n=730) vs 18.3% (n=1207) -> composite 2.53 >= baseline
+  k-matched B4 IWM trend: ratio 1.56 = 26.4% (n=730) vs 16.9% (n=1207) -> composite 2.53 >= baseline
+  k-matched B2 VIX: ratio 1.37 = 24.7% (n=730) vs 18.0% (n=1207) -> composite 2.53 >= baseline
+  k-matched B3 breadth: ratio 1.73 = 27.8% (n=730) vs 16.1% (n=1207) -> composite 2.53 >= baseline
+  same-rule B1 SPY falling [combined rule]: ratio 1.47 = 28.4% (n=250) vs 19.3% (n=1687) -> composite 2.53 >= baseline
+  same-rule B1 SPY falling [trend rule]: ratio 1.26 = 24.1% (n=532) vs 19.1% (n=1405) -> composite 2.53 >= baseline
+  same-rule B4 IWM falling [combined rule]: ratio 1.64 = 30.1% (n=352) vs 18.4% (n=1585) -> composite 2.53 >= baseline
+  same-rule B4 IWM falling [trend rule]: ratio 1.24 = 23.4% (n=691) vs 18.9% (n=1246) -> composite 2.53 >= baseline
+  same-rule B2 VIX rising [combined rule]: ratio 1.31 = 25.1% (n=418) vs 19.2% (n=1519) -> composite 2.53 >= baseline
+  same-rule B2 VIX rising [trend rule]: ratio 1.34 = 23.7% (n=899) vs 17.7% (n=1038) -> composite 2.53 >= baseline
+  same-rule B3 breadth falling [combined rule]: ratio 1.15 = 22.9% (n=411) vs 19.9% (n=1526) -> composite 2.53 >= baseline [48 window sessions before the baseline's 50-day exists count as not flagged]
+  same-rule B3 breadth falling [trend rule]: ratio 1.04 = 20.9% (n=870) vs 20.1% (n=1067) -> composite 2.53 >= baseline [48 window sessions before the baseline's 50-day exists count as not flagged]
+  (a) vs SPY trend, IWM trend and the same-rule SPY / IWM / breadth forms -> PASS
+  (b) vs VIX: direct yes; escape 'warns while VIX is quiet' (VIX below its trailing 252-session median, 1068 sessions, 270 Draining): ratio 2.20 = 28.1% (n=270) vs 12.8% (n=798); bar >= 1.3 -> escape met -> PASS
+  (c) vs breadth: k-matched above; within breadth < 0 (421 sessions, 301 Draining): ratio 1.24 = 34.2% (n=301) vs 27.5% (n=120); bar >= 1.25 -> FAIL
+      breadth >= 0 stratum, not judged (1516 sessions, 429 Draining): ratio 2.80 = 31.9% (n=429) vs 11.4% (n=1087)
+  W3: FAIL
+
+  reported: Draining days also in the k-matched breadth flag: 58.9% (n=730)
+  reported: state lagged 5 sessions: ratio 2.18 = 30.9% (n=732) vs 14.2% (n=1205)
+  reported: state lagged 10 sessions: ratio 1.94 = 29.4% (n=732) vs 15.1% (n=1205)
+  reported: lead and recovery (SPY 7% below its 252-session closing high = onset; sessions)
+      {"onset": "2018-02-05", "low": "2018-02-08", "recovered": "2018-03-09", "lead_draining": null, "lead_B1": 54, "draining_at_low": false, "low_to_leaving_draining": 0}
+      {"onset": "2018-03-22", "low": "2018-04-02", "recovered": "2018-06-06", "lead_draining": 8, "lead_B1": 32, "draining_at_low": true, "low_to_leaving_draining": 60}
+      {"onset": "2018-10-24", "low": "2018-12-24", "recovered": "2019-03-15", "lead_draining": 63, "lead_B1": 49, "draining_at_low": true, "low_to_leaving_draining": 13}
+      {"onset": "2020-02-25", "low": "2020-03-23", "recovered": "2020-07-21", "lead_draining": 8, "lead_B1": 16, "draining_at_low": true, "low_to_leaving_draining": 29}
+      {"onset": "2020-09-18", "low": "2020-09-23", "recovered": "2020-10-09", "lead_draining": null, "lead_B1": 58, "draining_at_low": false, "low_to_leaving_draining": 0}
+      {"onset": "2020-10-28", "low": "2020-10-30", "recovered": "2020-11-05", "lead_draining": null, "lead_B1": 36, "draining_at_low": false, "low_to_leaving_draining": 0}
+      {"onset": "2022-01-21", "low": "2022-10-12", "recovered": "2023-07-18", "lead_draining": 29, "lead_B1": 36, "draining_at_low": true, "low_to_leaving_draining": 24}
+      {"onset": "2023-10-03", "low": "2023-10-27", "recovered": "2023-11-14", "lead_draining": 29, "lead_B1": 38, "draining_at_low": true, "low_to_leaving_draining": 21}
+      {"onset": "2024-08-05", "low": "2024-08-05", "recovered": "2024-08-15", "lead_draining": 63, "lead_B1": 63, "draining_at_low": false, "low_to_leaving_draining": 0}

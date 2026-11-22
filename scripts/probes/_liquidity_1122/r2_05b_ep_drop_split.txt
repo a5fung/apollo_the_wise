@@ -1,0 +1,6 @@
+EP events 4665: flagged CS 3541; on the 2026-10-16 list but not CS 213; NOT on the list at all 911
+not-on-list events by year: {2016: 135, 2017: 113, 2018: 155, 2019: 100, 2020: 177, 2021: 180, 2022: 22, 2023: 10, 2024: 19}
+all events by year: {2016: 326, 2017: 378, 2018: 455, 2019: 484, 2020: 771, 2021: 707, 2022: 504, 2023: 527, 2024: 513}
+non-CS flags among listed-but-dropped: {'ADRC': 211, '': 2}
+era A: n=3281 E 2016-02-02 -> 2022-04-04
+era B: n=1384 E 2022-04-05 -> 2024-09-30

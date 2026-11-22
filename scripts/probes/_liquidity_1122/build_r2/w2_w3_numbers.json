@@ -1,0 +1,220 @@
+{
+ "a": [
+  2.5275281389058546,
+  0.3287671232876712,
+  0.1300745650372825,
+  730,
+  1207
+ ],
+ "b": {
+  "lo": 0.0448135340912578,
+  "hi": 0.35972769193619825,
+  "dropped": 0,
+  "blocks": 31
+ },
+ "b2": {
+  "p95": 1.8947352832284337,
+  "n": 1686,
+  "share_ge": 0.0035587188612099642,
+  "median": 0.8615546108224427
+ },
+ "floor": {
+  "Draining": {
+   "episodes": [
+    [
+     "2017-01-18",
+     "2017-05-26",
+     26,
+     "H1"
+    ],
+    [
+     "2018-03-21",
+     "2019-01-11",
+     183,
+     "H1"
+    ],
+    [
+     "2019-05-15",
+     "2019-10-03",
+     34,
+     "H1"
+    ],
+    [
+     "2020-02-12",
+     "2020-05-01",
+     51,
+     "H1"
+    ],
+    [
+     "2021-07-02",
+     "2022-11-14",
+     262,
+     "H2"
+    ],
+    [
+     "2023-03-20",
+     "2024-08-01",
+     171,
+     "H2"
+    ]
+   ],
+   "ep_h1": 4,
+   "ep_h2": 2,
+   "sess_cal": [
+    297,
+    433
+   ],
+   "sess_ep": [
+    294,
+    433
+   ],
+   "ok": true
+  },
+  "Easing": {
+   "episodes": [
+    [
+     "2017-02-02",
+     "2017-03-10",
+     26,
+     "H1"
+    ],
+    [
+     "2017-08-01",
+     "2017-10-05",
+     44,
+     "H1"
+    ],
+    [
+     "2019-02-21",
+     "2019-03-22",
+     15,
+     "H1"
+    ],
+    [
+     "2019-08-13",
+     "2020-01-30",
+     60,
+     "H1"
+    ],
+    [
+     "2020-05-19",
+     "2021-06-04",
+     204,
+     "H1"
+    ],
+    [
+     "2022-11-30",
+     "2023-02-24",
+     49,
+     "H2"
+    ],
+    [
+     "2023-07-21",
+     "2023-08-16",
+     19,
+     "H2"
+    ],
+    [
+     "2023-12-01",
+     "2024-01-29",
+     39,
+     "H2"
+    ]
+   ],
+   "ep_h1": 5,
+   "ep_h2": 3,
+   "sess_cal": [
+    285,
+    178
+   ],
+   "sess_ep": [
+    349,
+    107
+   ],
+   "ok": true
+  }
+ },
+ "lead": [
+  {
+   "onset": "2018-02-05",
+   "low": "2018-02-08",
+   "recovered": "2018-03-09",
+   "lead_draining": null,
+   "lead_B1": 54,
+   "draining_at_low": false,
+   "low_to_leaving_draining": 0
+  },
+  {
+   "onset": "2018-03-22",
+   "low": "2018-04-02",
+   "recovered": "2018-06-06",
+   "lead_draining": 8,
+   "lead_B1": 32,
+   "draining_at_low": true,
+   "low_to_leaving_draining": 60
+  },
+  {
+   "onset": "2018-10-24",
+   "low": "2018-12-24",
+   "recovered": "2019-03-15",
+   "lead_draining": 63,
+   "lead_B1": 49,
+   "draining_at_low": true,
+   "low_to_leaving_draining": 13
+  },
+  {
+   "onset": "2020-02-25",
+   "low": "2020-03-23",
+   "recovered": "2020-07-21",
+   "lead_draining": 8,
+   "lead_B1": 16,
+   "draining_at_low": true,
+   "low_to_leaving_draining": 29
+  },
+  {
+   "onset": "2020-09-18",
+   "low": "2020-09-23",
+   "recovered": "2020-10-09",
+   "lead_draining": null,
+   "lead_B1": 58,
+   "draining_at_low": false,
+   "low_to_leaving_draining": 0
+  },
+  {
+   "onset": "2020-10-28",
+   "low": "2020-10-30",
+   "recovered": "2020-11-05",
+   "lead_draining": null,
+   "lead_B1": 36,
+   "draining_at_low": false,
+   "low_to_leaving_draining": 0
+  },
+  {
+   "onset": "2022-01-21",
+   "low": "2022-10-12",
+   "recovered": "2023-07-18",
+   "lead_draining": 29,
+   "lead_B1": 36,
+   "draining_at_low": true,
+   "low_to_leaving_draining": 24
+  },
+  {
+   "onset": "2023-10-03",
+   "low": "2023-10-27",
+   "recovered": "2023-11-14",
+   "lead_draining": 29,
+   "lead_B1": 38,
+   "draining_at_low": true,
+   "low_to_leaving_draining": 21
+  },
+  {
+   "onset": "2024-08-05",
+   "low": "2024-08-05",
+   "recovered": "2024-08-15",
+   "lead_draining": 63,
+   "lead_B1": 63,
+   "draining_at_low": false,
+   "low_to_leaving_draining": 0
+  }
+ ]
+}

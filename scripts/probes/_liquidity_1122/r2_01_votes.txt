@@ -1,0 +1,54 @@
+grid 2264 2016-01-04 2024-12-31 | first state session 2016-03-15 | sessions from it 2215
+
+leg: tight / easy / exact-tie(0) / missing sessions from the first state session
+  C1: tight 600 easy 1615 tie 0 missing 0
+  C2: tight 595 easy 1620 tie 0 missing 0
+  C3: tight 792 easy 1422 tie 1 missing 0
+  F1: tight 1151 easy 1064 tie 0 missing 0
+  F2: tight 1304 easy 644 tie 267 missing 0
+  F3: tight 1141 easy 1071 tie 3 missing 0
+  R1: tight 1091 easy 1119 tie 5 missing 0
+  R2: tight 1354 easy 858 tie 3 missing 0
+  D1: tight 1327 easy 886 tie 2 missing 0
+  D2: tight 1161 easy 963 tie 0 missing 91
+  D3: tight 953 easy 1262 tie 0 missing 0
+  M1: tight 1268 easy 947 tie 0 missing 0
+  M2: tight 1188 easy 1027 tie 0 missing 0
+  K1: tight 1219 easy 996 tie 0 missing 0
+  K2: tight 1064 easy 1151 tie 0 missing 0
+  K3: tight 1160 easy 1055 tie 0 missing 0
+  K5: tight 1077 easy 1138 tie 0 missing 0
+
+vs run-1 combined vote (share of sessions where the run-1 vote was non-zero and the trend vote has the SAME sign; n = run-1 non-zero sessions)
+  C1: 100.0% (n=1431)
+  C2: 100.0% (n=1365)
+  C3: 100.0% (n=1378)
+  F1: 100.0% (n=1247)
+  F2: 100.0% (n=1212)
+  F3: 100.0% (n=1410)
+  R1: 100.0% (n=1343)
+  R2: 100.0% (n=1505)
+  D1: 100.0% (n=1398)
+  D2: 100.0% (n=1328)
+  D3: 100.0% (n=1400)
+  M1: 100.0% (n=1296)
+  M2: 100.0% (n=1315)
+  K1: 100.0% (n=1369)
+  K2: 100.0% (n=1270)
+  K3: 100.0% (n=1329)
+  K5: 100.0% (n=1388)
+
+price-only (Alpaca raw close) vs adjusted TREND vote, share of sessions differing (n = sessions where both exist)
+  C1  differ 15.35% (n=2215) -> adjusted closes required live
+  C2  differ 10.38% (n=2215) -> adjusted closes required live
+  D1  differ  1.90% (n=2215) -> price-only acceptable live
+  D3  differ  0.00% (n=2215) -> price-only acceptable live
+  M1  differ  0.00% (n=2215) -> price-only acceptable live
+  M2  differ  0.00% (n=2215) -> price-only acceptable live
+  K1  differ  1.08% (n=2215) -> price-only acceptable live
+  K2  differ  1.35% (n=2215) -> price-only acceptable live
+  K3  differ  0.50% (n=2215) -> price-only acceptable live
+  K5  differ  0.95% (n=2215) -> price-only acceptable live
+  C1(JNK tile) differ 16.42% (n=1376)   [JNK NaN-window sessions have no vote]
+
+saved build_r2/legs_votes.csv, legs_fastdot.csv

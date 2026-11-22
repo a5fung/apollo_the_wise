@@ -1,0 +1,85 @@
+LIQUIDITY COMPOSITE RUN 2 — ADVERSARIAL VERIFY (2026-11-22)
+Verdict: MATCH. Bars applied as written: yes. The section 5.6 verdict follows: no word on any surface; rows and count ship as "context, not validated"; P2 says "market read only".
+Method: my own code from the raw inputs (Alpaca psv ~/apollo_data/liquidity_1122/etf_daily_all.psv, fred/*.csv, raw cb702 and cb702_pre_v2 daily closes). No r2_*.py was run or imported.
+Scripts: r2_verify_a.py (legs, votes, selection, composite, W0, W1), r2_verify_b.py (W2, W3, breadth rebuilt from raw). Outputs went to the scratchpad. Only r2_verify.txt and those two scripts were added here.
+No commits, no ssh, no subagents. All 72 files that were there before have the same sha1 and mtime afterwards.
+
+== 1. RECOUNT FROM RAW ==
+Legs (rebuilt from the Alpaca psv and FRED with my own lag join, not run 1's legs_X.csv):
+- All 17 legs match on X (largest relative difference 1e-14), on freshness flags (0 differences) and on trend votes (0 of 37,655 cells differ).
+- Lags hold, with no look-ahead. BAA10Y, DFF, DGS2 and DFII10 always use the previous day's value or older (at least 1 calendar day).
+- WALCL and WTREGEN: the Wednesday level is first used on Friday (at least 2 days old).
+- RRP is used the same day, as the doc says. The broad dollar index is exactly 7 days old.
+- Tie tolerance: changing it from 1e-9 to 1e-12 changes 0 vote cells; going to an exact 0 changes 9 cells and 1 state day. Draining goes 730 -> 729 and no bar result changes.
+Selection: MATCH. Kept M1 F1 F2 R1 D1 K1 C3 R2 K5 M2, with K = 6.
+- E1-E3 shares and median runs match to 0.1 in every half.
+- D2 is pruned against D1: trend-gap correlation 0.82 and 0.87 against a 0.80 line.
+- F3, K2 and K3 are skipped because their group already held two legs.
+- The section 12 shorthand reading gives C1 M1 F1 F2 R1 D1 K1 C2 R2 K5 D3 M2, the same list the builder printed. I did not run it on anything.
+Composite state: MATCH. 0 of 2,215 days differ and S is identical.
+W0: MATCH. Window 1,937 sessions. Draining 730 (37.7%), Neutral 744 (38.4%), Easing 463 (23.9%).
+- Word changes per year (2016-2024): 12, 16, 7, 18, 8, 6, 8, 12, 12. The 2017-23 median is 8.
+- Median stay 18.5 sessions over 82 spells.
+W1: MATCH on all 13 rows. S1 44/52, S2 21/26, S3 159/188, S4 48/53.
+- Leg-only rows: L1 11/11 with 5 Draining days, L2 7/7 with 1, L3 10/10 with 0, L4 19/24 with 0.
+- Calm rows: Q1 Draining 26/241 (miss), Q2 5/79, Q3 9/149, Q4 Easing 144/169 with 0 Draining, Q5 Draining 30/102 with Easing 39/102 (miss).
+W2: MATCH. Ratio 2.528 = 32.9% (n=730) vs 13.0% (n=1,207).
+- (b) my own resampling draw gives +4.1 to +36.0 points (builder +4.5 to +36.0). Same conclusion; the endpoints differ only because the random draws differ.
+- (b2) 1,686 shifts with a 95th percentile of 1.895: identical.
+- (c) halves 4.25 and 1.59; (d) Easing 14.7% (n=463) vs Neutral 12.0% (n=744): identical.
+- Floor: identical. Draining has 4 + 2 episodes and Easing 5 + 3.
+- Reported figures match: SPY 3.54, QQQ 2.40, IWM over 21 sessions 3.49; lagged 5 sessions 2.18, lagged 10 sessions 1.94.
+W3: MATCH. All 4 k-matched baselines and all 8 same-rule forms match to 3 decimals, and all four baseline flag sets match day for day.
+- Quiet-VIX days: 2.20. Breadth < 0 days: 1.2443 = 34.2% (n=301) vs 27.5% (n=120). Overlap with breadth 58.9%.
+Breadth rebuilt from the raw cb702 files: identical to the builder's B3 (largest difference 1e-16).
+P2: checked by reading the code and output, not recounted. EP state comes from the close before the event day. Breakout state is taken on D, and the entry is 1-4 sessions after D, so there is no look-ahead.
+
+== 2. FREEZE, LAGS, SEALED YEARS ==
+- Freeze file sha1 is 561b5e65..., as claimed. It holds r2_01, r2_02 and r2_02b output word for word: the kept list, the E1-E3 table per half with n, both correlation tables, the agreement table and the pruning log. That is everything section 4.2 item 7 asks for.
+- The legs_votes.csv sha1 recorded in the freeze matches the file on disk.
+- Run-1 freeze sha1 is 2e5970a0..., as the doc says. Run-1 files were last modified at or before 10:45; run 2 starts at 10:56.
+- Timeline: freeze 10:57:21, then the W0/W1 composite 10:58:53, then the readings file 10:59:28 (sha1 fcaf6179..., matches).
+- The first outcome-side file comes after that: the universe extract at 10:59:51, then breadth 11:00:40, W2/W3 11:01:46 and P2 11:02:36.
+- Limit: file times show the order in which files were last written. They cannot prove that an outcome script was never run and then overwritten.
+- No 2025-26 row is read. Every frame is cut and asserted at 2024-12-31, and my own extract was cut inside awk.
+- Every forward window ends by 2024-12-31: the last window day plus 63 sessions is still on the grid.
+- Breakout trades are cut at D <= 2024-12-31 before filtering (234 discovery rows removed), and 0 trades exit after the cut. EP events run to 2024-09-30.
+
+== 3. BARS AND VERDICT ==
+- Each bar is applied as written.
+- W0 fails on the Draining share: 37.7% against a 35% ceiling, 53 sessions over the line.
+- W1 fails: calm rows 3 of 5 against a bar of 4.
+- W2 fails on (d): Easing 14.7% is above Neutral 12.0%.
+- W3 fails on (c): 1.244 against 1.25.
+- Any one of these failing is enough for "no word" under section 5.6. P2 fails on both setups, which gives "market read only".
+- The builder's stricter readings (median stay both with and without the cut-off spells, the composite having to beat both rule forms of each baseline, the two ways of counting the floor) only made the word harder to earn, as section 7 requires.
+
+== 4. PROBLEMS AND WHAT EACH DOES TO THE VERDICT ==
+(a) Undisclosed: the exit rule. Section 4.3 says leave Draining at S <= +K/6; section 12's summary says "exits below +K/6". The builder used <= (section 12 says the composite is unchanged) and did not mention the fork.
+  - With strict "below", Draining rises to 42.6% (825 of 1,937) and calm rows drop to 2 of 5. W0 and W1 still fail.
+  - Effect on the verdict: none.
+(b) Provenance gap: no script on disk makes build_r2/universe_cs_closes.csv.gz. It was made by an inline shell command.
+  - It also loses the first data row of each raw file (A 2016-01-04 and MGRC 2022-05-05), as if each file had a header line, which it does not.
+  - Effect: none. My rebuild from raw gives the same breadth.
+(c) Small issue: the window is 1,937 sessions. Adding 2017-01-17 and/or 2024-09-30 gives Draining 37.7% either way. Effect: none.
+(d) Penalises, but the bar is as written: the W2 (d) fail comes from one spell. 32 of the 68 Easing days followed by a 10% small-cap drop are the Easing spell of 2019-12-13 to 2020-01-30, just before the Covid crash.
+  - Without that spell Easing is 8.4%, below Neutral's 12.0%. The rule allows no exclusion.
+  - Effect: none, because W0 and W1 fail on their own. But "the easing read does not work" rests on one outside shock.
+(e) Close call: W3 (c) at 1.244. It holds under two other ways of joining the price files: no rescaling gives 1.244, no dropped names gives 1.234. It is a true fail on this universe.
+  - The universe is survivors only, so new lows are under-counted. That noise is real.
+  - Effect: none, because W0 and W1 fail anyway.
+(f) Close call: Q1 misses by 2 sessions. 8 of its 26 Draining days are a spell carried in from late 2016 (2017-01-18 to 01-27), because the state starts in 2016-03 as the doc says.
+  - Neither the tie setting nor the window changes Q1, and the strict exit makes it worse. W1 would pass only if Q1 hit, and W0 fails anyway.
+(g) Flatters W2: Draining marks big moves in BOTH directions. A 10% IWM gain follows 33.4% of Draining days (n=730), against 21.4% of Neutral days (n=744).
+  - W2 judges only the down tail, so its 2.53 ratio partly measures choppy markets, not only drains.
+  - It is also largely coincident: the ratio falls to 1.94 when the state is lagged 10 sessions (still above the 1.2 "coincident" line).
+  - Effect: none on this verdict. It matters if a later run passes.
+(h) The E2 fork is real and is his call. With a two-state vote, tight plus easy is about 100%, so the section 4.2 wording ("each 10-70%") works out to "tight share 30-70%". The section 12 shorthand allows up to 90% easy.
+  - Section 12 says the gates are "unchanged in wording", which supports the builder's reading.
+  - The legs it removes (junk bonds C1, junk vs Treasuries C2, the yen D3) lean easy 73-78% of the time in one half. For the two credit legs this is plausibly because their adjusted (total-return) price climbs steadily with the interest they pay, so the 20-day sits above the 50-day most days. That is my reading, not a measured fact.
+  - What the other list does to the word is unknown. I did not compute anything on it, and running it would be a third run.
+(i) P2 bars: read and applied correctly. Interval tests are one-sided: Draining must be LOWER. Both setups fail by a wide margin (EP 1.03 and breakout 0.82, against a ceiling of 0.67).
+  - The EP sample is survivors only: 911 delisted tickers are dropped by the common-stock filter, because a ticker not on the 2026 list is not flagged as common stock.
+  - Effect: none. P2 only sets the extra label.
+
+Action: none for the verifier. His call: the E2 fork in (h), keep the section 4.2 reading or order a third run on the 12-leg list.

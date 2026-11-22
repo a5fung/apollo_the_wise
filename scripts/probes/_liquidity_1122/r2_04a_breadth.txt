@@ -1,0 +1,8 @@
+universe rows 6550498; tickers 3460; max date 2024-12-31
+overlap 2021-09-27 -> 2022-06-30 (192 sessions); tickers in both files 3072: same base 2901, constant different base (rescaled) 32, unstable ratio (dropped after 2022-06-30) 25, in both but no shared session 114
+tickers only in pre_v2 63; only in cb702 325
+universe sessions missing from the grid: 0; grid 2264
+breadth daily first 2017-01-03; B3 (10-day mean) first 2017-01-17 last 2024-12-31; Amihud 20-day first 2016-02-29
+N (eligible common stocks with 252 prior closes), median per year: {2017: 1610, 2018: 1741, 2019: 1799, 2020: 1904, 2021: 2172, 2022: 2221, 2023: 2158, 2024: 2242}
+survivorship: tickers with any close 3452; whose LAST close is before 2024-12-01: 444 (of which the unstable-ratio drops 25); whose first close is after 2016-03-01: 1358
+-> some names end before 2024-12; see counts.

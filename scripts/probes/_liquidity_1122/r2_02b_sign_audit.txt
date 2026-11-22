@@ -1,0 +1,28 @@
+
+R2 2-year yield (DGS2, next-session lag checked in run-1 05); tight when P rises
+  2018-10-01: P=2.8100  MA20=2.7605  MA50=2.6886  -> 20-day ABOVE 50-day
+  2018-12-03: P=2.8000  MA20=2.8640  MA50=2.8576  -> 20-day ABOVE 50-day
+  2018-12-21: P=2.6700  MA20=2.7605  MA50=2.8288  -> 20-day BELOW 50-day
+  2020-02-19: P=1.4100  MA20=1.4330  MA50=1.5322  -> 20-day BELOW 50-day
+  2020-03-09: P=0.4900  MA20=1.1470  MA50=1.3700  -> 20-day BELOW 50-day
+  2020-03-20: P=0.4400  MA20=0.7205  MA50=1.1696  -> 20-day BELOW 50-day
+
+F3 2-year minus funds rate; tight when P rises
+  2018-10-01: P=0.6300  MA20=0.8135  MA50=0.7616  -> 20-day ABOVE 50-day
+  2018-12-03: P=0.6000  MA20=0.6655  MA50=0.6864  -> 20-day BELOW 50-day
+  2018-12-21: P=0.2700  MA20=0.5535  MA50=0.6294  -> 20-day BELOW 50-day
+  2020-02-19: P=-0.1800  MA20=-0.1405  MA50=-0.0264  -> 20-day BELOW 50-day
+  2020-03-09: P=-0.6000  MA20=-0.3620  MA50=-0.1676  -> 20-day BELOW 50-day
+  2020-03-20: P=0.2400  MA20=-0.3970  MA50=-0.2174  -> 20-day BELOW 50-day
+
+K5 ARKK / QQQ (same-day ETF ratio, no lag); tight when P falls
+  2018-10-01: P=0.2532  MA20=0.2584  MA50=0.2577  -> 20-day ABOVE 50-day
+  2018-12-03: P=0.2626  MA20=0.2591  MA50=0.2514  -> 20-day ABOVE 50-day
+  2018-12-21: P=0.2415  MA20=0.2570  MA50=0.2530  -> 20-day ABOVE 50-day
+  2020-02-19: P=0.2594  MA20=0.2484  MA50=0.2456  -> 20-day ABOVE 50-day
+  2020-03-09: P=0.2514  MA20=0.2559  MA50=0.2486  -> 20-day ABOVE 50-day
+  2020-03-20: P=0.2258  MA20=0.2428  MA50=0.2461  -> 20-day BELOW 50-day
+
+Reading (code vs doc §3):
+- R2, F3: the 2-year yield's 20-day sat below its 50-day in both windows (flight to Treasuries); doc: a falling 2-year is EASY. Sign and lag as the doc; stay.
+- K5: doc X = -(ARKK/QQQ), tight when speculative growth LAGS. In both windows the ARKK/QQQ 20-day sat above its 50-day on most sessions (ARKK held up vs QQQ on the 20/50 trend), so the leg reads EASY. The code matches the doc's sign; same-day ETF closes, no lag. Stays as coded.
