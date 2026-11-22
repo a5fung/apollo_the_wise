@@ -1,0 +1,9 @@
+SET
+k|v
+predicate_count|128
+(1 row)
+k|v
+by_mode_stop|anticipate/coiled_low n=21 last_entry=2026-07-10
+by_mode_stop|anticipate/structural_low n=46 last_entry=2026-08-07
+by_mode_stop|confirm/base_low n=61 last_entry=2026-11-02
+(3 rows)

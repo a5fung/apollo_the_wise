@@ -1,0 +1,73 @@
+SET
+=== Q1 predicate (bar 5) + table census
+takeable_settled|rows_total|first_break|last_break|settled_all|open_unsettled|abstained|would_reject
+14|29|2026-06-29|2026-11-09|24|1|4|11
+(1 row)
+=== Q2 takeable settled cohort summary (the GO-bar population)
+n|capture_n|stop_n|timeout_n|mean_r|median_r|winners|ge_3r|max_r|mean_mfe_r|max_mfe_r|avg_target_r
+14|2|9|3|-0.172|-1.000|3|2|3.000|1.360|3.350|3.00
+(1 row)
+=== Q3 per-row takeable settled
+id|ticker|break_date|parent_stage|stop_kind|stop_pct|outcome|r|mfe_r|settled
+1|XMTR|2026-06-29|TIGHTENING|sma_10|4.75|stop|-1.000|1.010|2026-07-23
+8|MBX|2026-07-31|TIGHTENING|sma_10|7.14|open|-0.030|1.260|2026-08-24
+9|MBX|2026-08-04|TIGHTENING|sma_10|6.69|open|-0.070|1.340|2026-08-28
+10|CHYM|2026-08-19|COILED|sma_10|5.37|open|0.690|1.080|2026-09-14
+11|CDNA|2026-08-25|TIGHTENING|sma_10|3.65|stop|-1.000|2.780|2026-09-19
+12|CHYM|2026-08-28|TRIGGERED|sma_10|3.54|stop|-1.000|0.350|2026-09-21
+13|PBF|2026-09-01|TIGHTENING|sma_10|6.08|stop|-1.000|1.510|2026-09-25
+14|PBF|2026-09-02|TIGHTENING|sma_10|6.10|stop|-1.000|1.500|2026-09-28
+15|WDAY|2026-09-03|TRIGGERED|sma_10|4.97|stop|-1.000|0.370|2026-09-28
+19|CDNA|2026-09-17|TIGHTENING|sma_10|5.19|capture|3.000|3.350|2026-10-12
+22|QMCO|2026-09-24|TIGHTENING|sma_10|7.82|capture|3.000|3.140|2026-10-19
+25|HTFL|2026-10-05|TIGHTENING|sma_10|5.51|stop|-1.000|0.300|2026-10-29
+26|HTFL|2026-10-06|TIGHTENING|sma_10|5.15|stop|-1.000|0.780|2026-10-30
+28|IOVA|2026-10-21|TIGHTENING|sma_10|6.34|stop|-1.000|0.270|2026-11-16
+(14 rows)
+=== Q4 all rows by reject reason / outcome (population check)
+reject|outcome|abstain|n
+stop_distance_gt_8pct|capture||3
+stop_distance_gt_8pct|open||3
+stop_distance_gt_8pct|stop||4
+stop_distance_gt_8pct|(unsettled)|split_1:4_on_2026-07-02_between_break_and_settle [one-off repair #667]|1
+(takeable)|capture||2
+(takeable)|open||3
+(takeable)|stop||9
+(takeable)|(unsettled)||1
+(takeable)|(unsettled)|unfillable_entry_34.42_below_break_low_34.55|1
+(takeable)|(unsettled)|unfillable_entry_40.47_below_break_low_40.67 [one-off repair #667]|1
+(takeable)|(unsettled)|unfillable_entry_9.41_below_break_low_9.44 [one-off repair #667]|1
+(11 rows)
+=== Q5 unsettled / abstained rows
+id|ticker|break_date|would_reject_reason|outcome|settle_abstain_reason|age_days
+3|CRWD|2026-07-01|stop_distance_gt_8pct||split_1:4_on_2026-07-02_between_break_and_settle [one-off repair #667]|144
+7|CDNA|2026-07-31|||unfillable_entry_40.47_below_break_low_40.67 [one-off repair #667]|114
+18|IOVA|2026-09-16|||unfillable_entry_9.41_below_break_low_9.44 [one-off repair #667]|67
+23|EFOR|2026-10-01|||unfillable_entry_34.42_below_break_low_34.55|52
+29|KOD|2026-11-09||||13
+(5 rows)
+=== Q6 management-protocol shadow (#396) on the same takeable settled parents, excluding abstained
+n|closed|mean_r_closed|ge_3r
+15|15|-0.236|0
+(1 row)
+ticker|break_date|status|partial_taken|mgmt_r|outcome|fixed_r
+XMTR|2026-06-29|closed_hard_stop|f|-1.000|stop|-1.000
+MBX|2026-07-31|closed_trail_exit|t|0.275|open|-0.030
+MBX|2026-08-04|closed_trail_exit|t|0.034|open|-0.070
+CHYM|2026-08-19|closed_trail_exit|t|-0.271|open|0.690
+CDNA|2026-08-25|closed_hard_stop|t|-0.360|stop|-1.000
+CHYM|2026-08-28|closed_hard_stop|f|-1.000|stop|-1.000
+PBF|2026-09-01|closed_hard_stop|t|-0.510|stop|-1.000
+PBF|2026-09-02|closed_hard_stop|t|-0.508|stop|-1.000
+WDAY|2026-09-03|closed_hard_stop|f|-1.000|stop|-1.000
+CDNA|2026-09-17|closed_trail_exit|t|2.086|capture|3.000
+QMCO|2026-09-24|closed_trail_exit|t|1.722|capture|3.000
+HTFL|2026-10-05|closed_hard_stop|f|-1.000|stop|-1.000
+HTFL|2026-10-06|closed_hard_stop|f|-1.000|stop|-1.000
+IOVA|2026-10-21|closed_hard_stop|f|-1.000|stop|-1.000
+KOD|2026-11-09|closed_trail_exit|t|-0.003||
+(15 rows)
+=== Q7 since the 10-17 read: rows settled after 2026-10-17
+settled_since_1017|takeable_mean_r
+7|0.000
+(1 row)

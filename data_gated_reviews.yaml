@@ -1285,6 +1285,8 @@ reviews:
     added_on: 2026-04-29
 
   - review_id: rs_theme_dash_forward_returns
+    resolution_2026_11_22: >-
+      RE-CHECKED 2026-11-22, not built: its first gate is his 2026-09-07 ruling (themes not judged on returns while the engine is mid-repair) and it still holds (#644 reads 11-28, #655 open). Re-checked Sun 11-29 with theme_as_ep_signal.
     kind: cadence
     title: "RS theme dashboard forward-returns column (R4)"
     question: |
@@ -1300,7 +1302,7 @@ reviews:
     # sat unnamed - #486) would decorate the dashboard with a number the ruling says cannot
     # stand. Parked behind the #486 theme-naming work like its sibling; not closed, because the
     # column is still wanted once the engine is fixed.
-    earliest_review_date: 2026-11-22   # re-checked 2026-11-01: the 09-07 ruling still holds (themes are not judged on returns while the engine is mid-repair; #655 / #644 open) -> re-dated, nothing built
+    earliest_review_date: 2026-11-29
     added_on: 2026-04-29
     action_when_ready: |
       FIRST check the 2026-09-07 ruling still holds (themes not judged on returns until the
@@ -1712,6 +1714,8 @@ reviews:
     added_on: 2026-04-30
 
   - review_id: narrative_theme_discovery_promote_gate
+    resolution_2026_11_22: >-
+      RE-CHECKED 2026-11-22: neither pull-forward condition holds - the R3 mi_themes canonization merge has not shipped and he has not asked for the shadow -> canonize ruling; theme engine still mid-repair (#644 reads 11-28). Re-parked to Sun 11-29 with the other theme reviews.
     title: "#167 narrative-theme discovery — shadow->canonize promote-gate"
     question: |
       discover_narrative_themes (shadow since 2026-06-02) groups same-day EP
@@ -1741,7 +1745,7 @@ reviews:
     # (#213/#214) and must NOT be rushed in. Until R3, promotion options are: hand-add
     # an EPHEMERAL (~7d) mi_themes row, stated as such; or design R3 properly post-Monday.
     # LOAD-BEARING EP/trade impact stays the SEPARATE ~Q4 North Star bar (#200/#201).
-    earliest_review_date: 2026-11-22
+    earliest_review_date: 2026-11-29
     action_when_ready: |
       Evaluate the accrued narrative_cogap proposals on precision/recall/
       actionability (via the eval-harness if built, else manual): precision =
@@ -1782,7 +1786,7 @@ reviews:
     status: deferred
     deferred_reason: "OFF the EP critical path (operator triage 2026-08-24). Narrative theme discovery is advisory-only and never gates a trade, while EP selection and exit discipline own the bench. It is also unactionable as written - the canonization mechanism (the deferred R3 mi_themes merge) is still unbuilt. PULLS FORWARD when R3 ships, or when the operator asks for the shadow->canonize ruling."
     deferred_on: 2026-08-24
-    deferred_until: 2026-11-22
+    deferred_until: '2026-11-29'
     added_on: 2026-06-02
 
   - review_id: dead_zone_telemetry_smoke
@@ -2703,6 +2707,8 @@ reviews:
     resolution_2026_07_04: |
       GATE-1 CLOSED (operator 7/4, evidence pack 2026-07-04): the breaker is ACTIVE per-mode in prod (mi_safeguard_state paper=REDUCE / live=OK, live-confirmed 7/3), armed BEFORE cutover per the 6/3 tie-break; the cutover it gated occurred 6/22-6/28; tier transitions Telegram (6/12) and are TOCTOU-proof (7/3). Nothing left to promote.
   - review_id: drawdown_breaker_active_effectiveness
+    resolution_2026_11_22: >-
+      READ 2026-11-22 (scripts/probes/_reviews_1122/drawdown_breaker_active_effectiveness/q.out): WAITING. Live has sat in REDUCE since 11-12 (dd -7.22%, equity flat at $4,734.81 through 11-20 - no position held); paper entered REDUCE 11-20 (dd -8.92%). Zero live entries since REDUCE (4 alerts, all skipped by entry gates: 2 gap below floor, 1 stop too wide, 1 outside the ORB window - none by the breaker), so no half-size entry exists and the 0.5x effect is still unproven; 0 lifetime block:drawdown_breaker skips. The net read needs a REDUCE-window entry to close. Re-read Sun 11-29.
     title: "Drawdown breaker — ACTIVE-phase effectiveness (post-2026-06-03 flip)"
     question: |
       Breaker flipped shadow->ACTIVE 2026-06-03 (paper, pre-cutover — operator).
@@ -2745,7 +2751,7 @@ reviews:
     # 2026-11-15: re-dated to the next WEEKLY re-read the 11-13 resolution set. The predicate (a live trip) is met for good,
     # so with a past earliest date it read "ripe 137d" in every weekly review although it was handled 11-13 — surfacing, not
     # triage. Each re-read moves this date one week; it fires early only by date, never by a new trip.
-    earliest_review_date: 2026-11-20
+    earliest_review_date: 2026-11-29
     action_when_ready: |
       Pull the active-phase record since 2026-06-03: tier-transition audit
       (drawdown_watch/reduce/block_entered + *_released), BLOCKED entries
@@ -6072,6 +6078,8 @@ reviews:
     added_on: 2026-05-30
 
   - review_id: theme_as_ep_signal
+    resolution_2026_11_22: >-
+      RE-CHECKED 2026-11-22, not run: his 2026-09-07 ruling ('we are in middle of theme work, this is premature') still holds - #644 (primary -> sub-theme) reads on 11-28 and #655 is open, so no cohort labelled by the repaired engine exists. Predicate 198 vs 40 is accrual on contaminated labels; a read now would be a baseline only. Re-checked Sun 11-29, after #644's read.
     title: "Theme membership as an EP scoring signal (n=13 -> confirm forward)"
     question: |
       2026-05-30 full-cohort test: theme-member HIGH alerts forward-returned ~2x
@@ -6108,7 +6116,7 @@ reviews:
         scoring weight is THE LINE either way)."
       instrument_trusted: "The join is trusted; the theme membership it splits on is the instrument still changing."
     status: pending   # ⛔ RE-OPENED 2026-09-07 within the hour — the operator: "we are in middle of theme work, this is premature." He is right and this was my error twice in one day: his 2026-09-07 ruling is *"getting themes right and returns are separate things for now"*, and I ran a RETURNS judgement of themes while the theme engine is mid-repair, then marked the question closed. #486 measured the same day that we name a theme a median 30 sessions after its first signal and that 140 of 398 themes sat unnamed in a correlation cluster — so TODAY'S themed cohort is not the cohort a fixed engine would produce, and no returns verdict taken on it can stand. DO NOT RE-RUN until the theme naming work lands and a themed cohort exists that reflects it. The measurement below is kept as a BASELINE to compare against afterwards, not as an answer.
-    earliest_review_date: 2026-11-22   # re-checked 2026-11-01: still parked — the 09-07 ruling holds (theme ecosystem work #655 / #644 open, no themed cohort reflecting the repaired engine yet); not re-run
+    earliest_review_date: 2026-11-29
     regated_on: 2026-08-06
     regate_kind: date
     regate_reason: >-
@@ -8964,6 +8972,8 @@ reviews:
     added_on: 2026-05-26
 
   - review_id: theme_clustering_coherence_guard
+    resolution_2026_11_22: >-
+      RE-CHECKED 2026-11-22: the review's own rule answered it (7 of 36 = 19% accidental, below the 70% build bar -> defer permanently); nothing since changes that. Re-parked a quarter (2027-02-21) as a routine re-look, not an open question.
     title: Theme clustering-coherence guard (#126)
     question: |
       Does the theme engine produce semantically-incoherent clusters
@@ -9056,7 +9066,7 @@ reviews:
       sector). One-shot backfill ran on 2026-05-27 (26/32 tickers
       enriched, 6 unmatched are ETFs or deprecated tickers).
     status: deferred
-    earliest_review_date: 2026-11-22   # re-checked 2026-11-01: the theme engine is still mid-repair (#655 / #644 open); its flip-flop read feeds #655, run with the other theme reviews on 11-22
+    earliest_review_date: 2027-02-21
     regated_on: 2026-08-06
     regate_kind: date
     regate_reason: >-
@@ -10379,6 +10389,8 @@ reviews:
     added_on: 2026-06-29
 
   - review_id: htf_breakout_paper_graduation
+    resolution_2026_11_22: >-
+      READ 2026-11-22 (scripts/probes/_reviews_1122/htf_breakout_paper_graduation/q.out): still NO-GO. Takeable settled 14 (was 10 on 10-17): mean -0.17R, median -1R, 3 winners, 2 at 3R (CDNA 09-17, QMCO 09-24), 9 stopped; the 7 settled since 10-17 average 0.00R. The #396 management protocol on the same rows: -0.24R, 0 at 3R. Re-gated on #717's breakout-scoring decision (his rulings: setups judged on detection, not returns); the re-open condition is a pre-registered HTF entry/exit grid on #702's engine, not these shadow rows. Re-read Sun 11-29 after #717's Mon verify.
     title: "#356 HTF breakout-shadow -> PAPER graduation"
     resolution_2026_10_17: >-
       RAN 2026-10-17 after his ruling that day lifted the EP-first hold ("free to focus on other setups and
@@ -10401,7 +10413,7 @@ reviews:
       -- over-count, the 7/18-readiness-redteam finding). Gate arms on 5 real signals, not 5 rejects.
       SELECT COUNT(*) FROM mi_htf_breakout_shadow WHERE outcome IS NOT NULL AND would_reject_reason IS NULL;
     threshold: 5
-    earliest_review_date: 2026-11-21   # [re-gated 2026-11-13: the 09-15 hold lifted 10-17, but this review grades HTF on
+    earliest_review_date: 2026-11-29
       # settled R, and his standing rulings judge setups on DETECTION (matching Qullamaggie's setups, 11-02
       # 'setups are detection, not trading'; 11-11 'buy his setups period'). Re-read after #717's pick build
       # (Sat 11-14) decides how breakout-family setups are scored; until then a returns graduation is the wrong bar.]
@@ -13177,6 +13189,8 @@ reviews:
     discriminates_on: [api_usage.caller, api_usage.stop_reason]
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
+    resolution_2026_11_22: >-
+      RUNNING READ 2026-11-22 (scripts/probes/_reviews_1122/alert_rank_shadow_out_of_sample/score.out, the 11-19 recipe unchanged): 43 sessions (was 42), 101 rows, 94 matured at 5 days, 55 at 20 days. Cells IDENTICAL to 11-19: 5-day top quartile 0 of 11 reached 8x ADR vs 3 of 83 for the rest, 8 of 11 broke the day-0 low (LOSS both directions); 20-day top 1 of 7 (VICR) vs rest 2 of 48 (MIXED). Conclusion UNCHANGED: the ranking does not pick the tail.
     resolution_2026_11_19: >-
       RUNNING READ 2026-11-19 (scripts/probes/_review_1119/rank/score.txt): 42 sessions, 96 rows, 92 matured at 5 days. Top quartile 0 of 11 reached 8x ADR vs 3 of 81 for the rest, and 8 of 11 broke the day-0 low vs 49 of 81. Verdict unchanged: LOSS — the ranking does not pick the tail. 4 rows (LUNR, MOD, HELP, SLS) not yet matured.
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
@@ -16063,6 +16077,8 @@ reviews:
     added_on: 2026-10-03
 
   - review_id: coil_tune_rerun_394
+    resolution_2026_11_22: >-
+      RAN 2026-11-22 (scripts/probes/_reviews_1122/coil_tune_rerun_394/coil_tune.out; predicate 128 = threshold; read-only probe via docker cp + exec, never stdin). Module identity COIL_HOLD_LIMIT=0.5. Every verdict matches the signed 2026-10-03 reading: 3a hold cap KEEP 50% (all populations + pooled); 3b board order KEEP pooled (anticipate/structural_low alone ADOPT rmv-led, the same split signed 10-03, pooling changes that verdict); 3c orderliness NO-DEMOTE (display only). Same single ALARM as 10-03 (APGE 06-29 stop >= entry). Only Confirm accrues (anticipate rows end 07-10 / 08-07). Nothing moved -> nothing for him; threshold raised to 148 (the next primary-gate increment of 20).
     kind: accrual
     title: "#394 C3 — re-run the coil-finder tune probe (hold cap / board order / orderliness) on the settled Family A population"
     question: |
@@ -16091,7 +16107,7 @@ reviews:
       era_scoped: "YES - entry_date >= 2026-06-29 is IN the predicate: the coil-finder became the live base on 2026-06-27 (first Mon-Fri scan 06-29), older rows measured a different base. Other boundaries inside the window, all stated for the re-run to split on rather than blend: 2026-07-14 Confirm re-wire + shadow-fix pack (stop geometry); 2026-08-09 Anticipate parked (anticipate rows stop at 08-07); 2026-10-03 the pinned-buyout screen now keeps a stock off the board AND off entries while its price stays pinned (rows before that may include a few pinned buyouts)."
       population_actionable: "The action re-runs the probe, whose cohort filter is exactly this WHERE (family_a, settled with realized_r, since 06-29) and which splits it into the three entry populations plus a pooled check itself. A pooled count of 128 can still leave a decisive cell under the method's N>=10 floor (the Anticipate arms no longer grow) - that knob then stays UNCHANGED by the method's own per-knob rule, which is the correct outcome, not a failure of the trigger."
       instrument_trusted: "mi_consolidation_entry_shadow (origin, entry_mode, stop_kind, outcome, realized_r, entry_date) read READ-ONLY by scripts/probes/_394_coil_tune.py, plus mi_daily_closes bars. Trusted as of 2026-10-03: the probe printed composition first, 0 skipped rows in every population, 0 anchor mismatches and 0 retrace breaches in the fidelity line, 0 NULL-open gap days dropped. Known limits it printed: 1 row with stop >= entry (APGE 2026-06-29, ALARM line); realized_r is the legacy 5-day harvest horizon, not the 12-bar one."
-    threshold: 128
+    threshold: 148
     earliest_review_date: 2026-11-14
     status: pending
     action_when_ready: |
