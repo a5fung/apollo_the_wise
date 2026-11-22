@@ -1,0 +1,17 @@
+POST-HOC DESCRIPTION (not pre-registered; confirm set 2021-24; entry = open of gap day, no stop; reads the frozen outcome file only)
+H1 yes                                     n=  552 big+50%=0.134 never+10%=0.361 belowOpenDay5=0.471 ret60 mean=-0.003 median=-0.050 up@60=0.444
+H1 no                                      n= 1456 big+50%=0.093 never+10%=0.453 belowOpenDay5=0.488 ret60 mean=-0.023 median=-0.017 up@60=0.461
+H1 yes common stock                        n=  463 big+50%=0.134 never+10%=0.367 belowOpenDay5=0.490 ret60 mean=+0.012 median=-0.045 up@60=0.449
+H1 no  common stock                        n= 1237 big+50%=0.088 never+10%=0.439 belowOpenDay5=0.479 ret60 mean=-0.005 median=-0.008 up@60=0.478
+H2 yes                                     n=  447 big+50%=0.123 never+10%=0.371 belowOpenDay5=0.492 ret60 mean=-0.002 median=-0.040 up@60=0.451
+H2 no                                      n= 1486 big+50%=0.096 never+10%=0.446 belowOpenDay5=0.487 ret60 mean=-0.019 median=-0.017 up@60=0.464
+H2 yes common stock                        n=  373 big+50%=0.121 never+10%=0.378 belowOpenDay5=0.517 ret60 mean=+0.015 median=-0.030 up@60=0.463
+H2 no  common stock                        n= 1256 big+50%=0.092 never+10%=0.432 belowOpenDay5=0.478 ret60 mean=+0.000 median=-0.009 up@60=0.478
+H3 yes                                     n= 1379 big+50%=0.088 never+10%=0.459 belowOpenDay5=0.487 ret60 mean=-0.025 median=-0.015 up@60=0.463
+H3 no                                      n=  629 big+50%=0.138 never+10%=0.359 belowOpenDay5=0.475 ret60 mean=-0.003 median=-0.056 up@60=0.443
+H3 yes common stock                        n= 1181 big+50%=0.084 never+10%=0.445 belowOpenDay5=0.479 ret60 mean=-0.006 median=-0.010 up@60=0.476
+H3 no  common stock                        n=  519 big+50%=0.139 never+10%=0.360 belowOpenDay5=0.487 ret60 mean=+0.014 median=-0.042 up@60=0.457
+{'2', '-1', '0', '1'} {''}
+H4 ADR third bottom n= 763 big+50%=0.026 never+10%=0.531 belowOpenDay5=0.481 ret60 mean=+0.005 median=+0.008 up@60=0.523
+H4 ADR third middle n= 748 big+50%=0.091 never+10%=0.420 belowOpenDay5=0.489 ret60 mean=-0.027 median=-0.035 up@60=0.445
+H4 ADR third top    n= 736 big+50%=0.223 never+10%=0.330 belowOpenDay5=0.507 ret60 mean=-0.065 median=-0.141 up@60=0.360
