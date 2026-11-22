@@ -1,0 +1,187 @@
+grid n=2264; window 2017-01-18 -> 2024-09-27 n=1937; max dates: ETF 2024-12-31, composite 2024-12-31, VIX 2024-12-31, breadth 2024-12-31, EP E 2024-09-27 (n=3506), breakout D 2024-09-30 / E 2024-10-01 (n=21369) -- all asserted <= 2024-12-31
+base sessions after edge censoring (pos+21 <= 2200 = 2024-10-01): 1918 of 1937; H1 ends 2020-12-31
+IWM 63-session lows on the whole grid: 8 (2016-11-03 -> 2023-10-27); inside the window 7; with +/-21 inside the window (recall-eligible) 7
+IWM 63-session highs on the whole grid: 11 (2018-01-23 -> 2024-07-16); inside the window 11; with +/-21 inside the window (recall-eligible) 11
+SPY 63-session lows on the whole grid: 7 (2016-06-27 -> 2023-10-27); inside the window 5; with +/-21 inside the window (recall-eligible) 5
+SPY 63-session highs on the whole grid: 8 (2016-08-15 -> 2023-07-31); inside the window 7; with +/-21 inside the window (recall-eligible) 7
+IWM lows in window: 2017-08-21, 2018-12-24, 2019-08-27, 2020-03-23, 2022-06-16, 2022-09-26, 2023-10-27
+IWM highs in window: 2018-01-23, 2018-08-31, 2019-05-06, 2020-01-16, 2021-03-15, 2021-11-08, 2022-08-15, 2023-02-02, 2023-07-31, 2024-03-28, 2024-07-16
+
+BASELINE TURNS in the window (same rule; easing = price trend turning up / VIX trend turning down / breadth trend turning up)
+  SPY: easing 16 (H1 7, H2 9), tightening 16 (H1 7, H2 9); trend sign exists from 2016-03-15, first confirmed direction 2016-03-21, first turn 2016-09-23
+  IWM: easing 22 (H1 10, H2 12), tightening 22 (H1 10, H2 12); trend sign exists from 2016-03-15, first confirmed direction 2016-03-21, first turn 2016-10-26
+  VIX: easing 26 (H1 13, H2 13), tightening 26 (H1 13, H2 13); trend sign exists from 2016-03-15, first confirmed direction 2016-03-21, first turn 2016-05-25
+  breadth: easing 27 (H1 12, H2 15), tightening 26 (H1 11, H2 15); trend sign exists from 2017-03-28, first confirmed direction 2017-04-03, first turn 2017-05-12
+
+============================== PRIMARY (judged at the 95th percentile) ==============================
+turns in window 48; gaps <= 20 sessions 7 of 47, <= 60 sessions 40 of 47 (the overlap share for every 60/63-session figure)
+
+PRIMARY Q1: an easing turn marks an IWM low (judged on IWM, +/-21 sessions)
+  turns 24 (edge-censored 0) -> n=24; per half: H1 11, H2 13; lows inside the window 7, recall-eligible 7
+  floor (>= 8 turns per half, 16 pooled, >= 6 lows): met
+  (a) precision 8.3% (2 of n=24) vs base 15.7% (n=1918 sessions) = 0.53x; bar >= 1.5x -> FAIL
+  (b) shift null (1686 offsets, 95th percentile): precision 8.3% vs null 25.0% (null median 16.7%; 95.9% of shifts reach it) -> FAIL
+      recall 28.6% (2 of n=7 lows; distinct lows hit by a turn 2) vs null 85.7% (null median 57.1%; 95.6% of shifts reach it) -> FAIL
+  (c) per half: H1 9.1% (1 of n=11) vs base 17.3% (n=997) = 0.53x | H2 7.7% (1 of n=13) vs base 14.0% (n=921) = 0.55x; bar >= 1.25x in each -> FAIL
+  (d) forward 21-session IWM return after easing turns: median +2.56% mean +1.70% (n=24) vs base median +1.09% mean +0.84% (n=1918; uncensored base median +1.10%, n=1937); bar median above base -> PASS
+  (e) vs SPY same-rule easing turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 8.3% (2 of n=24) vs SPY 13.3% (2 of n=15) -> NO; median |lag| among hits 9 vs 19.5 sessions -> ok  [reported: signed median lag +9 vs +19.5; SPY recall 28.6% of n=7; lows hit by both n=0, median paired lag difference (composite minus SPY) +nan; composite turns between first sign and first confirmed direction 0]
+  (e) vs IWM same-rule easing turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 8.3% (2 of n=24) vs IWM 0.0% (0 of n=22) -> ok; median |lag| among hits 9 vs nan sessions -> ok  [reported: signed median lag +9 vs +nan; IWM recall 0.0% of n=7; lows hit by both n=0, median paired lag difference (composite minus IWM) +nan; composite turns between first sign and first confirmed direction 0]
+  (e) vs VIX same-rule easing turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 8.3% (2 of n=24) vs VIX 8.0% (2 of n=25) -> ok; median |lag| among hits 9 vs 13 sessions -> ok  [reported: signed median lag +9 vs +13; VIX recall 28.6% of n=7; lows hit by both n=1, median paired lag difference (composite minus VIX) +8; composite turns between first sign and first confirmed direction 0]
+  (e) vs breadth same-rule easing turns [common span from 2017-03-28; composite turns dropped 0]: composite precision 8.3% (2 of n=24) vs breadth 11.5% (3 of n=26) -> NO; median |lag| among hits 9 vs 13 sessions -> ok  [reported: signed median lag +9 vs +3; breadth recall 42.9% of n=7; lows hit by both n=2, median paired lag difference (composite minus breadth) +14; composite turns between first sign and first confirmed direction 1]
+      precision >= all four -> FAIL; median |lag| <= all four -> PASS
+  (f) direction: easing-turn precision on lows 8.3% (n=24) vs tightening-turn precision on lows 8.3% (2 of n=24); bar easing above tightening -> FAIL
+  PRIMARY Q1: FAIL; parts not met: ['a precision >= 1.5x base', 'b precision beats shift null', 'b recall beats shift null', 'c precision >= 1.25x base in each half', 'e precision >= each baseline', 'f direction matters']
+  reported, not judged: signed lag among hits median +9 sessions (positive = turn after the low), all hit lags [3, 15]; share of easing turns within +/-63 of a low 41.7% (n=24)
+     10% IWM drawdown within 63 sessions after easing turns: 20.8% (n=24) vs all window sessions 20.5% (n=1937); forward 63-session IWM return median +4.59% vs base +2.67% (63-session windows mostly shared with the next turn)
+     SPY: precision 8.3% (2 of n=24) vs base 11.2% = 0.74x (null 95th pct 17.4%); recall 40.0% (2 of n=5; null 80.0%); median |lag| 9, signed +9; forward 21 median +2.19% vs base +1.95%; 10% SPY drawdown in 63: 12.5% (n=24) vs 12.8%; other-direction precision 4.2% (n=24)
+
+PRIMARY Q2: a tightening turn marks an IWM high (judged on IWM, +/-21 sessions)
+  turns 24 (edge-censored 0) -> n=24; per half: H1 11, H2 13; highs inside the window 11, recall-eligible 11
+  floor (>= 8 turns per half, 16 pooled, >= 6 highs): met
+  (a) precision 33.3% (8 of n=24) vs base 24.7% (n=1918 sessions) = 1.35x; bar >= 1.5x -> FAIL
+  (b) shift null (1686 offsets, 95th percentile): precision 33.3% vs null 34.8% (null median 25.0%; 16.4% of shifts reach it) -> FAIL
+      recall 72.7% (8 of n=11 highs; distinct highs hit by a turn 8) vs null 72.7% (null median 54.5%; 13.8% of shifts reach it) -> FAIL
+  (c) per half: H1 36.4% (4 of n=11) vs base 17.3% (n=997) = 2.11x | H2 30.8% (4 of n=13) vs base 32.7% (n=921) = 0.94x; bar >= 1.25x in each -> FAIL
+  (d) forward 21-session IWM return after tightening turns: median -1.10% mean -1.32% (n=24) vs base median +1.09% mean +0.84% (n=1918; uncensored base median +1.10%, n=1937); bar median below base -> PASS
+  (e) vs SPY same-rule tightening turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 33.3% (8 of n=24) vs SPY 12.5% (2 of n=16) -> ok; median |lag| among hits 13.5 vs 18.5 sessions -> ok  [reported: signed median lag +1 vs +1.5; SPY recall 18.2% of n=11; highs hit by both n=2, median paired lag difference (composite minus SPY) -9; composite turns between first sign and first confirmed direction 0]
+  (e) vs IWM same-rule tightening turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 33.3% (8 of n=24) vs IWM 22.7% (5 of n=22) -> ok; median |lag| among hits 13.5 vs 19 sessions -> ok  [reported: signed median lag +1 vs -7; IWM recall 45.5% of n=11; highs hit by both n=4, median paired lag difference (composite minus IWM) +5; composite turns between first sign and first confirmed direction 0]
+  (e) vs VIX same-rule tightening turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 33.3% (8 of n=24) vs VIX 30.8% (8 of n=26) -> ok; median |lag| among hits 13.5 vs 9.5 sessions -> NO  [reported: signed median lag +1 vs +8.5; VIX recall 63.6% of n=11; highs hit by both n=5, median paired lag difference (composite minus VIX) -2; composite turns between first sign and first confirmed direction 0]
+  (e) vs breadth same-rule tightening turns [common span from 2017-03-28; composite turns dropped 0]: composite precision 33.3% (8 of n=24) vs breadth 32.0% (8 of n=25) -> ok; median |lag| among hits 13.5 vs 15.5 sessions -> ok  [reported: signed median lag +1 vs +12.5; breadth recall 63.6% of n=11; highs hit by both n=6, median paired lag difference (composite minus breadth) +4; composite turns between first sign and first confirmed direction 1]
+      precision >= all four -> PASS; median |lag| <= all four -> FAIL
+  (f) direction: tightening-turn precision on highs 33.3% (n=24) vs easing-turn precision on highs 16.7% (4 of n=24); bar tightening above easing -> PASS
+  PRIMARY Q2: FAIL; parts not met: ['a precision >= 1.5x base', 'b precision beats shift null', 'b recall beats shift null', 'c precision >= 1.25x base in each half', 'e median |lag| <= each baseline']
+  reported, not judged: signed lag among hits median +1 sessions (positive = turn after the high), all hit lags [-20, -14, -13, -2, 4, 12, 19, 19]; share of tightening turns within +/-63 of a high 66.7% (n=24)
+     10% IWM drawdown within 63 sessions after tightening turns: 29.2% (n=24) vs all window sessions 20.5% (n=1937); forward 63-session IWM return median +2.02% vs base +2.67% (63-session windows mostly shared with the next turn)
+     SPY: precision 12.5% (3 of n=24) vs base 15.7% = 0.80x (null 95th pct 25.0%); recall 42.9% (3 of n=7; null 85.7%); median |lag| 9, signed -3; forward 21 median +1.17% vs base +1.95%; 10% SPY drawdown in 63: 8.3% (n=24) vs 12.8%; other-direction precision 12.5% (n=24)
+
+PRIMARY Q3: EP big-winner share in the 20 sessions after easing vs tightening turns
+  turns dropped for coverage: none; turns left easing 24 (H1 11, H2 13), tightening 24 (H1 11, H2 13)
+  floor: turns met; big winners easing-window 103, tightening-window 95 (bar 40 each) -> met
+  (a) easing-window 12.75% (103 of n=808) vs all window events 12.32% (413 of n=3351) = 1.03x [reading B, events inside dropped-turn windows removed: 12.32% (413 of n=3351) = 1.03x]; bar >= 1.25x -> FAIL
+  (b) tightening-window 10.89% (95 of n=872); easing minus tightening +1.85 points; bar >= 3 -> FAIL
+  (c) turn-cluster bootstrap (10,000 draws, 0 dropped): 95% interval -3.91 to +8.14 points; bar excludes 0 (above) -> FAIL
+  (d) per half: H1 easing 16.50% (50 of n=303) vs tightening 13.02% (41 of n=315) | H2 easing 10.50% (53 of n=505) vs tightening 9.69% (54 of n=557); bar easing above in each -> PASS
+  (e) shift null (1686 offsets, 0 not computable, 95th percentile): observed +1.85 vs null +4.18 points (null median +0.09; 22.5% of shifts reach it) -> FAIL
+  (f) vs SPY same-rule turns: composite (common span) +1.85 points [easing 12.75% n=808, tightening 10.89% n=872] vs SPY -0.73 points [easing 11.07% (81 of n=732, 15 turns), tightening 11.79% (52 of n=441, 16 turns)] -> ok
+  (f) vs IWM same-rule turns: composite (common span) +1.85 points [easing 12.75% n=808, tightening 10.89% n=872] vs IWM -3.44 points [easing 9.18% (84 of n=915, 22 turns), tightening 12.62% (68 of n=539, 22 turns)] -> ok
+  (f) vs VIX same-rule turns: composite (common span) +1.85 points [easing 12.75% n=808, tightening 10.89% n=872] vs VIX -0.77 points [easing 11.13% (88 of n=791, 25 turns), tightening 11.90% (96 of n=807, 26 turns)] -> ok
+  (f) vs breadth same-rule turns: composite (common span) +1.85 points [easing 12.75% n=808, tightening 10.89% n=872] vs breadth +2.88 points [easing 12.88% (139 of n=1079, 26 turns), tightening 10.00% (73 of n=730, 25 turns)] -> NO
+      >= all four -> FAIL
+  PRIMARY Q3: FAIL; parts not met: ['a easing >= 1.25x all', 'b easing minus tightening gap', 'c bootstrap excludes 0', 'e beats shift null', 'f >= each baseline']
+  reported, not judged: 60-session window (turns whose 60-session window is not covered dropped: 2): easing 11.18% (171 of n=1529) vs tightening 14.10% (213 of n=1511)
+
+PRIMARY Q4: breakout big-winner share in the 20 sessions after easing vs tightening turns
+  turns dropped for coverage: [('2021-12-14', 'tightening'), ('2022-02-09', 'easing'), ('2022-03-10', 'tightening')]; turns left easing 23 (H1 11, H2 12), tightening 22 (H1 11, H2 11)
+  floor: turns met; big winners easing-window 69, tightening-window 30 (bar 40 each) -> NOT MET -> cannot tell
+  (a) easing-window 1.30% (69 of n=5311) vs all window events 1.10% (234 of n=21368) = 1.19x [reading B, events inside dropped-turn windows removed: 1.11% (234 of n=21077) = 1.17x]; bar >= 1.25x -> FAIL
+  (b) tightening-window 0.71% (30 of n=4225); easing minus tightening +0.59 points; bar >= 0.5 -> PASS
+  (c) turn-cluster bootstrap (10,000 draws, 0 dropped): 95% interval +0.11 to +1.13 points; bar excludes 0 (above) -> PASS
+  (d) per half: H1 easing 1.33% (33 of n=2477) vs tightening 0.54% (9 of n=1670) | H2 easing 1.27% (36 of n=2834) vs tightening 0.82% (21 of n=2555); bar easing above in each -> PASS
+  (e) shift null (1686 offsets, 0 not computable, 95th percentile): observed +0.59 vs null +0.54 points (null median -0.01; 3.6% of shifts reach it) -> PASS
+  (f) vs SPY same-rule turns: composite (common span) +0.59 points [easing 1.30% n=5311, tightening 0.71% n=4225] vs SPY +0.90 points [easing 1.20% (54 of n=4516, 15 turns), tightening 0.30% (6 of n=2021, 15 turns)] -> NO
+  (f) vs IWM same-rule turns: composite (common span) +0.59 points [easing 1.30% n=5311, tightening 0.71% n=4225] vs IWM +0.58 points [easing 1.24% (70 of n=5640, 22 turns), tightening 0.66% (18 of n=2740, 21 turns)] -> ok
+  (f) vs VIX same-rule turns: composite (common span) +0.59 points [easing 1.30% n=5311, tightening 0.71% n=4225] vs VIX +0.14 points [easing 1.09% (62 of n=5700, 24 turns), tightening 0.95% (40 of n=4220, 24 turns)] -> ok
+  (f) vs breadth same-rule turns: composite (common span) +0.59 points [easing 1.30% n=5311, tightening 0.71% n=4225] vs breadth +0.35 points [easing 1.10% (76 of n=6930, 26 turns), tightening 0.75% (30 of n=4006, 24 turns)] -> ok
+      >= all four -> FAIL
+  PRIMARY Q4: CANNOT TELL; parts not met: ['a easing >= 1.25x all', 'f >= each baseline']
+  reported, not judged: 60-session window (turns whose 60-session window is not covered dropped: 5): easing 1.07% (122 of n=11357) vs tightening 1.11% (88 of n=7918)
+  other reading of the breakout front edge (turns before 2017-03-01 kept): dropped [('2021-12-14', 'tightening'), ('2022-02-09', 'easing'), ('2022-03-10', 'tightening')]; easing 1.30% (69 of n=5311) vs tightening 0.71% (30 of n=4225), diff +0.59 points, bootstrap +0.11 to +1.13, null +0.54
+
+============================== ALTERNATE (fast composite turn; shift-null parts judged at the 97.5th percentile) ==============================
+turns in window 75; gaps <= 20 sessions 30 of 74, <= 60 sessions 72 of 74 (the overlap share for every 60/63-session figure)
+
+ALTERNATE Q1: an easing turn marks an IWM low (judged on IWM, +/-21 sessions)
+  turns 38 (edge-censored 1) -> n=37; per half: H1 18, H2 19; lows inside the window 7, recall-eligible 7
+  floor (>= 8 turns per half, 16 pooled, >= 6 lows): met
+  (a) precision 24.3% (9 of n=37) vs base 15.7% (n=1918 sessions) = 1.55x; bar >= 1.5x -> PASS
+  (b) shift null (1686 offsets, 97.5th percentile): precision 24.3% vs null 23.7% (null median 15.8%; 2.4% of shifts reach it) -> PASS
+      recall 85.7% (6 of n=7 lows; distinct lows hit by a turn 6) vs null 100.0% (null median 71.4%; 42.1% of shifts reach it) -> FAIL
+  (c) per half: H1 33.3% (6 of n=18) vs base 17.3% (n=997) = 1.93x | H2 15.8% (3 of n=19) vs base 14.0% (n=921) = 1.13x; bar >= 1.25x in each -> FAIL
+  (d) forward 21-session IWM return after easing turns: median +0.70% mean +0.89% (n=37) vs base median +1.09% mean +0.84% (n=1918; uncensored base median +1.10%, n=1937); bar median above base -> FAIL
+  (e) vs SPY same-rule easing turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 24.3% (9 of n=37) vs SPY 13.3% (2 of n=15) -> ok; median |lag| among hits 12 vs 19.5 sessions -> ok  [reported: signed median lag -7 vs +19.5; SPY recall 28.6% of n=7; lows hit by both n=2, median paired lag difference (composite minus SPY) -31; composite turns between first sign and first confirmed direction 0]
+  (e) vs IWM same-rule easing turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 24.3% (9 of n=37) vs IWM 0.0% (0 of n=22) -> ok; median |lag| among hits 12 vs nan sessions -> ok  [reported: signed median lag -7 vs +nan; IWM recall 0.0% of n=7; lows hit by both n=0, median paired lag difference (composite minus IWM) +nan; composite turns between first sign and first confirmed direction 0]
+  (e) vs VIX same-rule easing turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 24.3% (9 of n=37) vs VIX 8.0% (2 of n=25) -> ok; median |lag| among hits 12 vs 13 sessions -> ok  [reported: signed median lag -7 vs +13; VIX recall 28.6% of n=7; lows hit by both n=2, median paired lag difference (composite minus VIX) -19; composite turns between first sign and first confirmed direction 0]
+  (e) vs breadth same-rule easing turns [common span from 2017-03-28; composite turns dropped 1]: composite precision 25.0% (9 of n=36) vs breadth 11.5% (3 of n=26) -> ok; median |lag| among hits 12 vs 13 sessions -> ok  [reported: signed median lag -7 vs +3; breadth recall 42.9% of n=7; lows hit by both n=3, median paired lag difference (composite minus breadth) -7; composite turns between first sign and first confirmed direction 0]
+      precision >= all four -> PASS; median |lag| <= all four -> PASS
+  (f) direction: easing-turn precision on lows 24.3% (n=37) vs tightening-turn precision on lows 22.2% (8 of n=36); bar easing above tightening -> PASS
+  ALTERNATE Q1: FAIL; parts not met: ['b recall beats shift null', 'c precision >= 1.25x base in each half', 'd forward 21-session return']
+  reported, not judged: signed lag among hits median -7 sessions (positive = turn after the low), all hit lags [-20, -12, -12, -11, -7, -1, 16, 20, 20]; share of easing turns within +/-63 of a low 54.1% (n=37)
+     10% IWM drawdown within 63 sessions after easing turns: 24.3% (n=37) vs all window sessions 20.5% (n=1937); forward 63-session IWM return median +4.81% vs base +2.67% (63-session windows mostly shared with the next turn)
+     SPY: precision 18.9% (7 of n=37) vs base 11.2% = 1.69x (null 97.5th pct 18.4%); recall 100.0% (5 of n=5; null 100.0%); median |lag| 16, signed -1; forward 21 median +1.22% vs base +1.95%; 10% SPY drawdown in 63: 16.2% (n=37) vs 12.8%; other-direction precision 11.1% (n=36)
+
+ALTERNATE Q2: a tightening turn marks an IWM high (judged on IWM, +/-21 sessions)
+  turns 37 (edge-censored 1) -> n=36; per half: H1 17, H2 19; highs inside the window 11, recall-eligible 11
+  floor (>= 8 turns per half, 16 pooled, >= 6 highs): met
+  (a) precision 33.3% (12 of n=36) vs base 24.7% (n=1918 sessions) = 1.35x; bar >= 1.5x -> FAIL
+  (b) shift null (1686 offsets, 97.5th percentile): precision 33.3% vs null 35.1% (null median 25.0%; 5.1% of shifts reach it) -> FAIL
+      recall 81.8% (9 of n=11 highs; distinct highs hit by a turn 9) vs null 100.0% (null median 72.7%; 38.4% of shifts reach it) -> FAIL
+  (c) per half: H1 11.8% (2 of n=17) vs base 17.3% (n=997) = 0.68x | H2 52.6% (10 of n=19) vs base 32.7% (n=921) = 1.61x; bar >= 1.25x in each -> FAIL
+  (d) forward 21-session IWM return after tightening turns: median +1.60% mean +1.65% (n=36) vs base median +1.09% mean +0.84% (n=1918; uncensored base median +1.10%, n=1937); bar median below base -> FAIL
+  (e) vs SPY same-rule tightening turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 33.3% (12 of n=36) vs SPY 12.5% (2 of n=16) -> ok; median |lag| among hits 12.5 vs 18.5 sessions -> ok  [reported: signed median lag +2.5 vs +1.5; SPY recall 18.2% of n=11; highs hit by both n=1, median paired lag difference (composite minus SPY) +31; composite turns between first sign and first confirmed direction 0]
+  (e) vs IWM same-rule tightening turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 33.3% (12 of n=36) vs IWM 22.7% (5 of n=22) -> ok; median |lag| among hits 12.5 vs 19 sessions -> ok  [reported: signed median lag +2.5 vs -7; IWM recall 45.5% of n=11; highs hit by both n=4, median paired lag difference (composite minus IWM) +12; composite turns between first sign and first confirmed direction 0]
+  (e) vs VIX same-rule tightening turns [common span from 2016-03-15; composite turns dropped 0]: composite precision 33.3% (12 of n=36) vs VIX 30.8% (8 of n=26) -> ok; median |lag| among hits 12.5 vs 9.5 sessions -> NO  [reported: signed median lag +2.5 vs +8.5; VIX recall 63.6% of n=11; highs hit by both n=5, median paired lag difference (composite minus VIX) -7; composite turns between first sign and first confirmed direction 0]
+  (e) vs breadth same-rule tightening turns [common span from 2017-03-28; composite turns dropped 1]: composite precision 34.3% (12 of n=35) vs breadth 32.0% (8 of n=25) -> ok; median |lag| among hits 12.5 vs 15.5 sessions -> ok  [reported: signed median lag +2.5 vs +12.5; breadth recall 63.6% of n=11; highs hit by both n=6, median paired lag difference (composite minus breadth) -4.5; composite turns between first sign and first confirmed direction 0]
+      precision >= all four -> PASS; median |lag| <= all four -> FAIL
+  (f) direction: tightening-turn precision on highs 33.3% (n=36) vs easing-turn precision on highs 18.9% (7 of n=37); bar tightening above easing -> PASS
+  ALTERNATE Q2: FAIL; parts not met: ['a precision >= 1.5x base', 'b precision beats shift null', 'b recall beats shift null', 'c precision >= 1.25x base in each half', 'd forward 21-session return', 'e median |lag| <= each baseline']
+  reported, not judged: signed lag among hits median +2.5 sessions (positive = turn after the high), all hit lags [-21, -18, -18, -12, -11, -1, 6, 6, 10, 13, 14, 21]; share of tightening turns within +/-63 of a high 72.2% (n=36)
+     10% IWM drawdown within 63 sessions after tightening turns: 22.2% (n=36) vs all window sessions 20.5% (n=1937); forward 63-session IWM return median +0.09% vs base +2.67% (63-session windows mostly shared with the next turn)
+     SPY: precision 16.7% (6 of n=36) vs base 15.7% = 1.06x (null 97.5th pct 22.2%); recall 71.4% (5 of n=7; null 100.0%); median |lag| 14.5, signed -1; forward 21 median +1.95% vs base +1.95%; 10% SPY drawdown in 63: 13.9% (n=36) vs 12.8%; other-direction precision 13.5% (n=37)
+
+ALTERNATE Q3: EP big-winner share in the 20 sessions after easing vs tightening turns
+  turns dropped for coverage: [('2024-09-11', 'tightening'), ('2024-09-26', 'easing')]; turns left easing 37 (H1 18, H2 19), tightening 36 (H1 17, H2 19)
+  floor: turns met; big winners easing-window 169, tightening-window 105 (bar 40 each) -> met
+  (a) easing-window 14.37% (169 of n=1176) vs all window events 12.32% (413 of n=3351) = 1.17x [reading B, events inside dropped-turn windows removed: 12.32% (411 of n=3337) = 1.17x]; bar >= 1.25x -> FAIL
+  (b) tightening-window 10.37% (105 of n=1013); easing minus tightening +4.01 points; bar >= 3 -> PASS
+  (c) turn-cluster bootstrap (10,000 draws, 0 dropped): 95% interval -2.84 to +10.41 points; bar excludes 0 (above) -> FAIL
+  (d) per half: H1 easing 18.29% (94 of n=514) vs tightening 9.82% (39 of n=397) | H2 easing 11.33% (75 of n=662) vs tightening 10.71% (66 of n=616); bar easing above in each -> PASS
+  (e) shift null (1686 offsets, 0 not computable, 97.5th percentile): observed +4.01 vs null +4.98 points (null median -0.11; 4.6% of shifts reach it) -> FAIL
+  (f) vs SPY same-rule turns: composite (common span) +4.01 points [easing 14.37% n=1176, tightening 10.37% n=1013] vs SPY -0.73 points [easing 11.07% (81 of n=732, 15 turns), tightening 11.79% (52 of n=441, 16 turns)] -> ok
+  (f) vs IWM same-rule turns: composite (common span) +4.01 points [easing 14.37% n=1176, tightening 10.37% n=1013] vs IWM -3.44 points [easing 9.18% (84 of n=915, 22 turns), tightening 12.62% (68 of n=539, 22 turns)] -> ok
+  (f) vs VIX same-rule turns: composite (common span) +4.01 points [easing 14.37% n=1176, tightening 10.37% n=1013] vs VIX -0.77 points [easing 11.13% (88 of n=791, 25 turns), tightening 11.90% (96 of n=807, 26 turns)] -> ok
+  (f) vs breadth same-rule turns: composite (common span) +4.04 points [easing 14.49% n=1146, tightening 10.44% n=996] vs breadth +2.88 points [easing 12.88% (139 of n=1079, 26 turns), tightening 10.00% (73 of n=730, 25 turns)] -> ok
+      >= all four -> PASS
+  ALTERNATE Q3: FAIL; parts not met: ['a easing >= 1.25x all', 'c bootstrap excludes 0', 'e beats shift null']
+  reported, not judged: 60-session window (turns whose 60-session window is not covered dropped: 3): easing 14.09% (212 of n=1505) vs tightening 11.23% (175 of n=1558)
+
+ALTERNATE Q4: breakout big-winner share in the 20 sessions after easing vs tightening turns
+  turns dropped for coverage: [('2017-02-01', 'easing'), ('2022-01-19', 'easing'), ('2022-02-17', 'tightening'), ('2022-03-18', 'easing'), ('2024-09-11', 'tightening'), ('2024-09-26', 'easing')]; turns left easing 34 (H1 17, H2 17), tightening 35 (H1 17, H2 18)
+  floor: turns met; big winners easing-window 89, tightening-window 51 (bar 40 each) -> met
+  (a) easing-window 1.30% (89 of n=6837) vs all window events 1.10% (234 of n=21368) = 1.19x [reading B, events inside dropped-turn windows removed: 1.10% (231 of n=20939) = 1.18x]; bar >= 1.25x -> FAIL
+  (b) tightening-window 0.84% (51 of n=6046); easing minus tightening +0.46 points; bar >= 0.5 -> FAIL
+  (c) turn-cluster bootstrap (10,000 draws, 0 dropped): 95% interval -0.13 to +1.01 points; bar excludes 0 (above) -> FAIL
+  (d) per half: H1 easing 1.67% (48 of n=2870) vs tightening 1.00% (24 of n=2408) | H2 easing 1.03% (41 of n=3967) vs tightening 0.74% (27 of n=3638); bar easing above in each -> PASS
+  (e) shift null (1686 offsets, 0 not computable, 97.5th percentile): observed +0.46 vs null +0.50 points (null median -0.01; 3.9% of shifts reach it) -> FAIL
+  (f) vs SPY same-rule turns: composite (common span) +0.46 points [easing 1.30% n=6837, tightening 0.84% n=6046] vs SPY +0.90 points [easing 1.20% (54 of n=4516, 15 turns), tightening 0.30% (6 of n=2021, 15 turns)] -> NO
+  (f) vs IWM same-rule turns: composite (common span) +0.46 points [easing 1.30% n=6837, tightening 0.84% n=6046] vs IWM +0.58 points [easing 1.24% (70 of n=5640, 22 turns), tightening 0.66% (18 of n=2740, 21 turns)] -> NO
+  (f) vs VIX same-rule turns: composite (common span) +0.46 points [easing 1.30% n=6837, tightening 0.84% n=6046] vs VIX +0.14 points [easing 1.09% (62 of n=5700, 24 turns), tightening 0.95% (40 of n=4220, 24 turns)] -> ok
+  (f) vs breadth same-rule turns: composite (common span) +0.45 points [easing 1.30% n=6837, tightening 0.86% n=5959] vs breadth +0.35 points [easing 1.10% (76 of n=6930, 26 turns), tightening 0.75% (30 of n=4006, 24 turns)] -> ok
+      >= all four -> FAIL
+  ALTERNATE Q4: FAIL; parts not met: ['a easing >= 1.25x all', 'b easing minus tightening gap', 'c bootstrap excludes 0', 'e beats shift null', 'f >= each baseline']
+  reported, not judged: 60-session window (turns whose 60-session window is not covered dropped: 10): easing 1.27% (127 of n=9974) vs tightening 0.92% (83 of n=8990)
+  other reading of the breakout front edge (turns before 2017-03-01 kept): dropped [('2022-01-19', 'easing'), ('2022-02-17', 'tightening'), ('2022-03-18', 'easing'), ('2024-09-11', 'tightening'), ('2024-09-26', 'easing')]; easing 1.30% (89 of n=6855) vs tightening 0.84% (51 of n=6046), diff +0.45 points, bootstrap -0.13 to +0.99, null +0.50
+
+============================== VERDICTS ==============================
+  PRIMARY Q1: FAIL  (parts not met: a precision >= 1.5x base; b precision beats shift null; b recall beats shift null; c precision >= 1.25x base in each half; e precision >= each baseline; f direction matters)
+  PRIMARY Q2: FAIL  (parts not met: a precision >= 1.5x base; b precision beats shift null; b recall beats shift null; c precision >= 1.25x base in each half; e median |lag| <= each baseline)
+  PRIMARY Q3: FAIL  (parts not met: a easing >= 1.25x all; b easing minus tightening gap; c bootstrap excludes 0; e beats shift null; f >= each baseline)
+  PRIMARY Q4: CANNOT TELL  (parts not met: a easing >= 1.25x all; f >= each baseline)
+  ALTERNATE Q1: FAIL  (parts not met: b recall beats shift null; c precision >= 1.25x base in each half; d forward 21-session return)
+  ALTERNATE Q2: FAIL  (parts not met: a precision >= 1.5x base; b precision beats shift null; b recall beats shift null; c precision >= 1.25x base in each half; d forward 21-session return; e median |lag| <= each baseline)
+  ALTERNATE Q3: FAIL  (parts not met: a easing >= 1.25x all; c bootstrap excludes 0; e beats shift null)
+  ALTERNATE Q4: FAIL  (parts not met: a easing >= 1.25x all; b easing minus tightening gap; c bootstrap excludes 0; e beats shift null; f >= each baseline)
+
+============================== LEG AND FED-CHANNEL TURNS (reported, NOT judged; 22 rows = about one 'pass' at 5% by chance) ==============================
+  row: easing turns -> IWM lows: precision (hits of n) / median |lag| / forward-21 median | tightening turns -> IWM highs: same | EP share after easing vs tightening | breakout share after easing vs tightening
+  base: low within +/-21 15.7%, high within +/-21 24.7%, forward-21 median +1.09% (n=1918)
+  M1 gold/silver               E->low 25.0% (5 of n=20) lag 10 fwd +0.05% recall 57.1% | T->high 28.6% (6 of n=21) lag 13 fwd -0.08% recall 54.5% | EP 12.62% (n=650) vs 8.69% (n=656) | BO 1.21% (n=3631) vs 0.93% (n=3975)
+  F1 net liquidity             E->low 20.8% (5 of n=24) lag 8 fwd +0.62% recall 57.1% | T->high 39.1% (9 of n=23) lag 12 fwd -1.74% recall 63.6% | EP 9.98% (n=641) vs 8.84% (n=758) | BO 0.89% (n=3932) vs 0.90% (n=3654)
+  F2 funds rate                E->low 23.1% (3 of n=13) lag 12 fwd +2.14% recall 42.9% | T->high 23.1% (3 of n=13) lag 2 fwd -0.84% recall 27.3% | EP 21.55% (n=297) vs 17.66% (n=538) | BO 0.96% (n=2076) vs 1.52% (n=2761)
+  R1 10y real yield            E->low 14.3% (3 of n=21) lag 3 fwd +2.26% recall 42.9% | T->high 35.0% (7 of n=20) lag 16 fwd +0.63% recall 45.5% | EP 16.17% (n=575) vs 9.84% (n=549) | BO 1.34% (n=4478) vs 0.93% (n=2999)
+  D1 dollar fund               E->low 10.5% (2 of n=19) lag 18 fwd +2.26% recall 28.6% | T->high 27.8% (5 of n=18) lag 15 fwd +0.97% recall 45.5% | EP 13.03% (n=637) vs 7.88% (n=647) | BO 1.17% (n=3844) vs 1.11% (n=3236)
+  K1 small vs large            E->low 5.0% (1 of n=20) lag 1 fwd +0.55% recall 14.3% | T->high 25.0% (5 of n=20) lag 18 fwd +3.63% recall 45.5% | EP 10.08% (n=714) vs 9.98% (n=621) | BO 1.23% (n=4724) vs 0.87% (n=3323)
+  C3 Baa spread                E->low 11.8% (2 of n=17) lag 12.5 fwd +1.45% recall 28.6% | T->high 16.7% (3 of n=18) lag 20 fwd +0.64% recall 27.3% | EP 12.01% (n=558) vs 12.88% (n=497) | BO 1.29% (n=4421) vs 0.83% (n=2661)
+  R2 2-year                    E->low 20.0% (3 of n=15) lag 8 fwd +2.17% recall 42.9% | T->high 14.3% (2 of n=14) lag 7.5 fwd +2.47% recall 18.2% | EP 12.50% (n=416) vs 14.51% (n=441) | BO 1.25% (n=2952) vs 1.47% (n=2994)
+  K5 speculative growth        E->low 11.1% (2 of n=18) lag 19 fwd +1.30% recall 28.6% | T->high 38.9% (7 of n=18) lag 11 fwd +2.69% recall 63.6% | EP 10.13% (n=612) vs 11.74% (n=511) | BO 0.94% (n=4237) vs 1.04% (n=2897)
+  M2 copper/gold               E->low 5.0% (1 of n=20) lag 18 fwd +0.55% recall 14.3% | T->high 28.6% (6 of n=21) lag 9.5 fwd +0.70% recall 54.5% | EP 9.17% (n=676) vs 8.00% (n=550) | BO 0.64% (n=4515) vs 0.71% (n=3084)
+  Fed channel                  E->low 16.7% (4 of n=24) lag 7 fwd +0.38% recall 42.9% | T->high 37.5% (9 of n=24) lag 10 fwd +0.54% recall 72.7% | EP 13.27% (n=588) vs 12.46% (n=971) | BO 1.10% (n=4628) vs 1.17% (n=5567)

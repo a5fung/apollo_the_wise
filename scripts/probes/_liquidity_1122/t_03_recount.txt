@@ -1,0 +1,57 @@
+PRIMARY
+  Q1 turns n: recount 24 vs t_02 24 -> MATCH
+  Q1 hits: recount 2 vs t_02 2 -> MATCH
+  Q1 median |lag|: recount 9 vs t_02 9 -> MATCH
+  Q1 base: recount 0.156934 vs t_02 0.156934 -> MATCH
+  Q1 recall: recount 0.285714 vs t_02 0.285714 -> MATCH
+  Q1 recall-eligible n: recount 7 vs t_02 7 -> MATCH
+  Q1 forward-21 median: recount 0.025565 vs t_02 0.025565 -> MATCH
+  Q1 forward-21 base median: recount 0.0109012 vs t_02 0.0109012 -> MATCH
+  Q2 turns n: recount 24 vs t_02 24 -> MATCH
+  Q2 hits: recount 8 vs t_02 8 -> MATCH
+  Q2 median |lag|: recount 13.5 vs t_02 13.5 -> MATCH
+  Q2 base: recount 0.246611 vs t_02 0.246611 -> MATCH
+  Q2 recall: recount 0.727273 vs t_02 0.727273 -> MATCH
+  Q2 recall-eligible n: recount 11 vs t_02 11 -> MATCH
+  Q2 forward-21 median: recount -0.0109889 vs t_02 -0.0109889 -> MATCH
+  Q2 forward-21 base median: recount 0.0109012 vs t_02 0.0109012 -> MATCH
+  Q3 easing events: recount 808 vs t_02 808 -> MATCH
+  Q3 easing winners: recount 103 vs t_02 103 -> MATCH
+  Q3 tightening events: recount 872 vs t_02 872 -> MATCH
+  Q3 tightening winners: recount 95 vs t_02 95 -> MATCH
+  Q3 easing minus tightening: recount 0.0185303 vs t_02 0.0185303 -> MATCH
+  Q4 easing events: recount 5311 vs t_02 5311 -> MATCH
+  Q4 easing winners: recount 69 vs t_02 69 -> MATCH
+  Q4 tightening events: recount 4225 vs t_02 4225 -> MATCH
+  Q4 tightening winners: recount 30 vs t_02 30 -> MATCH
+  Q4 easing minus tightening: recount 0.00589131 vs t_02 0.00589131 -> MATCH
+ALTERNATE
+  Q1 turns n: recount 37 vs t_02 37 -> MATCH
+  Q1 hits: recount 9 vs t_02 9 -> MATCH
+  Q1 median |lag|: recount 12 vs t_02 12 -> MATCH
+  Q1 base: recount 0.156934 vs t_02 0.156934 -> MATCH
+  Q1 recall: recount 0.857143 vs t_02 0.857143 -> MATCH
+  Q1 recall-eligible n: recount 7 vs t_02 7 -> MATCH
+  Q1 forward-21 median: recount 0.00698683 vs t_02 0.00698683 -> MATCH
+  Q1 forward-21 base median: recount 0.0109012 vs t_02 0.0109012 -> MATCH
+  Q2 turns n: recount 36 vs t_02 36 -> MATCH
+  Q2 hits: recount 12 vs t_02 12 -> MATCH
+  Q2 median |lag|: recount 12.5 vs t_02 12.5 -> MATCH
+  Q2 base: recount 0.246611 vs t_02 0.246611 -> MATCH
+  Q2 recall: recount 0.818182 vs t_02 0.818182 -> MATCH
+  Q2 recall-eligible n: recount 11 vs t_02 11 -> MATCH
+  Q2 forward-21 median: recount 0.0160177 vs t_02 0.0160177 -> MATCH
+  Q2 forward-21 base median: recount 0.0109012 vs t_02 0.0109012 -> MATCH
+  Q3 easing events: recount 1176 vs t_02 1176 -> MATCH
+  Q3 easing winners: recount 169 vs t_02 169 -> MATCH
+  Q3 tightening events: recount 1013 vs t_02 1013 -> MATCH
+  Q3 tightening winners: recount 105 vs t_02 105 -> MATCH
+  Q3 easing minus tightening: recount 0.040055 vs t_02 0.040055 -> MATCH
+  Q4 easing events: recount 6837 vs t_02 6837 -> MATCH
+  Q4 easing winners: recount 89 vs t_02 89 -> MATCH
+  Q4 tightening events: recount 6046 vs t_02 6046 -> MATCH
+  Q4 tightening winners: recount 51 vs t_02 51 -> MATCH
+  Q4 easing minus tightening: recount 0.00458208 vs t_02 0.00458208 -> MATCH
+
+ALL MATCH
+R7 other reading, primary Q2 (e) vs breadth: composite precision 34.8% (8 of n=23) vs breadth 32.0% (8 of n=25); as run: 33.3% (8 of n=24). The 2017-03-29 turn: hit=False

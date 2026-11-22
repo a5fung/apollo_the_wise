@@ -1,0 +1,147 @@
+SEAL: max dates in every input file: {'votes': '2024-12-31', 'comp': '2024-12-31', 'etf': '2024-12-31', 'breadth': '2024-12-31', 'vix_file': '2024-12-31', 'ep': '2024-09-27', 'ep_sd': '2024-09-26', 'bo_D': '2024-09-30', 'bo_E': '2024-10-01'} -> OK
+grid 2264, window pos 262..2198 n=1937
+turns PRIMARY: easing/H1, tightening/H1 = (24, 11, 24, 11); first sign 2016-05-24
+turns ALTERNATE: easing/H1, tightening/H1 = (38, 18, 37, 17); first sign 2016-04-12
+turns SPY: easing/H1, tightening/H1 = (16, 7, 16, 7); first sign 2016-03-15
+turns IWM: easing/H1, tightening/H1 = (22, 10, 22, 10); first sign 2016-03-15
+turns VIX: easing/H1, tightening/H1 = (26, 13, 26, 13); first sign 2016-03-15
+turns breadth: easing/H1, tightening/H1 = (27, 12, 26, 11); first sign 2017-03-28
+VIX baseline without forward-fill of missing VIX days: (26, 13, 26, 13)
+turn dates PRIMARY vs build_t file: MATCH (52 turns all-grid)
+turn dates ALTERNATE vs build_t file: MATCH (89 turns all-grid)
+turn dates baseline SPY vs build_t file: MATCH
+turn dates baseline IWM vs build_t file: MATCH
+turn dates baseline VIX vs build_t file: MATCH
+turn dates baseline breadth vs build_t file: MATCH
+look-ahead check (turn recomputed from S truncated at the turn close is identical): OK
+IWM lows: in window 7, recall-eligible 7
+IWM highs: in window 11, recall-eligible 11
+SPY lows: in window 5, recall-eligible 5
+SPY highs: in window 7, recall-eligible 7
+
+PRIMARY Q1: n=24 hits=2 prec=0.0833 [=] base=0.1569 [=] recall=0.2857 of 7 [=]
+  null95: prec 0.2500 [=] recall 0.8571 [=]
+  halves: H1 1/11 0.0909 base 0.1725 [=|=]; H2 1/13 0.0769 base 0.1401 [=|=]
+  fwd21 med +0.02557 [=] base +0.01090 [=]; lag med 9.0 [=]; other-dir 0.0833 [=]
+  vs SPY: comp 0.0833 [=] base-rule 0.1333 (2/15) [=] lag 9.0 vs 19.5 [=] -> prec NO lag ok
+  vs IWM: comp 0.0833 [=] base-rule 0.0000 (0/22) [=] lag 9.0 vs nan [!= t_02 None] -> prec ok lag ok
+  vs VIX: comp 0.0833 [=] base-rule 0.0800 (2/25) [=] lag 9.0 vs 13.0 [=] -> prec ok lag ok
+  vs breadth: comp 0.0833 [=] base-rule 0.1154 (3/26) [=] lag 9.0 vs 13.0 [=] -> prec NO lag ok
+  -> FAIL; failing parts: ['a 1.5x', 'b prec null', 'b recall null', 'c halves', 'e prec base', 'f direction']
+
+PRIMARY Q2: n=24 hits=8 prec=0.3333 [=] base=0.2466 [=] recall=0.7273 of 11 [=]
+  null95: prec 0.3478 [=] recall 0.7273 [=]
+  halves: H1 4/11 0.3636 base 0.1725 [=|=]; H2 4/13 0.3077 base 0.3268 [=|=]
+  fwd21 med -0.01099 [=] base +0.01090 [=]; lag med 13.5 [=]; other-dir 0.1667 [=]
+  vs SPY: comp 0.3333 [=] base-rule 0.1250 (2/16) [=] lag 13.5 vs 18.5 [=] -> prec ok lag ok
+  vs IWM: comp 0.3333 [=] base-rule 0.2273 (5/22) [=] lag 13.5 vs 19.0 [=] -> prec ok lag ok
+  vs VIX: comp 0.3333 [=] base-rule 0.3077 (8/26) [=] lag 13.5 vs 9.5 [=] -> prec ok lag NO
+  vs breadth: comp 0.3333 [=] base-rule 0.3200 (8/25) [=] lag 13.5 vs 15.5 [=] -> prec ok lag ok
+  -> FAIL; failing parts: ['a 1.5x', 'b prec null', 'b recall null', 'c halves', 'e lag base']
+
+PRIMARY Q3: dropped []; easing 103/808 0.12748 [=] tightening 95/872 0.10894 [=] all 0.12325 [=] allB 0.12325 [=]
+  halves [('H1', np.float64(0.16502), np.float64(0.13016)), ('H2', np.float64(0.10495), np.float64(0.09695))]; boot -0.03914..+0.08140 [=|=]; null95 +0.04177 [=]
+  baselines (comp on span, baseline): SPY +0.01853 [=] vs -0.00726 [=]; IWM +0.01853 [=] vs -0.03436 [=]; VIX +0.01853 [=] vs -0.00771 [=]; breadth +0.01853 [=] vs +0.02882 [=]
+  floor met -> FAIL; failing parts: ['a >=1.25x all', 'b gap', 'c boot', 'e null', 'f baselines']
+
+PRIMARY Q4: dropped [('2021-12-14', np.int64(1)), ('2022-02-09', np.int64(-1)), ('2022-03-10', np.int64(1))]; easing 69/5311 0.01299 [=] tightening 30/4225 0.00710 [=] all 0.01095 [=] allB 0.01110 [=]
+  halves [('H1', np.float64(0.01332), np.float64(0.00539)), ('H2', np.float64(0.0127), np.float64(0.00822))]; boot +0.00105..+0.01133 [=|=]; null95 +0.00544 [=]
+  baselines (comp on span, baseline): SPY +0.00589 [=] vs +0.00899 [=]; IWM +0.00589 [=] vs +0.00584 [=]; VIX +0.00589 [=] vs +0.00140 [=]; breadth +0.00589 [=] vs +0.00348 [=]
+  floor NOT MET -> CANNOT TELL; failing parts: ['a >=1.25x all', 'f baselines']
+
+ALTERNATE Q1: n=37 hits=9 prec=0.2432 [=] base=0.1569 [=] recall=0.8571 of 7 [=]
+  null97.5: prec 0.2368 [=] recall 1.0000 [=]
+  halves: H1 6/18 0.3333 base 0.1725 [=|=]; H2 3/19 0.1579 base 0.1401 [=|=]
+  fwd21 med +0.00699 [=] base +0.01090 [=]; lag med 12.0 [=]; other-dir 0.2222 [=]
+  vs SPY: comp 0.2432 [=] base-rule 0.1333 (2/15) [=] lag 12.0 vs 19.5 [=] -> prec ok lag ok
+  vs IWM: comp 0.2432 [=] base-rule 0.0000 (0/22) [=] lag 12.0 vs nan [!= t_02 None] -> prec ok lag ok
+  vs VIX: comp 0.2432 [=] base-rule 0.0800 (2/25) [=] lag 12.0 vs 13.0 [=] -> prec ok lag ok
+  vs breadth: comp 0.2500 [=] base-rule 0.1154 (3/26) [=] lag 12.0 vs 13.0 [=] -> prec ok lag ok
+  -> FAIL; failing parts: ['b recall null', 'c halves', 'd fwd']
+
+ALTERNATE Q2: n=36 hits=12 prec=0.3333 [=] base=0.2466 [=] recall=0.8182 of 11 [=]
+  null97.5: prec 0.3514 [=] recall 1.0000 [=]
+  halves: H1 2/17 0.1176 base 0.1725 [=|=]; H2 10/19 0.5263 base 0.3268 [=|=]
+  fwd21 med +0.01602 [=] base +0.01090 [=]; lag med 12.5 [=]; other-dir 0.1892 [=]
+  vs SPY: comp 0.3333 [=] base-rule 0.1250 (2/16) [=] lag 12.5 vs 18.5 [=] -> prec ok lag ok
+  vs IWM: comp 0.3333 [=] base-rule 0.2273 (5/22) [=] lag 12.5 vs 19.0 [=] -> prec ok lag ok
+  vs VIX: comp 0.3333 [=] base-rule 0.3077 (8/26) [=] lag 12.5 vs 9.5 [=] -> prec ok lag NO
+  vs breadth: comp 0.3429 [=] base-rule 0.3200 (8/25) [=] lag 12.5 vs 15.5 [=] -> prec ok lag ok
+  -> FAIL; failing parts: ['a 1.5x', 'b prec null', 'b recall null', 'c halves', 'd fwd', 'e lag base']
+
+ALTERNATE Q3: dropped [('2024-09-11', np.int64(1)), ('2024-09-26', np.int64(-1))]; easing 169/1176 0.14371 [=] tightening 105/1013 0.10365 [=] all 0.12325 [=] allB 0.12316 [=]
+  halves [('H1', np.float64(0.18288), np.float64(0.09824)), ('H2', np.float64(0.11329), np.float64(0.10714))]; boot -0.02839..+0.10412 [=|=]; null97.5 +0.04983 [=]
+  baselines (comp on span, baseline): SPY +0.04005 [=] vs -0.00726 [=]; IWM +0.04005 [=] vs -0.03436 [=]; VIX +0.04005 [=] vs -0.00771 [=]; breadth +0.04043 [=] vs +0.02882 [=]
+  floor met -> FAIL; failing parts: ['a >=1.25x all', 'c boot', 'e null']
+
+ALTERNATE Q4: dropped [('2017-02-01', np.int64(-1)), ('2022-01-19', np.int64(-1)), ('2022-02-17', np.int64(1)), ('2022-03-18', np.int64(-1)), ('2024-09-11', np.int64(1)), ('2024-09-26', np.int64(-1))]; easing 89/6837 0.01302 [=] tightening 51/6046 0.00844 [=] all 0.01095 [=] allB 0.01103 [=]
+  halves [('H1', np.float64(0.01672), np.float64(0.00997)), ('H2', np.float64(0.01034), np.float64(0.00742))]; boot -0.00126..+0.01009 [=|=]; null97.5 +0.00500 [=]
+  baselines (comp on span, baseline): SPY +0.00458 [=] vs +0.00899 [=]; IWM +0.00458 [=] vs +0.00584 [=]; VIX +0.00458 [=] vs +0.00140 [=]; breadth +0.00446 [=] vs +0.00348 [=]
+  floor met -> FAIL; failing parts: ['a >=1.25x all', 'b gap', 'c boot', 'e null', 'f baselines']
+
+VERDICTS (own):
+  ('PRIMARY', 'Q1'): ('FAIL', ['a 1.5x', 'b prec null', 'b recall null', 'c halves', 'e prec base', 'f direction'])
+  ('PRIMARY', 'Q2'): ('FAIL', ['a 1.5x', 'b prec null', 'b recall null', 'c halves', 'e lag base'])
+  ('PRIMARY', 'Q3'): ('FAIL', ['a >=1.25x all', 'b gap', 'c boot', 'e null', 'f baselines'])
+  ('PRIMARY', 'Q4'): ('CANNOT TELL', ['a >=1.25x all', 'f baselines'])
+  ('ALTERNATE', 'Q1'): ('FAIL', ['b recall null', 'c halves', 'd fwd'])
+  ('ALTERNATE', 'Q2'): ('FAIL', ['a 1.5x', 'b prec null', 'b recall null', 'c halves', 'd fwd', 'e lag base'])
+  ('ALTERNATE', 'Q3'): ('FAIL', ['a >=1.25x all', 'c boot', 'e null'])
+  ('ALTERNATE', 'Q4'): ('FAIL', ['a >=1.25x all', 'b gap', 'c boot', 'e null', 'f baselines'])
+
+numeric mismatches vs t_02_numbers.json: 2
+   ('PRIMARYQ1IWMlb', nan, None)
+   ('ALTERNATEQ1IWMlb', nan, None)
+
+SENSITIVITY
+  PRIMARY EP: events dated on a turn date 79 (winners 7); if they joined the previous turn: easing 0.12654 tightening 0.10832 diff +1.82 pts
+  PRIMARY BO: events dated on a turn date 674 (winners 7); if they joined the previous turn: easing 0.01326 tightening 0.00704 diff +0.62 pts
+  ALTERNATE EP: events dated on a turn date 148 (winners 14); if they joined the previous turn: easing 0.14226 tightening 0.10387 diff +3.84 pts
+  ALTERNATE BO: events dated on a turn date 607 (winners 11); if they joined the previous turn: easing 0.01285 tightening 0.00875 diff +0.41 pts
+  PRIMARY low recall with edge-censored turns kept: 0.2857
+  PRIMARY high recall with edge-censored turns kept: 0.7273
+  ALTERNATE low recall with edge-censored turns kept: 0.8571
+  ALTERNATE high recall with edge-censored turns kept: 0.8182
+  leg M1: E->low 5/20 T->high 6/21 EP 0.1262 (n=650) vs 0.0869 (n=656) BO 0.0121 vs 0.0093 -> MATCH
+  leg F1: E->low 5/24 T->high 9/23 EP 0.0998 (n=641) vs 0.0884 (n=758) BO 0.0089 vs 0.0090 -> MATCH
+  leg F2: E->low 3/13 T->high 3/13 EP 0.2155 (n=297) vs 0.1766 (n=538) BO 0.0096 vs 0.0152 -> MATCH
+  leg R1: E->low 3/21 T->high 7/20 EP 0.1617 (n=575) vs 0.0984 (n=549) BO 0.0134 vs 0.0093 -> MATCH
+  leg D1: E->low 2/19 T->high 5/18 EP 0.1303 (n=637) vs 0.0788 (n=647) BO 0.0117 vs 0.0111 -> MATCH
+  leg K1: E->low 1/20 T->high 5/20 EP 0.1008 (n=714) vs 0.0998 (n=621) BO 0.0123 vs 0.0087 -> MATCH
+  leg C3: E->low 2/17 T->high 3/18 EP 0.1201 (n=558) vs 0.1288 (n=497) BO 0.0129 vs 0.0083 -> MATCH
+  leg R2: E->low 3/15 T->high 2/14 EP 0.1250 (n=416) vs 0.1451 (n=441) BO 0.0125 vs 0.0147 -> MATCH
+  leg K5: E->low 2/18 T->high 7/18 EP 0.1013 (n=612) vs 0.1174 (n=511) BO 0.0094 vs 0.0104 -> MATCH
+  leg M2: E->low 1/20 T->high 6/21 EP 0.0917 (n=676) vs 0.0800 (n=550) BO 0.0064 vs 0.0071 -> MATCH
+  leg Fed channel: E->low 4/24 T->high 9/24 EP 0.1327 (n=588) vs 0.1246 (n=971) BO 0.0110 vs 0.0117 -> MATCH
+leg rows mismatches: 0
+
+EXTRA
+price bridge vs run-2 w2_w3_frame (1937 rows): max|iwm_gap diff| 2.54e-01, max|spy_gap diff| 1.88e-01, max|vix diff| 0.00e+00, max|iwm_dd63 diff| 9.97e-17
+  leg M1 window turns E/T 20/21 doc (20, 21) -> MATCH; dates vs build_t MATCH
+  leg F1 window turns E/T 24/24 doc (24, 24) -> MATCH; dates vs build_t MATCH
+  leg F2 window turns E/T 14/13 doc (14, 13) -> MATCH; dates vs build_t MATCH
+  leg R1 window turns E/T 21/20 doc (21, 20) -> MATCH; dates vs build_t MATCH
+  leg D1 window turns E/T 19/18 doc (19, 18) -> MATCH; dates vs build_t MATCH
+  leg K1 window turns E/T 20/21 doc (20, 21) -> MATCH; dates vs build_t MATCH
+  leg C3 window turns E/T 17/18 doc (17, 18) -> MATCH; dates vs build_t MATCH
+  leg R2 window turns E/T 15/14 doc (15, 14) -> MATCH; dates vs build_t MATCH
+  leg K5 window turns E/T 19/18 doc (19, 18) -> MATCH; dates vs build_t MATCH
+  leg M2 window turns E/T 20/21 doc (20, 21) -> MATCH; dates vs build_t MATCH
+  Fed channel MA20/MA50: (25, 24) (doc 25/24); sign of score: (16, 16)
+  PRIMARY easing: chance share 52.3%
+  PRIMARY tightening: chance share 52.4%
+  PRIMARY gaps: min 9 median 37 <=20 7 <=60 40 of 47
+  ALTERNATE easing: chance share 73.5%
+  ALTERNATE tightening: chance share 71.8%
+  ALTERNATE gaps: min 5 median 23 <=20 30 <=60 72 of 74
+  PRIMARY EP: per-half events (easing n, tightening n, easing turns, tightening turns) {'H1': (np.int64(303), np.int64(315), 11, 11), 'H2': (np.int64(505), np.int64(557), 13, 13)}; turn floor (>=8 per half, >=16 pooled) met
+  PRIMARY BO: per-half events (easing n, tightening n, easing turns, tightening turns) {'H1': (np.int64(2477), np.int64(1670), 11, 11), 'H2': (np.int64(2834), np.int64(2555), 12, 11)}; turn floor (>=8 per half, >=16 pooled) met
+  ALTERNATE EP: per-half events (easing n, tightening n, easing turns, tightening turns) {'H1': (np.int64(514), np.int64(397), 18, 17), 'H2': (np.int64(662), np.int64(616), 19, 19)}; turn floor (>=8 per half, >=16 pooled) met
+  ALTERNATE BO: per-half events (easing n, tightening n, easing turns, tightening turns) {'H1': (np.int64(2870), np.int64(2408), 17, 17), 'H2': (np.int64(3967), np.int64(3638), 17, 18)}; turn floor (>=8 per half, >=16 pooled) met
+  PRIMARY recall null on lows: share of shifts at 100% = 0.4%; 95th pct 85.7%
+  PRIMARY recall null on highs: share of shifts at 100% = 0.2%; 95th pct 72.7%
+  ALTERNATE recall null on lows: share of shifts at 100% = 10.1%; 97.5th pct 100.0%
+  ALTERNATE recall null on highs: share of shifts at 100% = 3.5%; 97.5th pct 100.0%
+  breakout front edge not dropped (alternate): diff +0.45 pts (null 97.5th 0.50) 
+  breadth span from first confirmed direction 2017-04-03: primary Q2 comp precision 34.8% vs breadth 32.0%
+  uncensored base median fwd21 +1.10%

@@ -1,0 +1,12 @@
+whole prereg doc sha256 (working tree, §13.1 is NOT committed at run time): c4d6f19b30ddb0ac63510097de35e53f32da863e5b10e0234244240fa2a6a2ab
+vs=262 ve=2198 n=1937; last session that can hold a 63-session low/high: pos 2200 = 2024-10-01; first: pos 63 = 2016-04-05
+PRIMARY easing: 52.3% of 1937 window sessions within +/-21 of a turn | doc 52.3 -> MATCH
+PRIMARY tightening: 52.4% of 1937 window sessions within +/-21 of a turn | doc 52.4 -> MATCH
+  PRIMARY: turns whose +21 reach passes pos 2200 (edge-censored in Q1/Q2): []
+  PRIMARY: turns whose 20-session window ends after 2024-09-30 (EP and breakout drop): []
+  PRIMARY: turns whose 20-session window touches a session the breakout files do not cover (before 2017-03-01, or 2022-01-01 -> 2022-03-30): [('2021-12-14', 'tightening'), ('2022-02-09', 'easing'), ('2022-03-10', 'tightening')]
+ALTERNATE easing: 73.5% of 1937 window sessions within +/-21 of a turn | doc 73.5 -> MATCH
+ALTERNATE tightening: 71.8% of 1937 window sessions within +/-21 of a turn | doc 71.8 -> MATCH
+  ALTERNATE: turns whose +21 reach passes pos 2200 (edge-censored in Q1/Q2): [('2024-09-11', 'tightening'), ('2024-09-26', 'easing')]
+  ALTERNATE: turns whose 20-session window ends after 2024-09-30 (EP and breakout drop): [('2024-09-11', 'tightening'), ('2024-09-26', 'easing')]
+  ALTERNATE: turns whose 20-session window touches a session the breakout files do not cover (before 2017-03-01, or 2022-01-01 -> 2022-03-30): [('2017-02-01', 'easing'), ('2022-01-19', 'easing'), ('2022-02-17', 'tightening'), ('2022-03-18', 'easing')]

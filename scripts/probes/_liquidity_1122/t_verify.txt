@@ -1,0 +1,30 @@
+t_verify — independent recount of the §13.1 turning-point run (t_02), 2026-11-22
+Code: t_verify.py (own turn rule, own extrema, own event assignment, own nulls/bootstrap). Full output: t_verify_raw.txt.
+Inputs: build_r2/{legs_votes,composite,breadth,p2_ep_frame,p2_breakout_frame}.csv, build/etf_adj.csv, fred/VIXCLS.csv. build_t/ read only to compare.
+
+RESULT: MATCH. Bars applied as written: YES. Verdicts reproduced: 7 FAIL + primary Q4 CANNOT TELL (floor: 30 tightening-window big winners < 40).
+
+- Seal: every input file ends 2024-12-31 or earlier (EP 2024-09-27, breakout D 2024-09-30); no 2025-26 row exists in any file read.
+- Turn dates: primary 52, alternate 89, SPY/IWM/VIX/breadth baselines — every date identical to build_t; window counts 24/24, 38/37, 16/16, 22/22, 26/26, 27/26.
+- Freeze: §13.1 sha256 recomputed here = 0ef199f2…7945 (MATCH the FROZEN line); whole-file sha256 = c4d6f19b…a2ab (MATCH t_01b, 14:31). Doc last modified 14:26, before t_02 ran (14:33-14:34); git diff = 86 added lines (§13 only), uncommitted.
+- Look-ahead: my own rule dates each turn at the 5th session of the new sign and matches every date; MA20/MA50 are trailing; events count only from t+1; returns start at the turn close. S's own publication lags were run 2's recount, not re-checked here.
+- Price source: IWM/SPY from build/etf_adj.csv and VIX from fred/VIXCLS.csv (same files run 2 read); IWM 63-session drawdown and VIX reproduce run-2 w2_w3_frame on all 1,937 rows (max diff 1e-16 / 0).
+- Also recounted: 10 leg turn counts + dates, Fed channel 25/24 (sign-of-score 16/16), four chance shares 52.3/52.4/73.5/71.8, gap figures, Q3/Q4 per-half n (P Q3 303/315/505/557; P Q4 2477/1670/2834/2555), Q3/Q4 turn floor met on all four, open readings (front edge +0.45 vs +0.46; breadth confirmed-span 34.8% vs 32.0%; uncensored base median +1.10%) — all equal the report.
+- Bootstrap: matches because it replays the same seed on the same per-turn counts — a replication, not an independent method.
+- Index outcomes (Q1/Q2, both rules): precision, base, recall, per-half precision and base, shift-null percentiles, forward-21 medians, median |lag|, other-direction precision, all four baseline precisions and lags: all equal t_02 to 1e-9. (Only "difference": IWM baseline lag on lows is NaN here vs None in t_02 = zero hits, same thing.)
+- Setup outcomes (Q3/Q4, both rules): easing/tightening/all shares and counts, both "all" readings, coverage drops (primary Q4 3 turns, alternate Q4 6, alternate Q3 2), per-half shares, bootstrap 2.5/97.5, shift-null percentile, all baseline differences: all equal.
+- Leg and Fed-channel rows (11): all precisions and setup shares equal.
+- Failing parts per question equal the report's counts (P: Q1 6, Q2 5, Q3 5, Q4 2 + floor; A: Q1 3, Q2 6, Q3 3, Q4 5).
+
+Overlap and readings checked:
+- Each setup event goes to the single most recent turn, 1-20 sessions after it -> no event counted twice. Turns alternate (asserted).
+- Events dated ON a turn date belong to no turn (literal): 79 EP / 674 breakout events (primary), 148 / 607 (alternate). If they joined the previous turn instead: primary EP diff +1.82 pts, breakout +0.62; alternate EP +3.84, breakout +0.41 -> no verdict changes.
+- Recall with edge-censored turns kept: identical on all four.
+- VIX baseline with or without forward-filling missing VIX days: same 26/26 turns.
+
+Problems found (none changes a verdict):
+1. §13.1 not committed when outcomes were read (the report discloses it). Effect: procedural only; section hash matches the frozen line, so the rules used are the frozen ones. Caller must commit.
+2. Spec defect — alternate recall part is unpassable: 10.1% (lows) / 3.5% (highs) of shifted turn lists already hit every low/high, so the 97.5th-pct null is 100% and "above 100%" is impossible. Effect: none on the verdict (observed 85.7% / 81.8%, and Q1/Q2 alternate fail 2-5 other parts), but that part could never have passed.
+3. Primary Q2 recall ties its null exactly (72.7%); "above" read strictly. Effect: none (Q2 fails four other parts).
+4. Events dated ON a turn date are dropped entirely (literal reading): 79 EP / 674 breakout (primary). Effect: none — joining them to the previous turn moves no verdict.
+Not recounted: ±63 proximity, 63-session returns, 60-session setup shares, 10% drawdown shares, SPY reported rows, paired lags (all report-only, never judged).

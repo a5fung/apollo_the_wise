@@ -307,3 +307,95 @@ Nothing. Any ambiguity found during the build is written into the result doc as 
 
 ## 13. HIS GO 2026-11-22: test TURNING POINTS ("The turning points and trends is also important" → "Go")
 Run 2 judged daily STATES; this asks whether TURNS in the liquidity read mark TURNS in the market and in his setups. §13.1 (the turning-point pre-registration) is written and frozen by a separate design step BEFORE any turn-to-outcome number is computed; the run-2 legs and composite are reused unchanged.
+
+### 13.1 TURNING-POINT PRE-REGISTRATION (written 2026-11-22, BEFORE any turn-to-outcome number is computed)
+
+**Disclosed, what was seen to write this:** only the run-2 composite and leg-vote series (`build_r2/composite.csv`, `build_r2/legs_votes.csv`). About 25 candidate turn rules were counted (turns per direction, per half, the gaps between turns), and the primary rule's 48 turn dates were printed. No IWM, SPY, VIX, breadth, EP or breakout value was opened, and the printed dates were not compared with remembered market history when choosing. The SPY, IWM, VIX and breadth baselines were NOT counted (n printed by the build). critic: no list of the ~25 candidate rules or of the criterion that picked among them is saved under `scripts/probes/_liquidity_1122/`, so that choice cannot be audited; what holds it is that the primary is §12's own 20/50 trend read, and the 5-session confirmation was fixed after the counts were seen (disclosed). No other turn rule, confirmation length or window is run on 2016-24 after this result, and there is no run 3. critic, recounted 2026-11-22 from `composite.csv` and `legs_votes.csv` alone (date columns max 2024-12-31): every turn count, gap figure and chance share below MATCHES. ⚖ **THE LINE:** display and context only. It gates no entry, changes no sizing, and does not feed the regime score or `ep_threshold`.
+
+**Method and population**
+- **Method:** one run, $0, reusing the frozen run-2 legs, votes and composite S unchanged (§12, freeze sha1 `561b5e65…`). A turn is dated at the close on which it is first knowable. Outcomes are read once, after this section is committed.
+- **Population, turns:** composite turns dated inside the validation window 2017-01-18 → 2024-09-27 (n = 1,937 sessions), so every turn has 63 forward sessions inside 2024. Warm-up runs from the first state session (2016-03-15), so the 50-day average of S exists before the window opens.
+- **Population, setups:** the §5.5 EP events (common stock only, E ≤ 2024-09-30) and the §5.5 breakout trades (same filters, same cut and drop rules). A turn whose 20-session window is not fully covered by a setup file (EP after 2024-09-30; breakouts in the 2022-01-01 → 2022-03-30 gap between the two files) is dropped from that setup's test and counted.
+- **Sealed (#710):** no row after 2024-12-31 is read. Every percentage in the result carries its n.
+
+**(1) What a turn is (fixed)**
+- **The one turn rule** (used for the composite, every leg and every baseline). Take a daily sign s (+1 or −1), computed as the sign of the difference rounded to 9 decimals. An exact tie (0 after rounding) or a missing value carries the previous sign: it neither breaks a run nor starts one. A turn happens when s has held a new sign for 5 consecutive sessions (carried sessions count), and it is dated at the 5th session, the first close where it is knowable. The first sign confirmed after warm-up is a starting direction, not a turn. There is no other spacing rule: holding 5 sessions is the wiggle filter. A flip that reverses inside 5 sessions never counts and is never deferred. Turns alternate by construction.
+  - critic, closing forks: "carries the previous sign" = the previous session's s after its own carry; "a new sign" = different from the last CONFIRMED direction (a run in the confirmed direction is not a turn). The turn adds no look-ahead beyond S itself: MA20(S) and MA50(S) on day t use S up to t, and S already carries the §3 publication lags (run 2, recount MATCH).
+- **PRIMARY, composite trend turn:** s = sign(MA20(S) − MA50(S)), with S the run-2 channel-score sum (−6 … +6). Minus to plus = a TIGHTENING turn; plus to minus = an EASING turn.
+  - Reason: it is the same 20-day vs 50-day trend read as every leg (§12) and as his own JNK read, so "days since turn" on the panel and the tested turn are one thing.
+  - **Count in the window:** 24 easing turns (11 in 2017-20, 13 in 2021-24) and 24 tightening turns (11 / 13). The shortest gap is 9 sessions, the median 37. 7 of 47 gaps are 20 sessions or less, and 40 of 47 are 60 sessions or less.
+  - critic: same-direction spacing, which is what Q1/Q2 depend on: of 23 easing-to-easing gaps, 3 are under 43 sessions (two easing turns can share one low) and none under 21 (no shared 21-session return window); tightening 1 and 0, shortest 26.
+- **ALTERNATE, fast composite turn (one only, fixed):** s = sign(S − MA20(S)), the same 5-session confirmation. This is the early-warning form (the composite's fast dot). Count: 38 easing (18 / 20) and 37 tightening (17 / 20); median gap 23 sessions, and 72 of 74 gaps are 60 sessions or less. It is judged with the same bars and reported beside the primary. It can never replace the primary: if only the alternate passes, the read is "early marker, unconfirmed by the primary".
+  - critic: the alternate is a second shot at a shipped label, so every shift-null part of its bars is judged at the 97.5th percentile, not the 95th (two rules tested). Its spacing is much tighter: shortest gap 5 sessions, 30 of 74 gaps at 20 or less; same-direction, 17 of 37 easing gaps under 43 sessions (2 under 21), tightening 13 of 36 (1 under 21). Its turns share lows and return windows heavily.
+- **Leg turns:** each kept leg's §12 trend vote through the same rule. Confirmed turns in the window, easing / tightening: M1 gold/silver 20/21; F1 net liquidity 24/24; F2 funds rate 14/13; R1 real yield 21/20; D1 dollar fund 19/18; K1 small vs large 20/21; C3 Baa spread 17/18; R2 2-year 15/14; K5 speculative growth 19/18; M2 copper/gold 20/21. The Fed and money channel score through the same rule gives 25 easing and 24 tightening turns.
+- **Panel "days since turn"** = sessions since the leg's last turn under the 5-session rule, shown with its current trend direction. Ties carry, so the funds rate's 267 flat days do not reset it.
+
+**(2) Outcomes (computed once, after commit)**
+- **Unit:** one observation per turn for index outcomes. A setup event belongs to the most recent turn only, and only if it falls 1 to 20 sessions after that turn and before the next one. **The 20/21-session horizon is the judged one.** 60/63 is reported with its overlap share (40 of 47 primary gaps are 60 sessions or less, so those windows are mostly shared with the next turn).
+- **Index lows and highs:** an IWM 63-session LOW is a session whose adjusted close is the lowest of closes t−63 … t+63, and it counts only when that full window lies inside the grid 2016-01-04 → 2024-12-31. So no low is dated after about 2024-10-01 and none before about 2016-04-05; lows outside the validation window still count as nearest lows. Equal closes: the earliest session wins. A HIGH mirrors it. n is printed. Signed lag = turn date − nearest low (or high) date, in sessions; positive means the turn came after it. When two lows are equally near, the earlier one is used.
+- critic, closing forks: "within ±21" is inclusive (|lag| ≤ 21 sessions). **Edge censoring:** no low can be dated in the last 63 sessions of 2024, so a turn (and a base session) whose +21 reach passes the last session that can hold a low is dropped from Q1/Q2 and counted; a low counts toward recall only if its ±21 lies inside the validation window. The same drops apply to the shift null and the baselines. A turn belongs to the half holding its date; per-half precision uses that half's own base. Forward return = adjusted close at t+21 / adjusted close at t − 1 (the run-2 Alpaca `adjustment=all` closes); VIX is FRED VIXCLS cut at 2024-12-31, never the local file. Reported with n: "distinct lows hit" (one low hit by two turns counts once).
+- **Q1, an easing turn marks a low (IWM judged, SPY reported):**
+  - precision = share of easing turns with an IWM low within ±21 sessions; base = share of all window sessions with a low within ±21;
+  - recall = share of IWM lows inside the window that have an easing turn within ±21. Chance level, measured on the composite alone: 52.3% of the 1,937 window sessions lie within ±21 of a primary easing turn (52.4% for tightening turns; the alternate 73.5% easing and 71.8% tightening). So a random turn list scores about that recall, and recall is judged against the shift null, never against a fixed share;
+  - lag, among HITS only (turns with a low within ±21): the median absolute lag is judged, and the signed lag is reported, so a turn that fires before the low while the market keeps falling cannot win on earliness;
+  - forward 21-session IWM return after easing turns vs all window sessions (median, then mean);
+  - reported, not judged: share of turns followed by a 10% IWM drawdown within 63 sessions, and SPY on every statistic.
+- **Q2, a tightening turn marks a high:** the mirror, using IWM highs. A forward 21-session return below base and the 10% drawdown share are the market side.
+- **Q3 EP / Q4 breakout:** big-winner share (EP `big_winner`; breakout `realized_r` ≥ 10) in the 20 sessions after easing turns vs after tightening turns vs all events. The 60-session window is reported.
+  - critic, closing forks: the event date is EP `E` and breakout `D` (as §5.5); "1 to 20 sessions after" is counted on the trading-day grid, inclusive. "All events" = every event dated inside the validation window after the same coverage drops. The turn-cluster bootstrap resamples easing turns and tightening turns separately (each with its events), pooled over both halves. Shifted turn lists get the same coverage drops.
+
+**(3) Baselines and null (each must be beaten)**
+- **Same-rule turns** of −SPY, −IWM (price trend turning up = easing), VIX (trend turning down = easing) and −B3 breadth (§5.4 10-day mean). The turn rule is the same: MA20 vs MA50, 5-session confirmation, ties carry. n is printed by the build.
+- **Stated in advance:** a price-trend turn follows a low by construction. So proximity alone does not beat them; the composite must also be EARLIER (critic: judged as a median ABSOLUTE lag among hits no larger than each baseline's, as in (4); the signed lag is reported only, because a smaller signed lag rewards a turn that fires before the low while the market keeps falling).
+- **Timing null:** circular shift of the composite's turn list over the window by every offset from 126 to n − 126. This keeps the count, gaps, alternation and rough half balance. The observed statistic must beat the 95th percentile of the shifted values. critic: turns that wrap past the window end re-enter at its start; alternation may break once at that seam, accepted.
+- critic: **Common span.** Breadth starts 2017-01-17, so its 10-day mean, then its 50-day average, then a 5-session confirmation leave no breadth turn until roughly April 2017, while the composite warms up from 2016. Each baseline is compared on the span where its own trend sign exists; composite turns outside it are dropped for that comparison only, counted, n printed.
+- critic: **Thin or empty baselines.** A baseline with few turns is still judged (§7: harder direction), with its n printed. A baseline with zero hits counts as beaten on lag; on precision it is compared as 0.
+- critic: **Hits-only lag is selection-biased.** Price-trend turns that land more than 21 sessions after a low are misses, so a baseline's hits are its fast turns only, and its precision may be low enough to beat easily. Reported, not judged: for lows hit by BOTH the composite and a baseline, the paired difference in lag (n printed).
+
+**(4) Bars (numeric, all parts per question)**
+- **Floors:** at least 8 turns per direction in each half and 16 pooled. The primary meets this (11 / 13 per direction). Q1/Q2 also need at least 6 IWM lows (or highs) in the window. Q3/Q4 need at least 40 big winners in each of the easing-window and tightening-window classes. Otherwise the result is "cannot tell", which is not a pass. The floors are counted AFTER the setup-coverage drops in (Population, setups).
+- **Q1 passes when ALL of these hold:**
+  - precision is at least 1.5× base;
+  - precision AND recall each beat the shift null (each above the 95th percentile of its shifted values);
+  - precision is at least 1.25× base in 2017-20 AND in 2021-24;
+  - the median forward 21-session IWM return after easing turns is above the base median;
+  - precision is at least each of the four same-rule baselines' precision, AND the median absolute lag among hits is at most each baseline's.
+  - critic, added: **direction must matter** — easing-turn precision on lows exceeds tightening-turn precision on lows. Run 2 found Draining marks two-way, volatile markets; if turns of both kinds cluster in stress periods, easing turns could beat the shift null on lows without the direction meaning anything.
+  - critic: if the base exceeds 66.7%, 1.5× base is unreachable and the result reads "cannot tell", not a fail and not a pass.
+- **Q2:** the mirror of Q1. The return condition requires the median forward 21-session IWM return after tightening turns to be below the base median. critic: the direction part mirrors too: tightening-turn precision on highs exceeds easing-turn precision on highs.
+- **Q3 / Q4 pass when ALL of these hold:**
+  - the easing-window share is at least 1.25× the all-events share;
+  - the easing-window share exceeds the tightening-window share by at least 3 percentage points (EP) or 0.5 points (breakout, base about 1%);
+  - a turn-cluster bootstrap (resample turns, 10,000 draws, seed 20261122) gives a 95% interval of easing minus tightening that excludes 0;
+  - the same direction holds in both halves;
+  - the shift null, applied to easing-window share minus tightening-window share, is beaten (observed above its 95th percentile);
+  - the same statistic is at least that of each of the four same-rule turn baselines (SPY, IWM, VIX, breadth).
+- **Leg and Fed-channel turns:** reported, not judged (10 legs × 2 directions is 20 tests, so about one passes at 5% by chance). Caruso's "their pivot marks a bottom" is shown as the Fed and money channel row. It is not judged: its 25 easing turns are trend wiggles, not the few true pivots.
+- The alternate is judged with the same bars and reported alongside the primary. Nothing is retuned after the result.
+
+**(5) What each result means for the PANEL**
+
+| Result | What ships |
+|---|---|
+| Always (his ask: turns and trends matter) | per-leg trend direction + "days since turn"; composite turn markers on the chart; all labelled "context, not validated" |
+| Q1 passes (primary) | easing-turn marker labelled "has marked small-cap lows 2017-24, unconfirmed on 2025-26" |
+| Q2 passes (primary) | tightening-turn marker labelled likewise for highs |
+| Q3 / Q4 passes | "context for EPs / breakouts after an easing turn" |
+| Only the alternate passes | "early marker, unconfirmed by the trend turn" |
+| Fail or cannot tell | markers stay "context, not validated"; no "bottom" or "top" word anywhere |
+
+**(6) What it cannot tell**
+- **Power is low.** It rests on 24 turns per direction, about 11-13 per half, and the market moves they would mark cluster in about five stress periods. One period can carry a result.
+  - critic, in numbers: one turn moves pooled precision by about 4 points (1 of 24) and per-half precision by about 8-9 points (1 of 11-13), so the 1.25× per-half part can flip on a single turn. The floor of 8 turns per direction per half is met trivially (11 / 13); it is not a power guarantee. Q4's per-half direction rests on perhaps a few dozen breakout big winners per half. With 5-6 judged parts per question, the shift null and four baselines, **fail or "cannot tell" is the likely result, stated in advance**; that is a result, not a reason to loosen a bar.
+- The 60/63-session reads are mostly shared windows, so only the 20/21-session read is close to independent.
+- A turn is dated when it is knowable (5 sessions plus the 20/50 lag), so it can only confirm a low, not call it on the day.
+- The test does not show whether a true Fed pivot marks a bottom: there are only a handful of real pivots in 2016-24, and §9 already notes pivots that were not bottoms (2001, 2007-08).
+- The November 2026 market falls in the sealed years and is not tested.
+- Cause versus effect: the risk-appetite and credit legs move with the market.
+FROZEN 2026-11-22 before any outcome — sha256 of §13.1 text: 0ef199f22616baae13c14537f6eac2dd89b3757df0ff08362da64fdcaa037945
+
+## RESULT — §13.1 turning points (2026-11-22; one run; independent recount MATCH on every turn date and judged number; `scripts/probes/_liquidity_1122/t_*`, `t_verify.txt`)
+- Disclosure: §13.1 was frozen by hash (`0ef199f2…7945`) but committed only after the run (the run step could not commit); the hash matched at run time.
+- Primary rule (composite 20d crosses 50d, held 5 sessions): 24 easing and 24 tightening turns 2017-24. **7 of 8 judged questions fail, 1 "cannot tell".** Easing turns sit within 21 sessions of an IWM low no more often than chance (8.3% of 24, same as tightening turns); tightening turns near highs 33.3% of 24 vs a 24.7% base, but not above the timing-shuffle null; EP big-winner share after easing turns 12.75% of 808 vs 12.32% of 3,351 overall (1.03x); breakout big winners after easing 1.30% of 5,311 vs 0.71% after tightening, but below the 40-winner floor and SPY's own turns separate breakouts better.
+- Leg and Fed-channel rows reported, not judged: the Fed group (Caruso's "pivot marks a bottom") had an easing turn near an IWM low 16.7% of 24 vs a 15.7% base.
+- **Meaning (fixed in advance):** the panel ships each leg's trend direction, "days since turn" and the composite's turn markers labelled "context, not validated"; no "bottom", "top" or "early marker" label. No run 3, no retune.
