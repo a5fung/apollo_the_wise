@@ -49,6 +49,22 @@
   },
   {
     "id": 724,
+    "status": "deployed"
+  },
+  {
+    "id": 727,
+    "status": "deployed"
+  },
+  {
+    "id": 728,
+    "status": "deployed"
+  },
+  {
+    "id": 729,
+    "status": "deployed"
+  },
+  {
+    "id": 730,
     "status": "pending"
   }
 ]
