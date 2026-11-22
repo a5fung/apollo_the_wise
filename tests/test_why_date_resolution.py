@@ -133,7 +133,7 @@ def test_the_score_breakdown_is_rendered_for_a_scanned_not_alerted_day(monkeypat
     short = _why("/why APP")
     assert "WHY NOT ALERTED" in short
     assert "gap 10/10 · liquidity 15/15 · catalyst 0/25" in short       # each part, with its points
-    assert "raw 25 of 70 · HIGH bar 40 · 15 short" in short             # the bar, in raw points
+    assert "raw 25 of 65 · HIGH bar 40 · 15 short" in short             # the bar, in raw points
     assert "🧠 GRADE NOTE" in short and "routine" in short.lower()      # the catalyst grade
     full = _why(f"/why APP {SCAN_DAY} full")
     assert "🧮 SCORE — " in full and "HIGH bar 65" in full

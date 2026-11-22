@@ -181,8 +181,11 @@ def test_components_the_change_never_ruled_on_are_shared_not_forked():
     """Liquidity / catalyst / float / vol_conviction / theme_bonus must be the SAME
     objects on both sides — a future tweak to them can never silently split the
     acting and revert sides."""
-    for comp in ("liquidity", "catalyst", "float", "vol_conviction", "theme_bonus"):
+    for comp in ("liquidity", "catalyst", "vol_conviction", "theme_bonus"):
         assert SCORE_WEIGHTS_LEGACY[comp] is SCORE_WEIGHTS[comp]
+    # float is a RULED difference like gap (2026-11-22): live pays 0, the revert side keeps the +5
+    assert SCORE_WEIGHTS["float"]["points"] == 0
+    assert SCORE_WEIGHTS_LEGACY["float"]["points"] == 5
 
 
 # ── run_ep_scan wiring pins (test_347 pattern — a refactor cannot drop the flip) ──────

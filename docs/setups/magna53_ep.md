@@ -241,7 +241,7 @@ picks the acting table — see the 2026-08-22 SEPARATION change-log entry). Comp
   8% qualifying cut is unchanged: WHAT qualifies did not move, what a bigger gap PAYS did.
 - Catalyst — ADDITIVE component (not a multiplier): `game_changer` +25 / `strong` +15 /
   `routine` (or anything else) +0.
-- Liquidity (20-day ADV$ tiers 15/12/10/7), float bonus (+5 under 50M), vol_conviction (5/3),
+- Liquidity (20-day ADV$ tiers 15/12/10/7), float bonus (**0 since 2026-11-22**, was +5 under 50M — see change log; the revert side keeps +5), vol_conviction (5/3),
   theme_bonus (+10) — unchanged by the separation change, shared by both flag sides.
   **Since 2026-09-13 the +10 pays when the stock BELONGS to a live theme at alert time**
   (operator-directed BUG FIX, see change log 2026-09-13, both entries): belonging = LISTED in a
@@ -685,6 +685,18 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
 10. **The +8R profit-take sells 1 share of a 2-share position, but a 1-share reach is still a silent no-op and the new branch has no historical event** (2026-10-10, his "go with rec" — change log 2026-10-10 below). VICR, the trigger, held ONE share and is not covered; 0 of 4 two-share live fills ever reached +8R; `too_small_to_split` is never written to `mi_audit_log`; `/partialnow` still refuses 2-share positions. Filed here per CHANGE_PROCESS r7 — the entry carries the numbers and the verify list.
 
 ## Change log (newest first)
+
+### 2026-11-22 — the low-float bonus pays 0 (was +5 under 50M shares) — OPERATOR-SIGNED ("go with rec"; a score change — THE LINE)
+
+**Trigger**: the registered #714 float re-read (`data_gated_reviews.yaml` `float_points_stored_era_reread_714`, prereg `docs/analysis/ep_float_neglect_prereg_2026-10-31.md`) came due 11-21 and ran 11-22.
+
+**Evidence**: fresh block 2026-10-12..10-30, n = 102 readable scored rows, 16 runners (15-session high ≥ 5 ADR). Low float (< 50M) ran 4 of 31 (12.9%) vs the rest 12 of 71 (16.9%); within ADV$ rungs −6.3pp, one-sided p 0.86 — the stored-era lean (+11.0pp, p 0.059, n 144) did NOT replicate and the sign reversed; the registered bar (RD > 0 AND p ≤ 0.10) fails. Counterfactual on the same rows: removing the float points flips 0 of 103 across the alert bar (`scripts/probes/_reviews_1122/float_points_stored_era_reread_714/analyze.out`). Small sample, stated: at n ≈ 100 it can contradict, not establish.
+
+**Anticipated effect**: a name under 50M float scores 5 raw points less; on the 103 fresh rows no alert would have changed tier. The "/why" parts line drops the float part (raw maximum 70 → 65) and its float line reads "low float no longer scores". The legacy revert table (`SCORE_WEIGHTS_LEGACY`, separation flag OFF) keeps +5 so it still reproduces the true pre-change scores. The `float` key stays in the breakdown (always 0).
+
+**Reversion-flag**: NEW (first change to the float bonus since the original POC commit cb289116).
+
+**Status**: built 2026-11-22; deploy on his go (market-agent).
 
 ### 2026-11-21 — #594: the shelf distance is RECORDED as a seventh ranking on the slot-rank watch (RECORDS ONLY — no slot, order, entry, size or safeguard change; BUILT on a local branch, NOT deployed)
 

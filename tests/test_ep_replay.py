@@ -231,18 +231,31 @@ def test_float_band_straddling_the_bar_abstains_admission():
     alert = {"gap_pct": "12.0", "rel_volume": "1.0", "catalyst_quality": "strong",
              "vol_percentile": "80", "in_active_theme": "f",
              "confidence_multiplier": "1.0"}
-    rs = RULESETS["current"]
-    # hunt a straddle by scanning adv values — the band is 6.25 presented points wide,
+    # float pays 0 on the live table since 2026-11-22 (his ruling), so the "current" band has zero
+    # width; the band still exists on the legacy side (+5), which is where banding is exercised.
+    rs = RULESETS["era_b"]
+    # hunt a straddle by scanning adv values — the band is the +5 legacy float bonus wide,
     # so some input in this sweep must straddle the bar unless banding is broken
     found = None
     for adv in range(1, 60):
-        r = rescore_alert(alert, rs, adv * 1e6, 10.0, "Bear", 70)
+        r = rescore_alert(alert, rs, adv * 1e6, 10.0, "Bear", 50)   # legacy bar = the regime bar
         assert r["score_hi"] >= r["score_lo"]
         if r["score_lo"] < r["bar"] <= r["score_hi"]:
             found = r
             break
     assert found is not None, "no straddle found — float banding is not being applied"
     assert found["admit"] == "abstain_float_band_straddles_bar"
+
+
+def test_live_table_has_no_float_band_since_float_pays_nothing():
+    """2026-11-22: float pays 0 on the live table, so the re-score band collapses and admission is
+    never float-ambiguous under the current rules."""
+    alert = {"gap_pct": "12.0", "rel_volume": "1.0", "catalyst_quality": "strong",
+             "vol_percentile": "80", "in_active_theme": "f", "confidence_multiplier": "1.0"}
+    for adv in range(1, 60):
+        r = rescore_alert(alert, RULESETS["current"], adv * 1e6, 10.0, "Bear", 70)
+        assert r["score_lo"] == r["score_hi"]
+        assert r["admit"] != "abstain_float_band_straddles_bar"
 
 
 def test_walk_campaign_states_its_ruleset_on_every_row():

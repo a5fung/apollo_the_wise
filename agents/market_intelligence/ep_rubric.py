@@ -207,10 +207,13 @@ SCORE_WEIGHTS = {
                    "(git log -S verified)",
     },
 
-    # Low float bonus.
+    # Low float bonus — DROPPED to 0 points 2026-11-22 (operator ruling "go with rec", #714 re-read:
+    # the stored-era lean did not replicate on the fresh block — low float ran 4 of 31 vs the rest
+    # 12 of 71, one-sided p 0.86 — and removing the points flipped 0 of 103 alerts). The key stays so
+    # the breakdown, the stored rows and /why keep one shape; it simply pays nothing.
     "float": {
         "max_shares": 50_000_000,
-        "points": 5,
+        "points": 0,
         "default": 0,
         "source": "present since the original Market Intelligence Agent POC "
                    "commit (cb289116); threshold unchanged since "
@@ -302,6 +305,10 @@ SCORE_WEIGHTS = {
 
 SCORE_WEIGHTS_LEGACY = {
     **SCORE_WEIGHTS,
+    # The revert side reproduces the TRUE pre-2026-08-22 behaviour, so it keeps the +5 low-float
+    # bonus the live table dropped on 2026-11-22 (tests/test_ep_score_stage2_refactor.py).
+    "float": {**SCORE_WEIGHTS["float"], "points": 5,
+              "source": "pre-2026-11-22 +5 under 50M — the ep_score_separation revert side"},
     # Pre-2026-08-22 gap ladder: paid gap size 25/20/15/10 at 20/15/10/8%
     # (tier cuts from commit 77179405, 2026-03-20).
     "gap": {

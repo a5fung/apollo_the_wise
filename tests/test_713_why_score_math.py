@@ -65,7 +65,7 @@ def test_ftai_1029_reproduces_61_2_and_shows_every_step():
     # what the NEXT tier pays, read from the rubric table (500M -> 15, game-changing -> 25)
     assert "next tier $500M pays 15" in out
     assert "next grade up: game-changing pays 25" in out
-    assert "under 50M pays 5" in out
+    assert "low float no longer scores" in out
     assert "next tier 70th percentile pays 3" in out
     assert "a paying theme pays 10" in out
     # the arithmetic, end to end
@@ -100,10 +100,10 @@ def test_game_changer_in_a_theme_on_a_bull_day_clears_the_bar_with_room():
     assert f"🧮 SCORE — {row['ep_score']:.1f}, clears the HIGH bar 65" in out
     assert "catalyst +25  graded game-changing · top grade" in out
     assert "theme +10  in a paying theme · top tier" in out
-    assert "float +5" in out and "pre-market volume +5" in out and "liquidity +15" in out
+    assert "float +0" in out and "low float no longer scores" in out and "pre-market volume +5" in out and "liquidity +15" in out
     assert "x1.20 regime multiplier (Bull-day boost" in out
     # the bar line shows why 70 beats a bar that reads 40: a raw 34 x 1.20 is 40.8
-    assert "needs a raw total of 34 (34 x 1.20 = 40.8); this has 70 (36 to spare)" in out
+    assert "needs a raw total of 34 (34 x 1.20 = 40.8); this has 65 (31 to spare)" in out
     # the floor exists in the breakdown but lifted nothing — must NOT claim it did
     assert "lifted nothing" in out
     assert "to spare" in out

@@ -59,10 +59,10 @@ def test_short_layout_sections_and_their_order(monkeypatch):
 
 def test_the_score_is_parts_out_of_their_maximum_with_the_bar_in_raw_points(monkeypatch):
     body = _short(monkeypatch)
-    assert ("   gap 10/10 · liquidity 15/15 · catalyst 15/25 · theme 0/10 · float 0/5 · "
+    assert ("   gap 10/10 · liquidity 15/15 · catalyst 15/25 · theme 0/10 · "
             "pre-market volume 0/5") in body
-    assert "   raw 40 of 70 · HIGH bar 40 · exactly on the bar" in body
-    assert "   could still add: catalyst +10 · theme +10 · float +5 · pre-market volume +5" in body
+    assert "   raw 40 of 65 · HIGH bar 40 · exactly on the bar" in body
+    assert "   could still add: catalyst +10 · theme +10 · pre-market volume +5" in body
 
 
 def test_entry_says_no_order_was_placed_and_never_describes_a_resting_order(monkeypatch):
@@ -163,7 +163,7 @@ def test_the_trade_read_asks_for_entry_order_id(monkeypatch):
 
 def test_part_maxima_come_from_the_live_table():
     m = part_maxima(SCORE_WEIGHTS)
-    assert m == {"gap": 10, "liquidity": 15, "catalyst": 25, "float": 5,
+    assert m == {"gap": 10, "liquidity": 15, "catalyst": 25,
                  "vol_conviction": 5, "theme_bonus": 10}
     assert part_maxima(SCORE_WEIGHTS_LEGACY)["gap"] == 25        # the legacy ladder tops out at 25
 
@@ -174,7 +174,7 @@ def test_a_retuned_table_moves_the_out_of_figures(monkeypatch):
     bumped["theme_bonus"]["points"] = 12
     monkeypatch.setattr(ep_score_math, "SCORE_WEIGHTS", bumped)
     out = "\n".join(score_short_lines(_scored_row()))
-    assert "catalyst 15/30" in out and "theme 0/12" in out and "raw 37 of 77" in out
+    assert "catalyst 15/30" in out and "theme 0/12" in out and "raw 37 of 72" in out
 
 
 def test_legacy_rows_use_the_legacy_table():
@@ -185,7 +185,7 @@ def test_legacy_rows_use_the_legacy_table():
 
 def test_under_the_bar_says_how_far_short():
     out = score_short_lines(_scored_row())                 # FTAI 10-29: 37 raw, bar 40 raw
-    assert "   raw 37 of 70 · HIGH bar 40 · 3 short" in out
+    assert "   raw 37 of 65 · HIGH bar 40 · 3 short" in out
 
 
 def test_a_regime_boost_moves_the_bar_in_raw_points():
@@ -200,7 +200,7 @@ def test_a_floor_lift_is_shown_as_a_lift_not_a_part_with_a_maximum():
     out = "\n".join(score_short_lines(row))
     assert "floor lift +" in out and "floor lift +" not in out.split("raw")[1]
     lift = row["score_breakdown"]["conviction_floor"]
-    assert f"raw {sum(row['score_breakdown'].values()):g} of 70" in out and lift > 0
+    assert f"raw {sum(row['score_breakdown'].values()):g} of 65" in out and lift > 0
 
 
 def test_no_stored_parts_gives_no_short_score_lines():
@@ -258,3 +258,12 @@ def test_short_builder_survives_every_input_missing():
     out = build_why_short_lines("X", fx.DAY, alert=None, trade=None, scan=None, grade=None,
                                 events=[], score_row=None, diag_lines=[])
     assert out[0] == "📋 X 2026-10-30 — no alert" and out[-1].endswith("/why X 2026-10-30 full")
+
+
+def test_float_line_says_it_no_longer_scores():
+    """2026-11-22 his ruling: low float pays 0 points; /why must not claim 'under 50M pays …'."""
+    from agents.market_intelligence.ep_rubric import SCORE_WEIGHTS as W
+    from agents.market_intelligence.ep_score_math import _component_line
+    assert W["float"]["points"] == 0
+    line = _component_line("float", 0, {"float_shares": 20_000_000}, W)
+    assert "no longer scores" in line and "pays" not in line

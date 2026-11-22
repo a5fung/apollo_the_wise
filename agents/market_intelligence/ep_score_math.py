@@ -162,6 +162,8 @@ def _component_line(key: str, pts: float, row: dict, w: dict) -> str:
 
     if key == "float":
         cfg = w["float"]
+        if not cfg.get("points") and not pts:
+            return head + "low float no longer scores (dropped 2026-11-22)"
         fs = _num(row.get("float_shares"))
         cap = f"{cfg['max_shares'] / 1e6:g}M"
         seen = f"{fs / 1e6:.0f}M shares — " if fs and fs > 0 else ""
@@ -351,7 +353,7 @@ def part_maxima(w: dict) -> dict[str, float]:
     if cat and cat.get("points"):
         out["catalyst"] = max(cat["points"].values())
     flt = w.get("float")
-    if flt and flt.get("points") is not None:
+    if flt and flt.get("points"):          # 0 since 2026-11-22: a part that pays nothing has no maximum
         out["float"] = flt["points"]
     vol = w.get("vol_conviction")
     if vol and vol.get("tiers"):

@@ -19,7 +19,7 @@
    gap +10  11.7% gap — 8% or more · flat credit, a bigger gap pays nothing more
    liquidity +15  average daily dollar volume $583.634M — $500M or more · top tier
    catalyst +15  graded strong · next grade up: game-changing pays 25
-   float +0  105M shares — not under 50M shares · under 50M pays 5
+   float +0  low float no longer scores (dropped 2026-11-22)
    pre-market volume +0  at its own 0th percentile — below the lowest tier · next tier 70th percentile pays 3
    theme +0  not in a paying theme · a paying theme pays 10
    raw total 40
