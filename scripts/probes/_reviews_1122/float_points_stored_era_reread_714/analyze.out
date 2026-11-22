@@ -1,0 +1,55 @@
+POP rows 103  tickers 102  dates 2026-10-12..2026-10-30
+scored-row float coverage: chosen tick 102  any tick 102
+SPY last bar 2026-11-20
+outcome status: ok 103  censored 0  unreadable 0
+READABLE n=102 runners=16 (15.7%); lowfloat n=31
+  >=8ADR 2.0%   max-excursion>=+50% 1.0%   P90 max excursion 25.5%
+strata sizes {0: 44, 1: 21, 2: 20, 3: 17}
+FRESH BLOCK (all, stored float): low 4/31 (12.9%) vs rest 12/71 (16.9%); unstratified -4.0pp; MH RD -6.3pp; one-sided p 0.8572 (p_rev 0.3331)
+   stratum 0: low 3/16 vs rest 8/28
+   stratum 1: low 1/10 vs rest 1/11
+   stratum 2: low 0/5 vs rest 1/15
+   stratum 3: low 0/0 vs rest 2/17
+FRESH BLOCK (chosen-tick stored float only): low 4/31 (12.9%) vs rest 12/71 (16.9%); unstratified -4.0pp; MH RD -6.3pp; one-sided p 0.8572 (p_rev 0.3331)
+   stratum 0: low 3/16 vs rest 8/28
+   stratum 1: low 1/10 vs rest 1/11
+   stratum 2: low 0/5 vs rest 1/15
+   stratum 3: low 0/0 vs rest 2/17
+BAR: Confirmed = RD>0 AND one-sided p<=0.10 (prereg §10). At n~100 it can contradict, not establish.
+
+LOW-FLOAT ROWS: ticker scan_date float ep_score tier ep_bar advd run_xadr runner
+  CTNM 2026-10-12 27,703,073 33.8  65 10,789,257 1.91 0
+  TRAX 2026-10-12 26,150,332 58.8  65 28,593,916 5.33 1
+  DFH 2026-10-15 26,715,461 33.8  65 14,165,089 9.10 1
+  IRON 2026-10-19 32,910,730 90.0 HIGH 65 38,786,211 1.76 0
+  MANE 2026-10-19 32,290,614 73.8 HIGH 65 106,538,300 2.94 0
+  RAPP 2026-10-19 32,398,777 33.8  65 14,949,896 1.38 0
+  RAPP 2026-10-20 32,398,777 58.8  65 14,154,641 0.27 0
+  AVEX 2026-10-22 19,902,404 40.0  65 30,524,894 5.69 1
+  KNSA 2026-10-27 39,858,567 56.2  65 49,078,864 2.86 0
+  HWKN 2026-10-27 19,997,318 33.8  65 17,973,707 1.11 0
+  HRI 2026-10-27 30,615,179 42.5  65 84,459,332 2.21 0
+  AXGN 2026-10-28 49,064,907 48.8  65 55,793,817 5.26 1
+  EVR 2026-10-28 36,417,593 46.2  65 152,070,246 2.40 0
+  ROG 2026-10-28 16,787,479 33.8  65 39,628,334 0.37 0
+  UCTT 2026-10-28 44,326,211 61.2  65 84,207,558 0.60 0
+  SIMO 2026-10-29 32,325,953 46.2  65 191,027,782 -0.37 0
+  PI 2026-10-29 29,620,059 61.2  65 80,064,172 1.28 0
+  MBIN 2026-10-29 25,368,383 52.5  65 7,508,628 2.37 0
+  MAX 2026-10-29 25,053,803 46.2  65 10,152,295 2.62 0
+  HII 2026-10-29 38,821,016 58.8  65 142,450,008 0.80 0
+  BOOT 2026-10-29 30,124,637 46.2  65 97,891,322 3.53 0
+  FCN 2026-10-29 26,371,910 55.0  65 56,326,107 4.99 0
+  CROX 2026-10-29 46,123,642 58.8  65 123,225,445 2.97 0
+  COHU 2026-10-29 46,217,932 42.5  65 70,064,837 -0.27 0
+  CLMB 2026-10-29 15,472,458 52.5  65 4,496,531 2.14 0
+  GATX 2026-10-29 35,088,991 33.8  65 34,662,830 3.13 0
+  CVCO 2026-10-30 7,574,907 42.5  65 50,016,017 3.27 0
+  AN 2026-10-30 32,632,338 46.2  65 89,440,683 2.31 0
+  BUUU 2026-10-30 31,550,211 33.8  65 5,081,872 1.99 0
+  CDNA 2026-10-30 49,455,330 58.8  65 88,496,607 0.48 0
+  OSPN 2026-10-30 36,121,394 52.5  65 11,857,490 0.23 0
+
+COUNTERFACTUAL (float points -> 0), era rows with score_breakdown + ep_bar
+era rows 103; factual rebuild matches 103/103 (C5 bar: >=99%, else withhold)
+N_flip (clears bar with float, not without) = 0; each: ticker date score score_cf tier any_high ran_big
