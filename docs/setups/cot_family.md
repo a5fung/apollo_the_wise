@@ -126,7 +126,8 @@ release dates; yfinance earnings dates for NVDA MSFT AAPL AMZN GOOGL META TSLA M
 same FXEmpire pages also give PCE (US page, re-read every day) and Australian CPI (Australian page, Monday refresh),
 and two sources are NOT read from the network: **OPEC+ meetings** are a dated table in the code
 (`OPEC_MEETINGS`, each date as announced in an opec.org press release) and **USDA weekly export sales** is a rule
-(Thursday 8:30 ET; Friday in a federal-holiday week). Both sites refuse a scripted read (HTTP 403 on 2026-11-22).
+(Thursday 8:30 ET; Friday in a federal-holiday week). Neither schedule could be read by a script on 2026-11-22
+(opec.org and www.fas.usda.gov answered 403; two guessed apps.fas.usda.gov paths answered 404).
 Their rows are written by the Monday refresh (or when the last full refresh is over a week old).
 
 **STANDING STEP — every weekly CMR scoring (operator 2026-11-22: *"yes, we should continually expand our news
@@ -199,7 +200,9 @@ serves a market 1-20 bars instead of its ~65 is skipped for that market without 
   Friday when the Monday or the Friday before is a national holiday. INFERRED (not on the FAS page as we read it): a
   holiday on the Tuesday, Wednesday or Thursday also moves it to Friday — Thanksgiving week 2026 gives Fri 11-27, the
   date in his issue; the rule's 2024 output (Fri 06-21, Fri 07-05, Fri 12-27) matches what we recall of that year but
-  was not checked against a FAS page. A change FAS announces on its own (a shutdown week) cannot be seen.
+  was not checked against a FAS page. OUR OWN GUESS, from no source: when that Friday is itself a federal holiday
+  the rule takes the next working day (first case: New Year's Day, Fri 2027-01-01 → Mon 2027-01-04 — check that
+  week against FAS before trusting it). A change FAS announces on its own (a shutdown week) cannot be seen.
 - A missed day re-run by the job-recovery sweep holds its Telegram (the sweep's summary names it); it does not run
   the weekly catch-up and leaves the alert rows unmarked.
 - A federal-holiday week moves the CFTC release; the daily job picks it up the day it lands.
@@ -214,19 +217,21 @@ keep expanding the sources (the STANDING STEP under "Sources" above).
 
 **Evidence**: no detection threshold changes; these are calendar additions.
 - PCE: `PCE Price Index MoM` on the FXEmpire US page — 4 rows = 4 releases in the stored answer of 2026-11-17
-  (`scripts/probes/_cot_events_1117/united-states.json`, 2026-07-20 to 2026-11-20), all 8:30 ET. No new fetch was
-  made. Consensus read: the research already holds a frozen typical surprise for the four PCE price series
+  (`scripts/probes/_cot_events_1117/united-states.json`, 2026-07-20 to 2026-11-20), all 8:30 ET. One fresh read of
+  the US week of 11-23 (2026-11-22) lists it for Wed 11-25 at 8:30 ET, forecast 0.3%, and lists no export sales or
+  OPEC row. The Australian page was not re-read. Consensus read: the research already holds a frozen typical surprise for the four PCE price series
   (`~/cmr_lab/data/event_surprises_components.csv`, 39 releases 2023-08-31 → 2026-10-29: 0.0531085 / 0.0599145 /
   0.0767948 / 0.0800641) and maps PCE with CPI and PPI (`surprise_rules.py` INFL), so PCE is read like CPI.
   ⚠ The research did NOT count PCE as a news-failure trigger (it scored PCE days only as extra events); this adds it
   on his issue, not on that study.
 - Australian CPI: `Inflation Rate MoM` on the Australian page (same stored answer: 4 releases, 11:30 Sydney; the
   quarterly rows come out the same day). No frozen typical surprise exists: unknown.
-- OPEC+: opec.org refuses a scripted read (403). One announced date, 2026-11-29, from the opec.org press release of
+- OPEC+: opec.org answered 403 to a script. One announced date, 2026-11-29, from the opec.org press release of
   1 November 2026 ("The next meeting will be held on 29 November 2026",
   https://www.opec.org/pr-detail/620-1-november-2026.html). A Sunday meeting is Monday's session (11-30).
-- USDA weekly export sales: fas.usda.gov refuses a scripted read (403); a rule (see Known limits for what is stated
-  and what is inferred). Markets: Soybean Oil, Soybeans, Soybean Meal, Corn, Wheat.
+- USDA weekly export sales: www.fas.usda.gov answered 403 to a script; a rule (see Known limits for what is stated,
+  what is inferred and what is our own guess). His issue named it for Soybean Oil only; Soybeans, Soybean Meal, Corn
+  and Wheat are added because the same report covers them.
 
 **Anticipated effect** (alerts only; no orders, no sizing):
 - **Every Thursday (Friday in a holiday week) becomes a news day for five grain markets** — the largest change: a
@@ -236,13 +241,18 @@ keep expanding the sources (the STANDING STEP under "Sources" above).
 - Australian CPI: about one more Australian Dollar news day a month. OPEC+: about one more a month for crude oil,
   heating oil and gasoline, on the dates in the table.
 - The Friday confirmation sees the same extra news days.
-- Existing event types are unchanged. Two existing tests changed on purpose: the first-run Friday check now names
-  Thu 11-05 as "WASDE, USDA EXPORTS", and a WASDE-blind run still finds that day through the export sales rule.
+- Existing event types are unchanged. Four existing tests changed on purpose: (1) `test_market_table_is_whole` no
+  longer forbids a PCE type (ISM still forbidden); (2) `test_calendar_rows_take_exact_names_only` used
+  `PCE Price Index MoM` as its "not read" example — now `PCE Prices QoQ Adv`; (3) the first-run Friday check names
+  Thu 11-05 as "WASDE, USDA EXPORTS"; (4) a WASDE-blind first run still finds that Thursday through the export
+  sales rule (one Friday alert where there was none).
 
 **Reversion-flag**: NEW (additive; the existing events are untouched).
 
 **Status**: built on branch `cot-news-sources`, not deployed; deploy scope market-agent. The OPEC+, export sales and
-Australian CPI rows are written by the next full calendar refresh (Monday's 17:15 run); PCE comes with the daily read.
+Australian CPI rows are written by the next full calendar refresh (Monday's 17:15 run, before that day's alerts are
+judged); PCE comes with the daily read. So this week's Australian CPI (session Wed 11-25) and export sales (Fri 11-27)
+are watched only if it is deployed before Mon 11-23 17:15 ET; PCE needs it before Wed 11-25 17:15 ET.
 
 ### 2026-11-17 — four more watched news events: Fed minutes, RBA minutes, Australian jobs, Australian wages (operator "go")
 

@@ -683,7 +683,7 @@ def calendar_rows_from_wasde(dates: list[date]) -> list[dict]:
              "source": "usda.gov WASDE release dates"} for d in dates]
 
 
-# ── OPEC+ meetings: a dated table (opec.org refuses a scripted read: HTTP 403 on 2026-11-22) ──
+# ── OPEC+ meetings: a dated table (opec.org answered a scripted read with HTTP 403 on 2026-11-22) ──
 # Each date is the meeting day as ANNOUNCED in an opec.org press release; add the next one when it is announced.
 # tests/test_cot_family.py fails once the newest date is more than OPEC_STALE_DAYS in the past (the table was left
 # to rot). Only announced dates go in: an unannounced extraordinary meeting cannot be seen here.
@@ -712,12 +712,14 @@ def calendar_rows_from_opec(meetings=OPEC_MEETINGS) -> list[dict]:
     return out
 
 
-# ── USDA weekly export sales: a rule, not a read (fas.usda.gov refuses a scripted read: HTTP 403 on 2026-11-22) ──
+# ── USDA weekly export sales: a rule, not a read (www.fas.usda.gov answered a script with 403 on 2026-11-22) ──
 # FAS Export Sales Reporting Program (https://www.fas.usda.gov/programs/export-sales-reporting-program): the weekly
 # summary is published Thursdays at 8:30 ET unless a change is announced; when the preceding Friday or the Monday
 # is a national holiday the reporting deadline moves to Tuesday and the summary is published on Friday. INFERRED,
 # not stated there: a holiday on the Tuesday, Wednesday or Thursday also moves it to Friday (Thanksgiving week 2026:
-# Fri 11-27, the date his issue gave). A change FAS announces on its own (a shutdown) cannot be seen by a rule.
+# Fri 11-27, the date his issue gave). OUR OWN GUESS, from no source: when that Friday is itself a federal holiday
+# the next working day is taken (first case Fri 2027-01-01 -> Mon 2027-01-04). A change FAS announces on its own
+# (a shutdown) cannot be seen by a rule.
 USDA_EXPORTS_SOURCE = "fas.usda.gov weekly export sales schedule (rule)"   # must NOT start "usda.gov": calendar_age_days
 
 
