@@ -3141,3 +3141,4 @@ His words (Sat 11-21, Apollo session chat), on TLRY 2020-11-05 looking like a fa
 - His words (11-22, on the exit grid): *"also, what if stock is stuck in range after EP, test selling out to free up slot if stock is not moving"*
 - Read: a time stop for dead money — if the stock has not moved within some days of the EP buy, sell the whole position so the slot can take a new trade. Apollo has no such rule live (exits are the stop, the +8R third and the trail).
 - Action: added as its own arm to the #594 exit test (§14.2 of `docs/analysis/ep_winner_study_prereg_2026-11-21.md`), registered before any cell is read. Any change to the live exit stays his call (THE LINE).
+- 2026-11-22 follow-up, his words: *"Do we have dead money rule live? That's one we should eventually add regardless"* — no live rule exists for EP (the 9M Day-2 time stop is retired and only alerted). Ruling: add one eventually; the §14.2 test sets its numbers. Filed on #594.
