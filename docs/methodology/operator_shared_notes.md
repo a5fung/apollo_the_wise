@@ -3094,3 +3094,13 @@ His words on the 11-17 Family A push (Confirm fire FNGD, buy 35.09, stop 29.36):
 
 His words (Sat 11-21, Apollo session chat): *"We are in bear market and I expect momentum strategies to not work during the period fyi"*
 - A standing frame, not a rule change: returns from this period are read against the regime; a losing stretch in a bear market does not by itself mean a setup is broken. Mechanics defects (fills, stops, exits) are still judged on their own.
+
+## 2026-11-21 — Shelf distance on EPs: use as a lean, keep testing chart readings
+
+His words (Sat 11-21, Apollo session chat), after the 2017-2024 test (EPs nearest their shelf became big winners 12.9% vs 9.6%, 1.36x, real but under the 1.5x bar; Qullamaggie's EP buys sat near the shelf but did not clearly beat same-day alternatives): asked *"So rec is to add as tie breaker?"*, then *"Aligned, but we should keep testing this idea or other chart readings"*
+- The shelf distance is recorded beside the live slot ranking (records only) so we can see how often it would change which trade gets a slot; acting use still needs his sign-off. The chart-reading program (#594) stays open: more samples and other chart features.
+
+## 2026-11-21 — Qullamaggie: review thousands of charts to find edge
+
+His words (Sat 11-21, Apollo session chat, right after the shelf-distance ruling): *"Qullamaggie suggests to review 1000s of charts to find edge"*
+- Method note: edge is found by looking at very many charts (especially the big winners), not by a few hand samples. Applies to the chart-reading program (#594): scale the read from 12-chart samples to the full history of EP events.
