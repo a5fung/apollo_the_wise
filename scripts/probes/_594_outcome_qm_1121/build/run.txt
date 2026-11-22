@@ -1,0 +1,178 @@
+==============================================================================================================
+(0) LOADER CHECK — sample 10 (RESULT 7) through score_one()
+  UFPT   2026-08-04 GOOD_CHART   dmin=-3.625
+  ELPC   2026-10-05 GOOD_CHART   dmin=-1.681
+  TWLO   2026-08-07 GOOD_CHART   dmin=5.924
+  CRMD   2026-08-13 BAD_CHART    dmin=-14.159
+  SBS    2026-10-05 OKISH_CHART  dmin=-6.388
+  ACHR   2026-08-10 BAD_CHART    dmin=-10.162
+  PCVX   2026-10-05 OKISH_CHART  dmin=2.692
+  W      2026-08-04 GOOD_CHART   dmin=-5.483
+  AMPX   2026-09-28 BAD_CHART    dmin=-13.581
+  INNV   2026-09-09 OKISH_CHART  dmin=1.465
+  HELE   2026-10-08 BAD_CHART    dmin=7.411
+  yes 7 / no 4, pairs 28, P = 0.750
+  LOADER CHECK PASSED: P = 0.750 reproduced exactly
+
+==============================================================================================================
+(1) POPULATION
+  daily file era A: rows_read=12,005,007, rows_off_calendar_dropped=0, rows_kept(event tickers)=2,068,637
+  daily file era B: rows_read=13,830,569, rows_dropped_after_2024-12-31=5,210,943, rows_off_calendar_dropped=0, rows_kept(event tickers)=806,308
+  event-list rows 5,342; primary 5,342; no bar found for E: 0
+  events per era: {'A': 3378, 'B': 1964}
+  events per year (era):
+   era     A    B
+   year          
+   2016  326    0
+   2017  378    0
+   2018  455    0
+   2019  484    0
+   2020  773    0
+   2021  707  146
+   2022  255  508
+   2023    0  527
+   2024    0  783
+  events per security type (era):
+   era         A     B
+   sectype            
+   ADRC      152   111
+   CS       2344  1765
+   UNKNOWN   882    88
+  dropped flag_adj / flag_adj_Dm1: 2 (per era {'A': 2})
+  forward window: era B E > 2024-09-30 dropped 270; era A E with no E+60 in the A file (after 2022-04-04) dropped 95
+  NULL dmin (PRE-REG 6 population 4975): 1300  big-winner rate NULL 0.117 vs non-NULL 0.112
+   NULL by reason (era):
+   era                            A    B
+   null                                 
+   history<250                  608  562
+   run_window_before_history     20   61
+   shelf_window_before_history   33   12
+   swing_lows=1                   2    2
+   NULL by year (era):
+   era     A    B
+   year          
+   2016  326    0
+   2017   41    0
+   2018   36    0
+   2019   42    0
+   2020   65    0
+   2021  133  146
+   2022   20  463
+   2023    0    7
+   2024    0   21
+   NULL big-winner rate per era: A 0.157 (n 663) vs non-NULL 0.117, B 0.075 (n 637) vs non-NULL 0.102
+  months with scored events: 89; dropped (< 6 events): 2 months, 4 events
+  scored events ranked: 3671 in 87 months; tied dmin within a month: 0
+  ranked events per era: {'A': 2616, 'B': 1055}  big-winner base rate per era: {'A': np.float64(0.117), 'B': np.float64(0.102)}
+
+==============================================================================================================
+(2) PRE-REGISTRATION 6 — does the shelf distance pick EPs that WORK?
+  per-tercile big-winner rate (max close E..E+60 >= 1.5 x open(E)), all ranked events:
+    bottom (furthest below shelf)    n  1256  big winners  120  rate 0.096  median dmin -11.32
+    middle                           n  1225  big winners  139  rate 0.113  median dmin -4.73
+    top (closest to / above shelf)   n  1190  big winners  154  rate 0.129  median dmin +3.13
+  RATIO top/bottom = 1.355  (bar >= 1.5)
+  within-month permutation (2000, seed 1121): p = 0.0035  (bar <= 0.05); perm ratio median 1.013, 95th pct 1.215
+  per era:
+    era A: n 2616  bottom 0.093 (n 895)  middle 0.121  top 0.137 (n 847)  ratio 1.477  top > bottom: True
+    era B: n 1055  bottom 0.102 (n 361)  middle 0.094  top 0.111 (n 343)  ratio 1.081  top > bottom: True
+  per year:
+    2017 era A: n  337  bottom 0.043  top 0.056  ratio 1.30
+    2018 era A: n  419  bottom 0.021  top 0.037  ratio 1.78
+    2019 era A: n  442  bottom 0.039  top 0.063  ratio 1.61
+    2020 era A: n  706  bottom 0.192  top 0.303  ratio 1.57
+    2021 era A: n  574  bottom 0.107  top 0.134  ratio 1.25
+    2022 era A: n  138  bottom 0.043  top 0.022  ratio 0.52
+    2022 era B: n   43  bottom 0.133  top 0.143  ratio 1.07
+    2023 era B: n  520  bottom 0.106  top 0.101  ratio 0.95
+    2024 era B: n  492  bottom 0.096  top 0.118  ratio 1.23
+  secondary (description only): median / mean close(E+60)/open(E)-1, and share with close(E+5) < open(E):
+    tercile 0: ret60 median +0.016  mean +0.025 (n 1223)  fail5 0.518 (n 1254)
+    tercile 1: ret60 median +0.013  mean +0.040 (n 1194)  fail5 0.487 (n 1223)
+    tercile 2: ret60 median +0.016  mean +0.056 (n 1139)  fail5 0.448 (n 1186)
+    era A tercile 0: ret60 median +0.016  fail5 0.527
+    era A tercile 2: ret60 median +0.009  fail5 0.459
+    era B tercile 0: ret60 median +0.014  fail5 0.493
+    era B tercile 2: ret60 median +0.034  fail5 0.421
+  ret60 NaN (no bar at E+60): 115; fail5 NaN (no bar at E+5): 8
+  components: ratio >= 1.5: False; p <= 0.05: True; top > bottom in era A AND era B: True
+  VERDICT (PRE-REG 6): NO PRE-REGISTERED VERDICT COVERS THIS
+
+==============================================================================================================
+(3) PRE-REGISTRATION 7 — do Qullamaggie's EP buys sit near the shelf?
+  his EP buys (setup EP/both, not flicker, has bars): 62; matched to a primary event (same era, ticker, E): 62  -> test eligible (>= 20)
+  unmatched: []
+  matched but flag_adj-dropped: []
+  matched with non-NULL dmin: 47; NULL: [('BILI', '2018-08-28', 'history<250(106)'), ('BYND', '2020-01-14', 'history<250(177)'), ('CGC', '2018-08-15', 'history<250(57)'), ('DDOG', '2019-11-13', 'history<250(39)'), ('DRYS', '2017-02-01', 'history<250(206)'), ('FSLY', '2020-05-07', 'history<250(245)'), ('FUBO', '2021-01-05', 'history<250(60)'), ('KOLD', '2022-04-19', 'history<250(141)'), ('PINS', '2020-07-31', 'shelf_window_before_history(S-45<0)'), ('RAD', '2019-12-19', 'history<250(169)'), ('RBLX', '2021-11-09', 'history<250(170)'), ('ROKU', '2018-08-09', 'history<250(217)'), ('SAIL', '2018-08-09', 'history<250(181)'), ('SEND', '2018-08-01', 'history<250(177)'), ('UPST', '2021-03-18', 'history<250(62)')]
+  days with his buy and >= 1 other scored event: 38 (his buys on them 40); days dropped (no other): 6 [('A', '2017-09-29', ['ZGNX']), ('A', '2020-06-30', ['BE', 'WKHS']), ('A', '2020-12-16', ['TLRY']), ('A', '2021-10-27', ['ENPH']), ('B', '2023-12-04', ['VKTX']), ('B', '2023-12-05', ['GTLB'])]
+  within-day P(his dmin > same-day other's) = 0.603 over 131 pairs  (bar >= 0.60)
+  within-day label permutation (2000, seed 1121): p = 0.0885  (bar <= 0.05)
+  his buys' dmin percentile within their (era) month: median 0.692, mean 0.654, share above 0.5 0.745 (n 47)
+  his buys' median dmin -0.12 ADR vs all scored events (both eras) -4.77
+  his buys that are big winners (PRE-REG 6 definition, description): 20 of 62 with a full 60-session window (0.323); base rate of the PRE-REG 6 population 0.114
+  his buys:
+    A DRYS  2017-02-01  dmin          nan  big_winner 0  maxc/open 0.93
+    A LL    2017-08-01  dmin   +8.64  ok  big_winner 0  maxc/open 1.34
+    A SHOP  2017-08-01  dmin   +7.37  ok  big_winner 0  maxc/open 1.18
+    A ZGNX  2017-09-29  dmin   -1.38  ok  big_winner 0  maxc/open 1.32
+    A SEND  2018-08-01  dmin          nan  big_winner 0  maxc/open 1.36
+    A ETSY  2018-08-07  dmin   +8.83  no_run(<30%)  big_winner 0  maxc/open 1.06
+    A ROKU  2018-08-09  dmin          nan  big_winner 0  maxc/open 1.45
+    A SAIL  2018-08-09  dmin          nan  big_winner 0  maxc/open 1.16
+    A CGC   2018-08-15  dmin          nan  big_winner 1  maxc/open 1.74
+    A BILI  2018-08-28  dmin          nan  big_winner 0  maxc/open 1.18
+    A JWN   2019-08-22  dmin  -12.72  ok  big_winner 0  maxc/open 1.31
+    A IPHI  2019-10-30  dmin   +2.68  ok  big_winner 0  maxc/open 1.21
+    A OLED  2019-10-31  dmin   -6.19  ok  big_winner 0  maxc/open 1.13
+    A DXCM  2019-11-07  dmin   +3.65  ok  big_winner 0  maxc/open 1.32
+    A DDOG  2019-11-13  dmin          nan  big_winner 0  maxc/open 1.24
+    A RAD   2019-12-19  dmin          nan  big_winner 1  maxc/open 1.85
+    A BYND  2020-01-14  dmin          nan  big_winner 0  maxc/open 1.04
+    A EXEL  2020-04-20  dmin   -8.39  no_run(<30%)  big_winner 0  maxc/open 1.19
+    A INO   2020-04-23  dmin   +3.72  ok  big_winner 1  maxc/open 2.40
+    A CHGG  2020-05-05  dmin   -7.84  ok  big_winner 0  maxc/open 1.46
+    A W     2020-05-05  dmin   -8.69  no_run(<30%)  big_winner 0  maxc/open 1.46
+    A FSLY  2020-05-07  dmin          nan  big_winner 1  maxc/open 3.81
+    A NVAX  2020-05-12  dmin   +1.75  ok  big_winner 1  maxc/open 4.45
+    A MRNA  2020-05-18  dmin   +1.43  ok  big_winner 0  maxc/open 1.10
+    A ZS    2020-05-29  dmin   -3.61  ok  big_winner 1  maxc/open 1.57
+    A BE    2020-06-30  dmin   -0.22  ok  big_winner 1  maxc/open 2.06
+    A WKHS  2020-06-30  dmin   +8.25  ok  big_winner 1  maxc/open 1.80
+    A VXRT  2020-07-13  dmin   +5.29  ok  big_winner 1  maxc/open 1.88
+    A PINS  2020-07-31  dmin          nan  big_winner 1  maxc/open 1.58
+    A CELH  2020-11-12  dmin  +10.58  ok  big_winner 1  maxc/open 2.52
+    A MRNA  2020-11-30  dmin   +2.63  ok  big_winner 0  maxc/open 1.29
+    A LAZR  2020-12-08  dmin   -1.61  ok  big_winner 0  maxc/open 0.90
+    A TLRY  2020-12-16  dmin   -8.41  no_breakout(P<=shelf)  big_winner 1  maxc/open 6.46
+    A FUBO  2021-01-05  dmin          nan  big_winner 1  maxc/open 1.89
+    A NFLX  2021-01-20  dmin   +2.16  ok  big_winner 0  maxc/open 1.04
+    A BB    2021-01-25  dmin   -2.17  no_run(<30%)  big_winner 0  maxc/open 1.28
+    A SOS   2021-02-17  dmin   -2.12  ok  big_winner 0  maxc/open 0.85
+    A ZKIN  2021-03-15  dmin   +3.68  ok  big_winner 1  maxc/open 1.66
+    A UPST  2021-03-18  dmin          nan  big_winner 1  maxc/open 2.03
+    A BOIL  2021-05-17  dmin  -19.66  no_breakout(P<=shelf)  big_winner 1  maxc/open 1.68
+    A AMC   2021-06-01  dmin   +4.95  ok  big_winner 1  maxc/open 1.96
+    A BB    2021-06-02  dmin   +6.03  ok  big_winner 0  maxc/open 1.23
+    A BB    2021-06-03  dmin   +5.06  ok  big_winner 0  maxc/open 0.84
+    A PANW  2021-08-24  dmin  +10.13  ok  big_winner 0  maxc/open 1.24
+    A ENPH  2021-10-27  dmin   +2.30  ok  big_winner 0  maxc/open 1.30
+    A TTD   2021-11-08  dmin   +6.49  ok  big_winner 0  maxc/open 1.32
+    A RBLX  2021-11-09  dmin          nan  big_winner 0  maxc/open 1.35
+    A DDOG  2022-02-10  dmin   -1.97  ok  big_winner 0  maxc/open 1.02
+    A UPST  2022-02-16  dmin   -5.25  ok  big_winner 0  maxc/open 1.15
+    A KWEB  2022-03-16  dmin  -11.41  no_run(<30%)  big_winner 0  maxc/open 1.25
+    B KOLD  2022-04-19  dmin          nan  big_winner 0  maxc/open 1.20
+    B IMGN  2023-05-03  dmin   -5.97  ok  big_winner 1  maxc/open 1.89
+    B SHOP  2023-05-04  dmin   +2.60  ok  big_winner 0  maxc/open 1.28
+    B PLTR  2023-05-09  dmin  -14.11  no_breakout(P<=shelf)  big_winner 1  maxc/open 2.17
+    B IOT   2023-06-02  dmin   +3.47  ok  big_winner 0  maxc/open 1.33
+    B GTLB  2023-06-06  dmin  -10.23  ok  big_winner 0  maxc/open 1.19
+    B PINS  2023-10-31  dmin   -5.58  ok  big_winner 0  maxc/open 1.33
+    B DDOG  2023-11-07  dmin   -0.12  ok  big_winner 0  maxc/open 1.36
+    B PDD   2023-11-28  dmin   +8.82  ok  big_winner 0  maxc/open 1.12
+    B PATH  2023-12-01  dmin   -4.54  ok  big_winner 0  maxc/open 1.19
+    B VKTX  2023-12-04  dmin   -4.88  ok  big_winner 1  maxc/open 6.51
+    B GTLB  2023-12-05  dmin   -8.03  no_breakout(P<=shelf)  big_winner 0  maxc/open 1.30
+  VERDICT (PRE-REG 7): FAIL: bar not met (P >= 0.60 and p <= 0.05 both required)
+
+wrote /Users/alvinfung/apollo_the_wise/scripts/probes/_594_outcome_qm_1121/build/events_scored.tsv.gz (5340 rows)

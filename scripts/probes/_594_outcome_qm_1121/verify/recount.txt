@@ -1,0 +1,46 @@
+/Users/alvinfung/apollo_the_wise/scripts/probes/_594_outcome_qm_1121/verify/recount.py:138: PerformanceWarning: indexing past lexsort depth may impact performance.
+  matched = [(r.sym, r.E) for r in H.itertuples() if (r.sym, r.E) in allp]
+/Users/alvinfung/apollo_the_wise/scripts/probes/_594_outcome_qm_1121/verify/recount.py:139: PerformanceWarning: indexing past lexsort depth may impact performance.
+  print(f"matched to a primary event (ticker,E): {len(matched)} of {len(H)}; unmatched: {[(r.sym, r.E) for r in H.itertuples() if (r.sym, r.E) not in allp]}")
+LOADER CHECK sample 10: yes=7 no=4 pairs=28 P=0.750
+era A: rows 3378, primary 3378
+era B: rows 1964, primary 1964
+  era-B primary rows dated after 2024-12-31 dropped at read: 0
+  era-B primary E in (2024-09-30, 2024-12-31] dropped (60-session window): 270
+primary events (pre-drop): 5072; flag_adj/flag_adj_Dm1 dropped: 2
+AMBIGUITY: 720 rows share (ticker,E) across eras A/B (overlap 2021-10..2022-06); kept literally (both eras); era-B copies have <250 sessions of history so are NULL-dmin and drop from scoring
+bars era A: rows kept 2363393, rows after 2024-12-31 dropped at read 0, max date 2022-06-30
+bars era B: rows kept 971288, rows after 2024-12-31 dropped at read 5210943, max date 2024-12-31
+events with no bar on E: 0; events without 60 forward sessions (dropped from outcome): 243
+forward windows spanning >110 calendar days (bar gaps; kept): 6
+event population after drops (flag, no-bar, no-forward): 4827
+events per year: {'2016': 315, '2017': 365, '2018': 435, '2019': 474, '2020': 751, '2021': 834, '2022': 639, '2023': 512, '2024': 502}
+per sectype: {'UNKNOWN': 841, 'CS': 3743, 'ADRC': 243}
+NULL-dmin: 1263 (big-winner rate 0.118); scored: 3564 (big-winner rate 0.115)
+NULL by year: {'2016': 315, '2017': 40, '2018': 33, '2019': 42, '2020': 63, '2021': 278, '2022': 464, '2023': 7, '2024': 21}  by era: {'A': 646, 'B': 617}
+months with >=6 scored: 87 of 89; events in dropped months: 4
+ALL: n=3560 bottom 0.095 (n=1218) mid 0.116 top 0.134 (n=1157) ratio top/bottom 1.407
+era A: n=2534 bottom 0.092 (n=869) mid 0.126 top 0.140 (n=821) ratio top/bottom 1.522
+era B: n=1026 bottom 0.103 (n=349) mid 0.094 top 0.119 (n=336) ratio top/bottom 1.154
+year 2017: n=325 bottom 0.053 (n=114) mid 0.065 top 0.058 (n=103) ratio top/bottom 1.107
+year 2018: n=402 bottom 0.022 (n=139) mid 0.045 top 0.038 (n=130) ratio top/bottom 1.782
+year 2019: n=432 bottom 0.034 (n=148) mid 0.048 top 0.065 (n=138) ratio top/bottom 1.930
+year 2020: n=688 bottom 0.188 (n=234) mid 0.266 top 0.311 (n=225) ratio top/bottom 1.655
+year 2021: n=556 bottom 0.105 (n=190) mid 0.125 top 0.126 (n=182) ratio top/bottom 1.201
+year 2022: n=171 bottom 0.069 (n=58) mid 0.034 top 0.073 (n=55) ratio top/bottom 1.055
+year 2023: n=505 bottom 0.105 (n=172) mid 0.084 top 0.114 (n=166) ratio top/bottom 1.094
+year 2024: n=481 bottom 0.098 (n=163) mid 0.113 top 0.120 (n=158) ratio top/bottom 1.225
+permutation (within-month, 2000 shuffles, seed 1121; shuffle outcomes across fixed dmin ranks = shuffle dmin): p = 0.0025  [(k+1)/(N+1) = 0.0030]
+SECONDARY: mean ret60 by tercile [np.float64(0.022), np.float64(0.045), np.float64(0.055)]; early-loss rate [np.float64(0.522), np.float64(0.486), np.float64(0.453)]
+BAR1 ratio>=1.5: False | era A ratio>1: True | era B ratio>1: True
+
+PRE-REG 7: his EP/both, non-flicker, has_bars: 62
+matched to a primary event (ticker,E): 62 of 62; unmatched: []
+(note: the primary list used here already excludes flag_adj events; matching vs the unfiltered list:)
+  matched vs unfiltered primary list: 62
+his buys in outcome population: 61; with non-NULL dmin: 47; NULL dmin: [('BILI', '2018-08-28'), ('BYND', '2020-01-14'), ('CGC', '2018-08-15'), ('DDOG', '2019-11-13'), ('DRYS', '2017-02-01'), ('FSLY', '2020-05-07'), ('FUBO', '2021-01-05'), ('PINS', '2020-07-31'), ('RAD', '2019-12-19'), ('ROKU', '2018-08-09'), ('SAIL', '2018-08-09'), ('SEND', '2018-08-01'), ('UPST', '2021-03-18'), ('KOLD', '2022-04-19')]
+LITERAL (others = every other primary event incl. his other buys): within-day P=0.594 over 133 pairs on 39 days; permutation p=0.0970 [(k+1)/(N+1)=0.0975]; bar P>=0.60 & p<=0.05
+VARIANT (others exclude his other buys): within-day P=0.598 over 127 pairs on 38 days; permutation p=0.0970 [(k+1)/(N+1)=0.0975]; bar P>=0.60 & p<=0.05
+his-buy days with no scored other event (dropped): 11
+his buys' dmin percentile within month: n=47 mean 0.654 median 0.679
+his buys big winners (PRE-REG 6 def): 20 of 61 (0.328); all-scored-event base rate 0.115

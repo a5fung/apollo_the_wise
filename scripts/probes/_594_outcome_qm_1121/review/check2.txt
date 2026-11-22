@@ -1,0 +1,13 @@
+  print(X[X.ticker == "KOLD"][X.E == "2022-04-19"][["era", "ticker", "E", "dmin", "null", "big_winner"]].to_string())
+     era ticker           E       dmin              null  big_winner
+1657   A   KOLD  2022-04-19 -10.347823                           NaN
+4285   B   KOLD  2022-04-19        NaN  history<250(141)         0.0
+his overlap A DDOG 2022-02-10 -1.971829779125924 | twins: [['B', nan, 0.0]]
+his overlap A ENPH 2021-10-27 2.3013422209231087 | twins: [['B', nan, 0.0]]
+his overlap A KWEB 2022-03-16 -11.412894948408033 | twins: [['B', nan, 0.0]]
+his overlap A RBLX 2021-11-09 nan | twins: [['B', nan, 0.0]]
+his overlap A TTD 2021-11-08 6.492624337305852 | twins: [['B', nan, 0.0]]
+his overlap A UPST 2022-02-16 -5.252020590304565 | twins: [['B', nan, 0.0]]
+his overlap B KOLD 2022-04-19 nan | twins: [['A', -10.347822933462457, nan]]
+era-A forward-dropped 95; with B-twin outcome and A dmin: 81; big winners among them 10.0
+sensitivity (+ era-A late events scored on B-twin outcome): n 3754 ratio 1.376 p 0.0020

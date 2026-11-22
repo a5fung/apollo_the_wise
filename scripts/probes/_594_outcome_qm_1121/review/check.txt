@@ -1,0 +1,9 @@
+era A kept 2068637 dropped>2024-12-31 0 max 2022-06-30
+era B kept 806308 dropped>2024-12-31 5210943 max 2024-12-31
+(a) dmin recompute mismatches 0/600; changed by garbage E bar 0/600
+(b) PRE-REG6 pop 4975: big_winner recomputed = build in all; windows with <61 bars 162 (big rate 0.074 vs full 0.115); without 60 ticker rows after E 148
+    era-B max calendar E+60: 2024-12-24
+(d) build reading: n 3671 rates b/m/t [np.float64(0.096), np.float64(0.113), np.float64(0.129)] ratio 1.355 p 0.0035 eraA 1.477 eraB 1.081 tercile-match-build 3671/3671
+(d) recount's drop of names without 60 ticker rows: n 3560 rates b/m/t [np.float64(0.095), np.float64(0.116), np.float64(0.134)] ratio 1.407 p 0.0020 eraA 1.522 eraB 1.154 tercile-match-build 3483/3560
+(e) PRE-REG7 build (excl his-vs-his): days 39 P 0.603 pairs 131 p 0.0780
+(e) PRE-REG7 literal incl his-vs-his: days 39 P 0.599 pairs 137 p 0.0780
