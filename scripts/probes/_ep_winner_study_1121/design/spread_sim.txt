@@ -1,0 +1,16 @@
+
+== short-history feature: discovery 2414 events, confirm 2178 ==
+  null 95% band: discovery 0.77-1.30 | ex-2020 0.59-1.70 | confirm 0.74-1.36 | discovery ratio needed for p<=0.05: 1.30
+  true 1.0x: carry cond 1-2 0.024 | + ex-2020 >=1.10 0.021 | ex-2020 pass given 1-2 0.86 | confirm fam1: 0.048 fam5: 0.009 fam8: 0.005 | P(confirm ratio>=1.2) 0.116 P(>=1.5) 0.004
+  true 1.3x: carry cond 1-2 0.493 | + ex-2020 >=1.10 0.440 | ex-2020 pass given 1-2 0.89 | confirm fam1: 0.517 fam5: 0.254 fam8: 0.200 | P(confirm ratio>=1.2) 0.697 P(>=1.5) 0.180
+  true 1.5x: carry cond 1-2 0.852 | + ex-2020 >=1.10 0.782 | ex-2020 pass given 1-2 0.92 | confirm fam1: 0.830 fam5: 0.598 fam8: 0.525 | P(confirm ratio>=1.2) 0.925 P(>=1.5) 0.496
+  true 2.0x: carry cond 1-2 0.999 | + ex-2020 >=1.10 0.986 | ex-2020 pass given 1-2 0.99 | confirm fam1: 0.997 fam5: 0.981 fam8: 0.969 | P(confirm ratio>=1.2) 0.999 P(>=1.5) 0.963
+
+== 250-bar feature: discovery 2088 events, confirm 1850 ==
+  null 95% band: discovery 0.77-1.31 | ex-2020 0.56-1.83 | confirm 0.72-1.39 | discovery ratio needed for p<=0.05: 1.31
+  true 1.0x: carry cond 1-2 0.025 | + ex-2020 >=1.10 0.022 | ex-2020 pass given 1-2 0.86 | confirm fam1: 0.050 fam5: 0.010 fam8: 0.006 | P(confirm ratio>=1.2) 0.135 P(>=1.5) 0.008
+  true 1.3x: carry cond 1-2 0.476 | + ex-2020 >=1.10 0.414 | ex-2020 pass given 1-2 0.87 | confirm fam1: 0.475 fam5: 0.222 fam8: 0.177 | P(confirm ratio>=1.2) 0.682 P(>=1.5) 0.200
+  true 1.5x: carry cond 1-2 0.836 | + ex-2020 >=1.10 0.752 | ex-2020 pass given 1-2 0.90 | confirm fam1: 0.782 fam5: 0.528 fam8: 0.464 | P(confirm ratio>=1.2) 0.906 P(>=1.5) 0.496
+  true 2.0x: carry cond 1-2 0.999 | + ex-2020 >=1.10 0.975 | ex-2020 pass given 1-2 0.98 | confirm fam1: 0.993 fam5: 0.960 fam8: 0.943 | P(confirm ratio>=1.2) 0.999 P(>=1.5) 0.952
+
+2020-only artefact (1.5x in 2020, none 2016-19): passes cond 1-2 0.560; of those, ex-2020 'same direction' 0.64, ex-2020 >=1.10 0.52
