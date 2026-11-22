@@ -1,0 +1,117 @@
+# STEP 4 BLIND RECOUNT — DISCOVERY (prereg §5.1-5.2, §10 floors + A1 + A3). $0, local files, no network/DB.
+prereg sha256 4f2dbe7fa6f58171180689cc9b374ba4fd88f2f8ef68c9bfbeb723e32bf9bdfc
+feature_table.tsv.gz sha256 ade1d7802eaf70aa60a9b5514d79b72084876d9601b0999328c9b1aad0cf0de7 (stage-1 record ade1d780…: MATCH)
+feature table rows 4665; DISCOVERY kept 2414 (era A only, E 2016-02-02 .. 2020-12-31); CONFIRM rows (2251) dropped at read and never touched
+forward read cut AT READ: bars dated <= 2021-03-30 (= calendar session ci(last discovery E 2020-12-31) + 60)
+era-A bars read for 1258 discovery tickers; latest bar date read 2021-03-30
+off-calendar bar rows dropped: 0
+open(E) from bars vs population.tsv open: 3 mismatches > 1e-6; events whose window ends before E+60 (kept, no survivorship drop): 80
+
+## BASE RATE — big winner = highest close over calendar sessions E..E+60 (E's close included) >= 1.5 x open(E)
+  DISCOVERY: 302 of 2414 = 0.1251  | monster (>= 2.0x): 102 = 0.0423
+    2016:   19 /  326 = 0.0583
+    2017:   22 /  378 = 0.0582
+    2018:   25 /  455 = 0.0549
+    2019:   28 /  484 = 0.0579
+    2020:  208 /  771 = 0.2698
+  2016-19: 94 / 1643 = 0.0572
+  2016-19: B1-scored 54/1198 = 0.0451 | B1-null (short history) 40/445 = 0.0899
+  2020: B1-scored 177/706 = 0.2507 | B1-null (short history) 31/65 = 0.4769
+
+## A3 GATE — B1 shelf distance (dmin), thirds within month (>= 6 scored), TICKER tie-break, top = high dmin
+    2017: n  337 bottom 0.043 top 0.056 ratio 1.30   run.txt n 337 0.043 0.056 1.30 -> MATCH
+    2018: n  419 bottom 0.021 top 0.037 ratio 1.78   run.txt n 419 0.021 0.037 1.78 -> MATCH
+    2019: n  442 bottom 0.039 top 0.063 ratio 1.61   run.txt n 442 0.039 0.063 1.61 -> MATCH
+    2020: n  706 bottom 0.192 top 0.303 ratio 1.57   run.txt n 706 0.192 0.303 1.57 -> MATCH
+    (2016 assigned 0; total assigned 1904 of 1904 scored)
+  A3: all four discovery years reproduce run.txt -> feature verdicts may print
+
+## PERMUTATION: 10000 shuffles, default_rng(1121), one key per event per shuffle (fixed order era,E,ticker), labels permuted within month among events scored on the feature; p = (1 + #|log r*| >= |log r|) / (S + 1)
+
+## PER-FEATURE TABLE (discovery, own full scored set). ratio = top/bottom third (f15, f16: MH yes/no). dir = carried direction if any. c1 |r|>=1.25/<=0.80; c2 p<=0.05; c3 ex-2020 >=1.10/<=0.91; c4 ADR-neutral >=1.15/<=0.87; c5 shelf rel. >=1.10/<=0.91
+feat  scored  assgn   bottom w/n   middle w/n      top w/n  ratio       p ex2020 ADRneu dminth  monst  c1 c2 c3 c4 c5  1-4  ties/groups
+f01     2414   2414       87/822      105/806      110/786  1.322  0.0253  1.576  0.926      -  1.417  Y  Y  Y  .  -    no  top 0.326 bot 0.341
+f02     2407   2407      163/819       79/805       55/783  0.353  0.0001  0.343  0.639      -  0.189  Y  Y  Y  Y  -   YES  top 0.325 bot 0.340
+f03     2407   2407       66/819       77/805      154/783  2.441  0.0001  2.517  1.405      -  4.707  Y  Y  Y  Y  -   YES  top 0.325 bot 0.340
+f04     2194   2194       60/750       79/733      123/711  2.162  0.0001  2.455  1.312      -  3.617  Y  Y  Y  Y  -   YES  top 0.324 bot 0.342
+f05     1911   1911       94/655       58/637       65/619  0.732  0.0355  0.812  1.028  0.592  0.685  Y  Y  Y  .  Y    no  top 0.324 bot 0.343
+f06     2194   2194      110/750       70/733       82/711  0.786  0.0769  0.649  1.046      -  0.879  Y  .  Y  .  -    no  top 0.324 bot 0.342
+f07     2194   2194      100/745      101/757       61/692  0.657  0.0022  0.904  0.744  0.705  0.469  Y  Y  Y  Y  Y   YES  top 0.315 bot 0.340
+f08     2194   2194      147/787       84/700       31/707  0.235  0.0001  0.094  0.718      -  0.075  Y  Y  Y  Y  -   YES  top 0.322 bot 0.359
+f09     2338   2338       31/797       90/781      163/760  5.514  0.0001 19.336  1.533      - 12.409  Y  Y  Y  Y  -   YES  top 0.325 bot 0.341
+f10     2308   2308       84/789       87/769      108/750  1.353  0.0213  0.817  1.199      -  2.104  Y  Y  .  Y  -    no  top 0.325 bot 0.342
+f11     2407   2407       90/819      104/805      103/783  1.197  0.1529  1.081  1.065      -  2.192  .  .  .  .  -    no  top 0.325 bot 0.340
+f12     2308   2308       82/789       80/769      117/750  1.501  0.0027  0.832  1.161      -  2.864  Y  Y  .  Y  -    no  top 0.325 bot 0.342
+f13     2406   2406       87/818      101/805      109/783  1.309  0.0320  0.949  1.108      -  1.915  Y  Y  .  .  -    no  top 0.325 bot 0.340
+f14     2308   2308      100/789       53/769      126/750  1.326  0.0298  1.024  1.214      -  1.916  Y  Y  .  Y  -    no  top 0.325 bot 0.342
+f15     2194   2151   32/827(no)            - 212/1324(yes)  2.383  0.0001  2.687  1.421      -  5.247  Y  Y  Y  Y  -   YES  yes 1365 no 829 small 0.378
+f16     1911   1877 153/1507(no)            -  63/370(yes)  1.540  0.0057  1.341  1.194      -  1.925  Y  Y  Y  Y  -   YES  yes 371 no 1540 small 0.194
+f17     2320   2316       92/790       77/775      112/751  1.281  0.0523  0.959  1.165      -  2.104  Y  .  .  Y  -    no  top 0.324 bot 0.341
+f18     2414   2414      150/822       96/806       56/786  0.390  0.0001  0.454  0.751      -  0.160  Y  Y  Y  Y  -   YES  top 0.326 bot 0.341
+f19     2407   2407      115/819      100/806       82/782  0.747  0.0223  0.700  1.004      -  0.500  Y  Y  Y  .  -    no  top 0.325 bot 0.340
+f20     1885   1885      103/692       60/609       45/584  0.518  0.0001  0.329  0.759      -  0.192  Y  Y  Y  Y  -   YES  top 0.310 bot 0.367
+  stratum layout (outcome-free; compare stage1/06_calibration.txt lines 7-26): ex-2020 top / bottom | ADR strata | dmin strata
+    f01 ex-2020 top  534 bottom  561 | ADR strata 2414 | dmin strata 1904
+    f02 ex-2020 top  534 bottom  560 | ADR strata 2407 | dmin strata 1898
+    f03 ex-2020 top  534 bottom  560 | ADR strata 2407 | dmin strata 1898
+    f04 ex-2020 top  471 bottom  500 | ADR strata 2185 | dmin strata 1889
+    f05 ex-2020 top  394 bottom  421 | ADR strata 1911 | dmin strata 1873
+    f06 ex-2020 top  471 bottom  500 | ADR strata 2185 | dmin strata 1889
+    f07 ex-2020 top  466 bottom  498 | ADR strata 2185 | dmin strata 1889
+    f08 ex-2020 top  468 bottom  518 | ADR strata 2185 | dmin strata 1889
+    f09 ex-2020 top  512 bottom  540 | ADR strata 2328 | dmin strata 1894
+    f10 ex-2020 top  505 bottom  533 | ADR strata 2308 | dmin strata 1893
+    f11 ex-2020 top  534 bottom  560 | ADR strata 2407 | dmin strata 1898
+    f12 ex-2020 top  505 bottom  533 | ADR strata 2308 | dmin strata 1893
+    f13 ex-2020 top  534 bottom  559 | ADR strata 2406 | dmin strata 1898
+    f14 ex-2020 top  505 bottom  533 | ADR strata 2308 | dmin strata 1893
+    f15 ex-2020 top  729 bottom  720 | ADR strata 1986 | dmin strata 1798
+    f16 ex-2020 top  226 bottom  961 | ADR strata 1883 | dmin strata 1533
+    f17 ex-2020 top  505 bottom  533 | ADR strata 2316 | dmin strata 1894
+    f18 ex-2020 top  534 bottom  561 | ADR strata 2414 | dmin strata 1904
+    f19 ex-2020 top  533 bottom  560 | ADR strata 2407 | dmin strata 1898
+    f20 ex-2020 top  368 bottom  439 | ADR strata 1885 | dmin strata 1847
+  f15: pooled rate(yes)/rate(no) (the biased pre-A1 statistic, description only) = 4.138; MH = 2.383
+  f16: pooled rate(yes)/rate(no) (the biased pre-A1 statistic, description only) = 1.677; MH = 1.540
+  A1 check, synthetic NO-effect labels (4.9% 2016-19 / 25% 2020, 300 draws): MH median f15 1.001, f16 0.995
+
+## CONDITIONS 1-4 PASS: ['f02', 'f03', 'f04', 'f07', 'f08', 'f09', 'f15', 'f16', 'f18', 'f20']
+## CONDITIONS 1-5 PASS (cond 5 applies to shelf relatives f05, f07 only): ['f02', 'f03', 'f04', 'f07', 'f08', 'f09', 'f15', 'f16', 'f18', 'f20']
+   f02: direction LOW values win (ratio 0.353)
+   f03: direction HIGH values win (ratio 2.441)
+   f04: direction HIGH values win (ratio 2.162)
+   f07: direction LOW values win (ratio 0.657)
+   f08: direction LOW values win (ratio 0.235)
+   f09: direction HIGH values win (ratio 5.514)
+   f15: direction HIGH values win (ratio 2.383)
+   f16: direction HIGH values win (ratio 1.540)
+   f18: direction LOW values win (ratio 0.390)
+   f20: direction LOW values win (ratio 0.518)
+
+## CONDITION 6 — group winner = largest z = |log ratio| / SD(permuted log ratios) on the events scored on every candidate member of the group
+  gap       common n 2407: f01 z 2.25 (r 1.329)  f02 z 8.21 (r 0.353)  -> winner f02
+  runup     common n 2194: f03 z 6.66 (r 2.414)  f04 z 5.69 (r 2.162)  f17 z 1.75 (r 1.261)  -> winner f03
+  highs     common n 1911: f05 z 2.11 (r 0.732)  f06 z 1.91 (r 0.754)  f07 z 3.88 (r 0.559)  -> winner f07
+  base      common n 2194: f08 z 11.08 (r 0.235)  f09 z 12.30 (r 5.239)  -> winner f09
+  tight     common n 2308: f10 z 2.33 (r 1.353)  f11 z 1.41 (r 1.199)  -> winner f10
+  volume    common n 2308: f12 z 3.12 (r 1.501)  f13 z 2.30 (r 1.341)  -> winner f12
+  strength  common n 2308: f14 z 2.19 (r 1.326)  -> winner f14
+  structure common n 1885: f15 z 4.06 (r 1.978)  f16 z 2.80 (r 1.557)  f20 z 4.34 (r 0.518)  -> winner f20
+  size      common n 2407: f18 z 7.53 (r 0.389)  f19 z 2.30 (r 0.747)  -> winner f18
+  cap common set (scored on ALL 20 candidates): n 1885; group winners z: f09 10.88  f02 7.66  f18 6.48  f03 5.54  f20 4.34  f12 3.80  f07 3.35  f10 3.30  f14 1.13
+  top four group winners: ['f09', 'f02', 'f18', 'f03']
+
+## CARRIED SET (all six conditions, literal reading: group winner among ALL candidates): ['f02', 'f03', 'f09', 'f18']
+## CARRIED SET (alternative reading: group winner among the 1-5 passers only): ['f09', 'f02', 'f18', 'f03']
+
+## READINGS USED (any difference vs stage 3 should trace to one of these)
+  R1 smoothing (w+0.5)/(n+1) applied ONLY when a top or bottom third holds zero winners (observed or per shuffle); never fired on observed data unless printed ratio is 0/inf
+  R2 f15/f16: Mantel-Haenszel RISK ratio sum(a*n0/N)/sum(c*n1/N), strata = months with >= 2 yes and >= 2 no (no >= 6 floor); same in cond 3 (2016-19 months) and cond 4 (ADR strata, >= 2 each)
+  R3 ADR-neutral: ADR third (encoder adr20_raw) within era-quarter over ALL discovery events, mid-rank ties; feature thirds within (quarter, ADR third) strata with >= 9 scored
+  R4 cond 5: dmin third within era-quarter over discovery events with non-NULL dmin; feature thirds within strata >= 9 scored
+  R5 mid-rank tie: a tied block goes whole to the third of sorted position floor((first+last)/2); B1 alone ticker tie-break
+  R6 permutation: one key per event per shuffle shared by all features; within-month reassignment among events scored on f; same shuffles reused for cond-6 SDs
+  R7 cond 6: candidates = all 20 (none description-only); z SD = std of the permuted log ratios on the common set; ties -> smaller own p -> lower number
+  R8 open(E) mismatches vs population.tsv are print rounding only (EXPE 2018-04-27, SQQQ 2020-02-28, QCOM 2020-11-05: |diff| < 5e-6 relative)
+  R9 two-group months: >= 2 of each gave the same 2151 / 1877 assigned events as stage 1's '>= 6 and >= 2 of each'
+  NOT computed (not needed for carry): 90% bootstrap intervals, family-wide p, §5.5 extra readings

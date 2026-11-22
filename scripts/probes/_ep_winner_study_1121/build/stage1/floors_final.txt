@@ -1,0 +1,7 @@
+condition 3 (ex-2020) floor: 1.10 (lowering rule fired: False)
+condition 4 (ADR-neutral) floor: 1.15 (lowering rule fired: False)
+condition 5 (shelf relatives, within dmin thirds) floor: 1.10 (lowering rule fired: False)
+shelf relatives: ['f05', 'f07']
+prereg sha256 at calibration: 99621b6dc958f0306b0d2250c6e2ea78f7c55df30b94dbd6e17b29b4737b93fe
+feature_table sha256: ade1d7802eaf70aa60a9b5514d79b72084876d9601b0999328c9b1aad0cf0de7
+NOTE: the frozen prereg document was NOT edited by stage 1 (task scope); writing these floors into it and re-recording its sha256 is left to the caller.

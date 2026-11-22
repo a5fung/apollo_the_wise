@@ -1,0 +1,199 @@
+# STAGE 1 / 04 feature table (prereg §4 + §6 step 1). No forward read: bars < E and open(E) only.
+prereg sha256 99621b6dc958f0306b0d2250c6e2ea78f7c55df30b94dbd6e17b29b4737b93fe
+population 4665 events; flags loaded A 268 / B 383 (ticker, date) pairs; identity-break symbols A 667 / B 1292
+feature 1 equals the event list's gap_pct on every event (ASSERT OK)
+
+## NULL counts per feature (reason: n), by era; full feature x era x year x reason table in null_counts.tsv
+feature  name                                           window | scored  NULL | A scored A NULL | B scored B NULL | DISC scored / CONF scored | reasons
+f01      gap size %                                          1 |   4665     0 |     3281      0 |     1384      0 | 2414 / 2251 | 
+f02      gap size in daily ranges                           20 |   4656     9 |     3274      7 |     1382      2 | 2407 / 2249 | adjustment: 8, identity: 1
+f03      short run-up (20)                                  20 |   4656     9 |     3274      7 |     1382      2 | 2407 / 2249 | adjustment: 8, identity: 1
+f04      long run-up (120)                                 120 |   4370   295 |     3008    273 |     1362     22 | 2194 / 2176 | history: 267, adjustment: 18, identity: 6, coverage: 4
+f05      below the 52-week high                            252 |   3754   911 |     2635    646 |     1119    265 | 1911 / 1843 | history: 853, coverage: 26, adjustment: 19, identity: 13
+f06      open vs the 6-month high                          120 |   4370   295 |     3008    273 |     1362     22 | 2194 / 2176 | history: 267, adjustment: 18, identity: 6, coverage: 4
+f07      sessions since the 6-month high                   120 |   4370   295 |     3008    273 |     1362     22 | 2194 / 2176 | history: 267, adjustment: 18, identity: 6, coverage: 4
+f08      flat-base length                                  120 |   4370   295 |     3008    273 |     1362     22 | 2194 / 2176 | history: 267, adjustment: 18, identity: 6, coverage: 4
+f09      base depth (40)                                    40 |   4571    94 |     3193     88 |     1378      6 | 2338 / 2233 | history: 81, adjustment: 11, identity: 2
+f10      range tightening                                   60 |   4526   139 |     3152    129 |     1374     10 | 2308 / 2218 | history: 124, adjustment: 12, identity: 3
+f11      closing tightness                                  20 |   4656     9 |     3274      7 |     1382      2 | 2407 / 2249 | adjustment: 8, identity: 1
+f12      volume dry-up                                      60 |   4526   139 |     3152    129 |     1374     10 | 2308 / 2218 | history: 124, adjustment: 12, identity: 3
+f13      up vs down volume                                  21 |   4655    10 |     3273      8 |     1382      2 | 2406 / 2249 | adjustment: 8, history: 1, identity: 1
+f14      strength vs SPY (60)                               61 |   4524   141 |     3151    130 |     1373     11 | 2308 / 2216 | history: 125, adjustment: 13, identity: 3
+f15      earlier gap-ups (yes/no)                          120 |   4370   295 |     3008    273 |     1362     22 | 2194 / 2176 | history: 267, adjustment: 18, identity: 6, coverage: 4
+f16      unfilled gap-down overhead (yes/no)               250 |   3759   906 |     2635    646 |     1124    260 | 1911 / 1848 | history: 849, coverage: 26, adjustment: 19, identity: 12
+f17      distance from the 50-day average (daily ranges     50 |   4545   120 |     3170    111 |     1375      9 | 2320 / 2225 | history: 107, adjustment: 11, identity: 2
+f18      price (raw)                                         1 |   4665     0 |     3281      0 |     1384      0 | 2414 / 2251 | 
+f19      liquidity (median $ volume)                        20 |   4656     9 |     3274      7 |     1382      2 | 2407 / 2249 | adjustment: 8, identity: 1
+f20      levels cleared by the open                        250 |   3705   960 |     2586    695 |     1119    265 | 1885 / 1820 | history: 849, adjustment: 49, identity: 36, coverage: 26
+B1       shelf distance (dmin)                              5y |   3675   990 |     2618    663 |     1057    327 | 1904 / 1771 | f3:history<250: 860, f3:run_window_before_history: 81, f3:shelf_window_before_history: 45, f3:swing_lows=1: 4
+B1clean  shelf distance, clean                              5y |   3590  1075 |     2545    736 |     1045    339 | 1859 / 1731 | f3:history<250: 860, f3:run_window_before_history: 81, adjustment: 47, f3:shelf_window_before_history: 45, identity: 38, f3:swing_lows=1: 4
+B2       ADR20                                              20 |   4656     9 |     3274      7 |     1382      2 | 2407 / 2249 | adjustment: 8, identity: 1
+
+## NULL counts per feature x era x year (all reasons pooled; scored/NULL)
+feature      A2016     A2017     A2018     A2019     A2020     A2021     A2022     B2022     B2023     B2024
+f01          326/0     378/0     455/0     484/0     771/0     707/0     160/0     344/0     527/0     513/0
+f02          326/0     377/1     455/0     484/0     765/6     707/0     160/0     344/0     526/1     512/1
+f03          326/0     377/1     455/0     484/0     765/6     707/0     160/0     344/0     526/1     512/1
+f04        186/140     372/6    439/16    461/23    736/35    658/49     156/4     338/6     522/5    502/11
+f05          0/326    359/19    419/36    443/41    690/81   580/127    144/16   112/232     519/8    488/25
+f06        186/140     372/6    439/16    461/23    736/35    658/49     156/4     338/6     522/5    502/11
+f07        186/140     372/6    439/16    461/23    736/35    658/49     156/4     338/6     522/5    502/11
+f08        186/140     372/6    439/16    461/23    736/35    658/49     156/4     338/6     522/5    502/11
+f09         282/44     374/4     447/8     477/7    758/13    696/11     159/1     343/1     526/1     509/4
+f10         263/63     374/4    444/11     475/9    752/19    685/22     159/1     340/4     525/2     509/4
+f11          326/0     377/1     455/0     484/0     765/6     707/0     160/0     344/0     526/1     512/1
+f12         263/63     374/4    444/11     475/9    752/19    685/22     159/1     340/4     525/2     509/4
+f13          325/1     377/1     455/0     484/0     765/6     707/0     160/0     344/0     526/1     512/1
+f14         263/63     374/4    444/11     475/9    752/19    684/23     159/1     339/5     525/2     509/4
+f15        186/140     372/6    439/16    461/23    736/35    658/49     156/4     338/6     522/5    502/11
+f16          0/326    359/19    419/36    443/41    690/81   580/127    144/16   116/228     519/8    489/24
+f17         267/59     374/4     446/9     477/7    756/15    691/16     159/1     340/4     526/1     509/4
+f18          326/0     378/0     455/0     484/0     771/0     707/0     160/0     344/0     527/0     513/0
+f19          326/0     377/1     455/0     484/0     765/6     707/0     160/0     344/0     526/1     512/1
+f20          0/326    359/19    416/39    438/46    672/99   559/148    142/18   116/228     519/8    484/29
+B1           0/326    337/41    419/36    442/42    706/65   574/133    140/20    45/299     520/7    492/21
+B1clean      0/326    336/42    415/40    435/49    673/98   549/158    137/23    45/299    516/11    484/29
+B2           326/0     377/1     455/0     484/0     765/6     707/0     160/0     344/0     526/1     512/1
+
+## NULL reasons per feature x era x year (only non-zero cells)
+f02: A2017 adjustment 1 | A2020 adjustment 6 | B2023 adjustment 1 | B2024 identity 1
+f03: A2017 adjustment 1 | A2020 adjustment 6 | B2023 adjustment 1 | B2024 identity 1
+f04: A2016 adjustment 1 | A2016 history 139 | A2017 adjustment 1 | A2017 history 5 | A2018 history 16 | A2019 adjustment 2 | A2019 history 20 | A2019 identity 1 | A2020 adjustment 10 | A2020 coverage 2 | A2020 history 21 | A2020 identity 2 | A2021 coverage 2 | A2021 history 46 | A2021 identity 1 | A2022 history 4 | B2022 adjustment 2 | B2022 history 4 | B2023 adjustment 2 | B2023 history 3 | B2024 history 9 | B2024 identity 2
+f05: A2016 history 326 | A2017 adjustment 2 | A2017 coverage 1 | A2017 history 15 | A2017 identity 1 | A2018 adjustment 1 | A2018 coverage 1 | A2018 history 34 | A2019 adjustment 2 | A2019 coverage 1 | A2019 history 38 | A2020 adjustment 11 | A2020 coverage 17 | A2020 history 49 | A2020 identity 4 | A2021 coverage 4 | A2021 history 120 | A2021 identity 3 | A2022 history 15 | A2022 identity 1 | B2022 history 232 | B2023 adjustment 2 | B2023 coverage 2 | B2023 history 4 | B2024 adjustment 1 | B2024 history 20 | B2024 identity 4
+f06: A2016 adjustment 1 | A2016 history 139 | A2017 adjustment 1 | A2017 history 5 | A2018 history 16 | A2019 adjustment 2 | A2019 history 20 | A2019 identity 1 | A2020 adjustment 10 | A2020 coverage 2 | A2020 history 21 | A2020 identity 2 | A2021 coverage 2 | A2021 history 46 | A2021 identity 1 | A2022 history 4 | B2022 adjustment 2 | B2022 history 4 | B2023 adjustment 2 | B2023 history 3 | B2024 history 9 | B2024 identity 2
+f07: A2016 adjustment 1 | A2016 history 139 | A2017 adjustment 1 | A2017 history 5 | A2018 history 16 | A2019 adjustment 2 | A2019 history 20 | A2019 identity 1 | A2020 adjustment 10 | A2020 coverage 2 | A2020 history 21 | A2020 identity 2 | A2021 coverage 2 | A2021 history 46 | A2021 identity 1 | A2022 history 4 | B2022 adjustment 2 | B2022 history 4 | B2023 adjustment 2 | B2023 history 3 | B2024 history 9 | B2024 identity 2
+f08: A2016 adjustment 1 | A2016 history 139 | A2017 adjustment 1 | A2017 history 5 | A2018 history 16 | A2019 adjustment 2 | A2019 history 20 | A2019 identity 1 | A2020 adjustment 10 | A2020 coverage 2 | A2020 history 21 | A2020 identity 2 | A2021 coverage 2 | A2021 history 46 | A2021 identity 1 | A2022 history 4 | B2022 adjustment 2 | B2022 history 4 | B2023 adjustment 2 | B2023 history 3 | B2024 history 9 | B2024 identity 2
+f09: A2016 history 44 | A2017 adjustment 1 | A2017 history 3 | A2018 history 8 | A2019 history 7 | A2020 adjustment 9 | A2020 history 3 | A2020 identity 1 | A2021 history 11 | A2022 history 1 | B2022 history 1 | B2023 adjustment 1 | B2024 history 3 | B2024 identity 1
+f10: A2016 history 63 | A2017 adjustment 1 | A2017 history 3 | A2018 history 11 | A2019 adjustment 1 | A2019 history 8 | A2020 adjustment 9 | A2020 history 9 | A2020 identity 1 | A2021 history 21 | A2021 identity 1 | A2022 history 1 | B2022 history 4 | B2023 adjustment 1 | B2023 history 1 | B2024 history 3 | B2024 identity 1
+f11: A2017 adjustment 1 | A2020 adjustment 6 | B2023 adjustment 1 | B2024 identity 1
+f12: A2016 history 63 | A2017 adjustment 1 | A2017 history 3 | A2018 history 11 | A2019 adjustment 1 | A2019 history 8 | A2020 adjustment 9 | A2020 history 9 | A2020 identity 1 | A2021 history 21 | A2021 identity 1 | A2022 history 1 | B2022 history 4 | B2023 adjustment 1 | B2023 history 1 | B2024 history 3 | B2024 identity 1
+f13: A2016 history 1 | A2017 adjustment 1 | A2020 adjustment 6 | B2023 adjustment 1 | B2024 identity 1
+f14: A2016 history 63 | A2017 adjustment 1 | A2017 history 3 | A2018 history 11 | A2019 adjustment 1 | A2019 history 8 | A2020 adjustment 9 | A2020 history 9 | A2020 identity 1 | A2021 history 22 | A2021 identity 1 | A2022 history 1 | B2022 adjustment 1 | B2022 history 4 | B2023 adjustment 1 | B2023 history 1 | B2024 history 3 | B2024 identity 1
+f15: A2016 adjustment 1 | A2016 history 139 | A2017 adjustment 1 | A2017 history 5 | A2018 history 16 | A2019 adjustment 2 | A2019 history 20 | A2019 identity 1 | A2020 adjustment 10 | A2020 coverage 2 | A2020 history 21 | A2020 identity 2 | A2021 coverage 2 | A2021 history 46 | A2021 identity 1 | A2022 history 4 | B2022 adjustment 2 | B2022 history 4 | B2023 adjustment 2 | B2023 history 3 | B2024 history 9 | B2024 identity 2
+f16: A2016 history 326 | A2017 adjustment 2 | A2017 coverage 1 | A2017 history 15 | A2017 identity 1 | A2018 adjustment 1 | A2018 coverage 1 | A2018 history 34 | A2019 adjustment 2 | A2019 coverage 1 | A2019 history 38 | A2020 adjustment 11 | A2020 coverage 17 | A2020 history 49 | A2020 identity 4 | A2021 coverage 4 | A2021 history 120 | A2021 identity 3 | A2022 history 15 | A2022 identity 1 | B2022 history 228 | B2023 adjustment 2 | B2023 coverage 2 | B2023 history 4 | B2024 adjustment 1 | B2024 history 20 | B2024 identity 3
+f17: A2016 history 59 | A2017 adjustment 1 | A2017 history 3 | A2018 history 9 | A2019 history 7 | A2020 adjustment 9 | A2020 history 5 | A2020 identity 1 | A2021 history 16 | A2022 history 1 | B2022 history 4 | B2023 adjustment 1 | B2024 history 3 | B2024 identity 1
+f19: A2017 adjustment 1 | A2020 adjustment 6 | B2023 adjustment 1 | B2024 identity 1
+f20: A2016 history 326 | A2017 adjustment 2 | A2017 coverage 1 | A2017 history 15 | A2017 identity 1 | A2018 adjustment 3 | A2018 coverage 1 | A2018 history 34 | A2018 identity 1 | A2019 adjustment 4 | A2019 coverage 1 | A2019 history 38 | A2019 identity 3 | A2020 adjustment 22 | A2020 coverage 17 | A2020 history 49 | A2020 identity 11 | A2021 adjustment 14 | A2021 coverage 4 | A2021 history 120 | A2021 identity 10 | A2022 adjustment 1 | A2022 history 15 | A2022 identity 2 | B2022 history 228 | B2023 adjustment 2 | B2023 coverage 2 | B2023 history 4 | B2024 adjustment 1 | B2024 history 20 | B2024 identity 8
+B1: A2016 f3:history<250 326 | A2017 f3:history<250 16 | A2017 f3:run_window_before_history 5 | A2017 f3:shelf_window_before_history 20 | A2018 f3:history<250 34 | A2018 f3:shelf_window_before_history 1 | A2018 f3:swing_lows=1 1 | A2019 f3:history<250 39 | A2019 f3:run_window_before_history 1 | A2019 f3:shelf_window_before_history 2 | A2020 f3:history<250 54 | A2020 f3:run_window_before_history 3 | A2020 f3:shelf_window_before_history 7 | A2020 f3:swing_lows=1 1 | A2021 f3:history<250 124 | A2021 f3:run_window_before_history 7 | A2021 f3:shelf_window_before_history 2 | A2022 f3:history<250 15 | A2022 f3:run_window_before_history 4 | A2022 f3:shelf_window_before_history 1 | B2022 f3:history<250 228 | B2022 f3:run_window_before_history 60 | B2022 f3:shelf_window_before_history 11 | B2023 f3:history<250 4 | B2023 f3:shelf_window_before_history 1 | B2023 f3:swing_lows=1 2 | B2024 f3:history<250 20 | B2024 f3:run_window_before_history 1
+B1clean: A2016 f3:history<250 326 | A2017 f3:history<250 16 | A2017 f3:run_window_before_history 5 | A2017 f3:shelf_window_before_history 20 | A2017 identity 1 | A2018 adjustment 3 | A2018 f3:history<250 34 | A2018 f3:shelf_window_before_history 1 | A2018 f3:swing_lows=1 1 | A2018 identity 1 | A2019 adjustment 4 | A2019 f3:history<250 39 | A2019 f3:run_window_before_history 1 | A2019 f3:shelf_window_before_history 2 | A2019 identity 3 | A2020 adjustment 22 | A2020 f3:history<250 54 | A2020 f3:run_window_before_history 3 | A2020 f3:shelf_window_before_history 7 | A2020 f3:swing_lows=1 1 | A2020 identity 11 | A2021 adjustment 14 | A2021 f3:history<250 124 | A2021 f3:run_window_before_history 7 | A2021 f3:shelf_window_before_history 2 | A2021 identity 11 | A2022 adjustment 1 | A2022 f3:history<250 15 | A2022 f3:run_window_before_history 4 | A2022 f3:shelf_window_before_history 1 | A2022 identity 2 | B2022 f3:history<250 228 | B2022 f3:run_window_before_history 60 | B2022 f3:shelf_window_before_history 11 | B2023 adjustment 2 | B2023 f3:history<250 4 | B2023 f3:shelf_window_before_history 1 | B2023 f3:swing_lows=1 2 | B2023 identity 2 | B2024 adjustment 1 | B2024 f3:history<250 20 | B2024 f3:run_window_before_history 1 | B2024 identity 7
+B2: A2017 adjustment 1 | A2020 adjustment 6 | B2023 adjustment 1 | B2024 identity 1
+
+feature 16: NULL for all 326 events of 2016 (ASSERT OK); first era-B event scored on it: 2022-09-26 (frozen text: NULL for era-B events before ~2022-09-26)
+  first era-B event scored on f05: 2022-09-28
+  first era-B event scored on f16: 2022-09-26
+  first era-B event scored on f20: 2022-09-26
+  first era-B event scored on B1: 2022-09-26
+feature 14: base bar taken from the fallback (no bar on session E-61, latest bar within the 5 sessions before): 0 events (SPY is read at the SAME session the ticker's base bar sits on)
+ADR20: encoder value present 4665 of 4665; B2 (with the §4.0 NULL rules, window 20) scored 4656; NULL by rule but the encoder value exists 9 (ADR strata of §2 use the encoder value)
+
+## §5.1 ties and the tie-heavy fallback (decided here, without outcomes) — DISCOVERY events
+feature  scored in months>=6  moved by mid-rank  bottom  middle     top top share bottom share  decision
+f01        2414         2414        0 (  0.0%)     822     806     786     32.6%        34.1%  thirds
+f02        2407         2407        0 (  0.0%)     819     805     783     32.5%        34.0%  thirds
+f03        2407         2407        0 (  0.0%)     819     805     783     32.5%        34.0%  thirds
+f04        2194         2194        0 (  0.0%)     750     733     711     32.4%        34.2%  thirds
+f05        1911         1911        0 (  0.0%)     655     637     619     32.4%        34.3%  thirds
+f06        2194         2194        0 (  0.0%)     750     733     711     32.4%        34.2%  thirds
+f07        2194         2194       34 (  1.5%)     745     757     692     31.5%        34.0%  thirds
+f08        2194         2194       65 (  3.0%)     787     700     707     32.2%        35.9%  thirds
+f09        2338         2338        0 (  0.0%)     797     781     760     32.5%        34.1%  thirds
+f10        2308         2308        0 (  0.0%)     789     769     750     32.5%        34.2%  thirds
+f11        2407         2407        0 (  0.0%)     819     805     783     32.5%        34.0%  thirds
+f12        2308         2308        0 (  0.0%)     789     769     750     32.5%        34.2%  thirds
+f13        2406         2406        0 (  0.0%)     818     805     783     32.5%        34.0%  thirds
+f14        2308         2308        0 (  0.0%)     789     769     750     32.5%        34.2%  thirds
+f17        2320         2316        0 (  0.0%)     790     775     751     32.4%        34.1%  thirds
+f18        2414         2414        0 (  0.0%)     822     806     786     32.6%        34.1%  thirds
+f19        2407         2407        1 (  0.0%)     819     806     782     32.5%        34.0%  thirds
+f20        1885         1885      109 (  5.8%)     692     609     584     31.0%        36.7%  thirds
+  'moved by mid-rank' = events whose third differs from a ticker-order split of the same sorted values. Shares are of the feature's scored discovery events (frozen bar: under 20% -> two-group).
+
+## two-group features (15, 16, and any fallback): group sizes on scored DISCOVERY events; minimum = smaller group >= 100 events AND >= 15%
+  f15 earlier gap-ups (yes/no): yes / no = 1365 / 829 of 2194 scored; smaller group 829 = 37.8% -> two-group — candidate
+      (confirm, outcome-free) yes / no = 1462 / 714
+  f16 unfilled gap-down overhead (yes/no): yes / no = 371 / 1540 of 1911 scored; smaller group 371 = 19.4% -> two-group — candidate
+      (confirm, outcome-free) yes / no = 380 / 1468
+
+## step-1 decisions per feature
+  f01 gap size %: thirds
+  f02 gap size in daily ranges: thirds
+  f03 short run-up (20): thirds
+  f04 long run-up (120): thirds
+  f05 below the 52-week high: thirds
+  f06 open vs the 6-month high: thirds
+  f07 sessions since the 6-month high: thirds
+  f08 flat-base length: thirds
+  f09 base depth (40): thirds
+  f10 range tightening: thirds
+  f11 closing tightness: thirds
+  f12 volume dry-up: thirds
+  f13 up vs down volume: thirds
+  f14 strength vs SPY (60): thirds
+  f15 earlier gap-ups (yes/no): two-group — candidate
+  f16 unfilled gap-down overhead (yes/no): two-group — candidate
+  f17 distance from the 50-day average (daily ranges): thirds
+  f18 price (raw): thirds
+  f19 liquidity (median $ volume): thirds
+  f20 levels cleared by the open: thirds
+
+## feature 12 vs vr20_mean — Pearson correlation of within-(era, month) percentile ranks (= pooled within-month Spearman), outcome-free
+  discovery: rho -0.031 on 2308 events
+  confirm: rho +0.015 on 2218 events
+  all: rho -0.009 on 4526 events
+
+## shelf relatives — Spearman of each feature with dmin on within-(era, month) percentile ranks, DISCOVERY events scored on both (|rho| >= 0.5 -> 'shelf relative')
+  f01  gap size %                                     rho -0.008  n  1904  
+  f02  gap size in daily ranges                       rho -0.091  n  1898  
+  f03  short run-up (20)                              rho +0.091  n  1898  
+  f04  long run-up (120)                              rho +0.453  n  1889  
+  f05  below the 52-week high                         rho +0.585  n  1873  SHELF RELATIVE — confirm partly seen
+  f06  open vs the 6-month high                       rho +0.390  n  1889  
+  f07  sessions since the 6-month high                rho -0.507  n  1889  SHELF RELATIVE — confirm partly seen
+  f08  flat-base length                               rho -0.023  n  1889  
+  f09  base depth (40)                                rho +0.013  n  1894  
+  f10  range tightening                               rho +0.054  n  1893  
+  f11  closing tightness                              rho -0.040  n  1898  
+  f12  volume dry-up                                  rho +0.019  n  1893  
+  f13  up vs down volume                              rho +0.102  n  1898  
+  f14  strength vs SPY (60)                           rho +0.390  n  1893  
+  f15  earlier gap-ups (yes/no)                       rho +0.109  n  1889  
+  f16  unfilled gap-down overhead (yes/no)            rho -0.371  n  1873  
+  f17  distance from the 50-day average (daily ranges rho +0.193  n  1894  
+  f18  price (raw)                                    rho +0.212  n  1904  
+  f19  liquidity (median $ volume)                    rho +0.014  n  1898  
+  f20  levels cleared by the open                     rho -0.182  n  1847  
+  B2   ADR20                                          rho +0.111  n  1898  
+  shelf relatives: ['f05', 'f07']
+
+## benchmarks: B1 dmin scored 3675 (A 2618 / B 1057; DISC 1904 / CONF 1771); B1-clean scored 3590 (dropped by the adjustment / identity rules over the 5-year slice: 85)
+   B1 scored per year: A2016 0 · A2017 337 · A2018 419 · A2019 442 · A2020 706 · A2021 574 · A2022 140 · B2022 45 · B2023 520 · B2024 492
+   (the B1 reproduction asserts of RESULT 8 need outcomes and belong to the discovery / confirm scripts, not here)
+
+## confirm n per feature per era (scored), outcome-free
+  f01      A  867 · B 1384
+  f02      A  867 · B 1382
+  f03      A  867 · B 1382
+  f04      A  814 · B 1362
+  f05      A  724 · B 1119
+  f06      A  814 · B 1362
+  f07      A  814 · B 1362
+  f08      A  814 · B 1362
+  f09      A  855 · B 1378
+  f10      A  844 · B 1374
+  f11      A  867 · B 1382
+  f12      A  844 · B 1374
+  f13      A  867 · B 1382
+  f14      A  843 · B 1373
+  f15      A  814 · B 1362
+  f16      A  724 · B 1124
+  f17      A  850 · B 1375
+  f18      A  867 · B 1384
+  f19      A  867 · B 1382
+  f20      A  701 · B 1119
+  B1       A  714 · B 1057
+  B1clean  A  686 · B 1045
+  B2       A  867 · B 1382
+
+feature_table.tsv.gz written: 4665 rows x 58 columns; sha256 ade1d7802eaf70aa60a9b5514d79b72084876d9601b0999328c9b1aad0cf0de7
+null_counts.tsv sha256 f18379d5477e1159d402b6d04629f785260421df64e111d60a4774b433526cff | feature_decisions.tsv sha256 df5e9e9c5ca1822768c6a4f3ebe31b55594dee04a6f4f47452fcaf0cf791be08
+code: features.py 373abf6ae0950c2c1abb0ed6a43fa7586ef7e9909bec952a7d90d4d3856f47ed | common.py cf5f35b9f3769a9e297f32ca8660063c5ac0d35ff3938b61ad2203697bec0d8a | stats.py ee31bf9d6fbab5c9a5ec0f0a2de73bee8de866a1c607a4b1d445f9fdde067468 | this script 383a79012c041d6aa97f1f774db55496fe85032a4e4a5237d4c283a33fd87508

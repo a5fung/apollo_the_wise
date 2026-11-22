@@ -1,0 +1,38 @@
+# STAGE 1 / 05 corrupted-gap-day look-ahead proof (prereg §4.1 (b), (c)). Garbage replaces E's high / low / close / volume, every later bar, and SPY from E on.
+events tested: 4665 (ALL of the population, not a sample) x 3 garbage patterns
+feature       huge (1e9, volume 1e15) |      tiny (1e-9, volume 0) |           random lognormal   <- events whose value or NULL reason CHANGED
+f01                                 0 |                          0 |                          0
+f02                                 0 |                          0 |                          0
+f03                                 0 |                          0 |                          0
+f04                                 0 |                          0 |                          0
+f05                                 0 |                          0 |                          0
+f06                                 0 |                          0 |                          0
+f07                                 0 |                          0 |                          0
+f08                                 0 |                          0 |                          0
+f09                                 0 |                          0 |                          0
+f10                                 0 |                          0 |                          0
+f11                                 0 |                          0 |                          0
+f12                                 0 |                          0 |                          0
+f13                                 0 |                          0 |                          0
+f14                                 0 |                          0 |                          0
+f15                                 0 |                          0 |                          0
+f16                                 0 |                          0 |                          0
+f17                                 0 |                          0 |                          0
+f18                                 0 |                          0 |                          0
+f19                                 0 |                          0 |                          0
+f20                                 0 |                          0 |                          0
+B1                                  0 |                          0 |                          0
+B1clean                             0 |                          0 |                          0
+B2                                  0 |                          0 |                          0
+adr20_raw                           0 |                          0 |                          0
+
+(b) the frozen seeded 600-event sample (default_rng(1121)) for feature 20: 476 of 600 scored on feature 20; n_cleared changed on 0 of 600
+positive control (the test can fail): the encoder's BANNED outputs (ma_cleared / verdict) change under a garbage E row on 594 events — n_cleared on 0 of them; a deliberately leaky feature close(E)/open(E) changes on every event by construction.
+
+(c) TOTAL changed across all 20 features + B1 + B1-clean + B2 + the raw ADR20: 0
+LOOK-AHEAD PROOF: PASS — 0 changed on every feature, every event, every pattern. Feature 20 is kept.
+
+independent recomputation (pandas, calendar-reindexed; seeded 400 events): largest relative difference per feature (n compared)
+  f03 4.3e-10 (400) · f04 4.4e-10 (378) · f05 4.7e-10 (324) · f06 4.6e-10 (378) · f09 4.6e-10 (396) · f10 4.9e-10 (393) · f12 4.7e-10 (393) · f14 4.7e-10 (393) · f17 4.5e-10 (394)
+  all within 1e-9: ASSERT OK
+feature_table.tsv.gz sha256 ade1d7802eaf70aa60a9b5514d79b72084876d9601b0999328c9b1aad0cf0de7 | features.py 373abf6ae0950c2c1abb0ed6a43fa7586ef7e9909bec952a7d90d4d3856f47ed

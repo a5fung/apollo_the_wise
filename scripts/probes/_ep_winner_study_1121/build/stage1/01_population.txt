@@ -1,0 +1,41 @@
+# EP big-winner study — STAGE 1 / 01 population (prereg §1, §3). No outcome is read.
+prereg sha256 (as read, before any stage-1 output): 99621b6dc958f0306b0d2250c6e2ea78f7c55df30b94dbd6e17b29b4737b93fe
+source primary rows: 5342 (A 3378, B 1964)
+drop 1 flag_adj / flag_adj_Dm1: 2 (A 2, B 0)
+drop 2 forward window: era B E > 2024-09-30: 270 | era A E > 2022-04-04: 95
+drop 3 era overlap (every era-B event E <= 2022-04-04): 310 (273 with a same-(ticker, E) era-A copy, 37 without)
+STUDY POPULATION: 4665 (era A 3281, era B 1384); era B first E 2022-04-05
+tickers (distinct symbols, eras pooled): 1977; events per ticker median 2, max 19 | distinct (era, ticker): 2418, median 1, max 19
+per year (era A / era B):
+  2016: 326/0
+  2017: 378/0
+  2018: 455/0
+  2019: 484/0
+  2020: 771/0
+  2021: 707/0
+  2022: 160/344
+  2023: 0/527
+  2024: 0/513
+security type: CS 3541 · ADR(ADRC) 211 · untyped 913
+
+§3 DISCOVERY / CONFIRM (by event date):
+  DISC: events 2414 (A 2414 · B 0) | with >= 130 bars of history 2195 | (era, month) groups with >= 6 such events 54 | untyped (fund proxy, #705) 680
+  CONF: events 2251 (A 867 · B 1384) | with >= 130 bars of history 2178 | (era, month) groups with >= 6 such events 45 | untyped (fund proxy, #705) 233
+  every §1 and §3 count asserted equal to the frozen text.
+
+era-A events whose symbol is 5 letters ending in Q: 4 events, 4 symbols
+  APPHQ: 1 event(s): 2021-03-05
+  PRTYQ: 1 event(s): 2017-11-09
+  PTRAQ: 1 event(s): 2021-11-08
+  SUNWQ: 1 event(s): 2021-01-07
+(beside) era-B events with such a symbol: 0 events, 0 symbols: []
+era A daily read: {'rows_read': 12005007, 'rows_off_calendar_dropped': 0, 'rows_kept(needed tickers)': 2042547}
+era B daily read: {'rows_read': 13830569, 'rows_dropped_after_2024-12-31': 5210943, 'rows_off_calendar_dropped': 0, 'rows_kept(needed tickers)': 629659}
+
+event tickers whose last bar is before the era file's end (era A file end 2022-06-30; era B read end 2024-12-31):
+  era A: 343 of 1587 event tickers (carrying 589 events); calendar end 2022-06-30
+  era B: 128 of 831 event tickers (carrying 186 events); calendar end 2024-12-31
+
+event rows checked against bars: E bar present, E-1 on the previous session, 20 consecutive prior sessions: all 4665; open(E)/close(E-1) differing from the event list by > 1e-4: 0
+fund count (untyped events = the #705 fund proxy): DISC 680 · CONF 233
+population.tsv written (4665 rows; identifying + outcome-free event-list columns only) sha256 8b1c1a127513a4d7566b5e161c7cc7f0b78259f13d68e7396168c62961a163bb

@@ -1,0 +1,266 @@
+# STAGE 1 / 06 floor calibration on SYNTHETIC labels (prereg §6 step 2). No forward read; discovery rows of the feature table only.
+prereg sha256 99621b6dc958f0306b0d2250c6e2ea78f7c55df30b94dbd6e17b29b4737b93fe | feature_table.tsv.gz sha256 ade1d7802eaf70aa60a9b5514d79b72084876d9601b0999328c9b1aad0cf0de7
+discovery events 2414 (2016-19: 1643, 2020: 771); draws per feature per case 2000; permutation shuffles per draw 1000 (exact hypergeometric form)
+shelf relatives (condition 5 applies): ['f05', 'f07']; description-only features (cannot be carried): []
+
+## layout per feature (discovery): events scored / in months with >= 6 (two-group: and >= 2 of each) / top / bottom / ex-2020 top / bottom / in ADR strata >= 9 / in dmin strata >= 9
+  f01 thirds    scored  2414 | months  59 events  2414 | top  786 bottom  822 | ex-2020 top  534 bottom  561 | ADR strata  2414 | dmin strata  1904
+  f02 thirds    scored  2407 | months  59 events  2407 | top  783 bottom  819 | ex-2020 top  534 bottom  560 | ADR strata  2407 | dmin strata  1898
+  f03 thirds    scored  2407 | months  59 events  2407 | top  783 bottom  819 | ex-2020 top  534 bottom  560 | ADR strata  2407 | dmin strata  1898
+  f04 thirds    scored  2194 | months  55 events  2194 | top  711 bottom  750 | ex-2020 top  471 bottom  500 | ADR strata  2185 | dmin strata  1889
+  f05 thirds    scored  1911 | months  48 events  1911 | top  619 bottom  655 | ex-2020 top  394 bottom  421 | ADR strata  1911 | dmin strata  1873
+  f06 thirds    scored  2194 | months  55 events  2194 | top  711 bottom  750 | ex-2020 top  471 bottom  500 | ADR strata  2185 | dmin strata  1889
+  f07 thirds    scored  2194 | months  55 events  2194 | top  692 bottom  745 | ex-2020 top  466 bottom  498 | ADR strata  2185 | dmin strata  1889
+  f08 thirds    scored  2194 | months  55 events  2194 | top  707 bottom  787 | ex-2020 top  468 bottom  518 | ADR strata  2185 | dmin strata  1889
+  f09 thirds    scored  2338 | months  58 events  2338 | top  760 bottom  797 | ex-2020 top  512 bottom  540 | ADR strata  2328 | dmin strata  1894
+  f10 thirds    scored  2308 | months  57 events  2308 | top  750 bottom  789 | ex-2020 top  505 bottom  533 | ADR strata  2308 | dmin strata  1893
+  f11 thirds    scored  2407 | months  59 events  2407 | top  783 bottom  819 | ex-2020 top  534 bottom  560 | ADR strata  2407 | dmin strata  1898
+  f12 thirds    scored  2308 | months  57 events  2308 | top  750 bottom  789 | ex-2020 top  505 bottom  533 | ADR strata  2308 | dmin strata  1893
+  f13 thirds    scored  2406 | months  59 events  2406 | top  783 bottom  818 | ex-2020 top  534 bottom  559 | ADR strata  2406 | dmin strata  1898
+  f14 thirds    scored  2308 | months  57 events  2308 | top  750 bottom  789 | ex-2020 top  505 bottom  533 | ADR strata  2308 | dmin strata  1893
+  f15 two-group scored  2194 | months  53 events  2151 | top 1324 bottom  827 | ex-2020 top  729 bottom  720 | ADR strata  1986 | dmin strata  1798
+  f16 two-group scored  1911 | months  46 events  1877 | top  370 bottom 1507 | ex-2020 top  226 bottom  961 | ADR strata  1883 | dmin strata  1533
+  f17 thirds    scored  2320 | months  57 events  2316 | top  751 bottom  790 | ex-2020 top  505 bottom  533 | ADR strata  2316 | dmin strata  1894
+  f18 thirds    scored  2414 | months  59 events  2414 | top  786 bottom  822 | ex-2020 top  534 bottom  561 | ADR strata  2414 | dmin strata  1904
+  f19 thirds    scored  2407 | months  59 events  2407 | top  782 bottom  819 | ex-2020 top  533 bottom  560 | ADR strata  2407 | dmin strata  1898
+  f20 thirds    scored  1885 | months  48 events  1885 | top  584 bottom  692 | ex-2020 top  368 bottom  439 | ADR strata  1885 | dmin strata  1847
+
+## ADDED after run 1 (no rule changed; the draws are seeded, so every number above and below is identical to run 1): the ratio a feature with NO effect
+## is EXPECTED to show under the synthetic base rates (4.9% in 2016-19, 25% in 2020), from the composition of its groups alone. Thirds are balanced inside
+## each month, so they sit near 1.00; a yes/no feature is NOT balanced inside a month, so its POOLED ratio moves with the 2020 share of each group.
+  f01 thirds    expected null ratio: all 1.006 | ex-2020 1.000 | ADR-neutral strata 1.019 | dmin strata 1.009
+  f02 thirds    expected null ratio: all 1.003 | ex-2020 1.000 | ADR-neutral strata 1.019 | dmin strata 1.009
+  f03 thirds    expected null ratio: all 1.003 | ex-2020 1.000 | ADR-neutral strata 1.019 | dmin strata 1.009
+  f04 thirds    expected null ratio: all 1.007 | ex-2020 1.000 | ADR-neutral strata 1.016 | dmin strata 1.011
+  f05 thirds    expected null ratio: all 1.010 | ex-2020 1.000 | ADR-neutral strata 1.006 | dmin strata 1.011
+  f06 thirds    expected null ratio: all 1.007 | ex-2020 1.000 | ADR-neutral strata 1.016 | dmin strata 1.011
+  f07 thirds    expected null ratio: all 0.991 | ex-2020 1.000 | ADR-neutral strata 1.037 | dmin strata 1.017
+  f08 thirds    expected null ratio: all 0.994 | ex-2020 1.000 | ADR-neutral strata 1.050 | dmin strata 1.014
+  f09 thirds    expected null ratio: all 1.007 | ex-2020 1.000 | ADR-neutral strata 1.017 | dmin strata 1.007
+  f10 thirds    expected null ratio: all 1.004 | ex-2020 1.000 | ADR-neutral strata 1.015 | dmin strata 1.008
+  f11 thirds    expected null ratio: all 1.003 | ex-2020 1.000 | ADR-neutral strata 1.019 | dmin strata 1.009
+  f12 thirds    expected null ratio: all 1.004 | ex-2020 1.000 | ADR-neutral strata 1.015 | dmin strata 1.008
+  f13 thirds    expected null ratio: all 1.002 | ex-2020 1.000 | ADR-neutral strata 1.019 | dmin strata 1.009
+  f14 thirds    expected null ratio: all 1.004 | ex-2020 1.000 | ADR-neutral strata 1.015 | dmin strata 1.008
+  f15 two-group expected null ratio: all 1.858 | ex-2020 1.000 | ADR-neutral strata 1.648 | dmin strata 1.826   <-- outside 0.95-1.05
+  f16 two-group expected null ratio: all 1.044 | ex-2020 1.000 | ADR-neutral strata 1.047 | dmin strata 0.912
+  f17 thirds    expected null ratio: all 1.004 | ex-2020 1.000 | ADR-neutral strata 1.014 | dmin strata 1.007
+  f18 thirds    expected null ratio: all 1.006 | ex-2020 1.000 | ADR-neutral strata 1.019 | dmin strata 1.010
+  f19 thirds    expected null ratio: all 1.004 | ex-2020 1.000 | ADR-neutral strata 1.017 | dmin strata 1.007
+  f20 thirds    expected null ratio: all 1.007 | ex-2020 1.000 | ADR-neutral strata 0.959 | dmin strata 0.998
+
+## case k=1.0 — per feature: share of draws passing cond 1 | cond 1-2 (exact permutation) | cond 1-2 (stand-in) || given 1-2: cond 3 at 1.10 / 1.05 | cond 4 at 1.15 / 1.10 / 1.05 | cond 5 at 1.10 / 1.05
+  f01  c1 0.098 | c1-2 0.051 (n  103) | stand-in 0.050 || c3 0.883 / 0.942 | c4 0.961 / 0.981 / 1.000 | c5 0.990 / 1.000
+  f02  c1 0.093 | c1-2 0.054 (n  109) | stand-in 0.050 || c3 0.890 / 0.899 | c4 0.817 / 0.917 / 0.963 | c5 0.936 / 0.972
+  f03  c1 0.100 | c1-2 0.051 (n  102) | stand-in 0.050 || c3 0.853 / 0.902 | c4 0.775 / 0.873 / 0.971 | c5 0.931 / 0.961
+  f04  c1 0.108 | c1-2 0.052 (n  105) | stand-in 0.050 || c3 0.867 / 0.905 | c4 0.790 / 0.905 / 0.962 | c5 0.876 / 0.943
+  f05* c1 0.134 | c1-2 0.058 (n  115) | stand-in 0.051 || c3 0.852 / 0.896 | c4 0.904 / 0.974 / 0.991 | c5 0.817 / 0.930
+  f06  c1 0.112 | c1-2 0.052 (n  105) | stand-in 0.050 || c3 0.867 / 0.895 | c4 0.924 / 0.981 / 1.000 | c5 0.857 / 0.943
+  f07* c1 0.113 | c1-2 0.053 (n  106) | stand-in 0.050 || c3 0.821 / 0.906 | c4 0.840 / 0.953 / 1.000 | c5 0.811 / 0.915
+  f08  c1 0.090 | c1-2 0.045 (n   90) | stand-in 0.050 || c3 0.911 / 0.944 | c4 0.533 / 0.678 / 0.822 | c5 0.967 / 0.978
+  f09  c1 0.076 | c1-2 0.038 (n   77) | stand-in 0.050 || c3 0.883 / 0.922 | c4 0.584 / 0.714 / 0.831 | c5 0.935 / 1.000
+  f10  c1 0.096 | c1-2 0.046 (n   93) | stand-in 0.050 || c3 0.903 / 0.925 | c4 0.817 / 0.925 / 0.957 | c5 0.882 / 0.957
+  f11  c1 0.111 | c1-2 0.061 (n  123) | stand-in 0.050 || c3 0.894 / 0.927 | c4 0.935 / 0.984 / 0.992 | c5 0.976 / 0.992
+  f12  c1 0.094 | c1-2 0.049 (n   97) | stand-in 0.050 || c3 0.918 / 0.948 | c4 0.897 / 1.000 / 1.000 | c5 0.928 / 0.979
+  f13  c1 0.081 | c1-2 0.044 (n   88) | stand-in 0.050 || c3 0.898 / 0.920 | c4 0.886 / 1.000 / 1.000 | c5 0.898 / 0.955
+  f14  c1 0.091 | c1-2 0.042 (n   83) | stand-in 0.050 || c3 0.904 / 0.916 | c4 0.916 / 0.952 / 1.000 | c5 0.867 / 0.964
+  f15  c1 1.000 | c1-2 0.037 (n   74) | stand-in 0.050 || c3 0.959 / 0.973 | c4 1.000 / 1.000 / 1.000 | c5 1.000 / 1.000
+  f16  c1 0.144 | c1-2 0.048 (n   96) | stand-in 0.050 || c3 0.844 / 0.875 | c4 1.000 / 1.000 / 1.000 | c5 0.990 / 1.000
+  f17  c1 0.097 | c1-2 0.050 (n   99) | stand-in 0.050 || c3 0.909 / 0.949 | c4 0.949 / 1.000 / 1.000 | c5 0.919 / 0.960
+  f18  c1 0.094 | c1-2 0.045 (n   91) | stand-in 0.050 || c3 0.857 / 0.923 | c4 0.846 / 0.912 / 0.978 | c5 0.967 / 0.989
+  f19  c1 0.085 | c1-2 0.040 (n   80) | stand-in 0.050 || c3 0.887 / 0.938 | c4 0.975 / 1.000 / 1.000 | c5 0.975 / 0.988
+  f20  c1 0.133 | c1-2 0.057 (n  114) | stand-in 0.050 || c3 0.912 / 0.921 | c4 0.877 / 0.965 / 1.000 | c5 0.991 / 0.991
+
+## case k=1.3 — per feature: share of draws passing cond 1 | cond 1-2 (exact permutation) | cond 1-2 (stand-in) || given 1-2: cond 3 at 1.10 / 1.05 | cond 4 at 1.15 / 1.10 / 1.05 | cond 5 at 1.10 / 1.05
+  f01  c1 0.625 | c1-2 0.517 (n 1035) | stand-in 0.517 || c3 0.867 / 0.926 | c4 0.983 / 0.994 / 1.000 | c5 0.994 / 0.998
+  f02  c1 0.624 | c1-2 0.511 (n 1023) | stand-in 0.506 || c3 0.891 / 0.918 | c4 0.862 / 0.934 / 0.972 | c5 0.972 / 0.994
+  f03  c1 0.621 | c1-2 0.505 (n 1010) | stand-in 0.495 || c3 0.903 / 0.929 | c4 0.894 / 0.950 / 0.987 | c5 0.980 / 0.994
+  f04  c1 0.630 | c1-2 0.482 (n  965) | stand-in 0.474 || c3 0.885 / 0.917 | c4 0.874 / 0.944 / 0.981 | c5 0.891 / 0.956
+  f05* c1 0.619 | c1-2 0.452 (n  903) | stand-in 0.426 || c3 0.856 / 0.905 | c4 0.940 / 0.979 / 0.993 | c5 0.884 / 0.931
+  f06  c1 0.622 | c1-2 0.482 (n  964) | stand-in 0.472 || c3 0.888 / 0.918 | c4 0.963 / 0.995 / 0.998 | c5 0.951 / 0.987
+  f07* c1 0.574 | c1-2 0.428 (n  857) | stand-in 0.433 || c3 0.918 / 0.932 | c4 0.989 / 1.000 / 1.000 | c5 0.925 / 0.965
+  f08  c1 0.593 | c1-2 0.466 (n  932) | stand-in 0.474 || c3 0.894 / 0.933 | c4 0.838 / 0.918 / 0.955 | c5 0.986 / 0.997
+  f09  c1 0.633 | c1-2 0.516 (n 1033) | stand-in 0.556 || c3 0.898 / 0.943 | c4 0.655 / 0.778 / 0.884 | c5 0.973 / 0.988
+  f10  c1 0.635 | c1-2 0.492 (n  985) | stand-in 0.503 || c3 0.906 / 0.942 | c4 0.909 / 0.957 / 0.986 | c5 0.957 / 0.975
+  f11  c1 0.613 | c1-2 0.494 (n  988) | stand-in 0.472 || c3 0.885 / 0.922 | c4 0.981 / 0.998 / 1.000 | c5 0.986 / 0.997
+  f12  c1 0.615 | c1-2 0.488 (n  976) | stand-in 0.494 || c3 0.890 / 0.932 | c4 0.961 / 0.983 / 0.994 | c5 0.975 / 0.989
+  f13  c1 0.624 | c1-2 0.493 (n  986) | stand-in 0.527 || c3 0.878 / 0.914 | c4 0.972 / 0.992 / 0.996 | c5 0.963 / 0.990
+  f14  c1 0.610 | c1-2 0.481 (n  962) | stand-in 0.513 || c3 0.891 / 0.944 | c4 0.940 / 0.978 / 0.997 | c5 0.920 / 0.966
+  f15  c1 1.000 | c1-2 0.488 (n  977) | stand-in 0.593 || c3 0.945 / 0.964 | c4 1.000 / 1.000 / 1.000 | c5 1.000 / 1.000
+  f16  c1 0.717 | c1-2 0.444 (n  887) | stand-in 0.522 || c3 0.886 / 0.912 | c4 1.000 / 1.000 / 1.000 | c5 1.000 / 1.000
+  f17  c1 0.616 | c1-2 0.491 (n  982) | stand-in 0.488 || c3 0.891 / 0.938 | c4 0.977 / 0.992 / 0.998 | c5 0.964 / 0.985
+  f18  c1 0.611 | c1-2 0.504 (n 1008) | stand-in 0.512 || c3 0.883 / 0.938 | c4 0.912 / 0.965 / 0.992 | c5 0.979 / 0.996
+  f19  c1 0.622 | c1-2 0.502 (n 1004) | stand-in 0.539 || c3 0.885 / 0.931 | c4 0.989 / 0.999 / 1.000 | c5 0.989 / 0.995
+  f20  c1 0.636 | c1-2 0.459 (n  918) | stand-in 0.434 || c3 0.878 / 0.910 | c4 0.939 / 0.974 / 0.996 | c5 0.990 / 0.997
+
+## case k=1.5 — per feature: share of draws passing cond 1 | cond 1-2 (exact permutation) | cond 1-2 (stand-in) || given 1-2: cond 3 at 1.10 / 1.05 | cond 4 at 1.15 / 1.10 / 1.05 | cond 5 at 1.10 / 1.05
+  f01  c1 0.919 | c1-2 0.857 (n 1714) | stand-in 0.860 || c3 0.907 / 0.950 | c4 0.991 / 0.999 / 1.000 | c5 0.998 / 0.999
+  f02  c1 0.907 | c1-2 0.845 (n 1690) | stand-in 0.843 || c3 0.904 / 0.927 | c4 0.930 / 0.969 / 0.990 | c5 0.986 / 0.995
+  f03  c1 0.916 | c1-2 0.855 (n 1709) | stand-in 0.854 || c3 0.910 / 0.931 | c4 0.932 / 0.974 / 0.991 | c5 0.992 / 0.996
+  f04  c1 0.905 | c1-2 0.829 (n 1657) | stand-in 0.826 || c3 0.922 / 0.948 | c4 0.935 / 0.973 / 0.993 | c5 0.951 / 0.980
+  f05* c1 0.901 | c1-2 0.808 (n 1617) | stand-in 0.787 || c3 0.902 / 0.926 | c4 0.970 / 0.991 / 0.998 | c5 0.929 / 0.965
+  f06  c1 0.914 | c1-2 0.844 (n 1688) | stand-in 0.850 || c3 0.921 / 0.943 | c4 0.982 / 0.995 / 0.999 | c5 0.961 / 0.989
+  f07* c1 0.883 | c1-2 0.793 (n 1586) | stand-in 0.793 || c3 0.926 / 0.945 | c4 0.995 / 0.998 / 1.000 | c5 0.933 / 0.970
+  f08  c1 0.904 | c1-2 0.836 (n 1672) | stand-in 0.848 || c3 0.932 / 0.950 | c4 0.900 / 0.964 / 0.984 | c5 0.993 / 0.998
+  f09  c1 0.923 | c1-2 0.857 (n 1714) | stand-in 0.885 || c3 0.903 / 0.946 | c4 0.736 / 0.826 / 0.911 | c5 0.984 / 0.993
+  f10  c1 0.929 | c1-2 0.865 (n 1729) | stand-in 0.873 || c3 0.915 / 0.947 | c4 0.957 / 0.980 / 0.994 | c5 0.982 / 0.994
+  f11  c1 0.911 | c1-2 0.854 (n 1707) | stand-in 0.842 || c3 0.914 / 0.934 | c4 0.989 / 0.999 / 1.000 | c5 0.995 / 0.999
+  f12  c1 0.912 | c1-2 0.841 (n 1681) | stand-in 0.851 || c3 0.916 / 0.952 | c4 0.986 / 0.996 / 0.999 | c5 0.988 / 0.998
+  f13  c1 0.914 | c1-2 0.855 (n 1709) | stand-in 0.874 || c3 0.913 / 0.936 | c4 0.993 / 0.999 / 0.999 | c5 0.982 / 0.996
+  f14  c1 0.907 | c1-2 0.843 (n 1685) | stand-in 0.859 || c3 0.920 / 0.954 | c4 0.976 / 0.993 / 0.998 | c5 0.957 / 0.976
+  f15  c1 1.000 | c1-2 0.824 (n 1647) | stand-in 0.897 || c3 0.959 / 0.973 | c4 1.000 / 1.000 / 1.000 | c5 1.000 / 1.000
+  f16  c1 0.950 | c1-2 0.785 (n 1571) | stand-in 0.858 || c3 0.906 / 0.928 | c4 1.000 / 1.000 / 1.000 | c5 1.000 / 1.000
+  f17  c1 0.908 | c1-2 0.845 (n 1689) | stand-in 0.848 || c3 0.910 / 0.948 | c4 0.976 / 0.992 / 0.996 | c5 0.969 / 0.984
+  f18  c1 0.914 | c1-2 0.867 (n 1733) | stand-in 0.876 || c3 0.919 / 0.949 | c4 0.965 / 0.988 / 0.998 | c5 0.995 / 0.997
+  f19  c1 0.920 | c1-2 0.863 (n 1726) | stand-in 0.883 || c3 0.929 / 0.957 | c4 0.994 / 0.999 / 1.000 | c5 0.995 / 0.997
+  f20  c1 0.893 | c1-2 0.803 (n 1606) | stand-in 0.788 || c3 0.892 / 0.921 | c4 0.967 / 0.987 / 0.998 | c5 0.996 / 0.999
+
+## case ADR-only 2.0x — per feature: share of draws passing cond 1 | cond 1-2 (exact permutation) | cond 1-2 (stand-in) || given 1-2: cond 3 at 1.10 / 1.05 | cond 4 at 1.15 / 1.10 / 1.05 | cond 5 at 1.10 / 1.05
+  f01  c1 0.305 | c1-2 0.203 (n  406) | stand-in 0.200 || c3 0.916 / 0.958 | c4 0.650 / 0.803 / 0.931 | c5 0.993 / 1.000
+  f02  c1 0.723 | c1-2 0.621 (n 1242) | stand-in 0.616 || c3 0.903 / 0.940 | c4 0.188 / 0.304 / 0.440 | c5 0.995 / 0.999
+  f03  c1 0.701 | c1-2 0.589 (n 1178) | stand-in 0.580 || c3 0.818 / 0.850 | c4 0.293 / 0.434 / 0.629 | c5 0.997 / 1.000
+  f04  c1 0.626 | c1-2 0.475 (n  951) | stand-in 0.467 || c3 0.797 / 0.850 | c4 0.334 / 0.506 / 0.656 | c5 0.976 / 0.994
+  f05* c1 0.320 | c1-2 0.184 (n  368) | stand-in 0.166 || c3 0.905 / 0.940 | c4 0.625 / 0.777 / 0.872 | c5 0.992 / 0.995
+  f06  c1 0.222 | c1-2 0.120 (n  241) | stand-in 0.120 || c3 0.921 / 0.950 | c4 0.573 / 0.793 / 0.900 | c5 0.971 / 0.992
+  f07* c1 0.130 | c1-2 0.064 (n  127) | stand-in 0.061 || c3 0.850 / 0.890 | c4 0.811 / 0.890 / 0.961 | c5 0.780 / 0.882
+  f08  c1 0.911 | c1-2 0.837 (n 1673) | stand-in 0.846 || c3 0.893 / 0.923 | c4 0.103 / 0.173 / 0.282 | c5 0.999 / 0.999
+  f09  c1 0.963 | c1-2 0.925 (n 1851) | stand-in 0.940 || c3 0.916 / 0.950 | c4 0.177 / 0.278 / 0.428 | c5 1.000 / 1.000
+  f10  c1 0.260 | c1-2 0.154 (n  308) | stand-in 0.162 || c3 0.873 / 0.916 | c4 0.643 / 0.756 / 0.890 | c5 0.987 / 0.990
+  f11  c1 0.156 | c1-2 0.099 (n  197) | stand-in 0.079 || c3 0.807 / 0.853 | c4 0.848 / 0.934 / 0.980 | c5 0.980 / 0.995
+  f12  c1 0.231 | c1-2 0.139 (n  277) | stand-in 0.142 || c3 0.794 / 0.870 | c4 0.704 / 0.870 / 0.953 | c5 0.986 / 0.989
+  f13  c1 0.149 | c1-2 0.087 (n  174) | stand-in 0.102 || c3 0.713 / 0.782 | c4 0.799 / 0.931 / 0.971 | c5 0.948 / 0.977
+  f14  c1 0.198 | c1-2 0.117 (n  234) | stand-in 0.128 || c3 0.778 / 0.833 | c4 0.748 / 0.902 / 0.974 | c5 0.915 / 0.966
+  f15  c1 1.000 | c1-2 0.295 (n  591) | stand-in 0.308 || c3 0.929 / 0.948 | c4 1.000 / 1.000 / 1.000 | c5 1.000 / 1.000
+  f16  c1 0.361 | c1-2 0.130 (n  260) | stand-in 0.177 || c3 0.888 / 0.919 | c4 1.000 / 1.000 / 1.000 | c5 1.000 / 1.000
+  f17  c1 0.120 | c1-2 0.066 (n  131) | stand-in 0.064 || c3 0.802 / 0.885 | c4 0.863 / 0.962 / 0.992 | c5 0.832 / 0.924
+  f18  c1 0.579 | c1-2 0.464 (n  928) | stand-in 0.476 || c3 0.880 / 0.920 | c4 0.255 / 0.372 / 0.548 | c5 0.998 / 1.000
+  f19  c1 0.188 | c1-2 0.123 (n  247) | stand-in 0.141 || c3 0.935 / 0.947 | c4 0.704 / 0.891 / 0.976 | c5 0.996 / 0.996
+  f20  c1 0.258 | c1-2 0.130 (n  259) | stand-in 0.120 || c3 0.799 / 0.842 | c4 0.869 / 0.961 / 0.992 | c5 0.988 / 1.000
+
+## THE FLOOR RULE (§5.2): planted true 1.5x; pass rate of a floor = share of draws passing conditions 1-2 that also pass it; MEDIAN over the features it applies to; under 80% -> lower by 0.05, never below 1.05
+  condition 3 at 1.10: median pass rate 0.914 over 20 features (min 0.892, max 0.959); with the stand-in condition 2: 0.913 -> >= 0.80 OK
+  condition 3 at 1.05: median pass rate 0.947 over 20 features (min 0.921, max 0.973); with the stand-in condition 2: 0.945 -> >= 0.80 OK
+  condition 4 at 1.15: median pass rate 0.976 over 20 features (min 0.736, max 1.000); with the stand-in condition 2: 0.976 -> >= 0.80 OK
+  condition 4 at 1.10: median pass rate 0.993 over 20 features (min 0.826, max 1.000); with the stand-in condition 2: 0.993 -> >= 0.80 OK
+  condition 4 at 1.05: median pass rate 0.998 over 20 features (min 0.911, max 1.000); with the stand-in condition 2: 0.998 -> >= 0.80 OK
+  condition 5 at 1.10: median pass rate 0.931 over 2 features (min 0.929, max 0.933); with the stand-in condition 2: 0.932 -> >= 0.80 OK
+  condition 5 at 1.05: median pass rate 0.968 over 2 features (min 0.965, max 0.970); with the stand-in condition 2: 0.968 -> >= 0.80 OK
+
+## CALIBRATED FLOORS
+  condition 3 ex-2020 ratio (2016-19 pooled): frozen start 1.10 -> FINAL 1.10 (or <= 0.909 the other way) | mechanical lowering rule did NOT fire
+  condition 4 ADR-neutral ratio: frozen start 1.15 -> FINAL 1.15 (or <= 0.870 the other way) | mechanical lowering rule did NOT fire
+  condition 5 within-dmin-third ratio (shelf relatives only): frozen start 1.10 -> FINAL 1.10 (or <= 0.909 the other way) | mechanical lowering rule did NOT fire
+
+## carry chain per feature with the FINAL floors (share of the 2,000 draws): cond 1-2 | 1-3 | 1-4 | 1-5 (shelf relatives only; others = 1-4)
+  case k=1.0
+    f01  0.051 | 0.045 | 0.043 | 0.043   (1-4 at the frozen starting floors 0.043; all conditions AND the planted direction 0.020)
+    f02  0.054 | 0.049 | 0.040 | 0.040   (1-4 at the frozen starting floors 0.040; all conditions AND the planted direction 0.021)
+    f03  0.051 | 0.043 | 0.034 | 0.034   (1-4 at the frozen starting floors 0.034; all conditions AND the planted direction 0.019)
+    f04  0.052 | 0.045 | 0.037 | 0.037   (1-4 at the frozen starting floors 0.037; all conditions AND the planted direction 0.023)
+    f05* 0.058 | 0.049 | 0.044 | 0.035   (1-4 at the frozen starting floors 0.044; all conditions AND the planted direction 0.015)
+    f06  0.052 | 0.045 | 0.042 | 0.042   (1-4 at the frozen starting floors 0.042; all conditions AND the planted direction 0.027)
+    f07* 0.053 | 0.043 | 0.036 | 0.030   (1-4 at the frozen starting floors 0.036; all conditions AND the planted direction 0.015)
+    f08  0.045 | 0.041 | 0.023 | 0.023   (1-4 at the frozen starting floors 0.023; all conditions AND the planted direction 0.015)
+    f09  0.038 | 0.034 | 0.019 | 0.019   (1-4 at the frozen starting floors 0.019; all conditions AND the planted direction 0.011)
+    f10  0.046 | 0.042 | 0.035 | 0.035   (1-4 at the frozen starting floors 0.035; all conditions AND the planted direction 0.017)
+    f11  0.061 | 0.055 | 0.051 | 0.051   (1-4 at the frozen starting floors 0.051; all conditions AND the planted direction 0.029)
+    f12  0.049 | 0.044 | 0.040 | 0.040   (1-4 at the frozen starting floors 0.040; all conditions AND the planted direction 0.021)
+    f13  0.044 | 0.040 | 0.035 | 0.035   (1-4 at the frozen starting floors 0.035; all conditions AND the planted direction 0.022)
+    f14  0.042 | 0.037 | 0.035 | 0.035   (1-4 at the frozen starting floors 0.035; all conditions AND the planted direction 0.021)
+    f15  0.037 | 0.035 | 0.035 | 0.035   (1-4 at the frozen starting floors 0.035; all conditions AND the planted direction 0.035)
+    f16  0.048 | 0.041 | 0.041 | 0.041   (1-4 at the frozen starting floors 0.041; all conditions AND the planted direction 0.026)
+    f17  0.050 | 0.045 | 0.043 | 0.043   (1-4 at the frozen starting floors 0.043; all conditions AND the planted direction 0.019)
+    f18  0.045 | 0.039 | 0.033 | 0.033   (1-4 at the frozen starting floors 0.033; all conditions AND the planted direction 0.018)
+    f19  0.040 | 0.035 | 0.035 | 0.035   (1-4 at the frozen starting floors 0.035; all conditions AND the planted direction 0.020)
+    f20  0.057 | 0.052 | 0.045 | 0.045   (1-4 at the frozen starting floors 0.045; all conditions AND the planted direction 0.024)
+    MEDIAN over the 20 candidate features: 1-2 0.049 | 1-3 0.043 | 1-4 0.036 | all 0.035
+  case k=1.3
+    f01  0.517 | 0.449 | 0.441 | 0.441   (1-4 at the frozen starting floors 0.441; all conditions AND the planted direction 0.441)
+    f02  0.511 | 0.456 | 0.399 | 0.399   (1-4 at the frozen starting floors 0.399; all conditions AND the planted direction 0.399)
+    f03  0.505 | 0.456 | 0.410 | 0.410   (1-4 at the frozen starting floors 0.410; all conditions AND the planted direction 0.410)
+    f04  0.482 | 0.427 | 0.378 | 0.378   (1-4 at the frozen starting floors 0.378; all conditions AND the planted direction 0.378)
+    f05* 0.452 | 0.387 | 0.365 | 0.331   (1-4 at the frozen starting floors 0.365; all conditions AND the planted direction 0.331)
+    f06  0.482 | 0.428 | 0.414 | 0.414   (1-4 at the frozen starting floors 0.414; all conditions AND the planted direction 0.414)
+    f07* 0.428 | 0.394 | 0.389 | 0.363   (1-4 at the frozen starting floors 0.389; all conditions AND the planted direction 0.363)
+    f08  0.466 | 0.416 | 0.354 | 0.354   (1-4 at the frozen starting floors 0.354; all conditions AND the planted direction 0.354)
+    f09  0.516 | 0.464 | 0.311 | 0.311   (1-4 at the frozen starting floors 0.311; all conditions AND the planted direction 0.311)
+    f10  0.492 | 0.446 | 0.408 | 0.408   (1-4 at the frozen starting floors 0.408; all conditions AND the planted direction 0.408)
+    f11  0.494 | 0.437 | 0.428 | 0.428   (1-4 at the frozen starting floors 0.428; all conditions AND the planted direction 0.428)
+    f12  0.488 | 0.434 | 0.419 | 0.419   (1-4 at the frozen starting floors 0.419; all conditions AND the planted direction 0.419)
+    f13  0.493 | 0.433 | 0.421 | 0.421   (1-4 at the frozen starting floors 0.421; all conditions AND the planted direction 0.421)
+    f14  0.481 | 0.428 | 0.404 | 0.404   (1-4 at the frozen starting floors 0.404; all conditions AND the planted direction 0.404)
+    f15  0.488 | 0.462 | 0.462 | 0.462   (1-4 at the frozen starting floors 0.462; all conditions AND the planted direction 0.462)
+    f16  0.444 | 0.393 | 0.393 | 0.393   (1-4 at the frozen starting floors 0.393; all conditions AND the planted direction 0.393)
+    f17  0.491 | 0.438 | 0.429 | 0.429   (1-4 at the frozen starting floors 0.429; all conditions AND the planted direction 0.429)
+    f18  0.504 | 0.445 | 0.407 | 0.407   (1-4 at the frozen starting floors 0.407; all conditions AND the planted direction 0.407)
+    f19  0.502 | 0.445 | 0.441 | 0.441   (1-4 at the frozen starting floors 0.441; all conditions AND the planted direction 0.441)
+    f20  0.459 | 0.403 | 0.380 | 0.380   (1-4 at the frozen starting floors 0.380; all conditions AND the planted direction 0.380)
+    MEDIAN over the 20 candidate features: 1-2 0.490 | 1-3 0.436 | 1-4 0.408 | all 0.408
+  case k=1.5
+    f01  0.857 | 0.777 | 0.772 | 0.772   (1-4 at the frozen starting floors 0.772; all conditions AND the planted direction 0.772)
+    f02  0.845 | 0.763 | 0.715 | 0.715   (1-4 at the frozen starting floors 0.715; all conditions AND the planted direction 0.715)
+    f03  0.855 | 0.778 | 0.735 | 0.735   (1-4 at the frozen starting floors 0.735; all conditions AND the planted direction 0.735)
+    f04  0.829 | 0.764 | 0.719 | 0.719   (1-4 at the frozen starting floors 0.719; all conditions AND the planted direction 0.719)
+    f05* 0.808 | 0.730 | 0.709 | 0.660   (1-4 at the frozen starting floors 0.709; all conditions AND the planted direction 0.660)
+    f06  0.844 | 0.777 | 0.764 | 0.764   (1-4 at the frozen starting floors 0.764; all conditions AND the planted direction 0.764)
+    f07* 0.793 | 0.734 | 0.731 | 0.686   (1-4 at the frozen starting floors 0.731; all conditions AND the planted direction 0.686)
+    f08  0.836 | 0.779 | 0.704 | 0.704   (1-4 at the frozen starting floors 0.704; all conditions AND the planted direction 0.704)
+    f09  0.857 | 0.774 | 0.579 | 0.579   (1-4 at the frozen starting floors 0.579; all conditions AND the planted direction 0.579)
+    f10  0.865 | 0.791 | 0.763 | 0.763   (1-4 at the frozen starting floors 0.763; all conditions AND the planted direction 0.763)
+    f11  0.854 | 0.780 | 0.774 | 0.774   (1-4 at the frozen starting floors 0.774; all conditions AND the planted direction 0.774)
+    f12  0.841 | 0.769 | 0.759 | 0.759   (1-4 at the frozen starting floors 0.759; all conditions AND the planted direction 0.759)
+    f13  0.855 | 0.780 | 0.775 | 0.775   (1-4 at the frozen starting floors 0.775; all conditions AND the planted direction 0.775)
+    f14  0.843 | 0.775 | 0.758 | 0.758   (1-4 at the frozen starting floors 0.758; all conditions AND the planted direction 0.758)
+    f15  0.824 | 0.790 | 0.790 | 0.790   (1-4 at the frozen starting floors 0.790; all conditions AND the planted direction 0.790)
+    f16  0.785 | 0.712 | 0.712 | 0.712   (1-4 at the frozen starting floors 0.712; all conditions AND the planted direction 0.712)
+    f17  0.845 | 0.768 | 0.752 | 0.752   (1-4 at the frozen starting floors 0.752; all conditions AND the planted direction 0.752)
+    f18  0.867 | 0.796 | 0.772 | 0.772   (1-4 at the frozen starting floors 0.772; all conditions AND the planted direction 0.772)
+    f19  0.863 | 0.801 | 0.796 | 0.796   (1-4 at the frozen starting floors 0.796; all conditions AND the planted direction 0.796)
+    f20  0.803 | 0.716 | 0.695 | 0.695   (1-4 at the frozen starting floors 0.695; all conditions AND the planted direction 0.695)
+    MEDIAN over the 20 candidate features: 1-2 0.844 | 1-3 0.776 | 1-4 0.755 | all 0.755
+  case ADR-only 2.0x
+    f01  0.203 | 0.186 | 0.120 | 0.120   (1-4 at the frozen starting floors 0.120; all conditions AND the planted direction 0.120)
+    f02  0.621 | 0.561 | 0.110 | 0.110   (1-4 at the frozen starting floors 0.110; all conditions AND the planted direction 0.000)
+    f03  0.589 | 0.482 | 0.157 | 0.157   (1-4 at the frozen starting floors 0.157; all conditions AND the planted direction 0.157)
+    f04  0.475 | 0.379 | 0.139 | 0.139   (1-4 at the frozen starting floors 0.139; all conditions AND the planted direction 0.139)
+    f05* 0.184 | 0.167 | 0.104 | 0.103   (1-4 at the frozen starting floors 0.104; all conditions AND the planted direction 0.001)
+    f06  0.120 | 0.111 | 0.063 | 0.063   (1-4 at the frozen starting floors 0.063; all conditions AND the planted direction 0.001)
+    f07* 0.064 | 0.054 | 0.045 | 0.038   (1-4 at the frozen starting floors 0.045; all conditions AND the planted direction 0.011)
+    f08  0.837 | 0.747 | 0.084 | 0.084   (1-4 at the frozen starting floors 0.084; all conditions AND the planted direction 0.000)
+    f09  0.925 | 0.848 | 0.160 | 0.160   (1-4 at the frozen starting floors 0.160; all conditions AND the planted direction 0.160)
+    f10  0.154 | 0.135 | 0.090 | 0.090   (1-4 at the frozen starting floors 0.090; all conditions AND the planted direction 0.087)
+    f11  0.099 | 0.080 | 0.067 | 0.067   (1-4 at the frozen starting floors 0.067; all conditions AND the planted direction 0.063)
+    f12  0.139 | 0.110 | 0.081 | 0.081   (1-4 at the frozen starting floors 0.081; all conditions AND the planted direction 0.077)
+    f13  0.087 | 0.062 | 0.050 | 0.050   (1-4 at the frozen starting floors 0.050; all conditions AND the planted direction 0.044)
+    f14  0.117 | 0.091 | 0.071 | 0.071   (1-4 at the frozen starting floors 0.071; all conditions AND the planted direction 0.069)
+    f15  0.295 | 0.275 | 0.275 | 0.275   (1-4 at the frozen starting floors 0.275; all conditions AND the planted direction 0.275)
+    f16  0.130 | 0.116 | 0.116 | 0.116   (1-4 at the frozen starting floors 0.116; all conditions AND the planted direction 0.115)
+    f17  0.066 | 0.052 | 0.046 | 0.046   (1-4 at the frozen starting floors 0.046; all conditions AND the planted direction 0.037)
+    f18  0.464 | 0.408 | 0.111 | 0.111   (1-4 at the frozen starting floors 0.111; all conditions AND the planted direction 0.000)
+    f19  0.123 | 0.116 | 0.083 | 0.083   (1-4 at the frozen starting floors 0.083; all conditions AND the planted direction 0.004)
+    f20  0.130 | 0.103 | 0.090 | 0.090   (1-4 at the frozen starting floors 0.090; all conditions AND the planted direction 0.003)
+    MEDIAN over the 20 candidate features: 1-2 0.146 | 1-3 0.125 | 1-4 0.090 | all 0.090
+
+## ADR-only label (a pure volatility effect, 2.0x by ADR20 third, independent of the feature): how often it gets a feature through conditions 1-4
+  f01 conditions 1-2 0.203 | 1-4 at the final floors 0.120 | 1-4 at the frozen starting floors 0.120
+  f02 conditions 1-2 0.621 | 1-4 at the final floors 0.110 | 1-4 at the frozen starting floors 0.110
+  f03 conditions 1-2 0.589 | 1-4 at the final floors 0.157 | 1-4 at the frozen starting floors 0.157
+  f04 conditions 1-2 0.475 | 1-4 at the final floors 0.139 | 1-4 at the frozen starting floors 0.139
+  f05 conditions 1-2 0.184 | 1-4 at the final floors 0.104 | 1-4 at the frozen starting floors 0.104
+  f06 conditions 1-2 0.120 | 1-4 at the final floors 0.063 | 1-4 at the frozen starting floors 0.063
+  f07 conditions 1-2 0.064 | 1-4 at the final floors 0.045 | 1-4 at the frozen starting floors 0.045
+  f08 conditions 1-2 0.837 | 1-4 at the final floors 0.084 | 1-4 at the frozen starting floors 0.084
+  f09 conditions 1-2 0.925 | 1-4 at the final floors 0.160 | 1-4 at the frozen starting floors 0.160
+  f10 conditions 1-2 0.154 | 1-4 at the final floors 0.090 | 1-4 at the frozen starting floors 0.090
+  f11 conditions 1-2 0.099 | 1-4 at the final floors 0.067 | 1-4 at the frozen starting floors 0.067
+  f12 conditions 1-2 0.139 | 1-4 at the final floors 0.081 | 1-4 at the frozen starting floors 0.081
+  f13 conditions 1-2 0.087 | 1-4 at the final floors 0.050 | 1-4 at the frozen starting floors 0.050
+  f14 conditions 1-2 0.117 | 1-4 at the final floors 0.071 | 1-4 at the frozen starting floors 0.071
+  f15 conditions 1-2 0.295 | 1-4 at the final floors 0.275 | 1-4 at the frozen starting floors 0.275
+  f16 conditions 1-2 0.130 | 1-4 at the final floors 0.116 | 1-4 at the frozen starting floors 0.116
+  f17 conditions 1-2 0.066 | 1-4 at the final floors 0.046 | 1-4 at the frozen starting floors 0.046
+  f18 conditions 1-2 0.464 | 1-4 at the final floors 0.111 | 1-4 at the frozen starting floors 0.111
+  f19 conditions 1-2 0.123 | 1-4 at the final floors 0.083 | 1-4 at the frozen starting floors 0.083
+  f20 conditions 1-2 0.130 | 1-4 at the final floors 0.090 | 1-4 at the frozen starting floors 0.090
+
+calibration_rates.tsv sha256 c190d8a6cb3a4cd3d15557c6c6bc2fe7e05182b623d63721571e495f40b2123e | floors_final.txt sha256 94ff9d0bd7711d8b3815a56577d480eeff6e4a560f56dad665e4f7b1157bd6dc | this script 17e3604e5f105382ce677abc48331a0f0463cfc657009cb7fbfbb397416e8305

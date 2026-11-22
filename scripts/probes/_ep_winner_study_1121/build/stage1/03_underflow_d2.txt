@@ -1,0 +1,28 @@
+# STAGE 1 / 03 era-B volume underflow (D2). No outcome is read.
+era B daily: rows read 13830569, dropped after 2024-12-31 5210943, kept 8619626, symbols 15702
+
+## PART 1 — mechanism test (era-B rows dated <= 2024-12-31 only)
+zero-volume rows: 99612; of them adjusted close >= $1,000: 23698 = 23.790%
+all rows:         8619626; of them adjusted close >= $1,000: 110576 = 1.283%
+ratio of the two shares: 18.55  (frozen bar: >= 5 = 'mechanism supported')
+PART 1 VERDICT: mechanism supported
+(beside) tickers with a zero-volume row 1779; tickers with a close >= $1,000 row 376; tickers with both on the same row 119
+(beside, not the bar) threshold $100: zero-volume rows 26.711% vs all rows 9.843% -> ratio 2.71
+(beside, not the bar) threshold $10,000: zero-volume rows 22.341% vs all rows 0.544% -> ratio 41.09
+(beside) audit flag rows klass zero_volume_underflow: 22658 in the flag file (the prereg's 22,658), 22658 dated <= 2024-12-31; of those in-cut flag rows close >= $1,000: 22626 = 99.859% -> ratio vs all rows 77.84
+
+## PART 2 — days excluded ONLY because the 20-session baseline holds a zero
+reproduction of the era-B primaries from the copied filter lines: 1964 (frozen: 1,964)
+  the 1,964 (ticker, E) keys are identical to ep_events_B.tsv.gz: ASSERT OK
+era-B gap >= 9% days with 20 consecutive baseline sessions holding >= 1 zero-volume session: 727
+  passing raw price, liquidity, type and volume(E) >= 3 x the mean of the NON-ZERO baseline sessions (the frozen sentence's terms): 0
+  ... and also the ticker pattern + the adjustment / identity exclusions (every other primary term): 0
+  frozen trigger: more than 20 (1% of 1,964)
+  [listed terms] n 0: per year {}; inside the study's era-B window (2022-04-04 < E <= 2024-09-30): 0; distinct tickers 0; zeros in the baseline: median 0, max 0
+  [all other primary terms] n 0: per year {}; inside the study's era-B window (2022-04-04 < E <= 2024-09-30): 0; distinct tickers 0; zeros in the baseline: median 0, max 0
+  breakdown (added after run 1 as a check on the zero; no rule changed): of the 727 dirty-baseline gap days, volume(E) >= 3 x the non-zero mean: 274; of those — raw price >= $5: 32 | median $vol >= $10M: 0 | type ok: 274 | price AND liquidity: 0 | largest median $vol among them $7,806,000 | liquidity ok ignoring volume: 0 of 727
+PART 2 VERDICT: listed terms 0 -> <= 20; all other primary terms 0 -> <= 20
+  => no tag.
+
+D2 SUMMARY: part 1 = mechanism supported (ratio 18.55); part 2 = 0 / 0 days vs trigger 20
+d2_excluded_days.tsv sha256 a1f3ae73dd6ff4843b94f28bb2fa04af3f3ef1a52bd8fa9a40561615369ffbc0

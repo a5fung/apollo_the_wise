@@ -1,0 +1,431 @@
+# STAGE 3 — DISCOVERY OUTCOMES
+prereg sha256 (current, with §10) 4f2dbe7fa6f58171180689cc9b374ba4fd88f2f8ef68c9bfbeb723e32bf9bdfc
+feature_table.tsv.gz sha256 ade1d7802eaf70aa60a9b5514d79b72084876d9601b0999328c9b1aad0cf0de7
+floors (§10): condition 3 1.10 · condition 4 1.15 · condition 5 1.10 (ASSERT OK vs floors_final.txt)
+code sha256: this script 2436cc77c2c47d546d2342707bc194daf7678351ebc9581645d51d86b74b8a26 | stage1 stats.py ee31bf9d6fbab5c9a5ec0f0a2de73bee8de866a1c607a4b1d445f9fdde067468 | common.py cf5f35b9f3769a9e297f32ca8660063c5ac0d35ff3938b61ad2203697bec0d8a
+
+## APPLIED READINGS (fixed here, BEFORE any outcome is computed)
+ R1  Assignment code = stage1/stats.py (imported); thirds / strata layouts copied from stage1/06_calibration.py::layout and
+     asserted equal to its printed "layout per feature" counts.
+ R2  Every bar (conditions 1, 3, 4, 5) is judged as the calibration did: sign x log(ratio) >= log(floor), where the ratio of a
+     thirds feature uses smoothed rates (winners + 0.5) / (n + 1) (§5.1); the raw ratio is printed beside it.
+ R3  Two-group features (f15, f16): Mantel-Haenszel risk ratio (A1) = sum_i(a_i * n0_i / N_i) / sum_i(c_i * n1_i / N_i), i = the
+     unit the yes/no groups were formed in: (era, month) for the main / ex-2020 / common-set readings; (era, quarter, ADR third)
+     for condition 4; (era, quarter, dmin third) for condition 5. A zero numerator or denominator on a bar reading stops the run.
+     (A1's text names months only; MH over the ADR / dmin strata for conditions 4-5 is this script's reading.)
+ R4  Permutation (§5.1): U = np.random.default_rng(1121).random((10000, 2414)); row = shuffle, column = discovery event in the
+     fixed order (era, E, ticker). Within each (era, month) the events assigned on the feature are sorted by key; the k-th event in
+     key order receives the label of the k-th event in fixed order. Own p two-sided on |log ratio|: (1 + #(|perm| >= |obs|)) / 10001.
+ R5  Condition 6, literal: candidates = all 20 features (none is description-only). Group winner = largest z among ALL members of
+     the group, on the discovery events scored on every member (thirds re-formed within month on that common set, months >= 6
+     events; z = |log ratio| / SD of the 10,000 permuted log ratios there). Cap = the four largest z among the nine group winners,
+     each recomputed the same way on the events scored on ALL 20 features. Ties -> smaller own p -> lower feature number.
+     A feature is CARRIED only if it passes 1-5 AND is its group's winner AND is in the four.
+ R6  Family-wide p (description): on the all-20 common set, share of shuffles whose largest |log ratio| over the 20 features
+     is >= this feature's |log ratio| there, (1 + count) / 10001.
+ R7  90% interval: (era, month) blocks resampled with replacement, 2,000 draws, a fresh default_rng(1121) per feature.
+ R8  Outcome window: bars with era-A calendar index in [ci(E), ci(E)+60]; big winner = max close >= 1.5 x open(E); monster
+     >= 2.0 x; ADR tail >= open(E) x (1 + 8 x ADR20 / 100), ADR20 = the table's adr20_raw; no survivorship drop.
+ R9  B1 keeps PRE-REG 6's ticker tie-break (midrank=False); B2 and the 20 features use mid-rank ties.
+ R10 §5.5 window-length +/-50% and the other extra readings are left to the confirm step (step 8); per-year, monster, ADR-tail
+     and failure descriptions are printed here.
+
+layout per feature (months, top, bottom, ex-2020 top / bottom, ADR strata, dmin strata) equals stage 1's 06_calibration.txt on all 20 features (ASSERT OK)
+common sets (outcome-free): scored on ALL 20 features: 1885 events; per group: gap 2407 · run-up / extension 2194 · highs 1911 · base 2194 · tightness 2308 · volume 2308 · strength 2308 · structure 1885 · size 2407
+
+## A1 — synthetic NO-EFFECT labels (4.9% in 2016-19, 25% in 2020; 2,000 draws; no forward read): the Mantel-Haenszel ratio must centre near 1.0
+   pass band fixed before running: median MH ratio within 0.95-1.05 on every reading; a miss stops the run. The pooled yes/no ratio is printed beside it (it is the biased one).
+   f15 months (main)                  yes 1324 / no  827 | MH ratio median 1.004 mean 1.018 (5th-95th 0.80-1.30) | pooled ratio median 1.864 -> OK
+   f15 months, ex-2020                yes  729 / no  720 | MH ratio median 0.997 mean 1.027 (5th-95th 0.68-1.48) | pooled ratio median 0.988 -> OK
+   f15 ADR strata (cond 4)            yes 1159 / no  827 | MH ratio median 1.003 mean 1.019 (5th-95th 0.79-1.32) | pooled ratio median 1.654 -> OK
+   f15 dmin strata                    yes 1087 / no  711 | MH ratio median 1.004 mean 1.020 (5th-95th 0.78-1.30) | pooled ratio median 1.828 -> OK
+   f15 group common set (structure)   yes 1132 / no  726 | MH ratio median 1.003 mean 1.020 (5th-95th 0.78-1.30) | pooled ratio median 1.900 -> OK
+   f15 all-20 common set              yes 1132 / no  726 | MH ratio median 1.003 mean 1.020 (5th-95th 0.78-1.30) | pooled ratio median 1.900 -> OK
+   f16 months (main)                  yes  370 / no 1507 | MH ratio median 0.999 mean 1.007 (5th-95th 0.77-1.28) | pooled ratio median 1.041 -> OK
+   f16 months, ex-2020                yes  226 / no  961 | MH ratio median 0.997 mean 1.027 (5th-95th 0.51-1.67) | pooled ratio median 0.995 -> OK
+   f16 ADR strata (cond 4)            yes  370 / no 1513 | MH ratio median 1.001 mean 1.009 (5th-95th 0.77-1.28) | pooled ratio median 1.044 -> OK
+   f16 dmin strata                    yes  354 / no 1179 | MH ratio median 1.000 mean 1.012 (5th-95th 0.77-1.30) | pooled ratio median 0.912 -> OK
+   f16 group common set (structure)   yes  368 / no 1483 | MH ratio median 0.999 mean 1.007 (5th-95th 0.76-1.28) | pooled ratio median 1.050 -> OK
+   f16 all-20 common set              yes  368 / no 1483 | MH ratio median 0.999 mean 1.007 (5th-95th 0.76-1.28) | pooled ratio median 1.050 -> OK
+   A1 PASSED: every Mantel-Haenszel reading of f15 and f16 centres within 0.95-1.05 on no-effect labels.
+
+======================================================================================================================
+## DISCOVERY OUTCOMES — forward bars read ONLY for E <= 2020-12-31 (era A file)
+   bar store: 2420 cached series -> kept 1258 era-A discovery tickers, cut at calendar index 1318 = 2021-03-30 (= ci(2020-12-31) + 60); latest bar retained 2021-03-30 (ASSERT <= 2021-03-30); no era-B series retained
+   outcomes computed for 2414 events, max E 2020-12-31 (ASSERT every E <= 2020-12-31); wrote discovery_outcomes.tsv.gz (discovery rows only), sha256 033b7facbcb085009b8fcc08e19fe92dec238223bd0018aa6548f5a3db115680
+   events with fewer than 61 bars in E..E+60 (kept, no survivorship drop): 84; no bar at E+5: 6; no bar at E+60: 80
+
+## base rates (discovery): events | big winners (>= 1.5x) | monsters (>= 2.0x) | ADR-scaled tail | failure pool (max close < 1.10x) | close(E+5) < open | mean 60-session return
+   2016     n  326 | big  19 (0.058) | monster   2 (0.006) | ADR tail  48 (0.147) | fail pool  150 (0.460) | fail5 0.399 | ret60 mean +0.062
+   2017     n  378 | big  22 (0.058) | monster   5 (0.013) | ADR tail  97 (0.257) | fail pool  164 (0.434) | fail5 0.471 | ret60 mean +0.061
+   2018     n  455 | big  25 (0.055) | monster   6 (0.013) | ADR tail  76 (0.167) | fail pool  220 (0.484) | fail5 0.483 | ret60 mean +0.003
+   2019     n  484 | big  28 (0.058) | monster   6 (0.012) | ADR tail  96 (0.198) | fail pool  202 (0.417) | fail5 0.452 | ret60 mean +0.035
+   2020     n  771 | big 208 (0.270) | monster  83 (0.108) | ADR tail 244 (0.316) | fail pool  219 (0.284) | fail5 0.502 | ret60 mean +0.208
+   ALL      n 2414 | big 302 (0.125) | monster 102 (0.042) | ADR tail 561 (0.232) | fail pool  955 (0.396) | fail5 0.470 | ret60 mean +0.092
+   2016-19  n 1643 | big  94 (0.057) | monster  19 (0.012) | ADR tail 317 (0.193) | fail pool  736 (0.448) | fail5 0.455 | ret60 mean +0.037
+
+## A3 — B1 (shelf distance) reproduces RESULT 8's discovery-year rows (run.txt 'per year' 2017-2020) BEFORE any new-feature statistic
+   here         2017 era A: n  337  bottom 0.043  top 0.056  ratio 1.30
+   RESULT 8     2017 era A: n  337  bottom 0.043  top 0.056  ratio 1.30   -> MATCH
+   here         2018 era A: n  419  bottom 0.021  top 0.037  ratio 1.78
+   RESULT 8     2018 era A: n  419  bottom 0.021  top 0.037  ratio 1.78   -> MATCH
+   here         2019 era A: n  442  bottom 0.039  top 0.063  ratio 1.61
+   RESULT 8     2019 era A: n  442  bottom 0.039  top 0.063  ratio 1.61   -> MATCH
+   here         2020 era A: n  706  bottom 0.192  top 0.303  ratio 1.57
+   RESULT 8     2020 era A: n  706  bottom 0.192  top 0.303  ratio 1.57   -> MATCH
+   A3 PASSED: all four rows reproduce exactly (n, bottom rate, top rate, ratio).
+
+======================================================================================================================
+## §5.2 DISCOVERY — the six conditions, per feature (judged values are sign x smoothed / MH ratio in the feature's own direction)
+   permutation: 10000 shuffles, rng 1121; discovery events 2414; big winners 302
+
+f01 — gap size % | group: gap | thirds
+   big winner: bottom 87/822 = 0.106 | middle 105/806 = 0.130 | top 110/786 = 0.140 | ratio top/bottom raw 1.322, smoothed 1.321 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0224 | null 95% band of the ratio 0.79-1.28 | 90% bootstrap interval 1.12-1.64 | family-wide p (all-20 set, description) 0.7609
+   ex-2020 (2016-19): bottom 26/561 top 39/534 ratio raw 1.58, judged 1.566 | 2020 only: bottom 61/261 top 71/252 ratio 1.21
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 107/824 top 94/782 ratio raw 0.93, judged 0.926
+   within shelf-distance thirds (description; not a shelf relative): bottom 71/651 top 82/615 ratio raw 1.22, judged 1.221
+   MONSTER tier (>= 2.0x; never a bar): bottom 31/822 top 42/786 ratio 1.42  [102 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 216/822 top 157/786 ratio 0.76
+   failed (description): close(E+5) < open — bottom 0.423 top 0.500 | mean 60-session return — bottom +0.084 top +0.102
+   per year (top/bottom ratio, winners top:bottom): 2016 1.71 (8:5) · 2017 1.83 (12:7) · 2018 0.90 (7:8) · 2019 2.09 (12:6) · 2020 1.21 (71:61)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.321 PASS | 2 p <= 0.05: 0.0224 PASS | 3 ex-2020 >= 1.10 same direction: 1.566 PASS | 4 ADR-neutral >= 1.15 same direction: 0.926 FAIL | 5 n/a (not a shelf relative)
+               6 group 'gap' common set n 2407: ratio 1.33 z 2.27 -> group winner f02 (not this feature) | all-20 set n 1885: ratio 1.30 z 1.73 : FAIL
+   VERDICT: f01 gap size % — NOT CARRIED (fails conditions 4, 6)
+
+f02 — gap size in daily ranges | group: gap | thirds
+   big winner: bottom 163/819 = 0.199 | middle 79/805 = 0.098 | top 55/783 = 0.070 | ratio top/bottom raw 0.353, smoothed 0.355 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0001 | null 95% band of the ratio 0.79-1.28 | 90% bootstrap interval 0.26-0.49 | family-wide p (all-20 set, description) 0.0001
+   ex-2020 (2016-19): bottom 55/560 top 18/534 ratio raw 0.34, judged 0.350 | 2020 only: bottom 108/259 top 37/249 ratio 0.36
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 127/822 top 77/780 ratio raw 0.64, judged 0.641
+   within shelf-distance thirds (description; not a shelf relative): bottom 126/649 top 36/613 ratio raw 0.30, judged 0.305
+   MONSTER tier (>= 2.0x; never a bar): bottom 61/819 top 11/783 ratio 0.19  [98 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 197/819 top 171/783 ratio 0.91
+   failed (description): close(E+5) < open — bottom 0.470 top 0.495 | mean 60-session return — bottom +0.135 top +0.057
+   per year (top/bottom ratio, winners top:bottom): 2016 0.43 (4:10) · 2017 0.38 (5:14) · 2018 0.28 (4:15) · 2019 0.33 (5:16) · 2020 0.36 (37:108)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.355 PASS | 2 p <= 0.05: 0.0001 PASS | 3 ex-2020 >= 1.10 same direction: 2.861 PASS | 4 ADR-neutral >= 1.15 same direction: 1.561 PASS | 5 n/a (not a shelf relative)
+               6 group 'gap' common set n 2407: ratio 0.35 z 8.26 -> group winner f02 (this feature) | all-20 set n 1885: ratio 0.31 z 7.69 -> rank 2 of 9 group winners (in the cap of four) : PASS
+   VERDICT: f02 gap size in daily ranges — CARRIED to confirm, direction frozen: LOW third wins
+
+f03 — short run-up (20) | group: run-up / extension | thirds
+   big winner: bottom 66/819 = 0.081 | middle 77/805 = 0.096 | top 154/783 = 0.197 | ratio top/bottom raw 2.441, smoothed 2.430 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | null 95% band of the ratio 0.78-1.29 | 90% bootstrap interval 1.99-3.00 | family-wide p (all-20 set, description) 0.0001
+   ex-2020 (2016-19): bottom 20/560 top 48/534 ratio raw 2.52, judged 2.481 | 2020 only: bottom 46/259 top 106/249 ratio 2.40
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 87/822 top 116/780 ratio raw 1.41, judged 1.403
+   within shelf-distance thirds (description; not a shelf relative): bottom 51/649 top 115/613 ratio raw 2.39, judged 2.374
+   MONSTER tier (>= 2.0x; never a bar): bottom 14/819 top 63/783 ratio 4.71  [98 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 207/819 top 187/783 ratio 0.94
+   failed (description): close(E+5) < open — bottom 0.454 top 0.469 | mean 60-session return — bottom +0.069 top +0.122
+   per year (top/bottom ratio, winners top:bottom): 2016 1.78 (5:3) · 2017 2.33 (11:5) · 2018 2.21 (15:7) · 2019 3.55 (17:5) · 2020 2.40 (106:46)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 2.430 PASS | 2 p <= 0.05: 0.0001 PASS | 3 ex-2020 >= 1.10 same direction: 2.481 PASS | 4 ADR-neutral >= 1.15 same direction: 1.403 PASS | 5 n/a (not a shelf relative)
+               6 group 'run-up / extension' common set n 2194: ratio 2.41 z 6.55 -> group winner f03 (this feature) | all-20 set n 1885: ratio 2.33 z 5.53 -> rank 4 of 9 group winners (in the cap of four) : PASS
+   VERDICT: f03 short run-up (20) — CARRIED to confirm, direction frozen: HIGH third wins
+
+f04 — long run-up (120) | group: run-up / extension | thirds
+   big winner: bottom 60/750 = 0.080 | middle 79/733 = 0.108 | top 123/711 = 0.173 | ratio top/bottom raw 2.162, smoothed 2.153 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | null 95% band of the ratio 0.77-1.31 | 90% bootstrap interval 1.77-2.77 | family-wide p (all-20 set, description) 0.0002
+   ex-2020 (2016-19): bottom 16/500 top 37/471 ratio raw 2.45, judged 2.412 | 2020 only: bottom 44/250 top 86/240 ratio 2.04
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 79/748 top 98/707 ratio raw 1.31, judged 1.311
+   within shelf-distance thirds (description; not a shelf relative): bottom 59/646 top 104/610 ratio raw 1.87, judged 1.860
+   MONSTER tier (>= 2.0x; never a bar): bottom 14/750 top 48/711 ratio 3.62  [83 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 178/750 top 181/711 ratio 1.07
+   failed (description): close(E+5) < open — bottom 0.479 top 0.471 | mean 60-session return — bottom +0.062 top +0.145
+   per year (top/bottom ratio, winners top:bottom): 2016 1.08 (3:3) · 2017 2.13 (12:6) · 2018 1.70 (8:5) · 2019 7.33 (14:2) · 2020 2.04 (86:44)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 2.153 PASS | 2 p <= 0.05: 0.0001 PASS | 3 ex-2020 >= 1.10 same direction: 2.412 PASS | 4 ADR-neutral >= 1.15 same direction: 1.311 PASS | 5 n/a (not a shelf relative)
+               6 group 'run-up / extension' common set n 2194: ratio 2.16 z 5.76 -> group winner f03 (not this feature) | all-20 set n 1885: ratio 2.05 z 4.73 : FAIL
+   VERDICT: f04 long run-up (120) — NOT CARRIED (fails condition 6)
+
+f05 — below the 52-week high | group: highs | thirds  [shelf relative — confirm partly seen]
+   big winner: bottom 94/655 = 0.144 | middle 58/637 = 0.091 | top 65/619 = 0.105 | ratio top/bottom raw 0.732, smoothed 0.733 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0360 | null 95% band of the ratio 0.76-1.35 | 90% bootstrap interval 0.54-1.01 | family-wide p (all-20 set, description) 0.3028
+   ex-2020 (2016-19): bottom 25/421 top 19/394 ratio raw 0.81, judged 0.817 | 2020 only: bottom 69/234 top 46/225 ratio 0.69
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 78/653 top 76/619 ratio raw 1.03, judged 1.028
+   within shelf-distance thirds (CONDITION 5 applies): bottom 93/640 top 52/604 ratio raw 0.59, judged 0.595
+   MONSTER tier (>= 2.0x; never a bar): bottom 34/655 top 22/619 ratio 0.68  [70 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 138/655 top 162/619 ratio 1.24
+   failed (description): close(E+5) < open — bottom 0.531 top 0.462 | mean 60-session return — bottom +0.076 top +0.113
+   per year (top/bottom ratio, winners top:bottom): 2017 0.64 (6:10) · 2018 0.77 (5:7) · 2019 1.06 (8:8) · 2020 0.69 (46:69)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.733 PASS | 2 p <= 0.05: 0.0360 PASS | 3 ex-2020 >= 1.10 same direction: 1.224 PASS | 4 ADR-neutral >= 1.15 same direction: 0.973 FAIL | 5 within shelf thirds >= 1.10 same direction: 1.681 PASS
+               6 group 'highs' common set n 1911: ratio 0.73 z 2.08 -> group winner f07 (not this feature) | all-20 set n 1885: ratio 0.70 z 2.35 : FAIL
+   VERDICT: f05 below the 52-week high — NOT CARRIED (fails conditions 4, 6)
+
+f06 — open vs the 6-month high | group: highs | thirds
+   big winner: bottom 110/750 = 0.147 | middle 70/733 = 0.095 | top 82/711 = 0.115 | ratio top/bottom raw 0.786, smoothed 0.788 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0741 | null 95% band of the ratio 0.78-1.31 | 90% bootstrap interval 0.60-1.02 | family-wide p (all-20 set, description) 0.2824
+   ex-2020 (2016-19): bottom 36/500 top 22/471 ratio raw 0.65, judged 0.654 | 2020 only: bottom 74/250 top 60/240 ratio 0.84
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 90/748 top 89/707 ratio raw 1.05, judged 1.046
+   within shelf-distance thirds (description; not a shelf relative): bottom 99/646 top 63/610 ratio raw 0.67, judged 0.676
+   MONSTER tier (>= 2.0x; never a bar): bottom 36/750 top 30/711 ratio 0.88  [83 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 167/750 top 181/711 ratio 1.14
+   failed (description): close(E+5) < open — bottom 0.503 top 0.458 | mean 60-session return — bottom +0.081 top +0.116
+   per year (top/bottom ratio, winners top:bottom): 2016 0.31 (2:7) · 2017 0.53 (5:10) · 2018 0.71 (6:9) · 2019 0.94 (9:10) · 2020 0.84 (60:74)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.788 PASS | 2 p <= 0.05: 0.0741 FAIL | 3 ex-2020 >= 1.10 same direction: 1.528 PASS | 4 ADR-neutral >= 1.15 same direction: 0.956 FAIL | 5 n/a (not a shelf relative)
+               6 group 'highs' common set n 1911: ratio 0.75 z 1.88 -> group winner f07 (not this feature) | all-20 set n 1885: ratio 0.69 z 2.41 : FAIL
+   VERDICT: f06 open vs the 6-month high — NOT CARRIED (fails conditions 2, 4, 6)
+
+f07 — sessions since the 6-month high | group: highs | thirds  [shelf relative — confirm partly seen]
+   big winner: bottom 100/745 = 0.134 | middle 101/757 = 0.133 | top 61/692 = 0.088 | ratio top/bottom raw 0.657, smoothed 0.659 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0020 | null 95% band of the ratio 0.76-1.30 | 90% bootstrap interval 0.52-0.82 | family-wide p (all-20 set, description) 0.0253
+   ex-2020 (2016-19): bottom 26/498 top 22/466 ratio raw 0.90, judged 0.907 | 2020 only: bottom 74/247 top 39/226 ratio 0.58
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 100/753 top 70/708 ratio raw 0.74, judged 0.746
+   within shelf-distance thirds (CONDITION 5 applies): bottom 85/646 top 56/604 ratio raw 0.70, judged 0.707
+   MONSTER tier (>= 2.0x; never a bar): bottom 39/745 top 17/692 ratio 0.47  [83 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 195/745 top 132/692 ratio 0.73
+   failed (description): close(E+5) < open — bottom 0.445 top 0.519 | mean 60-session return — bottom +0.140 top +0.038
+   per year (top/bottom ratio, winners top:bottom): 2016 1.78 (5:3) · 2017 0.93 (6:7) · 2018 0.88 (5:6) · 2019 0.64 (6:10) · 2020 0.58 (39:74)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.659 PASS | 2 p <= 0.05: 0.0020 PASS | 3 ex-2020 >= 1.10 same direction: 1.102 PASS | 4 ADR-neutral >= 1.15 same direction: 1.340 PASS | 5 within shelf thirds >= 1.10 same direction: 1.415 PASS
+               6 group 'highs' common set n 1911: ratio 0.56 z 3.85 -> group winner f07 (this feature) | all-20 set n 1885: ratio 0.60 z 3.32 -> rank 7 of 9 group winners (outside the cap of four) : FAIL
+   VERDICT: f07 sessions since the 6-month high — NOT CARRIED (fails condition 6)
+
+f08 — flat-base length | group: base | thirds
+   big winner: bottom 147/787 = 0.187 | middle 84/700 = 0.120 | top 31/707 = 0.044 | ratio top/bottom raw 0.235, smoothed 0.238 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0001 | null 95% band of the ratio 0.75-1.26 | 90% bootstrap interval 0.16-0.31 | family-wide p (all-20 set, description) 0.0001
+   ex-2020 (2016-19): bottom 47/518 top 4/468 ratio raw 0.09, judged 0.105 | 2020 only: bottom 100/269 top 27/239 ratio 0.30
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 99/747 top 67/704 ratio raw 0.72, judged 0.720
+   within shelf-distance thirds (description; not a shelf relative): bottom 124/661 top 27/601 ratio raw 0.24, judged 0.243
+   MONSTER tier (>= 2.0x; never a bar): bottom 59/787 top 4/707 ratio 0.08  [83 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 176/787 top 166/707 ratio 1.05
+   failed (description): close(E+5) < open — bottom 0.508 top 0.487 | mean 60-session return — bottom +0.125 top +0.050
+   per year (top/bottom ratio, winners top:bottom): 2016 0.16 (1:7) · 2017 0.07 (1:15) · 2018 0.20 (2:11) · 2019 0.00 (0:14) · 2020 0.30 (27:100)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.238 PASS | 2 p <= 0.05: 0.0001 PASS | 3 ex-2020 >= 1.10 same direction: 9.539 PASS | 4 ADR-neutral >= 1.15 same direction: 1.389 PASS | 5 n/a (not a shelf relative)
+               6 group 'base' common set n 2194: ratio 0.23 z 10.93 -> group winner f09 (not this feature) | all-20 set n 1885: ratio 0.27 z 8.42 : FAIL
+   VERDICT: f08 flat-base length — NOT CARRIED (fails condition 6)
+
+f09 — base depth (40) | group: base | thirds
+   big winner: bottom 31/797 = 0.039 | middle 90/781 = 0.115 | top 163/760 = 0.214 | ratio top/bottom raw 5.514, smoothed 5.443 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | null 95% band of the ratio 0.78-1.30 | 90% bootstrap interval 3.66-9.97 | family-wide p (all-20 set, description) 0.0001
+   ex-2020 (2016-19): bottom 3/540 top 55/512 ratio raw 19.34, judged 16.723 | 2020 only: bottom 28/257 top 108/248 ratio 4.00
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 74/794 top 108/756 ratio raw 1.53, judged 1.529
+   within shelf-distance thirds (description; not a shelf relative): bottom 22/648 top 128/611 ratio raw 6.17, judged 6.056
+   MONSTER tier (>= 2.0x; never a bar): bottom 6/797 top 71/760 ratio 12.41  [91 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 172/797 top 178/760 ratio 1.09
+   failed (description): close(E+5) < open — bottom 0.479 top 0.489 | mean 60-session return — bottom +0.040 top +0.145
+   per year (top/bottom ratio, winners top:bottom): 2016 10.55 (10:1) · 2017 inf (15:0) · 2018 5.24 (10:2) · 2019 inf (20:0) · 2020 4.00 (108:28)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 5.443 PASS | 2 p <= 0.05: 0.0001 PASS | 3 ex-2020 >= 1.10 same direction: 16.723 PASS | 4 ADR-neutral >= 1.15 same direction: 1.529 PASS | 5 n/a (not a shelf relative)
+               6 group 'base' common set n 2194: ratio 5.24 z 12.27 -> group winner f09 (this feature) | all-20 set n 1885: ratio 5.29 z 10.84 -> rank 1 of 9 group winners (in the cap of four) : PASS
+   VERDICT: f09 base depth (40) — CARRIED to confirm, direction frozen: HIGH third wins
+
+f10 — range tightening | group: tightness | thirds
+   big winner: bottom 84/789 = 0.106 | middle 87/769 = 0.113 | top 108/750 = 0.144 | ratio top/bottom raw 1.353, smoothed 1.351 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0207 | null 95% band of the ratio 0.78-1.30 | 90% bootstrap interval 1.03-1.77 | family-wide p (all-20 set, description) 0.0280
+   ex-2020 (2016-19): bottom 31/533 top 24/505 ratio raw 0.82, judged 0.821 | 2020 only: bottom 53/256 top 84/245 ratio 1.66
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 88/789 top 100/748 ratio raw 1.20, judged 1.198
+   within shelf-distance thirds (description; not a shelf relative): bottom 56/648 top 100/610 ratio raw 1.90, judged 1.889
+   MONSTER tier (>= 2.0x; never a bar): bottom 23/789 top 46/750 ratio 2.10  [90 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 216/789 top 146/750 ratio 0.71
+   failed (description): close(E+5) < open — bottom 0.472 top 0.479 | mean 60-session return — bottom +0.090 top +0.088
+   per year (top/bottom ratio, winners top:bottom): 2016 0.21 (2:10) · 2017 0.91 (6:7) · 2018 1.85 (7:4) · 2019 0.95 (9:10) · 2020 1.66 (84:53)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.351 PASS | 2 p <= 0.05: 0.0207 PASS | 3 ex-2020 >= 1.10 same direction: 0.821 FAIL | 4 ADR-neutral >= 1.15 same direction: 1.198 PASS | 5 n/a (not a shelf relative)
+               6 group 'tightness' common set n 2308: ratio 1.35 z 2.30 -> group winner f10 (this feature) | all-20 set n 1885: ratio 1.65 z 3.26 -> rank 8 of 9 group winners (outside the cap of four) : FAIL
+   VERDICT: f10 range tightening — NOT CARRIED (fails conditions 3, 6)
+
+f11 — closing tightness | group: tightness | thirds
+   big winner: bottom 90/819 = 0.110 | middle 104/805 = 0.129 | top 103/783 = 0.132 | ratio top/bottom raw 1.197, smoothed 1.196 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.1520 | null 95% band of the ratio 0.78-1.28 | 90% bootstrap interval 0.94-1.51 | family-wide p (all-20 set, description) 0.8370
+   ex-2020 (2016-19): bottom 32/560 top 33/534 ratio raw 1.08, judged 1.081 | 2020 only: bottom 58/259 top 70/249 ratio 1.26
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 95/822 top 96/780 ratio raw 1.06, judged 1.065
+   within shelf-distance thirds (description; not a shelf relative): bottom 69/649 top 82/613 ratio raw 1.26, judged 1.257
+   MONSTER tier (>= 2.0x; never a bar): bottom 21/819 top 44/783 ratio 2.19  [98 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 195/819 top 167/783 ratio 0.90
+   failed (description): close(E+5) < open — bottom 0.445 top 0.520 | mean 60-session return — bottom +0.090 top +0.084
+   per year (top/bottom ratio, winners top:bottom): 2016 0.47 (4:9) · 2017 0.74 (7:10) · 2018 4.48 (13:3) · 2019 0.94 (9:10) · 2020 1.26 (70:58)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.196 FAIL | 2 p <= 0.05: 0.1520 FAIL | 3 ex-2020 >= 1.10 same direction: 1.081 FAIL | 4 ADR-neutral >= 1.15 same direction: 1.065 FAIL | 5 n/a (not a shelf relative)
+               6 group 'tightness' common set n 2308: ratio 1.20 z 1.40 -> group winner f10 (not this feature) | all-20 set n 1885: ratio 1.28 z 1.62 : FAIL
+   VERDICT: f11 closing tightness — NOT CARRIED (fails conditions 1, 2, 3, 4, 6)
+
+f12 — volume dry-up | group: volume | thirds
+   big winner: bottom 82/789 = 0.104 | middle 80/769 = 0.104 | top 117/750 = 0.156 | ratio top/bottom raw 1.501, smoothed 1.498 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0016 | null 95% band of the ratio 0.78-1.29 | 90% bootstrap interval 1.16-1.86 | family-wide p (all-20 set, description) 0.0043
+   ex-2020 (2016-19): bottom 33/533 top 26/505 ratio raw 0.83, judged 0.835 | 2020 only: bottom 49/256 top 91/245 ratio 1.94
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 89/789 top 98/748 ratio raw 1.16, judged 1.161
+   within shelf-distance thirds (description; not a shelf relative): bottom 61/648 top 100/610 ratio raw 1.74, judged 1.736
+   MONSTER tier (>= 2.0x; never a bar): bottom 18/789 top 49/750 ratio 2.86  [90 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 197/789 top 165/750 ratio 0.88
+   failed (description): close(E+5) < open — bottom 0.476 top 0.468 | mean 60-session return — bottom +0.080 top +0.103
+   per year (top/bottom ratio, winners top:bottom): 2016 0.26 (3:12) · 2017 0.94 (8:9) · 2018 1.06 (5:5) · 2019 1.51 (10:7) · 2020 1.94 (91:49)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.498 PASS | 2 p <= 0.05: 0.0016 PASS | 3 ex-2020 >= 1.10 same direction: 0.835 FAIL | 4 ADR-neutral >= 1.15 same direction: 1.161 PASS | 5 n/a (not a shelf relative)
+               6 group 'volume' common set n 2308: ratio 1.50 z 3.14 -> group winner f12 (this feature) | all-20 set n 1885: ratio 1.79 z 3.83 -> rank 6 of 9 group winners (outside the cap of four) : FAIL
+   VERDICT: f12 volume dry-up — NOT CARRIED (fails conditions 3, 6)
+
+f13 — up vs down volume | group: volume | thirds
+   big winner: bottom 87/818 = 0.106 | middle 101/805 = 0.125 | top 109/783 = 0.139 | ratio top/bottom raw 1.309, smoothed 1.307 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0349 | null 95% band of the ratio 0.78-1.28 | 90% bootstrap interval 1.04-1.57 | family-wide p (all-20 set, description) 0.6491
+   ex-2020 (2016-19): bottom 32/559 top 29/534 ratio raw 0.95, judged 0.950 | 2020 only: bottom 55/259 top 80/249 ratio 1.51
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 99/822 top 104/779 ratio raw 1.11, judged 1.108
+   within shelf-distance thirds (description; not a shelf relative): bottom 72/649 top 82/613 ratio raw 1.21, judged 1.205
+   MONSTER tier (>= 2.0x; never a bar): bottom 24/818 top 44/783 ratio 1.92  [98 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 181/818 top 187/783 ratio 1.08
+   failed (description): close(E+5) < open — bottom 0.452 top 0.483 | mean 60-session return — bottom +0.074 top +0.092
+   per year (top/bottom ratio, winners top:bottom): 2016 0.70 (4:6) · 2017 0.74 (7:10) · 2018 1.72 (10:6) · 2019 0.84 (8:10) · 2020 1.51 (80:55)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.307 PASS | 2 p <= 0.05: 0.0349 PASS | 3 ex-2020 >= 1.10 same direction: 0.950 FAIL | 4 ADR-neutral >= 1.15 same direction: 1.108 FAIL | 5 n/a (not a shelf relative)
+               6 group 'volume' common set n 2308: ratio 1.34 z 2.27 -> group winner f12 (not this feature) | all-20 set n 1885: ratio 1.33 z 1.89 : FAIL
+   VERDICT: f13 up vs down volume — NOT CARRIED (fails conditions 3, 4, 6)
+
+f14 — strength vs SPY (60) | group: strength | thirds
+   big winner: bottom 100/789 = 0.127 | middle 53/769 = 0.069 | top 126/750 = 0.168 | ratio top/bottom raw 1.326, smoothed 1.324 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0280 | null 95% band of the ratio 0.78-1.29 | 90% bootstrap interval 0.99-1.80 | family-wide p (all-20 set, description) 0.9893
+   ex-2020 (2016-19): bottom 34/533 top 33/505 ratio raw 1.02, judged 1.025 | 2020 only: bottom 66/256 top 93/245 ratio 1.47
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 93/789 top 107/748 ratio raw 1.21, judged 1.213
+   within shelf-distance thirds (description; not a shelf relative): bottom 80/648 top 90/610 ratio raw 1.20, judged 1.194
+   MONSTER tier (>= 2.0x; never a bar): bottom 28/789 top 51/750 ratio 1.92  [90 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 187/789 top 198/750 ratio 1.11
+   failed (description): close(E+5) < open — bottom 0.496 top 0.451 | mean 60-session return — bottom +0.079 top +0.138
+   per year (top/bottom ratio, winners top:bottom): 2016 0.65 (5:8) · 2017 1.59 (12:8) · 2018 0.53 (5:10) · 2019 1.46 (11:8) · 2020 1.47 (93:66)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.324 PASS | 2 p <= 0.05: 0.0280 PASS | 3 ex-2020 >= 1.10 same direction: 1.025 FAIL | 4 ADR-neutral >= 1.15 same direction: 1.213 PASS | 5 n/a (not a shelf relative)
+               6 group 'strength' common set n 2308: ratio 1.33 z 2.20 -> group winner f14 (this feature) | all-20 set n 1885: ratio 1.19 z 1.14 -> rank 9 of 9 group winners (outside the cap of four) : FAIL
+   VERDICT: f14 strength vs SPY (60) — NOT CARRIED (fails conditions 3, 6)
+
+f15 — earlier gap-ups (yes/no) | group: structure | two-group, Mantel-Haenszel by month (A1)
+   big winner: NO 32/827 = 0.039 | YES 212/1324 = 0.160 | MH ratio yes/no 2.383 (pooled, biased: 4.14) -> YES group wins
+   permutation p (two-sided, 10,000) 0.0001 | null 95% band of the ratio 0.75-1.35 | 90% bootstrap interval 1.80-3.31 | family-wide p (all-20 set, description) 0.0003
+   ex-2020 (2016-19): bottom 19/720 top 53/729 ratio raw 2.69, judged 2.687 | 2020 only: bottom 13/107 top 159/595 ratio 2.11
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 32/827 top 158/1159 ratio raw 1.42, judged 1.421
+   within shelf-distance thirds (description; not a shelf relative): bottom 30/711 top 162/1087 ratio raw 2.21, judged 2.212
+   MONSTER tier (>= 2.0x; never a bar): bottom 4/827 top 74/1324 ratio 5.25  [78 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 170/827 top 331/1324 ratio 1.03
+   failed (description): close(E+5) < open — bottom 0.463 top 0.479 | mean 60-session return — bottom +0.038 top +0.117
+   per year (top/bottom ratio, winners top:bottom): 2016 6.08 (9:1) · 2017 3.94 (16:5) · 2018 2.24 (12:6) · 2019 1.80 (16:7) · 2020 2.11 (159:13)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 2.383 PASS | 2 p <= 0.05: 0.0001 PASS | 3 ex-2020 >= 1.10 same direction: 2.687 PASS | 4 ADR-neutral >= 1.15 same direction: 1.421 PASS | 5 n/a (not a shelf relative)
+               6 group 'structure' common set n 1858: ratio 1.98 z 4.06 -> group winner f20 (not this feature) | all-20 set n 1858: ratio 1.98 z 4.06 : FAIL
+   VERDICT: f15 earlier gap-ups (yes/no) — NOT CARRIED (fails condition 6)
+
+f16 — unfilled gap-down overhead (yes/no) | group: structure | two-group, Mantel-Haenszel by month (A1)
+   big winner: NO 153/1507 = 0.102 | YES 63/370 = 0.170 | MH ratio yes/no 1.540 (pooled, biased: 1.68) -> YES group wins
+   permutation p (two-sided, 10,000) 0.0080 | null 95% band of the ratio 0.72-1.33 | 90% bootstrap interval 1.14-2.02 | family-wide p (all-20 set, description) 0.0815
+   ex-2020 (2016-19): bottom 41/961 top 13/226 ratio raw 1.34, judged 1.341 | 2020 only: bottom 112/546 top 50/144 ratio 1.62
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 154/1513 top 63/370 ratio raw 1.19, judged 1.194
+   within shelf-distance thirds (description; not a shelf relative): bottom 133/1179 top 60/354 ratio raw 2.04, judged 2.043
+   MONSTER tier (>= 2.0x; never a bar): bottom 47/1507 top 23/370 ratio 1.93  [70 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 368/1507 top 82/370 ratio 0.94
+   failed (description): close(E+5) < open — bottom 0.461 top 0.541 | mean 60-session return — bottom +0.085 top +0.124
+   per year (top/bottom ratio, winners top:bottom): 2017 0.76 (3:17) · 2018 2.11 (4:9) · 2019 1.58 (6:15) · 2020 1.62 (50:112)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.540 PASS | 2 p <= 0.05: 0.0080 PASS | 3 ex-2020 >= 1.10 same direction: 1.341 PASS | 4 ADR-neutral >= 1.15 same direction: 1.194 PASS | 5 n/a (not a shelf relative)
+               6 group 'structure' common set n 1851: ratio 1.56 z 2.78 -> group winner f20 (not this feature) | all-20 set n 1851: ratio 1.56 z 2.78 : FAIL
+   VERDICT: f16 unfilled gap-down overhead (yes/no) — NOT CARRIED (fails condition 6)
+
+f17 — distance from the 50-day average (daily ranges) | group: run-up / extension | thirds
+   big winner: bottom 92/790 = 0.116 | middle 77/775 = 0.099 | top 112/751 = 0.149 | ratio top/bottom raw 1.281, smoothed 1.279 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0546  <-- NEAR THE BAR (0.04-0.06): a recount's shuffle convention can move it ~0.005 | null 95% band of the ratio 0.78-1.29 | 90% bootstrap interval 1.05-1.56 | family-wide p (all-20 set, description) 0.9942
+   ex-2020 (2016-19): bottom 33/533 top 30/505 ratio raw 0.96, judged 0.961 | 2020 only: bottom 59/257 top 82/246 ratio 1.45
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 94/791 top 104/751 ratio raw 1.17, judged 1.165
+   within shelf-distance thirds (description; not a shelf relative): bottom 78/648 top 86/611 ratio raw 1.17, judged 1.169
+   MONSTER tier (>= 2.0x; never a bar): bottom 24/790 top 48/751 ratio 2.10  [90 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 180/790 top 185/751 ratio 1.08
+   failed (description): close(E+5) < open — bottom 0.464 top 0.514 | mean 60-session return — bottom +0.076 top +0.110
+   per year (top/bottom ratio, winners top:bottom): 2016 0.42 (2:5) · 2017 0.67 (7:11) · 2018 1.19 (9:8) · 2019 1.41 (12:9) · 2020 1.45 (82:59)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.279 PASS | 2 p <= 0.05: 0.0546 FAIL | 3 ex-2020 >= 1.10 same direction: 0.961 FAIL | 4 ADR-neutral >= 1.15 same direction: 1.165 PASS | 5 n/a (not a shelf relative)
+               6 group 'run-up / extension' common set n 2194: ratio 1.26 z 1.72 -> group winner f03 (not this feature) | all-20 set n 1885: ratio 1.17 z 1.06 : FAIL
+   VERDICT: f17 distance from the 50-day average (daily ranges) — NOT CARRIED (fails conditions 2, 3, 6)
+
+f18 — price (raw) | group: size | thirds
+   big winner: bottom 150/822 = 0.182 | middle 96/806 = 0.119 | top 56/786 = 0.071 | ratio top/bottom raw 0.390, smoothed 0.393 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0001 | null 95% band of the ratio 0.79-1.29 | 90% bootstrap interval 0.30-0.51 | family-wide p (all-20 set, description) 0.0001
+   ex-2020 (2016-19): bottom 44/561 top 19/534 ratio raw 0.45, judged 0.460 | 2020 only: bottom 106/261 top 37/252 ratio 0.36
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 122/824 top 87/782 ratio raw 0.75, judged 0.753
+   within shelf-distance thirds (description; not a shelf relative): bottom 124/652 top 34/615 ratio raw 0.29, judged 0.294
+   MONSTER tier (>= 2.0x; never a bar): bottom 59/822 top 9/786 ratio 0.16  [102 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 196/822 top 172/786 ratio 0.92
+   failed (description): close(E+5) < open — bottom 0.472 top 0.464 | mean 60-session return — bottom +0.117 top +0.059
+   per year (top/bottom ratio, winners top:bottom): 2016 0.40 (3:8) · 2017 0.27 (3:12) · 2018 1.33 (9:7) · 2019 0.25 (4:17) · 2020 0.36 (37:106)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.393 PASS | 2 p <= 0.05: 0.0001 PASS | 3 ex-2020 >= 1.10 same direction: 2.172 PASS | 4 ADR-neutral >= 1.15 same direction: 1.329 PASS | 5 n/a (not a shelf relative)
+               6 group 'size' common set n 2407: ratio 0.39 z 7.47 -> group winner f18 (this feature) | all-20 set n 1885: ratio 0.37 z 6.46 -> rank 3 of 9 group winners (in the cap of four) : PASS
+   VERDICT: f18 price (raw) — CARRIED to confirm, direction frozen: LOW third wins
+
+f19 — liquidity (median $ volume) | group: size | thirds
+   big winner: bottom 115/819 = 0.140 | middle 100/806 = 0.124 | top 82/782 = 0.105 | ratio top/bottom raw 0.747, smoothed 0.748 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0213 | null 95% band of the ratio 0.79-1.28 | 90% bootstrap interval 0.55-1.02 | family-wide p (all-20 set, description) 0.4055
+   ex-2020 (2016-19): bottom 33/560 top 22/533 ratio raw 0.70, judged 0.706 | 2020 only: bottom 82/259 top 60/249 ratio 0.76
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 104/822 top 99/779 ratio raw 1.00, judged 1.005
+   within shelf-distance thirds (description; not a shelf relative): bottom 88/649 top 55/612 ratio raw 0.66, judged 0.665
+   MONSTER tier (>= 2.0x; never a bar): bottom 44/819 top 21/782 ratio 0.50  [98 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 180/819 top 192/782 ratio 1.12
+   failed (description): close(E+5) < open — bottom 0.479 top 0.457 | mean 60-session return — bottom +0.098 top +0.082
+   per year (top/bottom ratio, winners top:bottom): 2016 0.46 (3:7) · 2017 0.60 (4:7) · 2018 1.73 (10:6) · 2019 0.40 (5:13) · 2020 0.76 (60:82)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.748 PASS | 2 p <= 0.05: 0.0213 PASS | 3 ex-2020 >= 1.10 same direction: 1.417 PASS | 4 ADR-neutral >= 1.15 same direction: 0.995 FAIL | 5 n/a (not a shelf relative)
+               6 group 'size' common set n 2407: ratio 0.75 z 2.32 -> group winner f18 (not this feature) | all-20 set n 1885: ratio 0.71 z 2.21 : FAIL
+   VERDICT: f19 liquidity (median $ volume) — NOT CARRIED (fails conditions 4, 6)
+
+f20 — levels cleared by the open | group: structure | thirds
+   big winner: bottom 103/692 = 0.149 | middle 60/609 = 0.099 | top 45/584 = 0.077 | ratio top/bottom raw 0.518, smoothed 0.521 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0001 | null 95% band of the ratio 0.74-1.32 | 90% bootstrap interval 0.42-0.64 | family-wide p (all-20 set, description) 0.0008
+   ex-2020 (2016-19): bottom 29/439 top 8/368 ratio raw 0.33, judged 0.344 | 2020 only: bottom 74/253 top 37/216 ratio 0.59
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 87/676 top 58/594 ratio raw 0.76, judged 0.761
+   within shelf-distance thirds (description; not a shelf relative): bottom 97/638 top 50/578 ratio raw 0.57, judged 0.572
+   MONSTER tier (>= 2.0x; never a bar): bottom 37/692 top 6/584 ratio 0.19  [66 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 184/692 top 111/584 ratio 0.71
+   failed (description): close(E+5) < open — bottom 0.478 top 0.471 | mean 60-session return — bottom +0.121 top +0.047
+   per year (top/bottom ratio, winners top:bottom): 2017 0.47 (3:8) · 2018 0.15 (1:8) · 2019 0.35 (4:13) · 2020 0.59 (37:74)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.521 PASS | 2 p <= 0.05: 0.0001 PASS | 3 ex-2020 >= 1.10 same direction: 2.911 PASS | 4 ADR-neutral >= 1.15 same direction: 1.315 PASS | 5 n/a (not a shelf relative)
+               6 group 'structure' common set n 1885: ratio 0.52 z 4.46 -> group winner f20 (this feature) | all-20 set n 1885: ratio 0.52 z 4.46 -> rank 5 of 9 group winners (outside the cap of four) : FAIL
+   VERDICT: f20 levels cleared by the open — NOT CARRIED (fails condition 6)
+
+======================================================================================================================
+## BENCHMARKS (not candidates; printed for reference)
+
+B1 — shelf distance (dmin) | BENCHMARK (not a candidate) | thirds
+   big winner: bottom 60/652 = 0.092 | middle 81/636 = 0.127 | top 90/616 = 0.146 | ratio top/bottom raw 1.588, smoothed 1.583 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0017 | null 95% band of the ratio 0.77-1.34 | 90% bootstrap interval 1.18-2.09
+   ex-2020 (2016-19): bottom 14/413 top 20/385 ratio raw 1.53, judged 1.516 | 2020 only: bottom 46/239 top 70/231 ratio 1.57
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 76/653 top 82/617 ratio raw 1.14, judged 1.141
+   MONSTER tier (>= 2.0x; never a bar): bottom 20/652 top 35/616 ratio 1.85  [75 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 154/652 top 165/616 ratio 1.13
+   failed (description): close(E+5) < open — bottom 0.521 top 0.440 | mean 60-session return — bottom +0.063 top +0.126
+   per year (top/bottom ratio, winners top:bottom): 2017 1.30 (6:5) · 2018 1.78 (5:3) · 2019 1.61 (9:6) · 2020 1.57 (70:46)
+
+B1clean — shelf distance, clean | BENCHMARK (not a candidate) | thirds
+   big winner: bottom 55/638 = 0.086 | middle 74/616 = 0.120 | top 80/605 = 0.132 | ratio top/bottom raw 1.534, smoothed 1.529 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0051 | null 95% band of the ratio 0.76-1.35 | 90% bootstrap interval 1.11-2.07
+   ex-2020 (2016-19): bottom 14/410 top 18/384 ratio raw 1.37, judged 1.362 | 2020 only: bottom 41/228 top 62/221 ratio 1.56
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 68/637 top 75/601 ratio raw 1.17, judged 1.168
+   MONSTER tier (>= 2.0x; never a bar): bottom 19/638 top 28/605 ratio 1.55  [65 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 148/638 top 158/605 ratio 1.13
+   failed (description): close(E+5) < open — bottom 0.521 top 0.442 | mean 60-session return — bottom +0.062 top +0.111
+   per year (top/bottom ratio, winners top:bottom): 2017 1.29 (6:5) · 2018 1.42 (4:3) · 2019 1.42 (8:6) · 2020 1.56 (62:41)
+
+B2 — ADR20 | BENCHMARK (not a candidate) | thirds
+   big winner: bottom 32/819 = 0.039 | middle 86/805 = 0.107 | top 179/783 = 0.229 | ratio top/bottom raw 5.851, smoothed 5.777 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | null 95% band of the ratio 0.78-1.28 | 90% bootstrap interval 3.95-9.56
+   ex-2020 (2016-19): bottom 6/560 top 67/534 ratio raw 11.71, judged 10.889 | 2020 only: bottom 26/259 top 112/249 ratio 4.48
+   MONSTER tier (>= 2.0x; never a bar): bottom 4/819 top 75/783 ratio 19.61  [98 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 193/819 top 167/783 ratio 0.91
+   failed (description): close(E+5) < open — bottom 0.477 top 0.487 | mean 60-session return — bottom +0.043 top +0.146
+   per year (top/bottom ratio, winners top:bottom): 2016 7.47 (14:2) · 2017 inf (18:0) · 2018 4.13 (16:4) · 2019 inf (19:0) · 2020 4.48 (112:26)
+
+======================================================================================================================
+## CONDITION 6 — group winners and the cap of four
+   common-set sizes: all-20 1885 events; gap 2407 · run-up / extension 2194 · highs 1911 · base 2194 · tightness 2308 · volume 2308 · strength 2308 · structure 1885 · size 2407
+   group gap                 : f01 z 2.27 (ratio 1.33, own p 0.0224) | f02 z 8.26 (ratio 0.35, own p 0.0001)  -> winner f02
+   group run-up / extension  : f03 z 6.55 (ratio 2.41, own p 0.0001) | f04 z 5.76 (ratio 2.16, own p 0.0001) | f17 z 1.72 (ratio 1.26, own p 0.0546)  -> winner f03
+   group highs               : f05 z 2.08 (ratio 0.73, own p 0.0360) | f06 z 1.88 (ratio 0.75, own p 0.0741) | f07 z 3.85 (ratio 0.56, own p 0.0020)  -> winner f07
+   group base                : f08 z 10.93 (ratio 0.23, own p 0.0001) | f09 z 12.27 (ratio 5.24, own p 0.0001)  -> winner f09
+   group tightness           : f10 z 2.30 (ratio 1.35, own p 0.0207) | f11 z 1.40 (ratio 1.20, own p 0.1520)  -> winner f10
+   group volume              : f12 z 3.14 (ratio 1.50, own p 0.0016) | f13 z 2.27 (ratio 1.34, own p 0.0349)  -> winner f12
+   group strength            : f14 z 2.20 (ratio 1.33, own p 0.0280)  -> winner f14
+   group structure           : f15 z 4.06 (ratio 1.98, own p 0.0001) | f16 z 2.78 (ratio 1.56, own p 0.0080) | f20 z 4.46 (ratio 0.52, own p 0.0001)  -> winner f20
+   group size                : f18 z 7.47 (ratio 0.39, own p 0.0001) | f19 z 2.32 (ratio 0.75, own p 0.0213)  -> winner f18
+   cap (group winners ranked by z on the all-20 set): f09 z 10.84 > f02 z 7.69 > f18 z 6.46 > f03 z 5.53 > f20 z 4.46 > f12 z 3.83 > f07 z 3.32 > f10 z 3.26 > f14 z 1.14  -> the four: ['f09', 'f02', 'f18', 'f03']
+
+## SUMMARY TABLE (ratio = judged top/bottom or MH yes/no; ex20 / ADRn / shelf = in the feature's own direction)
+   feat name                                          ratio       p   ex20   ADRn  shelf grpWin  cap4   1-5  verdict
+   f01  gap size %                                    1.321  0.0224  1.566  0.926      -     no    no  fail  NOT CARRIED
+   f02  gap size in daily ranges                      0.355  0.0001  2.861  1.561      -    yes   yes  pass  CARRIED
+   f03  short run-up (20)                             2.430  0.0001  2.481  1.403      -    yes   yes  pass  CARRIED
+   f04  long run-up (120)                             2.153  0.0001  2.412  1.311      -     no    no  pass  NOT CARRIED
+   f05  below the 52-week high                        0.733  0.0360  1.224  0.973  1.681     no    no  fail  NOT CARRIED
+   f06  open vs the 6-month high                      0.788  0.0741  1.528  0.956      -     no    no  fail  NOT CARRIED
+   f07  sessions since the 6-month high               0.659  0.0020  1.102  1.340  1.415    yes    no  pass  NOT CARRIED
+   f08  flat-base length                              0.238  0.0001  9.539  1.389      -     no    no  pass  NOT CARRIED
+   f09  base depth (40)                               5.443  0.0001 16.723  1.529      -    yes   yes  pass  CARRIED
+   f10  range tightening                              1.351  0.0207  0.821  1.198      -    yes    no  fail  NOT CARRIED
+   f11  closing tightness                             1.196  0.1520  1.081  1.065      -     no    no  fail  NOT CARRIED
+   f12  volume dry-up                                 1.498  0.0016  0.835  1.161      -    yes    no  fail  NOT CARRIED
+   f13  up vs down volume                             1.307  0.0349  0.950  1.108      -     no    no  fail  NOT CARRIED
+   f14  strength vs SPY (60)                          1.324  0.0280  1.025  1.213      -    yes    no  fail  NOT CARRIED
+   f15  earlier gap-ups (yes/no)                      2.383  0.0001  2.687  1.421      -     no    no  pass  NOT CARRIED
+   f16  unfilled gap-down overhead (yes/no)           1.540  0.0080  1.341  1.194      -     no    no  pass  NOT CARRIED
+   f17  distance from the 50-day average (daily rang  1.279  0.0546  0.961  1.165      -     no    no  fail  NOT CARRIED
+   f18  price (raw)                                   0.393  0.0001  2.172  1.329      -    yes   yes  pass  CARRIED
+   f19  liquidity (median $ volume)                   0.748  0.0213  1.417  0.995      -     no    no  fail  NOT CARRIED
+   f20  levels cleared by the open                    0.521  0.0001  2.911  1.315      -    yes    no  pass  NOT CARRIED
+
+## CARRIED LIST (direction frozen)
+   f02 gap size in daily ranges: LOW third wins | ratio 0.355 (90% 0.26-0.49) p 0.0001 | ex-2020 2.861 | ADR-neutral 1.561 | monster 0.19 | ADR tail 0.91
+   f03 short run-up (20): HIGH third wins | ratio 2.430 (90% 1.99-3.00) p 0.0001 | ex-2020 2.481 | ADR-neutral 1.403 | monster 4.71 | ADR tail 0.94
+   f09 base depth (40): HIGH third wins | ratio 5.443 (90% 3.66-9.97) p 0.0001 | ex-2020 16.723 | ADR-neutral 1.529 | monster 12.41 | ADR tail 1.09
+   f18 price (raw): LOW third wins | ratio 0.393 (90% 0.30-0.51) p 0.0001 | ex-2020 2.172 | ADR-neutral 1.329 | monster 0.16 | ADR tail 0.92
+   features passing conditions 1-5 but losing on condition 6 (group / cap): ['f04', 'f07', 'f08', 'f15', 'f16', 'f20']
+   features whose p sits within 0.04-0.06 (recount-sensitive): ['f17']
+   features passing conditions 1-2 only: ['f01', 'f02', 'f03', 'f04', 'f05', 'f07', 'f08', 'f09', 'f10', 'f12', 'f13', 'f14', 'f15', 'f16', 'f18', 'f19', 'f20']
+
+## §5.6 COMBINATION (fixed on discovery; tested once on confirm)
+   definition: equal-weight mean of the within-(era, month) percentile ranks ((average rank - 0.5) / n, over the events scored on all members) of f02 (1 - rank), f03 (as is), f09 (as is), f18 (1 - rank); direction fixed: HIGH third wins; then thirds within month as §5.1.
+   events scored on all members: 2338
+   discovery numbers below are DESCRIPTION (the members were chosen on these outcomes — 'seen'):
+
+combo — combination of f02+f03+f09+f18 | COMBINATION | thirds
+   big winner: bottom 37/806 = 0.046 | middle 78/777 = 0.100 | top 169/755 = 0.224 | ratio top/bottom raw 4.876, smoothed 4.825 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | null 95% band of the ratio 0.79-1.31 | 90% bootstrap interval 3.27-7.35
+   ex-2020 (2016-19): bottom 12/545 top 51/506 ratio raw 4.58, judged 4.437 | 2020 only: bottom 25/261 top 118/249 ratio 4.95
+   ADR-neutral (thirds within era-quarter-ADR third): bottom 78/797 top 121/753 ratio raw 1.64, judged 1.638
+   MONSTER tier (>= 2.0x; never a bar): bottom 4/806 top 72/755 ratio 19.22  [91 monsters] | ADR-SCALED TAIL (never a carry bar): bottom 192/806 top 186/755 ratio 1.03
+   failed (description): close(E+5) < open — bottom 0.461 top 0.474 | mean 60-session return — bottom +0.056 top +0.145
+   per year (top/bottom ratio, winners top:bottom): 2016 3.16 (9:3) · 2017 7.40 (14:2) · 2018 1.52 (7:5) · 2019 11.55 (21:2) · 2020 4.95 (118:25)
+
+## END OF DISCOVERY
