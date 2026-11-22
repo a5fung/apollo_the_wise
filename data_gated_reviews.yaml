@@ -16128,6 +16128,8 @@ reviews:
     added_on: 2026-10-03
     cross_refs: ["task #394", "docs/analysis/394_coil_tuning_methodology_2026-07-11.md"]
   - review_id: cot_close_rule_vs_issue_1122
+    resolution_2026_11_22: >-
+      PASS, scored 2026-11-22 in the private ~/cmr_lab (docs/score_week_2026-11-23.md; independent recount MATCH): for CFTC report 11-17 our close-to-a-set-up list caught 10 of his 12 (83%; 10 of our 13 on his, 77%) against the 60% bar; the main set-up list is unchanged by the close-rule change (4 under old and new rule, prod sent 4); the failure condition is not met (13 close markets with 18 at Commercials >=95 / <=5); the old rule would have caught 2 of 12. Main set-ups agree 3 of his 5 — the 3 differences all come from his late-week adjustment (our numbers match his unadjusted sheet in 119 of 120 cells). Caveat: our 11-17 names were rebuilt from public CFTC data (counts match the audit row), not read from the 11-20 message.
     title: "COT close-to-a-set-up rule (rebuilt 11-16, live 11-17) — its first list vs his 11-22 issue"
     question: >-
       #725 closed 2026-11-20 on its DoD (clean week; set-ups 5 of 5 vs his 11-15 issue). Its close-rule
@@ -16145,7 +16147,7 @@ reviews:
     zero_verdict: "2026-11-20 WAITING — his 11-22 issue arrives Sunday; the predicate fires once the next weekly run sends (11-27), by which time the 11-22 issue must be scored."
     discriminates_on: []
     earliest_review_date: 2026-11-23
-    status: pending
+    status: done
     kind: tripwire
     added_on: 2026-11-20
     can_fire:
