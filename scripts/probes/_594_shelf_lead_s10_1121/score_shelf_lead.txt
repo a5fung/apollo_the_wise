@@ -1,0 +1,19 @@
+ticker|date|verdict|yes|dmin_adr|held|into|structure|null|shelf_date|shelf|adr20_pct
+UFPT|2026-08-04|GOOD_CHART|True|-3.625|0|0|ok||2025-11-04|264.000|4.193
+ELPC|2026-10-05|GOOD_CHART|True|-1.681|0|0|ok||2026-01-27|10.630|2.182
+TWLO|2026-08-07|GOOD_CHART|True|5.924|1|0|ok||2026-04-08|139.000|4.882
+CRMD|2026-08-13|BAD_CHART|False|-14.159|0|0|no_breakout(P<=shelf)||2025-06-23|17.430|4.174
+SBS|2026-10-05|OKISH_CHART|True|-6.388|0|0|ok||2026-01-23|5.315|2.563
+ACHR|2026-08-10|BAD_CHART|False|-10.162|0|0|ok||2025-07-18|13.730|6.759
+PCVX|2026-10-05|OKISH_CHART|True|2.692|1|0|ok||2025-11-25|50.270|3.558
+W|2026-08-04|GOOD_CHART|True|-5.483|0|0|ok||2025-09-11|91.770|4.972
+AMPX|2026-09-28|BAD_CHART|False|-13.581|0|0|ok||2026-04-22|22.800|4.536
+INNV|2026-09-09|OKISH_CHART|True|1.465|1|0|ok||2026-03-06|9.480|4.391
+HELE|2026-10-08|BAD_CHART|False|7.411|1|0|ok||2026-01-22|19.795|4.434
+
+yes n=7 no n=4 pairs=28 dropped(NULL)=[]
+P(yes dmin > no dmin) = 0.750  (bar >= 0.65; directional only)
+VERDICT: HOLDS on fresh labels (directional)
+median dmin: yes -1.68 ADR, no -11.87 ADR
+
+POOLED samples 6-10 (description only): yes n=28 no n=27 pairs=756 P = 0.738
