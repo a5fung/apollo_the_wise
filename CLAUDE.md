@@ -187,53 +187,14 @@ This bug class has recurred many times.
 - ❌ Mixing tz-aware and tz-naive datetimes in the same comparison — Python raises, but only at runtime.
 - ❌ Hardcoding UTC offsets — DST breaks them twice a year.
 
-## Key Domain Concepts
+## Key Domain Concepts → `docs/architecture/market_agent_reference.md` §Domain concepts
 
-### RS Scoring
-- Polygon grouped daily is always `adjusted=true`. ⚠ **`rs_rank`'s denominator = the ~2,400 rows `mi_stock_scores` keeps, NOT the ~9,700-stock universe.**
-- Sector enrichment: only top 300 by rank get sector in `mi_stock_scores`. For theme tickers outside top 60, fetch sector from `mi_ticker_overrides` (persistent cache) via `get_sectors_batch()`.
-
-### Theme Engine
-Bottom-up from price action (themes emerge from RS, not hypotheses); lifecycle Nascent → Accelerating → Mainstream → Fading → Retired. **FULL SSoT: `docs/architecture/theme_engine.md`** (validation cadence, birth validation #266, engine-drop retirement, tool schemas, Phase-2 re-granularization arms) — read it before touching theme behavior; update it in the same commit. Two rules that bite most often, kept inline:
-- **`mi_theme_exclusions`** = user-directed permanent bans ONLY — NEVER auto-populate from validation removals (a bad-description removal once permanently banned TSEM from semiconductor theme).
-- **`get_active_themes(stale_after_days=7)`**: the recency cap is the de-facto retirement mechanism — themes absent from daily snapshots age out after a week.
-
-### EP Detection (MAGNA53)
-- Alpaca bars use feed selected by `ALPACA_DATA_FEED` env var (`iex` default; `sip` requires Algo Trader Plus subscription) — resolved by `alpaca_client.get_data_feed()`.
-- **Open intensity projection**: only applied after 15 min since open (≥9:45 AM). Pre-9:45 uses raw RVOL — opening minutes are always dense and create false 30x+ projections.
-- **Extension check**: uses MIN(close) over last ~5 trading days, not a single point 5 days ago.
-- HIGH ≥ 65 in EVERY regime since 08-22 (#533; the per-regime bar acts only with `ep_score_separation` OFF; regime still sets SIZE) → immediate Telegram alert
-- **ORB submission window**: `now_et.hour == 9 and now_et.minute < 45`. HIGHs at 9:45–9:59 → `WINDOW_OUT_OF_ORB`. 10:00 ET cleanup job cancels any unfilled `order_placed`. (Also documented in `docs/setups/magna53_ep.md`.)
-- **Fade guard** (`entry_pipeline.py::check_fade_guard`): tiered — MAGNA53 HIGH passes `None` (skipped), 9M Day 2 passes `0.25` (skip if last < lower 25% of ORB). Stop-buy mechanics + 10:00 ET unfilled-cancel are the real backstop.
-
-### 9M EP Detection — **GONE** (operator, repeatedly: do not raise it, re-verify it, or cite it as a risk)
-Tables still exist; `docs/setups/ninem.md` owns it.
-
-### Wick Fill — **GONE** (operator 2026-10-17: *"kill wick fill, remove that setup completely"*)
-No job, command or seed row; the table + a deprecated/disabled registry row stay as history. `docs/setups/wick_fill.md` owns it.
-
-### Entry Pipeline
-**`broker/entry_pipeline.py::submit_trade_entry`** — the single entry funnel (per-strategy differences inject via `spec_builder`). **FULL SSoT: `docs/architecture/entry_pipeline.md`** (pipeline stages, action/skip-reason vocabularies, account_mode threading) — update it in the same commit as any pipeline change. **Contract kept inline: every terminal failure Telegrams via `humanize()`.**
-
-### Dual-Account Architecture (#66, 2026-05-10)
-One container, two Alpaca accounts (paper + live), routed per-strategy via `mi_strategies.phase` → `resolve_account_mode_for_strategy()`. **FULL SSoT: `docs/architecture/dual_account.md`** (phase→destination table, per-mode clients/streams/safeguards/sync, boot bootstrap, #65 per-strategy sizing/cap) — read it before touching any account-mode code; update it in the same commit.
-
-**The 3 correctness invariants (safety backbone — never relax):** (1) mode-bound client order IDs (`make_client_order_id`) at EVERY submission site; (2) cross-account event rejection before any DB mutation (`_verify_event_account_mode`); (3) `account_mode` filter on every trade query.
-
-### Stop-Leg ID Capture
-`alpaca_client.extract_stop_leg_id(order)` is canonical — **never re-implement the loop** (`docs/architecture/entry_pipeline.md`).
-
-### Self-Audit (L1/L2/L3) · Error Alerting
-L1 breach → Telegram + audit row · L2 anomaly → Telegram + hypothesis · L3 drift → audit row, Sunday digest. Silent theme-engine failures land in `mi_audit_log`, and Telegram if any fire within 2h of the nightly run. **Job times, cold-start tiers, `/audit <topic>`, event names: `docs/architecture/market_agent_reference.md`.**
-
-### Paper Trading (Alpaca)
-- ORB entry at 9:31 AM; bracket order: stop-limit buy at ORB high, OTO with stop-loss at ORB low. Always `order_class=OrderClass.OTO` — alpaca-py silently drops `stop_loss` kwarg without it.
-- Safeguards — **SSoT `docs/setups/safeguards.md`**: max 5 positions, 2% daily loss limit, tiered drawdown breaker, AND the count-based circuit breaker (10 losses), which he ruled KEPT 2026-07-31. BOTH run. ⚠ The count breaker is self-perpetuating: a loss closing during cooldown re-arms it 24h from THAT close, so its expiry can land inside the 9:31-9:45 ORB window and cancel most of a day's entries (6 alerts / 0 entries, 2026-07-31).
-- Kill switch: `LIVE_TRADING_ENABLED=false` (boot-read) · `/pause` (instant runtime halt, #345)
-
-### Telegram Formatting
-**NEVER use pipe tables — Telegram cannot render them; use monospace code blocks.** Reserve Telegram for terminal/actionable events; self-healing goes to `mi_audit_log` only. **Escaping, `humanize()` and the send contract: `docs/architecture/market_agent_reference.md`.**
-
+Moved out 2026-11-21 (this file was 0.8k from its 40k ceiling). **Read that section before touching** RS scoring, the theme engine, MAGNA53 EP detection / the ORB window / fade guard, the entry pipeline, dual-account routing, stop-leg capture, self-audit or paper-trading safeguards. Kept inline because they bite most:
+- **Dual-account invariants — never relax:** mode-bound client order IDs at EVERY submission site; cross-account event rejection before any DB mutation; `account_mode` filter on every trade query.
+- **9M EP and Wick Fill are GONE** — do not raise, re-verify or cite them.
+- **Entries:** `broker/entry_pipeline.py::submit_trade_entry` is the single funnel; every terminal failure Telegrams via `humanize()`. Brackets always `order_class=OrderClass.OTO`. Stop-leg IDs only via `alpaca_client.extract_stop_leg_id`.
+- **Telegram: NEVER pipe tables** — monospace code blocks.
+- SETUP vs FAMILY above still governs every name used in these sections.
 
 ## Production Deploy
 🚦 **DEPLOY WINDOWS — only two per day (operator 2026-08-21, HARD, GATED).**
