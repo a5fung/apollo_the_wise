@@ -3131,3 +3131,8 @@ His ruling on volatility, same message:
 His words (Sat 11-21, Apollo session chat), on TLRY 2020-11-05 looking like a failure at the open and only reclaiming the 200-day later: *"hit rate is low so we may miss some, if on EP day it doesn't look good and later it works, that may just mean it's not a catchable EP"*
 - Gap-day reads judge the chart as it stands at the open; a name that only turns good after the gap is accepted as a miss, not a reason to add a later-day read.
 - His follow-up, same exchange: *"unless there's some subtlety we missed, this is where the ongoing chart reading comes into play"* — the #594 chart samples are where a gap-day subtlety the coded reads miss (a TLRY-like name that WAS readable at the open) gets found.
+
+## 2026-11-22 — Qullamaggie's partial is time-based: 1/3 after 3-5 days, in profit
+- His words (11-22, on the exit grid): *"qullamaggie sells 1/3 at profit 3-5days after buying to lock in something, so vary based on timeframe as well"*
+- Read: Qullamaggie's first sale is set by TIME, not by a price multiple — a third sold 3 to 5 days after the buy when the trade shows a profit, to lock something in. Apollo's live partial is price-based (1/3 at +8R).
+- Action: added as its own arm to the #594 exit test (`docs/analysis/ep_winner_study_prereg_2026-11-21.md` §14.1), registered before any cell is read. Any change to the live exit stays his call (THE LINE).
