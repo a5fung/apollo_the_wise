@@ -1786,7 +1786,7 @@ reviews:
     status: deferred
     deferred_reason: "OFF the EP critical path (operator triage 2026-08-24). Narrative theme discovery is advisory-only and never gates a trade, while EP selection and exit discipline own the bench. It is also unactionable as written - the canonization mechanism (the deferred R3 mi_themes merge) is still unbuilt. PULLS FORWARD when R3 ships, or when the operator asks for the shadow->canonize ruling."
     deferred_on: 2026-08-24
-    deferred_until: '2026-11-29'
+    deferred_until: 2026-11-29
     added_on: 2026-06-02
 
   - review_id: dead_zone_telemetry_smoke
