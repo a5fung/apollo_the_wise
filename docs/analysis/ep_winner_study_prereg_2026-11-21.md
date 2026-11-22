@@ -418,3 +418,54 @@ Stage 1 (`scripts/probes/_ep_winner_study_1121/build/stage1/`, run on this docum
 - **Amendment A2 — identity map:** the "first 10 returns rounded to 4 decimals" candidate step splits same-name pairs whose files differ in the third price decimal (NVDA 20.70 vs 20.699). Use `identity_alt` (same-symbol pairs that pass the full 40-session / 90% test are one identity; cross-symbol candidates still need the hash step, which blocks 8,204 flat-price false renames).
 - **Amendment A3 — B1 reproduction:** stage 3 asserts the shelf-distance benchmark reproduces RESULT 8's discovery-year rows (run.txt "per year" 2017-2020) before any new-feature verdict prints; a miss stops the run.
 - Stage-1 resolutions 5-13 (calibration p by the exact hypergeometric form; per-case seeding; mid-rank tie to the lower middle; month rules; ADR strata over all discovery events; B1 vs B1-clean; D2 terms; SPY fallback) are accepted as written in `stage1` printouts.
+
+## 11. HIS GALLERY READS FROZEN + THE ADR RULING (2026-11-21, step 6 — after discovery and gallery A sheet 1, BEFORE any confirm outcome is read)
+Appended only: every byte above this heading is unchanged (the document's first 49,932 bytes still hash to `4f2dbe7f…`, asserted by `stage4_freeze/02_preconfirm_n.py`). Where this section conflicts with §2, §4.1, §5.3 or §5.7 above, this section wins; each override is named below.
+
+**His words** (gallery A sheet 1 and its failure sheet, verbatim in `docs/methodology/operator_shared_notes.md`, entry 2026-11-21 "EP winner gallery"):
+> "on failures, several are on clear downtrends, even EP gap didn't make much difference to break it.
+> ACB clear downtrend, weak
+> GE, downtrend, EP didn't break out of it, still under 200d
+> CRC ugly downtrend
+> on contrary, TLRY broke out of downtrend, move above 200d, then 200d turned up and turned into uptrend
+> same with NVAX downtrend started basing the flipped up above all moving avg"
+
+> "on your point about more volatile stocks have more +50%, that is not a negative catch, qullamaggie suggests looking at higher ADR stocks precisely because it can lead to bigger moves. Purpose is to make money, %50 is same regardless of stocks volalitity, we shouldn't penalize high ADR stocks for it, in fact we may want to look for it provided risk adjusted it makes sense and we can place stop adequently."
+
+### 11.1 The codings (frozen; code `scripts/probes/_ep_winner_study_1121/build/stage4_freeze/hreads.py`, sha256 `a4f13eb7…`)
+Inputs: the ticker's daily bars dated before E plus open(E) only (§4.0). Windows are calendar sessions. Averages are of adjusted closes and are only compared with open(E) or with each other (no adjusted level is a feature).
+- SMA200(E−1) = mean close of the bars present in sessions E−200..E−1 (the feature-17 precedent). SMA200(E−21) = the same over E−220..E−21. SMA50 = over E−50..E−1.
+- EMA10 / EMA21 = recursive EMA, alpha = 2/(n+1), over the closes of the bars present in E−200..E−1 in date order, **seeded at the first bar of that window** (the gallery chart seeded at the ticker's first bar ever; with the 180-200 bars the coverage rule allows, the seed's weight in EMA21 is under 1e-7).
+
+| # | Name | yes when | Window n | NULL (first match) | His direction | Confirm ratio, oriented so ≥ 1.2 = his direction |
+|---|---|---|---|---|---|---|
+| H1 | Below the 200-day at the open | open(E) < SMA200(E−1) | 200 | history · coverage (< 90% of 200) · adjustment · identity · bad_price | **NO wins** (above the 200-day wins) | rate(no) ÷ rate(yes) |
+| H2 | In a downtrend | open(E) < SMA200(E−1) AND SMA200(E−1) < SMA200(E−21) | 220 | history (first bar later than E−220) · coverage (EITHER 200-session sub-window under 90%) · adjustment / identity anywhere in E−220..E−1 · bad_price | **NO wins** | rate(no) ÷ rate(yes) |
+| H3 | Above all moving averages at the open | open(E) > max(EMA10, EMA21, SMA50, SMA200), all through E−1 | 200 | as H1; never computed on a subset of the four averages | **YES wins** | rate(yes) ÷ rate(no) |
+| H4 | ADR20 (his ruling, not a gallery read) | benchmark B2 exactly — the stage-1 `B2` column, not recomputed | 20 | as B2 | **HIGH third wins** | top third ÷ bottom third |
+- An open exactly equal to an average is "no" for H1 / H2 and "no" for H3.
+- **Statistic.** H1-H3: two-group, Mantel-Haenszel ratio stratified by (era, month), months with ≥ 6 scored events and ≥ 2 of each group (§5.1 + amendment A1, as stage 3 read f15 / f16), one-sided permutation in the direction above. H4: thirds within (era, month) with ≥ 6 scored, mid-rank ties (stage 3's R9), one-sided HIGH.
+- **Frozen values:** `stage4_freeze/h_reads.tsv.gz` (4,665 rows, sha256 `0b995389…`); the confirm run reads H1-H4 from that file. Printout `01_freeze_reads.txt` sha256 `c8a7bd12…`.
+- **Corrupt-E test** (§5.7): the frozen 600-event sample of stage 1, three garbage patterns in E's high / low / close / volume and every later bar: **0 changed on H1, H2, H3, H4** (non-NULL in the sample: 520 / 506 / 520 / 600). Positive control: a deliberately leaky "close(E) < SMA200" answers differently under a huge vs a tiny garbage close on 520 of 520.
+- **Outcome-free:** every event's series was cut at E with E's high / low / close / volume blanked before the coding saw it (asserted for all 4,665, including the 2,251 confirm events). **One slip, disclosed:** the first run of the positive control compared E's REAL close with the 200-day on the 520 scored sample events (discovery and confirm mixed) and printed three flip counts (149 / 371 / 258); that is a gap-day close, not a 60-session outcome, no label was formed, nothing was chosen on it, and the control now compares two garbage closes only. No discovery ratio for H1-H3 was computed at this step; at the confirm run their discovery numbers are description, labelled "seen" (§5.7).
+
+### 11.2 What is and is not gated
+- **His reads H1-H3 skip the §5.2 gates** (§5.7: he saw the discovery winners). The §4.1 two-group minimum (smaller group ≥ 100 events and ≥ 15%) is a carry rule and does not gate them; printed anyway and met on both sets (discovery yes/no: H1 492 / 1,551 · H2 438 / 1,540 · H3 1,504 / 539; confirm: H1 552 / 1,456 · H2 447 / 1,486 · H3 1,379 / 629).
+- **H4 skips the gates too, and this is disclosed as chosen AFTER seeing discovery:** B2 read 5.78x there (top third 22.9% vs bottom 3.9%; ex-2020 10.9x; monster tier 19.6x; ADR-scaled tail 0.91). It is in the family because of his ruling above, not because of a pre-stated rule.
+- **Overrides, named:** §2 "ADR20 is a benchmark, not a candidate" → on confirm ADR20 is BOTH the benchmark used for the ADR-neutral strata and hypothesis H4. §4.1 "at most three" later additions and "any other new idea needs a new pre-registration" → H4 is a fourth addition, made here, before any confirm outcome. §5.7 "≤ 3" → three gallery reads plus H4.
+- **§5.3 family size, amended: the Holm family is exactly 9** = 4 carried features (f02 LOW, f03 HIGH, f09 HIGH, f18 LOW) + 1 combination (f02+f03+f09+f18, HIGH) + H1 + H2 + H3 + H4. "≤ 8" in §5.3 and §5.7 reads "9". **Power at 9 was not simulated** (§5.4 covers families of 1, 5 and 8); the first Holm step is 0.05/9 instead of 0.05/8, so the cost is a little above the family-8 column.
+- **H1-H3 are close to one read, not three:** H2 "yes" is a subset of H1 "yes", H3 "yes" a subset of H1 "no" (discovery, scored on all three, n 1,978: above-200d and above all averages 1,459 · above-200d but not above all 39 · below-200d, 200d not falling 42 · downtrend 438). Holm counts them as three; stated, not corrected.
+- **Coverage:** H1 / H3 need 200 sessions, H2 220: NULL for most of 2016 (first scored E 2016-10-18 / 2016-11-15) and for era B before 2022-07-18 / 2022-08-11. Confirm n per era is printed in `02_preconfirm_n.txt` before the confirm read. The month rule (≥ 2 of each group) also thins era A, where few EPs opened under the 200-day in 2021: H1 760 scored → 589 in the test (202 yes), H2 748 → 539 (156 yes); the per-era direction check for H1 / H2 in era A rests on those.
+- **The combination (§5.6) is unchanged:** neither his reads nor H4 are part of it.
+
+### 11.3 The volatility ruling (his words, quoted above)
+- The suffix **"— a volatility proxy"** (§2) is still computed and printed on confirm exactly as defined. **It is a description, NOT a negative verdict:** it does not lower, qualify or re-word any §5.3 verdict, and no report may present it as a reason to discount a feature. High ADR is a reason to look at a stock (Qullamaggie), not a confound.
+- **H4 itself:** the ADR-neutral reading of ADR20 (thirds of ADR within ADR thirds) is not meaningful and is printed "n/a"; the tag is not applied to H4. Its ADR-scaled-tail ratio is printed as description.
+- **The risk-adjusted test of ADR is the §9 entry arm's job**, not this confirm: return in R multiples with the live stop (`entry − 2R`, `R = entry − range low`) and the plain percent beside it, for the 1- / 5- / 30-minute entries, **split by ADR20 third** (H4's thirds), after the 2026-11-22 minute fetch. Description only, as §9 states; whether a stop "can be placed adequately" is read there (stop-hit rate by E+5 per ADR third).
+
+### 11.4 Known gap between his words and the coding (stated, NOT re-coded)
+- On his named charts the coding reads: ACB 2020-05-21, GE 2019-01-31, CRC 2020-02-21 → below the 200-day, downtrend, not above all averages (matches his read). NVAX 2020-02-27 → above the 200-day, not a downtrend, above all averages (matches).
+- **TLRY does not match at the open.** TLRY 2020-11-05 opened at 71.00 under a falling 200-day (84.76, was 96.32 21 sessions earlier): H1 yes, H2 yes, H3 no — the same reading as the three failures. TLRY 2018-09-05 is NULL (under 200 sessions of history). His words "broke out of downtrend, move above 200d, then 200d turned up" describe what the stock did AFTER the gap. Whether an EP goes on to break its downtrend is not knowable at 09:31, so that part of the read cannot be coded (§5.7) and takes no slot. H1-H3 test only the state at the open: "an EP that opens still under its 200-day / in a downtrend wins less often".
+
+### 11.5 His ruling on the TLRY gap (2026-11-21, before confirm)
+Shown that TLRY 2020-11-05 codes like his failures at the open (it reclaimed the 200-day only after the gap), he ruled: *"hit rate is low so we may miss some, if on EP day it doesn't look good and later it works, that may just mean it's not a catchable EP"*. **No post-gap reclaim read is added; H1-H3 stay as coded at the open.** An EP that only looks right after the gap day is out of scope for the gap-day entry, not a miss of the reads.

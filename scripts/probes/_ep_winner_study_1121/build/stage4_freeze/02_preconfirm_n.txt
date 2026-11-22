@@ -1,0 +1,56 @@
+# STAGE 4 / 02 — PRE-CONFIRM PRINTS (outcome-free): confirm n per carried feature, combination and H1-H4, per era
+prereg: first 49932 bytes sha256 4f2dbe7f… = the document before §11 (ASSERT OK: §11 is append-only)
+inputs: feature_table.tsv.gz ade1d780… · h_reads.tsv.gz 0b995389… (ASSERT OK)
+carried list + directions equal stage3/discovery.txt (ASSERT OK; only its VERDICT lines are parsed)
+
+confirm set: 2251 events (era A 867, E 2021-01-04..2022-04-04 · era B 1384, E 2022-04-05..2024-09-30)
+Holm family (prereg §11.2) = 9: f02 [LOW third wins] · f03 [HIGH third wins] · f09 [HIGH third wins] · f18 [LOW third wins] · combo [HIGH third wins] · H1 [NO wins] · H2 [NO wins] · H3 [YES wins] · H4 [HIGH third wins]
+
+## CONFIRM n — scored = non-NULL; in test = in an (era, month) group that qualifies; low / high = bottom / top third, or yes / no for H1-H3
+         name                                    era  events  scored  months  in test  bottom|yes  middle  top|no
+   f02   gap size in daily ranges                  A     867     867      15      865         294     287     284
+   f02   gap size in daily ranges                  B    1384    1382      30     1382         469     461     452
+   f02   gap size in daily ranges                A+B    2251    2249      45     2247         763     748     736
+   f03   short run-up (20)                         A     867     867      15      865         294     287     284
+   f03   short run-up (20)                         B    1384    1382      30     1382         469     461     452
+   f03   short run-up (20)                       A+B    2251    2249      45     2247         763     748     736
+   f09   base depth (40)                           A     867     855      15      853         289     285     279
+   f09   base depth (40)                           B    1384    1378      30     1378         467     460     451
+   f09   base depth (40)                         A+B    2251    2233      45     2231         756     745     730
+   f18   price (raw)                               A     867     867      15      865         294     287     284
+   f18   price (raw)                               B    1384    1384      30     1384         471     461     452
+   f18   price (raw)                             A+B    2251    2251      45     2249         765     748     736
+   combo combination f02+f03+f09+f18               A     867     855      15      853         289     284     280
+   combo combination f02+f03+f09+f18               B    1384    1378      30     1378         470     460     448
+   combo combination f02+f03+f09+f18             A+B    2251    2233      45     2231         759     744     728
+   H1    below the 200-day at the open             A     867     760      13      589         202       -     387
+   H1    below the 200-day at the open             B    1384    1248      26     1226         345       -     881
+   H1    below the 200-day at the open           A+B    2251    2008      39     1815         547       -    1268
+                                              smaller group in test 547 = 30.1% of 1815
+   H2    in a downtrend                            A     867     748      12      539         156       -     383
+   H2    in a downtrend                            B    1384    1185      25     1163         287       -     876
+   H2    in a downtrend                          A+B    2251    1933      37     1702         443       -    1259
+                                              smaller group in test 443 = 26.0% of 1702
+   H3    above all moving averages at open         A     867     760      14      663         424       -     239
+   H3    above all moving averages at open         B    1384    1248      27     1248         861       -     387
+   H3    above all moving averages at open       A+B    2251    2008      41     1911        1285       -     626
+                                              smaller group in test 626 = 32.8% of 1911
+   H4    ADR20 (= B2)                              A     867     867      15      865         294     287     284
+   H4    ADR20 (= B2)                              B    1384    1382      30     1382         469     461     452
+   H4    ADR20 (= B2)                            A+B    2251    2249      45     2247         763     748     736
+
+## CONFIRM n per year (scored / events)
+   era year   events    f02    f03    f09    f18  combo     H1     H2     H3     H4
+   A 2021        707    707    707    696    707    696    613    601    613    707
+   A 2022        160    160    160    159    160    159    147    147    147    160
+   B 2022        344    344    344    343    344    343    234    172    234    344
+   B 2023        527    526    526    526    527    526    520    520    520    526
+   B 2024        513    512    512    509    513    509    494    493    494    512
+
+## NOTES (outcome-free)
+   * H1 / H3 need 200 sessions, H2 220: era-B events before 2022-07-18 (H1/H3) / 2022-08-11 (H2) are NULL — the era-B file starts 2021-09-27.
+   * H4's thirds are the same thirds stage 3 used for B2 (mid-rank ties, within (era, month)).
+   * No outcome, forward bar or label was opened by this script; the confirm run (step 8) has NOT been run.
+
+PREREG sha256 NOW (with §11) = 4486f56156d595782cd57c580f469562d4f2cce0b0db96447fe97385d57caf35
+stage4_freeze sha256: hreads.py a4f13eb765a02863271792bcae1f5b043433a174df2f0d276d29eb8626f85e9d | 01_freeze_reads.py 021e05ece580fa0034a5fa5aef7a5a26484156b47b43e424e4cf56c5811ac776 | 01_freeze_reads.txt c8a7bd125a31cddf892c9f1c3be1a0a04a2f1bb88777546c9e051af45d419cdc | h_reads.tsv.gz 0b995389a41fc462e5ca81b3d7ce38247cd42f36dd754e1edd7c44d3110d79f7 | this script 8b336ca3c4555c88cb681232472fd768198219a5b6e6ac6626eae42b4c30066d

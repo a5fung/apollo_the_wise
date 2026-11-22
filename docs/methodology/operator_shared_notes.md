@@ -3125,3 +3125,9 @@ His ruling on volatility, same message:
 
 - Chart read: an EP that gaps but stays inside a downtrend (under the 200-day average) tends to fail; one that breaks the downtrend, gets above the 200-day (then the 200-day turns up), or bases and flips above all its moving averages tends to win.
 - Volatility: a high daily range (ADR) is a reason to LOOK at a stock (Qullamaggie), not a confound to discount. The test is whether it makes money risk-adjusted — with a stop that can be placed sensibly.
+
+## 2026-11-21 — An EP that only works after the gap day is not a catchable EP
+
+His words (Sat 11-21, Apollo session chat), on TLRY 2020-11-05 looking like a failure at the open and only reclaiming the 200-day later: *"hit rate is low so we may miss some, if on EP day it doesn't look good and later it works, that may just mean it's not a catchable EP"*
+- Gap-day reads judge the chart as it stands at the open; a name that only turns good after the gap is accepted as a miss, not a reason to add a later-day read.
+- His follow-up, same exchange: *"unless there's some subtlety we missed, this is where the ongoing chart reading comes into play"* — the #594 chart samples are where a gap-day subtlety the coded reads miss (a TLRY-like name that WAS readable at the open) gets found.

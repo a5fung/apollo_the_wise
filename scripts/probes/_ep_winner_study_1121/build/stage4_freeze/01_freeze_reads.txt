@@ -1,0 +1,91 @@
+# STAGE 4 / 01 — his gallery reads H1-H3 + H4 (ADR20), frozen BEFORE any confirm outcome (prereg §6 step 6, §11)
+prereg sha256 at this run 4f2dbe7fa6f58171180689cc9b374ba4fd88f2f8ef68c9bfbeb723e32bf9bdfc
+code sha256: hreads.py a4f13eb765a02863271792bcae1f5b043433a174df2f0d276d29eb8626f85e9d | this script 021e05ece580fa0034a5fa5aef7a5a26484156b47b43e424e4cf56c5811ac776
+stage-1 code sha256 (unchanged, imported read-only): common.py cf5f35b9f3769a9e297f32ca8660063c5ac0d35ff3938b61ad2203697bec0d8a | features.py 373abf6ae0950c2c1abb0ed6a43fa7586ef7e9909bec952a7d90d4d3856f47ed | stats.py ee31bf9d6fbab5c9a5ec0f0a2de73bee8de866a1c607a4b1d445f9fdde067468
+feature_table.tsv.gz sha256 ade1d7802eaf70aa60a9b5514d79b72084876d9601b0999328c9b1aad0cf0de7 (ASSERT OK = the stage-1 table)
+
+CONFIRM OUTCOMES NOT READ — ASSERT OK: for all 4665 events (incl. all 2251 confirm events, E >= 2021-01-01) the series handed to the coding ends AT E and E's high / low / close / volume are NaN; no bar after E, no return and no label is computed in this script.
+written h_reads.tsv.gz: 4665 rows, sha256 0b995389a41fc462e5ca81b3d7ce38247cd42f36dd754e1edd7c44d3110d79f7  (the confirm run must read H1-H4 from THIS file)
+
+## CORRUPT-E TEST (prereg §5.7 / §4.1 (c)): E's high / low / close / volume + EVERY later bar (o, h, l, c, v) replaced by garbage; H1-H4 must not change
+sample: default_rng(1121).choice(4665, 600, replace=False) — the same frozen 600 events as stage1/05_corrupt.py (b); 3 garbage patterns each
+read    non-NULL of 600     huge (1e9, volume 1e15) |      tiny (1e-9, volume 0) |           random lognormal   <- events whose value or NULL reason CHANGED
+H1                  520                           0 |                          0 |                          0
+H2                  506                           0 |                          0 |                          0
+H3                  520                           0 |                          0 |                          0
+H4                  600                           0 |                          0 |                          0
+positive control (the test can fail): a deliberately leaky read 'close(E) < SMA200' answers differently under the huge-garbage close than under the tiny-garbage close on 520 of the 520 scored sample events (E's real close is never read)
+CORRUPT-E RESULT: PASS — 0 changed on H1, H2, H3, H4 across 600 events x 3 patterns (total changed 0).
+
+## NULL counts per read (reason: n), by set and era
+  H1 DISC era A: events 2414 | scored 2043 | NULL {'history': 341, 'adjustment': 16, 'coverage': 10, 'identity': 4}
+  H1 CONF era A: events  867 | scored  760 | NULL {'history': 101, 'coverage': 4, 'identity': 2}
+  H1 CONF era B: events 1384 | scored 1248 | NULL {'history': 128, 'adjustment': 5, 'identity': 2, 'coverage': 1}
+  H2 DISC era A: events 2414 | scored 1978 | NULL {'history': 402, 'adjustment': 16, 'coverage': 14, 'identity': 4}
+  H2 CONF era A: events  867 | scored  748 | NULL {'history': 111, 'coverage': 5, 'identity': 3}
+  H2 CONF era B: events 1384 | scored 1185 | NULL {'history': 193, 'adjustment': 3, 'identity': 2, 'coverage': 1}
+  H3 DISC era A: events 2414 | scored 2043 | NULL {'history': 341, 'adjustment': 16, 'coverage': 10, 'identity': 4}
+  H3 CONF era A: events  867 | scored  760 | NULL {'history': 101, 'coverage': 4, 'identity': 2}
+  H3 CONF era B: events 1384 | scored 1248 | NULL {'history': 128, 'adjustment': 5, 'identity': 2, 'coverage': 1}
+  H4 DISC era A: events 2414 | scored 2407 | NULL {'adjustment': 7}
+  H4 CONF era A: events  867 | scored  867 | NULL {}
+  H4 CONF era B: events 1384 | scored 1382 | NULL {'adjustment': 1, 'identity': 1}
+  per year scored / events (H1 · H2):
+    era A 2016: events 326 | H1/H3 scored  91 | H2 scored  38 | H4 scored 326
+    era A 2017: events 378 | H1/H3 scored 365 | H2 scored 362 | H4 scored 377
+    era A 2018: events 455 | H1/H3 scored 426 | H2 scored 423 | H4 scored 455
+    era A 2019: events 484 | H1/H3 scored 450 | H2 scored 448 | H4 scored 484
+    era A 2020: events 771 | H1/H3 scored 711 | H2 scored 707 | H4 scored 765
+    era A 2021: events 707 | H1/H3 scored 613 | H2 scored 601 | H4 scored 707
+    era A 2022: events 160 | H1/H3 scored 147 | H2 scored 147 | H4 scored 160
+    era B 2022: events 344 | H1/H3 scored 234 | H2 scored 172 | H4 scored 344
+    era B 2023: events 527 | H1/H3 scored 520 | H2 scored 520 | H4 scored 526
+    era B 2024: events 513 | H1/H3 scored 494 | H2 scored 493 | H4 scored 512
+    era A: first E scored on H1 = 2016-10-18
+    era A: first E scored on H2 = 2016-11-15
+    era B: first E scored on H1 = 2022-07-18
+    era B: first E scored on H2 = 2022-08-11
+
+## DISCOVERY yes / no COUNTS (transparency only — NO outcome is read or joined here; his reads skip the §5.2 gates)
+  H1 below the 200-day at the open (yes/no)           DISCOVERY: scored 2043 of 2414 | yes  492 (24.1%) | no 1551 (75.9%) | smaller group 492 = 24.1% -> §4.1 two-group minimum (>= 100 and >= 15%): met
+  H1 below the 200-day at the open (yes/no)           CONFIRM  : scored 2008 of 2251 | yes  552 (27.5%) | no 1456 (72.5%) | smaller group 552 = 27.5% -> §4.1 two-group minimum (>= 100 and >= 15%): met
+      2016: scored  91 | yes  16 | no  75
+      2017: scored 365 | yes  68 | no 297
+      2018: scored 426 | yes 109 | no 317
+      2019: scored 450 | yes 130 | no 320
+      2020: scored 711 | yes 169 | no 542
+  H2 in a downtrend (yes/no)                          DISCOVERY: scored 1978 of 2414 | yes  438 (22.1%) | no 1540 (77.9%) | smaller group 438 = 22.1% -> §4.1 two-group minimum (>= 100 and >= 15%): met
+  H2 in a downtrend (yes/no)                          CONFIRM  : scored 1933 of 2251 | yes  447 (23.1%) | no 1486 (76.9%) | smaller group 447 = 23.1% -> §4.1 two-group minimum (>= 100 and >= 15%): met
+      2016: scored  38 | yes   2 | no  36
+      2017: scored 362 | yes  59 | no 303
+      2018: scored 423 | yes  97 | no 326
+      2019: scored 448 | yes 120 | no 328
+      2020: scored 707 | yes 160 | no 547
+  H3 above all moving averages at the open (yes/no)   DISCOVERY: scored 2043 of 2414 | yes 1504 (73.6%) | no  539 (26.4%) | smaller group 539 = 26.4% -> §4.1 two-group minimum (>= 100 and >= 15%): met
+  H3 above all moving averages at the open (yes/no)   CONFIRM  : scored 2008 of 2251 | yes 1379 (68.7%) | no  629 (31.3%) | smaller group 629 = 31.3% -> §4.1 two-group minimum (>= 100 and >= 15%): met
+      2016: scored  91 | yes  67 | no  24
+      2017: scored 365 | yes 291 | no  74
+      2018: scored 426 | yes 303 | no 123
+      2019: scored 450 | yes 313 | no 137
+      2020: scored 711 | yes 530 | no 181
+  H4 ADR20 (= benchmark B2) DISCOVERY: scored 2407 of 2414 | thirds within (era, month >= 6 scored), mid-rank ties: bottom 819 · middle 805 · top 783 | not assigned 7
+
+## H1 x H2 x H3 cross-tab (events scored on all three; counts only) — the reads are nested, not independent
+  DISCOVERY (n 1978): H1 no / H2 no / H3 no: 39 · H1 no / H2 no / H3 yes: 1459 · H1 yes / H2 no / H3 no: 42 · H1 yes / H2 yes / H3 no: 438
+  CONFIRM (n 1933): H1 no / H2 no / H3 no: 74 · H1 no / H2 no / H3 yes: 1341 · H1 yes / H2 no / H3 no: 71 · H1 yes / H2 yes / H3 no: 447
+
+## HIS NAMED CHARTS (gallery A sheet 1 / fail 1, discovery; ticker + E hardcoded from the sheet key — no outcome column read)
+  ACB   2020-05-21 [failure — 'clear downtrend, weak']
+        open 172.60 | SMA200 324.61 (21 sessions earlier 395.72) | SMA50 92.62 | EMA10 110.08 | EMA21 99.72 -> H1 below 200d: yes | H2 downtrend: yes | H3 above all MAs: no | ADR20 12.59
+  GE    2019-01-31 [failure — 'downtrend ... still under 200d']
+        open 79.52 | SMA200 93.52 (21 sessions earlier 97.21) | SMA50 63.65 | EMA10 71.19 | EMA21 69.25 -> H1 below 200d: yes | H2 downtrend: yes | H3 above all MAs: no | ADR20 4.46
+  CRC   2020-02-21 [failure — 'ugly downtrend']
+        open 8.11 | SMA200 11.54 (21 sessions earlier 13.35) | SMA50 8.20 | EMA10 6.62 | EMA21 7.05 -> H1 below 200d: yes | H2 downtrend: yes | H3 above all MAs: no | ADR20 7.65
+  TLRY  2018-09-05 [winner — 'broke out of downtrend, move above 200d, then 200d turned up']
+        open 865.00 | SMA200 n/a (21 sessions earlier n/a) | SMA50 n/a | EMA10 n/a | EMA21 n/a -> H1 below 200d: NULL (history) | H2 downtrend: NULL (history) | H3 above all MAs: NULL | ADR20 9.72
+  TLRY  2020-11-05 [winner — same name, second sheet-1 chart]
+        open 71.00 | SMA200 84.76 (21 sessions earlier 96.32) | SMA50 57.40 | EMA10 61.39 | EMA21 60.08 -> H1 below 200d: yes | H2 downtrend: yes | H3 above all MAs: no | ADR20 10.00
+  NVAX  2020-02-27 [winner — 'downtrend started basing then flipped up above all moving avg']
+        open 11.10 | SMA200 5.37 (21 sessions earlier 5.60) | SMA50 5.97 | EMA10 8.01 | EMA21 7.48 -> H1 below 200d: no | H2 downtrend: no | H3 above all MAs: yes | ADR20 9.27
+
+## END (outcome-free)
