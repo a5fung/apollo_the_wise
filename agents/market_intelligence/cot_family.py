@@ -692,7 +692,8 @@ OPEC_SOURCE = "opec.org press releases (announced OPEC+ meeting dates)"
 OPEC_MEETINGS: tuple[date, ...] = (
     date(2026, 11, 29),      # "The next meeting will be held on 29 November 2026." (press release of 1 November 2026)
 )
-OPEC_STALE_DAYS = 60
+OPEC_STALE_DAYS = 21     # the seven-country meeting is MONTHLY (opec.org 2026-11-01): under one cycle, so a meeting
+                         # cannot pass unseen. Each meeting's press release names the next date: add it then.
 
 
 def opec_table_age_days(today: date) -> int:

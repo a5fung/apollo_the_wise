@@ -143,7 +143,9 @@ calendar does not carry (`EVENT_MARKETS` is the list of what it carries), and ad
    Never fit a new number for the label inside this step.
 4. Tests (markets, time, class, the parse from a real answer), a change-log entry here (NEW, trigger = the issue
    date), and the open list below when a source could not be confirmed.
-The dated OPEC+ table is part of this step: a test fails once its newest meeting is more than 60 days past.
+The dated OPEC+ table is part of this step: a test fails once its newest meeting is more than 21 days past (the seven-country meeting is monthly, so a longer
+wait could let a meeting pass unseen). It is a wall-clock TEST only: nothing in production says the table has no
+meeting ahead. With only 2026-11-29 in it, it goes red on 2026-12-21 unless the next date is added.
 
 **Tables:** `mi_cot_nets_weekly` (CFTC nets cache), `mi_cot_weeks` (report week, known_from, message sent),
 `mi_cot_index_weekly` (report_date, market, comm, lspec, sspec, setup, close_setup), `mi_cot_calendar` (scheduled

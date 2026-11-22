@@ -1322,8 +1322,8 @@ def test_opec_meeting_rows_and_the_table_is_not_stale():
         (date(2026, 12, 7), "OPEC", None),                     # so is a Saturday one
         (date(2026, 12, 9), "OPEC", None)]                     # a weekday meeting is that day's
     assert all(r["source"] == cf.OPEC_SOURCE for r in rows)
-    assert cf.opec_table_age_days(date(2026, 11, 22)) == -7 and cf.opec_table_age_days(date(2027, 1, 29)) == 61
-    # THE GUARD: the newest announced meeting may not lie more than 60 days back. When this fails, read the latest
+    assert cf.opec_table_age_days(date(2026, 11, 22)) == -7 and cf.opec_table_age_days(date(2026, 12, 21)) == 22
+    # THE GUARD: the newest announced meeting may not lie more than OPEC_STALE_DAYS (21) days back (the meeting is monthly). When this fails, read the latest
     # opec.org press release ("The next meeting will be held on ...") and add the date to cf.OPEC_MEETINGS.
     age = cf.opec_table_age_days(datetime.now(_ET).date())
     assert age <= cf.OPEC_STALE_DAYS, (f"cot_family.OPEC_MEETINGS is stale: its newest meeting was {age} days ago. "
