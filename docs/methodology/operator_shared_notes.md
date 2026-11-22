@@ -3104,3 +3104,8 @@ His words (Sat 11-21, Apollo session chat), after the 2017-2024 test (EPs neares
 
 His words (Sat 11-21, Apollo session chat, right after the shelf-distance ruling): *"Qullamaggie suggests to review 1000s of charts to find edge"*
 - Method note: edge is found by looking at very many charts (especially the big winners), not by a few hand samples. Applies to the chart-reading program (#594): scale the read from 12-chart samples to the full history of EP events.
+
+## 2026-11-21 — Qullamaggie's EP entries: 1, 5 and 30-minute opening-range highs, varied
+
+His words (Sat 11-21, Apollo session chat): *"I know qullamaggie uses 1, 5, 30 min orb high entries, don't know exactly how but he varies"*
+- Method note: Qullamaggie buys EPs on the break of the opening-range high, using a 1-, 5- or 30-minute range, and varies which; the rule for choosing is unknown. Apollo's live EP entry is the 1-minute ORB high; a 5-minute shadow lane and hourly arms are recorded (#482, magna53_ep.md). Which range to use is an entry question for the periodic trade review (#720 cadence), not a one-off change.
