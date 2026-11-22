@@ -3109,3 +3109,19 @@ His words (Sat 11-21, Apollo session chat, right after the shelf-distance ruling
 
 His words (Sat 11-21, Apollo session chat): *"I know qullamaggie uses 1, 5, 30 min orb high entries, don't know exactly how but he varies"*
 - Method note: Qullamaggie buys EPs on the break of the opening-range high, using a 1-, 5- or 30-minute range, and varies which; the rule for choosing is unknown. Apollo's live EP entry is the 1-minute ORB high; a 5-minute shadow lane and hourly arms are recorded (#482, magna53_ep.md). Which range to use is an entry question for the periodic trade review (#720 cadence), not a one-off change.
+
+## 2026-11-21 — EP winner gallery: failures sit in downtrends; volatility is a feature, not a flaw
+
+His read of EP winner gallery A sheet 1 (12 monsters, 2016-2020) and its paired failures (Sat 11-21, Apollo session chat):
+> "on failures, several are on clear downtrends, even EP gap didn't make much difference to break it.
+> ACB clear downtrend, weak
+> GE, downtrend, EP didn't break out of it, still under 200d
+> CRC ugly downtrend
+> on contrary, TLRY broke out of downtrend, move above 200d, then 200d turned up and turned into uptrend
+> same with NVAX downtrend started basing the flipped up above all moving avg"
+
+His ruling on volatility, same message:
+> "on your point about more volatile stocks have more +50%, that is not a negative catch, qullamaggie suggests looking at higher ADR stocks precisely because it can lead to bigger moves. Purpose is to make money, %50 is same regardless of stocks volalitity, we shouldn't penalize high ADR stocks for it, in fact we may want to look for it provided risk adjusted it makes sense and we can place stop adequently."
+
+- Chart read: an EP that gaps but stays inside a downtrend (under the 200-day average) tends to fail; one that breaks the downtrend, gets above the 200-day (then the 200-day turns up), or bases and flips above all its moving averages tends to win.
+- Volatility: a high daily range (ADR) is a reason to LOOK at a stock (Qullamaggie), not a confound to discount. The test is whether it makes money risk-adjusted — with a stop that can be placed sensibly.
