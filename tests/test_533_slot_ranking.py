@@ -189,8 +189,7 @@ def _dispatching_fetch(alerts_rows, rs_rows, shelf_bars=()):
 
 
 async def _drive(monkeypatch, *, toggle, alerts_rows, rs_rows,
-                 rs_fetch_raises=False, shelf_bars=(), shelf_latest=None,
-                 detail=None):
+                 rs_fetch_raises=False, shelf_bars=(), detail=None):
     """Run process_new_alerts_live with everything past selection stubbed.
     Returns (board_order, audit_events, insert_calls). `detail` (a dict), when
     given, also receives the submit order, the returned results and every
@@ -207,13 +206,7 @@ async def _drive(monkeypatch, *, toggle, alerts_rows, rs_rows,
 
     conn.fetch = AsyncMock(side_effect=fetch)
     conn.fetchrow = AsyncMock(return_value=None)   # regime lookup
-
-    async def _fetchval(sql, *args):
-        if "MAX(trade_date)" in sql:     # the #594 shelf step's latest-session read
-            return shelf_latest
-        return False                     # no pre-existing trade rows
-
-    conn.fetchval = AsyncMock(side_effect=_fetchval)
+    conn.fetchval = AsyncMock(return_value=False)  # no pre-existing trade rows
     conn.executemany = AsyncMock(return_value=None)
     monkeypatch.setattr(lt, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(lt, "LIVE_TRADING_ENABLED", True)

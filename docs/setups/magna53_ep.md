@@ -408,15 +408,20 @@ ticker. Mechanics + policy:
   - *Data*: `mi_daily_closes` bars strictly BEFORE the alert date (the feature reads no
     bar on or after the gap day), 800 calendar days — the rule reaches 355 sessions at
     most. Fewer than 250 prior sessions, fewer than two pullback lows, a bad bar, or a
-    last bar that is not the latest session → no number, with the reason in `shelf_null`.
+    last bar that is not the trading session before the alert date (from the exchange
+    calendar, `trading_calendar.previous_trading_day` — never read off the table) → no
+    number, with the reason in `shelf_null`. When NO board name has a usable last bar a
+    `slot_rank_shelf_all_stale` audit row is written — a blank board is never silent.
   - *When it runs*: NOT at 09:31 in front of orders. `process_new_alerts_live` starts it
     as a detached task as its last statement, after every entry task of that invocation
-    has finished, and that task **does not touch the database before 09:46 ET** on the
-    alert date (the ORB submission window shuts at 09:45) — started earlier it sleeps
-    until then, so it can never share the five pooled DB connections with an entry, its
-    own invocation's or a later one's. Prior-day bars, so waiting changes no number. Each
-    invocation's task fills its own rows (not merged into one pass — every pass is after
-    the window). A deploy or restart before 09:46 drops the sleeping tasks: those rows keep
+    has finished, and that task **does not touch the database before 09:46:20 ET** on the
+    alert date — started earlier it sleeps until then, so it can never share the five
+    pooled DB connections with an entry, its own invocation's or a later one's. That
+    second is after the 09:45 submission cutoff, off :00 / :30 (when the stop-acknowledgement
+    and stuck-fill watchdogs use the same pool) and after the 09:46:10 breakout v1 entry
+    job. Prior-day bars, so waiting changes no number. Each invocation's task fills its own
+    rows (not merged), **one pass at a time** — the passes queue on one lock, so the step
+    never holds more than one connection. A deploy or restart before 09:46:20 drops the sleeping tasks: those rows keep
     NULL shelf columns with no audit row (accepted; recomputable from `mi_daily_closes`).
     Once it runs it is cut off after 5 seconds and fills its own columns (`shelf_dmin`, `shelf_price`,
     `shelf_date`, `shelf_structure`, `shelf_adr20_pct`, `shelf_asof`, `shelf_null`,
@@ -687,7 +692,7 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
 
 **Evidence**: `docs/analysis/ep_rank_v2_prereg_2026-11-03.md` RESULT 6-9 — on his labelled charts the good ones sit nearer their shelf than the bad ones (0.750 on the 11 fresh labels of 11-21, 28 good-vs-bad pairs; 0.738 pooled over samples 6-10, 55 charts). Directional; small samples — which is why it is recorded and not used. Parity: `tests/test_594_shelf_rank_shadow.py` reproduces those 11 values from prior-day bars through the production code.
 
-**Anticipated effect**: none on entries, orders, slots or sizes (board order, submit order and results are pinned identical with the step working, failing or hanging). The step never touches the database before 09:46 ET, so it cannot contend with any entry inside the ORB window. `mi_ep_slot_rank_shadow` rows written after the deploy carry `shelf_dmin` / `rank_shelf` (or a `shelf_null` reason) from 09:46 ET (rows written later in the day: within seconds). One extra `mi_daily_closes` read per invocation, not before 09:46 ET, cut off at 5 seconds.
+**Anticipated effect**: none on entries, orders, slots or sizes (board order, submit order and results are pinned identical with the step working, failing or hanging). The step never touches the database before 09:46:20 ET and runs one pass at a time, so it cannot contend with any entry inside the ORB window. `mi_ep_slot_rank_shadow` rows written after the deploy carry `shelf_dmin` / `rank_shelf` (or a `shelf_null` reason) from 09:46:20 ET (rows written later in the day: within seconds). One extra `mi_daily_closes` read per invocation, not before 09:46:20 ET, cut off at 5 seconds.
 
 **Reversion-flag**: NEW (a recorded column beside the six existing ones; the acting RS order of 2026-08-30 is untouched).
 

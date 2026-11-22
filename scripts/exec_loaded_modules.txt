@@ -55,6 +55,7 @@ agents/market_intelligence/ep_decision_vector.py
 agents/market_intelligence/ep_detector.py
 agents/market_intelligence/ep_grade_judge.py
 agents/market_intelligence/ep_rubric.py
+agents/market_intelligence/ep_slot_rank_shadow.py
 agents/market_intelligence/ep_theme_belonging.py
 agents/market_intelligence/execution_client.py
 agents/market_intelligence/execution_routes.py
@@ -68,6 +69,7 @@ agents/market_intelligence/prose_markers.py
 agents/market_intelligence/regime.py
 agents/market_intelligence/rs_engine.py
 agents/market_intelligence/scheduler.py
+agents/market_intelligence/shelf_distance.py
 agents/market_intelligence/state_alerts.py
 agents/market_intelligence/theme_correctness.py
 agents/market_intelligence/theme_engine.py

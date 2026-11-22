@@ -18,9 +18,11 @@ Pins here:
      the step starts only after the last entry and is never awaited (the schema side
      is held by tests/test_schema_alter_create_parity.py);
   6. fail-open — an error or the timeout leaves NULL, loudly (audit row), never raises.
-  7. the 09:46 gate — a step started inside the ORB window does not touch the pool
-     before 09:46 ET on the alert date (fake clock); one started from 09:46 runs at
-     once; each invocation fills its own rows (not collapsed).
+  7. the 09:46:20 gate — a step started inside the ORB window does not touch the pool
+     before 09:46:20 ET on the alert date (fake clock); one started from then runs at
+     once; each invocation fills its own rows (not collapsed), ONE pass at a time;
+  8. the expected last bar is the exchange calendar's prior session (no table-wide
+     MAX read), and a board with no usable last bar writes an audit row.
 """
 from __future__ import annotations
 
@@ -217,7 +219,7 @@ def test_compute_rows_stale_missing_and_real():
     assert by["TWLO"]["shelf_price"] == 139.0 and by["TWLO"]["shelf_null"] is None
     # HELE's own bars end on a different day than the table's latest session
     assert by["HELE"]["shelf_dmin"] is None
-    assert by["HELE"]["shelf_null"].startswith("stale_last_bar(")
+    assert by["HELE"]["shelf_null"] == f"stale_last_bar({hele[-1][0]}!={latest})"
     assert by["GONE"]["shelf_dmin"] is None and by["GONE"]["shelf_null"] == "no_bars"
     assert (by["GONE"]["rank_shelf"], by["HELE"]["rank_shelf"]) == (2, 3)  # nulls last, ticker ASC
 
@@ -269,7 +271,7 @@ async def test_acting_order_is_identical_with_and_without_the_shelf_step(monkeyp
             detail: dict = {}
             board, events, inserts = await _drive(
                 mp, toggle=toggle, alerts_rows=_BOARD_ROWS, rs_rows=_RS_ROWS,
-                shelf_bars=shelf_bars, shelf_latest=date(2026, 8, 27), detail=detail)
+                shelf_bars=shelf_bars, detail=detail)
             runs[name] = dict(
                 board=board, submit=detail["submit_order"], results=detail["results"],
                 insert_rows=[tuple(x for i, x in enumerate(r) if i != 2)  # drop recorded_at
@@ -341,7 +343,7 @@ async def test_the_step_starts_after_the_last_entry_and_is_never_waited_on(monke
     monkeypatch.setattr(lt, "process_new_alerts_live", _wrapped)
     board, events, _ins = await _drive(
         monkeypatch, toggle=True, alerts_rows=_BOARD_ROWS, rs_rows=_RS_ROWS,
-        shelf_bars=_hang, shelf_latest=date(2026, 8, 27), detail=detail)
+        shelf_bars=_hang, detail=detail)
     assert seq[0] == "digest"
     assert seq[1] == ("shelf_start", board) and len(board) == 3   # all three already submitted
     assert done_at_return == [False]                              # returned without waiting
@@ -361,7 +363,6 @@ def test_the_rows_insert_carries_no_shelf_column_and_the_update_only_shelf_colum
 def test_bars_are_prior_day_only_and_date_bounded():
     assert "trade_date < $2" in esr._SHELF_BARS_SQL and "trade_date >= $3" in esr._SHELF_BARS_SQL
     assert "<=" not in esr._SHELF_BARS_SQL
-    assert "trade_date < $1" in esr._SHELF_LATEST_SESSION_SQL
 
 
 # ── 6. fail-open ──────────────────────────────────────────────────────────────
@@ -418,13 +419,16 @@ async def test_step_is_cut_off_at_its_timeout(monkeypatch):
 def test_seconds_until_the_step_may_run():
     d = date(2026, 8, 28)
     f = esr.seconds_until_shelf_may_run
-    assert esr.SHELF_NOT_BEFORE_ET.hour == 9 and esr.SHELF_NOT_BEFORE_ET.minute == 46
-    assert f(d, datetime(2026, 8, 28, 9, 31, tzinfo=_ET)) == 15 * 60
-    assert f(d, datetime(2026, 8, 28, 9, 46, tzinfo=_ET)) == 0.0
+    # 09:46:20 — after the 09:45 cutoff, off :00/:30 (watchdogs), after the 09:46:10 job
+    nb = esr.SHELF_NOT_BEFORE_ET
+    assert (nb.hour, nb.minute, nb.second) == (9, 46, 20)
+    assert f(d, datetime(2026, 8, 28, 9, 31, tzinfo=_ET)) == 15 * 60 + 20
+    assert f(d, datetime(2026, 8, 28, 9, 46, tzinfo=_ET)) == 20.0
+    assert f(d, datetime(2026, 8, 28, 9, 46, 20, tzinfo=_ET)) == 0.0
     assert f(d, datetime(2026, 8, 28, 11, 0, tzinfo=_ET)) == 0.0
     assert f(d, datetime(2026, 8, 29, 9, 31, tzinfo=_ET)) == 0.0          # a past alert date
     # the same instant expressed in UTC gives the same answer (no naive arithmetic)
-    assert f(d, datetime(2026, 8, 28, 13, 31, tzinfo=ZoneInfo("UTC"))) == 15 * 60
+    assert f(d, datetime(2026, 8, 28, 13, 31, tzinfo=ZoneInfo("UTC"))) == 15 * 60 + 20
 
 
 class _FakeClock:
@@ -456,7 +460,7 @@ def _shelf_pool():
 
 
 @pytest.mark.asyncio
-async def test_a_step_started_at_0931_does_not_touch_the_pool_before_0946(monkeypatch):
+async def test_a_step_started_at_0931_does_not_touch_the_pool_before_094620(monkeypatch):
     clock = _FakeClock(datetime(2026, 8, 28, 9, 31, tzinfo=_ET))
     monkeypatch.setattr(esr, "_now_et", clock.now_et)
     monkeypatch.setattr(esr, "_sleep", clock.sleep)
@@ -465,25 +469,25 @@ async def test_a_step_started_at_0931_does_not_touch_the_pool_before_0946(monkey
         pool, ["AAA", "BBB"], _TODAY, datetime(2026, 8, 28, 9, 31, tzinfo=_ET), "cron_9_31")
     for _ in range(20):                    # let the task run as far as it can
         await asyncio.sleep(0)
-    assert clock.slept == [15 * 60]        # it is waiting for 09:46 …
+    assert clock.slept == [15 * 60 + 20]   # it is waiting for 09:46:20 …
     assert not task.done()
     pool.acquire.assert_not_called()       # … and has not touched the pool
     conn.fetch.assert_not_called()
     conn.executemany.assert_not_called()
 
-    clock.advance()                        # 09:46 arrives
+    clock.advance()                        # 09:46:20 arrives
     assert await task == 2
-    assert clock.now == datetime(2026, 8, 28, 9, 46, tzinfo=_ET)
+    assert clock.now == datetime(2026, 8, 28, 9, 46, 20, tzinfo=_ET)
     assert pool.acquire.call_count == 2    # one read pass, one write
     conn.executemany.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("now", [
-    datetime(2026, 8, 28, 9, 46, tzinfo=_ET),
+    datetime(2026, 8, 28, 9, 46, 20, tzinfo=_ET),
     datetime(2026, 8, 28, 10, 5, tzinfo=_ET),
 ])
-async def test_a_step_started_from_0946_runs_at_once(monkeypatch, now):
+async def test_a_step_started_from_094620_runs_at_once(monkeypatch, now):
     clock = _FakeClock(now)
     monkeypatch.setattr(esr, "_now_et", clock.now_et)
     monkeypatch.setattr(esr, "_sleep", clock.sleep)
@@ -511,6 +515,102 @@ async def test_each_invocation_before_0946_fills_its_own_rows_after_0946(monkeyp
     assert await asyncio.gather(t1, t2) == [1, 2]
     stamps = [{row[2] for row in c.args[1]} for c in conn.executemany.await_args_list]
     assert sorted(stamps, key=lambda s: min(s)) == [{r1}, {r2}]
+
+
+@pytest.mark.asyncio
+async def test_passes_run_one_at_a_time_and_a_queued_pass_is_not_timed_out_by_the_one_ahead(monkeypatch):
+    """Every sleeping task wakes together; the lock lets ONE into the pool at a time,
+    and the 5 s bound starts only once a pass holds the lock."""
+    monkeypatch.setattr(esr, "SHELF_STEP_TIMEOUT_SEC", 0.25)
+    now = datetime(2026, 8, 28, 9, 50, tzinfo=_ET)
+    monkeypatch.setattr(esr, "_now_et", lambda: now)
+    in_db = 0
+    peak = 0
+
+    class _Conn:
+        async def fetch(self, *a):
+            await asyncio.sleep(0.1)       # 3 passes x 0.1 s > the 0.25 s bound if it covered the queue
+            return []
+
+        async def executemany(self, *a):
+            return None
+
+    class _Acq:
+        async def __aenter__(self):
+            nonlocal in_db, peak
+            in_db += 1
+            peak = max(peak, in_db)
+            return _Conn()
+
+        async def __aexit__(self, *exc):
+            nonlocal in_db
+            in_db -= 1
+
+    pool = MagicMock()
+    pool.acquire = MagicMock(side_effect=lambda: _Acq())
+    audits = []
+
+    async def _audit(event, msg, *a, **k):
+        audits.append(event)
+
+    import agents.market_intelligence.db as db
+    monkeypatch.setattr(db, "log_audit_event", _audit)
+    tasks = [esr.schedule_shelf_ranks(pool, ["AAA"], _TODAY, now, f"t{i}") for i in range(3)]
+    assert await asyncio.gather(*tasks) == [1, 1, 1]
+    assert peak == 1                                   # never two shelf connections at once
+    assert "slot_rank_shelf_failed" not in audits      # nobody timed out waiting in the queue
+
+
+@pytest.mark.asyncio
+async def test_the_expected_last_bar_is_the_exchange_calendars_prior_session(monkeypatch):
+    """Not read off the table: no MAX(trade_date) query exists, a holiday is skipped,
+    and a name whose bars stop a session early is the only one marked stale."""
+    from agents.market_intelligence.trading_calendar import previous_trading_day
+    assert previous_trading_day(date(2026, 8, 28)) == date(2026, 8, 27)
+    assert previous_trading_day(date(2026, 9, 8)) == date(2026, 9, 4)      # over Labor Day + a weekend
+    assert not hasattr(esr, "_SHELF_LATEST_SESSION_SQL")
+
+    bars = _read_bars()
+    good = _bar_rows("AAA", bars[("TWLO", "2026-08-07")][:-1], _TODAY)       # ends Thu 08-27
+    late = [dict(r) for r in _bar_rows("CCC", bars[("PCVX", "2026-10-05")][:-1], _TODAY)][:-1]  # ends Wed 08-26
+    pool, conn = _shelf_pool()
+    conn.fetch = AsyncMock(return_value=good + late)
+    events = []
+
+    async def _audit(event, msg, *a, **k):
+        events.append(event)
+
+    import agents.market_intelligence.db as db
+    monkeypatch.setattr(db, "log_audit_event", _audit)
+    assert await esr.record_shelf_ranks(
+        pool, ["AAA", "CCC"], _TODAY, datetime(2026, 8, 28, 9, 31, tzinfo=_ET)) == 2
+    conn.fetchval.assert_not_called()                  # no table-wide latest-date read
+    by = {r[1]: r for r in conn.executemany.await_args.args[1]}
+    assert f"{by['AAA'][3]:.3f}" == "5.924" and by["AAA"][10] == 1
+    assert by["CCC"][3] is None and by["CCC"][7] == "stale_last_bar(2026-08-26!=2026-08-27)"
+    assert events == []                                # one good name: not a blank board
+
+
+@pytest.mark.asyncio
+async def test_a_board_with_no_usable_last_bar_is_never_silent(monkeypatch):
+    bars = _read_bars()
+    late = _bar_rows("AAA", bars[("TWLO", "2026-08-07")][:-1], _TODAY)[:-1]  # the nightly load missed 08-27
+    pool, conn = _shelf_pool()
+    conn.fetch = AsyncMock(return_value=late)
+    events = []
+
+    async def _audit(event, msg, *a, **k):
+        events.append((event, msg))
+
+    import agents.market_intelligence.db as db
+    monkeypatch.setattr(db, "log_audit_event", _audit)
+    n = await esr.record_shelf_ranks(
+        pool, ["AAA", "GONE"], _TODAY, datetime(2026, 8, 28, 9, 31, tzinfo=_ET), "cron_9_31")
+    assert n == 2
+    rows = conn.executemany.await_args.args[1]         # the reasons are still written …
+    assert [(r[1], r[3], r[10]) for r in rows] == [("AAA", None, None), ("GONE", None, None)]
+    assert [e for e, _ in events] == ["slot_rank_shelf_all_stale"]          # … and it is audited
+    assert "stale_last_bar(2026-08-26!=2026-08-27)" in events[0][1] and "GONE=no_bars" in events[0][1]
 
 
 @pytest.mark.asyncio

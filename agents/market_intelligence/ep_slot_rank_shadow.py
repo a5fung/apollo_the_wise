@@ -100,16 +100,22 @@ scripts that produced that evidence.
   (the bar-stream handler awaits that return). The function is invoked several times
   a morning (once per first bar + the 09:31 cron), so a step that ran at once could
   overlap a LATER invocation's entries and hold one of the pool's five connections.
-  To remove that entirely the task does NOT TOUCH THE DATABASE BEFORE 09:46 ET on
-  the alert date (SHELF_NOT_BEFORE_ET — the ORB submission window shuts at 09:45):
-  started earlier it sleeps until then; started later (or for a past date) it runs
-  at once. Its inputs are prior-day bars, so waiting changes no number. Once it
-  runs, the reads + write are bounded by SHELF_STEP_TIMEOUT_SEC.
+  To remove that entirely the task does NOT TOUCH THE DATABASE BEFORE 09:46:20 ET
+  on the alert date (SHELF_NOT_BEFORE_ET): started earlier it sleeps until then;
+  started later (or for a past date) it runs at once. Why that second: the ORB
+  submission window shuts at 09:45; :00 and :30 are when the stop-acknowledgement
+  and stuck-fill watchdogs fire on the same five-connection pool; 09:46:10 is the
+  breakout v1 entry job. Its inputs are prior-day bars, so waiting changes no
+  number.
+  ONE PASS AT A TIME. Every task that slept wakes at the same moment, so the passes
+  queue on one lock (`_shelf_lock`) — the shelf step never holds more than ONE
+  pooled connection, however many invocations the morning had. The
+  SHELF_STEP_TIMEOUT_SEC bound covers the database work only and starts AFTER the
+  lock is held, so a queued pass is not timed out by the one ahead of it.
   NOT COLLAPSED: each invocation's task fills its OWN rows (its own recorded_at) —
-  a morning with four invocations before 09:46 runs four small passes at 09:46.
-  Chosen over one merged pass because it needs no shared state and every pass is
-  after the window anyway.
-  ⚠ A DEPLOY OR RESTART BEFORE 09:46 DROPS THE SLEEPING TASKS — those rows keep NULL
+  a morning with four invocations runs four small passes one after another from
+  09:46:20. Chosen over one merged pass because it needs no shared state.
+  ⚠ A DEPLOY OR RESTART BEFORE 09:46:20 DROPS THE SLEEPING TASKS — those rows keep NULL
   shelf columns and NO audit row is written (nothing ran to fail). Accepted: the
   record is recomputable from mi_daily_closes at any time.
   Registered in scripts/preflight_db_updates.py (prepared against the real schema
@@ -124,9 +130,13 @@ scripts that produced that evidence.
   (scripts/probes/_594_sample10_1121/q2_bars.sql), bars STRICTLY BEFORE the alert
   date (the feature reads no bar on or after the gap day), bounded to
   SHELF_BARS_LOOKBACK_DAYS calendar days — more than the 355 sessions the rule can
-  reach. A name whose last bar is not the table's latest session before the alert
-  date gets NULL with `stale_last_bar(...)` rather than a number off shifted
-  sessions.
+  reach. A name whose last bar is not the TRADING SESSION before the alert date
+  (`trading_calendar.previous_trading_day` — the exchange calendar, weekends and
+  holidays skipped; never read off the table, where one stray weekend row would
+  make every name look stale) gets NULL with `stale_last_bar(...)` rather than a
+  number off shifted sessions. When NO board name has a usable last bar the reasons
+  are still written AND a `slot_rank_shelf_all_stale` audit row is — a blank board
+  is never silent (the nightly bar load most likely did not run).
   RAW INPUTS RECORDED: shelf_dmin, shelf_price, shelf_date, shelf_structure,
   shelf_adr20_pct, shelf_asof (the last bar used) and shelf_null (why there is no
   number: thin history, fewer than two pullback lows, a bad bar, a stale last bar).
@@ -134,7 +144,10 @@ scripts that produced that evidence.
   them that way). When NO board name has a number, rank_shelf stays NULL for all —
   an all-NULL board ranked would be the alphabet posing as a ranking.
   FAIL DIRECTION. Any error or the timeout: the shelf columns stay NULL, loudly
-  (logger.exception + a `slot_rank_shelf_failed` audit row). SILENT otherwise.
+  (logger.exception + a `slot_rank_shelf_failed` audit row). SILENT otherwise
+  (bar the all-stale audit row above).
+  DEPLOY SCOPE. live_tracker runs on apollo-execution, so this module and
+  shelf_distance.py are listed in scripts/exec_loaded_modules.txt.
 
 SCHEMA. Every column the INSERT and the shelf UPDATE name is created by db.py's
 `initialize_schema` at boot (`ADD COLUMN IF NOT EXISTS` beside the table's CREATE).
@@ -182,10 +195,23 @@ SLOT_RANK_KEYS: tuple[str, ...] = (
 # ── the shelf step (#594) — see THE SHELF STEP in the module docstring ────────
 # The whole step (bars fetch + compute + UPDATE) is cancelled after this long.
 SHELF_STEP_TIMEOUT_SEC = 5.0
-# The step's reads/write never start before this ET time on the alert date — one
-# minute after the ORB submission window shuts (09:45), so it can never share the
-# pool with an entry.
-SHELF_NOT_BEFORE_ET = time(9, 46)
+# The step's reads/write never start before this ET time on the alert date: after
+# the ORB submission window shuts (09:45), off :00 / :30 (the stop-acknowledgement
+# and stuck-fill watchdogs fire then on the same pool) and after the 09:46:10
+# breakout v1 entry job.
+SHELF_NOT_BEFORE_ET = time(9, 46, 20)
+# One shelf pass at a time (every sleeping task wakes together). Made per event
+# loop on first use — a module-level asyncio.Lock would bind to one loop.
+_SHELF_LOCK: "tuple[Any, asyncio.Lock] | None" = None
+
+
+def _shelf_lock() -> asyncio.Lock:
+    global _SHELF_LOCK
+    loop = asyncio.get_running_loop()
+    if _SHELF_LOCK is None or _SHELF_LOCK[0] is not loop:
+        _SHELF_LOCK = (loop, asyncio.Lock())
+    return _SHELF_LOCK[1]
+
 _ET = ZoneInfo("America/New_York")
 
 
@@ -427,11 +453,6 @@ _INSERT_SQL = """
 
 # ── the shelf step (#594): the seventh ranking, RECORDS ONLY ──────────────────
 
-_SHELF_LATEST_SESSION_SQL = """
-    SELECT MAX(trade_date) FROM mi_daily_closes
-    WHERE trade_date < $1 AND trade_date >= $2
-"""
-
 # Prior-day bars only (trade_date < the alert date), date-bounded (the #594 read-site rule).
 _SHELF_BARS_SQL = """
     SELECT ticker, trade_date, open_price, high_price, low_price, close, volume
@@ -467,19 +488,19 @@ def rank_board_by_shelf(
 
 def compute_shelf_rows(
     tickers: list[str], bars_by_ticker: dict[str, list],
-    latest_session: "date | None",
+    expected_session: "date | None",
 ) -> list[dict]:
     """One dict per board name: the shelf raw inputs + rank_shelf. Pure — no I/O.
     `bars_by_ticker[t]` = daily (date, o, h, l, c, v) oldest-first, all before the
-    alert date. A name with no bars, or whose last bar is not `latest_session`, gets
-    no number and a reason — never a number computed off shifted sessions."""
+    alert date. `expected_session` = the trading session before the alert date. A
+    name with no bars, or whose last bar is not that session, gets no number and a reason — never a number computed off shifted sessions."""
     feats: dict[str, dict] = {}
     for t in tickers:
         days = bars_by_ticker.get(t) or []
         if not days:
             feats[t] = {"null": "no_bars"}
-        elif latest_session is not None and days[-1][0] != latest_session:
-            feats[t] = {"null": f"stale_last_bar({days[-1][0]}<{latest_session})",
+        elif expected_session is not None and days[-1][0] != expected_session:
+            feats[t] = {"null": f"stale_last_bar({days[-1][0]}!={expected_session})",
                         "asof": days[-1][0]}
         else:
             feats[t] = shelf_distance_from_prior_days(days)
@@ -497,13 +518,19 @@ def compute_shelf_rows(
     } for t in tickers]
 
 
+def _is_unusable_last_bar(reason: "str | None") -> bool:
+    return bool(reason) and (reason == "no_bars" or reason.startswith("stale_last_bar("))
+
+
 async def _shelf_step(
     pool: Any, tickers: list[str], alert_date: date, recorded_at: datetime,
-) -> int:
+) -> list[dict]:
+    # The exchange calendar's answer, never the table's own MAX(trade_date): one
+    # stray weekend/holiday row there would make every name look stale.
+    from agents.market_intelligence.trading_calendar import previous_trading_day
+    expected_session = previous_trading_day(alert_date)
     floor = alert_date - timedelta(days=SHELF_BARS_LOOKBACK_DAYS)
     async with pool.acquire() as conn:
-        latest_session = await conn.fetchval(
-            _SHELF_LATEST_SESSION_SQL, alert_date, floor)
         bar_rows = await conn.fetch(_SHELF_BARS_SQL, tickers, alert_date, floor)
     # The connection is released before the arithmetic and re-taken for the write.
     bars: dict[str, list] = {}
@@ -512,7 +539,7 @@ async def _shelf_step(
             r["trade_date"], r["open_price"], r["high_price"], r["low_price"],
             r["close"], r["volume"],
         ))
-    rows = compute_shelf_rows(tickers, bars, latest_session)
+    rows = compute_shelf_rows(tickers, bars, expected_session)
     async with pool.acquire() as conn:
         await conn.executemany(_SHELF_UPDATE_SQL, [
             (
@@ -523,7 +550,7 @@ async def _shelf_step(
             )
             for r in rows
         ])
-    return len(rows)
+    return rows
 
 
 async def record_shelf_ranks(
@@ -532,21 +559,36 @@ async def record_shelf_ranks(
 ) -> int:
     """The shelf step's entry point (#594) — fills rank_shelf + its raw inputs on the
     rows `snapshot_slot_rank_board` wrote for this invocation. RECORDS ONLY. Never
-    raises. It does not touch the pool before SHELF_NOT_BEFORE_ET (09:46 ET) on the
-    alert date — it sleeps until then; after that its reads + write are bounded by
-    SHELF_STEP_TIMEOUT_SEC. On any error or the timeout the shelf columns stay
-    NULL, loudly (logger.exception + `slot_rank_shelf_failed` audit row). Returns
-    names written (0 on failure). SILENT — no Telegram on any path."""
+    raises. It does not touch the pool before SHELF_NOT_BEFORE_ET (09:46:20 ET) on
+    the alert date — it sleeps until then; then ONE pass at a time (`_shelf_lock`),
+    its reads + write bounded by SHELF_STEP_TIMEOUT_SEC from the moment it holds
+    the lock. On any error or the timeout the shelf columns stay NULL, loudly
+    (logger.exception + `slot_rank_shelf_failed` audit row). A board where no name
+    has a usable last bar is written with its reasons AND a
+    `slot_rank_shelf_all_stale` audit row. Returns names written (0 on failure).
+    SILENT — no Telegram on any path."""
     try:
         if not tickers:
             return 0
         wait = seconds_until_shelf_may_run(alert_date, _now_et())
         if wait > 0:
             await _sleep(wait)
-        return await asyncio.wait_for(
-            _shelf_step(pool, list(tickers), alert_date, recorded_at),
-            timeout=SHELF_STEP_TIMEOUT_SEC,
-        )
+        async with _shelf_lock():
+            rows = await asyncio.wait_for(
+                _shelf_step(pool, list(tickers), alert_date, recorded_at),
+                timeout=SHELF_STEP_TIMEOUT_SEC,
+            )
+        if rows and all(_is_unusable_last_bar(r["shelf_null"]) for r in rows):
+            reasons = "; ".join(f"{r['ticker']}={r['shelf_null']}" for r in rows)
+            logger.error(
+                f"slot-rank shelf [{trigger}]: NO board name has a usable last bar "
+                f"for {alert_date} — every shelf number is NULL: {reasons[:300]}")
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "slot_rank_shelf_all_stale",
+                f"[{trigger}] {alert_date} {len(rows)} names: {reasons[:200]}",
+            )
+        return len(rows)
     except Exception as e:  # loud-ok: records-only telemetry — shelf columns stay NULL; audit row below
         logger.exception(
             f"slot-rank shelf [{trigger}]: step failed — shelf columns stay NULL "

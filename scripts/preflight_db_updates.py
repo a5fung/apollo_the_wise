@@ -47,7 +47,6 @@ from agents.market_intelligence.cot_family import (
 )
 from agents.market_intelligence.ep_slot_rank_shadow import (
     _SHELF_BARS_SQL as _SLOT_RANK_SHELF_BARS_SQL,
-    _SHELF_LATEST_SESSION_SQL as _SLOT_RANK_SHELF_LATEST_SESSION_SQL,
     _SHELF_UPDATE_SQL as _SLOT_RANK_SHELF_UPDATE_SQL,
 )
 from agents.market_intelligence.ladder_press import _DECIDE_PAGE_SQL as _LADDER_DECIDE_PAGE_SQL
@@ -354,7 +353,6 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
     # otherwise show only as shelf columns that stay NULL.
     ("ep_slot_rank_shadow._shelf_step: the shelf columns filled on the watch rows", _SLOT_RANK_SHELF_UPDATE_SQL),
     ("ep_slot_rank_shadow._shelf_step: the board's prior-day daily bars", _SLOT_RANK_SHELF_BARS_SQL),
-    ("ep_slot_rank_shadow._shelf_step: the latest session before the alert date", _SLOT_RANK_SHELF_LATEST_SESSION_SQL),
     (
         "db.insert_universe_floor_shadow_rows: #606 D-1 universe-floor shadow (the 2026-09-01 case)",
         UNIVERSE_FLOOR_SHADOW_INSERT_SQL,
