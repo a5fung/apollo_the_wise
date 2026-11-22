@@ -5,6 +5,13 @@ Status: **finding / proposal, not an owner.** Nothing here changes a rule, a gat
 Seed: Matt Caruso (CFA, CMT), X post 11-22 — the AI-name selloff is "a money problem", monetary conditions changed in recent weeks, watch Kevin Warsh and the Fed (their pivot marks a bottom), junk bonds (JNK) trending down = liquidity draining. Video with @Crowded_Mkt_Rpt "Is the Stock Market Heading for a Liquidity Crisis?" (youtu.be/fdH9aFki8_U). Operator: "there's a thousand other things to look at ... this needs full research." Captured in `docs/methodology/operator_shared_notes.md` (commits `84877a2a`, `c529b1b6`).
 
 
+## 0. His rulings 2026-11-22 (after the first draft) — these override the draft where they differ
+
+- **The liquidity read is a DISPLAY for his own market read, beside breadth — not only an EP filter.** It ships as a view on its own merits; the EP / breakout test (§5) is a separate question about whether it should ever touch trading.
+- **JNK: read vs its 20-day average as well as its trend** (Caruso). The display carries JNK vs 20d and vs 50d, and the 20d slope.
+- **Gold / silver ratio: rising = tighter monetary conditions, falling = easier** (his note). Added to the display (GLD/SLV, or spot from a free source), with its 20d / 50d trend.
+
+
 ## Method and population
 
 - **Method:** desk research (5 web lanes: practitioners, credit, Fed/money, market internals, academic evidence) + a repo inventory, synthesised and then critic-reviewed on 2026-11-22. No outcome was measured; every percentage in this doc is either a quoted market level or a pre-registered bar, not a finding.
