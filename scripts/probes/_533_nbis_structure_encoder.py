@@ -139,7 +139,7 @@ BAND_ADR = 1.5            # RMVP "ADR Multiplier" — the congestion band above 
 CLOSE_TOL = 1.001         # "failed to close above" tolerance (0.1%)
 HOLD_TOL = 0.999          # a 5-min close below level*0.999 = lost it
 MIN_HISTORY = 30          # fewer prior days than this -> insufficient_history
-ADR_LOOKBACK = 20         # RMVP "ADR Lookback"
+ADR_LOOKBACK = 20         # RMVP "ADR Lookback" (the live value is shelf_distance.ADR_LOOKBACK since adr20_pct moved, #594)
 
 # ── The three FIXTURE-CALIBRATED numbers (disclosed; fixtures are the calibration set) ─
 BREACH_CUTOFF = "09:59"   # the opening drive: a 5-min close above the level by here
@@ -285,12 +285,11 @@ def load_alerts() -> list[dict]:
 
 # ── the encoder core ───────────────────────────────────────────────────────────────────
 
-def adr20_pct(days: list, ia: int) -> float | None:
-    lo = max(0, ia - ADR_LOOKBACK)
-    win = days[lo:ia]
-    if len(win) < 10:
-        return None
-    return st.fmean((h - l) / c * 100.0 for _, _, h, l, c, _ in win)
+# adr20_pct MOVED 2026-11-21 (#594) to agents/market_intelligence/shelf_distance.py, unchanged, so the
+# live slot-rank record and this encoder share one definition (pinned by tests/test_594_shelf_rank_shadow.py).
+if str(HERE.parents[1]) not in sys.path:
+    sys.path.insert(0, str(HERE.parents[1]))
+from agents.market_intelligence.shelf_distance import adr20_pct  # noqa: E402
 
 
 def pivot_levels(days: list, ia: int, adr: float) -> list[dict]:

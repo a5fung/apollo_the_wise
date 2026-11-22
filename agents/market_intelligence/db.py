@@ -4714,6 +4714,14 @@ async def initialize_schema() -> None:
                 rank_alpha      INT,               -- ticker asc — the deposed incumbent (control)
                 vol_percentile  DOUBLE PRECISION,  -- #623 raw input: 09:31 volume vs the ticker's OWN history
                 rank_vol_pct    INT,               -- #623 the sixth ranking (vol pctile desc, nulls-last)
+                shelf_dmin      DOUBLE PRECISION,  -- #594 raw input: pullback lows vs the shelf, ADR units (filled by UPDATE after the entries)
+                shelf_price     DOUBLE PRECISION,  -- #594 raw input: the shelf (top of the base before the run)
+                shelf_date      DATE,              -- #594 raw input: the session that set the shelf
+                shelf_structure TEXT,              -- #594 raw input: ok | no_run(<30%) | no_breakout(P<=shelf)
+                shelf_null      TEXT,              -- #594 why there is no shelf_dmin (thin history, bad/stale bar, ...)
+                shelf_adr20_pct DOUBLE PRECISION,  -- #594 raw input: ADR20 % of the 20 sessions before alert_date
+                shelf_asof      DATE,              -- #594 the last daily bar used (always < alert_date)
+                rank_shelf      INT,               -- #594 the seventh ranking (shelf_dmin desc, nulls-last, ticker)
                 acting_key      TEXT,              -- 'rs' | 'legacy_alpha' — which order ACTED
                 created_at      TIMESTAMPTZ DEFAULT NOW()
             );
@@ -4737,6 +4745,33 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS vol_percentile DOUBLE PRECISION;
             ALTER TABLE mi_ep_slot_rank_shadow
                 ADD COLUMN IF NOT EXISTS rank_vol_pct INT;
+
+            -- #594 (2026-11-21, operator: "Aligned, but we should keep testing this
+            -- idea"): a SEVENTH ranking — the shelf distance (how far the last two
+            -- pullback lows sit from the top of the base the stock broke out of
+            -- before its run, in ADR units; one definition, shelf_distance.py).
+            -- ⚖ RECORDS ONLY — changes no slot allocation, order, entry or size.
+            -- These are NOT in the row's INSERT: ep_slot_rank_shadow.record_shelf_ranks
+            -- fills them with an UPDATE after the entries are done, from
+            -- mi_daily_closes bars strictly before alert_date. NULL shelf_dmin +
+            -- shelf_null = why there is no number; all NULL = the step failed
+            -- (slot_rank_shelf_failed audit row) or has not run.
+            ALTER TABLE mi_ep_slot_rank_shadow
+                ADD COLUMN IF NOT EXISTS shelf_dmin DOUBLE PRECISION;
+            ALTER TABLE mi_ep_slot_rank_shadow
+                ADD COLUMN IF NOT EXISTS shelf_price DOUBLE PRECISION;
+            ALTER TABLE mi_ep_slot_rank_shadow
+                ADD COLUMN IF NOT EXISTS shelf_date DATE;
+            ALTER TABLE mi_ep_slot_rank_shadow
+                ADD COLUMN IF NOT EXISTS shelf_structure TEXT;
+            ALTER TABLE mi_ep_slot_rank_shadow
+                ADD COLUMN IF NOT EXISTS shelf_null TEXT;
+            ALTER TABLE mi_ep_slot_rank_shadow
+                ADD COLUMN IF NOT EXISTS shelf_adr20_pct DOUBLE PRECISION;
+            ALTER TABLE mi_ep_slot_rank_shadow
+                ADD COLUMN IF NOT EXISTS shelf_asof DATE;
+            ALTER TABLE mi_ep_slot_rank_shadow
+                ADD COLUMN IF NOT EXISTS rank_shelf INT;
 
             -- #606 D-1 UNIVERSE FLOOR SHADOW (2026-08-31): one row per (scan_date,
             -- ticker) for EVERY real candidate (gap clears the day's Pass-1 gap

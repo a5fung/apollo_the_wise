@@ -45,6 +45,11 @@ from agents.market_intelligence.cot_family import (
     _COT_ALERT_UPSERT_SQL, _COT_ALERTS_SENT_SQL, _COT_CALENDAR_UPSERT_SQL, _COT_INDEX_UPSERT_SQL,
     _COT_KNOWN_WEEK_SQL, _COT_NETS_UPSERT_SQL, _COT_WEEK_SENT_SQL, _COT_WEEK_UPSERT_SQL,
 )
+from agents.market_intelligence.ep_slot_rank_shadow import (
+    _SHELF_BARS_SQL as _SLOT_RANK_SHELF_BARS_SQL,
+    _SHELF_LATEST_SESSION_SQL as _SLOT_RANK_SHELF_LATEST_SESSION_SQL,
+    _SHELF_UPDATE_SQL as _SLOT_RANK_SHELF_UPDATE_SQL,
+)
 from agents.market_intelligence.ladder_press import _DECIDE_PAGE_SQL as _LADDER_DECIDE_PAGE_SQL
 from agents.market_intelligence.ladder_watchdog import (
     _CLOSE_EPISODE_SQL as _LADDER_CLOSE_EPISODE_SQL,
@@ -344,6 +349,12 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
 # when you add one. Statements are IMPORTED from their owner module, never copied — a copy can
 # drift from what actually executes, which would make this gate green about the wrong SQL.
 SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
+    # #594 (2026-11-21): the slot-rank watch's shelf step — records only, runs detached after the
+    # entries. Imported from the owner so they cannot go stale. A column or type mismatch here would
+    # otherwise show only as shelf columns that stay NULL.
+    ("ep_slot_rank_shadow._shelf_step: the shelf columns filled on the watch rows", _SLOT_RANK_SHELF_UPDATE_SQL),
+    ("ep_slot_rank_shadow._shelf_step: the board's prior-day daily bars", _SLOT_RANK_SHELF_BARS_SQL),
+    ("ep_slot_rank_shadow._shelf_step: the latest session before the alert date", _SLOT_RANK_SHELF_LATEST_SESSION_SQL),
     (
         "db.insert_universe_floor_shadow_rows: #606 D-1 universe-floor shadow (the 2026-09-01 case)",
         UNIVERSE_FLOOR_SHADOW_INSERT_SQL,

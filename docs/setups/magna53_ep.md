@@ -388,12 +388,41 @@ ticker. Mechanics + policy:
   ranking sets who STARTS first (and therefore who reaches the insert-time cap recount
   first in the typical case); a top pick stalled on its bar fetch does not block lower
   picks — deliberate, one stall must not eat the 09:45 window.
-- **The watch (the ruling's other half)**: every invocation records what EACH of six
+- **The watch (the ruling's other half)**: every invocation records what EACH of seven
   rankings (RS / ep_score / briefing composite / ADV$ / alphabetical-the-control /
-  volume percentile — the sixth added 2026-09-04, #624, records only, no change to
-  admission/scoring; SCHEMA PENDING a `mi_ep_slot_rank_shadow` column addition in
-  db.py — see `ep_slot_rank_shadow.py`'s docstring) would have picked — raw inputs +
-  ranks + `acting_key` into `mi_ep_slot_rank_shadow`, on BOTH toggle sides, SILENT.
+  volume percentile — the sixth, added 2026-09-04, #624 / shelf distance — the seventh,
+  added 2026-11-21, #594; both records only, no change to admission/scoring/slots)
+  would have picked — raw inputs + ranks + `acting_key` into `mi_ep_slot_rank_shadow`,
+  on BOTH toggle sides, SILENT. All columns are created by db.py's `initialize_schema`.
+- **The seventh recorded ranking — shelf distance (`rank_shelf`, 2026-11-21, #594,
+  operator: "Aligned, but we should keep testing this idea"). RECORDS ONLY — it changes
+  no slot allocation, order, entry or size; making it act is a separate signed change.**
+  - *What it measures*: how far the last two pullback lows sit from the top of the base
+    the stock broke out of before its run, in ADR units (`shelf_dmin`; higher ranks
+    first, no reading last, ticker ASC tiebreak; an all-NULL board is left unranked).
+    ONE definition, `agents/market_intelligence/shelf_distance.py`, shared with the
+    analysis scripts (rule text: `scripts/probes/_ep_rank_v2_1103/build_f3/F3_DEFINITION.md`).
+  - *Why*: on his labelled charts the good ones sit nearer their shelf than the bad ones
+    about 3 times in 4 (`docs/analysis/ep_rank_v2_prereg_2026-11-03.md` RESULT 6-9;
+    0.750 on the 11 fresh labels of 11-21). A lead to keep testing, not a rule.
+  - *Data*: `mi_daily_closes` bars strictly BEFORE the alert date (the feature reads no
+    bar on or after the gap day), 800 calendar days — the rule reaches 355 sessions at
+    most. Fewer than 250 prior sessions, fewer than two pullback lows, a bad bar, or a
+    last bar that is not the latest session → no number, with the reason in `shelf_null`.
+  - *When it runs*: NOT at 09:31 in front of orders. `process_new_alerts_live` starts it
+    as a detached task as its last statement, after every entry task of that invocation
+    has finished. The function runs several times a morning, so the step can overlap a
+    LATER invocation's entries, holding one of the five pooled DB connections for its two
+    reads and one write (milliseconds normally). It is cut off after 5 seconds and fills its own columns (`shelf_dmin`, `shelf_price`,
+    `shelf_date`, `shelf_structure`, `shelf_adr20_pct`, `shelf_asof`, `shelf_null`,
+    `rank_shelf`) with one UPDATE on the rows the watch just wrote. The watch row's own
+    INSERT is unchanged. **Fail direction: the shelf columns stay NULL, loudly
+    (`slot_rank_shelf_failed` audit row) — nothing else is affected.**
+  - *Pins*: `tests/test_594_shelf_rank_shadow.py` (the 11 labelled values reproduced from
+    prior-day bars; the gap day's bar is never read; board order, submit order and results
+    identical with the step working, failing or hanging, both toggle sides).
+  - *Not yet*: the `ep_slot_ranking_watch_533` review's predicate does not read
+    `rank_shelf`; the read query is written when the first settled mornings carry it.
   Outcomes join at read time from `mi_daily_closes`. Review `ep_slot_ranking_watch_533`
   (data_gated_reviews.yaml) fires at 10 settled multi-alert mornings with explicit
   revert/switch bands.
@@ -646,6 +675,18 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
 10. **The +8R profit-take sells 1 share of a 2-share position, but a 1-share reach is still a silent no-op and the new branch has no historical event** (2026-10-10, his "go with rec" — change log 2026-10-10 below). VICR, the trigger, held ONE share and is not covered; 0 of 4 two-share live fills ever reached +8R; `too_small_to_split` is never written to `mi_audit_log`; `/partialnow` still refuses 2-share positions. Filed here per CHANGE_PROCESS r7 — the entry carries the numbers and the verify list.
 
 ## Change log (newest first)
+
+### 2026-11-21 — #594: the shelf distance is RECORDED as a seventh ranking on the slot-rank watch (RECORDS ONLY — no slot, order, entry, size or safeguard change; BUILT on a local branch, NOT deployed)
+
+**Trigger**: operator ruling 2026-11-21 on the shelf-distance lead: *"Aligned, but we should keep testing this idea"*.
+
+**Evidence**: `docs/analysis/ep_rank_v2_prereg_2026-11-03.md` RESULT 6-9 — on his labelled charts the good ones sit nearer their shelf than the bad ones (0.750 on the 11 fresh labels of 11-21, 28 good-vs-bad pairs; 0.738 pooled over samples 6-10, 55 charts). Directional; small samples — which is why it is recorded and not used. Parity: `tests/test_594_shelf_rank_shadow.py` reproduces those 11 values from prior-day bars through the production code.
+
+**Anticipated effect**: none on entries, orders, slots or sizes (board order, submit order and results are pinned identical with the step working, failing or hanging). Worst case on a multi-alert morning: one of five pooled DB connections busy for up to 5 seconds while a later invocation is submitting. `mi_ep_slot_rank_shadow` rows written after the deploy carry `shelf_dmin` / `rank_shelf` (or a `shelf_null` reason) within seconds of the last entry task finishing. One extra `mi_daily_closes` read per invocation, after the entries, cut off at 5 seconds.
+
+**Reversion-flag**: NEW (a recorded column beside the six existing ones; the acting RS order of 2026-08-30 is untouched).
+
+**Status**: built + tested locally 2026-11-21; not deployed. Detail: §"Within-day slot ranking" above and `ep_slot_rank_shadow.py` "THE SHELF STEP". The one definition moved from the analysis folder to `agents/market_intelligence/shelf_distance.py`; the analysis scripts import it.
 
 ### 2026-11-01 — #482 weekend follow-ups: (1) the replays model the 2026-10-28 trail-arming fix from the session it went live · (2) a LATE fill's open hour row and its catch-up are ONE transaction · (3) the deferred tidy-ups in the two hour-bar recorders, rows byte-identical (RECORD / REPLAY CODE ONLY — no live entry, exit, stop, size or safeguard change; BUILT on branch `482-followups`; DEPLOYED 2026-11-01 on his "deploy" — server `1330bc75`, market-agent then execution, DEPLOY OK x2; VERIFY-LIVE the first 18:04 ET run, Mon 11-02, against `scripts/probes/_482_deploy_1101/pre_deploy_lfc_dump.csv`)
 

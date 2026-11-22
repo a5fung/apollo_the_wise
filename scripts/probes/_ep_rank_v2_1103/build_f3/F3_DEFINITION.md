@@ -1,7 +1,7 @@
 # Feature 3 re-defined — "the pullbacks held the top of the base it broke out of" (PRE-REGISTERED 2026-11-03)
 
 Written BEFORE any score on populations A, B or C is computed. The only data looked at before this was
-written is KOD's own chart (the calibration case, below). Implementation: `f3_def.py` (the only copy; the
+written is KOD's own chart (the calibration case, below). Implementation: `agents/market_intelligence/shelf_distance.py` since 2026-11-21 (#594; `f3_def.py` re-exports it) (the only copy; the
 scorer and the KOD check both import it). Everything else — loaders, populations A/B/C, day pools, the
 composite, bars (i)-(iii) — is the 11-03 run's own code (`../build/rank_v2.py`, executed verbatim via `rv2.py`).
 

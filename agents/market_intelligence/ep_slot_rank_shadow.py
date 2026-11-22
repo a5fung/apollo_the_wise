@@ -1,7 +1,8 @@
-"""#533 WITHIN-DAY SLOT RANKING — the acting RS order + the six-ranking watch record
+"""#533 WITHIN-DAY SLOT RANKING — the acting RS order + the seven-ranking watch record
 (2026-08-30, OPERATOR-SIGNED: "switch to RS rank, but observe going forward if it
 deteriorates or other ranking starts to do better"; sixth ranking — rank_vol_pct —
-added 2026-09-04, #624, records only, see below).
+added 2026-09-04, #624; seventh — rank_shelf, the shelf distance — added 2026-11-21,
+#594; both records only, see below).
 
 THE DEFECT THIS FIXES. `live_tracker.process_new_alerts_live` selected the day's HIGH
 alerts with `DISTINCT ON (ticker) … ORDER BY ticker, ep_score DESC` — `DISTINCT ON`
@@ -37,8 +38,9 @@ THE WATCH — the other half of the ruling. Every invocation with >=1 alert on t
 board, one row per (invocation, ticker) into `mi_ep_slot_rank_shadow`: RAW INPUTS
 (ep_score / gap_pct / prior-day rs_composite, rs_rank, adv_20, score-row close /
 theme stage / vol_percentile — never computed points, the #583 stale-derived-value
-class) plus the 1-based rank the board's names take under each of SIX candidate
-orderings:
+class) plus the 1-based rank the board's names take under each of SEVEN candidate
+orderings (six written with the row, the seventh — rank_shelf — filled in afterwards,
+see THE SHELF STEP below):
   rank_rs         — the acting order above (prior-day RS composite)
   rank_ep_score   — ep_score DESC (the post-08-22 score: ZERO settled multi-alert
                     days existed at ship — this column is how it gets its read)
@@ -64,6 +66,11 @@ orderings:
                     — TINY SAMPLES, STRIKING NOT SETTLED. This column exists to make
                     the question answerable on real data, nothing more; see the
                     ⚠ RECORDS-ONLY note below.
+  rank_shelf      — shelf distance DESC (2026-11-21, #594): `dmin`, how far the last
+                    two pullback lows sit from the top of the base the stock broke
+                    out of before its run, in ADR units — higher (pullbacks held
+                    nearer or above that top) ranks first; no reading ranks last;
+                    ticker ASC breaks ties. See THE SHELF STEP below.
 `acting_key` stamps which ordering ACTED that invocation ('rs' | 'legacy_alpha') —
 never inferred from dates. Append-only BY DESIGN (no upsert): the board grows through
 the morning (bar_stream + cron triggers), and per-invocation history with `trigger` +
@@ -75,35 +82,68 @@ The review that answers "deteriorates / other ranking does better" is
 `ep_slot_ranking_watch_533` in data_gated_reviews.yaml (10 settled multi-alert
 mornings).
 
-⚠ RECORDS ONLY — `rank_vol_pct` (like its five siblings) changes NO slot allocation,
-admission, score or alert. It is read by no grading/entry/sizing/safeguard path.
-Making any recorded ranking act would be a separate operator-signed change under
-CHANGE_PROCESS (THE LINE) — nothing here does that.
+⚠ RECORDS ONLY — `rank_vol_pct` and `rank_shelf` (like their five siblings) change NO
+slot allocation, admission, score or alert. They are read by no grading/entry/sizing/
+safeguard path. Making any recorded ranking act would be a separate operator-signed
+change under CHANGE_PROCESS (THE LINE) — nothing here does that.
 
-⚠ SCHEMA PENDING (2026-09-04, #624): `vol_percentile` and `rank_vol_pct` are NOT
-YET columns on `mi_ep_slot_rank_shadow` in db.py's `initialize_schema` — adding them
-there was out of scope for this change (db.py ships tonight in an unrelated deploy
-window; touching it here risked a mid-flight partial edit). The exact lines to add,
-house `ADD COLUMN IF NOT EXISTS` pattern, next to the table's existing CREATE:
-    ALTER TABLE mi_ep_slot_rank_shadow ADD COLUMN IF NOT EXISTS vol_percentile DOUBLE PRECISION;
-    ALTER TABLE mi_ep_slot_rank_shadow ADD COLUMN IF NOT EXISTS rank_vol_pct INT;
-Until those land, EVERY `snapshot_slot_rank_board()` write fails (fail-open,
-warning-logged, 0 rows) — not just the two new fields, the WHOLE six-way row, since
-it is one INSERT statement. `mi_ep_slot_rank_shadow` is registered in
-`health_checks._DETECTOR_LIVENESS_TABLES` so a dark table is not silent forever,
-but do not deploy this file ahead of the db.py column addition.
+THE SHELF STEP (2026-11-21, #594, operator: "Aligned, but we should keep testing this
+idea"). Evidence: docs/analysis/ep_rank_v2_prereg_2026-11-03.md RESULT 6-9 (on his
+labelled charts the good ones sit nearer their shelf than the bad ones about 3 times
+in 4). The feature has ONE definition — `shelf_distance.py` — shared with the analysis
+scripts that produced that evidence.
+  WHEN IT RUNS. Unlike the other six, this ranking needs a query the entry path does
+  not already make (each board name's daily bars), so it is NOT part of the row's
+  INSERT. `live_tracker.process_new_alerts_live` starts `record_shelf_ranks` as a
+  detached task as its LAST statement — after every entry task of THAT invocation has
+  finished and the skip digest is sent — so it adds nothing in front of that
+  invocation's orders and nothing to the function's return (the bar-stream handler
+  awaits that return). ⚠ The function is invoked several times a morning (once per
+  first bar + the 09:31 cron), so the step of one invocation CAN overlap the entries
+  of a later one: it then holds ONE of the pool's five connections for its two reads
+  and again for its write — milliseconds normally, never longer than
+  SHELF_STEP_TIMEOUT_SEC, which bounds the whole step. Registered in
+  scripts/preflight_db_updates.py (prepared against the real schema at deploy).
+  WHAT IT WRITES. One UPDATE per board name filling the shelf columns on the rows the
+  INSERT just wrote, matched on (alert_date, ticker, recorded_at) — live_tracker stamps
+  `recorded_at` once and passes it to both calls. This UPDATE of columns the INSERT
+  leaves NULL is the ONE exception to "append-only"; it never touches another column.
+  The INSERT below is unchanged, so a shelf failure — or a missing shelf column — can
+  never cost the six-way row.
+  THE DATA. `mi_daily_closes`, the table the evidence itself was computed from
+  (scripts/probes/_594_sample10_1121/q2_bars.sql), bars STRICTLY BEFORE the alert
+  date (the feature reads no bar on or after the gap day), bounded to
+  SHELF_BARS_LOOKBACK_DAYS calendar days — more than the 355 sessions the rule can
+  reach. A name whose last bar is not the table's latest session before the alert
+  date gets NULL with `stale_last_bar(...)` rather than a number off shifted
+  sessions.
+  RAW INPUTS RECORDED: shelf_dmin, shelf_price, shelf_date, shelf_structure,
+  shelf_adr20_pct, shelf_asof (the last bar used) and shelf_null (why there is no
+  number: thin history, fewer than two pullback lows, a bad bar, a stale last bar).
+  A name is ranked on its dmin whatever shelf_structure says (the evidence scored
+  them that way). When NO board name has a number, rank_shelf stays NULL for all —
+  an all-NULL board ranked would be the alphabet posing as a ranking.
+  FAIL DIRECTION. Any error or the timeout: the shelf columns stay NULL, loudly
+  (logger.exception + a `slot_rank_shelf_failed` audit row). SILENT otherwise.
+
+SCHEMA. Every column the INSERT and the shelf UPDATE name is created by db.py's
+`initialize_schema` at boot (`ADD COLUMN IF NOT EXISTS` beside the table's CREATE).
+`mi_ep_slot_rank_shadow` is registered in `health_checks._DETECTOR_LIVENESS_TABLES`
+so a dark table is not silent forever.
 
 $0 AT RUNTIME — one small mi_stock_scores fetch (done by live_tracker, shared with
 the acting sort so acting and recorded RS can never drift) + one mi_themes fetch
-here; no LLM, no API call. The recorder is fail-open (log only, returns 0) and its
+here + the shelf step's one bounded mi_daily_closes fetch after the entries are
+done; no LLM, no API call. The recorder is fail-open (log only, returns 0) and its
 table is read by NO grading / entry / sizing / safeguard path — comparison telemetry
 only (the ep_shortlist_shadow contract). SILENT: no Telegram, ever; liveness is
 watched by `health_checks._DETECTOR_LIVENESS_TABLES`.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -118,12 +158,24 @@ from agents.market_intelligence.db import get_pool  # noqa: E402  (kept for pari
 # candidate). _THEME_BONUS strength order is reused for strongest-stage-per-ticker.
 from agents.market_intelligence.briefing import _ep_composite_key, _THEME_BONUS  # noqa: E402
 
+# The shelf distance's ONE definition (shared with the analysis scripts, #594).
+from agents.market_intelligence.shelf_distance import shelf_distance_from_prior_days  # noqa: E402
+
 # Which orderings the watch records. Frozen tuple so a rename/drop breaks the pin in
 # tests/test_533_slot_ranking.py instead of silently shrinking the record.
 SLOT_RANK_KEYS: tuple[str, ...] = (
     "rank_rs", "rank_ep_score", "rank_composite", "rank_adv", "rank_alpha",
-    "rank_vol_pct",
+    "rank_vol_pct", "rank_shelf",
 )
+
+# ── the shelf step (#594) — see THE SHELF STEP in the module docstring ────────
+# The whole step (bars fetch + compute + UPDATE) is cancelled after this long.
+SHELF_STEP_TIMEOUT_SEC = 5.0
+# Calendar days of bars fetched per name: ~550 sessions, above the 355 the rule can
+# reach and the 504 the labelled evidence was computed on (deeper cannot change it).
+SHELF_BARS_LOOKBACK_DAYS = 800
+# Strong refs — a bare create_task can be garbage-collected mid-flight.
+_SHELF_TASKS: "set[asyncio.Task]" = set()
 
 
 def slot_rank_key(
@@ -325,15 +377,8 @@ async def snapshot_slot_rank_board(
         return 0
 
 
-# ⚠ SCHEMA PENDING (2026-09-04, #624, see module docstring): `vol_percentile` and
-# `rank_vol_pct` below are not yet columns in db.py's initialize_schema. Until the
-# operator adds
-#     ALTER TABLE mi_ep_slot_rank_shadow ADD COLUMN IF NOT EXISTS vol_percentile DOUBLE PRECISION;
-#     ALTER TABLE mi_ep_slot_rank_shadow ADD COLUMN IF NOT EXISTS rank_vol_pct INT;
-# to db.py (sequenced after tonight's unrelated db.py deploy), every INSERT below
-# fails — the whole six-way row, not just these two fields — and
-# snapshot_slot_rank_board's fail-open catch turns that into a silent 0-rows
-# return (warning-logged only). Do not deploy this file ahead of that db.py change.
+# The row's ONE INSERT — unchanged by the shelf step (#594), which fills its own
+# columns afterwards with _SHELF_UPDATE_SQL so it can never cost this row.
 _INSERT_SQL = """
     INSERT INTO mi_ep_slot_rank_shadow (
         alert_date, ticker, recorded_at, trigger, board_n,
@@ -343,3 +388,152 @@ _INSERT_SQL = """
         acting_key
     ) VALUES ($1,$2,$3,$4,$5, $6,$7,$8,$9,$10, $11,$12,$13,$14, $15,$16,$17,$18,$19,$20, $21)
 """
+
+
+# ── the shelf step (#594): the seventh ranking, RECORDS ONLY ──────────────────
+
+_SHELF_LATEST_SESSION_SQL = """
+    SELECT MAX(trade_date) FROM mi_daily_closes
+    WHERE trade_date < $1 AND trade_date >= $2
+"""
+
+# Prior-day bars only (trade_date < the alert date), date-bounded (the #594 read-site rule).
+_SHELF_BARS_SQL = """
+    SELECT ticker, trade_date, open_price, high_price, low_price, close, volume
+    FROM mi_daily_closes
+    WHERE ticker = ANY($1) AND trade_date < $2 AND trade_date >= $3
+    ORDER BY ticker, trade_date
+"""
+
+# Fills ONLY the shelf columns on the rows this invocation's INSERT wrote.
+_SHELF_UPDATE_SQL = """
+    UPDATE mi_ep_slot_rank_shadow
+    SET shelf_dmin = $4, shelf_price = $5, shelf_date = $6, shelf_structure = $7,
+        shelf_null = $8, shelf_adr20_pct = $9, shelf_asof = $10, rank_shelf = $11
+    WHERE alert_date = $1 AND ticker = $2 AND recorded_at = $3
+"""
+
+
+def rank_board_by_shelf(
+    tickers: list[str], dmin_by_ticker: dict[str, "float | None"],
+) -> dict[str, "int | None"]:
+    """Ticker -> 1-based rank by shelf distance: dmin DESC, no reading last, ticker
+    ASC tiebreak. Pure. When NO name has a reading every rank is None — an all-NULL
+    board ranked would be the alphabet posing as a ranking."""
+    if all(dmin_by_ticker.get(t) is None for t in tickers):
+        return {t: None for t in tickers}
+    ordered = sorted(tickers, key=lambda t: (
+        0 if dmin_by_ticker.get(t) is not None else 1,
+        -(float(dmin_by_ticker[t]) if dmin_by_ticker.get(t) is not None else 0.0),
+        t,
+    ))
+    return {t: i + 1 for i, t in enumerate(ordered)}
+
+
+def compute_shelf_rows(
+    tickers: list[str], bars_by_ticker: dict[str, list],
+    latest_session: "date | None",
+) -> list[dict]:
+    """One dict per board name: the shelf raw inputs + rank_shelf. Pure — no I/O.
+    `bars_by_ticker[t]` = daily (date, o, h, l, c, v) oldest-first, all before the
+    alert date. A name with no bars, or whose last bar is not `latest_session`, gets
+    no number and a reason — never a number computed off shifted sessions."""
+    feats: dict[str, dict] = {}
+    for t in tickers:
+        days = bars_by_ticker.get(t) or []
+        if not days:
+            feats[t] = {"null": "no_bars"}
+        elif latest_session is not None and days[-1][0] != latest_session:
+            feats[t] = {"null": f"stale_last_bar({days[-1][0]}<{latest_session})",
+                        "asof": days[-1][0]}
+        else:
+            feats[t] = shelf_distance_from_prior_days(days)
+    ranks = rank_board_by_shelf(tickers, {t: feats[t].get("dmin") for t in tickers})
+    return [{
+        "ticker": t,
+        "shelf_dmin": feats[t].get("dmin"),
+        "shelf_price": feats[t].get("shelf"),
+        "shelf_date": feats[t].get("shelf_date"),
+        "shelf_structure": feats[t].get("structure"),
+        "shelf_null": feats[t].get("null"),
+        "shelf_adr20_pct": feats[t].get("adr"),
+        "shelf_asof": feats[t].get("asof"),
+        "rank_shelf": ranks[t],
+    } for t in tickers]
+
+
+async def _shelf_step(
+    pool: Any, tickers: list[str], alert_date: date, recorded_at: datetime,
+) -> int:
+    floor = alert_date - timedelta(days=SHELF_BARS_LOOKBACK_DAYS)
+    async with pool.acquire() as conn:
+        latest_session = await conn.fetchval(
+            _SHELF_LATEST_SESSION_SQL, alert_date, floor)
+        bar_rows = await conn.fetch(_SHELF_BARS_SQL, tickers, alert_date, floor)
+    # The connection is released before the arithmetic and re-taken for the write.
+    bars: dict[str, list] = {}
+    for r in bar_rows:
+        bars.setdefault(r["ticker"], []).append((
+            r["trade_date"], r["open_price"], r["high_price"], r["low_price"],
+            r["close"], r["volume"],
+        ))
+    rows = compute_shelf_rows(tickers, bars, latest_session)
+    async with pool.acquire() as conn:
+        await conn.executemany(_SHELF_UPDATE_SQL, [
+            (
+                alert_date, r["ticker"], recorded_at,
+                r["shelf_dmin"], r["shelf_price"], r["shelf_date"],
+                r["shelf_structure"], r["shelf_null"], r["shelf_adr20_pct"],
+                r["shelf_asof"], r["rank_shelf"],
+            )
+            for r in rows
+        ])
+    return len(rows)
+
+
+async def record_shelf_ranks(
+    pool: Any, tickers: list[str], alert_date: date, recorded_at: datetime,
+    trigger: str = "",
+) -> int:
+    """The shelf step's entry point (#594) — fills rank_shelf + its raw inputs on the
+    rows `snapshot_slot_rank_board` wrote for this invocation. RECORDS ONLY. Never
+    raises; bounded by SHELF_STEP_TIMEOUT_SEC; on any error or the timeout the shelf
+    columns stay NULL, loudly (logger.exception + `slot_rank_shelf_failed` audit
+    row). Returns names written (0 on failure). SILENT — no Telegram on any path."""
+    try:
+        if not tickers:
+            return 0
+        return await asyncio.wait_for(
+            _shelf_step(pool, list(tickers), alert_date, recorded_at),
+            timeout=SHELF_STEP_TIMEOUT_SEC,
+        )
+    except Exception as e:  # loud-ok: records-only telemetry — shelf columns stay NULL; audit row below
+        logger.exception(
+            f"slot-rank shelf [{trigger}]: step failed — shelf columns stay NULL "
+            f"for {alert_date}: {type(e).__name__}: {e}")
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "slot_rank_shelf_failed",
+                f"[{trigger}] {alert_date} {type(e).__name__}: {str(e)[:200]}",
+            )
+        except Exception:  # loud-ok: log_audit_event never raises; belt+braces
+            pass
+        return 0
+
+
+def schedule_shelf_ranks(
+    pool: Any, tickers: list[str], alert_date: date, recorded_at: datetime,
+    trigger: str = "",
+) -> "asyncio.Task | None":
+    """Start `record_shelf_ranks` as a detached task and return at once — the caller
+    never waits on it. Never raises (returns None when it could not be started)."""
+    try:
+        task = asyncio.get_running_loop().create_task(
+            record_shelf_ranks(pool, tickers, alert_date, recorded_at, trigger))
+        _SHELF_TASKS.add(task)
+        task.add_done_callback(_SHELF_TASKS.discard)
+        return task
+    except Exception as e:  # loud-ok: records-only telemetry — never blocks the entry path's return
+        logger.warning(f"slot-rank shelf [{trigger}]: could not start the step — {e}")
+        return None

@@ -84,7 +84,7 @@ from agents.market_intelligence.db import (
 # five-ranking watch recorder live in ONE module so what acts and what is recorded
 # as acting cannot drift (the ep_detector/ep_shortlist_shadow precedent).
 from agents.market_intelligence.ep_slot_rank_shadow import (
-    rank_board_by_rs, snapshot_slot_rank_board,
+    rank_board_by_rs, schedule_shelf_ranks, snapshot_slot_rank_board,
 )
 from agents.market_intelligence.constants import (
     LIVE_TRADING_ENABLED,
@@ -707,11 +707,16 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
     # into mi_ep_slot_rank_shadow recording what EACH candidate ranking would have
     # picked. Runs on BOTH toggle sides (a revert must not kill the watch — the
     # watch is the revert's evidence). Fire-and-forget: never raises, SILENT.
+    # `_slot_rank_recorded_at` is stamped HERE and shared with the shelf step at the
+    # very end of this function (#594), which fills its own columns on these rows.
+    _slot_rank_recorded_at = datetime.now(ZoneInfo("America/New_York"))
+    _slot_rank_rows_written = 0
     try:
-        await snapshot_slot_rank_board(
+        _slot_rank_rows_written = await snapshot_slot_rank_board(
             pool, alerts, _rs_by_ticker, _rs_score_date,
             acting_key=("rs" if _slot_rank_acting else "legacy_alpha"),
             trigger=trigger, alert_date=today,
+            recorded_at=_slot_rank_recorded_at,
         )
     except Exception as _sse:  # loud-ok: telemetry only — never blocks entries
         logger.warning(f"slot-rank shadow snapshot failed — {_sse}")
@@ -895,6 +900,19 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         await _send_skip_digest(digest_results, today, strategy_mode_prefix(_magna53_mode))
     except Exception as e:
         logger.error(f"ORB skip digest failed (the orders above are unaffected) — {e}", exc_info=True)
+
+    # #594 (operator 2026-11-21: "Aligned, but we should keep testing this idea") — the
+    # SEVENTH recorded ranking, the shelf distance. RECORDS ONLY: it reads `alerts` for
+    # ticker names and writes shelf columns on the watch rows above; it cannot reach the
+    # board order, an order, an entry or a size. Placed LAST on purpose: every entry
+    # task of THIS invocation has finished, and the step is a DETACHED task (never
+    # awaited here — the bar-stream handler awaits this function's return), bounded by
+    # its own 5 s timeout and fail-open to NULL (`slot_rank_shelf_failed` audit row).
+    # It can overlap a LATER invocation's entries, holding one pooled connection for
+    # its reads and write. Detail: ep_slot_rank_shadow.py "THE SHELF STEP".
+    if _slot_rank_rows_written:
+        schedule_shelf_ranks(
+            pool, [a["ticker"] for a in alerts], today, _slot_rank_recorded_at, trigger)
 
     return results
 

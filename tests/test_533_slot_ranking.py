@@ -19,13 +19,16 @@ Pins here:
   4. the flag + fail direction end-to-end: ON -> RS order acts; OFF -> legacy order
      acts; any ranking-block error -> legacy order acts + a slot_rank_fallback
      audit row (never a dead selection);
-  5. the watch (mi_ep_slot_rank_shadow): raw inputs + all six ranks (rank_vol_pct
-     added 2026-09-04, #624, records only) + acting_key, written on BOTH toggle
+  5. the watch (mi_ep_slot_rank_shadow): raw inputs + the six ranks written with
+     the row (rank_vol_pct added 2026-09-04, #624, records only; the seventh,
+     rank_shelf, #594, is filled in afterwards and pinned in
+     tests/test_594_shelf_rank_shadow.py) + acting_key, written on BOTH toggle
      sides (a revert must not kill the watch), writer fail-open (returns 0,
      never raises), SILENT.
 """
 from __future__ import annotations
 
+import asyncio
 import inspect
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock
@@ -160,9 +163,11 @@ _TODAY = date(2026, 8, 28)
 _SCORE_DATE = date(2026, 8, 27)
 
 
-def _dispatching_fetch(alerts_rows, rs_rows):
+def _dispatching_fetch(alerts_rows, rs_rows, shelf_bars=()):
     """conn.fetch stand-in routing on SQL text: the alerts board, the #554
-    completeness counts, the RS fetch, and the themes fetch."""
+    completeness counts, the RS fetch, the themes fetch, and the #594 shelf
+    step's daily-bars fetch (`shelf_bars`: rows, an exception to raise, or an
+    async callable)."""
     async def _fetch(sql, *args):
         if "FROM mi_ep_alerts" in sql:
             return list(alerts_rows)
@@ -172,16 +177,26 @@ def _dispatching_fetch(alerts_rows, rs_rows):
             return list(rs_rows)
         if "mi_themes" in sql:
             return []
+        if "FROM mi_daily_closes" in sql:
+            # the #594 shelf step's bars fetch (runs detached, after the entries)
+            if isinstance(shelf_bars, BaseException):
+                raise shelf_bars
+            if callable(shelf_bars):
+                return await shelf_bars()
+            return list(shelf_bars)
         raise AssertionError(f"unexpected SQL in test: {sql[:80]}")
     return _fetch
 
 
 async def _drive(monkeypatch, *, toggle, alerts_rows, rs_rows,
-                 rs_fetch_raises=False):
+                 rs_fetch_raises=False, shelf_bars=(), shelf_latest=None,
+                 detail=None):
     """Run process_new_alerts_live with everything past selection stubbed.
-    Returns (board_order, audit_events, insert_calls)."""
+    Returns (board_order, audit_events, insert_calls). `detail` (a dict), when
+    given, also receives the submit order, the returned results and every
+    executemany call — the #594 tests read those."""
     pool, conn = make_mock_pool()
-    fetch = _dispatching_fetch(alerts_rows, rs_rows)
+    fetch = _dispatching_fetch(alerts_rows, rs_rows, shelf_bars)
     if rs_fetch_raises:
         _inner = fetch
 
@@ -192,7 +207,13 @@ async def _drive(monkeypatch, *, toggle, alerts_rows, rs_rows,
 
     conn.fetch = AsyncMock(side_effect=fetch)
     conn.fetchrow = AsyncMock(return_value=None)   # regime lookup
-    conn.fetchval = AsyncMock(return_value=False)  # no pre-existing trade rows
+
+    async def _fetchval(sql, *args):
+        if "MAX(trade_date)" in sql:     # the #594 shelf step's latest-session read
+            return shelf_latest
+        return False                     # no pre-existing trade rows
+
+    conn.fetchval = AsyncMock(side_effect=_fetchval)
     conn.executemany = AsyncMock(return_value=None)
     monkeypatch.setattr(lt, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(lt, "LIVE_TRADING_ENABLED", True)
@@ -209,19 +230,35 @@ async def _drive(monkeypatch, *, toggle, alerts_rows, rs_rows,
     import agents.market_intelligence.db as db
     monkeypatch.setattr(db, "log_audit_event", _audit)
 
+    submit_order: list[str] = []
+    if detail is not None:
+        detail["submit_order"] = submit_order
+
     async def _fake_submit(*, alert_context, **_kw):
+        submit_order.append(alert_context["ticker"])
         return {"ticker": alert_context["ticker"], "action": lt.ACTION_SKIPPED,
                 "reason": "setup:test"}
 
     monkeypatch.setattr(lt, "submit_trade_entry", _fake_submit)
-    await lt.process_new_alerts_live(today=_TODAY)
+    results = await lt.process_new_alerts_live(today=_TODAY)
+    # The #594 shelf step is a DETACHED task started as the function's last
+    # statement — it must still be unfinished-or-finished WITHOUT the function
+    # having waited on it; drain it here so no task outlives the test's loop.
+    from agents.market_intelligence import ep_slot_rank_shadow as _esr
+    shelf_tasks = list(_esr._SHELF_TASKS)
+    if shelf_tasks:
+        await asyncio.gather(*shelf_tasks)
+    if detail is not None:
+        detail.update(submit_order=submit_order, results=results,
+                      executemany=list(conn.executemany.await_args_list),
+                      shelf_tasks=shelf_tasks)
 
     triggered = [m for e, m in audit_events if e == "orb_triggered"]
     assert len(triggered) == 1
     board_order = [t.strip("'\" ") for t in
                    triggered[0].split("[")[-1].rstrip("]").split(",")]
     inserts = [c for c in conn.executemany.await_args_list
-               if "mi_ep_slot_rank_shadow" in c.args[0]]
+               if "INSERT INTO mi_ep_slot_rank_shadow" in c.args[0]]
     return board_order, audit_events, inserts
 
 
@@ -291,16 +328,20 @@ def test_the_flag_guards_the_only_reorder():
 # ── Part 5: the watch record ──────────────────────────────────────────────────
 
 
-def test_rows_carry_raw_inputs_all_six_ranks_and_the_acting_key():
+def test_rows_carry_raw_inputs_all_six_insert_ranks_and_the_acting_key():
     board = [_alert("BTDR", 85, gap=30.0, vol_pct=95.0),
              _alert("LIFE", 70, gap=40.0, vol_pct=60.0)]
     rs = {"BTDR": _rs(24, 1969, 1e6, 10.0), "LIFE": _rs(98, 50, 5e5, 4.0)}
     rows = compute_slot_rank_rows(
         board, rs, _SCORE_DATE, {"LIFE": "Accelerating"},
         acting_key="rs", trigger="cron_9_31")
+    # seven recorded rankings; the seventh (rank_shelf, #594) is NOT part of these
+    # rows — it is filled in after the entries by record_shelf_ranks
+    # (tests/test_594_shelf_rank_shadow.py).
     assert SLOT_RANK_KEYS == (
         "rank_rs", "rank_ep_score", "rank_composite", "rank_adv", "rank_alpha",
-        "rank_vol_pct")
+        "rank_vol_pct", "rank_shelf")
+    assert all("rank_shelf" not in r for r in rows)
     by_t = {r["ticker"]: r for r in rows}
     life, btdr = by_t["LIFE"], by_t["BTDR"]
     # raw inputs present; computed points/composites ABSENT (#583 class)
