@@ -3136,3 +3136,8 @@ His words (Sat 11-21, Apollo session chat), on TLRY 2020-11-05 looking like a fa
 - His words (11-22, on the exit grid): *"qullamaggie sells 1/3 at profit 3-5days after buying to lock in something, so vary based on timeframe as well"*
 - Read: Qullamaggie's first sale is set by TIME, not by a price multiple — a third sold 3 to 5 days after the buy when the trade shows a profit, to lock something in. Apollo's live partial is price-based (1/3 at +8R).
 - Action: added as its own arm to the #594 exit test (`docs/analysis/ep_winner_study_prereg_2026-11-21.md` §14.1), registered before any cell is read. Any change to the live exit stays his call (THE LINE).
+
+## 2026-11-22 — Sell an EP that is stuck in a range, to free the slot
+- His words (11-22, on the exit grid): *"also, what if stock is stuck in range after EP, test selling out to free up slot if stock is not moving"*
+- Read: a time stop for dead money — if the stock has not moved within some days of the EP buy, sell the whole position so the slot can take a new trade. Apollo has no such rule live (exits are the stop, the +8R third and the trail).
+- Action: added as its own arm to the #594 exit test (§14.2 of `docs/analysis/ep_winner_study_prereg_2026-11-21.md`), registered before any cell is read. Any change to the live exit stays his call (THE LINE).
