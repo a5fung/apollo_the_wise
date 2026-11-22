@@ -287,3 +287,13 @@ Nothing. Any ambiguity found during the build is written into the result doc as 
 - Call 1: start the daily junk-bond spread snapshot now — yes (internal storage only).
 - Call 2: the live screen may use 2025-26 prices for its averages and display; the TEST never reads them (the #710 seal is a research seal, not a display seal).
 - Call 3 (run the test now): yes.
+
+## 12. AMENDMENT — the leg vote is the TREND (20-day vs 50-day); price vs 20-day is a display dot (2026-11-22, his "go with rec"; written after the eligibility table was seen, BEFORE any outcome is read)
+**What was seen (disclosed):** run 1 (`scripts/probes/_liquidity_1122/02_selection.txt`, freeze sha1 `2e5970a0…`, kept with its outputs) stopped at selection: 16 of 17 legs failed E3 (median run ≥ 5 sessions in both halves). Diagnosis (`build/legs_X.csv`, no outcome read): the price-vs-20-day part flips every 3-4 sessions in every leg, the 20-day-vs-50-day part runs 20-48 sessions, and the gate fails on SPY / QQQ / IWM themselves (rule median 4-5) — so E3 was unpassable for §4.1's rule class, a calibration defect of the gate, not a finding about the indicators. No forward return, breadth, EP or breakout value has been computed.
+**The rule from a principle (his note "vs 20d as well, and its trend"; the trend is the durable read, the 20-day the early warning):**
+- **§4.1 leg vote (replaces the combined rule):** tight (+1) when the 20-day average of X is above its 50-day average, easy (−1) when below, flat (0) only on an exact tie or missing data. A two-state trend vote.
+- **Display only (never votes):** each leg's fast dot = X vs its 20-day average, shown beside the vote as the early warning; his two seed tiles keep JNK/HYG vs 20-day and 50-day and the 20-day slope.
+- **§4.2 selection gates, unchanged in wording, now read on the trend vote:** E1 coverage; E2 tight share 10-70% in both halves; E3 median run ≥ 5 sessions in both halves; redundancy by trend-gap correlation or 85% vote agreement; fixed priority order; ≤ 2 legs per channel; ≥ 4 channels or no composite.
+- **§4.3 composite, unchanged:** channel score = mean of its legs' votes; sum over K channels; Draining when the sum ≥ +K/3 for 3 consecutive closes, exits below +K/6; Easing mirrors. With two-state votes most days carry a non-zero score, so Neutral is rarer than the draft assumed — disclosed now, not tuned.
+- **§5 validation, unchanged:** W0 flicker (≤ 8 word changes a year, median dwell ≥ 10 sessions, Draining 10-35% of days), W1 episodes as written in advance, W2 forward risk, W3 baselines, P2. If W0's Draining band fails under the two-state vote, that is a fail reported as such, never a retune.
+- **Run once more** in the same folder with a new freeze file and hash; run 1 stays on disk.

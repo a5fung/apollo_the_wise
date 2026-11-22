@@ -1,0 +1,56 @@
+VERIFY: liquidity composite run 2026-11-22 (prereg docs/analysis/liquidity_composite_prereg_2026-11-22.md)
+Verifier recount: verify_recount.py -> verify_recount.txt (own code, raw inputs only: ~/apollo_data/liquidity_1122/etf_daily_{all,raw}.psv + fred/*.csv;
+own lag/freshness code; exact integer arithmetic for every FRED leg; builder files opened only to diff).
+
+RESULT: MATCH. Bars applied as written: YES (HYG ex-date check not independently verified against a distribution file, see 3h). Verdict follows: YES (no composite -> no word).
+
+1. RECOUNT
+- Votes: 0 of 17 x 2,264 sessions differ from build/legs_votes.csv (value and missingness), incl. D2's 91 stale sessions.
+- E1/E2/E3 table per half: identical to 02_selection.txt for all 17 legs (n H1 1,210, H2 1,005; first state session 2016-03-15).
+- Kept list ['F2'], K = 1 -> fewer than 4 groups -> no composite (prereg §4.2 item 4). MATCH.
+- Price-only vs adjusted differ shares: identical to 01_data.txt for all 10 ETF legs.
+- Sign audit shares: identical; R2 and F3 flagged as reported.
+- Composite state, W2 forward-risk statistic, episode table: NOT computed, on purpose. The doc builds no composite below 4 groups, so there is nothing to
+  recount; and loading IWM forward lows would spoil the "outcomes still unread" state that the operator's re-registration fork depends on.
+  Confirmed absent: no script in the folder computes a forward value, no W0-W3/episode file exists.
+
+2. FREEZE, RULE, LAGS, SEAL
+- Registration commit aff1f973 at 10:23 PST; ETF fetch 10:27, FRED 10:30, freeze 10:38. Rules §3-§5 unchanged since aff1f973 (only §11 added).
+- Leg rule, thresholds (95% / 10-70% / median run 5 / 0.80-0.85 / 85%), halves, priority order, channel cap during the walk: exactly the doc's.
+- Lags: own code (next session for daily FRED, Wednesday level from Friday for WALCL/WTREGEN, RRP same day, DTWEXBGS obs + 7 days; freshness 7/14 days,
+  ETF carry <= 3 sessions) reproduces every builder vote, so the builder applied the same lags. No look-ahead found.
+- Seal: max date 2024-12-31 in both ETF files, all FRED files and local_etf_closes.csv. The local gz files (which run to 2026) were filtered by awk
+  before Python saw a row: a cut on load, as §6.2 asks.
+- Freeze ordering is moot: no outcome was ever computed. Run 1's timing cannot be confirmed from file times (run1_before_tie_fix/ was copied at 10:38:25).
+- Freeze file: sha1 2e5970a0dac4153bd54df88f93c55ef8370e1de1 (matches the builder's); mtime 10:38:45 = 05_sign_lag_audit's. Holds the item-7 pieces:
+  E1-E3 table per half with n, both correlation matrices, the vote-agreement table (empty: one eligible leg), pruning log, kept list, audit.
+- Tie-fix rerun: run1 vs run2 legs_votes.csv differ on exactly 6 votes (funds rate 2019-05-21 and 2023-07-26, 2-year minus funds 3, Baa spread 1), all
+  moving to flat. Funds rate rows before/after: H1 easy 14.0% -> 13.9%, H2 tight 29.9% -> 29.8%, median runs 6 / 12 unchanged. Kept list identical.
+
+3. PROBLEMS FOUND (none changes the verdict)
+a) "This is not a wording issue" is overstated. E3 says "median run length"; the builder took the median over RUNS. Read as the run length of the median
+   SESSION (the run a typical day sits in), 16 of 17 legs pass and the walk keeps 10 legs in all 6 groups (K = 6) -> a composite WOULD be built.
+   The per-run median is the plain reading of the words, and §7 resolves an ambiguity toward the harder reading, so the builder's reading stands
+   and the verdict is unchanged. Adopting the per-session reading now would be a choice made after seeing this table. But the operator's
+   re-registration fork is closer to a wording question than the report says.
+b) The gate is a knife edge (information only, not a recommendation): at a median-run line of 4 instead of 5, 8 legs in 5 groups pass E1-E3
+   (builder reading); at 3, all 6 groups. Any new line chosen now is chosen after seeing this table.
+c) D2 (broad dollar index) passes E3 if a stale session is skipped instead of breaking a run (H2 median 5.5 vs 4.0; the builder's own 04_e3_context.txt
+   shows 5.5). Kept list would be F2 + D2, K = 2, still no composite. The report lists D2 as "5/4" without saying this.
+d) F3 wording in the sign audit: in March 2020 the 2-year minus funds rate ROSE (-60 bp to +24 bp after the 3/15 cut); the easy read comes from its
+   20-day sitting below its 50-day. "Fell against the funds rate" is wrong for 2020. Code is right; no effect.
+e) Disclosure error: §11 (his rulings) IS committed (23cefb41, 10:28:44 PST), not uncommitted as the report says. Harmless.
+f) DTWEXBGS release timing in holiday weeks NOT checked (the +7-day lag is the doc's; whether a delayed release ever lands after a close is
+   unverified). The broad dollar index is not kept under the binding reading, so no effect either way.
+g) Orientation head of EP / breakout files (one outcome row on screen): rests on the builder's own disclosure, cannot be checked from the files;
+   negligible for a re-registration.
+h) HYG adjustment: no step in August 2016 (factor flat 2016-07-01 -> 2016-09-01, 0.5803 -> 0.5828 in one 0.42% step), so Alpaca's adjusted
+   HYG most likely misses that month's distribution: a one-off 0.4% price-only-style drop in the "adjusted" series. "Steps only on ex-dates" and
+   "drift 3-8% a year" still hold, so the stop-gate passes as written; ex-dates were matched to a pattern, not a distribution file. Effect: HYG legs
+   (junk bonds, junk vs Treasuries) around Aug-Oct 2016 only; both fail the run-length gate in the 2021-24 half, which this cannot touch. No effect.
+
+4. BARS AND VERDICT
+- E1/E2/E3 applied per half as written; C1 junk bonds fails E2 (tight 9.4% of 1,210 sessions in H1) and E3; HYG substitution follows the JNK rule
+  (Alpaca JNK starts 2019-05-06, so 2016-18 are uncovered).
+- §5.6: no composite means W0-W3 cannot pass -> "no word on any surface"; rows labelled "context, not validated". Follows.
+- The "N of K groups tight" count with K = 1 is not a meaningful display; correctly left as his fork.

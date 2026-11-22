@@ -1,0 +1,52 @@
+leg half  runs  median  mean  share_of_runs_1-2_sessions  share_of_runs>=5  longest | recount of 02
+C1  H1   159    4.0    7.6   35.2%   44.7%    54
+C1  H2   142    4.0    7.1   39.4%   45.1%    41
+      C1: votes differing from 01's saved votes: 0 of 2215
+C2  H1   173    4.0    7.0   40.5%   49.7%    41
+C2  H2   162    3.0    6.2   40.1%   40.1%    53
+      C2: votes differing from 01's saved votes: 0 of 2215
+C3  H1   111    8.0   10.9   27.0%   62.2%    47
+C3  H2   146    4.0    6.9   41.1%   42.5%    45
+      C3: votes differing from 01's saved votes: 0 of 2215
+F1  H1   147    6.0    8.2   26.5%   59.9%    55
+F1  H2   172    3.0    5.8   41.9%   39.5%    54
+      F1: votes differing from 01's saved votes: 0 of 2215
+F2  H1   122    6.0    9.9   32.8%   58.2%    48
+F2  H2    60   12.0   16.8   15.0%   78.3%   270
+      F2: votes differing from 01's saved votes: 0 of 2215
+F3  H1   180    4.0    6.7   36.1%   45.6%    59
+F3  H2   136    4.0    7.4   40.4%   44.1%    63
+      F3: votes differing from 01's saved votes: 0 of 2215
+R1  H1   182    4.0    6.6   38.5%   45.1%    47
+R1  H2   145    4.0    6.9   42.8%   42.8%    40
+      R1: votes differing from 01's saved votes: 0 of 2215
+R2  H1   181    3.0    6.7   45.3%   40.3%    97
+R2  H2   135    3.0    7.4   44.4%   43.7%    63
+      R2: votes differing from 01's saved votes: 0 of 2215
+D1  H1   177    4.0    6.8   38.4%   45.8%    39
+D1  H2   135    4.0    7.4   40.0%   46.7%    48
+      D1: votes differing from 01's saved votes: 0 of 2215
+D2  H1   172    5.0    6.7   29.1%   50.6%    44
+D2  H2   157    4.0    6.1   37.6%   48.4%    29
+      D2: votes differing from 01's saved votes: 0 of 2124
+D3  H1   179    4.0    6.8   41.9%   46.9%    47
+D3  H2   118    3.0    8.5   39.8%   44.9%    56
+      D3: votes differing from 01's saved votes: 0 of 2215
+M1  H1   170    3.5    7.1   42.4%   45.3%    55
+M1  H2   137    5.0    7.3   33.6%   53.3%    43
+      M1: votes differing from 01's saved votes: 0 of 2215
+M2  H1   162    4.0    7.5   37.7%   45.7%    47
+M2  H2   189    3.0    5.3   42.9%   40.2%    31
+      M2: votes differing from 01's saved votes: 0 of 2215
+K1  H1   161    4.0    7.5   37.9%   46.6%    46
+K1  H2   145    4.0    6.9   37.2%   49.7%    43
+      K1: votes differing from 01's saved votes: 0 of 2215
+K2  H1   170    5.0    7.1   37.6%   52.4%    35
+K2  H2   169    4.0    5.9   37.9%   45.0%    31
+      K2: votes differing from 01's saved votes: 0 of 2215
+K3  H1   182    4.0    6.6   41.8%   45.1%    61
+K3  H2   156    3.0    6.4   40.4%   44.2%    33
+      K3: votes differing from 01's saved votes: 0 of 2215
+K5  H1   184    3.0    6.6   45.1%   43.5%    69
+K5  H2   134    4.0    7.5   33.6%   47.0%    66
+      K5: votes differing from 01's saved votes: 0 of 2215

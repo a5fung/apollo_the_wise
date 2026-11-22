@@ -1,0 +1,100 @@
+grid sessions 2264 2016-01-04 2024-12-31
+missing adjusted bars per ticker on grid: {'JNK': 839}
+
+HYG adjustment check: adj/raw factor first 0.56380 last 0.89841; step days (|change|>0.001) n=107
+  steps per year: {2016: 11, 2017: 12, 2018: 12, 2019: 12, 2020: 12, 2021: 12, 2022: 12, 2023: 12, 2024: 12}
+  negative steps: 0  step size min/median/max: 0.0032 0.0043 0.0061
+  step day-of-month counts: {1: 72, 2: 11, 3: 14, 4: 1, 14: 1, 15: 1, 16: 1, 17: 1, 18: 2, 19: 1, 21: 1, 22: 1}
+  months with >1 step: {'2016-12': 2, '2017-12': 2, '2018-12': 2, '2019-12': 2, '2020-12': 2, '2021-12': 2, '2022-12': 2, '2023-12': 2, '2024-12': 2}
+  non-step days max |factor change|: 0.000211 (n=2156)
+  factor drift per calendar year: {2016: 0.0511, 2017: 0.052, 2018: 0.0543, 2019: 0.0521, 2020: 0.0524, 2021: 0.0409, 2022: 0.0521, 2023: 0.0612, 2024: 0.0623}
+  drift 3-8% every year: True | steps all upward, <=2 per month: True
+  step dates: 2016-02-01 2016-03-01 2016-04-01 2016-05-02 2016-06-01 2016-07-01 2016-09-01 2016-10-03 2016-11-01 2016-12-01 2016-12-22 2017-02-01 2017-03-01 2017-04-03 2017-05-01 2017-06-01 2017-07-03 2017-08-01 2017-09-01 2017-10-02 2017-11-01 2017-12-01 2017-12-21 2018-02-01 2018-03-01 2018-04-02 2018-05-01 2018-06-01 2018-07-02 2018-08-01 2018-09-04 2018-10-01 2018-11-01 2018-12-03 2018-12-18 2019-02-01 2019-03-01 2019-04-01 2019-05-01 2019-06-03 2019-07-01 2019-08-01 2019-09-03 2019-10-01 2019-11-01 2019-12-02 2019-12-19 2020-02-03 2020-03-02 2020-04-01 2020-05-01 2020-06-01 2020-07-01 2020-08-03 2020-09-01 2020-10-01 2020-11-02 2020-12-01 2020-12-17 2021-02-01 2021-03-01 2021-04-01 2021-05-03 2021-06-01 2021-07-01 2021-08-02 2021-09-01 2021-10-01 2021-11-01 2021-12-01 2021-12-16 2022-02-01 2022-03-01 2022-04-01 2022-05-02 2022-06-01 2022-07-01 2022-08-01 2022-09-01 2022-10-03 2022-11-01 2022-12-01 2022-12-15 2023-02-01 2023-03-01 2023-04-03 2023-05-01 2023-06-01 2023-07-03 2023-08-01 2023-09-01 2023-10-02 2023-11-01 2023-12-01 2023-12-14 2024-02-01 2024-03-01 2024-04-01 2024-05-01 2024-06-03 2024-07-01 2024-08-01 2024-09-03 2024-10-01 2024-11-01 2024-12-02 2024-12-18
+  SPLIT-like day UUP [('2023-12-18', 0.06)]
+
+local cross-check (Alpaca raw vs local split-adjusted close): ticker src n max|rel diff| n>0.5%
+  ARKK  cb702         n= 821 max=0.0000 n_gt_0.5%=0
+  CPER  cb702         n= 821 max=0.0031 n_gt_0.5%=0
+  FXY   cb702         n= 821 max=0.0013 n_gt_0.5%=0
+  GLD   cb702         n= 821 max=0.0002 n_gt_0.5%=0
+  HYG   cb702         n= 821 max=0.0001 n_gt_0.5%=0
+  IEF   cb702         n= 821 max=0.0000 n_gt_0.5%=0
+  IEI   cb702         n= 821 max=0.0000 n_gt_0.5%=0
+  IWM   cb702         n= 821 max=0.0008 n_gt_0.5%=0
+  JNK   cb702         n= 821 max=0.0000 n_gt_0.5%=0
+  KRE   cb702         n= 821 max=0.0003 n_gt_0.5%=0
+  LQD   cb702         n= 821 max=0.0003 n_gt_0.5%=0
+  QQQ   cb702         n= 821 max=0.0000 n_gt_0.5%=0
+  SLV   cb702         n= 821 max=0.0000 n_gt_0.5%=0
+  SPHB  cb702         n= 821 max=0.0000 n_gt_0.5%=0
+  SPLV  cb702         n= 821 max=0.0000 n_gt_0.5%=0
+  SPY   cb702         n= 821 max=0.0007 n_gt_0.5%=0
+  TLT   cb702         n= 821 max=0.0000 n_gt_0.5%=0
+  UUP   cb702         n= 821 max=0.0002 n_gt_0.5%=0
+  ARKK  cb702_pre_v2  n=1627 max=0.0000 n_gt_0.5%=0
+  CPER  cb702_pre_v2  n=1588 max=0.0000 n_gt_0.5%=0
+  FXY   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  GLD   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  HYG   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  IEF   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  IEI   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  IWM   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  JNK   cb702_pre_v2  n= 796 max=0.0000 n_gt_0.5%=0
+  KRE   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  LQD   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  QQQ   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  SLV   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  SPHB  cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  SPLV  cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  SPY   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  TLT   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+  UUP   cb702_pre_v2  n=1635 max=0.0000 n_gt_0.5%=0
+
+JNK rule (needs every calendar year 2016-2024: daily-return corr with HYG >= 0.90 and no day differing > 3 points)
+  2016: JNK sessions with a return n=0 of 252 -> year not covered -> FAIL
+  2017: JNK sessions with a return n=0 of 251 -> year not covered -> FAIL
+  2018: JNK sessions with a return n=0 of 251 -> year not covered -> FAIL
+  2019: JNK sessions with a return n=166 of 252 -> year not covered -> FAIL
+  2020: n=253 corr=0.992 max day gap=1.26 pts -> ok
+  2021: n=252 corr=0.984 max day gap=0.17 pts -> ok
+  2022: n=251 corr=0.995 max day gap=0.30 pts -> ok
+  2023: n=250 corr=0.995 max day gap=0.16 pts -> ok
+  2024: n=252 corr=0.988 max day gap=0.13 pts -> ok
+  RESULT: C1 uses HYG for the whole history (no splice); JNK only on the seed tile
+
+first session with a 50-session average: 2016-03-15 (grid session #50)
+
+leg: stale sessions (no fresh value) from first state session, of n; D2 freshness is the literal rule (observation exactly 7 days old)
+  C1: stale 0 of 2215
+  C2: stale 0 of 2215
+  C3: stale 0 of 2215
+  F1: stale 0 of 2215
+  F2: stale 0 of 2215
+  F3: stale 0 of 2215
+  R1: stale 0 of 2215
+  R2: stale 0 of 2215
+  D1: stale 0 of 2215
+  D2: stale 91 of 2215
+  D3: stale 0 of 2215
+  M1: stale 0 of 2215
+  M2: stale 0 of 2215
+  K1: stale 0 of 2215
+  K2: stale 0 of 2215
+  K3: stale 0 of 2215
+  K5: stale 0 of 2215
+  D2 alternative reading (average undefined when its window holds a stale session): sessions with a vote 152 of 2215
+
+price-only (Alpaca raw close) vs adjusted vote, share of sessions differing (n = sessions where both votes exist)
+  C1            differ 23.88% (n=2215) -> adjusted closes required live
+  C1(JNK tile)  differ 24.35% (n=1376) -> adjusted closes required live
+  C2            differ 16.52% (n=2215) -> adjusted closes required live
+  D1            differ  3.43% (n=2215) -> adjusted closes required live
+  D3            differ  0.00% (n=2215) -> price-only acceptable live
+  M1            differ  0.00% (n=2215) -> price-only acceptable live
+  M2            differ  0.00% (n=2215) -> price-only acceptable live
+  K1            differ  2.48% (n=2215) -> adjusted closes required live
+  K2            differ  2.57% (n=2215) -> adjusted closes required live
+  K3            differ  0.86% (n=2215) -> price-only acceptable live
+  K5            differ  1.49% (n=2215) -> price-only acceptable live
+
+saved build/legs_*.csv, etf_adj.csv, etf_raw.csv

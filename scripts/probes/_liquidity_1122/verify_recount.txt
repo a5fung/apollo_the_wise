@@ -1,0 +1,111 @@
+grid 2264 2016-01-04 2024-12-31
+
+VOTE RECOUNT vs builder legs_votes.csv (differences = sessions where vote or missingness differs)
+  C1: 0 differ
+  M1: 0 differ
+  F1: 0 differ
+  F2: 0 differ
+  R1: 0 differ
+  D1: 0 differ
+  K1: 0 differ
+  C2: 0 differ
+  C3: 0 differ
+  R2: 0 differ
+  F3: 0 differ
+  K5: 0 differ
+  D3: 0 differ
+  M2: 0 differ
+  K2: 0 differ
+  K3: 0 differ
+  D2: 0 differ
+  TOTAL differing: 0
+
+first state session 2016-03-15 | H1 n 1210 | H2 n 1005
+
+E1/E2/E3 table, builder's reading (per-run median, a missing vote breaks a run), and the median run under the other readings
+leg half     n   cov%  tight%  easy%  med_run | skip-missing  uncut  per-session
+C1  H1   1210  100.0    9.4   57.4     4.0  |    4.0     4.0    15.5   E1Y E2N E3N
+C1  H2   1005  100.0   18.2   43.7     4.0  |    4.0     4.0    14.0   E1Y E2Y E3N
+M1  H1   1210  100.0   37.8   22.2     3.5  |    3.5     3.5    14.0   E1Y E2Y E3N
+M1  H2   1005  100.0   33.5   23.2     5.0  |    5.0     5.0    12.0   E1Y E2Y E3Y
+F1  H1   1210  100.0   29.4   28.9     6.0  |    6.0     6.0    13.0   E1Y E2Y E3Y
+F1  H2   1005  100.0   25.1   28.8     3.0  |    3.0     3.0    10.0   E1Y E2Y E3N
+F2  H1   1210  100.0   51.8   13.9     6.0  |    6.0     6.0    18.0   E1Y E2Y E3Y
+F2  H2   1005  100.0   29.8   11.7    12.0  |   12.0    12.0    19.0   E1Y E2Y E3Y
+R1  H1   1210  100.0   22.8   36.9     4.0  |    4.0     4.0    13.0   E1Y E2Y E3N
+R1  H2   1005  100.0   38.3   23.5     4.0  |    4.0     4.0    14.0   E1Y E2Y E3N
+D1  H1   1210  100.0   34.1   27.7     4.0  |    4.0     4.0    13.0   E1Y E2Y E3N
+D1  H2   1005  100.0   46.4   18.3     4.0  |    4.0     4.0    15.0   E1Y E2Y E3N
+K1  H1   1210  100.0   33.6   30.5     4.0  |    4.0     4.0    15.0   E1Y E2Y E3N
+K1  H2   1005  100.0   37.0   22.0     4.0  |    4.0     4.0    13.0   E1Y E2Y E3N
+C2  H1   1210  100.0   11.2   50.2     4.0  |    4.0     4.0    13.0   E1Y E2Y E3N
+C2  H2   1005  100.0   12.1   49.8     3.0  |    3.0     3.0    12.0   E1Y E2Y E3N
+C3  H1   1210  100.0   19.2   45.0     8.0  |    8.0     8.0    17.0   E1Y E2Y E3Y
+C3  H2   1005  100.0   20.3   39.6     4.0  |    4.0     4.0    14.0   E1Y E2Y E3N
+R2  H1   1210  100.0   36.9   29.6     3.0  |    3.0     3.0    13.0   E1Y E2Y E3N
+R2  H2   1005  100.0   49.1   20.6     3.0  |    3.0     3.0    15.0   E1Y E2Y E3N
+F3  H1   1210  100.0   28.4   32.7     4.0  |    4.0     4.0    12.0   E1Y E2Y E3N
+F3  H2   1005  100.0   39.5   27.2     4.0  |    4.0     4.0    14.0   E1Y E2Y E3N
+K5  H1   1210  100.0   16.9   45.4     3.0  |    3.0     3.0    13.0   E1Y E2Y E3N
+K5  H2   1005  100.0   46.5   16.7     4.0  |    4.0     4.0    13.0   E1Y E2Y E3N
+D3  H1   1210  100.0   33.6   26.0     4.0  |    4.0     4.0    14.0   E1Y E2Y E3N
+D3  H2   1005  100.0   13.7   53.8     3.0  |    3.0     3.0    21.0   E1Y E2Y E3N
+M2  H1   1210  100.0   32.3   30.0     4.0  |    4.0     4.0    14.0   E1Y E2Y E3N
+M2  H2   1005  100.0   30.9   24.9     3.0  |    3.0     3.5     9.0   E1Y E2Y E3N
+K2  H1   1210  100.0   25.0   32.8     5.0  |    5.0     5.0    12.0   E1Y E2Y E3Y
+K2  H2   1005  100.0   28.2   28.7     4.0  |    4.0     4.0    11.0   E1Y E2Y E3N
+K3  H1   1210  100.0   34.7   25.1     4.0  |    4.0     4.0    13.0   E1Y E2Y E3N
+K3  H2   1005  100.0   30.1   30.0     3.0  |    3.0     3.0    13.0   E1Y E2Y E3N
+D2  H1   1210   95.9   29.9   34.6     5.0  |    5.0     5.0    11.0   E1Y E2Y E3Y
+D2  H2   1005   95.9   38.9   21.3     4.0  |    5.5     4.0    10.0   E1Y E2Y E3N
+
+KEPT LIST per E3 reading (channel cap during the walk)
+  per_run_missing_breaks     eligible ['F2'] -> kept ['F2'], K = 1 -> NO composite (fewer than 4 groups)
+  per_run_missing_skipped    eligible ['F2', 'D2'] -> kept ['F2', 'D2'], K = 2 -> NO composite (fewer than 4 groups)
+  uncut_runs_by_start_half   eligible ['F2'] -> kept ['F2'], K = 1 -> NO composite (fewer than 4 groups)
+  per_session_median         eligible ['M1', 'F1', 'F2', 'R1', 'D1', 'K1', 'C2', 'C3', 'R2', 'F3', 'K5', 'D3', 'M2', 'K2', 'K3', 'D2'] -> kept ['M1', 'F1', 'F2', 'R1', 'D1', 'K1', 'C2', 'K5', 'D3', 'M2'], K = 6 -> composite
+  builder kept_legs.csv: ['F2']
+
+INFO: groups with at least one leg passing E1, E2 and median run >= m in both halves (builder reading), m = 5,4,3
+  m=5: legs ['F2'] -> groups 1
+  m=4: legs ['F2', 'R1', 'D1', 'K1', 'C3', 'F3', 'K2', 'D2'] -> groups 5
+  m=3: legs ['M1', 'F1', 'F2', 'R1', 'D1', 'K1', 'C2', 'C3', 'R2', 'F3', 'K5', 'D3', 'M2', 'K2', 'K3', 'D2'] -> groups 6
+
+SIGN AUDIT: share EASY in 2018-12-03..12-21 and 2020-03-09..03-20
+  C1:   0.0%   0.0%
+  M1:   0.0%   0.0%
+  F1:   0.0%  80.0%
+  F2:   0.0% 100.0%
+  R1:  28.6%  30.0%
+  D1:   0.0%   0.0%
+  K1:   0.0%   0.0%
+  C2:   0.0%   0.0%
+  C3:   0.0%   0.0%
+  R2:  85.7% 100.0%  AUDIT
+  F3: 100.0%  60.0%  AUDIT
+  K5:  42.9%   0.0%
+  D3:  35.7%   0.0%
+  M2:   0.0%   0.0%
+  K2:   0.0%   0.0%
+  K3:   0.0%   0.0%
+  D2:   0.0%   0.0%
+  F3 X (2y minus funds, bp) 2020-03-09..03-20: [-60, -71, -59, -59, -60, -61, 11, 22, 29, 24]
+  F3 MA20, MA50 (bp) on 2020-03-20: -39.7 -21.7
+
+LAG SPOT CHECKS (value used at the session close -> observation it came from)
+  2018-12-03 (Mon): WALCL 4097170 fresh True | DTWEXBGS 1166208 fresh True | DGS2 280
+  2020-03-16 (Mon): WALCL 4311911 fresh True | DTWEXBGS 1171871 fresh True | DGS2 49
+  2022-06-17 (Fri): WALCL 8932420 fresh True | DTWEXBGS 1199981 fresh True | DGS2 314
+  2024-12-31 (Tue): WALCL 6885963 fresh True | DTWEXBGS 1283377 fresh True | DGS2 424
+
+PRICE-ONLY vs ADJUSTED vote differ share (n)
+  C1: 23.88% (n=2215)
+  C2: 16.52% (n=2215)
+  D1:  3.52% (n=2215)
+  D3:  0.00% (n=2215)
+  M1:  0.00% (n=2215)
+  M2:  0.00% (n=2215)
+  K1:  2.48% (n=2215)
+  K2:  2.57% (n=2215)
+  K3:  0.86% (n=2215)
+  K5:  1.49% (n=2215)

@@ -1,0 +1,7 @@
+FRED DGS2 2018-11-30: 2.8  2018-12-21: 2.63 | DFF 2018-11-30: 2.2  2018-12-21: 2.4
+FRED DGS2 2020-03-06: 0.49  2020-03-20: 0.37 | DFF 2020-03-06: 1.09  2020-03-20: 0.15
+grid 2018-12-03: R2 = 2.8 (FRED DGS2 of 2018-11-30 = 2.8, the prior session: lag ok=True) | F3 = 0.60 = that DGS2 minus DFF of 2018-12-02 (2.2)
+grid 2018-12-21: R2 = 2.67 (FRED DGS2 of 2018-12-20 = 2.67, the prior session: lag ok=True) | F3 = 0.27 = that DGS2 minus DFF of 2018-12-20 (2.4)
+grid 2020-03-09: R2 = 0.49 (FRED DGS2 of 2020-03-06 = 0.49, the prior session: lag ok=True) | F3 = -0.60 = that DGS2 minus DFF of 2020-03-08 (1.09)
+grid 2020-03-20: R2 = 0.44 (FRED DGS2 of 2020-03-19 = 0.44, the prior session: lag ok=True) | F3 = 0.24 = that DGS2 minus DFF of 2020-03-19 (0.2)
+Reading: the 2-year yield FELL in both windows (flight to Treasuries), and fell against the funds rate. Under prereg §3 a falling 2-year is EASY. Sign and lag match the doc; both legs stay as coded.
