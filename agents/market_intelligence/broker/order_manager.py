@@ -53,10 +53,12 @@ from agents.market_intelligence.db import (
     get_runtime_toggle,
     _jsonb_param,
 )
+from agents.market_intelligence.broker.hour_bar_walk import REGULAR_CLOSE
 from agents.market_intelligence.audit_events import (
     SIZING_REGIME_FALLBACK,
     SIZING_NOTIONAL_CAP_TRUNCATED,
     STOP_UPDATE_RETRY_TRIGGERED,
+    STOP_ACK_DEFERRED_EXTENDED_HOURS,
     STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS,
     STOP_RAISE_DEFERRED_EXTENDED_HOURS,
     STOP_UPDATE_FAILED,
@@ -2281,7 +2283,6 @@ class _StopBreachSaleDeferred:
 STOP_BREACH_SALE_DEFERRED = _StopBreachSaleDeferred()
 
 _REGULAR_OPEN_ET = datetime_time(9, 30)
-_REGULAR_CLOSE_ET = datetime_time(16, 0)
 
 
 def _regular_session_open_now(now_et: "datetime | None" = None) -> bool:
@@ -2296,7 +2297,7 @@ def _regular_session_open_now(now_et: "datetime | None" = None) -> bool:
     now_et = now_et or datetime.now(_ET)
     if now_et.weekday() >= 5:
         return False
-    close = _REGULAR_CLOSE_ET
+    close = REGULAR_CLOSE
     try:
         from agents.market_intelligence.broker.hour_bar_walk import session_close_et
         from agents.market_intelligence.trading_calendar import get_market_status
@@ -2339,7 +2340,7 @@ _NO_STOP_DEFERRAL_LOOKBACK_SQL = """
     ORDER BY id DESC
 """
 _NO_STOP_DEFERRAL_EVENTS = frozenset({
-    STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS, "stop_ack_deferred_extended_hours"})
+    STOP_BREACH_SALE_DEFERRED_EXTENDED_HOURS, STOP_ACK_DEFERRED_EXTENDED_HOURS})
 
 
 async def stop_deferral_reasons(trade_ids) -> dict[int, str]:

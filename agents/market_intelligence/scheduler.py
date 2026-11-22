@@ -2451,8 +2451,11 @@ async def _stop_ack_timeout_watchdog_job():
                             f"{ticker} #{trade_id}%",
                         )
                         if not recently_deferred:
+                            from agents.market_intelligence.audit_events import (
+                                STOP_ACK_DEFERRED_EXTENDED_HOURS,
+                            )
                             await log_audit_event(
-                                "stop_ack_deferred_extended_hours",
+                                STOP_ACK_DEFERRED_EXTENDED_HOURS,
                                 f"{ticker} #{trade_id}: fallback stop ${stop_target:.2f} refused "
                                 f"as above the market outside the regular session — no sale, "
                                 f"retrying every 30 s",

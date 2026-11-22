@@ -478,11 +478,10 @@ def rank_board_by_shelf(
     board ranked would be the alphabet posing as a ranking."""
     if all(dmin_by_ticker.get(t) is None for t in tickers):
         return {t: None for t in tickers}
-    ordered = sorted(tickers, key=lambda t: (
-        0 if dmin_by_ticker.get(t) is not None else 1,
-        -(float(dmin_by_ticker[t]) if dmin_by_ticker.get(t) is not None else 0.0),
-        t,
-    ))
+    def _key(t: str):
+        d = dmin_by_ticker.get(t)
+        return (d is None, -(float(d) if d is not None else 0.0), t)
+    ordered = sorted(tickers, key=_key)
     return {t: i + 1 for i, t in enumerate(ordered)}
 
 
@@ -515,6 +514,7 @@ def compute_shelf_rows(
         "shelf_adr20_pct": feats[t].get("adr"),
         "shelf_asof": feats[t].get("asof"),
         "rank_shelf": ranks[t],
+        "last_bar_unusable": _is_unusable_last_bar(feats[t].get("null")),
     } for t in tickers]
 
 
@@ -578,7 +578,7 @@ async def record_shelf_ranks(
                 _shelf_step(pool, list(tickers), alert_date, recorded_at),
                 timeout=SHELF_STEP_TIMEOUT_SEC,
             )
-        if rows and all(_is_unusable_last_bar(r["shelf_null"]) for r in rows):
+        if rows and all(r["last_bar_unusable"] for r in rows):
             reasons = "; ".join(f"{r['ticker']}={r['shelf_null']}" for r in rows)
             logger.error(
                 f"slot-rank shelf [{trigger}]: NO board name has a usable last bar "
