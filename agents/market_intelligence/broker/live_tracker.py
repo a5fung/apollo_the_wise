@@ -906,10 +906,11 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
     # ticker names and writes shelf columns on the watch rows above; it cannot reach the
     # board order, an order, an entry or a size. Placed LAST on purpose: every entry
     # task of THIS invocation has finished, and the step is a DETACHED task (never
-    # awaited here — the bar-stream handler awaits this function's return), bounded by
-    # its own 5 s timeout and fail-open to NULL (`slot_rank_shelf_failed` audit row).
-    # It can overlap a LATER invocation's entries, holding one pooled connection for
-    # its reads and write. Detail: ep_slot_rank_shadow.py "THE SHELF STEP".
+    # awaited here — the bar-stream handler awaits this function's return) that does
+    # not touch the database before 09:46 ET (after the ORB submission window), so it
+    # cannot share the pool with a later invocation's entries either. Then: its own
+    # 5 s timeout, fail-open to NULL (`slot_rank_shelf_failed` audit row).
+    # Detail: ep_slot_rank_shadow.py "THE SHELF STEP".
     if _slot_rank_rows_written:
         schedule_shelf_ranks(
             pool, [a["ticker"] for a in alerts], today, _slot_rank_recorded_at, trigger)

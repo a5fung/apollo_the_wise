@@ -18,6 +18,9 @@ Pins here:
      the step starts only after the last entry and is never awaited (the schema side
      is held by tests/test_schema_alter_create_parity.py);
   6. fail-open — an error or the timeout leaves NULL, loudly (audit row), never raises.
+  7. the 09:46 gate — a step started inside the ORB window does not touch the pool
+     before 09:46 ET on the alert date (fake clock); one started from 09:46 runs at
+     once; each invocation fills its own rows (not collapsed).
 """
 from __future__ import annotations
 
@@ -26,7 +29,7 @@ import importlib.util
 import inspect
 import re
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 from zoneinfo import ZoneInfo
@@ -407,6 +410,107 @@ async def test_step_is_cut_off_at_its_timeout(monkeypatch):
     assert n == 0 and loop.time() - t0 < 2.0
     assert events == ["slot_rank_shelf_failed"]
     conn.executemany.assert_not_called()
+
+
+# ── 7. nothing touches the pool before 09:46 ET on the alert date ─────────────
+
+
+def test_seconds_until_the_step_may_run():
+    d = date(2026, 8, 28)
+    f = esr.seconds_until_shelf_may_run
+    assert esr.SHELF_NOT_BEFORE_ET.hour == 9 and esr.SHELF_NOT_BEFORE_ET.minute == 46
+    assert f(d, datetime(2026, 8, 28, 9, 31, tzinfo=_ET)) == 15 * 60
+    assert f(d, datetime(2026, 8, 28, 9, 46, tzinfo=_ET)) == 0.0
+    assert f(d, datetime(2026, 8, 28, 11, 0, tzinfo=_ET)) == 0.0
+    assert f(d, datetime(2026, 8, 29, 9, 31, tzinfo=_ET)) == 0.0          # a past alert date
+    # the same instant expressed in UTC gives the same answer (no naive arithmetic)
+    assert f(d, datetime(2026, 8, 28, 13, 31, tzinfo=ZoneInfo("UTC"))) == 15 * 60
+
+
+class _FakeClock:
+    """A clock the step reads and sleeps on; sleeping blocks until the test advances it."""
+
+    def __init__(self, now: datetime):
+        self.now = now
+        self.slept: list[float] = []
+        self._release = asyncio.Event()
+
+    def now_et(self) -> datetime:
+        return self.now
+
+    async def sleep(self, seconds: float) -> None:
+        self.slept.append(seconds)
+        await self._release.wait()
+        self.now += timedelta(seconds=seconds)
+
+    def advance(self) -> None:
+        self._release.set()
+
+
+def _shelf_pool():
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(return_value=None)
+    conn.fetch = AsyncMock(return_value=[])
+    conn.executemany = AsyncMock()
+    return pool, conn
+
+
+@pytest.mark.asyncio
+async def test_a_step_started_at_0931_does_not_touch_the_pool_before_0946(monkeypatch):
+    clock = _FakeClock(datetime(2026, 8, 28, 9, 31, tzinfo=_ET))
+    monkeypatch.setattr(esr, "_now_et", clock.now_et)
+    monkeypatch.setattr(esr, "_sleep", clock.sleep)
+    pool, conn = _shelf_pool()
+    task = esr.schedule_shelf_ranks(
+        pool, ["AAA", "BBB"], _TODAY, datetime(2026, 8, 28, 9, 31, tzinfo=_ET), "cron_9_31")
+    for _ in range(20):                    # let the task run as far as it can
+        await asyncio.sleep(0)
+    assert clock.slept == [15 * 60]        # it is waiting for 09:46 …
+    assert not task.done()
+    pool.acquire.assert_not_called()       # … and has not touched the pool
+    conn.fetch.assert_not_called()
+    conn.executemany.assert_not_called()
+
+    clock.advance()                        # 09:46 arrives
+    assert await task == 2
+    assert clock.now == datetime(2026, 8, 28, 9, 46, tzinfo=_ET)
+    assert pool.acquire.call_count == 2    # one read pass, one write
+    conn.executemany.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("now", [
+    datetime(2026, 8, 28, 9, 46, tzinfo=_ET),
+    datetime(2026, 8, 28, 10, 5, tzinfo=_ET),
+])
+async def test_a_step_started_from_0946_runs_at_once(monkeypatch, now):
+    clock = _FakeClock(now)
+    monkeypatch.setattr(esr, "_now_et", clock.now_et)
+    monkeypatch.setattr(esr, "_sleep", clock.sleep)
+    pool, conn = _shelf_pool()
+    n = await esr.record_shelf_ranks(pool, ["AAA"], _TODAY, now, "post_open_new_high")
+    assert n == 1 and clock.slept == []
+    conn.executemany.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_each_invocation_before_0946_fills_its_own_rows_after_0946(monkeypatch):
+    """Not collapsed: two invocations → two passes, each on its own recorded_at, both after 09:46."""
+    clock = _FakeClock(datetime(2026, 8, 28, 9, 31, tzinfo=_ET))
+    monkeypatch.setattr(esr, "_now_et", clock.now_et)
+    monkeypatch.setattr(esr, "_sleep", clock.sleep)
+    pool, conn = _shelf_pool()
+    r1 = datetime(2026, 8, 28, 9, 31, 2, tzinfo=_ET)
+    r2 = datetime(2026, 8, 28, 9, 33, 40, tzinfo=_ET)
+    t1 = esr.schedule_shelf_ranks(pool, ["AAA"], _TODAY, r1, "bar_stream")
+    t2 = esr.schedule_shelf_ranks(pool, ["AAA", "BBB"], _TODAY, r2, "cron_9_31")
+    for _ in range(20):
+        await asyncio.sleep(0)
+    pool.acquire.assert_not_called()
+    clock.advance()
+    assert await asyncio.gather(t1, t2) == [1, 2]
+    stamps = [{row[2] for row in c.args[1]} for c in conn.executemany.await_args_list]
+    assert sorted(stamps, key=lambda s: min(s)) == [{r1}, {r2}]
 
 
 @pytest.mark.asyncio

@@ -96,14 +96,24 @@ scripts that produced that evidence.
   not already make (each board name's daily bars), so it is NOT part of the row's
   INSERT. `live_tracker.process_new_alerts_live` starts `record_shelf_ranks` as a
   detached task as its LAST statement — after every entry task of THAT invocation has
-  finished and the skip digest is sent — so it adds nothing in front of that
-  invocation's orders and nothing to the function's return (the bar-stream handler
-  awaits that return). ⚠ The function is invoked several times a morning (once per
-  first bar + the 09:31 cron), so the step of one invocation CAN overlap the entries
-  of a later one: it then holds ONE of the pool's five connections for its two reads
-  and again for its write — milliseconds normally, never longer than
-  SHELF_STEP_TIMEOUT_SEC, which bounds the whole step. Registered in
-  scripts/preflight_db_updates.py (prepared against the real schema at deploy).
+  finished and the skip digest is sent — so it adds nothing to the function's return
+  (the bar-stream handler awaits that return). The function is invoked several times
+  a morning (once per first bar + the 09:31 cron), so a step that ran at once could
+  overlap a LATER invocation's entries and hold one of the pool's five connections.
+  To remove that entirely the task does NOT TOUCH THE DATABASE BEFORE 09:46 ET on
+  the alert date (SHELF_NOT_BEFORE_ET — the ORB submission window shuts at 09:45):
+  started earlier it sleeps until then; started later (or for a past date) it runs
+  at once. Its inputs are prior-day bars, so waiting changes no number. Once it
+  runs, the reads + write are bounded by SHELF_STEP_TIMEOUT_SEC.
+  NOT COLLAPSED: each invocation's task fills its OWN rows (its own recorded_at) —
+  a morning with four invocations before 09:46 runs four small passes at 09:46.
+  Chosen over one merged pass because it needs no shared state and every pass is
+  after the window anyway.
+  ⚠ A DEPLOY OR RESTART BEFORE 09:46 DROPS THE SLEEPING TASKS — those rows keep NULL
+  shelf columns and NO audit row is written (nothing ran to fail). Accepted: the
+  record is recomputable from mi_daily_closes at any time.
+  Registered in scripts/preflight_db_updates.py (prepared against the real schema
+  at deploy).
   WHAT IT WRITES. One UPDATE per board name filling the shelf columns on the rows the
   INSERT just wrote, matched on (alert_date, ticker, recorded_at) — live_tracker stamps
   `recorded_at` once and passes it to both calls. This UPDATE of columns the INSERT
@@ -143,8 +153,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +182,30 @@ SLOT_RANK_KEYS: tuple[str, ...] = (
 # ── the shelf step (#594) — see THE SHELF STEP in the module docstring ────────
 # The whole step (bars fetch + compute + UPDATE) is cancelled after this long.
 SHELF_STEP_TIMEOUT_SEC = 5.0
+# The step's reads/write never start before this ET time on the alert date — one
+# minute after the ORB submission window shuts (09:45), so it can never share the
+# pool with an entry.
+SHELF_NOT_BEFORE_ET = time(9, 46)
+_ET = ZoneInfo("America/New_York")
+
+
+def _now_et() -> datetime:
+    """Seam for tests (a fake clock)."""
+    return datetime.now(_ET)
+
+
+async def _sleep(seconds: float) -> None:
+    """Seam for tests (a fake clock)."""
+    await asyncio.sleep(seconds)
+
+
+def seconds_until_shelf_may_run(alert_date: date, now_et: datetime) -> float:
+    """Seconds from `now_et` to SHELF_NOT_BEFORE_ET on `alert_date` (ET); 0.0 when
+    that moment has passed. Pure."""
+    not_before = datetime.combine(alert_date, SHELF_NOT_BEFORE_ET, tzinfo=_ET)
+    return max(0.0, (not_before - now_et).total_seconds())
+
+
 # Calendar days of bars fetched per name: ~550 sessions, above the 355 the rule can
 # reach and the 504 the labelled evidence was computed on (deeper cannot change it).
 SHELF_BARS_LOOKBACK_DAYS = 800
@@ -497,12 +532,17 @@ async def record_shelf_ranks(
 ) -> int:
     """The shelf step's entry point (#594) — fills rank_shelf + its raw inputs on the
     rows `snapshot_slot_rank_board` wrote for this invocation. RECORDS ONLY. Never
-    raises; bounded by SHELF_STEP_TIMEOUT_SEC; on any error or the timeout the shelf
-    columns stay NULL, loudly (logger.exception + `slot_rank_shelf_failed` audit
-    row). Returns names written (0 on failure). SILENT — no Telegram on any path."""
+    raises. It does not touch the pool before SHELF_NOT_BEFORE_ET (09:46 ET) on the
+    alert date — it sleeps until then; after that its reads + write are bounded by
+    SHELF_STEP_TIMEOUT_SEC. On any error or the timeout the shelf columns stay
+    NULL, loudly (logger.exception + `slot_rank_shelf_failed` audit row). Returns
+    names written (0 on failure). SILENT — no Telegram on any path."""
     try:
         if not tickers:
             return 0
+        wait = seconds_until_shelf_may_run(alert_date, _now_et())
+        if wait > 0:
+            await _sleep(wait)
         return await asyncio.wait_for(
             _shelf_step(pool, list(tickers), alert_date, recorded_at),
             timeout=SHELF_STEP_TIMEOUT_SEC,
