@@ -1,0 +1,20 @@
+SET
+d|event_type|left
+2026-11-16|parabolic_short_shadow_run|{"trade_date": "2026-11-16", "armed": [], "rejected": [], "triggered": [], "settled": [], "closed": [], "deferred": [], "stale": 0, "errors": [], "disabled": fa
+2026-11-17|parabolic_short_shadow_run|{"trade_date": "2026-11-17", "armed": [], "rejected": [], "triggered": [], "settled": [], "closed": [], "deferred": [], "stale": 0, "errors": [], "disabled": fa
+2026-11-18|parabolic_short_shadow_run|{"trade_date": "2026-11-18", "armed": [], "rejected": [], "triggered": [], "settled": [], "closed": [], "deferred": [], "stale": 0, "errors": [], "disabled": fa
+2026-11-19|parabolic_short_shadow_run|{"trade_date": "2026-11-19", "armed": [], "rejected": [], "triggered": [], "settled": [], "closed": [], "deferred": [], "stale": 0, "errors": [], "disabled": fa
+2026-11-20|parabolic_short_shadow_run|{"trade_date": "2026-11-20", "armed": [], "rejected": [], "triggered": [], "settled": [], "closed": [], "deferred": [], "stale": 0, "errors": [], "disabled": fa
+(5 rows)
+scan_date|stage|count
+2026-11-16|unqualified|2
+2026-11-17|anticipation|1
+2026-11-17|unqualified|2
+2026-11-18|unqualified|2
+2026-11-18|watch|1
+2026-11-19|unqualified|1
+2026-11-20|unqualified|2
+(7 rows)
+shadow_rows
+0
+(1 row)
