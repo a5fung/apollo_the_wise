@@ -1,0 +1,40 @@
+AS OF 2026-11-20  (context, not validated)
+
+LEG                 trend(20d vs 50d)  since (sessions)   fast dot (vs 20d)
+C3 Baa spread          TIGHT   since 2026-11-09 (  9)   tight
+F1 net liquidity       TIGHT   since 2026-11-06 ( 10)   easy
+F2 funds rate          TIGHT   since 2026-07-09 ( 95)   flat
+R1 10y real yield      easy    since 2026-11-09 (  9)   tight
+R2 2y yield            easy    since 2026-11-09 (  9)   tight
+D1 dollar (UUP)        TIGHT   since 2026-09-24 ( 41)   tight
+M1 gold/silver         TIGHT   since 2026-10-09 ( 30)   tight
+M2 copper/gold         easy    since 2026-09-29 ( 38)   tight
+K1 small/large         easy    since 2026-11-16 (  4)   easy
+K5 spec growth         TIGHT   since 2026-10-22 ( 21)   tight
+
+GROUPS TIGHT (channel score > 0): 3 of 6; score S = +2.0 (range -6..+6)
+composite state (no word ships; shown for his read): Draining since 2026-10-26
+composite trend (20d vs 50d of S): tightening since 2026-11-02
+
+MONTH-END S / state:
+  2025-08-29  S +0.5  Neutral  groups tight 3
+  2025-09-30  S -4.0  Easing  groups tight 0
+  2025-10-31  S -2.0  Easing  groups tight 1
+  2025-11-28  S +4.0  Draining  groups tight 4
+  2025-12-31  S -2.0  Easing  groups tight 1
+  2026-01-30  S -3.0  Easing  groups tight 1
+  2026-02-27  S -1.5  Easing  groups tight 2
+  2026-03-31  S +4.5  Draining  groups tight 5
+  2026-04-30  S -1.5  Neutral  groups tight 1
+  2026-05-29  S +0.0  Neutral  groups tight 3
+  2026-06-30  S +0.0  Neutral  groups tight 2
+  2026-07-31  S +2.0  Draining  groups tight 3
+  2026-08-31  S +2.0  Draining  groups tight 3
+  2026-09-30  S +1.0  Neutral  groups tight 3
+  2026-10-30  S +2.0  Draining  groups tight 3
+  2026-11-20  S +2.0  Draining
+
+SEED JNK (price, Caruso's chart): 91.54  vs 20d 92.55  vs 50d 92.92  20d slope -0.130/wk  1-month change -1.0%
+SEED gold/silver (GLD/SLV): 8.73  vs 20d 8.00  vs 50d 7.41  1-month change +16.8%
+HY spread: 3.52%  1 month ago 3.40%  3 months ago 2.69%
+Net liquidity: $5.82T  3 months ago $5.79T
