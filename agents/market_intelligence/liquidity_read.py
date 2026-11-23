@@ -31,6 +31,7 @@ import logging
 import math
 import os
 import sys
+import threading
 from dataclasses import dataclass, field
 from datetime import date, datetime, time as dtime
 from zoneinfo import ZoneInfo
@@ -413,12 +414,11 @@ def build_block(inp: Inputs, generated_at: datetime | None = None,
         sg = _side(_ma(S, 20), _ma(S, 50))
         tl, _conf = turns(sg)
         lo = n - MARKER_SESSIONS
-        out["composite_turns"] = [{"date": _d(grid, p), "to": "tightening" if s > 0 else "easing",
-                                   "sessions": n - 1 - p} for p, s in tl if p >= lo]
+        out["composite_turns"] = [{"date": _d(grid, p), "to": _WORD[s], "sessions": n - 1 - p}
+                                  for p, s in tl if p >= lo]
         rs = _run_start(sg)
         out["composite_trend"] = (None if rs is None or np.isnan(sg[-1]) else
-                                  {"direction": {1: "tightening", -1: "easing", 0: "flat"}[int(sg[-1])],
-                                   "since": _d(grid, rs[0]), "sessions": rs[1]})
+                                  {"direction": _WORD[int(sg[-1])], "since": _d(grid, rs[0]), "sessions": rs[1]})
         # §14: the state is computed ONLY to switch the caution label; the state word itself never leaves here
         st = c.state.values
         if st[-1] == "D":
@@ -601,15 +601,17 @@ def splice(breadth_text: str, block: dict) -> str:
     """Add ``"liquidity": <block>`` as the LAST key of the breadth JSON object, textually, so every existing byte
     of the export is unchanged. Raises ValueError unless the input is one JSON object without the key and the
     result parses back to that object plus the key."""
-    body = breadth_text.rstrip()
+    if not (breadth_text.endswith("}\n") or breadth_text.endswith("}")):
+        # psql -A -t ends the object with exactly one newline; the nightly script's byte check assumes it
+        raise ValueError("breadth export does not end with '}' and at most one newline")
+    body = breadth_text[:-1] if breadth_text.endswith("\n") else breadth_text
     base = json.loads(body)
     if not isinstance(base, dict) or not base:
         raise ValueError("breadth export is not a non-empty JSON object")
     if SPLICE_KEY in base:
         raise ValueError("breadth export already carries a liquidity key")
-    if not body.endswith("}"):
-        raise ValueError("breadth export does not end with '}'")
-    out = body[:-1].rstrip() + "," + json.dumps(SPLICE_KEY) + ":" + json.dumps(
+    # body[:-1] = every byte of the export up to its closing brace, untouched (whitespace before it included)
+    out = body[:-1] + "," + json.dumps(SPLICE_KEY) + ":" + json.dumps(
         block, ensure_ascii=False, allow_nan=False, separators=(",", ":")) + "}\n"
     back = json.loads(out)
     if {k: v for k, v in back.items() if k != SPLICE_KEY} != base or back.get(SPLICE_KEY) != block:
@@ -618,6 +620,7 @@ def splice(breadth_text: str, block: dict) -> str:
 
 
 RUN_TIMEOUT_S = 150.0
+WATCHDOG_S = 200.0                     # hard stop for the whole process; under the nightly script's `timeout 240`
 
 
 def run_cli(argv: list[str], stdin_text: str | None, collect=None) -> tuple[int, str, str]:
@@ -645,10 +648,16 @@ def run_cli(argv: list[str], stdin_text: str | None, collect=None) -> tuple[int,
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Process entry. A fetch that outlives RUN_TIMEOUT_S ends the run, and the exit is ``os._exit`` because alpaca-py
-    sets no HTTP timeout: a stuck fetch thread would otherwise keep the interpreter alive past the answer."""
+    """Process entry. A fetch that outlives RUN_TIMEOUT_S ends the run; the exit is ``os._exit`` and a watchdog timer
+    backs it, because alpaca-py sets no HTTP timeout and a stuck fetch thread would keep the interpreter alive."""
     argv = sys.argv[1:] if argv is None else argv
     logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
+    # A hung alpaca-py call sits in an executor thread that asyncio.run() JOINS on its way out, so the fetch timeout
+    # alone would not end the process: the host's `timeout` would kill only the `docker exec` client and leave this
+    # interpreter stuck inside apollo-market, one more each night. The watchdog ends it, with nothing on stdout.
+    dog = threading.Timer(WATCHDOG_S, lambda: os._exit(1))
+    dog.daemon = True
+    dog.start()
     code, out, err = run_cli(argv, sys.stdin.read() if "--splice" in argv else None)
     sys.stdout.write(out)
     sys.stdout.flush()

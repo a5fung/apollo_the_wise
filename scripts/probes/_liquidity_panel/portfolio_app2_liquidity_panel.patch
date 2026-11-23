@@ -7,7 +7,7 @@ Not checked: the look on a phone (no browser render was done).
 
 diff -ruN a/liquidity_view.py b/liquidity_view.py
 --- a/liquidity_view.py	1969-12-31 16:00:00
-+++ b/liquidity_view.py	2026-11-22 20:34:54
++++ b/liquidity_view.py	2026-11-22 21:08:05
 @@ -0,0 +1,217 @@
 +"""The liquidity panel on Market Breadth (Apollo #732): the breadth export's optional ``liquidity`` key.
 +
@@ -209,7 +209,7 @@ diff -ruN a/liquidity_view.py b/liquidity_view.py
 +
 +    turns = [t for t in (liq.get("composite_turns") or []) if isinstance(t, dict) and _short(t.get("date"))]
 +    if turns:
-+        txt = " · ".join(f'{_esc(t.get("to", ""))} {_short(t["date"])}' for t in reversed(turns))
++        txt = " · ".join(f'to {_esc(t["to"])} {_short(t["date"])}' for t in reversed(turns) if t.get("to") in TONES)
 +        parts.append(f'<div class="lq-line">Composite turns (newest first): {txt}</div>')
 +
 +    n_un = len(liq.get("unavailable") or []) if isinstance(liq.get("unavailable"), list) else 0
@@ -286,7 +286,7 @@ diff -ruN a/pages/Market_Breadth.py b/pages/Market_Breadth.py
 +        st.markdown(bv.definitions_html({f"liquidity.{k}": v for k, v in _liq_defs.items()}), unsafe_allow_html=True)
 diff -ruN a/test_fixtures/liquidity_block_2026-11-20.json b/test_fixtures/liquidity_block_2026-11-20.json
 --- a/test_fixtures/liquidity_block_2026-11-20.json	1969-12-31 16:00:00
-+++ b/test_fixtures/liquidity_block_2026-11-20.json	2026-11-22 20:35:38
++++ b/test_fixtures/liquidity_block_2026-11-20.json	2026-11-22 21:08:05
 @@ -0,0 +1,290 @@
 +{
 + "version": 1,
@@ -507,22 +507,22 @@ diff -ruN a/test_fixtures/liquidity_block_2026-11-20.json b/test_fixtures/liquid
 + "composite_turns": [
 +  {
 +   "date": "2026-06-25",
-+   "to": "tightening",
++   "to": "tight",
 +   "sessions": 104
 +  },
 +  {
 +   "date": "2026-09-23",
-+   "to": "easing",
++   "to": "easy",
 +   "sessions": 42
 +  },
 +  {
 +   "date": "2026-11-09",
-+   "to": "tightening",
++   "to": "tight",
 +   "sessions": 9
 +  }
 + ],
 + "composite_trend": {
-+  "direction": "tightening",
++  "direction": "tight",
 +  "since": "2026-11-03",
 +  "sessions": 13
 + },
@@ -580,7 +580,7 @@ diff -ruN a/test_fixtures/liquidity_block_2026-11-20.json b/test_fixtures/liquid
 +}
 diff -ruN a/test_liquidity_panel_732.py b/test_liquidity_panel_732.py
 --- a/test_liquidity_panel_732.py	1969-12-31 16:00:00
-+++ b/test_liquidity_panel_732.py	2026-11-22 20:35:35
++++ b/test_liquidity_panel_732.py	2026-11-22 21:08:05
 @@ -0,0 +1,154 @@
 +"""Apollo #732: the liquidity panel on Market Breadth (the export's optional ``liquidity`` key).
 +
@@ -623,7 +623,7 @@ diff -ruN a/test_liquidity_panel_732.py b/test_liquidity_panel_732.py
 +    for name in ("Baa corporate spread", "Net liquidity", "Fed funds rate", "10-year real yield", "2-year yield",
 +                 "Dollar (UUP)", "Gold / silver", "Copper / gold", "Small vs large", "Speculative growth"):
 +        assert name in h
-+    assert "Composite turns (newest first): tightening 11-09 · easing 09-23 · tightening 06-25" in h
++    assert "Composite turns (newest first): to tight 11-09 · to easy 09-23 · to tight 06-25" in h
 +    assert "\n\n" not in h          # a blank line would end the HTML block in st.markdown
 +
 +
@@ -644,7 +644,7 @@ diff -ruN a/test_liquidity_panel_732.py b/test_liquidity_panel_732.py
 +
 +def test_no_state_word_and_no_bottom_or_top_label():
 +    h = lqv.liquidity_panel_html(_liq())
-+    for banned in ("Neutral", "Easing", "neutral", "bottom", "Bottom", "early marker"):
++    for banned in ("Neutral", "Easing", "easing", "neutral", "bottom", "Bottom", "early marker"):
 +        assert banned not in h
 +    assert "<details" not in h and "<summary" not in h      # nothing behind a tap
 +

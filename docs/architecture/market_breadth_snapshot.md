@@ -364,8 +364,13 @@ history, while the composite reads Draining.
   `"liquidity":`, and it ends with `}`. Otherwise it logs `LIQUIDITY block FAILED or malformed` to stderr and the
   breadth file is published exactly as exported, with **no** `liquidity` key — the page then shows no panel,
   never last night's numbers as today's.
-- Inside the container: every source fails on its own (`errors`); the whole fetch is capped at 150 s and the
-  process ends with `os._exit` (alpaca-py sets no HTTP timeout); any exception = exit 1 with empty stdout.
+- Inside the container: every source fails on its own (`errors`); the whole fetch is capped at 150 s; any
+  exception = exit 1 with empty stdout. A **200 s watchdog** ends the process whatever it is doing (alpaca-py
+  sets no HTTP timeout, and `asyncio.run` joins a stuck fetch thread on its way out — without the watchdog the
+  host's `timeout` would kill only the `docker exec` client and leave one stuck interpreter in `apollo-market`
+  per night). Tested on a real process with a blocked executor thread.
+- The module refuses a breadth file that does not end with `}` and at most one newline (what `psql -A -t`
+  writes; checked against a real published export) — the script's byte check assumes exactly that ending.
 - A failed or stale source makes its leg `unavailable` (it votes 0 and stays in its group's average, prereg
   §4.3), the block's `status` reads `partial` and `unavailable` lists the legs. No bars at all = a block with
   `status: "unavailable"` and a reason.
@@ -422,8 +427,8 @@ group counts, both seed tiles, the spread and net liquidity. Two departures, bot
 | `groups` | array \| null | `{key, name, score, tight}` for the 6 groups |
 | `groups_tight` | object \| null | `{n, of, n_20d_ago, chg_20d}` — groups tight now, of 6, and against 20 sessions ago |
 | `score` | number \| null | the group-score sum |
-| `composite_trend` | object \| null | `{direction, since, sessions}` — `tightening` / `easing` / `flat` |
-| `composite_turns` | array | `{date, to, sessions}`, oldest first, the last 126 sessions |
+| `composite_trend` | object \| null | `{direction, since, sessions}` — `tight` / `easy` / `flat`, the legs' own words (the 20- vs 50-session averages of the score) |
+| `composite_turns` | array | `{date, to, sessions}`, `to` = `tight` / `easy`, oldest first, the last 126 sessions |
 | `caution` | object \| null | `{on: false}` or `{on: true, text, since, sessions, history}`; null before the composite has history |
 | `seeds` | object | `jnk` and `gold_silver`, each null or `{latest, ma20, ma50, vs_ma20, vs_ma50, ma20_vs_ma50, chg_1m_pct}` on RAW prices (`above` / `below` / `at`); `jnk` adds `ma20_slope_wk` (the 20-day's change over 5 sessions) |
 | `hy_spread` | object \| null | `{latest, obs_date, month_ago, chg_1m, three_months_ago}` — percent; BAMLH0A0HYM2 |
@@ -439,7 +444,9 @@ group counts, both seed tiles, the spread and net liquidity. Two departures, bot
   dependencies of yfinance / mplfinance); the real Alpaca daily-bar response shape; the run time inside the
   nightly; the hang cut-off test (skipped on macOS: no `timeout`).
 - ⚠ **His call:** the prereg lists the junk-bond spread as "internal only" (ICE licence). It is in the block
-  under its own key (`hy_spread`) and the page shows it; dropping it is one line on either side.
+  under its own key (`hy_spread`) and the page shows it, so the nightly export would publish the latest value
+  to the (private) portfolio-app2 repo; dropping it is one line on either side. The test fixture also holds 74
+  rows of the series (2026-08-10 → 11-19) in this repo.
 
 ## Change log
 

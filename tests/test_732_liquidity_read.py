@@ -105,7 +105,8 @@ def test_caution_and_composite_trend_match_the_reference(ref_text, ref_block):
     c = ref_block["caution"]
     assert c["on"] is True and c["since"] == m.group(2) and c["text"] == "Caution — liquidity draining"
     m = re.search(r"composite trend \(20d vs 50d of S\): (\w+) since (\d{4}-\d\d-\d\d)", ref_text)
-    assert (ref_block["composite_trend"]["direction"], ref_block["composite_trend"]["since"]) == (m.group(1), m.group(2))
+    assert m.group(1) == "tightening"          # the block says "tight": the legs' own word, and no "easing" ever
+    assert (ref_block["composite_trend"]["direction"], ref_block["composite_trend"]["since"]) == ("tight", m.group(2))
 
 
 # The reference script left Draining / Easing on ONE close back inside the exit line; the rule run 2 judged (prereg
@@ -167,7 +168,7 @@ def test_lags_move_the_fed_series_legs_to_the_session_the_value_was_published(pr
     assert got["F2"] == ("tight", "2026-07-10", 94)
     assert got["R1"] == ("easy", "2026-11-10", 8)
     assert got["R2"] == ("easy", "2026-11-10", 8)
-    assert prod_block["composite_trend"] == {"direction": "tightening", "since": "2026-11-03", "sessions": 13}
+    assert prod_block["composite_trend"] == {"direction": "tight", "since": "2026-11-03", "sessions": 13}
     assert prod_block["hy_spread"] == {"latest": 3.52, "obs_date": "2026-11-19", "month_ago": 3.27, "chg_1m": 0.25,
                                        "three_months_ago": prod_block["hy_spread"]["three_months_ago"]}
 
@@ -180,9 +181,9 @@ def test_leg_turns_and_composite_turn_markers(prod_block):
     # C3 changed side 11-10: confirmed on its 5th session, 11-16
     assert turn["C3"] == {"date": "2026-11-16", "to": "tight", "sessions": 4}
     assert prod_block["composite_turns"] == [
-        {"date": "2026-06-25", "to": "tightening", "sessions": 104},
-        {"date": "2026-09-23", "to": "easing", "sessions": 42},
-        {"date": "2026-11-09", "to": "tightening", "sessions": 9}]
+        {"date": "2026-06-25", "to": "tight", "sessions": 104},
+        {"date": "2026-09-23", "to": "easy", "sessions": 42},
+        {"date": "2026-11-09", "to": "tight", "sessions": 9}]
     lo = pd.Timestamp(prod_block["as_of"]) - pd.Timedelta(days=200)
     assert all(pd.Timestamp(t["date"]) > lo for t in prod_block["composite_turns"])
 
@@ -210,7 +211,7 @@ def test_three_legs_and_the_count_recomputed_independently():
 def test_the_block_is_labelled_and_carries_no_state_word(prod_block):
     assert prod_block["label"] == "context, not validated"
     text = json.dumps(prod_block)
-    for banned in ("Neutral", "Easing", "neutral", '"state"', "bottom", "Bottom", '"top"', "early marker"):
+    for banned in ("Neutral", "Easing", "easing", "neutral", '"state"', "bottom", "Bottom", '"top"', "early marker"):
         assert banned not in text, banned
     assert "state" not in prod_block and all("state" not in l for l in prod_block["legs"])
     assert prod_block["caution"]["history"] == L.CAUTION_HISTORY and "33% of 730" in L.CAUTION_HISTORY
@@ -379,7 +380,7 @@ def test_the_command_fails_closed_with_empty_stdout():
 
     code, out, err = L.run_cli(["--splice"], '{"version": 1}\n', collect=boom)
     assert code == 1 and out == "" and "FAILED" in err
-    for bad in ("", "not json", "[1, 2]", '{"liquidity": {}}'):
+    for bad in ("", "not json", "[1, 2]", '{"liquidity": {}}', '{"a": 1}\n\n', '{"a": 1} \n'):
         async def ok(now_et):
             return _inputs()
         code, out, _ = L.run_cli(["--splice"], bad, collect=ok)
@@ -391,14 +392,39 @@ def test_the_command_splices_the_block_without_touching_the_breadth_bytes():
         assert now_et.tzinfo is not None
         return _inputs()
 
-    breadth = '{"version": 1, "as_of": "2026-11-20",  "odd  spacing": [1,2,  3], "definitions": {"a": "é"}}\n'
+    breadth = '{"version": 1, "as_of": "2026-11-20",  "odd  spacing": [1,2,  3], "definitions": {"a": "é"} \t}\n'
     code, out, err = L.run_cli(["--splice"], breadth, collect=ok)
     assert code == 0 and err == ""
-    assert out.startswith(breadth.rstrip()[:-1]) and out.endswith("}\n")
+    # the nightly script's own check: the first (bytes - 2) bytes of the export are the first bytes of the output
+    assert out.encode().startswith(breadth.encode()[:-2]) and out.endswith("}\n")
+    assert len(out.encode()) > len(breadth.encode()) and '"liquidity":' in out
+    assert L.splice('{"a": 1}', {"x": 1}) == '{"a": 1,"liquidity":{"x":1}}\n'        # no trailing newline is fine too
     doc = json.loads(out)
     assert list(doc)[-1] == "liquidity" and doc["liquidity"]["groups_tight"]["n"] == 3
     assert {k: v for k, v in doc.items() if k != "liquidity"} == json.loads(breadth)
     assert doc["liquidity"]["generated_at"].endswith(" ET")
+
+
+def test_a_hung_fetch_thread_cannot_keep_the_process_alive():
+    """A fetch stuck in an executor thread (alpaca-py has no HTTP timeout): asyncio.run() would join that thread, so
+    only the watchdog ends the process. Real process, real exit: code 1, nothing on stdout, well inside the block."""
+    import subprocess
+    import sys
+    import time
+    code = (
+        "import asyncio, time\n"
+        "from agents.market_intelligence import liquidity_read as L\n"
+        "async def stuck(now_et):\n"
+        "    return await asyncio.get_running_loop().run_in_executor(None, time.sleep, 60)\n"
+        "L.collect_inputs = stuck\n"
+        "L.RUN_TIMEOUT_S = 1.0\n"
+        "L.WATCHDOG_S = 3.0\n"
+        "L.main(['--splice'])\n")
+    t0 = time.monotonic()
+    r = subprocess.run([sys.executable, "-c", code], cwd=REPO, input='{"version": 1}\n', capture_output=True,
+                       text=True, timeout=45)
+    assert r.returncode == 1 and r.stdout == ""
+    assert time.monotonic() - t0 < 30
 
 
 def test_todays_unfinished_bar_is_dropped_before_the_close():
