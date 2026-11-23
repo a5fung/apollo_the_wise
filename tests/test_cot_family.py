@@ -1423,3 +1423,48 @@ def test_store_alerts_binds_detail_as_an_object_not_a_string():
     asyncio.run(_Io().store_alerts([row]))
     detail = seen[0][cf._COT_ALERT_COLS.index("detail")]
     assert isinstance(detail, dict) and detail["when"] == "2026-11-17"
+
+
+# ── 2026-11-22 cleanups: cached holidays, a bounded OPEC window, a runtime stale-table check, an exact WASDE match ──
+def test_us_federal_holidays_is_cached_and_immutable():
+    h = cf.us_federal_holidays(2026)
+    assert isinstance(h, frozenset) and cf.us_federal_holidays(2026) is h
+
+
+def test_opec_rows_in_a_past_window_exclude_a_future_meeting():
+    meetings = (date(2026, 10, 4), date(2026, 11, 29))
+    got = cf.calendar_rows_from_opec(meetings, date(2026, 9, 28), date(2026, 10, 9))
+    assert [r["event_date"] for r in got] == [date(2026, 10, 5)]          # the Sunday meeting is Monday's session
+    assert len(cf.calendar_rows_from_opec(meetings)) == 2                  # no window: unchanged
+
+
+def test_the_weekly_refresh_flags_a_stale_opec_table_at_runtime():
+    io = _daily_io()
+    late = max(cf.OPEC_MEETINGS) + timedelta(days=cf.OPEC_STALE_DAYS + 1)
+    res = _run(cf.refresh_calendar(io, late))
+    assert "newest announced meeting is 22 days old: add the next date" == res["errors"]["opec table"]
+    res = _run(cf.refresh_calendar(io, max(cf.OPEC_MEETINGS)))
+    assert "opec table" not in res["errors"]
+
+
+def test_calendar_age_matches_the_wasde_source_exactly():
+    seen = []
+
+    class Conn:
+        async def fetchval(self, sql, *args):
+            seen.append(args)
+            return datetime(2026, 11, 20, 12, tzinfo=_ET)
+
+    class Acq:
+        async def __aenter__(self): return Conn()
+        async def __aexit__(self, *a): return False
+
+    class Pool:
+        def acquire(self): return Acq()
+
+    class PgIo(cf.Io):
+        async def _pool(self): return Pool()
+
+    assert _run(PgIo().calendar_age_days(date(2026, 11, 22))) == 2
+    assert seen == [("usda.gov WASDE release dates",)]       # the exact string its rows carry (no prefix match)
+    assert cf.calendar_rows_from_wasde([date(2026, 12, 10)])[0]["source"] == cf.WASDE_SOURCE
