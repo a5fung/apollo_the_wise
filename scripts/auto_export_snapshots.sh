@@ -87,6 +87,32 @@ BREADTH=apollo_breadth_snapshot.json
 # Prod timing and the headroom this cap leaves: docs/architecture/market_breadth_snapshot.md (Cost).
 if guarded_export "$APOLLO/scripts/export_breadth_snapshot.sql" "$BREADTH"; then
   SNAPSHOTS+=("$BREADTH")
+  # #732 (2026-11-22): the LIQUIDITY block ("context, not validated", display only) rides in the breadth file as
+  # its LAST key, `liquidity`. It is computed in the market-agent container (Alpaca daily bars + FRED; module
+  # agents/market_intelligence/liquidity_read.py), which reads the breadth JSON on stdin and writes the same
+  # bytes plus the key. FAIL-SAFE: this block can only ADD the key. Any failure — a non-zero exit, a hang
+  # (`timeout`), empty or short output, output that does not start with the breadth export's own bytes — is
+  # logged, and the breadth file written above is published exactly as psql produced it, with no liquidity
+  # key (the page then shows no liquidity panel; never last night's numbers as today's).
+  # SSoT: docs/architecture/market_breadth_snapshot.md §Liquidity block.
+  LIQ_TMP="$BREADTH.liq.tmp"
+  LIQ_TO=()
+  if command -v timeout >/dev/null 2>&1; then LIQ_TO=(timeout "${LIQUIDITY_TIMEOUT_S:-240}"); fi
+  B_BYTES="$(wc -c < "$BREADTH")"
+  B_BODY=$((B_BYTES - 2))      # the export's bytes up to (not including) its closing brace + newline
+  # (the ${x[@]+...} form: an empty array under `set -u` is an error before bash 4.4)
+  if ${LIQ_TO[@]+"${LIQ_TO[@]}"} docker exec -i "${MARKET_CONTAINER:-apollo-market}" \
+         python -m agents.market_intelligence.liquidity_read --splice < "$BREADTH" > "$LIQ_TMP" \
+     && [ "$(wc -c < "$LIQ_TMP")" -gt "$B_BYTES" ] \
+     && [ "$(head -c "$B_BODY" "$BREADTH" | cksum)" = "$(head -c "$B_BODY" "$LIQ_TMP" | cksum)" ] \
+     && grep -q '"liquidity":' "$LIQ_TMP" \
+     && [ "$(tail -c 2 "$LIQ_TMP" | tr -d '\n')" = "}" ]; then
+    mv -f "$LIQ_TMP" "$BREADTH"
+  else
+    echo "auto-export: LIQUIDITY block FAILED or malformed ($(wc -c < "$LIQ_TMP" 2>/dev/null || echo 0) bytes);" \
+         "publishing $BREADTH without it — breadth is unaffected." >&2
+    rm -f "$LIQ_TMP"
+  fi
 else
   echo "auto-export: breadth export FAILED or truncated (${GUARD_BYTES:-0} bytes);" \
        "keeping the last published $BREADTH — the other three snapshots continue." >&2
