@@ -151,11 +151,13 @@ def test_sector_fallback_requires_strict_majority():
 
 # ── Stage B: adjudicator pins ────────────────────────────────────────────────
 
-def test_tool_schema_scratchpad_first_required():
-    """House discipline: analysis_scratchpad is the FIRST required field."""
+def test_tool_schema_verdict_first_notes_last():
+    """v3 (2026-11-23): the verdict is the FIRST required field and the notes come LAST, in `required` and in the
+    property order — the scratchpad-first shape is the one claude-haiku-5-5 refused on every nightly call."""
     required = arm.MERGE_ADJUDICATION_TOOL["input_schema"]["required"]
-    assert required[0] == "analysis_scratchpad"
-    assert "verdict" in required
+    assert required[0] == "verdict"
+    assert required[-1] == "analysis_scratchpad"
+    assert list(arm.MERGE_ADJUDICATION_TOOL["input_schema"]["properties"])[-1] == "analysis_scratchpad"
     props = arm.MERGE_ADJUDICATION_TOOL["input_schema"]["properties"]
     assert props["verdict"]["enum"] == ["MERGE", "DISTINCT", "PARENT_CHILD"]
 

@@ -1,195 +1,195 @@
 {
- "prompt_version": "v2-2026-07-12-slice-merge",
- "prompt_sha1": "d470f8e76cda",
- "model": "claude-haiku-4-5-20251001",
- "corpus_version": "v1-2026-07-11",
- "corpus_sha1": "0cc364f21211",
- "n_pairs": 14,
- "n_hard": 5,
- "hard_failures": [],
- "others_rate": 1.0,
- "others_failed": [],
- "overall": 1.0,
- "pass": true,
- "run_at": "2026-07-13T06:58:02.688584+00:00",
- "results": [
-  {
-   "pair_id": "M01",
-   "hard": true,
-   "golden": "PARENT_CHILD",
-   "accept_also": [
-    "DISTINCT"
-   ],
-   "verdict": "DISTINCT",
-   "passed": true,
-   "driver_a": "Hard-market pricing cycle: sustained premium-rate increases, underwriting-margin expansion",
-   "driver_b": "Catastrophe-loss experience and reinsurance-linked pricing re-rating on benign cat seasons",
-   "reason": "Different demand catalysts. Theme A is a broad underwriting-cycle thesis; Theme B is a cat-loss and reinsurance-pricing thesis. They can move independently and conflict.",
-   "scratchpad": "THEME A driver: Hard-market pricing cycle \u2014 sustained premium-rate increases and underwriting-margin expansion across broad commercial and personal lines. This is a cyclical, multi-line underwriting profitability thesis.\n\nTHEME B driver: Catastrophe-loss experience and reinsurance-linked pricing dyn"
-  },
-  {
-   "pair_id": "M02",
-   "hard": true,
-   "golden": "DISTINCT",
-   "accept_also": [],
-   "verdict": "DISTINCT",
-   "passed": true,
-   "driver_a": "Return-to-office momentum, improving leasing spreads, distressed-valuation recovery",
-   "driver_b": "Housing-shortage rental demand, defensive cash-flow rotation",
-   "reason": "Opposite directional drivers. Office recovery depends on workplace normalization; multifamily depends on structural housing undersupply. Different catalysts, different beneficiaries, different risk profiles. Sector overlap does not override distinct demand mechanics.",
-   "scratchpad": "Theme A driver: Return-to-office momentum + improving leasing spreads + distressed-valuation recovery. Theme B driver: Housing-shortage rental demand + defensive cash-flow rotation. These are OPPOSITE directional drivers. Office REITs benefit from workplace normalization and occupancy recovery; mult"
-  },
-  {
-   "pair_id": "M03",
-   "hard": false,
-   "golden": "MERGE",
-   "accept_also": [],
-   "verdict": "MERGE",
-   "passed": true,
-   "driver_a": "Housing shortage rental demand, institutional rotation into residential cash flows",
-   "driver_b": "Multifamily investor appetite, defensive rotation into residential stability",
-   "reason": "Identical demand driver: housing shortage + institutional/defensive capital rotation into residential. Theme A is a geographic/property-type slice with no distinct sub-catalyst. Same trade, same thesis.",
-   "scratchpad": "Theme A driver: Housing-shortage rental demand + institutional rotation into residential cash flows (geographic slice: coastal & suburban). Theme B driver: Sector-wide multifamily investor appetite + defensive rotation into residential stability. Both themes share the SAME directional catalyst: hous"
-  },
-  {
-   "pair_id": "M04",
-   "hard": false,
-   "golden": "MERGE",
-   "accept_also": [],
-   "verdict": "MERGE",
-   "passed": true,
-   "driver_a": "Renewed quantum investment cycle and policy support",
-   "driver_b": "U.S. quantum funding programs and investment cycle",
-   "reason": "Identical driver: quantum funding/policy cycle. Theme A is a pure-play slice of Theme B with no distinct sub-catalyst. Slice of same trade = same trade. Merge to avoid fragmentation.",
-   "scratchpad": "Theme A driver: Renewed quantum investment cycle and policy support, betting on pure-play quantum hardware names. Theme B driver: U.S. quantum funding programs and the same investment cycle, including annealing-approach systems. Both themes share the IDENTICAL directional driver: the quantum investm"
-  },
-  {
-   "pair_id": "M05",
-   "hard": false,
-   "golden": "MERGE",
-   "accept_also": [],
-   "verdict": "MERGE",
-   "passed": true,
-   "driver_a": "Institutional capital rotation into clinical-stage oncology across modalities",
-   "driver_b": "Institutional capital rotation into clinical-stage precision-oncology biotechs",
-   "reason": "Both themes share identical directional driver: institutional rotation into clinical-stage oncology. Theme B is a modality slice (precision-targeting) of Theme A with no independent catalyst. Slice of same trade = same trade.",
-   "scratchpad": "Theme A driver: Institutional capital rotation into clinical-stage oncology across all modalities (ADCs, precision targeting, immuno-oncology). Theme B driver: Same institutional capital rotation into clinical-stage oncology, but filtered to precision-targeting modality specifically. Both themes sha"
-  },
-  {
-   "pair_id": "M06",
-   "hard": false,
-   "golden": "DISTINCT",
-   "accept_also": [],
-   "verdict": "DISTINCT",
-   "passed": true,
-   "driver_a": "Post-quantum cryptography security spending to harden infrastructure",
-   "driver_b": "Speculative quantum computing hardware investment and media cycle",
-   "reason": "Opposite directional drivers: Theme A is defensive (securing against quantum threat), Theme B is speculative (betting on quantum success). Different catalysts, different winners, different risk profiles.",
-   "scratchpad": "Theme A driver: Post-quantum cryptography security spending \u2014 enterprises hardening infrastructure against future quantum threats. Theme B driver: Speculative quantum hardware investment cycle and media hype \u2014 betting on quantum computing breakthroughs themselves. These are OPPOSITE directional driv"
-  },
-  {
-   "pair_id": "M07",
-   "hard": false,
-   "golden": "DISTINCT",
-   "accept_also": [],
-   "verdict": "DISTINCT",
-   "passed": true,
-   "driver_a": "Interest rate levels and investment portfolio valuations",
-   "driver_b": "Hard-market pricing cycle and underwriting margin expansion",
-   "reason": "Different demand catalysts. Life insurers benefit from rising rates; P&C underwriters benefit from pricing discipline in hard markets. Opposite rate sensitivities and independent margin drivers.",
-   "scratchpad": "Theme A driver: Interest rate sensitivity and investment portfolio valuations (duration risk, bond yields, equity market performance). Theme B driver: Hard-market pricing cycle and underwriting discipline (premium rate increases, loss ratio compression, competitive capacity constraints). These are f"
-  },
-  {
-   "pair_id": "M08",
-   "hard": false,
-   "golden": "DISTINCT",
-   "accept_also": [],
-   "verdict": "DISTINCT",
-   "passed": true,
-   "driver_a": "AI-driven wafer-fab capex and utilization cycle",
-   "driver_b": "Hyperscaler custom-chip design program monetization",
-   "reason": "Different directional drivers: A is fab capacity/utilization supply-side; B is custom-silicon IP licensing demand-side. Catalysts move independently.",
-   "scratchpad": "THEME A driver: AI-driven wafer-fab capex and utilization cycle \u2014 the demand for manufacturing capacity and fab utilization driven by AI chip production volumes.\n\nTHEME B driver: Hyperscaler custom-chip design program monetization \u2014 the licensing and IP revenue opportunity from hyperscalers building"
-  },
-  {
-   "pair_id": "M09",
-   "hard": true,
-   "golden": "DISTINCT",
-   "accept_also": [],
-   "verdict": "DISTINCT",
-   "passed": true,
-   "driver_a": "Hyperscaler datacenter electricity demand and grid infrastructure bottlenecks",
-   "driver_b": "AI-server memory and storage capacity content growth",
-   "reason": "Both themes ride AI datacenter growth but have distinct catalysts: A is supply-side infrastructure constraint (power/cooling availability); B is demand-side component consumption (HBM/NAND per server). Different winners, different risk factors, different timing.",
-   "scratchpad": "Theme A driver: Hyperscaler datacenter electricity demand surge (power generation, grid capacity, cooling infrastructure). Theme B driver: AI-server content growth and memory/storage capacity expansion (HBM, NAND). These are DIFFERENT directional drivers. Theme A is supply-side infrastructure bottle"
-  },
-  {
-   "pair_id": "M10",
-   "hard": false,
-   "golden": "MERGE",
-   "accept_also": [
-    "PARENT_CHILD"
-   ],
-   "verdict": "MERGE",
-   "passed": true,
-   "driver_a": "Datacenter and electrification-driven grid interconnect demand creating equipment backlogs",
-   "driver_b": "Hyperscaler datacenter electricity demand straining grid infrastructure",
-   "reason": "Identical demand driver: datacenter power surge (AI/hyperscaler-led) straining grid. Both themes address the same structural constraint via different supply-chain layers (equipment vs. power/grid). Same directional catalyst, same winners universe. Merge to eliminate fragmentation.",
-   "scratchpad": "Theme A driver: Surging datacenter and electrification-driven grid interconnect demand creating multi-year equipment backlogs. Theme B driver: Hyperscaler datacenter electricity demand driving re-rating of power-generation and grid-interconnect names. Both themes share the SAME directional catalyst:"
-  },
-  {
-   "pair_id": "M11",
-   "hard": true,
-   "golden": "DISTINCT",
-   "accept_also": [],
-   "verdict": "DISTINCT",
-   "passed": true,
-   "driver_a": "GLP-1 agonist adoption and metabolic-drug demand supercycle expansion",
-   "driver_b": "GLP-1-driven consumption decline pressuring snack/confectionery/beverage demand",
-   "reason": "Opposite directional drivers: Theme A is a long beneficiary of GLP-1 adoption; Theme B is collateral damage (short thesis). Same macro story, opposite portfolio impact. Not the same trade.",
-   "scratchpad": "Theme A driver: GLP-1 agonist adoption and metabolic-drug demand supercycle (LONG catalyst). Theme B driver: GLP-1-driven consumption decline pressuring snack/confectionery/beverage demand (SHORT catalyst). These are OPPOSITE directional drivers on the same macro story. Theme A benefits from the GLP"
-  },
-  {
-   "pair_id": "M12",
-   "hard": false,
-   "golden": "PARENT_CHILD",
-   "accept_also": [
-    "DISTINCT"
-   ],
-   "verdict": "PARENT_CHILD",
-   "passed": true,
-   "driver_a": "Enterprise consolidation of fragmented security point products onto unified platforms",
-   "driver_b": "Zero-trust and SASE architecture adoption as independent security design paradigm",
-   "reason": "Theme B has a distinct sub-driver: zero-trust/SASE architectural adoption can move independently of platform consolidation. An enterprise can consolidate without adopting zero-trust, or adopt zero-trust while staying fragmented. The architecture shift is a genuine catalyst of its own.",
-   "scratchpad": "Theme A driver: Enterprise consolidation of fragmented point-product security stacks onto unified platforms \u2014 a structural shift in how security is purchased and deployed, favoring vendors with broad platform breadth.\n\nTheme B driver: Zero-trust and SASE architecture adoption as a specific security "
-  },
-  {
-   "pair_id": "M13",
-   "hard": false,
-   "golden": "DISTINCT",
-   "accept_also": [
-    "PARENT_CHILD"
-   ],
-   "verdict": "DISTINCT",
-   "passed": true,
-   "driver_a": "Uranium commodity pricing cycle and utility fuel contracting",
-   "driver_b": "Datacenter nuclear power demand and SMR licensing/deployment milestones",
-   "reason": "Different demand catalysts: A is commodity/fuel-supply driven; B is technology-deployment and new end-user (datacenter) driven. Independent price drivers and winners.",
-   "scratchpad": "Theme A driver: Uranium price cycle and utility contracting demand for fuel supply. Theme B driver: Datacenter-linked nuclear power-purchase announcements and SMR licensing milestones. These are fundamentally different catalysts. Theme A is driven by commodity pricing and traditional utility fuel pr"
-  },
-  {
-   "pair_id": "M14",
-   "hard": true,
-   "golden": "DISTINCT",
-   "accept_also": [
-    "PARENT_CHILD"
-   ],
-   "verdict": "DISTINCT",
-   "passed": true,
-   "driver_a": "Bitcoin price cycle and hashprice economics leverage",
-   "driver_b": "AI-compute datacenter conversion and hosting contracts",
-   "reason": "Theme A is a BTC-cycle trade; Theme B is a pivot away from BTC into AI infrastructure. Opposite catalysts, different winners. Member overlap does not override distinct directional drivers.",
-   "scratchpad": "Theme A driver: Bitcoin price cycle and hashprice economics \u2014 pure-play leverage to BTC fundamentals. Theme B driver: AI-compute datacenter conversion \u2014 a pivot away from BTC-dependent mining toward infrastructure-as-a-service hosting contracts. These are OPPOSITE directional catalysts. Theme A wins"
-  }
- ]
+  "prompt_version": "v3-2026-11-23-verdict-first",
+  "prompt_sha1": "d50ecd10b954",
+  "model": "claude-haiku-5-5",
+  "corpus_version": "v1-2026-07-11",
+  "corpus_sha1": "0cc364f21211",
+  "n_pairs": 14,
+  "n_hard": 5,
+  "hard_failures": [],
+  "others_rate": 1.0,
+  "others_failed": [],
+  "overall": 1.0,
+  "pass": true,
+  "run_at": "2026-11-23T22:17:28.857225+00:00",
+  "results": [
+    {
+      "pair_id": "M01",
+      "hard": true,
+      "golden": "PARENT_CHILD",
+      "accept_also": [
+        "DISTINCT"
+      ],
+      "verdict": "DISTINCT",
+      "passed": true,
+      "driver_a": "Hard-market pricing cycle: rate increases and margin expansion",
+      "driver_b": "Catastrophe-loss experience and reinsurance pricing, benign cat season",
+      "reason": "Theme A rides a broad multi-line premium-rate cycle; Theme B re-rates on cat-loss experience and reinsurance-linked pricing. Different directional drivers, matching the P&C versus cat-exposed negative exemplar.",
+      "scratchpad": "A's demand driver is sustained pricing across commercial and personal lines, so margins expand when rates rise. B's driver is catastrophe losses and reinsurance costs, so it is sensitive to benign or severe cat seasons. Overlapping members are not enough to merge. B is not a slice of A (it is not a "
+    },
+    {
+      "pair_id": "M02",
+      "hard": true,
+      "golden": "DISTINCT",
+      "accept_also": [],
+      "verdict": "DISTINCT",
+      "passed": true,
+      "driver_a": "Return-to-office recovery and office leasing spreads",
+      "driver_b": "Housing-shortage rental demand and defensive cash flow",
+      "reason": "Office REITs ride return-to-office and distressed-valuation recovery; apartment REITs ride housing-shortage rental demand. These are opposite, independent drivers, matching the office vs. multifamily negative exemplar.",
+      "scratchpad": "Both are REITs and share a real-estate sector label, but the sector label is not the bar. Theme A's catalysts are office occupancy, leasing spreads, and valuation recovery. Theme B's catalysts are housing undersupply and rental demand plus defensive rotation. Neither driver moves the other, and the "
+    },
+    {
+      "pair_id": "M03",
+      "hard": false,
+      "golden": "MERGE",
+      "accept_also": [],
+      "verdict": "MERGE",
+      "passed": true,
+      "driver_a": "Housing-shortage rental demand; institutional rotation into residential cash flows",
+      "driver_b": "Multifamily investor appetite; defensive rotation into residential stability",
+      "reason": "Both themes share the same driver: housing-shortage rental demand plus institutional rotation into stable residential cash flows. Theme A adds only a geographic slice (coastal and suburban), with no separate catalyst.",
+      "scratchpad": "Theme A is residential rental REITs (coastal and suburban). Theme B is apartment REITs. Both rely on rental demand from housing shortages and on institutional rotation into residential stability, so the directional driver is identical. The geographic qualifier is a slice, not a distinct catalyst. Th"
+    },
+    {
+      "pair_id": "M04",
+      "hard": false,
+      "golden": "MERGE",
+      "accept_also": [],
+      "verdict": "MERGE",
+      "passed": true,
+      "driver_a": "Renewed quantum investment cycle and policy support",
+      "driver_b": "U.S. quantum funding programs and same investment cycle",
+      "reason": "Both themes ride the same quantum investment cycle and government funding/policy catalyst; Theme B only adds an annealing-modality slice with no distinct driver of its own.",
+      "scratchpad": "Theme A: pure-play speculative quantum hardware, driven by renewed investment cycle and policy support. Theme B: quantum hardware makers including annealing systems, driven by U.S. quantum funding programs and the same cycle. Drivers are identical in direction (positive policy/investment tailwind). "
+    },
+    {
+      "pair_id": "M05",
+      "hard": false,
+      "golden": "MERGE",
+      "accept_also": [],
+      "verdict": "MERGE",
+      "passed": true,
+      "driver_a": "Institutional capital rotation into clinical-stage oncology",
+      "driver_b": "Same institutional capital rotation into clinical-stage oncology",
+      "reason": "Both themes ride one identical driver: institutional rotation into clinical-stage oncology. Theme B is only a precision-targeted slice of Theme A with no independent catalyst.",
+      "scratchpad": "Theme A covers clinical-stage oncology across modalities (ADCs, precision targeting, IO). Theme B is precision-oncology biotechs, a modality/purity slice. Both are re-rated by the same capital rotation, so the directional driver is identical. Per the slice rule this is MERGE. Keep the better-establi"
+    },
+    {
+      "pair_id": "M06",
+      "hard": false,
+      "golden": "DISTINCT",
+      "accept_also": [],
+      "verdict": "DISTINCT",
+      "passed": true,
+      "driver_a": "Post-quantum cryptography and security spending",
+      "driver_b": "Quantum investment cycle and media attention",
+      "reason": "Theme A is driven by enterprise and government post-quantum security spend; Theme B is driven by speculative quantum investment flows and media hype. Different catalysts can move independently.",
+      "scratchpad": "Both sit under the quantum umbrella and share member-name overlap, but the directional drivers differ. A's demand comes from a security-compliance upgrade cycle (migrating to quantum-safe crypto), which is a real cash-spend driver. B's demand is sentiment and capital-markets driven: speculative flow"
+    },
+    {
+      "pair_id": "M07",
+      "hard": false,
+      "golden": "DISTINCT",
+      "accept_also": [],
+      "verdict": "DISTINCT",
+      "passed": true,
+      "driver_a": "Interest rates and investment-portfolio valuations",
+      "driver_b": "Hard-market P&C pricing cycle and underwriting margins",
+      "reason": "Life and annuity earnings hinge on rate spreads and portfolio marks; P&C underwriters hinge on premium pricing cycle and loss-ratio margins. Different catalysts, so no shared directional driver.",
+      "scratchpad": "Theme A demand driver: interest-rate levels and investment-portfolio valuation (spread income, mark-to-market). Theme B driver: hard-market pricing power expanding underwriting margins. Both are insurers, which is a sector label only. Rising rates can help life spread income while P&C margins depend"
+    },
+    {
+      "pair_id": "M08",
+      "hard": false,
+      "golden": "DISTINCT",
+      "accept_also": [],
+      "verdict": "DISTINCT",
+      "passed": true,
+      "driver_a": "AI-driven wafer-fab capex and utilization cycle",
+      "driver_b": "Hyperscaler custom-chip design program wins and IP royalties",
+      "reason": "Foundry revenue tracks wafer-fab capex and fab utilization, while custom-silicon licensors depend on hyperscalers choosing their architectures; different catalysts, different winners, despite the shared AI theme.",
+      "scratchpad": "A is a capacity/manufacturing-volume play: fab capex, utilization, and node leadership drive earnings. B is an IP/design play: licensing royalties and design-win counts at hyperscalers drive earnings. Both ride AI demand, but the directional driver differs. A foundry can benefit from custom chips ma"
+    },
+    {
+      "pair_id": "M09",
+      "hard": true,
+      "golden": "DISTINCT",
+      "accept_also": [],
+      "verdict": "DISTINCT",
+      "passed": true,
+      "driver_a": "Hyperscaler datacenter electricity demand (power, grid, cooling)",
+      "driver_b": "AI-server memory and storage content growth (HBM, high-capacity NAND)",
+      "reason": "Both ride the AI datacenter buildout, but one driver is electricity and grid capacity while the other is semiconductor memory and storage content per server; they move on different catalysts.",
+      "scratchpad": "Theme A demand catalyst: hyperscaler power consumption requiring generation, interconnects, and cooling. Theme B demand catalyst: HBM and high-capacity NAND content per AI server, tied to memory pricing and cycle. Shared theme is the AI capex umbrella, which is a common macro backdrop, not a shared "
+    },
+    {
+      "pair_id": "M10",
+      "hard": false,
+      "golden": "MERGE",
+      "accept_also": [
+        "PARENT_CHILD"
+      ],
+      "verdict": "MERGE",
+      "passed": true,
+      "driver_a": "Datacenter and electrification-driven grid interconnect demand",
+      "driver_b": "Hyperscaler datacenter electricity demand",
+      "reason": "Both themes ride the same catalyst: surging datacenter electricity demand requiring grid interconnect, generation, and equipment buildout. Theme A's electrification angle is the same driver restated, not a distinct catalyst.",
+      "scratchpad": "Theme A: transformer/switchgear makers with backlogs tied to datacenter and electrification grid demand. Theme B: power generation, interconnect, and cooling names re-rating on hyperscaler electricity demand. Both are long the same directional driver (datacenter power load growth). Theme A's electri"
+    },
+    {
+      "pair_id": "M11",
+      "hard": true,
+      "golden": "DISTINCT",
+      "accept_also": [],
+      "verdict": "DISTINCT",
+      "passed": true,
+      "driver_a": "GLP-1 drug demand rising: makers capture obesity/diabetes revenue",
+      "driver_b": "Feared GLP-1 adoption eroding snack/confection/beverage volumes",
+      "reason": "Both themes stem from GLP-1 adoption, but they are opposite directional bets: Theme A benefits from rising drug demand while Theme B is harmed by the same demand shift. Long beneficiary and collateral-damage complement are DISTINCT.",
+      "scratchpad": "Theme A is a long-beneficiary set (drug developers/manufacturers) riding the metabolic-drug supercycle. Theme B is the short-side collateral-damage complement (staples under pressure from feared consumption decline). Same headline narrative, opposite directional drivers, so the bar for merging is no"
+    },
+    {
+      "pair_id": "M12",
+      "hard": false,
+      "golden": "PARENT_CHILD",
+      "accept_also": [
+        "DISTINCT"
+      ],
+      "verdict": "PARENT_CHILD",
+      "passed": true,
+      "driver_a": "Enterprise platform consolidation of security point products",
+      "driver_b": "Zero-trust/SASE network-edge architecture adoption within security spend",
+      "reason": "Zero-trust/SASE adoption is a distinct architecture-migration catalyst that can move independently of platform consolidation, so the narrower theme is a child, not a slice.",
+      "scratchpad": "Theme A's driver is vendor consolidation: enterprises shrinking point-product counts onto broad platforms. Theme B's driver is a network-architecture shift (zero-trust, SASE) that has its own timing, budget line, and winners. Both sit in the same security-spend cycle, but B's sub-driver is not A's d"
+    },
+    {
+      "pair_id": "M13",
+      "hard": false,
+      "golden": "DISTINCT",
+      "accept_also": [
+        "PARENT_CHILD"
+      ],
+      "verdict": "DISTINCT",
+      "passed": true,
+      "driver_a": "Uranium price cycle and utility contracting",
+      "driver_b": "Datacenter nuclear PPA announcements and SMR licensing milestones",
+      "reason": "Uranium names trade on the commodity price cycle and utility fuel contracting; SMR developers trade on datacenter power-purchase deals and licensing catalysts. Different directional drivers, despite both being nuclear.",
+      "scratchpad": "Shared sector (nuclear) and likely overlapping tickers, but the catalysts differ. Uranium moves with spot/term price and reactor fuel procurement; SMR names move on hyperscaler PPAs and NRC/design milestones. Neither is a subset of the other, and a uranium price move need not move SMR developers or "
+    },
+    {
+      "pair_id": "M14",
+      "hard": true,
+      "golden": "DISTINCT",
+      "accept_also": [
+        "PARENT_CHILD"
+      ],
+      "verdict": "DISTINCT",
+      "passed": true,
+      "driver_a": "Bitcoin price cycle and hashprice economics",
+      "driver_b": "AI-compute hosting conversion of power/datacenter footprints",
+      "reason": "Theme A trades on BTC price and mining hashprice; Theme B re-rates on AI-compute contract conversion, a separate catalyst that can move independently of BTC.",
+      "scratchpad": "Shared membership (former miners) does not make the thesis shared. A is levered to BTC and hashprice; B is levered to AI datacenter hosting deals. Directional drivers differ: a BTC rally can lift A without B, and an AI contract win can lift B while BTC is flat. Not a parent-child either, since B's c"
+    }
+  ]
 }

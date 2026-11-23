@@ -1,0 +1,53 @@
+Eval: 14 pairs | model=claude-haiku-5-5 | prompt=v2-2026-07-12-slice-merge (d470f8e76cda) | corpus=v1-2026-07-11
+[merge arm] invalid/missing verdict None (attempt 1) for 'Property & Casualty Insurance Underwriters' × 'Specialty Catastrophe Property Insurance Underwriters'
+[merge arm] invalid/missing verdict None (attempt 1) for 'Office REIT Recovery & Re-Rating' × 'Multifamily Apartment REITs'
+[merge arm] invalid/missing verdict None (attempt 1) for 'Pure-Play Quantum Computing Hardware' × 'Quantum Computing Hardware & Annealing Systems'
+[merge arm] invalid/missing verdict None (attempt 1) for 'Coastal & Suburban Residential Rental REITs' × 'Multifamily Apartment REITs'
+[merge arm] invalid/missing verdict None (attempt 1) for 'Clinical-Stage Oncology Drug Development' × 'Oncology Targeted Therapy Biotechs'
+[merge arm] invalid/missing verdict None (attempt 1) for 'Quantum Computing & Quantum-Safe Networking' × 'Pure-Play Quantum Computing Hardware'
+[merge arm] invalid/missing verdict None (attempt 1) for 'Semiconductor Wafer Foundry & Advanced IC Manufacturing' × 'Custom AI Silicon & Chip Architecture Licensing'
+[merge arm] invalid/missing verdict None (attempt 1) for 'Life Insurance & Annuity Providers' × 'Property & Casualty Insurance Underwriters'
+[merge arm] invalid/missing verdict None (attempt 1) for 'AI Data Center Power Infrastructure' × 'AI Memory & Storage'
+[merge arm] invalid/missing verdict None (attempt 1) for 'Grid Modernization & Transmission Equipment' × 'AI Data Center Power Infrastructure'
+[merge arm] invalid/missing verdict None (attempt 1) for 'GLP-1 Weight-Loss Drug Makers' × 'GLP-1 Collateral-Damage Consumer Staples'
+[merge arm] invalid/missing verdict None (attempt 1) for 'Cybersecurity Platform Consolidators' × 'Zero-Trust Network Edge Security'
+[merge arm] invalid/missing verdict None (attempt 1) for 'Uranium Miners & Converters' × 'Small Modular Reactor Developers'
+[merge arm] invalid/missing verdict None (attempt 1) for 'Bitcoin Mining & Crypto Infrastructure Operators' × 'Bitcoin Miners Pivoting to AI Compute'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Property & Casualty Insurance Underwriters' × 'Specialty Catastrophe Property Insurance Underwriters'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Office REIT Recovery & Re-Rating' × 'Multifamily Apartment REITs'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Pure-Play Quantum Computing Hardware' × 'Quantum Computing Hardware & Annealing Systems'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Coastal & Suburban Residential Rental REITs' × 'Multifamily Apartment REITs'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Clinical-Stage Oncology Drug Development' × 'Oncology Targeted Therapy Biotechs'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Quantum Computing & Quantum-Safe Networking' × 'Pure-Play Quantum Computing Hardware'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Semiconductor Wafer Foundry & Advanced IC Manufacturing' × 'Custom AI Silicon & Chip Architecture Licensing'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Life Insurance & Annuity Providers' × 'Property & Casualty Insurance Underwriters'
+[merge arm] invalid/missing verdict None (attempt 2) for 'AI Data Center Power Infrastructure' × 'AI Memory & Storage'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Grid Modernization & Transmission Equipment' × 'AI Data Center Power Infrastructure'
+[merge arm] invalid/missing verdict None (attempt 2) for 'GLP-1 Weight-Loss Drug Makers' × 'GLP-1 Collateral-Damage Consumer Staples'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Cybersecurity Platform Consolidators' × 'Zero-Trust Network Edge Security'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Uranium Miners & Converters' × 'Small Modular Reactor Developers'
+[merge arm] invalid/missing verdict None (attempt 2) for 'Bitcoin Mining & Crypto Infrastructure Operators' × 'Bitcoin Miners Pivoting to AI Compute'
+
+=== PER-PAIR ===
+  [HARD] M01  golden=PARENT_CHILD got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [HARD] M02  golden=DISTINCT     got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [soft] M03  golden=MERGE        got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [soft] M04  golden=MERGE        got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [soft] M05  golden=MERGE        got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [soft] M06  golden=DISTINCT     got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [soft] M07  golden=DISTINCT     got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [soft] M08  golden=DISTINCT     got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [HARD] M09  golden=DISTINCT     got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [soft] M10  golden=MERGE        got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [HARD] M11  golden=DISTINCT     got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [soft] M12  golden=PARENT_CHILD got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [soft] M13  golden=DISTINCT     got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+  [HARD] M14  golden=DISTINCT     got=ERROR        ✗   — invalid/missing verdict None (attempt 2)
+
+hard failures: ['M01', 'M02', 'M09', 'M11', 'M14'] (bar: zero)
+others rate: 0.0 (bar 0.85) — failed: ['M03', 'M04', 'M05', 'M06', 'M07', 'M08', 'M10', 'M12', 'M13']
+overall: 0.0
+GATE: ✗ FAIL — the THEME_MERGE_ARM flip is FORBIDDEN
+
+=== RESULTS_JSON ===
+{"keys":{"prompt_version":"v2-2026-07-12-slice-merge","prompt_sha1":"d470f8e76cda","model":"claude-haiku-5-5","corpus_version":"v1-2026-07-11","corpus_sha1":"0cc364f21211"},"summary":{"n_pairs":14,"n_hard":5,"hard_failures":["M01","M02","M09","M11","M14"],"others_rate":0.0,"others_failed":["M03","M04","M05","M06","M07","M08","M10","M12","M13"],"overall":0.0,"pass":false},"results":[{"pair_id":"M01","hard":true,"golden":"PARENT_CHILD","accept_also":["DISTINCT"],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M02","hard":true,"golden":"DISTINCT","accept_also":[],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M03","hard":false,"golden":"MERGE","accept_also":[],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M04","hard":false,"golden":"MERGE","accept_also":[],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M05","hard":false,"golden":"MERGE","accept_also":[],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M06","hard":false,"golden":"DISTINCT","accept_also":[],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M07","hard":false,"golden":"DISTINCT","accept_also":[],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M08","hard":false,"golden":"DISTINCT","accept_also":[],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M09","hard":true,"golden":"DISTINCT","accept_also":[],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M10","hard":false,"golden":"MERGE","accept_also":["PARENT_CHILD"],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M11","hard":true,"golden":"DISTINCT","accept_also":[],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M12","hard":false,"golden":"PARENT_CHILD","accept_also":["DISTINCT"],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M13","hard":false,"golden":"DISTINCT","accept_also":["PARENT_CHILD"],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""},{"pair_id":"M14","hard":true,"golden":"DISTINCT","accept_also":["PARENT_CHILD"],"verdict":"ERROR","passed":false,"driver_a":"","driver_b":"","reason":"invalid/missing verdict None (attempt 2)","scratchpad":""}]}

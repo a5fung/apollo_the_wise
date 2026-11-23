@@ -13,8 +13,8 @@ are THE logic the 2026-07-11 replay validated (operator sign-off artifact:
 
 Stage A is a PURE function (no I/O): callers supply themes, the merge_distinct
 cooldown pair-set and (optionally) a ticker→sector map. Stage B is the Haiku
-adjudicator hardened per the C4 caveat: forced tool_choice, the
-scratchpad-first tool schema, retry-once on parse failure, validation-style 429
+adjudicator hardened per the C4 caveat: forced tool_choice, a
+verdict-first tool schema (notes after, v3 2026-11-23), retry-once on parse failure, validation-style 429
 backoff. The mechanical merge executor lives in theme_engine._run_thesis_merge_pass
 (it needs the engine's validator + audit plumbing).
 
@@ -178,13 +178,16 @@ def propose_merge_pairs(
     return pairs if max_pairs is None else pairs[:max_pairs]
 
 
-# ── Stage B — the thesis adjudicator (Haiku, temp=0, scratchpad-first tool) ──
+# ── Stage B — the thesis adjudicator (Haiku; verdict first, notes after — v3 2026-11-23) ──
 MERGE_VERDICTS = frozenset({"MERGE", "DISTINCT", "PARENT_CHILD"})
 
 # Prompt anchors are LOAD-BEARING (ADR 0025 §2): the negative exemplars + the
 # merge-on-shared-DRIVER instruction are verbatim from the signed 7/11 replay.
 # Any edit here invalidates the corpus pass — re-run the corpus eval.
-ADJUDICATION_PROMPT_VERSION = "v2-2026-07-12-slice-merge"  # v2 (operator-ruled 7/12, rulings-pack R3):
+ADJUDICATION_PROMPT_VERSION = "v3-2026-11-23-verdict-first"  # v3 (2026-11-23): the verdict comes FIRST and the
+# notes after it — claude-haiku-5-5 refused the v2 "Fill analysis_scratchpad FIRST" shape on every call (16 of 16 on
+# the 11-23 nightly, 14 of 14 corpus pairs), the #690/#693 refusal class. Anchors and verdict rules unchanged.
+# v2 (operator-ruled 7/12, rulings-pack R3):
 # identical-driver slice → MERGE; PARENT_CHILD requires a DISTINCT sub-driver. v1 answered
 # PARENT_CHILD to pure slices (corpus M03/04/05), which keeps both themes and leaves the
 # fragmentation (#274's whole purpose) unfixed.
@@ -221,8 +224,10 @@ THEME A: {a_name}
 THEME B: {b_name}
 {b_members}  {b_desc}
 
-Adjudicate with the tool. Fill analysis_scratchpad FIRST: name each theme's demand driver,
-then decide. For MERGE, propose merged_name (keep the better-established name unless both
+Adjudicate with the tool. Decide the verdict first: one shared directional driver (MERGE), a
+genuinely distinct sub-driver of its own (PARENT_CHILD), or different drivers (DISTINCT)? Then name
+each theme's demand driver in driver_a / driver_b, give the one-sentence reason, and add brief notes
+in analysis_scratchpad. For MERGE, propose merged_name (keep the better-established name unless both
 are sub-optimal and a cleaner family name exists). For PARENT_CHILD, set child to the
 narrower theme."""
 
@@ -232,11 +237,6 @@ MERGE_ADJUDICATION_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "analysis_scratchpad": {
-                "type": "string",
-                "description": "Reason FIRST: what is each theme's demand driver/catalyst? "
-                               "Same directional driver, or different?",
-            },
             "verdict": {"type": "string", "enum": ["MERGE", "DISTINCT", "PARENT_CHILD"]},
             "driver_a": {"type": "string", "description": "Theme A's driver, ≤6 words"},
             "driver_b": {"type": "string", "description": "Theme B's driver, ≤6 words"},
@@ -249,8 +249,13 @@ MERGE_ADJUDICATION_TOOL = {
                 "type": "string", "enum": ["A", "B"],
                 "description": "PARENT_CHILD only: which theme is the narrower child.",
             },
+            "analysis_scratchpad": {
+                "type": "string",
+                "description": "Brief notes after the verdict: each theme's demand driver/catalyst, "
+                               "and whether they are the same directional driver.",
+            },
         },
-        "required": ["analysis_scratchpad", "verdict", "driver_a", "driver_b", "reason"],
+        "required": ["verdict", "driver_a", "driver_b", "reason", "analysis_scratchpad"],
     },
 }
 
@@ -296,7 +301,7 @@ def build_adjudication_prompt(
 # 17:17 ET; 8 hard failures on 08-20 and zero before.
 # WHAT THIS COSTS: the C4 caveat wanted determinism before any merge flip, and
 # temperature=0 was one of its three legs. The API no longer offers it, so the
-# remaining hardening (forced tool_choice + the scratchpad-first tool schema +
+# remaining hardening (forced tool_choice + the verdict-first tool schema +
 # retry-once on parse failure) now carries that load alone. Adjudication is
 # non-deterministic where it used to be pinned — a real reduction, accepted
 # because the alternative is an arm that cannot run at all.

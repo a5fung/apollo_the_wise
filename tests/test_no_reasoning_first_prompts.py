@@ -30,18 +30,11 @@ BANNED = re.compile(
     r"|scratchpad`?\s+first|required\s+first",
     re.I)
 # file -> the banned phrases still allowed there, and why.
-PENDING = {
-    "agents/market_intelligence/theme_merge_arm.py": (
-        "the MERGE adjudicator only (the containment one is reworded): it runs on Haiku, which "
-        "answers it, and its prompt is pinned by a corpus eval (test_theme_merge_corpus_gate) — "
-        "reword it with a re-run of that eval before Haiku's tier advances"),
-}
+# (2026-11-23: the MERGE adjudicator left this list — claude-haiku-5-5 refused its "scratchpad FIRST" shape on every
+# nightly call; reworded verdict-first with a corpus-eval re-run, theme_merge_arm v3.)
+PENDING: dict[str, str] = {}
 # tool name -> why its required scratchpad may still precede the answer fields.
 SCRATCHPAD_FIRST_PENDING = {
-    "adjudicate_theme_merge": (
-        "the MERGE adjudicator (Haiku, Arm B): its prompt text and schema are pinned by "
-        "test_theme_merge_corpus_gate's corpus eval — reorder with a re-run of that eval, together "
-        "with the PENDING wording above"),
     "assign_theme_ecosystem": (
         "ecosystem assignment runs on Haiku (ECOSYSTEM_ASSIGN_MODEL), which answers it; its prompt "
         "is already worded as brief notes — reorder when Haiku's tier advances"),
