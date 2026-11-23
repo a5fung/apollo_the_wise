@@ -90,11 +90,18 @@ LEGS: tuple[tuple[str, str, str, str], ...] = (
     ("K5", "Speculative growth (ARKK / QQQ)", "risk", "speculative growth lagging"),
 )
 LEG_IDS = tuple(l[0] for l in LEGS)
+# The sources each leg reads (FRED ids / ETF tickers): freshness and the "source failed" reasons both derive from it.
+NEEDS: dict[str, tuple[str, ...]] = {
+    "C3": ("BAA10Y",), "F1": ("WALCL", "WTREGEN", "RRPONTSYD"), "F2": ("DFF",), "R1": ("DFII10",),
+    "R2": ("DGS2",), "D1": ("UUP",), "M1": ("GLD", "SLV"), "M2": ("CPER", "GLD"), "K1": ("IWM", "SPY"),
+    "K5": ("ARKK", "QQQ"),
+}
 K = len(GROUPS)
 ENTER, EXIT = K / 3, K / 6
 TURN_CONFIRM = 5
 MARKER_SESSIONS = 126                  # composite turn markers shown: the last ~6 months
 _WORD = {1: "tight", -1: "easy", 0: "flat"}
+_PRICE_WORD = {1: "above", -1: "below", 0: "at"}     # the seed tiles speak about the PRICE
 
 
 # ──────────────────────────────────────────────────────────────────────────── inputs
@@ -173,13 +180,16 @@ def turns(sign: np.ndarray) -> tuple[list[tuple[int, int]], int | None]:
     return out, (None if conf is None else int(conf))
 
 
-def _run_start(v: np.ndarray) -> tuple[int, int] | None:
-    """The current run of a vote series (NaN sessions dropped, as the reference read does): (position of its first
-    session, sessions AFTER that one). None when there is no value at all."""
-    idx = np.flatnonzero(~np.isnan(v))
+def _run_start(v: np.ndarray, value=None, missing=None) -> tuple[int, int] | None:
+    """The current run of a series (NaN sessions dropped, as the reference read does): (position of its first
+    session, sessions AFTER that one). None when there is no value at all. ``missing`` = the entry to drop
+    (default NaN); ``value`` = the run must be of that value (None = whatever the series ends on)."""
+    idx = np.flatnonzero(~np.isnan(v) if missing is None else v != missing)
     if len(idx) == 0:
         return None
     vals = v[idx]
+    if value is not None and vals[-1] != value:
+        return None
     j = len(vals) - 1
     while j > 0 and vals[j - 1] == vals[j]:
         j -= 1
@@ -261,9 +271,7 @@ def compute(inp: Inputs, lags: dict[str, tuple[int, bool, int]] | None = None) -
                    else (np.full(n, np.nan), np.zeros(n, bool), np.full(n, np.datetime64("NaT", "ns"))))
 
     def e(t): return etf[t][0]
-    def ef(*ts): return np.logical_and.reduce([etf[t][1] for t in ts])
     def f(s): return fr[s][0]
-    def ff(*ss): return np.logical_and.reduce([fr[s][1] for s in ss])
 
     with np.errstate(invalid="ignore", divide="ignore"):
         net_liq = f("WALCL") - f("WTREGEN") - f("RRPONTSYD") * 1000.0      # $ millions (RRP is in $ billions)
@@ -272,14 +280,8 @@ def compute(inp: Inputs, lags: dict[str, tuple[int, bool, int]] | None = None) -
             "D1": e("UUP"), "M1": e("GLD") / e("SLV"), "M2": -(e("CPER") / e("GLD")),
             "K1": -(e("IWM") / e("SPY")), "K5": -(e("ARKK") / e("QQQ")),
         }
-    FR = {
-        "C3": ff("BAA10Y"), "F1": ff("WALCL", "WTREGEN", "RRPONTSYD"), "F2": ff("DFF"), "R1": ff("DFII10"),
-        "R2": ff("DGS2"), "D1": ef("UUP"), "M1": ef("GLD", "SLV"), "M2": ef("CPER", "GLD"),
-        "K1": ef("IWM", "SPY"), "K5": ef("ARKK", "QQQ"),
-    }
-    needs = {"C3": ["BAA10Y"], "F1": ["WALCL", "WTREGEN", "RRPONTSYD"], "F2": ["DFF"], "R1": ["DFII10"],
-             "R2": ["DGS2"], "D1": ["UUP"], "M1": ["GLD", "SLV"], "M2": ["CPER", "GLD"], "K1": ["IWM", "SPY"],
-             "K5": ["ARKK", "QQQ"]}
+    FR = {k: np.logical_and.reduce([fr[s][1] if s in FRED_IDS else etf[s][1] for s in NEEDS[k]])
+          for k in LEG_IDS}
     vote, fast = {}, {}
     for k in LEG_IDS:
         x = np.where(FR[k], X[k], np.nan)             # a stale session has no value to vote with
@@ -305,12 +307,12 @@ def compute(inp: Inputs, lags: dict[str, tuple[int, bool, int]] | None = None) -
     for k in LEG_IDS:
         if FR[k][-1] and not np.isnan(vote[k][-1]):
             continue
-        missing = [s for s in needs[k] if (s in FRED_IDS and inp.fred.get(s) is None)
+        missing = [s for s in NEEDS[k] if (s in FRED_IDS and inp.fred.get(s) is None)
                    or (s in ADJ_TICKERS and (inp.adj is None or s not in inp.adj.columns))]
         if missing:
             reasons[k] = "source failed: " + ", ".join(missing)
         elif not FR[k][-1]:
-            reasons[k] = "stale: no fresh value for " + ", ".join(needs[k])
+            reasons[k] = "stale: no fresh value for " + ", ".join(NEEDS[k])
         else:
             reasons[k] = "not enough history for a 50-day average"
     last_obs = {}
@@ -343,15 +345,12 @@ def _seed(series: np.ndarray, nd: int, slope: bool) -> dict | None:
     if len(series) == 0 or np.isnan(series[-1]):
         return None
     m20, m50 = _ma(series, 20), _ma(series, 50)
+    def _vs(a: float, b: float) -> str | None:
+        return None if (np.isnan(a) or np.isnan(b)) else _PRICE_WORD.get(int(_side(np.array([a]), np.array([b]))[0]))
     out = {"latest": _r(series[-1], nd), "ma20": _r(m20[-1], nd), "ma50": _r(m50[-1], nd),
-           "vs_ma20": _WORD.get(int(_side(series[-1:], m20[-1:])[0])) if not np.isnan(m20[-1]) else None,
-           "vs_ma50": _WORD.get(int(_side(series[-1:], m50[-1:])[0])) if not np.isnan(m50[-1]) else None,
-           "ma20_vs_ma50": (_WORD.get(int(_side(m20[-1:], m50[-1:])[0]))
-                            if not (np.isnan(m20[-1]) or np.isnan(m50[-1])) else None),
+           "vs_ma20": _vs(series[-1], m20[-1]), "vs_ma50": _vs(series[-1], m50[-1]),
+           "ma20_vs_ma50": _vs(m20[-1], m50[-1]),
            "chg_1m_pct": (_r(100 * (series[-1] / series[-22] - 1), 1) if len(series) >= 22 else None)}
-    # the tile's words are about the PRICE (above / below), not tight / easy
-    for key in ("vs_ma20", "vs_ma50", "ma20_vs_ma50"):
-        out[key] = {"tight": "above", "easy": "below", "flat": "at"}.get(out[key])
     if slope:
         out["ma20_slope_wk"] = _r(m20[-1] - m20[-6], 3) if len(series) >= 25 else None
     return out
@@ -422,9 +421,7 @@ def build_block(inp: Inputs, generated_at: datetime | None = None,
         # §14: the state is computed ONLY to switch the caution label; the state word itself never leaves here
         st = c.state.values
         if st[-1] == "D":
-            j = n - 1
-            while j > 0 and st[j - 1] == "D":
-                j -= 1
+            j, _ = _run_start(st, value="D", missing="")        # st[-1] == "D" here, so the run exists
             out["caution"] = {"on": True, "text": CAUTION_TEXT, "since": _d(grid, j), "sessions": n - 1 - j,
                               "history": CAUTION_HISTORY}
         else:
@@ -580,11 +577,15 @@ async def collect_inputs(now_et: datetime | None = None) -> Inputs:
             return None
         return df
 
-    adj, raw = await asyncio.gather(bars(ADJ_TICKERS, "all", "alpaca_adj"), bars(RAW_TICKERS, "raw", "alpaca_raw"))
     fred: dict[str, pd.Series] = {}
     async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
-        res = await asyncio.gather(*(_fetch_fred(client, sid, FRED_START, now_et.date()) for sid in FRED_IDS),
-                                   return_exceptions=True)
+        adj, raw, *res = await asyncio.gather(
+            bars(ADJ_TICKERS, "all", "alpaca_adj"), bars(RAW_TICKERS, "raw", "alpaca_raw"),
+            *(_fetch_fred(client, sid, FRED_START, now_et.date()) for sid in FRED_IDS),
+            return_exceptions=True)
+    for bar_res in (adj, raw):          # bars() isolates its own fetch errors; anything else is a real failure
+        if isinstance(bar_res, BaseException):
+            raise bar_res
     for sid, r in zip(FRED_IDS, res):
         if isinstance(r, BaseException):
             errors[f"fred_{sid}"] = f"{type(r).__name__}: {r}"[:200]
@@ -629,11 +630,9 @@ def run_cli(argv: list[str], stdin_text: str | None, collect=None) -> tuple[int,
     code and EMPTY stdout; the caller then ships the breadth file as it is."""
     collect = collect or collect_inputs
     try:
-        text = stdin_text if "--splice" in argv else None
-        if "--splice" in argv:
-            if not (text or "").strip():
-                raise ValueError("--splice needs the breadth JSON on stdin")
-            json.loads(text)            # refuse a broken breadth file before spending a fetch on it
+        text = stdin_text                # main passes it only under --splice
+        if text is not None and not text.strip():
+            raise ValueError("--splice needs the breadth JSON on stdin")
         now_et = datetime.now(_ET)
 
         async def run():

@@ -497,3 +497,9 @@ def test_the_deploy_stays_market_agent_only():
     loaded = (REPO / "scripts" / "exec_loaded_modules.txt").read_text().split()
     assert "agents/market_intelligence/collector.py" in loaded          # why the reader is not in the collector
     assert "agents/market_intelligence/liquidity_read.py" not in loaded
+
+
+def test_every_leg_has_the_sources_it_reads():
+    assert set(L.NEEDS) == set(L.LEG_IDS)
+    known = set(L.FRED_IDS) | set(L.ADJ_TICKERS)
+    assert all(v and set(v) <= known for v in L.NEEDS.values())

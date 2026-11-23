@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import functools
 import io as _io
 import json
 import logging
@@ -676,11 +677,14 @@ def parse_wasde_dates(page_html: str) -> list[date]:
     return sorted(set(out))
 
 
+WASDE_SOURCE = "usda.gov WASDE release dates"     # the exact string the rows carry: calendar_age_days matches it
+
+
 def calendar_rows_from_wasde(dates: list[date]) -> list[dict]:
     h, mi, tz = RELEASE_CONVENTION["WASDE"]
     return [{"event_date": d, "event_type": "WASDE",
              "release_et": datetime.combine(d, time(h, mi), ZoneInfo(tz)).astimezone(_ET),
-             "source": "usda.gov WASDE release dates"} for d in dates]
+             "source": WASDE_SOURCE} for d in dates]
 
 
 # ── OPEC+ meetings: a dated table (opec.org answered a scripted read with HTTP 403 on 2026-11-22) ──
@@ -701,14 +705,17 @@ def opec_table_age_days(today: date) -> int:
     return (today - max(OPEC_MEETINGS)).days
 
 
-def calendar_rows_from_opec(meetings=OPEC_MEETINGS) -> list[dict]:
+def calendar_rows_from_opec(meetings=OPEC_MEETINGS, d0: Optional[date] = None, d1: Optional[date] = None) -> list[dict]:
     """A meeting on a weekday is that day's session; one on a Saturday / Sunday (most are) is Monday's. No release
-    time: a meeting ends when it ends, so the first-minute label reads 'no release time'."""
+    time: a meeting ends when it ends, so the first-minute label reads 'no release time'. `d0` / `d1` (optional)
+    keep only the sessions in d0..d1, as the USDA rule's rows are."""
     out = []
     for d in meetings:
         s = d
         while s.weekday() >= 5:
             s += timedelta(days=1)
+        if (d0 is not None and s < d0) or (d1 is not None and s > d1):
+            continue
         out.append({"event_date": s, "event_type": "OPEC", "release_et": None, "source": OPEC_SOURCE})
     return out
 
@@ -721,7 +728,7 @@ def calendar_rows_from_opec(meetings=OPEC_MEETINGS) -> list[dict]:
 # Fri 11-27, the date his issue gave). OUR OWN GUESS, from no source: when that Friday is itself a federal holiday
 # the next working day is taken (first case Fri 2027-01-01 -> Mon 2027-01-04). A change FAS announces on its own
 # (a shutdown) cannot be seen by a rule.
-USDA_EXPORTS_SOURCE = "fas.usda.gov weekly export sales schedule (rule)"   # must NOT start "usda.gov": calendar_age_days
+USDA_EXPORTS_SOURCE = "fas.usda.gov weekly export sales schedule (rule)"
 
 
 def _observed(d: date) -> date:
@@ -737,7 +744,8 @@ def _nth_weekday(year: int, month: int, weekday: int, n: int) -> date:
     return d - timedelta(days=(d.weekday() - weekday) % 7)
 
 
-def us_federal_holidays(year: int) -> set[date]:
+@functools.lru_cache(maxsize=None)
+def us_federal_holidays(year: int) -> frozenset[date]:
     """The eleven US federal holidays that fall in `year` as OBSERVED (a Saturday one on Friday, a Sunday one on
     Monday; next New Year's Day when it is observed on Dec 31). Not the stock market's list: Columbus Day and
     Veterans Day are federal holidays, Good Friday is not."""
@@ -745,7 +753,7 @@ def us_federal_holidays(year: int) -> set[date]:
             _nth_weekday(year, 5, 0, -1), _observed(date(year, 6, 19)), _observed(date(year, 7, 4)),
             _nth_weekday(year, 9, 0, 1), _nth_weekday(year, 10, 0, 2), _observed(date(year, 11, 11)),
             _nth_weekday(year, 11, 3, 4), _observed(date(year, 12, 25)), _observed(date(year + 1, 1, 1))}
-    return {d for d in days if d.year == year}
+    return frozenset(d for d in days if d.year == year)
 
 
 def usda_export_sales_dates(d0: date, d1: date) -> list[date]:
@@ -1172,7 +1180,7 @@ class Io:
         """Days since the last WEEKLY (full) calendar refresh, read off the WASDE rows it rewrites; None = never."""
         pool = await self._pool()
         async with pool.acquire() as conn:
-            ts = await conn.fetchval("SELECT MAX(refreshed_at) FROM mi_cot_calendar WHERE source LIKE 'usda.gov%'")
+            ts = await conn.fetchval("SELECT MAX(refreshed_at) FROM mi_cot_calendar WHERE source = $1", WASDE_SOURCE)
         return None if ts is None else (today - ts.astimezone(_ET).date()).days
 
     async def replace_calendar(self, today: date, rows: list[dict], sources: list[str], until: date) -> None:
@@ -1346,7 +1354,7 @@ async def read_past_calendar(io: Io, d0: date, d1: date, fx_ok: bool = True) -> 
     except Exception as e:  # loud-ok: named in the weekly message (the blind line) and the audit row
         logger.warning(f"cot: past WASDE dates could not be read: {type(e).__name__}: {e}")
         failed.append("WASDE")
-    rows += calendar_rows_from_opec() + calendar_rows_from_usda_exports(d0, d1)     # a table and a rule: no read to fail
+    rows += calendar_rows_from_opec(d0=d0, d1=d1) + calendar_rows_from_usda_exports(d0, d1)     # a table and a rule: no read to fail
     bad = 0
     for tk in EARNINGS_TICKERS:
         try:
@@ -1455,9 +1463,12 @@ async def refresh_calendar(io: Io, today: date, fx_ok: bool = True) -> dict:
             logger.warning("cot: fxempire refused the calendar request; not retried")
     else:
         errors["fxempire"] = "skipped: refused earlier in this run"
-    await take("usda wasde", lambda: (calendar_rows_from_wasde(io.wasde_dates()), True), "usda.gov WASDE release dates", today)
+    await take("usda wasde", lambda: (calendar_rows_from_wasde(io.wasde_dates()), True), WASDE_SOURCE, today)
     await take("yfinance earnings", earn, "yfinance earnings dates", today)
     await take("opec meetings", lambda: (calendar_rows_from_opec(), True), OPEC_SOURCE, today)
+    if opec_table_age_days(today) > OPEC_STALE_DAYS:       # the CI date-test is not enough: it only runs on a commit
+        errors["opec table"] = (f"newest announced meeting is {opec_table_age_days(today)} days old: "
+                                "add the next date")
     await take("usda export sales", lambda: (calendar_rows_from_usda_exports(today, monday + timedelta(days=41)), True),
                USDA_EXPORTS_SOURCE, today)
     return {"rows": n, "errors": errors}
