@@ -2628,3 +2628,10 @@ EVIDENCE:
 - Run 2026-11-21 (pulled forward on his "Go"): `scripts/probes/_720_monthly/runs/2026-11-21/` — `review.md` lists all 39 closed trades with per-trade forensic notes (`forensic.md`); every lens is split by exit era and lane with n stated, never pooled. Reported to him in chat 11-21.
 - Findings: nothing proposed — every arm n<10, so no entry / stop / sizing / exit change is eligible (CHANGE_PROCESS + N>=10 + his sign-off). Defects separated from outcomes: stops filled below the stop price on ARDT / BRKR / AMLX / CRWV (slippage, carried to the next run); the CYRX 11-17 would_have_filled label was a reclassifier bug, fixed and deployed (`025c6e5d`, judged only on bars after the order was sent). Breakouts 16 of 17 stopped out, read against the bear-market regime he flagged 11-21.
 - The five folded reviews point at this cadence (data_gated_reviews.yaml "RUNS INSIDE PLAN #720's monthly trade review", five entries); the cadence itself is the review `trade_review_monthly_720` (next run eligible 2026-12-26).
+
+## #729 — shelf-distance logging, first live morning (2026-11-23)
+BAR: "one HIGH-alert morning reads as EXPECT; a morning with no HIGH alert proves nothing and re-dates to the next one."
+EVIDENCE:
+- Mon 11-23 had a HIGH board (KYMR, AMD). Prod read at ~10:25 ET (`scripts/probes/_verify_1123/q1.out`): all 6 `mi_ep_slot_rank_shadow` rows of the day (bar_stream 09:31:00, 09:31:01, cron_9_31 09:31:18) carry a non-null `shelf_dmin` (KYMR 2.22, AMD -4.10, structure ok) and `rank_shelf` set; no row has both shelf_dmin and shelf_null NULL.
+- Acting order unchanged: acting_key = rs, rank_rs 1 KYMR / 2 AMD on every row; no `slot_rank_shelf_failed` / `slot_rank_shelf_all_stale` audit rows today.
+- The contention count accrues in the #533 watch review from here.

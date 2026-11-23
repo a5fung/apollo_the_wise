@@ -1,0 +1,17 @@
+SET
+detail
+{"trade_id": 1427, "ticker": "EVER", "account_mode": "paper", "filled_at": "2026-11-20 14:58:22.704767+00:00", "qty": 543.0, "stop_target": 28.68, "stop_target_source": "last_stop", "fallback_order_id": "875e2cfa-2939-46f2-b8fd-99f5c8d87c48"}
+(1 row)
+ERROR:  relation "mi_trades" does not exist
+LINE 1: ... exit_reason, exit_price, shares, stop_price FROM mi_trades ...
+                                                             ^
+ticker|t|float_m|fpts|ep_score|filter_reason
+EROK|07:05|22|0|46.2|score 46 < bar 65 (catalyst=strong)
+EROK|07:10|22|0|46.2|score 46 < bar 65 (catalyst=strong)
+EROK|07:15|22|0|46.2|score 46 < bar 65 (catalyst=strong)
+EROK|07:20|22|0|46.2|score 46 < bar 65 (catalyst=strong)
+EROK|07:25|22|0|46.2|score 46 < bar 65 (catalyst=strong)
+EROK|07:30|22|0|46.2|score 46 < bar 65 (catalyst=strong)
+EROK|07:35|22|0|46.2|score 46 < bar 65 (catalyst=strong)
+EROK|07:00|22|0|46.2|score 46 < bar 65 (catalyst=strong)
+(8 rows)

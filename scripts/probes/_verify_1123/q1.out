@@ -1,0 +1,41 @@
+SET
+== 731 scan rows today (float<50M)
+== 731 counts by float pts today
+ERROR:  function round(double precision, integer) does not exist
+LINE 1: ..._et AT TIME ZONE 'America/New_York','HH24:MI') t, round(floa...
+                                                             ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+fpts|count|lowfloat
+0|189|24
+(1 row)
+== 729 slot rank rows today
+ticker|rec|trigger|board_n|rank_rs|rank_shelf|dmin|shelf_null|shelf_structure|acting_key
+KYMR|09:31:00|bar_stream|2|1|1|2.22||ok|rs
+AMD|09:31:00|bar_stream|2|2|2|-4.10||ok|rs
+KYMR|09:31:01|bar_stream|2|1|1|2.22||ok|rs
+AMD|09:31:01|bar_stream|2|2|2|-4.10||ok|rs
+KYMR|09:31:18|cron_9_31|2|1|1|2.22||ok|rs
+AMD|09:31:18|cron_9_31|2|2|2|-4.10||ok|rs
+(6 rows)
+== audit rows today of interest
+t|event_type|left
+07:00:01|watchdog_heartbeat|service watchdog alive; watching: apollo-orchestrator apollo-market apollo-execution apollo-postgres apollo-redis
+07:00:56|mna_filter_released|ASX: released for review (a Benzinga-via-Alpaca headline was answered as not pinning; the pre-#692 rule never read that feed); grader read none/none/none; 1 headline(s) answered no pin
+09:00:00|stop_order_id_changed|trade #1427 [paper]: stop_order_id=875e2cfa-2939-46f2-b8fd-99f5c8d87c48 (reason=stop_ack_timeout)
+09:00:00|stop_ack_timeout_remediated|EVER #1427: stop-ACK timeout (filled_at 09:58:22 ET, stop_order_id NULL >30s); fallback stop placed at $28.68 order=875e2cfa-2939-46f2-b8fd-99f5c8d87c48
+09:00:27|mna_filter_released|NVDA: released for review (a Benzinga-via-Alpaca headline was answered as not pinning; the pre-#692 rule never read that feed); grader read none/none/none; 1 headline(s) answered no pin
+09:31:26|entry_partial_fill|[paper] EVER partial_fill 82/543 (cum 82) @ $28.37 side=sell
+09:34:22|trade_lifecycle_telegram_attempted|stop_out EVER @$28.37 pnl=$-504.99
+09:35:00|stop_refresh_ran|Morning: examined 2, placed 0, already-covered 2, skipped 0 (none), same-day excluded 1 (KYMR)
+09:35:10|breakout_v1_entry_abstain|EVER: setup:stop_too_wide: level $30.00 - day low $28.31 = 5.63% > ADR20 5.19%
+09:40:10|breakout_v1_fill_stop_checked|BSP #1564: true low $43.05 is not under the placed stop — the stop is kept
+09:40:10|breakout_v1_fill_stop_checked|CTKB #1565: true low $6.25 is not under the placed stop — the stop is kept
+09:40:42|dead_stop_price_preserved|trade #1566 [paper]: dead stop cd60934d (status=OrderStatus.CANCELED) preserved at $244.44 for the #600 floor
+09:40:42|stop_order_id_changed|trade #1566 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+09:41:10|breakout_v1_fill_stop_checked|GKOS #1566: true low $244.44 is not under the placed stop — the stop is kept
+09:41:30|stop_breach_market_sale|GKOS: price already through the stop $244.44 — selling 33 sh at market (order 8c5d4ce7)
+09:41:30|stop_ack_breach_sold_at_market|GKOS #1566: stop-ACK timeout; fallback stop $244.44 refused — the price is already through it; 33 sh sold at market order=8c5d4ce7-8eb4-4025-ab43-43c2b7b35e36
+09:43:10|breakout_v1_fill_stop_checked|AXGN #1569: true low $56.02 is not under the placed stop — the stop is kept
+09:55:16|mna_filter_released|OTLY: deal-nominated (target/signed via alpaca_headline_model) but the price is FREE — open5m range 27.655% > 1.0% ceiling; released for review (a Benzinga-via-Alpaca headline was answered as not pinn
+10:14:10|breakout_v1_fill_stop_checked|TENB #1579: true low $43.26 is not under the placed stop — the stop is kept
+(19 rows)
