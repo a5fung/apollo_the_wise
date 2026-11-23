@@ -17,7 +17,8 @@ READ-ONLY DATA. No broker import, no strategy row, no order, no sizing. Free pub
   Bars   yfinance continuous front futures (`=F`), daily and 1-minute. A Yahoo daily close is the last trade, NOT
          the exchange settlement, so a close within a tick of the previous close can read the other way.
   Events fxempire.com economic calendar (US macro + EIA, and central-bank decisions per country), usda.gov WASDE
-         release dates, yfinance earnings dates for the ten mega-caps.
+         release dates, yfinance earnings dates for the ten mega-caps, the announced OPEC+ meeting dates (a dated
+         table, opec.org press releases) and the USDA weekly export sales schedule (a rule, fas.usda.gov).
 
 The rules are copied from the research (cot_index.py, detector.py, detector_friday.py, surprise_rules.py,
 first_tick_1min.py) and are FROZEN there; nothing here is tuned. Everything pure is in the first half of this file
@@ -162,8 +163,10 @@ MAX_WEEK_AGE_DAYS = 17        # the research carries an issue at most 12 days pa
 LATE_FIRST_SIGHT_DAYS = 7
 FRIDAY_CHECK_MAX_AGE_DAYS = 10
 
-# Scheduled-event types -> the markets they are news for (news_calendar.py REL). PCE / ISM were never N1 triggers.
-_US_TYPES = ("CPI", "PPI", "NFP", "RETAIL", "GDP", "FOMC")
+# Scheduled-event types -> the markets they are news for (news_calendar.py REL). ISM was never an N1 trigger. PCE was
+# not one in the research either (it scored PCE days only as extra events); it is watched since 2026-11-22 because
+# Shapiro's issue of that date named it (operator: "we should continually expand our news failure sources").
+_US_TYPES = ("CPI", "PPI", "NFP", "RETAIL", "GDP", "FOMC", "PCE")
 _MACRO_MARKETS = tuple(m for m in MARKETS if sector_of(m) in ("equities", "fixed_income", "currencies", "metals", "crypto"))
 EVENT_MARKETS: dict[str, tuple[str, ...]] = {
     **{t: _MACRO_MARKETS for t in _US_TYPES},
@@ -175,6 +178,10 @@ EVENT_MARKETS: dict[str, tuple[str, ...]] = {
     # Named in Shapiro's 2026-11-16 issue as news-failure triggers (no actual-vs-consensus label: see SURPRISE_COMPONENTS)
     "FED_MINUTES": _MACRO_MARKETS,
     "RBA_MINUTES": ("australian_dollar",), "AU_JOBS": ("australian_dollar",), "AU_WAGES": ("australian_dollar",),
+    # Named in his 2026-11-22 issue (PCE is in _US_TYPES above). None of these three has an actual-vs-consensus label.
+    "AU_CPI": ("australian_dollar",),
+    "OPEC": ("crude_oil", "heating_oil", "unleaded_gas"),
+    "USDA_EXPORTS": ("soybean_oil", "soybeans", "soybean_meal", "corn", "wheat"),
 }
 EARNINGS_TICKERS = ("NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "META", "TSLA", "MU", "INTC", "AVGO")
 EARNINGS_MARKETS = ("nasdaq", "sp500", "dow")
@@ -190,16 +197,22 @@ FX_US_TRIGGERS = {
     "GDP Growth Rate QoQ Adv": "GDP", "GDP Growth Rate QoQ 2nd Est": "GDP", "GDP Growth Rate QoQ Final": "GDP",
     "Fed Interest Rate Decision": "FOMC", "EIA Crude Oil Stocks Change": "EIA_PETRO",
     "EIA Natural Gas Stocks Change": "EIA_NATGAS", "FOMC Minutes": "FED_MINUTES",
+    # the monthly PCE release (one row per release in the served answers of 2026-11-17; the quarterly "PCE Prices QoQ"
+    # rows that ride on GDP days are a different name and are not read)
+    "PCE Price Index MoM": "PCE",
 }
 # country slug -> {exact event name: type}: that country's rate decision plus any other watched release. ECB / BoE /
 # BoJ names were seen on the calendar 2026-11-15; the BoC / SNB names follow the same pattern but no such row was listed
 # that day (coverage gap until one is seen). The Australian names were read from the served answer 2026-11-17
 # (scripts/probes/_cot_events_1117/australia.json); "Employment Change" is the headline jobs series (one row per release).
+# "Inflation Rate MoM" on the australia page is the monthly CPI (same stored answer: 4 releases, 11:30 Sydney); the
+# quarterly CPI rows come out on the same day, so the one name covers both. It is read on that page only.
 FX_COUNTRY_EVENTS: dict[str, dict[str, str]] = {
     "euro-area": {"ECB Interest Rate Decision": "ECB"}, "united-kingdom": {"BoE Interest Rate Decision": "BOE"},
     "japan": {"BoJ Interest Rate Decision": "BOJ"}, "canada": {"BoC Interest Rate Decision": "BOC"},
     "australia": {"RBA Interest Rate Decision": "RBA", "RBA Meeting Minutes": "RBA_MINUTES",
-                  "Employment Change": "AU_JOBS", "Wage Price Index QoQ": "AU_WAGES"},
+                  "Employment Change": "AU_JOBS", "Wage Price Index QoQ": "AU_WAGES",
+                  "Inflation Rate MoM": "AU_CPI"},
     "switzerland": {"SNB Interest Rate Decision": "SNB"},
 }
 FX_CENTRAL_BANKS = FX_COUNTRY_EVENTS   # the countries read besides the US (loops iterate the keys)
@@ -213,6 +226,9 @@ RELEASE_CONVENTION: dict[str, tuple[int, int, str]] = {
     "FED_MINUTES": (14, 0, "America/New_York"), "RBA_MINUTES": (11, 30, "Australia/Sydney"),
     "AU_JOBS": (11, 30, "Australia/Sydney"), "AU_WAGES": (11, 30, "Australia/Sydney"), "SNB": (9, 30, "Europe/Zurich"),
     "EARN": (16, 0, "America/New_York"),
+    "PCE": (8, 30, "America/New_York"), "AU_CPI": (11, 30, "Australia/Sydney"),
+    "USDA_EXPORTS": (8, 30, "America/New_York"),
+    # OPEC has NO entry on purpose: a meeting has no standing release minute (its row carries no release time).
 }
 
 # Actual-vs-consensus components (event_surprises.py COMP): type -> [(FXEmpire series, sign, rms)]. rms = the root
@@ -228,6 +244,8 @@ SURPRISE_COMPONENTS: dict[str, list[tuple[str, int, float]]] = {
     "GDP": [("GDP Growth Rate QoQ Adv", 1, 0.8362), ("GDP Growth Rate QoQ 2nd Est", 1, 0.270801),
             ("GDP Growth Rate QoQ Final", 1, 0.323443)],
     "FOMC": [("Fed Interest Rate Decision", 1, 0.049029)],
+    "PCE": [("PCE Price Index MoM", 1, 0.0531085), ("Core PCE Price Index MoM", 1, 0.0599145),
+            ("PCE Price Index YoY", 1, 0.0767948), ("Core PCE Price Index YoY", 1, 0.0800641)],
     "EIA_CRUDE": [("EIA Crude Oil Stocks Change", 1, 4634920.0)],
     "EIA_GASOLINE": [("EIA Gasoline Stocks Change", 1, 2687560.0)],
     "EIA_DISTILLATE": [("EIA Distillate Stocks Change", 1, 2365150.0)],
@@ -237,7 +255,7 @@ SURPRISE_COMPONENTS: dict[str, list[tuple[str, int, float]]] = {
 EARNINGS_RMS = {"AAPL": 5.0821, "AMZN": 69.4314, "AVGO": 2.9774, "GOOGL": 67.0832, "INTC": 1367.1919,
                 "META": 32.3879, "MSFT": 7.5999, "MU": 77.4192, "NVDA": 11.6332, "TSLA": 17.9719}
 _EIA_OF = {"crude_oil": "EIA_CRUDE", "unleaded_gas": "EIA_GASOLINE", "heating_oil": "EIA_DISTILLATE"}
-_INFLATION, _GROWTH = {"CPI", "PPI"}, {"NFP", "RETAIL", "GDP"}
+_INFLATION, _GROWTH = {"CPI", "PPI", "PCE"}, {"NFP", "RETAIL", "GDP"}   # surprise_rules.py INFL / GROW (ISM not read)
 CLASS_ORDER = ("WITH", "AGAINST", "INLINE", "AMBIG", "UNKNOWN")
 CLASS_WORDS = {"WITH": "with the crowd", "AGAINST": "against the crowd", "INLINE": "in line",
                "AMBIG": "unknown (no clear read for this market)", "UNKNOWN": "unknown"}
@@ -663,6 +681,96 @@ def calendar_rows_from_wasde(dates: list[date]) -> list[dict]:
     return [{"event_date": d, "event_type": "WASDE",
              "release_et": datetime.combine(d, time(h, mi), ZoneInfo(tz)).astimezone(_ET),
              "source": "usda.gov WASDE release dates"} for d in dates]
+
+
+# ── OPEC+ meetings: a dated table (opec.org answered a scripted read with HTTP 403 on 2026-11-22) ──
+# Each date is the meeting day as ANNOUNCED in an opec.org press release; add the next one when it is announced.
+# tests/test_cot_family.py fails once the newest date is more than OPEC_STALE_DAYS in the past (the table was left
+# to rot). Only announced dates go in: an unannounced extraordinary meeting cannot be seen here.
+OPEC_SOURCE_URL = "https://www.opec.org/pr-detail/620-1-november-2026.html"
+OPEC_SOURCE = "opec.org press releases (announced OPEC+ meeting dates)"
+OPEC_MEETINGS: tuple[date, ...] = (
+    date(2026, 11, 29),      # "The next meeting will be held on 29 November 2026." (press release of 1 November 2026)
+)
+OPEC_STALE_DAYS = 21     # the seven-country meeting is MONTHLY (opec.org 2026-11-01): under one cycle, so a meeting
+                         # cannot pass unseen. Each meeting's press release names the next date: add it then.
+
+
+def opec_table_age_days(today: date) -> int:
+    """Days the newest announced meeting lies in the past (negative = it is still ahead)."""
+    return (today - max(OPEC_MEETINGS)).days
+
+
+def calendar_rows_from_opec(meetings=OPEC_MEETINGS) -> list[dict]:
+    """A meeting on a weekday is that day's session; one on a Saturday / Sunday (most are) is Monday's. No release
+    time: a meeting ends when it ends, so the first-minute label reads 'no release time'."""
+    out = []
+    for d in meetings:
+        s = d
+        while s.weekday() >= 5:
+            s += timedelta(days=1)
+        out.append({"event_date": s, "event_type": "OPEC", "release_et": None, "source": OPEC_SOURCE})
+    return out
+
+
+# ── USDA weekly export sales: a rule, not a read (www.fas.usda.gov answered a script with 403 on 2026-11-22) ──
+# FAS Export Sales Reporting Program (https://www.fas.usda.gov/programs/export-sales-reporting-program): the weekly
+# summary is published Thursdays at 8:30 ET unless a change is announced; when the preceding Friday or the Monday
+# is a national holiday the reporting deadline moves to Tuesday and the summary is published on Friday. INFERRED,
+# not stated there: a holiday on the Tuesday, Wednesday or Thursday also moves it to Friday (Thanksgiving week 2026:
+# Fri 11-27, the date his issue gave). OUR OWN GUESS, from no source: when that Friday is itself a federal holiday
+# the next working day is taken (first case Fri 2027-01-01 -> Mon 2027-01-04). A change FAS announces on its own
+# (a shutdown) cannot be seen by a rule.
+USDA_EXPORTS_SOURCE = "fas.usda.gov weekly export sales schedule (rule)"   # must NOT start "usda.gov": calendar_age_days
+
+
+def _observed(d: date) -> date:
+    return d - timedelta(days=1) if d.weekday() == 5 else d + timedelta(days=1) if d.weekday() == 6 else d
+
+
+def _nth_weekday(year: int, month: int, weekday: int, n: int) -> date:
+    """n-th `weekday` (Mon=0) of the month; n = -1 is the last one."""
+    if n > 0:
+        d = date(year, month, 1)
+        return d + timedelta(days=(weekday - d.weekday()) % 7 + 7 * (n - 1))
+    d = date(year + (month == 12), month % 12 + 1, 1) - timedelta(days=1)
+    return d - timedelta(days=(d.weekday() - weekday) % 7)
+
+
+def us_federal_holidays(year: int) -> set[date]:
+    """The eleven US federal holidays that fall in `year` as OBSERVED (a Saturday one on Friday, a Sunday one on
+    Monday; next New Year's Day when it is observed on Dec 31). Not the stock market's list: Columbus Day and
+    Veterans Day are federal holidays, Good Friday is not."""
+    days = {_observed(date(year, 1, 1)), _nth_weekday(year, 1, 0, 3), _nth_weekday(year, 2, 0, 3),
+            _nth_weekday(year, 5, 0, -1), _observed(date(year, 6, 19)), _observed(date(year, 7, 4)),
+            _nth_weekday(year, 9, 0, 1), _nth_weekday(year, 10, 0, 2), _observed(date(year, 11, 11)),
+            _nth_weekday(year, 11, 3, 4), _observed(date(year, 12, 25)), _observed(date(year + 1, 1, 1))}
+    return {d for d in days if d.year == year}
+
+
+def usda_export_sales_dates(d0: date, d1: date) -> list[date]:
+    """The weekly export sales release days in d0..d1 (the rule above)."""
+    def holiday(d: date) -> bool:
+        return d in us_federal_holidays(d.year)
+    out = []
+    thu = d0 - timedelta(days=7) + timedelta(days=(3 - d0.weekday()) % 7)
+    while thu <= d1:
+        rel = thu
+        if any(holiday(thu - timedelta(days=k)) for k in (6, 3, 2, 1, 0)):    # the Friday before, Mon, Tue, Wed, Thu
+            rel = thu + timedelta(days=1)
+            while rel.weekday() >= 5 or holiday(rel):
+                rel += timedelta(days=1)
+        if d0 <= rel <= d1:
+            out.append(rel)
+        thu += timedelta(days=7)
+    return out
+
+
+def calendar_rows_from_usda_exports(d0: date, d1: date) -> list[dict]:
+    h, mi, tz = RELEASE_CONVENTION["USDA_EXPORTS"]
+    return [{"event_date": d, "event_type": "USDA_EXPORTS",
+             "release_et": datetime.combine(d, time(h, mi), ZoneInfo(tz)).astimezone(_ET),
+             "source": USDA_EXPORTS_SOURCE} for d in usda_export_sales_dates(d0, d1)]
 
 
 def calendar_rows_from_earnings(ticker: str, stamps: list[datetime]) -> list[dict]:
@@ -1238,6 +1346,7 @@ async def read_past_calendar(io: Io, d0: date, d1: date, fx_ok: bool = True) -> 
     except Exception as e:  # loud-ok: named in the weekly message (the blind line) and the audit row
         logger.warning(f"cot: past WASDE dates could not be read: {type(e).__name__}: {e}")
         failed.append("WASDE")
+    rows += calendar_rows_from_opec() + calendar_rows_from_usda_exports(d0, d1)     # a table and a rule: no read to fail
     bad = 0
     for tk in EARNINGS_TICKERS:
         try:
@@ -1348,6 +1457,9 @@ async def refresh_calendar(io: Io, today: date, fx_ok: bool = True) -> dict:
         errors["fxempire"] = "skipped: refused earlier in this run"
     await take("usda wasde", lambda: (calendar_rows_from_wasde(io.wasde_dates()), True), "usda.gov WASDE release dates", today)
     await take("yfinance earnings", earn, "yfinance earnings dates", today)
+    await take("opec meetings", lambda: (calendar_rows_from_opec(), True), OPEC_SOURCE, today)
+    await take("usda export sales", lambda: (calendar_rows_from_usda_exports(today, monday + timedelta(days=41)), True),
+               USDA_EXPORTS_SOURCE, today)
     return {"rows": n, "errors": errors}
 
 

@@ -8,6 +8,7 @@ import asyncio
 import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -107,7 +108,7 @@ def test_market_table_is_whole():
     for m, peers in cf.PEERS.items():
         assert m in cf.MARKETS and all(p in cf.MARKETS for p, _ in peers)
     assert all(m in cf.MARKETS for ms in cf.EVENT_MARKETS.values() for m in ms)
-    assert not ({"PCE", "ISM_MFG", "ISM_SERV"} & set(cf.EVENT_MARKETS))   # never N1 triggers in the research
+    assert not ({"ISM_MFG", "ISM_SERV"} & set(cf.EVENT_MARKETS))   # never N1 triggers in the research (PCE: watched since 11-22)
 
 
 # ── the set-up rule ──────────────────────────────────────────────────────────────────────────
@@ -317,7 +318,7 @@ def test_session_date():
 def test_calendar_rows_take_exact_names_only():
     ev = [_fx("Inflation Rate MoM", None, "0.2%"), _fx("Atlanta Fed GDPNow", None, "3%"), _fx("Retail Sales YoY", None, "1%"),
           _fx("EIA Crude Oil Stocks Change", None, "", "2026-11-12T15:30:00.000Z"),
-          _fx("PCE Price Index MoM", None, "0.2%"), _fx("ISM Manufacturing PMI", None, "50")]
+          _fx("PCE Prices QoQ Adv", None, "0.2%"), _fx("ISM Manufacturing PMI", None, "50")]
     rows = {(r["event_date"], r["event_type"]) for r in cf.calendar_rows_from_fx(ev)}
     assert rows == {(WED, "CPI"), (date(2026, 11, 12), "EIA_PETRO")}
     boj = [_fx("BoJ Interest Rate Decision", None, "", "2026-12-18T03:00:00.000Z"), _fx("Inflation Rate MoM", None, "")]
@@ -1118,7 +1119,8 @@ def test_the_first_run_friday_check_reads_last_weeks_news_from_the_source():
     res = _run(cf.run_daily(mon, io, datetime(2026, 11, 9, 17, 15, tzinfo=_ET)))
     cu = res["catch_up"]
     assert cu["status"] == "sent" and cu["friday"] == 1 and cu["calendar_backfill"]["failed"] == []
-    assert "WHEAT LONG  failure day Thu 11-05: news (WASDE)" in io.sent[0] and "could not read" not in io.sent[0]
+    # Thursday 11-05 is also a weekly export sales day (2026-11-22): both events are named
+    assert "WHEAT LONG  failure day Thu 11-05: news (WASDE, USDA EXPORTS)" in io.sent[0] and "could not read" not in io.sent[0]
     assert ("united-states", date(2026, 11, 2)) in io.fx_calls            # last week's US releases, from the source
     # a long-running install (the table reaches back past the window) makes no such request
     io = _wheat_week_io(mon)
@@ -1135,7 +1137,10 @@ def test_the_first_run_friday_check_says_which_days_it_was_blind_for():
     with pytest.raises(cf.CotError, match="calendar source failed"):       # the forward WASDE refresh pages as before
         _run(cf.run_daily(mon, io, datetime(2026, 11, 9, 17, 15, tzinfo=_ET)))
     cu = io.audits[0][2]["catch_up"]
-    assert cu["status"] == "sent" and cu["friday"] == 0 and cu["calendar_backfill"]["failed"] == ["WASDE"]
+    # blind for WASDE, and said so; Thursday 11-05 is still known as a news day from the export sales rule
+    # (2026-11-22: before it, this check found nothing — friday was 0)
+    assert cu["status"] == "sent" and cu["friday"] == 1 and cu["calendar_backfill"]["failed"] == ["WASDE"]
+    assert "WHEAT LONG  failure day Thu 11-05: news (USDA EXPORTS)" in io.sent[0]
     assert "could not read WASDE for 11-04 to 11-09" in io.sent[0] and "may have missed a news failure day" in io.sent[0]
     io = _first_run_io(mon)
     io.fx_exc = cf.CalendarRefused("refused (429)")
@@ -1143,7 +1148,7 @@ def test_the_first_run_friday_check_says_which_days_it_was_blind_for():
         _run(cf.run_daily(mon, io, datetime(2026, 11, 9, 17, 15, tzinfo=_ET)))
     assert io.fx_calls == [("united-states", mon)]                         # refused once: nothing more was asked
     assert "could not read US releases, central-bank decisions for 11-04 to 11-09" in io.sent[0]
-    assert "WHEAT LONG  failure day Thu 11-05: news (WASDE)" in io.sent[0]  # the sources that answered still served
+    assert "WHEAT LONG  failure day Thu 11-05: news (WASDE, USDA EXPORTS)" in io.sent[0]  # the sources that answered still served
 
 
 def test_a_set_up_market_with_no_usable_price_series_is_skipped_without_a_page():
@@ -1256,6 +1261,133 @@ def test_daily_alert_on_a_fed_minutes_day_sends_with_an_unknown_label():
     row = io.alerts[(WED, "gold", "short", "news")]
     assert row["events"] == "FED_MINUTES" and row["news_class"] == "UNKNOWN"
     assert "FED MINUTES" in io.sent[0]
+
+
+# ── 2026-11-22: PCE, Australian CPI, OPEC+ meetings, USDA weekly export sales (his issue of that date) ──
+def test_the_1122_types_map_to_their_markets_and_release_times():
+    assert cf.markets_for_event("PCE") == cf.markets_for_event("CPI")
+    assert cf.markets_for_event("AU_CPI") == ("australian_dollar",)
+    assert cf.markets_for_event("OPEC") == ("crude_oil", "heating_oil", "unleaded_gas") == cf.markets_for_event("EIA_PETRO")
+    assert cf.markets_for_event("USDA_EXPORTS") == ("soybean_oil", "soybeans", "soybean_meal", "corn", "wheat")
+    assert all(m in cf.MARKETS for t in ("PCE", "AU_CPI", "OPEC", "USDA_EXPORTS") for m in cf.markets_for_event(t))
+    assert cf.RELEASE_CONVENTION["PCE"] == (8, 30, "America/New_York") == cf.RELEASE_CONVENTION["USDA_EXPORTS"]
+    assert cf.RELEASE_CONVENTION["AU_CPI"] == (11, 30, "Australia/Sydney")
+    assert "OPEC" not in cf.RELEASE_CONVENTION                 # a meeting has no standing release minute
+
+
+def test_fx_parser_emits_pce_and_australian_cpi_from_the_real_answers():
+    us = {(r["event_date"], r["event_type"]): r for r in cf.calendar_rows_from_fx(_probe("united-states"))}
+    pce = sorted(d for d, t in us if t == "PCE")
+    assert pce == [date(2026, 7, 30), date(2026, 8, 26), date(2026, 9, 30), date(2026, 10, 29)]   # one row per release
+    assert all((us[(d, "PCE")]["release_et"].hour, us[(d, "PCE")]["release_et"].minute) == (8, 30) for d in pce)
+    au = {(r["event_date"], r["event_type"]): r for r in cf.calendar_rows_from_fx(_probe("australia"), "australia")}
+    cpi = sorted(d for d, t in au if t == "AU_CPI")
+    assert cpi == [date(2026, 7, 29), date(2026, 8, 26), date(2026, 9, 30), date(2026, 10, 28)]   # monthly; the quarterly rides along
+    syd = au[(date(2026, 10, 28), "AU_CPI")]["release_et"].astimezone(ZoneInfo("Australia/Sydney"))
+    assert (syd.hour, syd.minute) == (11, 30)                  # 11:30 Sydney = the evening before in New York -> next session
+    assert au[(date(2026, 10, 28), "AU_CPI")]["release_et"].date() == date(2026, 10, 27)
+    # each name is read on its own country's page only: the US "Inflation Rate MoM" stays CPI, the Australian one AU_CPI
+    assert not any(t == "AU_CPI" for _d, t in us) and not any(t in ("CPI", "PCE") for _d, t in au)
+    assert [r["event_type"] for r in cf.calendar_rows_from_fx([_fx("Inflation Rate MoM", None, "")], "japan")] == []
+    assert [r["event_type"] for r in cf.calendar_rows_from_fx([_fx("PCE Price Index MoM", None, "")], "australia")] == []
+    assert [r["event_type"] for r in cf.calendar_rows_from_fx([_fx("Core PCE Price Index MoM", None, "")])] == []
+
+
+def test_pce_is_signed_like_cpi_and_the_other_1122_types_read_unknown():
+    assert cf.SURPRISE_COMPONENTS["PCE"] == [
+        ("PCE Price Index MoM", 1, 0.0531085), ("Core PCE Price Index MoM", 1, 0.0599145),
+        ("PCE Price Index YoY", 1, 0.0767948), ("Core PCE Price Index YoY", 1, 0.0800641)]
+    for m in cf.MARKETS:
+        assert cf.news_sign("PCE", m) == cf.news_sign("CPI", m)
+    hot = cf.surprises_from_fx([_fx("PCE Price Index MoM", "0.4%", "0.2%"), _fx("Core PCE Price Index MoM", "0.3%", "0.2%")])
+    assert hot[(WED, "PCE")]["z"] == pytest.approx((0.2 / 0.0531085 + 0.1 / 0.0599145) / 2)
+    assert cf.news_class("PCE", "gold", "short", WED, hot)["cls"] == "AGAINST"      # hot inflation: gold down, the crowd is long
+    assert cf.news_class("PCE", "gold", "long", WED, hot)["cls"] == "WITH"
+    assert cf.news_class("PCE", "platinum", "long", WED, hot)["cls"] == "AMBIG"
+    flat = cf.surprises_from_fx([_fx("PCE Price Index MoM", "0.2%", "0.2%")])
+    assert cf.news_class("PCE", "gold", "short", WED, flat)["cls"] == "INLINE"
+    assert cf.news_class("PCE", "gold", "short", WED, {})["cls"] == "UNKNOWN"
+    assert (WED, "CPI") not in hot                               # a PCE print is never read as CPI
+    for t, m in (("AU_CPI", "australian_dollar"), ("OPEC", "crude_oil"), ("USDA_EXPORTS", "soybean_oil")):
+        assert t not in cf.SURPRISE_COMPONENTS and cf.news_sign(t, m) is None
+        s = cf.surprises_from_fx([_fx("Inflation Rate MoM", "0.9%", "0.2%")])   # a number exists, yet no mapping reads it
+        assert cf.news_class(t, m, "long", WED, s)["cls"] == "UNKNOWN"
+
+
+def test_opec_meeting_rows_and_the_table_is_not_stale():
+    assert cf.OPEC_SOURCE_URL.startswith("https://www.opec.org/") and date(2026, 11, 29) in cf.OPEC_MEETINGS
+    rows = cf.calendar_rows_from_opec((date(2026, 11, 29), date(2026, 12, 5), date(2026, 12, 9)))
+    assert [(r["event_date"], r["event_type"], r["release_et"]) for r in rows] == [
+        (date(2026, 11, 30), "OPEC", None),                    # a Sunday meeting is Monday's session
+        (date(2026, 12, 7), "OPEC", None),                     # so is a Saturday one
+        (date(2026, 12, 9), "OPEC", None)]                     # a weekday meeting is that day's
+    assert all(r["source"] == cf.OPEC_SOURCE for r in rows)
+    assert cf.opec_table_age_days(date(2026, 11, 22)) == -7 and cf.opec_table_age_days(date(2026, 12, 21)) == 22
+    # THE GUARD: the newest announced meeting may not lie more than OPEC_STALE_DAYS (21) days back (the meeting is monthly). When this fails, read the latest
+    # opec.org press release ("The next meeting will be held on ...") and add the date to cf.OPEC_MEETINGS.
+    age = cf.opec_table_age_days(datetime.now(_ET).date())
+    assert age <= cf.OPEC_STALE_DAYS, (f"cot_family.OPEC_MEETINGS is stale: its newest meeting was {age} days ago. "
+                                       f"Add the next announced date ({cf.OPEC_SOURCE_URL} names the source).")
+
+
+def test_usda_export_sales_is_thursday_unless_a_federal_holiday_moves_it_to_friday():
+    assert cf.usda_export_sales_dates(date(2026, 11, 1), date(2026, 12, 31)) == [
+        date(2026, 11, 5), date(2026, 11, 13),                 # Veterans Day (Wed 11-11) -> Friday
+        date(2026, 11, 19), date(2026, 11, 27),                # Thanksgiving (Thu 11-26) -> Friday: the date in his issue
+        date(2026, 12, 3), date(2026, 12, 10), date(2026, 12, 17), date(2026, 12, 24)]
+    assert cf.usda_export_sales_dates(date(2026, 11, 26), date(2026, 11, 26)) == []
+    assert cf.usda_export_sales_dates(date(2026, 5, 25), date(2026, 5, 31)) == [date(2026, 5, 29)]   # Memorial Day Monday
+    assert cf.usda_export_sales_dates(date(2026, 6, 22), date(2026, 6, 28)) == [date(2026, 6, 26)]   # Juneteenth on the Friday before
+    assert cf.usda_export_sales_dates(date(2024, 6, 17), date(2024, 7, 7)) == [date(2024, 6, 21), date(2024, 6, 27), date(2024, 7, 5)]
+    assert date(2026, 10, 12) in cf.us_federal_holidays(2026) and date(2026, 7, 3) in cf.us_federal_holidays(2026)
+    assert len(cf.us_federal_holidays(2026)) == 11 and date(2027, 12, 31) in cf.us_federal_holidays(2027)
+    rows = cf.calendar_rows_from_usda_exports(date(2026, 11, 23), date(2026, 11, 29))
+    assert [(r["event_date"], r["event_type"], r["release_et"]) for r in rows] == [
+        (date(2026, 11, 27), "USDA_EXPORTS", _t(8, 30, date(2026, 11, 27)))]
+    # the calendar's age is read off the WASDE rows ('usda.gov%'): this source must never be taken for them
+    assert rows[0]["source"] == cf.USDA_EXPORTS_SOURCE and not cf.USDA_EXPORTS_SOURCE.startswith("usda.gov")
+
+
+def test_the_weekly_refresh_stores_the_opec_and_export_sales_rows():
+    io = _daily_io()
+    io.cal_age = 8
+    io.cal = io.cal + [{"event_date": date(2026, 12, 1), "event_type": "OPEC", "release_et": None, "source": cf.OPEC_SOURCE}]
+    io.fx_bank = {"australia": [_fx("Inflation Rate MoM", None, "0.3%", "2026-11-25T00:30:00.000Z")]}
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["calendar"]["errors"] == {} and len(io.fx_calls) == 1 + 3 + 6      # no extra request to anyone
+    have = {(r["event_date"], r["event_type"]) for r in io.cal}
+    assert (date(2026, 11, 30), "OPEC") in have and (date(2026, 12, 1), "OPEC") not in have   # a moved meeting leaves no old row
+    assert {(date(2026, 11, 13), "USDA_EXPORTS"), (date(2026, 11, 19), "USDA_EXPORTS"), (date(2026, 11, 27), "USDA_EXPORTS"),
+            (date(2026, 12, 17), "USDA_EXPORTS")} <= have
+    assert (date(2026, 11, 25), "AU_CPI") in have              # Wed 11:30 Sydney = Tue evening ET -> Wednesday's session
+    assert (WED, "CPI") in have                                # today's row was not touched
+
+
+def test_daily_alerts_on_an_export_sales_day_and_an_opec_day_read_unknown():
+    io = _daily_io()
+    io.weeks[REPORT]["rows"] = {"soybean_oil": _ix(3, 97, 96, "short"), "crude_oil": _ix(3, 97, 96, "short")}
+    io.bars = {"ZL=F": bars_to(WED, 99.0), "CL=F": bars_to(WED, 99.0), "ZS=F": bars_to(WED, 100.0),
+               "HO=F": bars_to(WED, 100.0), "RB=F": bars_to(WED, 100.0)}
+    io.cal = [{"event_date": WED, "event_type": "USDA_EXPORTS", "release_et": _t(8, 30), "source": cf.USDA_EXPORTS_SOURCE},
+              {"event_date": WED, "event_type": "OPEC", "release_et": None, "source": cf.OPEC_SOURCE}]
+    io.fx = []
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["alerts"] == 2 and res["sent"] is True
+    soy, oil = io.alerts[(WED, "soybean_oil", "short", "news")], io.alerts[(WED, "crude_oil", "short", "news")]
+    assert soy["events"] == "USDA_EXPORTS" and soy["news_class"] == "UNKNOWN"
+    assert oil["events"] == "OPEC" and oil["news_class"] == "UNKNOWN"
+    assert "USDA EXPORTS" in io.sent[0] and "OPEC" in io.sent[0]
+    assert "consensus" not in res.get("label_errors", {})      # nothing was expected from the US calendar for these
+
+
+def test_daily_alert_on_a_pce_day_carries_the_consensus_read():
+    io = _daily_io()
+    io.cal = [{"event_date": WED, "event_type": "PCE", "release_et": _t(8, 30), "source": cf.US_SOURCE}]
+    io.fx = [_fx("PCE Price Index MoM", "0.0%", "0.2%"), _fx("Core PCE Price Index MoM", "0.1%", "0.2%")]
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    row = io.alerts[(WED, "gold", "short", "news")]
+    assert res["alerts"] == 1 and row["events"] == "PCE" and row["news_class"] == "WITH"   # cool inflation: gold up, the crowd's way
+    assert any(r["event_type"] == "PCE" and r["event_date"] == WED for r in io.cal)        # read fresh from the US page
 
 
 def test_store_alerts_binds_detail_as_an_object_not_a_string():
