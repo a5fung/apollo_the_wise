@@ -432,6 +432,20 @@ def test_the_ecosystems_definition_states_the_once_rule():
 
 _FAKE_DOCKER = r"""#!/bin/sh
 # Fake `docker exec ... psql -f -`: the SQL arrives on stdin. Breadth behaviour is set by FAKE_BREADTH.
+# #732: `docker exec ... liquidity_read --splice` gets the breadth JSON on stdin; behaviour is set by FAKE_LIQ.
+case "$*" in
+  *liquidity_read*)
+    echo "liquidity: $*" >> "$FAKE_DOCKER_LOG.liq"
+    case "${FAKE_LIQ:-ok}" in
+      ok)      body="$(cat)"; printf '%s,"liquidity":{"status":"ok","n":"%s"}}\n' "${body%\}}" "${FAKE_NONCE:-n}"; exit 0 ;;
+      fail)    cat >/dev/null; echo "liquidity_read: FAILED (boom)" >&2; exit 1 ;;
+      empty)   cat >/dev/null; exit 0 ;;
+      garbage) cat >/dev/null; printf 'Traceback (most recent call last): %0400d\n' 0; exit 0 ;;
+      tamper)  cat >/dev/null; printf '{"breadth": "TAMPERED", "pad": "%0250d","liquidity":{"status":"ok"}}\n' 0; exit 0 ;;
+      partial) body="$(cat)"; printf '%s,"liquidity":{"status":"ok"' "${body%\}}"; exit 0 ;;
+      hang)    cat >/dev/null; sleep 30; exit 0 ;;
+    esac ;;
+esac
 sql="$(cat)"
 case "$sql" in
   *export_breadth_snapshot*)
@@ -561,3 +575,55 @@ def test_an_unchanged_night_pushes_nothing(rig):
     r = run(FAKE_NONCE="e")
     assert r.returncode == 0, r.stderr
     assert "no snapshot change" in r.stdout
+
+
+# ------------------------------------------------------------------------------- #732: the liquidity block's splice
+# The block can only ADD a key to a breadth file that already succeeded. Every failure mode below must publish the
+# breadth file exactly as the breadth export wrote it (and the three others), with no liquidity key.
+
+def _breadth_only(nonce: str) -> str:
+    return '{"breadth": "%s", "pad": "%0250d"}\n' % (nonce, 0)
+
+
+def test_the_liquidity_block_is_spliced_in_as_the_last_key(rig, tmp_path):
+    import json
+    run, published, _, dest = rig
+    r = run(FAKE_NONCE="q", FAKE_LIQ="ok")
+    assert r.returncode == 0, r.stderr
+    out = published(BREADTH)
+    doc = json.loads(out)
+    assert list(doc)[-1] == "liquidity" and doc["liquidity"]["status"] == "ok"
+    assert out.startswith(_breadth_only("q")[:-2]), "the breadth export's own bytes must be untouched"
+    assert not (dest / f"{BREADTH}.liq.tmp").exists()
+    log = (tmp_path / "docker.log.liq").read_text()
+    assert "apollo-market python -m agents.market_intelligence.liquidity_read --splice" in log
+
+
+@pytest.mark.parametrize("mode", ["fail", "empty", "garbage", "tamper", "partial"])
+def test_a_failing_liquidity_block_never_blocks_the_breadth_file(rig, mode):
+    run, published, _, dest = rig
+    r = run(FAKE_NONCE="k", FAKE_LIQ=mode)
+    assert r.returncode == 0, r.stderr
+    assert "LIQUIDITY block FAILED" in r.stderr
+    assert published(BREADTH) == _breadth_only("k"), f"{mode}: breadth must ship exactly as exported, without the block"
+    for f in THREE:
+        assert '"k"' in published(f)
+    assert not (dest / f"{BREADTH}.liq.tmp").exists()
+
+
+def test_a_hung_liquidity_block_is_cut_off_and_breadth_still_ships(rig):
+    if not shutil.which("timeout"):
+        pytest.skip("needs coreutils `timeout` (present on the prod host; absent on stock macOS)")
+    run, published, _, _ = rig
+    r = run(FAKE_NONCE="t", FAKE_LIQ="hang", LIQUIDITY_TIMEOUT_S="2")
+    assert r.returncode == 0, r.stderr
+    assert "LIQUIDITY block FAILED" in r.stderr
+    assert published(BREADTH) == _breadth_only("t")
+
+
+def test_a_failed_breadth_export_never_calls_the_liquidity_block(rig, tmp_path):
+    run, published, _, _ = rig
+    assert run(FAKE_NONCE="z", FAKE_BREADTH="fail").returncode == 0
+    assert published(BREADTH) is None
+    log = (tmp_path / "docker.log.liq")
+    assert "liquidity:" not in (log.read_text() if log.exists() else "")

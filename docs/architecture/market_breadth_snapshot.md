@@ -5,7 +5,10 @@
 > `docs/SSoT.md` 2026-11-04. Update THIS file in the same commit as any change to
 > `scripts/export_breadth_snapshot.sql` (its `definitions` object is what the page prints, so the
 > SQL, that object and this file must say the same thing) or to the breadth block of
-> `scripts/auto_export_snapshots.sh`.
+> `scripts/auto_export_snapshots.sh`. Since #732 the file also carries the optional `liquidity` key
+> (§Liquidity block): this file owns that block's rules as shipped, its contract and its delivery. The rules
+> were fixed and tested in `docs/analysis/liquidity_composite_prereg_2026-11-22.md` (§12, §4.3, §13.1, §14) —
+> a finding and the record of his rulings, not an owner.
 >
 > ⚖ **Display only.** Nothing here feeds a trade, a grade, an alert, sizing or any safeguard. It is
 > the operator's 11-04 idea (a daily breadth + theme view to complement the longer-term pages and
@@ -171,6 +174,7 @@ One object. Types are JSON types; "date" = a `YYYY-MM-DD` string.
 | `themes` | array | one object per active theme, ordered by name (see below) |
 | `ecosystems` | array | #722 — one object per ecosystem group holding an exported theme, ordered by code (see below) |
 | `stocks` | object | `{ "<TICKER>": [stage int \| null, rs_rank int \| null, [int, ...]] }` |
+| `liquidity` | object | OPTIONAL (#732, 2026-11-22; ALWAYS the last key; absent from an older file and on any night its read fails) — the liquidity block, see §Liquidity block. Not written by the SQL: spliced in by the nightly script |
 | `definitions` | object | the rules above in plain words, keyed `session`, `as_of`, `universe`, `new_highs_lows`, `advances_declines`, `moves_4pct`, `regime`, `stage`, `themes`, `ecosystems`, `theme_returns`, `theme_membership`, `stocks`, `not_claimed` — the page prints them |
 
 The `regime` object (when not null):
@@ -330,7 +334,120 @@ never moves after the market has shut.
   unique-member counting. SIP creds reach apollo-market through the `ALPACA_API_KEY` fallback (the paper variables are blanked in
   compose) — proven from inside that container by the 11-09 probe (`scripts/probes/_723_design_1109/`).
 
+## Liquidity block (#732) — the optional `liquidity` key
+
+> ⚖ **Display only, labelled "context, not validated".** It feeds no entry, size, safeguard, alert or regime
+> score (prereg §14, THE LINE). `tests/test_732_liquidity_read.py` walks every `.py` in the repo and fails the
+> build if anything imports `liquidity_read` or even names it outside the module itself.
+
+His ask (2026-11-22): *"indicator I want to see along with market breadth for me own use"*. The frozen tests
+(prereg RESULTS run 2 and §13.1) earned no Draining / Neutral / Easing word and no bottom / top label, so none is
+shown. By his ruling (§14) ONE label shows: **"Caution — liquidity draining"**, with its one line of measured
+history, while the composite reads Draining.
+
+### Where it is produced
+
+| | |
+|---|---|
+| Module | `agents/market_intelligence/liquidity_read.py` — pure functions (`compute`, `build_block`, `splice`) and one I/O seam (`collect_inputs`) |
+| Run by | `scripts/auto_export_snapshots.sh`, inside the breadth export's SUCCESS branch: `docker exec -i apollo-market python -m agents.market_intelligence.liquidity_read --splice < apollo_breadth_snapshot.json`. No scheduler job, no table, no new cron line, no new file to publish |
+| Data | Alpaca daily bars on the consolidated tape through the module's own reader `fetch_daily_closes` (the collector's idiom and credentials; NOT added to `collector.py`, which the execution service loads — that would have put this panel behind an execution deploy) (dividend-adjusted for JNK HYG UUP GLD SLV CPER IWM SPY QQQ ARKK; raw for the JNK / GLD / SLV tiles), from the FIXED start 2025-06-02; FRED's keyless CSV (`fredgraph.csv?id=`) for BAA10Y, WALCL, WTREGEN, RRPONTSYD, DFF, DFII10, DGS2, BAMLH0A0HYM2 from 2025-01-01. $0 |
+| Splice | Textual: the block is appended as the LAST key, so every byte psql wrote is unchanged (the #722 "existing keys byte-identical" rule). The module refuses a breadth file that is not one JSON object or already has the key, and re-parses its own output before printing |
+| Dashboard | portfolio-app2's Market Breadth page (not this repo). The rendering change is `scripts/probes/_liquidity_panel/portfolio_app2_liquidity_panel.patch` |
+| Deploy scope | **market-agent only** (the module runs in `apollo-market`; the host script arrives with the same `git pull`). No orchestrator or execution change: the module is not in `scripts/exec_loaded_modules.txt` and imports no Apollo module (test-pinned) |
+
+### Fail-safe (the breadth file ships whatever happens here)
+
+- The step runs only after the breadth export succeeded, and can only ADD the key. The script takes the output
+  only if ALL hold: exit 0 (under `timeout 240`; `LIQUIDITY_TIMEOUT_S` overrides), larger than the breadth file,
+  its first bytes equal the breadth file's own bytes up to the closing brace (`cksum` of both prefixes), it holds
+  `"liquidity":`, and it ends with `}`. Otherwise it logs `LIQUIDITY block FAILED or malformed` to stderr and the
+  breadth file is published exactly as exported, with **no** `liquidity` key — the page then shows no panel,
+  never last night's numbers as today's.
+- Inside the container: every source fails on its own (`errors`); the whole fetch is capped at 150 s and the
+  process ends with `os._exit` (alpaca-py sets no HTTP timeout); any exception = exit 1 with empty stdout.
+- A failed or stale source makes its leg `unavailable` (it votes 0 and stays in its group's average, prereg
+  §4.3), the block's `status` reads `partial` and `unavailable` lists the legs. No bars at all = a block with
+  `status: "unavailable"` and a reason.
+- Tests: the shell's behaviour against a fake `docker` and a real local remote
+  (`tests/test_719_export_breadth_sql.py`, "#732": non-zero exit, empty, garbage, tampered breadth bytes,
+  truncated output, a hang, and a failed breadth export never calling it); the module's own
+  (`tests/test_732_liquidity_read.py`).
+
+### The rules it applies (this section owns them as shipped; the pre-registration is where they were fixed and tested)
+
+- **Leg trend** = the 20-session average of X vs its 50-session average, X oriented so UP = tighter; a tie
+  within 1e-9 relative is flat. **Fast dot** = X vs its 20-session average (never votes).
+- **Publication lags and freshness:** BAA10Y, DFF, DFII10, DGS2 and BAMLH0A0HYM2 enter a session only from the
+  NEXT session; WALCL and WTREGEN two calendar days after the observation (the Wednesday level on Friday);
+  RRPONTSYD the same day. Stale = older than 7 calendar days (14 for the two weekly series); an ETF close is
+  carried at most 3 sessions.
+- **`trend_since` / `trend_sessions`** = the first session of the current run of the trend and the sessions
+  AFTER it. **`turn`** = prereg §13.1: the last change of side that held 5 sessions in a row, dated at the 5th.
+- **Groups** (6): credit {C3}, fed {F1, F2}, rates {R1, R2}, dollar {D1}, metals {M1, M2}, risk {K1, K5}. Group
+  score = the average of its legs' votes; tight when above zero. **Score** = the sum (−6 to +6).
+- **Composite turns** = the same 5-session rule on the score's 20- vs 50-session averages; those inside the
+  last 126 sessions are listed.
+- **Caution** = the §4.3 Draining state as run 2 judged it (`r2_03_composite_w0_w1.py`): score ≥ 2 on 3 closes
+  in a row to enter, ≤ 1 on 3 closes in a row to leave. Only "on / off, since when" leaves the module; the
+  state word does not.
+- **Today's bar** is dropped before 16:15 ET (a manual daytime run never shows an unfinished session).
+
+### How it matches the 11-22 reference read
+
+`scripts/probes/_liquidity_1122/current_read.py` printed `current_read_2026-11-22.txt` for the 2026-11-20 close.
+The fixture `tests/fixtures/liquidity_1122/` is that script's own input (closes only). Run the reference's way
+(`lags=NO_LAGS`) the production code reproduces every leg row (trend, since date, sessions, fast dot), "3 of 6",
+the score +2.0, Draining since 2026-10-26, the composite trend since 2026-11-02, all 16 month-end scores and
+group counts, both seed tiles, the spread and net liquidity. Two departures, both pinned in the test by name:
+
+| What | Reference script | Production | Why |
+|---|---|---|---|
+| Publication lags | none (a FRED value counts on its own date) | prereg §3 lags | what run 2 measured; the block does not depend on when FRED posts. On 11-20 this moves the five FRED legs' "since" one or two sessions later (C3 / R1 / R2 11-09 → 11-10, F2 07-09 → 07-10, F1 11-06 → 11-10), the composite trend's since 11-02 → 11-03 and the spread's month-ago 3.40 → 3.27. Trend sides, 3 of 6, +2.0 and the caution date are unchanged |
+| Leaving Draining / Easing | one close back inside the exit line | three closes (prereg §4.3, the rule run 2 judged) | the caution label's measured history describes the judged rule. Two of the 16 month-end rows differ (2026-05-29, 2026-09-30); the current state and its start date do not |
+
+### The block's contract (`version` 1)
+
+| field | type | meaning |
+|---|---|---|
+| `version` | int | `1` |
+| `label` | string | always `"context, not validated"` |
+| `status` | string | `ok` · `partial` (one or more legs unavailable) · `unavailable` (no bars: then only `reason` and `generated_at` follow) |
+| `as_of` | date | the newest finished session in Alpaca's SPY bars (may differ from the breadth `as_of`) |
+| `generated_at` | string | `YYYY-MM-DDTHH:MM:SS ET` |
+| `history_start` / `sessions` | date / int | the fixed first session and the sessions read |
+| `unavailable` | array of string | leg ids with no fresh value tonight |
+| `errors` | object | OPTIONAL — source → why it failed |
+| `legs` | array | the 10 legs in fixed order: `id`, `name`, `group`, `tight_when`, `status` (`ok` / `unavailable` + `reason`), and when ok `trend` (`tight` / `easy` / `flat`), `trend_since`, `trend_sessions`, `fast`, `turn` (`{date, to, sessions}` or null) |
+| `groups` | array \| null | `{key, name, score, tight}` for the 6 groups |
+| `groups_tight` | object \| null | `{n, of, n_20d_ago, chg_20d}` — groups tight now, of 6, and against 20 sessions ago |
+| `score` | number \| null | the group-score sum |
+| `composite_trend` | object \| null | `{direction, since, sessions}` — `tightening` / `easing` / `flat` |
+| `composite_turns` | array | `{date, to, sessions}`, oldest first, the last 126 sessions |
+| `caution` | object \| null | `{on: false}` or `{on: true, text, since, sessions, history}`; null before the composite has history |
+| `seeds` | object | `jnk` and `gold_silver`, each null or `{latest, ma20, ma50, vs_ma20, vs_ma50, ma20_vs_ma50, chg_1m_pct}` on RAW prices (`above` / `below` / `at`); `jnk` adds `ma20_slope_wk` (the 20-day's change over 5 sessions) |
+| `hy_spread` | object \| null | `{latest, obs_date, month_ago, chg_1m, three_months_ago}` — percent; BAMLH0A0HYM2 |
+| `net_liquidity_tn` | object \| null | `{latest, three_months_ago}` — $ trillions |
+| `definitions` | object | the rules in plain words; the page prints them |
+
+### Verified / not yet
+
+- **Verified offline:** the reproduction above; 3 legs and the count recomputed by a second route; each lag
+  rule; the turn and caution rules; every fail-safe path; the shell guard by behaviour.
+- **NOT verified (needs the deploy):** that `apollo-market` can reach `fred.stlouisfed.org` and has pandas /
+  numpy at the versions this ran on (pandas 3.0.3, numpy 2.5.1 locally; both arrive in the image only as
+  dependencies of yfinance / mplfinance); the real Alpaca daily-bar response shape; the run time inside the
+  nightly; the hang cut-off test (skipped on macOS: no `timeout`).
+- ⚠ **His call:** the prereg lists the junk-bond spread as "internal only" (ICE licence). It is in the block
+  under its own key (`hy_spread`) and the page shows it; dropping it is one line on either side.
+
 ## Change log
+
+- **2026-11-22** — #732: the optional `liquidity` key (§Liquidity block), always last, spliced in by the
+  nightly script after the breadth export succeeds; `version` stays 1 and no existing key or byte moves. New
+  module `agents/market_intelligence/liquidity_read.py` (it carries its own SIP daily-close reader; `collector.py`
+  is untouched so the deploy is market-agent only). Display only, labelled "context, not validated"; one caution label by
+  his §14 ruling, no state word. A failed block never blocks the breadth file. Built, NOT deployed.
 
 - **2026-11-16** — two OPTIONAL display-only keys, `version` stays 1 (an older file lacks them; the page omits the
   section). `moves_4pct` `{up, down}` — universe stocks that closed up / down 4% or more vs the previous session

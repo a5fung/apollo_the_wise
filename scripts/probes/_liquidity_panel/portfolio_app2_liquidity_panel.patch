@@ -1,0 +1,738 @@
+Apollo #732 - the liquidity panel on portfolio-app2's Market Breadth page (the breadth export's optional `liquidity` key).
+Base: portfolio-app2 origin/main 93ea638 (2026-11-16), as held in the local clone's remote ref on 2026-11-22; fetch first if main has moved.
+Apply from the repo root:  git apply --check <this file> && git apply <this file>   (or: patch -p1 < <this file>)
+Adds liquidity_view.py, test_liquidity_panel_732.py, test_fixtures/liquidity_block_2026-11-20.json; edits pages/Market_Breadth.py.
+Checked on a scratch export of that tree: the new test file plus the breadth / regime / live / groups / risk-light tests, 187 passed.
+Not checked: the look on a phone (no browser render was done).
+
+diff -ruN a/liquidity_view.py b/liquidity_view.py
+--- a/liquidity_view.py	1969-12-31 16:00:00
++++ b/liquidity_view.py	2026-11-22 20:34:54
+@@ -0,0 +1,217 @@
++"""The liquidity panel on Market Breadth (Apollo #732): the breadth export's optional ``liquidity`` key.
++
++Context, not validated: display only. The panel renders what Apollo's nightly export computed (contract: Apollo's
++``docs/architecture/market_breadth_snapshot.md`` §Liquidity block) and computes nothing itself. Everything is on
++screen at once (phone: two columns of indicators, tiles side by side; nothing behind a tap).
++
++An absent key = no panel. A malformed key = no panel and no exception (the page wraps the call as well). A block
++whose ``status`` is ``unavailable`` renders one line saying so; a leg whose source failed reads "unavailable".
++There is no Neutral / Easing word and no bottom / top label: the only label is the caution line, shown while the
++export's ``caution.on`` is true.
++"""
++from __future__ import annotations
++
++import html
++import math
++from datetime import date
++
++TONES = ("tight", "easy", "flat")
++_GROUP_SHORT = {"credit": "Credit", "fed": "Fed", "rates": "Rates", "dollar": "Dollar", "metals": "Metals",
++                "risk": "Risk"}
++
++
++def _esc(v) -> str:
++    return html.escape(str(v))
++
++
++def _num(v) -> float | None:
++    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
++        return None
++    return float(v)
++
++
++def _int(v) -> int | None:
++    return v if isinstance(v, int) and not isinstance(v, bool) else None
++
++
++def _short(d) -> str:
++    """'2026-11-09' -> '11-09' (the year only when it is not the panel's own)."""
++    try:
++        return date.fromisoformat(str(d)).strftime("%m-%d")
++    except ValueError:
++        return ""
++
++
++def _tone(v) -> str:
++    return v if v in TONES else "none"
++
++
++def liquidity_problems(liq) -> list[str]:
++    """Why the optional ``liquidity`` key cannot be shown ([] = fine)."""
++    if not isinstance(liq, dict):
++        return ["liquidity is not an object"]
++    if liq.get("status") == "unavailable":
++        return []
++    out = []
++    legs = liq.get("legs")
++    if not isinstance(legs, list) or not legs or any(
++            not isinstance(l, dict) or not isinstance(l.get("name"), str) for l in legs):
++        out.append("liquidity.legs")
++    try:
++        date.fromisoformat(str(liq.get("as_of")))
++    except ValueError:
++        out.append("liquidity.as_of")
++    return out
++
++
++def liquidity_css(C: dict) -> str:
++    return f"""
++    .lq-card {{ background: {C['surface']}; border: 1px solid {C['border']}; border-radius: 12px;
++                padding: 10px 12px; margin-bottom: 16px; color: {C['text']}; }}
++    .lq-top {{ display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }}
++    .lq-title {{ font-size: 15px; font-weight: 700; }}
++    .lq-tag {{ font-size: 11px; font-weight: 400; color: {C['text_muted']}; margin-left: 6px; }}
++    .lq-asof {{ font-size: 11px; color: {C['text_dim']}; white-space: nowrap; }}
++    .lq-caution {{ border-left: 4px solid #F97316; background: rgba(249, 115, 22, .12); border-radius: 6px;
++                   padding: 6px 8px; margin-top: 6px; }}
++    .lq-caution b {{ color: #F97316; font-size: 14px; }}
++    .lq-caution span {{ font-size: 11.5px; color: {C['text_muted']}; }}
++    .lq-hist {{ font-size: 11px; line-height: 1.35; color: {C['text_muted']}; margin-top: 2px; }}
++    .lq-count {{ font-size: 14px; font-weight: 700; margin-top: 8px; font-variant-numeric: tabular-nums; }}
++    .lq-count span {{ font-size: 12px; font-weight: 400; color: {C['text_muted']}; }}
++    .lq-groups {{ display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; margin-top: 5px; }}
++    .lq-g {{ font-size: 10.5px; text-align: center; padding: 3px 1px; border-radius: 5px; white-space: nowrap;
++             overflow: hidden; border: 1px solid {C['border']}; color: {C['text_muted']}; }}
++    .lq-g.tight {{ background: rgba(249, 115, 22, .18); color: {C['text']}; border-color: #F97316; }}
++    .lq-g.easy {{ background: {C['positive_dim']}; color: {C['text']}; border-color: {C['positive']}; }}
++    .lq-line {{ font-size: 11.5px; color: {C['text_muted']}; margin-top: 5px; line-height: 1.4;
++                font-variant-numeric: tabular-nums; }}
++    .lq-legs {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 8px; margin-top: 8px; }}
++    @media (min-width: 1000px) {{ .lq-legs {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} }}
++    .lq-leg {{ min-width: 0; border-top: 1px solid {C['border']}; padding-top: 3px; }}
++    .lq-name {{ font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
++    .lq-sub {{ font-size: 11px; color: {C['text_muted']}; white-space: nowrap; overflow: hidden;
++               text-overflow: ellipsis; font-variant-numeric: tabular-nums; }}
++    .lq-dot {{ display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px;
++               background: {C['text_dim']}; }}
++    .lq-dot.tight {{ background: #F97316; }}
++    .lq-dot.easy {{ background: {C['positive']}; }}
++    .lq-dot.sm {{ width: 6px; height: 6px; margin: 0 2px 1px 3px; }}
++    .lq-w.tight {{ color: #F97316; font-weight: 600; }}
++    .lq-w.easy {{ color: {C['positive']}; font-weight: 600; }}
++    .lq-tiles {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }}
++    .lq-tile {{ border: 1px solid {C['border']}; border-radius: 8px; padding: 5px 6px; min-width: 0; }}
++    .lq-tile-h {{ font-size: 10.5px; color: {C['text_muted']}; white-space: nowrap; overflow: hidden;
++                  text-overflow: ellipsis; }}
++    .lq-tile-v {{ font-size: 15px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }}
++    .lq-tile-s {{ font-size: 10.5px; line-height: 1.35; color: {C['text_muted']};
++                  font-variant-numeric: tabular-nums; }}
++    """
++
++
++def _leg_html(leg: dict) -> str:
++    name = _esc(leg.get("name", ""))
++    if leg.get("status") != "ok":
++        return (f'<div class="lq-leg"><div class="lq-name"><span class="lq-dot"></span>{name}</div>'
++                f'<div class="lq-sub" title="{_esc(leg.get("reason", ""))}">unavailable</div></div>')
++    trend, fast = _tone(leg.get("trend")), _tone(leg.get("fast"))
++    n = _int(leg.get("trend_sessions"))
++    turn = leg.get("turn") if isinstance(leg.get("turn"), dict) else None
++    since = f' {n}d' if n is not None else ""
++    turn_txt = f' · turn {_short(turn.get("date"))}' if turn and _short(turn.get("date")) else ""
++    title = f'tight = {leg.get("tight_when", "")}; trend since {leg.get("trend_since", "")}'
++    return (f'<div class="lq-leg" title="{_esc(title)}">'
++            f'<div class="lq-name"><span class="lq-dot {trend}"></span>{name}</div>'
++            f'<div class="lq-sub"><span class="lq-w {trend}">{_esc(leg.get("trend") or "—")}</span>{since}{turn_txt}'
++            f' · fast<span class="lq-dot sm {fast}"></span>{_esc(leg.get("fast") or "—")}</div></div>')
++
++
++def _seed_tile(title: str, s, slope: bool) -> str:
++    if not isinstance(s, dict) or _num(s.get("latest")) is None:
++        return (f'<div class="lq-tile"><div class="lq-tile-h">{_esc(title)}</div>'
++                f'<div class="lq-tile-s">unavailable</div></div>')
++    bits = []
++    for key, ma in (("vs_ma20", "ma20"), ("vs_ma50", "ma50")):
++        if isinstance(s.get(key), str) and _num(s.get(ma)) is not None:
++            bits.append(f'{_esc(s[key])} {ma[2:]}d {s[ma]:.2f}')
++    tail = []
++    if slope and _num(s.get("ma20_slope_wk")) is not None:
++        tail.append(f'20d slope {s["ma20_slope_wk"]:+.2f}/wk')
++    if _num(s.get("chg_1m_pct")) is not None:
++        tail.append(f'1M {s["chg_1m_pct"]:+.1f}%')
++    return (f'<div class="lq-tile"><div class="lq-tile-h">{_esc(title)}</div>'
++            f'<div class="lq-tile-v">{s["latest"]:.2f}</div>'
++            f'<div class="lq-tile-s">{"<br>".join(bits + tail)}</div></div>')
++
++
++def _hy_tile(hy) -> str:
++    if not isinstance(hy, dict) or _num(hy.get("latest")) is None:
++        return ('<div class="lq-tile"><div class="lq-tile-h">Junk-bond spread</div>'
++                '<div class="lq-tile-s">unavailable</div></div>')
++    chg = _num(hy.get("chg_1m"))
++    sub = [f'1M {chg:+.2f} pts' if chg is not None else "", f'as of {_short(hy.get("obs_date"))}'
++           if _short(hy.get("obs_date")) else ""]
++    return ('<div class="lq-tile"><div class="lq-tile-h">Junk-bond spread</div>'
++            f'<div class="lq-tile-v">{hy["latest"]:.2f}%</div>'
++            f'<div class="lq-tile-s">{"<br>".join(x for x in sub if x)}</div></div>')
++
++
++def liquidity_panel_html(liq) -> str:
++    """ONE dense card. '' when the key is absent or malformed."""
++    if liq is None or liquidity_problems(liq):
++        return ""
++    label = _esc(liq.get("label") or "context, not validated")
++    head = (f'<div class="lq-top"><span class="lq-title">Liquidity<span class="lq-tag">{label}</span></span>'
++            f'<span class="lq-asof">as of {_esc(liq.get("as_of", "—"))}</span></div>')
++    if liq.get("status") == "unavailable":
++        return (f'<div class="lq-card">{head}<div class="lq-line">Unavailable tonight: '
++                f'{_esc(liq.get("reason") or "the nightly read failed")}.</div></div>')
++    parts = [head]
++
++    c = liq.get("caution")
++    if isinstance(c, dict) and c.get("on") is True:
++        n = _int(c.get("sessions"))
++        since = f'since {_esc(c.get("since", ""))}' + (f' · {n} sessions' if n is not None else "")
++        hist = f'<div class="lq-hist">{_esc(c["history"])}</div>' if isinstance(c.get("history"), str) else ""
++        parts.append(f'<div class="lq-caution"><b>{_esc(c.get("text") or "Caution — liquidity draining")}</b> '
++                     f'<span>{since}</span>{hist}</div>')
++
++    gt = liq.get("groups_tight")
++    if isinstance(gt, dict) and _int(gt.get("n")) is not None and _int(gt.get("of")) is not None:
++        chg = _int(gt.get("chg_20d"))
++        chg_txt = "" if chg is None else (" · unchanged vs 20 sessions ago" if chg == 0
++                                          else f' · {chg:+d} vs 20 sessions ago')
++        sc = _num(liq.get("score"))
++        sc_txt = f' · score {sc:+.1f} (−6 to +6)' if sc is not None else ""
++        parts.append(f'<div class="lq-count">{gt["n"]} of {gt["of"]} groups tight<span>{chg_txt}{sc_txt}</span></div>')
++    groups = liq.get("groups")
++    if isinstance(groups, list) and groups:
++        chips = []
++        for g in groups:
++            if not isinstance(g, dict):
++                continue
++            s = _num(g.get("score"))
++            tone = "none" if s is None else ("tight" if s > 0 else "easy" if s < 0 else "flat")
++            chips.append(f'<div class="lq-g {tone}" title="{_esc(g.get("name", ""))}: {tone}">'
++                         f'{_esc(_GROUP_SHORT.get(g.get("key"), g.get("name", "")))}</div>')
++        parts.append(f'<div class="lq-groups">{"".join(chips)}</div>')
++
++    turns = [t for t in (liq.get("composite_turns") or []) if isinstance(t, dict) and _short(t.get("date"))]
++    if turns:
++        txt = " · ".join(f'{_esc(t.get("to", ""))} {_short(t["date"])}' for t in reversed(turns))
++        parts.append(f'<div class="lq-line">Composite turns (newest first): {txt}</div>')
++
++    n_un = len(liq.get("unavailable") or []) if isinstance(liq.get("unavailable"), list) else 0
++    if n_un:
++        parts.append(f'<div class="lq-line">{n_un} of {len(liq["legs"])} indicators unavailable tonight: they count '
++                     'as flat, so the group count and the caution line may read low.</div>')
++
++    parts.append(f'<div class="lq-legs">{"".join(_leg_html(l) for l in liq["legs"])}</div>')
++
++    seeds = liq.get("seeds") if isinstance(liq.get("seeds"), dict) else {}
++    parts.append('<div class="lq-tiles">' + _seed_tile("JNK (price)", seeds.get("jnk"), True)
++                 + _seed_tile("Gold / silver", seeds.get("gold_silver"), False) + _hy_tile(liq.get("hy_spread"))
++                 + '</div>')
++    parts.append('<div class="lq-line">Dot = trend (20-day vs 50-day average; orange tight, green easy) and the '
++                 'sessions it has held; turn = the last change that held 5 sessions; fast = vs its own 20-day.</div>')
++    return f'<div class="lq-card">{"".join(parts)}</div>'
+diff -ruN a/pages/Market_Breadth.py b/pages/Market_Breadth.py
+--- a/pages/Market_Breadth.py	2026-11-16 15:30:34
++++ b/pages/Market_Breadth.py	2026-11-22 20:35:38
+@@ -10,6 +10,9 @@
+ days in it, drivers and a 60-day ribbon; nightly only, absent from an old export), and the breadth card also carries
+ an "Up 4% vs down 4%" bar from the optional ``moves_4pct`` key (live-overlaid on Today like advances/declines).
+ 
++Beside the breadth card (under it on a phone) sits the liquidity panel (Apollo #732: the export's optional
++``liquidity`` key; context, not validated; nightly only, absent from an old export or a night its read failed).
++
+ Then four panels over Apollo's nightly breadth export (``apollo_breadth_snapshot.json``, contract in Apollo's
+ ``docs/architecture/market_breadth_snapshot.md``): new 52-week highs vs lows, advances vs declines, the Weinstein
+ stage 1-4 split, and a theme tracker (equal-weight member return, Today / 1W / 1M / YTD; the period chips sit above the
+@@ -29,6 +32,7 @@
+ import breadth_data  # noqa: E402 — after set_page_config
+ import live_breadth  # noqa: E402
+ import breadth_view as bv  # noqa: E402
++import liquidity_view as lqv  # noqa: E402
+ import market_risk as mr  # noqa: E402
+ import market_risk_data  # noqa: E402
+ import market_risk_view as mrv  # noqa: E402
+@@ -41,7 +45,7 @@
+ 
+ # Each page injects its own CSS: Streamlit drops one page's markdown on navigation.
+ st.markdown(
+-    f"<style>{bv.breadth_css(C, S)}{mrv.risk_css(C)}{bv.regime_css(C)}.stApp {{ background: {C['bg']}; }}</style>",   # @import must lead
++    f"<style>{bv.breadth_css(C, S)}{mrv.risk_css(C)}{bv.regime_css(C)}{lqv.liquidity_css(C)}.stApp {{ background: {C['bg']}; }}</style>",   # @import must lead
+     unsafe_allow_html=True,
+ )
+ 
+@@ -161,7 +165,18 @@
+     st.caption(f"**Last close · {as_of}** — Today's numbers are the nightly snapshot (no fresh live data).")
+ 
+ # ── breadth: highs vs lows, advances vs declines, stages (one card) — ABOVE the groups (his 11-08 ask) ──
+-st.markdown(bv.breadth_card_html(live_snap or snap, S), unsafe_allow_html=True)
++# The liquidity panel (Apollo #732) sits BESIDE it on a wide screen and directly under it on a phone. Nightly only,
++# never live. An absent or malformed key shows no panel and leaves the breadth card at full width.
++try:
++    _liq_html = lqv.liquidity_panel_html(snap.get("liquidity"))
++except Exception:                      # noqa: BLE001 - a bad optional key never breaks the page
++    _liq_html = ""
++if _liq_html:
++    _bd_col, _lq_col = st.columns(2)
++    _bd_col.markdown(bv.breadth_card_html(live_snap or snap, S), unsafe_allow_html=True)
++    _lq_col.markdown(_liq_html, unsafe_allow_html=True)
++else:
++    st.markdown(bv.breadth_card_html(live_snap or snap, S), unsafe_allow_html=True)
+ 
+ # ── 1: groups (#722) ────────────────────────────────────────────────────────
+ if groups is not None:
+@@ -203,3 +218,7 @@
+     st.caption(f"Exported {snap.get('generated_at', '—')} · prior year-end for YTD: "
+                f"{snap.get('prior_year_end') or '—'} · theme membership: {snap.get('theme_membership', '—')}")
+     st.markdown(bv.definitions_html(snap["definitions"]), unsafe_allow_html=True)
++    _liq_defs = (snap.get("liquidity") or {}).get("definitions") if isinstance(snap.get("liquidity"), dict) else None
++    if _liq_html and isinstance(_liq_defs, dict) and all(isinstance(v, str) for v in _liq_defs.values()):
++        st.caption("Liquidity panel")
++        st.markdown(bv.definitions_html({f"liquidity.{k}": v for k, v in _liq_defs.items()}), unsafe_allow_html=True)
+diff -ruN a/test_fixtures/liquidity_block_2026-11-20.json b/test_fixtures/liquidity_block_2026-11-20.json
+--- a/test_fixtures/liquidity_block_2026-11-20.json	1969-12-31 16:00:00
++++ b/test_fixtures/liquidity_block_2026-11-20.json	2026-11-22 20:35:38
+@@ -0,0 +1,290 @@
++{
++ "version": 1,
++ "label": "context, not validated",
++ "status": "ok",
++ "as_of": "2026-11-20",
++ "generated_at": "2026-11-20T18:30:00 ET",
++ "history_start": "2025-06-02",
++ "sessions": 372,
++ "unavailable": [],
++ "legs": [
++  {
++   "id": "C3",
++   "name": "Baa corporate spread",
++   "group": "credit",
++   "tight_when": "spread widening",
++   "status": "ok",
++   "trend": "tight",
++   "trend_since": "2026-11-10",
++   "trend_sessions": 8,
++   "fast": "tight",
++   "turn": {
++    "date": "2026-11-16",
++    "to": "tight",
++    "sessions": 4
++   }
++  },
++  {
++   "id": "F1",
++   "name": "Net liquidity",
++   "group": "fed",
++   "tight_when": "net liquidity falling",
++   "status": "ok",
++   "trend": "tight",
++   "trend_since": "2026-11-10",
++   "trend_sessions": 8,
++   "fast": "easy",
++   "turn": {
++    "date": "2026-11-16",
++    "to": "tight",
++    "sessions": 4
++   }
++  },
++  {
++   "id": "F2",
++   "name": "Fed funds rate",
++   "group": "fed",
++   "tight_when": "funds rate rising",
++   "status": "ok",
++   "trend": "tight",
++   "trend_since": "2026-07-10",
++   "trend_sessions": 94,
++   "fast": "flat",
++   "turn": {
++    "date": "2026-07-16",
++    "to": "tight",
++    "sessions": 90
++   }
++  },
++  {
++   "id": "R1",
++   "name": "10-year real yield",
++   "group": "rates",
++   "tight_when": "real yield rising",
++   "status": "ok",
++   "trend": "easy",
++   "trend_since": "2026-11-10",
++   "trend_sessions": 8,
++   "fast": "tight",
++   "turn": {
++    "date": "2026-11-16",
++    "to": "easy",
++    "sessions": 4
++   }
++  },
++  {
++   "id": "R2",
++   "name": "2-year yield",
++   "group": "rates",
++   "tight_when": "2-year yield rising",
++   "status": "ok",
++   "trend": "easy",
++   "trend_since": "2026-11-10",
++   "trend_sessions": 8,
++   "fast": "tight",
++   "turn": {
++    "date": "2026-11-16",
++    "to": "easy",
++    "sessions": 4
++   }
++  },
++  {
++   "id": "D1",
++   "name": "Dollar (UUP)",
++   "group": "dollar",
++   "tight_when": "dollar rising",
++   "status": "ok",
++   "trend": "tight",
++   "trend_since": "2026-09-24",
++   "trend_sessions": 41,
++   "fast": "tight",
++   "turn": {
++    "date": "2026-09-30",
++    "to": "tight",
++    "sessions": 37
++   }
++  },
++  {
++   "id": "M1",
++   "name": "Gold / silver",
++   "group": "metals",
++   "tight_when": "gold beating silver",
++   "status": "ok",
++   "trend": "tight",
++   "trend_since": "2026-10-09",
++   "trend_sessions": 30,
++   "fast": "tight",
++   "turn": {
++    "date": "2026-10-15",
++    "to": "tight",
++    "sessions": 26
++   }
++  },
++  {
++   "id": "M2",
++   "name": "Copper / gold",
++   "group": "metals",
++   "tight_when": "copper lagging gold",
++   "status": "ok",
++   "trend": "easy",
++   "trend_since": "2026-09-29",
++   "trend_sessions": 38,
++   "fast": "tight",
++   "turn": {
++    "date": "2026-10-05",
++    "to": "easy",
++    "sessions": 34
++   }
++  },
++  {
++   "id": "K1",
++   "name": "Small vs large (IWM / SPY)",
++   "group": "risk",
++   "tight_when": "small caps lagging",
++   "status": "ok",
++   "trend": "easy",
++   "trend_since": "2026-11-16",
++   "trend_sessions": 4,
++   "fast": "easy",
++   "turn": {
++    "date": "2026-11-20",
++    "to": "easy",
++    "sessions": 0
++   }
++  },
++  {
++   "id": "K5",
++   "name": "Speculative growth (ARKK / QQQ)",
++   "group": "risk",
++   "tight_when": "speculative growth lagging",
++   "status": "ok",
++   "trend": "tight",
++   "trend_since": "2026-10-22",
++   "trend_sessions": 21,
++   "fast": "tight",
++   "turn": {
++    "date": "2026-10-28",
++    "to": "tight",
++    "sessions": 17
++   }
++  }
++ ],
++ "groups": [
++  {
++   "key": "credit",
++   "name": "Credit",
++   "score": 1.0,
++   "tight": true
++  },
++  {
++   "key": "fed",
++   "name": "Fed and money",
++   "score": 1.0,
++   "tight": true
++  },
++  {
++   "key": "rates",
++   "name": "Rates",
++   "score": -1.0,
++   "tight": false
++  },
++  {
++   "key": "dollar",
++   "name": "Dollar",
++   "score": 1.0,
++   "tight": true
++  },
++  {
++   "key": "metals",
++   "name": "Metals",
++   "score": 0.0,
++   "tight": false
++  },
++  {
++   "key": "risk",
++   "name": "Risk appetite",
++   "score": 0.0,
++   "tight": false
++  }
++ ],
++ "groups_tight": {
++  "n": 3,
++  "of": 6,
++  "n_20d_ago": 3,
++  "chg_20d": 0
++ },
++ "score": 2.0,
++ "composite_turns": [
++  {
++   "date": "2026-06-25",
++   "to": "tightening",
++   "sessions": 104
++  },
++  {
++   "date": "2026-09-23",
++   "to": "easing",
++   "sessions": 42
++  },
++  {
++   "date": "2026-11-09",
++   "to": "tightening",
++   "sessions": 9
++  }
++ ],
++ "composite_trend": {
++  "direction": "tightening",
++  "since": "2026-11-03",
++  "sessions": 13
++ },
++ "caution": {
++  "on": true,
++  "text": "Caution — liquidity draining",
++  "since": "2026-10-26",
++  "sessions": 19,
++  "history": "2016-24: a 10%+ small-cap drop within 3 months followed 33% of 730 draining days vs 13% of 1,207 other days — and a 10%+ rally followed 33% too; turns did not time lows."
++ },
++ "seeds": {
++  "jnk": {
++   "latest": 91.54,
++   "ma20": 92.55,
++   "ma50": 92.92,
++   "vs_ma20": "below",
++   "vs_ma50": "below",
++   "ma20_vs_ma50": "below",
++   "chg_1m_pct": -1.0,
++   "ma20_slope_wk": -0.13
++  },
++  "gold_silver": {
++   "latest": 8.73,
++   "ma20": 8.0,
++   "ma50": 7.41,
++   "vs_ma20": "above",
++   "vs_ma50": "above",
++   "ma20_vs_ma50": "above",
++   "chg_1m_pct": 16.8
++  }
++ },
++ "hy_spread": {
++  "latest": 3.52,
++  "obs_date": "2026-11-19",
++  "month_ago": 3.27,
++  "chg_1m": 0.25,
++  "three_months_ago": 2.7
++ },
++ "net_liquidity_tn": {
++  "latest": 5.82,
++  "three_months_ago": 5.79
++ },
++ "definitions": {
++  "label": "Context, not validated: display only. It feeds no entry, size, safeguard or regime score.",
++  "trend": "Each indicator is oriented so UP = tighter. Trend = its 20-session average vs its 50-session average (tight above, easy below).",
++  "fast": "Fast dot = the indicator vs its own 20-session average (the early warning; it never votes).",
++  "since": "trend_since / trend_sessions = when the trend last changed side and the sessions since. turn = the last change that then held 5 sessions in a row, dated at the 5th.",
++  "groups": "A group is tight when the average of its indicators' trend votes is above zero. N of 6 = groups tight now; the change is against 20 sessions ago.",
++  "composite_turns": "Composite turn = the 20-session average of the group-score sum crossing its 50-session average and holding 5 sessions. Tested 2016-24: turns did not time market lows or highs.",
++  "caution": "Shown while the group-score sum has been 2 or more on 3 closes in a row, until it is 1 or less on 3 closes in a row. 2016-24: a 10%+ small-cap drop within 3 months followed 33% of 730 draining days vs 13% of 1,207 other days — and a 10%+ rally followed 33% too; turns did not time lows.",
++  "lags": "Fed and Treasury series enter a session only once published (most the next session; the Fed balance sheet's Wednesday level on Friday). A stale or failed source reads unavailable and votes 0.",
++  "seeds": "JNK and gold/silver tiles use raw prices (as charted); the indicator rows use dividend-adjusted closes.",
++  "hy_spread": "ICE BofA US High Yield spread (FRED BAMLH0A0HYM2), percent; change against 21 sessions earlier."
++ }
++}
+diff -ruN a/test_liquidity_panel_732.py b/test_liquidity_panel_732.py
+--- a/test_liquidity_panel_732.py	1969-12-31 16:00:00
++++ b/test_liquidity_panel_732.py	2026-11-22 20:35:35
+@@ -0,0 +1,154 @@
++"""Apollo #732: the liquidity panel on Market Breadth (the export's optional ``liquidity`` key).
++
++The fixture is Apollo's production block for the 2026-11-20 close (its own test pins those numbers to the reference
++read). Here: what the panel shows, that nothing is hidden behind a tap, and that a missing / broken / failed block
++never costs the page its breadth card.
++"""
++from __future__ import annotations
++
++import copy
++import json
++import os
++
++import liquidity_view as lqv
++from _breadth_page_harness import all_md as _md, run_breadth_page
++from app_palette import C_DARK, C_LIGHT
++
++_HERE = os.path.dirname(__file__)
++NIGHTLY = os.path.join(_HERE, "test_fixtures", "breadth_snapshot_2026-11-08_groups.json")
++BLOCK = os.path.join(_HERE, "test_fixtures", "liquidity_block_2026-11-20.json")
++
++
++def _liq():
++    return json.load(open(BLOCK))
++
++
++def _snap(liq="fixture"):
++    s = json.load(open(NIGHTLY))
++    if liq is not None:
++        s["liquidity"] = _liq() if liq == "fixture" else liq
++    return s
++
++
++def test_panel_shows_the_label_count_caution_and_every_leg():
++    h = lqv.liquidity_panel_html(_liq())
++    assert "context, not validated" in h and "as of 2026-11-20" in h
++    assert "3 of 6 groups tight" in h and "unchanged vs 20 sessions ago" in h and "score +2.0" in h
++    assert "Caution — liquidity draining" in h and "since 2026-10-26" in h and "33% of 730 draining days" in h
++    assert h.count('class="lq-leg"') == 10 and h.count('class="lq-g ') == 6
++    for name in ("Baa corporate spread", "Net liquidity", "Fed funds rate", "10-year real yield", "2-year yield",
++                 "Dollar (UUP)", "Gold / silver", "Copper / gold", "Small vs large", "Speculative growth"):
++        assert name in h
++    assert "Composite turns (newest first): tightening 11-09 · easing 09-23 · tightening 06-25" in h
++    assert "\n\n" not in h          # a blank line would end the HTML block in st.markdown
++
++
++def test_a_leg_row_carries_trend_days_turn_and_fast_dot():
++    h = lqv.liquidity_panel_html(_liq())
++    i = h.index("Dollar (UUP)")
++    row = h[i:h.index("</div></div>", i)]
++    assert 'class="lq-w tight">tight</span> 41d · turn 09-30 · fast' in row and "lq-dot sm tight" in row
++
++
++def test_seed_tiles_and_the_spread():
++    h = lqv.liquidity_panel_html(_liq())
++    assert "JNK (price)" in h and ">91.54<" in h and "below 20d 92.55" in h and "below 50d 92.92" in h
++    assert "20d slope -0.13/wk" in h and "1M -1.0%" in h
++    assert "Gold / silver" in h and ">8.73<" in h and "above 20d 8.00" in h and "1M +16.8%" in h
++    assert "Junk-bond spread" in h and ">3.52%<" in h and "1M +0.25 pts" in h
++
++
++def test_no_state_word_and_no_bottom_or_top_label():
++    h = lqv.liquidity_panel_html(_liq())
++    for banned in ("Neutral", "Easing", "neutral", "bottom", "Bottom", "early marker"):
++        assert banned not in h
++    assert "<details" not in h and "<summary" not in h      # nothing behind a tap
++
++
++def test_no_caution_line_when_the_export_says_off():
++    b = _liq()
++    b["caution"] = {"on": False}
++    h = lqv.liquidity_panel_html(b)
++    assert "Caution" not in h and "lq-caution" not in h and "3 of 6 groups tight" in h
++    b["caution"] = None
++    assert "Caution" not in lqv.liquidity_panel_html(b)
++
++
++def test_an_unavailable_leg_reads_unavailable_and_is_counted():
++    b = _liq()
++    b["legs"][3] = {"id": "R1", "name": "10-year real yield", "group": "rates", "tight_when": "real yield rising",
++                    "status": "unavailable", "reason": "source failed: DFII10"}
++    b["unavailable"] = ["R1"]
++    h = lqv.liquidity_panel_html(b)
++    assert "1 of 10 indicators unavailable tonight" in h and h.count(">unavailable<") == 1
++    assert h.count('class="lq-leg"') == 10
++
++
++def test_missing_tiles_read_unavailable():
++    b = _liq()
++    b["seeds"], b["hy_spread"] = {"jnk": None, "gold_silver": None}, None
++    assert lqv.liquidity_panel_html(b).count(">unavailable<") == 3
++
++
++def test_an_unavailable_block_is_one_line():
++    h = lqv.liquidity_panel_html({"version": 1, "label": "context, not validated", "status": "unavailable",
++                                  "reason": "no daily bars: Alpaca returned nothing"})
++    assert "Unavailable tonight: no daily bars" in h and "lq-leg" not in h
++
++
++def test_absent_or_malformed_gives_no_panel_and_no_exception():
++    assert lqv.liquidity_panel_html(None) == ""
++    bad = _liq()
++    bad["legs"] = "boom"
++    noasof = _liq()
++    noasof["as_of"] = "nope"
++    for b in ("x", [], {}, {"status": "ok"}, bad, noasof, {"legs": [1], "as_of": "2026-11-20"}):
++        assert lqv.liquidity_panel_html(b) == ""
++    odd = _liq()                       # odd optional parts are skipped, never raised on
++    odd.update(groups="x", groups_tight=[1], composite_turns=[{"date": "bad"}, 5], caution="yes", score="2",
++               seeds=[1], hy_spread="x", unavailable="x")
++    odd["legs"][0].update(trend=None, fast=7, turn="x", trend_sessions="n")
++    h = lqv.liquidity_panel_html(odd)
++    assert h.count('class="lq-leg"') == 10 and "groups tight" not in h
++
++
++def test_text_is_escaped():
++    b = _liq()
++    b["legs"][0]["name"] = "<script>x</script>"
++    b["caution"]["history"] = '"><img>'
++    b["label"] = "<b>ctx</b>"
++    h = lqv.liquidity_panel_html(b)
++    assert "<script>" not in h and "<img>" not in h and "<b>ctx" not in h and "&lt;script&gt;" in h
++
++
++def test_css_builds_for_both_palettes():
++    for C in (C_DARK, C_LIGHT):
++        css = lqv.liquidity_css(C)
++        assert ".lq-card" in css and "repeat(2, minmax(0, 1fr))" in css and "repeat(3, minmax(0, 1fr))" in css
++
++
++# ── the page ──
++def _write(tmp_path, snap):
++    p = tmp_path / "s.json"
++    p.write_text(json.dumps(snap))
++    return p
++
++
++def test_page_shows_the_panel_beside_the_breadth_card(monkeypatch, tmp_path):
++    at = run_breadth_page(monkeypatch, _write(tmp_path, _snap()))
++    md = _md(at)
++    assert "3 of 6 groups tight" in md and "Caution — liquidity draining" in md and "Advances vs declines" in md
++    assert md.index("Advances vs declines") < md.index("3 of 6 groups tight")
++    assert "liquidity.trend" in md          # its definitions are printed with the export's own
++
++
++def test_page_without_the_key_is_unchanged(monkeypatch, tmp_path):
++    md = _md(run_breadth_page(monkeypatch, _write(tmp_path, _snap(liq=None))))
++    assert "groups tight" not in md and "Liquidity" not in md and "Advances vs declines" in md
++
++
++def test_page_with_a_broken_block_still_renders_breadth(monkeypatch, tmp_path):
++    for bad in ({"legs": "boom"}, "x", [1], {"status": "unavailable"}):
++        md = _md(run_breadth_page(monkeypatch, _write(tmp_path, _snap(liq=copy.deepcopy(bad)))))
++        assert "Advances vs declines" in md
++        assert ("Unavailable tonight" in md) == (bad == {"status": "unavailable"})
