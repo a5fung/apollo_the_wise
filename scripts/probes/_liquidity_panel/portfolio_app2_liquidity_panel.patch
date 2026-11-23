@@ -1,14 +1,17 @@
 Apollo #732 - the liquidity panel on portfolio-app2's Market Breadth page (the breadth export's optional `liquidity` key).
-Base: portfolio-app2 origin/main 93ea638 (2026-11-16), as held in the local clone's remote ref on 2026-11-22; fetch first if main has moved.
-Apply from the repo root:  git apply --check <this file> && git apply <this file>   (or: patch -p1 < <this file>)
+Base: portfolio-app2 origin/main 87ee1e4 (2026-11-22 auto-export; the dashboard code is unchanged since 93ea638, 2026-11-16).
+Apply from the repo root, on main:  git apply --check <this file> && git apply <this file>
 Adds liquidity_view.py, test_liquidity_panel_732.py, test_fixtures/liquidity_block_2026-11-20.json; edits pages/Market_Breadth.py.
-Checked on a scratch export of that tree: the new test file plus the breadth / regime / live / groups / risk-light tests, 187 passed.
-Not checked: the look on a phone (no browser render was done).
+Checked on a fresh clone of that main: applies cleanly; the full dashboard suite passes (925).
+Rendered (Streamlit + Chromium, the page itself): beside the breadth card at 900 and 1440 px, under it at 390 px; no
+horizontal scroll and no clipped text at any of the three.
 
-diff -ruN a/liquidity_view.py b/liquidity_view.py
---- a/liquidity_view.py	1969-12-31 16:00:00
-+++ b/liquidity_view.py	2026-11-22 21:08:05
-@@ -0,0 +1,217 @@
+diff --git a/liquidity_view.py b/liquidity_view.py
+new file mode 100644
+index 0000000..fd8e226
+--- /dev/null
++++ b/liquidity_view.py
+@@ -0,0 +1,219 @@
 +"""The liquidity panel on Market Breadth (Apollo #732): the breadth export's optional ``liquidity`` key.
 +
 +Context, not validated: display only. The panel renders what Apollo's nightly export computed (contract: Apollo's
@@ -16,7 +19,8 @@ diff -ruN a/liquidity_view.py b/liquidity_view.py
 +screen at once (phone: two columns of indicators, tiles side by side; nothing behind a tap).
 +
 +An absent key = no panel. A malformed key = no panel and no exception (the page wraps the call as well). A block
-+whose ``status`` is ``unavailable`` renders one line saying so; a leg whose source failed reads "unavailable".
++whose ``status`` is ``unavailable`` renders one line saying so; a leg whose source failed reads "unavailable" with
++its reason under it. Nothing is clipped: long names and the trend line wrap (dense, never hidden — his 11-07 rule).
 +There is no Neutral / Easing word and no bottom / top label: the only label is the caution line, shown while the
 +export's ``caution.on`` is true.
 +"""
@@ -100,9 +104,10 @@ diff -ruN a/liquidity_view.py b/liquidity_view.py
 +    .lq-legs {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 8px; margin-top: 8px; }}
 +    @media (min-width: 1000px) {{ .lq-legs {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} }}
 +    .lq-leg {{ min-width: 0; border-top: 1px solid {C['border']}; padding-top: 3px; }}
-+    .lq-name {{ font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
-+    .lq-sub {{ font-size: 11px; color: {C['text_muted']}; white-space: nowrap; overflow: hidden;
-+               text-overflow: ellipsis; font-variant-numeric: tabular-nums; }}
++    .lq-name {{ font-size: 12px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }}
++    .lq-sub {{ font-size: 11px; line-height: 1.35; color: {C['text_muted']}; overflow-wrap: anywhere;
++               font-variant-numeric: tabular-nums; }}
++    .lq-why {{ font-size: 10.5px; color: {C['text_dim']}; }}
 +    .lq-dot {{ display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px;
 +               background: {C['text_dim']}; }}
 +    .lq-dot.tight {{ background: #F97316; }}
@@ -112,8 +117,7 @@ diff -ruN a/liquidity_view.py b/liquidity_view.py
 +    .lq-w.easy {{ color: {C['positive']}; font-weight: 600; }}
 +    .lq-tiles {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }}
 +    .lq-tile {{ border: 1px solid {C['border']}; border-radius: 8px; padding: 5px 6px; min-width: 0; }}
-+    .lq-tile-h {{ font-size: 10.5px; color: {C['text_muted']}; white-space: nowrap; overflow: hidden;
-+                  text-overflow: ellipsis; }}
++    .lq-tile-h {{ font-size: 10.5px; color: {C['text_muted']}; line-height: 1.3; }}
 +    .lq-tile-v {{ font-size: 15px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }}
 +    .lq-tile-s {{ font-size: 10.5px; line-height: 1.35; color: {C['text_muted']};
 +                  font-variant-numeric: tabular-nums; }}
@@ -124,7 +128,8 @@ diff -ruN a/liquidity_view.py b/liquidity_view.py
 +    name = _esc(leg.get("name", ""))
 +    if leg.get("status") != "ok":
 +        return (f'<div class="lq-leg"><div class="lq-name"><span class="lq-dot"></span>{name}</div>'
-+                f'<div class="lq-sub" title="{_esc(leg.get("reason", ""))}">unavailable</div></div>')
++                f'<div class="lq-sub">unavailable</div>'
++                + (f'<div class="lq-why">{_esc(leg["reason"])}</div>' if leg.get("reason") else "") + '</div>')
 +    trend, fast = _tone(leg.get("trend")), _tone(leg.get("fast"))
 +    n = _int(leg.get("trend_sessions"))
 +    turn = leg.get("turn") if isinstance(leg.get("turn"), dict) else None
@@ -226,10 +231,11 @@ diff -ruN a/liquidity_view.py b/liquidity_view.py
 +    parts.append('<div class="lq-line">Dot = trend (20-day vs 50-day average; orange tight, green easy) and the '
 +                 'sessions it has held; turn = the last change that held 5 sessions; fast = vs its own 20-day.</div>')
 +    return f'<div class="lq-card">{"".join(parts)}</div>'
-diff -ruN a/pages/Market_Breadth.py b/pages/Market_Breadth.py
---- a/pages/Market_Breadth.py	2026-11-16 15:30:34
-+++ b/pages/Market_Breadth.py	2026-11-22 20:35:38
-@@ -10,6 +10,9 @@
+diff --git a/pages/Market_Breadth.py b/pages/Market_Breadth.py
+index 6c6eb7a..d5992dd 100644
+--- a/pages/Market_Breadth.py
++++ b/pages/Market_Breadth.py
+@@ -10,6 +10,9 @@ Then a compact regime strip (his 11-16 ask: the export's optional ``regime`` key
  days in it, drivers and a 60-day ribbon; nightly only, absent from an old export), and the breadth card also carries
  an "Up 4% vs down 4%" bar from the optional ``moves_4pct`` key (live-overlaid on Today like advances/declines).
  
@@ -239,7 +245,7 @@ diff -ruN a/pages/Market_Breadth.py b/pages/Market_Breadth.py
  Then four panels over Apollo's nightly breadth export (``apollo_breadth_snapshot.json``, contract in Apollo's
  ``docs/architecture/market_breadth_snapshot.md``): new 52-week highs vs lows, advances vs declines, the Weinstein
  stage 1-4 split, and a theme tracker (equal-weight member return, Today / 1W / 1M / YTD; the period chips sit above the
-@@ -29,6 +32,7 @@
+@@ -29,6 +32,7 @@ st.set_page_config(page_title="Market Breadth", layout="wide", page_icon="📊")
  import breadth_data  # noqa: E402 — after set_page_config
  import live_breadth  # noqa: E402
  import breadth_view as bv  # noqa: E402
@@ -247,7 +253,7 @@ diff -ruN a/pages/Market_Breadth.py b/pages/Market_Breadth.py
  import market_risk as mr  # noqa: E402
  import market_risk_data  # noqa: E402
  import market_risk_view as mrv  # noqa: E402
-@@ -41,7 +45,7 @@
+@@ -41,7 +45,7 @@ S = bv.stage_palette(st.session_state.dark_mode)
  
  # Each page injects its own CSS: Streamlit drops one page's markdown on navigation.
  st.markdown(
@@ -256,7 +262,7 @@ diff -ruN a/pages/Market_Breadth.py b/pages/Market_Breadth.py
      unsafe_allow_html=True,
  )
  
-@@ -161,7 +165,18 @@
+@@ -161,7 +165,18 @@ else:
      st.caption(f"**Last close · {as_of}** — Today's numbers are the nightly snapshot (no fresh live data).")
  
  # ── breadth: highs vs lows, advances vs declines, stages (one card) — ABOVE the groups (his 11-08 ask) ──
@@ -276,7 +282,7 @@ diff -ruN a/pages/Market_Breadth.py b/pages/Market_Breadth.py
  
  # ── 1: groups (#722) ────────────────────────────────────────────────────────
  if groups is not None:
-@@ -203,3 +218,7 @@
+@@ -203,3 +218,7 @@ with st.expander("How these are counted"):
      st.caption(f"Exported {snap.get('generated_at', '—')} · prior year-end for YTD: "
                 f"{snap.get('prior_year_end') or '—'} · theme membership: {snap.get('theme_membership', '—')}")
      st.markdown(bv.definitions_html(snap["definitions"]), unsafe_allow_html=True)
@@ -284,9 +290,11 @@ diff -ruN a/pages/Market_Breadth.py b/pages/Market_Breadth.py
 +    if _liq_html and isinstance(_liq_defs, dict) and all(isinstance(v, str) for v in _liq_defs.values()):
 +        st.caption("Liquidity panel")
 +        st.markdown(bv.definitions_html({f"liquidity.{k}": v for k, v in _liq_defs.items()}), unsafe_allow_html=True)
-diff -ruN a/test_fixtures/liquidity_block_2026-11-20.json b/test_fixtures/liquidity_block_2026-11-20.json
---- a/test_fixtures/liquidity_block_2026-11-20.json	1969-12-31 16:00:00
-+++ b/test_fixtures/liquidity_block_2026-11-20.json	2026-11-22 21:08:05
+diff --git a/test_fixtures/liquidity_block_2026-11-20.json b/test_fixtures/liquidity_block_2026-11-20.json
+new file mode 100644
+index 0000000..942414e
+--- /dev/null
++++ b/test_fixtures/liquidity_block_2026-11-20.json
 @@ -0,0 +1,290 @@
 +{
 + "version": 1,
@@ -578,10 +586,12 @@ diff -ruN a/test_fixtures/liquidity_block_2026-11-20.json b/test_fixtures/liquid
 +  "hy_spread": "ICE BofA US High Yield spread (FRED BAMLH0A0HYM2), percent; change against 21 sessions earlier."
 + }
 +}
-diff -ruN a/test_liquidity_panel_732.py b/test_liquidity_panel_732.py
---- a/test_liquidity_panel_732.py	1969-12-31 16:00:00
-+++ b/test_liquidity_panel_732.py	2026-11-22 21:08:05
-@@ -0,0 +1,154 @@
+diff --git a/test_liquidity_panel_732.py b/test_liquidity_panel_732.py
+new file mode 100644
+index 0000000..3e4282f
+--- /dev/null
++++ b/test_liquidity_panel_732.py
+@@ -0,0 +1,166 @@
 +"""Apollo #732: the liquidity panel on Market Breadth (the export's optional ``liquidity`` key).
 +
 +The fixture is Apollo's production block for the 2026-11-20 close (its own test pins those numbers to the reference
@@ -736,3 +746,15 @@ diff -ruN a/test_liquidity_panel_732.py b/test_liquidity_panel_732.py
 +        md = _md(run_breadth_page(monkeypatch, _write(tmp_path, _snap(liq=copy.deepcopy(bad)))))
 +        assert "Advances vs declines" in md
 +        assert ("Unavailable tonight" in md) == (bad == {"status": "unavailable"})
++
++
++def test_nothing_in_the_panel_is_clipped():
++    """Compact = dense, never hidden: no leg name, trend line or tile title is cut with an ellipsis on a phone, and an
++    unavailable leg shows its reason on screen (not only on hover)."""
++    for C in (C_LIGHT, C_DARK):
++        assert "ellipsis" not in lqv.liquidity_css(C)
++    b = _liq()
++    b["legs"][3] = {"id": "R1", "name": "10-year real yield", "group": "rates", "tight_when": "real yield rising",
++                    "status": "unavailable", "reason": "source failed: DFII10"}
++    b["unavailable"] = ["R1"]
++    assert '<div class="lq-why">source failed: DFII10</div>' in lqv.liquidity_panel_html(b)

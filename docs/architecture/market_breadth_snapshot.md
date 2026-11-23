@@ -442,11 +442,12 @@ group counts, both seed tiles, the spread and net liquidity. Two departures, bot
 - **NOT verified (needs the deploy):** that `apollo-market` can reach `fred.stlouisfed.org` and has pandas /
   numpy at the versions this ran on (pandas 3.0.3, numpy 2.5.1 locally; both arrive in the image only as
   dependencies of yfinance / mplfinance); the real Alpaca daily-bar response shape; the run time inside the
-  nightly; the hang cut-off test (skipped on macOS: no `timeout`).
-- ⚠ **His call:** the prereg lists the junk-bond spread as "internal only" (ICE licence). It is in the block
-  under its own key (`hy_spread`) and the page shows it, so the nightly export would publish the latest value
-  to the (private) portfolio-app2 repo; dropping it is one line on either side. The test fixture also holds 74
-  rows of the series (2026-08-10 → 11-19) in this repo.
+  nightly. The shell hang test skips without coreutils `timeout` (stock macOS); on 2026-11-22 it passed locally
+  with a perl stand-in for `timeout` — real coreutils (the prod host) has not run it.
+- **Junk-bond spread (ICE licence, prereg §3 "internal only"):** #732's own text lists "the HY spread … (internal)"
+  in the panel he okayed, so it shows on his private dashboard and nowhere public. It is read from FRED directly
+  rather than the host's `infra/fred_hy_spread_snapshot.sh` files (the container cannot see them; same series,
+  same numbers). The test fixture holds 74 rows of it (2026-08-10 → 11-19) in this private repo.
 
 ## Change log
 
