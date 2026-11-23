@@ -16144,7 +16144,6 @@ reviews:
        WHERE event_type = 'cot_weekly' AND detail::jsonb->>'status' = 'sent'
          AND created_at >= TIMESTAMPTZ '2026-11-27 00:00:00+00'
     threshold: 1
-    zero_verdict: "2026-11-20 WAITING — his 11-22 issue arrives Sunday; the predicate fires once the next weekly run sends (11-27), by which time the 11-22 issue must be scored."
     discriminates_on: []
     earliest_review_date: 2026-11-23
     status: done
