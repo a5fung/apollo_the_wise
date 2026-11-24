@@ -1,0 +1,97 @@
+SET
+timezone|event_type|left
+2026-11-24 17:03:05.94125|theme_discovery_llm_call|stop=tool_use out_tok=678 forced=False tool_uses=1 iter=1
+2026-11-24 17:03:08.211231|theme_discovery_llm_call|stop=tool_use out_tok=303 forced=False tool_uses=1 iter=1
+2026-11-24 17:03:10.923639|theme_discovery_llm_call|stop=tool_use out_tok=375 forced=False tool_uses=1 iter=1
+2026-11-24 17:03:13.324185|theme_discovery_llm_call|stop=tool_use out_tok=326 forced=False tool_uses=1 iter=1
+2026-11-24 17:03:13.329943|theme_discovery_shown_declined|shown=54 declined=54 proposed=3 clusters shown=4 declined=0 already_named=1 partial=0 taken=3 recall_mode=False
+2026-11-24 17:03:17.440952|theme_birth_gate|2026-11-24 [lane1/dedup_only] birth-gate: 1 birth / 0 join / 0 awaiting-2nd-sighting / 2 held-floor · ⚠ 111 previously-held later PASSED
+2026-11-24 17:03:18.520725|theme_engine_funnel|births: uncovered=3 v/t/e=11/3/37 discovery=ON → LLM=3 → survived=3 | retired=6
+2026-11-24 17:03:18.521813|theme_discovered|New theme: Canadian Big Five Banks (5 stocks)
+2026-11-24 17:03:18.523159|theme_discovered|New theme: Asset-Based Trucking & Intermodal Freight Carriers (4 stocks)
+2026-11-24 17:03:18.52408|theme_discovered|New theme: Copper Miners (4 stocks)
+2026-11-24 17:03:18.525001|theme_retired|Retired: Wireless Tower & Cell Site Infrastructure REITs
+2026-11-24 17:03:18.525869|theme_retired|Retired: Canadian Big Five Banks
+2026-11-24 17:03:18.526751|theme_retired|Retired: Copper Miners
+2026-11-24 17:03:18.52759|theme_retired|Retired: Gold & Copper Mid-Tier Miners (AUGO/AU/EQX/EGO)
+2026-11-24 17:03:18.528347|theme_retired|Retired: Heavy-Duty & Automotive Drivetrain/Electrical Component Suppliers
+2026-11-24 17:03:18.529307|theme_retired|Retired: Mid-Tier & Developer Gold/Silver Miners (Uncovered Producers)
+2026-11-24 17:03:18.530048|stage_change|Auto Dealership Groups (Franchised New & Used Vehicle Retail): Accelerating → Mainstream
+2026-11-24 17:03:18.531155|stage_change|Cement, Aggregates & Heavy Construction Materials: Fading → Accelerating
+2026-11-24 17:03:18.531898|stage_change|Companion Animal Healthcare: Diagnostics & Pet Insurance: Nascent → Mainstream
+2026-11-24 17:03:18.532631|stage_change|Enterprise HR & Workforce Management SaaS: Fading → Mainstream
+2026-11-24 17:03:18.5334|stage_change|Fintech & Digital Payments Re-rating on Fed Easing: Fading → Mainstream
+2026-11-24 17:03:18.534237|stage_change|Forensic, Litigation & Expert Consulting Services: Nascent → Mainstream
+2026-11-24 17:03:18.535013|stage_change|Industrial Warehouse & Logistics REITs: Mainstream → Accelerating
+2026-11-24 17:03:18.535829|stage_change|Metal & Rigid Consumer Packaging: Fading → Mainstream
+2026-11-24 17:03:18.53674|stage_change|Network Security & Zero-Trust Edge: Mainstream → Accelerating
+2026-11-24 17:03:18.537608|stage_change|Private Credit BDCs: Direct Lending Funds: Fading → Mainstream
+2026-11-24 17:03:18.538363|stage_change|Specialty Chemicals & Commodity Chemical Strength: Fading → Mainstream
+2026-11-24 17:03:18.539128|stage_change|Timeshare & Vacation Ownership: Nascent → Mainstream
+2026-11-24 17:03:18.539918|stage_change|U.S. Homebuilders & Manufactured Housing: Fading → Mainstream
+2026-11-24 17:03:18.540762|stage_change|Vertical Software for Field Services, Restaurants & Retail Operations: Fading → Mainstream
+2026-11-24 17:03:18.566557|theme_pass1_5_skip|Pass1.5: 'Mobility Technology & Autonomous Perception Platforms' eligible but no target passed (1 candidate(s) skipped)
+2026-11-24 17:03:18.569453|theme_pass1_5_skip|Pass1.5: 'AI-native software platform adoption' eligible but no target passed (2 candidate(s) skipped)
+2026-11-24 17:03:18.57103|theme_pass1_5_skip|Pass1.5: 'Restaurant & Business Spend/Payments Software (Cloud POS & AP/AR Automation)' eligible but no target passed (2 candidate(s) skipped)
+2026-11-24 17:03:18.574714|theme_pass1_5_skip|Pass1.5: 'Forensic, Litigation & Expert Consulting Services' eligible but no target passed (1 candidate(s) skipped)
+2026-11-24 17:03:18.575993|theme_pass1_5_absorption|Pass1.5: 'Small-Cap Digital Commerce & Promotions Platforms' -> 'Software & Data Platforms Re-Rating for the AI Era'
+2026-11-24 17:03:18.577549|theme_pass1_5_skip|Pass1.5: 'Cybersecurity & Digital Identity Small-Cap Software Leaders' eligible but no target passed (2 candidate(s) skipped)
+2026-11-24 17:03:18.578744|theme_pass1_5_absorption|Pass1.5: 'Consumer Fintech Lending & BNPL Marketplaces' -> 'Fintech & Digital Payments Re-rating on Fed Easing'
+2026-11-24 17:03:18.579867|theme_pass1_5_operator_exempt|Pass1.5: 'Bitcoin Miners & AI/HPC Data-Center Pivot' exempt (operator-promoted, night 1 of 3); would have joined 'Fintech & Digital Payments Re-rating on Fed Easing'
+2026-11-24 17:03:18.583442|theme_sector_cap_dropped|'Rare Disease & Neuromuscular/Genetic Medicine Biotech Leaders' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)
+2026-11-24 17:03:18.585453|theme_sector_cap_dropped|'Clinical-Stage Precision Oncology & Targeted Cancer Drug Developers' dropped by sector cap (group 'biotech', family 'oncology' slot taken)
+2026-11-24 17:03:18.589814|theme_sector_cap_dropped|'Clinical-Stage Cardiometabolic & Cardiovascular Drug Developers' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)
+2026-11-24 17:03:19.062982|theme_move_rejected_by_description|PSX not moved into 'Appalachian Natural Gas E&Ps' — description check refused it (#655)
+2026-11-24 17:03:19.067737|validation_cooldown_triggered|PSX → 'Appalachian Natural Gas E&Ps' cooldown 14d (removal #1)
+2026-11-24 17:03:19.069169|theme_sector_cap_not_absorbed|Pass2: 'Oil Refining & Marketing' dropped — 0 of 2 member(s) passed the membership test for 'Appalachian Natural Gas E&Ps' (sector group 'oil_gas')
+2026-11-24 17:03:19.072395|theme_sector_cap_not_absorbed|Pass2: 'Independent US Oil Refiners' dropped — 0 of 2 member(s) passed the membership test for 'Appalachian Natural Gas E&Ps' (sector group 'oil_gas')
+2026-11-24 17:03:19.074663|theme_score_ties|26 score-tie group(s) after stage 'after_merge_1'
+2026-11-24 17:03:19.079205|theme_score_ties|26 score-tie group(s) after stage 'after_cap_1'
+2026-11-24 17:03:21.668708|fat_theme_no_split|No split: Regulated Electric Utilities Defensive Rotation (31 stocks)
+2026-11-24 17:03:21.689057|theme_merge_pairs_proposed|Arm B Stage A: 8 candidate pair(s) for adjudication
+2026-11-24 17:03:24.41995|theme_merge_distinct|Arm B: 'Firearms & Ammunition Consumer Defense Products' vs 'Aircraft MRO, Aftermarket & Aerospace Parts Distribution' DISTINCT — 30d pair cooldown
+2026-11-24 17:03:27.186678|theme_merge_distinct|Arm B: 'Asset-Based Trucking & Intermodal Freight Carriers' vs 'Industrial Warehouse & Logistics REITs' DISTINCT — 30d pair cooldown
+2026-11-24 17:03:30.105664|theme_merge_distinct|Arm B: 'Truck Freight Brokerage & Third-Party Logistics' vs 'Industrial Warehouse & Logistics REITs' DISTINCT — 30d pair cooldown
+2026-11-24 17:03:33.175956|theme_merge_distinct|Arm B: 'Restaurant & Business Spend/Payments Software (Cloud POS & AP/AR Automation)' vs 'Fintech & Digital Payments Re-rating on Fed Easing' DISTINCT — 30d pair cooldown
+2026-11-24 17:03:36.883758|theme_thesis_merged|Arm B: 'Power Semiconductors & Discrete Analog Chips (Diodes/MOSFET)' merged into 'Power Management & Analog Power Semiconductors' (4 members)
+2026-11-24 17:03:43.045985|theme_thesis_merged|Arm B: 'Semiconductor & Electronic Component Cycle Rebound' merged into 'Power Management & Analog Power Semiconductors' (6 members)
+2026-11-24 17:03:46.434821|theme_merge_distinct|Arm B: 'Full-Service Casual Dining Restaurant Operators' vs 'Specialty & Value Apparel/Footwear Retail Strength' DISTINCT — 30d pair cooldown
+2026-11-24 17:03:49.479824|theme_merge_distinct|Arm B: 'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' vs 'Specialty & Value Apparel/Footwear Retail Strength' DISTINCT — 30d pair cooldown
+2026-11-24 17:04:00.994852|theme_move_rejected_by_description|SPSC not moved into 'Customer Engagement & Marketing/CX SaaS Platforms' — description check refused it (#655)
+2026-11-24 17:04:00.997507|validation_cooldown_triggered|SPSC → 'Customer Engagement & Marketing/CX SaaS Platforms' cooldown 14d (removal #1)
+2026-11-24 17:04:00.998728|theme_move_rejected_by_description|MANH not moved into 'Customer Engagement & Marketing/CX SaaS Platforms' — description check refused it (#655)
+2026-11-24 17:04:01.000959|validation_cooldown_triggered|MANH → 'Customer Engagement & Marketing/CX SaaS Platforms' cooldown 14d (removal #1)
+2026-11-24 17:04:01.002073|theme_move_rejected_by_description|DSGX not moved into 'Customer Engagement & Marketing/CX SaaS Platforms' — description check refused it (#655)
+2026-11-24 17:04:01.004416|validation_cooldown_triggered|DSGX → 'Customer Engagement & Marketing/CX SaaS Platforms' cooldown 14d (removal #1)
+2026-11-24 17:04:02.838501|theme_move_rejected_by_description|FROG not moved into 'Network Security & Zero-Trust Edge' — description check refused it (#655)
+2026-11-24 17:04:02.842056|validation_cooldown_triggered|FROG → 'Network Security & Zero-Trust Edge' cooldown 14d (removal #2)
+2026-11-24 17:04:07.539728|theme_move_rejected_by_description|BILL not moved into 'Vertical Software for Field Services, Restaurants & Retail Operations' — description check refused it (#655)
+2026-11-24 17:04:07.541895|validation_cooldown_triggered|BILL → 'Vertical Software for Field Services, Restaurants & Retail Operations' cooldown 14d (removal #1)
+2026-11-24 17:04:10.758697|theme_small_folded|'Electronic Market Making & Trading Execution Financials' -> 'Exchange, Options Trading & Alternative Consumer Credit Financials': moved 1, released 1 of 3 (G3 fail, cohesion 0.2436473138639473 vs random p95 0.4853299984
+2026-11-24 17:04:10.760322|theme_small_folded|'Small Household Appliances & Home Consumer Durables' -> 'Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings': moved 2, released 0 of 2 (G3 fail, cohesion 0.4466306343726343 vs random p95 0.5118554166195
+2026-11-24 17:04:10.761704|theme_small_fold_ran|Small-theme fold: ran — 40 theme(s) of 2-3 members, 16 failed G3, 2 folded
+2026-11-24 17:04:10.801254|theme_auto_retired|Auto-retired 11 theme(s) dropped during merge passes (2 with successor pointer)
+2026-11-24 17:04:10.869533|llm_request_rewrite_adopted|claude-sonnet-5-5: thinking_disabled_to_between_tools
+2026-11-24 17:04:14.404038|theme_parent_pass_inverted|Parent pass: adjudicator says the BROADER 'U.S. Homebuilders & Manufactured Housing' actually sits inside 'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' — no link written
+2026-11-24 17:04:18.283679|theme_parent_pass_distinct|Parent pass: 'Restaurant & Business Spend/Payments Software (Cloud POS & AP/AR Automation)' vs 'Vertical Software for Field Services, Restaurants & Retail Operations' PEERS — no containment, 30d pair cooldown
+2026-11-24 17:04:21.962003|theme_parent_pass_linked|Parent pass: 'Cloud Content, Nonprofit & SMB Software Re-Rating' → sub-theme of 'Software & Data Platforms Re-Rating for the AI Era'
+2026-11-24 17:04:24.736058|theme_parent_pass_distinct|Parent pass: 'Cell Therapy, Retinal & Neurodegenerative Biotech Momentum' vs 'Commercial-Stage Rare Disease & Specialty Biotech Re-Rating' PEERS — no containment, 30d pair cooldown
+2026-11-24 17:04:27.176939|theme_parent_pass_linked|Parent pass: 'AI-native software platform adoption' → sub-theme of 'Software & Data Platforms Re-Rating for the AI Era'
+2026-11-24 17:04:30.097555|theme_parent_pass_distinct|Parent pass: 'Digital Identity, Bill Payment & Mobile Software Small-Cap Leaders' vs 'Software & Data Platforms Re-Rating for the AI Era' PEERS — no containment, 30d pair cooldown
+2026-11-24 17:04:30.098963|theme_parent_pass_ran|Parent pass: 6 candidate(s) adjudicated — 2 linked, 3 no containment (peers/unrelated), 1 inverted, 0 error
+2026-11-24 17:04:30.117579|theme_renamed_for_continuity|1 theme(s) renamed to prior canonical names
+2026-11-24 17:04:32.304032|theme_ecosystem_assigned|'Asset-Based Trucking & Intermodal Freight Carriers' → E-TRANS (haiku)
+2026-11-24 17:04:32.322643|theme_constituent_churn|9 high-churn (theme,ticker) pair(s) in last 10d — sample: BMO↔Canadian Big Banks(2), BNS↔Canadian Big Banks(2), CM↔Canadian Big Banks(2), RY↔Canadian Big Banks(2), TD↔Canadian Big Banks(2)
+2026-11-24 17:04:46.525483|description_generated|Generated 1 new stock descriptions
+2026-11-24 17:04:53.562836|theme_discovery_llm_call|stop=tool_use out_tok=994 forced=False tool_uses=1 iter=1
+(84 rows)
+detail
+'Firearms & Ammunition Consumer Defense Products' × 'Aircraft MRO, Aftermarket & Aerospace Parts Distribution'
+'Asset-Based Trucking & Intermodal Freight Carriers' × 'Industrial Warehouse & Logistics REITs'
+'Truck Freight Brokerage & Third-Party Logistics' × 'Industrial Warehouse & Logistics REITs'
+'Restaurant & Business Spend/Payments Software (Cloud POS & AP/AR Automation)' × 'Fintech & Digital Payments Re-rating on Fed Easing'
+'Power Semiconductors & Discrete Analog Chips (Diodes/MOSFET)' × 'Power Management & Analog Power Semiconductors'
+'Semiconductor & Electronic Component Cycle Rebound' × 'Power Management & Analog Power Semiconductors'
+'Full-Service Casual Dining Restaurant Operators' × 'Specialty & Value Apparel/Footwear Retail Strength'
+'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' × 'Specialty & Value Apparel/Footwear Retail Strength'
+(1 row)

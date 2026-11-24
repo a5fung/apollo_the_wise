@@ -2642,3 +2642,18 @@ EVIDENCE:
 - `mi_stock_scores.market_cap`: dropped 10-09 (boot DROP COLUMN IF EXISTS; absent from information_schema since 10-12; the RS run keeps writing ~2,400 rows a night).
 - `mi_live_fill_counterfactuals.mark_r`: the 18:04 ET job on 11-23 wrote the first 40-session horizon arm — KOD trade 404, arm trail_character_ma, outcome horizon, sessions_walked 40, mark_r 6.97; table count with mark_r = 1 of 354 (`scripts/probes/_verify_1123/q7.out`).
 - Sweep 11-23 17:30 ET (container log): "Dead-column sweep: 104 tables, 0 dead (0 new), 0 suspect, 3 event-gated, 0 error(s)".
+
+## #733 — theme merge step (Arm B) answers again after the verdict-first reword (2026-11-24)
+BAR: "one nightly with every adjudication answered (0 refusals, 0 adjudication_error rows)"
+EVIDENCE:
+- 11-24 nightly (17:03 ET), read-only prod read (`scripts/probes/_verify_1124/q733b.sql`, `q733c.out`): `api_usage` caller `theme_merge_adjudication` = 8 rows, all stop_reason `tool_use` on claude-haiku-5-5; 0 refusals (11-23 baseline: 16 of 16 refused).
+- `mi_audit_log`: `theme_merge_pairs_proposed` 8 pairs → 6 `theme_merge_distinct` + 2 `theme_thesis_merged` (both power-semiconductor pairs into 'Power Management & Analog Power Semiconductors'); every proposed pair has a verdict row; 0 `theme_merge_adjudication_error` rows today. Verdict mix is not one-sided (unintended-effect check in EXPECT).
+- The 8 errors the 24-hour invariant paged on 11-24 are the 11-23 17:07 ET run, before the 21:17 ET deploy.
+
+## #732 — liquidity panel beside breadth, first full check (2026-11-24)
+BAR: "the panel shows on his dashboard after a nightly run, every value matching an independent recompute from the same day's closes on 3 legs + the count. Check after deploy: the first nightly export carries the liquidity block and the page renders it."
+ACCEPTED-PARTIAL: the unquoted clauses are build/deploy history ("BUILT + merged b1a5f81d (CI green); deploy booked Mon 11-23 12:07 ET ..."), done on 11-23 (market-agent DEPLOY OK at ee089714, raw add 390ed8c8 on 11-24) — not criteria left open.
+EVIDENCE:
+- 11-24 nightly export (portfolio-app2 `c494789`, 23:30Z): `liquidity` status ok, as_of 2026-11-24, 0 unavailable, 10 of 10 legs carry `raw`, block 15,854 chars (<20k); F1 raw latest 5.82 $tn = `net_liquidity_tn.latest` 5.82; F2 raw latest 3.88 = FRED DFF 3.88 (11-23); M2 / K1 / K5 raw positive natural ratios (no sign flip); caution on since 10-26 (21 sessions).
+- Independent recompute from FRED closes (`scripts/probes/_verify_1124/fred_*.csv`, business days to 11-24): F2 DFF ma20 3.880 / ma50 3.870 → tight; C3 BAA10Y 1.518 / 1.478 → tight; R2 DGS2 4.673 / 4.733 → easy — all three equal the block's trend and averages (to its 2 decimals); last three FRED values equal the block's raw series. All 10 legs' votes recomputed from raw.series match, and the group rule gives 4 of 6 tight = block `groups_tight.n` 4.
+- Panel: the live page code (portfolio-app2 main `c494789`, which Streamlit Cloud serves) rendered on the 11-24 snapshot with Streamlit AppTest: no exception; the Liquidity card shows "as of 2026-11-24", the caution line, "4 of 6 groups tight · +1 vs 20 sessions ago", 10 leg rows each with its sparkline. Not seen on his phone by me (login).
