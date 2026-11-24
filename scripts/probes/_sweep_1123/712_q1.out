@@ -1,0 +1,18 @@
+SET
+t|event_type|left
+11-03 09:31:01|orb_bar_stream_used|ORB FN attempt 1 — O=329.99 H=337.29 L=329.99 waited=0.0s
+11-04 09:31:00|orb_bar_stream_used|ORB PCOR attempt 1 — O=66.93 H=68.00 L=66.93 waited=0.0s
+11-05 09:31:00|orb_bar_stream_used|ORB APPN attempt 1 — O=54.59 H=56.00 L=54.11 waited=0.0s
+11-06 09:31:00|orb_bar_stream_used|ORB MRNA attempt 1 — O=245.40 H=256.30 L=243.33 waited=0.0s
+11-09 09:31:00|orb_bar_stream_used|ORB QXO attempt 1 — O=12.65 H=12.71 L=12.41 waited=0.0s
+11-11 09:31:01|orb_bar_stream_used|ORB CRWV attempt 1 — O=55.95 H=56.83 L=55.13 waited=0.0s
+11-16 09:31:00|orb_bar_stream_used|ORB HELP attempt 1 — O=9.00 H=9.57 L=8.87 waited=0.0s
+11-17 09:31:01|orb_bar_stream_used|ORB SLS attempt 1 — O=24.11 H=24.21 L=22.22 waited=0.0s
+11-19 09:31:00|orb_bar_stream_used|ORB PANW attempt 1 — O=355.81 H=363.99 L=354.20 waited=0.0s
+11-23 09:31:01|orb_bar_stream_used|ORB KYMR attempt 1 — O=138.00 H=140.98 L=135.95 waited=0.0s
+(10 rows)
+t|event_type|left
+11-11 09:31:51|orb_skipped|ORB AII — infra:no_bar: 6 retries exhausted
+(1 row)
+d|count
+(0 rows)

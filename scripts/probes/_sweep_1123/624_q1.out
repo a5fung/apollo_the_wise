@@ -1,0 +1,15 @@
+SET
+signals|sessions|min|max|tickers
+36|25|2026-09-09|2026-11-23|31
+(1 row)
+outcome|entry_status|n|tail3r|sum_r|tickers
+no_trade|no_entry|4|0||4
+no_trade|orb_invalid|3|0||3
+no_trade|window_out_of_orb|8|0||8
+settled|filled|18|0|-2.97|17
+unscoreable|abstain|2|0||2
+unscoreable|filled|1|0||1
+(6 rows)
+settled|settled_tickers|tail
+18|17|0
+(1 row)

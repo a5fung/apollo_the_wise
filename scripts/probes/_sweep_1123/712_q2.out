@@ -1,0 +1,36 @@
+SET
+Table "public.mi_intraday_bars"
+Column|Type|Collation|Nullable|Default
+ticker|text||not null|
+bar_time|timestamp with time zone||not null|
+open|double precision||not null|
+high|double precision||not null|
+low|double precision||not null|
+close|double precision||not null|
+volume|bigint||not null|
+vwap|double precision|||
+Indexes:
+    "mi_intraday_bars_pkey" PRIMARY KEY, btree (ticker, bar_time)
+    "idx_intraday_bars_ticker" btree (ticker)
+ERROR:  column "ts" does not exist
+LINE 1: ...T * FROM mi_intraday_bars WHERE ticker='AII' AND (ts AT TIME...
+                                                             ^
+t|event_type|left
+09:31:00|orb_triggered|[bar_stream] 3 alerts: ['RSKD', 'CRWV', 'AII']
+09:31:01|exposure_family_checked|AII (live/ORB): no theme membership — nothing to compare
+09:31:01|orb_bar_miss|ORB AII attempt 1/6 — bar not available, retry 10s
+09:31:11|orb_bar_miss|ORB AII attempt 2/6 — bar not available, retry 10s
+09:31:21|orb_bar_miss|ORB AII attempt 3/6 — bar not available, retry 10s
+09:31:23|orb_triggered|[cron_9_31] 3 alerts: ['RSKD', 'CRWV', 'AII']
+09:31:23|exposure_family_checked|AII (live/ORB): no theme membership — nothing to compare
+09:31:23|orb_bar_miss|ORB AII attempt 1/6 — bar not available, retry 10s
+09:31:31|orb_bar_miss|ORB AII attempt 4/6 — bar not available, retry 10s
+09:31:33|orb_bar_miss|ORB AII attempt 2/6 — bar not available, retry 10s
+09:31:41|orb_bar_miss|ORB AII attempt 5/6 — bar not available, retry 10s
+09:31:43|orb_bar_miss|ORB AII attempt 3/6 — bar not available, retry 10s
+09:31:51|orb_skipped|ORB AII — infra:no_bar: 6 retries exhausted
+09:31:52|orb_triggered|[bar_stream] 3 alerts: ['RSKD', 'CRWV', 'AII']
+09:31:53|orb_bar_miss|ORB AII attempt 4/6 — bar not available, retry 10s
+09:32:03|orb_bar_fetched|ORB AII O=32.21 H=32.21 L=32.20 range=0.01
+09:32:03|sizing_notional_cap_truncated|AII 2026-11-11 account_mode=live: 20% notional cap truncated 2424->30 shares (entry=$32.21 equity=$4849 max_position=$97
+(17 rows)

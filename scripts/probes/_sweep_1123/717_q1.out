@@ -1,0 +1,13 @@
+SET
+t|event_type|left
+11-18 09:45|profit_trigger_failed|CAKE: high $116.54 >= 2R target $116.32
+11-18 09:45|breakout_pp_stop_to_fill_after_third|CBRL #785: a third sold (order 108a0aca) — the stop on the rest $67.35 -> the fill $68.84 (moved)
+11-18 09:45|naked_position_detected|CAKE: stop_order_id cleared; sync_positions will remediate
+11-18 09:45|breakout_pp_stop_to_fill_after_third|CAKE #788: a third sold (order 5376a9f7) — the stop on the rest $109.63 -> the fill $111.86 (NOT moved)
+(4 rows)
+strategy_id|phase|enabled
+breakout_v1|paper|t
+(1 row)
+ERROR:  aggregate functions are not allowed in GROUP BY
+LINE 1: ...ated_at AT TIME ZONE 'America/New_York')::date d, count(*) F...
+                                                             ^

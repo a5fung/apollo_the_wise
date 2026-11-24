@@ -1,0 +1,194 @@
+SET
+Table "public.mi_analyst_estimates"
+Column|Type|Collation|Nullable|Default
+ticker|text||not null|
+as_of_date|date||not null|
+anchor_filing_date|date|||
+valid_from_date|date||not null|
+period_type|text||not null|
+period_end_date|date||not null|
+revenue_avg|double precision|||
+revenue_high|double precision|||
+revenue_low|double precision|||
+eps_avg|double precision|||
+eps_high|double precision|||
+eps_low|double precision|||
+num_analysts_revenue|integer|||
+num_analysts_eps|integer|||
+source|text||not null|'fmp_stable'::text
+recorder_version|text||not null|
+created_at|timestamp with time zone||not null|now()
+fiscal_quarter|integer|||
+fiscal_year|integer|||
+analyst_count_available|boolean||not null|true
+period_label_method|text||not null|'yf_reconstructed'::text
+Indexes:
+    "mi_analyst_estimates_pk" PRIMARY KEY, btree (ticker, period_type, period_end_date, as_of_date, source)
+    "idx_analyst_estimates_asof" btree (as_of_date DESC)
+    "idx_analyst_estimates_ticker" btree (ticker, period_type, as_of_date DESC)
+Check constraints:
+    "mi_analyst_estimates_check" CHECK (valid_from_date <= as_of_date)
+    "mi_analyst_estimates_period_type_check" CHECK (period_type = ANY (ARRAY['annual'::text, 'quarter'::text]))
+Table "public.mi_theme_resilience_weekly"
+Column|Type|Collation|Nullable|Default
+id|integer||not null|nextval('mi_theme_resilience_weekly_id_seq'::regclass)
+week_start|date||not null|
+theme_name|text||not null|
+theme_stage|text|||
+theme_snapshot_date|date|||
+tickers|text[]||not null|'{}'::text[]
+n_tickers_covered|integer||not null|0
+resilience|double precision|||
+as_of_date|date||not null|
+lookback_days|integer||not null|20
+resilience_computable|boolean||not null|true
+not_computable_reason|text|||
+created_at|timestamp with time zone|||now()
+Indexes:
+    "mi_theme_resilience_weekly_pkey" PRIMARY KEY, btree (id)
+    "idx_theme_resilience_weekly_week" btree (week_start DESC)
+    "mi_theme_resilience_weekly_theme_name_week_start_key" UNIQUE CONSTRAINT, btree (theme_name, week_start)
+Table "public.mi_lowcap_lane_signals"
+Column|Type|Collation|Nullable|Default
+id|integer||not null|nextval('mi_lowcap_lane_signals_id_seq'::regclass)
+ticker|text||not null|
+scan_date|date||not null|
+tick_wallclock_et|timestamp with time zone||not null|
+minutes_since_open|integer|||
+gap_pct|double precision||not null|
+gap_pct_rt|double precision|||
+gap_pct_delayed|double precision|||
+price_source|text|||
+prev_close|double precision|||
+current_price|double precision|||
+market_cap|double precision|||
+market_cap_source|text|||
+today_volume_delayed|double precision||not null|
+today_volume_rt|double precision|||
+rt_pm_bars|integer|||
+rt_session_bars|integer|||
+acting_volume_source|text||not null|'delayed'::text
+vol_percentile|double precision||not null|
+vol_history_n|integer||not null|
+extension_pct|double precision|||
+quality_adv_dollar|double precision|||
+atr_pct|double precision|||
+blocking_filters|jsonb||not null|
+rank_by_prescore|integer|||
+rank_by_gap|integer|||
+in_shortlist|boolean|||
+days_since_prior_alert|integer|||
+days_since_prior_lane_signal|integer|||
+bid_px|double precision|||
+ask_px|double precision|||
+bid_size|double precision|||
+ask_size|double precision|||
+quoted_spread_bps|double precision|||
+quote_ts|timestamp with time zone|||
+ma_flag|boolean|||
+ma_source|text|||
+admission_era|text||not null|
+regime|text|||
+lane_gap_floor_pct|double precision||not null|
+lane_vol_percentile_floor|double precision||not null|
+lane_max_market_cap|double precision||not null|
+lane_rule_version|text||not null|
+recorded_at|timestamp with time zone||not null|now()
+Indexes:
+    "mi_lowcap_lane_signals_pkey" PRIMARY KEY, btree (id)
+    "idx_lowcap_lane_signals_scan_date" btree (scan_date)
+    "mi_lowcap_lane_signals_ticker_scan_date_key" UNIQUE CONSTRAINT, btree (ticker, scan_date)
+Table "public.mi_parabolic_short_shadow"
+Column|Type|Collation|Nullable|Default
+id|integer||not null|nextval('mi_parabolic_short_shadow_id_seq'::regclass)
+ticker|text||not null|
+climax_date|date||not null|
+row_kind|text||not null|
+event_date|date||not null|
+status|text||not null|
+reason|text|||
+climax_high|double precision|||
+climax_low|double precision|||
+prior_day_low|double precision|||
+limit_price|double precision|||
+atr_14|double precision|||
+stop_buffer|double precision|||
+stop_price|double precision|||
+risk_per_share|double precision|||
+risk_fraction|double precision|||
+market_cap|bigint|||
+borrow_acct|text|||
+shortable|boolean|||
+easy_to_borrow|boolean|||
+asset_status|text|||
+entry_price|double precision|||
+exit_price|double precision|||
+exit_date|date|||
+sessions_held|integer|||
+flush_taken|boolean|||
+flush_price|double precision|||
+realized_r|double precision|||
+exit_leg_r|double precision|||
+mfe_r|double precision|||
+mae_r|double precision|||
+detail|jsonb|||
+created_at|timestamp with time zone||not null|now()
+Indexes:
+    "mi_parabolic_short_shadow_pkey" PRIMARY KEY, btree (id)
+    "idx_parabolic_short_shadow_kind_date" btree (row_kind, event_date DESC)
+    "mi_parabolic_short_shadow_ticker_climax_date_row_kind_key" UNIQUE CONSTRAINT, btree (ticker, climax_date, row_kind)
+Check constraints:
+    "mi_parabolic_short_shadow_row_kind_check" CHECK (row_kind = ANY (ARRAY['arm'::text, 'trigger'::text, 'outcome'::text]))
+Table "public.mi_flag_candidates"
+Column|Type|Collation|Nullable|Default
+id|integer||not null|nextval('mi_flag_candidates_id_seq'::regclass)
+ticker|text||not null|
+scan_date|date||not null|
+pivot_high_date|date|||
+pivot_high_price|double precision|||
+base_age|integer|||
+base_high|double precision|||
+base_low|double precision|||
+runup_pct|double precision|||
+runup_start_date|date|||
+range_contraction_ratio|double precision|||
+vol_contraction_ratio|double precision|||
+last_body_pct|double precision|||
+prev_body_pct|double precision|||
+atr_14|double precision|||
+sma_10|double precision|||
+sma_20|double precision|||
+breakout_close|double precision|||
+breakout_volume_ratio|double precision|||
+rs_rank|integer|||
+rs_composite|double precision|||
+sector|text|||
+stage|text||not null|
+reason|text|||
+score|integer|||
+held_from_stage|text|||
+created_at|timestamp with time zone||not null|now()
+fresh_tight_fires|boolean|||
+fresh_2bar_tr_pct|double precision|||
+atr14_pct|double precision|||
+rmv_5d|double precision|||
+rmv_15d|double precision|||
+universe_sources|text[]|||'{}'::text[]
+flagpole_ratio|double precision|||
+flag_depth_pct|double precision|||
+failed_at|date|||
+low_after_breakout|double precision|||
+undercut_after_breakout|boolean|||
+depth_on_low|double precision|||
+depth_on_close|double precision|||
+sma20_margin|double precision|||
+ma_stack_margin|double precision|||
+triggered_from|text|||
+post_breakout_from|date|||
+days_since_breakout|integer|||
+Indexes:
+    "mi_flag_candidates_pkey" PRIMARY KEY, btree (id)
+    "idx_flag_candidates_scan_date" btree (scan_date DESC)
+    "idx_flag_candidates_stage" btree (stage, scan_date DESC)
+    "idx_flag_candidates_ticker" btree (ticker, scan_date DESC)
+    "mi_flag_candidates_ticker_scan_date_key" UNIQUE CONSTRAINT, btree (ticker, scan_date)

@@ -1,0 +1,12 @@
+SET
+row_kind|status|count|min|max
+(0 rows)
+d|left
+2026-11-19|{"trade_date": "2026-11-19", "armed": [], "rejected": [], "triggered": [], "settled": [], "closed": [], "deferred": [], "stale": 0, "errors"
+2026-11-20|{"trade_date": "2026-11-20", "armed": [], "rejected": [], "triggered": [], "settled": [], "closed": [], "deferred": [], "stale": 0, "errors"
+2026-11-23|{"trade_date": "2026-11-23", "armed": [], "rejected": [], "triggered": [], "settled": [], "closed": [], "deferred": [], "stale": 0, "errors"
+(3 rows)
+strategy_id|phase|enabled
+wick_fill|deprecated|f
+parabolic_short|shadow|t
+(2 rows)
