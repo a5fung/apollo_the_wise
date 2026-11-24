@@ -1,0 +1,15 @@
+list rows 420,158 · nights 1,322 · break rows (fire) 156,695 · tickers 3,523 · median breaks per night 68 · median breaks per ticker 22
+Qullamaggie's buys 757: on a break row (his day or window) 375
+
+A. random break per ticker per 60 sessions (PRIMARY): 13,461 events · tickers 3,523 · per year {2017: 1080, 2018: 1608, 2019: 1660, 2020: 3977, 2021: 3916, 2022: 1220}
+   months 64, smallest 49, median 133 · his buys on an event (day or window, 2 sessions earlier allowed): 40
+
+B. first break after 10 quiet sessions, one per ticker per 60: 13,489 events · tickers 3,523 · per year {2017: 1176, 2018: 1775, 2019: 1537, 2020: 4050, 2021: 3960, 2022: 991}
+   months 64, smallest 14, median 160 · his buys on an event (day or window, 2 sessions earlier allowed): 38
+
+C. first break after 60 quiet sessions: 7,930 events · tickers 3,523 · per year {2017: 880, 2018: 1124, 2019: 953, 2020: 2514, 2021: 1833, 2022: 626}
+   months 64, smallest 13, median 81 · his buys on an event (day or window, 2 sessions earlier allowed): 16
+
+UN-THINNED first break after 10 quiet sessions: 23,826 of 156,695 break rows = 15.2% · his buys with such a row in their day / window: 54 of 375 = 14.4%
+
+UN-THINNED first break after 60 quiet sessions: 7,930 of 156,695 break rows = 5.1% · his buys with such a row in their day / window: 12 of 375 = 3.2%

@@ -1,0 +1,15 @@
+lam 3 mult 4 (true ratio 1.00 by construction)
+  all            kept 250000  winner rate z=high 0.100  z=low 0.100  ratio 1.01
+  either_random  kept  28345  winner rate z=high 0.068  z=low 0.043  ratio 1.57
+  forward_first  kept   6178  winner rate z=high 0.000  z=low 0.090  ratio 0.00
+  forward_coin   kept  17255  winner rate z=high 0.091  z=low 0.096  ratio 0.95
+lam 1 mult 4 (true ratio 1.00 by construction)
+  all            kept 250000  winner rate z=high 0.099  z=low 0.100  ratio 0.99
+  either_random  kept  75336  winner rate z=high 0.064  z=low 0.049  ratio 1.32
+  forward_first  kept  48111  winner rate z=high 0.100  z=low 0.100  ratio 0.99
+  forward_coin   kept  36097  winner rate z=high 0.098  z=low 0.100  ratio 0.99
+lam 1 mult 2 (true ratio 1.00 by construction)
+  all            kept 250000  winner rate z=high 0.100  z=low 0.100  ratio 1.00
+  either_random  kept  91621  winner rate z=high 0.079  z=low 0.075  ratio 1.05
+  forward_first  kept  62901  winner rate z=high 0.098  z=low 0.100  ratio 0.98
+  forward_coin   kept  43708  winner rate z=high 0.100  z=low 0.098  ratio 1.02

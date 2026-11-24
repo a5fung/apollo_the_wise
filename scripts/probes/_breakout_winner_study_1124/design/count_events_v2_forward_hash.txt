@@ -1,0 +1,16 @@
+break rows 156,695 · tickers 3,523 · of them 'first break after 10 quiet sessions' 15.2% · 'after 60 quiet' 5.1% · break rows whose E+60 is past the file end 0
+q grid (seed 1124). 'first10' / 'first60' = share of KEPT events that are a first break after 10 / 60 quiet sessions (break rows: see the line above).
+  q 1.000: 15,312 events · tickers 3,523 · first10 77.2% · first60 51.8% · months 64, smallest 24, median 171 · per year {2017: 1269, 2018: 1925, 2019: 1741, 2020: 4738, 2021: 4479, 2022: 1160} · Qullamaggie's buys on an event 45
+  q 0.500: 13,640 events · tickers 3,380 · first10 47.1% · first60 29.1% · months 64, smallest 27, median 144 · per year {2017: 1105, 2018: 1694, 2019: 1571, 2020: 4326, 2021: 3961, 2022: 983} · Qullamaggie's buys on an event 34
+  q 0.333: 12,384 events · tickers 3,264 · first10 37.6% · first60 21.8% · months 64, smallest 29, median 121 · per year {2017: 980, 2018: 1515, 2019: 1411, 2020: 3993, 2021: 3612, 2022: 873} · Qullamaggie's buys on an event 35
+  q 0.250: 11,399 events · tickers 3,151 · first10 32.7% · first60 18.0% · months 64, smallest 26, median 119 · per year {2017: 890, 2018: 1363, 2019: 1306, 2020: 3709, 2021: 3327, 2022: 804} · Qullamaggie's buys on an event 38
+  q 0.200: 10,514 events · tickers 3,054 · first10 29.7% · first60 15.6% · months 64, smallest 20, median 108 · per year {2017: 814, 2018: 1232, 2019: 1198, 2020: 3439, 2021: 3083, 2022: 748} · Qullamaggie's buys on an event 36
+  q 0.167:  9,787 events · tickers 2,970 · first10 27.7% · first60 14.0% · months 64, smallest 18, median 97 · per year {2017: 749, 2018: 1151, 2019: 1096, 2020: 3229, 2021: 2876, 2022: 686} · Qullamaggie's buys on an event 38
+  q 0.125:  8,621 events · tickers 2,817 · first10 25.0% · first60 11.7% · months 64, smallest 16, median 88 · per year {2017: 643, 2018: 998, 2019: 951, 2020: 2853, 2021: 2574, 2022: 602} · Qullamaggie's buys on an event 41
+  q 0.100:  7,754 events · tickers 2,689 · first10 23.3% · first60 10.5% · months 64, smallest 16, median 77 · per year {2017: 571, 2018: 892, 2019: 847, 2020: 2591, 2021: 2299, 2022: 554} · Qullamaggie's buys on an event 36
+  q 0.050:  5,123 events · tickers 2,205 · first10 19.8% · first60 7.9% · months 64, smallest 11, median 56 · per year {2017: 352, 2018: 570, 2019: 546, 2020: 1706, 2021: 1566, 2022: 383} · Qullamaggie's buys on an event 16
+
+second seed (2411), same grid points 0.25 / 0.2 / 0.125:
+  q 0.250: 11,348 events · first10 31.2% · first60 16.6% · per year {2017: 898, 2018: 1368, 2019: 1264, 2020: 3679, 2021: 3332, 2022: 807} · events shared with seed 1124: 1486
+  q 0.200: 10,545 events · first10 28.2% · first60 14.3% · per year {2017: 831, 2018: 1259, 2019: 1172, 2020: 3434, 2021: 3097, 2022: 752} · events shared with seed 1124: 1108
+  q 0.125:  8,713 events · first10 22.7% · first60 10.8% · per year {2017: 671, 2018: 1016, 2019: 951, 2020: 2868, 2021: 2596, 2022: 611} · events shared with seed 1124: 629

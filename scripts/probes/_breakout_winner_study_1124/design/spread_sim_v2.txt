@@ -1,0 +1,306 @@
+
+==== keep 1.0 · rate OUTSIDE 2020 3% (2020: 9%; POOLED discovery rate 6.1%) · discovery 6624 events ====
+  discovery null 95% band 0.80-1.26 | without 2020 0.61-1.63 | discovery ratio needed for p<=0.05: 1.26
+  true 1.0x: carried on conditions 1-2 0.026 | + without-2020 >= 1.10 0.021
+  true 1.2x: carried on conditions 1-2 0.336 | + without-2020 >= 1.10 0.281
+  true 1.3x: carried on conditions 1-2 0.616 | + without-2020 >= 1.10 0.532
+  true 1.5x: carried on conditions 1-2 0.931 | + without-2020 >= 1.10 0.852
+  true 2.0x: carried on conditions 1-2 1.000 | + without-2020 >= 1.10 0.990
+  2020-only artefact (1.5x in 2020, none 2017-19): passes 1-2 0.740; of those, without-2020 >= 1.10 0.42
+  -- check = 3a: era A only · 3807 events · pooled check rate 3.0% · null 95% band 0.64-1.57 · true-zero reads >= 1.2: 0.207
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.476 · v2 rule 0.006 | reads >= 1.2 0.208 >= 1.5 0.038
+     true 1.2x: PICKS THE TAIL fam9 0.034 | whole chain 0.010 | REVERSED v1 rule (<1.0) 0.190 · v2 rule 0.001 | reads >= 1.2 0.501 >= 1.5 0.165
+     true 1.3x: PICKS THE TAIL fam9 0.068 | whole chain 0.036 | REVERSED v1 rule (<1.0) 0.112 · v2 rule 0.000 | reads >= 1.2 0.639 >= 1.5 0.265
+     true 1.5x: PICKS THE TAIL fam9 0.189 | whole chain 0.161 | REVERSED v1 rule (<1.0) 0.034 · v2 rule 0.000 | reads >= 1.2 0.837 >= 1.5 0.494
+     true 2.0x: PICKS THE TAIL fam9 0.628 | whole chain 0.622 | REVERSED v1 rule (<1.0) 0.001 · v2 rule 0.000 | reads >= 1.2 0.984 >= 1.5 0.886
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.3x
+  -- check = 3b: + era B 30 mo, rate x1.0 · 6507 events · pooled check rate 3.0% · null 95% band 0.71-1.40 · true-zero reads >= 1.2: 0.143
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.486 · v2 rule 0.005 | reads >= 1.2 0.143 >= 1.5 0.010
+     true 1.2x: PICKS THE TAIL fam9 0.068 | whole chain 0.019 | REVERSED v1 rule (<1.0) 0.133 · v2 rule 0.000 | reads >= 1.2 0.501 >= 1.5 0.103
+     true 1.3x: PICKS THE TAIL fam9 0.145 | whole chain 0.077 | REVERSED v1 rule (<1.0) 0.059 · v2 rule 0.000 | reads >= 1.2 0.673 >= 1.5 0.206
+     true 1.5x: PICKS THE TAIL fam9 0.397 | whole chain 0.338 | REVERSED v1 rule (<1.0) 0.010 · v2 rule 0.000 | reads >= 1.2 0.899 >= 1.5 0.501
+     true 2.0x: PICKS THE TAIL fam9 0.907 | whole chain 0.898 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.997 >= 1.5 0.942
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.9x
+  -- check = 3b: + era B 30 mo, rate x0.75 · 6507 events · pooled check rate 2.7% · null 95% band 0.70-1.44 · true-zero reads >= 1.2: 0.165
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.481 · v2 rule 0.007 | reads >= 1.2 0.155 >= 1.5 0.015
+     true 1.2x: PICKS THE TAIL fam9 0.053 | whole chain 0.015 | REVERSED v1 rule (<1.0) 0.152 · v2 rule 0.000 | reads >= 1.2 0.496 >= 1.5 0.113
+     true 1.3x: PICKS THE TAIL fam9 0.126 | whole chain 0.067 | REVERSED v1 rule (<1.0) 0.068 · v2 rule 0.000 | reads >= 1.2 0.675 >= 1.5 0.219
+     true 1.5x: PICKS THE TAIL fam9 0.345 | whole chain 0.294 | REVERSED v1 rule (<1.0) 0.012 · v2 rule 0.000 | reads >= 1.2 0.887 >= 1.5 0.492
+     true 2.0x: PICKS THE TAIL fam9 0.872 | whole chain 0.864 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.997 >= 1.5 0.935
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.9x
+  -- check = 3b: + era B 30 mo, rate x0.5 · 6507 events · pooled check rate 2.4% · null 95% band 0.68-1.47 · true-zero reads >= 1.2: 0.171
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.479 · v2 rule 0.006 | reads >= 1.2 0.171 >= 1.5 0.020
+     true 1.2x: PICKS THE TAIL fam9 0.051 | whole chain 0.014 | REVERSED v1 rule (<1.0) 0.159 · v2 rule 0.000 | reads >= 1.2 0.502 >= 1.5 0.129
+     true 1.3x: PICKS THE TAIL fam9 0.109 | whole chain 0.058 | REVERSED v1 rule (<1.0) 0.080 · v2 rule 0.000 | reads >= 1.2 0.658 >= 1.5 0.234
+     true 1.5x: PICKS THE TAIL fam9 0.297 | whole chain 0.253 | REVERSED v1 rule (<1.0) 0.017 · v2 rule 0.000 | reads >= 1.2 0.870 >= 1.5 0.493
+     true 2.0x: PICKS THE TAIL fam9 0.818 | whole chain 0.810 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.995 >= 1.5 0.925
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.0x
+  -- check = 3b, 25-month features, rate x1.0 · 6057 events · pooled check rate 3.0% · null 95% band 0.70-1.42 · true-zero reads >= 1.2: 0.150
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.486 · v2 rule 0.005 | reads >= 1.2 0.153 >= 1.5 0.011
+     true 1.2x: PICKS THE TAIL fam9 0.068 | whole chain 0.019 | REVERSED v1 rule (<1.0) 0.140 · v2 rule 0.000 | reads >= 1.2 0.505 >= 1.5 0.109
+     true 1.3x: PICKS THE TAIL fam9 0.144 | whole chain 0.077 | REVERSED v1 rule (<1.0) 0.066 · v2 rule 0.000 | reads >= 1.2 0.671 >= 1.5 0.215
+     true 1.5x: PICKS THE TAIL fam9 0.392 | whole chain 0.334 | REVERSED v1 rule (<1.0) 0.012 · v2 rule 0.000 | reads >= 1.2 0.890 >= 1.5 0.497
+     true 2.0x: PICKS THE TAIL fam9 0.897 | whole chain 0.888 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.997 >= 1.5 0.937
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.9x
+  -- check = 3b, 25-month features, rate x0.75 · 6057 events · pooled check rate 2.7% · null 95% band 0.69-1.46 · true-zero reads >= 1.2: 0.166
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.478 · v2 rule 0.006 | reads >= 1.2 0.167 >= 1.5 0.017
+     true 1.2x: PICKS THE TAIL fam9 0.051 | whole chain 0.014 | REVERSED v1 rule (<1.0) 0.152 · v2 rule 0.000 | reads >= 1.2 0.500 >= 1.5 0.119
+     true 1.3x: PICKS THE TAIL fam9 0.112 | whole chain 0.060 | REVERSED v1 rule (<1.0) 0.077 · v2 rule 0.000 | reads >= 1.2 0.664 >= 1.5 0.222
+     true 1.5x: PICKS THE TAIL fam9 0.309 | whole chain 0.263 | REVERSED v1 rule (<1.0) 0.015 · v2 rule 0.000 | reads >= 1.2 0.876 >= 1.5 0.494
+     true 2.0x: PICKS THE TAIL fam9 0.842 | whole chain 0.833 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.996 >= 1.5 0.931
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.0x
+
+==== keep 1.0 · rate OUTSIDE 2020 5% (2020: 15%; POOLED discovery rate 10.2%) · discovery 6624 events ====
+  discovery null 95% band 0.84-1.19 | without 2020 0.69-1.44 | discovery ratio needed for p<=0.05: 1.19
+  true 1.0x: carried on conditions 1-2 0.006 | + without-2020 >= 1.10 0.005
+  true 1.2x: carried on conditions 1-2 0.312 | + without-2020 >= 1.10 0.276
+  true 1.3x: carried on conditions 1-2 0.668 | + without-2020 >= 1.10 0.599
+  true 1.5x: carried on conditions 1-2 0.979 | + without-2020 >= 1.10 0.933
+  true 2.0x: carried on conditions 1-2 1.000 | + without-2020 >= 1.10 0.999
+  2020-only artefact (1.5x in 2020, none 2017-19): passes 1-2 0.824; of those, without-2020 >= 1.10 0.35
+  -- check = 3a: era A only · 3807 events · pooled check rate 5.0% · null 95% band 0.71-1.40 · true-zero reads >= 1.2: 0.141
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.483 · v2 rule 0.005 | reads >= 1.2 0.142 >= 1.5 0.011
+     true 1.2x: PICKS THE TAIL fam9 0.062 | whole chain 0.017 | REVERSED v1 rule (<1.0) 0.135 · v2 rule 0.000 | reads >= 1.2 0.499 >= 1.5 0.100
+     true 1.3x: PICKS THE TAIL fam9 0.137 | whole chain 0.082 | REVERSED v1 rule (<1.0) 0.059 · v2 rule 0.000 | reads >= 1.2 0.676 >= 1.5 0.200
+     true 1.5x: PICKS THE TAIL fam9 0.392 | whole chain 0.366 | REVERSED v1 rule (<1.0) 0.009 · v2 rule 0.000 | reads >= 1.2 0.900 >= 1.5 0.499
+     true 2.0x: PICKS THE TAIL fam9 0.904 | whole chain 0.903 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.997 >= 1.5 0.942
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.9x
+  -- check = 3b: + era B 30 mo, rate x1.0 · 6507 events · pooled check rate 5.0% · null 95% band 0.77-1.29 · true-zero reads >= 1.2: 0.083
+     true 1.0x: PICKS THE TAIL fam9 0.007 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.480 · v2 rule 0.005 | reads >= 1.2 0.087 >= 1.5 0.001
+     true 1.2x: PICKS THE TAIL fam9 0.138 | whole chain 0.038 | REVERSED v1 rule (<1.0) 0.079 · v2 rule 0.000 | reads >= 1.2 0.498 >= 1.5 0.047
+     true 1.3x: PICKS THE TAIL fam9 0.305 | whole chain 0.183 | REVERSED v1 rule (<1.0) 0.024 · v2 rule 0.000 | reads >= 1.2 0.722 >= 1.5 0.137
+     true 1.5x: PICKS THE TAIL fam9 0.714 | whole chain 0.666 | REVERSED v1 rule (<1.0) 0.001 · v2 rule 0.000 | reads >= 1.2 0.953 >= 1.5 0.493
+     true 2.0x: PICKS THE TAIL fam9 0.996 | whole chain 0.995 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.982
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.6x
+  -- check = 3b: + era B 30 mo, rate x0.75 · 6507 events · pooled check rate 4.5% · null 95% band 0.76-1.33 · true-zero reads >= 1.2: 0.100
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.481 · v2 rule 0.005 | reads >= 1.2 0.099 >= 1.5 0.002
+     true 1.2x: PICKS THE TAIL fam9 0.091 | whole chain 0.025 | REVERSED v1 rule (<1.0) 0.092 · v2 rule 0.000 | reads >= 1.2 0.496 >= 1.5 0.055
+     true 1.3x: PICKS THE TAIL fam9 0.229 | whole chain 0.137 | REVERSED v1 rule (<1.0) 0.029 · v2 rule 0.000 | reads >= 1.2 0.710 >= 1.5 0.155
+     true 1.5x: PICKS THE TAIL fam9 0.609 | whole chain 0.568 | REVERSED v1 rule (<1.0) 0.002 · v2 rule 0.000 | reads >= 1.2 0.944 >= 1.5 0.498
+     true 2.0x: PICKS THE TAIL fam9 0.988 | whole chain 0.987 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.977
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.7x
+  -- check = 3b: + era B 30 mo, rate x0.5 · 6507 events · pooled check rate 4.0% · null 95% band 0.75-1.34 · true-zero reads >= 1.2: 0.107
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.487 · v2 rule 0.006 | reads >= 1.2 0.110 >= 1.5 0.005
+     true 1.2x: PICKS THE TAIL fam9 0.086 | whole chain 0.024 | REVERSED v1 rule (<1.0) 0.102 · v2 rule 0.000 | reads >= 1.2 0.500 >= 1.5 0.069
+     true 1.3x: PICKS THE TAIL fam9 0.200 | whole chain 0.120 | REVERSED v1 rule (<1.0) 0.037 · v2 rule 0.000 | reads >= 1.2 0.703 >= 1.5 0.168
+     true 1.5x: PICKS THE TAIL fam9 0.544 | whole chain 0.508 | REVERSED v1 rule (<1.0) 0.003 · v2 rule 0.000 | reads >= 1.2 0.930 >= 1.5 0.495
+     true 2.0x: PICKS THE TAIL fam9 0.974 | whole chain 0.974 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.999 >= 1.5 0.968
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.7x
+  -- check = 3b, 25-month features, rate x1.0 · 6057 events · pooled check rate 5.0% · null 95% band 0.77-1.31 · true-zero reads >= 1.2: 0.093
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.487 · v2 rule 0.005 | reads >= 1.2 0.090 >= 1.5 0.002
+     true 1.2x: PICKS THE TAIL fam9 0.117 | whole chain 0.032 | REVERSED v1 rule (<1.0) 0.087 · v2 rule 0.000 | reads >= 1.2 0.502 >= 1.5 0.053
+     true 1.3x: PICKS THE TAIL fam9 0.273 | whole chain 0.163 | REVERSED v1 rule (<1.0) 0.025 · v2 rule 0.000 | reads >= 1.2 0.715 >= 1.5 0.147
+     true 1.5x: PICKS THE TAIL fam9 0.663 | whole chain 0.619 | REVERSED v1 rule (<1.0) 0.002 · v2 rule 0.000 | reads >= 1.2 0.944 >= 1.5 0.498
+     true 2.0x: PICKS THE TAIL fam9 0.993 | whole chain 0.992 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.980
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.6x
+  -- check = 3b, 25-month features, rate x0.75 · 6057 events · pooled check rate 4.5% · null 95% band 0.75-1.33 · true-zero reads >= 1.2: 0.104
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.486 · v2 rule 0.005 | reads >= 1.2 0.101 >= 1.5 0.003
+     true 1.2x: PICKS THE TAIL fam9 0.087 | whole chain 0.024 | REVERSED v1 rule (<1.0) 0.099 · v2 rule 0.000 | reads >= 1.2 0.491 >= 1.5 0.061
+     true 1.3x: PICKS THE TAIL fam9 0.215 | whole chain 0.129 | REVERSED v1 rule (<1.0) 0.031 · v2 rule 0.000 | reads >= 1.2 0.709 >= 1.5 0.161
+     true 1.5x: PICKS THE TAIL fam9 0.578 | whole chain 0.539 | REVERSED v1 rule (<1.0) 0.003 · v2 rule 0.000 | reads >= 1.2 0.934 >= 1.5 0.501
+     true 2.0x: PICKS THE TAIL fam9 0.984 | whole chain 0.983 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.974
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.7x
+
+==== keep 1.0 · rate OUTSIDE 2020 8% (2020: 24%; POOLED discovery rate 16.3%) · discovery 6624 events ====
+  discovery null 95% band 0.88-1.14 | without 2020 0.75-1.33 | discovery ratio needed for p<=0.05: 1.14
+  true 1.0x: carried on conditions 1-2 0.000 | + without-2020 >= 1.10 0.000
+  true 1.2x: carried on conditions 1-2 0.261 | + without-2020 >= 1.10 0.241
+  true 1.3x: carried on conditions 1-2 0.727 | + without-2020 >= 1.10 0.679
+  true 1.5x: carried on conditions 1-2 0.997 | + without-2020 >= 1.10 0.983
+  true 2.0x: carried on conditions 1-2 1.000 | + without-2020 >= 1.10 1.000
+  2020-only artefact (1.5x in 2020, none 2017-19): passes 1-2 0.892; of those, without-2020 >= 1.10 0.28
+  -- check = 3a: era A only · 3807 events · pooled check rate 8.0% · null 95% band 0.77-1.30 · true-zero reads >= 1.2: 0.088
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.489 · v2 rule 0.006 | reads >= 1.2 0.087 >= 1.5 0.001
+     true 1.2x: PICKS THE TAIL fam9 0.109 | whole chain 0.026 | REVERSED v1 rule (<1.0) 0.086 · v2 rule 0.000 | reads >= 1.2 0.497 >= 1.5 0.050
+     true 1.3x: PICKS THE TAIL fam9 0.261 | whole chain 0.177 | REVERSED v1 rule (<1.0) 0.024 · v2 rule 0.000 | reads >= 1.2 0.722 >= 1.5 0.141
+     true 1.5x: PICKS THE TAIL fam9 0.665 | whole chain 0.654 | REVERSED v1 rule (<1.0) 0.001 · v2 rule 0.000 | reads >= 1.2 0.950 >= 1.5 0.496
+     true 2.0x: PICKS THE TAIL fam9 0.993 | whole chain 0.993 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.980
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.6x
+  -- check = 3b: + era B 30 mo, rate x1.0 · 6507 events · pooled check rate 8.0% · null 95% band 0.82-1.22 · true-zero reads >= 1.2: 0.038
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.486 · v2 rule 0.006 | reads >= 1.2 0.036 >= 1.5 0.000
+     true 1.2x: PICKS THE TAIL fam9 0.222 | whole chain 0.053 | REVERSED v1 rule (<1.0) 0.035 · v2 rule 0.000 | reads >= 1.2 0.493 >= 1.5 0.013
+     true 1.3x: PICKS THE TAIL fam9 0.510 | whole chain 0.346 | REVERSED v1 rule (<1.0) 0.005 · v2 rule 0.000 | reads >= 1.2 0.781 >= 1.5 0.083
+     true 1.5x: PICKS THE TAIL fam9 0.922 | whole chain 0.906 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.985 >= 1.5 0.493
+     true 2.0x: PICKS THE TAIL fam9 1.000 | whole chain 1.000 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.996
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.5x
+  -- check = 3b: + era B 30 mo, rate x0.75 · 6507 events · pooled check rate 7.2% · null 95% band 0.81-1.24 · true-zero reads >= 1.2: 0.045
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.489 · v2 rule 0.006 | reads >= 1.2 0.048 >= 1.5 0.000
+     true 1.2x: PICKS THE TAIL fam9 0.203 | whole chain 0.049 | REVERSED v1 rule (<1.0) 0.042 · v2 rule 0.000 | reads >= 1.2 0.502 >= 1.5 0.023
+     true 1.3x: PICKS THE TAIL fam9 0.451 | whole chain 0.306 | REVERSED v1 rule (<1.0) 0.006 · v2 rule 0.000 | reads >= 1.2 0.764 >= 1.5 0.098
+     true 1.5x: PICKS THE TAIL fam9 0.880 | whole chain 0.865 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.978 >= 1.5 0.498
+     true 2.0x: PICKS THE TAIL fam9 1.000 | whole chain 1.000 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.994
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.5x
+  -- check = 3b: + era B 30 mo, rate x0.5 · 6507 events · pooled check rate 6.3% · null 95% band 0.80-1.25 · true-zero reads >= 1.2: 0.058
+     true 1.0x: PICKS THE TAIL fam9 0.007 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.486 · v2 rule 0.004 | reads >= 1.2 0.058 >= 1.5 0.000
+     true 1.2x: PICKS THE TAIL fam9 0.170 | whole chain 0.041 | REVERSED v1 rule (<1.0) 0.051 · v2 rule 0.000 | reads >= 1.2 0.499 >= 1.5 0.027
+     true 1.3x: PICKS THE TAIL fam9 0.390 | whole chain 0.265 | REVERSED v1 rule (<1.0) 0.011 · v2 rule 0.000 | reads >= 1.2 0.755 >= 1.5 0.109
+     true 1.5x: PICKS THE TAIL fam9 0.830 | whole chain 0.816 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.972 >= 1.5 0.496
+     true 2.0x: PICKS THE TAIL fam9 1.000 | whole chain 1.000 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.992
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.5x
+  -- check = 3b, 25-month features, rate x1.0 · 6057 events · pooled check rate 8.0% · null 95% band 0.81-1.23 · true-zero reads >= 1.2: 0.042
+     true 1.0x: PICKS THE TAIL fam9 0.004 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.487 · v2 rule 0.006 | reads >= 1.2 0.039 >= 1.5 0.000
+     true 1.2x: PICKS THE TAIL fam9 0.183 | whole chain 0.044 | REVERSED v1 rule (<1.0) 0.040 · v2 rule 0.000 | reads >= 1.2 0.498 >= 1.5 0.020
+     true 1.3x: PICKS THE TAIL fam9 0.435 | whole chain 0.296 | REVERSED v1 rule (<1.0) 0.007 · v2 rule 0.000 | reads >= 1.2 0.774 >= 1.5 0.087
+     true 1.5x: PICKS THE TAIL fam9 0.879 | whole chain 0.864 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.981 >= 1.5 0.492
+     true 2.0x: PICKS THE TAIL fam9 1.000 | whole chain 1.000 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.995
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.5x
+  -- check = 3b, 25-month features, rate x0.75 · 6057 events · pooled check rate 7.3% · null 95% band 0.80-1.25 · true-zero reads >= 1.2: 0.051
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.486 · v2 rule 0.006 | reads >= 1.2 0.051 >= 1.5 0.000
+     true 1.2x: PICKS THE TAIL fam9 0.185 | whole chain 0.045 | REVERSED v1 rule (<1.0) 0.047 · v2 rule 0.000 | reads >= 1.2 0.502 >= 1.5 0.024
+     true 1.3x: PICKS THE TAIL fam9 0.415 | whole chain 0.282 | REVERSED v1 rule (<1.0) 0.009 · v2 rule 0.000 | reads >= 1.2 0.761 >= 1.5 0.098
+     true 1.5x: PICKS THE TAIL fam9 0.855 | whole chain 0.841 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.975 >= 1.5 0.496
+     true 2.0x: PICKS THE TAIL fam9 1.000 | whole chain 1.000 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.992
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.5x
+
+==== keep 0.6 · rate OUTSIDE 2020 3% (2020: 9%; POOLED discovery rate 6.1%) · discovery 3924 events ====
+  discovery null 95% band 0.74-1.35 | without 2020 0.53-1.89 | discovery ratio needed for p<=0.05: 1.35
+  true 1.0x: carried on conditions 1-2 0.025 | + without-2020 >= 1.10 0.021
+  true 1.2x: carried on conditions 1-2 0.218 | + without-2020 >= 1.10 0.187
+  true 1.3x: carried on conditions 1-2 0.403 | + without-2020 >= 1.10 0.348
+  true 1.5x: carried on conditions 1-2 0.756 | + without-2020 >= 1.10 0.672
+  true 2.0x: carried on conditions 1-2 0.995 | + without-2020 >= 1.10 0.960
+  2020-only artefact (1.5x in 2020, none 2017-19): passes 1-2 0.527; of those, without-2020 >= 1.10 0.54
+  -- check = 3a: era A only · 2277 events · pooled check rate 3.0% · null 95% band 0.56-1.79 · true-zero reads >= 1.2: 0.266
+     true 1.0x: PICKS THE TAIL fam9 0.007 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.471 · v2 rule 0.007 | reads >= 1.2 0.267 >= 1.5 0.086
+     true 1.2x: PICKS THE TAIL fam9 0.026 | whole chain 0.005 | REVERSED v1 rule (<1.0) 0.239 · v2 rule 0.001 | reads >= 1.2 0.503 >= 1.5 0.221
+     true 1.3x: PICKS THE TAIL fam9 0.045 | whole chain 0.016 | REVERSED v1 rule (<1.0) 0.166 · v2 rule 0.001 | reads >= 1.2 0.603 >= 1.5 0.304
+     true 1.5x: PICKS THE TAIL fam9 0.110 | whole chain 0.074 | REVERSED v1 rule (<1.0) 0.071 · v2 rule 0.000 | reads >= 1.2 0.773 >= 1.5 0.491
+     true 2.0x: PICKS THE TAIL fam9 0.385 | whole chain 0.369 | REVERSED v1 rule (<1.0) 0.010 · v2 rule 0.000 | reads >= 1.2 0.953 >= 1.5 0.824
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.9x
+  -- check = 3b: + era B 30 mo, rate x1.0 · 3897 events · pooled check rate 3.0% · null 95% band 0.64-1.55 · true-zero reads >= 1.2: 0.203
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.483 · v2 rule 0.005 | reads >= 1.2 0.202 >= 1.5 0.034
+     true 1.2x: PICKS THE TAIL fam9 0.039 | whole chain 0.007 | REVERSED v1 rule (<1.0) 0.188 · v2 rule 0.000 | reads >= 1.2 0.498 >= 1.5 0.153
+     true 1.3x: PICKS THE TAIL fam9 0.079 | whole chain 0.027 | REVERSED v1 rule (<1.0) 0.109 · v2 rule 0.000 | reads >= 1.2 0.643 >= 1.5 0.260
+     true 1.5x: PICKS THE TAIL fam9 0.214 | whole chain 0.144 | REVERSED v1 rule (<1.0) 0.030 · v2 rule 0.000 | reads >= 1.2 0.839 >= 1.5 0.496
+     true 2.0x: PICKS THE TAIL fam9 0.673 | whole chain 0.646 | REVERSED v1 rule (<1.0) 0.001 · v2 rule 0.000 | reads >= 1.2 0.989 >= 1.5 0.895
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.2x
+  -- check = 3b: + era B 30 mo, rate x0.75 · 3897 events · pooled check rate 2.7% · null 95% band 0.63-1.58 · true-zero reads >= 1.2: 0.218
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.474 · v2 rule 0.006 | reads >= 1.2 0.216 >= 1.5 0.044
+     true 1.2x: PICKS THE TAIL fam9 0.037 | whole chain 0.007 | REVERSED v1 rule (<1.0) 0.201 · v2 rule 0.001 | reads >= 1.2 0.494 >= 1.5 0.167
+     true 1.3x: PICKS THE TAIL fam9 0.070 | whole chain 0.024 | REVERSED v1 rule (<1.0) 0.124 · v2 rule 0.000 | reads >= 1.2 0.629 >= 1.5 0.266
+     true 1.5x: PICKS THE TAIL fam9 0.197 | whole chain 0.132 | REVERSED v1 rule (<1.0) 0.038 · v2 rule 0.000 | reads >= 1.2 0.824 >= 1.5 0.498
+     true 2.0x: PICKS THE TAIL fam9 0.618 | whole chain 0.593 | REVERSED v1 rule (<1.0) 0.002 · v2 rule 0.000 | reads >= 1.2 0.983 >= 1.5 0.880
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.3x
+  -- check = 3b: + era B 30 mo, rate x0.5 · 3897 events · pooled check rate 2.4% · null 95% band 0.61-1.65 · true-zero reads >= 1.2: 0.233
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.470 · v2 rule 0.005 | reads >= 1.2 0.230 >= 1.5 0.054
+     true 1.2x: PICKS THE TAIL fam9 0.032 | whole chain 0.006 | REVERSED v1 rule (<1.0) 0.211 · v2 rule 0.001 | reads >= 1.2 0.500 >= 1.5 0.183
+     true 1.3x: PICKS THE TAIL fam9 0.062 | whole chain 0.021 | REVERSED v1 rule (<1.0) 0.133 · v2 rule 0.000 | reads >= 1.2 0.620 >= 1.5 0.278
+     true 1.5x: PICKS THE TAIL fam9 0.156 | whole chain 0.105 | REVERSED v1 rule (<1.0) 0.047 · v2 rule 0.000 | reads >= 1.2 0.808 >= 1.5 0.495
+     true 2.0x: PICKS THE TAIL fam9 0.546 | whole chain 0.524 | REVERSED v1 rule (<1.0) 0.003 · v2 rule 0.000 | reads >= 1.2 0.975 >= 1.5 0.862
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.5x
+  -- check = 3b, 25-month features, rate x1.0 · 3627 events · pooled check rate 3.0% · null 95% band 0.63-1.59 · true-zero reads >= 1.2: 0.213
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.478 · v2 rule 0.006 | reads >= 1.2 0.212 >= 1.5 0.038
+     true 1.2x: PICKS THE TAIL fam9 0.035 | whole chain 0.007 | REVERSED v1 rule (<1.0) 0.195 · v2 rule 0.001 | reads >= 1.2 0.497 >= 1.5 0.166
+     true 1.3x: PICKS THE TAIL fam9 0.075 | whole chain 0.026 | REVERSED v1 rule (<1.0) 0.117 · v2 rule 0.000 | reads >= 1.2 0.631 >= 1.5 0.267
+     true 1.5x: PICKS THE TAIL fam9 0.199 | whole chain 0.134 | REVERSED v1 rule (<1.0) 0.035 · v2 rule 0.000 | reads >= 1.2 0.824 >= 1.5 0.488
+     true 2.0x: PICKS THE TAIL fam9 0.637 | whole chain 0.612 | REVERSED v1 rule (<1.0) 0.002 · v2 rule 0.000 | reads >= 1.2 0.982 >= 1.5 0.885
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.3x
+  -- check = 3b, 25-month features, rate x0.75 · 3627 events · pooled check rate 2.7% · null 95% band 0.61-1.63 · true-zero reads >= 1.2: 0.227
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.471 · v2 rule 0.006 | reads >= 1.2 0.227 >= 1.5 0.048
+     true 1.2x: PICKS THE TAIL fam9 0.031 | whole chain 0.006 | REVERSED v1 rule (<1.0) 0.205 · v2 rule 0.001 | reads >= 1.2 0.495 >= 1.5 0.178
+     true 1.3x: PICKS THE TAIL fam9 0.061 | whole chain 0.021 | REVERSED v1 rule (<1.0) 0.131 · v2 rule 0.000 | reads >= 1.2 0.620 >= 1.5 0.270
+     true 1.5x: PICKS THE TAIL fam9 0.162 | whole chain 0.109 | REVERSED v1 rule (<1.0) 0.045 · v2 rule 0.000 | reads >= 1.2 0.815 >= 1.5 0.490
+     true 2.0x: PICKS THE TAIL fam9 0.556 | whole chain 0.534 | REVERSED v1 rule (<1.0) 0.003 · v2 rule 0.000 | reads >= 1.2 0.979 >= 1.5 0.872
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.4x
+
+==== keep 0.6 · rate OUTSIDE 2020 5% (2020: 15%; POOLED discovery rate 10.2%) · discovery 3924 events ====
+  discovery null 95% band 0.80-1.25 | without 2020 0.62-1.62 | discovery ratio needed for p<=0.05: 1.25
+  true 1.0x: carried on conditions 1-2 0.026 | + without-2020 >= 1.10 0.021
+  true 1.2x: carried on conditions 1-2 0.357 | + without-2020 >= 1.10 0.297
+  true 1.3x: carried on conditions 1-2 0.637 | + without-2020 >= 1.10 0.546
+  true 1.5x: carried on conditions 1-2 0.945 | + without-2020 >= 1.10 0.857
+  true 2.0x: carried on conditions 1-2 1.000 | + without-2020 >= 1.10 0.991
+  2020-only artefact (1.5x in 2020, none 2017-19): passes 1-2 0.765; of those, without-2020 >= 1.10 0.42
+  -- check = 3a: era A only · 2277 events · pooled check rate 5.0% · null 95% band 0.65-1.56 · true-zero reads >= 1.2: 0.204
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.478 · v2 rule 0.006 | reads >= 1.2 0.206 >= 1.5 0.036
+     true 1.2x: PICKS THE TAIL fam9 0.034 | whole chain 0.010 | REVERSED v1 rule (<1.0) 0.194 · v2 rule 0.000 | reads >= 1.2 0.499 >= 1.5 0.159
+     true 1.3x: PICKS THE TAIL fam9 0.070 | whole chain 0.038 | REVERSED v1 rule (<1.0) 0.116 · v2 rule 0.000 | reads >= 1.2 0.632 >= 1.5 0.258
+     true 1.5x: PICKS THE TAIL fam9 0.193 | whole chain 0.166 | REVERSED v1 rule (<1.0) 0.031 · v2 rule 0.000 | reads >= 1.2 0.834 >= 1.5 0.489
+     true 2.0x: PICKS THE TAIL fam9 0.654 | whole chain 0.648 | REVERSED v1 rule (<1.0) 0.001 · v2 rule 0.000 | reads >= 1.2 0.985 >= 1.5 0.890
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.3x
+  -- check = 3b: + era B 30 mo, rate x1.0 · 3897 events · pooled check rate 5.0% · null 95% band 0.71-1.40 · true-zero reads >= 1.2: 0.138
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.478 · v2 rule 0.004 | reads >= 1.2 0.145 >= 1.5 0.009
+     true 1.2x: PICKS THE TAIL fam9 0.069 | whole chain 0.020 | REVERSED v1 rule (<1.0) 0.134 · v2 rule 0.000 | reads >= 1.2 0.489 >= 1.5 0.092
+     true 1.3x: PICKS THE TAIL fam9 0.156 | whole chain 0.085 | REVERSED v1 rule (<1.0) 0.057 · v2 rule 0.000 | reads >= 1.2 0.680 >= 1.5 0.195
+     true 1.5x: PICKS THE TAIL fam9 0.434 | whole chain 0.372 | REVERSED v1 rule (<1.0) 0.009 · v2 rule 0.000 | reads >= 1.2 0.903 >= 1.5 0.492
+     true 2.0x: PICKS THE TAIL fam9 0.930 | whole chain 0.922 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.998 >= 1.5 0.949
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.8x
+  -- check = 3b: + era B 30 mo, rate x0.75 · 3897 events · pooled check rate 4.5% · null 95% band 0.70-1.43 · true-zero reads >= 1.2: 0.151
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.485 · v2 rule 0.006 | reads >= 1.2 0.155 >= 1.5 0.014
+     true 1.2x: PICKS THE TAIL fam9 0.060 | whole chain 0.018 | REVERSED v1 rule (<1.0) 0.145 · v2 rule 0.000 | reads >= 1.2 0.500 >= 1.5 0.112
+     true 1.3x: PICKS THE TAIL fam9 0.125 | whole chain 0.068 | REVERSED v1 rule (<1.0) 0.064 · v2 rule 0.000 | reads >= 1.2 0.673 >= 1.5 0.215
+     true 1.5x: PICKS THE TAIL fam9 0.349 | whole chain 0.299 | REVERSED v1 rule (<1.0) 0.012 · v2 rule 0.000 | reads >= 1.2 0.885 >= 1.5 0.489
+     true 2.0x: PICKS THE TAIL fam9 0.877 | whole chain 0.869 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.996 >= 1.5 0.937
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.9x
+  -- check = 3b: + era B 30 mo, rate x0.5 · 3897 events · pooled check rate 4.0% · null 95% band 0.68-1.46 · true-zero reads >= 1.2: 0.173
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.484 · v2 rule 0.007 | reads >= 1.2 0.169 >= 1.5 0.019
+     true 1.2x: PICKS THE TAIL fam9 0.050 | whole chain 0.015 | REVERSED v1 rule (<1.0) 0.160 · v2 rule 0.001 | reads >= 1.2 0.496 >= 1.5 0.126
+     true 1.3x: PICKS THE TAIL fam9 0.105 | whole chain 0.058 | REVERSED v1 rule (<1.0) 0.080 · v2 rule 0.000 | reads >= 1.2 0.660 >= 1.5 0.226
+     true 1.5x: PICKS THE TAIL fam9 0.300 | whole chain 0.257 | REVERSED v1 rule (<1.0) 0.015 · v2 rule 0.000 | reads >= 1.2 0.875 >= 1.5 0.495
+     true 2.0x: PICKS THE TAIL fam9 0.823 | whole chain 0.816 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.995 >= 1.5 0.924
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.0x
+  -- check = 3b, 25-month features, rate x1.0 · 3627 events · pooled check rate 5.0% · null 95% band 0.70-1.42 · true-zero reads >= 1.2: 0.151
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.480 · v2 rule 0.005 | reads >= 1.2 0.150 >= 1.5 0.011
+     true 1.2x: PICKS THE TAIL fam9 0.057 | whole chain 0.017 | REVERSED v1 rule (<1.0) 0.141 · v2 rule 0.000 | reads >= 1.2 0.499 >= 1.5 0.105
+     true 1.3x: PICKS THE TAIL fam9 0.128 | whole chain 0.070 | REVERSED v1 rule (<1.0) 0.065 · v2 rule 0.000 | reads >= 1.2 0.677 >= 1.5 0.207
+     true 1.5x: PICKS THE TAIL fam9 0.365 | whole chain 0.313 | REVERSED v1 rule (<1.0) 0.010 · v2 rule 0.000 | reads >= 1.2 0.896 >= 1.5 0.495
+     true 2.0x: PICKS THE TAIL fam9 0.891 | whole chain 0.883 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.997 >= 1.5 0.943
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.9x
+  -- check = 3b, 25-month features, rate x0.75 · 3627 events · pooled check rate 4.5% · null 95% band 0.70-1.44 · true-zero reads >= 1.2: 0.165
+     true 1.0x: PICKS THE TAIL fam9 0.006 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.477 · v2 rule 0.005 | reads >= 1.2 0.162 >= 1.5 0.017
+     true 1.2x: PICKS THE TAIL fam9 0.058 | whole chain 0.017 | REVERSED v1 rule (<1.0) 0.150 · v2 rule 0.000 | reads >= 1.2 0.503 >= 1.5 0.116
+     true 1.3x: PICKS THE TAIL fam9 0.122 | whole chain 0.067 | REVERSED v1 rule (<1.0) 0.072 · v2 rule 0.000 | reads >= 1.2 0.668 >= 1.5 0.219
+     true 1.5x: PICKS THE TAIL fam9 0.343 | whole chain 0.294 | REVERSED v1 rule (<1.0) 0.013 · v2 rule 0.000 | reads >= 1.2 0.877 >= 1.5 0.496
+     true 2.0x: PICKS THE TAIL fam9 0.864 | whole chain 0.856 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.996 >= 1.5 0.930
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 2.0x
+
+==== keep 0.6 · rate OUTSIDE 2020 8% (2020: 24%; POOLED discovery rate 16.3%) · discovery 3924 events ====
+  discovery null 95% band 0.85-1.19 | without 2020 0.69-1.46 | discovery ratio needed for p<=0.05: 1.18
+  true 1.0x: carried on conditions 1-2 0.004 | + without-2020 >= 1.10 0.004
+  true 1.2x: carried on conditions 1-2 0.309 | + without-2020 >= 1.10 0.276
+  true 1.3x: carried on conditions 1-2 0.679 | + without-2020 >= 1.10 0.611
+  true 1.5x: carried on conditions 1-2 0.983 | + without-2020 >= 1.10 0.934
+  true 2.0x: carried on conditions 1-2 1.000 | + without-2020 >= 1.10 0.999
+  2020-only artefact (1.5x in 2020, none 2017-19): passes 1-2 0.837; of those, without-2020 >= 1.10 0.36
+  -- check = 3a: era A only · 2277 events · pooled check rate 8.0% · null 95% band 0.71-1.41 · true-zero reads >= 1.2: 0.144
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.487 · v2 rule 0.006 | reads >= 1.2 0.144 >= 1.5 0.011
+     true 1.2x: PICKS THE TAIL fam9 0.060 | whole chain 0.016 | REVERSED v1 rule (<1.0) 0.134 · v2 rule 0.000 | reads >= 1.2 0.494 >= 1.5 0.098
+     true 1.3x: PICKS THE TAIL fam9 0.139 | whole chain 0.085 | REVERSED v1 rule (<1.0) 0.061 · v2 rule 0.000 | reads >= 1.2 0.676 >= 1.5 0.206
+     true 1.5x: PICKS THE TAIL fam9 0.395 | whole chain 0.369 | REVERSED v1 rule (<1.0) 0.010 · v2 rule 0.000 | reads >= 1.2 0.899 >= 1.5 0.497
+     true 2.0x: PICKS THE TAIL fam9 0.909 | whole chain 0.909 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 0.997 >= 1.5 0.943
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.9x
+  -- check = 3b: + era B 30 mo, rate x1.0 · 3897 events · pooled check rate 8.0% · null 95% band 0.77-1.30 · true-zero reads >= 1.2: 0.084
+     true 1.0x: PICKS THE TAIL fam9 0.003 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.488 · v2 rule 0.006 | reads >= 1.2 0.080 >= 1.5 0.001
+     true 1.2x: PICKS THE TAIL fam9 0.106 | whole chain 0.029 | REVERSED v1 rule (<1.0) 0.079 · v2 rule 0.000 | reads >= 1.2 0.498 >= 1.5 0.047
+     true 1.3x: PICKS THE TAIL fam9 0.255 | whole chain 0.156 | REVERSED v1 rule (<1.0) 0.022 · v2 rule 0.000 | reads >= 1.2 0.725 >= 1.5 0.140
+     true 1.5x: PICKS THE TAIL fam9 0.660 | whole chain 0.616 | REVERSED v1 rule (<1.0) 0.001 · v2 rule 0.000 | reads >= 1.2 0.953 >= 1.5 0.499
+     true 2.0x: PICKS THE TAIL fam9 0.993 | whole chain 0.993 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.981
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.6x
+  -- check = 3b: + era B 30 mo, rate x0.75 · 3897 events · pooled check rate 7.2% · null 95% band 0.76-1.32 · true-zero reads >= 1.2: 0.096
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.490 · v2 rule 0.006 | reads >= 1.2 0.096 >= 1.5 0.003
+     true 1.2x: PICKS THE TAIL fam9 0.110 | whole chain 0.030 | REVERSED v1 rule (<1.0) 0.094 · v2 rule 0.000 | reads >= 1.2 0.499 >= 1.5 0.058
+     true 1.3x: PICKS THE TAIL fam9 0.252 | whole chain 0.154 | REVERSED v1 rule (<1.0) 0.029 · v2 rule 0.000 | reads >= 1.2 0.719 >= 1.5 0.159
+     true 1.5x: PICKS THE TAIL fam9 0.633 | whole chain 0.592 | REVERSED v1 rule (<1.0) 0.002 · v2 rule 0.000 | reads >= 1.2 0.941 >= 1.5 0.499
+     true 2.0x: PICKS THE TAIL fam9 0.989 | whole chain 0.988 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.975
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.7x
+  -- check = 3b: + era B 30 mo, rate x0.5 · 3897 events · pooled check rate 6.3% · null 95% band 0.74-1.35 · true-zero reads >= 1.2: 0.110
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.483 · v2 rule 0.006 | reads >= 1.2 0.110 >= 1.5 0.004
+     true 1.2x: PICKS THE TAIL fam9 0.085 | whole chain 0.023 | REVERSED v1 rule (<1.0) 0.101 · v2 rule 0.000 | reads >= 1.2 0.497 >= 1.5 0.068
+     true 1.3x: PICKS THE TAIL fam9 0.200 | whole chain 0.122 | REVERSED v1 rule (<1.0) 0.037 · v2 rule 0.000 | reads >= 1.2 0.704 >= 1.5 0.173
+     true 1.5x: PICKS THE TAIL fam9 0.534 | whole chain 0.499 | REVERSED v1 rule (<1.0) 0.004 · v2 rule 0.000 | reads >= 1.2 0.930 >= 1.5 0.493
+     true 2.0x: PICKS THE TAIL fam9 0.974 | whole chain 0.973 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.968
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.7x
+  -- check = 3b, 25-month features, rate x1.0 · 3627 events · pooled check rate 8.0% · null 95% band 0.76-1.31 · true-zero reads >= 1.2: 0.091
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.484 · v2 rule 0.005 | reads >= 1.2 0.091 >= 1.5 0.002
+     true 1.2x: PICKS THE TAIL fam9 0.101 | whole chain 0.028 | REVERSED v1 rule (<1.0) 0.087 · v2 rule 0.000 | reads >= 1.2 0.495 >= 1.5 0.053
+     true 1.3x: PICKS THE TAIL fam9 0.244 | whole chain 0.149 | REVERSED v1 rule (<1.0) 0.026 · v2 rule 0.000 | reads >= 1.2 0.720 >= 1.5 0.149
+     true 1.5x: PICKS THE TAIL fam9 0.632 | whole chain 0.590 | REVERSED v1 rule (<1.0) 0.002 · v2 rule 0.000 | reads >= 1.2 0.945 >= 1.5 0.496
+     true 2.0x: PICKS THE TAIL fam9 0.990 | whole chain 0.989 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.977
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.7x
+  -- check = 3b, 25-month features, rate x0.75 · 3627 events · pooled check rate 7.3% · null 95% band 0.76-1.32 · true-zero reads >= 1.2: 0.103
+     true 1.0x: PICKS THE TAIL fam9 0.005 | whole chain 0.000 | REVERSED v1 rule (<1.0) 0.485 · v2 rule 0.007 | reads >= 1.2 0.103 >= 1.5 0.003
+     true 1.2x: PICKS THE TAIL fam9 0.096 | whole chain 0.027 | REVERSED v1 rule (<1.0) 0.101 · v2 rule 0.000 | reads >= 1.2 0.492 >= 1.5 0.061
+     true 1.3x: PICKS THE TAIL fam9 0.232 | whole chain 0.141 | REVERSED v1 rule (<1.0) 0.034 · v2 rule 0.000 | reads >= 1.2 0.707 >= 1.5 0.162
+     true 1.5x: PICKS THE TAIL fam9 0.596 | whole chain 0.557 | REVERSED v1 rule (<1.0) 0.002 · v2 rule 0.000 | reads >= 1.2 0.938 >= 1.5 0.494
+     true 2.0x: PICKS THE TAIL fam9 0.985 | whole chain 0.984 | REVERSED v1 rule (<1.0) 0.000 · v2 rule 0.000 | reads >= 1.2 1.000 >= 1.5 0.974
+     smallest true ratio with an 80% chance of PICKS THE TAIL on check (fam9): 1.7x

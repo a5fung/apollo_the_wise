@@ -1,0 +1,86 @@
+
+== keep 1.0 of the capture · base rate 3% (2020: 9%) · confirm = era A only · discovery 8280 events, confirm 5103 ==
+  null 95% band: discovery 0.81-1.23 | ex-2020 0.66-1.52 | confirm 0.68-1.47 | discovery ratio needed for p<=0.05: 1.23
+  true 1.0x: carried (1-2) 0.020 | + ex-2020>=1.10 0.017 | confirm fam1 0.052 fam5 0.010 fam9 0.006 | whole chain fam9 0.000 | P(confirm>=1.2) 0.175 P(>=1.5) 0.021
+  true 1.3x: carried (1-2) 0.641 | + ex-2020>=1.10 0.567 | confirm fam1 0.376 fam5 0.151 fam9 0.110 | whole chain fam9 0.062 | P(confirm>=1.2) 0.656 P(>=1.5) 0.233
+  true 1.5x: carried (1-2) 0.955 | + ex-2020>=1.10 0.895 | confirm fam1 0.658 fam5 0.378 fam9 0.301 | whole chain fam9 0.270 | P(confirm>=1.2) 0.869 P(>=1.5) 0.497
+  true 2.0x: carried (1-2) 1.000 | + ex-2020>=1.10 0.997 | confirm fam1 0.965 fam5 0.863 fam9 0.809 | whole chain fam9 0.807 | P(confirm>=1.2) 0.994 P(>=1.5) 0.919
+
+== keep 1.0 of the capture · base rate 3% (2020: 9%) · confirm = era A + era B · discovery 8280 events, confirm 9063 ==
+  null 95% band: discovery 0.81-1.23 | ex-2020 0.66-1.52 | confirm 0.75-1.34 | discovery ratio needed for p<=0.05: 1.23
+  true 1.0x: carried (1-2) 0.019 | + ex-2020>=1.10 0.016 | confirm fam1 0.051 fam5 0.011 fam9 0.005 | whole chain fam9 0.000 | P(confirm>=1.2) 0.109 P(>=1.5) 0.003
+  true 1.3x: carried (1-2) 0.644 | + ex-2020>=1.10 0.567 | confirm fam1 0.555 fam5 0.283 fam9 0.195 | whole chain fam9 0.111 | P(confirm>=1.2) 0.709 P(>=1.5) 0.164
+  true 1.5x: carried (1-2) 0.952 | + ex-2020>=1.10 0.897 | confirm fam1 0.864 fam5 0.657 fam9 0.546 | whole chain fam9 0.490 | P(confirm>=1.2) 0.934 P(>=1.5) 0.496
+  true 2.0x: carried (1-2) 1.000 | + ex-2020>=1.10 0.997 | confirm fam1 0.999 fam5 0.989 fam9 0.978 | whole chain fam9 0.975 | P(confirm>=1.2) 1.000 P(>=1.5) 0.971
+
+== keep 1.0 of the capture · base rate 5% (2020: 15%) · confirm = era A only · discovery 8280 events, confirm 5103 ==
+  null 95% band: discovery 0.85-1.17 | ex-2020 0.73-1.38 | confirm 0.74-1.34 | discovery ratio needed for p<=0.05: 1.17
+  true 1.0x: carried (1-2) 0.003 | + ex-2020>=1.10 0.003 | confirm fam1 0.050 fam5 0.009 fam9 0.006 | whole chain fam9 0.000 | P(confirm>=1.2) 0.113 P(>=1.5) 0.004
+  true 1.3x: carried (1-2) 0.685 | + ex-2020>=1.10 0.632 | confirm fam1 0.538 fam5 0.260 fam9 0.190 | whole chain fam9 0.120 | P(confirm>=1.2) 0.706 P(>=1.5) 0.163
+  true 1.5x: carried (1-2) 0.988 | + ex-2020>=1.10 0.963 | confirm fam1 0.851 fam5 0.630 fam9 0.536 | whole chain fam9 0.517 | P(confirm>=1.2) 0.928 P(>=1.5) 0.497
+  true 2.0x: carried (1-2) 1.000 | + ex-2020>=1.10 1.000 | confirm fam1 0.997 fam5 0.982 fam9 0.971 | whole chain fam9 0.971 | P(confirm>=1.2) 0.999 P(>=1.5) 0.964
+  2020-only artefact (1.5x in 2020, none 2017-19): passes 1-2 0.811; of those ex-2020>=1.10 0.33
+
+== keep 1.0 of the capture · base rate 5% (2020: 15%) · confirm = era A + era B · discovery 8280 events, confirm 9063 ==
+  null 95% band: discovery 0.85-1.17 | ex-2020 0.73-1.37 | confirm 0.80-1.25 | discovery ratio needed for p<=0.05: 1.17
+  true 1.0x: carried (1-2) 0.003 | + ex-2020>=1.10 0.003 | confirm fam1 0.050 fam5 0.010 fam9 0.005 | whole chain fam9 0.000 | P(confirm>=1.2) 0.050 P(>=1.5) 0.000
+  true 1.3x: carried (1-2) 0.685 | + ex-2020>=1.10 0.633 | confirm fam1 0.756 fam5 0.490 fam9 0.402 | whole chain fam9 0.255 | P(confirm>=1.2) 0.757 P(>=1.5) 0.103
+  true 1.5x: carried (1-2) 0.988 | + ex-2020>=1.10 0.962 | confirm fam1 0.975 fam5 0.890 fam9 0.845 | whole chain fam9 0.813 | P(confirm>=1.2) 0.975 P(>=1.5) 0.498
+  true 2.0x: carried (1-2) 1.000 | + ex-2020>=1.10 1.000 | confirm fam1 1.000 fam5 1.000 fam9 1.000 | whole chain fam9 1.000 | P(confirm>=1.2) 1.000 P(>=1.5) 0.993
+
+== keep 1.0 of the capture · base rate 8% (2020: 24%) · confirm = era A only · discovery 8280 events, confirm 5103 ==
+  null 95% band: discovery 0.89-1.12 | ex-2020 0.78-1.28 | confirm 0.80-1.26 | discovery ratio needed for p<=0.05: 1.12
+  true 1.0x: carried (1-2) 0.000 | + ex-2020>=1.10 0.000 | confirm fam1 0.052 fam5 0.010 fam9 0.005 | whole chain fam9 0.000 | P(confirm>=1.2) 0.059 P(>=1.5) 0.000
+  true 1.3x: carried (1-2) 0.743 | + ex-2020>=1.10 0.712 | confirm fam1 0.730 fam5 0.456 fam9 0.366 | whole chain fam9 0.261 | P(confirm>=1.2) 0.752 P(>=1.5) 0.110
+  true 1.5x: carried (1-2) 0.998 | + ex-2020>=1.10 0.991 | confirm fam1 0.966 fam5 0.866 fam9 0.811 | whole chain fam9 0.804 | P(confirm>=1.2) 0.971 P(>=1.5) 0.497
+  true 2.0x: carried (1-2) 1.000 | + ex-2020>=1.10 1.000 | confirm fam1 1.000 fam5 0.999 fam9 0.999 | whole chain fam9 0.999 | P(confirm>=1.2) 1.000 P(>=1.5) 0.990
+
+== keep 1.0 of the capture · base rate 8% (2020: 24%) · confirm = era A + era B · discovery 8280 events, confirm 9063 ==
+  null 95% band: discovery 0.89-1.12 | ex-2020 0.78-1.28 | confirm 0.84-1.18 | discovery ratio needed for p<=0.05: 1.12
+  true 1.0x: carried (1-2) 0.000 | + ex-2020>=1.10 0.000 | confirm fam1 0.018 fam5 0.011 fam9 0.005 | whole chain fam9 0.000 | P(confirm>=1.2) 0.018 P(>=1.5) 0.000
+  true 1.3x: carried (1-2) 0.749 | + ex-2020>=1.10 0.716 | confirm fam1 0.824 fam5 0.764 fam9 0.685 | whole chain fam9 0.490 | P(confirm>=1.2) 0.824 P(>=1.5) 0.051
+  true 1.5x: carried (1-2) 0.998 | + ex-2020>=1.10 0.991 | confirm fam1 0.994 fam5 0.990 fam9 0.982 | whole chain fam9 0.973 | P(confirm>=1.2) 0.994 P(>=1.5) 0.494
+  true 2.0x: carried (1-2) 1.000 | + ex-2020>=1.10 1.000 | confirm fam1 1.000 fam5 1.000 fam9 1.000 | whole chain fam9 1.000 | P(confirm>=1.2) 1.000 P(>=1.5) 0.999
+
+== keep 0.6 of the capture · base rate 3% (2020: 9%) · confirm = era A only · discovery 4932 events, confirm 3069 ==
+  null 95% band: discovery 0.76-1.32 | ex-2020 0.58-1.74 | confirm 0.60-1.65 | discovery ratio needed for p<=0.05: 1.32
+  true 1.0x: carried (1-2) 0.024 | + ex-2020>=1.10 0.020 | confirm fam1 0.052 fam5 0.010 fam9 0.006 | whole chain fam9 0.000 | P(confirm>=1.2) 0.232 P(>=1.5) 0.056
+  true 1.3x: carried (1-2) 0.460 | + ex-2020>=1.10 0.404 | confirm fam1 0.268 fam5 0.096 fam9 0.061 | whole chain fam9 0.025 | P(confirm>=1.2) 0.631 P(>=1.5) 0.284
+  true 1.5x: carried (1-2) 0.827 | + ex-2020>=1.10 0.752 | confirm fam1 0.469 fam5 0.213 fam9 0.147 | whole chain fam9 0.111 | P(confirm>=1.2) 0.810 P(>=1.5) 0.490
+  true 2.0x: carried (1-2) 0.999 | + ex-2020>=1.10 0.982 | confirm fam1 0.851 fam5 0.626 fam9 0.527 | whole chain fam9 0.518 | P(confirm>=1.2) 0.974 P(>=1.5) 0.861
+
+== keep 0.6 of the capture · base rate 3% (2020: 9%) · confirm = era A + era B · discovery 4932 events, confirm 5445 ==
+  null 95% band: discovery 0.76-1.31 | ex-2020 0.57-1.73 | confirm 0.69-1.45 | discovery ratio needed for p<=0.05: 1.31
+  true 1.0x: carried (1-2) 0.027 | + ex-2020>=1.10 0.022 | confirm fam1 0.052 fam5 0.009 fam9 0.006 | whole chain fam9 0.000 | P(confirm>=1.2) 0.165 P(>=1.5) 0.016
+  true 1.3x: carried (1-2) 0.473 | + ex-2020>=1.10 0.416 | confirm fam1 0.398 fam5 0.165 fam9 0.122 | whole chain fam9 0.051 | P(confirm>=1.2) 0.665 P(>=1.5) 0.224
+  true 1.5x: carried (1-2) 0.826 | + ex-2020>=1.10 0.755 | confirm fam1 0.691 fam5 0.411 fam9 0.337 | whole chain fam9 0.255 | P(confirm>=1.2) 0.879 P(>=1.5) 0.499
+  true 2.0x: carried (1-2) 0.998 | + ex-2020>=1.10 0.981 | confirm fam1 0.974 fam5 0.891 fam9 0.853 | whole chain fam9 0.836 | P(confirm>=1.2) 0.995 P(>=1.5) 0.927
+
+== keep 0.6 of the capture · base rate 5% (2020: 15%) · confirm = era A only · discovery 4932 events, confirm 3069 ==
+  null 95% band: discovery 0.82-1.22 | ex-2020 0.66-1.52 | confirm 0.69-1.46 | discovery ratio needed for p<=0.05: 1.22
+  true 1.0x: carried (1-2) 0.015 | + ex-2020>=1.10 0.013 | confirm fam1 0.050 fam5 0.009 fam9 0.004 | whole chain fam9 0.000 | P(confirm>=1.2) 0.171 P(>=1.5) 0.018
+  true 1.3x: carried (1-2) 0.650 | + ex-2020>=1.10 0.575 | confirm fam1 0.384 fam5 0.148 fam9 0.096 | whole chain fam9 0.055 | P(confirm>=1.2) 0.662 P(>=1.5) 0.232
+  true 1.5x: carried (1-2) 0.958 | + ex-2020>=1.10 0.904 | confirm fam1 0.665 fam5 0.374 fam9 0.278 | whole chain fam9 0.251 | P(confirm>=1.2) 0.870 P(>=1.5) 0.489
+  true 2.0x: carried (1-2) 1.000 | + ex-2020>=1.10 0.997 | confirm fam1 0.969 fam5 0.870 fam9 0.801 | whole chain fam9 0.798 | P(confirm>=1.2) 0.994 P(>=1.5) 0.923
+  2020-only artefact (1.5x in 2020, none 2017-19): passes 1-2 0.752; of those ex-2020>=1.10 0.39
+
+== keep 0.6 of the capture · base rate 5% (2020: 15%) · confirm = era A + era B · discovery 4932 events, confirm 5445 ==
+  null 95% band: discovery 0.82-1.22 | ex-2020 0.66-1.52 | confirm 0.75-1.33 | discovery ratio needed for p<=0.05: 1.22
+  true 1.0x: carried (1-2) 0.014 | + ex-2020>=1.10 0.012 | confirm fam1 0.048 fam5 0.010 fam9 0.006 | whole chain fam9 0.000 | P(confirm>=1.2) 0.102 P(>=1.5) 0.002
+  true 1.3x: carried (1-2) 0.650 | + ex-2020>=1.10 0.578 | confirm fam1 0.566 fam5 0.300 fam9 0.241 | whole chain fam9 0.139 | P(confirm>=1.2) 0.712 P(>=1.5) 0.164
+  true 1.5x: carried (1-2) 0.960 | + ex-2020>=1.10 0.900 | confirm fam1 0.870 fam5 0.674 fam9 0.608 | whole chain fam9 0.547 | P(confirm>=1.2) 0.934 P(>=1.5) 0.497
+  true 2.0x: carried (1-2) 1.000 | + ex-2020>=1.10 0.998 | confirm fam1 0.999 fam5 0.991 fam9 0.986 | whole chain fam9 0.983 | P(confirm>=1.2) 1.000 P(>=1.5) 0.972
+
+== keep 0.6 of the capture · base rate 8% (2020: 24%) · confirm = era A only · discovery 4932 events, confirm 3069 ==
+  null 95% band: discovery 0.86-1.16 | ex-2020 0.72-1.37 | confirm 0.74-1.34 | discovery ratio needed for p<=0.05: 1.16
+  true 1.0x: carried (1-2) 0.002 | + ex-2020>=1.10 0.002 | confirm fam1 0.050 fam5 0.010 fam9 0.006 | whole chain fam9 0.000 | P(confirm>=1.2) 0.111 P(>=1.5) 0.004
+  true 1.3x: carried (1-2) 0.695 | + ex-2020>=1.10 0.645 | confirm fam1 0.534 fam5 0.268 fam9 0.200 | whole chain fam9 0.129 | P(confirm>=1.2) 0.702 P(>=1.5) 0.174
+  true 1.5x: carried (1-2) 0.990 | + ex-2020>=1.10 0.962 | confirm fam1 0.847 fam5 0.629 fam9 0.535 | whole chain fam9 0.514 | P(confirm>=1.2) 0.931 P(>=1.5) 0.497
+  true 2.0x: carried (1-2) 1.000 | + ex-2020>=1.10 1.000 | confirm fam1 0.997 fam5 0.984 fam9 0.972 | whole chain fam9 0.972 | P(confirm>=1.2) 0.999 P(>=1.5) 0.966
+
+== keep 0.6 of the capture · base rate 8% (2020: 24%) · confirm = era A + era B · discovery 4932 events, confirm 5445 ==
+  null 95% band: discovery 0.86-1.16 | ex-2020 0.73-1.38 | confirm 0.80-1.25 | discovery ratio needed for p<=0.05: 1.16
+  true 1.0x: carried (1-2) 0.002 | + ex-2020>=1.10 0.002 | confirm fam1 0.046 fam5 0.009 fam9 0.004 | whole chain fam9 0.000 | P(confirm>=1.2) 0.049 P(>=1.5) 0.000
+  true 1.3x: carried (1-2) 0.698 | + ex-2020>=1.10 0.646 | confirm fam1 0.757 fam5 0.495 fam9 0.399 | whole chain fam9 0.258 | P(confirm>=1.2) 0.765 P(>=1.5) 0.105
+  true 1.5x: carried (1-2) 0.990 | + ex-2020>=1.10 0.965 | confirm fam1 0.973 fam5 0.893 fam9 0.841 | whole chain fam9 0.811 | P(confirm>=1.2) 0.974 P(>=1.5) 0.495
+  true 2.0x: carried (1-2) 1.000 | + ex-2020>=1.10 1.000 | confirm fam1 1.000 fam5 1.000 fam9 1.000 | whole chain fam9 1.000 | P(confirm>=1.2) 1.000 P(>=1.5) 0.993
