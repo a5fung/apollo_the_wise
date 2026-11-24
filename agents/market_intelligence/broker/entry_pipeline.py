@@ -1193,6 +1193,18 @@ async def submit_trade_entry(
 
     if not trade_id:
         logger.debug(f"{strategy_label} {ticker}: trade row insert hit unique conflict")
+        # #734 (AII 2026-11-11): a sibling path (bar_stream vs cron, #475) wrote this
+        # ticker-day's row AFTER this path passed STEP 1, so the attempt ended here after
+        # bar fetch and sizing with no row at all. Same outcome as STEP 1's dedupe; the
+        # audit row makes the stop readable in /why. Audit only — behaviour unchanged.
+        try:
+            await log_audit_event(
+                "orb_duplicate",
+                f"{strategy_label} {ticker} — {WINDOW_DUPLICATE} (insert-time: a sibling "
+                f"entry path wrote this ticker-day's row first)",
+            )
+        except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); the return below is identical either way
+            pass
         return {"ticker": ticker, "action": ACTION_SKIPPED, "reason": WINDOW_DUPLICATE}
 
     # 7. Submit bracket. All _check_safeguards rules ran at STEP 2 + the cap

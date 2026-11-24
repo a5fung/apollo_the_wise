@@ -361,6 +361,10 @@ async def test_same_ticker_conflict_still_window_duplicate_no_lock_leak(monkeypa
     assert len(db.countable("live")) == 1
     lock = db.locks.get((ep._CAP_LOCK_NAMESPACE, "live"))
     assert lock is not None and not lock.locked(), "xact lock leaked past txn end"
+    # #734: the insert-time loser now leaves an audit row (it used to stop silently).
+    dup_rows = [c.args for c in audit.await_args_list
+                if c.args and c.args[0] == "orb_duplicate"]
+    assert len(dup_rows) == 1 and "insert-time" in dup_rows[0][1]
 
 
 # ─── 3. Per-account-mode isolation (#66 — paper never waits on live) ─────────
