@@ -7663,6 +7663,25 @@ class MarketIntelligenceAgent(BaseAgent):
         data = await get_ep_scanned_day(query_date)
         return self._ok(request, result=render_scanned_day(query_date, data))
 
+    async def _trades_nav(self, request: AgentRequest, parts: list[str], book: str) -> AgentResponse:
+        """`/trades_detail nav <arg|-> [paper]` — the data channels/telegram.py builds the /trades
+        buttons from (JSON): the active strategies of the book, whether any retired ones exist, the
+        SKIP-RULE strategy (one active, none retired), and `match` = the strategy a typed arg names
+        (checked BEFORE the ticker path). A read failure returns `{}` so the keyboard falls back to the
+        legacy buttons rather than showing none."""
+        import json as _json
+        from agents.market_intelligence import trades_by_strategy as tbs
+        arg = parts[2] if len(parts) > 2 and parts[2].lower() != "paper" else "-"
+        try:
+            async with (await get_pool()).acquire() as conn:
+                bs = await tbs.load_book_strategies(conn, book)
+            match = tbs.resolve_arg(bs, arg) if arg != "-" else None
+            payload = tbs.nav_payload(bs, match)
+        except Exception as e:  # loud-ok: display only — legacy buttons are the fallback
+            logger.warning(f"/trades nav unavailable, legacy buttons shown: {e}")
+            payload = {}
+        return self._ok(request, result=_json.dumps(payload))
+
     async def _handle_trades_detail(self, request: AgentRequest) -> AgentResponse:
         """Inline keyboard detail: /trades_detail {view} [{date}] [paper|live]
 
@@ -7676,17 +7695,61 @@ class MarketIntelligenceAgent(BaseAgent):
 
         parts = request.task.strip().split()
         view = parts[1].lower() if len(parts) > 1 else "summary"
+        # internal forms match the exact lowercase token: Telegram uppercases a typed ticker, so
+        # `/trades NAV` can never reach them
+        internal = parts[1] if len(parts) > 1 and parts[1] in ("nav", "strat") else None
         date_str = parts[2] if len(parts) > 2 else last_trading_day().isoformat()
         # the book: ONLY a literal trailing `paper` token flips it; anything else (incl. a date) = live
         book = "paper" if (len(parts) > 2 and parts[-1].lower() == "paper") else "live"
         if book == "paper" and not re.match(r"\d{4}-\d{2}-\d{2}$", date_str):
             date_str = last_trading_day().isoformat()   # `/trades_detail summary paper` (no date)
 
+        # ── /trades by STRATEGY (operator 2026-11-24; trades_by_strategy.py) ──────────────────
+        # Two extra task forms, both internal to channels/telegram.py:
+        #   /trades_detail nav <arg|-> [paper]                          -> JSON the keyboard is built from
+        #   /trades_detail strat <scope> <view> <date> [paper]          -> that view scoped to a strategy
+        # `scope` = a signal_type or `retired` (the folded group). Everything else is unchanged.
+        from agents.market_intelligence import trades_by_strategy as tbs
+        scope_tok: str | None = None
+        if internal == "strat" and len(parts) >= 5:
+            scope_tok, view, date_str = parts[2].lower(), parts[3].lower(), parts[4]
+            if not re.match(r"\d{4}-\d{2}-\d{2}$", date_str):
+                date_str = last_trading_day().isoformat()
+        if internal == "nav":
+            return await self._trades_nav(request, parts, book)
+
+        async def _book_strategies() -> dict:
+            """The book's strategies (active / retired), or an empty board when the registry or the
+            stats read fails — the old unscoped pages then render exactly as before."""
+            try:
+                async with (await get_pool()).acquire() as _c:
+                    return await tbs.load_book_strategies(_c, book)
+            except Exception as e:  # loud-ok: display only — the unscoped legacy page is the fallback
+                logger.warning(f"/trades strategy board unavailable, legacy page shown: {e}")
+                return {"active": [], "retired": [], "all_ids": set(), "names": {}}
+
+        scope_bs: dict | None = None
+        scope_sigs: list[str] | None = None
+        if scope_tok is not None:
+            scope_bs = await _book_strategies()
+            scope_sigs = tbs.scope_sigs(scope_bs, scope_tok)
+        # bound `$2` scope filter (only when scoped); the book stays `$1` in every query
+        scope_sql = " AND COALESCE(signal_type, 'unlabelled') = ANY($2::text[])" if scope_sigs is not None else ""
+        scope_args = (scope_sigs,) if scope_sigs is not None else ()
+        tbs_scope_label = ("retired strategies" if scope_tok == tbs.RETIRED else f"`{scope_tok}`") if scope_tok else ""
+
         # /trades [Scanned] button → the /scanned screen. Checked before the
         # pool acquire — this view has its own data path (_handle_scanned_query
         # picks the date out of request.task).
         if view == "scanned":
-            return await self._handle_scanned_query(request)
+            scanned = await self._handle_scanned_query(request)
+            if scope_tok is not None and scanned.result:
+                # the scan has no strategy column: say so rather than show unscoped data silently
+                # the scan is the EP gap scan (MAGNA53's); breakout_v1's own list is not in it
+                if scope_tok != "magna53":
+                    scanned.result = ("_This is the EP gap scan — breakout_v1 candidates are not in it._\n\n"
+                                      + scanned.result)
+            return scanned
 
         pool = await get_pool()
 
@@ -7701,7 +7764,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 # in and the realized total read paper-dominated (operator 7/10). Paper-lane rows
                 # are reached per ticker (`_handle_trades_query`, #624), never blended in here. The
                 # separate 'Paper (legacy)' button reads the dead mi_paper_trades EOD-sim table.
-                open_rows = await conn.fetch("""
+                open_rows = await conn.fetch(f"""
                     SELECT ticker, alert_date, entry_price, remaining_shares,
                            stop_price, hard_stop, total_pnl, hold_days,
                            partial_taken, breakeven_active, ep_score,
@@ -7709,49 +7772,54 @@ class MarketIntelligenceAgent(BaseAgent):
                     FROM mi_live_trades
                     WHERE status = 'filled' AND remaining_shares > 0
                       AND account_mode = $1  -- the book (#447: live unless the paper chat asked)
+                      {scope_sql}
                     ORDER BY alert_date ASC
-                """, book)
-                pending_rows = await conn.fetch("""
+                """, book, *scope_args)
+                pending_rows = await conn.fetch(f"""
                     SELECT ticker, alert_date, status, entry_shares, orb_high,
                            orb_low, stop_price, ep_score, catalyst_quality
                     FROM mi_live_trades
                     WHERE status IN ('order_placed', 'pending_confirmation')
                       AND account_mode = $1  -- the book
+                      {scope_sql}
                     ORDER BY alert_date ASC, ticker
-                """, book)
-                closed_rows = await conn.fetch("""
+                """, book, *scope_args)
+                closed_rows = await conn.fetch(f"""
                     SELECT ticker, entry_price, total_pnl, hold_days,
                            exits, ep_score, closed_at,
                            hard_stop, orb_low, entry_shares  -- #696: the R frame
                     FROM mi_live_trades
                     WHERE status = 'closed'
                       AND account_mode = $1  -- the book
+                      {scope_sql}
                     ORDER BY closed_at DESC NULLS LAST
                     LIMIT 5
-                """, book)
-                stats = await conn.fetchrow("""
+                """, book, *scope_args)
+                stats = await conn.fetchrow(f"""
                     SELECT
                         COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0) AS winners,
                         COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) AS losers,
                         COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) AS realized
                     FROM mi_live_trades
                     WHERE account_mode = $1  -- the book
-                """, book)
+                      {scope_sql}
+                """, book, *scope_args)
                 # Per-ticker closed-attempt history — feeds the open-row "prior
                 # P&L" suffix (closed rows no longer show attempts, #696). Bounded
                 # query over the open tickers.
                 relevant_tickers = list({r["ticker"] for r in open_rows})
                 ticker_history: dict[str, dict] = {}
                 if relevant_tickers:
-                    hist_rows = await conn.fetch("""
+                    hist_rows = await conn.fetch(f"""
                         SELECT ticker,
                                COALESCE(SUM(entry_attempt), 0)::int AS attempts,
                                COALESCE(SUM(total_pnl), 0) AS realized
                         FROM mi_live_trades
                         WHERE status = 'closed' AND ticker = ANY($1)
                           AND account_mode = $2  -- the book
+                          {scope_sql.replace('$2', '$3')}
                         GROUP BY ticker
-                    """, relevant_tickers, book)
+                    """, relevant_tickers, book, *scope_args)
                     ticker_history = {h["ticker"]: dict(h) for h in hist_rows}
 
             # #706: every open position is read from the LIVE account (this page is the real-money
@@ -7907,7 +7975,22 @@ class MarketIntelligenceAgent(BaseAgent):
             return "\n".join(lines)
 
         if view == "summary":
-            return self._ok(request, result=await _build_summary())
+            if scope_tok is not None:
+                # LEVEL 2: one strategy's (or the retired group's) page — its stat line under the title
+                body = await _build_summary()
+                head, _, rest = body.partition("\n")
+                return self._ok(request, result=head + "\n" + tbs.scope_header(scope_bs, scope_tok) + "\n" + rest)
+            bs = await _book_strategies()
+            sole = tbs.single_strategy_sig(bs)
+            if (bs["active"] or bs["retired"]) and sole is None:
+                # LEVEL 1: several strategies (or any retired one) in this book -> the by-strategy board
+                return self._ok(request, result=tbs.render_level1(bs, book, date_str))
+            body = await _build_summary()
+            if sole is not None:
+                # SKIP RULE: one active strategy, none retired -> the page it always was, plus its stat line
+                head, _, rest = body.partition("\n")
+                body = head + "\n" + tbs.scope_header(bs, sole) + "\n" + rest
+            return self._ok(request, result=body)
 
         # Retained for backwards compat — callback no longer surfaces this button,
         # but the route remains so older pinned messages still work.
@@ -7937,19 +8020,22 @@ class MarketIntelligenceAgent(BaseAgent):
 
         if view == "skipped":
             async with pool.acquire() as conn:
-                rows = await conn.fetch("""
+                rows = await conn.fetch(f"""
                     SELECT ticker, alert_date, ep_score, gap_pct, catalyst_quality,
                            status, skip_reason, orb_high, orb_low, atr_14
                     FROM mi_live_trades
                     WHERE status IN ('skipped', 'cancelled', 'order_failed')
                       AND account_mode = $1   -- the book (#447 live unless the paper chat asked)
+                      {scope_sql}
                     ORDER BY alert_date DESC, ticker
                     LIMIT 15
-                """, book)
+                """, book, *scope_args)
             if not rows:
-                return self._ok(request, result=("📄 PAPER — no skipped trades recorded." if book == "paper" else "No skipped trades recorded."))
+                return self._ok(request, result=("📄 PAPER — no skipped trades recorded." if book == "paper" else "No skipped trades recorded.")
+                                + (f" ({tbs_scope_label})" if scope_tok is not None else ""))
             from agents.market_intelligence.broker.skip_reasons import humanize
-            lines = [f"⊘ *Skipped Trades* (last {len(rows)})" + (" · 📄 PAPER — not real money" if book == "paper" else "")]
+            lines = [f"⊘ *Skipped Trades* (last {len(rows)})" + (" · 📄 PAPER — not real money" if book == "paper" else "")
+                     + (f" · {tbs_scope_label}" if scope_tok is not None else "")]
             for r in rows:
                 d_str = r["alert_date"].strftime("%b %d")
                 gap = f" gap={r['gap_pct']:.1f}%" if r['gap_pct'] else ""
@@ -7966,24 +8052,27 @@ class MarketIntelligenceAgent(BaseAgent):
             # Show the last 20 closed trades — simpler than splitting today vs older,
             # and sidesteps any UTC/ET date-compare edge cases.
             async with pool.acquire() as conn:
-                rows = await conn.fetch("""
+                rows = await conn.fetch(f"""
                     SELECT ticker, entry_price, total_pnl, hold_days,
                            exits, ep_score, closed_at,
                            hard_stop, orb_low, entry_shares  -- #696: the R frame
                     FROM mi_live_trades
                     WHERE status = 'closed'
                       AND account_mode = $1   -- the book (#447 live unless the paper chat asked)
+                      {scope_sql}
                     ORDER BY closed_at DESC NULLS LAST
                     LIMIT 20
-                """, book)
+                """, book, *scope_args)
             if not rows:
-                return self._ok(request, result=("📄 PAPER — no closed trades recorded yet." if book == "paper" else "No closed trades recorded yet."))
+                return self._ok(request, result=("📄 PAPER — no closed trades recorded yet." if book == "paper" else "No closed trades recorded yet.")
+                                + (f" ({tbs_scope_label})" if scope_tok is not None else ""))
 
             net = sum(float(r["total_pnl"] or 0) for r in rows)
             wins = sum(1 for r in rows if float(r["total_pnl"] or 0) > 0)
             losses = len(rows) - wins
             lines = [
-                f"📊 *Closed Trades* (last {len(rows)})" + (" · 📄 PAPER — not real money" if book == "paper" else ""),
+                f"📊 *Closed Trades* (last {len(rows)})" + (" · 📄 PAPER — not real money" if book == "paper" else "")
+                + (f" · {tbs_scope_label}" if scope_tok is not None else ""),
                 f"  W/L {wins}/{losses} · net ${net:+,.0f}",
                 "",
             ]

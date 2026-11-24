@@ -79,11 +79,58 @@ def book_for_update(update) -> str:
     return book_for_chat(getattr(chat, "id", None))
 
 
-def _trades_keyboard(today_str: str, book: str, with_summary: bool = False) -> InlineKeyboardMarkup:
+def _trades_keyboard(today_str: str, book: str, with_summary: bool = False,
+                     nav: Optional[dict] = None, scope: Optional[str] = None) -> InlineKeyboardMarkup:
     """The /trades drill-down buttons. In the paper book every callback_data carries the `:paper`
     suffix (<=64 bytes: the longest is `trades:scanned:YYYY-MM-DD:paper`, 31). Single builder for the
-    command and the in-place drill-down so the two can never drift."""
+    command and the in-place drill-down so the two can never drift.
+
+    By STRATEGY (operator 2026-11-24), driven by `nav` (the market agent's `/trades_detail nav` JSON):
+      * `scope is None` + nav lists strategies -> LEVEL 1: one button per active strategy (+ [Retired]).
+      * `scope` = a strategy / `retired`      -> LEVEL 2: [Closed][Skipped] / [Scanned] scoped to it,
+        plus [← Summary] (level 1; in the skip-rule book that is the strategy page itself).
+      * no `nav` (agent unreachable / old callers) -> the legacy unscoped buttons, byte-for-byte.
+    New callback_data (all kept <=64 bytes; a button that would exceed it is dropped, never truncated):
+    `trades:st:<id>[:paper]`, `trades:sc:<id>:<date>[:paper]`, `trades:ss:<id>[:paper]`,
+    `trades:sn:<id>:<date>[:paper]`. Every OLD form still answers (pinned messages)."""
     sfx = _PAPER_CB_SUFFIX if book == BOOK_PAPER else ""
+
+    def _btn(label: str, data: str):
+        if len(data.encode()) > 64:
+            logger.warning(f"/trades button dropped, callback_data > 64 bytes: {data!r}")
+            return None
+        return InlineKeyboardButton(label, callback_data=data)
+
+    if nav and nav.get("strategies") is not None and scope is None and not nav.get("skip") \
+            and (nav.get("strategies") or nav.get("retired")):
+        row, rows = [], []
+        for sid in nav["strategies"]:
+            b = _btn(sid, f"trades:st:{sid}{sfx}")
+            if b:
+                row.append(b)
+                if len(row) == 2:
+                    rows.append(row)
+                    row = []
+        if nav.get("retired"):
+            row.append(_btn("Retired", f"trades:st:retired{sfx}"))
+        row = [b for b in row if b]
+        if row:
+            rows.append(row)
+        if rows:
+            return InlineKeyboardMarkup(rows)
+    if nav and nav.get("strategies") is not None and (scope or nav.get("skip")):
+        sid = scope or nav["skip"]
+        rows = [
+            [_btn("Closed Trades", f"trades:sc:{sid}:{today_str}{sfx}"), _btn("Skipped", f"trades:ss:{sid}{sfx}")],
+            [_btn("Scanned (what was cut)", f"trades:sn:{sid}:{today_str}{sfx}")],
+        ]
+        rows = [[b for b in r if b] for r in rows]
+        # the way back: level 1, or (skip-rule book: no level 1) the strategy page itself
+        back = f"trades:st:{nav['skip']}{sfx}" if nav.get("skip") else f"trades:summary{sfx}"
+        rows.append([_btn("← Summary", back)])
+        rows = [r for r in rows if r and all(r)]
+        if rows:
+            return InlineKeyboardMarkup(rows)
     rows = [
         [
             InlineKeyboardButton("Closed Trades", callback_data=f"trades:closed:{today_str}{sfx}"),
@@ -578,7 +625,7 @@ class TelegramChannel:
             "/hud — pinned snapshot; buttons for Regime/Themes/9M/Clusters/Watchlist\n"
             "/pregame — trade-ready shortlist (themes, HIGH EPs, MA pullbacks, sugar babies)\n"
             "/ep — EP alerts today (MAGNA53) · buttons: [HIGH] [MODERATE]\n"
-            "/trades — positions + P&L · buttons: [Closed] [Skipped] [Scanned] (typed in the Apollo Paper chat: the PAPER book)\n"
+            "/trades — P&L by strategy, then positions & lists inside each · `/trades breakout` jumps to one (typed in the Apollo Paper chat: the PAPER book)\n"
             "/status — system health + API spend\n"
             "/help — this reference\n"
             "\n"
@@ -1162,6 +1209,24 @@ class TelegramChannel:
         # works is the command, not the function behind it.
         _args = getattr(context, "args", None) or []
         _tk = _args[0].strip().upper() if _args else ""
+        _arg = _args[0].strip().lower() if _args else ""
+
+        # By STRATEGY (operator 2026-11-24): a typed `/trades breakout` | `breakout_v1` | `ep` |
+        # `retired` jumps to that strategy's page. Matched BEFORE the ticker path (the agent says
+        # whether the word names a strategy of THIS book; a miss -> the ticker path below, so
+        # `/trades FIGS` is unchanged).
+        _nav = await self._trades_nav(update.effective_user.id, _arg if re.fullmatch(r"[a-z0-9_]{1,40}", _arg) else "-", book)
+        if _nav and _nav.get("match"):
+            sid = _nav["match"]
+            page = await self._post_market_task_or_reply(
+                update, f"/trades_detail strat {sid} summary {today_str}{book_arg}", update.effective_user.id,
+                f"No {sid} trades found.",
+            )
+            if page is not None:
+                await self._reply_with_fallback(
+                    update, page, reply_markup=_trades_keyboard(today_str, book, nav=_nav, scope=sid))
+            return
+
         if _tk.isalpha() and 2 <= len(_tk) <= 5:
             detail = await self._post_market_task_or_reply(
                 update, f"/trades_detail {_tk} {today_str}{book_arg}", update.effective_user.id,
@@ -1179,11 +1244,26 @@ class TelegramChannel:
         if summary_text is None:
             return
 
-        keyboard = _trades_keyboard(today_str, book)
+        keyboard = _trades_keyboard(today_str, book, nav=_nav)
         # Any unmatched `_` or `*` in dynamic content (e.g. exit reasons like `stop_hit`)
         # makes Telegram reject the whole message; _reply_with_fallback retries plain
         # text so the user always sees something instead of silence.
         await self._reply_with_fallback(update, summary_text, reply_markup=keyboard)
+
+    async def _trades_nav(self, user_id: int, arg: str, book: str) -> Optional[dict]:
+        """The market agent's by-strategy navigation data for `/trades` (JSON): active strategies,
+        whether retired ones exist, the skip-rule strategy, and `match` = the strategy `arg` names.
+        None on ANY failure (agent unreachable, non-JSON, empty) -> callers use the legacy unscoped
+        buttons, so a nav hiccup can never blank /trades."""
+        import json
+        book_arg = f" {BOOK_PAPER}" if book == BOOK_PAPER else ""
+        try:
+            raw = await self._post_market_task(f"/trades_detail nav {arg or '-'}{book_arg}", user_id)
+            data = json.loads(raw) if raw else None
+        except Exception as e:  # loud-ok: display only — legacy buttons are the fallback
+            logger.warning(f"/trades nav failed, legacy buttons: {e}")
+            return None
+        return data if isinstance(data, dict) and data.get("strategies") is not None else None
 
     async def _handle_hud_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -1595,6 +1675,18 @@ class TelegramChannel:
                 book = BOOK_PAPER
         parts = callback_data.split(":", 2)
         prefix = parts[0]  # eps, trades
+        # By-strategy buttons (operator 2026-11-24): `trades:st:<id>` (page), `trades:sc:<id>:<date>`
+        # (closed), `trades:ss:<id>` (skipped), `trades:sn:<id>:<date>` (scanned). `scope` is the strategy
+        # (or `retired`) the in-place keyboard stays scoped to.
+        scope: Optional[str] = None
+        _strat_views = {"st": "summary", "sc": "closed", "ss": "skipped", "sn": "scanned"}
+        if prefix == "trades" and len(parts) > 2 and parts[1] in _strat_views:
+            _sid, _, _dt = parts[2].partition(":")
+            scope = _sid
+            if not re.match(r"\d{4}-\d{2}-\d{2}$", _dt or ""):
+                from shared.dates import last_trading_day
+                _dt = last_trading_day().isoformat()
+            parts = ["trades", "strat", f"{scope} {_strat_views[parts[1]]} {_dt}"]
 
         # Determine the sub-command task to send to the market agent
         if prefix == "eps":
@@ -1610,6 +1702,8 @@ class TelegramChannel:
                     from shared.dates import last_trading_day
                     date_str = last_trading_day().isoformat()
                 task = f"/trades_detail {view} {date_str} {BOOK_PAPER}"
+            if scope is not None:          # `view` is "strat", `date_str` the "<id> <view> <date>" tail
+                task = f"/trades_detail strat {date_str}" + (f" {BOOK_PAPER}" if book == BOOK_PAPER else "")
 
         user_id = query.from_user.id if query.from_user else 0
         req = AgentRequest(task=task, user_id=user_id, conversation_id=str(user_id))
@@ -1630,7 +1724,12 @@ class TelegramChannel:
         if prefix == "trades":
             from shared.dates import et_today
             today_str = et_today().isoformat()  # ET trading day (UTC date is tomorrow after 8pm ET)
-            markup = _trades_keyboard(today_str, book, with_summary=True)
+            # By strategy: rebuild the keyboard from the agent's nav data (None -> legacy buttons).
+            # An OLD unscoped press (trades:closed:...) keeps its old keyboard, so pinned messages
+            # behave as they always did; only the summary / scoped presses get the new ones.
+            _is_summary_press = (parts[1] == "summary") if len(parts) > 1 else True
+            nav = await self._trades_nav(user_id, "-", book) if (scope is not None or _is_summary_press) else None
+            markup = _trades_keyboard(today_str, book, with_summary=True, nav=nav, scope=scope)
         elif prefix == "eps" and parts[1] != "SUMMARY":
             date_str = parts[2] if len(parts) > 2 else ""
             back_data = f"eps:SUMMARY:{date_str}"
