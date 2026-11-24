@@ -1,0 +1,57 @@
+SET
+t|event_type|left
+11-16 17:08|theme_merge_pairs_proposed|Arm B Stage A: 8 candidate pair(s) for adjudication
+11-16 17:08|theme_merge_distinct|Arm B: 'Aircraft MRO, Aftermarket & Aerospace Parts Distribution' vs 'Space Launch & Satellite Intelligence/Communications' DISTINCT — 30d pair cooldown
+11-16 17:08|theme_merge_distinct|Arm B: 'Class I Railroad Freight Carriers' vs 'Industrial Warehouse & Logistics REITs' DISTINCT — 30d pair cooldown
+11-16 17:08|theme_merge_distinct|Arm B: 'Digital Freight & Shared Mobility Platforms' vs 'Industrial Warehouse & Logistics REITs' DISTINCT — 30d pair cooldown
+11-16 17:08|theme_merge_distinct|Arm B: 'Companion Animal Healthcare: Diagnostics & Pet Insurance' vs 'Specialty P&C Insurance Underwriters Rotation Reversal' DISTINCT — 30d pair cooldown
+11-16 17:08|theme_merge_distinct|Arm B: 'Oncolytic Virus Cancer Immunotherapy' vs 'Large-Cap Biopharma: Oncology & Antiviral Franchises' DISTINCT — 30d pair cooldown
+11-16 17:08|theme_merge_distinct|Arm B: 'Uncovered Gold & PGM Miners (Mid-Tier, Developers & South African)' vs 'Specialty Chemicals & Commodity Chemical Strength' DISTINCT — 30d pair cooldown
+11-16 17:08|theme_merge_distinct|Arm B: 'Packaged Food, Agri-Inputs & Consumer Staples Rotation' vs 'Specialty Chemicals & Commodity Chemical Strength' DISTINCT — 30d pair cooldown
+11-16 17:08|theme_merge_distinct|Arm B: 'Uncovered Gold & PGM Miners (Mid-Tier, Developers & South African)' vs 'Specialty Chemicals & Commodity Chemical Strength' DISTINCT — 30d pair cooldown
+11-17 17:04|theme_merge_pairs_proposed|Arm B Stage A: 8 candidate pair(s) for adjudication
+11-17 17:04|theme_merge_distinct|Arm B: 'Oncolytic Virus Cancer Immunotherapy' vs 'Large-Cap European Pharma & Antibody Immunology/Oncology Rotation' DISTINCT — 30d pair cooldown
+11-17 17:04|theme_thesis_merged|Arm B: 'Payment Processing & Cross-Border Money Transfer Fintech' merged into 'Fintech & Digital Payments Re-rating on Fed Easing' (17 members)
+11-17 17:04|theme_merge_distinct|Arm B: 'Uncovered Gold & Silver Miners (South African PGM, Mid-Tier & Developers)' vs 'Specialty Chemicals & Commodity Chemical Strength' DISTINCT — 30d pair cooldown
+11-17 17:04|theme_merge_distinct|Arm B: 'Cable & Broadband Telecom Operators' vs 'International Wireless & Telecom Operators' DISTINCT — 30d pair cooldown
+11-17 17:04|theme_merge_distinct|Arm B: 'Programmatic & Mobile Ad-Tech Platforms' vs 'International Wireless & Telecom Operators' DISTINCT — 30d pair cooldown
+11-17 17:04|theme_merge_distinct|Arm B: 'Formula One Motorsports Media & Entertainment Rights' vs 'International Wireless & Telecom Operators' DISTINCT — 30d pair cooldown
+11-17 17:04|theme_merge_distinct|Arm B: 'New York Sports Franchise & Arena Entertainment (MSG Spinoffs)' vs 'International Wireless & Telecom Operators' DISTINCT — 30d pair cooldown
+11-17 17:04|theme_merge_distinct|Arm B: 'Cruise Lines & Leisure Travel Rebound' vs 'Leisure, Hospitality & Travel Cyclical Recovery' DISTINCT — 30d pair cooldown
+11-18 17:06|theme_merge_pairs_proposed|Arm B Stage A: 8 candidate pair(s) for adjudication
+11-18 17:06|theme_merge_distinct|Arm B: 'Life Insurance & Annuity Providers' vs 'Specialty P&C Insurance Underwriters Rotation Reversal' DISTINCT — 30d pair cooldown
+11-18 17:06|theme_merge_distinct|Arm B: 'Wealth Management & Retail Brokerage Platforms' vs 'Fintech & Digital Payments Re-rating on Fed Easing' DISTINCT — 30d pair cooldown
+11-18 17:06|theme_merge_distinct|Arm B: 'Brazil-Exposed Financials, Fintech & Consumer Platforms' vs 'Fintech & Digital Payments Re-rating on Fed Easing' DISTINCT — 30d pair cooldown
+11-18 17:06|theme_merge_distinct|Arm B: 'Digital Identity, Bill Payment & Mobile Software Small-Cap Leaders' vs 'Fintech & Digital Payments Re-rating on Fed Easing' DISTINCT — 30d pair cooldown
+11-18 17:06|theme_merge_distinct|Arm B: 'Gold Miners Uncovered Mid-Tier & Developer Producers' vs 'Specialty Chemicals & Commodity Chemical Strength' DISTINCT — 30d pair cooldown
+11-18 17:07|theme_merge_distinct|Arm B: 'Global Hotel Franchisors & Operators' vs 'Specialty Apparel & Mall-Based Specialty Retail Strength' DISTINCT — 30d pair cooldown
+11-18 17:07|theme_merge_distinct|Arm B: 'Housing-Cycle Rate-Relief Rebound (Builders, Lenders & Home Services)' vs 'Specialty Apparel & Mall-Based Specialty Retail Strength' DISTINCT — 30d pair cooldown
+11-18 17:07|theme_merge_distinct|Arm B: 'Full-Service Casual Dining Restaurant Operators' vs 'Specialty Apparel & Mall-Based Specialty Retail Strength' DISTINCT — 30d pair cooldown
+11-19 17:04|theme_merge_pairs_proposed|Arm B Stage A: 8 candidate pair(s) for adjudication
+11-19 17:04|theme_merge_distinct|Arm B: 'Financial Compliance & Consumer Credit Fintech Software Leaders' vs 'Fintech & Digital Payments Re-rating on Fed Easing' DISTINCT — 30d pair cooldown
+11-19 17:04|theme_merge_distinct|Arm B: 'Brazil-Listed Fintech, Brokerage & Infrastructure Equities' vs 'Fintech & Digital Payments Re-rating on Fed Easing' DISTINCT — 30d pair cooldown
+11-19 17:04|theme_merge_distinct|Arm B: 'Mid-Tier & Developer Gold/Silver Miners (Uncovered Producers)' vs 'Specialty Chemicals & Commodity Chemical Strength' DISTINCT — 30d pair cooldown
+11-19 17:04|theme_merge_distinct|Arm B: 'Copper Miners' vs 'Specialty Chemicals & Commodity Chemical Strength' DISTINCT — 30d pair cooldown
+11-19 17:04|theme_merge_distinct|Arm B: 'Theme Parks, Casino Gaming & Timeshare Leisure Venue Operators' vs 'Specialty Apparel & Mall-Based Specialty Retail Strength' DISTINCT — 30d pair cooldown
+11-19 17:04|theme_thesis_merged|Arm B: 'Specialty & Value Apparel/Footwear Retail Chains' merged into 'Specialty & Value Apparel/Footwear Retail Strength' (21 members)
+11-19 17:04|theme_merge_distinct|Arm B: 'Timeshare & Vacation Ownership' vs 'Specialty & Value Apparel/Footwear Retail Strength' DISTINCT — 30d pair cooldown
+11-19 17:04|theme_merge_distinct|Arm B: 'Vehicle Suspension, Engine Filtration & Golf/Leisure Equipment Makers' vs 'Specialty & Value Apparel/Footwear Retail Strength' DISTINCT — 30d pair cooldown
+11-20 17:06|theme_merge_pairs_proposed|Arm B Stage A: 8 candidate pair(s) for adjudication
+11-20 17:06|theme_merge_distinct|Arm B: 'Freight & Vehicle Rental Transportation Cyclical Turnaround' vs 'Industrial Warehouse & Logistics REITs' DISTINCT — 30d pair cooldown
+11-20 17:06|theme_merge_distinct|Arm B: 'Gold & Copper Diversified Miners (Americas/Africa)' vs 'Specialty Chemicals & Commodity Chemical Strength' DISTINCT — 30d pair cooldown
+11-20 17:06|theme_merge_distinct|Arm B: 'South African & Diversified PGM/Gold Miners' vs 'Specialty Chemicals & Commodity Chemical Strength' DISTINCT — 30d pair cooldown
+11-20 17:06|theme_merge_distinct|Arm B: 'Leisure, Hospitality & Travel Cyclical Recovery' vs 'Specialty & Value Apparel/Footwear Retail Strength' DISTINCT — 30d pair cooldown
+11-20 17:06|theme_merge_distinct|Arm B: 'Online Consumer Marketplaces & Performance Marketing Platforms' vs 'Specialty & Value Apparel/Footwear Retail Strength' DISTINCT — 30d pair cooldown
+11-20 17:06|theme_merge_distinct|Arm B: 'Global Hotel Franchisors & Operators' vs 'Specialty & Value Apparel/Footwear Retail Strength' DISTINCT — 30d pair cooldown
+11-20 17:06|theme_merge_distinct|Arm B: 'U.S. Homebuilders & Manufactured Housing' vs 'Specialty & Value Apparel/Footwear Retail Strength' DISTINCT — 30d pair cooldown
+11-20 17:06|theme_merge_distinct|Arm B: 'Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings' vs 'Specialty & Value Apparel/Footwear Retail Strength' DISTINCT — 30d pair cooldown
+11-23 17:07|theme_merge_pairs_proposed|Arm B Stage A: 8 candidate pair(s) for adjudication
+11-23 17:07|theme_merge_adjudication_error|Arm B: adjudication failed for 'Firearms & Ammunition Consumer Defense Products' × 'Aircraft MRO, Aftermarket & Aerospace Parts Distribution'
+11-23 17:07|theme_merge_adjudication_error|Arm B: adjudication failed for 'Truck Freight Brokerage & Third-Party Logistics' × 'Industrial Warehouse & Logistics REITs'
+11-23 17:07|theme_merge_adjudication_error|Arm B: adjudication failed for 'Semiconductor & Electronic Component Cycle Rebound' × 'Power Management & Analog Power Semiconductors'
+11-23 17:07|theme_merge_adjudication_error|Arm B: adjudication failed for 'Cement, Aggregates & Heavy Construction Materials' × 'Primary Silver Miners'
+11-23 17:07|theme_merge_adjudication_error|Arm B: adjudication failed for 'Steel Producers & Flat-Rolled Steel Processors' × 'Primary Silver Miners'
+11-23 17:07|theme_merge_adjudication_error|Arm B: adjudication failed for 'Copper Miners' × 'Primary Silver Miners'
+11-23 17:07|theme_merge_adjudication_error|Arm B: adjudication failed for 'Gold & Copper Mid-Tier Miners (AUGO/AU/EQX/EGO)' × 'Primary Silver Miners'
+11-23 17:07|theme_merge_adjudication_error|Arm B: adjudication failed for 'Mid-Tier & Developer Gold/Silver Miners (Uncovered Producers)' × 'Primary Silver Miners'
+(54 rows)

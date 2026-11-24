@@ -1,0 +1,14 @@
+SET
+t|left|left
+11-23 17:07:24|Arm B: adjudication failed for 'Firearms & Ammunition Consumer Defense Products' × 'Aircraft MRO, Aftermarket & Aerospac|{'verdict': 'ERROR', 'reason': 'invalid/missing verdict None (attempt 2)'}
+11-23 17:07:25|Arm B: adjudication failed for 'Truck Freight Brokerage & Third-Party Logistics' × 'Industrial Warehouse & Logistics REI|{'verdict': 'ERROR', 'reason': 'invalid/missing verdict None (attempt 2)'}
+11-23 17:07:27|Arm B: adjudication failed for 'Semiconductor & Electronic Component Cycle Rebound' × 'Power Management & Analog Power S|{'verdict': 'ERROR', 'reason': 'invalid/missing verdict None (attempt 2)'}
+11-23 17:07:29|Arm B: adjudication failed for 'Cement, Aggregates & Heavy Construction Materials' × 'Primary Silver Miners'|{'verdict': 'ERROR', 'reason': 'invalid/missing verdict None (attempt 2)'}
+11-23 17:07:31|Arm B: adjudication failed for 'Steel Producers & Flat-Rolled Steel Processors' × 'Primary Silver Miners'|{'verdict': 'ERROR', 'reason': 'invalid/missing verdict None (attempt 2)'}
+11-23 17:07:33|Arm B: adjudication failed for 'Copper Miners' × 'Primary Silver Miners'|{'verdict': 'ERROR', 'reason': 'invalid/missing verdict None (attempt 2)'}
+11-23 17:07:34|Arm B: adjudication failed for 'Gold & Copper Mid-Tier Miners (AUGO/AU/EQX/EGO)' × 'Primary Silver Miners'|{'verdict': 'ERROR', 'reason': 'invalid/missing verdict None (attempt 2)'}
+11-23 17:07:37|Arm B: adjudication failed for 'Mid-Tier & Developer Gold/Silver Miners (Uncovered Producers)' × 'Primary Silver Miners'|{'verdict': 'ERROR', 'reason': 'invalid/missing verdict None (attempt 2)'}
+(8 rows)
+d|count
+2026-11-23|8
+(1 row)

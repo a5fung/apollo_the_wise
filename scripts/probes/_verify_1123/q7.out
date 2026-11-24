@@ -1,0 +1,57 @@
+SET
+== 728 stop events today
+t|event_type|left|left
+16:02:13|stop_order_id_changed|trade #1569 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)|{"trade_id": 1569, "account_mode": "paper", "new_id": null, "reason": "cancel_or_reject_null"}
+16:02:14|stop_order_id_changed|trade #1564 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)|{"trade_id": 1564, "account_mode": "paper", "new_id": null, "reason": "cancel_or_reject_null"}
+16:02:21|stop_order_id_changed|trade #1579 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)|{"trade_id": 1579, "account_mode": "paper", "new_id": null, "reason": "cancel_or_reject_null"}
+16:02:42|stop_order_id_changed|trade #1570 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)|{"trade_id": 1570, "account_mode": "paper", "new_id": null, "reason": "cancel_or_reject_null"}
+16:05:00|stop_order_id_changed|trade #1564 [paper]: stop_order_id=1bf3eb07-e187-4742-bfb9-1729fb6ffaae (reason=sync_remediation)|{"trade_id": 1564, "account_mode": "paper", "new_id": "1bf3eb07-e187-4742-bfb9-1729fb6ffaae", "reason": "sync_remediation"}
+16:05:00|stop_order_id_changed|trade #1569 [paper]: stop_order_id=c7dec7dc-d120-4cb2-bad1-753f08d33218 (reason=sync_remediation)|{"trade_id": 1569, "account_mode": "paper", "new_id": "c7dec7dc-d120-4cb2-bad1-753f08d33218", "reason": "sync_remediation"}
+16:05:00|stop_order_id_changed|trade #1570 [paper]: stop_order_id=c3d8dca7-77aa-489e-8ba9-cc486402e553 (reason=sync_remediation)|{"trade_id": 1570, "account_mode": "paper", "new_id": "c3d8dca7-77aa-489e-8ba9-cc486402e553", "reason": "sync_remediation"}
+16:05:00|stop_order_id_changed|trade #1579 [paper]: stop_order_id=b8dd7edd-3887-44d5-a510-7527a91738f7 (reason=sync_remediation)|{"trade_id": 1579, "account_mode": "paper", "new_id": "b8dd7edd-3887-44d5-a510-7527a91738f7", "reason": "sync_remediation"}
+16:05:04|stop_order_id_changed|trade #1467 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)|{"trade_id": 1467, "account_mode": "live", "new_id": null, "reason": "cancel_or_reject_null"}
+16:20:00|stop_update_started|KYMR: $140.98 → $140.98 (1 of 1 after 0 held)|{"trade_id": 1467, "ticker": "KYMR", "old_stop_id": null, "old_stop_price": 140.98, "new_stop_price": 140.98, "remaining_shares": 1.0, "pending_exit_qty": 0, "effective_qty": 1}
+16:20:00|stop_updated|KYMR: stop now $140.98 (b9ac57f5-ea2f-44b7-8f3b-c69e6197b659) for 1 sh|{"trade_id": 1467, "ticker": "KYMR", "old_stop_id": null, "old_stop_price": 140.98, "new_stop_id": "b9ac57f5-ea2f-44b7-8f3b-c69e6197b659", "new_stop_price": 140.98, "remaining_shares": 1.0, "pending_e
+16:20:00|stop_refresh_ran|post-close: examined 6, placed 1, already-covered 5, skipped 0 (none)|{"pass": "post-close", "examined": 6, "placed": 1, "placed_tickers": ["KYMR"], "already_covered": ["CBRL", "BSP", "AXGN", "VOR", "TENB"], "skipped": [], "unprotected": []}
+(12 rows)
+== 728 mechanism count today all day
+event_type|por|count
+stop_breach_market_sale|f|1
+stop_updated|f|1
+(2 rows)
+== 727 calendar
+event_date|event_type|rel|source|refr
+2026-11-25|PCE|11-25 08:30|fxempire.com economic calendar (united-states)|11-23 17:15
+2026-11-25|AU_CPI|11-24 19:30|fxempire.com economic calendar (australia)|11-23 17:15
+2026-11-27|USDA_EXPORTS|11-27 08:30|fas.usda.gov weekly export sales schedule (rule)|11-23 17:15
+2026-11-30|OPEC||opec.org press releases (announced OPEC+ meeting dates)|11-23 17:15
+2026-12-03|USDA_EXPORTS|12-03 08:30|fas.usda.gov weekly export sales schedule (rule)|11-23 17:15
+2026-12-10|USDA_EXPORTS|12-10 08:30|fas.usda.gov weekly export sales schedule (rule)|11-23 17:15
+2026-12-17|USDA_EXPORTS|12-17 08:30|fas.usda.gov weekly export sales schedule (rule)|11-23 17:15
+2026-12-24|USDA_EXPORTS|12-24 08:30|fas.usda.gov weekly export sales schedule (rule)|11-23 17:15
+(8 rows)
+== 695 KOD 404 arms
+arm|outcome|sessions_walked|mark_r|realized_r
+book_first_hour_low_of_day|settled|11||0.26024601406735265
+entry_first_hour_bar|settled|11||0.13012300703367632
+fill_facts|unscoreable|||
+harvest_legacy_2r|settled|11||4.532181050471572
+harvest_no_breakeven|settled|11||4.532181050471572
+harvest_t3|settled|3||4.994541125711958
+harvest_trail_only|settled|11||6.273430409218268
+live_actual|settled|0||5.872104494692399
+live_replay|settled|11||5.581863383449749
+stop_adr_050|settled|11||16.242268480298687
+stop_adr_075|settled|11||10.828178986865792
+stop_low_of_day|settled|11||10.635338345864676
+stop_orb_3r|settled|11||3.545112781954892
+stop_orb_low|settled|11||10.635338345864676
+trail_character_ma|horizon|40|6.97420517474975|
+trail_pivot_swing|settled|12||4.8708943346092655
+(16 rows)
+total|with_mark
+354|1
+(1 row)
+== 717 breakout partial / stop-to-fill since 11-18
+t|event_type|left|left
+(0 rows)

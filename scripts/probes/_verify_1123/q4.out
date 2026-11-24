@@ -1,0 +1,13 @@
+SET
+== merge adjudication calls, last 8 days, by day/model/stop
+d|model|stop_reason|count|maxout|avgout
+2026-11-16|claude-haiku-5-5|tool_use|8|619|484
+2026-11-17|claude-haiku-5-5|tool_use|8|621|505
+2026-11-18|claude-haiku-5-5|tool_use|8|517|469
+2026-11-19|claude-haiku-5-5|tool_use|8|590|500
+2026-11-20|claude-haiku-5-5|tool_use|8|648|477
+2026-11-23|claude-haiku-5-5|refusal|16|0|0
+(6 rows)
+== model resolution changes, last 14 days
+t|role|prev_model|model|source
+(0 rows)

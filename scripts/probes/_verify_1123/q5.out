@@ -1,0 +1,13 @@
+SET
+d|caller|model|refused|total
+2026-11-23|theme_merge_adjudication|claude-haiku-5-5|16|16
+(1 row)
+== haiku-5-5 calls today by stop_reason and hour
+h|caller|stop_reason|count
+07|catalyst_type_classifier|tool_use|2
+09|catalyst_type_classifier|tool_use|7
+17|description_backfill|end_turn|1
+17|theme_descriptions|end_turn|1
+17|theme_ecosystem_assignment|tool_use|13
+17|theme_merge_adjudication|refusal|16
+(6 rows)

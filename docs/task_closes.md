@@ -2635,3 +2635,10 @@ EVIDENCE:
 - Mon 11-23 had a HIGH board (KYMR, AMD). Prod read at ~10:25 ET (`scripts/probes/_verify_1123/q1.out`): all 6 `mi_ep_slot_rank_shadow` rows of the day (bar_stream 09:31:00, 09:31:01, cron_9_31 09:31:18) carry a non-null `shelf_dmin` (KYMR 2.22, AMD -4.10, structure ok) and `rank_shelf` set; no row has both shelf_dmin and shelf_null NULL.
 - Acting order unchanged: acting_key = rs, rank_rs 1 KYMR / 2 AMD on every row; no `slot_rank_shelf_failed` / `slot_rank_shelf_all_stale` audit rows today.
 - The contention count accrues in the #533 watch review from here.
+
+## #695 — two columns nothing had ever written (2026-11-23)
+BAR: "each column either has a writer that has filled it on prod (count > 0 after the next run) or is dropped in a migration with its readers removed, AND tonight's sweep log no longer counts it as dead."
+EVIDENCE:
+- `mi_stock_scores.market_cap`: dropped 10-09 (boot DROP COLUMN IF EXISTS; absent from information_schema since 10-12; the RS run keeps writing ~2,400 rows a night).
+- `mi_live_fill_counterfactuals.mark_r`: the 18:04 ET job on 11-23 wrote the first 40-session horizon arm — KOD trade 404, arm trail_character_ma, outcome horizon, sessions_walked 40, mark_r 6.97; table count with mark_r = 1 of 354 (`scripts/probes/_verify_1123/q7.out`).
+- Sweep 11-23 17:30 ET (container log): "Dead-column sweep: 104 tables, 0 dead (0 new), 0 suspect, 3 event-gated, 0 error(s)".
