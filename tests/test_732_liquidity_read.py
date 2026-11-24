@@ -217,7 +217,7 @@ def test_the_block_is_labelled_and_carries_no_state_word(prod_block):
     assert prod_block["caution"]["history"] == L.CAUTION_HISTORY and "33% of 730" in L.CAUTION_HISTORY
     assert prod_block["generated_at"] == "2026-11-20T18:30:00 ET"
     json.dumps(prod_block, allow_nan=False)
-    assert len(text) < 12_000
+    assert len(text) < 20_000      # was 12_000 (6.0k before per-leg raw; raw series add ~9.8k)
 
 
 def test_no_caution_when_the_composite_is_not_draining():
@@ -503,3 +503,33 @@ def test_every_leg_has_the_sources_it_reads():
     assert set(L.NEEDS) == set(L.LEG_IDS)
     known = set(L.FRED_IDS) | set(L.ADJ_TICKERS)
     assert all(v and set(v) <= known for v in L.NEEDS.values())
+
+
+# ───────────────────────────────────────────────────────────────── 5. per-leg raw (natural units)
+def test_every_ok_leg_carries_raw_in_natural_units(prod_block):
+    inp = _inputs()
+    grid = L.session_grid(inp.adj)
+    dff = L.fred_on_grid(inp.fred["DFF"], grid, *L.PREREG_LAGS["DFF"])[0]
+    legs = {l["id"]: l for l in prod_block["legs"]}
+    for lid, l in legs.items():
+        assert l["status"] == "ok"
+        r = l["raw"]
+        assert set(r) == {"unit", "nd", "latest", "ma20", "ma50", "series", "ma50_series", "series_start"}
+        assert 0 < len(r["series"]) <= 63 and len(r["series"]) == len(r["ma50_series"])
+        assert r["series"][-1] == r["latest"]
+    assert legs["F2"]["raw"]["latest"] == round(float(dff[-1]), 2)
+    assert legs["M2"]["raw"]["latest"] > 0 and legs["K1"]["raw"]["latest"] > 0 and legs["K5"]["raw"]["latest"] > 0
+    assert legs["F1"]["raw"]["unit"] == "$tn" and legs["F1"]["raw"]["latest"] == prod_block["net_liquidity_tn"]["latest"]
+    assert legs["M1"]["raw"]["latest"] > 1 and legs["C3"]["raw"]["unit"] == "%"
+    assert legs["C3"]["raw"]["series_start"] == str(L.session_grid(inp.adj)[-len(legs["C3"]["raw"]["series"])].date())
+    assert prod_block["version"] == 1 and "raw" in prod_block["definitions"]
+
+
+def test_an_unavailable_leg_carries_no_raw():
+    b = L.build_block(_inputs(fred=("DFII10",)))
+    for l in b["legs"]:
+        assert ("raw" in l) == (l["status"] == "ok")
+
+
+def test_the_block_with_raw_is_strict_json(prod_block):
+    json.dumps(prod_block, allow_nan=False)

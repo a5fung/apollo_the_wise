@@ -96,6 +96,14 @@ NEEDS: dict[str, tuple[str, ...]] = {
     "R2": ("DGS2",), "D1": ("UUP",), "M1": ("GLD", "SLV"), "M2": ("CPER", "GLD"), "K1": ("IWM", "SPY"),
     "K5": ("ARKK", "QQQ"),
 }
+# Per-leg natural-unit display table: id -> (unit, decimals, sign back to natural, scale). X holds the ORIENTED
+# value (up = tighter); natural = X * sign * scale. F1 is -net_liq in $ millions, shown as $ trillions.
+RAW_SPEC: dict[str, tuple[str, int, float, float]] = {
+    "C3": ("%", 2, 1.0, 1.0), "F1": ("$tn", 2, -1.0, 1e-6), "F2": ("%", 2, 1.0, 1.0), "R1": ("%", 2, 1.0, 1.0),
+    "R2": ("%", 2, 1.0, 1.0), "D1": ("$", 2, 1.0, 1.0), "M1": ("", 2, 1.0, 1.0), "M2": ("", 4, -1.0, 1.0),
+    "K1": ("", 4, -1.0, 1.0), "K5": ("", 4, -1.0, 1.0),
+}
+RAW_SESSIONS = 63
 K = len(GROUPS)
 ENTER, EXIT = K / 3, K / 6
 TURN_CONFIRM = 5
@@ -388,6 +396,14 @@ def build_block(inp: Inputs, generated_at: datetime | None = None,
                    fast=_WORD[int(fd)] if not np.isnan(fd) else None,
                    turn=({"date": _d(grid, tl[-1][0]), "to": _WORD[tl[-1][1]], "sessions": n - 1 - tl[-1][0]}
                          if tl else None))
+        nat = c.X[lid].values * (RAW_SPEC[lid][2] * RAW_SPEC[lid][3])
+        unit, nd = RAW_SPEC[lid][0], RAW_SPEC[lid][1]
+        m20n, m50n = _ma(nat, 20), _ma(nat, 50)
+        k0 = max(0, n - RAW_SESSIONS)
+        row["raw"] = {"unit": unit, "nd": nd, "latest": _r(nat[-1], nd), "ma20": _r(m20n[-1], nd),
+                      "ma50": _r(m50n[-1], nd),
+                      "series": [_r(x, nd) for x in nat[k0:]], "ma50_series": [_r(x, nd) for x in m50n[k0:]],
+                      "series_start": _d(grid, k0)}
         legs.append(row)
 
     out: dict = {"version": BLOCK_VERSION, "label": LABEL, "status": "ok" if not c.reasons else "partial",
@@ -467,6 +483,8 @@ DEFINITIONS = {
     "lags": "Fed and Treasury series enter a session only once published (most the next session; the Fed balance "
             "sheet's Wednesday level on Friday). A stale or failed source reads unavailable and votes 0.",
     "seeds": "JNK and gold/silver tiles use raw prices (as charted); the indicator rows use dividend-adjusted closes.",
+    "raw": "Each indicator's own value in its natural units (not flipped to up = tighter), with its 20- and "
+           "50-session averages and the last 63 sessions.",
     "hy_spread": "ICE BofA US High Yield spread (FRED BAMLH0A0HYM2), percent; change against 21 sessions earlier.",
 }
 
