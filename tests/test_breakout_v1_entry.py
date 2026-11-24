@@ -2159,8 +2159,10 @@ def test_nothing_in_stage_2_writes_the_paper_switch():  # source-pin-ok: the abs
     refs = {str(p.relative_to(_REPO)) for p in tree
             if "breakout_v1_paper" in p.read_text() or "BREAKOUT_V1_PAPER_TOGGLE" in p.read_text()}
     # 2026-11-10: the 17:55 list job READS the switch too — its message goes out only while paper is on (his word).
+    # 2026-11-24: /trades by strategy READS it too (display only: a switched-off strategy shows on the retired line).
     assert refs == {"agents/market_intelligence/db.py", "agents/market_intelligence/broker/breakout_v1_entry.py",
-                    "agents/market_intelligence/breakout_v1_list.py"}
+                    "agents/market_intelligence/breakout_v1_list.py",
+                    "agents/market_intelligence/trades_by_strategy.py"}
     for mod in ("agents/market_intelligence/broker/breakout_v1_entry.py", "agents/market_intelligence/broker/alpaca_client.py",
                 "agents/market_intelligence/breakout_v1_list.py"):
         src = (_REPO / mod).read_text()
