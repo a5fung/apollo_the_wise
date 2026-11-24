@@ -184,13 +184,13 @@ MERGE_VERDICTS = frozenset({"MERGE", "DISTINCT", "PARENT_CHILD"})
 # Prompt anchors are LOAD-BEARING (ADR 0025 §2): the negative exemplars + the
 # merge-on-shared-DRIVER instruction are verbatim from the signed 7/11 replay.
 # Any edit here invalidates the corpus pass — re-run the corpus eval.
-ADJUDICATION_PROMPT_VERSION = "v3-2026-11-23-verdict-first"  # v3 (2026-11-23): the verdict comes FIRST and the
-# notes after it — claude-haiku-5-5 refused the v2 "Fill analysis_scratchpad FIRST" shape on every call (16 of 16 on
-# the 11-23 nightly, 14 of 14 corpus pairs), the #690/#693 refusal class. Anchors and verdict rules unchanged.
-# v2 (operator-ruled 7/12, rulings-pack R3):
-# identical-driver slice → MERGE; PARENT_CHILD requires a DISTINCT sub-driver. v1 answered
-# PARENT_CHILD to pure slices (corpus M03/04/05), which keeps both themes and leaves the
-# fragmentation (#274's whole purpose) unfixed.
+# v3 (2026-11-23): the verdict comes FIRST and the notes after it — claude-haiku-5-5 refused the
+# v2 "Fill analysis_scratchpad FIRST" shape on every call (16 of 16 on the 11-23 nightly, 14 of 14
+# corpus pairs), the #690/#693 refusal class. Anchors and verdict rules unchanged.
+# v2 (operator-ruled 7/12, rulings-pack R3): identical-driver slice → MERGE; PARENT_CHILD requires
+# a DISTINCT sub-driver. v1 answered PARENT_CHILD to pure slices (corpus M03/04/05), which keeps
+# both themes and leaves the fragmentation (#274's whole purpose) unfixed.
+ADJUDICATION_PROMPT_VERSION = "v3-2026-11-23-verdict-first"
 ADJUDICATION_PROMPT = """You adjudicate whether two stock-market THEMES should MERGE. The bar is a shared
 DRIVER / catalyst — NOT a shared sector label. Two themes in the same sector with DIFFERENT
 demand drivers stay DISTINCT.

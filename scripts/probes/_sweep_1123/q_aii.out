@@ -1,0 +1,16 @@
+SET
+ERROR:  column "shares" does not exist
+LINE 1: ... 'live' src, id, status, entry_price, stop_price, shares, to...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "mi_live_trades.status".
+ERROR:  column "entry_price" does not exist
+LINE 1: SELECT 'paper' src, id, status, entry_price, stop_price, sha...
+                                        ^
+t|event_type|left
+09:32:03|orb_bar_fetched|ORB AII O=32.21 H=32.21 L=32.20 range=0.01
+09:32:03|sizing_notional_cap_truncated|AII 2026-11-11 account_mode=live: 20% notional cap truncated 2424->30 shares (entry=$32.21 equity=$4849 max_position=$970) — risk $48.49 intended -> $0.60 actual (1% of intended)
+09:35:02|ep_rt_admit|AII rt 10.8% and delayed 10.2% BOTH >=9 @ 09:35 ET — real-time AGREES with the admit
+09:40:02|ep_rt_floor_flip_down|AII delayed 10.2% >=9 > rt 4.9% (stale false-admit REMOVED)
+09:40:54|orb_triggered|[post_open_new_high] 4 alerts: ['RSKD', 'CRWV', 'SNDK', 'AII']
+16:22:00|path_coverage_gap|AII 2026-11-11: 260/390 bars (alert-day persist)
+(6 rows)

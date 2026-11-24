@@ -10002,7 +10002,7 @@ async def _run_thesis_merge_pass(
     Runs AFTER the final Pass1/1.5/cap sequence, BEFORE the engine-drop Retired-row
     synthesis. Stage A: deterministic pairing (theme_merge_arm.propose_merge_pairs —
     the pure logic the 7/11 replay validated; ≤8 pairs/night). Stage B: Haiku
-    adjudicator (temp=0, scratchpad-first tool schema, negative exemplars). Mechanics:
+    adjudicator (temp=0, verdict-first tool schema, negative exemplars). Mechanics:
       MERGE        → union members into the higher-scoring theme (winner); the
                      absorbed theme gets a synthetic Retired row with
                      parent_theme=successor; the merged theme immediately
