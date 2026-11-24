@@ -1,0 +1,16 @@
+SET
+t|open|high|low|close|volume
+09:31|32.21|32.21|32.2|32.2|368
+09:33|31.88|31.88|31.88|31.88|201
+09:34|30.58|31.17|30.01|31.17|9685
+09:35|30.9625|30.9625|30|30|439
+09:37|30.49|30.5|30.49|30.5|440
+09:38|30.01|30.06|29.52|29.52|2744
+(6 rows)
+t|event_type|left
+09:32:03|orb_bar_fetched|ORB AII O=32.21 H=32.21 L=32.20 range=0.01
+09:32:03|sizing_notional_cap_truncated|AII 2026-11-11 account_mode=live: 20% notional cap truncated 2424->30 shares (entry=$32.21 equity=$4849 max_position=$970) — risk $48.49 intended -> $0.60 actua
+09:35:02|ep_rt_admit|AII rt 10.8% and delayed 10.2% BOTH >=9 @ 09:35 ET — real-time AGREES with the admit
+09:40:02|ep_rt_floor_flip_down|AII delayed 10.2% >=9 > rt 4.9% (stale false-admit REMOVED)
+09:40:54|orb_triggered|[post_open_new_high] 4 alerts: ['RSKD', 'CRWV', 'SNDK', 'AII']
+(5 rows)
