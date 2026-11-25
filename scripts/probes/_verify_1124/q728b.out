@@ -1,0 +1,10 @@
+SET
+et|event_type|left|left
+2026-11-24 09:35:00.428238|stop_refresh_ran|Morning: examined 6, placed 0, already-covered 6, skipped 0 (none), same-day excluded 0 (none)|{"pass": "Morning", "examined": 6, "placed": 0, "placed_tickers": [], "already_covered": ["CBRL", "KYMR", "BSP", "AXGN", "VOR", "TENB"], "skipped": [], "unprotected": [], "same_day_excluded": 0, "same_day_excluded_ticker
+2026-11-24 09:40:00.242717|stop_order_id_changed|trade #1569 [paper]: stop_order_id=300f4d06-02ad-4b90-a2a1-9e5fe2160dbf (reason=partial_replacement)|{"trade_id": 1569, "account_mode": "paper", "new_id": "300f4d06-02ad-4b90-a2a1-9e5fe2160dbf", "reason": "partial_replacement"}
+2026-11-24 09:40:00.247302|partial_exit_stop_replaced|AXGN: stop reissued for 95 sh @$56.02 (300f4d06-02ad-4b90-a2a1-9e5fe2160dbf)|{"trade_id": 1569, "ticker": "AXGN", "new_stop_id": "300f4d06-02ad-4b90-a2a1-9e5fe2160dbf", "new_remaining": 95, "stop_price": 56.02, "mechanism": "replace"}
+2026-11-24 09:45:55.552707|breakout_pp_stop_to_fill_after_third|AXGN #1569: a third sold (order 5fcd7285) — the stop on the rest $56.02 -> the fill $57.03 (moved, price_only_replace)|{"trade_id": 1569, "ticker": "AXGN", "order_id": "5fcd7285-6fcd-4e6a-87d1-d78c60a5829a", "old_stop": 56.02, "new_stop": 57.03, "moved": true, "mechanism": "price_only_replace", "old_stop_id": "300f4d06-02ad-4b90-a2a1-9e5
+2026-11-24 16:02:21.381624|stop_order_id_changed|trade #1693 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)|{"trade_id": 1693, "account_mode": "paper", "new_id": null, "reason": "cancel_or_reject_null"}
+2026-11-24 16:05:00.096159|stop_order_id_changed|trade #1693 [paper]: stop_order_id=9218f240-298c-4129-a6a6-a464a4139879 (reason=sync_remediation)|{"trade_id": 1693, "account_mode": "paper", "new_id": "9218f240-298c-4129-a6a6-a464a4139879", "reason": "sync_remediation"}
+2026-11-24 16:20:00.078004|stop_refresh_ran|post-close: examined 6, placed 0, already-covered 6, skipped 0 (none)|{"pass": "post-close", "examined": 6, "placed": 0, "placed_tickers": [], "already_covered": ["CBRL", "KYMR", "TENB", "AXGN", "MRNA", "VOR"], "skipped": [], "unprotected": []}
+(7 rows)
