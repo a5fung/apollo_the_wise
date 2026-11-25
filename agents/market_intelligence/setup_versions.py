@@ -16,8 +16,9 @@ TWO WAYS A ROW GETS ITS VERSION:
     `first_session` dates. A version with `first_session = None` is never returned by date — it is reached by its
     stamp only (the narrow version is not deployed as this is written; dating it would relabel earlier trades).
 
-HONESTY ABOUT THE PAST. v1.0 .. v1.4 are RECONSTRUCTED from the change log of `docs/setups/consolidation_breakout.md`,
-the PLAN week notes and stored probe outputs — nothing stamped them at the time. `changed_on` is the change-log date
+HONESTY ABOUT THE PAST. Nothing stamped v1.0 .. v1.4 at the time. v1.0's two dates are written in the change log of
+`docs/setups/consolidation_breakout.md`; v1.1 .. v1.4 are RECONSTRUCTED (`reconstructed=True`) from that change log,
+the PLAN week notes and stored probe outputs. `changed_on` is the change-log date
 (the day the rule was signed / built); `first_session` is the first session the paper book could have bought under
 it, which is later and is the date trades are mapped by. Ten buy-rule changes are folded into five bumps: changes
 that shipped in the same deploy, or that never acted on a paper session apart, share a version, and every one of

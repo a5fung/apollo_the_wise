@@ -148,7 +148,7 @@ def has_versions(sig: str) -> bool:
 async def load_version_stats(conn, book: str, sig: str) -> list[dict]:
     """One stat dict per setup version of `sig` that has a trade in the book, NEWEST version first. [] for a
     strategy with no version registry (no query is made). A stamp the registry does not know is kept on its own
-    line, last; a row no version covers is counted under 'before v1'."""
+    line under the known versions; a row older than every version is counted under 'before v1', last."""
     from agents.market_intelligence import setup_versions as sv
     versions = sv.versions_for(sig)
     if not versions:
@@ -181,7 +181,8 @@ async def load_version_stats(conn, book: str, sig: str) -> list[dict]:
         g["short"] = short.get(v, "")
         g["name"] = sv.display_name(v, sig)
         out.append(g)
-    out.sort(key=lambda g: order.get(g["version"], -1 if g["version"] == "before v1" else len(order)), reverse=True)
+    # registry versions newest first, then a stamp the registry does not know, then rows older than every version
+    out.sort(key=lambda g: order.get(g["version"], -2 if g["version"] == "before v1" else -1), reverse=True)
     current = versions[-1].version
     if current not in by:       # the rules in force now, even before their first trade
         out.insert(0, {"version": current, "name": sv.display_name(current, sig), "short": short[current],

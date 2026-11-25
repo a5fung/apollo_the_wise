@@ -20,6 +20,7 @@ from datetime import date
 from typing import Any, Awaitable, Callable
 
 from agents.market_intelligence.broker import alpaca_client as alpaca
+from agents.market_intelligence.setup_versions import current_setup_version  # pure (stdlib only); top-level so a missing file fails at boot
 from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_ACCOUNT_MODE_MISMATCH,
     BLOCK_PAPER_STRATEGY_ON_LIVE,
@@ -1071,7 +1072,6 @@ async def submit_trade_entry(
     exit_rule_stamp = await resolve_exit_rule_stamp(signal_type, account_mode)
     # Setup (buy-rule) version stamp (operator 2026-11-25; setup_versions.py): a pure lookup, None for
     # every strategy without a version registry (MAGNA53 and the rest — no extra statement for them).
-    from agents.market_intelligence.setup_versions import current_setup_version
     setup_version_stamp = current_setup_version(signal_type)
 
     cap_reason: str | None = None

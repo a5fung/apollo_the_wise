@@ -346,3 +346,5 @@ def test_the_current_version_shows_before_its_first_trade_and_other_strategies_g
     stats, _ = _versions(rows=[_row(date(2026, 11, 20), -50.0, -0.1, stamp="breakout_v9-test"),
                                _row(date(2026, 10, 20), -10.0, -0.1)])
     assert [g["name"] for g in stats] == ["v1.5-narrow", "v9-test", "before v1"]       # unknown stamp kept, never dropped
+    stats, _ = _versions(rows=list(VERSION_ROWS) + [_row(date(2026, 11, 20), -50.0, -0.1, stamp="breakout_v9-test")])
+    assert [g["name"] for g in stats] == ["v1.5-narrow", "v1.4", "v1.1", "v1.0", "v9-test"]   # ... and under the known ones

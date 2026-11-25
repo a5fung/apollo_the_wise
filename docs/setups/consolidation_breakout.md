@@ -609,7 +609,7 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 **Anticipated effect**: no order, list membership or exit differs. New list rows and new breakout trade rows carry the stamp; the strategy page gains up to one line per version.
 
-**Reversion-flag**: NEW. **Status**: built, not deployed. Deploy = market-agent FIRST (it adds the column and stamps the list; the `/trades` page lives there), then execution (the funnel's stamp) — an execution deploy ahead of the column would fail its deploy gate (`preflight_db_updates.py` prepares the stamp statement).
+**Reversion-flag**: NEW. **Status**: built, not deployed. Deploy = market-agent FIRST (it adds the column and stamps the list; the `/trades` page lives there), then execution (the funnel's stamp) — an execution deploy ahead of the column reports DEPLOY FAILED at its DB-prepare gate (`preflight_db_updates.py` prepares the stamp statement against the real schema), and until the column exists a breakout paper buy would fail at its insert (MAGNA53 issues no stamp statement and is unaffected).
 
 **Not done**: the monthly review (#720) and `system_review` do not split by version yet — they should read `setup_version_for_row`; `first_session` of the narrow version is filled at its verify-live.
 
