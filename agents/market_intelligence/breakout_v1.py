@@ -72,6 +72,7 @@ Units: ADR20 is a FRACTION of the close (0.05 = 5%), as everywhere in `consolida
 """
 from __future__ import annotations
 
+import logging
 import math
 import re
 from typing import Mapping, Optional, Sequence
@@ -459,7 +460,11 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
 
     # THE NARROW READING (his ruling 2026-11-25): on every row, NOT a gate — it is never in `GATES` or `failed`, so
     # the list is the same names; the paper entry buys only the rows it passes
-    out["narrow"] = narrow_reading(h, l, D)
+    try:                                    # telemetry must never change list membership (review 2026-11-25, finding 5)
+        out["narrow"] = narrow_reading(h, l, D)
+    except Exception as e:  # noqa: BLE001 — an unreadable reading is recorded as not narrow (the entry then buys nothing)
+        logging.getLogger(__name__).warning("breakout_v1 narrow reading failed at D=%s: %r — recorded as not narrow", D, e)
+        out["narrow"] = {"pass": False, "value": {"ratio": None, "window": NARROW_WINDOW, "max": NARROW_MAX, "scored": False, "error": True}}
 
     v10 = float(v[D - VOL_WINDOW + 1:D + 1].mean())
     v50 = float(v[D - VOL_WINDOW_50 + 1:D + 1].mean())

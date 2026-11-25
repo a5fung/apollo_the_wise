@@ -142,7 +142,8 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
     (the same test a narrow name passes to reach the slots) writes ONE `breakout_v1_original_would_buy` row for the
     day: ticker, level, break minute and high, the stop it would have carried (the day low through the break
     minute), width, rank and scores, `vol_bar`, `adr20`, the ratio / window / max and the reason. No order, no trade
-    row, no slot, no hold. Once per name per day, read back from the audit log (restart-safe).
+    row on the break path, no slot, no hold. (A name whose stop is wider than its daily range is abstained BEFORE this
+    check, exactly as a narrow name: a `skipped` row, no order, and then no would-buy row that day.) Once per name per day, read back from the audit log (restart-safe).
   - **The two arms on one day:** the 15:55 `breakout_v1_entry_day` row's `narrow_list` = the list's split (narrow /
     not narrow / no reading) + `narrow_breaks` (narrow names that reached the slots: an order row or a slots hold)
     + `original_only_breaks` (names with a would-buy row); the same counts lead its summary line.
@@ -565,7 +566,7 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 **Trigger**: his words, 2026-11-25, after the VOR paper buy he called "a wide flat range" and the same day's scoring of four tightening readings: *"I lean on the narrow list, but keep qullamaggie original (our interpretation) filter intact so we can keep comparing. My guess is that during 2020-2021, he may have loosened threshold to buy due to the COVID crash and recovery, I'm not sure"*. His picks: (1) "Narrow trades, original tracked" — paper buys ONLY narrow-list names; the original list keeps being computed unchanged and records what it would have bought, both on the same days in one paper book; (2) the setting: swings_shrink, window 40, tight if ratio <= 0.6, unscored = pass. Note: `docs/methodology/operator_shared_notes.md` 2026-11-25.
 
-**Evidence** (all $0, offline, frozen before scoring): the pre-registration `docs/analysis/cb_contraction_into_buy_prereg_2026-11-25.md` (C3 `swings_shrink`), scored once in `scripts/probes/_contraction_1125/01_score.out`, by era in `scripts/probes/_contraction_1125/02_by_era.out` (that file and its `.py` are untracked in the main checkout as of this build — cited, not copied; `tests/test_breakout_v2_stage1.py` reproduces its three era counts).
+**Evidence** (all $0, offline, frozen before scoring): the pre-registration `docs/analysis/cb_contraction_into_buy_prereg_2026-11-25.md` (C3 `swings_shrink`), scored once in `scripts/probes/_contraction_1125/01_score.out`, by era in `scripts/probes/_contraction_1125/02_by_era.out` (`tests/test_breakout_v2_stage1.py` reproduces its three era counts).
 - **N = 269** of Qullamaggie's dated breakout buys (the scorecard fixture). Window 40, 0.6: **203 read narrow, 66 do not.** By buy year: 2017-19 19 of 31 (61%), 2020-21 171 of 220 (78%), 2022-23 13 of 18 (72%). 4 of the 269 are unscored (counted narrow). Big winners: **22 of 26 narrow; NOT narrow: BLDP 2020-06-29 (0.73), CODX 2020-07-16 (0.61), JMIA 2020-11-18 (0.90), APHA 2021-01-06 (0.76).** Of the 218 buys on today's list, 175 read narrow and 43 do not.
 - **His 488 undated positions:** 328 read narrow (01_score.out, the row "C3 w40 T0.6").
 - **His marked charts:** VOR reads 0.701 at 2026-11-20 (0.701 / 0.736 / 0.904 on 11-13 / 11-23 / 11-24) — not narrow on every night it was listed; SKLZ 2021-01-05 0.397 and QS 2021-10-29 0.395 — narrow; OSTK, APT and MDB narrow, JMIA not.
