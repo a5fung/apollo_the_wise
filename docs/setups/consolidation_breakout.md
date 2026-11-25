@@ -478,6 +478,8 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   research's prod cut-rate step was skipped) — the first list night with readings is the baseline. (f) The FIRST
   session after the deploy reads a list written by the old code: no readings, so the paper book buys NOTHING that
   day (audited + paged) unless that night's list is re-run after the market-agent deploy (the list write upserts).
+  (g) #720's monthly capture (`scripts/probes/_720_monthly/capture/audit_breakout.sql`) does NOT select
+  `breakout_v1_original_would_buy` yet — the comparison read needs that event added there (not built here).
 - **Breakout v1's order is placed AFTER the break minute completes (since 2026-11-14, slots on an actual break; paper
   OFF).** The minute job reads a break from the last 2 completed minute bars, at second 10 of each minute:
   (a) the order goes in 10-70 seconds after the level first trades — **the first break no longer fills AT the
