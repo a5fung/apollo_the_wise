@@ -276,6 +276,43 @@ C6 (C1 + group ≥ 80) · C7 (SPY + QQQ above their 50-day instead of the 10/20 
   `r2_p33_t20` and the `com` / `comb` levels are reported beside, never deciding
   (`docs/analysis/cb_preregistration_2026-10-18.md` §P5). Nothing the shadow records or the registered discovery report prints changed.
 
+## Setup versions — which buy rules a list row or a paper trade belongs to (2026-11-25)
+
+Owner: `agents/market_intelligence/setup_versions.py` (the registry, the current version, the read-time rule, the
+bump gate's hash). **Every change-log entry below that changes a BUY rule of breakout v1 — what gets on the list,
+where the level sits, what the buy minute needs, which names take the slots — adds a version row there in the same
+commit.** Exits, labels (grades), bug fixes and plumbing are not versions.
+
+| Version | Change-log entries it folds in | First paper session it could buy on | Paper trades (through 11-23) | Dates |
+|---|---|---|---|---|
+| `breakout_v1.0` first rules | 10-28 FINAL, 10-30 phase 2 part A | 2026-11-02 | 1 (MTW 11-02) | in the change log |
+| `breakout_v1.1` list rebuilt | 11-02 daily-range floor 4.26%; 11-02 list rebuilt from Qullamaggie's trades (floor 2.1%, order score, 10-day volume bar); 11-07 stage 2 slots | 2026-11-03 | 4 (all 11-10) | RECONSTRUCTED |
+| `breakout_v1.2` price break only | 11-11 initial rule set (+ the wick rule); 11-11 volume no longer a buy condition | 2026-11-12 | 0 (paper off) | RECONSTRUCTED |
+| `breakout_v1.3` 4% daily range | 11-12 ADR floor 2.1% → 4% | 2026-11-13 | 0 (paper off) | RECONSTRUCTED |
+| `breakout_v1.4` context checks | 11-14 three context gates; 11-14 slots on an actual break; 11-14 the pick model orders the list | 2026-11-17 | 18 (11-17 .. 11-23) | RECONSTRUCTED |
+| `breakout_v1.5-narrow` narrow only | 11-25 paper buys narrow-list names only | none yet — not deployed; reached by its stamp | 0 | stamped from its first row |
+
+- **Stamped at creation (from this build):** every nightly list row carries `gates.setup_version` (inside the existing
+  `gates` jsonb, no new list column); every breakout v1 trade row carries `mi_live_trades.setup_version` (a NEW
+  nullable TEXT column, written by the entry funnel in the row's own transaction, the same shape as `exit_rule`).
+  MAGNA53 and every other strategy have no registry: no stamp, no extra statement.
+- **Rows written before the stamp** are never rewritten. A reader maps them at read time with
+  `setup_versions.setup_version_for_row(strategy, stamp, alert_date)`: the stamp wins, else the newest version whose
+  first paper session is on or before the trade's date. The narrow version has no date, so an unstamped trade is
+  never labelled narrow.
+- **RECONSTRUCTED** = rebuilt from this change log, the PLAN week notes and stored probe outputs; nothing stamped
+  those rows at the time, and the registry was NOT checked against production in this build. Ten buy-rule changes
+  sit in five bumps: changes that shipped in one deploy, or that never bought on a session apart (paper was off
+  11-02 10:07 ET → 11-09 21:23 ET and again 11-10 → 11-16), share a version; each is listed in the registry row.
+- **`/trades` strategy page:** one line per version that has a trade (newest first, the current one always shown):
+  closed count, net dollars, win %, average R, open count. Same population and R rule as the strategy's own line,
+  so the lines add up to it. Display only.
+- **The bump gate** (`tests/test_setup_versions.py`): a hash of the buy-rule constants (`breakout_v1.py` — all but the
+  recorded-only readings; the entry's opening-range / cut-off / break / volume-gate constants; the list's default
+  ranking; the pick model's frozen coefficients) is pinned to the current version, and a constant that moves without
+  a bump fails the build. It cannot see a rule changed inside a function body with no constant moving, the runtime
+  ranking switch (each list row records `ranked_by`), or the strategy row and shared sizing limits.
+
 ## The forward shadow — what runs, nightly at 17:48 ET (mon–fri)
 
 One job, one audit row (`consolidation_breakout_shadow_run`), under a 900 s budget that FAILS OPEN on timeout (an
@@ -561,6 +598,20 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 - **The pick among a day's breakouts (2026-11-13 research; WIRED 2026-11-14 as the list's order on his sign-off — change log 2026-11-14 "the PICK MODEL orders the list"):** which of the ~68 names that fire a day Qullamaggie bought is being measured in `docs/analysis/cb_pick_model_2026-11-13.md` (pre-registered before the fit, `730db6c7`). ESTABLISHED on the test years 2021-01..2022-03 (138 of his buys fire): the live order score's daily top 5 takes 18 of them, a model fitted on 2017-2020 takes 41, and ranking by dollar volume alone takes 43 (on his stream-dated buys only, post-hoc: model 30, dollar volume 23, order score 12 of 78) — liquidity is by far the largest weight (his dated buys and his panel sightings both sit at the 96th percentile of the day's list), then 6-month strength, daily range, a long advance since the major low, and tightness; base depth / length / run-up and industry-group strength carry none. Slot mechanics move the count far less than the ranking (resting on the model's top 5: 33; break-only: 28-41 by break order). PART 2, the TEMPLATE (the average path of his 62 best-confirmed 2017-2020 setups, 90 sessions in daily ranges from the buy level): ranking by likeness to it takes 6 of his 138 test-year buys (the random floor) and 16 when multiplied into the model — it does not find his picks; it DOES lean with the operator's eye (his 4 ok charts median 88th percentile of the day, his 7 no charts 56th; 22 of 28 pairs ordered right) — a candidate shape filter, not a ranking. No ranking or filter change ships without his sign-off.
 
 ## Change log
+
+### 2026-11-25 — breakout v1: every list row and paper trade carries a SETUP VERSION; `/trades` splits the strategy by it (OPERATOR "Go" 2026-11-25; a stamp and a display — NO buy rule, exit, size or safeguard changed; built on branch `narrow-list-717`, not merged, not deployed)
+
+**Trigger**: his "Go" 2026-11-25 on "stamp every list row and trade with a setup version, bumped on every buy-rule change, and split /trades and reviews by it" — the book's 23 paper trades were bought under three rule sets and read as one line; exits had eras (`rule_eras.py`), entries did not.
+
+**What changed**: the section "Setup versions" above (registry `setup_versions.py`; `gates.setup_version` on list rows; the new nullable column `mi_live_trades.setup_version`, stamped in the entry funnel for breakout v1 only; the version lines on the `/trades` strategy page; the bump gate in `tests/test_setup_versions.py`; the rule in `CHANGE_PROCESS.md`).
+
+**Evidence**: the 23 trades by date in `scripts/probes/_vor_1125/q3.out` (1 on 11-02, 4 on 11-10, 18 on 11-17..11-23) against the change-log and deploy dates; pinned in `tests/test_setup_versions.py`. No production read in this build.
+
+**Anticipated effect**: no order, list membership or exit differs. New list rows and new breakout trade rows carry the stamp; the strategy page gains up to one line per version.
+
+**Reversion-flag**: NEW. **Status**: built, not deployed. Deploy = market-agent FIRST (it adds the column and stamps the list; the `/trades` page lives there), then execution (the funnel's stamp) — an execution deploy ahead of the column would fail its deploy gate (`preflight_db_updates.py` prepares the stamp statement).
+
+**Not done**: the monthly review (#720) and `system_review` do not split by version yet — they should read `setup_version_for_row`; `first_session` of the narrow version is filled at its verify-live.
 
 ### 2026-11-25 — breakout v1 PAPER buys NARROW-list names only; the ORIGINAL list is computed unchanged and its breaks are recorded for comparison (OPERATOR RULING 2026-11-25; the PAPER lane only; built on branch `narrow-list-717`, not merged, not deployed)
 

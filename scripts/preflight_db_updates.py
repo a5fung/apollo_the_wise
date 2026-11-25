@@ -246,6 +246,10 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         "UPDATE mi_live_trades SET exit_rule = $2 WHERE id = $1",
     ),
     (
+        "entry_pipeline.submit_trade_entry: setup-version stamp (2026-11-25)",
+        "UPDATE mi_live_trades SET setup_version = $2 WHERE id = $1",
+    ),
+    (
         "order_manager._clear_depth_sell_mark (#687 B)",
         "UPDATE mi_live_trades SET depth_sell_pending_on = NULL WHERE id = $1",
     ),

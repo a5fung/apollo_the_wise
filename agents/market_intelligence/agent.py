@@ -7734,6 +7734,19 @@ class MarketIntelligenceAgent(BaseAgent):
                 logger.warning(f"/trades strategy board unavailable, legacy page shown: {e}")
                 return {"active": [], "retired": [], "all_ids": set()}
 
+        async def _version_lines(sig: str) -> str:
+            """The strategy's split by setup (buy-rule) version, as a block ending in a newline; '' for a
+            strategy with no version registry, the retired group, or a failed read (the page as before)."""
+            if sig == tbs.RETIRED or not tbs.has_versions(sig):
+                return ""                     # no registry (MAGNA53 today): no connection, no query
+            try:
+                async with (await get_pool()).acquire() as _c:
+                    block = tbs.render_versions(await tbs.load_version_stats(_c, book, sig))
+            except Exception as e:  # loud-ok: display only — the strategy page renders without the split
+                logger.warning(f"/trades version split unavailable for {sig}: {e}")
+                return ""
+            return block + "\n" if block else ""
+
         scope_bs: dict | None = None
         scope_sigs: list[str] | None = None
         if scope_tok is not None:
@@ -7992,7 +8005,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 # LEVEL 2: one strategy's (or the retired group's) page — its stat line under the title
                 body = await _build_summary()
                 head, _, rest = body.partition("\n")
-                return self._ok(request, result=head + "\n" + tbs.scope_header(scope_bs, scope_tok) + "\n" + rest)
+                return self._ok(request, result=head + "\n" + tbs.scope_header(scope_bs, scope_tok) + "\n"
+                                + await _version_lines(scope_tok) + rest)
             bs = await _book_strategies()
             sole = tbs.single_strategy_sig(bs)
             if (bs["active"] or bs["retired"]) and sole is None:
@@ -8002,7 +8016,7 @@ class MarketIntelligenceAgent(BaseAgent):
             if sole is not None:
                 # SKIP RULE: one active strategy, none retired -> the page it always was, plus its stat line
                 head, _, rest = body.partition("\n")
-                body = head + "\n" + tbs.scope_header(bs, sole) + "\n" + rest
+                body = head + "\n" + tbs.scope_header(bs, sole) + "\n" + await _version_lines(sole) + rest
             return self._ok(request, result=body)
 
         # Retained for backwards compat — callback no longer surfaces this button,

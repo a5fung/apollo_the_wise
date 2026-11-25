@@ -30,6 +30,9 @@ with no row here — is NOT mechanically decidable and is the one thing a reader
 check by eye (the row's `description` says what changed so a missing later switch is
 visible as "the label stopped moving").
 
+ENTRY / LIST rule versions of a strategy (which BUY rules produced a row — breakout v1 since 2026-11-25) live in
+`setup_versions.py`, not here: this module stays the EXIT and MAGNA53-admission tables.
+
 Pure: dates and string composition only. No DB, no I/O, no imports beyond the stdlib.
 """
 from __future__ import annotations

@@ -53,6 +53,8 @@ Every change-log entry on a setup file must have:
 
 7. **Open questions go in the file, not in tickets that get lost.** The setup file's "Known limitations / open questions" section is the canonical surface. Tickets/tasks reference back to it.
 
+8. **A buy-rule change bumps the setup version, same commit** (operator 2026-11-25, "Go"). For a strategy with a version registry (`agents/market_intelligence/setup_versions.py` — breakout v1 today; MAGNA53 adopts it by adding its rows there): every change-log entry that changes what is listed, where the buy point sits, what the buy minute needs or which names take the slots adds a `SetupVersion` row citing that entry's heading, and re-pins the rule hash. `tests/test_setup_versions.py` fails a buy-rule constant that moves without a bump. Exits, labels, bug fixes and plumbing do not bump. New list rows and trade rows are stamped with the version; older rows map by date at read time and are never rewritten.
+
 ## When NOT to log
 
 - Pure refactor with no behavior change (rename, extract function, etc.) — log in commit only.

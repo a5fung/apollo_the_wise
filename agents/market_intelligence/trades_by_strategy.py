@@ -4,7 +4,8 @@ safeguard).
 The paper book's realized total mixed the current breakout setup with two retired strategies, so it
 could not answer "how is the breakout setup doing". Two levels: LEVEL 1 = one line per ACTIVE strategy
 of the book + one folded "retired" line; LEVEL 2 = one strategy (or the retired group) with the
-existing Closed / Skipped / Scanned views scoped to it.
+existing Closed / Skipped / Scanned views scoped to it. A strategy with a setup-version registry
+(`setup_versions.py`; breakout_v1 today) also shows one line per buy-rule version on its page.
 
 Strategy key = `mi_live_trades.signal_type`. ACTIVE vs RETIRED is DERIVED from the strategy registry
 (`mi_strategies`: enabled, phase -> `resolve_account_mode_for_strategy` == this book), never a typed
@@ -48,6 +49,20 @@ _STATS_SQL = """
 """
 
 _REGISTRY_SQL = "SELECT strategy_id, signal_type, name, phase, enabled FROM mi_strategies"
+
+# One strategy's traded rows, for the split by setup (buy-rule) version (operator 2026-11-25; setup_versions.py).
+# Same population and the same R as _STATS_SQL, so the version lines add up to the strategy's own line. `$1` is the
+# book (bound — dual-account invariant), `$2` the strategy. Grouped in Python: a row's own stamp wins, an unstamped
+# row maps by its alert_date.
+_VERSION_ROWS_SQL = """
+    SELECT alert_date, setup_version, status, total_pnl, remaining_shares,
+           total_pnl / NULLIF(COALESCE(NULLIF(risk_dollars_actual, 0), NULLIF(risk_dollars, 0)), 0) AS r
+    FROM mi_live_trades
+    WHERE account_mode = $1  -- the book (dual-account invariant)
+      AND signal_type = ANY($2::text[])
+      AND status IN ('filled', 'closed')
+    ORDER BY alert_date
+"""
 
 
 def _active_for_book(rows, book: str) -> set[str]:
@@ -122,6 +137,92 @@ async def load_book_strategies(conn, book: str) -> dict:
     retired = [s for s in stats if s["sig"] not in active_ids]
     return {"active": active, "retired": retired,
             "all_ids": {s["sig"] for s in stats} | {r["signal_type"] for r in reg if r["signal_type"]}}
+
+
+def has_versions(sig: str) -> bool:
+    """True when the strategy has a setup-version registry (so its page carries the split)."""
+    from agents.market_intelligence import setup_versions as sv
+    return bool(sv.versions_for(sig))
+
+
+async def load_version_stats(conn, book: str, sig: str) -> list[dict]:
+    """One stat dict per setup version of `sig` that has a trade in the book, NEWEST version first. [] for a
+    strategy with no version registry (no query is made). A stamp the registry does not know is kept on its own
+    line, last; a row no version covers is counted under 'before v1'."""
+    from agents.market_intelligence import setup_versions as sv
+    versions = sv.versions_for(sig)
+    if not versions:
+        return []
+    rows = await conn.fetch(_VERSION_ROWS_SQL, book, [sig])
+    by: dict[str, dict] = {}
+    for r in rows:
+        v = sv.setup_version_for_row(sig, r["setup_version"], r["alert_date"]) or "before v1"
+        g = by.setdefault(v, {"version": v, "first_trade": None, "last_trade": None, "closed_n": 0, "wins": 0,
+                              "realized": 0.0, "rs": [], "open_n": 0})
+        d = r["alert_date"]
+        if d is not None:
+            g["first_trade"] = d if g["first_trade"] is None else min(g["first_trade"], d)
+            g["last_trade"] = d if g["last_trade"] is None else max(g["last_trade"], d)
+        pnl = float(r["total_pnl"] or 0)
+        if r["status"] == "closed":
+            g["closed_n"] += 1
+            g["wins"] += 1 if pnl > 0 else 0
+            g["realized"] += pnl
+            if r["r"] is not None:
+                g["rs"].append(float(r["r"]))
+        elif (r["remaining_shares"] or 0) > 0:
+            g["open_n"] += 1
+    order = {v.version: i for i, v in enumerate(versions)}
+    short = {v.version: v.short for v in versions}
+    out = []
+    for v, g in by.items():
+        rs = g.pop("rs")
+        g["avg_r"] = (sum(rs) / len(rs)) if rs else None
+        g["short"] = short.get(v, "")
+        g["name"] = sv.display_name(v, sig)
+        out.append(g)
+    out.sort(key=lambda g: order.get(g["version"], -1 if g["version"] == "before v1" else len(order)), reverse=True)
+    current = versions[-1].version
+    if current not in by:       # the rules in force now, even before their first trade
+        out.insert(0, {"version": current, "name": sv.display_name(current, sig), "short": short[current],
+                       "first_trade": None, "last_trade": None, "closed_n": 0, "wins": 0, "realized": 0.0,
+                       "avg_r": None, "open_n": 0})
+    for g in out:
+        g["current"] = g["version"] == current
+    return out
+
+
+def _span(first, last) -> str:
+    if first is None:
+        return ""
+    a = f"{first.strftime('%b')} {first.day}"
+    if last is None or last == first:
+        return a
+    return f"{a}–{last.day}" if (last.year, last.month) == (first.year, first.month) else f"{a}–{last.strftime('%b')} {last.day}"
+
+
+def fmt_version_line(g: dict) -> str:
+    """`v1.4` context checks (Nov 17–23) · 18 closed -$7,236 · win 6% · avg -0.9R · 5 open"""
+    span = _span(g["first_trade"], g["last_trade"])
+    head = f"`{g['name']}`" + (f" {g['short']}" if g["short"] else "") + (" · now" if g.get("current") else "")
+    head += f" ({span})" if span else ""
+    n = g["closed_n"]
+    if n:
+        r = f" · avg {g['avg_r']:+.1f}R" if g["avg_r"] is not None else ""
+        body = f"{n} closed {_d(g['realized'])} · win {round(g['wins'] / n * 100)}%{r}"
+    else:
+        body = "0 closed"
+    if g["open_n"]:
+        body += f" · {g['open_n']} open"
+    return f"{head} · {body}"
+
+
+def render_versions(stats: list[dict]) -> str:
+    """The 'by rule version' block under a strategy's stat line; '' when the strategy has no versions."""
+    if not stats:
+        return ""
+    return "\n".join(["*By rule version* (the buy rules each trade was bought under)",
+                      *[f"  {fmt_version_line(g)}" for g in stats]])
 
 
 def single_strategy_sig(bs: dict) -> str | None:

@@ -132,6 +132,9 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # `entry_pipeline._skip` exactly like the INSERT itself). Set once, never rewritten — the
     # rule is kept for the trade's life.
     "exit_rule":             {"entry_pipeline._skip"},
+    # Setup (buy-rule) version (2026-11-25, setup_versions.py) — ONE writer, the same shape as exit_rule: the stamp
+    # `UPDATE … SET setup_version` inside the row's INSERT transaction. Set once, never rewritten.
+    "setup_version":         {"entry_pipeline._skip"},
     # #687 B — the depth rule's "sell at the next open" mark: SET by the 16:45 job on a close
     # below the line (with hold_days/running_closes, its own domain), CLEARED by the 19:01 sale
     # once it has run to an outcome.

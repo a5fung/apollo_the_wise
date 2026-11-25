@@ -51,6 +51,7 @@ LIVE_STATS = [_stat("magna53", date(2026, 7, 1), date(2026, 11, 20), 12, 7, 2210
 class FakeConn:
     def __init__(self, registry, stats_by_book):
         self.registry, self.stats_by_book, self.calls = registry, stats_by_book, []
+        self.version_rows = []
 
     async def fetch(self, sql, *args):
         self.calls.append((sql, args))
@@ -58,6 +59,10 @@ class FakeConn:
             return self.registry
         if "GROUP BY 1" in sql:                       # the by-strategy stats read
             return self.stats_by_book[args[0]]
+        if "setup_version" in sql:                    # one strategy's rows for the split by rule version
+            if isinstance(self.version_rows, Exception):
+                raise self.version_rows
+            return self.version_rows
         return []
 
     async def fetchrow(self, sql, *args):
@@ -87,13 +92,14 @@ def _agent():
     return a
 
 
-def _detail(task, registry=REGISTRY_PAPER_MIXED, stats=None, scanned_text="SCAN BODY"):
+def _detail(task, registry=REGISTRY_PAPER_MIXED, stats=None, scanned_text="SCAN BODY", version_rows=None):
     """Drive the real `_handle_trades_detail`. Returns (text, conn)."""
     from agents.market_intelligence import agent as agent_mod
     from agents.market_intelligence import execution_client
     from shared.models import AgentRequest
 
     conn = FakeConn(registry, stats or {"paper": PAPER_STATS, "live": LIVE_STATS})
+    conn.version_rows = version_rows if version_rows is not None else []
     pool, _ = make_mock_pool()
     pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
 
@@ -241,6 +247,57 @@ def test_level2_summary_scopes_every_query_and_shows_the_strategy_line():
             assert "ANY($" in sql
     retired, _ = _detail("/trades_detail strat retired summary 2026-11-24 paper")
     assert "Retired strategies" in retired and "34 closed" in retired
+
+
+# ── the split by setup (buy-rule) version on a strategy's page (operator 2026-11-25) ───────────────────────────
+
+def _vrow(d, pnl, r, stamp=None, status="closed", remaining=0):
+    return {"alert_date": d, "setup_version": stamp, "status": status, "total_pnl": pnl,
+            "remaining_shares": remaining, "r": r}
+
+
+# 22 closed -$9,553 + 5 open, the same book as PAPER_STATS: 1 under the first rules, 4 under the rebuilt list, 17
+# closed + 5 open under the context checks. None is stamped (all were bought before the stamp existed).
+V_ROWS = ([_vrow(date(2026, 11, 2), 150.0, 0.3)]
+          + [_vrow(date(2026, 11, 10), p, -1.4) for p in (-322.0, -1082.0, -904.0, -711.0)]
+          + [_vrow(date(2026, 11, 17), 225.0, 0.5)]
+          + [_vrow(date(2026, 11, 18 + i % 3), -431.8125, -0.8) for i in range(16)]
+          + [_vrow(date(2026, 11, 23), 73.0, None, status="filled", remaining=50) for _ in range(5)])
+
+
+def test_the_breakout_page_shows_one_line_per_rule_version_that_add_up_to_its_strategy_line():
+    text, conn = _detail("/trades_detail strat breakout_v1 summary 2026-11-24 paper", version_rows=V_ROWS)
+    lines = text.splitlines()
+    i = next(k for k, ln in enumerate(lines) if ln.startswith("`breakout_v1` (since Nov 2)"))
+    assert lines[i] == "`breakout_v1` (since Nov 2) · 22 closed -$9,553 · win 27% · avg -0.4R · 5 open (+$365 already taken)"
+    assert lines[i + 1:i + 6] == [
+        "*By rule version* (the buy rules each trade was bought under)",
+        "  `v1.5-narrow` narrow only · now · 0 closed",
+        "  `v1.4` context checks (Nov 17–23) · 17 closed -$6,684 · win 6% · avg -0.7R · 5 open",
+        "  `v1.1` list rebuilt (Nov 10) · 4 closed -$3,019 · win 0% · avg -1.4R",
+        "  `v1.0` first rules (Nov 2) · 1 closed +$150 · win 100% · avg +0.3R",
+    ]
+    assert 0 + 17 + 4 + 1 == 22 and round(-6684 - 3019 + 150) == -9553            # the lines add up to the line above
+    (vsql, vargs), = [(q, a) for q, a in conn.calls if "setup_version" in q]
+    assert vargs == ("paper", ["breakout_v1"]) and "account_mode = $1" in vsql     # the book is bound (dual-account)
+
+
+def test_a_strategy_without_versions_and_the_retired_group_get_no_version_block():
+    text, conn = _detail("/trades_detail strat magna53 summary 2026-11-24 paper", version_rows=V_ROWS)
+    assert "By rule version" not in text and not [q for q, _ in conn.calls if "setup_version" in q]
+    text, conn = _detail("/trades_detail strat retired summary 2026-11-24 paper", version_rows=V_ROWS)
+    assert "By rule version" not in text and not [q for q, _ in conn.calls if "setup_version" in q]
+    live, conn = _detail("/trades_detail summary 2026-11-24", version_rows=V_ROWS)       # the live book: magna53 only
+    assert "By rule version" not in live and not [q for q, _ in conn.calls if "setup_version" in q]
+
+
+def test_a_failed_version_read_leaves_the_strategy_page_as_it_was():
+    plain, _ = _detail("/trades_detail strat breakout_v1 summary 2026-11-24 paper")
+    # no rows at all: only the current version's line
+    assert plain.count("By rule version") == 1 and "`v1.5-narrow` narrow only · now · 0 closed" in plain
+    broken, _ = _detail("/trades_detail strat breakout_v1 summary 2026-11-24 paper", version_rows=RuntimeError("db"))
+    assert "By rule version" not in broken and "`breakout_v1` (since Nov 2)" in broken
+    assert broken == "\n".join(ln for ln in plain.splitlines() if "rule version" not in ln and "v1.5-narrow" not in ln)
 
 
 def test_unscoped_old_views_are_unchanged():

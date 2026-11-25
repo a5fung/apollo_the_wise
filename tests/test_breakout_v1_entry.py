@@ -770,11 +770,12 @@ async def test_the_real_funnel_stamps_breakout_pp_and_refuses_a_row_resolving_to
 
     class _Conn(t461.FakeConn):
         async def execute(self, sql, *args):
-            if "SET exit_rule" in " ".join(sql.split()):
-                for r in self.db.rows:
-                    if r["id"] == args[0]:
-                        r["exit_rule"] = args[1]
-                return "UPDATE 1"
+            for col in ("exit_rule", "setup_version"):      # the two creation stamps (setup_version: 2026-11-25)
+                if f"SET {col}" in " ".join(sql.split()):
+                    for r in self.db.rows:
+                        if r["id"] == args[0]:
+                            r[col] = args[1]
+                    return "UPDATE 1"
             return await super().execute(sql, *args)
 
     class _Pool(t461.FakePool):
@@ -810,6 +811,7 @@ async def test_the_real_funnel_stamps_breakout_pp_and_refuses_a_row_resolving_to
             row = fdb.rows[-1]
             assert row["account_mode"] == "paper" and row["signal_type"] == SID
             assert row["exit_rule"] == "breakout_pp"
+            assert row["setup_version"] == "breakout_v1.5-narrow"
         else:
             assert res["reason"].startswith("block:account_mode_mismatch") and fdb.rows == []
             assert not om.submit_entry.await_count

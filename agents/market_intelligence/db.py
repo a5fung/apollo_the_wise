@@ -1218,6 +1218,12 @@ async def initialize_schema() -> None:
                 -- fill). Written ONCE by breakout_pp_exit._store_day0_facts; read by the stall cut. NULL = not
                 -- a breakout row, or not recorded yet.
                 breakout_day0_pp JSONB,
+                -- Setup (buy-rule) version this trade was ENTERED under (operator 2026-11-25;
+                -- setup_versions.py), stamped once in the row's own transaction by the entry funnel
+                -- and kept for life, e.g. 'breakout_v1.5-narrow'. NULL = a strategy with no version
+                -- registry (MAGNA53 today), a skip row, or a row written before the stamp — those
+                -- map by alert_date at read time (setup_versions.setup_version_for_row).
+                setup_version TEXT,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 filled_at TIMESTAMPTZ,
                 closed_at TIMESTAMPTZ,
@@ -5547,6 +5553,9 @@ async def initialize_schema() -> None:
             -- Breakout v1 PAPER (2026-10-30): see the CREATE TABLE comment (the breakout day's pp facts).
             ALTER TABLE mi_live_trades
                 ADD COLUMN IF NOT EXISTS breakout_day0_pp JSONB;
+            -- Setup version stamp (2026-11-25): see the CREATE TABLE comment. Nullable, no default, no backfill.
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS setup_version TEXT;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
             ALTER TABLE mi_themes

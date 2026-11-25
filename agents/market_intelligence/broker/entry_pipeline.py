@@ -1069,6 +1069,10 @@ async def submit_trade_entry(
     # toggle flip after this moment never touches this trade.
     from agents.market_intelligence.broker.order_manager import resolve_exit_rule_stamp
     exit_rule_stamp = await resolve_exit_rule_stamp(signal_type, account_mode)
+    # Setup (buy-rule) version stamp (operator 2026-11-25; setup_versions.py): a pure lookup, None for
+    # every strategy without a version registry (MAGNA53 and the rest — no extra statement for them).
+    from agents.market_intelligence.setup_versions import current_setup_version
+    setup_version_stamp = current_setup_version(signal_type)
 
     cap_reason: str | None = None
     trade_id = None
@@ -1163,6 +1167,13 @@ async def submit_trade_entry(
                     await conn.execute(
                         "UPDATE mi_live_trades SET exit_rule = $2 WHERE id = $1",
                         trade_id, exit_rule_stamp,
+                    )
+                if trade_id and setup_version_stamp:
+                    # The buy-rule version this row was entered under, atomic with its creation
+                    # (same shape as the exit-rule stamp; the INSERT's pinned parameters untouched).
+                    await conn.execute(
+                        "UPDATE mi_live_trades SET setup_version = $2 WHERE id = $1",
+                        trade_id, setup_version_stamp,
                     )
                 if trade_id and auto_enter:
                     # Auto-enter confirm flip INSIDE the same transaction: the

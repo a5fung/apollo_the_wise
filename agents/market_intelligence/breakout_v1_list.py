@@ -51,6 +51,7 @@ from agents.market_intelligence import breakout_v1 as bv
 from agents.market_intelligence import breakout_v1_pick_model as pm
 from agents.market_intelligence import consolidation_breakout as cb
 from agents.market_intelligence.consolidation_breakout_shadow import _json_safe, build_series
+from agents.market_intelligence.setup_versions import BREAKOUT_V1 as bv1_strategy_id, current_setup_version
 from agents.market_intelligence.db import (
     BREAKOUT_V1_PAPER_TOGGLE,
     BREAKOUT_V1_PAPER_TOGGLE_ENV,
@@ -270,6 +271,9 @@ def evaluate_members(members: list, rs_best: list, today: date, removed: Optiona
         oi = bv.order_inputs(bars, D, g["adr20"])        # the two order-score inputs, bars <= D (passing names only)
         gates = {k: v for k, v in g.items() if k != "pole_idx"}
         gates["order_inputs"] = oi
+        # the buy-rule version this row was listed under (operator 2026-11-25; `setup_versions.py`). A stamp only:
+        # it decides nothing, and it rides in the existing `gates` jsonb (no new column).
+        gates["setup_version"] = current_setup_version(bv1_strategy_id)
         row = {"scan_date": today, "ticker": m["ticker"], "level": float(g["level"]),
                "vol_bar": float(g["vol_bar"]), "adr20": g["adr20"], "rs_best": float(rb), "close": g["close"],
                "security_type": m["security_type"], "runup6m_adr": oi["runup6m_adr"],
