@@ -1844,6 +1844,46 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     ("mi_audit_log", "theme correctness check (#655)", "created_at",
      "event_type = 'theme_correctness_check'"),
 )
+# INPUT PROBES (2026-11-25, operator "go" on the 71d U&R page): a table's silence only means
+# "check the detector" when the detector HAD something to act on. `mi_flag_undercut_rally`'s scan ran
+# 839 times OK in 14 days, but its input pool (flag candidates in TIGHTENING/COILED/TRIGGERED with a
+# base_low) fell from ~20/week in Aug to 0-4/week in the Nov bear tape - the alarm paged on a starved
+# input, not a dead detector. An optional per-table probe counts the ELIGIBLE input since the table's
+# last write (param $1 = that date). Rule, applied ONLY to a cadence/sparse silence flag. The flat "20 eligible rows" floor was measured
+# on prod (11-25) and pages anyway: eligible input 06-01..09-15 = 994 rows produced just 7 outputs
+# (yield ~0.7%), and the 60 eligible rows since the last write (09-15) predict only ~0.4 outputs
+# (P(zero) ~66%) - the silence is explained by the input. So the test is EXPECTED OUTPUTS:
+#   yield    = outputs in the history window / eligible rows in the history window
+#   expected = yield x eligible rows since the last write
+#   expected < _DETECTOR_EXPECTED_OUTPUTS_PAGE_MIN -> quiet: input explains it, NO page, recorded in the
+#     audit row (kind "quiet_input_explains") so it stays visible;
+#   expected >= the constant                        -> page as before;
+#   history too thin (rows < _DETECTOR_PROBE_MIN_HISTORY_ROWS or outputs < _DETECTOR_PROBE_MIN_OUTPUTS)
+#     -> page (cannot judge);  probe raises / returns nothing usable -> page (fail loud).
+# Every number comes from SQL (history = the input table's own start .. the output's last write).
+# Probe param $1 = the output table's last write; it returns ONE row (since_rows, hist_rows, outputs).
+# It mirrors the scan's pool query MINUS the per-ticker daily-close join: it can over-count input
+# (-> page, the safe side), never under-count it. A table with NO probe is unchanged.
+# Siblings checked: support_test / ma_pullback share the flag-candidate input but their tables
+# (mi_flag_support_tests / mi_flag_ma_pullbacks) are NOT in the registry above - nothing to probe.
+# 3 = Poisson: with expected >= 3 a WORKING detector writes nothing with P = e^-3 ~ 5%, so a silence
+# at/above it is real evidence; below it the silence is the likelier outcome of a working detector.
+_DETECTOR_EXPECTED_OUTPUTS_PAGE_MIN = 3.0
+_DETECTOR_PROBE_MIN_HISTORY_ROWS = 100
+_DETECTOR_PROBE_MIN_OUTPUTS = 3
+_ELIGIBLE_FLAG_INPUT = ("stage IN ('TIGHTENING', 'COILED', 'TRIGGERED') "
+                        "AND base_low IS NOT NULL AND base_low > 0")
+_DETECTOR_INPUT_PROBES: dict[str, str] = {
+    "mi_flag_undercut_rally": (
+        "SELECT "
+        f"(SELECT COUNT(*) FROM mi_flag_candidates WHERE scan_date > $1 AND {_ELIGIBLE_FLAG_INPUT}) "
+        "AS since_rows, "
+        f"(SELECT COUNT(*) FROM mi_flag_candidates WHERE scan_date <= $1 AND {_ELIGIBLE_FLAG_INPUT}) "
+        "AS hist_rows, "
+        "(SELECT COUNT(*) FROM mi_flag_undercut_rally WHERE ur_date <= $1 AND ur_date >= "
+        "(SELECT MIN(scan_date) FROM mi_flag_candidates)) AS outputs"
+    ),
+}
 _DETECTOR_LIVENESS_LOOKBACK_DAYS = 90
 _DETECTOR_LIVENESS_MIN_ACTIVE_DAYS = 6            # >=6 fire-days (>=5 gaps) before trusting a median
 _DETECTOR_LIVENESS_CADENCE_MULTIPLIER = 3.0
@@ -1917,16 +1957,43 @@ def _format_liveness_flag(f: dict[str, Any]) -> str:
             f"normally <= {f['threshold_days']:.0f}d{gap_note}")
 
 
+def _input_explains_verdict(probe_row) -> dict[str, Any]:
+    """Pure: probe row -> {"quiet": bool, "since_rows", "hist_rows", "outputs", "yield", "expected"}.
+    Quiet only when the history is judgeable AND expected outputs < the page minimum. Raises on an
+    unusable row (caller pages - fail loud)."""
+    since, hist, outs = (int(probe_row["since_rows"]), int(probe_row["hist_rows"]),
+                         int(probe_row["outputs"]))
+    judgeable = hist >= _DETECTOR_PROBE_MIN_HISTORY_ROWS and outs >= _DETECTOR_PROBE_MIN_OUTPUTS
+    yld = outs / hist if hist > 0 else 0.0
+    expected = yld * since
+    return {"quiet": judgeable and expected < _DETECTOR_EXPECTED_OUTPUTS_PAGE_MIN,
+            "since_rows": since, "hist_rows": hist, "outputs": outs, "yield": yld,
+            "expected": expected}
+
+
+def _format_quiet_flag(f: dict[str, Any]) -> str:
+    label = f.get("label", f["table"])
+    return (f"{label} ({f['table']}): quiet: input explains it ({f['input_rows']} eligible since "
+            f"{f['last_write']:%m-%d}; at its {f['input_yield']:.1%} yield ~{f['expected_outputs']:.1f} "
+            f"expected)")
+
+
 async def run_detector_liveness_check() -> dict[str, Any]:
     """Nightly per-table cadence check (PLAN #543): did each watched detector output table write
     a row recently enough for ITS OWN historical cadence? Speaks only when a table's silence
     exceeds its own derived threshold (see the header above for the full rule + why it won't
     cry wolf).
 
-    Returns {"tables_scanned": n, "flags": [...], "errors": [...], "spoke": bool}.
+    INPUT-AWARE (2026-11-25): a silent table with an input probe (`_DETECTOR_INPUT_PROBES`) whose
+    expected outputs since its last write (yield x eligible rows) below
+    `_DETECTOR_EXPECTED_OUTPUTS_PAGE_MIN` is recorded as "quiet: input explains it" (out["quiet"] +
+    the audit row), NOT paged; enough expected output, thin history, or a probe error, pages.
+
+    Returns {"tables_scanned": n, "flags": [...], "quiet": [...], "errors": [...], "spoke": bool}.
     Never raises — a health guard that dies silently is the failure it exists to prevent.
     """
-    out: dict[str, Any] = {"tables_scanned": 0, "flags": [], "errors": [], "spoke": False}
+    out: dict[str, Any] = {"tables_scanned": 0, "flags": [], "quiet": [], "errors": [],
+                           "spoke": False}
     today = _now_et().date()
     cutoff_date = today - timedelta(days=_DETECTOR_LIVENESS_LOOKBACK_DAYS)
 
@@ -2024,7 +2091,25 @@ async def run_detector_liveness_check() -> dict[str, Any]:
                                     **flag, "in_grace": True,
                                     "first_seen_date": first_seen.isoformat(),
                                 }
-                        out["flags"].append({**flag, "table": table, "label": label})
+                        entry = {**flag, "table": table, "label": label}
+                        probe_sql = _DETECTOR_INPUT_PROBES.get(table)
+                        if probe_sql and flag["kind"] != "never_fired":
+                            try:
+                                verdict = _input_explains_verdict(
+                                    await c.fetchrow(probe_sql, last_write))
+                            except Exception as pe:  # fail LOUD: an unreadable probe never silences
+                                logger.warning("detector_liveness_check: input probe for %s "
+                                               "failed (paging): %s", table, pe)
+                                out["errors"].append({"table": table, "probe_error": str(pe)})
+                                verdict = None
+                            if verdict is not None and verdict["quiet"]:
+                                out["quiet"].append({**entry, "kind": "quiet_input_explains",
+                                                     "was_kind": flag["kind"],
+                                                     "input_rows": verdict["since_rows"],
+                                                     "input_yield": verdict["yield"],
+                                                     "expected_outputs": verdict["expected"]})
+                                continue
+                        out["flags"].append(entry)
                 except Exception as e:  # one bad table must not kill the sweep
                     logger.warning("detector_liveness_check: table %s failed: %s", table, e)
                     out["errors"].append({"table": table, "error": str(e)})
@@ -2039,10 +2124,11 @@ async def run_detector_liveness_check() -> dict[str, Any]:
     try:
         await log_audit_event(
             "detector_liveness_check",
-            f"{out['tables_scanned']} tables, {len(out['flags'])} dark",
+            f"{out['tables_scanned']} tables, {len(out['flags'])} dark"
+            + (f", {len(out['quiet'])} quiet (input explains it)" if out["quiet"] else ""),
             json.dumps([
                 {**f, "last_write": f["last_write"].isoformat() if f.get("last_write") else None}
-                for f in out["flags"]
+                for f in out["flags"] + out["quiet"]
             ]),
         )
     except Exception as e:

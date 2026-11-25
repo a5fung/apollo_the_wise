@@ -641,3 +641,89 @@ def test_nightly_audit_wires_the_detector_liveness_check():
     import inspect
     src = inspect.getsource(sched._post_nightly_audit_job)
     assert "await run_detector_liveness_check()" in src
+
+
+# ── input-aware liveness (2026-11-25): 'no input' = quiet market, 'input but no output' = page ──
+
+def _ur_dark(monkeypatch, probe):
+    """U&R silent 71d on a cadence history (threshold 45d); `probe` = fetchrow side effect."""
+    last = date(2026, 8, 16) - timedelta(days=71)
+    ur = (last, [{"d": d} for d in _days_ending(last, 8, 3)], None)
+    conn, logged, sent = _wire(monkeypatch, per_table={"mi_flag_undercut_rally": ur})
+    seen = []
+
+    async def _fetchrow(sql, *a):
+        seen.append((sql, a))
+        return probe(sql, *a)
+    conn.fetchrow = _fetchrow
+    return logged, sent, seen, last
+
+
+def _row(since, hist=994, outs=7):
+    return {"since_rows": since, "hist_rows": hist, "outputs": outs}
+
+
+def test_real_prod_numbers_read_quiet_and_are_recorded(monkeypatch):
+    logged, sent, seen, last = _ur_dark(monkeypatch, lambda *a: _row(60))
+    out = asyncio.run(hc.run_detector_liveness_check())
+    assert out["flags"] == [] and sent == []
+    assert len(out["quiet"]) == 1
+    q = out["quiet"][0]
+    assert q["kind"] == "quiet_input_explains" and q["input_rows"] == 60
+    line = hc._format_quiet_flag(q)
+    assert line == ("flag undercut & rally (mi_flag_undercut_rally): quiet: input explains it "
+                    "(60 eligible since 06-06; at its 0.7% yield ~0.4 expected)"), line
+    ev, summary, detail = logged[0]
+    assert ev == "detector_liveness_check" and "1 quiet (input explains it)" in summary
+    assert json.loads(detail)[0]["kind"] == "quiet_input_explains"
+    assert seen[0][1] == (last,)  # probe window starts at the table's last write
+
+
+def test_same_yield_with_600_rows_since_pages(monkeypatch):
+    _l, sent, _s, _x = _ur_dark(monkeypatch, lambda *a: _row(600))  # ~4.2 expected >= 3
+    out = asyncio.run(hc.run_detector_liveness_check())
+    assert out["quiet"] == [] and [f["table"] for f in out["flags"]] == ["mi_flag_undercut_rally"]
+    assert len(sent) == 1 and "silent 71d" in sent[0]
+
+
+def test_expected_threshold_is_exact():
+    n = hc._DETECTOR_EXPECTED_OUTPUTS_PAGE_MIN
+    assert hc._input_explains_verdict(_row(int(n / 0.01) - 1, 1000, 10))["quiet"] is True
+    assert hc._input_explains_verdict(_row(int(n / 0.01), 1000, 10))["quiet"] is False
+
+
+def test_thin_history_pages(monkeypatch):
+    for r in (_row(5, hist=99, outs=7), _row(5, hist=994, outs=2)):
+        _l, sent, _s, _x = _ur_dark(monkeypatch, lambda *a, r=r: r)
+        out = asyncio.run(hc.run_detector_liveness_check())
+        assert out["quiet"] == [] and len(sent) == 1
+
+
+def test_probe_error_pages_never_silences(monkeypatch):
+    def _boom(*a):
+        raise RuntimeError("db down")
+    _l, sent, _s, _x = _ur_dark(monkeypatch, _boom)
+    out = asyncio.run(hc.run_detector_liveness_check())
+    assert out["quiet"] == [] and len(sent) == 1
+    assert out["errors"] and "probe_error" in out["errors"][0]
+
+
+def test_probe_returning_nothing_pages(monkeypatch):
+    _l, sent, _s, _x = _ur_dark(monkeypatch, lambda *a: None)
+    out = asyncio.run(hc.run_detector_liveness_check())
+    assert out["quiet"] == [] and len(sent) == 1
+
+
+def test_table_without_probe_is_unchanged(monkeypatch):
+    assert "mi_htf_breakout_shadow" not in hc._DETECTOR_INPUT_PROBES
+    _conn, _logged, sent = _wire(monkeypatch, per_table={
+        "mi_htf_breakout_shadow": _DARK_HTF_BREAKOUT})
+    out = asyncio.run(hc.run_detector_liveness_check())
+    assert [f["table"] for f in out["flags"]] == ["mi_htf_breakout_shadow"] and out["quiet"] == []
+    assert len(sent) == 1
+
+
+def test_every_probe_table_is_registered_and_sql_takes_one_param():
+    registered = {t for t, *_ in hc._DETECTOR_LIVENESS_TABLES}
+    for table, sql in hc._DETECTOR_INPUT_PROBES.items():
+        assert table in registered and "$1" in sql and "$2" not in sql
