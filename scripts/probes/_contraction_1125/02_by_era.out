@@ -1,0 +1,12 @@
+swings_shrink window 40, tight if <= 0.6:
+  2017-19:  31 buys, tight  19 (61%); median reading 0.50
+  2020-21: 220 buys, tight 171 (78%); median reading 0.40
+  2022-23:  18 buys, tight  13 (72%); median reading 0.37
+swings_shrink window 40, tight if <= 0.7:
+  2017-19:  31 buys, tight  23 (74%); median reading 0.50
+  2020-21: 220 buys, tight 194 (88%); median reading 0.40
+  2022-23:  18 buys, tight  14 (78%); median reading 0.37
+swings_shrink window 60, tight if <= 0.6:
+  2017-19:  31 buys, tight  27 (87%); median reading 0.32
+  2020-21: 220 buys, tight 197 (90%); median reading 0.32
+  2022-23:  18 buys, tight  13 (72%); median reading 0.27
