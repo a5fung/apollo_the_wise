@@ -92,6 +92,15 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
 >   minute, is set by the pick model's score. The order score and dollar volume are computed and stored beside it
 >   every night as backups; ONE database switch (`breakout_v1_ranking`) picks which of the three sets the order.
 >   "The ORDER inside the list" below + change log 2026-11-14.
+> - **⚠ 2026-11-25: THE NARROW LIST — PAPER BUYS NARROW NAMES ONLY; THE ORIGINAL LIST IS UNCHANGED AND TRACKED
+>   (OPERATOR RULING: "I lean on the narrow list, but keep qullamaggie original (our interpretation) filter intact so
+>   we can keep comparing"; built on branch `narrow-list-717`, NOT merged, NOT deployed).** Every list row carries a
+>   narrow reading (`breakout_v1.narrow_reading`, in the row's `gates.narrow`): swings over the last 40 sessions,
+>   narrow when the mean of the last 2 swings is no more than 0.6 of the biggest swing (too few swings to score =
+>   narrow). **It is NOT a list gate** — the list is the same names, ranks and levels. The paper entry buys only a
+>   name whose row reads narrow; a not-narrow name that breaks its level gets ONE `breakout_v1_original_would_buy`
+>   audit row that day and no order, slot or hold. A row with no reading is treated as NOT narrow (no buy). Change
+>   log 2026-11-25 below.
 > - **⚠ 2026-11-14: SLOTS ON AN ACTUAL BREAK** — a name takes a paper slot and gets its order only in a minute where
 >   it has broken its level — traded THROUGH it (a touch is no break), read from the last 2 completed minutes; no buy
 >   rests ahead of a break (change log 2026-11-14 below). The slot count (5), the
@@ -113,6 +122,33 @@ moves `cb`'s numbers). Since the 2026-11-02 rebuild (change log below; spec
 | 10 | not a re-widening base on a flat / falling lower line | OUT when V3 > 0.2123 (strict) AND the 30-session lower line's slope <= 0, with >= 189 bars (fewer = `insufficient_history`, passes). Log prices; chart height = max high - min low over the last 189 sessions; swings = 3-bar-each-side pivots over the last 60 sessions; V3 = after the biggest swing, the largest smaller-of-two consecutive swings bigger than one already seen since it, / chart height; lower line = least squares through the 30-session swing lows + the lowest low after the last pivot, slope per 10 sessions / chart height | 2026-11-14 SIGNED; his MELI / TDOC vs FIRY / BLDP markups; the line = MU 2021-12-21's V3 (0.21229655, a High buy, kept by the strict >) | `lower_line`; `LOWER_LINE_V3_MIN`, `LOWER_LINE_SESSIONS`, `LOWER_LINE_MIN_BARS`, `rewiden_v3`, `lower_line_slope`, `swing_pivots` |
 | — | the ORDER (not a gate; removes no name) | `list_rank` 1 = the highest PICK MODEL score: a logistic fitted once on Qullamaggie's 2017-2020 buys and frozen (16 inputs, 15 of them the name's 0..1 rank inside the night's list, a blank cross-section rank reading 0.5). Backups stored on every row every night: the order score (the order 11-02..11-14) and 20-session dollar volume. Switch: `mi_safeguard_state('breakout_v1_ranking', 'global')` = `pick_model` (default, no row) / `order_score` / `dollar_volume` | 2026-11-14 SIGNED "pick model, let's continue to eval and keep all the old models we have as backup"; `_717_rank2_1114/01_rank2.out` | `breakout_v1_pick_model.py` (`FEATURES`, `INTERCEPT`, `COEF`, `base_facts`, `pick_inputs`); `breakout_v1_list.rank_all`, `pick_scores`, `get_ranking`; columns `pick_score`, `dollar_vol20`, `rank_pick_model`, `rank_order_score`, `rank_dollar_volume`, `ranked_by` |
 
+- **THE NARROW READING (2026-11-25; on every row, NOT a gate; `breakout_v1.swings_shrink_ratio` /
+  `narrow_reading`, constants `NARROW_WINDOW` 40, `NARROW_MAX` 0.6, `NARROW_MIN_LEGS` 3).** On the log highs and lows
+  of the last 40 sessions ending D: the swings (`swing_legs`, 3-bar-each-side pivots; the last swing = the move from
+  the last confirmed pivot to the extreme since it); **ratio = mean(the last 2 swings) / the biggest swing; narrow
+  when ratio <= 0.6.** Unscored (fewer than 3 swings, a non-finite or zero high / low in the window, fewer than 40
+  bars) = narrow, as the pre-registration froze it. Stored as `gates.narrow` = `{"pass", "value": {"ratio",
+  "window", "max", "scored"}}` — no new column; the entry job reads it as `gates->'narrow'`
+  (`db.BV1_LIST_SELECT_SQL`). Source: C3 `swings_shrink` of
+  `docs/analysis/cb_contraction_into_buy_prereg_2026-11-25.md` (reference `scripts/probes/_contraction_1125/01_score.py::r_c3`);
+  the setting (window 40, 0.6) is HIS PICK of 2026-11-25. Never in `GATES` or `failed`:
+  `tests/test_breakout_v2_stage1.py` proves `ok` / `failed` / the level are identical on all 269 scorecard charts
+  whatever the reading says.
+  - **Who reads it:** only the PAPER entry (`broker/breakout_v1_entry.py::narrow_of`). Narrow = the reading's `pass`
+    is exactly true. `pass` false = `not_narrow`. **No reading (a row written before the rule, a NULL, anything
+    unparsable) = `narrow_missing` = NOT narrow — never bought (the fail-safe)**; the day that happens writes one
+    `breakout_v1_narrow_missing` audit row and pages once.
+  - **The original arm's record:** the first minute a not-narrow name breaks its level in a state that permits a buy
+    (the same test a narrow name passes to reach the slots) writes ONE `breakout_v1_original_would_buy` row for the
+    day: ticker, level, break minute and high, the stop it would have carried (the day low through the break
+    minute), width, rank and scores, `vol_bar`, `adr20`, the ratio / window / max and the reason. No order, no trade
+    row, no slot, no hold. Once per name per day, read back from the audit log (restart-safe).
+  - **The two arms on one day:** the 15:55 `breakout_v1_entry_day` row's `narrow_list` = the list's split (narrow /
+    not narrow / no reading) + `narrow_breaks` (narrow names that reached the slots: an order row or a slots hold)
+    + `original_only_breaks` (names with a would-buy row); the same counts lead its summary line.
+  - **A row that pre-dates the rule:** an UNFILLED breakout buy (or a row that never got its order) whose list row
+    does not read narrow is cancelled `setup:breakout_not_narrow` and never re-placed. A FILLED position is not
+    touched by this rule.
 - **The level and the volume bar (for the next session):** level = the highest high of D-4..D (strict break); the
   volume bar = **1.2 x the mean volume of the last 10 sessions D-9..D** (his ruling 2026-11-02; was the 50-day; `vol50`
   is kept on the row as telemetry only). Live, the entry reads it as the F1 intraday pace against this bar.
@@ -427,6 +463,21 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 (`max_positions`) with the EP lanes. None of it is touched by this build.
 
 ## Known limitations / open questions
+- **The narrow list (2026-11-25) — what it costs and what its record cannot say.** (a) On Qullamaggie's 269 dated
+  buys the reading is narrow on **203** — it would NOT have bought 66 of his buys, **4 of them big winners (BLDP
+  2020-06-29, CODX 2020-07-16, JMIA 2020-11-18, APHA 2021-01-06; 22 of 26 kept)**; of the buys ON the list, 43 read
+  not narrow. The scorecard bar (#717's DoD: never below 445 / 362 / 26 of 26 big winners) is measured on the LIST,
+  which did not move, so it still holds for the original list only — whether the DoD is restated for the paper arm
+  is HIS call. (b) As a LIST GATE the same reading scored NULL the same day (0 of 51 settings keep his buys and drop
+  VOR); this is his ruling to buy the narrow names in paper while the original keeps being compared, not a finding
+  that the reading separates his buys. (c) The would-buy row is an UPPER BOUND on what the original list would have
+  bought: the 5 slots, the chase cap, the width at the expected fill and the fill itself are not judged, and in one
+  shared book the narrow names take slots the original arm would have filled differently — #720's review joins
+  daily bars on it. (d) `narrow_breaks` in the day row counts order rows and slots holds; a break lost to a failed
+  pre-flight is in neither. (e) The share of a live list night that reads not narrow is NOT measured (the
+  research's prod cut-rate step was skipped) — the first list night with readings is the baseline. (f) The FIRST
+  session after the deploy reads a list written by the old code: no readings, so the paper book buys NOTHING that
+  day (audited + paged) unless that night's list is re-run after the market-agent deploy (the list write upserts).
 - **Breakout v1's order is placed AFTER the break minute completes (since 2026-11-14, slots on an actual break; paper
   OFF).** The minute job reads a break from the last 2 completed minute bars, at second 10 of each minute:
   (a) the order goes in 10-70 seconds after the level first trades — **the first break no longer fills AT the
@@ -507,6 +558,37 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 - **The pick among a day's breakouts (2026-11-13 research; WIRED 2026-11-14 as the list's order on his sign-off — change log 2026-11-14 "the PICK MODEL orders the list"):** which of the ~68 names that fire a day Qullamaggie bought is being measured in `docs/analysis/cb_pick_model_2026-11-13.md` (pre-registered before the fit, `730db6c7`). ESTABLISHED on the test years 2021-01..2022-03 (138 of his buys fire): the live order score's daily top 5 takes 18 of them, a model fitted on 2017-2020 takes 41, and ranking by dollar volume alone takes 43 (on his stream-dated buys only, post-hoc: model 30, dollar volume 23, order score 12 of 78) — liquidity is by far the largest weight (his dated buys and his panel sightings both sit at the 96th percentile of the day's list), then 6-month strength, daily range, a long advance since the major low, and tightness; base depth / length / run-up and industry-group strength carry none. Slot mechanics move the count far less than the ranking (resting on the model's top 5: 33; break-only: 28-41 by break order). PART 2, the TEMPLATE (the average path of his 62 best-confirmed 2017-2020 setups, 90 sessions in daily ranges from the buy level): ranking by likeness to it takes 6 of his 138 test-year buys (the random floor) and 16 when multiplied into the model — it does not find his picks; it DOES lean with the operator's eye (his 4 ok charts median 88th percentile of the day, his 7 no charts 56th; 22 of 28 pairs ordered right) — a candidate shape filter, not a ranking. No ranking or filter change ships without his sign-off.
 
 ## Change log
+
+### 2026-11-25 — breakout v1 PAPER buys NARROW-list names only; the ORIGINAL list is computed unchanged and its breaks are recorded for comparison (OPERATOR RULING 2026-11-25; the PAPER lane only; built on branch `narrow-list-717`, not merged, not deployed)
+
+**Trigger**: his words, 2026-11-25, after the VOR paper buy he called "a wide flat range" and the same day's scoring of four tightening readings: *"I lean on the narrow list, but keep qullamaggie original (our interpretation) filter intact so we can keep comparing. My guess is that during 2020-2021, he may have loosened threshold to buy due to the COVID crash and recovery, I'm not sure"*. His picks: (1) "Narrow trades, original tracked" — paper buys ONLY narrow-list names; the original list keeps being computed unchanged and records what it would have bought, both on the same days in one paper book; (2) the setting: swings_shrink, window 40, tight if ratio <= 0.6, unscored = pass. Note: `docs/methodology/operator_shared_notes.md` 2026-11-25.
+
+**Evidence** (all $0, offline, frozen before scoring): the pre-registration `docs/analysis/cb_contraction_into_buy_prereg_2026-11-25.md` (C3 `swings_shrink`), scored once in `scripts/probes/_contraction_1125/01_score.out`, by era in `scripts/probes/_contraction_1125/02_by_era.out` (that file and its `.py` are untracked in the main checkout as of this build — cited, not copied; `tests/test_breakout_v2_stage1.py` reproduces its three era counts).
+- **N = 269** of Qullamaggie's dated breakout buys (the scorecard fixture). Window 40, 0.6: **203 read narrow, 66 do not.** By buy year: 2017-19 19 of 31 (61%), 2020-21 171 of 220 (78%), 2022-23 13 of 18 (72%). 4 of the 269 are unscored (counted narrow). Big winners: **22 of 26 narrow; NOT narrow: BLDP 2020-06-29 (0.73), CODX 2020-07-16 (0.61), JMIA 2020-11-18 (0.90), APHA 2021-01-06 (0.76).** Of the 218 buys on today's list, 175 read narrow and 43 do not.
+- **His 488 undated positions:** 328 read narrow (01_score.out, the row "C3 w40 T0.6").
+- **His marked charts:** VOR reads 0.701 at 2026-11-20 (0.701 / 0.736 / 0.904 on 11-13 / 11-23 / 11-24) — not narrow on every night it was listed; SKLZ 2021-01-05 0.397 and QS 2021-10-29 0.395 — narrow; OSTK, APT and MDB narrow, JMIA not.
+- **His chart grades** (same row): of his reason-matched "no" charts it rejects 5 of 7 on the live-list sheets and 11 of 13 historical; of his good / ok charts it keeps 6 of 13 live-list and 11 of 14 historical. So it leans his way on the historical grades and drops about half of his good / ok live-list charts.
+- **As a LIST GATE the reading is NULL** (the pre-registration's verdict, same day): 0 of 51 settings keep Qullamaggie's buys and drop VOR; this setting loses 4 listed big winners. That verdict stands — this change does not gate the list.
+- **His 2020-21 guess (he loosened in the COVID recovery) is NOT supported by this reading:** 2020-21 buys read narrow MORE often (78%) than 2017-19 (61%), median reading 0.40 vs 0.50. One reading, not a verdict on the guess.
+- CHANGE_PROCESS rule 3 (a hard rule needs his reviewed sign-off): the rule is his ruling and his pick of the setting; the names it drops on the scorecard are listed above. No name was classified "correctly dropped" by the agent.
+
+**What changed**:
+- `agents/market_intelligence/breakout_v1.py` (market-agent): `swings_shrink_ratio` + `narrow_reading` (PURE; `NARROW_WINDOW` 40, `NARROW_MAX` 0.6, `NARROW_MIN_LEGS` 3), and `v1_gates` returns `narrow` = `{"pass", "value": {"ratio", "window", "max", "scored"}}` on every evaluated name. NOT in `GATES`, never in `failed`, not in `ok`. The nightly list (`breakout_v1_list.py`, untouched) already writes the whole `v1_gates` output into the row's `gates` jsonb, so the reading rides there — **no new column, no migration**.
+- `agents/market_intelligence/db.py`: `BV1_LIST_SELECT_SQL` adds `gates->'narrow' AS narrow` (the entry tick's one list read; registered in `scripts/preflight_db_updates.py` as before — the same constant).
+- `agents/market_intelligence/broker/breakout_v1_entry.py` (apollo-execution): `narrow_of` (the rule), the PASS 1 branch (a not-narrow name that breaks -> `_record_original_would_buy`, action `original_only_break`, never the slots), the `_enter` refusal, `_terminal_reason` (an unfilled buy / unsubmitted row on a not-narrow row -> `setup:breakout_not_narrow`, so no re-price re-places one), the once-a-day `breakout_v1_narrow_missing` row + page, and the 15:55 day row's `narrow_list` counts. `breakout_v1_entry_order` rows gain `ticker`, `day`, `narrow_ratio`.
+- `agents/market_intelligence/broker/skip_reasons.py`: `SETUP_BREAKOUT_NOT_NARROW`.
+- **The fail-safe, chosen explicitly:** a list row with NO narrow reading (written before this change, NULL, or unparsable) is NOT narrow -> no buy. The other choice (missing = narrow) could buy a not-narrow name on a stale or broken row; this one cannot. Its cost is the first session after the deploy (limitation (f)).
+- **Not changed:** the list's rules, membership, ranks, levels and message; the break test, the slots (5, hold-only, list-rank order), the order spec, sizing, stops, the stop at the fill, the `pp` exit, the 15:55 cancel, the four paper walls, the switch; every EP / live path. Paper only.
+
+**Anticipated effect**: on the list — none (same names; one more key inside `gates`). On the paper book — fewer buys: only narrow names reach the slots; on the scorecard about 1 in 5 of his listed buys reads not narrow (43 of 218), and the share on a live list night is not measured (limitation (e)). Each not-narrow name that breaks writes one `breakout_v1_original_would_buy` row (none existed before). The first session after the deploy buys nothing unless the prior night's list is re-run (limitation (f)).
+
+**Reversion-flag**: NEW (no prior change to this constant or logic; `NARROW_*` are new). Related, not reversed: "tightening" was REMOVED as a list gate on 2026-11-02 (his CODX / PENN — that definition misread his pattern) and three right-edge tightness gates failed on 2026-11-11 (round 4). This is a different measure (swings over 40 sessions), it does not gate the list, and the original list is kept beside it precisely so the comparison can overturn it.
+
+**To revert**: set `NARROW_MAX` aside by making `breakout_v1_entry.narrow_of` return `ok: True` for every row (one function; the list reading and the would-buy rows can stay as telemetry), deploy `execution`. Or revert the commit; the `gates.narrow` key on stored rows is inert.
+
+**Tests**: `tests/test_breakout_v2_stage1.py` (+7): the constants; the bridge (VOR 0.701 not narrow on four nights, SKLZ 0.397 / QS 0.395 narrow); 203 of 269 by era 19 / 171 / 13, 4 unscored, the 4 big winners named; parity with the frozen reference on all 269; the ORIGINAL list identical on all 269 with the reading forced each way (and 43 listed buys not narrow, still listed); unscored / broken-window cases; the list row carries it inside `gates`. `tests/test_breakout_v1_entry.py` §12 (+15): `narrow_of`'s fail-safe; a not-narrow breaking name writes one would-buy row and no order / slot / hold / trade row (and the same bars on a narrow row buy as before); it never takes a slot from a narrow name; no-reading rows are never bought and the day is audited + paged once; once a day across a restart, a swallowed write retried; an unfilled buy / unsubmitted row / dead planned cancel on a not-narrow row is cancelled and never re-placed; a filled position untouched; `_enter` refuses; the 15:55 counts; the SQL pin and the real reader. 12 of the 15 fail when `narrow_of` is made to pass everything.
+
+**Status**: built 2026-11-25 on branch `narrow-list-717`; NOT merged, NOT deployed. Deploy = `market-agent` (the list) THEN `execution` (the entry) — both needed; the order matters only for which night first carries readings. Field validation per the EXPECT in PLAN #717.
 
 ### 2026-11-18 — breakout v1 PAPER: after a third sells, the stop on the rest moves to the fill by a PRICE-ONLY REPLACE on the live stop, not cancel-then-place (BUG FIX — no price, share count, target, trigger or eligibility changed; built, not deployed)
 

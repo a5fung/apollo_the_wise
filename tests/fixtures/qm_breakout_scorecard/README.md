@@ -12,3 +12,6 @@
   shows holdings, not why he bought): some are leveraged or index funds the list never takes, some may be other setups.
   The last three columns are the 2026-11-11 reading (on the list on any night `lo-1 .. hi-1`), not a spec.
 - `mtw_bars.csv` — MTW to 2026-10-30 (breakout v1's first paper buy, "not a breakout").
+- `vor_bars_2026-11-24.psv` — VOR's daily bars 2026-03-02 .. 2026-11-24 (prod `mi_daily_closes`; a copy of
+  `scripts/probes/_vor_1125/vor_bars.psv`, 2026-11-25): the paper buy he called "a wide flat range", the bridge for the
+  narrow reading (0.701 at 2026-11-20 — not narrow).

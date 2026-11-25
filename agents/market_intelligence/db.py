@@ -20007,7 +20007,7 @@ async def bv1_replace_list(scan_date: date, rows: list[dict]) -> int:
 # fails at the gate instead of at the first 09:35 tick.
 BV1_LIST_SELECT_SQL = """
     SELECT scan_date, ticker, level, vol_bar, adr20, rs_best, close, security_type, list_rank, order_score,
-           pick_score, dollar_vol20, ranked_by
+           pick_score, dollar_vol20, ranked_by, gates->'narrow' AS narrow
       FROM mi_breakout_v1_list WHERE scan_date = $1 ORDER BY list_rank
 """
 
@@ -20018,7 +20018,10 @@ async def bv1_get_list(scan_date: date) -> list[dict]:
     2026-11-14 `ranked_by` (which ranking set `list_rank`; NULL = the order score, rows before that date) and that
     ranking's score `pick_score` / `dollar_vol20` ride along too, so a hold / missed record names the score that
     actually set its rank. ⚠ These columns are added by the market-agent's boot DDL: deploy market-agent BEFORE
-    execution, or this read fails on the missing columns)."""
+    execution, or this read fails on the missing columns). Since 2026-11-25 `narrow` rides along too — the row's
+    narrow reading (`breakout_v1.narrow_reading`, `{"pass", "value": {"ratio", "window", "max", "scored"}}`), read out
+    of the existing `gates` jsonb (no new column); NULL on a row written before that date, which the paper entry
+    treats as NOT narrow (no buy)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(BV1_LIST_SELECT_SQL, scan_date)

@@ -48,6 +48,12 @@ THE LIST RULES, at the watch night D (every measure on bars <= D; the breakout d
   downtrend_6m         the 50-day is lower than 10 sessions ago AND the 126-session return is negative
   lower_line           the re-widening swing V3 > 0.2123 of the 189-session chart height AND the 30-session lower line
                        is flat or falling (>= 189 bars; fewer = "insufficient_history", passes)
+  THE NARROW READING (his ruling 2026-11-25, "I lean on the narrow list, but keep qullamaggie original (our
+  interpretation) filter intact so we can keep comparing"; `narrow_reading`, `out["narrow"]`): swings_shrink over the
+  last 40 sessions, narrow when mean(the last 2 swings) / the biggest swing <= 0.6 (unscored = narrow). It is NOT in
+  `GATES` and never in `failed`: the list's membership is unchanged — the reading rides on every row, and only the
+  PAPER entry (`broker/breakout_v1_entry.py`) reads it (it buys narrow names only; a not-narrow name's break is
+  recorded as what the original list would have bought).
 And on E (`breakout_triggered`): high(E) > the LEVEL = the highest high of D-4..D (strict) and volume(E) >= the VOLUME
 BAR = 1.2 x the mean volume of D-9..D — the LAST 10 SESSIONS (his ruling 2026-11-02, "Yes"; was the 50-day).
 
@@ -123,6 +129,17 @@ SPREAD_SESSIONS = 10                 # the last-10-close spread
 # still measured as telemetry) and `range` is new (a qualifying range to buy the break of).
 # 2026-11-11 fix-up: a qualifying range is NOT a gate — it only sets the level (the range high) where one exists.
 GATES = ("history", "universe", "pinned", "adr", "rs", "prior_move", "base_depth", "ema21")
+# THE NARROW LIST (his ruling 2026-11-25: "I lean on the narrow list, but keep qullamaggie original (our interpretation)
+# filter intact so we can keep comparing"; his picks: paper buys narrow names only, the original list computed
+# unchanged and tracked; setting swings_shrink, window 40, tight if ratio <= 0.6, unscored = pass). The reading is C3
+# of the frozen pre-registration `docs/analysis/cb_contraction_into_buy_prereg_2026-11-25.md` (reference
+# `scripts/probes/_contraction_1125/01_score.py::r_c3`, by era `02_by_era.py`): on Qullamaggie's 269 dated buys it reads
+# narrow on 203 (2017-19 19 of 31, 2020-21 171 of 220, 2022-23 13 of 18) and 22 of the 26 big winners; VOR (the paper
+# buy he called "a wide flat range") reads 0.701 at 2026-11-20 — not narrow; SKLZ 0.397 and QS 0.395 — narrow.
+# TELEMETRY on the list row + the PAPER entry's buy rule. NOT in `GATES`: the list's membership does not move.
+NARROW_WINDOW = 40                   # the last 40 sessions ending D
+NARROW_MAX = 0.6                     # narrow when mean(the last 2 swings) / the biggest swing <= 0.6
+NARROW_MIN_LEGS = 3                  # fewer swings than this = unscored (narrow, as frozen)
 # The range break (docs/analysis/cb_initial_rules_2026-11-11.md (b); the High tier of the Qullamaggie buy rating).
 RANGE_LOOKBACK = 126                 # how far back from D a level may sit
 RANGE_MIN_LEN = 10                   # sessions from the range's start to E = D + 1 (two weeks)
@@ -315,6 +332,40 @@ def settled_level(h: np.ndarray, l: np.ndarray, c: np.ndarray, D: int) -> tuple:
     return level5, level5, None
 
 
+def swings_shrink_ratio(h, l, D: int, window: int = NARROW_WINDOW) -> Optional[float]:
+    """C3 `swings_shrink` of the frozen 2026-11-25 pre-registration, `r_c3` verbatim. PURE; bars <= D only.
+
+    On the LOG highs / lows of the last `window` sessions ending D: `swing_legs` (the last leg = the move from the last
+    confirmed pivot to the extreme since it); ratio = mean(the last 2 legs) / max(all legs). None = UNSCORED: fewer than
+    `window` bars to D, a non-finite log high / low anywhere in the window (never dropped — the window is then not the
+    last `window` sessions), fewer than `NARROW_MIN_LEGS` legs, or a biggest leg that is not a positive finite number."""
+    a = int(D) - int(window) + 1
+    if a < 0:
+        return None
+    with np.errstate(divide="ignore", invalid="ignore"):
+        H = np.log(np.asarray(h[a:D + 1], dtype=np.float64))
+        L = np.log(np.asarray(l[a:D + 1], dtype=np.float64))
+    if len(H) != window or not (np.isfinite(H).all() and np.isfinite(L).all()):
+        return None
+    legs, _ = swing_legs(H, L)
+    if len(legs) < NARROW_MIN_LEGS:
+        return None
+    top = float(legs.max())
+    if not (math.isfinite(top) and top > 0):
+        return None
+    ratio = float(legs[-2:].mean() / top)
+    return ratio if math.isfinite(ratio) else None
+
+
+def narrow_reading(h, l, D: int) -> dict:
+    """THE NARROW READING of one list row (his ruling 2026-11-25) -> {"pass", "value": {"ratio", "window", "max",
+    "scored"}}. pass = True when the ratio <= `NARROW_MAX` OR the chart is unscored (ratio None — as frozen: unscored =
+    pass). PURE. Telemetry + the paper entry's buy rule; never a list gate."""
+    ratio = swings_shrink_ratio(h, l, D, NARROW_WINDOW)
+    return {"pass": bool(ratio is None or ratio <= NARROW_MAX),
+            "value": {"ratio": ratio, "window": NARROW_WINDOW, "max": NARROW_MAX, "scored": ratio is not None}}
+
+
 def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_close: Optional[float] = None,
              cidx: Optional[Sequence[int]] = None) -> dict:
     """Every v1 gate at watch night D, pass AND value, plus the next session's breakout LEVEL and VOLUME BAR.
@@ -325,7 +376,8 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
     the latest night); `cidx` = the calendar index of each bar (None = no hole check).
 
     Returns {"ok", "failed", "gates": {name: {"pass", "value"}}, "level", "vol_bar", "vol10", "vol50", "adr20", "close",
-    "pole_idx", "pole_date", "pole_high", "prior_move", "base_low", "watch_date"}. "ok" = every gate in `GATES` passes
+    "pole_idx", "pole_date", "pole_high", "prior_move", "base_low", "watch_date", "narrow" (the 2026-11-25 narrow
+    reading — telemetry, never part of "ok")}. "ok" = every gate in `GATES` passes
     — the name goes on tonight's list. Every gate is evaluated (no short-circuit) so a night's per-gate fail counts
     are complete; only a failed `history` gate leaves the rest unevaluated (None). A value that cannot be computed
     (a non-finite ADR, a zero low) FAILS its gate (the research's "NaN never passes")."""
@@ -342,6 +394,7 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
     if not hist:
         for k in GATES[1:] + CONTEXT_GATES:
             g[k] = {"pass": None, "value": None}
+        out["narrow"] = {"pass": None, "value": None}        # never listed: the reading is not taken
         out["ok"], out["failed"] = False, ["history"]
         return out
 
@@ -403,6 +456,10 @@ def v1_gates(bars: "cb.DailyBars", D: int, *, rs_best: Optional[float], raw_clos
                                                 "len": rl[0]["len"] if rl else None, "min_len": RANGE_MIN_LEN}}
     if "range" in GATES:
         g["range"] = out["range"]
+
+    # THE NARROW READING (his ruling 2026-11-25): on every row, NOT a gate — it is never in `GATES` or `failed`, so
+    # the list is the same names; the paper entry buys only the rows it passes
+    out["narrow"] = narrow_reading(h, l, D)
 
     v10 = float(v[D - VOL_WINDOW + 1:D + 1].mean())
     v50 = float(v[D - VOL_WINDOW_50 + 1:D + 1].mean())

@@ -340,3 +340,132 @@ def test_the_list_order_equals_the_researchs_groupby_rank_on_a_night_with_ties()
     got = bl.rank_rows(rows)
     assert [r["ticker"] for r in got] == want
     assert [r["order_score"] for r in got] == sorted(score.tolist(), reverse=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# THE NARROW READING (his ruling 2026-11-25: "I lean on the narrow list, but keep qullamaggie original (our
+# interpretation) filter intact so we can keep comparing"; setting swings_shrink, window 40, tight if ratio <= 0.6,
+# unscored = pass — C3 of docs/analysis/cb_contraction_into_buy_prereg_2026-11-25.md). The bridge to the research
+# (scripts/probes/_contraction_1125/01_score.out and 02_by_era.out) and the proof the ORIGINAL list did not move.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _vor():
+    """VOR's daily bars to 2026-11-24 (prod `mi_daily_closes`, the research's own file copied 2026-11-25)."""
+    rows = [ln.strip().split("|") for ln in open(FX / "vor_bars_2026-11-24.psv") if ln[:2] == "20"]
+    return [r[0] for r in rows], np.array([float(r[2]) for r in rows]), np.array([float(r[3]) for r in rows])
+
+
+def test_the_narrow_constants_are_his_pick_and_the_reading_is_not_a_list_gate():
+    assert (bv.NARROW_WINDOW, bv.NARROW_MAX, bv.NARROW_MIN_LEGS) == (40, 0.6, 3)
+    assert "narrow" not in bv.GATES and "narrow" not in bv.CONTEXT_GATES and "narrow" not in bv.SHAPE_GATES
+
+
+def test_bridge_vor_reads_0_701_not_narrow_and_sklz_qs_read_narrow(scorecard):
+    ds, h, l = _vor()
+    D = ds.index("2026-11-20")
+    assert D + 1 == 185                                              # the research's bar count through that night
+    assert round(bv.swings_shrink_ratio(h, l, D), 3) == 0.701
+    nr = bv.narrow_reading(h, l, D)
+    assert nr["pass"] is False and nr["value"] == {"ratio": bv.swings_shrink_ratio(h, l, D), "window": 40,
+                                                   "max": 0.6, "scored": True}
+    # every list night he saw it on: never narrow (01_score.out "VOR at the other list nights")
+    assert [round(bv.swings_shrink_ratio(h, l, ds.index(n)), 3) for n in ("2026-11-13", "2026-11-23", "2026-11-24")] \
+        == [0.701, 0.736, 0.904]
+    by = {_key(r): g for r, _b, _D, g in scorecard}
+    sklz, qs = by[("SKLZ", "2021-01-05")]["narrow"], by[("QS", "2021-10-29")]["narrow"]
+    assert round(sklz["value"]["ratio"], 3) == 0.397 and sklz["pass"] is True
+    assert round(qs["value"]["ratio"], 3) == 0.395 and qs["pass"] is True
+
+
+def test_bridge_203_of_the_269_dated_buys_read_narrow_by_era_and_22_of_the_26_big_winners(scorecard):
+    def era(r):
+        y = r["E"][:4]
+        return "2017-19" if y <= "2019" else ("2020-21" if y <= "2021" else "2022-23")
+    tot, narrow = Counter(), Counter()
+    for r, _b, _D, g in scorecard:
+        assert isinstance(g["narrow"]["pass"], bool), _key(r)       # every buy has 86+ bars: the reading is taken
+        tot[era(r)] += 1
+        narrow[era(r)] += g["narrow"]["pass"]
+    assert dict(tot) == {"2017-19": 31, "2020-21": 220, "2022-23": 18}
+    assert dict(narrow) == {"2017-19": 19, "2020-21": 171, "2022-23": 13} and sum(narrow.values()) == 203
+    # unscored = narrow, as frozen (4 of the 269 have fewer than 3 swings in the window)
+    unscored = [g["narrow"] for _r, _b, _D, g in scorecard if not g["narrow"]["value"]["scored"]]
+    assert len(unscored) == 4 and all(n["pass"] is True and n["value"]["ratio"] is None for n in unscored)
+    # THE COST, pinned so it is never silently "fixed": the 4 big winners that do NOT read narrow
+    lost = sorted(_key(r) for r, _b, _D, g in scorecard if r["big_winner"] == "1" and not g["narrow"]["pass"])
+    assert lost == [("APHA", "2021-01-06"), ("BLDP", "2020-06-29"), ("CODX", "2020-07-16"), ("JMIA", "2020-11-18")]
+    assert sum(1 for r, _b, _D, g in scorecard if r["big_winner"] == "1" and g["narrow"]["pass"]) == 22
+
+
+def test_the_reading_matches_the_frozen_reference_on_every_one_of_the_269(scorecard):
+    """`r_c3` of scripts/probes/_contraction_1125/01_score.py, restated here independently of the module's helper."""
+    def r_c3(h, l, D, N=40):
+        if D - N + 1 < 0:
+            return None
+        H, L = np.log(h[D - N + 1:D + 1]), np.log(l[D - N + 1:D + 1])
+        if not (np.isfinite(H).all() and np.isfinite(L).all()):
+            return None
+        legs, _ = bv.swing_legs(H, L)
+        if len(legs) < 3 or legs.max() <= 0:
+            return None
+        return float(legs[-2:].mean() / legs.max())
+    for r, b, D, g in scorecard:
+        want = r_c3(np.asarray(b.h, float), np.asarray(b.l, float), D)
+        assert g["narrow"]["value"]["ratio"] == want, _key(r)
+        assert g["narrow"]["pass"] == (want is None or want <= 0.6), _key(r)
+
+
+def test_the_original_list_is_the_same_names_with_the_reading_only_riding_along(scorecard, monkeypatch):
+    """The ORIGINAL list is not filtered: with the reading forced to "not narrow" / "narrow" / absent on every chart,
+    `ok` and `failed` are identical on all 269 — and 43 buys that are ON the list read not narrow (still listed)."""
+    base = [(g["ok"], tuple(g["failed"]), g["level"], g["vol_bar"]) for _r, _b, _D, g in scorecard]
+    for forced in ({"pass": False, "value": {"ratio": 9.9}}, {"pass": True, "value": {"ratio": 0.0}}, None):
+        monkeypatch.setattr(bv, "narrow_reading", lambda h, l, D, _f=forced: _f)
+        got = []
+        for r, b, D, _g in scorecard:
+            g = bv.v1_gates(b, D, rs_best=float(r["rs_best"]), raw_close=float(r["raw_close_D"]))
+            assert g["narrow"] is forced and "narrow" not in g["gates"] and "narrow" not in g["failed"]
+            got.append((g["ok"], tuple(g["failed"]), g["level"], g["vol_bar"]))
+        assert got == base
+    listed_not_narrow = [_key(r) for r, _b, _D, g in scorecard if g["ok"] and g["narrow"]["pass"] is False]
+    assert len(listed_not_narrow) == 43 and ("BLDP", "2020-06-29") in listed_not_narrow
+
+
+def test_the_reading_is_unscored_and_narrow_on_a_short_or_broken_window_and_blank_under_the_history_guard(scorecard):
+    h = np.linspace(10.0, 12.0, 60); l = h - 0.5
+    assert bv.swings_shrink_ratio(h, l, 38) is None                  # fewer than 40 bars to D
+    assert bv.swings_shrink_ratio(h, l, 59) is None                  # a straight line: fewer than 3 swings
+    assert bv.narrow_reading(h, l, 59) == {"pass": True, "value": {"ratio": None, "window": 40, "max": 0.6,
+                                                                  "scored": False}}
+    ds, vh, vl = _vor()
+    D = ds.index("2026-11-20")
+    bad = vl.copy(); bad[D - 10] = 0.0                               # a zero low inside the window: log = -inf
+    assert bv.swings_shrink_ratio(vh, bad, D) is None and bv.narrow_reading(vh, bad, D)["pass"] is True
+    bad[D - 10] = float("nan")
+    assert bv.swings_shrink_ratio(vh, bad, D) is None
+    assert round(bv.swings_shrink_ratio(vh, vl, D, 60), 3) == 0.365  # the window is the argument (01_score.out, w60)
+    # under the 86-session history guard nothing is listed and the reading is not taken
+    r, b, _D, _g = scorecard[0]
+    g = bv.v1_gates(b, 50, rs_best=99.0)
+    assert g["failed"] == ["history"] and g["narrow"] == {"pass": None, "value": None}
+
+
+def test_the_nightly_list_row_carries_the_reading_inside_its_gates_jsonb(scorecard):
+    """`breakout_v1_list.evaluate_members` writes the whole `v1_gates` output into the row's `gates` — the reading
+    rides there (`gates->'narrow'`, what the paper entry reads), JSON-safe, with no new column."""
+    import json as _json
+    found = None
+    for r, b, D, g in scorecard:
+        if not (g["ok"] and g["narrow"]["pass"] is False):
+            continue
+        tb = b.slice(0, D + 1)                                      # the night's bars: nothing after D
+        member = {"ticker": r["sym"], "bars": tb, "cidx": None, "history": True, "security_type": "CS"}
+        rows, _fails, _n = bl.evaluate_members([member], [float(r["rs_best"])], tb.dates[-1])
+        if rows:
+            found = (rows[0], g)
+            break
+    assert found is not None                                        # NOT narrow, and still on the list
+    row, g = found
+    nr = _json.loads(_json.dumps(row["gates"]))["narrow"]
+    assert nr["pass"] is False and nr["value"]["ratio"] == pytest.approx(g["narrow"]["value"]["ratio"])
+    assert nr["value"]["window"] == 40 and nr["value"]["max"] == 0.6 and "narrow" not in row
+

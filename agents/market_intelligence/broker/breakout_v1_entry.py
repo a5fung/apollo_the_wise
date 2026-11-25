@@ -98,6 +98,28 @@ THE LIST AT 150-350 NAMES (#717 stage 2, 2026-11-07; design `docs/design/717_sta
     `adr20`, reason `slots_full`. The holds are read back from the audit log (restart-safe; a hold note is marked
     written only when the audit log confirms it, else retried next tick); #720's monthly review joins daily bars on it.
 
+THE NARROW LIST (his ruling 2026-11-25: "I lean on the narrow list, but keep qullamaggie original (our interpretation)
+filter intact so we can keep comparing"; his picks: paper buys narrow names only, the original list tracked):
+  * the nightly list is UNCHANGED (the same names, ranks and levels); each row carries its narrow reading
+    (`breakout_v1.narrow_reading`: swings_shrink, the last 40 sessions, narrow when the ratio <= 0.6, unscored =
+    narrow), read here as the list row's `narrow` (`gates->'narrow'`, no new column);
+  * PAPER BUYS ONLY A NARROW NAME (`narrow_of`): a name whose row does not read narrow never reaches the slots, the
+    funnel or a hold — no order, no trade row, no slot used. FAIL-SAFE: a row with NO reading (written before the
+    rule, or unparsable) is treated as NOT narrow — no buy — and the day it happens is audited
+    (`breakout_v1_narrow_missing`) and paged once, because a list with no readings buys nothing and would otherwise
+    look like a quiet day;
+  * THE ORIGINAL ARM IS TRACKED: the first minute a not-narrow name BREAKS its level in a state that permits a buy
+    (the same test a narrow name passes to reach the slots) writes ONE `breakout_v1_original_would_buy` audit row for
+    the day — ticker, level, the break minute and high, the stop it would have carried, rank, the ratio, the reason
+    (`not_narrow` / `narrow_missing`). Once per name per day, read back from the audit log (restart-safe). ⚠ An UPPER
+    BOUND on what the original list would have bought: the slots, the chase cap and the fill are not judged;
+  * every order-placing path is behind the rule: the slots (PASS 1), `_enter` (refuses), and — for a row that
+    pre-dates the rule or whose list row was re-written — `_terminal_reason` cancels an UNFILLED buy / settles a row
+    that never got its order with `setup:breakout_not_narrow`, so `_replace` never re-places one. A FILLED position is
+    never touched by this rule (its stop and exit run as before);
+  * 15:55: the `breakout_v1_entry_day` row counts the list (narrow / not narrow / no reading) and the day's breaks
+    (narrow names that reached the slots vs original-only names) — the two arms on the same day in one row.
+
 RESTART-SAFE. Every tick reconciles from the BROKER (the paper account's open orders, filtered to the
 `apollo_paper_breakout_v1_` order-id family, and `get_order` on each row's entry order) and from today's trade rows —
 never from memory. A filled (or partly filled) order is never cancelled or re-placed by this job. A planned cancel
@@ -153,6 +175,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_STRATEGY_DISABLED,
     BLOCK_STRATEGY_POSITION_CAP,
     SETUP_ACCOUNT_FETCH_FAILED,
+    SETUP_BREAKOUT_NOT_NARROW,
     SETUP_BREAKOUT_VOLUME_BELOW_CURVE,
     SETUP_NO_OPENING_RANGE_MINUTES,
     SETUP_PRICE_EXCEEDS_CAP,
@@ -215,6 +238,13 @@ BREAK_LOOKBACK_MINUTES = 2                                  # a break is read fr
 BREAK_LOOKBACK_EVENT = "breakout_v1_break_lookback"         # only the lookback minute carried the break, and no earlier tick read it
 NO_BREAK = "no_break"                                       # a buyable name NOT through its level this minute: no order, no slot
 MISSED_BY_SLOTS = "breakout_v1_missed_by_slots"             # 15:55 ET: one row per name that BROKE OUT with no free slot and never got one
+# THE NARROW LIST (his ruling 2026-11-25): paper buys narrow names only; the original list's breaks are recorded
+ENTRY_ORDER_EVENT = "breakout_v1_entry_order"               # `_enter`'s row: a narrow name that broke and went to the funnel
+WOULD_BUY_EVENT = "breakout_v1_original_would_buy"          # a NOT-narrow list name broke its level: one row per name per day, no order
+NARROW_MISSING_EVENT = "breakout_v1_narrow_missing"         # the list carries rows with NO narrow reading: nothing bought on them (once a day + a page)
+ORIGINAL_ONLY_BREAK = "original_only_break"                 # the tick's action for a not-narrow name through its level this minute
+NOT_NARROW = "not_narrow"                                   # the reading says not narrow (ratio > max)
+NARROW_MISSING = "narrow_missing"                           # no usable reading on the row: FAIL-SAFE not narrow
 
 _FILLED_STATUSES = frozenset({"filled", "partially_filled"})
 _ROWS_THAT_OWN_NO_ORDER = frozenset({"cancelled", "skipped"})   # an open order under such a row is an orphan
@@ -587,6 +617,104 @@ async def _hold_for_slot(today: date, lrow: dict, st: dict, m: int, free: int, s
                  "cum_volume": st["cum_volume"], "need_volume": st["need_volume"], "free_slots": int(free),
                  "seated_this_minute": int(seated), "count_unreadable": bool(count_unreadable), "reason": state,
                  "break_minute": (brk or {}).get("minute"), "break_high": (brk or {}).get("high")})
+
+
+def narrow_of(lrow: dict | None) -> dict:
+    """THE NARROW RULE (his ruling 2026-11-25) for one list row -> {"ok", "reason", "ratio", "window", "max"}. PURE.
+
+    ok = True ONLY when the row's `narrow` reading (`breakout_v1.narrow_reading`, carried in the list's `gates` jsonb
+    and read as `narrow`) is a dict whose `pass` is exactly True — a scored chart with ratio <= max, or an unscored one
+    (as frozen: unscored = narrow). Anything else is NOT narrow, and the paper book never buys it:
+      * `pass` exactly False                      -> reason `not_narrow`;
+      * no row, no `narrow`, a `pass` that is not a bool, a value that is not a dict / not JSON
+                                                  -> reason `narrow_missing` (FAIL-SAFE: a row written before the
+        rule, or a reading this job cannot parse, can never be bought).
+    The reading may arrive as a dict (the pool's jsonb codec) or as its JSON text."""
+    raw = (lrow or {}).get("narrow")
+    if isinstance(raw, (str, bytes, bytearray)):
+        try:
+            raw = json.loads(raw)
+        except Exception:  # loud-ok: unparsable = no reading = not narrow (the fail-safe); the tick audits + pages it
+            raw = None
+    val = raw.get("value") if isinstance(raw, dict) and isinstance(raw.get("value"), dict) else {}
+    out = {"ok": False, "reason": NARROW_MISSING, "ratio": val.get("ratio"), "window": val.get("window"),
+           "max": val.get("max")}
+    if isinstance(raw, dict) and raw.get("pass") is True:
+        out.update(ok=True, reason=None)
+    elif isinstance(raw, dict) and raw.get("pass") is False:
+        out["reason"] = NOT_NARROW
+    return out
+
+
+def _not_narrow_text(nr: dict) -> str:
+    """'swings ratio 0.70 > 0.60 over 40 sessions' / 'no narrow reading on its list row' — why a row is not narrow."""
+    if nr.get("reason") == NOT_NARROW and nr.get("ratio") is not None and nr.get("max") is not None:
+        return (f"swings ratio {float(nr['ratio']):.2f} > {float(nr['max']):.2f}"
+                + (f" over {int(nr['window'])} sessions" if nr.get("window") else ""))
+    return "not narrow" if nr.get("reason") == NOT_NARROW else "no narrow reading on its list row"
+
+
+async def _record_original_would_buy(today: date, lrow: dict, st: dict, brk: dict, m: int, nr: dict) -> None:
+    """THE ORIGINAL ARM'S RECORD (his ruling 2026-11-25, "keep ... original ... intact so we can keep comparing"): a
+    list name that is NOT narrow broke its level in a minute a narrow name would have gone to the slots — ONE
+    `breakout_v1_original_would_buy` row for the day, and nothing else: no order, no trade row, no slot, no hold.
+    ONCE PER NAME PER DAY, restart-safe: the day's rows are read back from the audit log once per process (a name
+    already recorded is not written again); a row whose write the audit log swallowed is NOT marked and is retried on
+    the next tick that reads the break. If the log cannot be READ the row is written anyway (a possible duplicate
+    after a restart, folded by ticker at 15:55 — never a lost record). ⚠ An upper bound on the original list's buys:
+    the slots, the chase cap and the fill are not judged (the `missed_by_slots` record's caveat)."""
+    ticker = lrow["ticker"]
+    key = ("would_buy", today, ticker)
+    if key in _paged:
+        return
+    if ("would_buy_loaded", today) not in _paged:
+        done = await _todays_details(WOULD_BUY_EVENT, today)
+        if done is not None:
+            _paged.add(("would_buy_loaded", today))
+            _paged.update(("would_buy", today, d["ticker"]) for d in done)
+            if key in _paged:
+                return
+    clock, bclock = _clock(today, m), _clock(today, brk["minute"])
+    rec = {"ticker": ticker, "day": today.isoformat(), "minute": m, "clock_et": clock,
+           "break_minute": brk["minute"], "break_clock_et": bclock, "break_high": brk["high"],
+           "break_lookback": bool(brk.get("lookback")), "level": st["level"], "list_level": lrow.get("level"),
+           "stop": brk["stop"], "width": brk["width"], "stop_at_tick": st["stop"],
+           "cum_volume": brk["cum_volume"], "need_volume": brk["need_volume"],
+           "list_rank": lrow.get("list_rank"), "order_score": lrow.get("order_score"), **_ranking_facts(lrow),
+           "vol_bar": lrow.get("vol_bar"), "adr20": lrow.get("adr20"),
+           "narrow": False, "reason": nr["reason"], "ratio": nr.get("ratio"), "window": nr.get("window"),
+           "max": nr.get("max"), "slots_judged": False, "account_mode": ACCOUNT_MODE}
+    ok = await log_audit_event(
+        WOULD_BUY_EVENT,
+        f"{ticker}: ORIGINAL LIST ONLY — broke its level ${st['level']:.2f} in the {bclock} minute (high "
+        f"${brk['high']:.2f}), ranked #{lrow.get('list_rank')}; {_not_narrow_text(nr)} — NO paper order, no slot, no "
+        f"hold (paper buys narrow names only); the original list would have bought here with the stop at "
+        f"${float(brk['stop']):.2f} (slots, the chase cap and the fill not judged)",
+        json.dumps(rec, default=str))
+    if ok:
+        _paged.add(key)
+    else:
+        logger.warning(f"breakout v1 {ticker}: the original-would-buy row was not written (the audit log swallowed "
+                       f"it) — retried on the next tick that reads its break")
+
+
+async def _narrow_day_counts(today: date, narrow_by: dict[str, dict]) -> dict:
+    """THE TWO ARMS ON ONE DAY (15:55, into the `breakout_v1_entry_day` row): the list's split (narrow / not narrow /
+    no reading) and the names that BROKE today — `narrow_breaks` = the narrow names that reached the slots (an
+    `_enter` order row or a slots hold row today), `original_only_breaks` = the not-narrow names with a would-buy row.
+    Read back from the audit log (restart-safe); a list it cannot read is None, never 0."""
+    def _names(details, keep=lambda d: True):
+        return None if details is None else sorted({d["ticker"] for d in details if keep(d)})
+    orders = _names(await _todays_details(ENTRY_ORDER_EVENT, today))
+    holds = _names(await _todays_details(HOLD_EVENT, today),
+                   lambda d: d.get("state") in (SLOTS_FULL_STATE, SLOTS_UNREADABLE_STATE))
+    would = _names(await _todays_details(WOULD_BUY_EVENT, today))
+    return {"list_names": len(narrow_by),
+            "narrow_names": sum(1 for n in narrow_by.values() if n["ok"]),
+            "not_narrow_names": sum(1 for n in narrow_by.values() if n["reason"] == NOT_NARROW),
+            "narrow_missing_names": sum(1 for n in narrow_by.values() if n["reason"] == NARROW_MISSING),
+            "narrow_breaks": None if orders is None or holds is None else sorted(set(orders) | set(holds)),
+            "original_only_breaks": would}
 
 
 def first_break(mins: dict[int, dict], *, level: float, vol_bar: float, from_minute: int) -> dict | None:
@@ -1026,6 +1154,13 @@ async def _enter(today: date, lrow: dict, st: dict, regime_record: dict | None, 
     """A name with no row today whose state permits a buy AND that broke its level this minute (`brk`), with a slot
     free: through the single funnel, bound to paper. The entry spec is unchanged (the level, the day-low stop)."""
     ticker = lrow["ticker"]
+    nr = narrow_of(lrow)
+    if not nr["ok"]:
+        # the rule's own wall (his ruling 2026-11-25): the tick never sends a not-narrow name here; a caller that
+        # does gets no row and no order
+        await log_audit_event("breakout_v1_entry_refused_not_narrow",
+                              f"{ticker}: order REFUSED — {_not_narrow_text(nr)} (paper buys narrow names only)")
+        return {"ticker": ticker, "action": ACTION_BLOCKED, "reason": f"{SETUP_BREAKOUT_NOT_NARROW}: {nr['reason']}"}
     orb = {"open": st["open"], "high": st["orh5"], "low": st["orl5"], "level": st["level"], "stop": st["stop"]}
 
     async def _bar(_t, _d, _label, _orb=orb):     # the funnel's step 3: this job's own 5-minute range
@@ -1058,7 +1193,7 @@ async def _enter(today: date, lrow: dict, st: dict, regime_record: dict | None, 
                          f"🚨 *{ticker}* breakout v1 order REFUSED by the entry funnel — {r.get('reason')}")
     if r.get("reason") != WINDOW_DUPLICATE:
         await log_audit_event(
-            "breakout_v1_entry_order",
+            ENTRY_ORDER_EVENT,
             f"{ticker} → {r.get('action')}" + (f" ({r.get('reason')})" if r.get("reason") else "")
             + (f" trade_id={r.get('trade_id')}" if r.get("trade_id") else "")
             + f" level=${st['level']:.2f}"
@@ -1067,14 +1202,15 @@ async def _enter(today: date, lrow: dict, st: dict, regime_record: dict | None, 
               f"{st['need_volume']:,.0f} ({'on' if st['f1_ok'] else 'UNDER'} pace; not a gate)",
             json.dumps(dict({k: st[k] for k in ("level", "orh5", "orl5", "stop", "width", "cum_volume", "need_volume",
                                                 "last_completed")},
-                            break_minute=(brk or {}).get("minute"), break_high=(brk or {}).get("high")), default=str))
+                            break_minute=(brk or {}).get("minute"), break_high=(brk or {}).get("high"),
+                            ticker=ticker, day=today.isoformat(), narrow_ratio=nr.get("ratio")), default=str))
     return r
 
 
 async def _settle_dead_order(row: dict, lrow: dict | None, st: dict | None, m: int) -> str:
     """The row's order is cancelled at the broker with nothing filled and THIS job cancelled it (marker): finish the
     planned step — re-place with the current stop, or settle the row cancelled with the reason that applies now."""
-    reason = _terminal_reason(st, m)
+    reason = _terminal_reason(st, m, lrow)
     if reason is None:
         if st is None or st["status"] != "ok":
             return "wait"                  # cannot judge this minute (no bars) — the next tick finishes it
@@ -1086,10 +1222,16 @@ async def _settle_dead_order(row: dict, lrow: dict | None, st: dict | None, m: i
     return "cancelled"
 
 
-def _terminal_reason(st: dict | None, m: int) -> str | None:
-    """The named reason a resting / about-to-rest buy must die now, or None."""
+def _terminal_reason(st: dict | None, m: int, lrow: dict | None) -> str | None:
+    """The named reason a resting / about-to-rest buy must die now, or None. `lrow` = the name's list row: since
+    2026-11-25 an UNFILLED buy whose row does not read narrow (`narrow_of` — a row that pre-dates the rule, a
+    re-written list row, or no list row handed in) dies with `setup:breakout_not_narrow`, decided without bars (the
+    reading is the list row's, not the minute's) — so no path re-places a buy on a not-narrow name."""
     if m >= EOD_MINUTE:
         return f"{WINDOW_BREAKOUT_UNFILLED_EOD}: unfilled at 15:55 ET"
+    nr = narrow_of(lrow)
+    if not nr["ok"]:
+        return f"{SETUP_BREAKOUT_NOT_NARROW}: {_not_narrow_text(nr)} — paper buys narrow names only"
     if st is None or st["status"] == "wait":
         return None
     if st["status"] == "abstain":
@@ -1140,7 +1282,7 @@ async def _manage(row: dict, lrow: dict | None, st: dict | None, m: int, open_by
     status, oid = row["status"], row.get("entry_order_id")
     if status == "confirmed" and not oid:
         # a tick that crashed between the row write and the submit (or between a re-price's cancel and its submit)
-        reason = _terminal_reason(st, m)
+        reason = _terminal_reason(st, m, lrow)
         if reason is not None:
             await _mark_cancelled(row["id"], "confirmed", None, reason)
             await log_audit_event("breakout_v1_entry_cancelled", f"{ticker}: {reason} (never submitted)")
@@ -1159,7 +1301,7 @@ async def _manage(row: dict, lrow: dict | None, st: dict | None, m: int, open_by
             return await _settle_dead_order(row, lrow, st, m)
         return "dead_unplanned"            # a broker kill: the trade stream / check_fills record it
     # open: decide
-    reason = _terminal_reason(st, m)
+    reason = _terminal_reason(st, m, lrow)
     if reason is not None:
         res = await _cancel_and_confirm(row["id"], ticker, oid, "cancel", reason)
         if res == "dead":
@@ -1893,6 +2035,23 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
     regime_record: dict | None = None
     last_completed = min(m - 1, N_SESSION_MINUTES - 1)
 
+    # THE NARROW LIST (his ruling 2026-11-25): each list row's reading, once per tick. A list carrying rows with NO
+    # reading (written before the rule: the first session after the deploy, unless that night's list is re-run) buys
+    # nothing on them — audited + paged once a day, so it never reads as a quiet day.
+    narrow_by = {r["ticker"]: narrow_of(r) for r in lrows}
+    no_reading = [t for t, n in narrow_by.items() if n["reason"] == NARROW_MISSING]
+    if no_reading and _once(("narrow_missing", today)):
+        await log_audit_event(
+            NARROW_MISSING_EVENT,
+            f"{today.isoformat()}: {len(no_reading)} of {len(lrows)} list name(s) carry NO narrow reading (the list "
+            f"row was written before the 2026-11-25 rule, or the reading is unreadable) — treated as NOT narrow: no "
+            f"paper buy on them today; their breaks are recorded as original-list-only",
+            json.dumps({"day": today.isoformat(), "list_names": len(lrows), "no_reading": no_reading}, default=str))
+        await _page_once(("narrow_missing_page", today),
+                         f"⚠️ Breakout v1: {len(no_reading)} of {len(lrows)} list name(s) have no narrow reading on "
+                         f"last night's list ({_preview(no_reading, 5)}) — paper buys NONE of them today (narrow "
+                         f"names only); their breaks are recorded as what the original list would have bought")
+
     # 15:55: the names held for a slot today are read back from the audit log BEFORE the bars read, so the ones that
     # never got a slot have their break re-read on today's bars (a hold is written only in a break minute since
     # 2026-11-14) — TRACK WHAT WE MISS below
@@ -1975,6 +2134,13 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
             if brk is None:
                 out["actions"][ticker] = NO_BREAK
                 continue
+            # THE NARROW LIST (his ruling 2026-11-25): a name that is not narrow is never bought — its break is the
+            # original arm's record (one row a day), and it takes no slot, no hold and no trade row
+            nr = narrow_by[ticker]
+            if not nr["ok"]:
+                await _record_original_would_buy(today, lrow, st, brk, m, nr)
+                out["actions"][ticker] = ORIGINAL_ONLY_BREAK
+                continue
             await _note_break_read(today, ticker, brk, st, m)
             eligible.append((lrow, st, brk))
         except Exception as e:  # loud-ok: one name's crash is audited + paged; the other names still run
@@ -2025,7 +2191,13 @@ async def run_breakout_v1_entry_tick(now_et: datetime | None = None) -> dict:
         # TRACK WHAT WE MISS (his ruling 2026-11-06): the names that broke out with no free slot and never got one, once each
         out["missed_by_slots"] = await _record_missed_by_slots(today, rows, first_holds, bars_by_ticker, last_completed,
                                                                {r["ticker"]: r for r in lrows})
+        # THE TWO ARMS ON ONE DAY (his ruling 2026-11-25): the list's split and the day's breaks, narrow vs original-only
+        nl = out["narrow_list"] = await _narrow_day_counts(today, narrow_by)
+        n_or_q = lambda v: "?" if v is None else str(len(v))   # noqa: E731 — None = the audit log could not be read
         await log_audit_event("breakout_v1_entry_day", f"{today.isoformat()}: {len(lrows)} list name(s) — "
+                              f"narrow list {nl['narrow_names']}, not narrow {nl['not_narrow_names']}, no reading "
+                              f"{nl['narrow_missing_names']}; broke today: narrow {n_or_q(nl['narrow_breaks'])}, "
+                              f"original-only {n_or_q(nl['original_only_breaks'])} — "
                               + ", ".join(f"{t} {a}" for t, a in out["actions"].items()),
                               json.dumps(out, default=str))
     entered = sum(1 for a in out["actions"].values() if a == ACTION_AUTO_ENTERED)

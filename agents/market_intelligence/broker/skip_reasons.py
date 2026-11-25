@@ -64,6 +64,11 @@ SETUP_BREAKOUT_VOLUME_BELOW_CURVE  = "setup:breakout_volume_below_curve"
 # through the fill minute is read; when `cb._finish_entry`'s 1 ADR20 width rule fails on it the whole position is sold
 # at once — the exit reason of that sale (`execute_full_exit`), not an entry skip.
 SETUP_STOP_TOO_WIDE_AFTER_FILL     = "setup:stop_too_wide_after_fill"
+# Breakout v1 PAPER, his ruling 2026-11-25 ("I lean on the narrow list ..."): the paper book buys NARROW-list names
+# only. The reason an UNFILLED breakout buy is cancelled (or a row that never got its order is settled) when its list
+# row does not read narrow — reachable only for a row that pre-dates the rule or whose list row was re-written; a
+# not-narrow name with no row gets no trade row at all (its break is the `breakout_v1_original_would_buy` audit row).
+SETUP_BREAKOUT_NOT_NARROW          = "setup:breakout_not_narrow"
 
 # ── block: safeguards (circuit breakers, position limits, strategy gate) ──
 BLOCK_MAX_POSITIONS              = "block:max_positions"
@@ -140,6 +145,7 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_NO_OPENING_RANGE_MINUTES:    "No trades in the first five minutes",
     SETUP_BREAKOUT_VOLUME_BELOW_CURVE: "Volume below 1.2x normal for the time of day",
     SETUP_STOP_TOO_WIDE_AFTER_FILL:    "Stop too wide at the true low after the fill",
+    SETUP_BREAKOUT_NOT_NARROW:         "Not on the narrow list (paper buys narrow names only)",
     BLOCK_MAX_POSITIONS:           "Max open positions reached",
     BLOCK_DAILY_LOSS:              "Daily loss limit hit",
     BLOCK_CIRCUIT_BREAKER:         "Consecutive-loss circuit breaker tripped",

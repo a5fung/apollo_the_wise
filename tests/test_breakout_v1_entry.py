@@ -255,8 +255,14 @@ def _strategy(phase="paper", enabled=True) -> Strategy:
                     signal_type=SID, outcomes_table="mi_live_trades", promotion_model="unpaired_r")
 
 
+# 2026-11-25 (his ruling: paper buys narrow-list names only): the list row's narrow reading, as `bv1_get_list` hands it
+# over (`gates->'narrow' AS narrow`). Every pre-existing test's name is NARROW — the rule under test there is unchanged;
+# the not-narrow / no-reading rows are section 12's.
+_NARROW = {"pass": True, "value": {"ratio": 0.40, "window": 40, "max": 0.6, "scored": True}}
+_NOT_NARROW = {"pass": False, "value": {"ratio": 0.701, "window": 40, "max": 0.6, "scored": True}}
 _LIST = {"scan_date": PREV, "ticker": "BRKO", "level": 10.00, "vol_bar": 1_200_000.0, "adr20": 0.06,
-         "rs_best": 99.1, "close": 9.80, "security_type": "CS", "list_rank": 1, "order_score": 0.95}
+         "rs_best": 99.1, "close": 9.80, "security_type": "CS", "list_rank": 1, "order_score": 0.95,
+         "narrow": _NARROW}
 
 
 class World:
@@ -1017,7 +1023,7 @@ async def test_a_below_pace_break_still_buys_and_a_volume_lapse_cancels_nothing(
     assert not [e for e in w.ev("breakout_v1_entry_hold") if "volume" in str(e)]
     st = be.evaluate(be.bars_by_minute(thin, TODAY, 9), list_level=10.0, adr20=0.06, vol_bar=1.2e6, last_completed=9)
     assert st["status"] == "ok" and st["f1_ok"] is False and st["cum_volume"] == 10_000.0 and st["need_volume"] > 10_000.0
-    assert be._terminal_reason(st, 30) is None                       # under pace is not a reason to cancel
+    assert be._terminal_reason(st, 30, _LIST) is None                       # under pace is not a reason to cancel
     w2 = World(monkeypatch, rows=[_placed_row()], orders=[_order()], bars={"BRKO": _flat_bars(30, low=9.80, high=9.95, vol=1_000.0)})
     await w2.tick(at=(10, 0))
     assert w2.rows["BRKO"]["status"] == "order_placed"               # the resting buy is NOT cancelled for volume
@@ -3015,3 +3021,229 @@ async def test_with_the_switch_off_a_break_minute_places_nothing_and_reads_no_ba
               bars={t: _bars_breaking_in(44, breaks=[42]) for t in ("R1", "R2")})
     out = await w.tick(at=(10, 13))
     assert out["skipped"] == "switched_off" and not w.funnel.await_count and w.batch_calls == [] and w.orders == {}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 12. THE NARROW LIST (his ruling 2026-11-25: "I lean on the narrow list, but keep qullamaggie original (our
+#     interpretation) filter intact so we can keep comparing"): PAPER buys narrow-list names only; a not-narrow name's
+#     break is ONE `breakout_v1_original_would_buy` row a day and nothing else; a row with NO reading is not narrow.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _would(w):
+    return [json.loads(a[2]) for a in w.ev(be.WOULD_BUY_EVENT)]
+
+
+def test_narrow_of_passes_only_a_reading_whose_pass_is_exactly_true():
+    assert be.narrow_of({"narrow": _NARROW}) == {"ok": True, "reason": None, "ratio": 0.40, "window": 40, "max": 0.6}
+    assert be.narrow_of({"narrow": json.dumps(_NARROW)})["ok"] is True                 # JSON text (no jsonb codec)
+    unscored = {"pass": True, "value": {"ratio": None, "window": 40, "max": 0.6, "scored": False}}
+    assert be.narrow_of({"narrow": unscored})["ok"] is True                            # as frozen: unscored = narrow
+    nn = be.narrow_of({"narrow": _NOT_NARROW})
+    assert nn == {"ok": False, "reason": be.NOT_NARROW, "ratio": 0.701, "window": 40, "max": 0.6}
+    assert be.narrow_of({"narrow": json.dumps(_NOT_NARROW)})["reason"] == be.NOT_NARROW
+    # FAIL-SAFE: anything that is not a reading with pass True / False is "no reading" — and is NOT narrow
+    for bad in (None, {}, {"narrow": None}, {"narrow": "not json"}, {"narrow": "null"}, {"narrow": {}},
+                {"narrow": {"pass": None, "value": None}}, {"narrow": {"pass": "true"}}, {"narrow": {"pass": 1}},
+                {"narrow": True}, {"narrow": [True]}, {"narrow": {"value": {"ratio": 0.1}}}):
+        got = be.narrow_of(bad)
+        assert got["ok"] is False and got["reason"] == be.NARROW_MISSING, bad
+
+
+@pytest.mark.asyncio
+async def test_a_not_narrow_name_that_breaks_writes_one_would_buy_row_and_places_no_order_slot_or_hold(monkeypatch):
+    w = World(monkeypatch, at=(9, 36), list_rows=[dict(_LIST, narrow=_NOT_NARROW)], bars={"BRKO": _broke_bars(12)})
+    out = await w.tick()
+    assert out["actions"] == {"BRKO": be.ORIGINAL_ONLY_BREAK}
+    assert not w.funnel.await_count and w.orders == {} and w.skips == [] and w.rows == {}      # no order, no trade row
+    assert w.count_calls == [] and _holds(w, state=None) == []                                 # no slot read, no hold
+    assert w.ev("breakout_v1_entry_order") == [] and w.ev("breakout_v1_preflight_ok") == [] and w.pages == []
+    (rec,) = _would(w)
+    assert rec["ticker"] == "BRKO" and rec["day"] == TODAY.isoformat() and rec["account_mode"] == "paper"
+    assert rec["level"] == 10.00 and rec["break_minute"] == 5 and rec["break_high"] == 10.05 and rec["stop"] == 9.80
+    assert rec["break_clock_et"] == "09:35" and rec["clock_et"] == "09:36" and rec["list_rank"] == 1
+    assert rec["narrow"] is False and rec["reason"] == be.NOT_NARROW and rec["ratio"] == 0.701
+    assert rec["window"] == 40 and rec["max"] == 0.6 and rec["slots_judged"] is False
+    summary = w.ev(be.WOULD_BUY_EVENT)[0][1]
+    assert "ORIGINAL LIST ONLY" in summary and "0.70 > 0.60" in summary and "NO paper order" in summary
+    # still through its level the next minutes: the same action, never a second row; back under it: no_break
+    assert (await w.tick(at=(9, 37)))["actions"] == {"BRKO": be.ORIGINAL_ONLY_BREAK}
+    assert (await w.tick(at=(9, 40)))["actions"] == {"BRKO": be.ORIGINAL_ONLY_BREAK}
+    assert len(_would(w)) == 1 and not w.funnel.await_count and w.count_calls == []
+    w.bars["BRKO"] = _bars_breaking_in(30, breaks=[5])
+    assert (await w.tick(at=(9, 50)))["actions"] == {"BRKO": "no_break"}
+    assert len(_would(w)) == 1
+
+
+@pytest.mark.asyncio
+async def test_would_fail_if_the_same_bars_on_a_narrow_row_do_not_buy_exactly_as_before(monkeypatch):
+    """The control for the test above: the SAME bars and tick on a NARROW row go to the funnel, and no would-buy row
+    is written — the two arms differ by the reading alone."""
+    w = World(monkeypatch, at=(9, 36), bars={"BRKO": _broke_bars(12)})
+    out = await w.tick()
+    assert out["actions"] == {"BRKO": ep.ACTION_AUTO_ENTERED} and _funnel_tickers(w) == ["BRKO"]
+    assert _would(w) == [] and w.ev(be.NARROW_MISSING_EVENT) == []
+    d = json.loads(w.ev(be.ENTRY_ORDER_EVENT)[0][2])
+    assert d["ticker"] == "BRKO" and d["day"] == TODAY.isoformat() and d["narrow_ratio"] == 0.40
+
+
+@pytest.mark.asyncio
+async def test_a_not_narrow_name_never_takes_a_slot_from_a_narrow_one_and_is_never_held(monkeypatch):
+    """Five names break in the same minute with ONE slot free; ranks 1 and 3 are not narrow. The slot goes to rank 2
+    (the best NARROW name), ranks 4 and 5 are held, and ranks 1 and 3 only get their would-buy rows."""
+    lst = _ranked(5)
+    lst[0]["narrow"], lst[2]["narrow"] = _NOT_NARROW, _NOT_NARROW
+    names = [r["ticker"] for r in lst]
+    w = World(monkeypatch, at=(9, 36), list_rows=lst, bars=_through_bars(names),
+              rows=[_lane_row(f"L{k}", 100 + k) for k in range(1, 5)])                # 4 of the 5 slots used
+    w.funnel.side_effect = lambda **kw: {"ticker": kw["alert_context"]["ticker"], "action": ep.ACTION_AUTO_ENTERED}
+    out = await w.tick()
+    assert out["actions"] == {"R1": be.ORIGINAL_ONLY_BREAK, "R2": ep.ACTION_AUTO_ENTERED,
+                              "R3": be.ORIGINAL_ONLY_BREAK, "R4": "held_slots_full", "R5": "held_slots_full"}
+    assert _funnel_tickers(w) == ["R2"] and [h["ticker"] for h in _held(w)] == ["R4", "R5"]
+    assert sorted(r["ticker"] for r in _would(w)) == ["R1", "R3"]
+
+
+@pytest.mark.asyncio
+async def test_fail_safe_a_list_row_with_no_narrow_reading_is_never_bought_and_the_day_is_audited_and_paged_once(monkeypatch):
+    """A row written before the rule (no `narrow` at all), a NULL one and an unparsable one: none is bought; each
+    break is recorded with reason `narrow_missing`; ONE `breakout_v1_narrow_missing` row and ONE page for the day —
+    a list with no readings must never read as a quiet day."""
+    old = {k: v for k, v in _LIST.items() if k != "narrow"}
+    lst = [dict(old, ticker="OLD1", list_rank=1), dict(_LIST, ticker="NUL2", list_rank=2, narrow=None),
+           dict(_LIST, ticker="BAD3", list_rank=3, narrow="{not json"), dict(_LIST, ticker="OK4", list_rank=4)]
+    w = World(monkeypatch, at=(9, 36), list_rows=lst, bars=_through_bars([r["ticker"] for r in lst]))
+    w.funnel.side_effect = lambda **kw: {"ticker": kw["alert_context"]["ticker"], "action": ep.ACTION_AUTO_ENTERED}
+    out = await w.tick()
+    assert out["actions"] == {"OLD1": be.ORIGINAL_ONLY_BREAK, "NUL2": be.ORIGINAL_ONLY_BREAK,
+                              "BAD3": be.ORIGINAL_ONLY_BREAK, "OK4": ep.ACTION_AUTO_ENTERED}
+    assert _funnel_tickers(w) == ["OK4"]
+    assert {r["ticker"]: r["reason"] for r in _would(w)} == dict.fromkeys(("OLD1", "NUL2", "BAD3"), be.NARROW_MISSING)
+    await w.tick(at=(9, 37))
+    (miss,) = w.ev(be.NARROW_MISSING_EVENT)
+    assert json.loads(miss[2])["no_reading"] == ["OLD1", "NUL2", "BAD3"] and "3 of 4" in miss[1]
+    assert len(w.pages) == 1 and "no narrow reading" in w.pages[0] and "OLD1" in w.pages[0]
+    assert len(_would(w)) == 3
+
+
+@pytest.mark.asyncio
+async def test_the_would_buy_row_is_once_a_day_across_a_restart_and_a_swallowed_write_is_retried(monkeypatch):
+    w = World(monkeypatch, at=(9, 36), list_rows=[dict(_LIST, narrow=_NOT_NARROW)], bars={"BRKO": _broke_bars(12)})
+    w.audit_fail.append((be.WOULD_BUY_EVENT, "BRKO"))               # the audit log swallows the first write
+    await w.tick()
+    assert _would(w) == []
+    await w.tick(at=(9, 37))                                          # ...so the next tick that reads the break writes it
+    assert len(_would(w)) == 1
+    monkeypatch.setattr(be, "_paged", set())                          # a restart: the in-memory marks are gone
+    await w.tick(at=(9, 38))
+    await w.tick(at=(9, 39))
+    assert len(_would(w)) == 1                                        # read back from the audit log: not written again
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("narrow", [_NOT_NARROW, None])
+async def test_an_unfilled_buy_on_a_row_that_is_not_narrow_is_cancelled_and_never_re_placed(monkeypatch, narrow):
+    """A buy placed before the rule (or under a list row re-written since) rests UNFILLED on a not-narrow / no-reading
+    row: cancelled with `setup:breakout_not_narrow`, no new order — and a new day low never re-prices it back in."""
+    bars = _flat_bars(12, low=9.80, high=9.95, vol=60_000.0) + [_bar(12, 9.8, 9.85, 9.60, 9.7, 60_000.0)]
+    w = World(monkeypatch, rows=[_placed_row()], orders=[_order()], list_rows=[dict(_LIST, narrow=narrow)],
+              bars={"BRKO": bars})
+    out = await w.tick(at=(9, 43))
+    assert out["actions"] == {"BRKO": "cancelled"} and ("cancel", "ord-1") in w.events
+    assert w.rows["BRKO"]["status"] == "cancelled"
+    assert w.rows["BRKO"]["skip_reason"].startswith("setup:breakout_not_narrow")
+    assert not [e for e in w.events if e[0] == "submit"] and not w.funnel.await_count
+    assert (await w.tick(at=(9, 44)))["actions"] == {"BRKO": "row_cancelled"}       # terminal for the day
+
+
+@pytest.mark.asyncio
+async def test_a_row_that_never_got_its_order_and_a_dead_planned_cancel_are_settled_not_re_placed_when_not_narrow(monkeypatch):
+    bars = {"BRKO": _flat_bars(12, low=9.80, high=9.95, vol=60_000.0)}
+    w = World(monkeypatch, rows=[_placed_row(status="confirmed", oid=None)],
+              list_rows=[dict(_LIST, narrow=_NOT_NARROW)], bars=bars)
+    assert (await w.tick(at=(9, 43)))["actions"] == {"BRKO": "cancelled"}
+    assert w.rows["BRKO"]["skip_reason"].startswith("setup:breakout_not_narrow")
+    # a tick that crashed mid re-price (marker written, the order dead at the broker): settled, not re-placed
+    w2 = World(monkeypatch, rows=[_placed_row()], orders=[_order(status="canceled")],
+               list_rows=[dict(_LIST, narrow=_NOT_NARROW)], bars=bars)
+    w2.audits.append((be.PLANNED_ENTRY_CANCEL, "x", json.dumps({"trade_id": 11, "order_id": "ord-1"})))
+    assert (await w2.tick(at=(9, 43)))["actions"] == {"BRKO": "cancelled"}
+    assert w2.rows["BRKO"]["skip_reason"].startswith("setup:breakout_not_narrow")
+    for x in (w, w2):
+        assert not [e for e in x.events if e[0] == "submit"] and not x.funnel.await_count
+
+
+def test_the_narrow_rule_never_cancels_on_a_narrow_row_and_is_decided_without_bars():
+    assert be._terminal_reason(None, 30, _LIST) is None                         # narrow, no bars: held as before
+    for lrow in (dict(_LIST, narrow=_NOT_NARROW), dict(_LIST, narrow=None), None):
+        assert be._terminal_reason(None, 30, lrow).startswith("setup:breakout_not_narrow")
+    # 15:55 keeps its own reason (the EOD cancel is not re-labelled)
+    assert be._terminal_reason(None, be.EOD_MINUTE, dict(_LIST, narrow=_NOT_NARROW)).startswith("window:breakout_unfilled_eod")
+
+
+@pytest.mark.asyncio
+async def test_a_filled_position_on_a_not_narrow_row_is_never_touched_by_the_narrow_rule(monkeypatch):
+    w = World(monkeypatch, rows=[_placed_row(status="filled")], orders=[_order(status="filled", filled=1250.0)],
+              list_rows=[dict(_LIST, narrow=_NOT_NARROW)], bars={"BRKO": _broke_bars(12)})
+    monkeypatch.setattr(be, "_check_stop_at_fill", AsyncMock(return_value="fill_checked"))
+    out = await w.tick(at=(9, 43))
+    assert out["actions"] == {"BRKO": "fill_checked"} and w.rows["BRKO"]["status"] == "filled"
+    assert not [e for e in w.events if e[0] == "cancel"] and _would(w) == []
+
+
+@pytest.mark.asyncio
+async def test_the_entry_step_itself_refuses_a_not_narrow_row(monkeypatch):
+    """The rule's own wall: the tick never sends a not-narrow name to `_enter`; a caller that does gets no order."""
+    w = World(monkeypatch, at=(9, 36), bars={"BRKO": _broke_bars(12)})
+    mins = be.bars_by_minute(w.bars["BRKO"], TODAY, 5)
+    st = be.evaluate(mins, list_level=10.0, adr20=0.06, vol_bar=1.2e6, last_completed=5)
+    for narrow in (_NOT_NARROW, None):
+        r = await be._enter(TODAY, dict(_LIST, narrow=narrow), st, None)
+        assert r["action"] == ep.ACTION_BLOCKED and r["reason"].startswith("setup:breakout_not_narrow")
+    assert not w.funnel.await_count and len(w.ev("breakout_v1_entry_refused_not_narrow")) == 2
+
+
+@pytest.mark.asyncio
+async def test_the_1555_day_row_counts_the_two_arms_on_the_same_day(monkeypatch):
+    """15:55: the day row carries the list's split and the day's breaks — narrow names that reached the slots (an order
+    row or a slots hold) vs original-only names (a would-buy row) — in its detail AND its summary line."""
+    lst = _ranked(6)
+    lst[1]["narrow"], lst[3]["narrow"] = _NOT_NARROW, _NOT_NARROW                 # R2, R4 not narrow
+    lst[5] = {k: v for k, v in lst[5].items() if k != "narrow"}                    # R6: no reading
+    names = [r["ticker"] for r in lst]
+    bars = _through_bars(["R1", "R2", "R3", "R6"])
+    bars.update(_breaking_bars(["R4", "R5"], None, 12))                            # R4 (not narrow), R5 (narrow): never break
+    w = World(monkeypatch, at=(9, 36), list_rows=lst, bars=bars,
+              rows=[_lane_row(f"L{k}", 100 + k) for k in range(1, 5)])            # one slot free
+    w.funnel.side_effect = lambda **kw: {"ticker": kw["alert_context"]["ticker"], "action": ep.ACTION_AUTO_ENTERED}
+    out = await w.tick()
+    assert out["actions"]["R1"] == ep.ACTION_AUTO_ENTERED and out["actions"]["R3"] == "held_slots_full"
+    assert "narrow_list" not in out                                                # the day counts are 15:55's
+    w.bars = {t: _flat_bars(385, vol=60_000.0) for t in names}
+    out = await w.tick(at=(15, 55))
+    want = {"list_names": 6, "narrow_names": 3, "not_narrow_names": 2, "narrow_missing_names": 1,
+            "narrow_breaks": ["R1", "R3"], "original_only_breaks": ["R2", "R6"]}
+    assert out["narrow_list"] == want
+    (day,) = w.ev("breakout_v1_entry_day")
+    assert json.loads(day[2])["narrow_list"] == want
+    assert "narrow list 3, not narrow 2, no reading 1; broke today: narrow 2, original-only 2" in day[1]
+
+
+def test_the_list_read_carries_the_narrow_reading_out_of_the_gates_jsonb_with_no_new_column():
+    sql = " ".join(db.BV1_LIST_SELECT_SQL.split())
+    assert "gates->'narrow' AS narrow" in sql.split(" FROM ")[0]
+    assert "narrow" not in db.BV1_LIST_COLS                                        # carried by `gates`, not a column
+
+
+@pytest.mark.asyncio
+async def test_the_real_list_reader_hands_the_reading_to_the_tick(monkeypatch):
+    """Through `db.bv1_get_list` itself (the statement the tick sends), a not-narrow row is not bought and a narrow
+    one is — whether the pool hands the jsonb over as a dict or as its JSON text."""
+    lst = [dict(_LIST, ticker="NN1", list_rank=1, narrow=json.dumps(_NOT_NARROW)),
+           dict(_LIST, ticker="OK2", list_rank=2, narrow=json.dumps(_NARROW))]
+    w = World(monkeypatch, at=(9, 36), list_rows=lst, bars=_through_bars(["NN1", "OK2"]))
+    monkeypatch.setattr(be, "bv1_get_list", db.bv1_get_list)                        # the REAL reader
+    w.funnel.side_effect = lambda **kw: {"ticker": kw["alert_context"]["ticker"], "action": ep.ACTION_AUTO_ENTERED}
+    out = await w.tick()
+    assert out["actions"] == {"NN1": be.ORIGINAL_ONLY_BREAK, "OK2": ep.ACTION_AUTO_ENTERED}
+    assert _funnel_tickers(w) == ["OK2"] and [r["ticker"] for r in _would(w)] == ["NN1"]
+    assert any(_norm(q) == _norm(db.BV1_LIST_SELECT_SQL) for q in w.sql)
+
