@@ -92,7 +92,7 @@ one — any scheduled event plus a close against the crowd — so the card names
 
 "First minute the crowd's way" = a read first minute with `move` above 0.01 of a day's range (the page's flat band);
 the raw move is stored, so the stricter-rule test can re-cut that line later. When no forecast was seen before the
-release, step 1 shows the figure the source lists afterwards, labelled "forecast listed after the release" — the news
+release, step 1 shows the figure the source lists afterwards, labelled "forecast read after the release" — the news
 read is always scored from the same 17:15 read the alert label uses, so the card and the alert never disagree.
 
 `strict` = true only on `failure_full`. That is the doc's rule (news favours the crowd, first reaction their way,

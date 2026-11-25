@@ -122,9 +122,9 @@ week since its last main set up (within 26 weeks) that Commercials (stock indice
 **News watch scoring (2026-11-25, his ruling "news to watch for and what's expectation, once news is here, we assess vs expectation"):**
 the judged row's news read, verdict and `strict` are scored against the LINED-UP forecast: the frozen pre-release figure
 (`series[].forecast` / `forecast_seen_at`), never the figure the source lists after the release (`forecast_after`). If no
-pre-release figure was ever stored the release-day read stands and the card labels it "forecast listed after the release".
+pre-release figure was ever stored the release-day read stands and the card labels it "forecast read after the release". In a mixed event (some series stored, some not) only the stored-forecast series are scored; the others are marked "(not scored: no forecast lined up)".
 The card prints the figure it was scored on and, when the after-release figure differs, a second small note; where the alert
-label (`mi_cot_alerts.news_class`, release-day read, unchanged) differs, one short line says so. A row left `pending` (no bar
+label (`mi_cot_alerts.news_class`, release-day read, unchanged) differs, one short line says so (it claims a "release-day forecast" only when a stored forecast exists and the later figure differs; otherwise it says the alert label was a day-level read, since two releases can share a day). A row left `pending` (no bar
 at the 17:15 run) is judged again by the next runs within the 7-day window once a bar exists. A watch error never pages; its
 count is on the audit summary line ("NEWS WATCH ERRORS n") and the page captions a null `news_watch_asof`.
 
