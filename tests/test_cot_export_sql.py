@@ -37,7 +37,7 @@ def test_weeks_are_ranked_report_dates_not_calendar():
 
 
 def test_last_60_alerts_newest_first():
-    assert "ORDER BY alert_date DESC, id DESC LIMIT 60" in CODE
+    assert "ORDER BY a.alert_date DESC, a.id DESC LIMIT 60" in CODE
 
 
 def test_meta_values_mirror_cot_family_markets():
@@ -46,9 +46,28 @@ def test_meta_values_mirror_cot_family_markets():
     assert got == want
 
 
+def test_peerdef_mirrors_cot_family_peers():
+    body = CODE.split("peerdef(market, peer_list) AS (", 1)[1].split("),\nix AS", 1)[0]
+    got = {m: lst.split(",") for m, lst in re.findall(r"\('(\w+)', '([\w,\-]+)'\)", body)}
+    want = {m: [("-" if sg < 0 else "") + p for p, sg in v] for m, v in cot_family.PEERS.items()}
+    assert got == want
+
+
+def test_double_encoded_detail_is_unwrapped_not_fatal():
+    assert "jsonb_typeof(a.detail) = 'string'" in CODE and "(a.detail #>> '{}')::jsonb" in CODE
+    assert "left(a.detail #>> '{}', 1) = '{'" in CODE      # a non-object string reads as no detail, never an abort
+
+
+def test_old_alert_keys_are_unchanged():
+    for k in ("alert_date", "market", "direction", "kind", "level", "report_date", "events", "entry_price",
+              "stop_price", "first_minute", "first_minute_big", "news_class"):
+        assert re.search(rf"'{k}', a\.", CODE), k
+
+
 KEYS = ("version", "generated_at", "report_date", "known_from", "markets", "alerts", "definitions", "market", "name",
         "sector", "comm", "lspec", "sspec", "setup", "close_setup", "prev", "history", "alert_date", "direction", "kind",
-        "level", "events", "entry_price", "stop_price", "first_minute", "first_minute_big", "news_class")
+        "level", "events", "entry_price", "stop_price", "first_minute", "first_minute_big", "news_class", "z", "peer_z",
+        "entry_note", "stop_rule", "failure_day", "atr", "news", "peers", "inverse")
 
 
 @pytest.mark.parametrize("key", KEYS)

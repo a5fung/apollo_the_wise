@@ -6,7 +6,8 @@
 -- SSoT: docs/architecture/cot_snapshot.md. READ-ONLY, display only: no money path, no order, no alert input.
 -- Weeks are the distinct report_dates in mi_cot_index_weekly (rank 1 = newest), never calendar arithmetic, so a
 -- holiday-shifted week is one week. Display names + sectors: the VALUES list below mirrors cot_family.MARKETS
--- (a test fails if they drift).
+-- (a test fails if they drift). peerdef mirrors cot_family.PEERS the same way ('-x' = an inverse peer); it lets each
+-- alert carry the NAMES of the peers its correlation reading was taken over.
 WITH wk AS (
     SELECT report_date, (dense_rank() OVER (ORDER BY report_date DESC))::int AS rk
       FROM (SELECT DISTINCT report_date FROM mi_cot_index_weekly) d
@@ -57,6 +58,40 @@ meta(market, name, sector) AS (
         ('bitcoin', 'BITCOIN', 'crypto'),
         ('ethereum', 'ETHEREUM', 'crypto')
 ),
+peerdef(market, peer_list) AS (
+    VALUES
+        ('australian_dollar', 'british_pound,canadian_dollar,euro,japanese_yen,swiss_franc,new_zealand_dollar,-dollar_index'),
+        ('bonds_30y', 'notes_10y,notes_5y,notes_2y'),
+        ('british_pound', 'australian_dollar,canadian_dollar,euro,japanese_yen,swiss_franc,new_zealand_dollar,-dollar_index'),
+        ('canadian_dollar', 'australian_dollar,british_pound,euro,japanese_yen,swiss_franc,new_zealand_dollar,-dollar_index'),
+        ('copper', 'sp500,silver,platinum'),
+        ('corn', 'soybeans,soybean_meal,wheat'),
+        ('cotton', 'crude_oil'),
+        ('crude_oil', 'heating_oil,unleaded_gas'),
+        ('dollar_index', '-australian_dollar,-british_pound,-canadian_dollar,-euro,-japanese_yen,-swiss_franc,-new_zealand_dollar'),
+        ('dow', 'nasdaq,russell,sp500'),
+        ('euro', 'australian_dollar,british_pound,canadian_dollar,japanese_yen,swiss_franc,new_zealand_dollar,-dollar_index'),
+        ('gold', 'silver,platinum,palladium'),
+        ('heating_oil', 'crude_oil,unleaded_gas'),
+        ('japanese_yen', 'australian_dollar,british_pound,canadian_dollar,euro,swiss_franc,new_zealand_dollar,-dollar_index'),
+        ('nasdaq', 'dow,russell,sp500'),
+        ('new_zealand_dollar', 'australian_dollar,british_pound,canadian_dollar,euro,japanese_yen,swiss_franc,-dollar_index'),
+        ('notes_10y', 'bonds_30y,notes_5y,notes_2y'),
+        ('notes_2y', 'bonds_30y,notes_10y,notes_5y'),
+        ('notes_5y', 'bonds_30y,notes_10y,notes_2y'),
+        ('palladium', 'gold,silver,platinum'),
+        ('platinum', 'gold,silver,palladium'),
+        ('russell', 'dow,nasdaq,sp500'),
+        ('silver', 'gold,platinum,palladium'),
+        ('soybean_meal', 'soybeans,corn,wheat'),
+        ('soybean_oil', 'crude_oil,soybeans'),
+        ('soybeans', 'soybean_meal,corn,wheat'),
+        ('sp500', 'dow,nasdaq,russell'),
+        ('sugar', 'crude_oil'),
+        ('swiss_franc', 'australian_dollar,british_pound,canadian_dollar,euro,japanese_yen,new_zealand_dollar,-dollar_index'),
+        ('unleaded_gas', 'crude_oil,heating_oil'),
+        ('wheat', 'soybeans,soybean_meal,corn')
+),
 ix AS (
     SELECT i.market, w.rk, i.report_date, i.comm, i.lspec, i.sspec, i.setup, i.close_setup
       FROM mi_cot_index_weekly i
@@ -81,8 +116,24 @@ per_market AS (
       JOIN ix cur ON cur.market = m.market AND cur.rk = 1
       LEFT JOIN ix pv ON pv.market = m.market AND pv.rk = 2
 ),
+peers_of AS (
+    SELECT d.market,
+           json_agg(json_build_object('market', q.peer, 'name', COALESCE(pm.name, q.peer), 'inverse', q.inv)
+                    ORDER BY q.ord) AS peers
+      FROM peerdef d
+     CROSS JOIN LATERAL (SELECT ltrim(t.x, '-') AS peer, left(t.x, 1) = '-' AS inv, t.ord
+                           FROM unnest(string_to_array(d.peer_list, ',')) WITH ORDINALITY AS t(x, ord)) q
+      LEFT JOIN meta pm ON pm.market = q.peer
+     GROUP BY d.market
+),
+-- detail is jsonb, but some rows hold a JSON STRING that itself contains the JSON (double-encoded): unwrap those; a
+-- string that is not an object is read as no detail rather than failing the whole export.
 al AS (
-    SELECT * FROM mi_cot_alerts ORDER BY alert_date DESC, id DESC LIMIT 60
+    SELECT a.*,
+           CASE WHEN jsonb_typeof(a.detail) = 'string' THEN
+                    CASE WHEN left(a.detail #>> '{}', 1) = '{' THEN (a.detail #>> '{}')::jsonb END
+                ELSE a.detail END AS det
+      FROM mi_cot_alerts a ORDER BY a.alert_date DESC, a.id DESC LIMIT 60
 )
 SELECT json_build_object(
     'version', 1,
@@ -95,12 +146,16 @@ SELECT json_build_object(
                   'level', a.level, 'report_date', a.report_date, 'events', a.events,
                   'entry_price', a.entry_price, 'stop_price', a.stop_price,
                   'first_minute', a.first_minute, 'first_minute_big', a.first_minute_big,
-                  'news_class', a.news_class) ORDER BY a.alert_date DESC, a.id DESC) FROM al a), '[]'::json),
+                  'news_class', a.news_class,
+                  'z', a.z, 'peer_z', a.peer_z, 'comm', a.comm, 'lspec', a.lspec, 'sspec', a.sspec,
+                  'entry_note', a.entry_note, 'stop_rule', a.stop_rule, 'failure_day', a.failure_day,
+                  'atr', a.det -> 'atr', 'news', a.det -> 'news',
+                  'peers', (SELECT po.peers FROM peers_of po WHERE po.market = a.market)) ORDER BY a.alert_date DESC, a.id DESC) FROM al a), '[]'::json),
     'definitions', json_build_object(
         'index', 'Each group''s net position as a 0 to 100 index of its own lookback window: 0 is its most short, 100 its most long. comm = commercials, lspec = large speculators, sspec = small speculators.',
         'setup', 'The main rule: the crowd is at an extreme, the direction shown is the way to fade into. close_setup is the looser close list.',
         'exit_watch', 'A market that was in a set up the week before and is not now; the distance to 50 is how far each group still is from neutral.',
-        'alerts', 'The newest 60 alerts: news = a failure on a scheduled release, correlation = the peers moved with the crowd, friday = the weekly confirmation. Labels only; nothing here places an order.',
+        'alerts', 'The newest 60 alerts: news = a failure on a scheduled release, correlation = the peers moved with the crowd, friday = the weekly confirmation. Labels only; nothing here places an order. Each alert also carries the readings behind it: z (the market''s own day move in 20-day ranges, up = positive), peer_z (the peers'' median move, positive = the crowd''s way), the index at alert, entry_note, stop_rule, failure_day, atr, news[] and peers[].',
         'not_claimed', 'Display only. Nothing here feeds a trade, a grade, an alert or any sizing.'
     )
 )
