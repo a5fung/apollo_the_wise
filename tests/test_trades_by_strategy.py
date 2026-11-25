@@ -117,7 +117,7 @@ def test_level1_paper_mixed_strategies():
     text, _ = _detail("/trades_detail summary 2026-11-24 paper")
     assert "`breakout_v1` (since Nov 2)" in text
     assert "22 closed -$9,553 · win 27% · avg -0.4R" in text
-    assert "5 open +$365" in text
+    assert "5 open (+$365 already taken)" in text
     # ONE folded retired line: both retired names, combined closed count and $, the date span
     assert "retired: `magna53`, `9m_day2` · 34 closed -$10,670 (Apr–Jun)" in text or \
            "retired: `9m_day2`, `magna53` · 34 closed -$10,670 (Apr–Jun)" in text

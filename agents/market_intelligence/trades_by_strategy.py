@@ -20,7 +20,6 @@ from datetime import date
 logger = logging.getLogger(__name__)
 
 RETIRED = "retired"            # the pseudo-strategy token for the folded group
-UNLABELLED = "unlabelled"      # rows whose signal_type is NULL (pre-framework) — never active
 
 # Short typed aliases. Everything else resolves by registry id / unique prefix (>= 6 chars so a typed
 # ticker such as BREAK can never be hijacked — a ticker is at most 5 letters).
@@ -105,7 +104,7 @@ async def _runtime_off(sig: str) -> bool:
 
 
 async def load_book_strategies(conn, book: str) -> dict:
-    """{'active': [stat...], 'retired': [stat...], 'all_ids': set, 'names': {sig: name}}.
+    """{'active': [stat...], 'retired': [stat...], 'all_ids': set}.
     Active = registry-active for the book AND has a filled/closed trade in it (a new strategy appears
     from its first trade); retired = has trades in the book but is not registry-active for it."""
     reg = await conn.fetch(_REGISTRY_SQL)
@@ -114,7 +113,6 @@ async def load_book_strategies(conn, book: str) -> dict:
     for sig in sorted(active_ids):
         if await _runtime_off(sig):
             active_ids.discard(sig)
-    names = {r["signal_type"]: r["name"] for r in reg if r["signal_type"]}
     stats = [_stat(r) for r in stat_rows]
     stats = [s for s in stats if _traded(s)]
     stats.sort(key=lambda s: (s["first_trade"] or date.max, s["sig"]))
@@ -123,8 +121,7 @@ async def load_book_strategies(conn, book: str) -> dict:
     active.sort(key=lambda s: s["first_trade"] or date.min, reverse=True)
     retired = [s for s in stats if s["sig"] not in active_ids]
     return {"active": active, "retired": retired,
-            "all_ids": {s["sig"] for s in stats} | {r["signal_type"] for r in reg if r["signal_type"]},
-            "names": names}
+            "all_ids": {s["sig"] for s in stats} | {r["signal_type"] for r in reg if r["signal_type"]}}
 
 
 def single_strategy_sig(bs: dict) -> str | None:
@@ -182,11 +179,10 @@ def _since(first) -> str:
     return f"since {first.strftime('%b')} {first.day}" if first else "no fills yet"
 
 
-def fmt_line(s: dict, label: str | None = None) -> str:
+def fmt_line(s: dict) -> str:
     """One strategy's stat line (plain words, no table)."""
-    name = label or s["sig"]
     n = s["closed_n"]
-    parts = [f"`{name}` ({_since(s['first_trade'])})"]
+    parts = [f"`{s['sig']}` ({_since(s['first_trade'])})"]
     if n:
         win = round(s["wins"] / n * 100)
         r = f" · avg {s['avg_r']:+.1f}R" if s["avg_r"] is not None else ""
@@ -194,7 +190,10 @@ def fmt_line(s: dict, label: str | None = None) -> str:
     else:
         parts.append("0 closed")
     if s["open_n"]:
-        parts.append(f"{s['open_n']} open {_d(s['open_realized'])}")
+        # open_realized is what partial sales on the open trades already banked — NOT how the open
+        # trades stand (unrealized needs live prices; the strategy page shows it). Label it so.
+        banked = f" ({_d(s['open_realized'])} already taken)" if s["open_realized"] else ""
+        parts.append(f"{s['open_n']} open{banked}")
     return " · ".join(parts)
 
 
@@ -213,7 +212,8 @@ def fmt_group_line(group: list[dict]) -> str:
 
 
 def render_level1(bs: dict, book: str, date_str: str) -> str:
-    badge = "📄 PAPER — not real money" if book == "paper" else "💰 LIVE (real money)"
+    from agents.market_intelligence.agent import PAPER_BOOK_BADGE   # one wording for the paper badge
+    badge = PAPER_BOOK_BADGE if book == "paper" else "💰 LIVE (real money)"
     lines = [f"📊 *Strategies — {date_str}* · {badge}", ""]
     for s in bs["active"]:
         lines.append(fmt_line(s))

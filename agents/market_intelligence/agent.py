@@ -7732,15 +7732,22 @@ class MarketIntelligenceAgent(BaseAgent):
                     return await tbs.load_book_strategies(_c, book)
             except Exception as e:  # loud-ok: display only — the unscoped legacy page is the fallback
                 logger.warning(f"/trades strategy board unavailable, legacy page shown: {e}")
-                return {"active": [], "retired": [], "all_ids": set(), "names": {}}
+                return {"active": [], "retired": [], "all_ids": set()}
 
         scope_bs: dict | None = None
         scope_sigs: list[str] | None = None
         if scope_tok is not None:
-            scope_bs = await _book_strategies()
-            scope_sigs = tbs.scope_sigs(scope_bs, scope_tok)
+            # the board is needed only to expand `retired` into its ids or for the summary header;
+            # a single-strategy Closed / Skipped / Scanned tap scopes to the token alone
+            if scope_tok == tbs.RETIRED or view == "summary":
+                scope_bs = await _book_strategies()
+                scope_sigs = tbs.scope_sigs(scope_bs, scope_tok)
+            else:
+                scope_sigs = [scope_tok]
         # bound `$2` scope filter (only when scoped); the book stays `$1` in every query
-        scope_sql = " AND COALESCE(signal_type, 'unlabelled') = ANY($2::text[])" if scope_sigs is not None else ""
+        def _scope_clause(n: int) -> str:   # the bound scope filter at placeholder $n ('' when unscoped)
+            return f" AND COALESCE(signal_type, 'unlabelled') = ANY(${n}::text[])" if scope_sigs is not None else ""
+        scope_sql = _scope_clause(2)
         scope_args = (scope_sigs,) if scope_sigs is not None else ()
         tbs_scope_label = ("retired strategies" if scope_tok == tbs.RETIRED else f"`{scope_tok}`") if scope_tok else ""
 
@@ -7753,7 +7760,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 # the scan has no strategy column: say so rather than show unscoped data silently
                 # the scan is the EP gap scan (MAGNA53's); breakout_v1's own list is not in it
                 if scope_tok != "magna53":
-                    scanned.result = ("_This is the EP gap scan — breakout_v1 candidates are not in it._\n\n"
+                    scanned.result = (f"_This is the EP gap scan — {'retired-strategy' if scope_tok == tbs.RETIRED else scope_tok} candidates are not in it._\n\n"
                                       + scanned.result)
             return scanned
 
@@ -7823,7 +7830,7 @@ class MarketIntelligenceAgent(BaseAgent):
                         FROM mi_live_trades
                         WHERE status = 'closed' AND ticker = ANY($1)
                           AND account_mode = $2  -- the book
-                          {scope_sql.replace('$2', '$3')}
+                          {_scope_clause(3)}
                         GROUP BY ticker
                     """, relevant_tickers, book, *scope_args)
                     ticker_history = {h["ticker"]: dict(h) for h in hist_rows}
@@ -8040,7 +8047,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 return self._ok(request, result=("📄 PAPER — no skipped trades recorded." if book == "paper" else "No skipped trades recorded.")
                                 + (f" ({tbs_scope_label})" if scope_tok is not None else ""))
             from agents.market_intelligence.broker.skip_reasons import humanize
-            lines = [f"⊘ *Skipped Trades* (last {len(rows)})" + (" · 📄 PAPER — not real money" if book == "paper" else "")
+            lines = [f"⊘ *Skipped Trades* (last {len(rows)})" + (f" · {PAPER_BOOK_BADGE}" if book == "paper" else "")
                      + (f" · {tbs_scope_label}" if scope_tok is not None else "")]
             for r in rows:
                 d_str = r["alert_date"].strftime("%b %d")
@@ -8077,7 +8084,7 @@ class MarketIntelligenceAgent(BaseAgent):
             wins = sum(1 for r in rows if float(r["total_pnl"] or 0) > 0)
             losses = len(rows) - wins
             lines = [
-                f"📊 *Closed Trades* (last {len(rows)})" + (" · 📄 PAPER — not real money" if book == "paper" else "")
+                f"📊 *Closed Trades* (last {len(rows)})" + (f" · {PAPER_BOOK_BADGE}" if book == "paper" else "")
                 + (f" · {tbs_scope_label}" if scope_tok is not None else ""),
                 f"  W/L {wins}/{losses} · net ${net:+,.0f}",
                 "",

@@ -188,3 +188,42 @@ async def test_promote_unchanged_when_rs_read_fails(monkeypatch):
     assert res["status"] == "promoted" and res["n_members"] == 4
     assert res["rs_warnings"] == []
     assert "⚠" not in _render_promote_result(res, "bitcoin miners")
+
+
+# ── parity: the promotion warning names EXACTLY the members the real nightly prune cuts ──────────
+# (simplify 11-24: the warning re-states the prune's arms; this pins the two together so the warning
+# cannot drift from the cut. Driven through the REAL `_rescore_existing_theme`, not a re-statement.)
+_PARITY = {
+    "hard_falling": ({"A": 10.0, "B": 60.0, "C": 61.0, "D": 62.0},
+                     {"A": [10.0, 14.0, 18.0, 22.0, 24.0, 30.0]}),
+    "hard_rising_held": ({"A": 20.0, "B": 60.0, "C": 61.0},
+                         {"A": [20.0, 15.0, 12.0, 10.0, 8.0, 5.0]}),
+    "soft_three_days": ({"A": 30.0, "B": 60.0, "C": 61.0},
+                        {"A": [30.0, 31.0, 32.0, 40.0, 41.0, 42.0]}),
+    "soft_only_two_days": ({"A": 30.0, "B": 60.0, "C": 61.0},
+                           {"A": [30.0, 31.0, 40.0, 41.0, 42.0, 43.0]}),
+    "no_current_data": ({"A": None, "B": 60.0, "C": 61.0},
+                        {"A": [10.0, 12.0, 11.0, 13.0, 9.0]}),
+    "min_floor_keeps_best_back": ({"A": 5.0, "B": 9.0, "C": 60.0},
+                                  {"A": [5.0, 8.0, 12.0, 15.0, 18.0, 20.0],
+                                   "B": [9.0, 12.0, 15.0, 18.0, 20.0, 22.0]}),
+}
+
+
+_EXPECTED_CUT = {"hard_falling": {"A"}, "hard_rising_held": set(), "soft_three_days": {"A"},
+                 "soft_only_two_days": set(), "no_current_data": {"A"}, "min_floor_keeps_best_back": {"A"}}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("case", sorted(_PARITY))
+async def test_warning_matches_the_real_prune(monkeypatch, case):
+    members_rs, hist = _PARITY[case]
+    stocks = {tk: {"ticker": tk, "rs_composite": rs, "sector": "Technology"}
+              for tk, rs in members_rs.items() if rs is not None}
+    _mocks(monkeypatch, hist, AsyncMock())
+    theme = {"name": NAME, "tickers": list(members_rs), "score": 60, "stage": "Nascent", "description": "d"}
+    _, changelog = await te._rescore_existing_theme(theme, stocks, TUESDAY, protected=set())
+    pruned = {c["ticker"] for c in changelog if c["type"] == "ticker_pruned"}
+    warned = {w["ticker"] for w in te.prune_warnings_for_members(members_rs, hist)}
+    assert warned == pruned, (case, warned, pruned)
+    assert pruned == _EXPECTED_CUT[case]          # the case really exercises its arm (not 0 == 0)
