@@ -436,6 +436,8 @@ class FakeIo(cf.Io):
         self.fx_eia, self.fx_weeks, self.fx_bank = True, {}, {}
         self.wasde, self.wasde_exc, self.earn = [date(2026, 12, 10)], None, {}
         self.cal_first = date(2020, 1, 1)      # the stored calendar reaches far back (a long-running install); None = read off self.cal
+        self.watch = {}                        # (event_date, event_type, market) -> the stored news-watch row
+        self.watch_fail = None                 # an exception the watch's database writes raise (isolation tests)
 
     def cftc(self, since, today):
         if self.cftc_exc:
@@ -513,6 +515,18 @@ class FakeIo(cf.Io):
 
     async def calendar_first_date(self):
         return self.cal_first or min((r["event_date"] for r in self.cal), default=None)
+
+    async def watch_rows(self, d0, d1):
+        if self.watch_fail:
+            raise self.watch_fail
+        return [dict(r) for k, r in self.watch.items() if d0 <= k[0] <= d1]
+
+    async def replace_watch(self, d0, d1, rows):
+        if self.watch_fail:
+            raise self.watch_fail
+        self.watch = {k: r for k, r in self.watch.items() if not d0 <= k[0] <= d1}
+        for r in rows:
+            self.watch[(r["event_date"], r["event_type"], r["market"])] = dict(r)
 
     async def store_alerts(self, rows):
         out = []
@@ -778,13 +792,15 @@ def test_the_calendar_is_read_fresh_every_day_and_in_full_weekly():
               {"event_date": date(2026, 11, 10), "event_type": "WASDE", "release_et": None, "source": "usda.gov WASDE release dates"}]
     io.fx = [_fx("Inflation Rate MoM", "0.4%", "0.2%")]         # CPI is today; the PPI the source no longer lists is gone
     res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
-    assert res["alerts"] == 1 and "calendar" not in res and io.fx_calls == [("united-states", date(2026, 11, 9))]
+    # this week's read, then the news watch's one extra read of NEXT week (its figures; a trigger row replaces that week's rows)
+    assert res["alerts"] == 1 and "calendar" not in res and io.fx_calls == [("united-states", date(2026, 11, 9)),
+                                                                           ("united-states", date(2026, 11, 16))]
     assert {(r["event_date"], r["event_type"]) for r in io.cal} == {
-        (WED, "CPI"), (date(2026, 11, 12), "EIA_NATGAS"), (date(2026, 11, 10), "WASDE")}
+        (WED, "CPI"), (date(2026, 11, 12), "EIA_NATGAS"), (date(2026, 11, 10), "WASDE"), (date(2026, 11, 19), "EIA_NATGAS")}
     io = _daily_io()
     io.cal_age = 8
     res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
-    assert res["calendar"]["errors"] == {} and len(io.fx_calls) == 1 + 3 + 6      # this week, 3 more, 6 central banks
+    assert res["calendar"]["errors"] == {} and len(io.fx_calls) == 1 + 3 + 6      # this week, 3 more, 6 central banks (the news watch reuses next week's rows: no 11th request)
     assert (date(2026, 12, 10), "WASDE") in {(r["event_date"], r["event_type"]) for r in io.cal}
 
 
@@ -1016,14 +1032,16 @@ def test_the_ddl_is_idempotent_writes_only_its_own_tables_and_runs_at_init():
     from agents.market_intelligence import db
     ddl = db._COT_FAMILY_DDL
     creates = re.findall(r"CREATE\s+TABLE\s+(IF NOT EXISTS)?\s*(\w+)", ddl)
-    assert {c[1] for c in creates} == {"mi_cot_nets_weekly", "mi_cot_weeks", "mi_cot_index_weekly", "mi_cot_calendar", "mi_cot_alerts"}
+    assert {c[1] for c in creates} == {"mi_cot_nets_weekly", "mi_cot_weeks", "mi_cot_index_weekly", "mi_cot_calendar", "mi_cot_alerts",
+                                       "mi_cot_news_watch"}
     assert all(c[0] for c in creates) and not re.search(r"\bDROP\b|\bTRUNCATE\b|\bALTER\b", ddl)
     for col in ("report_date", "market", "comm", "lspec", "sspec", "setup", "close_setup"):
         assert re.search(rf"mi_cot_index_weekly \((?:.|\n)*?\b{col}\b", ddl)
     assert "UNIQUE (alert_date, market, direction, kind)" in ddl
     # source-pin-ok: that the schema init EXECUTES this DDL is decidable only from its source (the _BREAKOUT_V1_DDL precedent)
     assert "await conn.execute(_COT_FAMILY_DDL)" in (REPO / "agents" / "market_intelligence" / "db.py").read_text()
-    for sql in (cf._COT_ALERT_UPSERT_SQL, cf._COT_INDEX_UPSERT_SQL, cf._COT_CALENDAR_UPSERT_SQL, cf._COT_NETS_UPSERT_SQL):
+    for sql in (cf._COT_ALERT_UPSERT_SQL, cf._COT_INDEX_UPSERT_SQL, cf._COT_CALENDAR_UPSERT_SQL, cf._COT_NETS_UPSERT_SQL,
+                cf._COT_WATCH_UPSERT_SQL):
         table = re.search(r"INSERT INTO (\w+)", sql).group(1)
         cols = [c.strip() for c in re.search(r"\(([^)]*)\)", sql).group(1).split(",")]
         body = re.search(rf"CREATE TABLE IF NOT EXISTS {table} \((.*?)\n    \);", ddl, re.S).group(1)
@@ -1468,3 +1486,411 @@ def test_calendar_age_matches_the_wasde_source_exactly():
     assert _run(PgIo().calendar_age_days(date(2026, 11, 22))) == 2
     assert seen == [("usda.gov WASDE release dates",)]       # the exact string its rows carry (no prefix match)
     assert cf.calendar_rows_from_wasde([date(2026, 12, 10)])[0]["source"] == cf.WASDE_SOURCE
+
+
+# ── news watch (2026-11-25): the news to watch for, then the verdict ─────────────────────────────
+
+THU, FRI_NEXT = date(2026, 11, 12), date(2026, 11, 13)
+
+
+@pytest.mark.parametrize("close_z,direction,cls,fm,want,strict", [
+    # a short set up = the crowd is long: a close DOWN (z < 0) is against them
+    (-0.5, "short", "WITH", {"status": "ok", "move": 0.31}, "failure_full", True),
+    (-0.5, "short", "WITH", {"status": "ok", "move": 0.01}, "failure", False),        # flat first minute (the band edge is flat)
+    (-0.5, "short", "WITH", {"status": "ok", "move": -0.2}, "failure", False),        # first minute against the crowd
+    (-0.5, "short", "WITH", {"status": "no minute bars"}, "failure", False),          # first minute not read
+    (-0.5, "short", "AGAINST", {"status": "ok", "move": -0.4}, "followed_news", False),
+    (-0.5, "short", "INLINE", None, "against_unread", False),
+    (-0.5, "short", "AMBIG", None, "against_unread", False),
+    (-0.5, "short", "UNKNOWN", None, "against_unread", False),
+    (0.5, "short", "WITH", None, "followed_news", False),
+    (0.5, "short", "AGAINST", None, "shrugged", False),
+    (0.5, "short", "INLINE", None, "no_failure", False),
+    (0.5, "short", "UNKNOWN", None, "no_failure", False),
+    (0.0, "short", "WITH", None, "followed_news", False),                             # unchanged is not against (as detect())
+    (0.5, "long", "WITH", {"status": "ok", "move": 0.5}, "failure_full", True),       # a long set up: the crowd is short, UP is against
+    (-0.5, "long", "AGAINST", None, "shrugged", False),
+    (None, "short", "WITH", None, "pending", False),
+])
+def test_the_verdict_table_row_by_row(close_z, direction, cls, fm, want, strict):
+    assert cf.watch_verdict(close_z, direction, cls, fm) == (want, strict)
+    assert want in cf.VERDICT_WORDS
+
+
+def test_the_crowd_sentence_for_a_long_and_a_short_set_up():
+    sil = [{"name": "Non Farm Payrolls", "forecast": "82.0K"}, {"name": "Unemployment Rate", "forecast": "4.2%"}]
+    # the doc's example: a LONG set up (fade into long) = the crowd is SHORT silver; stronger jobs = bearish silver = their way
+    assert cf.crowd_outcome_words("NFP", "silver", "long", sil) == (
+        "Crowd is SHORT Silver. News that favours the crowd: jobs stronger than forecast (payrolls above 82.0K, "
+        "unemployment below 4.2%) = bearish Silver. Failure to watch for: that news, a first move down, then a close UP.")
+    # the SHORT set up: the crowd is long, so the opposite news and the opposite figures (two components, opposite signs)
+    assert cf.crowd_outcome_words("NFP", "silver", "short", sil) == (
+        "Crowd is LONG Silver. News that favours the crowd: jobs weaker than forecast (payrolls below 82.0K, "
+        "unemployment above 4.2%) = bullish Silver. Failure to watch for: that news, a first move up, then a close DOWN.")
+    cpi = [{"name": "Inflation Rate MoM", "forecast": "0.2%"}, {"name": "Core Inflation Rate MoM", "forecast": None}]
+    assert "inflation cooler than forecast (CPI m/m below 0.2%) = bullish Gold" in cf.crowd_outcome_words("CPI", "gold", "short", cpi)
+    assert "inflation hotter than forecast (CPI m/m above 0.2%) = bearish Gold" in cf.crowd_outcome_words("CPI", "gold", "long", cpi)
+    # the dollar is bought on hot inflation: the sign flips with the market
+    assert "inflation hotter than forecast" in cf.crowd_outcome_words("CPI", "dollar_index", "short", cpi)
+    # EIA is read off the market's own stocks series; a build is bearish crude
+    eia = [{"name": "EIA Crude Oil Stocks Change", "forecast": "1.5M"}]
+    assert "a smaller build, or a bigger draw, than forecast (crude stocks change below 1.5M) = bullish Crude Oil" in \
+        cf.crowd_outcome_words("EIA_PETRO", "crude_oil", "short", eia)
+    assert "a bigger stock build, or a smaller draw, than forecast" in cf.crowd_outcome_words("EIA_PETRO", "crude_oil", "long", eia)
+    # no forecast figure listed yet: the sentence still names the news, without figures
+    assert "(" not in cf.crowd_outcome_words("NFP", "silver", "long", [{"name": "Non Farm Payrolls", "forecast": None}]).split("=")[0]
+    # an ambiguous pair, an unmapped pair and a no-forecast event carry no sentence
+    for et, m in (("NFP", "sp500"), ("CPI", "platinum"), ("OPEC", "crude_oil"), ("WASDE", "corn"), ("AU_CPI", "australian_dollar")):
+        assert cf.crowd_outcome_words(et, m, "short", []) == ""
+    assert [cf.watch_read(et, m) for et, m in (("CPI", "gold"), ("NFP", "sp500"), ("AU_CPI", "australian_dollar"),
+                                               ("OPEC", "crude_oil"), ("ECB", "euro"), ("EARN_NVDA", "nasdaq"))] == \
+        ["mapped", "ambiguous", "ambiguous", "none", "ambiguous", "mapped"]
+
+
+def test_a_surprise_on_the_favoured_side_is_with_the_crowd_for_every_mapped_pair():
+    """The sentence and the alert label must agree: the surprise the sentence calls 'favours the crowd' is class WITH
+    under news_class, and the opposite one is AGAINST — for every mapped (event, market) pair and both directions."""
+    n = 0
+    for et in list(cf._US_TYPES) + ["EIA_PETRO", "EIA_NATGAS", "EARN_NVDA"]:
+        for m in cf.markets_for_event(et):
+            for direction in ("short", "long"):
+                fz = cf.favoured_z_sign(et, m, direction)
+                if fz is None:
+                    continue
+                src = cf._EIA_OF.get(m) if et == "EIA_PETRO" else et
+                n += 1
+                assert cf.news_class(et, m, direction, WED, {(WED, src): {"z": 1.0 * fz, "text": "t"}})["cls"] == "WITH", (et, m, direction)
+                assert cf.news_class(et, m, direction, WED, {(WED, src): {"z": -1.0 * fz, "text": "t"}})["cls"] == "AGAINST", (et, m, direction)
+    assert n > 100
+
+
+def test_the_forecast_is_frozen_at_the_release():
+    names = ["Non Farm Payrolls", "Unemployment Rate"]
+    pre = cf.merge_series(names, None, {"Non Farm Payrolls": {"forecast": "82.0K", "previous": "165K", "actual": None},
+                                        "Unemployment Rate": {"forecast": "4.2%", "previous": "4.1%", "actual": None}}, False)
+    assert pre[0]["forecast"] == "82.0K" and pre[0]["previous"] == "165K" and pre[0]["actual"] is None
+    # a later pre-release read refreshes it; a blank read never erases it
+    again = cf.merge_series(names, pre, {"Non Farm Payrolls": {"forecast": "85.0K"}, "Unemployment Rate": {"forecast": None}}, False)
+    assert again[0]["forecast"] == "85.0K" and again[1]["forecast"] == "4.2%"
+    blank = cf.merge_series(names, again, {"Non Farm Payrolls": {"forecast": ""}}, False)
+    assert blank[0]["forecast"] == "85.0K"
+    # a read AT or AFTER the release never touches the forecast: it fills the actual and keeps the listed figure apart
+    post = cf.merge_series(names, again, {"Non Farm Payrolls": {"forecast": "120.0K", "actual": "120K"},
+                                          "Unemployment Rate": {"forecast": "4.1%", "actual": "4.1%"}}, True)
+    assert [(s["forecast"], s["forecast_after"], s["actual"]) for s in post] == [("85.0K", "120.0K", "120K"), ("4.2%", "4.1%", "4.1%")]
+    assert cf.merge_series(names, post, None, True) == post
+
+
+def test_forecast_seen_at_is_stamped_by_every_pre_release_read_and_never_after():
+    ev = {"event_date": FRI_NEXT, "event_type": "NFP", "release_et": _t(8, 30, FRI_NEXT)}
+    fx = {"Non Farm Payrolls": {"forecast": "82.0K", "previous": "165K", "actual": None}}
+    wed, thu, rel = _t(17, 15), _t(17, 15, THU), _t(8, 31, FRI_NEXT)
+    r1 = cf.upcoming_watch_row(ev, "silver", "long", "main", REPORT, None, fx, wed)
+    assert r1["forecast_seen_at"] == wed
+    r2 = cf.upcoming_watch_row(ev, "silver", "long", "main", REPORT, r1, fx, thu)
+    assert r2["forecast_seen_at"] == thu                                  # the latest pre-release read that carried a figure
+    r3 = cf.upcoming_watch_row(ev, "silver", "long", "main", REPORT, r2, {"Non Farm Payrolls": {"forecast": None}}, wed + timedelta(days=2))
+    assert r3["forecast_seen_at"] == thu and r3["series"][0]["forecast"] == "82.0K"   # a blank read changes nothing
+    r4 = cf.upcoming_watch_row(ev, "silver", "long", "main", REPORT, r2, {"Non Farm Payrolls": {"forecast": "1K"}}, rel)
+    assert r4["forecast_seen_at"] == thu and r4["series"][0]["forecast"] == "82.0K"   # after the release: untouched
+
+
+def _nfp_io():
+    """Wednesday 11-11 17:15: gold set up short; NFP is listed for Friday 11-13 with a forecast; CPI is today."""
+    io = _daily_io()
+    io.fx = [_fx("Inflation Rate MoM", "0.4%", "0.2%"), _fx("Non Farm Payrolls", None, "82.0K", "2026-11-13T13:30:00.000Z"),
+             _fx("Unemployment Rate", None, "4.2%", "2026-11-13T13:30:00.000Z")]
+    io.minutes["GC=F"] = [(_t(8, 29), 100.0), (_t(8, 30), 101.0)]
+    return io
+
+
+def test_a_daily_run_writes_today_judged_and_the_days_ahead_with_their_forecast():
+    io = _nfp_io()
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert "errors" not in res["news_watch"] and res["news_watch"]["judged"] == 1 and res["news_watch"]["upcoming"] >= 1
+    today = io.watch[(WED, "CPI", "gold")]
+    assert today["verdict"] == "followed_news" and today["alerted"] is True and today["news_class"] == "AGAINST"
+    assert today["close_against"] is True and today["close_z"] == pytest.approx(-0.5) and today["strict"] is False
+    assert today["first_minute"] == {"status": "ok", "move": 0.5, "big": True} and today["judged_at"] == AFTER_CLOSE
+    # the actual and the figure the source lists after the release; no forecast was seen BEFORE it (the run is the first read)
+    s0 = today["series"][0]
+    assert (s0["actual"], s0["forecast_after"], s0["forecast"]) == ("0.4%", "0.2%", None) and today["forecast_seen_at"] is None
+    nfp = io.watch[(FRI_NEXT, "NFP", "gold")]
+    assert nfp["verdict"] is None and nfp["read"] == "mapped" and nfp["forecast_seen_at"] == AFTER_CLOSE
+    assert [(s["name"], s["forecast"]) for s in nfp["series"]] == [("Non Farm Payrolls", "82.0K"), ("Unemployment Rate", "4.2%")]
+    assert "jobs weaker than forecast (payrolls below 82.0K, unemployment above 4.2%) = bullish Gold" in nfp["crowd_outcome"]
+    assert all(k[0] > WED for k in io.watch if k[1] == "NFP")             # upcoming rows are dated after today
+    assert (THU, "EIA_NATGAS", "natural_gas") not in io.watch              # natural gas is not a set-up market
+
+
+def test_the_card_then_the_judgement_the_same_row_keeps_thursdays_forecast():
+    io = _nfp_io()
+    _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    thu_run = AFTER_CLOSE + timedelta(days=1)
+    io.fx = [_fx("Non Farm Payrolls", None, "90.0K", "2026-11-13T13:30:00.000Z"),
+             _fx("Unemployment Rate", None, "4.2%", "2026-11-13T13:30:00.000Z")]
+    io.bars = {t: b + [(THU, 100.0, 101.0, 99.0, 100.0)] for t, b in io.bars.items()}
+    _run(cf.run_daily(THU, io, thu_run))
+    row = io.watch[(FRI_NEXT, "NFP", "gold")]
+    assert row["series"][0]["forecast"] == "90.0K" and row["forecast_seen_at"] == thu_run
+    # Friday: the release, then the 17:15 run. The source now lists the actual (and a revised forecast)
+    fri_run = datetime(2026, 11, 13, 17, 15, tzinfo=_ET)
+    io.fx = [_fx("Non Farm Payrolls", "120K", "95.0K", "2026-11-13T13:30:00.000Z"),
+             _fx("Unemployment Rate", "4.1%", "4.2%", "2026-11-13T13:30:00.000Z")]
+    io.cal = [r for r in io.cal if r["event_type"] != "CPI"]
+    io.bars = {t: b + [(FRI_NEXT, 100.0, 101.0, 98.0, 98.5 if t == "GC=F" else 100.0)] for t, b in io.bars.items()}
+    io.minutes["GC=F"] = [(_t(8, 29, FRI_NEXT), 100.0), (_t(8, 30, FRI_NEXT), 100.5)]
+    res = _run(cf.run_daily(FRI_NEXT, io, fri_run))
+    j = io.watch[(FRI_NEXT, "NFP", "gold")]
+    assert "errors" not in res["news_watch"]
+    assert j["series"][0]["forecast"] == "90.0K" and j["series"][0]["forecast_after"] == "95.0K"     # Thursday's figure stays
+    assert j["series"][0]["actual"] == "120K" and j["forecast_seen_at"] == thu_run
+    # stronger jobs are bearish gold = against a LONG crowd; the close was down (against the crowd) -> followed the news
+    assert j["news_class"] == "AGAINST" and j["close_against"] is True and j["verdict"] == "followed_news"
+
+
+def test_a_news_day_with_no_alert_still_gets_a_no_failure_row():
+    io = _nfp_io()
+    io.bars["GC=F"] = bars_to(WED, 101.0)                                   # gold closed the crowd's way (up)
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["alerts"] == 0 and io.alerts == {}
+    row = io.watch[(WED, "CPI", "gold")]
+    assert row["alerted"] is False and row["close_against"] is False and row["verdict"] == "shrugged"   # hot CPI = bad for a gold long
+    assert row["strict"] is False
+
+
+def test_a_strict_failure_needs_news_with_the_crowd_a_first_move_their_way_and_a_close_against():
+    io = _nfp_io()
+    io.fx = [_fx("Inflation Rate MoM", "0.0%", "0.2%")]                     # cooler inflation = good for gold = WITH a long crowd
+    io.minutes["GC=F"] = [(_t(8, 29), 100.0), (_t(8, 30), 100.8)]           # the first minute went the crowd's way (up, 0.4 of a range)
+    _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    row = io.watch[(WED, "CPI", "gold")]
+    assert (row["verdict"], row["strict"], row["alerted"]) == ("failure_full", True, True)
+    # the same day with no minute bars: still a news failure by the close, but not the strict three-step one
+    io2 = _nfp_io()
+    io2.fx = [_fx("Inflation Rate MoM", "0.0%", "0.2%")]
+    io2.minutes = {}
+    _run(cf.run_daily(WED, io2, AFTER_CLOSE))
+    row2 = io2.watch[(WED, "CPI", "gold")]
+    assert (row2["verdict"], row2["strict"], row2["alerted"]) == ("failure", False, True)
+
+
+def test_an_event_with_no_forecast_and_a_market_with_no_bar_still_get_rows():
+    io = _nfp_io()
+    io.weeks[REPORT]["rows"]["crude_oil"] = _ix(3, 97, 96, "short")
+    io.bars["CL=F"] = bars_to(WED, 99.0)
+    io.bars.update({t: bars_to(WED, 100.0) for t in ("HO=F", "RB=F")})
+    io.cal.append({"event_date": WED, "event_type": "OPEC", "release_et": None, "source": cf.OPEC_SOURCE})
+    _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    k = io.watch[(WED, "OPEC", "crude_oil")]
+    assert k["series"] == [] and k["read"] == "none" and k["crowd_outcome"] == ""
+    assert k["first_minute"] == {"status": "no release time"} and k["verdict"] == "against_unread"
+    # a set-up market the price source gave no bar for: judged "pending", never missing
+    io2 = _nfp_io()
+    io2.bars["GC=F"] = io2.bars["GC=F"][:-1]
+    with pytest.raises(cf.CotError):                     # the missing bar pages, as before; the watch still ran
+        _run(cf.run_daily(WED, io2, AFTER_CLOSE))
+    assert io2.watch[(WED, "CPI", "gold")]["verdict"] == "pending" and io2.watch[(WED, "CPI", "gold")]["close_z"] is None
+    assert io2.alerts == {}
+
+
+def test_a_failing_watch_changes_neither_the_alert_nor_the_message_nor_the_outcome():
+    ok = _nfp_io()
+    _run(cf.run_daily(WED, ok, AFTER_CLOSE))
+    bad = _nfp_io()
+    bad.watch_fail = RuntimeError("database says no")
+    res = _run(cf.run_daily(WED, bad, AFTER_CLOSE))          # no raise: a watch failure never pages or fails the job
+    assert res["alerts"] == 1 and res["sent"] is True and res.get("problems") == []
+    assert bad.sent == ok.sent and {k: (v["entry_price"], v["stop_price"], v["news_class"]) for k, v in bad.alerts.items()} == \
+        {k: (v["entry_price"], v["stop_price"], v["news_class"]) for k, v in ok.alerts.items()}
+    assert set(res["news_watch"]["errors"]) == {"judge", "upcoming"} and "database says no" in res["news_watch"]["errors"]["judge"]
+    assert [a[0] for a in bad.audits] == ["cot_daily"] and bad.watch == {}
+
+
+def test_upcoming_rows_follow_the_newest_week_and_todays_rows_follow_the_week_known_before_today():
+    newer = {date(2026, 11, 10): {"known_from": WED, "sent": "x", "rows": {"silver": _ix(2, 99, 99, "short")}}}
+    io = _nfp_io()
+    io.weeks.update(newer)
+    io.cftc_rows = [("088691", date(2026, 11, 10), 1, 2, 3, 4)]
+    _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert (WED, "CPI", "gold") in io.watch and (WED, "CPI", "silver") not in io.watch      # today = the week known before today
+    assert io.watch[(WED, "CPI", "gold")]["report_date"] == REPORT
+    assert (FRI_NEXT, "NFP", "silver") in io.watch and (FRI_NEXT, "NFP", "gold") not in io.watch   # ahead = the newest stored week
+    assert io.watch[(FRI_NEXT, "NFP", "silver")]["report_date"] == date(2026, 11, 10)
+
+
+def test_the_next_weeks_page_is_read_once_and_a_bad_read_is_recorded_not_paged():
+    io = _nfp_io()
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert io.fx_calls == [("united-states", date(2026, 11, 9)), ("united-states", date(2026, 11, 16))]
+    assert res["problems"] == []
+    # an empty answer for next week: recorded, the stored calendar rows kept, no page
+    io = _nfp_io()
+    io.cal.append({"event_date": date(2026, 11, 19), "event_type": "EIA_NATGAS", "release_et": _t(10, 30, date(2026, 11, 19)), "source": cf.US_SOURCE})
+    io.fx_weeks = {date(2026, 11, 16): []}
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert "next week" in res["news_watch"]["errors"] and res["problems"] == []
+    assert (date(2026, 11, 19), "EIA_NATGAS") in {(r["event_date"], r["event_type"]) for r in io.cal}
+    # a refusal on that extra request: recorded, no page, the alert already went out
+    class Refuse(FakeIo):
+        def fxempire(self, country, d0, d1):
+            if d0 == date(2026, 11, 16):
+                raise cf.CalendarRefused("429")
+            return super().fxempire(country, d0, d1)
+    io = _nfp_io()
+    io.__class__ = Refuse
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["alerts"] == 1 and res["sent"] is True and res["problems"] == [] and "next week" in res["news_watch"]["errors"]
+
+
+def test_on_a_full_refresh_day_the_watch_reuses_the_rows_the_refresh_read():
+    io = _nfp_io()
+    io.cal_age = 8
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert len(io.fx_calls) == 1 + 3 + 6 and "errors" not in res["news_watch"]
+
+
+def test_the_weekly_job_rebuilds_the_days_ahead_without_any_calendar_request():
+    io = _weekly_io()
+    mon = date(2026, 11, 9)
+    io.cal = [{"event_date": mon, "event_type": "WASDE", "release_et": _t(12, 0, mon), "source": "usda.gov WASDE release dates"},
+              {"event_date": mon, "event_type": "OPEC", "release_et": None, "source": cf.OPEC_SOURCE}]
+    io.watch[(mon, "WASDE", "corn")] = {"event_date": mon, "event_type": "WASDE", "market": "corn", "series": []}   # corn is not set up
+    res = _run(cf.run_weekly(FRI, io, datetime(2026, 11, 6, 17, 40, tzinfo=_ET)))
+    # the watch makes no request of its own (the only reads are the Friday check's, of the weeks BEFORE the next days)
+    assert res["status"] == "sent" and all(d0 < mon for _c, d0 in io.fx_calls) and "errors" not in res["news_watch"]
+    assert set(io.watch) == {(mon, "WASDE", "wheat"), (mon, "WASDE", "lean_hogs")}      # exactly the newest week's set ups
+    assert io.watch[(mon, "WASDE", "wheat")]["read"] == "none" and io.watch[(mon, "WASDE", "wheat")]["series"] == []
+    # a weekly watch failure never changes the weekly outcome
+    io2 = _weekly_io()
+    io2.cal = list(io.cal)
+    io2.watch_fail = RuntimeError("boom")
+    res2 = _run(cf.run_weekly(FRI, io2, datetime(2026, 11, 6, 17, 40, tzinfo=_ET)))
+    assert res2["status"] == "sent" and "boom" in res2["news_watch"]["errors"]["upcoming"]
+
+
+def test_a_market_new_to_the_list_copies_the_stored_figures_of_the_same_event():
+    io = FakeIo()
+    io.weeks[REPORT] = {"known_from": FRI_BEFORE, "sent": "x",
+                        "rows": {"gold": _ix(3, 97, 96, "short"), "silver": _ix(3, 97, 96, "short"), "crude_oil": _ix(3, 97, 96, "short")}}
+    mon = date(2026, 11, 9)
+    io.cal = [{"event_date": mon, "event_type": "NFP", "release_et": _t(8, 30, mon), "source": cf.US_SOURCE},
+              {"event_date": mon, "event_type": "EIA_PETRO", "release_et": _t(10, 30, mon), "source": cf.US_SOURCE}]
+    figs = [{"name": "Non Farm Payrolls", "forecast": "82.0K", "previous": "165K", "actual": None, "forecast_after": None},
+            {"name": "Unemployment Rate", "forecast": "4.2%", "previous": "4.1%", "actual": None, "forecast_after": None}]
+    seen = _t(17, 15)
+    io.watch[(mon, "NFP", "gold")] = {"event_date": mon, "event_type": "NFP", "market": "gold", "series": figs, "forecast_seen_at": seen}
+    io.watch[(mon, "EIA_PETRO", "gold")] = {"event_date": mon, "event_type": "EIA_PETRO", "market": "gold", "series": [], "forecast_seen_at": None}
+    nw = {"errors": {}}
+    _run(cf._watch_upcoming(io, date(2026, 11, 6), datetime(2026, 11, 6, 17, 40, tzinfo=_ET), nw, None, False, {}, None))
+    sil = io.watch[(mon, "NFP", "silver")]
+    assert sil["series"][0]["forecast"] == "82.0K" and sil["forecast_seen_at"] == seen and "payrolls below 82.0K" in sil["crowd_outcome"]
+    # EIA stocks are per market (crude / gasoline / distillate): a figure is never copied across them
+    assert io.watch[(mon, "EIA_PETRO", "crude_oil")]["series"][0]["forecast"] is None and nw["errors"] == {}
+    assert io.fx_calls == []
+
+
+def test_an_earnings_estimate_listed_ahead_is_the_forecast_and_the_reported_eps_the_actual():
+    io = _daily_io()
+    io.weeks[REPORT]["rows"]["nasdaq"] = _ix(3, 97, 96, "short")
+    io.bars["NQ=F"] = bars_to(WED, 100.0)
+    io.bars.update({t: bars_to(WED, 100.0) for t in ("YM=F", "RTY=F", "ES=F")})
+    after = datetime(2026, 11, 12, 16, 30, tzinfo=_ET)                      # Thursday after the close: its session is Friday
+    io.earn = {"NVDA": [{"ts": after, "surprise_pct": None, "reported": None, "estimate": 1.25}]}
+    io.cal.append({"event_date": FRI_NEXT, "event_type": "EARN_NVDA", "release_et": after, "source": "yfinance earnings dates"})
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert "errors" not in res["news_watch"]
+    row = io.watch[(FRI_NEXT, "EARN_NVDA", "nasdaq")]
+    assert row["series"] == [{"name": "EPS", "forecast": "1.25", "previous": None, "actual": None, "forecast_after": None}]
+    assert "an EPS beat (EPS above 1.25) = bullish Nasdaq" in row["crowd_outcome"]
+
+
+def _fake_pool_io(fetched=None):
+    """An Io over a recording fake pool: the REAL watch_rows / replace_watch run against it (FakeIo overrides both)."""
+    log = []
+
+    class _Tx:
+        async def __aenter__(self):
+            log.append(("begin",))
+
+        async def __aexit__(self, *a):
+            log.append(("commit",))
+            return False
+
+    class _Conn:
+        def transaction(self):
+            return _Tx()
+
+        async def execute(self, sql, *args):
+            log.append(("execute", sql, args))
+
+        async def executemany(self, sql, rows):
+            log.append(("executemany", sql, [list(r) for r in rows]))
+
+        async def fetch(self, sql, *args):
+            log.append(("fetch", sql, args))
+            return list(fetched or [])
+
+    class _Acq:
+        async def __aenter__(self):
+            return _Conn()
+
+        async def __aexit__(self, *a):
+            return False
+
+    class _Pool:
+        def acquire(self):
+            return _Acq()
+
+    class _RealIo(cf.Io):
+        async def _pool(self):
+            return _Pool()
+
+    return _RealIo(), log
+
+
+def test_the_real_watch_writer_deletes_then_inserts_in_one_transaction_with_objects_bound_as_objects():
+    io, log = _fake_pool_io()
+    row = {c: None for c in cf._COT_WATCH_COLS}
+    row.update(event_date=THU, event_type="NFP", market="gold", release_et=_t(8, 30, THU), direction="short", level="main",
+               report_date=REPORT, read="mapped", series=[{"name": "Non Farm Payrolls", "forecast": "82.0K"}],
+               first_minute={"status": "ok", "move": 0.3, "big": True}, forecast_seen_at=_t(17, 15))
+    _run(io.replace_watch(THU, THU, [row]))
+    assert [e[0] for e in log] == ["begin", "execute", "executemany", "commit"]
+    assert log[1][1] == cf._COT_WATCH_DELETE_SQL and log[1][2] == (THU, THU)
+    sql, binds = log[2][1], log[2][2]
+    assert sql == cf._COT_WATCH_UPSERT_SQL and len(binds) == 1 and len(binds[0]) == len(cf._COT_WATCH_COLS) == 20
+    b = dict(zip(cf._COT_WATCH_COLS, binds[0]))
+    assert isinstance(b["series"], list) and isinstance(b["first_minute"], dict)        # objects: the jsonb codec encodes them
+    assert b["forecast_seen_at"] == _t(17, 15) and b["verdict"] is None and b["close_z"] is None
+    # nothing to write still clears the range (a market no longer set up leaves no row behind)
+    io2, log2 = _fake_pool_io()
+    _run(io2.replace_watch(THU, THU, []))
+    assert [e[0] for e in log2] == ["begin", "execute", "commit"]
+
+
+def test_the_real_watch_reader_decodes_a_json_string_and_keeps_objects():
+    rec = {c: None for c in cf._COT_WATCH_COLS}
+    rec.update(series='[{"name": "x"}]', first_minute={"status": "ok"})
+    io, log = _fake_pool_io([rec])
+    got = _run(io.watch_rows(THU, THU))
+    assert got[0]["series"] == [{"name": "x"}] and got[0]["first_minute"] == {"status": "ok"}
+    assert log[0][1] == cf._COT_WATCH_READ_SQL and log[0][2] == (THU, THU)
+
+
+def test_a_refusal_on_a_country_page_stops_the_next_weeks_request_too():
+    io = _nfp_io()
+    io.weeks[REPORT]["rows"]["australian_dollar"] = _ix(3, 97, 96, "short")
+    io.bars["6A=F"] = bars_to(WED, 100.0)
+    io.bars.update({t: bars_to(WED, 100.0) for t in ("6B=F", "6C=F", "6E=F", "6J=F", "6S=F", "6N=F", "DX-Y.NYB")})
+    io.cal.append({"event_date": WED, "event_type": "AU_CPI", "release_et": _t(6, 30), "source": "s"})
+
+    class Refuse(FakeIo):
+        def fxempire(self, country, d0, d1):
+            if country == "australia":
+                raise cf.CalendarRefused("429")
+            return super().fxempire(country, d0, d1)
+    io.__class__ = Refuse
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert "fxempire australia" in res["news_watch"]["errors"] and res["problems"] == []
+    assert io.fx_calls == [("united-states", date(2026, 11, 9))]     # the refused call is not recorded, and no next-week request follows it

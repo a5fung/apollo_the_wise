@@ -6,7 +6,7 @@
 -- SSoT: docs/architecture/cot_snapshot.md. READ-ONLY, display only: no money path, no order, no alert input.
 -- Weeks are the distinct report_dates in mi_cot_index_weekly (rank 1 = newest), never calendar arithmetic, so a
 -- holiday-shifted week is one week. Display names + sectors: the VALUES list below mirrors cot_family.MARKETS
--- (a test fails if they drift). peerdef mirrors cot_family.PEERS the same way ('-x' = an inverse peer); it lets each
+-- (a test fails if they drift). news_watch / news_watch_asof come from mi_cot_news_watch (added 2026-11-25). peerdef mirrors cot_family.PEERS the same way ('-x' = an inverse peer); it lets each
 -- alert carry the NAMES of the peers its correlation reading was taken over.
 WITH wk AS (
     SELECT report_date, (dense_rank() OVER (ORDER BY report_date DESC))::int AS rk
@@ -14,6 +14,10 @@ WITH wk AS (
 ),
 latest AS (
     SELECT report_date FROM wk WHERE rk = 1
+),
+-- the news watch shows the events of the last 7 days and the next 7 (ET today, never the container's UTC date)
+today_et AS (
+    SELECT (now() AT TIME ZONE 'America/New_York')::date AS d
 ),
 meta(market, name, sector) AS (
     VALUES
@@ -110,7 +114,20 @@ per_market AS (
                'history', COALESCE((SELECT json_agg(json_build_object(
                                 'report_date', h.report_date, 'comm', h.comm, 'lspec', h.lspec, 'sspec', h.sspec,
                                 'setup', h.setup, 'close_setup', h.close_setup) ORDER BY h.report_date)
-                              FROM ix h WHERE h.market = m.market AND h.rk BETWEEN 2 AND 13), '[]'::json)
+                              FROM ix h WHERE h.market = m.market AND h.rk BETWEEN 2 AND 13), '[]'::json),
+               'news_watch', COALESCE((SELECT json_agg(json_build_object(
+                                'event', nw.event_type, 'event_date', nw.event_date,
+                                'release_et', to_char(nw.release_et AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI') || ' ET',
+                                'direction', nw.direction, 'level', nw.level, 'read', nw.read,
+                                'crowd_outcome', nw.crowd_outcome, 'series', nw.series,
+                                'forecast_seen_at', to_char(nw.forecast_seen_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI') || ' ET',
+                                'news_class', nw.news_class, 'surprise_z', nw.surprise_z, 'first_minute', nw.first_minute,
+                                'close_z', nw.close_z, 'close_against', nw.close_against, 'verdict', nw.verdict,
+                                'strict', nw.strict, 'alerted', nw.alerted)
+                                ORDER BY nw.event_date, nw.release_et, nw.event_type)
+                              FROM mi_cot_news_watch nw
+                             WHERE nw.market = m.market
+                               AND nw.event_date BETWEEN (SELECT d FROM today_et) - 7 AND (SELECT d FROM today_et) + 7), '[]'::json)
            ) AS j
       FROM meta m
       JOIN ix cur ON cur.market = m.market AND cur.rk = 1
@@ -151,11 +168,14 @@ SELECT json_build_object(
                   'entry_note', a.entry_note, 'stop_rule', a.stop_rule, 'failure_day', a.failure_day,
                   'atr', a.det -> 'atr', 'news', a.det -> 'news',
                   'peers', (SELECT po.peers FROM peers_of po WHERE po.market = a.market)) ORDER BY a.alert_date DESC, a.id DESC) FROM al a), '[]'::json),
+    'news_watch_asof', (SELECT to_char(max(updated_at) AT TIME ZONE 'America/New_York', 'YYYY-MM-DD"T"HH24:MI:SS') || ' ET'
+                          FROM mi_cot_news_watch),
     'definitions', json_build_object(
         'index', 'Each group''s net position as a 0 to 100 index of its own lookback window: 0 is its most short, 100 its most long. comm = commercials, lspec = large speculators, sspec = small speculators.',
         'setup', 'The main rule: the crowd is at an extreme, the direction shown is the way to fade into. close_setup is the looser close list.',
         'exit_watch', 'A market that was in a set up the week before and is not now; the distance to 50 is how far each group still is from neutral.',
         'alerts', 'The newest 60 alerts: news = a failure on a scheduled release, correlation = the peers moved with the crowd, friday = the weekly confirmation. Labels only; nothing here places an order. Each alert also carries the readings behind it: z (the market''s own day move in 20-day ranges, up = positive), peer_z (the peers'' median move, positive = the crowd''s way), the index at alert, entry_note, stop_rule, failure_day, atr, news[] and peers[].',
+        'news_watch', 'Per market, the scheduled events of the last 7 and next 7 days. Before a release: the forecast as last read, and the news that would favour the crowd. After: the news against forecast (bullish or bearish, with or against the crowd), the first minute, the close, and a verdict. verdict: failure_full = news favoured the crowd, first minute their way, close against; failure = news favoured the crowd, closed against; followed_news / shrugged / no_failure = no failure; against_unread = closed against on a news day with no clear news read; pending = no close yet. strict = the three-step rule; alerted = a news alert was sent that day (the looser live rule). Labels only.',
         'not_claimed', 'Display only. Nothing here feeds a trade, a grade, an alert or any sizing.'
     )
 )

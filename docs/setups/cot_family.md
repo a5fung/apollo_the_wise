@@ -119,6 +119,40 @@ further FXEmpire request. The audit row carries `calendar_backfill` (from, to, s
 **Exit signal in the weekly message:** "left" = was a main set up last week and is not now; "neutral ~50" = the first
 week since its last main set up (within 26 weeks) that Commercials (stock indices) or any group (others) is back at 50.
 
+**News watch (2026-11-25, display only):** his ask — *"What Shapiro does is watch for news failure, so ideally we'll have
+news lined up already, so setup or close setup should expand for news to watch for and what's expectation, once news is
+here, we assess vs expectation, bullish v bearish, and market action after it"* — makes a set-up or near-set-up card
+expandable. Spec and the fork list: `docs/design/cot_news_watch_2026-11-25.md` (a finding, not an owner; THIS section
+owns the rules). Table `mi_cot_news_watch`, one row per (session day, event, market), written by the two existing jobs
+and read by nothing that alerts, trades or sizes: `detect()`, the alert rule and the Telegram messages are unchanged.
+- **Before a release** (every `cot_daily` run, next 7 days, the newest stored COT week; `cot_weekly` rebuilds the same
+  rows when it stores a week, with no calendar request): the forecast and prior as the source lists them, and one plain
+  sentence written in Python from `news_sign` x the crowd — e.g. "Crowd is SHORT Silver. News that favours the crowd:
+  jobs stronger than forecast (payrolls above 82.0K, unemployment below 4.2%) = bearish Silver. Failure to watch for:
+  that news, a first move down, then a close UP." The favouring side is `crowd_sign(direction) * news_sign`; a test
+  pins that the sentence and `news_class` agree for every mapped pair. Three kinds of event: **A** forecast + crowd read
+  (US macro, Fed decision, EIA, earnings), **B** forecast shown, no crowd read (Australian data, other central banks,
+  any pair `news_sign` calls ambiguous — NOT upgraded to a read here: that needs a frozen typical-surprise number and a
+  mapping from the research), **C** no forecast (WASDE, OPEC+, export sales, minutes).
+- **The forecast is frozen at the release:** a read made BEFORE `release_et` that carries a figure refreshes `forecast`
+  and stamps `forecast_seen_at` (so the stamp is the LATEST pre-release read, not the first); a blank read never erases;
+  a read at or after the release only fills `actual` and keeps the figure then listed apart, as `forecast_after`.
+- **After a release** (judged in the 17:15 run, for every set-up or near-set-up market with an event today, alert or not,
+  on the week known BEFORE today — the week the alert used): three steps — (1) actual vs forecast -> bullish or bearish
+  -> with or against the crowd, (2) the first minute, (3) the close vs the crowd — and a verdict. The news read, first
+  minute and close are the SAME values the alert label uses. `strict` = the three-step rule (news favours the crowd, first
+  minute their way by more than 0.01 of a day's range, close against); `alerted` = a news alert row exists (the live rule:
+  any event + a close against). Both are stored on every row, so the strict-vs-live comparison builds itself, including
+  the days no alert fired. `strict` is per EVENT row (two releases on one day are two rows): count a market-day as strict
+  when ANY of its rows is, and as alerted when any is (the alert is per market-day). Verdicts: `failure_full`, `failure`, `followed_news`, `against_unread`, `shrugged`,
+  `no_failure`, `pending` (table in the design doc §1.3).
+- **Extra reads:** one more FXEmpire request a weekday (next week's US page, so a Friday card holds its own figures; its
+  trigger rows replace that week's stored ones only when the answer holds one — an empty or failed read is recorded, never
+  paged), reused from the Monday refresh on a full-refresh day; a non-US event today adds that country's page for its
+  actual; one 1-minute pull per set-up market with a timed event today (shared with the alert label); yfinance earnings
+  rows for the tickers involved. They run AFTER the alert path, each part in its own try: a failure is recorded in the
+  audit row (`news_watch.errors`) and changes no alert, message or outcome.
+
 **Sources (all free, read-only):** CFTC public reporting API (legacy futures-only; the yearly history zip as the
 fallback); Yahoo continuous futures via yfinance for daily and 1-minute bars; FXEmpire's economic calendar for US
 macro, EIA, Fed minutes, central-bank decisions and the Australian minutes / jobs / wages (this week re-read every day, three more weeks every Monday); USDA's WASDE
@@ -149,7 +183,8 @@ meeting ahead. With only 2026-11-29 in it, it goes red on 2026-12-21 unless the 
 
 **Tables:** `mi_cot_nets_weekly` (CFTC nets cache), `mi_cot_weeks` (report week, known_from, message sent),
 `mi_cot_index_weekly` (report_date, market, comm, lspec, sspec, setup, close_setup), `mi_cot_calendar` (scheduled
-events), `mi_cot_alerts` (one row per alert day / market / direction / kind, with entry, stop and the two labels).
+events), `mi_cot_alerts` (one row per alert day / market / direction / kind, with entry, stop and the two labels),
+`mi_cot_news_watch` (the news watch above: one row per session day / event / market).
 
 **Failure handling:** one market's error never stops the rest: the readable markets alert and send first. Then any
 of these raises AFTER the audit row, which pages: ANY set-up market with no bar today or a failed read (nothing
@@ -210,6 +245,23 @@ serves a market 1-20 bars instead of its ~65 is skipped for that market without 
 - A federal-holiday week moves the CFTC release; the daily job picks it up the day it lands.
 
 ## Change log
+
+### 2026-11-25 — news watch: each set-up card lists the news to watch for and its verdict (operator "Ok", display only)
+
+**Trigger**: his 11-25 ask quoted under "News watch" above, plus his "Ok" to testing the design doc's stricter
+news-failure rule (news favours the crowd, first reaction the crowd's way, close against) against the live looser one.
+
+**Evidence**: none needed — display and labels only; no detection criterion, threshold or alert rule changes, so no
+backtest. The forecast figures come from the same FXEmpire rows the job already read and threw away (read 2026-11-25:
+NFP Fri 12-04 lists 82.0K / 4.2% nine days ahead; EIA stock figures were blank a week ahead).
+
+**Anticipated effect** (BASELINE: no `news_watch` key in the snapshot, set-up cards do not expand, a news day with no
+alert stores nothing, forecasts are never stored): cards of markets with an event in the window expand to the forecast and
+the sentence; judged rows exist for no-alert days too; `detect()`, `_alert_row`, the messages and every threshold are
+byte-identical; the added requests are listed under "Extra reads". EXPECT / DONE-WHEN / WOULD-FAIL-IF: design doc §5.
+
+**Reversion-flag**: NEW (additive). Not deployed at the time of writing; scope `market-agent` only (the table is created
+by `initialize_schema()` at boot), then a portfolio-app2 push.
 
 ### 2026-11-22 — four more watched news events: PCE, Australian CPI, OPEC+ meetings, USDA weekly export sales (operator "yes, we should continually expand our news failure sources")
 

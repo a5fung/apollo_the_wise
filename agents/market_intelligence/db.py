@@ -20171,4 +20171,30 @@ _COT_FAMILY_DDL = """
         created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         UNIQUE (alert_date, market, direction, kind)
     );
+    -- The news watch (2026-11-25): one row per (session day, event, market) for a set-up / near-set-up market, shown
+    -- on its expandable card. Display only: nothing reads it to alert, trade or size. Owner doc: cot_family.md.
+    CREATE TABLE IF NOT EXISTS mi_cot_news_watch (
+        event_date       DATE NOT NULL,               -- the daily futures session the release belongs to
+        event_type       TEXT NOT NULL,
+        market           TEXT NOT NULL,
+        release_et       TIMESTAMPTZ,                 -- NULL for an OPEC+ meeting
+        direction        TEXT NOT NULL,               -- the side to fade into (short / long); the crowd is the other side
+        level            TEXT NOT NULL,               -- main / close
+        report_date      DATE NOT NULL,               -- the COT week the row was built on
+        read             TEXT NOT NULL,               -- mapped / ambiguous / none (what news_sign says about this pair)
+        crowd_outcome    TEXT,                        -- the plain 'news to watch for' sentence; empty unless mapped
+        series           JSONB,                       -- [{name, forecast, previous, actual, forecast_after}] as printed
+        forecast_seen_at TIMESTAMPTZ,                 -- the last PRE-release read that carried a forecast; NULL = none
+        news_class       TEXT,                        -- WITH / AGAINST / INLINE / AMBIG / UNKNOWN (judged rows only)
+        surprise_z       DOUBLE PRECISION,
+        first_minute     JSONB,                       -- {status, move, big}, move in day-ranges, + = the crowd's way
+        close_z          DOUBLE PRECISION,            -- the day's close move in day-ranges, raw sign (up = positive)
+        close_against    BOOLEAN,
+        verdict          TEXT,
+        strict           BOOLEAN,                     -- the design doc's three-step rule (news favours the crowd, first move their way, close against)
+        alerted          BOOLEAN,                     -- a news alert row exists for this market and day (the live, looser rule)
+        judged_at        TIMESTAMPTZ,
+        updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (event_date, event_type, market)
+    );
 """

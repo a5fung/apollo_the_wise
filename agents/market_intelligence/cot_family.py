@@ -792,6 +792,217 @@ def calendar_rows_from_earnings(ticker: str, stamps: list[datetime]) -> list[dic
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+# News watch (2026-11-25): the news to watch for, then the verdict. Display only: nothing here reads into detect(), the
+# alert rule or the Telegram messages. Owner doc: docs/setups/cot_family.md §News watch; spec docs/design/cot_news_watch_2026-11-25.md.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+WATCH_DAYS = 7                  # how far ahead a card lists events (and how far back the page shows them)
+FM_FLAT_BAND = 0.01             # of a day's range: a first minute at or below this is "flat" (the page's flat band)
+NO_FORECAST_TYPES = frozenset({"WASDE", "OPEC", "USDA_EXPORTS", "FED_MINUTES", "RBA_MINUTES"})   # kind C
+def _fx_names_of_type() -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    for names in FX_COUNTRY_EVENTS.values():
+        for n, t in names.items():
+            out.setdefault(t, []).append(n)
+    return out
+
+
+_FX_NAMES_OF_TYPE = _fx_names_of_type()
+_US_NAME_TYPE = {s: ("EIA_PETRO" if t in ("EIA_CRUDE", "EIA_GASOLINE", "EIA_DISTILLATE") else t)
+                 for t, comps in SURPRISE_COMPONENTS.items() for s, _sg, _rms in comps}
+_SERIES_LABEL = {
+    "Non Farm Payrolls": "payrolls", "Unemployment Rate": "unemployment", "Inflation Rate MoM": "CPI m/m",
+    "Core Inflation Rate MoM": "core CPI m/m", "Inflation Rate YoY": "CPI y/y", "Core Inflation Rate YoY": "core CPI y/y",
+    "PPI MoM": "PPI m/m", "Core PPI MoM": "core PPI m/m", "PPI YoY": "PPI y/y", "Core PPI YoY": "core PPI y/y",
+    "Retail Sales MoM": "retail sales m/m", "Retail Sales Ex Autos MoM": "retail sales ex autos m/m",
+    "GDP Growth Rate QoQ Adv": "GDP q/q", "GDP Growth Rate QoQ 2nd Est": "GDP q/q", "GDP Growth Rate QoQ Final": "GDP q/q",
+    "Fed Interest Rate Decision": "the Fed rate", "PCE Price Index MoM": "PCE m/m", "Core PCE Price Index MoM": "core PCE m/m",
+    "PCE Price Index YoY": "PCE y/y", "Core PCE Price Index YoY": "core PCE y/y",
+    "EIA Crude Oil Stocks Change": "crude stocks change", "EIA Gasoline Stocks Change": "gasoline stocks change",
+    "EIA Distillate Stocks Change": "distillate stocks change", "EIA Natural Gas Stocks Change": "gas stocks change",
+    "EPS": "EPS"}
+# type -> (words for a surprise ABOVE forecast, words for one BELOW): "above" = z > 0 in SURPRISE_COMPONENTS' own signs
+_NEWS_WORDS = {
+    **{t: ("inflation hotter than forecast", "inflation cooler than forecast") for t in _INFLATION},
+    "NFP": ("jobs stronger than forecast", "jobs weaker than forecast"),
+    "RETAIL": ("retail sales stronger than forecast", "retail sales weaker than forecast"),
+    "GDP": ("growth stronger than forecast", "growth weaker than forecast"),
+    "FOMC": ("a rate above forecast (a hawkish surprise)", "a rate below forecast (a dovish surprise)"),
+    "EIA_PETRO": ("a bigger stock build, or a smaller draw, than forecast",
+                  "a smaller build, or a bigger draw, than forecast"),
+    "EIA_NATGAS": ("a bigger stock build, or a smaller draw, than forecast",
+                   "a smaller build, or a bigger draw, than forecast"),
+    "EARN": ("an EPS beat", "an EPS miss")}
+VERDICT_WORDS = {
+    "failure_full": "NEWS FAILURE, all three steps",
+    "failure": "News failure: news favoured the crowd, closed against them",
+    "followed_news": "No failure: the market followed the news",
+    "against_unread": "Closed against the crowd on a news day; the news had no clear read (a failure by the live rule only)",
+    "shrugged": "No failure: bad news for the crowd, and the market closed their way anyway",
+    "no_failure": "No failure: closed the crowd's way",
+    "pending": "Pending close"}
+
+
+def _blank(x) -> Optional[str]:
+    s = "" if x is None else str(x).strip()
+    return s or None
+
+
+def watch_series_names(event_type: str, market: str) -> list[str]:
+    """The source series an event card shows for this market. [] = kind C: the source lists no forecast for this event."""
+    if event_type in NO_FORECAST_TYPES:
+        return []
+    if event_type.startswith("EARN_"):
+        return ["EPS"]
+    src = _EIA_OF.get(market) if event_type == "EIA_PETRO" else event_type
+    if src in SURPRISE_COMPONENTS:
+        return [c[0] for c in SURPRISE_COMPONENTS[src]]
+    return list(_FX_NAMES_OF_TYPE.get(event_type, []))          # kind B: central banks and Australian data
+
+
+def watch_read(event_type: str, market: str) -> str:
+    """mapped = the research maps a surprise to a direction for this market (a crowd read); ambiguous = a forecast is
+    shown but there is no crowd read; none = no forecast and no read."""
+    mp = news_sign(event_type, market)
+    if mp in (1, -1):
+        return "mapped"
+    return "ambiguous" if (mp == 0 or watch_series_names(event_type, market)) else "none"
+
+
+def expectations_from_fx(events: list[dict], country: str = "united-states") -> dict[tuple, dict[str, dict]]:
+    """{(session day, event type): {series name: {forecast, previous, actual}}} from the raw FXEmpire rows, text as
+    printed (a blank is None). Only series the watch shows (the surprise components; a central bank's own decision)."""
+    out: dict[tuple, dict[str, dict]] = {}
+    for e in events:
+        name = str(e.get("name", "")).strip()
+        typ = _US_NAME_TYPE.get(name) if country == "united-states" else FX_COUNTRY_EVENTS.get(country, {}).get(name)
+        ts = _fx_ts(e)
+        if typ is None or ts is None or typ in NO_FORECAST_TYPES:
+            continue
+        out.setdefault((session_date(ts), typ), {})[name] = {
+            "forecast": _blank(e.get("forecast")), "previous": _blank(e.get("previous")), "actual": _blank(e.get("actual"))}
+    return out
+
+
+def lookup_expectation(exp: dict, day: date, event_type: str) -> Optional[dict[str, dict]]:
+    """One event's series from `expectations_from_fx`; EIA may sit a day either side (as news_class allows)."""
+    for off in ((0, 1, -1) if event_type.startswith("EIA") else (0,)):
+        r = exp.get((day + timedelta(days=off), event_type))
+        if r is not None:
+            return r
+    return None
+
+
+def merge_series(names: list[str], old: Optional[list], fresh: Optional[dict], released: bool) -> list[dict]:
+    """The stored series after one more read. BEFORE the release a read that carries a figure refreshes `forecast`
+    (and `previous`); a blank never erases. AT or AFTER the release a read never touches `forecast`: it fills `actual`
+    and keeps the figure the source lists then as `forecast_after`."""
+    olds = {s.get("name"): s for s in (old or [])}
+    out = []
+    for n in names:
+        o, f = olds.get(n) or {}, (fresh or {}).get(n) or {}
+        row = {"name": n, "forecast": o.get("forecast"), "previous": o.get("previous"), "actual": o.get("actual"),
+               "forecast_after": o.get("forecast_after")}
+        if f and not released:
+            row["forecast"] = f.get("forecast") or row["forecast"]
+            row["previous"] = f.get("previous") or row["previous"]
+        elif f:
+            row["actual"] = f.get("actual") or row["actual"]
+            row["forecast_after"] = f.get("forecast") or row["forecast_after"]
+            row["previous"] = row["previous"] or f.get("previous")
+        out.append(row)
+    return out
+
+
+def favoured_z_sign(event_type: str, market: str, direction: str) -> Optional[int]:
+    """The sign of the surprise (z, in SURPRISE_COMPONENTS' own signs) that FAVOURS the crowd: +1 = above forecast.
+    `direction` is the side to fade into, so the crowd is the other side. None = no crowd read for this pair."""
+    mp = news_sign(event_type, market)
+    return None if mp not in (1, -1) else crowd_sign(direction) * mp
+
+
+def crowd_outcome_words(event_type: str, market: str, direction: str, series: list[dict]) -> str:
+    """The plain 'news to watch for' sentence; "" unless the pair has a crowd read."""
+    fz = favoured_z_sign(event_type, market, direction)
+    if fz is None:
+        return ""
+    cs = crowd_sign(direction)                      # +1: the crowd is long
+    key = "EARN" if event_type.startswith("EARN_") else event_type
+    words = _NEWS_WORDS[key][0 if fz > 0 else 1]
+    src = _EIA_OF.get(market) if event_type == "EIA_PETRO" else event_type
+    signs = {c[0]: c[1] for c in SURPRISE_COMPONENTS.get(src, [])} if src else {}
+    if event_type.startswith("EARN_"):
+        signs = {"EPS": 1}
+    figs = [f"{_SERIES_LABEL.get(s['name'], s['name'])} {'above' if fz * signs.get(s['name'], 1) > 0 else 'below'} {s['forecast']}"
+            for s in series if s.get("forecast")]
+    mk = name_of(market).title()
+    return (f"Crowd is {'LONG' if cs > 0 else 'SHORT'} {mk}. News that favours the crowd: {words}"
+            f"{' (' + ', '.join(figs) + ')' if figs else ''} = {'bullish' if cs > 0 else 'bearish'} {mk}. "
+            f"Failure to watch for: that news, a first move {'up' if cs > 0 else 'down'}, "
+            f"then a close {'DOWN' if cs > 0 else 'UP'}.")
+
+
+def watch_verdict(close_z: Optional[float], direction: str, news_cls: str, fm: Optional[dict]) -> tuple[str, bool]:
+    """(verdict code, strict). Step 3 (the close) decides failure or not; steps 1 and 2 say how clean it is. `strict` is
+    the design doc's three-step rule: the news favoured the crowd, the first minute went their way, the close went
+    against them. The live alert rule is looser (any event + a close against), which `alerted` records."""
+    if close_z is None:
+        return "pending", False
+    against = close_z < 0 if crowd_sign(direction) == 1 else close_z > 0
+    if against:
+        if news_cls == "WITH":
+            if (fm or {}).get("status") == "ok" and fm["move"] > FM_FLAT_BAND:
+                return "failure_full", True
+            return "failure", False
+        return ("followed_news" if news_cls == "AGAINST" else "against_unread"), False
+    return {"WITH": "followed_news", "AGAINST": "shrugged"}.get(news_cls, "no_failure"), False
+
+
+def _watch_row(ev: dict, market: str, direction: str, level: str, report_date: date, read: str) -> dict:
+    return {"event_date": ev["event_date"], "event_type": ev["event_type"], "market": market,
+            "release_et": ev.get("release_et"), "direction": direction, "level": level, "report_date": report_date,
+            "read": read, "crowd_outcome": "", "series": [], "forecast_seen_at": None, "news_class": None,
+            "surprise_z": None, "first_minute": None, "close_z": None, "close_against": None, "verdict": None,
+            "strict": None, "alerted": None, "judged_at": None}
+
+
+def upcoming_watch_row(ev: dict, market: str, direction: str, level: str, report_date: date, old: Optional[dict],
+                       fresh: Optional[dict], now: datetime) -> dict:
+    """A row for an event that has not been judged: the forecast as last read BEFORE the release, plus the sentence."""
+    et = ev["event_type"]
+    row = _watch_row(ev, market, direction, level, report_date, watch_read(et, market))
+    rel = ev.get("release_et")
+    released = rel is not None and now >= rel
+    names = watch_series_names(et, market)
+    row["series"] = merge_series(names, (old or {}).get("series"), fresh, released)
+    seen = (old or {}).get("forecast_seen_at")
+    if not released and any(((fresh or {}).get(n) or {}).get("forecast") for n in names):
+        seen = now
+    row["forecast_seen_at"] = seen
+    row["crowd_outcome"] = crowd_outcome_words(et, market, direction, row["series"])
+    return row
+
+
+def judged_watch_row(ev: dict, market: str, direction: str, level: str, report_date: date, old: Optional[dict],
+                     fresh: Optional[dict], nc: dict, fm: dict, feat: Optional[dict], alerted: bool,
+                     now: datetime) -> dict:
+    """The row for an event day, judged after the close. `nc` is `news_class()` (the same value the alert label uses),
+    `fm` is `first_minute()`, `feat` the day's `features_at()` (None = no bar), `alerted` = a news alert was stored."""
+    et = ev["event_type"]
+    row = _watch_row(ev, market, direction, level, report_date, watch_read(et, market))
+    row["series"] = merge_series(watch_series_names(et, market), (old or {}).get("series"), fresh, True)
+    row["forecast_seen_at"] = (old or {}).get("forecast_seen_at")
+    row["crowd_outcome"] = crowd_outcome_words(et, market, direction, row["series"])
+    row["news_class"], row["surprise_z"], row["first_minute"] = nc["cls"], nc["z"], fm
+    if feat is not None:
+        z = feat["z"]
+        row["close_z"] = z
+        row["close_against"] = z < 0 if crowd_sign(direction) == 1 else z > 0
+    row["verdict"], row["strict"] = watch_verdict(row["close_z"], direction, nc["cls"], fm)
+    row["alerted"], row["judged_at"] = alerted, now
+    return row
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
 # Messages (pure; the paper tag routes them to the paper chat through briefing.send_telegram_message)
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 HEADER = "*COT family — research alerts, no orders*"
@@ -1079,6 +1290,18 @@ _COT_ALERT_UPSERT_SQL = (
     + ", ".join(f"{c} = EXCLUDED.{c}" for c in _COT_ALERT_COLS if c not in ("alert_date", "market", "direction", "kind"))
     + " RETURNING id, sent_at")
 _COT_ALERTS_SENT_SQL = "UPDATE mi_cot_alerts SET sent_at = NOW() WHERE id = ANY($1::int[])"
+_COT_WATCH_COLS = ("event_date", "event_type", "market", "release_et", "direction", "level", "report_date", "read",
+                   "crowd_outcome", "series", "forecast_seen_at", "news_class", "surprise_z", "first_minute", "close_z",
+                   "close_against", "verdict", "strict", "alerted", "judged_at")
+_COT_WATCH_JSON = ("series", "first_minute")
+_COT_WATCH_UPSERT_SQL = (
+    f"INSERT INTO mi_cot_news_watch ({', '.join(_COT_WATCH_COLS)}) VALUES ("
+    + ", ".join(f"${i + 1}{'::jsonb' if c in _COT_WATCH_JSON else ''}" for i, c in enumerate(_COT_WATCH_COLS))
+    + ") ON CONFLICT (event_date, event_type, market) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _COT_WATCH_COLS if c not in ("event_date", "event_type", "market"))
+    + ", updated_at = NOW()")
+_COT_WATCH_DELETE_SQL = "DELETE FROM mi_cot_news_watch WHERE event_date BETWEEN $1 AND $2"
+_COT_WATCH_READ_SQL = f"SELECT {', '.join(_COT_WATCH_COLS)} FROM mi_cot_news_watch WHERE event_date BETWEEN $1 AND $2"
 
 
 class Io:
@@ -1208,6 +1431,33 @@ class Io:
         pool = await self._pool()
         async with pool.acquire() as conn:
             return await conn.fetchval("SELECT MIN(event_date) FROM mi_cot_calendar")
+
+    async def watch_rows(self, d0: date, d1: date) -> list[dict]:
+        """The stored news-watch rows with event_date in d0..d1."""
+        pool = await self._pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(_COT_WATCH_READ_SQL, d0, d1)
+        out = []
+        for r in rows:
+            d = dict(r)
+            for k in _COT_WATCH_JSON:       # the pool's jsonb codec decodes; a plain string is decoded here
+                if isinstance(d.get(k), str):
+                    d[k] = json.loads(d[k])
+            out.append(d)
+        return out
+
+    async def replace_watch(self, d0: date, d1: date, rows: list[dict]) -> None:
+        """Make the stored rows dated d0..d1 EXACTLY `rows` (a market no longer set up, or a moved event, leaves no row
+        behind). The rows already carry everything worth keeping (the caller read the old ones first)."""
+        pool = await self._pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(_COT_WATCH_DELETE_SQL, d0, d1)
+                if rows:
+                    # the pool's jsonb codec json.dumps()es the bind itself: pass plain objects, never strings
+                    await conn.executemany(_COT_WATCH_UPSERT_SQL, [
+                        [json.loads(json.dumps(r.get(c), default=str)) if c in _COT_WATCH_JSON else r.get(c)
+                         for c in _COT_WATCH_COLS] for r in rows])
 
     async def store_alerts(self, rows: list[dict]) -> list[dict]:
         """Upsert; returns the rows NOT yet sent, each with its id."""
@@ -1367,10 +1617,11 @@ async def read_past_calendar(io: Io, d0: date, d1: date, fx_ok: bool = True) -> 
     return [r for r in rows if d0 <= r["event_date"] <= d1], failed
 
 
-async def refresh_calendar(io: Io, today: date, fx_ok: bool = True) -> dict:
+async def refresh_calendar(io: Io, today: date, fx_ok: bool = True, raw_out: Optional[dict] = None) -> dict:
     """WEEKLY: the forward calendar beyond this week (3 more weeks of US macro / EIA, central-bank decisions, WASDE
     dates, earnings). Returns {rows, errors}; a source that fails keeps its stored rows. `fx_ok=False` (fxempire
-    refused today's request) skips its sources."""
+    refused today's request) skips its sources. `raw_out`: filled with the raw FXEmpire rows it read (a country slug ->
+    rows; ("united-states", that week's Monday) -> rows) so the news watch keeps their forecasts without a second request."""
     monday = today - timedelta(days=today.weekday())
     sunday = monday + timedelta(days=6)
     errors: dict[str, str] = {}
@@ -1407,6 +1658,8 @@ async def refresh_calendar(io: Io, today: date, fx_ok: bool = True) -> dict:
             for w in (1, 2, 3):
                 m = monday + timedelta(days=7 * w)
                 ev = await asyncio.to_thread(io.fxempire, "united-states", m, m + timedelta(days=6))
+                if raw_out is not None:
+                    raw_out[("united-states", m)] = ev
                 await asyncio.to_thread(io.pause, 1.5)
                 weeks.append((m, [r for r in calendar_rows_from_fx(ev) if r["event_date"] >= m]))
         except CalendarRefused as e:
@@ -1438,7 +1691,10 @@ async def refresh_calendar(io: Io, today: date, fx_ok: bool = True) -> dict:
     def bank(country):
         def f():
             io.pause(1.5)
-            return calendar_rows_from_fx(io.fxempire(country, monday, monday + timedelta(days=41)), country), True
+            ev = io.fxempire(country, monday, monday + timedelta(days=41))
+            if raw_out is not None:
+                raw_out[country] = ev
+            return calendar_rows_from_fx(ev, country), True
         return f
 
     def earn():
@@ -1621,7 +1877,7 @@ async def ensure_week(io: Io, today: date, calendar_error=_READ_IT, fx_ok: bool 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # The jobs
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
-async def run_weekly(today: date, io: Optional[Io] = None) -> dict:
+async def run_weekly(today: date, io: Optional[Io] = None, now_et: Optional[datetime] = None) -> dict:
     """cot_weekly. ONE audit row per run; a fetch / send failure raises AFTER it (audit_wrap pages)."""
     io = io or Io()
     try:
@@ -1629,18 +1885,35 @@ async def run_weekly(today: date, io: Optional[Io] = None) -> dict:
     except Exception as e:
         await io.audit(EVT_WEEKLY, f"{today}: FAILED {type(e).__name__}: {e}", {"error": str(e)})
         raise
+    if res.get("status") == "sent":
+        # a new week was stored: rebuild the next days' news-watch rows on it (no calendar request; the stored figures
+        # stay). Its own try: it can never change the message or the audit row's outcome.
+        nw: dict = {"errors": {}}
+        try:
+            await _watch_upcoming(io, today, now_et or datetime.now(_ET), nw, None, False, {}, None)
+        except Exception as e:  # loud-ok: recorded in the audit row below; never changes the weekly outcome
+            logger.warning(f"cot: the news watch (weekly rebuild) failed: {type(e).__name__}: {e}")
+            nw["errors"]["upcoming"] = f"{type(e).__name__}: {e}"[:160]
+        if not nw["errors"]:
+            del nw["errors"]
+        res["news_watch"] = nw
     await io.audit(EVT_WEEKLY, f"{today}: report {res['report_date']} - {res['status']}; "
                                f"set ups {res.get('setups', '-')}, close {res.get('close', '-')}, "
                                f"Friday alerts {res.get('friday', '-')}", res)
     return res
 
 
-async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held: bool) -> None:
+async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held: bool,
+                      now: Optional[datetime] = None) -> None:
     """Everything cot_daily does after its gates. Fills `res` and `problems`; run_daily writes the audit row."""
     # 1. the calendar. Every day: this week's US releases, read fresh (also the day's actual-vs-consensus numbers).
     #    Mondays, or when the weekly refresh is over a week old: everything beyond this week.
+    now = now or datetime.now(_ET)
     week_events: Optional[list[dict]] = None
     fx_ok = True
+    raw_out: dict = {}              # the raw FXEmpire rows refresh_calendar reads on a full refresh (the news watch keeps their forecasts)
+    cache: dict = {}                # reads shared by the alert label and the news watch (minute bars, earnings rows)
+    watch_ctx: Optional[dict] = None
     try:
         week_events = await refresh_this_week(io, today)
     except Exception as e:  # loud-ok: recorded in the audit row; the run raises after it (stored rows still serve today)
@@ -1650,7 +1923,7 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
     try:
         age = await io.calendar_age_days(today)
         if age is None or age >= 7 or today.weekday() == 0:
-            res["calendar"] = await refresh_calendar(io, today, fx_ok)
+            res["calendar"] = await refresh_calendar(io, today, fx_ok, raw_out)
             hard = {k: v for k, v in res["calendar"]["errors"].items() if "partial" not in k and not v.startswith("skipped")}
             if hard:
                 problems.append("calendar source failed (news alerts may be blind): " + "; ".join(sorted(hard)))
@@ -1693,11 +1966,12 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
     else:
         report, index_rows = known
         res["report_date"] = report
-        setups = {m: (r["setup"] or r["close_setup"], "main" if r["setup"] else "close")
-                  for m, r in index_rows.items() if (r["setup"] or r["close_setup"]) and m in MARKETS}
+        setups = _setups_of(index_rows)
         res["set_up_markets"] = len(setups)
         errors: dict[str, str] = {}
         found: list[dict] = []
+        feats: dict[str, dict] = {}
+        cal: list[dict] = []
         if setups:
             bars = await _bars_for(io, _with_peers(setups), errors)
             z = {m: f["z"] for m, bs in bars.items() if (f := features_at(bs, today))}
@@ -1718,6 +1992,7 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
                     # Yahoo's newest daily close is the last trade (restated later to a settlement-like value);
                     # tomorrow's prev_close against today's close measures that gap. Recorded, never used to decide.
                     closes[m] = {"close": feat["close"], "prev_close": feat["prev_close"], "z": feat["z"]}
+                    feats[m] = feat
                     # A bar whose close or open is outside its own high-low is broken data. The research kept such
                     # rows, so it is still judged as it comes, but flagged: the printed stop may already be crossed.
                     _d, o, h, l, c = next(b for b in bars[m] if b[0] == today)
@@ -1749,7 +2024,7 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
                 # the readable markets alert and send below; the gap pages after, because nothing re-reads it
                 problems.append(f"{len(unread)} of {len(setups)} set-up markets could not be read today: "
                                 + ", ".join(name_of(m) for m in unread) + " (no alert for them today)")
-            await _label(io, today, [a for a in found if "news" in a["kinds"]], res, week_events)
+            await _label(io, today, [a for a in found if "news" in a["kinds"]], res, week_events, cache)
             rows = []
             for a in found:
                 for kind in a["kinds"]:
@@ -1765,7 +2040,12 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
                     res["sent"] = not held
                 else:
                     problems.append("the daily COT alert message was not delivered")
+        watch_ctx = {"setups": setups, "cal": cal, "feats": feats, "report": report,
+                     "alerted": {a["market"] for a in found if "news" in a["kinds"]}}
         res["status"] = "ok"
+    # 5. the news watch: AFTER the alert path, outside the branch above (the rows for the days ahead need only the
+    #    newest stored week, and are written also when no week is usable today)
+    await _news_watch_daily(io, today, now, res, watch_ctx, week_events, fx_ok, held, cache, raw_out)
 
 
 def bar_is_final(day: date, now_et: datetime) -> bool:
@@ -1793,7 +2073,7 @@ async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datet
     res["held"] = held
 
     try:
-        await _daily_body(io, today, res, problems, held)
+        await _daily_body(io, today, res, problems, held, now)
     except Exception as e:
         # one audit row EVERY run, also when something outside the per-market guards broke (a database read, the
         # alert store); audit_wrap pages on the re-raise
@@ -1810,9 +2090,11 @@ async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datet
     return res
 
 
-async def _label(io: Io, today: date, alerts: list[dict], res: dict, week_events: Optional[list[dict]]) -> None:
+async def _label(io: Io, today: date, alerts: list[dict], res: dict, week_events: Optional[list[dict]],
+                 cache: Optional[dict] = None) -> None:
     """The two labels on a news alert. A label that cannot be read is 'unknown'; it never blocks the alert.
-    `week_events`: this week's US calendar as read a moment ago (None = that read failed)."""
+    `week_events`: this week's US calendar as read a moment ago (None = that read failed). `cache`: the run's shared reads
+    (the news watch reuses the minute bars and earnings rows fetched here)."""
     if not alerts:
         return
     label_errors = {}
@@ -1823,7 +2105,7 @@ async def _label(io: Io, today: date, alerts: list[dict], res: dict, week_events
     for t in sorted(t for t in types if t.startswith("EARN_")):
         tk = t[5:]
         try:
-            for e in await asyncio.to_thread(io.earnings, tk):
+            for e in await _cached(cache, ("earn", tk), io.earnings, tk):
                 if e["surprise_pct"] is not None and session_date(e["ts"].astimezone(_ET), earnings=True) == today:
                     surprises[(today, t)] = {"z": e["surprise_pct"] / EARNINGS_RMS[tk],
                                              "text": f"{tk} EPS {e['reported']} vs {e['estimate']}"}
@@ -1834,7 +2116,7 @@ async def _label(io: Io, today: date, alerts: list[dict], res: dict, week_events
         minutes: list[tuple] = []
         if m not in NO_MINUTE_BARS:
             try:
-                minutes = await asyncio.to_thread(io.minute_bars, ticker_of(m))
+                minutes = await _cached(cache, ("min", m), io.minute_bars, ticker_of(m))
             except Exception as e:  # loud-ok: the label reads 'unknown' and the reason is in the audit row
                 label_errors[f"minutes {m}"] = f"{type(e).__name__}: {e}"[:160]
         best, detail, texts = None, [], []
@@ -1852,3 +2134,177 @@ async def _label(io: Io, today: date, alerts: list[dict], res: dict, week_events
         a["news_text"] = texts
     if label_errors:
         res["label_errors"] = label_errors
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# The news watch, I/O side. Runs AFTER the alert path, each part in its own try: a failure here is recorded in the audit
+# row (res["news_watch"]) and can never change an alert, a message or the job's outcome.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+async def _cached(cache: Optional[dict], key: tuple, fn, *args):
+    """One read per (kind, key) per run, shared by the alert label and the watch. A failure is cached too (the same
+    refused request is not sent twice) and re-raised to each caller."""
+    if cache is not None and key in cache:
+        if isinstance(cache[key], Exception):
+            raise cache[key]
+        return cache[key]
+    try:
+        v = await asyncio.to_thread(fn, *args)
+    except Exception as e:  # loud-ok: cached and re-raised to the caller, which records it
+        if cache is not None:
+            cache[key] = e
+        raise
+    if cache is not None:
+        cache[key] = v
+    return v
+
+
+def _setups_of(index_rows: dict[str, dict]) -> dict[str, tuple[str, str]]:
+    """{market: (direction to fade into, 'main' | 'close')} for every set-up or near-set-up market of a stored week."""
+    return {m: (r["setup"] or r["close_setup"], "main" if r["setup"] else "close")
+            for m, r in index_rows.items() if (r["setup"] or r["close_setup"]) and m in MARKETS}
+
+
+def _num_text(x) -> Optional[str]:
+    return None if x is None else f"{x:g}"
+
+
+async def _earnings_expectations(io: Io, cache: dict, types, day_of) -> tuple[dict, dict, dict]:
+    """(expectations, surprises, errors) for the EARN_ types: the EPS estimate / reported figure and the surprise z, from
+    the same yfinance rows the alert label reads. `day_of(type)` = the session day to match."""
+    exp, surprises, errors = {}, {}, {}
+    for t in sorted(t for t in types if t.startswith("EARN_")):
+        tk, day = t[5:], day_of(t)
+        try:
+            entries = await _cached(cache, ("earn", tk), io.earnings, tk)
+        except Exception as e:  # loud-ok: recorded; the card reads "no forecast listed yet" / unknown
+            errors[t] = f"{type(e).__name__}: {e}"[:160]
+            continue
+        for e in entries:
+            if session_date(e["ts"].astimezone(_ET), earnings=True) != day:
+                continue
+            exp[(day, t)] = {"EPS": {"forecast": _num_text(e["estimate"]), "previous": None, "actual": _num_text(e["reported"])}}
+            if e["surprise_pct"] is not None:
+                surprises[(day, t)] = {"z": e["surprise_pct"] / EARNINGS_RMS[tk],
+                                       "text": f"{tk} EPS {e['reported']} vs {e['estimate']}"}
+    return exp, surprises, errors
+
+
+async def _watch_judge(io: Io, today: date, now: datetime, nw: dict, ctx: dict, week_events: Optional[list[dict]],
+                       fx_ok: bool, cache: dict) -> bool:
+    """Today's rows: every set-up / near-set-up market with an event today, alert or not, judged on the same bar,
+    surprises and first minute the alert uses. Returns whether FXEmpire may still be asked (False after a refusal)."""
+    setups, cal, feats = ctx["setups"], ctx["cal"], ctx["feats"]
+    evs = {m: r for m in sorted(setups) if (r := _events_by_day(cal, m).get(today, []))}
+    rows: list[dict] = []
+    if evs:
+        old = {(r["event_type"], r["market"]): r for r in await io.watch_rows(today, today)}
+        surprises = dict(surprises_from_fx(week_events or []))
+        exp = expectations_from_fx(week_events or [])
+        types = {r["event_type"] for v in evs.values() for r in v}
+        for country, names in FX_COUNTRY_EVENTS.items():           # a non-US event today: that page, for its actual
+            if fx_ok and types & (set(names.values()) - NO_FORECAST_TYPES):
+                try:
+                    exp.update(expectations_from_fx(await asyncio.to_thread(
+                        io.fxempire, country, today - timedelta(days=1), today), country))
+                except Exception as e:  # loud-ok: recorded; the card keeps the forecast it holds
+                    nw["errors"][f"fxempire {country}"] = f"{type(e).__name__}: {e}"[:160]
+                    fx_ok = fx_ok and not isinstance(e, CalendarRefused)
+        e_exp, e_sur, e_err = await _earnings_expectations(io, cache, types, lambda t: today)
+        exp.update(e_exp)
+        surprises.update(e_sur)
+        nw["errors"].update(e_err)
+        for m, ev_rows in evs.items():
+            direction, level = setups[m]
+            feat = feats.get(m)
+            minutes: list[tuple] = []
+            if feat is not None and m not in NO_MINUTE_BARS and any(r.get("release_et") for r in ev_rows):
+                try:
+                    minutes = await _cached(cache, ("min", m), io.minute_bars, ticker_of(m))
+                except Exception as e:  # loud-ok: the first minute reads "no minute bars"; recorded
+                    nw["errors"][f"minutes {m}"] = f"{type(e).__name__}: {e}"[:160]
+            for r in ev_rows:
+                et = r["event_type"]
+                fm = first_minute(minutes, r.get("release_et"), feat["atr"], direction) if feat else {"status": "not read"}
+                rows.append(judged_watch_row(
+                    {"event_date": today, "event_type": et, "release_et": r.get("release_et")}, m, direction, level,
+                    ctx["report"], old.get((et, m)), lookup_expectation(exp, today, et),
+                    news_class(et, m, direction, today, surprises), fm, feat, m in ctx["alerted"], now))
+    await io.replace_watch(today, today, rows)
+    nw["judged"] = len(rows)
+    nw["verdicts"] = {v: sum(1 for r in rows if r["verdict"] == v) for v in sorted({r["verdict"] for r in rows})}
+    return fx_ok
+
+
+async def _watch_upcoming(io: Io, today: date, now: datetime, nw: dict, week_events: Optional[list[dict]],
+                          may_read: bool, cache: dict, raw_out: Optional[dict]) -> None:
+    """The next WATCH_DAYS days' rows for the newest stored COT week. `week_events` / `raw_out` = what this run already
+    read (None = nothing read). `may_read`: one more request for NEXT week's US page is allowed (the daily job when
+    FXEmpire has not refused; never the weekly job, which makes no calendar request and keeps the stored figures)."""
+    known = await io.known_week(FAR)
+    if known is None:
+        return
+    report, index_rows = known
+    setups = _setups_of(index_rows)
+    d0, d1 = today + timedelta(days=1), today + timedelta(days=WATCH_DAYS)
+    exp = expectations_from_fx(week_events or [])
+    for key, ev in (raw_out or {}).items():
+        if isinstance(key, str):
+            exp.update(expectations_from_fx(ev, key))
+        else:
+            exp.update(expectations_from_fx(ev))
+    nm = today - timedelta(days=today.weekday()) + timedelta(days=7)
+    if may_read and d1 >= nm and ("united-states", nm) not in (raw_out or {}):
+        # next week's figures (a Friday card would otherwise hold Monday's); its calendar rows replace the stored ones only when
+        # the answer holds a trigger row. An empty or failed read is recorded, never paged (Monday's full refresh pages).
+        try:
+            await asyncio.to_thread(io.pause, 1.5)
+            ev = await asyncio.to_thread(io.fxempire, "united-states", nm, nm + timedelta(days=6))
+            exp.update(expectations_from_fx(ev))
+            rows = [r for r in calendar_rows_from_fx(ev) if nm <= r["event_date"] <= nm + timedelta(days=6)]
+            if rows:
+                await io.replace_calendar(nm - timedelta(days=1), rows, [US_SOURCE], nm + timedelta(days=6))
+            else:
+                nw["errors"]["next week"] = f"no trigger event listed for the week of {nm}: the stored rows are kept"
+        except Exception as e:  # loud-ok: recorded in the audit row; the stored calendar and figures stay
+            nw["errors"]["next week"] = f"{type(e).__name__}: {e}"[:160]
+    cal = await io.calendar(d0, d1)
+    old_rows = await io.watch_rows(d0, d1)
+    old = {(r["event_type"], r["market"], r["event_date"]): r for r in old_rows}
+    sibling = {(r["event_type"], r["event_date"]): r for r in old_rows if r["event_type"] != "EIA_PETRO"}
+    e_exp, _sur, e_err = await _earnings_expectations(
+        io, cache, {r["event_type"] for r in cal if any(m in setups for m in markets_for_event(r["event_type"]))},
+        lambda t: next(r["event_date"] for r in cal if r["event_type"] == t))
+    exp.update(e_exp)
+    nw["errors"].update(e_err)
+    rows = []
+    for ev in cal:
+        for m in markets_for_event(ev["event_type"]):
+            if m not in setups:
+                continue
+            et, day = ev["event_type"], ev["event_date"]
+            prior = old.get((et, m, day)) or sibling.get((et, day))      # a market new to the list copies a sibling's figures
+            direction, level = setups[m]
+            rows.append(upcoming_watch_row(ev, m, direction, level, report, prior, lookup_expectation(exp, day, et), now))
+    await io.replace_watch(d0, d1, rows)
+    nw["upcoming"] = len(rows)
+    nw["with_forecast"] = sum(1 for r in rows if any(s.get("forecast") for s in r["series"]))
+
+
+async def _news_watch_daily(io: Io, today: date, now: datetime, res: dict, ctx: Optional[dict],
+                            week_events: Optional[list[dict]], fx_ok: bool, held: bool, cache: dict,
+                            raw_out: dict) -> None:
+    nw = res["news_watch"] = {"errors": {}}
+    if ctx is not None:
+        try:
+            fx_ok = await _watch_judge(io, today, now, nw, ctx, week_events, fx_ok, cache)
+        except Exception as e:  # loud-ok: recorded in the audit row; never changes an alert or the job's outcome
+            logger.warning(f"cot: the news watch (today's rows) failed: {type(e).__name__}: {e}")
+            nw["errors"]["judge"] = f"{type(e).__name__}: {e}"[:160]
+    if not held:                         # a #672 recovery re-run of a past day must not rewrite the days ahead
+        try:
+            await _watch_upcoming(io, today, now, nw, week_events, fx_ok, cache, raw_out)
+        except Exception as e:  # loud-ok: recorded in the audit row; never changes an alert or the job's outcome
+            logger.warning(f"cot: the news watch (upcoming rows) failed: {type(e).__name__}: {e}")
+            nw["errors"]["upcoming"] = f"{type(e).__name__}: {e}"[:160]
+    if not nw["errors"]:
+        del nw["errors"]

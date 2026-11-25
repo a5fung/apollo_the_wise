@@ -64,10 +64,34 @@ def test_old_alert_keys_are_unchanged():
         assert re.search(rf"'{k}', a\.", CODE), k
 
 
+def test_news_watch_reads_its_own_table_by_et_dates_and_only_columns_that_exist():
+    """No database in the unit suite: the SQL names the table and every column of it that the DDL creates, bounds the
+    rows by the ET date (never the container's UTC one), and formats minutes as HH24:MI (HH:MI is a 12-hour clock)."""
+    from agents.market_intelligence import db
+    assert "FROM mi_cot_news_watch nw" in CODE and "FROM mi_cot_news_watch)" in CODE
+    assert "(now() AT TIME ZONE 'America/New_York')::date" in CODE
+    assert "BETWEEN (SELECT d FROM today_et) - 7 AND (SELECT d FROM today_et) + 7" in CODE
+    assert "HH:MI" not in CODE and CODE.count("'YYYY-MM-DD HH24:MI'") == 2
+    body = re.search(r"CREATE TABLE IF NOT EXISTS mi_cot_news_watch \((.*?)\n    \);", db._COT_FAMILY_DDL, re.S).group(1)
+    have = set(re.findall(r"^\s+(\w+)\s", body, re.M))
+    used = set(re.findall(r"\bnw\.(\w+)", CODE))
+    assert used and used <= have, used - have
+    assert {"updated_at"} <= have                      # the as-of read in news_watch_asof
+    assert re.search(r"max\(updated_at\)", CODE)
+
+
+def test_news_watch_keys_are_additive_and_the_version_stays_one():
+    assert "'version', 1," in CODE
+    for k in ("market", "name", "sector", "comm", "lspec", "sspec", "setup", "close_setup", "prev", "history"):
+        assert re.search(rf"'{k}', ", CODE), k       # the old per-market keys are all still emitted
+
+
 KEYS = ("version", "generated_at", "report_date", "known_from", "markets", "alerts", "definitions", "market", "name",
         "sector", "comm", "lspec", "sspec", "setup", "close_setup", "prev", "history", "alert_date", "direction", "kind",
         "level", "events", "entry_price", "stop_price", "first_minute", "first_minute_big", "news_class", "z", "peer_z",
-        "entry_note", "stop_rule", "failure_day", "atr", "news", "peers", "inverse")
+        "entry_note", "stop_rule", "failure_day", "atr", "news", "peers", "inverse",
+        "news_watch", "news_watch_asof", "event", "event_date", "read", "crowd_outcome", "series", "forecast_seen_at",
+        "surprise_z", "close_z", "close_against", "verdict", "strict", "alerted")
 
 
 @pytest.mark.parametrize("key", KEYS)
