@@ -312,6 +312,13 @@ commit.** Exits, labels (grades), bug fixes and plumbing are not versions.
   ranking; the pick model's frozen coefficients) is pinned to the current version, and a constant that moves without
   a bump fails the build. It cannot see a rule changed inside a function body with no constant moving, the runtime
   ranking switch (each list row records `ranked_by`), or the strategy row and shared sizing limits.
+- **Known limit — what the trade stamp is:** it is the code version AT ENTRY (`current_setup_version`), not the list
+  row's own `gates.setup_version`. After an evening list-rule deploy the next session's trades carry the new version
+  though their list was built under the old rules. A future fix would stamp the trade from the list row's
+  `gates.setup_version`.
+- **Narrow's `first_session`** = the first session AFTER the execution deploy, never the deploy day.
+- **v1.4 paper switch:** paper was switched ON 11-16 18:09 ET on his "ok paper on" (PLAN.md); the 11-14 rules were
+  deployed 11-16.
 
 ## The forward shadow — what runs, nightly at 17:48 ET (mon–fri)
 
@@ -611,7 +618,7 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 **Reversion-flag**: NEW. **Status**: built, not deployed. Deploy = market-agent FIRST (it adds the column and stamps the list; the `/trades` page lives there), then execution (the funnel's stamp) — an execution deploy ahead of the column reports DEPLOY FAILED at its DB-prepare gate (`preflight_db_updates.py` prepares the stamp statement against the real schema), and until the column exists a breakout paper buy would fail at its insert (MAGNA53 issues no stamp statement and is unaffected).
 
-**Not done**: the monthly review (#720) and `system_review` do not split by version yet — they should read `setup_version_for_row`; `first_session` of the narrow version is filled at its verify-live.
+**Not done**: the monthly review (#720) and `system_review` do not split by version yet — they should read `setup_version_for_row`; `first_session` of the narrow version is filled at its verify-live, and it is the first session AFTER the execution deploy (never the deploy day).
 
 ### 2026-11-25 — breakout v1 PAPER buys NARROW-list names only; the ORIGINAL list is computed unchanged and its breaks are recorded for comparison (OPERATOR RULING 2026-11-25; the PAPER lane only; built on branch `narrow-list-717`, not merged, not deployed)
 

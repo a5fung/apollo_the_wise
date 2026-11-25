@@ -124,7 +124,8 @@ def test_a_buy_rule_constant_cannot_change_without_a_version_bump():
     (bv, "ADR_MIN", 0.05), (bv, "NARROW_MAX", 0.7), (bv, "PRIOR_MOVE_MIN", 0.3), (bv, "CTX_UNDER_SMA50_MAX", -0.05),
     (bv, "ENFORCED_SHAPE_GATES", ("tight10",)), (bv, "_BASKET", ()), (be, "VOLUME_PACE_GATE", True),
     (be, "OR_MINUTES", 15), (be, "BREAK_LOOKBACK_MINUTES", 5), (bl, "DEFAULT_RANKING", "order_score"),
-    (bl.pm, "INTERCEPT", -1.0),
+    (bl.pm, "INTERCEPT", -1.0), (bl.pm, "YEAR", 250), (bl.pm, "HISTORY_SESSIONS", 250),
+    (bl, "PREFILTER_DOLLAR_VOL", 1.0), (bl, "HISTORY_SESSIONS", 150), (be, "DEFAULT_RANKED_BY", "x"),
 ])
 def test_the_fingerprint_moves_when_a_buy_rule_moves(monkeypatch, mod, name, value):
     before = _fingerprint()
@@ -174,6 +175,31 @@ def test_every_rules_module_constant_is_hashed_or_named_out():
     assert sv.BV_NOT_BUY_RULES <= defined
     for name in ("FEATURES", "INTERCEPT", "COEF", "RAW_FEATURES", "HALF_FILL"):
         assert f"breakout_v1_pick_model.{name}" in _constants()
+
+
+def test_every_list_and_pick_model_constant_is_classified_buy_rule_or_not():
+    """Same classify-or-fail as the entry module: a NEW constant in the list job or the pick model fails here until
+    it is named a buy rule (hashed) or not one."""
+    for mod, buy, not_buy in ((bl, sv.LIST_BUY_RULES, sv.LIST_NOT_BUY_RULES),
+                              (bl.pm, sv.PICK_MODEL_BUY_RULES, sv.PICK_MODEL_NOT_BUY_RULES)):
+        defined = _defined_constants(mod)
+        assert not (buy & not_buy)
+        assert defined - buy - not_buy == set(), f"classify it in setup_versions.py ({mod.__name__})"
+        assert (buy | not_buy) - defined == set(), "a classified name no longer exists"
+
+
+def test_the_extra_list_and_pick_model_buy_constants_are_hashed():
+    c = _constants()
+    for k in ("breakout_v1_pick_model.YEAR", "breakout_v1_pick_model.HISTORY_SESSIONS",
+              "breakout_v1_list.PREFILTER_DOLLAR_VOL", "breakout_v1_list.HISTORY_SESSIONS",
+              "breakout_v1_entry.DEFAULT_RANKED_BY"):
+        assert k in c, k
+    assert "DEFAULT_RANKED_BY" in sv.ENTRY_BUY_RULES and "DEFAULT_RANKED_BY" not in sv.ENTRY_NOT_BUY_RULES
+
+
+def test_the_registry_strategy_id_is_the_one_the_database_layer_uses():
+    from agents.market_intelligence import db
+    assert sv.BREAKOUT_V1 == db.BREAKOUT_V1_STRATEGY_ID
 
 
 # ── the stamps ───────────────────────────────────────────────────────────────────────────────────────────────────

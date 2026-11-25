@@ -102,16 +102,17 @@ BREAKOUT_V1_VERSIONS: tuple = (
          ("### 2026-11-14 — breakout v1: the PICK MODEL orders the nightly list",
           "the pick model sets the list order (which names take the 5 slots)")),
         reconstructed=True,
-        note="one deploy (`b37ebd01`, CHANGELOG); first list night Mon 11-16, first paper session Tue 11-17 (PLAN "
-             "week note). 18 trades 11-17..11-23, and every trade until the narrow version deploys. The moment "
-             "paper was switched back on is not in the local records."),
+        note="the 11-14 rules were deployed 11-16 (`b37ebd01`, CHANGELOG); first list night Mon 11-16, paper switched "
+             "ON 11-16 18:09 ET on his \"ok paper on\" (PLAN.md), first paper session Tue 11-17. 18 trades "
+             "11-17..11-23, and every trade until the narrow version deploys."),
     SetupVersion(
         "breakout_v1.5-narrow", "narrow only", date(2026, 11, 25), None,
         (("### 2026-11-25 — breakout v1 PAPER buys NARROW-list names only",
           "paper buys only list names that read narrow (swings over 40 sessions, ratio <= 0.6, unscored = "
           "narrow); the list itself is unchanged and the other names' breaks are recorded"),),
         reconstructed=False,
-        note="not deployed as this is written: reached by its STAMP only. Fill `first_session` at verify-live."),
+        note="not deployed as this is written: reached by its STAMP only. Fill `first_session` at verify-live: it is "
+             "the first session AFTER the execution deploy, never the deploy day itself."),
 )
 
 # strategy (= mi_live_trades.signal_type) -> its versions, oldest first. The LAST row is the current version.
@@ -167,21 +168,32 @@ BV_NOT_BUY_RULE_PREFIX = "SHAPE_"        # the shape readings gate nothing while
 # below — a new constant fails the test until it is put in one of the two sets.
 ENTRY_BUY_RULES = frozenset({
     "N_SESSION_MINUTES", "OR_MINUTES", "FIRST_MINUTE", "EOD_MINUTE", "STOP_EPS", "VOLUME_PACE_GATE",
-    "BREAK_LOOKBACK_MINUTES",
+    "BREAK_LOOKBACK_MINUTES", "DEFAULT_RANKED_BY",
 })
 ENTRY_NOT_BUY_RULES = frozenset({
     "ACCOUNT_MODE", "STRATEGY_ID", "TOGGLE", "TOGGLE_ENV", "STRATEGY_LABEL", "COID_FAMILY_PREFIX",
     "CANCEL_POLL_ATTEMPTS", "CANCEL_POLL_S", "SNAPSHOT_FAILS_BEFORE_PAGE", "PLANNED_ENTRY_CANCEL", "BARS_CHUNK_MAX",
     "BARS_FAILS_BEFORE_PAGE", "HOLD_EVENT", "SLOTS_FULL_STATE", "SLOTS_UNREADABLE_STATE", "BREAK_LOOKBACK_EVENT",
     "NO_BREAK", "MISSED_BY_SLOTS", "ENTRY_ORDER_EVENT", "WOULD_BUY_EVENT", "NARROW_MISSING_EVENT",
-    "ORIGINAL_ONLY_BREAK", "NOT_NARROW", "NARROW_MISSING", "DEFAULT_RANKED_BY", "RANKED_BY_SCORE",
+    "ORIGINAL_ONLY_BREAK", "NOT_NARROW", "NARROW_MISSING", "RANKED_BY_SCORE",
     "STATE_OK", "STATE_SWITCHED_OFF", "STATE_REFUSED", "STATE_UNREADABLE",
     # after the fill (the one-minute low re-check): exit-side plumbing, no say in what is bought
     "FILL_STOP_CHECKED", "FILL_BAR_WAIT_MINUTES", "STOP_LOWER_VERIFY_POLLS", "STOP_LOWER_VERIFY_S",
 })
 # the list order decides which names take the slots: the default ranking and the frozen pick model are buy rules
-LIST_BUY_RULES = frozenset({"DEFAULT_RANKING"})
-PICK_MODEL_BUY_RULES = frozenset({"FEATURES", "INTERCEPT", "COEF", "RAW_FEATURES", "HALF_FILL"})
+# (PREFILTER_DOLLAR_VOL / HISTORY_SESSIONS decide which names reach the list at all; YEAR / HISTORY_SESSIONS of the
+# pick model set the 52-week window its features read.) Every OTHER constant of both modules is in the sets below.
+LIST_BUY_RULES = frozenset({"DEFAULT_RANKING", "PREFILTER_DOLLAR_VOL", "HISTORY_SESSIONS"})
+LIST_NOT_BUY_RULES = frozenset({
+    "JOB_ID", "AUDIT_RUN_EVENT", "AUDIT_ERROR_EVENT", "BUDGET_S", "CALENDAR_SESSIONS", "SCAN_CHUNK",
+    "FUND_EXCLUDED_LIST_MAX", "CONTEXT_REMOVED_LIST_MAX", "SHORT_FALLBACK_LIST_MAX", "MESSAGE_TOP_N", "RANKINGS",
+    "RANKING_SWITCH", "RANKING_READ_TRIES", "RANKING_READ_PAUSE_S", "RANKING_READ_TIMEOUT_S", "RANKING_SCORE_COL",
+    "RANKING_RANK_COL", "GRADE_CUTOFFS", "GRADE_ORDER", "RANKING_LABEL", "AUDIT_HEADROOM", "AUDIT_SCORE_DP",
+    "AUDIT_SCORES_MAX", "GRADES", "UNGRADED_NIGHTS", "BGRADE_USAGE",
+})
+PICK_MODEL_BUY_RULES = frozenset({"FEATURES", "INTERCEPT", "COEF", "RAW_FEATURES", "HALF_FILL", "YEAR",
+                                  "HISTORY_SESSIONS"})
+PICK_MODEL_NOT_BUY_RULES = frozenset({"PROVENANCE", "PCT_FEATURES"})   # a note; derived from FEATURES - RAW_FEATURES
 _BV_PRIVATE_RULES = ("_LEVERAGED_INVERSE", "_BASKET", "_UNDERLYINGS", "_CASE_SENSITIVE_UNDERLYINGS")  # the fund rule
 
 _PLAIN = (bool, int, float, str, type(None))
@@ -248,5 +260,5 @@ def breakout_v1_rule_constants(bv, be, bl, pm) -> dict:
 # strategy -> (the version this hash belongs to, the hash). A buy-rule constant change moves the hash: bump the
 # version (a new registry row citing the change-log entry) AND re-pin here, in the same commit.
 # The failing test prints the new hash.
-PINNED_FINGERPRINT: dict = {BREAKOUT_V1: ("breakout_v1.5-narrow", "8189b528782a99f2")}
+PINNED_FINGERPRINT: dict = {BREAKOUT_V1: ("breakout_v1.5-narrow", "92c1ef65978793c5")}
 
