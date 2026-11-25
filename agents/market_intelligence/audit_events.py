@@ -459,3 +459,10 @@ THEME_SECTOR_FILTER_OPERATOR_EXEMPT = "theme_sector_filter_operator_exempt"
 # summary = job id, detail = the boot time (tz-aware ISO) the job was first registered. One row per
 # job, ever — the recovery planner skips every slot earlier than it.
 JOB_FIRST_SEEN = "job_first_seen"
+
+# 2026-11-24 (operator "Go" on the visibility rec) — one row per member the nightly RS prune
+# (`_rescore_existing_theme`) actually removes. Until now a prune lived only in an in-memory changelog +
+# logger.info, so a promoted theme losing two of four members left no durable trace. summary = plain words
+# ("'<theme>': CORZ pruned — RS 3.5 below the hard floor 25 (not rising)"); detail = theme/ticker/rs_now/
+# rule/floor. Membership is unchanged by this row — it is a record, written fail-open.
+THEME_MEMBER_PRUNED_RS = "theme_member_pruned_rs"

@@ -205,9 +205,15 @@ def _render_promote_result(res: dict, query_label: str) -> str:
     tk = " ".join(res["tickers"])
     rename = (f"\n(canonicalized from \"{res['orig_name']}\" — its ticker-set already matched a "
               f"live theme's name)" if res.get("canonicalized") else "")
+    from agents.market_intelligence.theme_engine import render_prune_warning
+    try:
+        warn = render_prune_warning(res.get("rs_warnings") or [])
+    except Exception:  # loud-ok: advisory text only; the confirm still renders
+        warn = ""
+    warn = f"\n\n{warn}" if warn else ""
     return (f"✅ Promoted *{res['name']}* to a live theme ({res['n_members']} members).\n`{tk}`{rename}\n\n"
             f"It now flows through the normal theme lifecycle — re-discovered daily while the cohort "
-            f"co-moves, ages out if it dissolves.")
+            f"co-moves, ages out if it dissolves.{warn}")
 
 
 # ── Operator ground-truth command parsing (#254) ────────────────────────────────

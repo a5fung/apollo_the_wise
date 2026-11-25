@@ -87,6 +87,7 @@ from agents.market_intelligence.theme_merge_arm import (
     MAX_MERGES_PER_NIGHT, MERGE_DISTINCT_COOLDOWN_DAYS,
 )
 from agents.market_intelligence.audit_events import (
+    THEME_MEMBER_PRUNED_RS,
     THEME_PARENT_PASS_RAN, THEME_PARENT_PASS_LINKED, THEME_PARENT_PASS_DISTINCT,
     THEME_PARENT_PASS_INVERTED, THEME_PARENT_PASS_ERROR,
     THEME_RETIRED_SMALL_FADING, THEME_SMALL_FADING_RETIRE_ERROR,
@@ -2912,7 +2913,7 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
         # engine's run tonight then reads this row as the PRIOR night and computes today's —
         # two genuine consecutive readings for the breadth-decay rule.
         _rs_rows = await conn.fetch(f"""
-            SELECT ticker, rs_composite, close, sma_20 FROM mi_stock_scores
+            SELECT ticker, rs_composite, close, sma_20, score_date FROM mi_stock_scores
             WHERE ticker = ANY($1) AND score_date = {latest_complete_score_date_sql()}
         """, t["tickers"])
         # #407: the dict-then-filter was redundant — the query above is already
@@ -2945,6 +2946,20 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
             conn, t["name"], t["tickers"], desc, desc, today,
             rs_avg=rs_avg, prior_days_active=prior_days_active,
             pct_above_20sma=breadth_above_sma20(_rs_rows))
+        # 2026-11-24: warn when the nightly RS cut will likely drop members of what he just promoted.
+        # Same constants + _rs_rising as the prune; a failed read omits the warning, never the promotion.
+        rs_warnings: list[dict] = []
+        try:
+            _mrs = {r["ticker"]: float(r["rs_composite"]) for r in _rs_rows if r["rs_composite"] is not None}
+            # History bounded to the SAME complete date the RS reading uses (a stray on-demand row
+            # dated today must not make hist[0] differ from the reading the prune sees).
+            _cut = max((r.get("score_date") for r in _rs_rows if r.get("score_date")), default=None)
+            _hist = await get_recent_rs_batch(list(t["tickers"]), _cut or today, days=PRUNE_HOLD_WINDOW_SESSIONS)
+            _members = {tk: _mrs.get(tk) for tk in t["tickers"]}
+            rs_warnings = prune_warnings_for_members(_members, _hist)
+        except Exception:  # loud-ok: advisory warning only; promotion proceeds unchanged
+            logger.warning("promote: RS prune-warning read failed — warning omitted", exc_info=True)
+            rs_warnings = []
         await log_audit_event(
             _OPERATOR_PROMOTED_EVENT,
             summary=(_OPERATOR_PROMOTED_SUMMARY.format(name=t["name"], n=len(t["tickers"]))
@@ -2958,7 +2973,8 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
         await _map_ecosystems_nonfatal([t], "promote")
     return {"status": "promoted" if wrote else "noop", "name": t["name"],
             "tickers": t["tickers"], "n_members": len(t["tickers"]),
-            "canonicalized": t["name"] != cand["name"], "orig_name": cand["name"]}
+            "canonicalized": t["name"] != cand["name"], "orig_name": cand["name"],
+            "rs_warnings": rs_warnings}
 
 
 async def _validate_new_themes_at_birth(
@@ -3850,6 +3866,70 @@ def _rs_rising(hist: list[float]) -> bool:
     return not interior or hist[0] >= min(interior)
 
 
+_PRUNE_RULE_WORDS = {
+    "hard": ("hard", PRUNE_RS_HARD, "below the hard floor {floor:.0f} (not rising)"),
+    "hard_no_current_data": ("hard", PRUNE_RS_HARD,
+                             "no current RS; last readings all below the hard floor {floor:.0f}"),
+    "soft": ("soft", PRUNE_RS_SOFT,
+             "below the soft floor {floor:.0f} three days running (not rising)"),
+}
+
+
+async def _audit_member_pruned_rs(theme: str, ticker: str, rs_now: float, rule_key: str) -> None:
+    """One `theme_member_pruned_rs` mi_audit_log row per member the nightly RS prune removes.
+    Fail-open: a failed write never changes membership or stops the nightly."""
+    try:
+        rule, floor, tmpl = _PRUNE_RULE_WORDS.get(rule_key, ("unknown", PRUNE_RS_HARD, "pruned by RS rule"))
+        await log_audit_event(
+            THEME_MEMBER_PRUNED_RS,
+            f"'{theme}': {ticker} pruned — RS {rs_now:.1f} " + tmpl.format(floor=floor),
+            f"theme={theme} ticker={ticker} rs_now={rs_now:.1f} rule={rule} floor={floor:.0f}")
+    except Exception:  # loud-ok: audit row is a record only; the prune already happened and must not fail
+        logger.warning(f"Theme '{theme}': prune audit row for {ticker} failed", exc_info=True)
+
+
+def prune_warnings_for_members(members_rs: dict, history: dict) -> list[dict]:
+    """Pure. Members the nightly RS prune would cut tonight, by the SAME rule it applies (hard: latest RS
+    < PRUNE_RS_HARD; soft: latest < PRUNE_RS_SOFT AND >= 3 readings all below it; both spared when
+    `_rs_rising`). `members_rs`: ticker -> latest rs_composite (None = no current reading; mirrors the
+    prune's no-current-data arm: last 5 readings all below the hard floor). `history`: ticker -> newest-first
+    readings. Honours PRUNE_MIN_TICKERS like the prune (keeps the highest-RS candidates back).
+    Returns [{ticker, rs, rule}] ordered by RS ascending."""
+    out = []
+    for tk, rs in members_rs.items():
+        hist = history.get(tk, [])
+        if rs is None:
+            h5 = hist[:5]
+            if h5 and all(v < PRUNE_RS_HARD for v in h5):
+                out.append({"ticker": tk, "rs": h5[0], "rule": "hard"})
+            continue
+        if rs < PRUNE_RS_HARD:
+            if not _rs_rising(hist):
+                out.append({"ticker": tk, "rs": rs, "rule": "hard"})
+        elif rs < PRUNE_RS_SOFT:
+            if len(hist) >= 3 and all(v < PRUNE_RS_SOFT for v in hist[:3]) and not _rs_rising(hist):
+                out.append({"ticker": tk, "rs": rs, "rule": "soft"})
+    out = sorted(out, key=lambda w: w["rs"])
+    cap = max(len(members_rs) - PRUNE_MIN_TICKERS, 0)   # the prune's floor keeps the least-bad back
+    return out[:cap]
+
+
+def render_prune_warning(warnings: list) -> str:
+    """Plain-words promotion-confirm warning ('' when none)."""
+    hard = [w for w in warnings if w["rule"] == "hard"]
+    soft = [w for w in warnings if w["rule"] == "soft"]
+    lines = []
+    if hard:
+        names = ", ".join(f"{w['ticker']} (RS {w['rs']:.1f})" for w in hard)
+        lines.append(f"⚠ {names} {'is' if len(hard) == 1 else 'are'} below RS {PRUNE_RS_HARD:.0f} — "
+                     f"the nightly cut will likely drop {'it' if len(hard) == 1 else 'them'} tomorrow.")
+    if soft:
+        names = ", ".join(f"{w['ticker']} (RS {w['rs']:.1f})" for w in soft)
+        lines.append(f"⚠ {names} {'is' if len(soft) == 1 else 'are'} below RS {PRUNE_RS_SOFT:.0f} for "
+                     f"3 days — the nightly cut may drop {'it' if len(soft) == 1 else 'them'}.")
+    return "\n".join(lines)
+
+
 async def _rescore_existing_theme(
     theme: dict,
     stocks_by_ticker: dict[str, dict],
@@ -3894,6 +3974,7 @@ async def _rescore_existing_theme(
     hard_check: list[tuple[str, float]] = []   # sub-PRUNE_RS_HARD today — trajectory-checked below
     soft_check_tickers: list[str] = []
     missing_rs_tickers: list[str] = []   # in theme but absent from today's RS data
+    prune_rule: dict[str, str] = {}      # ticker -> arm that queued it (audit row only; never read by the prune)
 
     for tk in tickers:
         stock = stocks_by_ticker.get(tk)
@@ -3917,6 +3998,7 @@ async def _rescore_existing_theme(
             hist = missing_history.get(tk, [])
             if hist and all(v < PRUNE_RS_HARD for v in hist):
                 prune_candidates.append((tk, hist[0], f"RS {hist[0]:.0f} consistently < {PRUNE_RS_HARD:.0f} (no current data)"))
+                prune_rule[tk] = "hard_no_current_data"
 
     # Hard + soft prune share one trajectory fetch (#368 rising-recovery hold):
     # a sub-floor member whose RS is RISING over the window is held, not pruned —
@@ -3941,6 +4023,7 @@ async def _rescore_existing_theme(
                     f"{hist[-1]:.0f} → {hist[0]:.0f}) — #368 rising-recovery hold")
                 continue
             prune_candidates.append((tk, rs_now, f"RS {rs_now:.0f} < {PRUNE_RS_HARD:.0f} (hard)"))
+            prune_rule[tk] = "hard"
 
         # Soft prune: 3 consecutive days below the soft floor (most-recent-first
         # history — hist[:3] is exactly the old 3-day window), unless rising.
@@ -3960,6 +4043,7 @@ async def _rescore_existing_theme(
                     continue
                 rs_now = hist[0]
                 prune_candidates.append((tk, rs_now, f"RS below {PRUNE_RS_SOFT:.0f} for 3 consecutive days"))
+                prune_rule[tk] = "soft"
 
     # Enforce minimum ticker count
     if prune_candidates:
@@ -3980,6 +4064,7 @@ async def _rescore_existing_theme(
         for tk, rs, reason in prune_candidates:
             changelog.append({"type": "ticker_pruned", "theme": name, "ticker": tk, "rs": rs, "reason": reason})
             logger.info(f"Theme '{name}': pruned {tk} — {reason}")
+            await _audit_member_pruned_rs(name, tk, rs, prune_rule.get(tk, "unknown"))
 
     # Re-validation: remove stocks whose description clearly doesn't match the theme.
     # Runs Mon/Wed/Fri only (original design). With correct descriptions loaded from DB
