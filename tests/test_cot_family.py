@@ -1894,3 +1894,102 @@ def test_a_refusal_on_a_country_page_stops_the_next_weeks_request_too():
     res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
     assert "fxempire australia" in res["news_watch"]["errors"] and res["problems"] == []
     assert io.fx_calls == [("united-states", date(2026, 11, 9))]     # the refused call is not recorded, and no next-week request follows it
+
+
+# ── 11-25 review round: scored on the lined-up forecast, pending re-judged, visible failures, two surviving mutations ──
+def _nfp_series(stored, after, actual):
+    return [{"name": "Non Farm Payrolls", "forecast": stored, "previous": "165K", "actual": actual, "forecast_after": after}]
+
+
+def test_the_news_is_scored_on_thursdays_stored_forecast_not_the_release_day_read():
+    """The reviewer's NFP case: stored 82.0K on Thursday, the source lists 200K after the release, actual 150K. Scored on
+    the release-day read it is AGAINST the (short silver) crowd; on the lined-up 82.0K it is WITH them: full failure."""
+    ev = {"event_date": FRI_NEXT, "event_type": "NFP", "release_et": _t(8, 30, FRI_NEXT)}
+    old = {"series": _nfp_series("82.0K", None, None), "forecast_seen_at": _t(17, 15, THU)}
+    fresh = {"Non Farm Payrolls": {"forecast": "200K", "previous": "165K", "actual": "150K"}}
+    release_day = {"cls": "AGAINST", "z": -1.0, "text": "Non Farm Payrolls 150K vs 200K"}      # what news_class() gives from `fresh`
+    fm = {"status": "ok", "move": 0.3, "big": True}
+    row = cf.judged_watch_row(ev, "silver", "long", "main", REPORT, old, fresh, release_day, fm, {"z": 0.4}, True,
+                              _t(17, 15, FRI_NEXT))
+    s = row["series"][0]
+    assert (s["forecast"], s["forecast_after"], s["actual"]) == ("82.0K", "200K", "150K")
+    assert row["news_class"] == "WITH" and row["surprise_z"] > 0
+    assert (row["verdict"], row["strict"], row["close_against"]) == ("failure_full", True, True)
+
+
+def test_with_no_stored_forecast_the_release_day_read_stands():
+    ev = {"event_date": FRI_NEXT, "event_type": "NFP", "release_et": _t(8, 30, FRI_NEXT)}
+    fresh = {"Non Farm Payrolls": {"forecast": "200K", "previous": "165K", "actual": "150K"}}
+    nc = {"cls": "AGAINST", "z": -1.0, "text": ""}
+    row = cf.judged_watch_row(ev, "silver", "long", "main", REPORT, None, fresh, nc, {"status": "ok", "move": 0.3}, {"z": 0.4}, False,
+                              _t(17, 15, FRI_NEXT))
+    assert row["series"][0]["forecast"] is None and row["series"][0]["forecast_after"] == "200K"
+    assert row["news_class"] == "AGAINST" and row["verdict"] == "followed_news"
+    assert cf.frozen_news_class("NFP", "silver", "long", FRI_NEXT, row["series"]) is None
+
+
+def test_a_pending_row_is_judged_again_once_its_bar_exists_and_keeps_what_it_stored(monkeypatch):
+    io = _nfp_io()
+    tue = WED - timedelta(days=1)
+    io.bars["GC=F"] = [b if b[0] != tue else (tue, 100.0, 101.0, 99.0, 98.0) for b in io.bars["GC=F"]]   # Tuesday closed DOWN
+    pend = cf.judged_watch_row({"event_date": tue, "event_type": "CPI", "release_et": _t(8, 30, tue)}, "gold", "short", "main", REPORT,
+                               {"series": [{"name": "Inflation Rate MoM", "forecast": "0.3%", "previous": None, "actual": "0.2%",
+                                            "forecast_after": "0.3%"}]}, None, {"cls": "WITH", "z": 0.5, "text": ""},
+                               {"status": "ok", "move": 0.4, "big": True}, None, True, _t(17, 15, tue))
+    assert pend["verdict"] == "pending"
+    io.watch[(tue, "CPI", "gold")] = pend
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    row = io.watch[(tue, "CPI", "gold")]
+    assert res["news_watch"]["rejudged"] == 1 and "errors" not in res["news_watch"]
+    assert row["close_against"] is True and row["verdict"] != "pending" and row["alerted"] is True
+    assert row["first_minute"] == {"status": "ok", "move": 0.4, "big": True}        # what it stored is kept
+    # still no bar for its day: left pending, nothing rewritten
+    io2 = _nfp_io()
+    io2.bars["GC=F"] = [b for b in io2.bars["GC=F"] if b[0] != tue]
+    io2.watch[(tue, "CPI", "gold")] = pend
+    res2 = _run(cf.run_daily(WED, io2, AFTER_CLOSE))
+    assert "rejudged" not in res2["news_watch"] and io2.watch[(tue, "CPI", "gold")]["verdict"] == "pending"
+
+
+def test_a_watch_failure_is_counted_on_the_audit_summary_line():
+    bad = _nfp_io()
+    bad.watch_fail = RuntimeError("database says no")
+    res = _run(cf.run_daily(WED, bad, AFTER_CLOSE))
+    assert res["news_watch"]["error_count"] == 2
+    assert "NEWS WATCH ERRORS 2" in bad.audits[-1][1]
+    ok = _nfp_io()
+    _run(cf.run_daily(WED, ok, AFTER_CLOSE))
+    assert "NEWS WATCH ERRORS" not in ok.audits[-1][1]
+
+
+def test_a_recovery_rerun_judges_today_but_never_rewrites_the_days_ahead(monkeypatch):
+    """Kills the mutation that drops the `held` guard: a #672 re-run of a past slot would overwrite tomorrow's cards."""
+    monkeypatch.setattr(cf, "recovery_pin", lambda: object())
+    io = _nfp_io()
+    ahead = (FRI_NEXT, "NFP", "gold")
+    io.watch[ahead] = {**cf.upcoming_watch_row({"event_date": FRI_NEXT, "event_type": "NFP", "release_et": _t(8, 30, FRI_NEXT)},
+                                               "gold", "short", "main", REPORT, None, None, _t(17, 15, THU)), "crowd_outcome": "SENTINEL"}
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["held"] is True and res["news_watch"]["judged"] == 1 and "upcoming" not in res["news_watch"]
+    assert io.watch[ahead]["crowd_outcome"] == "SENTINEL"                      # untouched
+    assert (WED, "CPI", "gold") in io.watch                                    # today IS judged
+
+
+def test_a_market_no_longer_set_up_leaves_no_row_behind():
+    """Kills the mutation that skips the delete in replace_watch's callers: stored rows of a market that dropped out of the
+    set-ups (today's and the days ahead) are gone after the run; the set-up market's rows stay."""
+    io = _nfp_io()
+    for d, et in ((WED, "CPI"), (FRI_NEXT, "NFP")):
+        io.watch[(d, et, "copper")] = cf._watch_row({"event_date": d, "event_type": et}, "copper", "short", "main", REPORT, "mapped")
+    _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert (WED, "CPI", "copper") not in io.watch and (FRI_NEXT, "NFP", "copper") not in io.watch
+    assert (WED, "CPI", "gold") in io.watch and (FRI_NEXT, "NFP", "gold") in io.watch
+
+
+def test_a_stale_row_is_deleted_even_when_no_set_up_market_has_an_event_today():
+    io = _nfp_io()
+    io.cal = [r for r in io.cal if r["event_date"] != WED]
+    io.fx = [_fx("Non Farm Payrolls", None, "82.0K", "2026-11-13T13:30:00.000Z"), _fx("Unemployment Rate", None, "4.2%", "2026-11-13T13:30:00.000Z")]
+    io.watch[(WED, "CPI", "copper")] = cf._watch_row({"event_date": WED, "event_type": "CPI"}, "copper", "short", "main", REPORT, "mapped")
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["news_watch"]["judged"] == 0 and (WED, "CPI", "copper") not in io.watch

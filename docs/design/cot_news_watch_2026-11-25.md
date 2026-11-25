@@ -1,5 +1,7 @@
 # COT news watch — line the news up before it lands, then judge it (design, 2026-11-25)
 
+**Scoring ruling (review round, 11-25):** the judged row is scored on the LINED-UP forecast (the frozen pre-release figure), not the figure listed after the release; with none stored it falls back to the release-day read and the card says so. Rules: `docs/setups/cot_family.md` §News watch scoring.
+
 **Status:** built 2026-11-25 on branch `cot-news-watch`, not deployed (see §7). **Owner of the rules:** `docs/setups/cot_family.md` (this file is a finding /
 build spec, never the owner). **Money:** none — display and labels only; `detect()`, the alert rule and the Telegram
 messages are NOT changed by this build.
@@ -194,7 +196,7 @@ up to one 1-minute pull per set-up market (17 markets on the 11-17 report) inste
 
 | Step | Scope | Note |
 |---|---|---|
-| 1 | `bash scripts/deploy.sh market-agent` | `cot_family.py`, `db.py`. The same pull puts the new export SQL in the checkout the cron reads. No slash command, so no orchestrator; no broker code, so no execution step |
+| 1 | `bash scripts/deploy.sh market-agent` AND `execution` | `cot_family.py`, `db.py`; `db.py` is in `scripts/exec_loaded_modules.txt`, so the execution service loads it too. The same pull puts the new export SQL in the checkout the cron reads. No slash command, so no orchestrator; no broker code beyond that shared `db.py` |
 | 2 | first `cot_daily` after it (17:15 ET) | writes the first rows; the 18:30 ET export then carries them |
 | 3 | push portfolio-app2 | any time; the page tolerates the key being absent |
 

@@ -119,6 +119,15 @@ further FXEmpire request. The audit row carries `calendar_backfill` (from, to, s
 **Exit signal in the weekly message:** "left" = was a main set up last week and is not now; "neutral ~50" = the first
 week since its last main set up (within 26 weeks) that Commercials (stock indices) or any group (others) is back at 50.
 
+**News watch scoring (2026-11-25, his ruling "news to watch for and what's expectation, once news is here, we assess vs expectation"):**
+the judged row's news read, verdict and `strict` are scored against the LINED-UP forecast: the frozen pre-release figure
+(`series[].forecast` / `forecast_seen_at`), never the figure the source lists after the release (`forecast_after`). If no
+pre-release figure was ever stored the release-day read stands and the card labels it "forecast listed after the release".
+The card prints the figure it was scored on and, when the after-release figure differs, a second small note; where the alert
+label (`mi_cot_alerts.news_class`, release-day read, unchanged) differs, one short line says so. A row left `pending` (no bar
+at the 17:15 run) is judged again by the next runs within the 7-day window once a bar exists. A watch error never pages; its
+count is on the audit summary line ("NEWS WATCH ERRORS n") and the page captions a null `news_watch_asof`.
+
 **News watch (2026-11-25, display only):** his ask — *"What Shapiro does is watch for news failure, so ideally we'll have
 news lined up already, so setup or close setup should expand for news to watch for and what's expectation, once news is
 here, we assess vs expectation, bullish v bearish, and market action after it"* — makes a set-up or near-set-up card
@@ -260,8 +269,9 @@ alert stores nothing, forecasts are never stored): cards of markets with an even
 the sentence; judged rows exist for no-alert days too; `detect()`, `_alert_row`, the messages and every threshold are
 byte-identical; the added requests are listed under "Extra reads". EXPECT / DONE-WHEN / WOULD-FAIL-IF: design doc §5.
 
-**Reversion-flag**: NEW (additive). Not deployed at the time of writing; scope `market-agent` only (the table is created
-by `initialize_schema()` at boot), then a portfolio-app2 push.
+**Reversion-flag**: NEW (additive). Not deployed at the time of writing; scope `market-agent` AND `execution` (`db.py` is in
+`scripts/exec_loaded_modules.txt`, so a market-agent-only deploy leaves the execution service on the old `db.py`; the table is
+created by `initialize_schema()` at market-agent boot), then a portfolio-app2 push.
 
 ### 2026-11-22 — four more watched news events: PCE, Australian CPI, OPEC+ meetings, USDA weekly export sales (operator "yes, we should continually expand our news failure sources")
 

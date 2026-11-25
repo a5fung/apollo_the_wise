@@ -982,6 +982,27 @@ def upcoming_watch_row(ev: dict, market: str, direction: str, level: str, report
     return row
 
 
+def frozen_news_class(event_type: str, market: str, direction: str, day: date, series: list[dict]) -> Optional[dict]:
+    """news_class scored on the LINED-UP forecast: the figure stored before the release (`forecast`), against the actual.
+    None = no series holds both a stored pre-release figure and an actual (or it cannot be read): the caller then falls
+    back to the release-day read, which the card labels "forecast read after the release". (His 11-25 words: "news to
+    watch for and what's expectation, once news is here, we assess vs expectation.")"""
+    pairs = [(s["name"], s["forecast"], s["actual"]) for s in series if _blank(s.get("forecast")) and _blank(s.get("actual"))]
+    if not pairs:
+        return None
+    if event_type.startswith("EARN_"):
+        tk = event_type[5:]
+        a, f = parse_number(pairs[0][2]), parse_number(pairs[0][1])
+        if a is None or not f or tk not in EARNINGS_RMS:
+            return None
+        sur = {(day, event_type): {"z": (a - f) / abs(f) * 100 / EARNINGS_RMS[tk], "text": f"{tk} EPS {pairs[0][2]} vs {pairs[0][1]}"}}
+    else:
+        ts = datetime(day.year, day.month, day.day, 12, 0, tzinfo=_ET).isoformat()
+        sur = surprises_from_fx([{"date": ts, "name": n, "forecast": f, "actual": a} for n, f, a in pairs])
+    nc = news_class(event_type, market, direction, day, sur)
+    return None if nc["cls"] == "UNKNOWN" else nc
+
+
 def judged_watch_row(ev: dict, market: str, direction: str, level: str, report_date: date, old: Optional[dict],
                      fresh: Optional[dict], nc: dict, fm: dict, feat: Optional[dict], alerted: bool,
                      now: datetime) -> dict:
@@ -992,6 +1013,8 @@ def judged_watch_row(ev: dict, market: str, direction: str, level: str, report_d
     row["series"] = merge_series(watch_series_names(et, market), (old or {}).get("series"), fresh, True)
     row["forecast_seen_at"] = (old or {}).get("forecast_seen_at")
     row["crowd_outcome"] = crowd_outcome_words(et, market, direction, row["series"])
+    # scored on the figure lined up BEFORE the release; only when none was ever stored does the release-day read (`nc`) stand
+    nc = frozen_news_class(et, market, direction, ev["event_date"], row["series"]) or nc
     row["news_class"], row["surprise_z"], row["first_minute"] = nc["cls"], nc["z"], fm
     if feat is not None:
         z = feat["z"]
@@ -1894,12 +1917,14 @@ async def run_weekly(today: date, io: Optional[Io] = None, now_et: Optional[date
         except Exception as e:  # loud-ok: recorded in the audit row below; never changes the weekly outcome
             logger.warning(f"cot: the news watch (weekly rebuild) failed: {type(e).__name__}: {e}")
             nw["errors"]["upcoming"] = f"{type(e).__name__}: {e}"[:160]
-        if not nw["errors"]:
+        if nw["errors"]:
+            nw["error_count"] = len(nw["errors"])
+        else:
             del nw["errors"]
         res["news_watch"] = nw
     await io.audit(EVT_WEEKLY, f"{today}: report {res['report_date']} - {res['status']}; "
                                f"set ups {res.get('setups', '-')}, close {res.get('close', '-')}, "
-                               f"Friday alerts {res.get('friday', '-')}", res)
+                               f"Friday alerts {res.get('friday', '-')}" + _watch_errors_text(res), res)
     return res
 
 
@@ -1971,6 +1996,7 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
         errors: dict[str, str] = {}
         found: list[dict] = []
         feats: dict[str, dict] = {}
+        bars: dict[str, list] = {}
         cal: list[dict] = []
         if setups:
             bars = await _bars_for(io, _with_peers(setups), errors)
@@ -2040,7 +2066,7 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
                     res["sent"] = not held
                 else:
                     problems.append("the daily COT alert message was not delivered")
-        watch_ctx = {"setups": setups, "cal": cal, "feats": feats, "report": report,
+        watch_ctx = {"setups": setups, "cal": cal, "feats": feats, "report": report, "bars": bars,
                      "alerted": {a["market"] for a in found if "news" in a["kinds"]}}
         res["status"] = "ok"
     # 5. the news watch: AFTER the alert path, outside the branch above (the rows for the days ahead need only the
@@ -2083,7 +2109,7 @@ async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datet
     res["problems"] = problems
     await io.audit(EVT_DAILY, f"{today}: {res['status']}; week {res.get('report_date')}; set-up markets "
                               f"{res.get('set_up_markets', 0)}; alerts {res['alerts']}; sent {res['sent']}"
-                              + (f"; PROBLEMS {len(problems)}" if problems else ""),
+                              + (f"; PROBLEMS {len(problems)}" if problems else "") + _watch_errors_text(res),
                    {k: v for k, v in res.items()})
     if problems:
         raise CotError(f"{JOB_DAILY} {today}: " + " | ".join(problems))
@@ -2232,7 +2258,36 @@ async def _watch_judge(io: Io, today: date, now: datetime, nw: dict, ctx: dict, 
     await io.replace_watch(today, today, rows)
     nw["judged"] = len(rows)
     nw["verdicts"] = {v: sum(1 for r in rows if r["verdict"] == v) for v in sorted({r["verdict"] for r in rows})}
+    try:
+        await _watch_rejudge_pending(io, today, now, ctx.get("bars") or {}, nw)
+    except Exception as e:  # loud-ok: recorded; today's rows above are already written
+        nw["errors"]["rejudge"] = f"{type(e).__name__}: {e}"[:160]
     return fx_ok
+
+
+async def _watch_rejudge_pending(io: Io, today: date, now: datetime, bars: dict, nw: dict) -> None:
+    """A row left 'pending' (no bar at the 17:15 run) is judged again by a later run, within the 7-day window the page
+    shows, once a bar exists for its day. It keeps what it stored (actuals, first minute, the alert flag); only the
+    close, the class (scored on the stored forecast) and the verdict are re-derived."""
+    stale = [r for r in await io.watch_rows(today - timedelta(days=WATCH_DAYS), today - timedelta(days=1))
+             if r.get("verdict") == "pending"]
+    by_day: dict[date, list[dict]] = {}
+    for r in stale:
+        if (feat := features_at(bars.get(r["market"], []), r["event_date"])) is not None:
+            by_day.setdefault(r["event_date"], []).append((r, feat))
+    n = 0
+    for day, items in sorted(by_day.items()):
+        keep = {(r["event_type"], r["market"]): r for r in await io.watch_rows(day, day)}
+        for r, feat in items:
+            keep[(r["event_type"], r["market"])] = judged_watch_row(
+                {"event_date": day, "event_type": r["event_type"], "release_et": r.get("release_et")}, r["market"],
+                r["direction"], r["level"], r["report_date"], r, None,
+                {"cls": r.get("news_class") or "UNKNOWN", "z": r.get("surprise_z")}, r.get("first_minute") or {"status": "not read"},
+                feat, bool(r.get("alerted")), now)
+            n += 1
+        await io.replace_watch(day, day, list(keep.values()))
+    if n:
+        nw["rejudged"] = n
 
 
 async def _watch_upcoming(io: Io, today: date, now: datetime, nw: dict, week_events: Optional[list[dict]],
@@ -2290,6 +2345,12 @@ async def _watch_upcoming(io: Io, today: date, now: datetime, nw: dict, week_eve
     nw["with_forecast"] = sum(1 for r in rows if any(s.get("forecast") for s in r["series"]))
 
 
+def _watch_errors_text(res: dict) -> str:
+    """The audit summary line's news-watch part: a watch failure never pages, so the count must be visible on the line."""
+    n = (res.get("news_watch") or {}).get("error_count")
+    return f"; NEWS WATCH ERRORS {n}" if n else ""
+
+
 async def _news_watch_daily(io: Io, today: date, now: datetime, res: dict, ctx: Optional[dict],
                             week_events: Optional[list[dict]], fx_ok: bool, held: bool, cache: dict,
                             raw_out: dict) -> None:
@@ -2306,5 +2367,7 @@ async def _news_watch_daily(io: Io, today: date, now: datetime, res: dict, ctx: 
         except Exception as e:  # loud-ok: recorded in the audit row; never changes an alert or the job's outcome
             logger.warning(f"cot: the news watch (upcoming rows) failed: {type(e).__name__}: {e}")
             nw["errors"]["upcoming"] = f"{type(e).__name__}: {e}"[:160]
-    if not nw["errors"]:
+    if nw["errors"]:
+        nw["error_count"] = len(nw["errors"])
+    else:
         del nw["errors"]
