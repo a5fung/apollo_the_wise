@@ -1993,3 +1993,18 @@ def test_a_stale_row_is_deleted_even_when_no_set_up_market_has_an_event_today():
     io.watch[(WED, "CPI", "copper")] = cf._watch_row({"event_date": WED, "event_type": "CPI"}, "copper", "short", "main", REPORT, "mapped")
     res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
     assert res["news_watch"]["judged"] == 0 and (WED, "CPI", "copper") not in io.watch
+
+
+def test_the_watchs_own_minute_pulls_are_spaced_and_a_cached_one_is_not_paused():
+    io = _nfp_io()
+    pauses = []
+    io.pause = lambda sec: pauses.append(sec)
+    io.minutes["GC=F"] = [(_t(8, 29), 100.0), (_t(8, 30), 101.0)]
+    ctx = {"setups": {"gold": ("short", "main")}, "cal": [{"event_date": WED, "event_type": "CPI", "release_et": _t(8, 30), "source": "s"}],
+           "feats": {"gold": {"z": -0.5, "atr": 2.0}}, "report": REPORT, "alerted": set(), "bars": {}}
+    nw = {"errors": {}}
+    _run(cf._watch_judge(io, WED, AFTER_CLOSE, nw, ctx, [], False, {}))
+    assert pauses == [cf.MINUTE_PULL_PAUSE]
+    pauses.clear()
+    _run(cf._watch_judge(io, WED, AFTER_CLOSE, nw, ctx, [], False, {("min", "gold"): [(_t(8, 29), 100.0), (_t(8, 30), 101.0)]}))
+    assert pauses == []

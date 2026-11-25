@@ -795,6 +795,7 @@ def calendar_rows_from_earnings(ticker: str, stamps: list[datetime]) -> list[dic
 # News watch (2026-11-25): the news to watch for, then the verdict. Display only: nothing here reads into detect(), the
 # alert rule or the Telegram messages. Owner doc: docs/setups/cot_family.md §News watch; spec docs/design/cot_news_watch_2026-11-25.md.
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+MINUTE_PULL_PAUSE = 1.0         # seconds between the watch's own per-market 1-minute pulls (the source throttles bursts)
 WATCH_DAYS = 7                  # how far ahead a card lists events (and how far back the page shows them)
 FM_FLAT_BAND = 0.01             # of a day's range: a first minute at or below this is "flat" (the page's flat band)
 NO_FORECAST_TYPES = frozenset({"WASDE", "OPEC", "USDA_EXPORTS", "FED_MINUTES", "RBA_MINUTES"})   # kind C
@@ -2245,6 +2246,8 @@ async def _watch_judge(io: Io, today: date, now: datetime, nw: dict, ctx: dict, 
             minutes: list[tuple] = []
             if feat is not None and m not in NO_MINUTE_BARS and any(r.get("release_et") for r in ev_rows):
                 try:
+                    if ("min", m) not in cache:                 # a fresh pull (the alert path did not read this market): space them out
+                        await asyncio.to_thread(io.pause, MINUTE_PULL_PAUSE)
                     minutes = await _cached(cache, ("min", m), io.minute_bars, ticker_of(m))
                 except Exception as e:  # loud-ok: the first minute reads "no minute bars"; recorded
                     nw["errors"][f"minutes {m}"] = f"{type(e).__name__}: {e}"[:160]
