@@ -3026,6 +3026,7 @@ async def _validate_theme_membership(
     dissolve_flagged_pair: bool = False,
     thesis: str | None = None,
     mass_flag_out: dict | None = None,
+    flagged_out: dict | None = None,
     removable: set[str] | None = None,
 ) -> list[str]:
     """
@@ -3292,6 +3293,9 @@ async def _validate_theme_membership(
         survivable = [t for t in tickers if t not in to_remove]
         if removable is None and len(survivable) < PRUNE_MIN_TICKERS:
             if not (dissolve_flagged_pair and len(tickers) == 2 and to_remove):
+                if flagged_out is not None:
+                    # #727: tell the caller what validation WANTED to remove (guard skipped it)
+                    flagged_out["flagged"] = sorted(to_remove)
                 logger.warning(
                     f"Theme '{theme_name}': re-validation would drop below {PRUNE_MIN_TICKERS} tickers — skipping removals"
                 )
@@ -3936,9 +3940,13 @@ async def _rescore_existing_theme(
     today: date,
     theme_exclusions: dict[str, set[str]] | None = None,
     protected: set[tuple[str, str]] | None = None,
+    operator_exempt: "OperatorExempt | None" = None,
 ) -> tuple[dict | None, list[dict]]:
     """
     Re-score an existing theme using today's RS data.
+    operator_exempt (#727): a theme whose exact name is in `operator_exempt.nights_left` (his
+    promotion, first 3 nights) is validated with dissolve_flagged_pair=False — ADR 0025 Arm A
+    cannot dissolve it inside the window. None = today's behaviour.
     Returns (theme_or_None, changelog_entries). None means retired.
     theme_exclusions: mapping of theme_name → set of tickers permanently excluded from it.
     """
@@ -4072,13 +4080,27 @@ async def _rescore_existing_theme(
     today_weekday_val = today.weekday()  # 0=Mon, 2=Wed, 4=Fri
     if len(tickers) >= 2 and today_weekday_val in (0, 2, 4):
         _dissolve_arm = merge_arm_enabled()  # ADR 0025 Arm A (#274); False = legacy path
+        _promo_left = (operator_exempt.nights_left.get(name)
+                       if operator_exempt is not None else None)
+        _promo_exempt = bool(_dissolve_arm and _promo_left)
         _pre_validation = list(tickers)
         _mass_flag: dict = {}
+        _flag_seen: dict = {}
         tickers = await _validate_theme_membership(
             name, tickers, changelog, protected=protected,
-            dissolve_flagged_pair=_dissolve_arm,
+            dissolve_flagged_pair=_dissolve_arm and not _promo_exempt,
             thesis=theme.get("description"),
-            mass_flag_out=_mass_flag)
+            mass_flag_out=_mass_flag,
+            flagged_out=_flag_seen if _promo_exempt else None)
+        if _promo_exempt and _flag_seen.get("flagged") and len(_pre_validation) == 2:
+            _fl = _flag_seen["flagged"]
+            await log_audit_event(
+                "theme_dissolve_operator_exempt",
+                summary=(f"Arm A: '{name}' not dissolved (operator-promoted, night "
+                         f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS - _promo_left + 1} of "
+                         f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS}); validation flagged {', '.join(_fl)}"),
+                detail=f"via=validation flagged={_fl} pair kept intact (#727)",
+            )
 
         # ── #214: the NAME was too narrow — rename, don't evict (2026-08-26) ──
         if _mass_flag:
@@ -9357,6 +9379,7 @@ async def _enforce_max_themes_per_stock(themes: list[dict]) -> list[dict]:
 async def _retro_sweep_flagged_pairs(
     updated_themes: list[dict],
     changelog: list[dict],
+    operator_exempt: "OperatorExempt | None" = None,
 ) -> list[dict]:
     """ADR 0025 Arm A retro-sweep (#274) — behind THEME_MERGE_ARM, nightly.
 
@@ -9387,6 +9410,21 @@ async def _retro_sweep_flagged_pairs(
             continue
         flagged = [tk for tk in tks if (tk, t["name"]) in cooldown_pairs]
         if not flagged:
+            continue
+        _left = (operator_exempt.nights_left.get(t["name"])
+                 if operator_exempt is not None else None)
+        if _left:
+            # #727: his promotion inside its 3-night window is not dissolved, no cooldown refresh
+            try:
+                await log_audit_event(
+                    "theme_dissolve_operator_exempt",
+                    summary=(f"Arm A: '{t['name']}' not dissolved (operator-promoted, night "
+                             f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS - _left + 1} of "
+                             f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS}); validation flagged {', '.join(flagged)}"),
+                    detail=f"via=retro_sweep flagged={flagged} pair kept intact (#727)",
+                )
+            except Exception as e:
+                logger.warning(f"[Arm A sweep] exempt audit failed for '{t['name']}': {e}")
             continue
         survivors = [tk for tk in tks if tk not in flagged]
         try:
@@ -10932,9 +10970,13 @@ async def run_theme_engine(
         logger.warning(f"Theme engine: operator-protected set prefetch failed — per-theme fallback will retry: {e}")
         protected_set = None
 
+    # #727: his promotions inside their 3-night window are exempt from the Arm A dissolve, so the
+    # exemption set is read ONCE here, BEFORE the rescore, and reused by the sector filter + merges.
+    operator_exempt = await _load_operator_exempt(today)
+
     rescore_results = await asyncio.gather(*[
         _rescore_existing_theme(theme, stocks_by_ticker, today, theme_exclusions=theme_exclusions,
-                                protected=protected_set)
+                                protected=protected_set, operator_exempt=operator_exempt)
         for theme in existing
     ])
 
@@ -10978,7 +11020,7 @@ async def run_theme_engine(
     # emission here and get their synthetic Retired row in the engine-drop pass
     # below. Their tickers stay in covered_tickers this run, so the survivor is
     # released to the discovery pools NEXT run (per the ADR).
-    updated_themes = await _retro_sweep_flagged_pairs(updated_themes, changelog)
+    updated_themes = await _retro_sweep_flagged_pairs(updated_themes, changelog, operator_exempt)
 
     # --- Step 2: Find uncovered RS leaders + elite covered for sub-theme splits ---
 
@@ -11191,7 +11233,6 @@ async def run_theme_engine(
     # ONCE per run HERE (hoisted 2026-11-16 from just above the first merge) and shared by this
     # filter's sector arm and both merge passes (Pass 1.5 does not absorb them). Fail-open: a read
     # error = nothing exempt tonight + a `theme_pass1_5_operator_exempt_error` row.
-    operator_exempt = await _load_operator_exempt(today)
     await _apply_carryforward_deterministic_filter(
         updated_themes, globally_banned, cooldown_set, stocks_by_ticker,
         comove_ctx=comove_ctx,

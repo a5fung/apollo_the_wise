@@ -778,7 +778,7 @@ def _drive_engine(monkeypatch, *, mode, discovered, accel=(), recov=(),
     monkeypatch.setattr(te, "_rescore_existing_theme",
                         AsyncMock(side_effect=lambda t, *a, **k: (dict(t), [])))
     monkeypatch.setattr(te, "_retro_sweep_flagged_pairs",
-                        AsyncMock(side_effect=lambda themes, changelog: themes))
+                        AsyncMock(side_effect=lambda themes, changelog, *a, **k: themes))
     monkeypatch.setattr(te, "get_globally_banned_tickers", AsyncMock(return_value={}))
     monkeypatch.setattr(te, "get_cooldown_set", AsyncMock(return_value=set()))
     monkeypatch.setattr(te, "_apply_carryforward_deterministic_filter", AsyncMock())

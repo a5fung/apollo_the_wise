@@ -985,6 +985,12 @@ demoting a theme and stripping its tickers' EP bonus is the opposite of a no-op.
 
 ## Change log
 
+### 2026-11-26 — #727: the 3-night promotion window now also covers the ADR 0025 Arm A flagged-pair dissolve (BUG FIX, operator "go")
+
+**Trigger.** His promotion 'Bitcoin Miners & AI/HPC Data-Center Pivot' (11-23) reached 2 members (RIOT, FIGR) after night 1's RS prune. On night 2 (11-25, a validation day) validation flagged FIGR and `_rescore_existing_theme` dissolved the pair via Arm A (`theme_retired`). Single-case incident; the structural gap is that Pass 1.5 and the sector arm honoured his window but Arm A did not.
+
+**Change.** A theme whose exact name is in `OperatorExempt.nights_left` (his promotion, first 3 engine nights) is validated with `dissolve_flagged_pair=False` — the existing min-survivor guard then keeps a 2-member pair intact. What validation flagged is exposed via a new `flagged_out` out-parameter and written as ONE `theme_dissolve_operator_exempt` audit row per theme per run (none if nothing flagged). `_retro_sweep_flagged_pairs` skips an in-window promoted pair (no dissolve, no cooldown refresh) and writes the same event with `via=retro_sweep`. `_load_operator_exempt` is hoisted to ONE read before the rescore, shared with the sector arm and both merges. A >=3-member promoted theme validates exactly as before. Fail-open: `operator_exempt` None/load error = today's behaviour; night 4+ and non-promoted pairs dissolve as before. Tests: `tests/test_727_promo_dissolve_exempt.py`.
+
 ### 2026-11-16 — #727 (a): the nightly sector-outlier arm can no longer empty a theme, and his promotions skip it for their first 3 engine nights (BUG FIX, operator "ok")
 
 **Trigger.** His 11-02 promotion 'Home Pest Control & Lawn/Garden Residential Services' (ROL Consumer Cyclical / RTO
