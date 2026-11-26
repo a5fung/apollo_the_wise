@@ -1,0 +1,11 @@
+SET
+d|event_type|summary
+2026-11-23|theme_operator_promoted|Operator promoted 'Bitcoin Miners & AI/HPC Data-Center Pivot' (4 members)
+2026-11-23|theme_ecosystem_assigned|'Bitcoin Miners & AI/HPC Data-Center Pivot' → E-CRYPTO (keyword)
+2026-11-24|theme_pass1_5_operator_exempt|Pass1.5: 'Bitcoin Miners & AI/HPC Data-Center Pivot' exempt (operator-promoted, night 1 of 3); would have joined 'Fintech & Digital Payments Re-rating on Fed Easing'
+2026-11-25|ticker_revalidated_out|FIGR removed from 'Bitcoin Miners & AI/HPC Data-Center Pivot' by validation
+2026-11-25|validation_cooldown_triggered|FIGR → 'Bitcoin Miners & AI/HPC Data-Center Pivot' cooldown 14d (removal #1)
+2026-11-25|theme_dissolved_flagged_pair|Arm A dissolve: 'Bitcoin Miners & AI/HPC Data-Center Pivot' — validation flagged FIGR at 2 members
+2026-11-25|theme_retired|Retired: Bitcoin Miners & AI/HPC Data-Center Pivot
+2026-11-25|promote_member_skipped|'Bitcoin Miners & AI/HPC Data-Center Pivot' promotion left out FIGR: an active 14-day cooldown from this theme (a re-homing move or a validation removal)
+(8 rows)

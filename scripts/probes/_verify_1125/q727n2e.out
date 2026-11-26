@@ -1,0 +1,9 @@
+SET
+theme_date|stage|round|tickers|source
+2026-11-25|Retired|0.0|{}|live
+2026-11-24|Fading|29.2|{RIOT,FIGR}|live
+2026-11-23|Nascent|36.5|{CORZ,RIOT,CRWV,FIGR}|shadow_promoted
+2026-11-19|Retired|0.0|{}|live
+2026-11-18|Fading|33.6|{RIOT,CSQR}|live
+2026-11-17|Fading|42.0|{CORZ,RIOT,CSQR}|live
+(6 rows)

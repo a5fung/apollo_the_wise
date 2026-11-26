@@ -1,0 +1,24 @@
+SET
+t|event_type|left
+11-24 17:03|theme_pass1_5_operator_exempt|t='Bitcoin Miners & AI/HPC Data-Center Pivot' would_be_absorber='Fintech & Digital Payments Re-rating on Fed Easing' night=1 of 3 nights_left_after_tonight=2 t_score=29.160000000000004 t_protected=True t_size=2 unique_count=1 target_score=71.8
+11-25 17:01|ticker_revalidated_out|Description: 'Blockchain financial infrastructure, digital assets' — validation (claude-sonnet-5-5) flagged as not matching theme
+11-25 17:01|validation_cooldown_triggered|Description: 'Blockchain financial infrastructure, digital assets'
+11-25 17:01|theme_dissolved_flagged_pair|via=validation flagged=['FIGR'] survivors=['RIOT'] (survivor released, no cooldown — ADR 0025 Arm A)
+11-25 17:05|theme_retired|Last tickers: RIOT, FIGR
+11-25 17:07|promote_member_skipped|{"theme": "Bitcoin Miners & AI/HPC Data-Center Pivot", "ticker": "FIGR", "reason": "cooldown", "source": "rs_slope_synthesis", "kept": 3, "path": "cooldown", "floor": 3, "held_below_floor": false}
+(6 rows)
+table_name
+mi_ep_theme_belonging_shadow
+mi_judge_named_themes
+mi_theme_axis_shadow
+mi_theme_birth_candidates
+mi_theme_candidates_shadow
+mi_theme_ecosystems
+mi_theme_ecosystems_dynamic
+mi_theme_exclusions
+mi_theme_merge_cooldowns
+mi_theme_relevance_cohort
+mi_theme_renames
+mi_theme_resilience_weekly
+mi_themes
+(13 rows)

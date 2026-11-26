@@ -1,0 +1,13 @@
+SET
+d|event_type|count|left
+2026-11-23|theme_pass1_5_skip|5|Pass1.5: 'Forensic, Litigation & Expert Consulting Services' eligible but no target passed (1 candidate(s) skipped) || Pass1.5: 'Mobility Technology & Autonomous Perception Platforms' eligible but no target passed (1 candidate(s) skipped) || Pass1.5: 'AI-native software platform adoption' eligible but no target passed (2 candidate(s) skipped) || Pass1.5: 'Small-Cap Digital Commerce & Promotions Pl
+2026-11-24|theme_pass1_5_absorption|2|Pass1.5: 'Small-Cap Digital Commerce & Promotions Platforms' -> 'Software & Data Platforms Re-Rating for the AI Era' || Pass1.5: 'Consumer Fintech Lending & BNPL Marketplaces' -> 'Fintech & Digital Payments Re-rating on Fed Easing'
+2026-11-24|theme_pass1_5_operator_exempt|1|Pass1.5: 'Bitcoin Miners & AI/HPC Data-Center Pivot' exempt (operator-promoted, night 1 of 3); would have joined 'Fintech & Digital Payments Re-rating on Fed Easing'
+2026-11-24|theme_pass1_5_skip|5|Pass1.5: 'Cybersecurity & Digital Identity Small-Cap Software Leaders' eligible but no target passed (2 candidate(s) skipped) || Pass1.5: 'Mobility Technology & Autonomous Perception Platforms' eligible but no target passed (1 candidate(s) skipped) || Pass1.5: 'Forensic, Litigation & Expert Consulting Services' eligible but no target passed (1 candidate(s) skipped) || Pass1.5: 'Restaurant & Busine
+2026-11-25|theme_member_pruned_rs|17|'Canadian Big Banks': BNS pruned — RS 25.8 below the soft floor 35 three days running (not rising) || 'Cement, Aggregates & Heavy Construction Materials': USLM pruned — RS 27.7 below the soft floor 35 three days running (not rising) || 'AI Memory, Storage & Optical Component Supply Chain': MU pruned — RS 3.2 below the hard floor 25 (not rising) || 'Copper Miners': FCX pruned — RS 7.1 below the har
+2026-11-25|theme_pass1_5_absorption|1|Pass1.5: 'Casino, Theme Park & Expedition Leisure Venue Recovery' -> 'Leisure & Recreation Discretionary Rebound'
+2026-11-25|theme_pass1_5_skip|5|Pass1.5: 'Mobility Technology & Autonomous Perception Platforms' eligible but no target passed (1 candidate(s) skipped) || Pass1.5: 'Restaurant & Business Spend/Payments Software (Cloud POS & AP/AR Automation)' eligible but no target passed (2 candidate(s) skipped) || Pass1.5: 'Forensic, Litigation & Expert Consulting Services' eligible but no target passed (1 candidate(s) skipped) || Pass1.5: 'Cy
+(7 rows)
+ERROR:  column "run_date" does not exist
+LINE 1: SELECT run_date, stage, members FROM mi_themes WHERE name IL...
+               ^
