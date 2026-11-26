@@ -263,8 +263,9 @@ EARNINGS_RMS = {"AAPL": 5.0821, "AMZN": 69.4314, "AVGO": 2.9774, "GOOGL": 67.083
 _EIA_OF = {"crude_oil": "EIA_CRUDE", "unleaded_gas": "EIA_GASOLINE", "heating_oil": "EIA_DISTILLATE"}
 _INFLATION, _GROWTH = {"CPI", "PPI", "PCE"}, {"NFP", "RETAIL", "GDP"}   # surprise_rules.py INFL / GROW (ISM not read)
 CLASS_ORDER = ("WITH", "AGAINST", "INLINE", "AMBIG", "UNKNOWN")
-CLASS_WORDS = {"WITH": "with the crowd", "AGAINST": "against the crowd", "INLINE": "in line",
-               "AMBIG": "unknown (no clear read for this market)", "UNKNOWN": "unknown"}
+# The news class is stored in crowd terms (WITH / AGAINST). Operator-facing text states it in ASSET terms instead
+# (`news_read`): bullish / bearish for the market. CLASS_WORDS holds only the classes that need no direction.
+CLASS_WORDS = {"INLINE": "in line with forecast", "AMBIG": "no clear read", "UNKNOWN": "no clear read"}
 
 
 class CotError(RuntimeError):
@@ -445,6 +446,29 @@ def features_at(bars: list[tuple], day: date) -> Optional[dict]:
 def crowd_sign(direction: str) -> int:
     """+1 for a short set up (the crowd is long: crowd-friendly = up, a failure = a down close)."""
     return 1 if direction == "short" else -1
+
+
+def news_read(cls: str, direction: str) -> str:
+    """The news in ASSET terms: bullish / bearish / 'in line' / 'no clear read'. WITH the crowd is bullish when the
+    crowd is long (a short set up) and bearish when it is short; AGAINST is the mirror."""
+    if cls in ("WITH", "AGAINST"):
+        return "bullish" if (cls == "WITH") == (crowd_sign(direction) == 1) else "bearish"
+    return "in line" if cls == "INLINE" else "no clear read"
+
+
+def news_read_words(cls: str, direction: str, market: str) -> str:
+    """'bearish Silver' / 'in line with forecast' / 'no clear read'."""
+    r = news_read(cls, direction)
+    return f"{r} {name_of(market).title()}" if r in ("bullish", "bearish") else CLASS_WORDS.get(cls, "no clear read")
+
+
+def asset_move(move: float, direction: str) -> float:
+    """A quantity stored '+ = the crowd's way' (first_minute.move, peer_z) in ASSET terms: positive = the asset went UP."""
+    return move * crowd_sign(direction)
+
+
+def _updown(x: float) -> str:
+    return "up" if x > 0 else "down" if x < 0 else "flat"
 
 
 def peer_reading(market: str, direction: str, z_by_market: dict[str, float]) -> Optional[float]:
@@ -838,14 +862,41 @@ _NEWS_WORDS = {
     "EIA_NATGAS": ("a bigger stock build, or a smaller draw, than forecast",
                    "a smaller build, or a bigger draw, than forecast"),
     "EARN": ("an EPS beat", "an EPS miss")}
+
+
+def news_fact(event_type: str, z: Optional[float]) -> str:
+    """The plain fact for one event and the sign of its surprise z ('inflation hotter than forecast'); '' if none."""
+    if z is None or z == 0:
+        return ""
+    words = _NEWS_WORDS.get("EARN" if event_type.startswith("EARN_") else event_type)
+    return words[0 if z > 0 else 1] if words else ""
+
+
+# Direction-free fallbacks (keys are the verdict codes); `verdict_words` states the same in the market's own terms.
 VERDICT_WORDS = {
-    "failure_full": "NEWS FAILURE, all three steps",
-    "failure": "News failure: news favoured the crowd, closed against them",
+    "failure_full": "NEWS FAILURE: news pointed one way, the first move went that way, the close went the other way",
+    "failure": "News failure: news pointed one way, the close went the other way",
     "followed_news": "No failure: the market followed the news",
-    "against_unread": "Closed against the crowd on a news day; the news had no clear read (a failure by the live rule only)",
-    "shrugged": "No failure: bad news for the crowd, and the market closed their way anyway",
-    "no_failure": "No failure: closed the crowd's way",
+    "against_unread": "Closed against the set up on a news day; the news had no clear read (a failure by the live rule only)",
+    "shrugged": "No failure: the news pointed one way and the market closed the other way anyway",
+    "no_failure": "No failure: the day closed the way the set up wants",
     "pending": "Pending close"}
+
+
+def verdict_words(verdict: str, direction: str, market: str) -> str:
+    """VERDICT_WORDS in the market's own terms. A failure day is a close against the crowd: when the crowd is long
+    (a short set up, cs = +1) the failing news is bullish, the first move up, the close DOWN; mirrored when short."""
+    cs, mk = crowd_sign(direction), name_of(market).title()
+    news_fail, move_fail = ("bullish", "up") if cs > 0 else ("bearish", "down")
+    close_fail, close_ok = ("DOWN", "up") if cs > 0 else ("UP", "down")
+    return {
+        "failure_full": f"NEWS FAILURE: {news_fail} news, first move {move_fail}, closed {close_fail}",
+        "failure": f"News failure: {news_fail} news, closed {close_fail}",
+        "followed_news": f"No failure: {mk} followed the news",
+        "against_unread": f"Closed {close_fail} on a news day; the news had no clear read (a failure by the live rule only)",
+        "shrugged": f"No failure: {'bearish' if cs > 0 else 'bullish'} news, {mk} closed {close_ok} anyway",
+        "no_failure": f"No failure: closed {close_ok.upper()}",
+        "pending": "Pending close"}.get(verdict, VERDICT_WORDS.get(verdict, verdict))
 
 
 def _blank(x) -> Optional[str]:
@@ -941,9 +992,9 @@ def crowd_outcome_words(event_type: str, market: str, direction: str, series: li
     figs = [f"{_SERIES_LABEL.get(s['name'], s['name'])} {'above' if fz * signs.get(s['name'], 1) > 0 else 'below'} {s['forecast']}"
             for s in series if s.get("forecast")]
     mk = name_of(market).title()
-    return (f"Crowd is {'LONG' if cs > 0 else 'SHORT'} {mk}. News that favours the crowd: {words}"
-            f"{' (' + ', '.join(figs) + ')' if figs else ''} = {'bullish' if cs > 0 else 'bearish'} {mk}. "
-            f"Failure to watch for: that news, a first move {'up' if cs > 0 else 'down'}, "
+    return (f"{words[:1].upper() + words[1:]}{' (' + ', '.join(figs) + ')' if figs else ''} = "
+            f"{'bullish' if cs > 0 else 'bearish'} {mk}. "
+            f"A failure: that news, a first move {'up' if cs > 0 else 'down'}, "
             f"then a close {'DOWN' if cs > 0 else 'UP'}.")
 
 
@@ -1072,7 +1123,7 @@ def format_weekly_message(report_date: date, rows: dict[str, dict], prev: dict[s
             lines.append(f"{name_of(m):<18s} {r[key]:<5s} {_index_line(r)}{new}")
         return lines
 
-    body = block("SET UP (fade the crowd)", main, "setup") if main else ["SET UP: none this week"]
+    body = block("SET UP (specs lopsided, the set up fades them)", main, "setup") if main else ["SET UP: none this week"]
     if close:
         body += [""] + block("CLOSE TO A SET UP (Commercials at max, speculators not there yet)", close, "close_setup")
     if exits:
@@ -1093,6 +1144,18 @@ def format_weekly_message(report_date: date, rows: dict[str, dict], prev: dict[s
     return "\n".join(out)
 
 
+def setup_words(direction: str, level: str, a: dict) -> str:
+    """The ONE place the crowd is named in an alert. large specs = lspec, small specs = sspec, commercials = comm
+    (0 = most short, 100 = most long)."""
+    def g(label, v):
+        if v is None:
+            return f"{label} n/a"
+        return f"{label} {v} of 100" + (" (max long)" if v >= 100 else " (max short)" if v <= 0 else "")
+    return (f"{'main' if level == 'main' else 'close-list'} set up. Crowded {'long' if direction == 'short' else 'short'}: "
+            f"{g('large specs', a.get('lspec'))}, {g('small specs', a.get('sspec'))}, {g('commercials', a.get('comm'))}. "
+            f"The set up is {direction} (it fades the crowd).")
+
+
 def format_daily_message(day: date, report_date: date, alerts: list[dict]) -> Optional[str]:
     """The ONE daily message; None when there is no alert (silence)."""
     if not alerts:
@@ -1102,29 +1165,39 @@ def format_daily_message(day: date, report_date: date, alerts: list[dict]) -> Op
     for a in sorted(alerts, key=lambda a: a["market"]):
         what = " + ".join(a["kinds"]) + (f" ({_event_words(a['events'])})" if a["events"] else "")
         lines += [f"{name_of(a['market'])} {a['direction'].upper()}  {what}",
-                  f"  {'main' if a['level'] == 'main' else 'close-list'} set up, {_index_line(a)}",
+                  f"  {setup_words(a['direction'], a['level'], a)}",
                   f"  entry: today's close {_px(a['close'])} (or the next open)",
                   f"  stop: {a['stop_rule']}"]
         if a.get("bar_suspect"):
             lines.append("  price bar looks broken (close or open outside the day's range): check the stop on a chart")
+        mk, d = name_of(a["market"]).title(), a["direction"]
+        if a.get("z") is not None:
+            lines.append(f"  {mk} closed {_updown(a['z'])} {abs(a['z']):.2f} of a day's range"
+                         " (a day's range = its 20-day average)")
         if a.get("peer_z") is not None and "correlation" in a["kinds"]:
-            lines.append(f"  peers closed {a['peer_z']:+.2f} of a day's range the crowd's way")
+            names = ", ".join(name_of(p).lower() for p, _ in PEERS.get(a["market"], []))
+            pm = asset_move(a["peer_z"], d)
+            lines.append(f"  {mk} closed {_updown(a['z']).upper() if a.get('z') is not None else 'against its peers'} "
+                         f"while its peers ({names}) closed {_updown(pm).upper()} (median {abs(pm):.2f} of a day's range)")
         if "news" in a["kinds"]:
             fm = a.get("first_minute") or {}
-            if fm.get("status") == "ok" and fm["move"] >= 0:
-                lines.append(f"  first minute: {fm['move']:.2f} of a day's range the crowd's way"
-                             f" ({'big' if fm['big'] else 'small'})")
-            elif fm.get("status") == "ok":
-                lines.append(f"  first minute: {-fm['move']:.2f} of a day's range AGAINST the crowd")
+            if fm.get("status") == "ok":
+                am = asset_move(fm["move"], d)
+                lines.append(f"  first minute after the release: {_updown(am)} {abs(am):.2f} of a day's range "
+                             f"({'big' if abs(am) >= FIRST_MINUTE_BIG else 'small'}; big starts at {FIRST_MINUTE_BIG:.2f})")
             else:
                 lines.append(f"  first minute: unknown ({fm.get('status', 'not read')})")
-            lines.append(f"  news vs consensus: {CLASS_WORDS[a.get('news_class', 'UNKNOWN')]}")
+            lines.append(f"  news vs consensus: {news_read_words(a.get('news_class', 'UNKNOWN'), d, a['market'])}")
             for t in a.get("news_text") or []:
                 lines.append(f"    {t}")
+            failing = [x["event"].replace("_", " ") for x in (a.get("news_detail") or []) if x.get("class") == "WITH"]
+            if failing and a.get("z") is not None:
+                lines.append(f"  a news failure: {news_read('WITH', d)} news for {mk} ({', '.join(failing)}), "
+                             f"yet {mk} closed {_updown(a['z']).upper()}.")
         lines.append("")
     return (f"{mode_prefix('paper')}{HEADER}\n"
             f"{day.isoformat()}: {len(alerts)} failure day{'s' if len(alerts) != 1 else ''} in a set-up market "
-            f"(COT report of {report_date.isoformat()}). Fade the crowd; the stop is a daily CLOSE beyond the level, "
+            f"(COT report of {report_date.isoformat()}). The stop is a daily CLOSE beyond the level, "
             "never trailed. Yahoo closes are last trades, not settlements.\n"
             "```\n" + "\n".join(lines).rstrip() + "\n```")
 
@@ -2151,9 +2224,14 @@ async def _label(io: Io, today: date, alerts: list[dict], res: dict, week_events
         for r in a["event_rows"]:
             fm = first_minute(minutes, r.get("release_et"), a["atr"], a["direction"])
             nc = news_class(r["event_type"], m, a["direction"], today, surprises)
-            detail.append({"event": r["event_type"], "first_minute": fm, "class": nc["cls"], "z": nc["z"]})
+            read = news_read(nc["cls"], a["direction"])
+            fact = "" if nc["cls"] == "INLINE" else news_fact(r["event_type"], nc["z"])
+            detail.append({"event": r["event_type"], "first_minute": fm, "class": nc["cls"], "z": nc["z"],
+                           "fact": fact, "read": read})
             if nc["text"]:
-                texts.append(f"{r['event_type'].replace('_', ' ')}: {nc['text']} -> {CLASS_WORDS[nc['cls']]}")
+                tail = news_read_words(nc["cls"], a["direction"], m)
+                ev = r["event_type"].replace("_", " ")
+                texts.append(f"{ev}: {fact} ({nc['text']}) = {tail}" if fact else f"{ev}: {nc['text']} = {tail}")
             if fm.get("status") == "ok" and (best is None or fm["move"] > best["move"]):
                 best = fm
         a["first_minute"] = best or (detail[0]["first_minute"] if detail else {"status": "not read"})

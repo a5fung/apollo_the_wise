@@ -367,7 +367,8 @@ def _alert(**kw):
     a = {"market": "gold", "direction": "short", "kinds": ["news", "correlation"], "events": ["CPI", "EARN_NVDA"], "level": "main",
          "comm": 3, "lspec": 97, "sspec": 96, "close": 2650.3, "stop": 2671.0, "stop_rule": "a close above 2,671.00 (the 11-11 high)",
          "peer_z": 0.8, "z": -0.6, "first_minute": {"status": "ok", "move": 0.31, "big": True}, "news_class": "WITH",
-         "news_text": ["CPI: Inflation Rate MoM 0.4% vs 0.2% -> with the crowd"]}
+         "news_text": ["CPI: inflation hotter than forecast (Inflation Rate MoM 0.4% vs 0.2%) = bullish Gold"],
+         "news_detail": [{"event": "CPI", "class": "WITH", "z": 1.2, "fact": "inflation hotter than forecast", "read": "bullish"}]}
     a.update(kw)
     return a
 
@@ -385,15 +386,23 @@ def test_daily_message_is_paper_tagged_plain_and_silent_when_empty():
     _no_pipe_table(text)
     assert "GOLD SHORT  news + correlation (CPI, earnings NVDA)" in text and "SOYBEAN OIL SHORT  correlation" in text
     assert "entry: today's close 2,650.30 (or the next open)" in text and "stop: a close above 2,671.00" in text
-    assert "first minute: 0.31 of a day's range the crowd's way (big)" in text
-    assert "first minute: 0.54 of a day's range AGAINST the crowd" in cf.format_daily_message(
+    # gold SHORT set up: the crowd is long, so a first minute stored +0.31 (the crowd's way) is the asset UP 0.31
+    assert "first minute after the release: up 0.31 of a day's range (big; big starts at 0.25)" in text
+    assert "first minute after the release: down 0.54 of a day's range (big; big starts at 0.25)" in cf.format_daily_message(
         WED, REPORT, [_alert(first_minute={"status": "ok", "move": -0.54, "big": False})])
-    assert "news vs consensus: with the crowd" in text and "main set up, C  3 L 97 S 96" in text
+    assert "Gold closed down 0.60 of a day's range (a day's range = its 20-day average)" in text
+    assert "news vs consensus: bullish Gold" in text and "= bullish Gold" in text
+    assert "a news failure: bullish news for Gold (CPI), yet Gold closed DOWN." in text
+    assert "Crowded long: large specs 97 of 100, small specs 96 of 100, commercials 3 of 100. The set up is short (it fades the crowd)." in text
     assert "close-list set up" in cf.format_daily_message(WED, REPORT, [_alert(level="close")])
+    # the crowd is named ONCE per alert, in the set-up line only: no other operator-facing line mentions it
+    for line in text.splitlines():
+        assert "crowd" not in line.lower() or line.strip().startswith(("main set up", "close-list set up"))
+    assert "crowd's way" not in text and "AGAINST the crowd" not in text and "with the crowd" not in text
     outside = re.sub(r"```.*?```", "", text, flags=re.S)
     assert "_" not in outside                              # a bare underscore outside the block breaks Telegram Markdown
     unread = cf.format_daily_message(WED, REPORT, [_alert(first_minute={"status": "no minute bars"}, news_class="UNKNOWN", news_text=[])])
-    assert "first minute: unknown (no minute bars)" in unread and "news vs consensus: unknown" in unread
+    assert "first minute: unknown (no minute bars)" in unread and "news vs consensus: no clear read" in unread
 
 
 def test_weekly_message_lists_set_ups_exits_and_the_friday_alert():
@@ -593,7 +602,7 @@ def test_daily_alert_end_to_end_with_both_labels():
     assert row["first_minute"] == pytest.approx(0.5) and row["first_minute_big"] is True
     assert row["news_class"] == "AGAINST"                      # hot inflation is bearish gold; the crowd is long
     assert (row["comm"], row["lspec"], row["sspec"]) == (3, 97, 96) and row["sent"] is True
-    assert "GOLD SHORT  news (CPI)" in io.sent[0] and "against the crowd" in io.sent[0]
+    assert "GOLD SHORT  news (CPI)" in io.sent[0] and "news vs consensus: bearish Gold" in io.sent[0]
     assert [a[0] for a in io.audits] == ["cot_daily"] and "alerts 1" in io.audits[0][1]
     assert "DX-Y.NYB" not in io.bar_calls and set(io.bar_calls) == {"GC=F", "SI=F", "PL=F", "PA=F"}   # the market + its peers only
 
@@ -778,7 +787,7 @@ def test_a_blind_calendar_pages_after_the_alerts():
     with pytest.raises(cf.CotError, match="US calendar could not be read"):
         _run(cf.run_daily(WED, io, AFTER_CLOSE))
     assert len(io.sent) == 1 and len(io.audits) == 1            # the stored calendar still produced today's alert
-    assert "news vs consensus: unknown" in io.sent[0] and io.audits[0][2]["label_errors"]["consensus"]
+    assert "news vs consensus: no clear read" in io.sent[0] and io.audits[0][2]["label_errors"]["consensus"]
     assert io.fx_calls == [("united-states", date(2026, 11, 9))]   # refused once: no second request this run
     assert any(r["event_type"] == "WASDE" for r in io.cal)      # the sources that answered were stored
     assert any(r["event_type"] == "CPI" and r["event_date"] == WED for r in io.cal)   # today's row was not wiped
@@ -1521,22 +1530,22 @@ def test_the_crowd_sentence_for_a_long_and_a_short_set_up():
     sil = [{"name": "Non Farm Payrolls", "forecast": "82.0K"}, {"name": "Unemployment Rate", "forecast": "4.2%"}]
     # the doc's example: a LONG set up (fade into long) = the crowd is SHORT silver; stronger jobs = bearish silver = their way
     assert cf.crowd_outcome_words("NFP", "silver", "long", sil) == (
-        "Crowd is SHORT Silver. News that favours the crowd: jobs stronger than forecast (payrolls above 82.0K, "
-        "unemployment below 4.2%) = bearish Silver. Failure to watch for: that news, a first move down, then a close UP.")
+        "Jobs stronger than forecast (payrolls above 82.0K, "
+        "unemployment below 4.2%) = bearish Silver. A failure: that news, a first move down, then a close UP.")
     # the SHORT set up: the crowd is long, so the opposite news and the opposite figures (two components, opposite signs)
     assert cf.crowd_outcome_words("NFP", "silver", "short", sil) == (
-        "Crowd is LONG Silver. News that favours the crowd: jobs weaker than forecast (payrolls below 82.0K, "
-        "unemployment above 4.2%) = bullish Silver. Failure to watch for: that news, a first move up, then a close DOWN.")
+        "Jobs weaker than forecast (payrolls below 82.0K, "
+        "unemployment above 4.2%) = bullish Silver. A failure: that news, a first move up, then a close DOWN.")
     cpi = [{"name": "Inflation Rate MoM", "forecast": "0.2%"}, {"name": "Core Inflation Rate MoM", "forecast": None}]
-    assert "inflation cooler than forecast (CPI m/m below 0.2%) = bullish Gold" in cf.crowd_outcome_words("CPI", "gold", "short", cpi)
-    assert "inflation hotter than forecast (CPI m/m above 0.2%) = bearish Gold" in cf.crowd_outcome_words("CPI", "gold", "long", cpi)
+    assert "Inflation cooler than forecast (CPI m/m below 0.2%) = bullish Gold" in cf.crowd_outcome_words("CPI", "gold", "short", cpi)
+    assert "Inflation hotter than forecast (CPI m/m above 0.2%) = bearish Gold" in cf.crowd_outcome_words("CPI", "gold", "long", cpi)
     # the dollar is bought on hot inflation: the sign flips with the market
-    assert "inflation hotter than forecast" in cf.crowd_outcome_words("CPI", "dollar_index", "short", cpi)
+    assert "Inflation hotter than forecast" in cf.crowd_outcome_words("CPI", "dollar_index", "short", cpi)
     # EIA is read off the market's own stocks series; a build is bearish crude
     eia = [{"name": "EIA Crude Oil Stocks Change", "forecast": "1.5M"}]
-    assert "a smaller build, or a bigger draw, than forecast (crude stocks change below 1.5M) = bullish Crude Oil" in \
+    assert "A smaller build, or a bigger draw, than forecast (crude stocks change below 1.5M) = bullish Crude Oil" in \
         cf.crowd_outcome_words("EIA_PETRO", "crude_oil", "short", eia)
-    assert "a bigger stock build, or a smaller draw, than forecast" in cf.crowd_outcome_words("EIA_PETRO", "crude_oil", "long", eia)
+    assert "A bigger stock build, or a smaller draw, than forecast" in cf.crowd_outcome_words("EIA_PETRO", "crude_oil", "long", eia)
     # no forecast figure listed yet: the sentence still names the news, without figures
     assert "(" not in cf.crowd_outcome_words("NFP", "silver", "long", [{"name": "Non Farm Payrolls", "forecast": None}]).split("=")[0]
     # an ambiguous pair, an unmapped pair and a no-forecast event carry no sentence
@@ -1618,7 +1627,7 @@ def test_a_daily_run_writes_today_judged_and_the_days_ahead_with_their_forecast(
     nfp = io.watch[(FRI_NEXT, "NFP", "gold")]
     assert nfp["verdict"] is None and nfp["read"] == "mapped" and nfp["forecast_seen_at"] == AFTER_CLOSE
     assert [(s["name"], s["forecast"]) for s in nfp["series"]] == [("Non Farm Payrolls", "82.0K"), ("Unemployment Rate", "4.2%")]
-    assert "jobs weaker than forecast (payrolls below 82.0K, unemployment above 4.2%) = bullish Gold" in nfp["crowd_outcome"]
+    assert "Jobs weaker than forecast (payrolls below 82.0K, unemployment above 4.2%) = bullish Gold" in nfp["crowd_outcome"]
     assert all(k[0] > WED for k in io.watch if k[1] == "NFP")             # upcoming rows are dated after today
     assert (THU, "EIA_NATGAS", "natural_gas") not in io.watch              # natural gas is not a set-up market
 
@@ -1802,7 +1811,7 @@ def test_an_earnings_estimate_listed_ahead_is_the_forecast_and_the_reported_eps_
     assert "errors" not in res["news_watch"]
     row = io.watch[(FRI_NEXT, "EARN_NVDA", "nasdaq")]
     assert row["series"] == [{"name": "EPS", "forecast": "1.25", "previous": None, "actual": None, "forecast_after": None}]
-    assert "an EPS beat (EPS above 1.25) = bullish Nasdaq" in row["crowd_outcome"]
+    assert "An EPS beat (EPS above 1.25) = bullish Nasdaq" in row["crowd_outcome"]
 
 
 def _fake_pool_io(fetched=None):
@@ -2008,3 +2017,64 @@ def test_the_watchs_own_minute_pulls_are_spaced_and_a_cached_one_is_not_paused()
     pauses.clear()
     _run(cf._watch_judge(io, WED, AFTER_CLOSE, nw, ctx, [], False, {("min", "gold"): [(_t(8, 29), 100.0), (_t(8, 30), 101.0)]}))
     assert pauses == []
+
+
+# ── plain wording: the news is read in ASSET terms (11-25 ruling: no "the crowd's way" outside the set-up line) ────
+
+@pytest.mark.parametrize("cls,direction,want", [
+    ("WITH", "short", "bullish"),       # short set up = the crowd is LONG: news with them is bullish
+    ("AGAINST", "short", "bearish"),
+    ("WITH", "long", "bearish"),        # long set up = the crowd is SHORT: news with them is bearish
+    ("AGAINST", "long", "bullish"),
+    ("INLINE", "long", "in line"), ("AMBIG", "short", "no clear read"), ("UNKNOWN", "long", "no clear read")])
+def test_news_read_is_in_asset_terms_for_a_long_and_a_short_set_up(cls, direction, want):
+    assert cf.news_read(cls, direction) == want
+
+
+def test_first_minute_and_peers_convert_to_asset_terms_for_a_long_and_a_short_set_up():
+    # long set up (crowd SHORT): +0.20 the crowd's way = the asset DOWN 0.20; short set up (crowd LONG) = UP
+    assert cf.asset_move(0.20, "long") == -0.20 and cf.asset_move(0.20, "short") == 0.20
+    silver_long = _alert(market="silver", direction="long", kinds=["news"], events=["GDP", "PCE"], z=0.5, peer_z=None,
+                         first_minute={"status": "ok", "move": 0.20, "big": False}, news_class="WITH",
+                         news_text=["GDP: growth stronger than forecast (GDP QoQ 3.0% vs 2.5%) = bearish Silver"],
+                         news_detail=[{"event": "GDP", "class": "WITH", "z": 2.95, "fact": "growth stronger than forecast", "read": "bearish"},
+                                      {"event": "PCE", "class": "WITH", "z": 0.31, "fact": "inflation hotter than forecast", "read": "bearish"}],
+                         comm=100, lspec=0, sspec=0)
+    t = cf.format_daily_message(WED, REPORT, [silver_long])
+    assert "first minute after the release: down 0.20 of a day's range (small; big starts at 0.25)" in t
+    assert "Silver closed up 0.50 of a day's range" in t and "news vs consensus: bearish Silver" in t
+    assert "a news failure: bearish news for Silver (GDP, PCE), yet Silver closed UP." in t
+    assert ("Crowded short: large specs 0 of 100 (max short), small specs 0 of 100 (max short), commercials 100 of 100 "
+            "(max long). The set up is long (it fades the crowd).") in t
+    assert "crowd's way" not in t and "against the crowd" not in t.lower()
+    gold_short = cf.format_daily_message(WED, REPORT, [_alert(first_minute={"status": "ok", "move": 0.2, "big": False})])
+    assert "first minute after the release: up 0.20 of a day's range (small; big starts at 0.25)" in gold_short
+    # peers: stored + = the crowd's way; a short set up (crowd long) = peers UP
+    assert "its peers (" in gold_short and "closed UP (median 0.80 of a day's range)" in gold_short
+
+
+def test_news_facts_and_verdict_words_in_the_markets_own_terms():
+    assert cf.news_fact("PCE", 0.31) == "inflation hotter than forecast" and cf.news_fact("PCE", -0.4) == "inflation cooler than forecast"
+    assert cf.news_fact("EARN_NVDA", 1.0) == "an EPS beat" and cf.news_fact("CPI", None) == "" and cf.news_fact("OPEC", 1.0) == ""
+    assert cf.verdict_words("failure_full", "short", "gold") == "NEWS FAILURE: bullish news, first move up, closed DOWN"
+    assert cf.verdict_words("failure_full", "long", "silver") == "NEWS FAILURE: bearish news, first move down, closed UP"
+    assert cf.verdict_words("failure", "long", "silver") == "News failure: bearish news, closed UP"
+    assert cf.verdict_words("followed_news", "long", "silver") == "No failure: Silver followed the news"
+    assert cf.verdict_words("shrugged", "short", "gold") == "No failure: bearish news, Gold closed up anyway"
+    assert cf.verdict_words("shrugged", "long", "silver") == "No failure: bullish news, Silver closed down anyway"
+    assert cf.verdict_words("no_failure", "long", "silver") == "No failure: closed DOWN"
+    for code in cf.VERDICT_WORDS:
+        for d in ("long", "short"):
+            assert "crowd" not in cf.verdict_words(code, d, "gold").lower() and "crowd" not in cf.VERDICT_WORDS[code].lower()
+
+
+def test_the_alert_detail_carries_a_plain_fact_and_read_per_news_item():
+    io = _daily_io()
+    io.minutes["GC=F"] = [(_t(8, 29), 100.0), (_t(8, 30), 101.0)]
+    io.fx = [_fx("Inflation Rate MoM", "0.4%", "0.2%")]
+    _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    row = io.alerts[(WED, "gold", "short", "news")]
+    det = row["detail"] if isinstance(row["detail"], dict) else __import__("json").loads(row["detail"])
+    item = det["news"][0]
+    assert item["fact"] == "inflation hotter than forecast" and item["read"] == "bearish"   # hot CPI, a long crowd: bearish gold
+    assert "= bearish Gold" in io.sent[0] and "inflation hotter than forecast" in io.sent[0]

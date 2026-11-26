@@ -92,9 +92,9 @@ A report more than 10 days old gets no Friday-confirmation check — that moment
 entry = today's close (or the next open), stop = a daily CLOSE beyond today's high (short) / low (long), the three
 index values and whether the set up is main or close-list, and two LABELS on news alerts:
 - *First minute:* the close of the 1-minute bar that starts at the release minute, minus the last bar before it, in
-  units of the market's 20-day daily range, signed the crowd's way; "big" at 0.25 or more. Measured on the future's
+  units of the market's 20-day daily range; stored signed the crowd's way, printed in price terms (up / down); "big" at 0.25 or more. Measured on the future's
   own 1-minute bars (the research measured it on ETF minute bars in ETF-range units — not the same number).
-- *News vs consensus:* with the crowd / against the crowd / in line / unknown, from actual vs forecast
+- *News vs consensus:* stated for the market (bullish / bearish Silver, in line with forecast, no clear read), from actual vs forecast; the stored class stays WITH / AGAINST the crowd (since 2026-11-25 the alert text, `news[].fact` / `news[].read` and the news-watch sentence carry the price-terms reading, and the crowd is named once, in the set-up line)
   (surprise ÷ the series' 2023–2026 typical surprise, in line under 0.25; the research's mapping of which way a
   surprise pushes each market). Central-bank decisions other than the Fed, and WASDE, have no consensus: unknown.
   Fed minutes, RBA minutes, Australian jobs (Employment Change) and Australian wages (Wage Price Index QoQ) are
