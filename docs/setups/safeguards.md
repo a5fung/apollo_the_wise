@@ -469,6 +469,12 @@ not impossible.
 
 ## Change log (newest first)
 
+### 2026-11-26 — QUARTERLY REVIEW #2 (kill/scale bands): **KEEP as signed** (operator 2026-11-26: "keep bands")
+- **What:** no threshold, arm or floor changed. Live evaluator HOLD: n=44, trailing-20 +0.23R, trailing-40 −0.05R, losing streak 6, cumulative −6.2R; 0 overrides ever. Nearest arm: REDUCE on streak, 10 losses away; KILL cum −30R is ~24R away.
+- **Era:** 19 of 44 closed under the 2R stop (+2.4R net, two tail winners VICR/KOD); the calibration was simulated on orb_low — too few 2R trades to re-derive bands from.
+- **Evidence:** `docs/analysis/kill_scale_quarterly_2026-11-26.md`, `scripts/probes/_killscale_1126/`. Next review 2027-02-26 (`kill_scale_bands_quarterly_review`).
+- **Reversion flag:** n/a (no change).
+
 ### 2026-11-21 — Stop-ACK watchdog: the fallback stop goes at the trade's LAST stop, not `orb_low` (OPERATOR RULING 2026-11-20 (1), PLAN #728; built, not deployed)
 
 **Trigger / ruling**: his ruling (1) of 2026-11-20 (PLAN.md #728): *the stop-ACK watchdog fallback places at the
