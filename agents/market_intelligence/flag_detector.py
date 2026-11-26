@@ -3276,6 +3276,13 @@ async def run_intraday_support_test_scan(scan_time):
     return len(new_tests)
 
 
+# The undercut-and-rally scan's pool (the flags it can fire on), `{a}` = the table alias. ONE copy: the scan below and
+# the liveness alarm's input probe (health_checks._DETECTOR_INPUT_PROBES, #543) both read it, so a change to the pool
+# moves the alarm's expected count with it.
+UNDERCUT_POOL_WHERE = ("{a}stage IN ('TIGHTENING', 'COILED', 'TRIGGERED') "
+                       "AND {a}base_low IS NOT NULL AND {a}base_low > 0")
+
+
 async def run_intraday_undercut_rally_scan(scan_time):
     """Intraday U&R (Undercut & Rally) detection on TIGHTENING/COILED/TRIGGERED tickers.
 
@@ -3308,7 +3315,7 @@ async def run_intraday_undercut_rally_scan(scan_time):
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         # Same universe + idempotency shape as the support-test scan (#145).
-        candidates = await conn.fetch("""
+        candidates = await conn.fetch(f"""
             WITH latest AS (
                 SELECT MAX(scan_date) AS d FROM mi_flag_candidates
                 WHERE scan_date < CURRENT_DATE
@@ -3320,9 +3327,7 @@ async def run_intraday_undercut_rally_scan(scan_time):
                    ON dc.ticker = c.ticker
                   AND dc.trade_date = c.scan_date
             WHERE c.scan_date = (SELECT d FROM latest)
-              AND c.stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
-              AND c.base_low IS NOT NULL
-              AND c.base_low > 0
+              AND {UNDERCUT_POOL_WHERE.format(a="c.")}
               AND (c.base_high IS NULL OR dc.close IS NULL OR dc.close <= c.base_high)
             ORDER BY c.ticker, c.scan_date DESC
         """)

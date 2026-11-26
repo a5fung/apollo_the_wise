@@ -83,6 +83,7 @@ from agents.market_intelligence.db import (
     PARENT_NOMINATION_EVENT_TYPES,
 )
 from shared.dates import et_today  # canonical ET-today (tz-bug-class centralization, /simplify 6/25)
+from agents.market_intelligence.flag_detector import UNDERCUT_POOL_WHERE  # #543 probe = the scan's pool
 from agents.market_intelligence.rule_eras import SEP_SCORE_DATE  # #665: the ONE dated switch
 from agents.market_intelligence.theme_ecosystems import (
     containment_parent, resolve_theme_parent, get_ecosystem_map, E_UNASSIGNED,
@@ -1871,8 +1872,7 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
 _DETECTOR_EXPECTED_OUTPUTS_PAGE_MIN = 3.0
 _DETECTOR_PROBE_MIN_HISTORY_ROWS = 100
 _DETECTOR_PROBE_MIN_OUTPUTS = 3
-_ELIGIBLE_FLAG_INPUT = ("stage IN ('TIGHTENING', 'COILED', 'TRIGGERED') "
-                        "AND base_low IS NOT NULL AND base_low > 0")
+_ELIGIBLE_FLAG_INPUT = UNDERCUT_POOL_WHERE.format(a="")   # the scan's own pool predicate (flag_detector owns it)
 _DETECTOR_INPUT_PROBES: dict[str, str] = {
     "mi_flag_undercut_rally": (
         "SELECT "

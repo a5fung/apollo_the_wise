@@ -32,14 +32,16 @@ REGIME_NOTE = ("_Returns taken in the current bear-market regime — a bad stret
 
 # One row per signal_type for the book. AVG() ignores NULL, so a trade with no risk figure is skipped
 # from the R average (never a made-up R). `$1` is the book (bound — never a literal).
-_STATS_SQL = """
+# A trade's R, shared by both queries below so the version lines add up to the strategy line.
+_R_EXPR = "total_pnl / NULLIF(COALESCE(NULLIF(risk_dollars_actual, 0), NULLIF(risk_dollars, 0)), 0)"
+_STATS_SQL = f"""
     SELECT COALESCE(signal_type, 'unlabelled') AS sig,
            MIN(alert_date) FILTER (WHERE status IN ('filled', 'closed')) AS first_trade,
            MAX(alert_date) FILTER (WHERE status IN ('filled', 'closed')) AS last_trade,
            COUNT(*) FILTER (WHERE status = 'closed') AS closed_n,
            COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0) AS wins,
            COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) AS realized,
-           AVG(total_pnl / NULLIF(COALESCE(NULLIF(risk_dollars_actual, 0), NULLIF(risk_dollars, 0)), 0))
+           AVG({_R_EXPR})
                FILTER (WHERE status = 'closed') AS avg_r,
            COUNT(*) FILTER (WHERE status = 'filled' AND remaining_shares > 0) AS open_n,
            COALESCE(SUM(total_pnl) FILTER (WHERE status = 'filled' AND remaining_shares > 0), 0) AS open_realized
@@ -54,9 +56,9 @@ _REGISTRY_SQL = "SELECT strategy_id, signal_type, name, phase, enabled FROM mi_s
 # Same population and the same R as _STATS_SQL, so the version lines add up to the strategy's own line. `$1` is the
 # book (bound — dual-account invariant), `$2` the strategy. Grouped in Python: a row's own stamp wins, an unstamped
 # row maps by its alert_date.
-_VERSION_ROWS_SQL = """
+_VERSION_ROWS_SQL = f"""
     SELECT alert_date, setup_version, status, total_pnl, remaining_shares,
-           total_pnl / NULLIF(COALESCE(NULLIF(risk_dollars_actual, 0), NULLIF(risk_dollars, 0)), 0) AS r
+           {_R_EXPR} AS r
     FROM mi_live_trades
     WHERE account_mode = $1  -- the book (dual-account invariant)
       AND signal_type = ANY($2::text[])
@@ -157,8 +159,7 @@ async def load_version_stats(conn, book: str, sig: str) -> list[dict]:
     by: dict[str, dict] = {}
     for r in rows:
         v = sv.setup_version_for_row(sig, r["setup_version"], r["alert_date"]) or "before v1"
-        g = by.setdefault(v, {"version": v, "first_trade": None, "last_trade": None, "closed_n": 0, "wins": 0,
-                              "realized": 0.0, "rs": [], "open_n": 0})
+        g = by.setdefault(v, _blank_version(v))
         d = r["alert_date"]
         if d is not None:
             g["first_trade"] = d if g["first_trade"] is None else min(g["first_trade"], d)
@@ -185,12 +186,28 @@ async def load_version_stats(conn, book: str, sig: str) -> list[dict]:
     out.sort(key=lambda g: order.get(g["version"], -2 if g["version"] == "before v1" else -1), reverse=True)
     current = versions[-1].version
     if current not in by:       # the rules in force now, even before their first trade
-        out.insert(0, {"version": current, "name": sv.display_name(current, sig), "short": short[current],
-                       "first_trade": None, "last_trade": None, "closed_n": 0, "wins": 0, "realized": 0.0,
-                       "avg_r": None, "open_n": 0})
+        g = _blank_version(current)
+        g.pop("rs")
+        g.update(avg_r=None, short=short[current], name=sv.display_name(current, sig))
+        out.insert(0, g)
     for g in out:
         g["current"] = g["version"] == current
     return out
+
+
+def _blank_version(v: str) -> dict:
+    """One version's running totals before any row is counted."""
+    return {"version": v, "first_trade": None, "last_trade": None, "closed_n": 0, "wins": 0, "realized": 0.0,
+            "rs": [], "open_n": 0}
+
+
+def _stat_body(s: dict) -> str:
+    """'N closed $X · win P% · avg R' — the stat words both the strategy line and a version line show."""
+    n = s["closed_n"]
+    if not n:
+        return "0 closed"
+    r = f" · avg {s['avg_r']:+.1f}R" if s["avg_r"] is not None else ""
+    return f"{n} closed {_d(s['realized'])} · win {round(s['wins'] / n * 100)}%{r}"
 
 
 def _span(first, last) -> str:
@@ -207,12 +224,7 @@ def fmt_version_line(g: dict) -> str:
     span = _span(g["first_trade"], g["last_trade"])
     head = f"`{g['name']}`" + (f" {g['short']}" if g["short"] else "") + (" · now" if g.get("current") else "")
     head += f" ({span})" if span else ""
-    n = g["closed_n"]
-    if n:
-        r = f" · avg {g['avg_r']:+.1f}R" if g["avg_r"] is not None else ""
-        body = f"{n} closed {_d(g['realized'])} · win {round(g['wins'] / n * 100)}%{r}"
-    else:
-        body = "0 closed"
+    body = _stat_body(g)
     if g["open_n"]:
         body += f" · {g['open_n']} open"
     return f"{head} · {body}"
@@ -283,14 +295,7 @@ def _since(first) -> str:
 
 def fmt_line(s: dict) -> str:
     """One strategy's stat line (plain words, no table)."""
-    n = s["closed_n"]
-    parts = [f"`{s['sig']}` ({_since(s['first_trade'])})"]
-    if n:
-        win = round(s["wins"] / n * 100)
-        r = f" · avg {s['avg_r']:+.1f}R" if s["avg_r"] is not None else ""
-        parts.append(f"{n} closed {_d(s['realized'])} · win {win}%{r}")
-    else:
-        parts.append("0 closed")
+    parts = [f"`{s['sig']}` ({_since(s['first_trade'])})", _stat_body(s)]
     if s["open_n"]:
         # open_realized is what partial sales on the open trades already banked — NOT how the open
         # trades stand (unrealized needs live prices; the strategy page shows it). Label it so.

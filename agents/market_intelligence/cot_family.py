@@ -45,6 +45,11 @@ from shared.dates import _ET, recovery_pin
 
 logger = logging.getLogger(__name__)
 
+
+def _err_text(e: BaseException) -> str:
+    """An error as stored on an audit row: its type and message, cut to 160 characters."""
+    return f"{type(e).__name__}: {e}"[:160]
+
 JOB_WEEKLY = "cot_weekly"
 JOB_DAILY = "cot_daily"
 EVT_WEEKLY = "cot_weekly"
@@ -1529,7 +1534,7 @@ async def _bars_for(io: Io, markets, errors: dict) -> dict[str, list[tuple]]:
             out[m] = await asyncio.to_thread(io.daily_bars, ticker_of(m))
         except Exception as e:  # loud-ok: counted in the run's audit row; an all-fail run raises after it
             logger.warning(f"cot: daily bars for {m} failed: {type(e).__name__}: {e}")
-            errors[m] = f"{type(e).__name__}: {e}"[:160]
+            errors[m] = _err_text(e)
     return out
 
 
@@ -1661,7 +1666,7 @@ async def refresh_calendar(io: Io, today: date, fx_ok: bool = True, raw_out: Opt
             raise
         except Exception as e:  # loud-ok: recorded per source; the run raises after its audit row when one failed
             logger.warning(f"cot: calendar source {label} failed: {type(e).__name__}: {e}")
-            errors[label] = f"{type(e).__name__}: {e}"[:160]
+            errors[label] = _err_text(e)
             return
         got = [r for r in got if r["event_date"] >= first]
         # stored rows from `first` on (never today's or earlier) are replaced; a partly-read source only ADDS rows
@@ -1691,7 +1696,7 @@ async def refresh_calendar(io: Io, today: date, fx_ok: bool = True, raw_out: Opt
             raise
         except Exception as e:  # loud-ok: recorded per source; the run raises after its audit row when one failed
             logger.warning(f"cot: calendar source {label} failed: {type(e).__name__}: {e}")
-            errors[label] = f"{type(e).__name__}: {e}"[:160]
+            errors[label] = _err_text(e)
             return
         if not weeks[0][1]:
             errors[label] = (f"no trigger event listed for next week ({weeks[0][0]}): taken as a failed read, "
@@ -1854,7 +1859,7 @@ async def ensure_week(io: Io, today: date, calendar_error=_READ_IT, fx_ok: bool 
                 ev = {d: [r["event_type"] for r in rs] for d, rs in _events_by_day(cal, m).items()}
                 hit = friday_confirmation(m, rows[m]["setup"], bars[m], report, today, ev, z_by_day)
             except Exception as e:  # loud-ok: counted in the audit row and named in the message
-                errors[m] = f"{type(e).__name__}: {e}"[:160]
+                errors[m] = _err_text(e)
                 continue
             if hit:
                 friday.append(hit)
@@ -1917,12 +1922,8 @@ async def run_weekly(today: date, io: Optional[Io] = None, now_et: Optional[date
             await _watch_upcoming(io, today, now_et or datetime.now(_ET), nw, None, False, {}, None)
         except Exception as e:  # loud-ok: recorded in the audit row below; never changes the weekly outcome
             logger.warning(f"cot: the news watch (weekly rebuild) failed: {type(e).__name__}: {e}")
-            nw["errors"]["upcoming"] = f"{type(e).__name__}: {e}"[:160]
-        if nw["errors"]:
-            nw["error_count"] = len(nw["errors"])
-        else:
-            del nw["errors"]
-        res["news_watch"] = nw
+            nw["errors"]["upcoming"] = _err_text(e)
+        res["news_watch"] = _finish_watch(nw)
     await io.audit(EVT_WEEKLY, f"{today}: report {res['report_date']} - {res['status']}; "
                                f"set ups {res.get('setups', '-')}, close {res.get('close', '-')}, "
                                f"Friday alerts {res.get('friday', '-')}" + _watch_errors_text(res), res)
@@ -2032,7 +2033,7 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
                         found.append({**hit, "level": level, "bar_suspect": broken, "event_rows": ev_rows, **{
                             k: index_rows[m][k] for k in ("comm", "lspec", "sspec")}})
                 except Exception as e:  # loud-ok: counted in the audit row; an all-fail run raises after it
-                    errors[m] = f"{type(e).__name__}: {e}"[:160]
+                    errors[m] = _err_text(e)
             res["no_bar_today"] = no_bar
             res["errors"] = errors
             res["closes"] = closes
@@ -2137,7 +2138,7 @@ async def _label(io: Io, today: date, alerts: list[dict], res: dict, week_events
                     surprises[(today, t)] = {"z": e["surprise_pct"] / EARNINGS_RMS[tk],
                                              "text": f"{tk} EPS {e['reported']} vs {e['estimate']}"}
         except Exception as e:  # loud-ok: the label reads 'unknown' and the reason is in the audit row
-            label_errors[t] = f"{type(e).__name__}: {e}"[:160]
+            label_errors[t] = _err_text(e)
     for a in alerts:
         m = a["market"]
         minutes: list[tuple] = []
@@ -2145,7 +2146,7 @@ async def _label(io: Io, today: date, alerts: list[dict], res: dict, week_events
             try:
                 minutes = await _cached(cache, ("min", m), io.minute_bars, ticker_of(m))
             except Exception as e:  # loud-ok: the label reads 'unknown' and the reason is in the audit row
-                label_errors[f"minutes {m}"] = f"{type(e).__name__}: {e}"[:160]
+                label_errors[f"minutes {m}"] = _err_text(e)
         best, detail, texts = None, [], []
         for r in a["event_rows"]:
             fm = first_minute(minutes, r.get("release_et"), a["atr"], a["direction"])
@@ -2204,7 +2205,7 @@ async def _earnings_expectations(io: Io, cache: dict, types, day_of) -> tuple[di
         try:
             entries = await _cached(cache, ("earn", tk), io.earnings, tk)
         except Exception as e:  # loud-ok: recorded; the card reads "no forecast listed yet" / unknown
-            errors[t] = f"{type(e).__name__}: {e}"[:160]
+            errors[t] = _err_text(e)
             continue
         for e in entries:
             if session_date(e["ts"].astimezone(_ET), earnings=True) != day:
@@ -2234,7 +2235,7 @@ async def _watch_judge(io: Io, today: date, now: datetime, nw: dict, ctx: dict, 
                     exp.update(expectations_from_fx(await asyncio.to_thread(
                         io.fxempire, country, today - timedelta(days=1), today), country))
                 except Exception as e:  # loud-ok: recorded; the card keeps the forecast it holds
-                    nw["errors"][f"fxempire {country}"] = f"{type(e).__name__}: {e}"[:160]
+                    nw["errors"][f"fxempire {country}"] = _err_text(e)
                     fx_ok = fx_ok and not isinstance(e, CalendarRefused)
         e_exp, e_sur, e_err = await _earnings_expectations(io, cache, types, lambda t: today)
         exp.update(e_exp)
@@ -2250,7 +2251,7 @@ async def _watch_judge(io: Io, today: date, now: datetime, nw: dict, ctx: dict, 
                         await asyncio.to_thread(io.pause, MINUTE_PULL_PAUSE)
                     minutes = await _cached(cache, ("min", m), io.minute_bars, ticker_of(m))
                 except Exception as e:  # loud-ok: the first minute reads "no minute bars"; recorded
-                    nw["errors"][f"minutes {m}"] = f"{type(e).__name__}: {e}"[:160]
+                    nw["errors"][f"minutes {m}"] = _err_text(e)
             for r in ev_rows:
                 et = r["event_type"]
                 fm = first_minute(minutes, r.get("release_et"), feat["atr"], direction) if feat else {"status": "not read"}
@@ -2264,7 +2265,7 @@ async def _watch_judge(io: Io, today: date, now: datetime, nw: dict, ctx: dict, 
     try:
         await _watch_rejudge_pending(io, today, now, ctx.get("bars") or {}, nw)
     except Exception as e:  # loud-ok: recorded; today's rows above are already written
-        nw["errors"]["rejudge"] = f"{type(e).__name__}: {e}"[:160]
+        nw["errors"]["rejudge"] = _err_text(e)
     return fx_ok
 
 
@@ -2272,15 +2273,15 @@ async def _watch_rejudge_pending(io: Io, today: date, now: datetime, bars: dict,
     """A row left 'pending' (no bar at the 17:15 run) is judged again by a later run, within the 7-day window the page
     shows, once a bar exists for its day. It keeps what it stored (actuals, first minute, the alert flag); only the
     close, the class (scored on the stored forecast) and the verdict are re-derived."""
-    stale = [r for r in await io.watch_rows(today - timedelta(days=WATCH_DAYS), today - timedelta(days=1))
-             if r.get("verdict") == "pending"]
+    rows = await io.watch_rows(today - timedelta(days=WATCH_DAYS), today - timedelta(days=1))
+    stale = [r for r in rows if r.get("verdict") == "pending"]
     by_day: dict[date, list[dict]] = {}
     for r in stale:
         if (feat := features_at(bars.get(r["market"], []), r["event_date"])) is not None:
             by_day.setdefault(r["event_date"], []).append((r, feat))
     n = 0
     for day, items in sorted(by_day.items()):
-        keep = {(r["event_type"], r["market"]): r for r in await io.watch_rows(day, day)}
+        keep = {(r["event_type"], r["market"]): r for r in rows if r["event_date"] == day}
         for r, feat in items:
             keep[(r["event_type"], r["market"])] = judged_watch_row(
                 {"event_date": day, "event_type": r["event_type"], "release_et": r.get("release_et")}, r["market"],
@@ -2305,11 +2306,8 @@ async def _watch_upcoming(io: Io, today: date, now: datetime, nw: dict, week_eve
     setups = _setups_of(index_rows)
     d0, d1 = today + timedelta(days=1), today + timedelta(days=WATCH_DAYS)
     exp = expectations_from_fx(week_events or [])
-    for key, ev in (raw_out or {}).items():
-        if isinstance(key, str):
-            exp.update(expectations_from_fx(ev, key))
-        else:
-            exp.update(expectations_from_fx(ev))
+    for key, ev in (raw_out or {}).items():     # a key is a country, or (country, next Monday)
+        exp.update(expectations_from_fx(ev, key if isinstance(key, str) else key[0]))
     nm = today - timedelta(days=today.weekday()) + timedelta(days=7)
     if may_read and d1 >= nm and ("united-states", nm) not in (raw_out or {}):
         # next week's figures (a Friday card would otherwise hold Monday's); its calendar rows replace the stored ones only when
@@ -2324,7 +2322,7 @@ async def _watch_upcoming(io: Io, today: date, now: datetime, nw: dict, week_eve
             else:
                 nw["errors"]["next week"] = f"no trigger event listed for the week of {nm}: the stored rows are kept"
         except Exception as e:  # loud-ok: recorded in the audit row; the stored calendar and figures stay
-            nw["errors"]["next week"] = f"{type(e).__name__}: {e}"[:160]
+            nw["errors"]["next week"] = _err_text(e)
     cal = await io.calendar(d0, d1)
     old_rows = await io.watch_rows(d0, d1)
     old = {(r["event_type"], r["market"], r["event_date"]): r for r in old_rows}
@@ -2348,6 +2346,15 @@ async def _watch_upcoming(io: Io, today: date, now: datetime, nw: dict, week_eve
     nw["with_forecast"] = sum(1 for r in rows if any(s.get("forecast") for s in r["series"]))
 
 
+def _finish_watch(nw: dict) -> dict:
+    """The news-watch audit part, finished: the error count when something failed, no empty errors map otherwise."""
+    if nw["errors"]:
+        nw["error_count"] = len(nw["errors"])
+    else:
+        del nw["errors"]
+    return nw
+
+
 def _watch_errors_text(res: dict) -> str:
     """The audit summary line's news-watch part: a watch failure never pages, so the count must be visible on the line."""
     n = (res.get("news_watch") or {}).get("error_count")
@@ -2363,14 +2370,11 @@ async def _news_watch_daily(io: Io, today: date, now: datetime, res: dict, ctx: 
             fx_ok = await _watch_judge(io, today, now, nw, ctx, week_events, fx_ok, cache)
         except Exception as e:  # loud-ok: recorded in the audit row; never changes an alert or the job's outcome
             logger.warning(f"cot: the news watch (today's rows) failed: {type(e).__name__}: {e}")
-            nw["errors"]["judge"] = f"{type(e).__name__}: {e}"[:160]
+            nw["errors"]["judge"] = _err_text(e)
     if not held:                         # a #672 recovery re-run of a past day must not rewrite the days ahead
         try:
             await _watch_upcoming(io, today, now, nw, week_events, fx_ok, cache, raw_out)
         except Exception as e:  # loud-ok: recorded in the audit row; never changes an alert or the job's outcome
             logger.warning(f"cot: the news watch (upcoming rows) failed: {type(e).__name__}: {e}")
-            nw["errors"]["upcoming"] = f"{type(e).__name__}: {e}"[:160]
-    if nw["errors"]:
-        nw["error_count"] = len(nw["errors"])
-    else:
-        del nw["errors"]
+            nw["errors"]["upcoming"] = _err_text(e)
+    _finish_watch(nw)
