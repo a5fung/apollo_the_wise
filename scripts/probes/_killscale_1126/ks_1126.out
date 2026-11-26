@@ -1,0 +1,55 @@
+SET
+id|signal_type|alert_date|ticker|pnl|risk|r
+245|magna53|2026-07-06|WULF|-33||
+250|magna53|2026-07-10|CRCL|-19||
+251|magna53|2026-07-10|WDFC|-19||
+258|magna53|2026-07-14|TSEM|-23||
+261|magna53|2026-07-15|MANE|-2||
+266|magna53|2026-07-20|HUT|-20||
+271|magna53|2026-07-22|SMCI|-15||
+273|magna53|2026-07-23|NVCR|-24||
+275|magna53|2026-07-24|THC|-16||
+276|magna53|2026-07-24|WKC|-24||
+279|magna53|2026-07-27|QBTS|-22||
+291|magna53|2026-07-30|FTNT|-7||
+303|magna53|2026-08-04|BLZE|-37||
+304|magna53|2026-08-04|BTDR|-28||
+307|magna53|2026-08-04|PLTR|119||
+328|magna53|2026-08-07|NET|-15||
+332|magna53|2026-08-07|FIGS|-7||
+333|magna53|2026-08-07|TEAM|-24||
+337|magna53|2026-08-10|ABCL|128||
+342|magna53|2026-08-11|FRMI|-31||
+345|magna53|2026-08-11|BW|-50||
+367|magna53|2026-08-14|ETON|19||
+372|magna53|2026-08-18|AMLX|63||
+373|magna53|2026-08-19|MRVL|-43||
+374|magna53|2026-08-19|MRNA|91||
+382|magna53|2026-08-27|OKTA|47|34.7|1.36
+383|magna53|2026-08-27|CRWD|14|28.9|0.50
+388|magna53|2026-08-28|SOLS|-49|48.7|-1.01
+392|magna53|2026-09-03|HOOD|-27|22.9|-1.20
+394|magna53|2026-09-08|PHVS|-11|10.1|-1.06
+396|magna53|2026-09-08|SEI|4|9.9|0.41
+399|magna53|2026-09-14|DFTX|-24|22.4|-1.06
+400|magna53|2026-09-17|VICR|76|10.8|6.99
+404|magna53|2026-09-28|KOD|149|24.1|6.18
+409|magna53|2026-10-06|CEG|-59|58.3|-1.01
+414|magna53|2026-10-07|PENG|-82|70.0|-1.17
+419|magna53|2026-10-09|HUM|-34|32.8|-1.05
+422|magna53|2026-10-19|IRON|17|23.9|0.69
+424|magna53|2026-10-21|SMCI|-34|33.5|-1.02
+429|magna53|2026-10-27|CLS|-13|45.0|-0.28
+455|magna53|2026-11-03|AEHR|-20|19.1|-1.03
+462|magna53|2026-11-05|APPN|-64|64.3|-1.00
+614|magna53|2026-11-11|CRWV|-79|47.6|-1.67
+615|magna53|2026-11-11|RSKD|-35|30.8|-1.15
+(44 rows)
+t|event_type|left
+2026-11-20 16:12|drawdown_reduce_entered|paper: WATCH → REDUCE (dd -8.92%, peak $89,994.19 → current $81,966.10)
+2026-11-17 16:12|drawdown_watch_entered|paper: OK → WATCH (dd -5.16%, peak $89,994.19 → current $85,352.57)
+2026-11-12 16:12|drawdown_reduce_entered|live: WATCH → REDUCE (dd -7.22%, peak $5,103.47 → current $4,734.81)
+2026-11-12 09:30|intraday_drawdown_crossing|live intraday drawdown crossed tier=REDUCE (dd -7.34%, peak $5,103.47 → $4,728.96, breaker state WATCH)
+2026-10-15 16:12|drawdown_watch_entered|live: OK → WATCH (dd -4.09%, peak $5,175.63 → current $4,963.94)
+2026-10-15 09:00|intraday_drawdown_crossing|live intraday drawdown crossed tier=WATCH (dd -4.13%, peak $5,175.63 → $4,962.07, breaker state OK)
+(6 rows)

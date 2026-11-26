@@ -641,7 +641,10 @@ reviews:
       WHERE status = 'closed' AND account_mode = 'live' AND total_pnl IS NOT NULL
     threshold: 20
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
-    earliest_review_date: 2026-11-26
+    earliest_review_date: 2027-02-26
+    # >> RAN 2026-11-26 (Opus): docs/analysis/kill_scale_quarterly_2026-11-26.md. HOLD, n=44,
+    #    t20 +0.23R, t40 -0.05R, streak 6, cum -6.2R; 0 overrides; 2R era 19 trades +2.4R. Rec KEEP;
+    #    re-bumped +1 quarter. Evidence scripts/probes/_killscale_1126/.
     # >> RAN 2026-08-26 (Opus): docs/analysis/kill_scale_quarterly_2026-08-26.md.
     #    Verdict HOLD from the shipped evaluator against prod (module md5 matched): n=23,
     #    trailing-20 -0.44R, cumulative -11.93R, streak 1, drawdown tier OK, no override.

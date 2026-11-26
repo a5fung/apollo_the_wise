@@ -1,4 +1,4 @@
-# BREAKOUT big-winner chart study — what do the charts of breakouts that became big winners share? (DRAFT pre-registration, 2026-11-24; NOT frozen, NOT committed, no outcome read)
+# BREAKOUT big-winner chart study — what do the charts of breakouts that became big winners share? (pre-registration v2, FROZEN 2026-11-26 on his "go"; no outcome read before the freeze)
 
 **DRAFT v2 — design only.** Written Tue 2026-11-24 PT. The breakout twin of the frozen EP study
 (`docs/analysis/ep_winner_study_prereg_2026-11-21.md`, "the EP study" below); same structure, with the EP study's own
@@ -9,7 +9,7 @@ Every count below is **indicative**: era A only, identity = ticker, from the 11-
 `ci / ticker / fire` only), which predates the 11-14 context gates — `design/count_events_v2_forward_hash.py` → `.txt`
 (v1's `count_events_outcome_free.*` is kept as history). Spread numbers in §5.4 come from `design/spread_sim_v2.py` →
 `spread_sim_v2.txt` (synthetic labels only; v1's `spread_sim.*` kept because the critique's re-run reads it).
-**Before this freezes it needs:** the operator's review of v2. The freeze (sha256, commit) is a separate step.
+**FROZEN Thu 2026-11-26 PT** on the operator's "go" to run the study (11-26, after his 11-24 "go with recs" on forks 1a/2a/3b/4); sha256 of this file is recorded in the freeze commit's PLAN.md #717 line. Nothing in §6 ran before this commit.
 
 **Cost of the whole REMAINING path, stated once.** **$0 paid.** One free network pull (stage 1c: unadjusted daily bars
 from Alpaca with the existing keys — at most about 7,800 tickers × 690 sessions ≈ 5.4 million rows, about 540 pages, a

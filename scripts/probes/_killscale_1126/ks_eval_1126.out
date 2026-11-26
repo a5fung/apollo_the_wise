@@ -1,0 +1,29 @@
+kill_scale_bands: risk_dollars_actual (28.92) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (36.08) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (48.72) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (48.96) on a closed trade — using risk_dollars_actual; investigate the divergence.
+
+======================================================================
+#275 KILL/SCALE BANDS — account_mode=live
+======================================================================
+  drawdown tier (persisted): REDUCE · equity_above_start=True
+⚪ Kill/scale band: HOLD — No change
+  n=44 · t20=+0.23R · t40=-0.05R · streak=6 · cum=-6.2R
+  within bands
+  📖 open book (NOT in the verdict above): 1 position(s) — KYMR 2d
+======================================================================
+
+kill_scale_bands: risk_dollars_actual (22.88) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (32.76) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (10.14) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (10.50) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (9.92) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (9.98) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (22.40) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (23.45) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (10.84) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (10.37) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (24.08) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (25.34) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (58.26) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (58.95) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (70.00) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (100.10) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (32.82) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (34.12) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (23.92) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (23.69) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (33.48) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (33.98) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (44.96) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (43.49) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (19.14) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (20.01) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (64.26) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (69.02) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (47.60) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (49.60) on a closed trade — using risk_dollars_actual; investigate the divergence.
+kill_scale_bands: risk_dollars_actual (30.83) disagrees with the derived entry_shares*(entry_price-hard_stop) expression (35.44) on a closed trade — using risk_dollars_actual; investigate the divergence.
