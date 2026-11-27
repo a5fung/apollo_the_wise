@@ -1,0 +1,17 @@
+# STAGE 7a - check outcomes (captured once)
+prereg / A1 / A2 / A3 / stage-6 freeze / feature table asserted; era-B bars = the sealed copy (seal 2025-01-01, 8,619,626 rows kept, source sha ccc0097fe535)
+era A: 2910 events, E 2021-01-04..2022-04-01; bars read 2020-10-06..2022-06-29 (last window end, ASSERT <= 2024-12-31)
+era B: 3356 events, E 2022-04-05..2024-10-04; bars read 2022-01-06..2024-12-31 (last window end, ASSERT <= 2024-12-31)
+era A bar file daily_closes_all.csv.gz: 12,005,007 rows streamed, 740,793 kept (1768 tickers + QQQ, 2020-10-06..2022-06-29)
+era B bar file cb702_daily_lt2025.csv.gz: 8,619,626 rows streamed, 1,032,357 kept (1469 tickers + QQQ, 2022-01-06..2024-12-31)
+era A: latest bar held 2022-06-29 (ASSERT <= 2024-12-31)
+era B: latest bar held 2024-12-31 (ASSERT <= 2024-12-31)
+guard dates after 2024-12-31 dropped at parse: era A 0, era B 0; split-list rows after 2024-12-31 dropped at parse: 3090; era-B tickers with a split date: 98
+cross-check era A: ends-inside equals stage 1e on all 2910 events: True | guard-truncated 1 (subset of stage 1e w_guard 1: True; w_guard not truncated 0) | split-truncated 0 (subset of w_split 8: True)
+cross-check era B: ends-inside equals stage 1e on all 3356 events: True | guard-truncated 0 (subset of stage 1e w_guard 0: True; w_guard not truncated 0) | split-truncated 0 (subset of w_split 10: True)
+cross-check: open / high / low of E and close of D from the bar files equal the stage-1 event rows on all 6266 events (asserted per event)
+factor step on E itself, era A (not in the truncation rule, counted): 0
+window facts era A (n 2910): truncated 1 {'guard': 1}; fewer than 61 bars 21; bars end inside the window 18; full windows 2889
+window facts era B (n 3356): truncated 0 {}; fewer than 61 bars 23; bars end inside the window 18; full windows 3333
+wrote check_outcomes.tsv.gz: 6266 rows (check, seed 1124), sha256 c9fb4ee6953902a7f4ccafd512c7d71f97e43e5d46d1faacd7d911aa603bfa0f
+this script sha256 2b3833c81c6ba84b5dbf6ddd7bec28934b3da40d5f3bebb3b2fc89eea61c5c00 | 8s

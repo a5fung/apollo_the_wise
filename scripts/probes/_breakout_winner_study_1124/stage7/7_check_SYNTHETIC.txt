@@ -1,0 +1,317 @@
+# STAGE 7 - CHECK, ONE RUN   [SYNTHETIC MODE: planted labels, the check outcome file is NOT opened - NOT a result]
+prereg 3eb2b9b0 / A1 4a7beda1 / A2 0a6cc417 / A3 a0c11a36 / stage-6 freeze 28e40825 / feature table d629ef0a asserted; stage-6 pins gr1.py ff342a19, common6.py c290946c, gr1_components 9c4d2518, s6a_build.py 7a290dfe asserted
+this script sha256 bed7cc10c0686ed14cdcde1d537c6e0d2626031f9237b9205df511bbef29419f
+s2lib sha256 f9d693078182e7a2 | gr1 thresholds: trough_age <= 59, drop_adr >= 5.0, recover >= 0.5, at_level <= 9
+
+population: CHECK seed-1124 events 6266 (era A 2910 2021-01-04..2022-04-01 / era B 3356 2022-04-05..2024-10-04); E 2021-01-04..2024-10-04 (ASSERT <= 2024-12-31)
+   per year of E: 2021 2472 | 2022 1523 | 2023 1273 | 2024 998 | (era, month) strata 47
+   thirds layout (bottom / middle / top assigned): f01 2105/2088/2070 | f09 2105/2088/2070 | f04 2113/2088/2062 | f02 2014/1994/1979 | combo 2014/1996/1977
+   combination scored on all four: 5990 (f02 NULL 276)
+   gr1: V 577 of 6266 (9.2%), NULL 0; usable (era, month) strata 42; V 575 / not-V 5105 in them (= stage 6e)
+
+==============================================================================================================
+## SMALLEST DETECTABLE RATIO on the real check layout (outcome-free; synthetic labels; base rate 9.18% = stage 3's 2017-19 rate; first Holm step 0.05/6; 20,000 draws)
+   f01   era B at the same rate: no-effect median 1.002, ratio needed for p <= 0.05/6 1.26, power at 1.5x 96%, smallest found 4 in 5 1.4x | era B at 0.75x: no-effect median 1.002, ratio needed for p <= 0.05/6 1.29, power at 1.5x 93%, smallest found 4 in 5 1.5x
+   f09   era B at the same rate: no-effect median 1.000, ratio needed for p <= 0.05/6 1.27, power at 1.5x 96%, smallest found 4 in 5 1.4x | era B at 0.75x: no-effect median 1.001, ratio needed for p <= 0.05/6 1.28, power at 1.5x 93%, smallest found 4 in 5 1.4x
+   f04   era B at the same rate: no-effect median 1.000, ratio needed for p <= 0.05/6 1.26, power at 1.5x 96%, smallest found 4 in 5 1.4x | era B at 0.75x: no-effect median 1.002, ratio needed for p <= 0.05/6 1.29, power at 1.5x 93%, smallest found 4 in 5 1.5x
+   f02   era B at the same rate: no-effect median 1.001, ratio needed for p <= 0.05/6 1.27, power at 1.5x 96%, smallest found 4 in 5 1.4x | era B at 0.75x: no-effect median 1.000, ratio needed for p <= 0.05/6 1.29, power at 1.5x 92%, smallest found 4 in 5 1.5x
+   combo era B at the same rate: no-effect median 0.999, ratio needed for p <= 0.05/6 1.28, power at 1.5x 95%, smallest found 4 in 5 1.4x | era B at 0.75x: no-effect median 1.001, ratio needed for p <= 0.05/6 1.30, power at 1.5x 91%, smallest found 4 in 5 1.5x
+   gr1   quoted from stage 6e (MH model, same base rate, m = 6): era B at the same rate 1.7x | era B at 0.75x 1.8x
+   read with care: a lower bound for a family member (first Holm step); day / theme clustering is not simulated and pushes the real figure down.
+
+## SYNTHETIC LABELS (the check outcome file is NOT opened). Base 9%; planted: f01 HIGH 2.0x | f09 HIGH 2.5x era A, 0.8x era B | f04 HIGH 1.25x | f02 HIGH 2.0x (against its frozen LOW -> REVERSED expected) | gr1 V at 0.5x (not-V / V = 2.0) | B1 none.
+
+==============================================================================================================
+## 1. CHECK BASE RATES (big winner = +50% close within 60 sessions of max(level, open(E)); description)
+   2021   n  2472 | big  245 ( 9.91%) | monster   75 | clean  142 | ADR tail  154 | failed  1090 (44.09%)
+   2022   n  1523 | big  134 ( 8.80%) | monster   50 | clean   87 | ADR tail   77 | failed   690 (45.31%)
+   2023   n  1273 | big  135 (10.60%) | monster   54 | clean   89 | ADR tail   71 | failed   581 (45.64%)
+   2024   n   998 | big   88 ( 8.82%) | monster   32 | clean   55 | ADR tail   46 | failed   434 (43.49%)
+   era A  n  2910 | big  283 ( 9.73%) | monster   85 | clean  163 | ADR tail  174 | failed  1278 (43.92%)
+   era B  n  3356 | big  319 ( 9.51%) | monster  126 | clean  210 | ADR tail  174 | failed  1517 (45.20%)
+   ALL    n  6266 | big  602 ( 9.61%) | monster  211 | clean  373 | ADR tail  348 | failed  2795 (44.61%)
+   discovery 2017-19 rate (stage 3) 9.18%; check era B / that = 1.04x; monsters on check 211
+   window facts: truncated 18 (by reason {'guard': 18}); fewer than 61 bars 118; full windows 6130; big winners lost to truncation 0
+
+   verdict-table and Holm unit test (10 cases, every word): PASS
+
+==============================================================================================================
+## 2. THE CHECK - prereg 5.3, family of m = 6, Holm step-down, one-sided in the frozen direction (permutation 10,000, rng 1124; bootstrap 2,000)
+   tag 'era-B population thinned by volume underflow': NOT fired (stage 1e, rung-3 reading <= 1%; its rungs disagree - flagged there)
+
+f01 - Daily range (ADR20) | frozen direction: HIGH third wins  [gate-truncated; era-B price partly derived]
+   big winner: bottom 126/2105 = 5.99% | middle 204/2088 = 9.77% | top 272/2070 = 13.14%
+   CHECK RATIO (frozen direction) 2.195 (90% 1.76-2.75) | one-sided p 0.0001 -> Holm p 0.0006 | opposite one-sided p 1.0000 -> REVERSED-family Holm p 1.0000 | permutation median 0.997
+   per era (frozen direction): era A 2.977 | era B 1.713 -> same direction in every era: yes
+   beside it: monster 2.189 | clean 2.046 | ADR-scaled tail 2.717 | within B4 strata 2.097
+   VERDICT: PICKS THE TAIL
+
+f09 - 6-month move | frozen direction: HIGH third wins  [era-B price partly derived]
+   big winner: bottom 141/2105 = 6.70% | middle 184/2088 = 8.81% | top 277/2070 = 13.38%
+   CHECK RATIO (frozen direction) 1.998 (90% 1.61-2.51) | one-sided p 0.0001 -> Holm p 0.0006 | opposite one-sided p 1.0000 -> REVERSED-family Holm p 1.0000 | permutation median 1.002
+   per era (frozen direction): era A 2.909 | era B 1.430 -> same direction in every era: yes
+   beside it: monster 2.318 | clean 1.955 | ADR-scaled tail 2.206 | within B4 strata 1.931
+   VERDICT: PICKS THE TAIL
+
+f04 - Strength rank, best | frozen direction: HIGH third wins  [gate-truncated; seen on the check years (A+ read 10-22); era-B price partly derived]
+   big winner: bottom 144/2113 = 6.81% | middle 194/2088 = 9.29% | top 264/2062 = 12.80%
+   CHECK RATIO (frozen direction) 1.879 (90% 1.62-2.19) | one-sided p 0.0001 -> Holm p 0.0006 | opposite one-sided p 1.0000 -> REVERSED-family Holm p 1.0000 | permutation median 1.000
+   per era (frozen direction): era A 2.218 | era B 1.613 -> same direction in every era: yes
+   beside it: monster 1.966 | clean 1.802 | ADR-scaled tail 1.912 | within B4 strata 1.849
+   VERDICT: PICKS THE TAIL (check years partly seen)
+
+f02 - Price (raw close) | frozen direction: LOW third wins  [against Qullamaggie's buys; era-B price partly derived]
+   big winner: bottom 158/2014 = 7.85% | middle 182/1994 = 9.13% | top 229/1979 = 11.57%
+   CHECK RATIO (frozen direction) 0.678 (90% 0.57-0.80) | one-sided p 1.0000 -> Holm p 1.0000 | opposite one-sided p 0.0001 -> REVERSED-family Holm p 0.0006 | permutation median 0.998
+   per era (frozen direction): era A 0.794 | era B 0.575 -> same direction in every era: no
+   beside it: monster 0.844 | clean 0.653 | ADR-scaled tail 0.754 | within B4 strata 0.687
+   VERDICT: REVERSED
+
+combo - Combination of f01, f02, f04, f09 (5.6) | frozen direction: HIGH third wins  [era-B price partly derived]
+   big winner: bottom 143/2014 = 7.10% | middle 176/1996 = 8.82% | top 250/1977 = 12.65%
+   CHECK RATIO (frozen direction) 1.781 (90% 1.42-2.22) | one-sided p 0.0001 -> Holm p 0.0006 | opposite one-sided p 1.0000 -> REVERSED-family Holm p 1.0000 | permutation median 0.998
+   per era (frozen direction): era A 2.504 | era B 1.286 -> same direction in every era: yes
+   beside it: monster 2.146 | clean 1.774 | ADR-scaled tail 1.984 | within B4 strata 1.791
+   VERDICT: PICKS THE TAIL
+
+gr1 - Gallery read #1: V into the breakout | frozen direction: V has FEWER big winners (ratio = not-V / V)  [era-B price partly derived]
+   big winner: V 30/575 = 5.22% | not-V 496/5105 = 9.72% (usable strata)
+   CHECK RATIO (frozen direction) 1.886 (90% 1.33-2.96) | one-sided p 0.0001 -> Holm p 0.0006 | opposite one-sided p 1.0000 -> REVERSED-family Holm p 1.0000 | permutation median 0.995
+   per era (frozen direction): era A 1.304 | era B 2.366 -> same direction in every era: yes
+   beside it: monster 1.603 | clean 2.450 | ADR-scaled tail 2.738 | within B4 strata 1.868
+   VERDICT: PICKS THE TAIL
+
+## VERDICT TABLE (prereg 5.3)
+   member name                                      ratio  90% interval      p1    Holm   eraA   eraB same  verdict
+   f01    Daily range (ADR20)                       2.195   1.76-2.75    0.0001  0.0006  2.977  1.713  yes  PICKS THE TAIL
+   f09    6-month move                              1.998   1.61-2.51    0.0001  0.0006  2.909  1.430  yes  PICKS THE TAIL
+   f04    Strength rank, best                       1.879   1.62-2.19    0.0001  0.0006  2.218  1.613  yes  PICKS THE TAIL (check years partly seen)
+   f02    Price (raw close)                         0.678   0.57-0.80    1.0000  1.0000  0.794  0.575   no  REVERSED
+   combo  Combination of f01, f02, f04, f09 (5.6)   1.781   1.42-2.22    0.0001  0.0006  2.504  1.286  yes  PICKS THE TAIL
+   gr1    Gallery read #1: V into the breakout      1.886   1.33-2.96    0.0001  0.0006  1.304  2.366  yes  PICKS THE TAIL
+
+   REACHED PICKS THE TAIL: f01 (PICKS THE TAIL), f09 (PICKS THE TAIL), f04 (PICKS THE TAIL (check years partly seen)), combo (PICKS THE TAIL), gr1 (PICKS THE TAIL) -> stage 8 blind sheets B follow (prereg 6.8).
+
+==============================================================================================================
+## BENCHMARKS B1-B3 - ONE table (not a test of the grade - the grade is judged on Qullamaggie's buys only, #717; description)
+   B1 Pick-model score  : bottom 160/2105 | top 245/2070 | ratio top/bottom 1.557 (two-sided p 0.0001, 90% 1.34-1.81) | era A 1.470 | era B 1.645 | within B4 strata 1.478 | gapped over the level 1.363 / did not 1.616
+   B2 Live order score  : bottom 167/2108 | top 229/2070 | ratio top/bottom 1.396 (two-sided p 0.0009, 90% 1.20-1.64) | era A 1.578 | era B 1.258 | within B4 strata 1.279 | gapped over the level 1.122 / did not 1.442
+   B3 Group strength    : bottom 161/1550 | top 125/1499 | ratio top/bottom 0.803 (two-sided p 0.0490, 90% 0.66-0.97) | era A 0.716 | era B 0.872 | within B4 strata 0.822 | gapped over the level 0.820 / did not 0.765
+   B4 (selection control, never a member): bottom 205/2105 top 196/2070 ratio top/bottom 0.972 | era A 1.186 | era B 0.811
+
+==============================================================================================================
+## 5.5 EXTRA READINGS on check (description; NONE is a bar). 'dir' = the ratio in the frozen direction (gr1: not-V / V).
+
+   f01 Daily range (ADR20) - HIGH third wins | verdict PICKS THE TAIL
+    population:
+      year 2021                                      n(top+bottom)  1647 | winners top:bottom 126:41 | ratio top/bottom 3.107 | dir 3.107
+      year 2022                                      n(top+bottom)  1013 | winners top:bottom 52:33 | ratio top/bottom 1.604 | dir 1.604
+      year 2023                                      n(top+bottom)   850 | winners top:bottom 58:32 | ratio top/bottom 1.847 | dir 1.847
+      year 2024                                      n(top+bottom)   665 | winners top:bottom 36:20 | ratio top/bottom 1.849 | dir 1.849
+      era A                                          n(top+bottom)  1939 | winners top:bottom 141:48 | ratio top/bottom 2.977 | dir 2.977
+      era B                                          n(top+bottom)  2236 | winners top:bottom 131:78 | ratio top/bottom 1.713 | dir 1.713
+      first breaks (after 10 quiet sessions)         n(top+bottom)  1310 | winners top:bottom 78:34 | ratio top/bottom 2.380 | dir 2.380
+      later breaks                                   n(top+bottom)  2859 | winners top:bottom 186:98 | ratio top/bottom 1.937 | dir 1.937
+      first break after 60 quiet sessions            n(top+bottom)   725 | winners top:bottom 37:20 | ratio top/bottom 1.982 | dir 1.982
+      common stock only                              n(top+bottom)  3506 | winners top:bottom 221:105 | ratio top/bottom 2.146 | dir 2.146
+      price >= $5                                    n(top+bottom)  3650 | winners top:bottom 240:108 | ratio top/bottom 2.262 | dir 2.262
+      full 60-session windows only                   n(top+bottom)  4086 | winners top:bottom 266:123 | ratio top/bottom 2.195 | dir 2.195
+      QQQ above its 50-day at D                      n(top+bottom)  2540 | winners top:bottom 152:80 | ratio top/bottom 1.945 | dir 1.945
+      QQQ below its 50-day at D                      n(top+bottom)  1630 | winners top:bottom 112:51 | ratio top/bottom 2.278 | dir 2.278
+      gapped over the level at the open              n(top+bottom)  1058 | winners top:bottom 67:36 | ratio top/bottom 1.962 | dir 1.962
+      did not gap over the level                     n(top+bottom)  3108 | winners top:bottom 201:96 | ratio top/bottom 2.137 | dir 2.137
+    outcome:
+      monster tier (>= 2.0x)                         n(top+bottom)  4175 | winners top:bottom 99:46 | ratio top/bottom 2.189 | dir 2.189
+      clean winners                                  n(top+bottom)  4175 | winners top:bottom 171:85 | ratio top/bottom 2.046 | dir 2.046
+      ADR-scaled tail                                n(top+bottom)  4175 | winners top:bottom 171:64 | ratio top/bottom 2.717 | dir 2.717
+      un-truncated window                            n(top+bottom)  4175 | winners top:bottom 272:126 | ratio top/bottom 2.195 | dir 2.195
+      from max(level, high of E)                     n(top+bottom)  4175 | winners top:bottom 208:100 | ratio top/bottom 2.115 | dir 2.115
+      E+1 .. E+60 (E's close excluded)               n(top+bottom)  4175 | winners top:bottom 248:118 | ratio top/bottom 2.137 | dir 2.137
+      ADR-neutral (thirds inside ADR20 strata)       n(top+bottom)  4154 | winners top:bottom 238:162 | ratio top/bottom 1.493 | dir 1.493
+    conditioning (the member's ratio only):
+      within the bottom B4 third                     n(top+bottom)  1386 | winners top:bottom 89:43 | ratio top/bottom 2.100 | dir 2.100
+      within the middle B4 third                     n(top+bottom)  1384 | winners top:bottom 93:41 | ratio top/bottom 2.308 | dir 2.308
+      within the top B4 third                        n(top+bottom)  1384 | winners top:bottom 82:44 | ratio top/bottom 1.896 | dir 1.896
+      within the bottom B1 (pick-score) third        n(top+bottom)  1386 | winners top:bottom 76:29 | ratio top/bottom 2.659 | dir 2.659
+      within the middle B1 (pick-score) third        n(top+bottom)  1384 | winners top:bottom 79:45 | ratio top/bottom 1.786 | dir 1.786
+      within the top B1 (pick-score) third           n(top+bottom)  1384 | winners top:bottom 108:48 | ratio top/bottom 2.289 | dir 2.289
+
+   f09 6-month move - HIGH third wins | verdict PICKS THE TAIL
+    population:
+      year 2021                                      n(top+bottom)  1647 | winners top:bottom 140:47 | ratio top/bottom 3.011 | dir 3.011
+      year 2022                                      n(top+bottom)  1013 | winners top:bottom 52:32 | ratio top/bottom 1.654 | dir 1.654
+      year 2023                                      n(top+bottom)   850 | winners top:bottom 51:41 | ratio top/bottom 1.268 | dir 1.268
+      year 2024                                      n(top+bottom)   665 | winners top:bottom 34:21 | ratio top/bottom 1.663 | dir 1.663
+      era A                                          n(top+bottom)  1939 | winners top:bottom 155:54 | ratio top/bottom 2.909 | dir 2.909
+      era B                                          n(top+bottom)  2236 | winners top:bottom 122:87 | ratio top/bottom 1.430 | dir 1.430
+      first breaks (after 10 quiet sessions)         n(top+bottom)  1310 | winners top:bottom 75:37 | ratio top/bottom 2.103 | dir 2.103
+      later breaks                                   n(top+bottom)  2859 | winners top:bottom 189:106 | ratio top/bottom 1.820 | dir 1.820
+      first break after 60 quiet sessions            n(top+bottom)   725 | winners top:bottom 39:21 | ratio top/bottom 1.990 | dir 1.990
+      common stock only                              n(top+bottom)  3506 | winners top:bottom 230:114 | ratio top/bottom 2.057 | dir 2.057
+      price >= $5                                    n(top+bottom)  3650 | winners top:bottom 246:121 | ratio top/bottom 2.069 | dir 2.069
+      full 60-session windows only                   n(top+bottom)  4086 | winners top:bottom 270:137 | ratio top/bottom 2.000 | dir 2.000
+      QQQ above its 50-day at D                      n(top+bottom)  2540 | winners top:bottom 162:82 | ratio top/bottom 2.023 | dir 2.023
+      QQQ below its 50-day at D                      n(top+bottom)  1630 | winners top:bottom 108:62 | ratio top/bottom 1.807 | dir 1.807
+      gapped over the level at the open              n(top+bottom)  1058 | winners top:bottom 65:38 | ratio top/bottom 1.804 | dir 1.804
+      did not gap over the level                     n(top+bottom)  3108 | winners top:bottom 201:103 | ratio top/bottom 1.992 | dir 1.992
+    outcome:
+      monster tier (>= 2.0x)                         n(top+bottom)  4175 | winners top:bottom 98:43 | ratio top/bottom 2.318 | dir 2.318
+      clean winners                                  n(top+bottom)  4175 | winners top:bottom 173:90 | ratio top/bottom 1.955 | dir 1.955
+      ADR-scaled tail                                n(top+bottom)  4175 | winners top:bottom 167:77 | ratio top/bottom 2.206 | dir 2.206
+      un-truncated window                            n(top+bottom)  4175 | winners top:bottom 277:141 | ratio top/bottom 1.998 | dir 1.998
+      from max(level, high of E)                     n(top+bottom)  4175 | winners top:bottom 213:108 | ratio top/bottom 2.006 | dir 2.006
+      E+1 .. E+60 (E's close excluded)               n(top+bottom)  4175 | winners top:bottom 250:131 | ratio top/bottom 1.941 | dir 1.941
+      ADR-neutral (thirds inside ADR20 strata)       n(top+bottom)  4154 | winners top:bottom 233:175 | ratio top/bottom 1.353 | dir 1.353
+    conditioning (the member's ratio only):
+      within the bottom B4 third                     n(top+bottom)  1386 | winners top:bottom 95:49 | ratio top/bottom 1.967 | dir 1.967
+      within the middle B4 third                     n(top+bottom)  1384 | winners top:bottom 89:43 | ratio top/bottom 2.106 | dir 2.106
+      within the top B4 third                        n(top+bottom)  1384 | winners top:bottom 82:48 | ratio top/bottom 1.738 | dir 1.738
+      within the bottom B1 (pick-score) third        n(top+bottom)  1386 | winners top:bottom 68:44 | ratio top/bottom 1.568 | dir 1.568
+      within the middle B1 (pick-score) third        n(top+bottom)  1384 | winners top:bottom 86:49 | ratio top/bottom 1.786 | dir 1.786
+      within the top B1 (pick-score) third           n(top+bottom)  1384 | winners top:bottom 99:51 | ratio top/bottom 1.975 | dir 1.975
+
+   f04 Strength rank, best - HIGH third wins | verdict PICKS THE TAIL (check years partly seen)
+    population:
+      year 2021                                      n(top+bottom)  1646 | winners top:bottom 115:55 | ratio top/bottom 2.122 | dir 2.122
+      year 2022                                      n(top+bottom)  1013 | winners top:bottom 63:30 | ratio top/bottom 2.163 | dir 2.163
+      year 2023                                      n(top+bottom)   849 | winners top:bottom 51:35 | ratio top/bottom 1.510 | dir 1.510
+      year 2024                                      n(top+bottom)   667 | winners top:bottom 35:24 | ratio top/bottom 1.498 | dir 1.498
+      era A                                          n(top+bottom)  1937 | winners top:bottom 137:63 | ratio top/bottom 2.218 | dir 2.218
+      era B                                          n(top+bottom)  2238 | winners top:bottom 127:81 | ratio top/bottom 1.613 | dir 1.613
+      first breaks (after 10 quiet sessions)         n(top+bottom)  1303 | winners top:bottom 71:35 | ratio top/bottom 2.127 | dir 2.127
+      later breaks                                   n(top+bottom)  2859 | winners top:bottom 178:110 | ratio top/bottom 1.665 | dir 1.665
+      first break after 60 quiet sessions            n(top+bottom)   723 | winners top:bottom 38:25 | ratio top/bottom 1.638 | dir 1.638
+      common stock only                              n(top+bottom)  3506 | winners top:bottom 220:110 | ratio top/bottom 2.048 | dir 2.048
+      price >= $5                                    n(top+bottom)  3654 | winners top:bottom 234:128 | ratio top/bottom 1.869 | dir 1.869
+      full 60-session windows only                   n(top+bottom)  4091 | winners top:bottom 257:138 | ratio top/bottom 1.900 | dir 1.900
+      QQQ above its 50-day at D                      n(top+bottom)  2530 | winners top:bottom 148:83 | ratio top/bottom 1.852 | dir 1.852
+      QQQ below its 50-day at D                      n(top+bottom)  1625 | winners top:bottom 111:56 | ratio top/bottom 2.085 | dir 2.085
+      gapped over the level at the open              n(top+bottom)  1055 | winners top:bottom 63:41 | ratio top/bottom 1.648 | dir 1.648
+      did not gap over the level                     n(top+bottom)  3095 | winners top:bottom 203:101 | ratio top/bottom 2.080 | dir 2.080
+    outcome:
+      monster tier (>= 2.0x)                         n(top+bottom)  4175 | winners top:bottom 94:49 | ratio top/bottom 1.966 | dir 1.966
+      clean winners                                  n(top+bottom)  4175 | winners top:bottom 160:91 | ratio top/bottom 1.802 | dir 1.802
+      ADR-scaled tail                                n(top+bottom)  4175 | winners top:bottom 153:82 | ratio top/bottom 1.912 | dir 1.912
+      un-truncated window                            n(top+bottom)  4175 | winners top:bottom 264:144 | ratio top/bottom 1.879 | dir 1.879
+      from max(level, high of E)                     n(top+bottom)  4175 | winners top:bottom 206:112 | ratio top/bottom 1.885 | dir 1.885
+      E+1 .. E+60 (E's close excluded)               n(top+bottom)  4175 | winners top:bottom 239:131 | ratio top/bottom 1.870 | dir 1.870
+      ADR-neutral (thirds inside ADR20 strata)       n(top+bottom)  4156 | winners top:bottom 223:166 | ratio top/bottom 1.381 | dir 1.381
+    conditioning (the member's ratio only):
+      within the bottom B4 third                     n(top+bottom)  1380 | winners top:bottom 90:55 | ratio top/bottom 1.680 | dir 1.680
+      within the middle B4 third                     n(top+bottom)  1387 | winners top:bottom 91:47 | ratio top/bottom 1.990 | dir 1.990
+      within the top B4 third                        n(top+bottom)  1384 | winners top:bottom 86:46 | ratio top/bottom 1.908 | dir 1.908
+      within the bottom B1 (pick-score) third        n(top+bottom)  1382 | winners top:bottom 65:36 | ratio top/bottom 1.843 | dir 1.843
+      within the middle B1 (pick-score) third        n(top+bottom)  1379 | winners top:bottom 81:55 | ratio top/bottom 1.514 | dir 1.514
+      within the top B1 (pick-score) third           n(top+bottom)  1380 | winners top:bottom 98:55 | ratio top/bottom 1.829 | dir 1.829
+
+   f02 Price (raw close) - LOW third wins | verdict REVERSED
+    population:
+      year 2021                                      n(top+bottom)  1648 | winners top:bottom 90:81 | ratio top/bottom 1.125 | dir 0.889
+      year 2022                                      n(top+bottom)   966 | winners top:bottom 56:23 | ratio top/bottom 2.496 | dir 0.401
+      year 2023                                      n(top+bottom)   793 | winners top:bottom 51:37 | ratio top/bottom 1.396 | dir 0.716
+      year 2024                                      n(top+bottom)   586 | winners top:bottom 32:17 | ratio top/bottom 1.934 | dir 0.517
+      era A                                          n(top+bottom)  1940 | winners top:bottom 108:87 | ratio top/bottom 1.259 | dir 0.794
+      era B                                          n(top+bottom)  2053 | winners top:bottom 121:71 | ratio top/bottom 1.739 | dir 0.575
+      first breaks (after 10 quiet sessions)         n(top+bottom)  1244 | winners top:bottom 61:42 | ratio top/bottom 1.510 | dir 0.662
+      later breaks                                   n(top+bottom)  2737 | winners top:bottom 169:118 | ratio top/bottom 1.463 | dir 0.684
+      first break after 60 quiet sessions            n(top+bottom)   686 | winners top:bottom 35:24 | ratio top/bottom 1.573 | dir 0.636
+      common stock only                              n(top+bottom)  3400 | winners top:bottom 196:135 | ratio top/bottom 1.478 | dir 0.677
+      price >= $5                                    n(top+bottom)  3652 | winners top:bottom 217:150 | ratio top/bottom 1.474 | dir 0.678
+      full 60-session windows only                   n(top+bottom)  3908 | winners top:bottom 223:156 | ratio top/bottom 1.453 | dir 0.688
+      QQQ above its 50-day at D                      n(top+bottom)  2434 | winners top:bottom 142:94 | ratio top/bottom 1.553 | dir 0.644
+      QQQ below its 50-day at D                      n(top+bottom)  1546 | winners top:bottom 88:62 | ratio top/bottom 1.468 | dir 0.681
+      gapped over the level at the open              n(top+bottom)  1010 | winners top:bottom 52:39 | ratio top/bottom 1.404 | dir 0.712
+      did not gap over the level                     n(top+bottom)  2973 | winners top:bottom 175:123 | ratio top/bottom 1.453 | dir 0.688
+    outcome:
+      monster tier (>= 2.0x)                         n(top+bottom)  3993 | winners top:bottom 71:61 | ratio top/bottom 1.185 | dir 0.844
+      clean winners                                  n(top+bottom)  3993 | winners top:bottom 146:97 | ratio top/bottom 1.532 | dir 0.653
+      ADR-scaled tail                                n(top+bottom)  3993 | winners top:bottom 129:99 | ratio top/bottom 1.326 | dir 0.754
+      un-truncated window                            n(top+bottom)  3993 | winners top:bottom 229:158 | ratio top/bottom 1.475 | dir 0.678
+      from max(level, high of E)                     n(top+bottom)  3993 | winners top:bottom 178:128 | ratio top/bottom 1.415 | dir 0.707
+      E+1 .. E+60 (E's close excluded)               n(top+bottom)  3993 | winners top:bottom 208:139 | ratio top/bottom 1.523 | dir 0.657
+      ADR-neutral (thirds inside ADR20 strata)       n(top+bottom)  3963 | winners top:bottom 256:140 | ratio top/bottom 1.856 | dir 0.539
+    conditioning (the member's ratio only):
+      within the bottom B4 third                     n(top+bottom)  1320 | winners top:bottom 75:63 | ratio top/bottom 1.209 | dir 0.827
+      within the middle B4 third                     n(top+bottom)  1318 | winners top:bottom 78:56 | ratio top/bottom 1.414 | dir 0.707
+      within the top B4 third                        n(top+bottom)  1331 | winners top:bottom 75:40 | ratio top/bottom 1.901 | dir 0.526
+      within the bottom B1 (pick-score) third        n(top+bottom)  1320 | winners top:bottom 64:38 | ratio top/bottom 1.710 | dir 0.585
+      within the middle B1 (pick-score) third        n(top+bottom)  1327 | winners top:bottom 75:58 | ratio top/bottom 1.315 | dir 0.761
+      within the top B1 (pick-score) third           n(top+bottom)  1326 | winners top:bottom 73:75 | ratio top/bottom 0.991 | dir 1.009
+
+   combo Combination of f01, f02, f04, f09 (5.6) - HIGH third wins | verdict PICKS THE TAIL
+    population:
+      year 2021                                      n(top+bottom)  1648 | winners top:bottom 124:45 | ratio top/bottom 2.789 | dir 2.789
+      year 2022                                      n(top+bottom)   966 | winners top:bottom 50:39 | ratio top/bottom 1.320 | dir 1.320
+      year 2023                                      n(top+bottom)   791 | winners top:bottom 51:39 | ratio top/bottom 1.324 | dir 1.324
+      year 2024                                      n(top+bottom)   586 | winners top:bottom 25:20 | ratio top/bottom 1.285 | dir 1.285
+      era A                                          n(top+bottom)  1941 | winners top:bottom 143:58 | ratio top/bottom 2.504 | dir 2.504
+      era B                                          n(top+bottom)  2050 | winners top:bottom 107:85 | ratio top/bottom 1.286 | dir 1.286
+      first breaks (after 10 quiet sessions)         n(top+bottom)  1243 | winners top:bottom 68:34 | ratio top/bottom 2.082 | dir 2.082
+      later breaks                                   n(top+bottom)  2738 | winners top:bottom 171:106 | ratio top/bottom 1.654 | dir 1.654
+      first break after 60 quiet sessions            n(top+bottom)   687 | winners top:bottom 33:19 | ratio top/bottom 1.879 | dir 1.879
+      common stock only                              n(top+bottom)  3398 | winners top:bottom 213:115 | ratio top/bottom 1.890 | dir 1.890
+      price >= $5                                    n(top+bottom)  3654 | winners top:bottom 233:134 | ratio top/bottom 1.773 | dir 1.773
+      full 60-session windows only                   n(top+bottom)  3906 | winners top:bottom 247:140 | ratio top/bottom 1.797 | dir 1.797
+      QQQ above its 50-day at D                      n(top+bottom)  2436 | winners top:bottom 145:86 | ratio top/bottom 1.737 | dir 1.737
+      QQQ below its 50-day at D                      n(top+bottom)  1551 | winners top:bottom 100:53 | ratio top/bottom 1.964 | dir 1.964
+      gapped over the level at the open              n(top+bottom)  1010 | winners top:bottom 61:33 | ratio top/bottom 1.946 | dir 1.946
+      did not gap over the level                     n(top+bottom)  2975 | winners top:bottom 187:101 | ratio top/bottom 1.901 | dir 1.901
+    outcome:
+      monster tier (>= 2.0x)                         n(top+bottom)  3991 | winners top:bottom 99:47 | ratio top/bottom 2.146 | dir 2.146
+      clean winners                                  n(top+bottom)  3991 | winners top:bottom 155:89 | ratio top/bottom 1.774 | dir 1.774
+      ADR-scaled tail                                n(top+bottom)  3991 | winners top:bottom 148:76 | ratio top/bottom 1.984 | dir 1.984
+      un-truncated window                            n(top+bottom)  3991 | winners top:bottom 250:143 | ratio top/bottom 1.781 | dir 1.781
+      from max(level, high of E)                     n(top+bottom)  3991 | winners top:bottom 198:116 | ratio top/bottom 1.739 | dir 1.739
+      E+1 .. E+60 (E's close excluded)               n(top+bottom)  3991 | winners top:bottom 224:131 | ratio top/bottom 1.742 | dir 1.742
+      ADR-neutral (thirds inside ADR20 strata)       n(top+bottom)  3967 | winners top:bottom 192:177 | ratio top/bottom 1.103 | dir 1.103
+    conditioning (the member's ratio only):
+      within the bottom B4 third                     n(top+bottom)  1321 | winners top:bottom 86:45 | ratio top/bottom 1.943 | dir 1.943
+      within the middle B4 third                     n(top+bottom)  1318 | winners top:bottom 86:48 | ratio top/bottom 1.819 | dir 1.819
+      within the top B4 third                        n(top+bottom)  1331 | winners top:bottom 73:46 | ratio top/bottom 1.613 | dir 1.613
+      within the bottom B1 (pick-score) third        n(top+bottom)  1320 | winners top:bottom 68:39 | ratio top/bottom 1.770 | dir 1.770
+      within the middle B1 (pick-score) third        n(top+bottom)  1326 | winners top:bottom 78:55 | ratio top/bottom 1.440 | dir 1.440
+      within the top B1 (pick-score) third           n(top+bottom)  1326 | winners top:bottom 99:52 | ratio top/bottom 1.939 | dir 1.939
+
+   gr1 Gallery read #1: V into the breakout - V has FEWER big winners (ratio = not-V / V) | verdict PICKS THE TAIL
+    population:
+      year 2021                                      V winners 10/124 | not-V 181/1973 | dir 1.125
+      year 2022                                      V winners 13/227 | not-V 111/1189 | dir 1.597
+      year 2023                                      V winners 5/142 | not-V 130/1131 | dir 3.538
+      year 2024                                      V winners 2/82 | not-V 74/812 | dir 3.609
+      era A                                          V winners 13/188 | not-V 216/2347 | dir 1.304
+      era B                                          V winners 17/387 | not-V 280/2758 | dir 2.366
+      first breaks (after 10 quiet sessions)         V winners 9/202 | not-V 111/1269 | dir 1.909
+      later breaks                                   V winners 21/368 | not-V 357/3473 | dir 1.824
+      first break after 60 quiet sessions            V winners 8/139 | not-V 55/663 | dir 1.291
+      common stock only                              V winners 24/460 | not-V 415/4271 | dir 1.925
+      price >= $5                                    V winners 26/506 | not-V 425/4368 | dir 1.965
+      full 60-session windows only                   V winners 29/558 | not-V 469/4889 | dir 1.869
+      QQQ above its 50-day at D                      V winners 14/345 | not-V 294/3068 | dir 2.326
+      QQQ below its 50-day at D                      V winners 16/227 | not-V 187/1824 | dir 1.490
+      gapped over the level at the open              V winners 3/121 | not-V 93/905 | dir 4.161
+      did not gap over the level                     V winners 26/443 | not-V 359/3688 | dir 1.645
+    outcome:
+      monster tier (>= 2.0x)                         V winners 13/575 | not-V 173/5105 | dir 1.603
+      clean winners                                  V winners 15/575 | not-V 312/5105 | dir 2.450
+      ADR-scaled tail                                V winners 12/575 | not-V 291/5105 | dir 2.738
+      un-truncated window                            V winners 30/575 | not-V 496/5105 | dir 1.886
+      from max(level, high of E)                     V winners 22/575 | not-V 381/5105 | dir 1.920
+      E+1 .. E+60 (E's close excluded)               V winners 28/575 | not-V 447/5105 | dir 1.845
+      ADR-neutral (MH by era x month x f01 third, 6d form) V winners 27/547 | not-V 367/3965 | dir 1.947
+      FAILED (peak < 1.10x; under 1.0 = V fails more) V winners 271/575 | not-V 2267/5105 | dir 0.941
+    conditioning (the member's ratio only):
+      within the bottom B4 third                     V winners 9/173 | not-V 136/1281 | dir 1.989
+      within the middle B4 third                     V winners 10/181 | not-V 128/1437 | dir 1.607
+      within the top B4 third                        V winners 11/201 | not-V 135/1402 | dir 1.763
+      within the bottom B1 (pick-score) third        V winners 12/215 | not-V 110/1443 | dir 1.258
+      within the middle B1 (pick-score) third        V winners 3/182 | not-V 150/1478 | dir 6.942
+      within the top B1 (pick-score) third           V winners 13/163 | not-V 159/1300 | dir 1.448
+
+   not printed on check (5.5 states them for discovery only): embargoed discovery, 2019-20 alone, the second seed (2411), window length +-50%.
+
+## SYNTHETIC GATE
+   verdict words fired: ['PICKS THE TAIL', 'PICKS THE TAIL (check years partly seen)', 'REVERSED']
+   permutation medians (no-effect centre; must sit in 0.95-1.05): f01 0.997 | f09 1.002 | f04 1.000 | f02 0.998 | combo 0.998 | gr1 0.995
+   planted readings recovered (f01, gr1 PICKS; f02 REVERSED); medians centred: PASS
+
+## END OF CHECK [SYNTHETIC - not a result] | 26s

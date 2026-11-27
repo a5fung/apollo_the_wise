@@ -1,0 +1,12 @@
+gr1 flagged 577 of 6266 NULL 0
+f01 NULL 0
+f02 NULL 276
+f04 NULL 0
+f09 NULL 0
+comb scored 5990
+f01 daily range HIGH               n=6263 groups={0: 2105, 1: 2088, 2: 2070} win={0: 92, 1: 179, 2: 359} ratio=3.968 era={'A': np.float64(4.214), 'B': np.float64(3.796)} p=0.0001 Holm=0.0006 oppHolm=1.0000 -> PICKS THE TAIL
+f09 6-month move HIGH              n=6263 groups={0: 2105, 1: 2088, 2: 2070} win={0: 113, 1: 174, 2: 343} ratio=3.087 era={'A': np.float64(3.746), 'B': np.float64(2.633)} p=0.0001 Holm=0.0006 oppHolm=1.0000 -> PICKS THE TAIL
+f04 strength rank best HIGH        n=6263 groups={0: 2113, 1: 2088, 2: 2062} win={0: 153, 1: 161, 2: 316} ratio=2.116 era={'A': np.float64(2.506), 'B': np.float64(1.872)} p=0.0001 Holm=0.0006 oppHolm=1.0000 -> PICKS THE TAIL (check years partly seen)
+f02 price LOW                      n=5987 groups={0: 2014, 1: 1994, 2: 1979} win={0: 323, 1: 159, 2: 119} ratio=2.667 era={'A': np.float64(2.829), 'B': np.float64(2.532)} p=0.0001 Holm=0.0006 oppHolm=1.0000 -> PICKS THE TAIL
+combination (1-4)                  n=5987 groups={0: 2014, 1: 1995, 2: 1978} win={0: 86, 1: 161, 2: 354} ratio=4.191 era={'A': np.float64(5.053), 'B': np.float64(3.628)} p=0.0001 Holm=0.0006 oppHolm=1.0000 -> PICKS THE TAIL
+gr1 V into breakout (notV/V)       n=5680 groups={0: 575, 2: 5105} win={0: 45, 2: 548} ratio=1.273 era={'A': np.float64(1.573), 'B': np.float64(1.17)} p=0.0512 Holm=0.0512 oppHolm=1.0000 -> DIRECTIONAL, NOT PROVEN

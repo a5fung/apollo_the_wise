@@ -1,0 +1,9 @@
+all pins asserted
+A 1635 2016-01-04 2022-06-30 B 821 2021-09-27 2024-12-31
+events 6266 winners 630 rate 0.1005 monsters 156
+     size  sum      mean
+era                     
+A    2910  281  0.096564
+B    3356  349  0.103993
+truncated by guard 1 by split-move 0 empty windows 0 nan ratio 0
+short windows (<61 bars used) 44
