@@ -686,6 +686,20 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
 
 ## Change log (newest first)
 
+### 2026-11-27 — #736: a snapshot row with no Polygon prev close is filled from the previous trading day instead of being dropped (BUG FIX — no EP rule, threshold, score or admission criterion changed; operator "go, we need this fixed"; BUILT on branch `ep-prevclose-736`, NOT DEPLOYED)
+
+**Trigger**: the morning after Thanksgiving (2026-11-27) the `ep_candidate_parse_error` audit rows showed the candidate build dropping up to 3,482 of 13,253 snapshot rows because Polygon's `prevDay.c` was 0/missing — ordinary names (TTC, BG, UFPI), not thin ones — so none of them could be an EP candidate that morning.
+
+**Evidence**: the 11-27 `ep_candidate_parse_error` rows (`n_no_prev_close` up to 3,482 of `n_snapshots` 13,253). Not a criteria change: the fill supplies the same input every rule already reads (yesterday's close and volume), from the same day, so N≥10 backtest does not apply (CHANGE_PROCESS: bug fix vs criteria change).
+
+**What changed**: before the build loop, rows whose `prevDay.c` is 0/missing get the close of the KNOWN previous trading date — (1) the date-keyed Alpaca bar (`_alpaca_ref_bar`, the same selection as the §2.1 `_alpaca_ref_close`), else (2) our stored `mi_daily_closes` row for exactly that date (one batched read), else (3) today's drop + `note_no_prev_close`. Never a close from another date. When `prevDay.v` is also missing the volume comes from the same bar/row; a row whose volume is still unknown stays a counted drop. The date is the exchange calendar's previous session (`trading_calendar.previous_trading_day`), NOT the scan's `_prev_trade_date` — `last_trading_day` skips weekends only and named the 11-26 holiday. A filled candidate carries `prev_close_source` (`alpaca_ref` / `stored_daily_close`) and is always `prev_close_verified = False`, so any RT-only flip-up on it still needs Q3 bar corroboration (§2.1). Fills are cached per (scan date, fill date): one fetch a morning, failed stages retried next tick; Alpaca stage bounded by `EP_PREV_CLOSE_FILL_TIMEOUT_S` (12 s), DB by `EP_PREV_CLOSE_FILL_DB_TIMEOUT_S` (3 s); any error falls back to today's drop. Counts ride the existing INFO line (`prev_close filled N (a alpaca, s stored, date D)`) and the `ep_candidate_parse_error` detail (`n_prev_close_filled_alpaca` / `_stored`, `prev_close_fill_date`).
+
+**Anticipated effect**: on a post-holiday morning the dropped rows become ordinary candidates and face every existing filter unchanged; `n_no_prev_close` falls to the genuinely new/thin background. Rows WITH a Polygon prev close are untouched (pinned byte-identical). First tick of each morning pays one extra Alpaca fetch for the missing rows; later ticks pay nothing.
+
+**Known gap (not changed — operator's call)**: the §2.1 cross-check still keys on `last_trading_day`, so on a post-holiday morning Polygon rows stay unverified (the documented O1 fail-safe).
+
+**Reversion-flag**: NEW. Tests: `tests/test_736_prev_close_fallback.py`.
+
 ### 2026-11-22 — the low-float bonus pays 0 (was +5 under 50M shares) — OPERATOR-SIGNED ("go with rec"; a score change — THE LINE)
 
 **Trigger**: the registered #714 float re-read (`data_gated_reviews.yaml` `float_points_stored_era_reread_714`, prereg `docs/analysis/ep_float_neglect_prereg_2026-10-31.md`) came due 11-21 and ran 11-22.

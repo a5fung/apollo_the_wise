@@ -2676,14 +2676,186 @@ def _alpaca_ref_close(sn: dict, prev_trade_date: "date | None") -> "float | None
     available (new listing / data gap / neither date matches, incl. holiday-approximation
     misses of `last_trading_day`) → caller keeps the Polygon denominator UNVERIFIED and any
     RT-only admission additionally requires Q3 bar corroboration (design O1 fail-safe)."""
+    bar = _alpaca_ref_bar(sn, prev_trade_date)
+    return bar[0] if bar else None
+
+
+def _alpaca_ref_bar(sn: dict, prev_trade_date: "date | None") -> "tuple | None":
+    """(close, volume) of the Alpaca bar `_alpaca_ref_close` selects — the SAME date-keyed
+    selection (daily_bar first, then previous_daily_bar; bar-date must equal the date), with that
+    bar's own volume (None when the feed omits it). #736: the missing-prevDay fill takes close and
+    volume from one bar so the two can never come from different days."""
     if prev_trade_date is None:
         return None
-    for close_key, ts_key in (("daily_bar_close", "daily_bar_ts"),
-                              ("prev_close", "prev_daily_bar_ts")):
+    for close_key, ts_key, vol_key in (("daily_bar_close", "daily_bar_ts", "day_volume"),
+                                       ("prev_close", "prev_daily_bar_ts", "prev_daily_bar_volume")):
         close = sn.get(close_key)
         if close and _bar_date_et(sn.get(ts_key)) == prev_trade_date:
-            return close
+            return close, sn.get(vol_key)
     return None
+
+
+# ── #736 missing-prevDay fill (2026-11-27, BUG FIX — no EP rule, threshold or score changed) ──
+# The morning after a market holiday Polygon's snapshot carried prevDay.c = 0 on up to 3,482 of
+# 13,253 rows (ordinary names: TTC, BG, UFPI), so the candidate build dropped them and they could
+# not be EP candidates that morning. A row with NO Polygon prev close is now filled with the close
+# (and, when prevDay.v is also missing, the volume) of the KNOWN previous trading date — first the
+# date-keyed Alpaca bar, else our stored `mi_daily_closes` row for that same date, else it is
+# dropped and counted exactly as before. Never a close from any other date. Rows WITH a Polygon
+# prev close are never touched. A filled row carries `prev_close_source` and is always UNVERIFIED
+# for the §2.1 RT-only admission path (Q3 bar corroboration required) — an Alpaca fill would
+# otherwise "verify" itself against the bar it came from.
+PREV_CLOSE_FILL_SRC_ALPACA = "alpaca_ref"
+PREV_CLOSE_FILL_SRC_STORED = "stored_daily_close"
+_PREV_CLOSE_FILL_MARK = "_prev_close_fill"   # key on a patched snapshot row → the fill source
+EP_PREV_CLOSE_FILL_TIMEOUT_S = float(os.environ.get("EP_PREV_CLOSE_FILL_TIMEOUT_S", "12"))
+EP_PREV_CLOSE_FILL_DB_TIMEOUT_S = float(os.environ.get("EP_PREV_CLOSE_FILL_DB_TIMEOUT_S", "3"))
+# Per-(scan date, fill date) cache: the previous day's closes do not change intra-day, so the fetch
+# runs once a morning (normally the first premarket tick), not on every ORB-window tick. A stage that
+# FAILED does not mark its tickers done — they are retried next tick (the _corp_action idiom).
+_prev_close_fill_key: "tuple | None" = None
+_prev_close_fill_map: dict = {}      # ticker -> (close, volume | None, source)
+_prev_close_fill_done: set = set()   # tickers both stages answered cleanly (found or not)
+_prev_close_fill_date_memo: "tuple | None" = None   # (scan date, fill date)
+
+
+def _prev_close_fill_date(today: "date", prev_close_date: "str | None") -> "date | None":
+    """The KNOWN previous trading date for the #736 fill. An explicit `prev_close_date` (≠ today)
+    wins; else the exchange calendar's previous session, holidays included. NOT the scan's
+    `_prev_trade_date` — `last_trading_day` skips weekends only, so on 2026-11-27 it named the
+    Thanksgiving holiday, the one date no bar or stored row exists for. None → no fill."""
+    global _prev_close_fill_date_memo
+    try:
+        if prev_close_date and prev_close_date != today.isoformat():
+            return date.fromisoformat(prev_close_date)
+        if _prev_close_fill_date_memo and _prev_close_fill_date_memo[0] == today:
+            return _prev_close_fill_date_memo[1]
+        from agents.market_intelligence.trading_calendar import previous_trading_day
+        d = previous_trading_day(today)
+        _prev_close_fill_date_memo = (today, d)
+        return d
+    except Exception as e:   # loud-ok: logged; no fill date → today's drop behaviour
+        logger.warning(f"#736 prev_close fill date unreadable ({_safe_exc(e)}) - no fill this tick")
+        return None
+
+
+def _prev_close_fill_targets(snapshots: dict, known_stock: "set | None",
+                             non_stock: "set | None") -> dict:
+    """Rows the candidate build would drop as prev_close 0/missing — the SAME skip filters, in the
+    same order, as the build loop's head. A `prevDay` that is not a dict is left alone (the loop
+    counts that as a raise today)."""
+    out = {}
+    for ticker, snap in snapshots.items():
+        try:
+            if len(ticker) > MAX_TICKER_LEN or ticker in _SKIP_TICKERS or "." in ticker:
+                continue
+            if non_stock and ticker in non_stock:
+                continue
+            if known_stock and ticker not in known_stock:
+                continue
+            if not isinstance(snap, dict):
+                continue
+            pd = snap.get("prevDay", {})
+            if not isinstance(pd, dict) or pd.get("c", 0):
+                continue
+            out[ticker] = snap
+        except Exception:  # loud-ok: a malformed row is left to the build loop, which counts it as a raise (#635 F8)
+            continue
+    return out
+
+
+def _safe_exc(e) -> str:
+    """`Type: message` for a log line; never raises (an exception's own __str__ may)."""
+    try:
+        return f"{type(e).__name__}: {str(e)[:160]}"
+    except Exception:  # loud-ok: an unprintable exception still yields its type name
+        return f"{type(e).__name__}: <unprintable>"
+
+
+async def _load_stored_daily_closes(d: "date", tickers: list) -> list:
+    """ONE batched read of our stored closes for exactly date `d` (never another date)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetch(
+            "SELECT ticker, close, volume FROM mi_daily_closes "
+            "WHERE trade_date = $1 AND ticker = ANY($2::text[])",
+            d, list(tickers))
+
+
+async def _fill_missing_prev_closes(rows: dict, scan_date: "date",
+                                    fill_date: "date | None") -> "tuple[dict, dict]":
+    """#736: fill the prev close of `rows` (ticker → snapshot row with prevDay.c 0/missing) from the
+    known previous trading date. Returns ({ticker: patched snapshot row}, {"alpaca": n, "stored": n}).
+    A patched row is a NEW dict (the shared snapshot is never mutated) with prevDay.c (and prevDay.v
+    when missing) filled and `_PREV_CLOSE_FILL_MARK` set. A row whose volume is still unknown is not
+    patched — it stays a counted no-prev-close drop, never a silent volume-floor reject. Bounded
+    (one wait_for per stage) and NEVER raises: any failure leaves that row on today's drop path."""
+    global _prev_close_fill_key, _prev_close_fill_map, _prev_close_fill_done
+    counts = {"alpaca": 0, "stored": 0}
+    if not rows or fill_date is None:
+        return {}, counts
+    try:
+        key = (scan_date, fill_date)
+        if _prev_close_fill_key != key:
+            _prev_close_fill_key, _prev_close_fill_map, _prev_close_fill_done = key, {}, set()
+
+        def _poly_vol(t):
+            return (rows[t].get("prevDay") or {}).get("v") or 0
+
+        todo = [t for t in rows if t not in _prev_close_fill_map and t not in _prev_close_fill_done]
+        if todo:
+            clean, found = True, {}
+            try:
+                from agents.market_intelligence import collector
+                stats: dict = {}
+                snaps = await asyncio.wait_for(
+                    collector.get_alpaca_snapshots_batch(
+                        todo, concurrency=EP_RT_UNIVERSE_CONCURRENCY, stats=stats,
+                        max_consecutive_failures=3),
+                    timeout=EP_PREV_CLOSE_FILL_TIMEOUT_S)
+                clean = not stats.get("batches_failed")
+                for t in todo:
+                    sn = (snaps or {}).get(t)
+                    bar = _alpaca_ref_bar(sn, fill_date) if sn else None
+                    if bar and (bar[1] or _poly_vol(t)):
+                        found[t] = (float(bar[0]), bar[1], PREV_CLOSE_FILL_SRC_ALPACA)
+            except Exception as e:   # loud-ok: logged; the stored stage below still runs
+                clean = False
+                logger.warning(f"#736 prev_close fill: Alpaca stage failed ({_safe_exc(e)})")
+            rest = [t for t in todo if t not in found]
+            if rest:
+                try:
+                    db_rows = await asyncio.wait_for(_load_stored_daily_closes(fill_date, rest),
+                                                     timeout=EP_PREV_CLOSE_FILL_DB_TIMEOUT_S)
+                    for r in db_rows or []:
+                        t, close, vol = r["ticker"], r["close"], r["volume"]
+                        if t in rows and close and close > 0 and (vol or _poly_vol(t)):
+                            found.setdefault(t, (float(close), vol, PREV_CLOSE_FILL_SRC_STORED))
+                except Exception as e:   # loud-ok: logged; unfilled rows keep today's drop behaviour
+                    clean = False
+                    logger.warning(f"#736 prev_close fill: stored-close stage failed "
+                                   f"({_safe_exc(e)})")
+            _prev_close_fill_map.update(found)
+            _prev_close_fill_done.update(found)
+            if clean:
+                _prev_close_fill_done.update(todo)
+
+        patched = {}
+        for t, snap in rows.items():
+            f = _prev_close_fill_map.get(t)
+            if not f:
+                continue
+            close, vol, src = f
+            pd = snap.get("prevDay") or {}
+            v = _poly_vol(t) or vol or 0
+            if not v:
+                continue
+            patched[t] = {**snap, "prevDay": {**pd, "c": close, "v": v}, _PREV_CLOSE_FILL_MARK: src}
+            counts["alpaca" if src == PREV_CLOSE_FILL_SRC_ALPACA else "stored"] += 1
+        return patched, counts
+    except Exception as e:   # loud-ok: logged; the whole fill degrades to today's drop behaviour
+        logger.warning(f"#736 prev_close fill failed ({_safe_exc(e)}) - rows stay dropped")
+        return {}, {"alpaca": 0, "stored": 0}
 
 
 # §2.2 corporate-action (split) guard — one Polygon reference call per morning, cached for the
@@ -2904,7 +3076,7 @@ def _snap_candidate(ticker: str, snap: dict, prev_close: float, current_price: f
             open_intensity = round(raw_rvol * (_SESSION_MINUTES / minutes_since_open), 1)
         # else: intensity stays None — vol filter uses raw_rvol pre-9:45
 
-    return {
+    cand = {
         "ticker": ticker,
         "prev_close": prev_close,
         "current_price": current_price,
@@ -2920,6 +3092,10 @@ def _snap_candidate(ticker: str, snap: dict, prev_close: float, current_price: f
         "gap_pct_delayed": round(gap_pct, 2),   # #489 Pass-1 delayed gap (both readings kept)
         "price_source": "polygon_delayed",       # Pass-2/Pass-0 overwrite when the rt gap decides
     }
+    _fill_src = snap.get(_PREV_CLOSE_FILL_MARK)
+    if _fill_src:
+        cand["prev_close_source"] = _fill_src   # #736: only on a filled row (others byte-identical)
+    return cand
 
 
 async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, snapshots: dict,
@@ -3063,6 +3239,10 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
                 continue
             # §2.1 — date-keyed prev_close cross-check (Polygon prevDay.c stays the denominator).
             a_ref = _alpaca_ref_close(sn, prev_trade_date)
+            # #736: a filled denominator is never verified — an Alpaca fill would match itself
+            _pc_fill = (snapshots.get(tkr) or {}).get(_PREV_CLOSE_FILL_MARK)
+            if _pc_fill == PREV_CLOSE_FILL_SRC_ALPACA:
+                a_ref = None
             if a_ref is not None and abs(a_ref - pc) / pc * 100 > 0.5:
                 if _audit_dedupe_check(tkr, adate, "ep_rt_prev_close_mismatch"):
                     await log_audit_event(
@@ -3176,7 +3356,7 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
                                 "basis": meta.get("basis"), "q1_pass": meta.get("q1_pass"),
                                 "quote_state": meta.get("quote_state"),
                                 "trade_price": price, "minute_close": meta.get("minute_close"),
-                                "prev_close_verified": a_ref is not None}))
+                                "prev_close_verified": a_ref is not None and not _pc_fill}))
             if not authoritative:
                 continue   # SHADOW: not admitted, no LLM spend
             snap = snapshots.get(tkr) or {}
@@ -3188,7 +3368,7 @@ async def _apply_rt_universe_overlay(candidates: list[dict], rt_universe: list, 
             else:
                 del cand["gap_pct_delayed"]   # no delayed read exists — never present rt as delayed
             cand["prev_close_alpaca"] = a_ref
-            cand["prev_close_verified"] = a_ref is not None
+            cand["prev_close_verified"] = a_ref is not None and not _pc_fill
             age = _ts_age_s(sn.get("price_ts"), now_et)
             if age is not None:
                 cand["rt_price_age_s"] = round(age, 1)
@@ -3269,6 +3449,10 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
             # matches the known prev trading date; None = no cross-check available → keep the
             # Polygon denominator UNVERIFIED (any authoritative flip-up then requires Q3 below).
             a_ref = _alpaca_ref_close(sn, prev_trade_date)
+            # #736: a filled denominator is never verified — an Alpaca fill would match itself
+            _pc_fill = c.get("prev_close_source")
+            if _pc_fill == PREV_CLOSE_FILL_SRC_ALPACA:
+                a_ref = None
             if a_ref is not None and pc and abs(a_ref - pc) / pc * 100 > 0.5:
                 if _audit_dedupe_check(c["ticker"], adate, "ep_rt_prev_close_mismatch"):
                     await log_audit_event("ep_rt_prev_close_mismatch",
@@ -3290,7 +3474,7 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
                 continue
             c["gap_pct_rt"] = round(rt_gap, 2)
             c["prev_close_alpaca"] = a_ref
-            c["prev_close_verified"] = a_ref is not None
+            c["prev_close_verified"] = a_ref is not None and not _pc_fill
             ts = sn.get("price_ts")
             if ts is not None:
                 try:
@@ -3302,7 +3486,7 @@ async def _apply_realtime_pass2(candidates: list[dict], now_et: datetime,
             # be RT-only admitted this tick (§4). Only consulted by _floor under authority;
             # in shadow they are telemetry (the reject/halt events still measure the class).
             if rt_gap >= MIN_GAP_PCT > dl:
-                if a_ref is None and not _q3_bar_corroborated(sn, pc, now_et):
+                if not c["prev_close_verified"] and not _q3_bar_corroborated(sn, pc, now_et):
                     c["_rt_admit_block"] = "no_bar_confirm"
                     if _audit_dedupe_check(c["ticker"], adate, "ep_rt_tick_quality_reject"):
                         await log_audit_event("ep_rt_tick_quality_reject",
@@ -3923,6 +4107,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 today_volume=today_volume, current_price=current_price))
         except Exception as _dve:
             logger.warning(f"#606 universe-floor shadow row build failed for {ticker}: {_dve}")
+    # #736: rows with prevDay.c 0/missing get the KNOWN previous trading date's close (Alpaca bar,
+    # else our stored close, same date only) BEFORE the build, so the loop below sees an ordinary
+    # row. `snapshots` is rebound to a NEW dict (the shared snapshot is never mutated; key order
+    # kept); rows with a Polygon prev close are the same objects as before. Fail-open: any error
+    # leaves every row on today's drop path.
+    _prev_fill_counts = {"alpaca": 0, "stored": 0}
+    _prev_fill_date = None
+    try:
+        _prev_fill_rows = _prev_close_fill_targets(
+            snapshots, _known_stock_tickers, _non_stock_tickers)
+        if _prev_fill_rows:
+            _prev_fill_date = _prev_close_fill_date(today, prev_close_date)
+            _prev_patched, _prev_fill_counts = await _fill_missing_prev_closes(
+                _prev_fill_rows, today, _prev_fill_date)
+            if _prev_patched:
+                snapshots = {**snapshots, **_prev_patched}
+    except Exception as _pfe:
+        logger.warning(f"#736 prev_close fill skipped this tick: {_safe_exc(_pfe)}")
     for ticker, snap in snapshots.items():
         try:
             # Skip warrants, units, non-standard symbols, ETFs, and leveraged products
@@ -4045,10 +4247,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # with a strong ref (the _WATCHDOG_BG_TASKS idiom) so a slow audit write can never delay the scan
     # on the ORB path. The WHOLE block is guarded: no part of the alarm may raise into the scan.
     try:
-        if _parse_drops.total:
+        _n_prev_filled = _prev_fill_counts["alpaca"] + _prev_fill_counts["stored"]
+        if _parse_drops.total or _n_prev_filled:   # #736: a fully-filled tick still logs
             logger.info(f"EP scan: candidate build dropped {_parse_drops.total}/{len(snapshots)} "
                         f"snapshot rows ({_parse_drops.n_raised} raised, "
-                        f"{_parse_drops.n_no_prev_close} with prev_close 0/missing)")
+                        f"{_parse_drops.n_no_prev_close} with prev_close 0/missing); "
+                        f"prev_close filled {_n_prev_filled} "
+                        f"({_prev_fill_counts['alpaca']} alpaca, {_prev_fill_counts['stored']} stored, "
+                        f"date {_prev_fill_date})")
         if _parse_drops.should_audit(len(snapshots)):
             logger.error(
                 f"EP scan: {_parse_drops.total}/{len(snapshots)} snapshot rows DROPPED in the "
@@ -4074,6 +4280,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             "threshold_min": _PARSE_DROP_AUDIT_MIN,
                             "threshold_frac": _PARSE_DROP_AUDIT_FRAC,
                             "threshold_frac_with_missing": _PARSE_DROP_MISSING_AUDIT_FRAC,
+                            "n_prev_close_filled_alpaca": _prev_fill_counts["alpaca"],
+                            "n_prev_close_filled_stored": _prev_fill_counts["stored"],
+                            "prev_close_fill_date": (_prev_fill_date.isoformat()
+                                                     if _prev_fill_date else None),
                             "scan_date": today.isoformat()}),
             ))
             _WATCHDOG_BG_TASKS.add(_pdt)

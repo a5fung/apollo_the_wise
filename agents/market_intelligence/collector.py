@@ -420,6 +420,9 @@ async def get_alpaca_snapshots_batch(tickers: list[str], timeout_s: float = 4.0,
                     "daily_bar_high": getattr(db_, "high", None) if db_ else None,
                     "daily_bar_low": getattr(db_, "low", None) if db_ else None,
                     "prev_daily_bar_ts": getattr(pdb, "timestamp", None) if pdb else None,
+                    # #736 (additive): the previous bar's volume, so the EP scan's missing-prevDay
+                    # fill can take close AND volume from the SAME date-matched bar
+                    "prev_daily_bar_volume": getattr(pdb, "volume", None) if pdb else None,
                     "bid": getattr(lq, "bid_price", None) if lq else None,
                     "ask": getattr(lq, "ask_price", None) if lq else None,
                     "bid_size": getattr(lq, "bid_size", None) if lq else None,

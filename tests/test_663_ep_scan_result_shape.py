@@ -157,6 +157,12 @@ _POISON = {
     "_tinycap_seen": lambda: {ADMIT_TICKER},
     "_tinycap_seen_date": lambda: SESSION_DATE,
     "_yoy_bg_started_date": lambda: SESSION_DATE,
+    # #736 prev_close fill cache — a WRONG fill for the admitted ticker must not move a row that
+    # carries its own Polygon prev close (it is never a fill target)
+    "_prev_close_fill_key": lambda: (SESSION_DATE, SESSION_DATE),
+    "_prev_close_fill_map": lambda: {ADMIT_TICKER: (1.0, 1, "alpaca_ref")},
+    "_prev_close_fill_done": lambda: {ADMIT_TICKER},
+    "_prev_close_fill_date_memo": lambda: (SESSION_DATE, SESSION_DATE),
     # ep_theme_belonging (the module indexes these by key — keep the keys, poison the values)
     "_ctx_cache": lambda: {"key": ("poisoned",), "ctx": object()},
     "_fit_cache": lambda: {(SESSION_DATE, ADMIT_TICKER, ("Grid",)): ("confirmed", "Grid", "Accelerating", "stale")},
