@@ -2657,3 +2657,11 @@ EVIDENCE:
 - 11-24 nightly export (portfolio-app2 `c494789`, 23:30Z): `liquidity` status ok, as_of 2026-11-24, 0 unavailable, 10 of 10 legs carry `raw`, block 15,854 chars (<20k); F1 raw latest 5.82 $tn = `net_liquidity_tn.latest` 5.82; F2 raw latest 3.88 = FRED DFF 3.88 (11-23); M2 / K1 / K5 raw positive natural ratios (no sign flip); caution on since 10-26 (21 sessions).
 - Independent recompute from FRED closes (`scripts/probes/_verify_1124/fred_*.csv`, business days to 11-24): F2 DFF ma20 3.880 / ma50 3.870 → tight; C3 BAA10Y 1.518 / 1.478 → tight; R2 DGS2 4.673 / 4.733 → easy — all three equal the block's trend and averages (to its 2 decimals); last three FRED values equal the block's raw series. All 10 legs' votes recomputed from raw.series match, and the group rule gives 4 of 6 tight = block `groups_tight.n` 4.
 - Panel: the live page code (portfolio-app2 main `c494789`, which Streamlit Cloud serves) rendered on the 11-24 snapshot with Streamlit AppTest: no exception; the Liquidity card shows "as of 2026-11-24", the caution line, "4 of 6 groups tight · +1 vs 20 sessions ago", 10 leg rows each with its sparkline. Not seen on his phone by me (login).
+
+## #146 — flag TRIGGERED licence + `triggered_from` buckets, first raw TRIGGERED night (2026-11-27)
+BAR: "the first raw TRIGGERED night's rows all carry a valid `triggered_from` and the verify SQL reads 0 violations"
+EVIDENCE:
+- `scripts/probes/_146_verify_1127/verify_live.sql` → `.out` on prod (d0 = 2026-10-12, read-only): the first raw TRIGGERED row since the 10-11 deploy is KOD 2026-11-24 — 1 raw read, 0 unstamped, 0 stamped holds, 0 stamped non-TRIGGERED on every one of 34 scan dates.
+- Statement 2: KOD 11-24 `triggered_from` = 'tightening', its stored 5-day window {INVALIDATED, INVALIDATED, TIGHTENING} → verdict ok.
+- Statement 4/4b: the stamp agrees with `parent_stage` TIGHTENING (scan 11-23) in BOTH `mi_flag_breaks` (id 195) and `mi_htf_breakout_shadow` (id 30); violations 0, judged_ok 1 in each.
+- The follow-through on KOD (does a failure stamp `failed_at`) is tracked separately by the `flag_breakout_first_after_close_654` tripwire (10 sessions to ~12-09).

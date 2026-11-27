@@ -1,70 +1,66 @@
 [
-  {
-    "id": 146,
-    "status": "deployed"
-  },
-  {
-    "id": 314,
-    "status": "deployed"
-  },
-  {
-    "id": 333,
-    "status": "deployed"
-  },
-  {
-    "id": 397,
-    "status": "blocked"
-  },
-  {
-    "id": 519,
-    "status": "in_progress"
-  },
-  {
-    "id": 594,
-    "status": "in_progress"
-  },
-  {
-    "id": 624,
-    "status": "deployed"
-  },
-  {
-    "id": 644,
-    "status": "deployed"
-  },
-  {
-    "id": 710,
-    "status": "blocked"
-  },
-  {
-    "id": 712,
-    "status": "deployed"
-  },
-  {
-    "id": 717,
-    "status": "deployed"
-  },
-  {
-    "id": 724,
-    "status": "deployed"
-  },
-  {
-    "id": 727,
-    "status": "deployed"
-  },
-  {
-    "id": 728,
-    "status": "deployed"
-  },
-  {
-    "id": 730,
-    "status": "pending"
-  },
-  {
-    "id": 731,
-    "status": "deployed"
-  },
-  {
-    "id": 734,
-    "status": "in_progress"
-  }
+ {
+  "id": 314,
+  "status": "deployed"
+ },
+ {
+  "id": 333,
+  "status": "deployed"
+ },
+ {
+  "id": 397,
+  "status": "blocked"
+ },
+ {
+  "id": 519,
+  "status": "in_progress"
+ },
+ {
+  "id": 594,
+  "status": "in_progress"
+ },
+ {
+  "id": 624,
+  "status": "deployed"
+ },
+ {
+  "id": 644,
+  "status": "deployed"
+ },
+ {
+  "id": 710,
+  "status": "blocked"
+ },
+ {
+  "id": 712,
+  "status": "deployed"
+ },
+ {
+  "id": 717,
+  "status": "deployed"
+ },
+ {
+  "id": 724,
+  "status": "deployed"
+ },
+ {
+  "id": 727,
+  "status": "deployed"
+ },
+ {
+  "id": 728,
+  "status": "deployed"
+ },
+ {
+  "id": 730,
+  "status": "pending"
+ },
+ {
+  "id": 731,
+  "status": "deployed"
+ },
+ {
+  "id": 734,
+  "status": "in_progress"
+ }
 ]
