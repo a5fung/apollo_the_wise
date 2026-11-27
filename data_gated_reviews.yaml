@@ -218,7 +218,7 @@ reviews:
     anchor_note: "2026-11-10: re-anchored 2026-10-29 -> 2026-11-09. Samples #5 (11-02), #6 (11-04), #7 (11-07) and #8 (11-09) were all built and ruled after the old anchor, which was never moved, so this review read READY (24 of 20) with no sample owed. The cadence restarts from sample #8. Earlier: 2026-10-30, 10-05 -> 10-29 (sample #4)."
     predicate_sql: >-
       SELECT count(*) FROM mi_ep_alerts
-      WHERE alert_date > '2026-11-09';
+      WHERE alert_date > '2026-11-26';
     can_fire:
       predicate_runs: "2026-09-19 (#669 audit) - runs against prod and returns 11: alerts on
         09-08 (6), 09-14 (2), 09-16 (1), 09-17 (2). It did NOT run before 2026-09-10: the entire
@@ -247,6 +247,11 @@ reviews:
         a cutline found by LOOKING at ~25 labelled dates is not evidence."
     threshold: 20   # RE-GATED 2026-09-19 from 40 (#669): see can_fire.threshold_vs_observed
     earliest_review_date: 2026-09-20
+    resolution_2026_11_26: >-
+      SAMPLE #11 BUILT AND RULED the same day (outcome-blind): sample 10's query + its 12 pairs excluded, 12 drawn at
+      random (seed 1126, draw.py), scripts/probes/_594_sample11_1126/. His grades: 1 good (ZBRA), 5 ok (FIGS, AXGN, TBI,
+      PAYC, TSAT), 6 no (HRI 'still chopping around in range', DAKT, SOLS, WEN 'clear downtrend, gap didn't change
+      anything', MFIC, IRON) — all 12 in must_not_trade_charts.py (session 2026-11-26). Predicate re-armed from 11-26.
     resolution_2026_10_29: >-
       SAMPLE #4 BUILT AND SURFACED, outcome-blind (his 2026-10-10 ruling): 8 real gap days 2026-09-08..09-29 (pinned
       _594_review_sample.py SQL, SINCE 2026-09-05, open >= 9% and volume >= 3x, settled 20 sessions, none already ruled),

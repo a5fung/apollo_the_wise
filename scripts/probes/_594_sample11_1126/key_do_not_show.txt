@@ -1,0 +1,14 @@
+#594 sample #11 key: page letter -> arm and outcome. NOT shown to him (outcome-blind, his 10-10 ruling).
+RULE: sample 10's query with sample 10's 12 drawn pairs excluded; tickers already ruled (must_not_trade_charts), in sample 10, or named in his notes / labelled EPs (uppercase-word match) excluded; one row per ticker; 12 drawn AT RANDOM across both arms (seed 1126; random.Random(1126).sample over eligible rows sorted by (ticker,date), draw.py). Page: ~2 years of history, the gap day the last bar.
+A|HRI|2026-10-27|ARM_D|pct_20d=-2
+B|DAKT|2026-09-02|ARM_D|pct_20d=-18
+C|FIGS|2026-08-07|ARM_C|pct_20d=-5
+D|AXGN|2026-10-28|ARM_D|pct_20d=31
+E|ZBRA|2026-08-04|ARM_C|pct_20d=4
+F|TBI|2026-08-05|ARM_D|pct_20d=10
+G|PAYC|2026-08-06|ARM_D|pct_20d=13
+H|TSAT|2026-08-04|ARM_C|pct_20d=-2
+I|SOLS|2026-08-28|ARM_C|pct_20d=-12
+J|WEN|2026-10-28|ARM_D|pct_20d=26
+K|MFIC|2026-10-27|ARM_D|pct_20d=-1
+L|IRON|2026-10-19|ARM_C|pct_20d=5
