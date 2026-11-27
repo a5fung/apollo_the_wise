@@ -1,0 +1,6 @@
+BEGIN
+CREATE TABLE
+INSERT 0 16
+DO
+NOTICE:  patched 9 alerts, 16 items now carry figures
+COMMIT
