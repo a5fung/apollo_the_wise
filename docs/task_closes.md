@@ -2665,3 +2665,10 @@ EVIDENCE:
 - Statement 2: KOD 11-24 `triggered_from` = 'tightening', its stored 5-day window {INVALIDATED, INVALIDATED, TIGHTENING} → verdict ok.
 - Statement 4/4b: the stamp agrees with `parent_stage` TIGHTENING (scan 11-23) in BOTH `mi_flag_breaks` (id 195) and `mi_htf_breakout_shadow` (id 30); violations 0, judged_ok 1 in each.
 - The follow-through on KOD (does a failure stamp `failed_at`) is tracked separately by the `flag_breakout_first_after_close_654` tripwire (10 sessions to ~12-09).
+
+## #724 — breadth page holds the half-day 13:00 close as final (2026-11-27)
+BAR: "a test with a 13:00 final-read payload on 11-27 → 'Close · 2026-11-27, read at 13:00 ET'; on 11-27 after 13:05 ET the page shows that label"
+EVIDENCE:
+- Test: portfolio-app2 `test_live_breadth_723.py:264` asserts "Close · 2026-11-27, read at 13:00 ET" on a 13:00 final-read payload (pushed `1866714`, his "yes to all" 11-14).
+- Live file read at 13:10 ET 11-27 from branch `live-breadth` (`scripts/probes/_verify_1127/breadth_live_1127.json`): `final: true`, `as_of: 2026-11-27T13:00:00 ET`.
+- Page logic run on that real file + the deployed nightly snapshot (as_of 2026-11-25) after 13:05 ET: `is_live` False, `holds_close` True → `pages/Market_Breadth.py:159` renders "Close · 2026-11-27, read at 13:00 ET" (not "Last close").
