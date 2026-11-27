@@ -1,0 +1,7 @@
+era-B live-list rows (denominator, all nights): 135,417
+rung 1 literal (pool candidate, fails the $5M floor, zero-volume row in the 20-session window): 216,701 = 160.02% of list rows
+rung 2 (and would pass the floor on the non-zero sessions only): 776 = 0.57%; by adjusted price level {'>=$1000': 771, '$10-100': 5}
+rung 3 (and every other gate passes, rank taken in the real night's pool): 176 = 0.13%; by adjusted price level {'>=$1000': 176}
+TAG 'era-B population thinned by volume underflow': rung 1 > 1%, rung 2 <= 1%, rung 3 <= 1%
+rung that sets the tag (reading recorded): rung 3, the prereg sentence's 'failing only the dollar-volume half' with every other membership test passing; THE RUNGS DISAGREE - flagged
+raw-volume sizing line: UNAVAILABLE under A1 (the pull is discarded and never opened)

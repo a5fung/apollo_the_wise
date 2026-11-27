@@ -1,0 +1,4 @@
+seed 1124: independent walk keeps 11,596; equals the written set: True; identities-pairs kept across eras: 1064, smallest cross-era gap 61 sessions (must be > 60)
+seed 2411: independent walk keeps 11,607; equals the written set: True; identities-pairs kept across eras: 1072, smallest cross-era gap 62 sessions (must be > 60)
+max eras per (identity, D): 1 (must be 1)
+1e GATE: PASS

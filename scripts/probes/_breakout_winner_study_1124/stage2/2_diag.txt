@@ -1,0 +1,13 @@
+f20 discovery: top third 1527 events (791 in 2020 = 0.518); bottom third 2058 (1190 in 2020 = 0.578)
+  composition-expected ratio with 2020 at 1.0x: 1.0000
+  composition-expected ratio with 2020 at 3.0x: 0.9441
+  month-level: share of the month's events in the top third minus in the bottom third, by year (ties move the top block):
+    2017: top 0.247 bottom 0.388
+    2018: top 0.339 bottom 0.318
+    2019: top 0.296 bottom 0.361
+    2020: top 0.276 bottom 0.415
+f24a check era A: events 723, top 235, bottom 246
+f24a check era B: events 877, top 280, bottom 297
+  pure binomial draws (no months, no noise) at 3%: median ratio 1.061, mean winners per third 8.4/8.9, share with a zero 0.000
+  pure binomial draws (no months, no noise) at 5%: median ratio 0.994, mean winners per third 14.0/14.9, share with a zero 0.000
+  pure binomial draws (no months, no noise) at 8%: median ratio 1.008, mean winners per third 22.4/23.8, share with a zero 0.000

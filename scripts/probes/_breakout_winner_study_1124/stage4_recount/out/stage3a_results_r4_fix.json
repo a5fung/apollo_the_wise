@@ -1,0 +1,21 @@
+{
+ "n": 5330,
+ "win": 846,
+ "monster": 214,
+ "clean": 299,
+ "adr_tail": 1043,
+ "fail": 1618,
+ "rate_all": 0.15872420262664166,
+ "rate_1719": 0.09175801867641088,
+ "n_1719": 2463,
+ "w_1719": 226,
+ "truncated": 6,
+ "trunc_reasons": {
+  "": 5324,
+  "guard": 6
+ },
+ "full_window": 5270,
+ "win_untrunc": 846,
+ "win_hiE": 727,
+ "win_E1": 845
+}

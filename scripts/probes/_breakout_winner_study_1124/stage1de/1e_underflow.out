@@ -1,0 +1,9 @@
+bars: 8,619,626 rows / 15,702 tickers / 821 sessions 2021-09-27..2024-12-31 (5s); 4,178 tickers have a missing session inside their span (188,545 holes)
+store B: loaded in 9s; {'raw_factor': 'bridge (pre_v2 raw / cb702 adjusted on the 2022-04..06 overlap, then the split list <= 2024-12-31) where the ticker is in both stores; else the split list <= 2024-12-31 only', 'splits_rows_skipped_sealed': 3090, 'bridge_tickers': 8518, 'bridge_unstable_fell_back': 224, 'split_list_only_tickers': 7184, 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+era-B live-list rows (denominator, all nights): 135,417
+rung 1 literal (pool candidate, fails the $5M floor, zero-volume row in the 20-session window): 216,701 = 160.02% of list rows
+rung 2 (and would pass the floor on the non-zero sessions only): 776 = 0.57%; by adjusted price level {'>=$1000': 771, '$10-100': 5}
+rung 3 (and every other gate passes, rank taken in the real night's pool): 176 = 0.13%; by adjusted price level {'>=$1000': 176}
+TAG 'era-B population thinned by volume underflow': rung 1 > 1%, rung 2 <= 1%, rung 3 <= 1%
+rung that sets the tag (reading recorded): rung 3, the prereg sentence's 'failing only the dollar-volume half' with every other membership test passing; THE RUNGS DISAGREE - flagged
+raw-volume sizing line: UNAVAILABLE under A1 (the pull is discarded and never opened)

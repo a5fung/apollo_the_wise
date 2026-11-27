@@ -1,0 +1,26 @@
+# STAGE 2 GATE under AMENDMENT A2 (centring re-applied; calibration NOT re-run; no outcome read)
+prereg sha256 3eb2b9b0 / A1 4a7beda1 / A2 0a6cc417 asserted. Inputs: 2_calib.txt, 2_calib_result.json, 2_diag.txt, 2_check_expected.txt (parsed by s2_gate_A2.py).
+Floors stay as stage 2 fixed them: condition 3 (without 2020) 1.10 ; break-day-selection (B4 strata) 1.10 (lowering rule did not fire).
+
+## The three BLOCKING lines of stage 2 and their A2 reading
+1. f20 all (pooled discovery) @5%: observed 0.9405 ; composition-expected 0.94415 (outside 0.95-1.05) -> A2 rule 1: quotient 0.9405/0.94415 = 0.9961 -> inside 0.95-1.05 -> PASS
+2. f20 all (pooled discovery) @8%: observed 0.9465 ; composition-expected 0.94415 -> quotient 1.0025 -> PASS
+3. f24a check era B @3% (sensitivity row): observed 1.061 (297/280 winners-equal, discreteness) ; A2 rule 2: centred on the 5% row (era B 0.990; pure-binomial 5% 0.994; 8% row 0.990, all inside the band) -> LISTED, NOT BLOCKING
+   (also read, same effect, not blocking at stage 2: f20 all @3% observed 0.951 ; quotient 1.0073 -> inside)
+
+## Listed-only lines from stage 2 (already non-blocking)
+- first break (after 10 quiet) f20: observed 1.076, composition-expected 1.074 -> quotient 1.002 (inside)
+- embargoed (E<=2020-10-06) f20: observed 0.950, composition-expected 0.9515 (inside the band, so NOT quotient-read under rule 1; stays a listed raw 0.950 line)
+
+## Sweep (every statistic in sections A and B of 2_calib.txt, parsed): after the A2 readings, blocking lines remaining = 0.
+Only raw out-of-band statistics: f20 all (3 rates, now quotient-read, all inside) and f24a check eraB @3% (listed). f14 not evaluable (empty) as stage 2 said, not a pass and not blocking.
+
+## FOR STAGE 3 - which f20 lines are READ AS QUOTIENTS (observed / expected; the quotient meets the floors and verdict words)
+Rule 1 trigger: an f20 ratio whose no-effect composition-expected value is outside 0.95-1.05.
+- f20 pooled discovery ratio, own-month thirds ("all", 2017-2020): DIVIDE BY 0.9441473 (identical at the 5% / 3% / 8% base-rate rows; ties put 57.8% of the bottom third and 51.8% of the top third in 2020)
+- f20 on the first-break population (discovery, thirds re-formed inside it): expected 1.0740 -> a LISTED line only (section C is not blocking), shown as quotient beside the raw
+Read RAW (expected inside the band, no division): f20 ex2020 (1.000), f20 B4-strata (0.970), f20 B1-strata (0.976, listed), f20 check pooled / era A / era B (1.000), f20 check B4-strata (1.000), f20 embargoed (0.9515).
+Contingency (2_check_expected.txt, hypothetical era B base rate below era A's): f20 check B4-strata composition-expected would be 1.026 at 0.75x and 1.062 at 0.5x; at equal rates it is 1.000. Stage 3 is not told to apply it; if stage 3 reports that ratio it prints the expected beside it and the quotient rule fires only if the expected is outside 0.95-1.05 (as A2 words it).
+Note for stage 3: the quotient corrects the centre only; f20's spread under ties is reported (A2 'does not answer'), not corrected. Real expected values are per-draw from stage 2's simulation (synthetic labels, outcome-blind), printed beside each quotient.
+
+## GATE (centring under A2): PASS  (0 blocking lines)

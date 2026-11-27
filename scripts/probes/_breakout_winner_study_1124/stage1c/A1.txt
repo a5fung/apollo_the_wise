@@ -1,0 +1,5 @@
+A1 not-returned list: 757 main-set names -> stage1c/notreturned_A1.txt
+main names found in era-B store: 757/757; of those raw_src==2: 757
+derived-only share of era-B pool-candidate name-nights (adjusted $5M floor), A1 list (757 main): 159,731/2,218,316 = 7.20%
+(cross-check, all raw_src-2 names with floor nights, none pulled: 161,880/2,218,316 = 7.30%; pre-A1 print was 17,796 = 0.80%)
+'era-B price partly derived' tag fires: True

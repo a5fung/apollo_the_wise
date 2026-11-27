@@ -1,0 +1,147 @@
+{
+ "bridge_A": {
+  "rows": 420158,
+  "break_rows": 156695,
+  "nights": 1322,
+  "row_sets_equal": true,
+  "break_sets_equal": true,
+  "median_breaks_per_night": 68.0
+ },
+ "buys_on_break_row_ctxoff": 375,
+ "guard_B_dropped_at_read": 0,
+ "breakrows": {
+  "A": 114847,
+  "B": 53022
+ },
+ "drops": {
+  "A": {
+   "guard_or_flag": 73,
+   "file_start": 20,
+   "window_end": 0
+  },
+  "B": {
+   "guard_or_flag": 70,
+   "file_start": 5036,
+   "window_end": 5208
+  },
+  "split_variant_B_not_dropped": 251
+ },
+ "guard_flag_detail": {
+  "A": {
+   "guard": 3,
+   "flag": 71
+  },
+  "B": {
+   "guard": 6,
+   "flag": 66
+  }
+ },
+ "guard_kinds": "{('A', 'hole'): 1, ('A', 'jump'): 2, ('B', 'hole'): 1, ('B', 'jump'): 5}",
+ "q_grid": [
+  [
+   1,
+   17528,
+   0.8384299406663623
+  ],
+  [
+   0.5,
+   15378,
+   0.5167121862400832
+  ],
+  [
+   0.3333333333333333,
+   13870,
+   0.4097332372025955
+  ],
+  [
+   0.25,
+   12639,
+   0.3595221140913047
+  ],
+  [
+   0.2,
+   11596,
+   0.3259744739565367
+  ],
+  [
+   0.16666666666666666,
+   10753,
+   0.3017762484887938
+  ],
+  [
+   0.125,
+   9416,
+   0.27007221750212407
+  ],
+  [
+   0.1,
+   8356,
+   0.24796553374820487
+  ]
+ ],
+ "q": 0.2,
+ "kept1124": 11596,
+ "kept2411": 11607,
+ "kept_common": 1368,
+ "kept_by_set": {
+  "CHECK": 6266,
+  "DISC": 5330
+ },
+ "kept_by_era_set": {
+  "A_CHECK": 2910,
+  "A_DISC": 5330,
+  "B_CHECK": 3356
+ },
+ "kept_by_era_year": {
+  "A_2017": 667,
+  "A_2018": 917,
+  "A_2019": 879,
+  "A_2020": 2867,
+  "A_2021": 2472,
+  "A_2022": 438,
+  "B_2022": 1085,
+  "B_2023": 1273,
+  "B_2024": 998
+ },
+ "kept_by_year_all": {
+  "2017": 667,
+  "2018": 917,
+  "2019": 879,
+  "2020": 2867,
+  "2021": 2472,
+  "2022": 1523,
+  "2023": 1273,
+  "2024": 998
+ },
+ "kept_distinct_ident": 3136,
+ "min_gap_kept": 61,
+ "unknown_type_share": {
+  "A": 0.027305825242718445,
+  "B": 0.15524433849821215
+ },
+ "bars_end_in_window": 76,
+ "guard_in_window": 7,
+ "split_in_window": 10,
+ "bars_end_by_year": {
+  "2017": 5,
+  "2018": 9,
+  "2019": 5,
+  "2020": 21,
+  "2021": 14,
+  "2022": 8,
+  "2023": 7,
+  "2024": 7
+ },
+ "guard_in_window_by_era": {
+  "A": 7
+ },
+ "derived_only_B": {
+  "n": 276,
+  "of": 3356,
+  "near_floor": 118,
+  "share_of_kept_B": 0.08224076281287247
+ },
+ "buys_on_context_on_break_rows": 353,
+ "buys_on_post_drop_break_rows": 353,
+ "buys_on_kept_events": 25
+}

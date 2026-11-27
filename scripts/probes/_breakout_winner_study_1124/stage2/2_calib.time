@@ -1,0 +1,1 @@
+python3 s2_calib.py > 2_calib.txt 2> 2_calib.err  1519.13s user 11.86s system 711% cpu 3:35.13 total

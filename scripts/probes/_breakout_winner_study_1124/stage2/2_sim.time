@@ -1,0 +1,1 @@
+python3 spread_sim_v2_real.py > 2_sim.txt 2> 2_sim.err  18.74s user 0.06s system 99% cpu 18.815 total

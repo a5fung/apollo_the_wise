@@ -1,0 +1,32 @@
+bars: 12,005,007 rows / 12,532 tickers / 1635 sessions 2016-01-04..2022-06-30 (4s); 5,007 tickers have a missing session inside their span (211,391 holes)
+store A: loaded in 9s; {'raw_factor': 'pre_v2 daily_raw_close.csv.gz per bar (exact)', 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+bars: 8,619,626 rows / 15,702 tickers / 821 sessions 2021-09-27..2024-12-31 (5s); 4,178 tickers have a missing session inside their span (188,545 holes)
+store B: loaded in 8s; {'raw_factor': 'bridge (pre_v2 raw / cb702 adjusted on the 2022-04..06 overlap, then the split list <= 2024-12-31) where the ticker is in both stores; else the split list <= 2024-12-31 only', 'splits_rows_skipped_sealed': 3090, 'bridge_tickers': 8518, 'bridge_unstable_fell_back': 224, 'split_list_only_tickers': 7184, 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+1d overlap bridge: 61 nights 2022-04-01..2022-06-29; evaluated name-nights A 132,899 B 131,616 (49s)
+pool members over the 61 nights: A 207,835 B 205,597; in both 196,477
+pool membership, names in ONE store's pool only: A-only absent_in_file: 3634; A-only below_floors:dollar_volume: 4033; A-only below_floors:price: 1; A-only below_floors:pricedollar_volume: 73; A-only no_bar_that_night: 3134; A-only no_r63: 360; A-only short_history: 123; B-only absent_in_file: 8816; B-only below_floors:dollar_volume: 145; B-only below_floors:price: 20; B-only below_floors:pricedollar_volume: 105; B-only identity_break_guard: 32; B-only no_bar_that_night: 2
+  unexplained pool differences: 0
+
+GATE rs (strength rank >= 35) on names in both pools: 196,477 compared, 196,041 agree = 99.778%; differences by cause {'pool': 338, 'rank_inputs': 44, 'adj_step': 16, 'twin': 34, 'pool_clean': 4}
+
+evaluated in both stores: 124,623 name-nights; only A 8,276; only B 6,993
+  evaluated in one store only, by cause: A: history in the other: 150; A: not in the other pool: 7813; A: rank < 35 in the other (the rs item): 313; B: not in the other pool: 6943; B: rank < 35 in the other (the rs item): 50
+GATE history                (<130 bars): 124,623 compared, agree 124,623 = 100.000%; differences 0 by cause {}
+GATE universe               (<130 bars): 124,623 compared, agree 124,623 = 100.000%; differences 0 by cause {}
+GATE pinned                 (<130 bars): 124,623 compared, agree 124,551 = 99.942%; differences 72 by cause {'twin': 72}
+GATE adr                    (<130 bars): 124,623 compared, agree 124,383 = 99.807%; differences 240 by cause {'bar_values': 78, 'twin': 162}
+GATE rs                     (<130 bars): 124,623 compared, agree 124,623 = 100.000%; differences 0 by cause {}
+GATE prior_move             (<130 bars): 124,623 compared, agree 123,895 = 99.416%; differences 728 by cause {'bar_values': 574, 'twin': 154}
+GATE base_depth             (<130 bars): 124,623 compared, agree 124,506 = 99.906%; differences 117 by cause {'bar_values': 94, 'twin': 11, 'adj_step': 12}
+GATE ema21                  (<130 bars): 124,623 compared, agree 124,491 = 99.894%; differences 132 by cause {'twin': 109, 'bar_values': 15, 'adj_step': 8}
+GATE sma50_falling_under    (<130 bars): 124,623 compared, agree 124,486 = 99.890%; differences 137 by cause {'twin': 118, 'bar_values': 2, 'adj_step': 17}
+GATE downtrend_6m           (<130 bars): 124,623 compared, agree 124,332 = 99.766%; differences 291 by cause {'session_set': 113, 'twin': 134, 'adj_step': 36, 'bar_values': 1, 'file_start': 7}
+GATE lower_line             (>=130 bars): 124,623 compared, agree 102,741 = 82.441%; differences 21,882 by cause {'file_start': 21497, 'adj_step': 303, 'twin': 63, 'bar_values': 10, 'session_set': 9}
+GATE break (level_pass)                 : 124,623 compared, agree 124,511 = 99.910%; differences 112 by cause {'twin': 100, 'bar_values': 7, 'adj_step': 3, 'file_start': 2}
+GATE level (scaled)                     : 124,623 compared, agree 119,736 = 96.079%; differences 4,887 by cause {'bar_values': 4111, 'adj_step': 445, 'twin': 331}
+GATE bridge-set member                  : 124,623 compared, agree 124,377 = 99.803%; differences 246 by cause {'bar_values': 137, 'twin': 109}
+GATE LIVE-list member                   : 124,623 compared, agree 122,981 = 98.682%; differences 1,642 by cause {'bar_values': 66, 'session_set': 23, 'file_start': 1451, 'twin': 80, 'adj_step': 22}
+
+GATES under 99% agreement: ['lower_line', 'level (scaled)', 'LIVE-list member']
+UNTRACED differences in total: 0
+1d OVERLAP GATE: PASS (every difference traced)

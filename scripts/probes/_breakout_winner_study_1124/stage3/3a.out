@@ -1,0 +1,14 @@
+# STAGE 3a - discovery outcomes (captured once)
+prereg 3eb2b9b0 / A1 4a7beda1 / A2 0a6cc417 / feature table d629ef0a asserted
+events: 9968 discovery rows (seed 1124 5330, seed 2411 5314, both 676); max E 2020-12-31 (ASSERT <= 2020-12-31); tickers 2346
+cuts: main ci(2020-12-31)+60 = 2021-03-30 ; +90 pass = 2021-05-12
+bar file: 12,005,007 rows streamed, 2,727,870 kept (discovery tickers, date <= 2021-05-12); latest bar held 2021-05-12
+cross-check 1 (stage 1e: kept events whose bars end inside E..E+60, 2017-20 = 5 / 9 / 5 / 21): here [5, 9, 5, 21]
+cross-check 2 (stage 1e: kept events with a guard / factor-step / flag date in the window = 3 / 1 / 3 / 7 - an upper bound): truncated here [0, 0, 3, 3] ; by reason {'guard': 6}
+cross-check 3: open / high / low of E and close of D from the stream equal the stage-1 event rows on all 9968 events (asserted per event)
+factor step on E itself (not in the truncation rule, counted): 2
+   per event: ends-inside equals stage 1e's column on all 5330 kept events: True; guard-truncated equals stage 1e's guard-in-window column: True
+   events whose bars stop inside the window and resume only after the +90 cut (a hole; window read as held, counted): 1 (seed 1124: 1)
+wrote discovery_outcomes.tsv.gz: 9968 rows (discovery only), sha256 89f590d6e64d13ac992dcd695111086ef3aea024077b617319f662b05e2cb201
+window facts (seed 1124, n 5330): truncated 6; fewer than 61 bars 60; full windows 5270
+this script sha256 b71bdcf029875383 | 9s

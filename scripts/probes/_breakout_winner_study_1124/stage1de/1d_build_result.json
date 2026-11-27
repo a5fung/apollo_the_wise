@@ -1,0 +1,19 @@
+{
+ "nights": 630,
+ "first_D": "2022-04-01",
+ "last_D": "2024-10-03",
+ "bridge_rows": 198771,
+ "bridge_break_rows": 73086,
+ "live_rows": 135417,
+ "live_break_rows": 47789,
+ "listed_median_bridge": 280.0,
+ "listed_median_live": 208.0,
+ "break_median_bridge": 87.5,
+ "break_median_live": 64.5,
+ "trunc_sample": 450,
+ "raw_src_live_rows": {
+  "1": 124765,
+  "2": 10652
+ },
+ "secs": 61
+}

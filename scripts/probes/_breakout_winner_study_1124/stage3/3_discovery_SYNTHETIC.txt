@@ -1,0 +1,478 @@
+# STAGE 3 - DISCOVERY   [SYNTHETIC MODE: coin-toss labels, the outcomes file is NOT opened - NOT a result]
+prereg 3eb2b9b0 / A1 4a7beda1 / A2 0a6cc417 / feature table d629ef0a asserted; floors 1.10 / 1.10 asserted vs stage2/floors_final.txt
+code sha256: this script cabdc65c319c8250 | s2lib f9d693078182e7a2
+
+layout (bottom / middle / top) equals stage 1f's print: {'f01': (1793, 1775, 1762), 'f20': (2058, 1745, 1527), 'f24a': (488, 469, 458), 'f12': (1811, 1763, 1756)}
+discovery events 5330 (2017 667 / 2018 917 / 2019 879 / 2020 2867); second seed 5314; common set (scored on the 20 candidates other than 24a / 24b) 4915 [24a 1345, 24b 3570]
+A2 / R7 - f20 composition-expected ratio under no effect (stage-2 model, 2020 at 3x; outcome-free): all 0.9441 -> QUOTIENT | ex2020 1.0000 -> raw | b4 0.9705 -> raw | common 0.9379 -> QUOTIENT | adr 0.9997 -> raw   (the 'all' value reproduces stage 2's frozen 0.9441473)
+
+## SYNTHETIC LABELS (no outcome file opened). 4% outside 2020, 12% in 2020; planted 2.0x on f08 (high), f13 (high), f02 (LOW).
+
+==============================================================================================================
+## 1. BASE RATES (prereg 2: the 2017-19 rate on its own line - it picks the row of 5.4)
+   2017-19 big-winner rate (+50% close within 60 sessions of the buy-point proxy): 98 of 2463 = 3.98%
+   pooled discovery rate 2017-2020: 447 of 5330 = 8.39%   | 2020 alone 349 of 2867 = 12.17% = 3.06x the 2017-19 rate (the simulation guessed 3x)
+   5.4 row picked by the 2017-19 rate: nearest grid rate 5% (grid 3% / 5% / 8%; nearest on the log scale)
+   per year: events | big winners | monsters (>= 2.0x) | clean winners | ADR-scaled tail | failed (max close < 1.10x)
+   2017          n   667 | big   28 ( 4.20%) | monster   19 ( 2.85%) | clean   21 | ADR tail   20 ( 3.00%) | failed   324 (48.58%)  [few delisted names on file]
+   2018          n   917 | big   33 ( 3.60%) | monster   22 ( 2.40%) | clean   26 | ADR tail   17 ( 1.85%) | failed   435 (47.44%)  [few delisted names on file]
+   2019          n   879 | big   37 ( 4.21%) | monster   23 ( 2.62%) | clean   26 | ADR tail   20 ( 2.28%) | failed   424 (48.24%)
+   2020          n  2867 | big  349 (12.17%) | monster  209 ( 7.29%) | clean  194 | ADR tail  205 ( 7.15%) | failed  1244 (43.39%)
+   2017-19       n  2463 | big   98 ( 3.98%) | monster   64 ( 2.60%) | clean   73 | ADR tail   57 ( 2.31%) | failed  1183 (48.03%)
+   2019-20       n  3746 | big  386 (10.30%) | monster  232 ( 6.19%) | clean  220 | ADR tail  225 ( 6.01%) | failed  1668 (44.53%)
+   ALL           n  5330 | big  447 ( 8.39%) | monster  273 ( 5.12%) | clean  267 | ADR tail  262 ( 4.92%) | failed  2427 (45.53%)
+   E<=2020-10-06 n  4499 | big  349 ( 7.76%) | monster  220 ( 4.89%) | clean  219 | ADR tail  205 ( 4.56%) | failed  2063 (45.85%)
+   monsters in discovery: 273
+   window facts: truncated by the frozen rule 0 events; big winners lost to truncation (un-truncated winner, truncated not) 0; un-truncated rate 4.84% | from max(level, high of E) 4.75% | E+1..E+60 4.86% | 30 sessions 4.99% | 90 sessions 5.48%
+   second seed (2411): 450 of 5314 = 8.47% ; 2017-19 4.02%
+
+==============================================================================================================
+## 2. PREREG 5.2 - per feature (permutation 10000 shuffles, rng 1124; discovery events 5330; big winners 447)
+   B4 (selection control - distance from close(D) to the level, in daily ranges; NOT a grade, never carried): bottom 161/1793 top 141/1762 ratio 0.891 (p 0.2923; without 2020 0.565)
+
+f01 - Daily range (ADR20) | group: volatility  [gate-truncated]
+   big winner: bottom 99/1793 = 5.52% | middle 135/1775 = 7.61% | top 213/1762 = 12.09% | ratio top/bottom 2.189 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | permutation median 1.010 | null 95% band 0.81-1.25 | 90% interval 1.84-2.59
+   without 2020 (2017-19): bottom 20/834 top 42/808 ratio 2.168 | 2020 only: bottom 79/959 top 171/954 ratio 2.176
+   within B4 strata (how big a day E had to be): bottom 109/1796 top 213/1761 ratio 1.993
+   monster (>= 2.0x; never a bar): bottom 69 top 120 ratio 1.770 | clean winners: bottom 60 top 126 ratio 2.137 | ADR-scaled tail: bottom 56 top 132 ratio 2.399
+   per year (ratio, winners top:bottom): 2017* 3.096 (12:4) · 2018* 3.317 (16:5) · 2019 1.308 (14:11) · 2020 2.176 (171:79)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 2.189 PASS | 2 p <= 0.05: 0.0001 PASS | 3 without 2020 >= 1.10 same direction: 2.168 PASS | 4 common set n 4915: ratio 2.213 z 6.87; group 'volatility' winner f01; rank 4 of 11 group winners PASS
+   VERDICT: f01 Daily range (ADR20) - CARRIED, direction frozen: HIGH third wins  [gate-truncated]
+
+f02 - Price (raw close) | group: size  [against Qullamaggie's buys]
+   big winner: bottom 216/1793 = 12.05% | middle 146/1775 = 8.23% | top 85/1762 = 4.82% | ratio top/bottom 0.400 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0001 | permutation median 1.005 | null 95% band 0.81-1.26 | 90% interval 0.33-0.47
+   without 2020 (2017-19): bottom 46/834 top 21/808 ratio 0.471 | 2020 only: bottom 170/959 top 64/954 ratio 0.378
+   within B4 strata (how big a day E had to be): bottom 211/1796 top 92/1761 ratio 0.445
+   monster (>= 2.0x; never a bar): bottom 124 top 54 ratio 0.443 | clean winners: bottom 130 top 49 ratio 0.384 | ADR-scaled tail: bottom 126 top 46 ratio 0.372
+   per year (ratio, winners top:bottom): 2017* 0.826 (8:10) · 2018* 0.605 (7:12) · 2019 0.257 (6:24) · 2020 0.378 (64:170)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.400 PASS | 2 p <= 0.05: 0.0001 PASS | 3 without 2020 >= 1.10 same direction: 2.122 PASS | 4 common set n 4915: ratio 0.421 z 7.49; group 'size' winner f02; rank 3 of 11 group winners PASS
+   VERDICT: f02 Price (raw close) - CARRIED, direction frozen: LOW third wins  [against Qullamaggie's buys]
+
+f03 - Dollar volume | group: size  [gate-truncated]
+   big winner: bottom 173/1793 = 9.65% | middle 150/1775 = 8.45% | top 124/1762 = 7.04% | ratio top/bottom 0.729 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0045 | permutation median 1.005 | null 95% band 0.81-1.24 | 90% interval 0.64-0.84
+   without 2020 (2017-19): bottom 34/834 top 31/808 ratio 0.941 | 2020 only: bottom 139/959 top 93/954 ratio 0.673
+   within B4 strata (how big a day E had to be): bottom 164/1796 top 126/1761 ratio 0.784
+   monster (>= 2.0x; never a bar): bottom 107 top 78 ratio 0.742 | clean winners: bottom 100 top 74 ratio 0.753 | ADR-scaled tail: bottom 101 top 66 ratio 0.665
+   per year (ratio, winners top:bottom): 2017* 1.032 (9:9) · 2018* 1.296 (10:8) · 2019 0.725 (12:17) · 2020 0.673 (93:139)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.729 PASS | 2 p <= 0.05: 0.0045 PASS | 3 without 2020 >= 1.10 same direction: 1.063 FAIL | 4 common set n 4915: ratio 0.752 z 2.53; group 'size' winner f02 FAIL
+   VERDICT: f03 Dollar volume - NOT CARRIED in this study (fails conditions 3, 4)
+
+f04 - Strength rank, best | group: strength  [gate-truncated; seen on the check years (A+ read 10-22)]
+   big winner: bottom 113/1796 = 6.29% | middle 144/1789 = 8.05% | top 190/1745 = 10.89% | ratio top/bottom 1.731 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | permutation median 1.008 | null 95% band 0.81-1.25 | 90% interval 1.40-2.12
+   without 2020 (2017-19): bottom 29/836 top 36/799 ratio 1.299 | 2020 only: bottom 84/960 top 154/946 ratio 1.860
+   within B4 strata (how big a day E had to be): bottom 116/1802 top 196/1750 ratio 1.740
+   monster (>= 2.0x; never a bar): bottom 74 top 107 ratio 1.488 | clean winners: bottom 61 top 111 ratio 1.873 | ADR-scaled tail: bottom 59 top 112 ratio 1.954
+   per year (ratio, winners top:bottom): 2017* 1.339 (9:7) · 2018* 1.370 (13:10) · 2019 1.216 (14:12) · 2020 1.860 (154:84)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.731 PASS | 2 p <= 0.05: 0.0001 PASS | 3 without 2020 >= 1.10 same direction: 1.299 PASS | 4 common set n 4915: ratio 1.698 z 4.60; group 'strength' winner f05 FAIL
+   VERDICT: f04 Strength rank, best - NOT CARRIED in this study (fails condition 4)
+
+f05 - Strength rank, 1 month | group: strength  [seen on the check years (A+ read 10-22)]
+   big winner: bottom 116/1796 = 6.46% | middle 119/1782 = 6.68% | top 212/1752 = 12.10% | ratio top/bottom 1.873 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | permutation median 1.011 | null 95% band 0.81-1.25 | 90% interval 1.51-2.27
+   without 2020 (2017-19): bottom 32/835 top 50/801 ratio 1.629 | 2020 only: bottom 84/961 top 162/951 ratio 1.949
+   within B4 strata (how big a day E had to be): bottom 102/1800 top 207/1748 ratio 2.090
+   monster (>= 2.0x; never a bar): bottom 69 top 130 ratio 1.931 | clean winners: bottom 63 top 130 ratio 2.115 | ADR-scaled tail: bottom 62 top 136 ratio 2.249
+   per year (ratio, winners top:bottom): 2017* 2.234 (17:8) · 2018* 1.508 (16:11) · 2019 1.363 (17:13) · 2020 1.949 (162:84)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.873 PASS | 2 p <= 0.05: 0.0001 PASS | 3 without 2020 >= 1.10 same direction: 1.629 PASS | 4 common set n 4915: ratio 1.848 z 5.35; group 'strength' winner f05; rank 5 of 11 group winners FAIL
+   VERDICT: f05 Strength rank, 1 month - NOT CARRIED in this study (fails condition 4)
+
+f06 - Strength rank, 6 months | group: strength  [seen on the check years (A+ read 10-22)]
+   big winner: bottom 159/1746 = 9.11% | middle 115/1733 = 6.64% | top 160/1707 = 9.37% | ratio top/bottom 1.029 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.8105 | permutation median 1.003 | null 95% band 0.81-1.26 | 90% interval 0.84-1.26
+   without 2020 (2017-19): bottom 41/804 top 34/778 ratio 0.857 | 2020 only: bottom 118/942 top 126/929 ratio 1.083
+   within B4 strata (how big a day E had to be): bottom 145/1745 top 159/1707 ratio 1.121
+   monster (>= 2.0x; never a bar): bottom 101 top 96 ratio 0.972 | clean winners: bottom 97 top 104 ratio 1.097 | ADR-scaled tail: bottom 90 top 99 ratio 1.125
+   per year (ratio, winners top:bottom): 2017* 1.047 (9:9) · 2018* 0.707 (11:16) · 2019 0.900 (14:16) · 2020 1.083 (126:118)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.029 FAIL | 2 p <= 0.05: 0.8105 FAIL | 3 without 2020 >= 1.10 same direction: 0.857 FAIL | 4 common set n 4915: ratio 1.013 z 0.11; group 'strength' winner f05 FAIL
+   VERDICT: f06 Strength rank, 6 months - NOT CARRIED in this study (fails conditions 1, 2, 3, 4)
+
+f07 - Prior move | group: run-up  [gate-truncated; seen on the check years (A+ read 10-22)]
+   big winner: bottom 136/1793 = 7.59% | middle 128/1775 = 7.21% | top 183/1762 = 10.39% | ratio top/bottom 1.369 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0050 | permutation median 1.004 | null 95% band 0.81-1.25 | 90% interval 1.12-1.62
+   without 2020 (2017-19): bottom 31/834 top 29/808 ratio 0.966 | 2020 only: bottom 105/959 top 154/954 ratio 1.474
+   within B4 strata (how big a day E had to be): bottom 140/1796 top 183/1761 ratio 1.333
+   monster (>= 2.0x; never a bar): bottom 84 top 106 ratio 1.284 | clean winners: bottom 79 top 102 ratio 1.314 | ADR-scaled tail: bottom 79 top 105 ratio 1.352
+   per year (ratio, winners top:bottom): 2017* 1.161 (9:8) · 2018* 1.140 (11:10) · 2019 0.711 (9:13) · 2020 1.474 (154:105)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.369 PASS | 2 p <= 0.05: 0.0050 PASS | 3 without 2020 >= 1.10 same direction: 0.966 FAIL | 4 common set n 4915: ratio 1.410 z 2.99; group 'run-up' winner f08 FAIL
+   VERDICT: f07 Prior move - NOT CARRIED in this study (fails conditions 3, 4)
+
+f08 - 20-session run-up | group: run-up
+   big winner: bottom 75/1793 = 4.18% | middle 128/1775 = 7.21% | top 244/1762 = 13.85% | ratio top/bottom 3.311 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | permutation median 1.010 | null 95% band 0.81-1.25 | 90% interval 2.70-4.08
+   without 2020 (2017-19): bottom 16/834 top 51/808 ratio 3.290 | 2020 only: bottom 59/959 top 193/954 ratio 3.288
+   within B4 strata (how big a day E had to be): bottom 81/1796 top 234/1761 ratio 2.946
+   monster (>= 2.0x; never a bar): bottom 42 top 138 ratio 3.344 | clean winners: bottom 39 top 149 ratio 3.888 | ADR-scaled tail: bottom 36 top 151 ratio 4.268
+   per year (ratio, winners top:bottom): 2017* 3.509 (17:5) · 2018* 5.183 (15:3) · 2019 2.441 (19:8) · 2020 3.288 (193:59)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 3.311 PASS | 2 p <= 0.05: 0.0001 PASS | 3 without 2020 >= 1.10 same direction: 3.290 PASS | 4 common set n 4915: ratio 3.330 z 10.45; group 'run-up' winner f08; rank 1 of 11 group winners PASS
+   VERDICT: f08 20-session run-up - CARRIED, direction frozen: HIGH third wins
+
+f09 - 6-month move | group: run-up
+   big winner: bottom 122/1793 = 6.80% | middle 145/1775 = 8.17% | top 180/1762 = 10.22% | ratio top/bottom 1.501 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0009 | permutation median 1.004 | null 95% band 0.81-1.25 | 90% interval 1.25-1.80
+   without 2020 (2017-19): bottom 29/834 top 34/808 ratio 1.210 | 2020 only: bottom 93/959 top 146/954 ratio 1.578
+   within B4 strata (how big a day E had to be): bottom 126/1796 top 179/1761 ratio 1.449
+   monster (>= 2.0x; never a bar): bottom 82 top 103 ratio 1.278 | clean winners: bottom 71 top 105 ratio 1.505 | ADR-scaled tail: bottom 66 top 99 ratio 1.526
+   per year (ratio, winners top:bottom): 2017* 0.751 (8:11) · 2018* 0.933 (9:10) · 2019 2.184 (17:8) · 2020 1.578 (146:93)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.501 PASS | 2 p <= 0.05: 0.0009 PASS | 3 without 2020 >= 1.10 same direction: 1.210 PASS | 4 common set n 4915: ratio 1.543 z 3.74; group 'run-up' winner f08 FAIL
+   VERDICT: f09 6-month move - NOT CARRIED in this study (fails condition 4)
+
+f10 - Close / 52-week high | group: highs
+   big winner: bottom 178/1658 = 10.74% | middle 124/1642 = 7.55% | top 114/1624 = 7.02% | ratio top/bottom 0.654 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0005 | permutation median 1.000 | null 95% band 0.80-1.25 | 90% interval 0.51-0.83
+   without 2020 (2017-19): bottom 42/760 top 24/736 ratio 0.590 | 2020 only: bottom 136/898 top 90/888 ratio 0.669
+   within B4 strata (how big a day E had to be): bottom 161/1655 top 119/1627 ratio 0.752
+   monster (>= 2.0x; never a bar): bottom 108 top 74 ratio 0.700 | clean winners: bottom 104 top 75 ratio 0.736 | ADR-scaled tail: bottom 107 top 70 ratio 0.668
+   per year (ratio, winners top:bottom): 2017* 0.318 (4:13) · 2018* 0.659 (9:14) · 2019 0.761 (11:15) · 2020 0.669 (90:136)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.654 PASS | 2 p <= 0.05: 0.0005 PASS | 3 without 2020 >= 1.10 same direction: 1.695 PASS | 4 common set n 4915: ratio 0.658 z 3.64; group 'highs' winner f10; rank 8 of 11 group winners FAIL
+   VERDICT: f10 Close / 52-week high - NOT CARRIED in this study (fails condition 4)
+
+f12 - Base length | group: base
+   big winner: bottom 137/1811 = 7.56% | middle 136/1763 = 7.71% | top 174/1756 = 9.91% | ratio top/bottom 1.310 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0145 | permutation median 1.005 | null 95% band 0.81-1.24 | 90% interval 1.09-1.58
+   without 2020 (2017-19): bottom 34/846 top 45/802 ratio 1.396 | 2020 only: bottom 103/965 top 129/954 ratio 1.267
+   within B4 strata (how big a day E had to be): bottom 139/1808 top 165/1756 ratio 1.222
+   monster (>= 2.0x; never a bar): bottom 87 top 108 ratio 1.280 | clean winners: bottom 82 top 108 ratio 1.358 | ADR-scaled tail: bottom 77 top 103 ratio 1.380
+   per year (ratio, winners top:bottom): 2017* 1.372 (13:10) · 2018* 1.156 (13:12) · 2019 1.650 (19:12) · 2020 1.267 (129:103)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.310 PASS | 2 p <= 0.05: 0.0145 PASS | 3 without 2020 >= 1.10 same direction: 1.396 PASS | 4 common set n 4915: ratio 1.419 z 3.10; group 'base' winner f13 FAIL
+   VERDICT: f12 Base length - NOT CARRIED in this study (fails condition 4)
+
+f13 - Base depth, % | group: base
+   big winner: bottom 81/1793 = 4.52% | middle 115/1775 = 6.48% | top 251/1762 = 14.25% | ratio top/bottom 3.153 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | permutation median 1.005 | null 95% band 0.81-1.25 | 90% interval 2.46-3.95
+   without 2020 (2017-19): bottom 21/834 top 50/808 ratio 2.458 | 2020 only: bottom 60/959 top 201/954 ratio 3.368
+   within B4 strata (how big a day E had to be): bottom 84/1796 top 238/1761 ratio 2.890
+   monster (>= 2.0x; never a bar): bottom 52 top 142 ratio 2.779 | clean winners: bottom 50 top 151 ratio 3.073 | ADR-scaled tail: bottom 37 top 151 ratio 4.153
+   per year (ratio, winners top:bottom): 2017* 3.096 (18:6) · 2018* 1.613 (14:9) · 2019 3.083 (18:6) · 2020 3.368 (201:60)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 3.153 PASS | 2 p <= 0.05: 0.0001 PASS | 3 without 2020 >= 1.10 same direction: 2.458 PASS | 4 common set n 4915: ratio 3.174 z 10.08; group 'base' winner f13; rank 2 of 11 group winners PASS
+   VERDICT: f13 Base depth, % - CARRIED, direction frozen: HIGH third wins
+
+f15 - Last-10-close spread | group: tightness  [seen on the check years (A+ read 10-22)]
+   big winner: bottom 125/1793 = 6.97% | middle 136/1775 = 7.66% | top 186/1762 = 10.56% | ratio top/bottom 1.514 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0002 | permutation median 1.011 | null 95% band 0.81-1.25 | 90% interval 1.24-1.80
+   without 2020 (2017-19): bottom 37/834 top 33/808 ratio 0.921 | 2020 only: bottom 88/959 top 153/954 ratio 1.748
+   within B4 strata (how big a day E had to be): bottom 126/1796 top 184/1761 ratio 1.489
+   monster (>= 2.0x; never a bar): bottom 77 top 110 ratio 1.454 | clean winners: bottom 76 top 116 ratio 1.553 | ADR-scaled tail: bottom 73 top 110 ratio 1.533
+   per year (ratio, winners top:bottom): 2017* 0.938 (10:11) · 2018* 0.740 (10:14) · 2019 1.113 (13:12) · 2020 1.748 (153:88)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.514 PASS | 2 p <= 0.05: 0.0002 PASS | 3 without 2020 >= 1.10 same direction: 0.921 FAIL | 4 common set n 4915: ratio 1.516 z 3.63; group 'tightness' winner f15; rank 9 of 11 group winners FAIL
+   VERDICT: f15 Last-10-close spread - NOT CARRIED in this study (fails conditions 3, 4)
+
+f16 - Range contraction | group: tightness  [seen on the check years (A+ read 10-22)]
+   big winner: bottom 150/1793 = 8.37% | middle 143/1775 = 8.06% | top 154/1762 = 8.74% | ratio top/bottom 1.045 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.7001 | permutation median 1.011 | null 95% band 0.81-1.25 | 90% interval 0.87-1.28
+   without 2020 (2017-19): bottom 33/834 top 31/808 ratio 0.970 | 2020 only: bottom 117/959 top 123/954 ratio 1.057
+   within B4 strata (how big a day E had to be): bottom 155/1796 top 153/1761 ratio 1.007
+   monster (>= 2.0x; never a bar): bottom 91 top 91 ratio 1.018 | clean winners: bottom 83 top 105 ratio 1.287 | ADR-scaled tail: bottom 92 top 86 ratio 0.951
+   per year (ratio, winners top:bottom): 2017* 0.938 (10:11) · 2018* 0.691 (8:12) · 2019 1.336 (13:10) · 2020 1.057 (123:117)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.045 FAIL | 2 p <= 0.05: 0.7001 FAIL | 3 without 2020 >= 1.10 same direction: 0.970 FAIL | 4 common set n 4915: ratio 1.037 z 0.31; group 'tightness' winner f15 FAIL
+   VERDICT: f16 Range contraction - NOT CARRIED in this study (fails conditions 1, 2, 3, 4)
+
+f17 - Volume dry-up | group: volume  [seen on the check years (A+ read 10-22)]
+   big winner: bottom 148/1793 = 8.25% | middle 139/1775 = 7.83% | top 160/1762 = 9.08% | ratio top/bottom 1.100 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.3934 | permutation median 1.005 | null 95% band 0.81-1.25 | 90% interval 0.87-1.34
+   without 2020 (2017-19): bottom 41/834 top 28/808 ratio 0.705 | 2020 only: bottom 107/959 top 132/954 ratio 1.240
+   within B4 strata (how big a day E had to be): bottom 150/1796 top 162/1761 ratio 1.101
+   monster (>= 2.0x; never a bar): bottom 92 top 94 ratio 1.040 | clean winners: bottom 90 top 87 ratio 0.984 | ADR-scaled tail: bottom 87 top 96 ratio 1.123
+   per year (ratio, winners top:bottom): 2017* 0.442 (6:14) · 2018* 0.718 (9:13) · 2019 0.954 (13:14) · 2020 1.240 (132:107)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.100 FAIL | 2 p <= 0.05: 0.3934 FAIL | 3 without 2020 >= 1.10 same direction: 0.705 FAIL | 4 common set n 4915: ratio 1.104 z 0.86; group 'volume' winner f18 FAIL
+   VERDICT: f17 Volume dry-up - NOT CARRIED in this study (fails conditions 1, 2, 3, 4)
+
+f18 - Up vs down volume | group: volume
+   big winner: bottom 115/1793 = 6.41% | middle 151/1775 = 8.51% | top 181/1762 = 10.27% | ratio top/bottom 1.602 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | permutation median 1.005 | null 95% band 0.81-1.25 | 90% interval 1.29-2.07
+   without 2020 (2017-19): bottom 26/834 top 37/808 ratio 1.469 | 2020 only: bottom 89/959 top 144/954 ratio 1.626
+   within B4 strata (how big a day E had to be): bottom 113/1796 top 181/1761 ratio 1.634
+   monster (>= 2.0x; never a bar): bottom 68 top 110 ratio 1.646 | clean winners: bottom 60 top 109 ratio 1.849 | ADR-scaled tail: bottom 63 top 110 ratio 1.777
+   per year (ratio, winners top:bottom): 2017* 2.889 (14:5) · 2018* 0.921 (8:9) · 2019 1.285 (15:12) · 2020 1.626 (144:89)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.602 PASS | 2 p <= 0.05: 0.0001 PASS | 3 without 2020 >= 1.10 same direction: 1.469 PASS | 4 common set n 4915: ratio 1.671 z 4.46; group 'volume' winner f18; rank 7 of 11 group winners FAIL
+   VERDICT: f18 Up vs down volume - NOT CARRIED in this study (fails condition 4)
+
+f19 - Extension above the 10-day | group: averages
+   big winner: bottom 108/1793 = 6.02% | middle 152/1775 = 8.56% | top 187/1762 = 10.61% | ratio top/bottom 1.762 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.0001 | permutation median 1.011 | null 95% band 0.81-1.25 | 90% interval 1.53-2.00
+   without 2020 (2017-19): bottom 19/834 top 38/808 ratio 2.064 | 2020 only: bottom 89/959 top 149/954 ratio 1.683
+   within B4 strata (how big a day E had to be): bottom 115/1796 top 189/1761 ratio 1.676
+   monster (>= 2.0x; never a bar): bottom 65 top 112 ratio 1.753 | clean winners: bottom 57 top 122 ratio 2.178 | ADR-scaled tail: bottom 52 top 117 ratio 2.290
+   per year (ratio, winners top:bottom): 2017* 1.474 (10:7) · 2018* 2.695 (13:5) · 2019 2.202 (15:7) · 2020 1.683 (149:89)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.762 PASS | 2 p <= 0.05: 0.0001 PASS | 3 without 2020 >= 1.10 same direction: 2.064 PASS | 4 common set n 4915: ratio 1.825 z 5.22; group 'averages' winner f19; rank 6 of 11 group winners FAIL
+   VERDICT: f19 Extension above the 10-day - NOT CARRIED in this study (fails condition 4)
+
+f20 - Shape count | group: averages
+   big winner: bottom 191/2058 = 9.28% | middle 141/1745 = 8.08% | top 115/1527 = 7.53% | ratio top/bottom 0.811 / composition-expected 0.9441 = QUOTIENT 0.859 (A2) -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0704 | p centred on the expected value 0.1781 | permutation median 0.963 | null 95% band 0.78-1.19 | 90% interval 0.74-1.00
+   without 2020 (2017-19): bottom 32/868 top 26/736 ratio 0.958 | 2020 only: bottom 159/1190 top 89/791 ratio 0.842
+   within B4 strata (how big a day E had to be): bottom 187/2061 top 120/1479 ratio 0.894
+   monster (>= 2.0x; never a bar): bottom 110 top 77 ratio 0.943 | clean winners: bottom 118 top 65 ratio 0.742 | ADR-scaled tail: bottom 108 top 65 ratio 0.811
+   per year (ratio, winners top:bottom): 2017* 0.698 (4:9) · 2018* 1.148 (11:9) · 2019 0.958 (11:14) · 2020 0.842 (89:159)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.859 FAIL | 2 p <= 0.05: 0.0704 FAIL | 3 without 2020 >= 1.10 same direction: 1.044 FAIL | 4 common set n 4915: ratio 0.858 z 1.35; group 'averages' winner f19 FAIL
+   VERDICT: f20 Shape count - NOT CARRIED in this study (fails conditions 1, 2, 3, 4)
+
+f21 - Close vs the 200-day (daily ranges) | group: trend
+   big winner: bottom 139/1691 = 8.22% | middle 143/1677 = 8.53% | top 141/1664 = 8.47% | ratio top/bottom 1.031 -> HIGH third wins
+   permutation p (two-sided, 10,000) 0.7904 | permutation median 1.003 | null 95% band 0.81-1.25 | 90% interval 0.84-1.24
+   without 2020 (2017-19): bottom 36/777 top 27/756 ratio 0.771 | 2020 only: bottom 103/914 top 114/908 ratio 1.114
+   within B4 strata (how big a day E had to be): bottom 147/1693 top 137/1660 ratio 0.950
+   monster (>= 2.0x; never a bar): bottom 91 top 85 ratio 0.949 | clean winners: bottom 87 top 88 ratio 1.028 | ADR-scaled tail: bottom 79 top 79 ratio 1.016
+   per year (ratio, winners top:bottom): 2017* 0.835 (8:10) · 2018* 0.561 (6:11) · 2019 0.879 (13:15) · 2020 1.114 (114:103)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 1.031 FAIL | 2 p <= 0.05: 0.7904 FAIL | 3 without 2020 >= 1.10 same direction: 0.771 FAIL | 4 common set n 4915: ratio 0.993 z 0.06; group 'trend' winner f22 FAIL
+   VERDICT: f21 Close vs the 200-day (daily ranges) - NOT CARRIED in this study (fails conditions 1, 2, 3, 4)
+
+f22 - Sessions since the 52-week low | group: trend
+   big winner: bottom 162/1671 = 9.69% | middle 134/1636 = 8.19% | top 120/1617 = 7.42% | ratio top/bottom 0.765 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.0220 | permutation median 1.004 | null 95% band 0.80-1.26 | 90% interval 0.65-0.92
+   without 2020 (2017-19): bottom 38/760 top 23/728 ratio 0.632 | 2020 only: bottom 124/911 top 97/889 ratio 0.802
+   within B4 strata (how big a day E had to be): bottom 153/1659 top 122/1613 ratio 0.820
+   monster (>= 2.0x; never a bar): bottom 103 top 68 ratio 0.682 | clean winners: bottom 96 top 72 ratio 0.775 | ADR-scaled tail: bottom 99 top 67 ratio 0.699
+   per year (ratio, winners top:bottom): 2017* 0.377 (5:14) · 2018* 0.830 (8:10) · 2019 0.745 (10:14) · 2020 0.802 (97:124)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.765 PASS | 2 p <= 0.05: 0.0220 PASS | 3 without 2020 >= 1.10 same direction: 1.583 PASS | 4 common set n 4915: ratio 0.766 z 2.31; group 'trend' winner f22; rank 10 of 11 group winners FAIL
+   VERDICT: f22 Sessions since the 52-week low - NOT CARRIED in this study (fails condition 4)
+
+f24a - Gap at the open, opened ABOVE the level | group: open
+   big winner: bottom 48/488 = 9.84% | middle 56/469 = 11.94% | top 42/458 = 9.17% | ratio top/bottom 0.932 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.7061 | permutation median 1.019 | null 95% band 0.70-1.48 | 90% interval 0.64-1.22
+   without 2020 (2017-19): bottom 7/163 top 1/142 ratio 0.164 | 2020 only: bottom 41/325 top 41/316 ratio 1.028
+   within B4 strata (how big a day E had to be): bottom 47/454 top 49/433 ratio 1.093
+   monster (>= 2.0x; never a bar): bottom 28 top 26 ratio 0.989 | clean winners: bottom 30 top 23 ratio 0.817 | ADR-scaled tail: bottom 29 top 23 ratio 0.845
+   per year (ratio, winners top:bottom): 2017* 0.593 (1:2) · 2018* 0.368 (0:1) · 2019 0.128 (0:4) · 2020 1.028 (41:41)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.932 FAIL | 2 p <= 0.05: 0.7061 FAIL | 3 without 2020 >= 1.10 same direction: 6.098 PASS | 4 common set n 1337: ratio 0.896 z 0.55; group 'open' winner f24b FAIL
+   VERDICT: f24a Gap at the open, opened ABOVE the level - NOT CARRIED in this study (fails conditions 1, 2, 4)
+
+f24b - Gap at the open, opened at / below the level | group: open
+   big winner: bottom 108/1317 = 8.20% | middle 99/1305 = 7.59% | top 94/1285 = 7.32% | ratio top/bottom 0.892 -> LOW third wins
+   permutation p (two-sided, 10,000) 0.4017 | permutation median 0.996 | null 95% band 0.76-1.30 | 90% interval 0.68-1.16
+   without 2020 (2017-19): bottom 28/672 top 26/654 ratio 0.954 | 2020 only: bottom 80/645 top 68/631 ratio 0.869
+   within B4 strata (how big a day E had to be): bottom 109/1318 top 99/1287 ratio 0.930
+   monster (>= 2.0x; never a bar): bottom 65 top 59 ratio 0.930 | clean winners: bottom 66 top 55 ratio 0.854 | ADR-scaled tail: bottom 63 top 57 ratio 0.927
+   per year (ratio, winners top:bottom): 2017* 0.682 (6:9) · 2018* 1.664 (13:8) · 2019 0.658 (7:11) · 2020 0.869 (68:80)   (* few delisted names on file)
+   CONDITIONS: 1 ratio >= 1.25 or <= 0.80: 0.892 FAIL | 2 p <= 0.05: 0.4017 FAIL | 3 without 2020 >= 1.10 same direction: 1.048 FAIL | 4 common set n 3570: ratio 0.893 z 0.82; group 'open' winner f24b; rank 11 of 11 group winners FAIL
+   VERDICT: f24b Gap at the open, opened at / below the level - NOT CARRIED in this study (fails conditions 1, 2, 3, 4)
+
+==============================================================================================================
+## DESCRIPTION-ONLY two-group features (stage 1f: smaller group under 15% / empty) - Mantel-Haenszel yes/no by month; never a candidate
+   f11 Level is a 52-week high: NO 379/4367 = 8.68% | YES 29/359 = 8.08% | MH ratio yes/no 1.022 (permutation p 0.9159, description) | permutation median 0.984
+   f23 First base since the major low: NO 354/4224 = 8.38% | YES 56/600 = 9.33% | MH ratio yes/no 1.188 (permutation p 0.2766, description) | permutation median 1.007
+   f14 Level comes from a range: NOT EVALUABLE (the yes group is empty by the live code, stage 1f) - no reading
+   B4 (selection control - distance from close(D) to the level, in daily ranges; NOT a grade, never carried): bottom 161/1793 top 141/1762 ratio 0.891 (p 0.2923; without 2020 0.565)
+
+==============================================================================================================
+## CONDITION 4 - group winners and the cap of four (z on the common set; ALL candidates compete, R6)
+   group volatility: f01 z 6.87 (ratio 2.213, own p 0.0001, 1-3 pass)  -> winner f01
+   group size      : f02 z 7.49 (ratio 0.421, own p 0.0001, 1-3 pass) | f03 z 2.53 (ratio 0.752, own p 0.0045, 1-3 fail)  -> winner f02
+   group strength  : f04 z 4.60 (ratio 1.698, own p 0.0001, 1-3 pass) | f05 z 5.35 (ratio 1.848, own p 0.0001, 1-3 pass) | f06 z 0.11 (ratio 1.013, own p 0.8105, 1-3 fail)  -> winner f05
+   group run-up    : f07 z 2.99 (ratio 1.410, own p 0.0050, 1-3 fail) | f08 z 10.45 (ratio 3.330, own p 0.0001, 1-3 pass) | f09 z 3.74 (ratio 1.543, own p 0.0009, 1-3 pass)  -> winner f08
+   group highs     : f10 z 3.64 (ratio 0.658, own p 0.0005, 1-3 pass)  -> winner f10
+   group base      : f12 z 3.10 (ratio 1.419, own p 0.0145, 1-3 pass) | f13 z 10.08 (ratio 3.174, own p 0.0001, 1-3 pass)  -> winner f13
+   group tightness : f15 z 3.63 (ratio 1.516, own p 0.0002, 1-3 fail) | f16 z 0.31 (ratio 1.037, own p 0.7001, 1-3 fail)  -> winner f15
+   group volume    : f17 z 0.86 (ratio 1.104, own p 0.3934, 1-3 fail) | f18 z 4.46 (ratio 1.671, own p 0.0001, 1-3 pass)  -> winner f18
+   group averages  : f19 z 5.22 (ratio 1.825, own p 0.0001, 1-3 pass) | f20 z 1.35 (ratio 0.858, own p 0.0704, 1-3 fail)  -> winner f19
+   group trend     : f21 z 0.06 (ratio 0.993, own p 0.7904, 1-3 fail) | f22 z 2.31 (ratio 0.766, own p 0.0220, 1-3 pass)  -> winner f22
+   group stage     : no candidate (description-only)
+   group open      : f24a z 0.55 (ratio 0.896, own p 0.7061, 1-3 fail) | f24b z 0.82 (ratio 0.893, own p 0.4017, 1-3 fail)  -> winner f24b
+   cap: f08 z 10.45 > f13 z 10.08 > f02 z 7.49 > f01 z 6.87 > f05 z 5.35 > f19 z 5.22 > f18 z 4.46 > f10 z 3.64 > f15 z 3.63 > f22 z 2.31 > f24b z 0.82  -> the four: ['f08', 'f13', 'f02', 'f01']
+   passing conditions 1-3: ['f01', 'f02', 'f04', 'f05', 'f08', 'f09', 'f10', 'f12', 'f13', 'f18', 'f19', 'f22']
+   ALTERNATIVE reading (only the 1-3 passers compete): group winners {'volatility': 'f01', 'size': 'f02', 'strength': 'f05', 'run-up': 'f08', 'highs': 'f10', 'base': 'f13', 'volume': 'f18', 'averages': 'f19', 'trend': 'f22'}; the four ['f08', 'f13', 'f02', 'f01']; carried ['f01', 'f02', 'f08', 'f13']   (same carried list)
+
+## SUMMARY (judged ratio; ex20 / B4s in the feature's own direction; z on the common set)
+   feat  name                                        ratio       p   ex20    B4s     z grpWin  cap4   1-3  verdict
+   f01   Daily range (ADR20)                         2.189  0.0001  2.168  1.993  6.87    yes   yes  pass  CARRIED  [gate-truncated]
+   f02   Price (raw close)                           0.400  0.0001  2.122  2.249  7.49    yes   yes  pass  CARRIED  [against Qullamaggie's buys]
+   f03   Dollar volume                               0.729  0.0045  1.063  1.276  2.53     no    no  fail  NOT CARRIED  [gate-truncated]
+   f04   Strength rank, best                         1.731  0.0001  1.299  1.740  4.60     no    no  pass  NOT CARRIED  [gate-truncated; seen on the check years (A+ read 10-22)]
+   f05   Strength rank, 1 month                      1.873  0.0001  1.629  2.090  5.35    yes    no  pass  NOT CARRIED  [seen on the check years (A+ read 10-22)]
+   f06   Strength rank, 6 months                     1.029  0.8105  0.857  1.121  0.11     no    no  fail  NOT CARRIED  [seen on the check years (A+ read 10-22)]
+   f07   Prior move                                  1.369  0.0050  0.966  1.333  2.99     no    no  fail  NOT CARRIED  [gate-truncated; seen on the check years (A+ read 10-22)]
+   f08   20-session run-up                           3.311  0.0001  3.290  2.946 10.45    yes   yes  pass  CARRIED
+   f09   6-month move                                1.501  0.0009  1.210  1.449  3.74     no    no  pass  NOT CARRIED
+   f10   Close / 52-week high                        0.654  0.0005  1.695  1.330  3.64    yes    no  pass  NOT CARRIED
+   f12   Base length                                 1.310  0.0145  1.396  1.222  3.10     no    no  pass  NOT CARRIED
+   f13   Base depth, %                               3.153  0.0001  2.458  2.890 10.08    yes   yes  pass  CARRIED
+   f15   Last-10-close spread                        1.514  0.0002  0.921  1.489  3.63    yes    no  fail  NOT CARRIED  [seen on the check years (A+ read 10-22)]
+   f16   Range contraction                           1.045  0.7001  0.970  1.007  0.31     no    no  fail  NOT CARRIED  [seen on the check years (A+ read 10-22)]
+   f17   Volume dry-up                               1.100  0.3934  0.705  1.101  0.86     no    no  fail  NOT CARRIED  [seen on the check years (A+ read 10-22)]
+   f18   Up vs down volume                           1.602  0.0001  1.469  1.634  4.46    yes    no  pass  NOT CARRIED
+   f19   Extension above the 10-day                  1.762  0.0001  2.064  1.676  5.22    yes    no  pass  NOT CARRIED
+   f20   Shape count                                 0.859  0.0704  1.044  1.118  1.35     no    no  fail  NOT CARRIED
+   f21   Close vs the 200-day (daily ranges)         1.031  0.7904  0.771  0.950  0.06     no    no  fail  NOT CARRIED
+   f22   Sessions since the 52-week low              0.765  0.0220  1.583  1.219  2.31    yes    no  pass  NOT CARRIED
+   f24a  Gap at the open, opened ABOVE the level     0.932  0.7061  6.098  0.915  0.55     no    no  fail  NOT CARRIED
+   f24b  Gap at the open, opened at / below the lev  0.892  0.4017  1.048  1.075  0.82    yes    no  fail  NOT CARRIED
+   B4    Distance close(D) -> level (daily ranges)   0.891  0.2923  1.769      -     -      -     -     -  selection control (never carried)
+
+## CARRIED LIST (direction frozen)
+   f01 Daily range (ADR20): HIGH third wins | ratio 2.189 (90% 1.84-2.59) p 0.0001 | without 2020 2.168 | within B4 strata 1.993 (floor 1.10 -> no tag) | monster 1.770 | clean 2.137 | ADR tail 2.399 | Qullamaggie's buys in the winning third 49.4%  [gate-truncated]
+   f02 Price (raw close): LOW third wins | ratio 0.400 (90% 0.33-0.47) p 0.0001 | without 2020 2.122 | within B4 strata 2.249 (floor 1.10 -> no tag) | monster 0.443 | clean 0.384 | ADR tail 0.372 | Qullamaggie's buys in the winning third 19.9% -> TAG against Qullamaggie's buys  [against Qullamaggie's buys]
+   f08 20-session run-up: HIGH third wins | ratio 3.311 (90% 2.70-4.08) p 0.0001 | without 2020 3.290 | within B4 strata 2.946 (floor 1.10 -> no tag) | monster 3.344 | clean 3.888 | ADR tail 4.268 | Qullamaggie's buys in the winning third 36.6%
+   f13 Base depth, %: HIGH third wins | ratio 3.153 (90% 2.46-3.95) p 0.0001 | without 2020 2.458 | within B4 strata 2.890 (floor 1.10 -> no tag) | monster 2.779 | clean 3.073 | ADR tail 4.153 | Qullamaggie's buys in the winning third 46.1%
+   passing 1-3 but losing on condition 4 (group / cap): ['f04', 'f05', 'f09', 'f10', 'f12', 'f18', 'f19', 'f22']
+   passing 1-2 only: ['f03', 'f07', 'f15']
+   p within 0.04-0.06 (recount-sensitive): none
+   f20 (A2): raw 0.811 / frozen expected 0.9441473 = 0.859; permutation median (real-rates centre) 0.963 -> raw / that = 0.843; condition 1 under the frozen centre FAIL (same under the permutation centre)
+
+==============================================================================================================
+## BENCHMARKS B1-B3 - ONE table per stage
+   not a test of the grade - the grade is judged on Qullamaggie's buys only (#717)
+   B1 is in-sample for 2017-20 (fitted on Qullamaggie's picks, never on returns). B3 codes are a 2026-10-16 snapshot (names gone by 2026 have none).
+   B1 Pick-model score  : bottom 157/1793 = 8.76% | middle 142/1775 | top 148/1762 = 8.40% | ratio 0.959 (p 0.7086, 90% 0.83-1.13) | without 2020 1.161 | within B4 strata 0.947 | gapped over the level 0.852 / did not 1.046 | per year 2017 1.419 · 2018 1.925 · 2019 0.725 · 2020 0.901
+   B2 Live order score  : bottom 169/1795 = 9.42% | middle 144/1773 | top 134/1762 = 7.60% | ratio 0.808 (p 0.0565, 90% 0.67-0.99) | without 2020 0.973 | within B4 strata 0.824 | gapped over the level 1.003 / did not 0.755 | per year 2017 0.864 · 2018 0.848 · 2019 1.215 · 2020 0.760
+   B3 Group strength    : bottom 97/1125 = 8.62% | middle 79/1109 | top 88/1088 = 8.09% | ratio 0.938 (p 0.6646, 90% 0.80-1.13) | without 2020 0.749 | within B4 strata 0.940 | gapped over the level 0.702 / did not 1.068 | per year 2017 1.800 · 2018 0.681 · 2019 0.463 · 2020 0.971
+   B4 (selection control - distance from close(D) to the level, in daily ranges; NOT a grade, never carried): bottom 161/1793 top 141/1762 ratio 0.891 (p 0.2923; without 2020 0.565)
+
+## 5.6 COMBINATION
+   definition (fixed; tested ONCE on check as one family member): equal-weight mean of the within-(era, month) percentile ranks ((average rank - 0.5) / n, over events scored on all members) of f01 (as is), f02 (1 - rank), f08 (as is), f13 (as is); HIGH third wins.
+   discovery numbers are DESCRIPTION ('seen' - the members were chosen on these outcomes): scored 5330; bottom 65/1799 top 245/1758 ratio 3.857
+
+==============================================================================================================
+## 5.5 EXTRA READINGS of the carried features (description; NONE is a bar). Ratios are top/bottom; 'dir' = in the frozen direction.
+
+   f01 Daily range (ADR20) - frozen direction: HIGH third wins  [gate-truncated]
+    population:
+      year 2017 (own thirds) [few delisted names on file] n(top+bottom)   445 | winners top:bottom 12:4 | ratio 3.096 | dir 3.096
+      year 2018 (own thirds) [few delisted names on file] n(top+bottom)   611 | winners top:bottom 16:5 | ratio 3.317 | dir 3.317
+      year 2019 (own thirds)                       n(top+bottom)   586 | winners top:bottom 14:11 | ratio 1.308 | dir 1.308
+      year 2020 (own thirds)                       n(top+bottom)  1913 | winners top:bottom 171:79 | ratio 2.176 | dir 2.176
+      first breaks (after 10 quiet sessions)       n(top+bottom)  1206 | winners top:bottom 73:33 | ratio 2.364 | dir 2.364
+      later breaks                                 n(top+bottom)  2347 | winners top:bottom 143:74 | ratio 1.991 | dir 1.991
+      first break after 60 quiet sessions          n(top+bottom)   759 | winners top:bottom 46:26 | ratio 1.920 | dir 1.920
+      common stock only                            n(top+bottom)  3224 | winners top:bottom 193:88 | ratio 2.237 | dir 2.237
+      price >= $5                                  n(top+bottom)  3300 | winners top:bottom 182:90 | ratio 2.062 | dir 2.062
+      embargoed discovery (E <= 2020-10-06)        n(top+bottom)  3000 | winners top:bottom 161:80 | ratio 2.050 | dir 2.050
+      2019-20 alone                                n(top+bottom)  2499 | winners top:bottom 185:90 | ratio 2.077 | dir 2.077
+      full 60-session windows only                 n(top+bottom)  3455 | winners top:bottom 207:94 | ratio 2.239 | dir 2.239
+      QQQ above its 50-day at D                    n(top+bottom)  2498 | winners top:bottom 139:68 | ratio 2.101 | dir 2.101
+      QQQ below its 50-day at D                    n(top+bottom)  1051 | winners top:bottom 76:34 | ratio 2.380 | dir 2.380
+      gapped over the level at the open            n(top+bottom)   946 | winners top:bottom 69:32 | ratio 2.297 | dir 2.297
+      did not gap over the level                   n(top+bottom)  2603 | winners top:bottom 145:70 | ratio 2.125 | dir 2.125
+      second seed (2411) of the keep rule          n(top+bottom)  3546 | winners top:bottom 222:99 | ratio 2.288 | dir 2.288
+    outcome:
+      monster tier (>= 2.0x)                       n(top+bottom)  3555 | winners top:bottom 120:69 | ratio 1.770 | dir 1.770
+      clean winners                                n(top+bottom)  3555 | winners top:bottom 126:60 | ratio 2.137 | dir 2.137
+      ADR-scaled tail                              n(top+bottom)  3555 | winners top:bottom 132:56 | ratio 2.399 | dir 2.399
+      un-truncated window                          n(top+bottom)  3555 | winners top:bottom 128:50 | ratio 2.605 | dir 2.605
+      from max(level, high of E)                   n(top+bottom)  3555 | winners top:bottom 119:56 | ratio 2.162 | dir 2.162
+      E+1 .. E+60 (E's close excluded)             n(top+bottom)  3555 | winners top:bottom 124:56 | ratio 2.253 | dir 2.253
+      ADR-neutral (thirds inside ADR20 strata)     n(top+bottom)  3557 | winners top:bottom 168:133 | ratio 1.288 | dir 1.288
+      window 30 sessions (-50%)                    n(top+bottom)  3555 | winners top:bottom 140:52 | ratio 2.740 | dir 2.740
+      window 90 sessions (+50%)                    n(top+bottom)  3555 | winners top:bottom 142:66 | ratio 2.189 | dir 2.189
+    conditioning (the FEATURE's ratio only):
+      within the bottom B4 third                   n(top+bottom)  1190 | winners top:bottom 75:35 | ratio 2.194 | dir 2.194
+      within the middle B4 third                   n(top+bottom)  1185 | winners top:bottom 67:44 | ratio 1.551 | dir 1.551
+      within the top B4 third                      n(top+bottom)  1182 | winners top:bottom 71:30 | ratio 2.407 | dir 2.407
+      within the bottom B1 (pick-score) third      n(top+bottom)  1190 | winners top:bottom 65:37 | ratio 1.799 | dir 1.799
+      within the middle B1 (pick-score) third      n(top+bottom)  1185 | winners top:bottom 70:32 | ratio 2.228 | dir 2.228
+      within the top B1 (pick-score) third         n(top+bottom)  1182 | winners top:bottom 76:37 | ratio 2.089 | dir 2.089
+
+   f02 Price (raw close) - frozen direction: LOW third wins  [against Qullamaggie's buys]
+    population:
+      year 2017 (own thirds) [few delisted names on file] n(top+bottom)   445 | winners top:bottom 8:10 | ratio 0.826 | dir 1.211
+      year 2018 (own thirds) [few delisted names on file] n(top+bottom)   611 | winners top:bottom 7:12 | ratio 0.605 | dir 1.654
+      year 2019 (own thirds)                       n(top+bottom)   586 | winners top:bottom 6:24 | ratio 0.257 | dir 3.892
+      year 2020 (own thirds)                       n(top+bottom)  1913 | winners top:bottom 64:170 | ratio 0.378 | dir 2.642
+      first breaks (after 10 quiet sessions)       n(top+bottom)  1206 | winners top:bottom 25:82 | ratio 0.326 | dir 3.069
+      later breaks                                 n(top+bottom)  2347 | winners top:bottom 65:135 | ratio 0.497 | dir 2.012
+      first break after 60 quiet sessions          n(top+bottom)   759 | winners top:bottom 19:47 | ratio 0.439 | dir 2.280
+      common stock only                            n(top+bottom)  3225 | winners top:bottom 83:195 | ratio 0.435 | dir 2.299
+      price >= $5                                  n(top+bottom)  3301 | winners top:bottom 84:183 | ratio 0.468 | dir 2.135
+      embargoed discovery (E <= 2020-10-06)        n(top+bottom)  3000 | winners top:bottom 68:164 | ratio 0.422 | dir 2.367
+      2019-20 alone                                n(top+bottom)  2499 | winners top:bottom 70:194 | ratio 0.365 | dir 2.743
+      full 60-session windows only                 n(top+bottom)  3455 | winners top:bottom 84:210 | ratio 0.407 | dir 2.458
+      QQQ above its 50-day at D                    n(top+bottom)  2498 | winners top:bottom 59:142 | ratio 0.427 | dir 2.342
+      QQQ below its 50-day at D                    n(top+bottom)  1051 | winners top:bottom 26:72 | ratio 0.387 | dir 2.581
+      gapped over the level at the open            n(top+bottom)   946 | winners top:bottom 29:62 | ratio 0.498 | dir 2.007
+      did not gap over the level                   n(top+bottom)  2605 | winners top:bottom 57:154 | ratio 0.380 | dir 2.630
+      second seed (2411) of the keep rule          n(top+bottom)  3547 | winners top:bottom 93:204 | ratio 0.465 | dir 2.148
+    outcome:
+      monster tier (>= 2.0x)                       n(top+bottom)  3555 | winners top:bottom 54:124 | ratio 0.443 | dir 2.257
+      clean winners                                n(top+bottom)  3555 | winners top:bottom 49:130 | ratio 0.384 | dir 2.607
+      ADR-scaled tail                              n(top+bottom)  3555 | winners top:bottom 46:126 | ratio 0.372 | dir 2.692
+      un-truncated window                          n(top+bottom)  3555 | winners top:bottom 46:131 | ratio 0.357 | dir 2.799
+      from max(level, high of E)                   n(top+bottom)  3555 | winners top:bottom 53:114 | ratio 0.473 | dir 2.114
+      E+1 .. E+60 (E's close excluded)             n(top+bottom)  3555 | winners top:bottom 51:121 | ratio 0.429 | dir 2.332
+      ADR-neutral (thirds inside ADR20 strata)     n(top+bottom)  3558 | winners top:bottom 102:190 | ratio 0.548 | dir 1.825
+      window 30 sessions (-50%)                    n(top+bottom)  3555 | winners top:bottom 49:128 | ratio 0.390 | dir 2.567
+      window 90 sessions (+50%)                    n(top+bottom)  3555 | winners top:bottom 53:138 | ratio 0.391 | dir 2.559
+    conditioning (the FEATURE's ratio only):
+      within the bottom B4 third                   n(top+bottom)  1190 | winners top:bottom 33:71 | ratio 0.476 | dir 2.101
+      within the middle B4 third                   n(top+bottom)  1185 | winners top:bottom 33:73 | ratio 0.461 | dir 2.171
+      within the top B4 third                      n(top+bottom)  1182 | winners top:bottom 26:67 | ratio 0.395 | dir 2.534
+      within the bottom B1 (pick-score) third      n(top+bottom)  1190 | winners top:bottom 27:69 | ratio 0.401 | dir 2.496
+      within the middle B1 (pick-score) third      n(top+bottom)  1185 | winners top:bottom 31:68 | ratio 0.464 | dir 2.153
+      within the top B1 (pick-score) third         n(top+bottom)  1182 | winners top:bottom 29:76 | ratio 0.388 | dir 2.577
+
+   f08 20-session run-up - frozen direction: HIGH third wins
+    population:
+      year 2017 (own thirds) [few delisted names on file] n(top+bottom)   445 | winners top:bottom 17:5 | ratio 3.509 | dir 3.509
+      year 2018 (own thirds) [few delisted names on file] n(top+bottom)   611 | winners top:bottom 15:3 | ratio 5.183 | dir 5.183
+      year 2019 (own thirds)                       n(top+bottom)   586 | winners top:bottom 19:8 | ratio 2.441 | dir 2.441
+      year 2020 (own thirds)                       n(top+bottom)  1913 | winners top:bottom 193:59 | ratio 3.288 | dir 3.288
+      first breaks (after 10 quiet sessions)       n(top+bottom)  1206 | winners top:bottom 76:34 | ratio 2.389 | dir 2.389
+      later breaks                                 n(top+bottom)  2347 | winners top:bottom 162:46 | ratio 3.628 | dir 3.628
+      first break after 60 quiet sessions          n(top+bottom)   759 | winners top:bottom 49:20 | ratio 2.659 | dir 2.659
+      common stock only                            n(top+bottom)  3224 | winners top:bottom 218:70 | ratio 3.177 | dir 3.177
+      price >= $5                                  n(top+bottom)  3300 | winners top:bottom 215:62 | ratio 3.536 | dir 3.536
+      embargoed discovery (E <= 2020-10-06)        n(top+bottom)  3000 | winners top:bottom 186:61 | ratio 3.107 | dir 3.107
+      2019-20 alone                                n(top+bottom)  2499 | winners top:bottom 212:67 | ratio 3.197 | dir 3.197
+      full 60-session windows only                 n(top+bottom)  3455 | winners top:bottom 237:72 | ratio 3.347 | dir 3.347
+      QQQ above its 50-day at D                    n(top+bottom)  2498 | winners top:bottom 169:49 | ratio 3.544 | dir 3.544
+      QQQ below its 50-day at D                    n(top+bottom)  1051 | winners top:bottom 79:28 | ratio 3.004 | dir 3.004
+      gapped over the level at the open            n(top+bottom)   946 | winners top:bottom 78:23 | ratio 3.613 | dir 3.613
+      did not gap over the level                   n(top+bottom)  2603 | winners top:bottom 162:50 | ratio 3.323 | dir 3.323
+      second seed (2411) of the keep rule          n(top+bottom)  3546 | winners top:bottom 242:72 | ratio 3.430 | dir 3.430
+    outcome:
+      monster tier (>= 2.0x)                       n(top+bottom)  3555 | winners top:bottom 138:42 | ratio 3.344 | dir 3.344
+      clean winners                                n(top+bottom)  3555 | winners top:bottom 149:39 | ratio 3.888 | dir 3.888
+      ADR-scaled tail                              n(top+bottom)  3555 | winners top:bottom 151:36 | ratio 4.268 | dir 4.268
+      un-truncated window                          n(top+bottom)  3555 | winners top:bottom 136:46 | ratio 3.009 | dir 3.009
+      from max(level, high of E)                   n(top+bottom)  3555 | winners top:bottom 134:48 | ratio 2.841 | dir 2.841
+      E+1 .. E+60 (E's close excluded)             n(top+bottom)  3555 | winners top:bottom 140:49 | ratio 2.907 | dir 2.907
+      ADR-neutral (thirds inside ADR20 strata)     n(top+bottom)  3557 | winners top:bottom 215:80 | ratio 2.741 | dir 2.741
+      window 30 sessions (-50%)                    n(top+bottom)  3555 | winners top:bottom 158:42 | ratio 3.828 | dir 3.828
+      window 90 sessions (+50%)                    n(top+bottom)  3555 | winners top:bottom 163:48 | ratio 3.456 | dir 3.456
+    conditioning (the FEATURE's ratio only):
+      within the bottom B4 third                   n(top+bottom)  1190 | winners top:bottom 85:28 | ratio 3.108 | dir 3.108
+      within the middle B4 third                   n(top+bottom)  1185 | winners top:bottom 76:29 | ratio 2.670 | dir 2.670
+      within the top B4 third                      n(top+bottom)  1182 | winners top:bottom 73:24 | ratio 3.094 | dir 3.094
+      within the bottom B1 (pick-score) third      n(top+bottom)  1190 | winners top:bottom 79:33 | ratio 2.451 | dir 2.451
+      within the middle B1 (pick-score) third      n(top+bottom)  1185 | winners top:bottom 78:21 | ratio 3.784 | dir 3.784
+      within the top B1 (pick-score) third         n(top+bottom)  1182 | winners top:bottom 81:24 | ratio 3.433 | dir 3.433
+
+   f13 Base depth, % - frozen direction: HIGH third wins
+    population:
+      year 2017 (own thirds) [few delisted names on file] n(top+bottom)   445 | winners top:bottom 18:6 | ratio 3.096 | dir 3.096
+      year 2018 (own thirds) [few delisted names on file] n(top+bottom)   611 | winners top:bottom 14:9 | ratio 1.613 | dir 1.613
+      year 2019 (own thirds)                       n(top+bottom)   586 | winners top:bottom 18:6 | ratio 3.083 | dir 3.083
+      year 2020 (own thirds)                       n(top+bottom)  1913 | winners top:bottom 201:60 | ratio 3.368 | dir 3.368
+      first breaks (after 10 quiet sessions)       n(top+bottom)  1206 | winners top:bottom 80:30 | ratio 2.850 | dir 2.850
+      later breaks                                 n(top+bottom)  2347 | winners top:bottom 175:52 | ratio 3.467 | dir 3.467
+      first break after 60 quiet sessions          n(top+bottom)   759 | winners top:bottom 50:22 | ratio 2.466 | dir 2.466
+      common stock only                            n(top+bottom)  3224 | winners top:bottom 233:73 | ratio 3.256 | dir 3.256
+      price >= $5                                  n(top+bottom)  3300 | winners top:bottom 220:75 | ratio 2.991 | dir 2.991
+      embargoed discovery (E <= 2020-10-06)        n(top+bottom)  3000 | winners top:bottom 197:63 | ratio 3.186 | dir 3.186
+      2019-20 alone                                n(top+bottom)  2499 | winners top:bottom 219:66 | ratio 3.353 | dir 3.353
+      full 60-session windows only                 n(top+bottom)  3455 | winners top:bottom 242:79 | ratio 3.115 | dir 3.115
+      QQQ above its 50-day at D                    n(top+bottom)  2498 | winners top:bottom 167:53 | ratio 3.238 | dir 3.238
+      QQQ below its 50-day at D                    n(top+bottom)  1051 | winners top:bottom 76:25 | ratio 3.237 | dir 3.237
+      gapped over the level at the open            n(top+bottom)   946 | winners top:bottom 75:33 | ratio 2.422 | dir 2.422
+      did not gap over the level                   n(top+bottom)  2603 | winners top:bottom 167:54 | ratio 3.172 | dir 3.172
+      second seed (2411) of the keep rule          n(top+bottom)  3546 | winners top:bottom 243:77 | ratio 3.221 | dir 3.221
+    outcome:
+      monster tier (>= 2.0x)                       n(top+bottom)  3555 | winners top:bottom 142:52 | ratio 2.779 | dir 2.779
+      clean winners                                n(top+bottom)  3555 | winners top:bottom 151:50 | ratio 3.073 | dir 3.073
+      ADR-scaled tail                              n(top+bottom)  3555 | winners top:bottom 151:37 | ratio 4.153 | dir 4.153
+      un-truncated window                          n(top+bottom)  3555 | winners top:bottom 147:44 | ratio 3.400 | dir 3.400
+      from max(level, high of E)                   n(top+bottom)  3555 | winners top:bottom 135:53 | ratio 2.592 | dir 2.592
+      E+1 .. E+60 (E's close excluded)             n(top+bottom)  3555 | winners top:bottom 153:49 | ratio 3.177 | dir 3.177
+      ADR-neutral (thirds inside ADR20 strata)     n(top+bottom)  3557 | winners top:bottom 209:97 | ratio 2.197 | dir 2.197
+      window 30 sessions (-50%)                    n(top+bottom)  3555 | winners top:bottom 152:46 | ratio 3.362 | dir 3.362
+      window 90 sessions (+50%)                    n(top+bottom)  3555 | winners top:bottom 171:45 | ratio 3.867 | dir 3.867
+    conditioning (the FEATURE's ratio only):
+      within the bottom B4 third                   n(top+bottom)  1190 | winners top:bottom 86:26 | ratio 3.386 | dir 3.386
+      within the middle B4 third                   n(top+bottom)  1185 | winners top:bottom 71:39 | ratio 1.855 | dir 1.855
+      within the top B4 third                      n(top+bottom)  1182 | winners top:bottom 81:19 | ratio 4.336 | dir 4.336
+      within the bottom B1 (pick-score) third      n(top+bottom)  1190 | winners top:bottom 83:24 | ratio 3.541 | dir 3.541
+      within the middle B1 (pick-score) third      n(top+bottom)  1185 | winners top:bottom 73:30 | ratio 2.479 | dir 2.479
+      within the top B1 (pick-score) third         n(top+bottom)  1182 | winners top:bottom 81:29 | ratio 2.841 | dir 2.841
+
+## END OF DISCOVERY [SYNTHETIC - not a result] | 48s

@@ -1,0 +1,61 @@
+SEAL: feature table max E 2024-10-04, max D 2024-10-03; post-drop events max E 2024-10-04 (all <= 2024-12-31)
+
+== 1. POPULATION (kept events, seed 1124; outcome-free) ==
+kept 11596: CHECK/A 2910, CHECK/B 3356, DISC/A 5330
+per E-year: A2017 667, A2018 917, A2019 879, A2020 2867, A2021 2472, A2022 438, B2022 1085, B2023 1273, B2024 998
+-- DISCOVERY (E <= 2020-12-31, era A) (n 5330)
+   identities 2129, tickers 2129; events per identity: median 2, max 11, identities with >=5 events 306
+   break days 914; events per day median 4, p95 18, max 95 (on 2020-06-05); share of events on days holding >= 10 events 46.8%
+   security type: CS 4841 (90.8%), ADRC 350 (6.6%), unknown 138 (2.6%), ETV 1 (0.0%)
+   raw price at D: <$5 7.1%, $5-10 12.9%, $10-20 23.5%, $20-50 35.1%, $50-100 13.6%, >=$100 7.6%; median $23.26
+   daily range ADR20 %: p10 4.14 median 5.09 p90 8.42 max 38.9
+   first break after 10 quiet sessions 33.9%; after 60 quiet 21.4%
+   opened above the level (24a) 26.7%; at/below (24b) 73.3%
+   B4 distance close(D)->level in daily ranges: p10 0.05 median 0.27 p90 0.74; level source {'five_day': 3147, 'settled_after_wick': 2183}
+   bars to D under 252: 374 (7.0%); 5-letter symbols ending Q: 18; symbols with a dot/W/U suffix pattern: 0
+-- CHECK era A (2021 .. 2022-04-01) (n 2910)
+   identities 1768, tickers 1768; events per identity: median 1, max 5, identities with >=5 events 5
+   break days 305; events per day median 7, p95 25, max 43 (on 2021-03-11); share of events on days holding >= 10 events 68.4%
+   security type: CS 2648 (91.0%), ADRC 172 (5.9%), unknown 87 (3.0%), ETV 3 (0.1%)
+   raw price at D: <$5 7.3%, $5-10 11.5%, $10-20 19.2%, $20-50 34.6%, $50-100 16.9%, >=$100 10.4%; median $28.16
+   daily range ADR20 %: p10 4.17 median 5.32 p90 9.73 max 31.8
+   first break after 10 quiet sessions 29.2%; after 60 quiet 14.9%
+   opened above the level (24a) 24.8%; at/below (24b) 75.2%
+   B4 distance close(D)->level in daily ranges: p10 0.05 median 0.28 p90 0.78; level source {'five_day': 1697, 'settled_after_wick': 1213}
+   bars to D under 252: 329 (11.3%); 5-letter symbols ending Q: 14; symbols with a dot/W/U suffix pattern: 0
+-- CHECK era B (2022-04 .. 2024-10-04) (n 3356)
+   identities 1467, tickers 1469; events per identity: median 2, max 7, identities with >=5 events 149
+   break days 549; events per day median 5, p95 16, max 31 (on 2022-08-08); share of events on days holding >= 10 events 46.4%
+   security type: CS 2620 (78.1%), unknown 521 (15.5%), ADRC 211 (6.3%), ETV 4 (0.1%)
+   raw price at D: <$5 9.6%, $5-10 16.1%, $10-20 22.3%, $20-50 32.1%, $50-100 11.5%, >=$100 8.3%; median $21.21
+   daily range ADR20 %: p10 4.15 median 5.20 p90 8.42 max 54.5
+   first break after 10 quiet sessions 33.5%; after 60 quiet 20.1%
+   opened above the level (24a) 26.1%; at/below (24b) 73.9%
+   B4 distance close(D)->level in daily ranges: p10 0.04 median 0.26 p90 0.75; level source {'five_day': 1949, 'settled_after_wick': 1407}
+   bars to D under 252: 725 (21.6%); 5-letter symbols ending Q: 0; symbols with a dot/W/U suffix pattern: 0
+2020 share of discovery events: 53.8% (2867 of 5330)
+months CHECK/A: 16; smallest 20; months under 6 events (no thirds can form) 0 holding 0 events: 
+months CHECK/B: 31; smallest 3; months under 6 events (no thirds can form) 1 holding 3 events: 2022-04
+months DISC/A: 48; smallest 26; months under 6 events (no thirds can form) 0 holding 0 events: 
+era-B check events per month: 2022-04 3, 2022-05 8, 2022-06 22, 2022-07 223, 2022-08 288, 2022-09 96, 2022-10 150, 2022-11 164, 2022-12 131, 2023-01 185, 2023-02 123, 2023-03 160, 2023-04 58, 2023-05 87, 2023-06 168, 2023-07 119, 2023-08 57, 2023-09 43, 2023-10 28, 2023-11 94, 2023-12 151, 2024-01 91, 2024-02 104, 2024-03 109, 2024-04 80, 2024-05 113, 2024-06 64, 2024-07 126, 2024-08 194, 2024-09 103, 2024-10 14
+unknown-type discovery tickers (top 25 by events): RDUS 7, XENT 6, REGI 6, WLL 5, PRTYQ 5, NPTN 4, VRS 4, ATNXQ 4, HMHC 4, PLAN 4, TPTX 4, MIME 3, DISCK 3, JOBS 3, GSKY 3, QVCAQ 3, AMRSQ 2, VNE 2, FOE 2, IRLA 2, VXRT 2, MDRX 2, TVTY 2, ECOL 2, POLY 2
+most frequent discovery tickers: RARE 11, INSM 11, SRPT 11, ACAD 11, MRTX 11, MNTA 10, CONN 10, BZUN 10, TTD 10, FOLD 10, NVCR 10, AYX 10, EXAS 9, PTCT 9, WTI 9
+
+== 2. KEEP RULE: independent re-walk from the post-drop rows (own code; sha256('seed|identity|D') first 8 bytes / 2^64 < 1/5; eligible when no kept row in the prior 60 union sessions) ==
+seed 1124: re-walk kept 11596; stored 11596; rows differing 0
+seed 2411: re-walk kept 11607; stored 11607; rows differing 0
+identity string: identities with an era-A event ticker whose string is not one of their era-A tickers: 0 (a string may be an era-A ticker with no surviving event row - allowed)
+(identity, D) duplicated: 0; an (identity) spanning both eras: 1387
+smallest gap between two kept events of one identity: 61 sessions (must be >= 61)
+post-drop rows carrying a drop flag: 0 (must be 0)
+   walk run only on rows with D <= 2019-06-28: decisions equal the full-run decisions on those rows: True
+   walk run only on rows with D <= 2020-12-30: decisions equal the full-run decisions on those rows: True
+   walk run only on rows with D <= 2022-03-31: decisions equal the full-run decisions on those rows: True
+first-break share: all post-drop rows 16.77%, kept 32.60% (line 2x = 33.55%)
+
+== 3. GUARD / FLAG ARMS (dates only; nothing after 2024-12-31 printed) ==
+era A pre_v2/symbol_guard.tsv: columns ['symbol', 'n', 'first', 'last', 'overlap_n', 'overlap_med_gap', 'overlap_kind', 'max_hole', 'n_holes', 'n_move70', 'n_move70_vol_event', 'n_jump', 'jump_literal', 'n_move70_nosplit', 'max_dv20', 'breaks', 'flags']; symbols with a break 667; break tokens not parsing as a date 0; break dates per year {'2016': 122, '2017': 162, '2018': 183, '2019': 226, '2020': 277, '2021': 183, '2022': 133}
+era B symbol_guard_B.tsv: columns ['symbol', 'breaks']; symbols with a break 1292; break tokens not parsing as a date 0; break dates per year {'2021': 50, '2022': 2068, '2023': 2108, '2024': 1474}
+era-B post-drop break rows 42708 on 1823 tickers; era A 114754 on 3302 tickers
+era B: event tickers with any guard break date <= cut: 14 of 1823; their break dates inside the era's event span ('2022-04-01', '2024-10-04'): 15; kept events with a guard date in E+1..E+60: 0
+era A: event tickers with any guard break date <= cut: 134 of 3302; their break dates inside the era's event span ('2016-12-30', '2022-04-01'): 186; kept events with a guard date in E+1..E+60: 7

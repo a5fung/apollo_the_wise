@@ -1,0 +1,45 @@
+{
+ "nights": 61,
+ "nA": 132899,
+ "nB": 131616,
+ "both": 124623,
+ "gates": {
+  "history": 1.0,
+  "universe": 1.0,
+  "pinned": 0.9994222575287066,
+  "adr": 0.9980741917623552,
+  "rs": 1.0,
+  "prior_move": 0.9941583816791443,
+  "base_depth": 0.9990611684841482,
+  "ema21": 0.9989408054692954
+ },
+ "list_membership_agree": 0.9868242619741139,
+ "break_agree": 0.9991012894890992,
+ "list_rows_A_both": 12426,
+ "list_rows_B_both": 13898,
+ "list_both_and": 12341,
+ "membership_note": "ok here is the full live list rule (context gates included); gates needing >130 bars (context) are not compared individually",
+ "underflow_alt": {
+  "name_nights": 1234,
+  "share": 0.008193292654586983,
+  "by_band": {
+   "0-1": 0,
+   "1-5": 0,
+   "5-20": 0,
+   "20-100": 13,
+   "100-1000000000.0": 1221
+  }
+ },
+ "underflow": {
+  "name_nights": 290655,
+  "by_band": {
+   "0-1": 0,
+   "1-5": 154,
+   "5-20": 34107,
+   "20-100": 231194,
+   "100-1000000000.0": 23656
+  },
+  "list_rows_B": 150611,
+  "share": 1.9298391219764826
+ }
+}

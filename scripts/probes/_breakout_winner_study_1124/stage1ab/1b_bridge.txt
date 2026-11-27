@@ -1,0 +1,19 @@
+== 1b BRIDGE: rebuilt era A (HEAD, set(failed) <= CONTEXT_GATES) vs the 11-13 capture ==
+calendar file equal: True
+  11-13 capture  nights 1322 2016-12-30..2022-03-31  rows 420,158  fires(break rows) 156,695  listed median 190  fires median 68
+  rebuilt        nights 1322 2016-12-30..2022-03-31  rows 420,158  fires(break rows) 156,695  listed median 190  fires median 68
+  QM buys on a break row: rebuilt 375 (26 big) of 739 era-A buys; capture 375 (26 big)  [expected 375 / 26]
+row keys (ci,ticker): in both 420,158; only rebuilt 0; only capture 0; duplicate keys rebuilt 0 capture 0
+column differences on the 420,158 shared rows (rtol 1e-9): none
+BRIDGE EXACT
+
+== THE CONTEXT GATES' CUT (HEAD live list = no failed gate; 11-13 list = bridge set) ==
+  11-13 list (bridge set): rows 420,158, break rows 156,695, listed median 190/night, break rows median 68/night
+  HEAD live list         : rows 317,569, break rows 114,847, listed median 143/night, break rows median 50/night
+  cut by the context gates: rows 102,589 (24.4%), break rows 41,848 (26.7%)
+  QM buys on a break row: bridge set 375 -> HEAD live list 353 (26 big of 26)
+  gate sma50_falling_under   : fails on 53,419 rows (20,390 break rows); alone 27,220 (10,569)
+  gate downtrend_6m          : fails on 59,161 rows (24,480 break rows); alone 31,542 (13,688)
+  gate lower_line            : fails on 22,113 rows (9,628 break rows); alone 14,250 (6,025)
+  failed-set mix among cut rows: {'downtrend_6m': 31542, 'sma50_falling_under': 27220, 'sma50_falling_under,downtrend_6m': 21714, 'lower_line': 14250, 'downtrend_6m,lower_line': 3378, 'sma50_falling_under,downtrend_6m,lower_line': 2527, 'sma50_falling_under,lower_line': 1958}
+  per break-year (break rows: bridge set -> HEAD live): 2017 10153->7845, 2018 16429->11576, 2019 16748->11119, 2020 54153->41060, 2021 48736->37932, 2022 10476->5315

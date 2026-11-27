@@ -1,0 +1,58 @@
+discovery kept events 5330, big winners 846 (15.87%)
+
+== A. WHO THE WINNERS ARE (composition of the 846; description) ==
+per year: 2017 68/667, 2018 77/917, 2019 81/879, 2020 620/2867
+by security type (winners / events): ADRC 64/350 (18.3%), CS 760/4841 (15.7%), ETV 0/1 (0.0%), unknown 22/138 (15.9%)
+   raw price <$5: 87/378 = 23.0%
+   raw price $5-10: 150/690 = 21.7%
+   raw price $10-20: 219/1255 = 17.5%
+   raw price $20-50: 256/1873 = 13.7%
+   raw price >=$50: 134/1134 = 11.8%
+winners sit on 367 break days; top days: 2020-11-05 13, 2020-10-08 12, 2020-06-02 11, 2020-11-16 10, 2020-11-23 10, 2020-12-18 10, 2020-09-28 9, 2020-06-03 9
+winners per month, top 8: 2020-11 122, 2020-12 99, 2020-10 77, 2020-09 68, 2020-06 68, 2020-05 50, 2020-04 49, 2020-07 40; the top 8 months hold 67.7% of winners; months with no winner 0 of 48
+winner identities 638; identities with >= 2 winning events 157 (max 7)
+winner on E's own close (first_hit = 0): 3; first +50% close within 5 bars 30; median bar of first hit 35
+winners whose bars end inside the window: 4 of 40 such events; truncated events 6, winners among them 0
+largest max-close / buy-point multiples (data-error watch list; a real 5x in 60 sessions is rare): 
+   MARA   E 2020-11-05 maxc  10.39x  bars 61  price $2.35  ADR 12.2%  type CS  first hit bar 12
+   SUNWQ  E 2020-10-27 maxc   8.32x  bars 61  price $2.71  ADR 14.2%  type nan  first hit bar 17
+   RIOT   E 2020-10-22 maxc   6.91x  bars 61  price $3.98  ADR 7.8%  type CS  first hit bar 22
+   GEVO   E 2020-11-30 maxc   6.64x  bars 61  price $2.13  ADR 10.7%  type CS  first hit bar 18
+   DDD    E 2020-11-25 maxc   6.58x  bars 61  price $8.40  ADR 6.7%  type CS  first hit bar 28
+   TIGR   E 2020-12-14 maxc   6.55x  bars 61  price $5.35  ADR 8.7%  type ADRC  first hit bar 13
+   POLA   E 2020-12-15 maxc   6.46x  bars 61  price $3.89  ADR 14.1%  type CS  first hit bar 16
+   EH     E 2020-12-21 maxc   5.90x  bars 61  price $19.80  ADR 11.5%  type ADRC  first hit bar 15
+   UAVS   E 2020-12-11 maxc   5.84x  bars 61  price $2.61  ADR 7.3%  type CS  first hit bar 5
+   SICP   E 2020-11-12 maxc   5.76x  bars 61  price $27.24  ADR 6.6%  type nan  first hit bar 15
+   SOL    E 2020-12-14 maxc   5.60x  bars 61  price $5.54  ADR 15.3%  type ADRC  first hit bar 5
+   CODX   E 2020-02-26 maxc   5.09x  bars 61  price $4.32  ADR 18.0%  type CS  first hit bar 0
+   SRNE   E 2020-05-11 maxc   5.09x  bars 61  price $2.60  ADR 8.2%  type CS  first hit bar 4
+   WKHS   E 2020-06-19 maxc   4.96x  bars 61  price $4.54  ADR 10.8%  type CS  first hit bar 3
+   NVAX   E 2020-02-14 maxc   4.95x  bars 61  price $7.79  ADR 11.7%  type CS  first hit bar 9
+events with maxc >= 3x: 57; >= 5x: 13; >= 10x: 1
+
+== B. TRUNCATION EXPOSURE from audit-flag DATES (era-A flags file; klass / ticker / date only) ==
+   splitlike/volume_confirmed_relevel: flags dated <= 2021-03-30 29; kept discovery events with one in E+1..E+60: 3, of which big winners 0: USAT E 2019-02-01 (- 1.13x), TELL E 2020-02-04 (- 1.02x), PRTYQ E 2020-02-05 (- 1.02x trunc)
+   splitlike/unconfirmed: flags dated <= 2021-03-30 668; kept discovery events with one in E+1..E+60: 23, of which big winners 9: ANAB E 2017-09-27 (W 2.68x), NVAX E 2019-01-08 (- 0.99x), ADVM E 2019-07-05 (- 1.35x), RARX E 2019-07-25 (- 1.30x), ARQL E 2019-10-11 (W 2.32x), PRTYQ E 2019-10-24 (- 1.01x), DTIL E 2019-11-29 (- 1.07x), GPOR E 2019-12-19 (- 1.06x trunc), PVAC E 2019-12-24 (- 1.06x), GRCE E 2020-01-07 (- 0.92x), IMMU E 2020-02-04 (W 1.58x), PRTYQ E 2020-02-05 (- 1.02x trunc), CODX E 2020-02-26 (W 5.09x), LK E 2020-02-28 (- 1.03x), VXRT E 2020-04-27 (W 4.92x), PPLI E 2020-05-07 (- 1.30x), IMMU E 2020-06-22 (W 2.35x), ZYNE E 2020-06-29 (- 0.97x), UBX E 2020-08-13 (- 1.01x), DDD E 2020-11-25 (W 6.58x), SRPT E 2020-12-03 (- 1.18x), WKHS E 2020-12-11 (W 1.88x), LXRX E 2020-12-21 (W 2.55x)
+   gap/known_adjustment_event: flags dated <= 2021-03-30 227; kept discovery events with one in E+1..E+60: 1, of which big winners 0: AAN E 2020-09-29 (- 1.14x trunc)
+   adj_event/discontinuous_across_known_adjustment: flags dated <= 2021-03-30 82; kept discovery events with one in E+1..E+60: 1, of which big winners 0: AAN E 2020-09-29 (- 1.14x trunc)
+   compare/constant_ratio_unexplained: flags dated <= 2021-03-30 48; kept discovery events with one in E+1..E+60: 0, of which big winners 0
+
+== C. RATIOS RE-DERIVED (own counts on s2lib thirds) + A WITHIN-WEEK SHUFFLE (description: is the p alive when labels may only move inside one calendar week?) ==
+   f01: n bottom/top 1793/1762 winners 143/456 ratio 3.245 (stage 3 printed 3.245) | shuffle within month: null median 1.003, 95% band 0.87-1.17, p 0.0005 | shuffle within week: null median 1.051, 95% band 0.91-1.21, p 0.0005 | shuffle within day: null median 1.207, 95% band 1.06-1.38, p 0.0005
+   f09: n bottom/top 1793/1762 winners 178/405 ratio 2.315 (stage 3 printed 2.315) | shuffle within month: null median 1.003, 95% band 0.87-1.16, p 0.0005 | shuffle within week: null median 1.073, 95% band 0.93-1.24, p 0.0005 | shuffle within day: null median 1.216, 95% band 1.07-1.38, p 0.0005
+   f04: n bottom/top 1796/1745 winners 206/397 ratio 1.984 (stage 3 printed 1.984) | shuffle within month: null median 1.008, 95% band 0.88-1.17, p 0.0005 | shuffle within week: null median 1.062, 95% band 0.92-1.23, p 0.0005 | shuffle within day: null median 1.186, 95% band 1.04-1.35, p 0.0005
+   f02: n bottom/top 1793/1762 winners 366/210 ratio 0.584 (stage 3 printed 0.584) | shuffle within month: null median 1.000, 95% band 0.87-1.16, p 0.0005 | shuffle within week: null median 0.960, 95% band 0.84-1.11, p 0.0005 | shuffle within day: null median 0.929, 95% band 0.81-1.06, p 0.0005
+   B4: n bottom/top 1793/1762 winners 278/291 ratio 1.065 (stage 3 printed 1.065) | shuffle within month: null median 1.003, 95% band 0.87-1.17, p 0.3858 | shuffle within week: null median 1.066, 95% band 0.92-1.22, p 0.5472 | shuffle within day: null median 1.066, 95% band 0.94-1.21, p 0.5252
+   f13: n bottom/top 1793/1762 winners 212/363 ratio 1.742 (stage 3 printed 1.742) | shuffle within month: null median 1.003, 95% band 0.87-1.17, p 0.0005 | shuffle within week: null median 1.047, 95% band 0.90-1.20, p 0.0005 | shuffle within day: null median 1.081, 95% band 0.95-1.24, p 0.0005
+   f07: n bottom/top 1793/1762 winners 183/399 ratio 2.219 (stage 3 printed 2.219) | shuffle within month: null median 1.000, 95% band 0.86-1.16, p 0.0005 | shuffle within week: null median 1.025, 95% band 0.89-1.18, p 0.0005 | shuffle within day: null median 1.159, 95% band 1.01-1.32, p 0.0005
+   note: a within-week / within-day shuffle removes everything a feature shares with WHEN the break happened; what is left is the feature's reading among names breaking in the same week / on the same day.
+
+== D. IS IT ONE STORY? carried features against each other (Spearman on discovery kept events; outcome-free) and each ratio inside the top ADR third ==
+      f01   f02   f04   f09   f07   f13
+f01  1.00 -0.29  0.31  0.47  0.47  0.56
+f02 -0.29  1.00 -0.08 -0.14 -0.18 -0.16
+f04  0.31 -0.08  1.00  0.26  0.25  0.14
+f09  0.47 -0.14  0.26  1.00  0.58  0.30
+f07  0.47 -0.18  0.25  0.58  1.00  0.21
+f13  0.56 -0.16  0.14  0.30  0.21  1.00

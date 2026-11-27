@@ -1,0 +1,16 @@
+{
+ "nights": [
+  "2022-04-01",
+  "2024-10-03",
+  630
+ ],
+ "src2_tickers": 7184,
+ "request_main": 757,
+ "ctlA": 300,
+ "ctlB": 326,
+ "request_total": 1073,
+ "request_sha256": "164da7965c3b9c6ffa49c56cee073c37602eb6604d97c3a31302d750a5020f39",
+ "max_request_date": "2024-12-30",
+ "overlap_main_ctlB": 310,
+ "overlap_main_ctlA": 0
+}

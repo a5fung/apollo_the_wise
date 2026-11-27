@@ -1,0 +1,8 @@
+era-A guard file: 12532 symbols listed, 667 with a break; kinds {'hole': 892, 'jump': 394}
+era-B guard file: 1292 symbols listed, 1292 with a break; kinds {'jump': 4983, 'hole': 717}
+break dates inside the overlap 2022-04-01..2022-06-30: era A 63 on 51 symbols; era B 151 on 126 symbols
+era-A overlap breaks on symbols the era-B file lists: 36; with an era-B break within 3 days: 21
+era-B overlap breaks on symbols the era-A file lists: 24; with an era-A break within 3 days: 21
+era-B break dates per symbol: median 3, max 136; era A median 1, max 31
+era-A overlap breaks with no era-B guard date within 3 days: 42 on 32 symbols; symbol has NO bar in the sealed era-B copy in the overlap: 27; symbol present there: 15 (kinds {'hole': 11, 'jump': 4}; sessions held in the overlap, median 50 of 62)
+present-but-unmatched (symbol date kind sessions-held-in-B): ACACU 2022-06-10 hole 11, APVO 2022-06-09 hole 62, ARVR 2022-04-20 hole 50, ARVR 2022-04-20 jump 50, BITI 2022-06-21 hole 8, DBGI 2022-05-05 jump 62, FIG 2022-05-17 hole 31, FIG 2022-05-17 jump 31, GNLN 2022-06-24 hole 62, HCTI 2022-04-20 hole 62, MCACU 2022-05-11 hole 16, RNAZ 2022-06-14 hole 62, RSLS 2022-06-23 hole 62, RSLS 2022-06-23 jump 62, STR 2022-06-06 hole 18

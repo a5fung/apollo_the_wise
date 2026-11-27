@@ -1,0 +1,51 @@
+== (a) the 20 mis-dropped rows put back: keep walk per identity, both seeds ==
+NIO: identity string 'NIO'; surviving break rows of the identity 129 (eras ['A', 'B']); rows put back 9 (2019-01-28 .. 2019-02-25)
+   seed 1124: kept as run ['2019-09-06', '2020-01-29', '2020-05-19', '2020-09-17', '2020-12-29', '2021-06-10', '2022-08-01', '2023-07-12', '2024-09-27'] -> with the rows back ['2019-01-31', '2019-09-06', '2020-01-29', '2020-05-19', '2020-09-17', '2020-12-29', '2021-06-10', '2022-08-01', '2023-07-12', '2024-09-27']; ADDED ['2019-01-31'] LOST []
+   seed 2411: kept as run ['2019-09-09', '2019-12-12', '2020-05-22', '2020-08-24', '2020-12-18', '2021-06-29', '2022-07-28', '2023-07-26', '2024-09-23'] -> with the rows back ['2019-01-29', '2019-09-09', '2019-12-12', '2020-05-22', '2020-08-24', '2020-12-18', '2021-06-29', '2022-07-28', '2023-07-26', '2024-09-23']; ADDED ['2019-01-29'] LOST []
+SWI: identity string 'SWI'; surviving break rows of the identity 8 (eras ['A']); rows put back 6 (2019-03-28 .. 2019-04-12)
+   seed 1124: kept as run ['2020-05-26'] -> with the rows back ['2019-03-28', '2020-05-26']; ADDED ['2019-03-28'] LOST []
+   seed 2411: kept as run ['2020-06-01'] -> with the rows back ['2020-06-01']; ADDED [] LOST []
+REE: identity string 'REE'; surviving break rows of the identity 0 (eras []); rows put back 5 (2021-12-30 .. 2022-02-01)
+   seed 1124: kept as run [] -> with the rows back ['2021-12-30']; ADDED ['2021-12-30'] LOST []
+   seed 2411: kept as run [] -> with the rows back ['2022-01-04']; ADDED ['2022-01-04'] LOST []
+
+== (b) data paths named in the stage scripts ==
+stage1ab/common.py: closed-list words present none
+stage1ab/s1a_pins_parity.py: closed-list words present none
+stage1ab/s1b_bridge.py: closed-list words present none
+stage1ab/s1b_eraA_rebuild.py: closed-list words present none
+stage1c/diag_c.py: closed-list words present ['raw_close_bwin_1124']
+      L7: for ln in gzip.open(DATA/"cb702"/"raw_close_bwin_1124.csv.gz","rt"):
+stage1c/s1c_A1.py: closed-list words present none
+stage1c/s1c_gate.py: closed-list words present ['raw_close_bwin_1124']
+      L12: PULL = Path(sys.argv[1]) if len(sys.argv) > 1 else DATA / "cb702" / "raw_close_bwin_1124.csv.gz"
+      L13: META = Path(sys.argv[2]) if len(sys.argv) > 2 else DATA / "cb702" / "raw_close_bwin_1124.meta.json"
+stage1c/s1c_pull.py: closed-list words present ['raw_close_bwin_1124']
+      L4: python s1c_pull.py <bws1124_raw_request.tsv> <out_dir>      -> raw_close_bwin_1124.csv.gz (ticker,date,close,volume) + .meta.json
+      L46: p = os.path.join(out_dir, "raw_close_bwin_1124.csv.gz")
+      L52: json.dump(meta, open(os.path.join(out_dir, "raw_close_bwin_1124.meta.json"), "w"), indent=1)
+      L53: open(os.path.join(out_dir, "raw_close_bwin_1124.log"), "w").write("EMPTY\n" + "\n".join(empty) + "\nERRORS\n" + "\n".join(errors) + "\n")
+stage1c/s1c_request.py: closed-list words present none
+stage1de/common.py: closed-list words present none
+stage1de/lib.py: closed-list words present none
+stage1de/s1d_build.py: closed-list words present none
+stage1de/s1d_overlap.py: closed-list words present none
+stage1de/s1e_events.py: closed-list words present none
+stage1de/s1e_gate.py: closed-list words present none
+stage1de/s1e_underflow.py: closed-list words present none
+stage1f/build.py: closed-list words present none
+stage1f/corrupt.py: closed-list words present none
+stage1f/ff.py: closed-list words present none
+stage1f/lib1f.py: closed-list words present none
+stage1f/t2.py: closed-list words present none
+stage2/s2_calib.py: closed-list words present none
+stage2/s2_check_expected.py: closed-list words present none
+stage2/s2_diag.py: closed-list words present none
+stage2/s2_gate_A2.py: closed-list words present none
+stage2/s2_sim_compare.py: closed-list words present none
+stage2/s2lib.py: closed-list words present none
+stage2/spread_sim_v2_real.py: closed-list words present none
+stage3/s3_discovery.py: closed-list words present none
+stage3/s3_outcomes.py: closed-list words present none
+stage3/s3_split_arm.py: closed-list words present none
+stage3/s3_verify.py: closed-list words present none

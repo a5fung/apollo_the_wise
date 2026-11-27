@@ -1,0 +1,123 @@
+--- ../design/spread_sim_v2.py	2026-11-24 07:38:11
++++ spread_sim_v2_real.py	2026-11-26 09:49:56
+@@ -1,5 +1,8 @@
+ #!/usr/bin/env python3
+-"""Spread simulation v2 for the BREAKOUT big-winner chart study draft v2 (§5.4), 2026-11-24. Supersedes spread_sim.py (kept
++"""STAGE 2 RE-RUN on the REAL counts (prereg 5.4 last bullet / 6 step 2): a copy of design/spread_sim_v2.py with ONLY the count inputs changed
++(YEARS_A / MONTHS / ERA_B_YEAR replaced by the stage-1f table's real per-month thirds; keep = 1.0 only because the counts are already post-gate;
++seed, N, CV, X2020, FAM, the model and every rule unchanged). Reads the feature table (counts only) and an RNG. Original docstring follows.
++Spread simulation v2 for the BREAKOUT big-winner chart study draft v2 (§5.4), 2026-11-24. Supersedes spread_sim.py (kept
+ as v1 history; critique_power_rerun.py reads its source). OUTCOME-FREE: synthetic labels only; no bar, no forward price, no
+ outcome file is read. numpy only.     python3 spread_sim_v2.py > spread_sim_v2.txt
+ 
+@@ -24,48 +27,69 @@
+ rule, same-day theme clustering and gate truncation are not simulated and all push it DOWN."""
+ import numpy as np
+ rng = np.random.default_rng(1124); N = 20000; CV = 0.6; X2020 = 3.0; FAM = 9
+-YEARS_A = {2017: 814, 2018: 1232, 2019: 1198, 2020: 3439, 2021: 3083, 2022: 748}
+-MONTHS = {2017: 12, 2018: 12, 2019: 12, 2020: 12, 2021: 12, 2022: 3}
+-ERA_B_YEAR = 1081                                              # events a year, assumed = the 2017-19 mean
++import sys, os
++sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
++import s2lib as L
++L.assert_docs()
++_T = L.load(); _K, _D, _C = L.kept_events(_T)
+ 
+-def blocks(years, keep, p, era_b=None):
+-    """era_b = None or (months, rate multiplier)."""
++def real_blocks(df, col):
++    """per (era, month) holding >= 6 events scored on `col`: (events in top third, events in bottom third, year, era) from np.array_split sizes."""
+     out = []
+-    for y in years:
+-        m = MONTHS[y]; out += [(int(YEARS_A[y] * keep / m), p * (X2020 if y == 2020 else 1.0), y)] * m
+-    if era_b:
+-        mo, mult = era_b
+-        out += [(int(ERA_B_YEAR * keep / 12), p * mult, 2023)] * mo
++    d = df[df[col].notna()]
++    for (era, mo), g in d.groupby(["era", "month"]):
++        n = len(g)
++        if n < 6:
++            continue
++        q, r = divmod(n, 3)
++        out.append((q, q + (1 if r > 0 else 0), int(mo[:4]), era, mo))
+     return out
+ 
++REAL = {"f01": (real_blocks(_D, "f01"), real_blocks(_C, "f01")), "f10": (real_blocks(_D, "f10"), real_blocks(_C, "f10"))}
++
++def nreal(which, era="all", feat="f01"):
++    """real events in the blocks used (every event scored on the feature in a month holding thirds, middle third included)."""
++    df = (_D, _C)[which]; df = df[df[feat].notna()]
++    if era != "all": df = df[df.era == era]
++    ok = df.groupby(["era", "month"]).month.transform("size") >= 6
++    return int(ok.sum())
++
++def blocks(which, p, era_b_mult=1.0, era="all", feat="f01"):
++    """which = 0 discovery / 1 check; returns [(m_top, m_bot, rate, year)]."""
++    out = []
++    for mt, mb, y, e, mo in REAL[feat][which]:
++        if era != "all" and e != era:
++            continue
++        out.append((mt, mb, p * (X2020 if y == 2020 else 1.0) * (era_b_mult if e == "B" else 1.0), y))
++    return out
++
+ def draw(bl, k, k2020=None):
+     T = np.zeros(N); B = np.zeros(N); M = 0; Tx = np.zeros(N); Bx = np.zeros(N); Mx = 0
+-    for ev, p, y in bl:
++    Mb = 0; Mbx = 0
++    for mt, mb, p, y in bl:
+         kk = k if k2020 is None else (k2020 if y == 2020 else 1.0)
+-        m = ev // 3
+         a = max((1 - p) / CV ** 2 - p, 0.05); pm = rng.beta(a, a * (1 - p) / p, N)
+         b = 2 * pm / (1 + kk)
+-        t = rng.binomial(m, np.minimum(b * kk, 1)); bb = rng.binomial(m, np.minimum(b, 1))
+-        T += t; B += bb; M += m
+-        if y != 2020: Tx += t; Bx += bb; Mx += m
+-    r = np.log(((T + 0.5) / (M + 1)) / ((B + 0.5) / (M + 1)))
+-    rx = np.log(((Tx + 0.5) / (Mx + 1)) / ((Bx + 0.5) / (Mx + 1)))
+-    return r, rx, M * 3
++        t = rng.binomial(mt, np.minimum(b * kk, 1)); bb = rng.binomial(mb, np.minimum(b, 1))
++        T += t; B += bb; M += mt; Mb += mb
++        if y != 2020: Tx += t; Bx += bb; Mx += mt; Mbx += mb
++    r = np.log(((T + 0.5) / (M + 1)) / ((B + 0.5) / (Mb + 1)))
++    rx = np.log(((Tx + 0.5) / (Mx + 1)) / ((Bx + 0.5) / (Mbx + 1)))
++    return r, rx, M + Mb
+ 
+ def pooled(bl):
+-    return sum(ev * p for ev, p, _ in bl) / sum(ev for ev, _, _ in bl)
++    return sum((mt + mb) * p for mt, mb, p, _ in bl) / sum(mt + mb for mt, mb, _, _ in bl)
+ 
+-DISC_Y = (2017, 2018, 2019, 2020); CHK_Y = (2021, 2022)
+-CHECKS = (("3a: era A only", None), ("3b: + era B 30 mo, rate x1.0", (30, 1.0)), ("3b: + era B 30 mo, rate x0.75", (30, 0.75)),
+-          ("3b: + era B 30 mo, rate x0.5", (30, 0.5)), ("3b, 25-month features, rate x1.0", (25, 1.0)),
+-          ("3b, 25-month features, rate x0.75", (25, 0.75)))
++CHECKS = (("3a: era A only", dict(era="A")), ("3b: + era B (real months), rate x1.0", dict(bm=1.0)), ("3b: + era B, rate x0.75", dict(bm=0.75)),
++          ("3b: + era B, rate x0.5", dict(bm=0.5)), ("3b, 25-month features (f10's scored counts), rate x1.0", dict(bm=1.0, feat="f10")),
++          ("3b, 25-month features, rate x0.75", dict(bm=0.75, feat="f10")))
+ L125, L110, L12, L083 = np.log(1.25), np.log(1.10), np.log(1.2), np.log(0.83)
+-for keep in (1.0, 0.6):
++for keep in (1.0,):
+     for p in (0.03, 0.05, 0.08):
+-        D = blocks(DISC_Y, keep, p)
++        D = blocks(0, p)
+         r0, r0x, nd = draw(D, 1.0); thr2 = np.quantile(np.abs(r0), 0.95)
+         carried = {}
+-        print(f"\n==== keep {keep:.1f} · rate OUTSIDE 2020 {p:.0%} (2020: {X2020*p:.0%}; POOLED discovery rate {pooled(D):.1%}) · discovery {nd} events ====")
++        print(f"\n==== REAL COUNTS (keep 1.0: counts are post-gate) · rate OUTSIDE 2020 {p:.0%} (2020: {X2020*p:.0%}; POOLED discovery rate {pooled(D):.1%}) · discovery {nreal(0)} events ({nd} in the compared top and bottom thirds) in {len(D)} months ====")
+         print(f"  discovery null 95% band {np.exp(np.quantile(r0,.025)):.2f}-{np.exp(np.quantile(r0,.975)):.2f} | without 2020 "
+               f"{np.exp(np.quantile(r0x,.025)):.2f}-{np.exp(np.quantile(r0x,.975)):.2f} | discovery ratio needed for p<=0.05: {np.exp(thr2):.2f}")
+         for k in (1.0, 1.2, 1.3, 1.5, 2.0):
+@@ -76,11 +100,11 @@
+         c12 = (r >= L125) & (np.abs(r) >= thr2)
+         print(f"  2020-only artefact (1.5x in 2020, none 2017-19): passes 1-2 {c12.mean():.3f}; of those, without-2020 >= 1.10 "
+               f"{(c12 & (rx >= L110)).sum() / max(c12.sum(), 1):.2f}")
+-        for name, eb in CHECKS:
+-            C = blocks(CHK_Y, keep, p, era_b=eb)
++        for name, kw in CHECKS:
++            C = blocks(1, p, era_b_mult=kw.get("bm", 1.0), era=kw.get("era", "all"), feat=kw.get("feat", "f01"))
+             c0, _, nc = draw(C, 1.0)
+             hi = np.quantile(c0, 1 - 0.05 / FAM); lo = np.quantile(c0, 0.05 / FAM)
+-            print(f"  -- check = {name} · {nc} events · pooled check rate {pooled(C):.1%} · null 95% band "
++            print(f"  -- check = {name} · {nreal(1, kw.get("era", "all"), kw.get("feat", "f01"))} events ({nc} in top+bottom) · pooled check rate {pooled(C):.1%} · null 95% band "
+                   f"{np.exp(np.quantile(c0,.025)):.2f}-{np.exp(np.quantile(c0,.975)):.2f} · true-zero reads >= 1.2: {(c0 >= L12).mean():.3f}")
+             for k in (1.0, 1.2, 1.3, 1.5, 2.0):
+                 rc, _, _ = draw(C, k)

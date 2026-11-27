@@ -28,13 +28,13 @@ breaker) = REDUCE since 2026-11-12 (live dd -7.22%), unrelated to the bands.
 | | Envelope | Live |
 |---|---|---|
 | Expectancy | +0.95R | t40 -0.05R |
-| Max drawdown | -24.1R | cum -6.2R (worst) |
+| Max drawdown | -24.1R | worst cumulative ≈ -12R (the 08-26 run read -11.9R); -6.2R today |
 | Worst streak | 15 | 14 (Jul–Aug, pre-2R); 6 now |
 
 ## Era split (the 08-26 run's open item)
-- 2R-stop era (risk_dollars_actual populated, 08-27 → 11-11): **19 trades, net +2.4R (+0.13R/trade)**;
+- 2R-stop era (MRVL 08-19 → 11-11; R from risk_dollars_actual from 08-27, MRVL ≈ -1R): **20 trades, net ≈ +1.4R (+0.07R/trade)**;
   two big winners (VICR +7.0R, KOD +6.2R) carry it, 13 of 19 are ~-1R stops.
-- Pre-2R era (07-06 → 08-19): 25 trades, ≈ -8.6R (the 0-for-14 opening run).
+- Pre-2R era (07-06 → 08-19, MRVL excluded): 24 trades, ≈ -7.6R (the 0-for-14 opening run).
 - So the bands now read mostly-2R trades; the calibration was simulated on the orb_low stop. Both
   still under-sample the tail (2 winners ≥ +3R in 19).
 
@@ -51,6 +51,8 @@ under the current stop (19) is too small to re-derive bands from. Re-run next qu
 - SCALE arm `equity_above_start` compares to the first snapshot; reads True today.
 
 ## What this does not answer
+- **Two of the review's four inputs were NOT read:** (b) the P6 replay-regression weekly reports and (d) the demote-side
+  forward R of judge-demoted alerts. The keep recommendation rests on (a) the live distribution and (c) the override log only.
 - Whether the setup has edge: 44 trades, 2 tail winners, a bear phase — far too thin for that.
 - Whether the calibration envelope itself is right under the 2R stop (it was simulated on orb_low);
   re-deriving it needs a replay, not live trades.

@@ -1,0 +1,25 @@
+era-A live break rows 114847; not in the post-drop set 93
+rows with first bar within 5 sessions of the file start AND a check passed unscored: 20 (stage 1e printed 20)
+ticker D first_ci sessions_first_bar_to_D bars_to_D consecutive_run_ending_D largest_hole ll_status ll_bars | unscored: lower_line ret126 chg10
+  NIO 2019-01-28 0 772 161 94 612 insufficient_history 161 True False False
+  NIO 2019-01-29 0 773 162 95 612 insufficient_history 162 True False False
+  NIO 2019-01-30 0 774 163 96 612 insufficient_history 163 True False False
+  NIO 2019-01-31 0 775 164 97 612 insufficient_history 164 True False False
+  NIO 2019-02-05 0 778 167 100 612 insufficient_history 167 True False False
+  NIO 2019-02-19 0 787 176 109 612 insufficient_history 176 True False False
+  NIO 2019-02-21 0 789 178 111 612 insufficient_history 178 True False False
+  NIO 2019-02-22 0 790 179 112 612 insufficient_history 179 True False False
+  NIO 2019-02-25 0 791 180 113 612 insufficient_history 180 True False False
+  SWI 2019-03-28 0 814 132 109 683 insufficient_history 132 True False False
+  SWI 2019-03-29 0 815 133 110 683 insufficient_history 133 True False False
+  SWI 2019-04-02 0 817 135 112 683 insufficient_history 135 True False False
+  SWI 2019-04-08 0 821 139 116 683 insufficient_history 139 True False False
+  SWI 2019-04-10 0 823 141 118 683 insufficient_history 141 True False False
+  SWI 2019-04-12 0 825 143 120 683 insufficient_history 143 True False False
+  REE 2021-12-30 0 1510 150 112 1361 insufficient_history 150 True False False
+  REE 2021-12-31 0 1511 151 113 1361 insufficient_history 151 True False False
+  REE 2022-01-03 0 1512 152 114 1361 insufficient_history 152 True False False
+  REE 2022-01-04 0 1513 153 115 1361 insufficient_history 153 True False False
+  REE 2022-02-01 0 1532 172 134 1361 insufficient_history 172 True False False
+rows where the file start is inside the longest look-back (fewer than 189 calendar sessions from the file's first date to D): 0 of 20
+reading: every one of these has its first bar in the file's first week YEARS before D; the check went unscored because of a HOLE in the name's bars (or a restart of the symbol), not because the file starts.

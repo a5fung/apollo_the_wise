@@ -1,0 +1,245 @@
+# STAGE 2 / calibration on SYNTHETIC labels (prereg 6 step 2). INPUT: the outcome-free feature table (kept events, seed 1124) + a random number generator.
+prereg sha256 3eb2b9b0 and A1 4a7beda1 asserted | feature table sha256 d629ef0a asserted | max E on file 2024-10-04 (seal: nothing after 2024-12-31)
+populations: discovery 5330 (2017 667 / 2018 917 / 2019 879 / 2020 2867), check 6266 (era A 2910, era B 3356); second-seed discovery 5314
+copied thirds helper reproduces stage 1f's printed layout (bottom / middle / top): {'f01': (1793, 1775, 1762), 'f20': (2058, 1745, 1527), 'f24a': (488, 469, 458), 'f12': (1811, 1763, 1756)}
+draws 2000 per (feature, case, rate); permutation shuffles 1000 (exact hypergeometric); rates [0.05, 0.03, 0.08] (2020 x3.0, month CV 0.6); centring band (0.95, 1.05)
+
+## A. EVERY STATISTIC CENTRED ON 1.0 UNDER NO EFFECT - discovery (median of the draws' ratio; expected = the deterministic composition ratio; band 0.95-1.05)
+##    columns: own (all discovery months) | without 2020 | B4-strata (the tag's form) | B1-strata (listed only)
+
+### base rate 5% outside 2020 (2020: 15%)
+  f01   scored  5330 assigned  5330 | all 1.009 (exp 1.006) | ex2020 1.010 (exp 1.000) | b4 1.002 (exp 1.005) | b1 1.003 (exp 1.005)
+  f02   scored  5330 assigned  5330 | all 1.007 (exp 1.006) | ex2020 1.003 (exp 1.000) | b4 1.006 (exp 1.005) | b1 1.004 (exp 1.005)
+  f03   scored  5330 assigned  5330 | all 1.007 (exp 1.006) | ex2020 1.006 (exp 1.000) | b4 1.002 (exp 1.005) | b1 1.006 (exp 1.005)
+  f04   scored  5330 assigned  5330 | all 1.010 (exp 1.007) | ex2020 1.003 (exp 1.000) | b4 1.015 (exp 1.005) | b1 1.012 (exp 1.008)
+  f05   scored  5330 assigned  5330 | all 1.010 (exp 1.007) | ex2020 1.003 (exp 1.000) | b4 1.008 (exp 1.007) | b1 1.009 (exp 1.006)
+  f06   scored  5186 assigned  5186 | all 1.007 (exp 1.005) | ex2020 1.005 (exp 1.000) | b4 1.010 (exp 1.006) | b1 1.017 (exp 1.009)
+  f07   scored  5330 assigned  5330 | all 1.003 (exp 1.006) | ex2020 1.003 (exp 1.000) | b4 1.005 (exp 1.005) | b1 1.008 (exp 1.005)
+  f08   scored  5330 assigned  5330 | all 1.012 (exp 1.006) | ex2020 1.001 (exp 1.000) | b4 1.008 (exp 1.005) | b1 1.007 (exp 1.005)
+  f09   scored  5330 assigned  5330 | all 1.012 (exp 1.006) | ex2020 1.006 (exp 1.000) | b4 1.014 (exp 1.005) | b1 1.010 (exp 1.005)
+  f10   scored  4924 assigned  4924 | all 1.008 (exp 1.005) | ex2020 1.004 (exp 1.000) | b4 1.011 (exp 1.006) | b1 1.008 (exp 1.004)
+  f11 two-group (MH by month; NaN draws all 0,ex2020 0,eraA 0,b4 0,b1 0) all: MH 1.004 | all: pooled yes/no 0.891 (the biased one) | ex2020: MH 0.993 | ex2020: pooled yes/no 0.994 (the biased one) | eraA: MH 1.004 | eraA: pooled yes/no 0.891 (the biased one) | b4: MH 1.008 | b1: MH 1.008
+  f12   scored  5330 assigned  5330 | all 1.008 (exp 1.010) | ex2020 1.003 (exp 1.000) | b4 1.013 (exp 1.010) | b1 1.013 (exp 1.010)
+  f13   scored  5330 assigned  5330 | all 1.011 (exp 1.006) | ex2020 0.991 (exp 1.000) | b4 1.003 (exp 1.005) | b1 1.002 (exp 1.005)
+  f14 NOT EVALUABLE: the group sizes are yes 0 / no 5330 (empty by the live code, stage 1f) - reported as not evaluable, not as a pass
+  f15   scored  5330 assigned  5330 | all 1.006 (exp 1.006) | ex2020 1.006 (exp 1.000) | b4 1.003 (exp 1.005) | b1 1.005 (exp 1.005)
+  f16   scored  5330 assigned  5330 | all 1.008 (exp 1.006) | ex2020 1.006 (exp 1.000) | b4 1.004 (exp 1.005) | b1 1.003 (exp 1.005)
+  f17   scored  5330 assigned  5330 | all 1.007 (exp 1.006) | ex2020 0.995 (exp 1.000) | b4 1.010 (exp 1.005) | b1 1.010 (exp 1.005)
+  f18   scored  5330 assigned  5330 | all 1.003 (exp 1.006) | ex2020 1.004 (exp 1.000) | b4 1.005 (exp 1.005) | b1 1.005 (exp 1.005)
+  f19   scored  5330 assigned  5330 | all 1.006 (exp 1.006) | ex2020 1.004 (exp 1.000) | b4 1.005 (exp 1.005) | b1 1.009 (exp 1.005)
+  f20   scored  5330 assigned  5330 | all 0.940 (exp 0.944)   <-- OUTSIDE BAND (BLOCKING) | ex2020 1.007 (exp 1.000) | b4 0.963 (exp 0.970) | b1 0.970 (exp 0.976)
+  f21   scored  5032 assigned  5032 | all 1.007 (exp 1.005) | ex2020 1.004 (exp 1.000) | b4 1.007 (exp 1.006) | b1 1.004 (exp 1.006)
+  f22   scored  4924 assigned  4924 | all 1.004 (exp 1.004) | ex2020 0.989 (exp 1.000) | b4 1.012 (exp 1.008) | b1 1.010 (exp 1.009)
+  f23 two-group (MH by month; NaN draws all 0,ex2020 0,eraA 0,b4 0,b1 0) all: MH 0.998 | all: pooled yes/no 0.923 (the biased one) | ex2020: MH 0.995 | ex2020: pooled yes/no 0.992 (the biased one) | eraA: MH 0.998 | eraA: pooled yes/no 0.923 (the biased one) | b4: MH 0.997 | b1: MH 0.997
+  f24a  scored  1423 assigned  1415 | all 1.024 (exp 1.021) | ex2020 0.984 (exp 1.000) | b4 1.014 (exp 1.015) | b1 1.022 (exp 1.021)
+  f24b  scored  3907 assigned  3907 | all 1.001 (exp 1.001) | ex2020 1.000 (exp 1.000) | b4 1.000 (exp 1.003) | b1 0.998 (exp 1.005)
+
+### base rate 3% outside 2020 (2020: 9%)
+  f01   scored  5330 assigned  5330 | all 1.008 (exp 1.006) | ex2020 0.994 (exp 1.000) | b4 1.005 (exp 1.005) | b1 1.009 (exp 1.005)
+  f02   scored  5330 assigned  5330 | all 1.004 (exp 1.006) | ex2020 0.999 (exp 1.000) | b4 1.005 (exp 1.005) | b1 1.007 (exp 1.005)
+  f03   scored  5330 assigned  5330 | all 1.008 (exp 1.006) | ex2020 0.995 (exp 1.000) | b4 1.002 (exp 1.005) | b1 1.004 (exp 1.005)
+  f04   scored  5330 assigned  5330 | all 1.000 (exp 1.007) | ex2020 0.996 (exp 1.000) | b4 1.004 (exp 1.005) | b1 1.006 (exp 1.008)
+  f05   scored  5330 assigned  5330 | all 1.005 (exp 1.007) | ex2020 0.999 (exp 1.000) | b4 1.007 (exp 1.007) | b1 1.007 (exp 1.006)
+  f06   scored  5186 assigned  5186 | all 0.995 (exp 1.005) | ex2020 0.997 (exp 1.000) | b4 1.009 (exp 1.006) | b1 1.012 (exp 1.009)
+  f07   scored  5330 assigned  5330 | all 1.004 (exp 1.006) | ex2020 0.994 (exp 1.000) | b4 1.009 (exp 1.005) | b1 1.010 (exp 1.005)
+  f08   scored  5330 assigned  5330 | all 1.007 (exp 1.006) | ex2020 0.989 (exp 1.000) | b4 1.002 (exp 1.005) | b1 1.002 (exp 1.005)
+  f09   scored  5330 assigned  5330 | all 1.008 (exp 1.006) | ex2020 1.032 (exp 1.000) | b4 1.004 (exp 1.005) | b1 1.002 (exp 1.005)
+  f10   scored  4924 assigned  4924 | all 1.006 (exp 1.005) | ex2020 0.994 (exp 1.000) | b4 1.017 (exp 1.006) | b1 1.015 (exp 1.004)
+  f11 two-group (MH by month; NaN draws all 0,ex2020 5,eraA 0,b4 0,b1 0) all: MH 0.993 | all: pooled yes/no 0.872 (the biased one) | ex2020: MH 0.955 | ex2020: pooled yes/no 0.958 (the biased one) | eraA: MH 0.993 | eraA: pooled yes/no 0.872 (the biased one) | b4: MH 0.991 | b1: MH 0.991
+  f12   scored  5330 assigned  5330 | all 1.004 (exp 1.010) | ex2020 1.009 (exp 1.000) | b4 1.016 (exp 1.010) | b1 1.007 (exp 1.010)
+  f13   scored  5330 assigned  5330 | all 1.000 (exp 1.006) | ex2020 0.991 (exp 1.000) | b4 1.009 (exp 1.005) | b1 1.003 (exp 1.005)
+  f14 NOT EVALUABLE: the group sizes are yes 0 / no 5330 (empty by the live code, stage 1f) - reported as not evaluable, not as a pass
+  f15   scored  5330 assigned  5330 | all 1.008 (exp 1.006) | ex2020 0.992 (exp 1.000) | b4 1.006 (exp 1.005) | b1 1.004 (exp 1.005)
+  f16   scored  5330 assigned  5330 | all 1.007 (exp 1.006) | ex2020 1.032 (exp 1.000) | b4 1.010 (exp 1.005) | b1 1.004 (exp 1.005)
+  f17   scored  5330 assigned  5330 | all 1.001 (exp 1.006) | ex2020 0.987 (exp 1.000) | b4 1.000 (exp 1.005) | b1 0.998 (exp 1.005)
+  f18   scored  5330 assigned  5330 | all 1.005 (exp 1.006) | ex2020 0.995 (exp 1.000) | b4 1.007 (exp 1.005) | b1 1.006 (exp 1.005)
+  f19   scored  5330 assigned  5330 | all 1.006 (exp 1.006) | ex2020 0.996 (exp 1.000) | b4 1.004 (exp 1.005) | b1 1.003 (exp 1.005)
+  f20   scored  5330 assigned  5330 | all 0.951 (exp 0.944) | ex2020 0.993 (exp 1.000) | b4 0.978 (exp 0.970) | b1 0.982 (exp 0.976)
+  f21   scored  5032 assigned  5032 | all 1.007 (exp 1.005) | ex2020 0.997 (exp 1.000) | b4 1.020 (exp 1.006) | b1 1.013 (exp 1.006)
+  f22   scored  4924 assigned  4924 | all 1.008 (exp 1.004) | ex2020 1.006 (exp 1.000) | b4 1.011 (exp 1.008) | b1 1.004 (exp 1.009)
+  f23 two-group (MH by month; NaN draws all 0,ex2020 0,eraA 0,b4 0,b1 0) all: MH 0.998 | all: pooled yes/no 0.926 (the biased one) | ex2020: MH 0.979 | ex2020: pooled yes/no 0.985 (the biased one) | eraA: MH 0.998 | eraA: pooled yes/no 0.926 (the biased one) | b4: MH 1.006 | b1: MH 1.002
+  f24a  scored  1423 assigned  1415 | all 1.014 (exp 1.021) | ex2020 0.984 (exp 1.000) | b4 1.007 (exp 1.015) | b1 1.018 (exp 1.021)
+  f24b  scored  3907 assigned  3907 | all 0.999 (exp 1.001) | ex2020 1.028 (exp 1.000) | b4 1.007 (exp 1.003) | b1 1.003 (exp 1.005)
+
+### base rate 8% outside 2020 (2020: 24%)
+  f01   scored  5330 assigned  5330 | all 1.006 (exp 1.006) | ex2020 0.999 (exp 1.000) | b4 1.002 (exp 1.005) | b1 1.001 (exp 1.005)
+  f02   scored  5330 assigned  5330 | all 1.006 (exp 1.006) | ex2020 0.994 (exp 1.000) | b4 1.002 (exp 1.005) | b1 1.004 (exp 1.005)
+  f03   scored  5330 assigned  5330 | all 1.009 (exp 1.006) | ex2020 0.999 (exp 1.000) | b4 1.006 (exp 1.005) | b1 1.006 (exp 1.005)
+  f04   scored  5330 assigned  5330 | all 1.006 (exp 1.007) | ex2020 1.002 (exp 1.000) | b4 1.008 (exp 1.005) | b1 1.010 (exp 1.008)
+  f05   scored  5330 assigned  5330 | all 1.007 (exp 1.007) | ex2020 0.997 (exp 1.000) | b4 1.003 (exp 1.007) | b1 1.003 (exp 1.006)
+  f06   scored  5186 assigned  5186 | all 1.005 (exp 1.005) | ex2020 0.999 (exp 1.000) | b4 1.016 (exp 1.006) | b1 1.021 (exp 1.009)
+  f07   scored  5330 assigned  5330 | all 1.003 (exp 1.006) | ex2020 0.995 (exp 1.000) | b4 1.002 (exp 1.005) | b1 1.002 (exp 1.005)
+  f08   scored  5330 assigned  5330 | all 1.006 (exp 1.006) | ex2020 1.003 (exp 1.000) | b4 1.008 (exp 1.005) | b1 1.007 (exp 1.005)
+  f09   scored  5330 assigned  5330 | all 1.005 (exp 1.006) | ex2020 0.999 (exp 1.000) | b4 1.000 (exp 1.005) | b1 1.003 (exp 1.005)
+  f10   scored  4924 assigned  4924 | all 1.006 (exp 1.005) | ex2020 1.006 (exp 1.000) | b4 1.010 (exp 1.006) | b1 1.006 (exp 1.004)
+  f11 two-group (MH by month; NaN draws all 0,ex2020 0,eraA 0,b4 0,b1 0) all: MH 0.997 | all: pooled yes/no 0.884 (the biased one) | ex2020: MH 0.993 | ex2020: pooled yes/no 0.999 (the biased one) | eraA: MH 0.997 | eraA: pooled yes/no 0.884 (the biased one) | b4: MH 0.999 | b1: MH 0.999
+  f12   scored  5330 assigned  5330 | all 1.009 (exp 1.010) | ex2020 1.005 (exp 1.000) | b4 1.011 (exp 1.010) | b1 1.014 (exp 1.010)
+  f13   scored  5330 assigned  5330 | all 1.006 (exp 1.006) | ex2020 0.999 (exp 1.000) | b4 0.999 (exp 1.005) | b1 1.000 (exp 1.005)
+  f14 NOT EVALUABLE: the group sizes are yes 0 / no 5330 (empty by the live code, stage 1f) - reported as not evaluable, not as a pass
+  f15   scored  5330 assigned  5330 | all 1.007 (exp 1.006) | ex2020 1.001 (exp 1.000) | b4 1.002 (exp 1.005) | b1 1.001 (exp 1.005)
+  f16   scored  5330 assigned  5330 | all 1.007 (exp 1.006) | ex2020 1.000 (exp 1.000) | b4 1.000 (exp 1.005) | b1 1.002 (exp 1.005)
+  f17   scored  5330 assigned  5330 | all 1.006 (exp 1.006) | ex2020 0.997 (exp 1.000) | b4 1.003 (exp 1.005) | b1 1.002 (exp 1.005)
+  f18   scored  5330 assigned  5330 | all 1.010 (exp 1.006) | ex2020 0.997 (exp 1.000) | b4 1.005 (exp 1.005) | b1 1.006 (exp 1.005)
+  f19   scored  5330 assigned  5330 | all 1.003 (exp 1.006) | ex2020 0.996 (exp 1.000) | b4 1.003 (exp 1.005) | b1 1.001 (exp 1.005)
+  f20   scored  5330 assigned  5330 | all 0.946 (exp 0.944)   <-- OUTSIDE BAND (BLOCKING) | ex2020 0.985 (exp 1.000) | b4 0.973 (exp 0.970) | b1 0.979 (exp 0.976)
+  f21   scored  5032 assigned  5032 | all 1.006 (exp 1.005) | ex2020 0.999 (exp 1.000) | b4 1.016 (exp 1.006) | b1 1.013 (exp 1.006)
+  f22   scored  4924 assigned  4924 | all 1.003 (exp 1.004) | ex2020 0.995 (exp 1.000) | b4 1.009 (exp 1.008) | b1 1.008 (exp 1.009)
+  f23 two-group (MH by month; NaN draws all 0,ex2020 0,eraA 0,b4 0,b1 0) all: MH 1.003 | all: pooled yes/no 0.929 (the biased one) | ex2020: MH 0.996 | ex2020: pooled yes/no 0.990 (the biased one) | eraA: MH 1.003 | eraA: pooled yes/no 0.929 (the biased one) | b4: MH 1.003 | b1: MH 1.001
+  f24a  scored  1423 assigned  1415 | all 1.020 (exp 1.021) | ex2020 0.991 (exp 1.000) | b4 1.019 (exp 1.015) | b1 1.027 (exp 1.021)
+  f24b  scored  3907 assigned  3907 | all 1.000 (exp 1.001) | ex2020 1.005 (exp 1.000) | b4 0.999 (exp 1.003) | b1 1.007 (exp 1.005)
+
+## B. NO-EFFECT CENTRING - check set (pooled | era A | era B | B4-strata | B1-strata listed)
+
+### base rate 5%
+  f01   scored  6266 | all 0.998 (exp 1.000) | eraA 0.993 (exp 1.000) | eraB 1.002 (exp 1.000) | b4 1.006 (exp 1.000) | b1 1.005 (exp 1.000)
+  f02   scored  5990 | all 0.998 (exp 1.000) | eraA 0.999 (exp 1.000) | eraB 1.001 (exp 1.000) | b4 0.998 (exp 1.000) | b1 0.997 (exp 1.000)
+  f03   scored  6266 | all 1.005 (exp 1.000) | eraA 0.998 (exp 1.000) | eraB 0.999 (exp 1.000) | b4 1.006 (exp 1.000) | b1 0.997 (exp 1.000)
+  f04   scored  6266 | all 0.997 (exp 1.000) | eraA 0.999 (exp 1.000) | eraB 0.993 (exp 1.000) | b4 0.997 (exp 1.000) | b1 0.997 (exp 1.000)
+  f05   scored  6266 | all 0.998 (exp 1.000) | eraA 0.997 (exp 1.000) | eraB 0.998 (exp 1.000) | b4 1.001 (exp 1.000) | b1 1.002 (exp 1.000)
+  f06   scored  6049 | all 1.006 (exp 1.000) | eraA 1.014 (exp 1.000) | eraB 1.002 (exp 1.000) | b4 1.009 (exp 1.000) | b1 1.010 (exp 1.000)
+  f07   scored  6266 | all 0.997 (exp 1.000) | eraA 0.990 (exp 1.000) | eraB 0.999 (exp 1.000) | b4 0.997 (exp 1.000) | b1 0.995 (exp 1.000)
+  f08   scored  6266 | all 0.996 (exp 1.000) | eraA 0.997 (exp 1.000) | eraB 0.998 (exp 1.000) | b4 0.999 (exp 1.000) | b1 0.997 (exp 1.000)
+  f09   scored  6266 | all 1.000 (exp 1.000) | eraA 0.995 (exp 1.000) | eraB 1.005 (exp 1.000) | b4 1.003 (exp 1.000) | b1 0.997 (exp 1.000)
+  f10   scored  5173 | all 1.007 (exp 1.000) | eraA 0.996 (exp 1.000) | eraB 1.002 (exp 1.000) | b4 1.001 (exp 1.000) | b1 1.004 (exp 1.000)
+  f11 two-group MH all 0.993 | all pooled 0.989 | MH ex2020 0.993 | ex2020 pooled 0.989 | MH eraA 0.984 | eraA pooled 0.980 | MH eraB 0.986 | eraB pooled 0.972 | MH b4 0.992 | MH b1 0.993
+  f12   scored  6266 | all 0.996 (exp 1.000) | eraA 1.012 (exp 1.000) | eraB 0.996 (exp 1.000) | b4 0.994 (exp 1.000) | b1 0.992 (exp 1.000)
+  f13   scored  6266 | all 1.000 (exp 1.000) | eraA 0.996 (exp 1.000) | eraB 1.001 (exp 1.000) | b4 0.997 (exp 1.000) | b1 0.998 (exp 1.000)
+  f14 NOT EVALUABLE (empty)
+  f15   scored  6266 | all 0.997 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 0.992 (exp 1.000) | b4 0.997 (exp 1.000) | b1 0.998 (exp 1.000)
+  f16   scored  6266 | all 0.999 (exp 1.000) | eraA 0.995 (exp 1.000) | eraB 0.999 (exp 1.000) | b4 1.001 (exp 1.000) | b1 1.000 (exp 1.000)
+  f17   scored  6265 | all 1.006 (exp 1.000) | eraA 0.996 (exp 1.000) | eraB 1.000 (exp 1.000) | b4 1.001 (exp 1.000) | b1 1.006 (exp 1.000)
+  f18   scored  6266 | all 0.998 (exp 1.000) | eraA 0.992 (exp 1.000) | eraB 0.999 (exp 1.000) | b4 1.000 (exp 1.000) | b1 0.997 (exp 1.000)
+  f19   scored  6266 | all 1.000 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 0.999 (exp 1.000) | b4 1.006 (exp 1.000) | b1 1.007 (exp 1.000)
+  f20   scored  6266 | all 0.994 (exp 1.000) | eraA 0.997 (exp 1.000) | eraB 0.996 (exp 1.000) | b4 0.996 (exp 1.000) | b1 0.996 (exp 1.000)
+  f21   scored  5778 | all 0.996 (exp 1.000) | eraA 0.993 (exp 1.000) | eraB 0.999 (exp 1.000) | b4 1.000 (exp 1.000) | b1 0.995 (exp 1.000)
+  f22   scored  5173 | all 0.998 (exp 1.000) | eraA 0.990 (exp 1.000) | eraB 1.003 (exp 1.000) | b4 0.995 (exp 1.000) | b1 0.995 (exp 1.000)
+  f23 two-group MH all 0.999 | all pooled 1.008 | MH ex2020 0.999 | ex2020 pooled 1.008 | MH eraA 0.983 | eraA pooled 0.987 | MH eraB 1.007 | eraB pooled 0.999 | MH b4 1.002 | MH b1 1.003
+  f24a  scored  1600 | all 0.992 (exp 1.000) | eraA 0.989 (exp 1.000) | eraB 0.990 (exp 1.000) | b4 0.995 (exp 1.000) | b1 0.997 (exp 1.000)
+  f24b  scored  4666 | all 1.004 (exp 1.000) | eraA 0.998 (exp 1.000) | eraB 1.006 (exp 1.000) | b4 1.008 (exp 1.000) | b1 1.003 (exp 1.000)
+
+### base rate 3%
+  f01   scored  6266 | all 1.001 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 0.993 (exp 1.000) | b4 1.000 (exp 1.000) | b1 1.000 (exp 1.000)
+  f02   scored  5990 | all 0.997 (exp 1.000) | eraA 0.988 (exp 1.000) | eraB 0.992 (exp 1.000) | b4 0.998 (exp 1.000) | b1 0.996 (exp 1.000)
+  f03   scored  6266 | all 0.996 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 0.992 (exp 1.000) | b4 0.993 (exp 1.000) | b1 0.999 (exp 1.000)
+  f04   scored  6266 | all 0.996 (exp 1.000) | eraA 0.991 (exp 1.000) | eraB 1.000 (exp 1.000) | b4 0.995 (exp 1.000) | b1 0.997 (exp 1.000)
+  f05   scored  6266 | all 1.002 (exp 1.000) | eraA 0.991 (exp 1.000) | eraB 0.995 (exp 1.000) | b4 1.000 (exp 1.000) | b1 0.997 (exp 1.000)
+  f06   scored  6049 | all 1.001 (exp 1.000) | eraA 1.014 (exp 1.000) | eraB 1.017 (exp 1.000) | b4 1.003 (exp 1.000) | b1 1.002 (exp 1.000)
+  f07   scored  6266 | all 1.003 (exp 1.000) | eraA 0.982 (exp 1.000) | eraB 1.020 (exp 1.000) | b4 1.002 (exp 1.000) | b1 1.002 (exp 1.000)
+  f08   scored  6266 | all 1.003 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 1.020 (exp 1.000) | b4 1.002 (exp 1.000) | b1 1.010 (exp 1.000)
+  f09   scored  6266 | all 0.999 (exp 1.000) | eraA 0.988 (exp 1.000) | eraB 1.020 (exp 1.000) | b4 0.998 (exp 1.000) | b1 1.003 (exp 1.000)
+  f10   scored  5173 | all 1.019 (exp 1.000) | eraA 1.015 (exp 1.000) | eraB 1.009 (exp 1.000) | b4 1.014 (exp 1.000) | b1 1.003 (exp 1.000)
+  f11 two-group MH all 0.985 | all pooled 0.972 | MH ex2020 0.985 | ex2020 pooled 0.972 | MH eraA 0.973 | eraA pooled 0.968 | MH eraB 0.964 | eraB pooled 0.964 | MH b4 0.981 | MH b1 0.985
+  f12   scored  6266 | all 0.995 (exp 1.000) | eraA 1.012 (exp 1.000) | eraB 1.003 (exp 1.000) | b4 1.000 (exp 1.000) | b1 0.999 (exp 1.000)
+  f13   scored  6266 | all 1.000 (exp 1.000) | eraA 0.994 (exp 1.000) | eraB 0.994 (exp 1.000) | b4 1.000 (exp 1.000) | b1 1.001 (exp 1.000)
+  f14 NOT EVALUABLE (empty)
+  f15   scored  6266 | all 1.000 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 0.996 (exp 1.000) | b4 1.001 (exp 1.000) | b1 1.000 (exp 1.000)
+  f16   scored  6266 | all 0.989 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 0.988 (exp 1.000) | b4 0.984 (exp 1.000) | b1 0.986 (exp 1.000)
+  f17   scored  6265 | all 1.000 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 0.991 (exp 1.000) | b4 0.999 (exp 1.000) | b1 1.000 (exp 1.000)
+  f18   scored  6266 | all 1.001 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 0.993 (exp 1.000) | b4 1.000 (exp 1.000) | b1 0.999 (exp 1.000)
+  f19   scored  6266 | all 0.998 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 0.992 (exp 1.000) | b4 0.999 (exp 1.000) | b1 0.995 (exp 1.000)
+  f20   scored  6266 | all 0.994 (exp 1.000) | eraA 0.987 (exp 1.000) | eraB 0.996 (exp 1.000) | b4 0.995 (exp 1.000) | b1 0.994 (exp 1.000)
+  f21   scored  5778 | all 1.014 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 1.014 (exp 1.000) | b4 0.997 (exp 1.000) | b1 0.999 (exp 1.000)
+  f22   scored  5173 | all 1.002 (exp 1.000) | eraA 0.986 (exp 1.000) | eraB 0.994 (exp 1.000) | b4 1.002 (exp 1.000) | b1 1.000 (exp 1.000)
+  f23 two-group MH all 1.001 | all pooled 0.998 | MH ex2020 1.001 | ex2020 pooled 0.998 | MH eraA 0.982 | eraA pooled 0.975 | MH eraB 1.000 | eraB pooled 1.000 | MH b4 1.002 | MH b1 0.999
+  f24a  scored  1600 | all 0.988 (exp 1.000) | eraA 1.047 (exp 1.000) | eraB 1.061 (exp 1.000)   <-- OUTSIDE BAND (BLOCKING) | b4 0.978 (exp 1.000) | b1 0.999 (exp 1.000)
+  f24b  scored  4666 | all 0.989 (exp 1.000) | eraA 1.019 (exp 1.000) | eraB 0.989 (exp 1.000) | b4 1.002 (exp 1.000) | b1 0.997 (exp 1.000)
+
+### base rate 8%
+  f01   scored  6266 | all 0.999 (exp 1.000) | eraA 1.001 (exp 1.000) | eraB 1.001 (exp 1.000) | b4 1.000 (exp 1.000) | b1 0.999 (exp 1.000)
+  f02   scored  5990 | all 0.996 (exp 1.000) | eraA 1.000 (exp 1.000) | eraB 0.991 (exp 1.000) | b4 0.996 (exp 1.000) | b1 1.001 (exp 1.000)
+  f03   scored  6266 | all 0.996 (exp 1.000) | eraA 1.000 (exp 1.000) | eraB 0.996 (exp 1.000) | b4 0.995 (exp 1.000) | b1 1.001 (exp 1.000)
+  f04   scored  6266 | all 1.003 (exp 1.000) | eraA 0.999 (exp 1.000) | eraB 1.005 (exp 1.000) | b4 1.000 (exp 1.000) | b1 1.002 (exp 1.000)
+  f05   scored  6266 | all 1.000 (exp 1.000) | eraA 1.006 (exp 1.000) | eraB 0.999 (exp 1.000) | b4 1.004 (exp 1.000) | b1 1.006 (exp 1.000)
+  f06   scored  6049 | all 0.997 (exp 1.000) | eraA 0.992 (exp 1.000) | eraB 0.998 (exp 1.000) | b4 0.994 (exp 1.000) | b1 0.997 (exp 1.000)
+  f07   scored  6266 | all 0.998 (exp 1.000) | eraA 0.998 (exp 1.000) | eraB 0.994 (exp 1.000) | b4 0.997 (exp 1.000) | b1 1.000 (exp 1.000)
+  f08   scored  6266 | all 1.001 (exp 1.000) | eraA 1.001 (exp 1.000) | eraB 0.998 (exp 1.000) | b4 0.997 (exp 1.000) | b1 0.999 (exp 1.000)
+  f09   scored  6266 | all 0.998 (exp 1.000) | eraA 1.000 (exp 1.000) | eraB 0.994 (exp 1.000) | b4 0.996 (exp 1.000) | b1 0.996 (exp 1.000)
+  f10   scored  5173 | all 1.000 (exp 1.000) | eraA 1.002 (exp 1.000) | eraB 1.001 (exp 1.000) | b4 1.000 (exp 1.000) | b1 1.001 (exp 1.000)
+  f11 two-group MH all 0.999 | all pooled 0.999 | MH ex2020 0.999 | ex2020 pooled 0.999 | MH eraA 0.997 | eraA pooled 0.989 | MH eraB 1.004 | eraB pooled 0.997 | MH b4 1.001 | MH b1 1.002
+  f12   scored  6266 | all 0.996 (exp 1.000) | eraA 0.993 (exp 1.000) | eraB 0.998 (exp 1.000) | b4 1.000 (exp 1.000) | b1 0.998 (exp 1.000)
+  f13   scored  6266 | all 0.994 (exp 1.000) | eraA 0.993 (exp 1.000) | eraB 0.999 (exp 1.000) | b4 0.996 (exp 1.000) | b1 0.996 (exp 1.000)
+  f14 NOT EVALUABLE (empty)
+  f15   scored  6266 | all 0.999 (exp 1.000) | eraA 0.999 (exp 1.000) | eraB 0.998 (exp 1.000) | b4 1.000 (exp 1.000) | b1 1.001 (exp 1.000)
+  f16   scored  6266 | all 1.004 (exp 1.000) | eraA 1.000 (exp 1.000) | eraB 1.005 (exp 1.000) | b4 1.004 (exp 1.000) | b1 1.004 (exp 1.000)
+  f17   scored  6265 | all 1.003 (exp 1.000) | eraA 1.002 (exp 1.000) | eraB 1.005 (exp 1.000) | b4 0.999 (exp 1.000) | b1 0.997 (exp 1.000)
+  f18   scored  6266 | all 0.997 (exp 1.000) | eraA 0.998 (exp 1.000) | eraB 0.996 (exp 1.000) | b4 0.994 (exp 1.000) | b1 0.997 (exp 1.000)
+  f19   scored  6266 | all 1.001 (exp 1.000) | eraA 1.001 (exp 1.000) | eraB 0.998 (exp 1.000) | b4 1.005 (exp 1.000) | b1 1.002 (exp 1.000)
+  f20   scored  6266 | all 0.996 (exp 1.000) | eraA 1.002 (exp 1.000) | eraB 0.989 (exp 1.000) | b4 0.994 (exp 1.000) | b1 0.995 (exp 1.000)
+  f21   scored  5778 | all 1.007 (exp 1.000) | eraA 1.013 (exp 1.000) | eraB 1.001 (exp 1.000) | b4 1.007 (exp 1.000) | b1 1.003 (exp 1.000)
+  f22   scored  5173 | all 1.002 (exp 1.000) | eraA 0.999 (exp 1.000) | eraB 0.997 (exp 1.000) | b4 0.997 (exp 1.000) | b1 1.000 (exp 1.000)
+  f23 two-group MH all 1.004 | all pooled 1.000 | MH ex2020 1.004 | ex2020 pooled 1.000 | MH eraA 0.994 | eraA pooled 1.000 | MH eraB 0.998 | eraB pooled 0.997 | MH b4 1.002 | MH b1 1.003
+  f24a  scored  1600 | all 0.990 (exp 1.000) | eraA 0.983 (exp 1.000) | eraB 0.990 (exp 1.000) | b4 0.990 (exp 1.000) | b1 0.996 (exp 1.000)
+  f24b  scored  4666 | all 1.003 (exp 1.000) | eraA 1.005 (exp 1.000) | eraB 1.001 (exp 1.000) | b4 0.999 (exp 1.000) | b1 1.003 (exp 1.000)
+
+## C. 5.5 POPULATION SPLITS - own ratio under no effect (5%; thirds re-formed inside each population; listed only, not blocking)
+  first break (after 10 quiet)     features 22 | median-of-medians 1.018 | range 1.005-1.076 | outside band: f20 1.076 (exp 1.074, top 599 / bot 608)
+  later breaks                     features 22 | median-of-medians 1.006 | range 0.963-1.021 | outside band: none
+  common stock only                features 22 | median-of-medians 1.008 | range 0.984-1.035 | outside band: none
+  price >= $5                      features 22 | median-of-medians 1.005 | range 0.952-1.020 | outside band: none
+  embargoed (E<=2020-10-06)        features 22 | median-of-medians 1.008 | range 0.950-1.024 | outside band: f20 0.950 (exp 0.952, top 1315 / bot 1696)
+  2019-20 alone                    features 22 | median-of-medians 1.003 | range 0.970-1.014 | outside band: none
+  second seed (2411)               features 22 | median-of-medians 1.007 | range 1.000-1.034 | outside band: none
+  check: first break               features 22 | median-of-medians 0.999 | range 0.975-1.009 | outside band: none
+  check: later breaks              features 22 | median-of-medians 0.998 | range 0.987-1.010 | outside band: none
+  check: common stock only         features 22 | median-of-medians 1.000 | range 0.992-1.011 | outside band: none
+  check: price >= $5               features 22 | median-of-medians 0.998 | range 0.992-1.011 | outside band: none
+
+## D. FALSE-CARRY AND DETECTION (conditions 1-2 on no-effect labels; the nominal is about 5%)
+  rate 5%: conditions 1-2 on k=1.0, median over the 22 candidates 0.025 (min 0.013, max 0.051); conditions 1 only 0.025
+  rate 3%: conditions 1-2 on k=1.0, median over the 22 candidates 0.048 (min 0.038, max 0.061); conditions 1 only 0.089
+  rate 8%: conditions 1-2 on k=1.0, median over the 22 candidates 0.004 (min 0.001, max 0.045); conditions 1 only 0.004
+  rate 5% k=1.3: conditions 1-2 median 0.674 (min 0.366, max 0.704) - detection
+  rate 5% k=1.5: conditions 1-2 median 0.970 (min 0.669, max 0.977) - detection
+  f11 (MH): planted 1.5x MH median 1.497 vs no effect 1.004 (a dead statistic would read 1.0 on both)
+  f23 (MH): planted 1.5x MH median 1.500 vs no effect 0.998 (a dead statistic would read 1.0 on both)
+
+## E. THE TWO FLOORS (planted 1.5x; share of draws passing conditions 1-2 that also pass the floor, MEDIAN over the candidates; under 0.80 -> lower 0.05, never under 1.05)
+
+### rate 5%
+    condition 3, without-2020 ratio at 1.10: median pass 0.932 over 22 candidates (min 0.831, max 0.943) -> >= 0.80 OK
+    condition 3, without-2020 ratio at 1.05: median pass 0.959 over 22 candidates (min 0.834, max 0.969) -> >= 0.80 OK
+    => condition 3, without-2020 ratio floor at 5%: 1.10; lowering rule did not fire
+    break-day-selection (B4-strata) ratio at 1.10: median pass 0.990 over 22 candidates (min 0.796, max 1.000) -> >= 0.80 OK
+    break-day-selection (B4-strata) ratio at 1.05: median pass 0.998 over 22 candidates (min 0.845, max 1.000) -> >= 0.80 OK
+    => break-day-selection (B4-strata) ratio floor at 5%: 1.10; lowering rule did not fire
+
+### rate 3%
+    condition 3, without-2020 ratio at 1.10: median pass 0.896 over 22 candidates (min 0.824, max 0.912) -> >= 0.80 OK
+    condition 3, without-2020 ratio at 1.05: median pass 0.920 over 22 candidates (min 0.825, max 0.937) -> >= 0.80 OK
+    => condition 3, without-2020 ratio floor at 3%: 1.10; lowering rule did not fire
+    break-day-selection (B4-strata) ratio at 1.10: median pass 0.990 over 22 candidates (min 0.815, max 1.000) -> >= 0.80 OK
+    break-day-selection (B4-strata) ratio at 1.05: median pass 0.997 over 22 candidates (min 0.861, max 1.000) -> >= 0.80 OK
+    => break-day-selection (B4-strata) ratio floor at 3%: 1.10; lowering rule did not fire
+
+### rate 8%
+    condition 3, without-2020 ratio at 1.10: median pass 0.969 over 22 candidates (min 0.832, max 0.979) -> >= 0.80 OK
+    condition 3, without-2020 ratio at 1.05: median pass 0.983 over 22 candidates (min 0.860, max 0.990) -> >= 0.80 OK
+    => condition 3, without-2020 ratio floor at 8%: 1.10; lowering rule did not fire
+    break-day-selection (B4-strata) ratio at 1.10: median pass 0.995 over 22 candidates (min 0.797, max 1.000) -> >= 0.80 OK
+    break-day-selection (B4-strata) ratio at 1.05: median pass 0.999 over 22 candidates (min 0.848, max 1.000) -> >= 0.80 OK
+    => break-day-selection (B4-strata) ratio floor at 8%: 1.10; lowering rule did not fire
+
+## CALIBRATED FLOORS (decided on the 5% row, the prereg's bolded one)
+  condition 3 (without 2020): frozen start 1.10 -> FINAL 1.10 (or <= 0.909 the other way) | lowering rule did NOT fire
+  break-day-selection tag (B4 strata): frozen start 1.10 -> FINAL 1.10 | lowering rule did NOT fire
+  sensitivity ex2020: 5% -> 1.10, 3% -> 1.10, 8% -> 1.10 (same at every rate)
+  sensitivity b4: 5% -> 1.10, 3% -> 1.10, 8% -> 1.10 (same at every rate)
+
+## F. CARRY CHAIN with the final floors (5%): share of draws passing 1-2 | 1-3 | and the tag (B4 ratio under its floor) among the 1-3 carriers
+  k=1.0        : median over candidates: 1-2 0.025 | 1-3 0.021 | tag fires on 0.053 of the carriers (max over features 0.358)
+  k=1.3        : median over candidates: 1-2 0.674 | 1-3 0.581 | tag fires on 0.028 of the carriers (max over features 0.301)
+  k=1.5        : median over candidates: 1-2 0.970 | 1-3 0.905 | tag fires on 0.007 of the carriers (max over features 0.193)
+  B4-only 2.0x : median over candidates: 1-2 0.026 | 1-3 0.023 | tag fires on 0.113 of the carriers (max over features 0.596)
+  (the B4-only case plants an effect on how big a day E had to be and none on the feature: a tag that never fires on it would be dead)
+
+## GATE: centring of every carry-chain and tag statistic
+  BLOCKING statistics outside (0.95, 1.05): 3
+    f20 all @5%: median 0.940 (composition-expected 0.9441473043575268)
+    f20 all @8%: median 0.946 (composition-expected 0.9441473043575266)
+    f24a check eraB @3%: median 1.061 (composition-expected 1.0000000000000002)
+  listed (not blocking) outside the band: 2
+    first break (after 10 quiet) f20: median 1.076 (composition-expected 1.073978516382523)
+    embargoed (E<=2020-10-06) f20: median 0.950 (composition-expected 0.9515249961432709)
+  GATE (centring): FAIL
+
+calibration_rates.tsv sha256 2039faa13b711940 | floors_final.txt sha256 46738a306908c214 | this script bbac99e4e02bb005 | 215s

@@ -1,0 +1,8 @@
+bars: 8,619,626 rows / 15,702 tickers / 821 sessions 2021-09-27..2024-12-31 (5s); 4,178 tickers have a missing session inside their span (188,545 holes)
+store B: loaded in 8s; {'raw_factor': 'bridge (pre_v2 raw / cb702 adjusted on the 2022-04..06 overlap, then the split list <= 2024-12-31) where the ticker is in both stores; else the split list <= 2024-12-31 only', 'splits_rows_skipped_sealed': 3090, 'bridge_tickers': 8518, 'bridge_unstable_fell_back': 224, 'split_list_only_tickers': 7184, 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+era-B nights 2022-04-01 2024-10-03 630
+tickers by raw_src {0: 0, 1: 8518, 2: 7184}
+split-list-only tickers 7184 -> passing the $5M floor on >=1 era-B night: 757
+bridged tickers with era-B bars 8518 -> control A 300
+polygon-pull tickers (union) 326
+{'nights': ['2022-04-01', '2024-10-03', 630], 'src2_tickers': 7184, 'request_main': 757, 'ctlA': 300, 'ctlB': 326, 'request_total': 1073, 'request_sha256': '164da7965c3b9c6ffa49c56cee073c37602eb6604d97c3a31302d750a5020f39', 'max_request_date': '2024-12-30', 'overlap_main_ctlB': 310, 'overlap_main_ctlA': 0}

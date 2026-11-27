@@ -1,0 +1,10 @@
+pool: 4499 kept discovery events E<=2020-10-06; winners 570 (monsters 125); failure pool 1513; truncated winners 0
+sheets: 48 pairs; failures used 576; same-month exact 491 of 576
+bars: 892868 rows for 835 tickers; max date 2020-12-31 (ASSERT <= 2020-12-31) | 3s
+  rendered 8/48 pairs | 29s
+  rendered 16/48 pairs | 51s
+  rendered 24/48 pairs | 74s
+  rendered 32/48 pairs | 97s
+  rendered 40/48 pairs | 120s
+  rendered 48/48 pairs | 142s
+charts 1146; identities shown 835; pairs 48; script sha256 162459e8bc17f88c | 142s

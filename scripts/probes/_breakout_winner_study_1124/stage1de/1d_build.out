@@ -1,0 +1,24 @@
+bars: 8,619,626 rows / 15,702 tickers / 821 sessions 2021-09-27..2024-12-31 (5s); 4,178 tickers have a missing session inside their span (188,545 holes)
+store B: loaded in 8s; {'raw_factor': 'bridge (pre_v2 raw / cb702 adjusted on the 2022-04..06 overlap, then the split list <= 2024-12-31) where the ticker is in both stores; else the split list <= 2024-12-31 only', 'splits_rows_skipped_sealed': 3090, 'bridge_tickers': 8518, 'bridge_unstable_fell_back': 224, 'split_list_only_tickers': 7184, 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+store B ready in 10s; calendar 2021-09-27..2024-12-31 (821); setup raw_src counts [0, 6175621, 2444005]
+truncation check: 450 name-nights, 0 differ between full bars and bars cut at D
+era-B nights 2022-04-01 .. 2024-10-03: 630; E(last) 2024-10-04, E+60 = 2024-12-31
+{
+ "nights": 630,
+ "first_D": "2022-04-01",
+ "last_D": "2024-10-03",
+ "bridge_rows": 198771,
+ "bridge_break_rows": 73086,
+ "live_rows": 135417,
+ "live_break_rows": 47789,
+ "listed_median_bridge": 280.0,
+ "listed_median_live": 208.0,
+ "break_median_bridge": 87.5,
+ "break_median_live": 64.5,
+ "trunc_sample": 450,
+ "raw_src_live_rows": {
+  "1": 124765,
+  "2": 10652
+ },
+ "secs": 61
+}

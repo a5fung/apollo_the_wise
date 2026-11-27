@@ -1,0 +1,46 @@
+{
+ "stage": 2,
+ "gate_pass": false,
+ "gate_centring": false,
+ "blocking_misses": [
+  [
+   "f20 all @5%",
+   0.940466581548121
+  ],
+  [
+   "f20 all @8%",
+   0.9464690310597272
+  ],
+  [
+   "f24a check eraB @3%",
+   1.0607142857142855
+  ]
+ ],
+ "listed": [
+  [
+   "first break (after 10 quiet) f20",
+   1.0759265442404005
+  ],
+  [
+   "embargoed (E<=2020-10-06) f20",
+   0.9496941234849094
+  ]
+ ],
+ "floor_ex2020": 1.1,
+ "floor_b4": 1.1,
+ "weak": [
+  false,
+  false
+ ],
+ "candidates": 22,
+ "f14_evaluable": false,
+ "sim_rerun_done": true,
+ "sha": {
+  "2_calib.txt": "70e6e6d26dba527a",
+  "2_sim.txt": "bb66ff6dc8e8a8e4",
+  "2_sim_vs_frozen.txt": "471a85e89d0276bb",
+  "calibration_rates.tsv": "2039faa13b711940",
+  "floors_final.txt": "46738a306908c214",
+  "2_diag.txt": "f2a91865d4288abe"
+ }
+}

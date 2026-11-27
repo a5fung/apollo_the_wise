@@ -1,0 +1,13 @@
+(a) max returned date 2024-12-30 <= 2024-12-31: True
+(b) tickers returned 1023/1073 = 95.3%
+    set main: tickers returned 707/757
+    set ctlA_bridged: tickers returned 300/300
+    set ctlB_polygon: tickers returned 325/326
+    2022: ticker-nights returned 92,263/95,102 = 97.0%
+    2023: ticker-nights returned 129,855/133,101 = 97.6%
+    2024: ticker-nights returned 120,052/121,567 = 98.8%
+(c) ctlA_bridged: control tickers with comparable rows 300/300; agree (median |pulled/known-1| <= 10%) 300 = 100.00% (pass >= 99%): True; rows within 0.5%: 99.6% of 172,109 (description)
+(c) ctlB_polygon: control tickers with comparable rows 324/326; agree (median |pulled/known-1| <= 10%) 314 = 96.91% (pass >= 99%): False; rows within 0.5%: 95.0% of 48,727 (description)
+(d) pulled tickers 1023; failed raw/adjusted stability (BRIDGE_TOL 0.005) -> treated as NOT returned: 56
+    main request names not returned or failed: 77/757 -> derived-only handling (prereg 1.3), not a stop
+    derived-only share of era-B pool-candidate name-nights (adjusted $5M floor): 17,796/2,218,316 = 0.80%

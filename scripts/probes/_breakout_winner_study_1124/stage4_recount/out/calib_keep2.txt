@@ -1,0 +1,13 @@
+break-row first share 0.15205335205335205
+q=1.0000 n=15312 first-share=0.7716 ratio=5.074 ok=False
+q=0.5000 n=13640 first-share=0.4713 ratio=3.099 ok=False
+q=0.3333 n=12384 first-share=0.3761 ratio=2.474 ok=False
+q=0.2500 n=11399 first-share=0.3267 ratio=2.149 ok=False
+q=0.2000 n=10514 first-share=0.2966 ratio=1.950 ok=True
+q=0.1667 n=9787 first-share=0.2767 ratio=1.820 ok=True
+q=0.1250 n=8621 first-share=0.2496 ratio=1.642 ok=True
+q=0.1000 n=7754 first-share=0.2332 ratio=1.533 ok=True
+chosen q 0.2
+{2017: 814, 2018: 1232, 2019: 1198, 2020: 3439, 2021: 3083, 2022: 748} tickers 3054
+months 64 smallest 20
+seed2411 n 10545 common 1108

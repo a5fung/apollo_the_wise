@@ -3185,3 +3185,7 @@ His words (Sat 11-21, Apollo session chat), on TLRY 2020-11-05 looking like a fa
 - Action: coded as the study's gallery read #1 (§5.7), definition frozen before the check years are read; tested once on 2021-2024.
 - 2026-11-26 follow-up, his words: *"another thing is that even if pattern is good, stock can still failure as there's no guarantees, the setup works over many trades with tight stop loss and letting big winners run, so it may be possible or even likely that the same pattern have winners and failures, but the strategy works if the pattern/setup gives us tight stop loss points and control downside and gives us enough big winners to make up for it"*
   - Read: judge a pattern by its RATE of big winners against a tight, controlled stop — never by whether it avoids failures. A good pattern will hold failures too; the edge is tight downside plus enough big winners. (Framing, not a gallery read — takes no slot; matches the study's big-winner-rate statistic and [[measure-the-tail-not-the-median]].)
+
+## 2026-11-26 — Chart sample 11 (#594, outcome-blind): his worded reads
+- His words: *"A - no, still chopping around in range"* (HRI 2026-10-27) and *"J - no, clear downtrend, gap didn't change anything"* (WEN 2026-10-28); the other ten were one-word grades (all 12 in `tests/fixtures/must_not_trade_charts.py`, session 2026-11-26).
+- Read: a gap out of a stock still chopping inside its range, or one inside a clear downtrend, is not an EP setup — the gap has to change the chart's state, not just add one up-day.

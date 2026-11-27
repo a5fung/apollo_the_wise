@@ -1,0 +1,7 @@
+condition 3 (without-2020) floor: 1.10 (lowering rule fired: False; stated weakness: False)
+break-day-selection (B4 strata) floor: 1.10 (lowering rule fired: False; stated weakness: False)
+decided on the 5% outside-2020 row; sensitivity 3% / 8%: ex2020@5%=1.10, b4@5%=1.10, ex2020@3%=1.10, b4@3%=1.10, ex2020@8%=1.10, b4@8%=1.10
+prereg sha256 3eb2b9b0247bc0ba7bf0d8e6f1efd67da1078fc090373c83c1bc14599339042a
+A1 sha256 4a7beda14378ed2dea42308d92364dd92de4907aa3c7da4aaaffdffe75d17b10
+feature_table sha256 d629ef0af85f0ed3404d0e9cffcc6545627fa3dec6230eb4da94cb3ed95bf53c
+NOTE: the frozen prereg document was NOT edited by stage 2; writing these floors into the run and recording them is left to the caller.

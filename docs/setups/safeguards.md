@@ -471,7 +471,7 @@ not impossible.
 
 ### 2026-11-26 — QUARTERLY REVIEW #2 (kill/scale bands): **KEEP as signed** (operator 2026-11-26: "keep bands")
 - **What:** no threshold, arm or floor changed. Live evaluator HOLD: n=44, trailing-20 +0.23R, trailing-40 −0.05R, losing streak 6, cumulative −6.2R; 0 overrides ever. Nearest arm: REDUCE on streak, 10 losses away; KILL cum −30R is ~24R away.
-- **Era:** 19 of 44 closed under the 2R stop (+2.4R net, two tail winners VICR/KOD); the calibration was simulated on orb_low — too few 2R trades to re-derive bands from.
+- **Era:** 20 of 44 closed under the 2R stop (MRVL 08-19 on; ≈ +1.4R net, two tail winners VICR/KOD). Inputs (b) replay-regression reports and (d) demote-side forward R were NOT read — the keep rests on the live distribution and the override log; the calibration was simulated on orb_low — too few 2R trades to re-derive bands from.
 - **Evidence:** `docs/analysis/kill_scale_quarterly_2026-11-26.md`, `scripts/probes/_killscale_1126/`. Next review 2027-02-26 (`kill_scale_bands_quarterly_review`).
 - **Reversion flag:** n/a (no change).
 

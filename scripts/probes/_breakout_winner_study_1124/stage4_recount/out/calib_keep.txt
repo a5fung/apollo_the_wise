@@ -1,0 +1,14 @@
+rows 420158 fire 156695 nights 1322 median per night 190.0
+break rows 156695 tickers 3523
+big    incl=False quiet=10/ge brk_first=15.205% | q=1.000: n=15472 (want 15312) first=77% | q=0.333: n=12496 (want 12384) first=38% | q=0.200: n=10600 (want 10514) first=29% | q=0.125: n=8683 (want 8621) first=25%
+big    incl=False quiet=10/strict brk_first=14.087% | q=1.000: n=15472 (want 15312) first=76% | q=0.333: n=12496 (want 12384) first=36% | q=0.200: n=10600 (want 10514) first=28% | q=0.125: n=8683 (want 8621) first=24%
+big    incl=False quiet=9/ge brk_first=16.440% | q=1.000: n=15472 (want 15312) first=79% | q=0.333: n=12496 (want 12384) first=39% | q=0.200: n=10600 (want 10514) first=31% | q=0.125: n=8683 (want 8621) first=26%
+big    incl=True  quiet=10/ge brk_first=15.205% | q=1.000: n=15312 (want 15312) first=77% | q=0.333: n=12384 (want 12384) first=38% | q=0.200: n=10514 (want 10514) first=30% | q=0.125: n=8621 (want 8621) first=25%
+big    incl=True  quiet=10/strict brk_first=14.087% | q=1.000: n=15312 (want 15312) first=76% | q=0.333: n=12384 (want 12384) first=36% | q=0.200: n=10514 (want 10514) first=28% | q=0.125: n=8621 (want 8621) first=24%
+big    incl=True  quiet=9/ge brk_first=16.440% | q=1.000: n=15312 (want 15312) first=79% | q=0.333: n=12384 (want 12384) first=39% | q=0.200: n=10514 (want 10514) first=31% | q=0.125: n=8621 (want 8621) first=26%
+little incl=False quiet=10/ge brk_first=15.205% | q=1.000: n=15472 (want 15312) first=77% | q=0.333: n=12461 (want 12384) first=37% | q=0.200: n=10591 (want 10514) first=29% | q=0.125: n=8694 (want 8621) first=24%
+little incl=False quiet=10/strict brk_first=14.087% | q=1.000: n=15472 (want 15312) first=76% | q=0.333: n=12461 (want 12384) first=36% | q=0.200: n=10591 (want 10514) first=27% | q=0.125: n=8694 (want 8621) first=23%
+little incl=False quiet=9/ge brk_first=16.440% | q=1.000: n=15472 (want 15312) first=79% | q=0.333: n=12461 (want 12384) first=38% | q=0.200: n=10591 (want 10514) first=30% | q=0.125: n=8694 (want 8621) first=25%
+little incl=True  quiet=10/ge brk_first=15.205% | q=1.000: n=15312 (want 15312) first=77% | q=0.333: n=12349 (want 12384) first=37% | q=0.200: n=10506 (want 10514) first=29% | q=0.125: n=8644 (want 8621) first=24%
+little incl=True  quiet=10/strict brk_first=14.087% | q=1.000: n=15312 (want 15312) first=76% | q=0.333: n=12349 (want 12384) first=36% | q=0.200: n=10506 (want 10514) first=28% | q=0.125: n=8644 (want 8621) first=23%
+little incl=True  quiet=9/ge brk_first=16.440% | q=1.000: n=15312 (want 15312) first=79% | q=0.333: n=12349 (want 12384) first=38% | q=0.200: n=10506 (want 10514) first=30% | q=0.125: n=8644 (want 8621) first=25%

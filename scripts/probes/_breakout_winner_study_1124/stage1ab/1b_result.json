@@ -1,0 +1,86 @@
+{
+ "cal_equal": true,
+ "exact": true,
+ "only_new": 0,
+ "only_old": 0,
+ "shared": 420158,
+ "col_diffs": {
+  "rs_best": 0,
+  "has_e": 0,
+  "fire": 0,
+  "level": 0,
+  "adr20": 0,
+  "close": 0,
+  "hE": 0,
+  "lE": 0,
+  "oE": 0,
+  "rs_1m": 0,
+  "rs_3m": 0,
+  "rs_6m": 0,
+  "prior_move": 0,
+  "runup6m": 0,
+  "runup6m_adr": 0,
+  "depth_adr": 0,
+  "base_len": 0,
+  "spread10_adr": 0,
+  "dollar_vol20": 0,
+  "dist_52w": 0,
+  "vs_ema21_adr": 0,
+  "since_low": 0,
+  "bases_before": 0,
+  "group_strength": 0,
+  "has_sic": 0,
+  "bars_to_d": 0
+ },
+ "fire_flip": 0,
+ "rebuilt": {
+  "name": "rebuilt",
+  "nights": 1322,
+  "rows": 420158,
+  "fires": 156695,
+  "listed_median": 190.0,
+  "fires_median": 68.0,
+  "first": "2016-12-30",
+  "last": "2022-03-31"
+ },
+ "capture": {
+  "name": "11-13 capture",
+  "nights": 1322,
+  "rows": 420158,
+  "fires": 156695,
+  "listed_median": 190.0,
+  "fires_median": 68.0,
+  "first": "2016-12-30",
+  "last": "2022-03-31"
+ },
+ "qm_rebuilt": [
+  375,
+  26,
+  739,
+  26
+ ],
+ "qm_capture": [
+  375,
+  26,
+  739,
+  26
+ ],
+ "live": {
+  "name": "HEAD live list",
+  "nights": 1322,
+  "rows": 317569,
+  "fires": 114847,
+  "listed_median": 143.0,
+  "fires_median": 50.0,
+  "first": "2016-12-30",
+  "last": "2022-03-31"
+ },
+ "qm_live": [
+  353,
+  26,
+  739,
+  26
+ ],
+ "cut_rows": 102589,
+ "cut_break_rows": 41848
+}

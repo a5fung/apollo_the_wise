@@ -1,0 +1,1 @@
+independent recount of 9968 discovery events (date-based windows, pandas parse; latest bar read 2021-03-30 <= 2021-03-30): mismatches per column {'big': 0, 'monster': 0, 'failed': 0, 'adr_tail': 0, 'big_untrunc': 0, 'big_e1': 0, 'clean': 0, 'nbars': 0, 'big_fromhigh': 0, 'big_w30': 0}; truncated here 12 vs captured 12 -> EQUAL

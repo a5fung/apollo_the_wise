@@ -1,0 +1,23 @@
+{
+ "prereg_sha256": "3eb2b9b0247bc0ba7bf0d8e6f1efd67da1078fc090373c83c1bc14599339042a",
+ "commit": "ed4de8ac728ee0dc7dd7d395b439f4debd165e53",
+ "tracked_tree_clean": true,
+ "files": {
+  "agents/market_intelligence/breakout_v1.py": "0d191bf5495b2c9c3f90c559c5ef794bec539d45d2f7d58089b7940eb87c6d2f",
+  "agents/market_intelligence/breakout_v1_list.py": "ae1a6cb2746fb87469dd6a8b570775c695336689deb04c1516fe01db2652fe70",
+  "agents/market_intelligence/consolidation_breakout.py": "e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b",
+  "agents/market_intelligence/breakout_v1_pick_model.py": "39a51e5caaaf73870a43946153a985705998dd86cdd55329aa9cd63d631ca46f",
+  "scripts/probes/_breakout_v1_replay_1101/v1_replay.py": "4df7e73ef7f2bd21cfc8c46941f45255b0ba9f6fb62b69380ce4d3b41f39bcb7",
+  "scripts/probes/_cb_backtest/runner.py": "a4f016720f8226933367ae3d776a7067d9d94dea634b28e5e5685e186bc3ad69",
+  "scripts/probes/_717_precision_1112/01_precision.py": "e69721886060daa3d9977b98e9a09edbab68eeb91374253e0418335acdceb367",
+  "scripts/probes/_717_pick_model_1113/01_build.py": "b7605efdf845a5654319c9cbb9d95b42b6142c85a71561505214597edc910566",
+  "tests/fixtures/qm_breakout_scorecard/buys.tsv": "99915cee58cf3a45977a9babdb9cad9ab550273e3d5bcf7de0ce563fe2a8aea3",
+  "tests/fixtures/qm_breakout_scorecard/buys_undated_widened.tsv": "be6e48b4fc2875a8a273f7301e30d76e6f0fe66cbc51e49b773c737fb942e608"
+ },
+ "extra_files": {
+  "agents/market_intelligence/constants.py": "95eb727029abcf69886fe53f99f10b70ada984504c1dbeb003367c4d43a05593",
+  "tests/fixtures/breakout_v1_parity/etv_names_2026-10-28.tsv": "042f90db0643f2b0773802c36283b537e964bbf8d3e034e1aa649476602eb447"
+ },
+ "disk_equals_HEAD_blob_all": true,
+ "mismatch": []
+}

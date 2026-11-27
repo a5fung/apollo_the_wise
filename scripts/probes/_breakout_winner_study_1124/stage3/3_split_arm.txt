@@ -1,0 +1,6 @@
+split arm, seed-1124 discovery events (5330): 'a raw/adjusted factor step in E..E+60' recomputed from the stream = stage 1e's w_split on every event: True; per year {'2017': 3, '2018': 1, '2019': 0, '2020': 5} (stage 1e: 3 / 1 / 0 / 5)
+NaN factor bars inside the windows (incl. the bar before E): 0 of 324106
+factor-step bars: 9 (on E itself: 1); adjusted close-to-close move on them: min -92.7%, max +12.6%; reaching >= +70% or <= -50%: 1 -> after E: 1
+step bars (ticker, E, step date, move, on E): AAN 2020-09-29 2020-12-01 -92.7%; AGNT 2020-12-03 2021-02-16 +2.6%; DQ 2020-11-17 2020-11-17 -0.2% (E); GOL 2017-03-15 2017-05-02 +6.4%; GOL 2017-10-09 2017-11-22 +2.9%; MDR 2018-04-26 2018-05-10 +3.9%; SGI 2020-09-25 2020-11-24 -2.1%; TSLA 2020-08-27 2020-08-31 +12.6%; WLL 2017-10-13 2017-11-09 +5.5%
+qualifying step AAN E 2020-09-29 on 2020-12-01 (-92.7%, window position 44): captured window holds 44 bars, cut reason 'guard' -> the step bar is OUTSIDE the window (cut on that date)
+RESULT: PASS (factor is live: steps found and matched to stage 1e; the one qualifying move is cut on its date by the guard arm, which is tested first, so the split arm had nothing left to cut)

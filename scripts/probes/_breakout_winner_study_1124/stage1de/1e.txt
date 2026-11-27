@@ -1,0 +1,45 @@
+POSITIVE CONTROL (11-13 capture, identity = ticker): q=1 15,312 | q=1/5 10,514 events, first-break share 29.7% | seed 2411 10,545, shared 1,108 -- all equal count_events_v2_forward_hash.txt: PASS
+stores ready (26s); unified calendar 2016-01-04..2024-12-31 (2264 sessions)
+era A: bridge rows 420,158, live-list rows 317,569, live break rows 114,847 on 1322 nights 2016-12-30..2022-03-31
+era B: bridge rows 198,771, live-list rows 135,417, live break rows 47,789 on 630 nights 2022-04-01..2024-10-03
+guard B: break dates after 2024-12-31 dropped at parse: 0; audit flags (known_adjustment_event / discontinuous_across_known_adjustment) kept A 361, B 450; B flag rows dated after the cut dropped: 0
+
+== DROPS (live break rows; exclusive reason = first of window_end > file_start > guard > flag; per era x year of E) ==
+era A: break rows 114,847; dropped 93 (0.08%) | non-exclusive: window_end 0, file_start 20, guard 3, flag 71
+  per year of E (rows / dropped by exclusive reason): 2017: 7,845 / flag 5; 2018: 11,576 / flag 30; 2019: 11,119 / file_start 15, flag 10; 2020: 41,060 / flag 10, guard 1; 2021: 37,932 / file_start 1, flag 15, guard 2; 2022: 5,315 / file_start 4
+era B: break rows 47,789; dropped 5,081 (10.63%) | non-exclusive: window_end 0, file_start 5019, guard 5, flag 59
+  per year of E (rows / dropped by exclusive reason): 2022: 18,188 / file_start 5019, flag 4; 2023: 16,252 / flag 30, guard 1; 2024: 13,349 / flag 23, guard 4
+file-start drops in era B: 5,019; latest D among them 2022-06-24; era-B break rows with D before 2022-06-24: 5,106, of which dropped (any reason) 4,949
+break rows surviving all drops: 157,462 (A 114,754, B 42,708)
+
+== IDENTITY: map pairs 8,454 (EP pair file, overlap closes only); components over event tickers 3,769; same-symbol A/B tickers kept as TWO identities (fail the return test) 57; merged by name (untestable, < 40 shared sessions) 12
+  component shape (era-A tickers, era-B tickers): (1, 0): 1769, (1, 1): 1531, (0, 1): 463, (1, 2): 6; components with >1 ticker in an era: 6
+first break after 10 quiet sessions (post-drop rows, both eras, identity-keyed): 16.8% of 157,462 break rows
+
+== q GRID (seed 1124): kept events and share that are a first break after 10 quiet sessions; rule: largest q with share <= 2 x the break rows' share
+  q 1.0000: 17,528 events, tickers-identities 3,734, first-break share 83.8% > 2x (33.5%)
+  q 0.5000: 15,378 events, tickers-identities 3,558, first-break share 51.7% > 2x (33.5%)
+  q 0.3333: 13,870 events, tickers-identities 3,394, first-break share 41.0% > 2x (33.5%)
+  q 0.2500: 12,639 events, tickers-identities 3,265, first-break share 36.0% > 2x (33.5%)
+  q 0.2000: 11,596 events, tickers-identities 3,159, first-break share 32.6% <= 2x (33.5%)
+  q 0.1667: 10,753 events, tickers-identities 3,050, first-break share 30.2% <= 2x (33.5%)
+  q 0.1250:  9,416 events, tickers-identities 2,886, first-break share 27.0% <= 2x (33.5%)
+  q 0.1000:  8,356 events, tickers-identities 2,752, first-break share 24.8% <= 2x (33.5%)
+q SELECTED by the frozen rule: 0.2000
+keep walk at q=0.2000: seed 1124 11,596 events; seed 2411 11,607; shared 1,368
+  era A kept 8,240: per year of E {'2017': 667, '2018': 917, '2019': 879, '2020': 2867, '2021': 2472, '2022': 438}; smallest month 20
+  era B kept 3,356: per year of E {'2022': 1085, '2023': 1273, '2024': 998}; smallest month 3
+
+== PRINTS (outcome-free) ==
+seam night D 2022-04-01 (era B's first night): post-drop break rows 4 (era ['B']), kept 0; era-A rows on D >= 2022-04-01: 0
+unknown security type, era A, kept events: 225 of 8,240 = 2.7%; per type {'CS': 7489, 'ADRC': 522, 'unknown': 225, 'ETV': 4}
+unknown security type, era A, all post-drop break rows: 2,716 of 114,754 = 2.4%; per type {'CS': 105091, 'ADRC': 6910, 'unknown': 2716, 'ETV': 37}
+unknown security type, era B, kept events: 521 of 3,356 = 15.5%; per type {'CS': 2620, 'unknown': 521, 'ADRC': 211, 'ETV': 4}
+unknown security type, era B, all post-drop break rows: 6,539 of 42,708 = 15.3%; per type {'CS': 33458, 'unknown': 6539, 'ADRC': 2686, 'ETV': 25}
+kept events whose bars end inside E..E+60, era A: 58 of 8,240; per year of E {'2017': 5, '2018': 9, '2019': 5, '2020': 21, '2021': 14, '2022': 4}; years tagged 'few delisted names on file': 2017-18 lines
+kept events whose bars end inside E..E+60, era B: 18 of 3,356; per year of E {'2022': 4, '2023': 7, '2024': 7}; years tagged 'few delisted names on file': 2017-18 lines
+kept events with a date inside E..E+60, era A (n 8,240): guard break 7, raw/adjusted factor step (era A has no split list) 17, audit adjustment flag 1, any 23 = 0.28%; per year {'2017': 3, '2018': 1, '2019': 3, '2020': 7, '2021': 9}
+kept events with a date inside E..E+60, era B (n 3,356): guard break 0, split-list date 10, audit adjustment flag 3, any 10 = 0.30%; per year {'2022': 2, '2023': 4, '2024': 4}
+era-B derived-only events (raw_src 2, no pulled close under A1): 276 of 3,356 kept = 8.22%; within a factor of 10 of the $2 floor (raw close 0.2..20): 118 = 3.52%
+  A1: era-B price partly derived TAG FIRES (A1 rule; both readings exceed 1% of era-B kept events: True). Share of era-B pool-candidate name-nights that are derived-only (stage 1c): 7.20% (A1 text says 0.80%, that was the 77-name figure).
+era-B raw-volume sizing line (the pull's raw volume): UNAVAILABLE under A1 (the pull is discarded and never opened)

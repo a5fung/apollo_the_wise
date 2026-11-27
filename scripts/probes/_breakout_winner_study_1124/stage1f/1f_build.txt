@@ -1,0 +1,157 @@
+stores + list parquets ready (23s): bridge rows A 420,158 B 198,771; sealed: era B last bar 2024-12-31
+Qullamaggie buys read (ticker / E / lo / hi only): 757 (dated 269, undated 488); placed on a bridge-set break row 386, on a live break row 362; last break-row E on file 2024-10-04; distinct live rows holding a buy 361
+target rows: kept(1124) 11,596 U kept(2411) 11,607 U Qullamaggie live break-row buys 361 = 22,158 rows (kept in both seeds 1,368; QM rows that are not kept events 336, of which dropped by 1.3 4)
+B1 / B2 built for 440,097 listed names on the 1,872 nights holding a target row (10s)
+features computed for 22,158 rows in 16s; consistency of the live re-call with the stored list columns: mismatches NONE
+table: 22,158 rows x 88 columns
+
+== NULL COUNTS (kept events, seed 1124; scored / NULL; reasons first-match) ==
+feat  name                                     | scored  NULL |  A sc  A nl |  B sc  B nl | DISC sc / CHECK sc | reasons
+f01   Daily range (ADR20, %)                   |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f02   Price (raw close)                        |  11320   276 |  8240     0 |  3080   276 | 5330 / 5990 | derived_only: 276
+f03   Dollar volume (20-session median)        |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f04   Strength rank, best                      |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f05   Strength rank, 1 month                   |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f06   Strength rank, 6 months                  |  11235   361 |  7939   301 |  3296    60 | 5186 / 6049 | no_rank: 361
+f07   Prior move                               |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f08   20-session run-up                        |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f09   6-month move                             |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f10   Close / 52-week high                     |  10097  1499 |  7469   771 |  2628   728 | 4924 / 5173 | history: 1418, coverage: 41, identity: 40
+f11   Level IS a 52-week high (2 groups)       |  10097  1499 |  7469   771 |  2628   728 | 4924 / 5173 | history: 1418, coverage: 41, identity: 40
+f12   Base length (sessions)                   |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f13   Base depth, %                            |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f14   Level from a range (2 groups)            |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f15   Last-10-close spread (ADR)               |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f16   Range contraction (5 / prior 5)          |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f17   Volume dry-up (10 / prior 50)            |  11595     1 |  8240     0 |  3355     1 | 5330 / 6265 | zero_volume: 1
+f18   Up vs down volume (20)                   |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f19   Extension above the 10-day (ADR)         |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f20   Shape count (0-5)                        |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+f21   Close vs 200-day (ADR)                   |  10810   786 |  7648   592 |  3162   194 | 5032 / 5778 | history: 727, coverage: 35, identity: 24
+f22   Sessions since 52-week low               |  10097  1499 |  7469   771 |  2628   728 | 4924 / 5173 | history: 1418, coverage: 41, identity: 40
+f23   First base since the major low (2 groups |  10097  1499 |  7469   771 |  2628   728 | 4924 / 5173 | history: 1418, coverage: 41, identity: 40
+f24   Gap at the open (ADR)                    |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+B1    Pick-model score                         |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+B2    Live order score                         |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+B3    Group strength                           |   7912  3684 |  5249  2991 |  2663   693 | 3322 / 4590 | no_group: 3684
+B4    Distance close(D) to level (ADR)         |  11596     0 |  8240     0 |  3356     0 | 5330 / 6266 | 
+
+== NULL reasons per feature x era x year (non-zero cells, kept events) ==
+f02: B2022 derived_only 73 | B2023 derived_only 82 | B2024 derived_only 121
+f06: A2017 no_rank 17 | A2018 no_rank 40 | A2019 no_rank 28 | A2020 no_rank 59 | A2021 no_rank 143 | A2022 no_rank 14 | B2022 no_rank 19 | B2023 no_rank 18 | B2024 no_rank 23
+f10: A2017 coverage 1 | A2017 history 44 | A2017 identity 4 | A2018 coverage 2 | A2018 history 82 | A2018 identity 2 | A2019 coverage 1 | A2019 history 81 | A2019 identity 1 | A2020 coverage 11 | A2020 history 164 | A2020 identity 13 | A2021 coverage 23 | A2021 history 288 | A2021 identity 18 | A2022 coverage 1 | A2022 history 34 | A2022 identity 1 | B2022 history 646 | B2023 coverage 1 | B2023 history 36 | B2024 coverage 1 | B2024 history 43 | B2024 identity 1
+f11: A2017 coverage 1 | A2017 history 44 | A2017 identity 4 | A2018 coverage 2 | A2018 history 82 | A2018 identity 2 | A2019 coverage 1 | A2019 history 81 | A2019 identity 1 | A2020 coverage 11 | A2020 history 164 | A2020 identity 13 | A2021 coverage 23 | A2021 history 288 | A2021 identity 18 | A2022 coverage 1 | A2022 history 34 | A2022 identity 1 | B2022 history 646 | B2023 coverage 1 | B2023 history 36 | B2024 coverage 1 | B2024 history 43 | B2024 identity 1
+f17: B2023 zero_volume 1
+f21: A2017 coverage 1 | A2017 history 33 | A2017 identity 3 | A2018 coverage 1 | A2018 history 65 | A2019 coverage 1 | A2019 history 60 | A2020 coverage 9 | A2020 history 114 | A2020 identity 11 | A2021 coverage 20 | A2021 history 234 | A2021 identity 7 | A2022 coverage 2 | A2022 history 31 | B2022 history 130 | B2022 identity 1 | B2023 history 29 | B2023 identity 1 | B2024 coverage 1 | B2024 history 31 | B2024 identity 1
+f22: A2017 coverage 1 | A2017 history 44 | A2017 identity 4 | A2018 coverage 2 | A2018 history 82 | A2018 identity 2 | A2019 coverage 1 | A2019 history 81 | A2019 identity 1 | A2020 coverage 11 | A2020 history 164 | A2020 identity 13 | A2021 coverage 23 | A2021 history 288 | A2021 identity 18 | A2022 coverage 1 | A2022 history 34 | A2022 identity 1 | B2022 history 646 | B2023 coverage 1 | B2023 history 36 | B2024 coverage 1 | B2024 history 43 | B2024 identity 1
+f23: A2017 coverage 1 | A2017 history 44 | A2017 identity 4 | A2018 coverage 2 | A2018 history 82 | A2018 identity 2 | A2019 coverage 1 | A2019 history 81 | A2019 identity 1 | A2020 coverage 11 | A2020 history 164 | A2020 identity 13 | A2021 coverage 23 | A2021 history 288 | A2021 identity 18 | A2022 coverage 1 | A2022 history 34 | A2022 identity 1 | B2022 history 646 | B2023 coverage 1 | B2023 history 36 | B2024 coverage 1 | B2024 history 43 | B2024 identity 1
+B3: A2017 no_group 356 | A2018 no_group 396 | A2019 no_group 366 | A2020 no_group 890 | A2021 no_group 866 | A2022 no_group 117 | B2022 no_group 234 | B2023 no_group 271 | B2024 no_group 188
+
+kept events per era x year: A2017 667, A2018 917, A2019 879, A2020 2867, A2021 2472, A2022 438, B2022 1085, B2023 1273, B2024 998
+
+== FIRST E SCORED (era B) on the 252-session features and 200-session f21 (expected near 2022-09 for 252, 2022-07 for 200) ==
+  f10: first era-B E scored 2022-09-28; era-B events NULL on history 725 of 3356; era-A NULL history 693
+  f11: first era-B E scored 2022-09-28; era-B events NULL on history 725 of 3356; era-A NULL history 693
+  f21: first era-B E scored 2022-07-14; era-B events NULL on history 190 of 3356; era-A NULL history 537
+  f22: first era-B E scored 2022-09-28; era-B events NULL on history 725 of 3356; era-A NULL history 693
+  f23: first era-B E scored 2022-09-28; era-B events NULL on history 725 of 3356; era-A NULL history 693
+
+== SHORT HISTORY / PASSED UNSCORED (kept events; by era x year) ==
+  lower_line passed unscored (fewer than 189 bars): 593 of 11596; A2017 31, A2018 56, A2019 54, A2020 103, A2021 222, A2022 31, B2022 44, B2023 25, B2024 27
+  downtrend_6m ret126 blank (passes): 284 of 11596; A2017 12, A2018 30, A2019 26, A2020 45, A2021 110, A2022 11, B2022 17, B2023 15, B2024 18
+  downtrend_6m 50-day change blank (passes): 0 of 11596; 
+  bars to D under 252 (the 252-session features NULL): 1428 of 11596; A2017 44, A2018 82, A2019 81, A2020 167, A2021 295, A2022 34, B2022 646, B2023 36, B2024 43
+  rs_6m blank (under 126 consecutive sessions; 0.5 in B1): 361 of 11596; A2017 17, A2018 40, A2019 28, A2020 59, A2021 143, A2022 14, B2022 19, B2023 18, B2024 23
+  B1 tag 'short year' (era B, under 252 sessions of file): 630 of 11596; B2022 630
+  B1 pick score inputs: group strength blank (no industry code or group < 10) on 3684 of 11596 kept events; B3 tag 'group codes are a 2026-10-16 snapshot' applies to all
+  f10 live by-row 52-week window vs the calendar-window value: differ on 3 of 10097 scored kept events (a hole in the window); live value used (prereg 4.0: gate/pick values as live)
+  f02 price NULL 'derived_only' (era-B raw_src 2, A1): 276 of 3356 era-B kept events = 8.2%
+
+== TIE SHARES + THIRDS (DISCOVERY kept events: E <= 2020-12-31; thirds by np.array_split within (era, month) holding >= 6 scored, mid-rank; two-group fallback when a third is under 20%) ==
+feat  scored distinct top block in mo>=6  moved bottom middle    top  top%  bot%  decision
+f01     5330     5330      0.0%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f02     5330     3767      0.1%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f03     5330     5330      0.0%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f04     5330      583      1.9%     5330     26   1796   1789   1745 32.7% 33.7%  thirds
+f05     5330      948      1.2%     5330     15   1796   1782   1752 32.9% 33.7%  thirds
+f06     5186      955      0.8%     5186     12   1746   1733   1707 32.9% 33.7%  thirds
+f07     5330     5297      0.1%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f08     5330     5266      0.1%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f09     5330     4870      0.1%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f10     4924     4906      0.1%     4924      0   1658   1642   1624 33.0% 33.7%  thirds
+f12     5330       36     10.3%     5330    130   1811   1763   1756 32.9% 34.0%  thirds
+f13     5330     5288      0.1%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f15     5330     5330      0.0%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f16     5330     5330      0.0%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f17     5330     5330      0.0%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f18     5330     5330      0.0%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f19     5330     5330      0.0%     5330      0   1793   1775   1762 33.1% 33.6%  thirds
+f20     5330        5     32.8%     5330    858   2058   1745   1527 28.6% 38.6%  thirds
+f21     5032     5032      0.0%     5032      0   1691   1677   1664 33.1% 33.6%  thirds
+f22     4924      250      3.6%     4924     74   1671   1636   1617 32.8% 33.9%  thirds
+f24a    1423     1423      0.1%     1415      0    488    469    458 32.2% 34.3%  thirds - candidate (>= 300 scored)
+f24b    3907     3666      6.2%     3907     19   1317   1305   1285 32.9% 33.7%  thirds - candidate (>= 300 scored)
+  'top block' = share of scored events in the largest tied value; 'moved' = events whose third differs from a ticker-order split of the same sorted values.
+
+== TWO-GROUP FEATURES (11, 14, 23): group sizes on scored DISCOVERY kept events; minimum = smaller group >= 100 events AND >= 15% ==
+  f11 Level IS a 52-week high (2 groups): yes / no = 362 / 4562 of 4924; smaller 362 = 7.4% -> DESCRIPTION ONLY (cannot be carried); check (outcome-free) yes / no = 407 / 4766
+  f14 Level from a range (2 groups): yes / no = 0 / 5330 of 5330; smaller 0 = 0.0% -> DESCRIPTION ONLY (cannot be carried); check (outcome-free) yes / no = 0 / 6266
+  f23 First base since the major low (2 groups): yes / no = 602 / 4322 of 4924; smaller 602 = 12.2% -> DESCRIPTION ONLY (cannot be carried); check (outcome-free) yes / no = 724 / 4449
+  f24a (opened above the level): scored discovery events 1423 -> candidate; all kept scored 3023
+  f24b (opened at or below the level): scored discovery events 3907 -> candidate; all kept scored 8573
+  range length inside the 'level from a range = yes' group (description only): median nan sessions, n 0
+  level source mix (kept): {'five_day': 6793, 'settled_after_wick': 4803}  ('settled_after_wick' and 'five_day' both read NO on feature 14)
+  f14 is EMPTY by the live code, not by data: a qualifying range exists at D on 3945 of 11596 kept events (34%), but the live level is the lower of the range level and the (settled) 5-day high, and every range level is >= the 5-day high (the walk back from D only steps UP; a step inside the last 5 sessions is under 10 sessions long) -> level_source 'range' never occurs (30,000 era-A listed rows re-called: 0). Literal reading kept; 'a range exists' is description only (column range_exists).
+
+== QULLAMAGGIE COVERAGE (757 buys; ticker / E / lo / hi only; undated buy placed on the FIRST break row inside its window) ==
+year    buys  bridge  live post-drop kept 1124 kept 2411
+2017      11       5     5         5         0         0
+2018       9       3     3         3         0         0
+2019      69      21    19        19         1         1
+2020     375     209   199       199        17         8
+2021     252     129   121       121         5         5
+2022      33      14    11         7         2         0
+2023       8       5     4         4         0         0
+ALL      757     386   362       358        25        14   (by year = the placed row's E year, else the buy's own)
+  by era of the placed row: A live 353 kept 24, B live 9 kept 1
+  by kind: dated 269 buys, bridge 217, live 207, kept 17, undated 488 buys, bridge 169, live 155, kept 8
+  distinct live rows holding a buy 361 for 362 placed buys (two buys can sit on one row); buys with E after the last break row on file (2024-10-04): 0
+
+== QULLAMAGGIE POSITION (his 361 live break-row buys placed against the kept-event (era, E-month) group on each feature; BEFORE any outcome) ==
+   placement: a buy that IS a kept event takes its own third; else it is inserted as one more member of its (era, month) group (>= 6 kept events scored) and read at its mid-rank third.
+   shares with 90% Wilson interval; the 'against Qullamaggie's buys' tag (winning third < 29%) waits for the discovery direction.
+feat  placed           bottom           middle              top   (share, [90% interval]); two-group: yes-share vs kept-event yes-share
+f01      358  17.0% [14.0,20.6]  33.5% [29.6,37.7]  49.4% [45.1,53.8]
+f02      357  19.9% [16.6,23.6]  24.1% [20.6,28.0]  56.0% [51.7,60.3]
+f03      358   2.8% [ 1.7, 4.6]  11.7% [ 9.2,14.8]  85.5% [82.1,88.3]
+f04      358  13.1% [10.5,16.3]  24.6% [21.0,28.5]  62.3% [58.0,66.4]
+f05      358  37.4% [33.3,41.7]  26.0% [22.4,30.0]  36.6% [32.5,40.9]
+f06      353  11.6% [ 9.1,14.7]  24.1% [20.5,28.0]  64.3% [60.0,68.4]
+f07      358  13.1% [10.5,16.3]  26.5% [22.9,30.5]  60.3% [56.0,64.5]
+f08      358  37.4% [33.3,41.7]  26.0% [22.4,30.0]  36.6% [32.5,40.9]
+f09      358   8.7% [ 6.5,11.4]  30.2% [26.3,34.3]  61.2% [56.9,65.3]
+f10      323  30.3% [26.3,34.7]  37.2% [32.9,41.7]  32.5% [28.4,36.9]
+f11      323   yes   5.3% [ 3.6,  7.7]   (kept events: yes 7.6%)
+f12      358  36.6% [32.5,40.9]  33.5% [29.6,37.7]  29.9% [26.1,34.0]
+f13      358  26.8% [23.1,30.8]  27.1% [23.4,31.1]  46.1% [41.8,50.4]
+f14      361   yes   0.0% [ 0.0,  0.7]   (kept events: yes 0.0%)
+f15      358  51.1% [46.8,55.4]  25.7% [22.1,29.7]  23.2% [19.7,27.0]
+f16      358  39.9% [35.8,44.3]  36.3% [32.2,40.6]  23.7% [20.2,27.6]
+f17      358  42.2% [38.0,46.5]  23.7% [20.2,27.6]  34.1% [30.1,38.3]
+f18      358  37.2% [33.1,41.4]  29.1% [25.3,33.1]  33.8% [29.8,38.0]
+f19      358  56.4% [52.1,60.7]  25.7% [22.1,29.7]  17.9% [14.8,21.4]
+f20      358  30.7% [26.9,34.9]  31.3% [27.4,35.4]  38.0% [33.9,42.3]
+f21      334  12.0% [ 9.4,15.2]  26.6% [22.9,30.8]  61.4% [56.9,65.7]
+f22      323  17.6% [14.4,21.4]  29.7% [25.7,34.1]  52.6% [48.1,57.2]
+f23      323   yes   7.1% [ 5.1,  9.8]   (kept events: yes 13.1%)
+f24a     110  20.9% [15.3,27.9]  27.3% [20.9,34.7]  51.8% [44.0,59.5]
+f24b     246  25.2% [20.9,30.0]  28.9% [24.4,33.8]  45.9% [40.8,51.2]
+B1       358   0.8% [ 0.3, 2.1]   5.0% [ 3.4, 7.3]  94.1% [91.7,95.9]
+B2       358  13.1% [10.5,16.3]  27.7% [23.9,31.7]  59.2% [54.9,63.4]
+B3       225  28.9% [24.2,34.1]  32.9% [28.0,38.2]  38.2% [33.1,43.7]
+B4       358  24.0% [20.5,27.9]  31.3% [27.4,35.4]  44.7% [40.4,49.0]
+  B1-B3 above print in this one block under the fixed line: not a test of the grade - the grade is judged on Qullamaggie's buys only (#717); B1 is in-sample for 2017-20 (fitted on his picks); B3 codes are a 2026-10-16 snapshot.
+
+feature_table.tsv.gz written: 22,158 rows x 88 columns; sha256 d629ef0af85f0ed3404d0e9cffcc6545627fa3dec6230eb4da94cb3ed95bf53c
+null_counts.tsv sha256 ff70bf5c18836ff8be118694c3ca498109a35a3ba1407439ea17625727fd7894
+code sha256: ff.py 61006dbce8a0ebcd | lib1f.py 3186704c19d0860c | build.py ad28bf26c086e811

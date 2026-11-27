@@ -1,0 +1,15 @@
+{
+ "gate_pass": true,
+ "sample": 604,
+ "pipeline_events": 1812,
+ "list_rows": 87711,
+ "list_bad": {},
+ "pipe_changed": {},
+ "per_name_changed": {},
+ "leak_changed": 604,
+ "leak_n": 604,
+ "open_changed": {
+  "f24": 604
+ },
+ "secs": 247
+}

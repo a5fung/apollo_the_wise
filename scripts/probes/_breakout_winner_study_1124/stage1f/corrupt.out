@@ -1,0 +1,47 @@
+bars: 12,005,007 rows / 12,532 tickers / 1635 sessions 2016-01-04..2022-06-30 (4s); 5,007 tickers have a missing session inside their span (211,391 holes)
+store A: loaded in 9s; {'raw_factor': 'pre_v2 daily_raw_close.csv.gz per bar (exact)', 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+era A: sample = 301 kept events on 41 whole nights (2017-04-06 .. 2022-02-10)
+  pipeline: 123 night x pattern runs in 103s
+bars: 8,619,626 rows / 15,702 tickers / 821 sessions 2021-09-27..2024-12-31 (5s); 4,178 tickers have a missing session inside their span (188,545 holes)
+store B: loaded in 9s; {'raw_factor': 'bridge (pre_v2 raw / cb702 adjusted on the 2022-04..06 overlap, then the split list <= 2024-12-31) where the ticker is in both stores; else the split list <= 2024-12-31 only', 'splits_rows_skipped_sealed': 3090, 'bridge_tickers': 8518, 'bridge_unstable_fell_back': 224, 'split_list_only_tickers': 7184, 'etv_tickers_typed': 92, 'etv_tickers_with_a_name': 90}
+era B: sample = 303 kept events on 53 whole nights (2022-05-18 .. 2024-10-03)
+  pipeline: 159 night x pattern runs in 115s
+
+== CORRUPT-E PROOF (604 sampled kept events; garbage patterns 1 = random wide, 2 = 1e7 prices / 1e12 volume, 3 = 1e-4 prices / 0 volume) ==
+clean in-process recompute vs the (rounded) table: values / NULL reasons differing: NONE
+(1) PIPELINE: store bars at calendar index >= E corrupted for ALL tickers, pool facts rebuilt, live list re-run per night: 87,711 stored list rows compared (x3 patterns; E-dependent columns ['has_e', 'fire', 'hE', 'lE', 'oE', 'fired_live'] excluded); nights whose ticker set / row count differs 0; list-column cells changed NONE
+    1812 event x pattern feature recomputes (incl. rs ranks, B1 / B2 / B3 from the recomputed night): values or NULL reasons changed NONE
+(2) PER-NAME: 604 events x 3 patterns on the ticker's own E-and-later bars: values / NULL reasons changed NONE
+    LEAKY control close(E) / close(D) - 1 (reads E on purpose): differs across all three garbage patterns on 604 of 604 events
+    OPEN test (open(E) x3.0 and x0.2): features that moved {'f24': 604}; f24 moved on 604 of 604 events with a f24 value; every other feature moved on 0
+non-NULL events per feature in the sample (A / B) - an all-NULL or constant feature would prove nothing:
+   f01  A 301 B 303
+   f02  A 301 B 272
+   f03  A 301 B 303
+   f04  A 301 B 303
+   f05  A 301 B 303
+   f06  A 290 B 294
+   f07  A 301 B 303
+   f08  A 301 B 303
+   f09  A 301 B 303
+   f10  A 271 B 258
+   f11  A 271 B 258
+   f12  A 301 B 303
+   f13  A 301 B 303
+   f14  A 301 B 303
+   f15  A 301 B 303
+   f16  A 301 B 303
+   f17  A 301 B 303
+   f18  A 301 B 303
+   f19  A 301 B 303
+   f20  A 301 B 303
+   f21  A 276 B 268
+   f22  A 271 B 258
+   f23  A 271 B 258
+   f24  A 301 B 303
+   B1   A 301 B 303
+   B2   A 301 B 303
+   B3   A 181 B 251
+   B4   A 301 B 303
+
+GATE (0 values change under corrupt-E; the leaky control changes; open(E) moves only f24): PASS
