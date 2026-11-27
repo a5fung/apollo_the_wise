@@ -1,0 +1,42 @@
+SET
+== A. #736 missed-gapper read: stocks that opened >= 9% above their 11-25 close on 11-27, volume >= 3x 20d avg, and whether the EP scan logged them
+== B. #728 stop moves today (mechanism) and retries
+ERROR:  function round(double precision, integer) does not exist
+LINE 6: SELECT p.ticker, round(((p.open_price/p.prev_close)-1)*100,1...
+                         ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+t|event_type|left|left
+09:35|stop_refresh_ran|Morning: examined 6, placed 0, already-covered 6, skipped 0 (none), same-day excluded 0 (none)|{"pass": "Morning", "examined": 6, "placed": 0, "placed_tickers": [], "already_covered": ["KYMR", "TENB", "AXGN", "MRNA", "KSS", "CBRL"], "skipped": [], "unprot
+10:10|stop_order_id_changed|trade #1878 [paper]: stop_order_id=a13c6b86-71e3-4a4d-a1c5-04ba7892d7f7 (reason=partial_replacement)|{"trade_id": 1878, "account_mode": "paper", "new_id": "a13c6b86-71e3-4a4d-a1c5-04ba7892d7f7", "reason": "partial_replacement"}
+10:10|breakout_pp_stop_to_fill_after_third|KSS #1878: a third sold (order 4a4b32a0) — the stop on the rest $25.30 -> the fill $26.18 (moved, price_only_replace)|{"trade_id": 1878, "ticker": "KSS", "order_id": "4a4b32a0-7c72-48d1-914b-aa8b7883a8ce", "old_stop": 25.3, "new_stop": 26.18, "moved": true, "mechanism": "price_
+15:45|stop_order_id_changed|trade #1579 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)|{"trade_id": 1579, "account_mode": "paper", "new_id": null, "reason": "cancel_or_reject_null"}
+15:45|stop_cancel_by_planned_sale_silent|TENB: stop b8dd7edd cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome)|{"trade_id": 1579, "ticker": "TENB", "account_mode": "paper", "cancelled_order_id": "b8dd7edd-3887-44d5-a510-7527a91738f7", "event_norm": "cancelled"}
+15:45|stop_ack_broker_covered|TENB #1579: broker has 102.0 sh covering 102.0 remaining (stop_order_id=no_stop_only_market)|{"trade_id": 1579, "ticker": "TENB", "account_mode": "paper", "remaining_shares": 102.0, "broker_covered": 102.0, "synced_stop_order_id": null, "open_sell_order
+16:05|stop_remediation_skipped_pending_exit|TENB: 102 pending exit covers full 102 remaining|{"trade_id": 1579, "ticker": "TENB", "remaining_shares": 102.0, "pending_exit_qty": 102}
+16:20|stop_update_aborted|TENB: pending exits (102) cover full remaining (102.0) — no stop sizing left|{"trade_id": 1579, "ticker": "TENB", "remaining_shares": 102.0, "pending_exit_qty": 102, "effective_qty": 0, "new_stop_price": 43.26}
+16:20|stop_refresh_ran|post-close: examined 6, placed 0, already-covered 5, skipped 0 (none)|{"pass": "post-close", "examined": 6, "placed": 0, "placed_tickers": [], "already_covered": ["KYMR", "AXGN", "MRNA", "KSS", "CBRL"], "skipped": [], "unprotected
+(9 rows)
+== C. #735 COT news watch rows
+count|min|max|judged|max
+15|2026-11-27|2026-12-04|1|2026-11-27 22:15:09.986113+00
+(1 row)
+event_date|event_type|market|direction|left|forecast_seen_at
+2026-11-27|USDA_EXPORTS|soybean_oil|long|none|
+2026-11-30|OPEC|crude_oil|long|none|
+2026-12-02|EIA_PETRO|crude_oil|long|mapped|
+2026-12-03|EIA_NATGAS|natural_gas|long|mapped|
+2026-12-03|USDA_EXPORTS|soybean_oil|long|none|
+2026-12-04|NFP|australian_dollar|long|mapped|2026-11-27 22:15:00.010075+00
+2026-12-04|NFP|copper|long|mapped|2026-11-27 22:15:00.010075+00
+2026-12-04|NFP|euro|long|mapped|2026-11-27 22:15:00.010075+00
+2026-12-04|NFP|gold|long|mapped|2026-11-27 22:15:00.010075+00
+2026-12-04|NFP|japanese_yen|short|mapped|2026-11-27 22:15:00.010075+00
+2026-12-04|NFP|new_zealand_dollar|long|mapped|2026-11-27 22:15:00.010075+00
+2026-12-04|NFP|notes_10y|long|mapped|2026-11-27 22:15:00.010075+00
+(12 rows)
+== D. COT alerts today + news-watch errors in audit
+t|event_type|left
+17:15|cot_daily|2026-11-27: ok; week 2026-11-17; set-up markets 17; alerts 2; sent True
+17:40|cot_weekly|2026-11-27: report 2026-11-17 - no new report; set ups -, close -, Friday alerts -
+18:40|cot_weekly|2026-11-27: report 2026-11-17 - no new report; set ups -, close -, Friday alerts -
+(3 rows)
