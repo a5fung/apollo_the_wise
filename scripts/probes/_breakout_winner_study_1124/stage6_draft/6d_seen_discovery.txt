@@ -1,0 +1,25 @@
+# STAGE 6 DRAFT (not a freeze) - d. DISCOVERY numbers of gallery read #1 - 'SEEN' (description; never a bar)
+prereg 3eb2b9b0 / A1 4a7beda1 / A2 0a6cc417 / A3 a0c11a36 / feature table d629ef0a asserted
+outcomes: discovery_outcomes.tsv.gz sha 89f590d6 asserted; 9968 discovery rows, max E 2020-12-31 (ASSERT <= 2020-12-31); CHECK rows joined: 0 (asserted)
+direction HE states: V into the breakout -> FEWER big winners. Ratio printed = rate of NOT-V / rate of V (over 1.0 = his direction).
+
+== SEED 1124 discovery, 5330 events, 846 big winners (Mantel-Haenszel by month; months holding >= 2 of each group) ==
+   ALL 2017-2020  [SEEN]                        V   68/ 612 = 11.11% | not-V  713/4251 = 16.77% | ratio not-V / V 1.429 (90% 1.21-1.71) | permutation p one-sided (his direction) 0.0009, two-sided 0.0013 | months used 44
+   without 2020 (2017-19)  [SEEN]               V   15/ 230 =  6.52% | not-V  186/2039 =  9.12% | ratio not-V / V 1.525 (90% 1.13-2.22) | permutation p one-sided (his direction) 0.0534, two-sided 0.0655 | months used 33
+   year 2017                                    V    3/  39 =  7.69% | not-V   52/ 519 = 10.02% | ratio not-V / V 1.413
+   year 2018                                    V    5/  62 =  8.06% | not-V   60/ 770 =  7.79% | ratio not-V / V 1.013
+   year 2019                                    V    7/ 129 =  5.43% | not-V   74/ 750 =  9.87% | ratio not-V / V 1.970
+   year 2020                                    V   53/ 382 = 13.87% | not-V  527/2212 = 23.82% | ratio not-V / V 1.399
+   embargoed (E <= 2020-10-06)                  V   56/ 552 = 10.14% | not-V  449/3480 = 12.90% | ratio not-V / V 1.357
+   monster tier (>= 2.0x)                       V   18/ 612 =  2.94% | not-V  183/4251 =  4.30% | ratio not-V / V 1.536
+   clean winners                                V   17/ 612 =  2.78% | not-V  262/4251 =  6.16% | ratio not-V / V 2.318
+   ADR-scaled tail                              V   97/ 612 = 15.85% | not-V  870/4251 = 20.47% | ratio not-V / V 1.125
+   the other side of his sentence ('prone to failure'): FAILED = peak under 1.10x (here the ratio is still not-V / V, so UNDER 1.0 = V fails more)
+   failed (peak < 1.10x)                        V  214/ 612 = 34.97% | not-V 1266/4251 = 29.78% | ratio not-V / V 0.815
+   the flag leans to LOW daily-range names (6b: 12.4% / 10.7% / 7.7% flagged by f01 third) and f01's high third wins 3.2x - so part of the ratio is f01's echo:
+   ALL, stratified by month x daily-range third V   65/ 583 = 11.15% | not-V  553/2985 = 18.53% | ratio not-V / V 1.292 (90% 1.08-1.59) | permutation p one-sided (his direction) 0.0137, two-sided 0.0217 | months used 77
+
+== SECOND SEED (2411) discovery, 5314 events ==
+   ALL 2017-2020  [SEEN]                        V   89/ 609 = 14.61% | not-V  701/4182 = 16.76% | ratio not-V / V 1.121 (90% 1.01-1.30) | permutation p one-sided (his direction) 0.1310, two-sided 0.2873 | months used 43
+
+'SEEN': he named the read after looking at discovery winners and failures, and the definition's author saw 48 of those charts with their sheet. These numbers are description; the test is the check years, once.

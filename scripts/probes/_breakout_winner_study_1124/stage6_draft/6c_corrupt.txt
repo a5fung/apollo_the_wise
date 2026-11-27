@@ -1,0 +1,13 @@
+# STAGE 6 DRAFT (not a freeze) - c. CORRUPT-E PROOF of gallery read #1
+prereg 3eb2b9b0 / A1 4a7beda1 / A2 0a6cc417 / A3 a0c11a36 / feature table d629ef0a asserted
+era A: 301 sampled events on 41 whole nights; 123 night x pattern whole-store runs
+era B: 303 sampled events on 53 whole nights; 159 night x pattern whole-store runs
+
+== CORRUPT-E PROOF (604 sampled kept events; patterns 1 = random wide, 2 = 1e7 prices / 1e12 volume, 3 = 1e-4 prices / 0 volume; open(E) corrupted too) ==
+clean in-process recompute vs the built components table: cells differing 0
+(1) WHOLE STORE: 1812 event x pattern recomputes with every ticker's bars at index >= E corrupted: values / NULL reasons / flags changed NONE
+(2) PER-NAME: 1812 event x pattern recomputes on the ticker's own E-and-later bars: values / NULL reasons / flags changed NONE
+    LEAKY control (the same function cut at E, reads E on purpose): differs across all three garbage patterns on 604 of 604 events (pattern runs that raised instead of returning a value: 0 of 1812; a raise is NOT counted as a difference from another raise)
+a flat or all-NULL feature would prove nothing: sampled events flagged V 55 of 604 (ALT-1 152); non-NULL per component (A / B): trough_age 301/303, drop_adr 125/185, drop_len 125/185, recover 125/185, at_level 125/185, rally_adr 125/185, level 301/303, adr20 301/303
+
+GATE (0 values change under corrupt-E; the leaky control changes): PASS   [33s]

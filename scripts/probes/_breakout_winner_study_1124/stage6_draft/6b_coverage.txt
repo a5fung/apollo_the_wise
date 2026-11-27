@@ -1,0 +1,109 @@
+# STAGE 6 DRAFT (not a freeze) - b. COVERAGE of gallery read #1 'V into the breakout' - outcome-free
+prereg 3eb2b9b0 / A1 4a7beda1 / A2 0a6cc417 / A3 a0c11a36 / feature table d629ef0a asserted
+thresholds: trough_age <= 59, drop_adr >= 5.0, recover >= 0.5, at_level <= 9; window 85, drop leg 25
+NULLs: seed 1124 0 of 11596; seed 2411 0 of 11607; reasons NONE
+
+== SEED 1124 (kept) - share flagged ==
+   ALL                        n 11596 | V 1192 =  10.3% | not-V 10404 | ALT-1 (pause allowed) 2937 =  25.3%
+   DISCOVERY (2017-20)        n  5330 | V  615 =  11.5% | not-V  4715 | ALT-1 (pause allowed) 1465 =  27.5%
+   CHECK (2021-24)            n  6266 | V  577 =   9.2% | not-V  5689 | ALT-1 (pause allowed) 1472 =  23.5%
+   CHECK era A (2021-22Q1)    n  2910 | V  188 =   6.5% | not-V  2722 | ALT-1 (pause allowed)  482 =  16.6%
+   CHECK era B (2022-24)      n  3356 | V  389 =  11.6% | not-V  2967 | ALT-1 (pause allowed)  990 =  29.5%
+   era A 2017                 n   667 | V   40 =   6.0% | not-V   627 | ALT-1 (pause allowed)  135 =  20.2%
+   era A 2018                 n   917 | V   63 =   6.9% | not-V   854 | ALT-1 (pause allowed)  151 =  16.5%
+   era A 2019                 n   879 | V  129 =  14.7% | not-V   750 | ALT-1 (pause allowed)  300 =  34.1%
+   era A 2020                 n  2867 | V  383 =  13.4% | not-V  2484 | ALT-1 (pause allowed)  879 =  30.7%
+   era A 2021                 n  2472 | V  124 =   5.0% | not-V  2348 | ALT-1 (pause allowed)  336 =  13.6%
+   era A 2022                 n   438 | V   64 =  14.6% | not-V   374 | ALT-1 (pause allowed)  146 =  33.3%
+   era B 2022                 n  1085 | V  164 =  15.1% | not-V   921 | ALT-1 (pause allowed)  431 =  39.7%
+   era B 2023                 n  1273 | V  142 =  11.2% | not-V  1131 | ALT-1 (pause allowed)  351 =  27.6%
+   era B 2024                 n   998 | V   83 =   8.3% | not-V   915 | ALT-1 (pause allowed)  208 =  20.8%
+
+== SEED 2411 (kept2411) - share flagged ==
+   ALL                        n 11607 | V 1175 =  10.1% | not-V 10432 | ALT-1 (pause allowed) 2971 =  25.6%
+   DISCOVERY (2017-20)        n  5314 | V  613 =  11.5% | not-V  4701 | ALT-1 (pause allowed) 1486 =  28.0%
+   CHECK (2021-24)            n  6293 | V  562 =   8.9% | not-V  5731 | ALT-1 (pause allowed) 1485 =  23.6%
+   CHECK era A (2021-22Q1)    n  2924 | V  174 =   6.0% | not-V  2750 | ALT-1 (pause allowed)  465 =  15.9%
+   CHECK era B (2022-24)      n  3369 | V  388 =  11.5% | not-V  2981 | ALT-1 (pause allowed) 1020 =  30.3%
+   era A 2017                 n   689 | V   40 =   5.8% | not-V   649 | ALT-1 (pause allowed)  157 =  22.8%
+   era A 2018                 n   904 | V   67 =   7.4% | not-V   837 | ALT-1 (pause allowed)  155 =  17.1%
+   era A 2019                 n   869 | V  128 =  14.7% | not-V   741 | ALT-1 (pause allowed)  318 =  36.6%
+   era A 2020                 n  2852 | V  378 =  13.3% | not-V  2474 | ALT-1 (pause allowed)  856 =  30.0%
+   era A 2021                 n  2516 | V  125 =   5.0% | not-V  2391 | ALT-1 (pause allowed)  341 =  13.6%
+   era A 2022                 n   408 | V   49 =  12.0% | not-V   359 | ALT-1 (pause allowed)  124 =  30.4%
+   era B 2022                 n  1103 | V  160 =  14.5% | not-V   943 | ALT-1 (pause allowed)  448 =  40.6%
+   era B 2023                 n  1264 | V  144 =  11.4% | not-V  1120 | ALT-1 (pause allowed)  361 =  28.6%
+   era B 2024                 n  1002 | V   84 =   8.4% | not-V   918 | ALT-1 (pause allowed)  211 =  21.1%
+
+== steps of the definition (seed 1124, kept) ==
+   1 low of 85 sessions made in the last 60    6122 =  52.8%   (discovery 52.5% / check 53.0%)
+   2 + drop >= 5 daily ranges                  3477 =  30.0%   (discovery 32.5% / check 27.8%)
+   3 + level takes back >= half                2937 =  25.3%   (discovery 27.5% / check 23.5%)
+   4 + under 10 sessions at the level          1192 =  10.3%   (discovery 11.5% / check 9.2%)
+   among the flagged: median sessions since the low 33, median drop 6.5 ranges over 21 sessions, median recover 0.87, median sessions at the level 4, median base_len (f12) 29
+   the low sits INSIDE the list's base (trough_age < base_len) on 48% of the flagged
+
+== two-group minimum of prereg 4.1 (information; a read skips the 5.2 gates): smaller group >= 100 events AND >= 15% ==
+   discovery    V 615 of 5330 = 11.5% -> UNDER the 15% line (>= 100 events: yes)
+   check        V 577 of 6266 = 9.2% -> UNDER the 15% line (>= 100 events: yes)
+   check era A  V 188 of 2910 = 6.5% -> UNDER the 15% line (>= 100 events: yes)
+   check era B  V 389 of 3356 = 11.6% -> UNDER the 15% line (>= 100 events: yes)
+
+== share flagged by third of daily range (f01) and of distance to the level (B4), thirds within (era, month), seed 1124 ==
+   f01: bottom 12.4% (n 3898) | middle 10.7% (n 3863) | top 7.7% (n 3832)
+   B4: bottom 9.9% (n 3898) | middle 10.5% (n 3863) | top 10.5% (n 3832)
+   first breaks (after 10 quiet sessions) 10.7% vs later breaks 10.1%
+
+== FACE CHECK on the 48 charts of gallery pairs 1-2 (the sheets opened to write the definition; chart id only - no outcome column read) ==
+   called a V by eye from the two sheets (shape only; listed before the first components print, written to a file only after it): 01F-01 01F-04 01F-07 01F-08 01F-10 02F-05 02F-06 02F-07 02F-08 02F-09 02F-10 01W-04 01W-08 02W-06 02W-07 02W-09 02W-10
+   chart    age   drop  recov atLvl  gr1 alt1  eye
+   01W-01    13   3.37   0.91     3    0    0  
+   01W-02    83    nan    nan   nan    0    0  
+   01W-03    81    nan    nan   nan    0    0  
+   01W-04    51   7.14   0.66     3    1    1  V
+   01W-05    49  12.60   0.80    22    0    1  
+   01W-06    30   3.00   2.57     0    0    0  
+   01W-07    42   8.02   0.35    39    0    0  
+   01W-08    30   3.44   1.56    20    0    0  V
+   01W-09    68    nan    nan   nan    0    0  
+   01W-10    84    nan    nan   nan    0    0  
+   01W-11    36   2.76   2.92    19    0    0  
+   01W-12    66    nan    nan   nan    0    0  
+   01F-01    22   5.30   0.70    17    0    1  V
+   01F-02    81    nan    nan   nan    0    0  
+   01F-03    83    nan    nan   nan    0    0  
+   01F-04    55  10.32   0.65     0    1    1  V
+   01F-05    44   5.79   0.77     7    1    1  
+   01F-06    81    nan    nan   nan    0    0  
+   01F-07    46  10.25   0.74     3    1    1  V
+   01F-08    43   9.36   0.99     0    1    1  V
+   01F-09    24   6.59   0.70    16    0    1  
+   01F-10    36   7.91   1.47    13    0    1  V
+   01F-11    79    nan    nan   nan    0    0  
+   01F-12    50   4.47   2.36    20    0    0  
+   02W-01    58   3.21   0.74    56    0    0  
+   02W-02    60    nan    nan   nan    0    0  
+   02W-03    77    nan    nan   nan    0    0  
+   02W-04    50   8.17   0.76    22    0    1  
+   02W-05    19   6.17   0.68    14    0    1  
+   02W-06    14   3.88   0.93    13    0    0  V
+   02W-07    43   9.09   0.76    26    0    1  V
+   02W-08    60    nan    nan   nan    0    0  
+   02W-09    18   5.77   0.45    13    0    0  V
+   02W-10    25   4.95   0.62    23    0    0  V
+   02W-11    31   3.87   1.32    20    0    0  
+   02W-12    84    nan    nan   nan    0    0  
+   02F-01    75    nan    nan   nan    0    0  
+   02F-02    84    nan    nan   nan    0    0  
+   02F-03    72    nan    nan   nan    0    0  
+   02F-04    61    nan    nan   nan    0    0  
+   02F-05    24   9.51   0.95     9    1    1  V
+   02F-06    26   6.98   0.74     4    1    1  V
+   02F-07    36  12.16   0.86    22    0    1  V
+   02F-08    53   8.84   0.67     1    1    1  V
+   02F-09    14   4.60   0.95     4    0    0  V
+   02F-10    24   4.19   1.44    12    0    0  V
+   02F-11    43   4.49   1.39    36    0    0  
+   02F-12    78    nan    nan   nan    0    0  
+   eye-V charts flagged: main 7 of 17, ALT-1 11 of 17; not-eye-V charts flagged: main 1 of 31, ALT-1 5 of 31
+   (the eye list is one reader's, made from two sheets; it shows where the form and the eye part ways - mostly condition 4 and the 5-range bar)

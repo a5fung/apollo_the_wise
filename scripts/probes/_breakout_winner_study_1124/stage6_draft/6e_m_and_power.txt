@@ -1,0 +1,33 @@
+# STAGE 6 DRAFT (not a freeze) - e. m, check n and the smallest detectable ratio - outcome-free
+prereg 3eb2b9b0 / A1 4a7beda1 / A2 0a6cc417 / A3 a0c11a36 / feature table d629ef0a asserted
+
+== m (prereg 5.3: counted, to be pinned at step 6 - NOT pinned here) ==
+   carried on discovery: 4 (f01, f02, f04, f09)
+   combination (5.6: exists because >= 2 features are carried; one, pre-stated): 1  -> 'definition (fixed; tested ONCE on check as one family member): equal-weight mean of the within-(era, month) percentile ranks ((average rank - 0.5) / n...'
+   the operator's gallery reads so far: 1 (this one). Ruling slot: unused so far.
+   m = 4 carried + 1 combination + 1 read = 6   (it grows by one for each further read or a ruling he gives before step 6; cap 9)
+
+== CHECK n for this read (seed 1124; a month enters when it holds >= 2 V and >= 2 not-V) ==
+   era A (2021 to 2022-Q1): events 2910 | V 188 = 6.5% | NULL 0 | months 16, usable 15 | in usable months: V 188, not-V 2347
+   era B (2022-04 to 2024): events 3356 | V 389 = 11.6% | NULL 0 | months 31, usable 27 | in usable months: V 387, not-V 2758
+   ALL check: events 6266 | V 577 | usable months 42 | in usable months: V 575, not-V 5105
+   big winners expected among the V events if V made no difference, at the 2017-19 rate: about 53
+   big winners expected among the V events if V made no difference, era B at 0.75x: about 44
+
+== SMALLEST DETECTABLE RATIO (synthetic labels; base rate 9.18% = stage 3's 2017-19 rate; one-sided in his direction; first Holm step 0.05 / 6 = 0.0083; 20,000 draws) ==
+   'reaches the bar' = check ratio not-V / V >= 1.2 AND one-sided p <= 0.05 / m (the PICKS THE TAIL line of 5.3, either era form)
+
+   era B at the same rate: under no effect the ratio's median is 1.000, 95% band 0.77-1.35; ratio needed for p <= 0.05/6: 1.46; a true-zero read shows >= 1.2 in 11% of runs
+   chance of reaching the bar by TRUE ratio: 1.2x 12% (same direction in both eras 12%) | 1.3x 25% (same direction in both eras 24%) | 1.4x 42% (same direction in both eras 41%) | 1.5x 58% (same direction in both eras 58%) | 1.6x 72% (same direction in both eras 71%) | 1.7x 83% (same direction in both eras 82%) | 1.8x 89% (same direction in both eras 89%) | 1.9x 95% (same direction in both eras 94%) | 2.0x 97% (same direction in both eras 97%) | 2.2x 99% (same direction in both eras 99%) | 2.5x 100% (same direction in both eras 100%) | 3.0x 100% (same direction in both eras 100%)
+   -> smallest true ratio found 4 times in 5: 1.7x
+
+   era B at 0.75x: under no effect the ratio's median is 1.000, 95% band 0.75-1.40; ratio needed for p <= 0.05/6: 1.52; a true-zero read shows >= 1.2 in 13% of runs
+   chance of reaching the bar by TRUE ratio: 1.2x 10% (same direction in both eras 10%) | 1.3x 20% (same direction in both eras 20%) | 1.4x 34% (same direction in both eras 34%) | 1.5x 49% (same direction in both eras 48%) | 1.6x 62% (same direction in both eras 62%) | 1.7x 73% (same direction in both eras 73%) | 1.8x 83% (same direction in both eras 83%) | 1.9x 89% (same direction in both eras 89%) | 2.0x 93% (same direction in both eras 92%) | 2.2x 97% (same direction in both eras 97%) | 2.5x 99% (same direction in both eras 99%) | 3.0x 100% (same direction in both eras 100%)
+   -> smallest true ratio found 4 times in 5: 1.8x
+
+   read with care: a lower bound for a family member (first Holm step); day / theme clustering is not simulated and pushes the real figure down;
+   the V group is about 1 event in 11 on check (a thirds feature compares 1 in 3 with 1 in 3).
+
+== the same for ALT-1 'V, pause allowed' (group sizes only; its outcomes were never joined): check V 1472 of 6266 = 23.5% ==
+   era B at the same rate: ratio needed for p <= 0.05/6: 1.28; smallest true ratio found 4 times in 5: 1.4x
+   era B at 0.75x: ratio needed for p <= 0.05/6: 1.31; smallest true ratio found 4 times in 5: 1.5x
