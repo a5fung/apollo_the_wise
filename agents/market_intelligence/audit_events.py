@@ -454,6 +454,7 @@ THEME_PASS1_5_OPERATOR_EXEMPT_ERROR = "theme_pass1_5_operator_exempt_error"
 # window). Neither name is read by the quality check's departure parser — these members were KEPT.
 THEME_SECTOR_FILTER_FLOOR_KEPT = "theme_sector_filter_floor_kept"
 THEME_SECTOR_FILTER_OPERATOR_EXEMPT = "theme_sector_filter_operator_exempt"
+THEME_DISSOLVE_OPERATOR_EXEMPT = "theme_dissolve_operator_exempt"  # #727: ADR 0025 Arm A held off a promotion in its window
 
 # #312 (2026-10-16) — written by `job_recovery.ensure_first_seen`, read back by `fetch_first_seen`:
 # summary = job id, detail = the boot time (tz-aware ISO) the job was first registered. One row per

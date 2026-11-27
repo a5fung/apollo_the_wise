@@ -95,7 +95,7 @@ from agents.market_intelligence.audit_events import (
     THEME_MOVE_REJECTED_BY_DESCRIPTION,
     THEME_SMALL_FOLDED, THEME_SMALL_FOLD_RAN, THEME_SMALL_FOLD_ERROR,
     THEME_PASS1_5_OPERATOR_EXEMPT, THEME_PASS1_5_OPERATOR_EXEMPT_ERROR,
-    THEME_SECTOR_FILTER_FLOOR_KEPT, THEME_SECTOR_FILTER_OPERATOR_EXEMPT,
+    THEME_SECTOR_FILTER_FLOOR_KEPT, THEME_SECTOR_FILTER_OPERATOR_EXEMPT, THEME_DISSOLVE_OPERATOR_EXEMPT,
 )
 from shared.llm_response import content_block_types, first_text, is_truncated, stop_reason
 from shared.output_ceilings import max_tokens_for
@@ -4093,14 +4093,7 @@ async def _rescore_existing_theme(
             mass_flag_out=_mass_flag,
             flagged_out=_flag_seen if _promo_exempt else None)
         if _promo_exempt and _flag_seen.get("flagged") and len(_pre_validation) == 2:
-            _fl = _flag_seen["flagged"]
-            await log_audit_event(
-                "theme_dissolve_operator_exempt",
-                summary=(f"Arm A: '{name}' not dissolved (operator-promoted, night "
-                         f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS - _promo_left + 1} of "
-                         f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS}); validation flagged {', '.join(_fl)}"),
-                detail=f"via=validation flagged={_fl} pair kept intact (#727)",
-            )
+            await _log_dissolve_exempt(operator_exempt, name, _promo_left, _flag_seen["flagged"], "validation")
 
         # ── #214: the NAME was too narrow — rename, don't evict (2026-08-26) ──
         if _mass_flag:
@@ -8779,9 +8772,29 @@ class OperatorExempt:
     `_merge_overlapping_themes` call (merge 1 and merge 2). `nights_left` maps an exact theme name to
     the number of exempt nights remaining INCLUDING tonight (3 = his first engine night, 1 = his last).
     `logged` is the run's written-set: the exempt audit row is one per theme per run, not one per merge
-    pass."""
+    pass. `dissolve_logged` is the same for the #727 Arm A exempt row (validation + retro sweep share it)."""
     nights_left: dict[str, int] = field(default_factory=dict)
     logged: set[str] = field(default_factory=set)
+    dissolve_logged: set[str] = field(default_factory=set)
+
+
+async def _log_dissolve_exempt(operator_exempt: "OperatorExempt", name: str, left: int,
+                               flagged: list[str], via: str) -> None:
+    """#727: ONE `theme_dissolve_operator_exempt` row per theme per run (the validation path and the retro
+    sweep can both hold the same pair off in one run). Fail-open: an audit write error never fails the run."""
+    if name in operator_exempt.dissolve_logged:
+        return
+    operator_exempt.dissolve_logged.add(name)
+    try:
+        await log_audit_event(
+            THEME_DISSOLVE_OPERATOR_EXEMPT,
+            summary=(f"Arm A: '{name}' not dissolved (operator-promoted, night "
+                     f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS - left + 1} of "
+                     f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS}); validation flagged {', '.join(flagged)}"),
+            detail=f"via={via} flagged={flagged} pair kept intact (#727)",
+        )
+    except Exception as e:
+        logger.warning(f"[#727] dissolve-exempt audit failed for '{name}': {e}")
 
 
 def _operator_exempt_nights_left(
@@ -9415,16 +9428,7 @@ async def _retro_sweep_flagged_pairs(
                  if operator_exempt is not None else None)
         if _left:
             # #727: his promotion inside its 3-night window is not dissolved, no cooldown refresh
-            try:
-                await log_audit_event(
-                    "theme_dissolve_operator_exempt",
-                    summary=(f"Arm A: '{t['name']}' not dissolved (operator-promoted, night "
-                             f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS - _left + 1} of "
-                             f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS}); validation flagged {', '.join(flagged)}"),
-                    detail=f"via=retro_sweep flagged={flagged} pair kept intact (#727)",
-                )
-            except Exception as e:
-                logger.warning(f"[Arm A sweep] exempt audit failed for '{t['name']}': {e}")
+            await _log_dissolve_exempt(operator_exempt, t["name"], _left, flagged, "retro_sweep")
             continue
         survivors = [tk for tk in tks if tk not in flagged]
         try:
@@ -11230,7 +11234,7 @@ async def run_theme_engine(
     # docs/architecture/theme_engine.md change log 2026-09-25.
     #
     # #655 (c) + #727 (a): the names the operator promoted within their first 3 theme nights, read
-    # ONCE per run HERE (hoisted 2026-11-16 from just above the first merge) and shared by this
+    # ONCE per run before the rescore (hoisted again 2026-11-26 for the Arm A exemption) and shared by this
     # filter's sector arm and both merge passes (Pass 1.5 does not absorb them). Fail-open: a read
     # error = nothing exempt tonight + a `theme_pass1_5_operator_exempt_error` row.
     await _apply_carryforward_deterministic_filter(

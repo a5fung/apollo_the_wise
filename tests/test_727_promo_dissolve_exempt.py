@@ -148,3 +148,28 @@ async def test_c2_retro_sweep_none_dissolves(env, monkeypatch):
     themes = [{"name": PROMO, "tickers": ["RIOT", "FIGR"], "stage": "Nascent"}]
     out = await theme_engine._retro_sweep_flagged_pairs(themes, [], None)
     assert out == []
+
+
+# ── simplify 2026-11-26: one exempt row per theme per run, and an audit failure never fails the run ──
+def test_dissolve_exempt_row_once_per_run_and_fail_open(monkeypatch):
+    import asyncio
+    from agents.market_intelligence import theme_engine as te
+    calls = []
+
+    async def fake_log(event, **kw):
+        calls.append((event, kw))
+
+    monkeypatch.setattr(te, "log_audit_event", fake_log)
+    ox = te.OperatorExempt(nights_left={"Promo": 2})
+    asyncio.run(te._log_dissolve_exempt(ox, "Promo", 2, ["FIGR"], "validation"))
+    asyncio.run(te._log_dissolve_exempt(ox, "Promo", 2, ["FIGR"], "retro_sweep"))
+    assert len(calls) == 1
+    assert calls[0][0] == te.THEME_DISSOLVE_OPERATOR_EXEMPT == "theme_dissolve_operator_exempt"
+    assert "night 2 of 3" in calls[0][1]["summary"] and "via=validation" in calls[0][1]["detail"]
+    assert ox.logged == set()  # the Pass 1.5 written-set is untouched
+
+    async def boom(event, **kw):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(te, "log_audit_event", boom)
+    asyncio.run(te._log_dissolve_exempt(te.OperatorExempt(), "Other", 1, ["X"], "retro_sweep"))  # must not raise
