@@ -24,14 +24,21 @@ INSERT INTO p VALUES
 DO $$
 DECLARE n_alerts int; n_items int;
 BEGIN
+  -- some rows hold detail as a JSON STRING containing the JSON (double-encoded; the export unwraps the same way):
+  -- read the object either way and write it back as an object
+  WITH src AS (
+    SELECT a.id, a.market,
+           CASE WHEN jsonb_typeof(a.detail) = 'string' AND left(a.detail #>> '{}', 1) = '{'
+                THEN (a.detail #>> '{}')::jsonb ELSE a.detail END AS det
+      FROM mi_cot_alerts a WHERE a.alert_date = DATE '2026-11-25' AND a.kind = 'news')
   UPDATE mi_cot_alerts a
-     SET detail = jsonb_set(a.detail, '{news}', (
+     SET detail = jsonb_set(s.det, '{news}', (
            SELECT jsonb_agg(COALESCE(p.add, '{}'::jsonb) || n.item ORDER BY n.ord)
-             FROM jsonb_array_elements(a.detail -> 'news') WITH ORDINALITY AS n(item, ord)
-             LEFT JOIN p ON p.market = a.market AND p.event = n.item ->> 'event' AND p.cls = n.item ->> 'class'
+             FROM jsonb_array_elements(s.det -> 'news') WITH ORDINALITY AS n(item, ord)
+             LEFT JOIN p ON p.market = s.market AND p.event = n.item ->> 'event' AND p.cls = n.item ->> 'class'
                         AND abs(p.z - (n.item ->> 'z')::float8) < 1e-9))
-   WHERE a.alert_date = DATE '2026-11-25' AND a.kind = 'news' AND jsonb_typeof(a.detail) = 'object'
-     AND jsonb_typeof(a.detail -> 'news') = 'array';
+    FROM src s
+   WHERE a.id = s.id AND jsonb_typeof(s.det) = 'object' AND jsonb_typeof(s.det -> 'news') = 'array';
   GET DIAGNOSTICS n_alerts = ROW_COUNT;
   SELECT count(*) INTO n_items FROM mi_cot_alerts a CROSS JOIN LATERAL jsonb_array_elements(a.detail -> 'news') x
    WHERE a.alert_date = DATE '2026-11-25' AND a.kind = 'news' AND jsonb_typeof(a.detail) = 'object' AND x ? 'series';

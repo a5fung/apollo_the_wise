@@ -277,7 +277,7 @@ z 0.312 comes from core PCE y/y 3.3% vs 3.2% alone (the other three on forecast)
 **Anticipated effect** (BASELINE: "GDP: growth stronger than forecast (GDP Growth Rate QoQ 2nd Est 4.3% vs 3.5%) = bearish
 Silver" in Telegram; "GDP bearish Silver" on the page): Telegram, `detail.news[]`, the news-watch sentence and the page
 print the release with its period, the figures and the chain. Old alerts (the 14 in the 11-26 snapshot) get country,
-release and why from the nightly export, and NO figures: the job never stored them (`detail.news[]` held only event / z /
+release and why from the nightly export, and NO figures: the job never stored them (except the nine 11-25 alerts, see the review fixes below) (`detail.news[]` held only event / z /
 class / first minute and no news-watch row exists for 11-25). One more FXEmpire read per run only on a day a set-up market
 alerts on a non-US release, and the news watch reuses it (no new request on those days in total).
 
@@ -286,7 +286,7 @@ is not 4.3% in one quarter). "Previous" is the source's `revised` figure when it
 revised 3.6% → 3.6%), on the alert and on the news-watch card (a revision arriving with the release replaces the stored
 previous). A figure's own word is not repeated before a chain that opens with it ("4.3% vs 3.5% forecast → stronger US
 growth ...", not ": stronger → stronger ..."); when the figures came out different ways (CPI m/m hotter, y/y cooler) each
-keeps its word and the chain reads "on balance hotter US inflation ...". The nine 11-25 alerts DO get their figures: the raw
+keeps its word and the chain reads "on balance hotter US inflation ...". The nine 11-25 alerts CAN get their figures (built, not yet run on prod): the raw
 11-25 rows survive in the probe file above and reproduce every stored class and z (16 of 16 items), so
 `cot_family.fill_news_item_from_fx` rebuilds country / release / series from them (refusing any item they do not
 reproduce) and `scripts/probes/_cot_newsfacts_backfill_1127/backfill_1125.sql` writes them (stored keys win; `why` stays
