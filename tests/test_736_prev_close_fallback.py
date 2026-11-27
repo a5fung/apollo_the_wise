@@ -64,6 +64,7 @@ def _fresh_fill_cache(monkeypatch):
     monkeypatch.setattr(ep_detector, "_prev_close_fill_map", {})
     monkeypatch.setattr(ep_detector, "_prev_close_fill_done", set())
     monkeypatch.setattr(ep_detector, "_prev_close_fill_date_memo", None)
+    monkeypatch.setattr(ep_detector, "_prev_close_fill_failed_ticks", 0)
 
 
 # ── the fill date ─────────────────────────────────────────────────────────────────────
@@ -139,14 +140,20 @@ def test_a_close_with_no_known_volume_is_not_filled(monkeypatch):
     assert patched == {}
 
 
-def test_e_stored_load_raising_fails_open_and_is_retried_next_tick(monkeypatch, caplog):
+def test_e_stored_load_raising_fails_open_and_retries_a_capped_number_of_ticks(monkeypatch, caplog):
     seen = _patch_sources(monkeypatch, stored_exc=RuntimeError("pool exploded"))
     rows = {"BG": _snap(0, 80.0, prev_vol=0)}
     patched, counts = _run(ep_detector._fill_missing_prev_closes(rows, SESSION_DATE, PREV_SESSION))
     assert patched == {} and counts == {"alpaca": 0, "stored": 0}
     assert "stored-close stage failed" in caplog.text
-    _run(ep_detector._fill_missing_prev_closes(rows, SESSION_DATE, PREV_SESSION))
-    assert len(seen["stored"]) == 2, "a failed stage is not cached"
+    for _ in range(5):
+        _run(ep_detector._fill_missing_prev_closes(rows, SESSION_DATE, PREV_SESSION))
+    # a failed stage is retried, but only EP_PREV_CLOSE_FILL_MAX_FAILED_TICKS times a morning —
+    # an outage must not cost every ORB-window tick the stage timeout
+    assert len(seen["stored"]) == ep_detector.EP_PREV_CLOSE_FILL_MAX_FAILED_TICKS == 2
+    # a new morning starts fresh
+    _run(ep_detector._fill_missing_prev_closes(rows, date(2026, 11, 30), SESSION_DATE))
+    assert len(seen["stored"]) == 3
 
 
 def test_a_clean_answer_is_cached_for_the_morning(monkeypatch):

@@ -2716,6 +2716,11 @@ EP_PREV_CLOSE_FILL_DB_TIMEOUT_S = float(os.environ.get("EP_PREV_CLOSE_FILL_DB_TI
 _prev_close_fill_key: "tuple | None" = None
 _prev_close_fill_map: dict = {}      # ticker -> (close, volume | None, source)
 _prev_close_fill_done: set = set()   # tickers both stages answered cleanly (found or not)
+_prev_close_fill_failed_ticks: int = 0   # ticks this morning whose fill had a failed stage
+# A failed stage is retried on the next tick at most this many times a morning, then the unfilled
+# rows are left on today's drop path for the day — an Alpaca/DB outage must not cost every
+# ORB-window tick the full stage timeout.
+EP_PREV_CLOSE_FILL_MAX_FAILED_TICKS = int(os.environ.get("EP_PREV_CLOSE_FILL_MAX_FAILED_TICKS", "2"))
 _prev_close_fill_date_memo: "tuple | None" = None   # (scan date, fill date)
 
 
@@ -2791,6 +2796,7 @@ async def _fill_missing_prev_closes(rows: dict, scan_date: "date",
     patched — it stays a counted no-prev-close drop, never a silent volume-floor reject. Bounded
     (one wait_for per stage) and NEVER raises: any failure leaves that row on today's drop path."""
     global _prev_close_fill_key, _prev_close_fill_map, _prev_close_fill_done
+    global _prev_close_fill_failed_ticks
     counts = {"alpaca": 0, "stored": 0}
     if not rows or fill_date is None:
         return {}, counts
@@ -2798,6 +2804,7 @@ async def _fill_missing_prev_closes(rows: dict, scan_date: "date",
         key = (scan_date, fill_date)
         if _prev_close_fill_key != key:
             _prev_close_fill_key, _prev_close_fill_map, _prev_close_fill_done = key, {}, set()
+            _prev_close_fill_failed_ticks = 0
 
         def _poly_vol(t):
             return (rows[t].get("prevDay") or {}).get("v") or 0
@@ -2837,7 +2844,9 @@ async def _fill_missing_prev_closes(rows: dict, scan_date: "date",
                                    f"({_safe_exc(e)})")
             _prev_close_fill_map.update(found)
             _prev_close_fill_done.update(found)
-            if clean:
+            if not clean:
+                _prev_close_fill_failed_ticks += 1
+            if clean or _prev_close_fill_failed_ticks >= EP_PREV_CLOSE_FILL_MAX_FAILED_TICKS:
                 _prev_close_fill_done.update(todo)
 
         patched = {}
