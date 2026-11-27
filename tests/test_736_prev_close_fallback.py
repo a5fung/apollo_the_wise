@@ -65,6 +65,9 @@ def _fresh_fill_cache(monkeypatch):
     monkeypatch.setattr(ep_detector, "_prev_close_fill_done", set())
     monkeypatch.setattr(ep_detector, "_prev_close_fill_date_memo", None)
     monkeypatch.setattr(ep_detector, "_prev_close_fill_failed_ticks", 0)
+    monkeypatch.setattr(ep_detector, "_corp_action_date", None)
+    monkeypatch.setattr(ep_detector, "_corp_action_set", None)
+    monkeypatch.setattr(ep_detector, "_prev_close_fill_split_fail", (None, 0))
 
 
 # ── the fill date ─────────────────────────────────────────────────────────────────────
@@ -187,7 +190,8 @@ def test_d_snap_candidate_on_a_polygon_row_is_byte_identical_to_the_pre_736_shap
 
 # ── run_ep_scan end to end on the incident morning ───────────────────────────────────
 
-async def _drive(monkeypatch, snaps, *, alpaca=None, stored=None, stored_exc=None, fill=True):
+async def _drive(monkeypatch, snaps, *, alpaca=None, stored=None, stored_exc=None, fill=True,
+                 splits=frozenset()):
     """One run_ep_scan, no date argument (as prod calls it), on 2026-11-27 pre-open. Captures the
     scan-log rows (one per candidate that reaches the graded loop) and the parse-drop audit."""
     from agents.market_intelligence import minute_volume as mv
@@ -223,6 +227,8 @@ async def _drive(monkeypatch, snaps, *, alpaca=None, stored=None, stored_exc=Non
     conn.execute = AsyncMock(return_value="INSERT 0 1")
 
     _patch_sources(monkeypatch, alpaca=alpaca, stored=stored, stored_exc=stored_exc)
+    monkeypatch.setattr(collector, "get_splits_today",
+                        AsyncMock(return_value=None if splits is None else set(splits)))
     if not fill:   # the pre-#736 path: nothing is ever filled
         monkeypatch.setattr(ep_detector, "_fill_missing_prev_closes",
                             AsyncMock(return_value=({}, {"alpaca": 0, "stored": 0})))
@@ -320,6 +326,48 @@ async def test_e_stored_load_raising_in_the_scan_keeps_todays_drop(monkeypatch):
     rows, _ = await _drive(monkeypatch, _incident_snaps(), alpaca={},
                            stored_exc=RuntimeError("pool exploded"))
     assert set(rows) == {"HAS"}
+
+
+@pytest.mark.asyncio
+async def test_a_split_effective_today_row_is_not_filled_and_stays_counted(monkeypatch, caplog):
+    # a filled close is a RAW pre-split close; on a reverse-split ex-date it would mint a phantom
+    # gap on the delayed path (no Q3, no split check) — so a split name keeps today's drop
+    caplog.set_level(logging.INFO, logger=ep_detector.logger.name)
+    rows, _ = await _drive(monkeypatch, _incident_snaps(), alpaca=_INCIDENT_ALPACA,
+                           stored=_INCIDENT_STORED, splits={"TTC"})
+    assert "TTC" not in rows
+    assert rows["BG"]["prev_close"] == 73.0, "a non-split name still fills"
+    line = [r.getMessage() for r in caplog.records if "candidate build dropped" in r.getMessage()]
+    assert line and "2 with prev_close 0/missing" in line[0]
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_split_reference_skips_the_fill_for_the_tick(monkeypatch):
+    rows, _ = await _drive(monkeypatch, _incident_snaps(), alpaca=_INCIDENT_ALPACA,
+                           stored=_INCIDENT_STORED, splits=None)
+    assert set(rows) == {"HAS"}
+
+
+def test_a_failing_split_read_is_retried_on_at_most_the_capped_ticks(monkeypatch):
+    calls = []
+
+    async def _splits(d):
+        calls.append(d)
+        return None
+    monkeypatch.setattr(collector, "get_splits_today", _splits)
+    for _ in range(5):
+        assert _run(ep_detector._prev_close_fill_split_holds(SESSION_DATE)) is None
+    assert len(calls) == ep_detector.EP_PREV_CLOSE_FILL_MAX_FAILED_TICKS
+
+
+def test_a_filled_volume_comes_from_the_same_bar_as_the_close(monkeypatch):
+    # prevDay.c 0 but prevDay.v set: Polygon's prevDay may be dated another day — never pair it
+    _patch_sources(monkeypatch, alpaca={"TTC": _alpaca(80.0, PREV_SESSION, vol=1_234_000)},
+                   stored={PREV_SESSION: {"BG": (71.5, 2_000_000)}})
+    rows = {"TTC": _snap(0, 90.0, prev_vol=55_000), "BG": _snap(0, 80.0, prev_vol=66_000)}
+    patched, _ = _run(ep_detector._fill_missing_prev_closes(rows, SESSION_DATE, PREV_SESSION))
+    assert patched["TTC"]["prevDay"]["v"] == 1_234_000
+    assert patched["BG"]["prevDay"]["v"] == 2_000_000
 
 
 # ── a filled denominator is never verified by its own bar ────────────────────────────

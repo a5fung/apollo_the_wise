@@ -2791,10 +2791,10 @@ async def _fill_missing_prev_closes(rows: dict, scan_date: "date",
                                     fill_date: "date | None") -> "tuple[dict, dict]":
     """#736: fill the prev close of `rows` (ticker → snapshot row with prevDay.c 0/missing) from the
     known previous trading date. Returns ({ticker: patched snapshot row}, {"alpaca": n, "stored": n}).
-    A patched row is a NEW dict (the shared snapshot is never mutated) with prevDay.c (and prevDay.v
-    when missing) filled and `_PREV_CLOSE_FILL_MARK` set. A row whose volume is still unknown is not
-    patched — it stays a counted no-prev-close drop, never a silent volume-floor reject. Bounded
-    (one wait_for per stage) and NEVER raises: any failure leaves that row on today's drop path."""
+    A patched row is a NEW dict (the shared snapshot is never mutated) with prevDay.c and prevDay.v
+    filled (v = the matched bar/row's own volume; Polygon's prevDay.v only when the source has
+    none) and `_PREV_CLOSE_FILL_MARK` set. A row whose volume is still unknown is not patched — it
+    stays a counted no-prev-close drop, never a silent volume-floor reject. Bounded (one wait_for per stage) and NEVER raises: any failure leaves that row on today's drop path."""
     global _prev_close_fill_key, _prev_close_fill_map, _prev_close_fill_done
     global _prev_close_fill_failed_ticks
     counts = {"alpaca": 0, "stored": 0}
@@ -2856,7 +2856,7 @@ async def _fill_missing_prev_closes(rows: dict, scan_date: "date",
                 continue
             close, vol, src = f
             pd = snap.get("prevDay") or {}
-            v = _poly_vol(t) or vol or 0
+            v = vol or _poly_vol(t) or 0   # the matched bar/row's OWN volume first (same day as the close)
             if not v:
                 continue
             patched[t] = {**snap, "prevDay": {**pd, "c": close, "v": v}, _PREV_CLOSE_FILL_MARK: src}
@@ -2865,6 +2865,32 @@ async def _fill_missing_prev_closes(rows: dict, scan_date: "date",
     except Exception as e:   # loud-ok: logged; the whole fill degrades to today's drop behaviour
         logger.warning(f"#736 prev_close fill failed ({_safe_exc(e)}) - rows stay dropped")
         return {}, {"alpaca": 0, "stored": 0}
+
+
+# #736 split read for the fill: a failed/timed-out read skips the fill that tick and counts toward
+# the same EP_PREV_CLOSE_FILL_MAX_FAILED_TICKS cap, after which the fill is off for the morning (today's
+# drop) — so a hanging reference cannot cost every ORB tick the timeout.
+_prev_close_fill_split_fail: "tuple[date | None, int]" = (None, 0)
+
+
+async def _prev_close_fill_split_holds(today: "date") -> "set[str] | None":
+    """The §2.2 split set for the fill, or None (= do not fill this tick). Never raises."""
+    global _prev_close_fill_split_fail
+    d, n = _prev_close_fill_split_fail
+    if d != today:
+        d, n = today, 0
+    if n >= EP_PREV_CLOSE_FILL_MAX_FAILED_TICKS:
+        return None
+    try:
+        holds = await asyncio.wait_for(_corp_action_holds_today(today),
+                                       timeout=EP_PREV_CLOSE_FILL_TIMEOUT_S)
+    except Exception as e:   # loud-ok: logged; None → no fill this tick (today's drop)
+        logger.warning(f"#736 prev_close fill: split reference failed ({_safe_exc(e)})")
+        holds = None
+    if holds is None:
+        n += 1
+    _prev_close_fill_split_fail = (d, n)
+    return holds
 
 
 # §2.2 corporate-action (split) guard — one Polygon reference call per morning, cached for the
@@ -4126,6 +4152,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     try:
         _prev_fill_rows = _prev_close_fill_targets(
             snapshots, _known_stock_tickers, _non_stock_tickers)
+        if _prev_fill_rows:
+            # §2.2 split guard: a filled close is a RAW pre-split prior-day close, and the delayed
+            # path has no Q3/split check — so a split-effective-today row is NOT filled (today's
+            # drop). A failed split read (None) skips the fill for this tick entirely.
+            _prev_fill_holds = await _prev_close_fill_split_holds(today)
+            if _prev_fill_holds is None:
+                logger.warning("#736 prev_close fill skipped this tick: split reference unreadable")
+                _prev_fill_rows = {}
+            elif _prev_fill_holds:
+                _prev_fill_rows = {t: r for t, r in _prev_fill_rows.items()
+                                   if t not in _prev_fill_holds}
         if _prev_fill_rows:
             _prev_fill_date = _prev_close_fill_date(today, prev_close_date)
             _prev_patched, _prev_fill_counts = await _fill_missing_prev_closes(

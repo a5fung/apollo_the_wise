@@ -698,7 +698,7 @@ Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier 
 
 **Known gap (not changed — operator's call)**: the §2.1 cross-check still keys on `last_trading_day`, so on a post-holiday morning Polygon rows stay unverified (the documented O1 fail-safe).
 
-**Known gap 2 (operator's call)**: a filled close is a raw prior-day close; on a split-effective day it could read as a phantom gap on a row that used to be dropped (Pass-0's corp-action hold still applies to RT-only admission).
+**Split-day rows are not filled**: a filled close is a raw pre-split prior-day close and the delayed path has no Q3/split check, so a ticker in the §2.2 split set (`_corp_action_holds_today`) keeps today's drop; when the split reference is unreadable the fill is skipped for that tick. A filled row's volume is the matched bar/row's own (Polygon's prevDay.v only when the source has none), so close and volume come from the same day. Latency: a cold first fill on a failed source can hold a tick up to the stage timeouts (split read 12 s + Alpaca 12 s + DB 3 s); a failing split read and a failing fill stage each retry on at most 2 ticks a morning, then the fill is off for the day (today's drop) — bounded and fail-open.
 
 **Reversion-flag**: NEW. Tests: `tests/test_736_prev_close_fallback.py`.
 

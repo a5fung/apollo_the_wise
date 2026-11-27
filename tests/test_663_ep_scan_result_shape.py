@@ -164,6 +164,7 @@ _POISON = {
     "_prev_close_fill_done": lambda: {ADMIT_TICKER},
     "_prev_close_fill_date_memo": lambda: (SESSION_DATE, SESSION_DATE),
     "_prev_close_fill_failed_ticks": lambda: 99,
+    "_prev_close_fill_split_fail": lambda: (SESSION_DATE, 99),
     # ep_theme_belonging (the module indexes these by key — keep the keys, poison the values)
     "_ctx_cache": lambda: {"key": ("poisoned",), "ctx": object()},
     "_fit_cache": lambda: {(SESSION_DATE, ADMIT_TICKER, ("Grid",)): ("confirmed", "Grid", "Accelerating", "stale")},
