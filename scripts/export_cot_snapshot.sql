@@ -115,7 +115,7 @@ newsdef(event_type, country, release, family, cause_up, cause_down) AS (
         ('NFP', 'US', 'jobs report', 'growth', 'a stronger US jobs market', 'a weaker US jobs market'),
         ('OPEC', 'OPEC+', 'meeting', NULL, NULL, NULL),
         ('PCE', 'US', 'PCE inflation', 'inflation', 'hotter US inflation', 'cooler US inflation'),
-        ('PPI', 'US', 'PPI producer prices', 'inflation', 'hotter US producer prices', 'cooler US producer prices'),
+        ('PPI', 'US', 'PPI producer prices', 'inflation', 'hotter US producer-price inflation', 'cooler US producer-price inflation'),
         ('RBA', 'Australia', 'RBA rate decision', NULL, NULL, NULL),
         ('RBA_MINUTES', 'Australia', 'RBA meeting minutes', NULL, NULL, NULL),
         ('RETAIL', 'US', 'retail sales', 'growth', 'stronger US consumer spending', 'weaker US consumer spending'),
@@ -153,7 +153,7 @@ whygrp(market, grp) AS (
 ),
 whydef(family, grp, sign, effect_up, effect_down) AS (
     VALUES
-        ('earnings', 'equities', 1, 'lifts a big member of the {mk}', 'weighs on a big member of the {mk}'),
+        ('earnings', 'equities', 1, 'lifts large US stocks broadly', 'weighs on large US stocks broadly'),
         ('fed', 'bonds', -1, 'lifts US interest rates, and bond prices fall as yields rise', 'lowers US interest rates, and bond prices rise as yields fall'),
         ('fed', 'crypto', -1, 'lifts US interest rates and the dollar, which weighs on risky assets', 'lowers US interest rates and the dollar, which supports risky assets'),
         ('fed', 'dollar', 1, 'lifts US interest rates and the US dollar', 'lowers US interest rates and the US dollar'),

@@ -392,7 +392,7 @@ def test_daily_message_is_paper_tagged_plain_and_silent_when_empty():
         WED, REPORT, [_alert(first_minute={"status": "ok", "move": -0.54, "big": False})])
     assert "Gold closed down 0.60 of a day's range (a day's range = its 20-day average)" in text
     assert "news vs consensus: bullish Gold" in text and "= bullish Gold" in text
-    assert "a news failure: bullish news for Gold (CPI), yet Gold closed DOWN." in text
+    assert "a news failure: bullish news for Gold (US CPI inflation), yet Gold closed DOWN." in text
     assert "Crowded long: large specs 97 of 100, small specs 96 of 100, commercials 3 of 100. The set up is short (it fades the crowd)." in text
     assert "close-list set up" in cf.format_daily_message(WED, REPORT, [_alert(level="close")])
     # the crowd is named ONCE per alert, in the set-up line only: no other operator-facing line mentions it
@@ -1820,7 +1820,7 @@ def test_an_earnings_estimate_listed_ahead_is_the_forecast_and_the_reported_eps_
     assert row["series"] == [{"name": "EPS", "forecast": "1.25", "previous": None, "actual": None, "forecast_after": None,
                               "label": "EPS", "period": None}]
     assert row["crowd_outcome"].startswith("NVDA earnings: an EPS beat (EPS above 1.25) → NVDA earnings beating forecast "
-                                           "lifts a big member of the Nasdaq → bullish Nasdaq.")
+                                           "lifts large US stocks broadly → bullish Nasdaq.")
 
 
 def _fake_pool_io(fetched=None):
@@ -2052,7 +2052,7 @@ def test_first_minute_and_peers_convert_to_asset_terms_for_a_long_and_a_short_se
     t = cf.format_daily_message(WED, REPORT, [silver_long])
     assert "first minute after the release: down 0.20 of a day's range (small; big starts at 0.25)" in t
     assert "Silver closed up 0.50 of a day's range" in t and "news vs consensus: bearish Silver" in t
-    assert "a news failure: bearish news for Silver (GDP, PCE), yet Silver closed UP." in t
+    assert "a news failure: bearish news for Silver (US GDP, US PCE inflation), yet Silver closed UP." in t
     assert ("Crowded short: large specs 0 of 100 (max short), small specs 0 of 100 (max short), commercials 100 of 100 "
             "(max long). The set up is long (it fades the crowd).") in t
     assert "crowd's way" not in t and "against the crowd" not in t.lower()
@@ -2197,6 +2197,85 @@ def test_a_friday_confirmation_names_whose_release_it_was():
          "failure_day": date(2026, 11, 5), "stop_rule": "a close below 5"}
     t = cf.format_weekly_message(REPORT, {}, {}, [], [a], "Sunday open", [])
     assert "releases: US USDA WASDE crop report; US USDA weekly export sales" in t
+
+
+def _au_io(close=101.0):
+    """Wednesday 11-11: the Australian dollar on the close list LONG (crowd short), closing UP on Australian CPI day."""
+    io = _daily_io()
+    io.weeks[REPORT]["rows"] = {"australian_dollar": _ix(97, 3, 30, None, "long")}
+    io.bars = {"6A=F": bars_to(WED, close)}
+    io.cal = [{"event_date": WED, "event_type": "AU_CPI", "release_et": _t(19, 30, date(2026, 11, 10)), "source": "s"}]
+    io.fx_bank["australia"] = [{"name": "Inflation Rate MoM", "actual": "0.5%", "forecast": "0.4%", "previous": "0.8%",
+                                "reference": "Oct", "date": "2026-11-11T00:30:00.000Z"}]
+    return io
+
+
+def test_a_non_us_release_prints_its_own_page_figures_read_once_per_run():
+    io = _au_io()
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["alerts"] == 1 and res["sent"] is True and res["problems"] == []
+    item = io.alerts[(WED, "australian_dollar", "long", "news")]["detail"]["news"][0]
+    assert item["release"] == "Australia CPI inflation (October)" and item["country"] == "Australia"
+    assert (item["series"][0]["actual"], item["series"][0]["forecast"], item["series"][0]["vs"]) == ("0.5%", "0.4%", "above forecast")
+    assert item["class"] == "UNKNOWN" and item["why"] == ""                     # no read is mapped: the fact, no reason
+    assert "Australia CPI inflation (October): CPI m/m 0.5% vs 0.4% forecast (previous 0.8%): above forecast" in io.sent[0]
+    assert [c for c in io.fx_calls if c[0] == "australia"] == [("australia", date(2026, 11, 10))]   # the watch reused it
+    assert io.watch[(WED, "AU_CPI", "australian_dollar")]["series"][0]["actual"] == "0.5%"
+
+
+def test_a_refused_country_page_never_blocks_the_alert():
+    class Refuse(FakeIo):
+        def fxempire(self, country, d0, d1):
+            if country == "australia":
+                self.fx_calls.append((country, d0))
+                raise cf.CalendarRefused("429")
+            return super().fxempire(country, d0, d1)
+    io = _au_io()
+    io.__class__ = Refuse
+    res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
+    assert res["alerts"] == 1 and res["sent"] is True and res["problems"] == []
+    assert "fxempire australia" in res["label_errors"]
+    item = io.alerts[(WED, "australian_dollar", "long", "news")]["detail"]["news"][0]
+    assert item["series"] == [] and item["text"] == ("Australia CPI inflation → no bullish / bearish read is mapped for this "
+                                                     "release on Australian Dollar")
+    assert len([c for c in io.fx_calls if c[0] == "australia"]) == 1            # a refusal is not asked again
+
+
+def test_an_item_stored_before_the_plain_words_still_renders():
+    old = {"event": "GDP", "class": "WITH", "z": 2.95, "first_minute": {"status": "ok", "move": 0.2, "big": False}}
+    assert cf.news_line(old, "silver", "long") == "US GDP → bearish Silver"
+    assert cf.news_line(old, "silver") == "US GDP → no clear read"           # no direction: never a guessed read
+    msg = cf.format_daily_message(WED, REPORT, [_alert(market="silver", direction="long", z=0.5, kinds=["news"], events=["GDP"],
+                                                       news_text=[], news_detail=[old])])
+    assert "a news failure: bearish news for Silver (US GDP), yet Silver closed UP." in msg
+
+
+def test_a_heavy_news_day_still_goes_out_in_whole_blocks(monkeypatch):
+    """The nine news alerts of 11-25 with the longer lines, through the REAL sender: every chunk fits Telegram and keeps
+    its code block."""
+    from unittest.mock import AsyncMock
+    from agents.market_intelligence import briefing
+    from tests.test_699_paper_chat_routing import MAIN, PAPER, _Router
+    monkeypatch.undo()
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", str(MAIN))
+    monkeypatch.setenv("TELEGRAM_PAPER_CHAT_ID", str(PAPER))
+    r = _Router()
+    monkeypatch.setattr(briefing.httpx, "AsyncClient", r)
+    monkeypatch.setattr(briefing, "log_audit_event", AsyncMock())
+    alerts = []
+    for m in ("silver", "platinum", "notes_10y", "new_zealand_dollar", "gold", "euro", "copper"):
+        items = [_item_1125(e, m) for e in ("GDP", "PCE")]
+        alerts.append(_alert(market=m, direction="long", z=0.5, kinds=["news"], events=["GDP", "PCE"], news_class="WITH",
+                             news_text=[i["text"] for i in items], news_detail=items))
+    for m in ("natural_gas", "crude_oil"):
+        alerts.append(_alert(market=m, direction="long", z=0.5, kinds=["news"], events=["EIA_PETRO"], news_text=["x" * 200]))
+    text = cf.format_daily_message(D1125, REPORT, alerts)
+    assert len(text) > 4000                                                   # it does need splitting
+    assert _run(cf._send(text)) is True
+    assert len(r.posts) >= 2
+    for p in r.posts:
+        assert len(p["text"]) <= 4096 and p["text"].count("<pre>") == p["text"].count("</pre>") >= 1
 
 
 def test_the_export_mirrors_the_why_table():

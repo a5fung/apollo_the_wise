@@ -987,7 +987,8 @@ def series_figures(series) -> str:
 WHY_FAMILY = {**{t: "inflation" for t in sorted(_INFLATION)}, **{t: "growth" for t in sorted(_GROWTH)}, "FOMC": "fed",
               "EIA_PETRO": "oil_stocks", "EIA_NATGAS": "gas_stocks", "EARN": "earnings"}
 WHY_CAUSE = {
-    "CPI": ("hotter US inflation", "cooler US inflation"), "PPI": ("hotter US producer prices", "cooler US producer prices"),
+    "CPI": ("hotter US inflation", "cooler US inflation"),
+    "PPI": ("hotter US producer-price inflation", "cooler US producer-price inflation"),
     "PCE": ("hotter US inflation", "cooler US inflation"), "GDP": ("stronger US growth", "weaker US growth"),
     "RETAIL": ("stronger US consumer spending", "weaker US consumer spending"),
     "NFP": ("a stronger US jobs market", "a weaker US jobs market"),
@@ -1023,7 +1024,8 @@ WHY: dict[tuple[str, str], tuple[int, str, str]] = {
     ("growth", "copper"): (1, "means more demand for industrial metals", "means less demand for industrial metals"),
     ("oil_stocks", "oil"): (-1, "means more {mk} supply on hand", "means less {mk} supply on hand"),
     ("gas_stocks", "natgas"): (-1, "means more gas supply on hand", "means less gas supply on hand"),
-    ("earnings", "equities"): (1, "lifts a big member of the {mk}", "weighs on a big member of the {mk}"),
+    # no index-membership claim: not every one of the ten companies is in the Dow
+    ("earnings", "equities"): (1, "lifts large US stocks broadly", "weighs on large US stocks broadly"),
 }
 
 
@@ -1047,6 +1049,8 @@ def no_read_words(cls: str, event_type: str, market: str) -> str:
     mk = name_of(market).title()
     if cls == "INLINE":
         return f"in line with forecast: no read either way for {mk}"
+    if cls == "UNKNOWN_DIRECTION":           # a WITH / AGAINST class with no set-up direction to read it by
+        return "no clear read"
     if cls == "AMBIG" or news_sign(event_type, market) == 0:
         return f"no clear read for {mk} (the research maps no direction for this release on this market)"
     if news_sign(event_type, market) is None:
@@ -1054,14 +1058,19 @@ def no_read_words(cls: str, event_type: str, market: str) -> str:
     return f"no clear read for {mk} (the figures could not be read against a forecast)"
 
 
-def news_line(item: dict, market: str) -> str:
+def news_line(item: dict, market: str, direction: Optional[str] = None) -> str:
     """The one plain line for a news item: whose release and which, the figures, then the chain (or why there is none).
     'US GDP (Q3, second estimate): GDP q/q 4.3% vs 3.5% forecast (previous 2.2%): stronger → stronger US growth lifts
-    US interest rates and the US dollar against the New Zealand Dollar → bearish New Zealand Dollar'."""
+    US interest rates and the US dollar against the New Zealand Dollar → bearish New Zealand Dollar'. An item stored
+    before 2026-11-27 ({event, class, z, first_minute}) reads 'US GDP → bearish Silver' given the set-up direction."""
     head = item.get("release") or release_label(item.get("event") or "")
     figs = series_figures(item.get("series"))
-    tail = item.get("why") or (f"{item['read']} {name_of(market).title()}" if item.get("read") in ("bullish", "bearish")
-                               else no_read_words(item.get("class") or "UNKNOWN", item.get("event") or "", market))
+    cls = item.get("class") or "UNKNOWN"
+    read = item.get("read") or (news_read(cls, direction) if direction else None)
+    if read not in ("bullish", "bearish") and cls in ("WITH", "AGAINST"):
+        cls = "UNKNOWN_DIRECTION"
+    tail = item.get("why") or (f"{read} {name_of(market).title()}" if read in ("bullish", "bearish")
+                               else no_read_words(cls, item.get("event") or "", market))
     return f"{head}: {figs} → {tail}" if figs else f"{head} → {tail}"
 
 
@@ -1403,7 +1412,7 @@ def format_daily_message(day: date, report_date: date, alerts: list[dict]) -> Op
             lines.append(f"  news vs consensus: {news_read_words(a.get('news_class', 'UNKNOWN'), d, a['market'])}")
             for t in a.get("news_text") or []:      # one plain line per release: whose, which, the figures, why
                 lines.append(f"    {t}")
-            failing = [x["event"].replace("_", " ") for x in (a.get("news_detail") or []) if x.get("class") == "WITH"]
+            failing = [release_label(x["event"]) for x in (a.get("news_detail") or []) if x.get("class") == "WITH"]
             if failing and a.get("z") is not None:
                 lines.append(f"  a news failure: {news_read('WITH', d)} news for {mk} ({', '.join(failing)}), "
                              f"yet {mk} closed {_updown(a['z']).upper()}.")
