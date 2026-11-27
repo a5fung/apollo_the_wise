@@ -281,6 +281,18 @@ release and why from the nightly export, and NO figures: the job never stored th
 class / first minute and no news-watch row exists for 11-25). One more FXEmpire read per run only on a day a set-up market
 alerts on a non-US release, and the news watch reuses it (no new request on those days in total).
 
+**Review fixes (same day)**: US GDP prints as "GDP q/q annualized" (FXEmpire's US quarterly rate is the annual pace: 4.3%
+is not 4.3% in one quarter). "Previous" is the source's `revised` figure when it lists one (11-25 PCE y/y: previous 3.7%,
+revised 3.6% → 3.6%), on the alert and on the news-watch card (a revision arriving with the release replaces the stored
+previous). A figure's own word is not repeated before a chain that opens with it ("4.3% vs 3.5% forecast → stronger US
+growth ...", not ": stronger → stronger ..."); when the figures came out different ways (CPI m/m hotter, y/y cooler) each
+keeps its word and the chain reads "on balance hotter US inflation ...". The nine 11-25 alerts DO get their figures: the raw
+11-25 rows survive in the probe file above and reproduce every stored class and z (16 of 16 items), so
+`cot_family.fill_news_item_from_fx` rebuilds country / release / series from them (refusing any item they do not
+reproduce) and `scripts/probes/_cot_newsfacts_backfill_1127/backfill_1125.sql` writes them (stored keys win; `why` stays
+the export's; aborts unless 9 alerts / 16 items change; dry-run on a local Postgres 16: 9 / 16, a rerun changes nothing,
+a tampered z aborts).
+
 **Reversion-flag**: NEW (additive words). **Status**: built, not deployed; scope `market-agent` only (`cot_family.py` is
 not in `scripts/exec_loaded_modules.txt`; `db.py` untouched) plus a server `git pull` for the SQL, then a portfolio-app2 push.
 

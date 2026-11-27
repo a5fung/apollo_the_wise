@@ -590,7 +590,7 @@ def surprises_from_fx(events: list[dict]) -> dict[tuple, dict]:
                     continue
                 parts.append(f"{series} {e.get('actual')} vs {e.get('forecast') or '?'}")
                 # the figures that made z, for the plain line (2026-11-27); EIA keeps its own words
-                ser.append(series_entry(series, e.get("actual"), e.get("forecast"), e.get("previous"),
+                ser.append(series_entry(series, e.get("actual"), e.get("forecast"), fx_previous(e),
                                         e.get("reference"), sign, "EIA_PETRO" if typ in _EIA_OF.values() else typ))
                 if f is not None:
                     zs.append((a - f) if typ == "FOMC" else sign * (a - f) / rms)
@@ -848,7 +848,9 @@ _SERIES_LABEL = {
     "Core Inflation Rate MoM": "core CPI m/m", "Inflation Rate YoY": "CPI y/y", "Core Inflation Rate YoY": "core CPI y/y",
     "PPI MoM": "PPI m/m", "Core PPI MoM": "core PPI m/m", "PPI YoY": "PPI y/y", "Core PPI YoY": "core PPI y/y",
     "Retail Sales MoM": "retail sales m/m", "Retail Sales Ex Autos MoM": "retail sales ex autos m/m",
-    "GDP Growth Rate QoQ Adv": "GDP q/q", "GDP Growth Rate QoQ 2nd Est": "GDP q/q", "GDP Growth Rate QoQ Final": "GDP q/q",
+    # the US GDP series are the quarterly rate ANNUALIZED (4.3% = a 4.3% yearly pace, not 4.3% in one quarter)
+    "GDP Growth Rate QoQ Adv": "GDP q/q annualized", "GDP Growth Rate QoQ 2nd Est": "GDP q/q annualized",
+    "GDP Growth Rate QoQ Final": "GDP q/q annualized",
     "Fed Interest Rate Decision": "the Fed rate", "PCE Price Index MoM": "PCE m/m", "Core PCE Price Index MoM": "core PCE m/m",
     "PCE Price Index YoY": "PCE y/y", "Core PCE Price Index YoY": "core PCE y/y",
     "EIA Crude Oil Stocks Change": "crude stocks change", "EIA Gasoline Stocks Change": "gasoline stocks change",
@@ -956,8 +958,8 @@ def series_entry(name: str, actual, forecast, previous=None, reference=None, sig
             "actual": _blank(actual), "forecast": _blank(forecast), "previous": _blank(previous), "vs": vs}
 
 
-def series_text(s: dict) -> str:
-    """'GDP q/q 4.3% vs 3.5% forecast (previous 2.2%): stronger'."""
+def series_text(s: dict, with_vs: bool = True) -> str:
+    """'GDP q/q annualized 4.3% vs 3.5% forecast (previous 2.2%): stronger' (without ': stronger' when with_vs=False)."""
     lab, a, f, p = s.get("label") or s.get("name") or "", s.get("actual"), s.get("forecast"), s.get("previous")
     if a is None:
         t = f"{lab}: forecast {f}" if f else f"{lab}: no forecast listed"
@@ -965,15 +967,27 @@ def series_text(s: dict) -> str:
         t = f"{lab} {a} vs {f} forecast" if f else f"{lab} {a} (no forecast listed)"
     if p:
         t += f" (previous {p})"
-    return t + (f": {s['vs']}" if s.get("vs") else "")
+    return t + (f": {s['vs']}" if s.get("vs") and with_vs else "")
 
 
-def series_figures(series) -> str:
+def _released(series) -> list[dict]:
+    return [s for s in (series or []) if isinstance(s, dict) and s.get("actual") is not None]
+
+
+def mixed_series(series) -> bool:
+    """True when the released figures that missed forecast came out different ways (CPI m/m hotter, y/y cooler)."""
+    return len({s.get("vs") for s in _released(series) if s.get("vs") and s.get("vs") != "as forecast"}) > 1
+
+
+def series_figures(series, with_why: bool = False) -> str:
     """The released figures of one news item: the ones that surprised first, in full; the ones exactly on forecast
-    grouped ('as forecast: PCE m/m 0.3%, PCE y/y 3.8%') so a four-series release stays one readable clause."""
-    got = [s for s in (series or []) if isinstance(s, dict) and s.get("actual") is not None]
+    grouped ('as forecast: PCE m/m 0.3%, PCE y/y 3.8%') so a four-series release stays one readable clause. With a why
+    chain following (`with_why`) the per-series surprise word is left out unless the figures were mixed: the chain
+    opens with that same word ('...vs 3.5% forecast → stronger US growth...', not '...: stronger → stronger...')."""
+    got = _released(series)
     on = [s for s in got if s.get("vs") == "as forecast"]
-    parts = [series_text(s) for s in got if s.get("vs") != "as forecast"]
+    keep_vs = not with_why or mixed_series(got)
+    parts = [series_text(s, keep_vs) for s in got if s.get("vs") != "as forecast"]
     if on:
         parts.append("as forecast: " + ", ".join(f"{s.get('label') or s.get('name')} {s['actual']}" for s in on))
     return "; ".join(parts)
@@ -1060,17 +1074,20 @@ def no_read_words(cls: str, event_type: str, market: str) -> str:
 
 def news_line(item: dict, market: str, direction: Optional[str] = None) -> str:
     """The one plain line for a news item: whose release and which, the figures, then the chain (or why there is none).
-    'US GDP (Q3, second estimate): GDP q/q 4.3% vs 3.5% forecast (previous 2.2%): stronger → stronger US growth lifts
+    'US GDP (Q3, second estimate): GDP q/q annualized 4.3% vs 3.5% forecast (previous 2.2%) → stronger US growth lifts
     US interest rates and the US dollar against the New Zealand Dollar → bearish New Zealand Dollar'. An item stored
     before 2026-11-27 ({event, class, z, first_minute}) reads 'US GDP → bearish Silver' given the set-up direction."""
     head = item.get("release") or release_label(item.get("event") or "")
-    figs = series_figures(item.get("series"))
     cls = item.get("class") or "UNKNOWN"
     read = item.get("read") or (news_read(cls, direction) if direction else None)
     if read not in ("bullish", "bearish") and cls in ("WITH", "AGAINST"):
         cls = "UNKNOWN_DIRECTION"
-    tail = item.get("why") or (f"{read} {name_of(market).title()}" if read in ("bullish", "bearish")
-                               else no_read_words(cls, item.get("event") or "", market))
+    why = item.get("why") or ""
+    if why and mixed_series(item.get("series")):
+        why = "on balance " + why                    # the figures disagreed: the chain is the net read
+    figs = series_figures(item.get("series"), with_why=bool(why))
+    tail = why or (f"{read} {name_of(market).title()}" if read in ("bullish", "bearish")
+                   else no_read_words(cls, item.get("event") or "", market))
     return f"{head}: {figs} → {tail}" if figs else f"{head} → {tail}"
 
 
@@ -1087,6 +1104,23 @@ def news_item(event_type: str, market: str, direction: str, nc: dict, fm: dict, 
             "why": why_words(event_type, market, nc["z"]) if cls in ("WITH", "AGAINST") else ""}
     item["text"] = news_line(item, market)
     return item
+
+
+def fill_news_item_from_fx(item: dict, market: str, direction: str, day: date, fx_rows: list[dict]) -> dict:
+    """An alert news item stored before 2026-11-27 ({event, class, z, fact, read, first_minute}) with the figures it was
+    scored on: `country`, `release` (with its period) and `series`, rebuilt from that day's raw FXEmpire rows. Only absent
+    keys are added (the stored ones always win; `why` / `text` are left to the export so later wording reaches them).
+    Raises ValueError unless the rows reproduce the stored class and z: a figure that did not make the alert is never
+    attached to it."""
+    ev = item.get("event") or ""
+    nc = news_class(ev, market, direction, day, surprises_from_fx(fx_rows))
+    z = item.get("z")
+    if nc.get("z") is None or z is None or abs(nc["z"] - float(z)) > 1e-9 or nc["cls"] != item.get("class"):
+        raise ValueError(f"{market} {ev} {day}: rows give class {nc.get('cls')} z {nc.get('z')}, "
+                         f"stored {item.get('class')} z {z}")
+    ser = nc.get("series") or []
+    add = {"country": release_country(ev), "release": release_label(ev, ser), "series": ser}
+    return {**{k: v for k, v in add.items() if v}, **item}
 
 
 # Direction-free fallbacks (keys are the verdict codes); `verdict_words` states the same in the market's own terms.
@@ -1121,6 +1155,12 @@ def _blank(x) -> Optional[str]:
     return s or None
 
 
+def fx_previous(e: dict) -> Optional[str]:
+    """The previous figure as the source now states it: its `revised` one when it lists one (11-25 PCE y/y: previous
+    3.7%, revised 3.6% -> 3.6%), else `previous`."""
+    return _blank(e.get("revised")) or _blank(e.get("previous"))
+
+
 def watch_series_names(event_type: str, market: str) -> list[str]:
     """The source series an event card shows for this market. [] = kind C: the source lists no forecast for this event."""
     if event_type in NO_FORECAST_TYPES:
@@ -1153,8 +1193,8 @@ def expectations_from_fx(events: list[dict], country: str = "united-states") -> 
         if typ is None or ts is None or typ in NO_FORECAST_TYPES:
             continue
         out.setdefault((session_date(ts), typ), {})[name] = {
-            "forecast": _blank(e.get("forecast")), "previous": _blank(e.get("previous")), "actual": _blank(e.get("actual")),
-            "period": period_words(name, e.get("reference")) or None}
+            "forecast": _blank(e.get("forecast")), "previous": fx_previous(e), "actual": _blank(e.get("actual")),
+            "period": period_words(name, e.get("reference")) or None, "revised": _blank(e.get("revised")) is not None}
     return out
 
 
@@ -1184,7 +1224,8 @@ def merge_series(names: list[str], old: Optional[list], fresh: Optional[dict], r
         elif f:
             row["actual"] = f.get("actual") or row["actual"]
             row["forecast_after"] = f.get("forecast") or row["forecast_after"]
-            row["previous"] = row["previous"] or f.get("previous")
+            # a revision usually arrives WITH the release: the source's corrected previous replaces the stored one
+            row["previous"] = (f.get("previous") if f.get("revised") else None) or row["previous"] or f.get("previous")
         out.append(row)
     return out
 

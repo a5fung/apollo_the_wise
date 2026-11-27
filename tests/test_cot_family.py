@@ -2091,21 +2091,21 @@ def test_the_alert_detail_carries_a_plain_fact_and_read_per_news_item():
     assert item["series"][0]["actual"] == "0.4%" and item["series"][0]["forecast"] == "0.2%" and item["series"][0]["vs"] == "hotter"
     assert item["why"] == ("hotter US inflation lifts US interest rates and the dollar; Gold pays no interest and is priced "
                            "in dollars → bearish Gold")
-    assert "US CPI inflation: CPI m/m 0.4% vs 0.2% forecast: hotter → hotter US inflation" in io.sent[0]
+    assert "US CPI inflation: CPI m/m 0.4% vs 0.2% forecast → hotter US inflation" in io.sent[0]
     assert "→ bearish Gold" in io.sent[0] and "news vs consensus: bearish Gold" in io.sent[0]
 
 
 # ── news in plain words (2026-11-27): whose release, which one, the figures, why ─────────────────────────────────
 # The 11-25 rows, as FXEmpire served them (scripts/probes/_cot_newswatch_design_1125/nw_fx_1123_1206.json).
-def _fx1125(name, actual, forecast, previous, reference):
+def _fx1125(name, actual, forecast, previous, reference, revised=""):
     return {"name": name, "actual": actual, "forecast": forecast, "previous": previous, "reference": reference,
-            "date": "2026-11-25T13:30:00.000Z"}
+            "revised": revised, "date": "2026-11-25T13:30:00.000Z"}
 
 
 FX_1125 = [_fx1125("GDP Growth Rate QoQ 2nd Est", "4.3%", "3.5%", "2.2%", "Q3"),
            _fx1125("PCE Price Index MoM", "0.3%", "0.3%", "0.5%", "Oct"),
            _fx1125("Core PCE Price Index MoM", "0.3%", "0.3%", "0.3%", "Oct"),
-           _fx1125("PCE Price Index YoY", "3.8%", "3.8%", "3.7%", "Oct"),
+           _fx1125("PCE Price Index YoY", "3.8%", "3.8%", "3.7%", "Oct", revised="3.6%"),
            _fx1125("Core PCE Price Index YoY", "3.3%", "3.2%", "3.1%", "Oct")]
 D1125 = date(2026, 11, 25)
 
@@ -2119,7 +2119,7 @@ def test_a_gdp_beat_on_the_new_zealand_dollar_reads_bearish_with_the_dollar_chai
     it = _item_1125("GDP", "new_zealand_dollar")
     assert it["z"] == pytest.approx(2.954198839738405)           # the stored 11-25 z: these are the figures that made it
     assert it["class"] == "WITH" and it["read"] == "bearish"
-    assert it["text"] == ("US GDP (Q3, second estimate): GDP q/q 4.3% vs 3.5% forecast (previous 2.2%): stronger → stronger "
+    assert it["text"] == ("US GDP (Q3, second estimate): GDP q/q annualized 4.3% vs 3.5% forecast (previous 2.2%) → stronger "
                           "US growth lifts US interest rates and the US dollar against the New Zealand Dollar → bearish New "
                           "Zealand Dollar")
 
@@ -2127,9 +2127,75 @@ def test_a_gdp_beat_on_the_new_zealand_dollar_reads_bearish_with_the_dollar_chai
 def test_a_hotter_pce_on_silver_reads_bearish_and_says_which_of_the_four_figures_moved():
     it = _item_1125("PCE", "silver")
     assert it["z"] == pytest.approx(0.3122498098398647) and it["read"] == "bearish"
-    assert it["text"] == ("US PCE inflation (October): core PCE y/y 3.3% vs 3.2% forecast (previous 3.1%): hotter; as forecast: "
+    assert it["text"] == ("US PCE inflation (October): core PCE y/y 3.3% vs 3.2% forecast (previous 3.1%); as forecast: "
                           "PCE m/m 0.3%, core PCE m/m 0.3%, PCE y/y 3.8% → hotter US inflation lifts US interest rates and "
                           "the dollar; Silver pays no interest and is priced in dollars → bearish Silver")
+
+
+def test_us_gdp_is_labelled_as_the_annualized_rate():
+    # FXEmpire's US 'GDP Growth Rate QoQ' is the quarterly rate at an annual pace: 4.3% is not 4.3% in one quarter
+    for n in ("GDP Growth Rate QoQ Adv", "GDP Growth Rate QoQ 2nd Est", "GDP Growth Rate QoQ Final"):
+        assert cf._SERIES_LABEL[n] == "GDP q/q annualized"
+
+
+def test_previous_is_the_sources_revised_figure_when_it_lists_one():
+    # 11-25 PCE y/y as served: previous 3.7%, revised 3.6% -> the line must not print the corrected-away 3.7%
+    pce = [s for s in cf.surprises_from_fx(FX_1125)[(D1125, "PCE")]["series"] if s["name"] == "PCE Price Index YoY"][0]
+    assert pce["previous"] == "3.6%"
+    exp = cf.expectations_from_fx(FX_1125)[(D1125, "PCE")]["PCE Price Index YoY"]
+    assert exp["previous"] == "3.6%" and exp["revised"] is True
+    assert cf.expectations_from_fx(FX_1125)[(D1125, "GDP")]["GDP Growth Rate QoQ 2nd Est"]["previous"] == "2.2%"
+    # the news-watch card: a pre-release read stored 3.7%; the release-day read carries the revision, which wins
+    old = [{"name": "PCE Price Index YoY", "forecast": "3.8%", "previous": "3.7%", "actual": None}]
+    row = cf.merge_series(["PCE Price Index YoY"], old, cf.expectations_from_fx(FX_1125)[(D1125, "PCE")], True)[0]
+    assert row["previous"] == "3.6%" and row["actual"] == "3.8%" and row["forecast"] == "3.8%"
+    # with no revision listed the stored previous still stands
+    plain = {"PCE Price Index YoY": {"forecast": "3.8%", "previous": "3.9%", "actual": "3.8%", "revised": False}}
+    assert cf.merge_series(["PCE Price Index YoY"], old, plain, True)[0]["previous"] == "3.7%"
+
+
+def test_mixed_figures_keep_their_words_and_the_chain_says_on_balance():
+    # CPI m/m hotter, y/y cooler, net hotter: each figure keeps its word and the chain is the net read
+    s = cf.surprises_from_fx([_fx("Inflation Rate MoM", "0.5%", "0.2%"), _fx("Inflation Rate YoY", "2.9%", "3.0%")])
+    nc = cf.news_class("CPI", "silver", "long", WED, s)
+    it = cf.news_item("CPI", "silver", "long", nc, {"status": "ok"})
+    assert it["why"].startswith("hotter US inflation")                 # stored unprefixed
+    assert ("CPI m/m 0.5% vs 0.2% forecast: hotter; CPI y/y 2.9% vs 3.0% forecast: cooler → on balance hotter US "
+            "inflation") in it["text"] and it["text"].endswith("→ bearish Silver")
+    # one surprising figure: its word is not repeated before the chain that opens with it
+    one = cf.news_item("CPI", "silver", "long", cf.news_class("CPI", "silver", "long", WED,
+                                                              cf.surprises_from_fx([_fx("Inflation Rate MoM", "0.4%", "0.2%")])),
+                       {"status": "ok"})
+    assert "0.2% forecast → hotter US inflation" in one["text"] and ": hotter" not in one["text"]
+    # no chain (no read on this market): the figure keeps its word
+    amb = cf.news_item("CPI", "platinum", "long", cf.news_class("CPI", "platinum", "long", WED,
+                                                                cf.surprises_from_fx([_fx("Inflation Rate MoM", "0.4%", "0.2%")])),
+                       {"status": "ok"})
+    assert amb["why"] == "" and "0.2% forecast: hotter →" in amb["text"]
+
+
+def test_an_11_25_item_is_filled_from_the_saved_raw_rows_only_when_they_reproduce_its_z():
+    import json as _json
+    from pathlib import Path as _P
+    raw = _json.loads((_P(__file__).resolve().parent.parent / "scripts/probes/_cot_newswatch_design_1125/"
+                       "nw_fx_1123_1206.json").read_text())["united-states"]
+    old = {"event": "GDP", "class": "WITH", "z": 2.954198839738405, "first_minute": {"status": "ok"}}
+    got = cf.fill_news_item_from_fx(old, "new_zealand_dollar", "long", D1125, raw)
+    assert got["release"] == "US GDP (Q3, second estimate)" and got["country"] == "US"
+    assert {k: got[k] for k in ("event", "class", "z", "first_minute")} == old    # stored keys untouched
+    assert "why" not in got and "text" not in got                                # left to the export
+    assert cf.news_line({**got, "why": cf.why_words("GDP", "new_zealand_dollar", got["z"])}, "new_zealand_dollar") == (
+        "US GDP (Q3, second estimate): GDP q/q annualized 4.3% vs 3.5% forecast (previous 2.2%) → stronger US growth "
+        "lifts US interest rates and the US dollar against the New Zealand Dollar → bearish New Zealand Dollar")
+    pce = cf.fill_news_item_from_fx({"event": "PCE", "class": "WITH", "z": 0.3122498098398647}, "silver", "long", D1125, raw)
+    assert [x["previous"] for x in pce["series"] if x["name"] == "PCE Price Index YoY"] == ["3.6%"]
+    nat = cf.fill_news_item_from_fx({"event": "EIA_NATGAS", "class": "AGAINST", "z": -0.5278749654241898},
+                                    "natural_gas", "long", D1125, raw)
+    assert nat["series"][0]["actual"] == "-24Bcf" and nat["release"] == "US EIA weekly gas storage (week to Nov 20)"
+    with pytest.raises(ValueError):                                              # a z the rows do not reproduce
+        cf.fill_news_item_from_fx({**old, "z": 1.0}, "new_zealand_dollar", "long", D1125, raw)
+    with pytest.raises(ValueError):                                              # a class the rows do not reproduce
+        cf.fill_news_item_from_fx({**old, "class": "AGAINST"}, "new_zealand_dollar", "long", D1125, raw)
 
 
 def test_unemployment_above_forecast_is_weaker_jobs_not_stronger():
