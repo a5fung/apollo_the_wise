@@ -1529,25 +1529,31 @@ def test_the_verdict_table_row_by_row(close_z, direction, cls, fm, want, strict)
 def test_the_crowd_sentence_for_a_long_and_a_short_set_up():
     sil = [{"name": "Non Farm Payrolls", "forecast": "82.0K"}, {"name": "Unemployment Rate", "forecast": "4.2%"}]
     # the doc's example: a LONG set up (fade into long) = the crowd is SHORT silver; stronger jobs = bearish silver = their way
+    # 2026-11-27: whose release and which, the figures to beat, and WHY that news reads bearish / bullish for the market
     assert cf.crowd_outcome_words("NFP", "silver", "long", sil) == (
-        "Jobs stronger than forecast (payrolls above 82.0K, "
-        "unemployment below 4.2%) = bearish Silver. A failure: that news, a first move down, then a close UP.")
+        "US jobs report: jobs stronger than forecast (payrolls above 82.0K, unemployment below 4.2%) → a stronger US jobs "
+        "market lifts US interest rates and the dollar; Silver pays no interest and is priced in dollars → bearish Silver. "
+        "A failure: that news, a first move down, then a close UP.")
     # the SHORT set up: the crowd is long, so the opposite news and the opposite figures (two components, opposite signs)
     assert cf.crowd_outcome_words("NFP", "silver", "short", sil) == (
-        "Jobs weaker than forecast (payrolls below 82.0K, "
-        "unemployment above 4.2%) = bullish Silver. A failure: that news, a first move up, then a close DOWN.")
-    cpi = [{"name": "Inflation Rate MoM", "forecast": "0.2%"}, {"name": "Core Inflation Rate MoM", "forecast": None}]
-    assert "Inflation cooler than forecast (CPI m/m below 0.2%) = bullish Gold" in cf.crowd_outcome_words("CPI", "gold", "short", cpi)
-    assert "Inflation hotter than forecast (CPI m/m above 0.2%) = bearish Gold" in cf.crowd_outcome_words("CPI", "gold", "long", cpi)
+        "US jobs report: jobs weaker than forecast (payrolls below 82.0K, unemployment above 4.2%) → a weaker US jobs "
+        "market lowers US interest rates and the dollar; Silver pays no interest and is priced in dollars → bullish Silver. "
+        "A failure: that news, a first move up, then a close DOWN.")
+    cpi = [{"name": "Inflation Rate MoM", "forecast": "0.2%", "period": "October"}, {"name": "Core Inflation Rate MoM", "forecast": None}]
+    assert cf.crowd_outcome_words("CPI", "gold", "short", cpi).startswith(
+        "US CPI inflation (October): inflation cooler than forecast (CPI m/m below 0.2%) → cooler US inflation lowers")
+    assert "→ bearish Gold." in cf.crowd_outcome_words("CPI", "gold", "long", cpi)
     # the dollar is bought on hot inflation: the sign flips with the market
-    assert "Inflation hotter than forecast" in cf.crowd_outcome_words("CPI", "dollar_index", "short", cpi)
+    assert "inflation hotter than forecast (CPI m/m above 0.2%) → hotter US inflation lifts US interest rates and the US " \
+           "dollar → bullish Dollar Index." in cf.crowd_outcome_words("CPI", "dollar_index", "short", cpi)
     # EIA is read off the market's own stocks series; a build is bearish crude
     eia = [{"name": "EIA Crude Oil Stocks Change", "forecast": "1.5M"}]
-    assert "A smaller build, or a bigger draw, than forecast (crude stocks change below 1.5M) = bullish Crude Oil" in \
+    assert "a smaller build, or a bigger draw, than forecast (crude stocks change below 1.5M) → " in \
         cf.crowd_outcome_words("EIA_PETRO", "crude_oil", "short", eia)
-    assert "A bigger stock build, or a smaller draw, than forecast" in cf.crowd_outcome_words("EIA_PETRO", "crude_oil", "long", eia)
+    assert "means less Crude Oil supply on hand → bullish Crude Oil." in cf.crowd_outcome_words("EIA_PETRO", "crude_oil", "short", eia)
+    assert "a bigger stock build, or a smaller draw, than forecast" in cf.crowd_outcome_words("EIA_PETRO", "crude_oil", "long", eia)
     # no forecast figure listed yet: the sentence still names the news, without figures
-    assert "(" not in cf.crowd_outcome_words("NFP", "silver", "long", [{"name": "Non Farm Payrolls", "forecast": None}]).split("=")[0]
+    assert "(" not in cf.crowd_outcome_words("NFP", "silver", "long", [{"name": "Non Farm Payrolls", "forecast": None}]).split("→")[0]
     # an ambiguous pair, an unmapped pair and a no-forecast event carry no sentence
     for et, m in (("NFP", "sp500"), ("CPI", "platinum"), ("OPEC", "crude_oil"), ("WASDE", "corn"), ("AU_CPI", "australian_dollar")):
         assert cf.crowd_outcome_words(et, m, "short", []) == ""
@@ -1627,7 +1633,8 @@ def test_a_daily_run_writes_today_judged_and_the_days_ahead_with_their_forecast(
     nfp = io.watch[(FRI_NEXT, "NFP", "gold")]
     assert nfp["verdict"] is None and nfp["read"] == "mapped" and nfp["forecast_seen_at"] == AFTER_CLOSE
     assert [(s["name"], s["forecast"]) for s in nfp["series"]] == [("Non Farm Payrolls", "82.0K"), ("Unemployment Rate", "4.2%")]
-    assert "Jobs weaker than forecast (payrolls below 82.0K, unemployment above 4.2%) = bullish Gold" in nfp["crowd_outcome"]
+    assert "US jobs report: jobs weaker than forecast (payrolls below 82.0K, unemployment above 4.2%) → " in nfp["crowd_outcome"]
+    assert "→ bullish Gold." in nfp["crowd_outcome"]
     assert all(k[0] > WED for k in io.watch if k[1] == "NFP")             # upcoming rows are dated after today
     assert (THU, "EIA_NATGAS", "natural_gas") not in io.watch              # natural gas is not a set-up market
 
@@ -1810,8 +1817,10 @@ def test_an_earnings_estimate_listed_ahead_is_the_forecast_and_the_reported_eps_
     res = _run(cf.run_daily(WED, io, AFTER_CLOSE))
     assert "errors" not in res["news_watch"]
     row = io.watch[(FRI_NEXT, "EARN_NVDA", "nasdaq")]
-    assert row["series"] == [{"name": "EPS", "forecast": "1.25", "previous": None, "actual": None, "forecast_after": None}]
-    assert "An EPS beat (EPS above 1.25) = bullish Nasdaq" in row["crowd_outcome"]
+    assert row["series"] == [{"name": "EPS", "forecast": "1.25", "previous": None, "actual": None, "forecast_after": None,
+                              "label": "EPS", "period": None}]
+    assert row["crowd_outcome"].startswith("NVDA earnings: an EPS beat (EPS above 1.25) → NVDA earnings beating forecast "
+                                           "lifts a big member of the Nasdaq → bullish Nasdaq.")
 
 
 def _fake_pool_io(fetched=None):
@@ -2077,4 +2086,134 @@ def test_the_alert_detail_carries_a_plain_fact_and_read_per_news_item():
     det = row["detail"] if isinstance(row["detail"], dict) else __import__("json").loads(row["detail"])
     item = det["news"][0]
     assert item["fact"] == "inflation hotter than forecast" and item["read"] == "bearish"   # hot CPI, a long crowd: bearish gold
-    assert "= bearish Gold" in io.sent[0] and "inflation hotter than forecast" in io.sent[0]
+    # 2026-11-27: whose release, the figures that made the surprise, and why
+    assert item["country"] == "US" and item["release"] == "US CPI inflation"
+    assert item["series"][0]["actual"] == "0.4%" and item["series"][0]["forecast"] == "0.2%" and item["series"][0]["vs"] == "hotter"
+    assert item["why"] == ("hotter US inflation lifts US interest rates and the dollar; Gold pays no interest and is priced "
+                           "in dollars → bearish Gold")
+    assert "US CPI inflation: CPI m/m 0.4% vs 0.2% forecast: hotter → hotter US inflation" in io.sent[0]
+    assert "→ bearish Gold" in io.sent[0] and "news vs consensus: bearish Gold" in io.sent[0]
+
+
+# ── news in plain words (2026-11-27): whose release, which one, the figures, why ─────────────────────────────────
+# The 11-25 rows, as FXEmpire served them (scripts/probes/_cot_newswatch_design_1125/nw_fx_1123_1206.json).
+def _fx1125(name, actual, forecast, previous, reference):
+    return {"name": name, "actual": actual, "forecast": forecast, "previous": previous, "reference": reference,
+            "date": "2026-11-25T13:30:00.000Z"}
+
+
+FX_1125 = [_fx1125("GDP Growth Rate QoQ 2nd Est", "4.3%", "3.5%", "2.2%", "Q3"),
+           _fx1125("PCE Price Index MoM", "0.3%", "0.3%", "0.5%", "Oct"),
+           _fx1125("Core PCE Price Index MoM", "0.3%", "0.3%", "0.3%", "Oct"),
+           _fx1125("PCE Price Index YoY", "3.8%", "3.8%", "3.7%", "Oct"),
+           _fx1125("Core PCE Price Index YoY", "3.3%", "3.2%", "3.1%", "Oct")]
+D1125 = date(2026, 11, 25)
+
+
+def _item_1125(event, market, direction="long"):
+    sur = cf.surprises_from_fx(FX_1125)
+    return cf.news_item(event, market, direction, cf.news_class(event, market, direction, D1125, sur), {"status": "ok"})
+
+
+def test_a_gdp_beat_on_the_new_zealand_dollar_reads_bearish_with_the_dollar_chain():
+    it = _item_1125("GDP", "new_zealand_dollar")
+    assert it["z"] == pytest.approx(2.954198839738405)           # the stored 11-25 z: these are the figures that made it
+    assert it["class"] == "WITH" and it["read"] == "bearish"
+    assert it["text"] == ("US GDP (Q3, second estimate): GDP q/q 4.3% vs 3.5% forecast (previous 2.2%): stronger → stronger "
+                          "US growth lifts US interest rates and the US dollar against the New Zealand Dollar → bearish New "
+                          "Zealand Dollar")
+
+
+def test_a_hotter_pce_on_silver_reads_bearish_and_says_which_of_the_four_figures_moved():
+    it = _item_1125("PCE", "silver")
+    assert it["z"] == pytest.approx(0.3122498098398647) and it["read"] == "bearish"
+    assert it["text"] == ("US PCE inflation (October): core PCE y/y 3.3% vs 3.2% forecast (previous 3.1%): hotter; as forecast: "
+                          "PCE m/m 0.3%, core PCE m/m 0.3%, PCE y/y 3.8% → hotter US inflation lifts US interest rates and "
+                          "the dollar; Silver pays no interest and is priced in dollars → bearish Silver")
+
+
+def test_unemployment_above_forecast_is_weaker_jobs_not_stronger():
+    s = cf.surprises_from_fx([_fx("Non Farm Payrolls", "150K", "100K"), _fx("Unemployment Rate", "4.3%", "4.2%")])
+    assert [x["vs"] for x in s[(WED, "NFP")]["series"]] == ["stronger", "weaker"]
+
+
+def test_periods_and_releases_in_plain_words():
+    assert cf.period_words("GDP Growth Rate QoQ Adv", "Q3") == "Q3, first estimate"
+    assert cf.period_words("EIA Crude Oil Stocks Change", "Nov/20") == "week to Nov 20"
+    assert cf.period_words("PCE Price Index MoM", "Oct") == "October" and cf.period_words("Fed Interest Rate Decision", "") == ""
+    assert cf.release_label("AU_CPI", [{"period": "October"}]) == "Australia CPI inflation (October)"
+    assert cf.release_label("EARN_NVDA") == "NVDA earnings" and cf.release_label("OPEC") == "OPEC+ meeting"
+    for et in set(cf.EVENT_MARKETS) | {"EARN_NVDA"}:          # every event that can fire names whose release it is
+        key = "EARN" if et.startswith("EARN_") else et
+        assert key in cf.RELEASE_NAMES and cf.release_country(et), et
+
+
+def _every_pair():
+    """Every (event, market) the calendar can attach: the derived population, never a hand list."""
+    for et in sorted(set(cf.EVENT_MARKETS) | {f"EARN_{tk}" for tk in cf.EARNINGS_TICKERS}):
+        for m in cf.markets_for_event(et):
+            yield et, m
+
+
+def test_the_why_table_covers_every_mapped_pair_and_never_contradicts_the_sign():
+    n = 0
+    for et, m in _every_pair():
+        mp = cf.news_sign(et, m)
+        key = "EARN" if et.startswith("EARN_") else et
+        entry = cf.WHY.get((cf.WHY_FAMILY.get(key), cf.WHY_GROUP.get(m)))
+        if mp in (1, -1):
+            assert entry is not None and entry[0] == mp, (et, m)          # a chain exists, and it explains THIS sign
+            for z in (1.0, -1.0):
+                w = cf.why_words(et, m, z)
+                read = "bullish" if z * mp > 0 else "bearish"
+                assert w.endswith(f"→ {read} {cf.name_of(m).title()}"), (et, m, z, w)
+                # the alert label's read for the same surprise, both set-up directions
+                for direction in ("short", "long"):
+                    src = cf._EIA_OF.get(m) if et == "EIA_PETRO" else et
+                    nc = cf.news_class(et, m, direction, WED, {(WED, src): {"z": z, "text": ""}})
+                    assert cf.news_read(nc["cls"], direction) == read, (et, m, z, direction)
+                n += 1
+        else:                                                            # 0 = no clear read, None = no mapping: no reason
+            assert entry is None, (et, m)
+            assert cf.why_words(et, m, 1.0) == "" and cf.why_words(et, m, -1.0) == ""
+    assert n > 150
+
+
+def test_an_unmapped_or_in_line_item_states_the_fact_and_no_invented_reason():
+    au = cf.news_item("AU_CPI", "australian_dollar", "short", {"cls": "UNKNOWN", "z": None, "text": ""}, {},
+                      [cf.series_entry("Inflation Rate MoM", "0.5%", "0.4%", "0.8%", "Oct", 1, "AU_CPI")])
+    assert au["text"] == ("Australia CPI inflation (October): CPI m/m 0.5% vs 0.4% forecast (previous 0.8%): above forecast → "
+                          "no bullish / bearish read is mapped for this release on Australian Dollar") and au["why"] == ""
+    amb = _item_1125("GDP", "platinum")
+    assert amb["class"] == "AMBIG" and amb["why"] == "" and amb["text"].endswith("no clear read for Platinum (the research maps "
+                                                                                "no direction for this release on this market)")
+    flat = cf.news_item("CPI", "gold", "short", {"cls": "INLINE", "z": 0.1, "text": ""}, {})
+    assert flat["why"] == "" and flat["surprise"] == "in line with forecast" and flat["text"] == \
+        "US CPI inflation → in line with forecast: no read either way for Gold"
+
+
+def test_a_friday_confirmation_names_whose_release_it_was():
+    a = {"market": "wheat", "direction": "long", "kinds": ["news"], "events": ["WASDE", "USDA_EXPORTS"],
+         "failure_day": date(2026, 11, 5), "stop_rule": "a close below 5"}
+    t = cf.format_weekly_message(REPORT, {}, {}, [], [a], "Sunday open", [])
+    assert "releases: US USDA WASDE crop report; US USDA weekly export sales" in t
+
+
+def test_the_export_mirrors_the_why_table():
+    """scripts/export_cot_snapshot.sql gives OLD alerts the same words: its VALUES lists equal the tables here."""
+    sql = (REPO / "scripts" / "export_cot_snapshot.sql").read_text()
+
+    def block(head):
+        return sql.split(head, 1)[1].split("\n),", 1)[0]
+
+    def lit(x):
+        return None if x == "NULL" else int(x) if re.fullmatch(r"-?\d+", x) else x[1:-1].replace("''", "'")
+
+    def rows(head):
+        return [[lit(v) for v in re.findall(r"NULL|-?\d+(?=[,)])|'(?:[^']|'')*'", r)]
+                for r in re.findall(r"^\s+\((.*)\),?$", block(head), re.M)]
+    nd = {r[0]: r[1:] for r in rows("newsdef(event_type, country, release, family, cause_up, cause_down) AS (")}
+    assert nd == {et: [who, what, cf.WHY_FAMILY.get(et), *cf.WHY_CAUSE.get(et, (None, None))]
+                  for et, (who, what) in cf.RELEASE_NAMES.items()}
+    assert {r[0]: r[1] for r in rows("whygrp(market, grp) AS (")} == cf.WHY_GROUP
+    assert {(r[0], r[1]): tuple(r[2:]) for r in rows("whydef(family, grp, sign, effect_up, effect_down) AS (")} == cf.WHY

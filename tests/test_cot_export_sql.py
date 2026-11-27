@@ -47,7 +47,7 @@ def test_meta_values_mirror_cot_family_markets():
 
 
 def test_peerdef_mirrors_cot_family_peers():
-    body = CODE.split("peerdef(market, peer_list) AS (", 1)[1].split("),\nix AS", 1)[0]
+    body = CODE.split("peerdef(market, peer_list) AS (", 1)[1].split("\n),", 1)[0]
     got = {m: lst.split(",") for m, lst in re.findall(r"\('(\w+)', '([\w,\-]+)'\)", body)}
     want = {m: [("-" if sg < 0 else "") + p for p, sg in v] for m, v in cot_family.PEERS.items()}
     assert got == want

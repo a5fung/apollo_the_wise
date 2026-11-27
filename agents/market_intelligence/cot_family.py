@@ -579,7 +579,7 @@ def surprises_from_fx(events: list[dict]) -> dict[tuple, dict]:
     out: dict[tuple, dict] = {}
     for typ, comps in SURPRISE_COMPONENTS.items():
         for d in {k[0] for k in by_name}:
-            zs, parts = [], []
+            zs, parts, ser = [], [], []
             for series, sign, rms in comps:
                 e = by_name.get((d, series))
                 if e is None:
@@ -589,6 +589,9 @@ def surprises_from_fx(events: list[dict]) -> dict[tuple, dict]:
                 if a is None:
                     continue
                 parts.append(f"{series} {e.get('actual')} vs {e.get('forecast') or '?'}")
+                # the figures that made z, for the plain line (2026-11-27); EIA keeps its own words
+                ser.append(series_entry(series, e.get("actual"), e.get("forecast"), e.get("previous"),
+                                        e.get("reference"), sign, "EIA_PETRO" if typ in _EIA_OF.values() else typ))
                 if f is not None:
                     zs.append((a - f) if typ == "FOMC" else sign * (a - f) / rms)
             if not parts:
@@ -599,7 +602,7 @@ def surprises_from_fx(events: list[dict]) -> dict[tuple, dict]:
                 z = 0.0 if zs[0] == 0 else math.copysign(9.0, zs[0])
             else:
                 z = sum(zs) / len(zs)
-            out[(d, typ)] = {"z": z, "text": "; ".join(parts)}
+            out[(d, typ)] = {"z": z, "text": "; ".join(parts), "series": ser}
     return out
 
 
@@ -643,15 +646,16 @@ def news_class(event_type: str, market: str, direction: str, day: date, surprise
         r = surprises.get((day + timedelta(days=off), src))
         if r is not None:
             break
+    ser = {"series": r["series"]} if r and r.get("series") else {}       # the figures, for the plain line only
     if r is None or r.get("z") is None:
-        return {"cls": "UNKNOWN", "z": None, "text": (r or {}).get("text", "")}
+        return {"cls": "UNKNOWN", "z": None, "text": (r or {}).get("text", ""), **ser}
     z = r["z"]
     if mp == 0:
-        return {"cls": "AMBIG", "z": z, "text": r["text"]}
+        return {"cls": "AMBIG", "z": z, "text": r["text"], **ser}
     if abs(z) < SURPRISE_DEAD_ZONE or z == 0:
-        return {"cls": "INLINE", "z": z, "text": r["text"]}
+        return {"cls": "INLINE", "z": z, "text": r["text"], **ser}
     news_dir = 1 if z * mp > 0 else -1
-    return {"cls": "WITH" if news_dir == crowd_sign(direction) else "AGAINST", "z": z, "text": r["text"]}
+    return {"cls": "WITH" if news_dir == crowd_sign(direction) else "AGAINST", "z": z, "text": r["text"], **ser}
 
 
 def overall_class(classes: list[str]) -> str:
@@ -849,7 +853,10 @@ _SERIES_LABEL = {
     "PCE Price Index YoY": "PCE y/y", "Core PCE Price Index YoY": "core PCE y/y",
     "EIA Crude Oil Stocks Change": "crude stocks change", "EIA Gasoline Stocks Change": "gasoline stocks change",
     "EIA Distillate Stocks Change": "distillate stocks change", "EIA Natural Gas Stocks Change": "gas stocks change",
-    "EPS": "EPS"}
+    "EPS": "EPS", "Employment Change": "employment change", "Wage Price Index QoQ": "wages q/q",
+    "ECB Interest Rate Decision": "the ECB rate", "BoE Interest Rate Decision": "the Bank of England rate",
+    "BoJ Interest Rate Decision": "the Bank of Japan rate", "BoC Interest Rate Decision": "the Bank of Canada rate",
+    "RBA Interest Rate Decision": "the RBA rate", "SNB Interest Rate Decision": "the SNB rate"}
 # type -> (words for a surprise ABOVE forecast, words for one BELOW): "above" = z > 0 in SURPRISE_COMPONENTS' own signs
 _NEWS_WORDS = {
     **{t: ("inflation hotter than forecast", "inflation cooler than forecast") for t in _INFLATION},
@@ -870,6 +877,207 @@ def news_fact(event_type: str, z: Optional[float]) -> str:
         return ""
     words = _NEWS_WORDS.get("EARN" if event_type.startswith("EARN_") else event_type)
     return words[0 if z > 0 else 1] if words else ""
+
+
+# ── News in plain words (operator 2026-11-27: "what GDP, US GDP or Australia GDP, why is it bearish, did it go up and
+# that's bearish or go down, compare to what"). WHOSE release and WHICH one (with its period), the NUMBERS (actual vs
+# forecast, previous), which way it surprised, and WHY that reads bullish / bearish for THIS market. Words only: nothing
+# here changes a class, a sign or an alert. The chain is keyed off the SAME mapping that decides the sign (`news_sign`):
+# each WHY entry declares the sign it explains, `why_words` refuses an entry that disagrees, and a test walks every
+# (event, market) pair the sign mapping can produce. scripts/export_cot_snapshot.sql mirrors RELEASE_NAMES, WHY_FAMILY,
+# WHY_CAUSE, WHY_GROUP and WHY (a test keeps them equal) to give OLD alerts the same words.
+RELEASE_NAMES: dict[str, tuple[str, str]] = {        # event type -> (whose, which release)
+    "CPI": ("US", "CPI inflation"), "PPI": ("US", "PPI producer prices"), "PCE": ("US", "PCE inflation"),
+    "NFP": ("US", "jobs report"), "RETAIL": ("US", "retail sales"), "GDP": ("US", "GDP"),
+    "FOMC": ("US", "Fed rate decision"), "FED_MINUTES": ("US", "Fed meeting minutes"),
+    "EIA_PETRO": ("US", "EIA weekly oil stocks"), "EIA_NATGAS": ("US", "EIA weekly gas storage"),
+    "WASDE": ("US", "USDA WASDE crop report"), "USDA_EXPORTS": ("US", "USDA weekly export sales"),
+    "OPEC": ("OPEC+", "meeting"),
+    "ECB": ("Euro area", "ECB rate decision"), "BOE": ("UK", "Bank of England rate decision"),
+    "BOJ": ("Japan", "Bank of Japan rate decision"), "BOC": ("Canada", "Bank of Canada rate decision"),
+    "RBA": ("Australia", "RBA rate decision"), "SNB": ("Switzerland", "SNB rate decision"),
+    "RBA_MINUTES": ("Australia", "RBA meeting minutes"), "AU_JOBS": ("Australia", "jobs report"),
+    "AU_WAGES": ("Australia", "wage price index"), "AU_CPI": ("Australia", "CPI inflation"),
+    "EARN": ("US", "{tk} earnings"),
+}
+_FULL_MONTH = {"Jan": "January", "Feb": "February", "Mar": "March", "Apr": "April", "May": "May", "Jun": "June",
+               "Jul": "July", "Aug": "August", "Sep": "September", "Oct": "October", "Nov": "November", "Dec": "December"}
+_ESTIMATE_WORDS = (("Adv", "first estimate"), ("2nd Est", "second estimate"), ("Final", "final estimate"))
+
+
+def release_country(event_type: str) -> str:
+    return RELEASE_NAMES.get("EARN" if event_type.startswith("EARN_") else event_type, ("", ""))[0]
+
+
+def period_words(series_name: str, reference) -> str:
+    """The period a figure covers, from the source's `reference` ('Q3', 'Oct', 'Nov/20') and the estimate in the series
+    name: 'Q3, second estimate' / 'October' / 'week to Nov 20'; '' when the source gives none."""
+    ref, bits = str(reference or "").strip(), []
+    if re.fullmatch(r"[A-Z][a-z]{2}/\d{1,2}", ref):
+        bits.append(f"week to {ref[:3]} {int(ref[4:])}")
+    elif ref:
+        bits.append(_FULL_MONTH.get(ref, ref))
+    est = next((w for k, w in _ESTIMATE_WORDS if str(series_name).endswith(" " + k)), None)
+    if est:
+        bits.append(est)
+    return ", ".join(bits)
+
+
+def release_label(event_type: str, series: Optional[list] = None) -> str:
+    """'US GDP (Q3, second estimate)' / 'Australia CPI inflation (October)' / 'NVDA earnings'. The period is the first
+    one a series carries; an old row with none reads 'US GDP'."""
+    key = "EARN" if event_type.startswith("EARN_") else event_type
+    who, what = RELEASE_NAMES.get(key, ("", event_type.replace("_", " ")))
+    what = what.replace("{tk}", event_type[5:]) if key == "EARN" else what
+    head = what if key == "EARN" else f"{who} {what}".strip()
+    per = next((s.get("period") for s in (series or []) if isinstance(s, dict) and s.get("period")), "")
+    return f"{head} ({per})" if per else head
+
+
+# A surprise in the event's own words, per series: the sign is already applied (unemployment above forecast = weaker).
+_SERIES_ADJ = {**{t: ("hotter", "cooler") for t in _INFLATION}, "GDP": ("stronger", "weaker"),
+               "NFP": ("stronger", "weaker"), "RETAIL": ("stronger", "weaker"), "FOMC": ("higher", "lower"),
+               "EIA_PETRO": ("more in storage", "less in storage"), "EIA_NATGAS": ("more in storage", "less in storage"),
+               "EARN": ("a beat", "a miss")}
+
+
+def series_entry(name: str, actual, forecast, previous=None, reference=None, sign: int = 1,
+                 event_type: str = "") -> dict:
+    """One figure as stored on a news item: the source's text as printed, its plain label and period, and which way it
+    came out against the forecast ('vs': 'stronger' / 'cooler' / 'as forecast' / 'above forecast'...; None = no pair)."""
+    gas = name == "EIA Natural Gas Stocks Change"
+    a, f = parse_number(actual, not gas), parse_number(forecast, not gas)
+    vs = None
+    if a is not None and f is not None:
+        d = sign * (a - f)
+        adj = _SERIES_ADJ.get("EARN" if event_type.startswith("EARN_") else event_type, ("above forecast", "below forecast"))
+        vs = "as forecast" if d == 0 else adj[0 if d > 0 else 1]
+    return {"name": name, "label": _SERIES_LABEL.get(name, name), "period": period_words(name, reference),
+            "actual": _blank(actual), "forecast": _blank(forecast), "previous": _blank(previous), "vs": vs}
+
+
+def series_text(s: dict) -> str:
+    """'GDP q/q 4.3% vs 3.5% forecast (previous 2.2%): stronger'."""
+    lab, a, f, p = s.get("label") or s.get("name") or "", s.get("actual"), s.get("forecast"), s.get("previous")
+    if a is None:
+        t = f"{lab}: forecast {f}" if f else f"{lab}: no forecast listed"
+    else:
+        t = f"{lab} {a} vs {f} forecast" if f else f"{lab} {a} (no forecast listed)"
+    if p:
+        t += f" (previous {p})"
+    return t + (f": {s['vs']}" if s.get("vs") else "")
+
+
+def series_figures(series) -> str:
+    """The released figures of one news item: the ones that surprised first, in full; the ones exactly on forecast
+    grouped ('as forecast: PCE m/m 0.3%, PCE y/y 3.8%') so a four-series release stays one readable clause."""
+    got = [s for s in (series or []) if isinstance(s, dict) and s.get("actual") is not None]
+    on = [s for s in got if s.get("vs") == "as forecast"]
+    parts = [series_text(s) for s in got if s.get("vs") != "as forecast"]
+    if on:
+        parts.append("as forecast: " + ", ".join(f"{s.get('label') or s.get('name')} {s['actual']}" for s in on))
+    return "; ".join(parts)
+
+
+# The WHY chain. WHY_FAMILY: event type -> family; WHY_GROUP: market -> group; WHY_CAUSE: event type -> (the news when
+# the surprise is ABOVE forecast in SURPRISE_COMPONENTS' own signs, when BELOW); WHY: (family, group) -> (the sign this
+# chain explains = news_sign for every pair it covers, the effect when above, the effect when below). '{mk}' = the
+# market's name, '{tk}' = the company ticker. A pair with no entry (news_sign 0 = no clear read, None = no mapping)
+# prints the fact and no reason: never an invented one.
+WHY_FAMILY = {**{t: "inflation" for t in sorted(_INFLATION)}, **{t: "growth" for t in sorted(_GROWTH)}, "FOMC": "fed",
+              "EIA_PETRO": "oil_stocks", "EIA_NATGAS": "gas_stocks", "EARN": "earnings"}
+WHY_CAUSE = {
+    "CPI": ("hotter US inflation", "cooler US inflation"), "PPI": ("hotter US producer prices", "cooler US producer prices"),
+    "PCE": ("hotter US inflation", "cooler US inflation"), "GDP": ("stronger US growth", "weaker US growth"),
+    "RETAIL": ("stronger US consumer spending", "weaker US consumer spending"),
+    "NFP": ("a stronger US jobs market", "a weaker US jobs market"),
+    "FOMC": ("a higher Fed rate than expected", "a lower Fed rate than expected"),
+    "EIA_PETRO": ("a bigger US stock build (or smaller draw) than expected",
+                  "a smaller US stock build (or bigger draw) than expected"),
+    "EIA_NATGAS": ("a bigger US gas storage build (or smaller draw) than expected",
+                   "a smaller US gas storage build (or bigger draw) than expected"),
+    "EARN": ("{tk} earnings beating forecast", "{tk} earnings missing forecast")}
+WHY_GROUP = {**{m: "usd_fx" for m in _CUR}, "dollar_index": "dollar", "gold": "precious", "silver": "precious",
+             **{m: "bonds" for m in _FI}, **{m: "equities" for m in EARNINGS_MARKETS}, "russell": "small_caps",
+             "copper": "copper",
+             "bitcoin": "crypto", "ethereum": "crypto", "crude_oil": "oil", "heating_oil": "oil", "unleaded_gas": "oil",
+             "natural_gas": "natgas"}
+_RATES_FX = (-1, "lifts US interest rates and the US dollar against the {mk}",
+             "lowers US interest rates and the US dollar against the {mk}")
+_RATES_USD = (1, "lifts US interest rates and the US dollar", "lowers US interest rates and the US dollar")
+_RATES_PM = (-1, "lifts US interest rates and the dollar; {mk} pays no interest and is priced in dollars",
+             "lowers US interest rates and the dollar; {mk} pays no interest and is priced in dollars")
+_RATES_BONDS = (-1, "lifts US interest rates, and bond prices fall as yields rise",
+                "lowers US interest rates, and bond prices rise as yields fall")
+_RATES_STOCKS = (-1, "lifts US interest rates, which weighs on stock prices", "lowers US interest rates, which supports stock prices")
+_RATES_CRYPTO = (-1, "lifts US interest rates and the dollar, which weighs on risky assets",
+                 "lowers US interest rates and the dollar, which supports risky assets")
+WHY: dict[tuple[str, str], tuple[int, str, str]] = {
+    **{(fam, "usd_fx"): _RATES_FX for fam in ("inflation", "growth", "fed")},
+    **{(fam, "dollar"): _RATES_USD for fam in ("inflation", "growth", "fed")},
+    **{(fam, "precious"): _RATES_PM for fam in ("inflation", "growth", "fed")},
+    **{(fam, "bonds"): _RATES_BONDS for fam in ("inflation", "growth", "fed")},
+    **{(fam, g): _RATES_STOCKS for fam in ("inflation", "fed") for g in ("equities", "small_caps")},   # growth: no read
+    # (small_caps = the Russell: the mega-cap earnings it does not hold have no mapping there)
+    **{(fam, "crypto"): _RATES_CRYPTO for fam in ("inflation", "fed")},      # growth: no clear read for crypto
+    ("growth", "copper"): (1, "means more demand for industrial metals", "means less demand for industrial metals"),
+    ("oil_stocks", "oil"): (-1, "means more {mk} supply on hand", "means less {mk} supply on hand"),
+    ("gas_stocks", "natgas"): (-1, "means more gas supply on hand", "means less gas supply on hand"),
+    ("earnings", "equities"): (1, "lifts a big member of the {mk}", "weighs on a big member of the {mk}"),
+}
+
+
+def why_words(event_type: str, market: str, z: Optional[float]) -> str:
+    """'stronger US growth lifts US interest rates and the US dollar against the New Zealand Dollar → bearish New Zealand
+    Dollar'. '' when the pair has no chain, the surprise is zero / unknown, or the chain's sign is not news_sign's."""
+    key = "EARN" if event_type.startswith("EARN_") else event_type
+    entry = WHY.get((WHY_FAMILY.get(key), WHY_GROUP.get(market)))
+    mp = news_sign(event_type, market)
+    if entry is None or z is None or z == 0 or mp not in (1, -1) or entry[0] != mp:
+        return ""
+    mk = name_of(market).title()
+    up = z > 0
+    cause = WHY_CAUSE[key][0 if up else 1].replace("{tk}", event_type[5:])
+    effect = entry[1 if up else 2].replace("{mk}", mk)
+    return f"{cause} {effect} → {'bullish' if z * mp > 0 else 'bearish'} {mk}"
+
+
+def no_read_words(cls: str, event_type: str, market: str) -> str:
+    """The tail of a news line that carries no chain."""
+    mk = name_of(market).title()
+    if cls == "INLINE":
+        return f"in line with forecast: no read either way for {mk}"
+    if cls == "AMBIG" or news_sign(event_type, market) == 0:
+        return f"no clear read for {mk} (the research maps no direction for this release on this market)"
+    if news_sign(event_type, market) is None:
+        return f"no bullish / bearish read is mapped for this release on {mk}"
+    return f"no clear read for {mk} (the figures could not be read against a forecast)"
+
+
+def news_line(item: dict, market: str) -> str:
+    """The one plain line for a news item: whose release and which, the figures, then the chain (or why there is none).
+    'US GDP (Q3, second estimate): GDP q/q 4.3% vs 3.5% forecast (previous 2.2%): stronger → stronger US growth lifts
+    US interest rates and the US dollar against the New Zealand Dollar → bearish New Zealand Dollar'."""
+    head = item.get("release") or release_label(item.get("event") or "")
+    figs = series_figures(item.get("series"))
+    tail = item.get("why") or (f"{item['read']} {name_of(market).title()}" if item.get("read") in ("bullish", "bearish")
+                               else no_read_words(item.get("class") or "UNKNOWN", item.get("event") or "", market))
+    return f"{head}: {figs} → {tail}" if figs else f"{head} → {tail}"
+
+
+def news_item(event_type: str, market: str, direction: str, nc: dict, fm: dict, series: Optional[list] = None) -> dict:
+    """The stored news item of an alert (`detail.news[]`): the 2026-11-25 keys plus country, release, series, surprise,
+    why and the ready line `text`. `series` = the figures when `nc` carries none (a non-US release read off its page)."""
+    cls = nc["cls"]
+    fact = "" if cls == "INLINE" else news_fact(event_type, nc["z"])
+    ser = nc.get("series") or series or []
+    item = {"event": event_type, "first_minute": fm, "class": cls, "z": nc["z"], "fact": fact,
+            "read": news_read(cls, direction), "country": release_country(event_type),
+            "release": release_label(event_type, ser), "series": ser,
+            "surprise": fact or ("in line with forecast" if cls == "INLINE" else ""),
+            "why": why_words(event_type, market, nc["z"]) if cls in ("WITH", "AGAINST") else ""}
+    item["text"] = news_line(item, market)
+    return item
 
 
 # Direction-free fallbacks (keys are the verdict codes); `verdict_words` states the same in the market's own terms.
@@ -936,7 +1144,8 @@ def expectations_from_fx(events: list[dict], country: str = "united-states") -> 
         if typ is None or ts is None or typ in NO_FORECAST_TYPES:
             continue
         out.setdefault((session_date(ts), typ), {})[name] = {
-            "forecast": _blank(e.get("forecast")), "previous": _blank(e.get("previous")), "actual": _blank(e.get("actual"))}
+            "forecast": _blank(e.get("forecast")), "previous": _blank(e.get("previous")), "actual": _blank(e.get("actual")),
+            "period": period_words(name, e.get("reference")) or None}
     return out
 
 
@@ -958,7 +1167,8 @@ def merge_series(names: list[str], old: Optional[list], fresh: Optional[dict], r
     for n in names:
         o, f = olds.get(n) or {}, (fresh or {}).get(n) or {}
         row = {"name": n, "forecast": o.get("forecast"), "previous": o.get("previous"), "actual": o.get("actual"),
-               "forecast_after": o.get("forecast_after")}
+               "forecast_after": o.get("forecast_after"), "label": _SERIES_LABEL.get(n, n),
+               "period": f.get("period") or o.get("period")}
         if f and not released:
             row["forecast"] = f.get("forecast") or row["forecast"]
             row["previous"] = f.get("previous") or row["previous"]
@@ -992,8 +1202,9 @@ def crowd_outcome_words(event_type: str, market: str, direction: str, series: li
     figs = [f"{_SERIES_LABEL.get(s['name'], s['name'])} {'above' if fz * signs.get(s['name'], 1) > 0 else 'below'} {s['forecast']}"
             for s in series if s.get("forecast")]
     mk = name_of(market).title()
-    return (f"{words[:1].upper() + words[1:]}{' (' + ', '.join(figs) + ')' if figs else ''} = "
-            f"{'bullish' if cs > 0 else 'bearish'} {mk}. "
+    # 2026-11-27: whose release and which (with its period), then WHY that news reads the way it does for this market
+    why = why_words(event_type, market, fz) or f"{'bullish' if cs > 0 else 'bearish'} {mk}"
+    return (f"{release_label(event_type, series)}: {words}{' (' + ', '.join(figs) + ')' if figs else ''} → {why}. "
             f"A failure: that news, a first move {'up' if cs > 0 else 'down'}, "
             f"then a close {'DOWN' if cs > 0 else 'UP'}.")
 
@@ -1136,8 +1347,10 @@ def format_weekly_message(report_date: date, rows: dict[str, dict], prev: dict[s
         lines = []
         for a in friday:
             what = " + ".join(a["kinds"]) + (f" ({_event_words(a['events'])})" if a["events"] else "")
-            lines += [f"{name_of(a['market'])} {a['direction'].upper()}  failure day {a['failure_day']:%a %m-%d}: {what}",
-                      f"  entry: {entry_label}   stop: {a['stop_rule']}"]
+            lines.append(f"{name_of(a['market'])} {a['direction'].upper()}  failure day {a['failure_day']:%a %m-%d}: {what}")
+            if a["events"]:      # whose release and which (no figures: the Friday check reads no actual-vs-forecast)
+                lines.append("  releases: " + "; ".join(release_label(e) for e in a["events"]))
+            lines.append(f"  entry: {entry_label}   stop: {a['stop_rule']}")
         out.append("Friday confirmation: the set up completed this week after a failure day.\n```\n"
                    + "\n".join(lines) + "\n```")
     out += notes
@@ -1188,7 +1401,7 @@ def format_daily_message(day: date, report_date: date, alerts: list[dict]) -> Op
             else:
                 lines.append(f"  first minute: unknown ({fm.get('status', 'not read')})")
             lines.append(f"  news vs consensus: {news_read_words(a.get('news_class', 'UNKNOWN'), d, a['market'])}")
-            for t in a.get("news_text") or []:
+            for t in a.get("news_text") or []:      # one plain line per release: whose, which, the figures, why
                 lines.append(f"    {t}")
             failing = [x["event"].replace("_", " ") for x in (a.get("news_detail") or []) if x.get("class") == "WITH"]
             if failing and a.get("z") is not None:
@@ -2125,7 +2338,7 @@ async def _daily_body(io: Io, today: date, res: dict, problems: list[str], held:
                 # the readable markets alert and send below; the gap pages after, because nothing re-reads it
                 problems.append(f"{len(unread)} of {len(setups)} set-up markets could not be read today: "
                                 + ", ".join(name_of(m) for m in unread) + " (no alert for them today)")
-            await _label(io, today, [a for a in found if "news" in a["kinds"]], res, week_events, cache)
+            await _label(io, today, [a for a in found if "news" in a["kinds"]], res, week_events, cache, fx_ok)
             rows = []
             for a in found:
                 for kind in a["kinds"]:
@@ -2191,8 +2404,26 @@ async def run_daily(today: date, io: Optional[Io] = None, now_et: Optional[datet
     return res
 
 
+def _pages_for(types) -> list[str]:
+    """The non-US calendar pages that list a figure for any of these event types."""
+    return [c for c, names in FX_COUNTRY_EVENTS.items() if set(types) & (set(names.values()) - NO_FORECAST_TYPES)]
+
+
+def _page_key(country: str, day: date) -> tuple:
+    return ("fx", country, day)
+
+
+def _page_series(exp: dict, day: date, event_type: str) -> list[dict]:
+    """A non-US event's figures off its country page, as news-item series ([] = none)."""
+    if event_type in _US_TYPES or event_type.startswith(("EIA", "EARN_")):
+        return []
+    got = lookup_expectation(exp, day, event_type) or {}
+    return [series_entry(n, v.get("actual"), v.get("forecast"), v.get("previous"), None, 1, event_type)
+            | ({"period": v["period"]} if v.get("period") else {}) for n, v in got.items() if v.get("actual")]
+
+
 async def _label(io: Io, today: date, alerts: list[dict], res: dict, week_events: Optional[list[dict]],
-                 cache: Optional[dict] = None) -> None:
+                 cache: Optional[dict] = None, fx_ok: bool = True) -> None:
     """The two labels on a news alert. A label that cannot be read is 'unknown'; it never blocks the alert.
     `week_events`: this week's US calendar as read a moment ago (None = that read failed). `cache`: the run's shared reads
     (the news watch reuses the minute bars and earnings rows fetched here)."""
@@ -2209,9 +2440,23 @@ async def _label(io: Io, today: date, alerts: list[dict], res: dict, week_events
             for e in await _cached(cache, ("earn", tk), io.earnings, tk):
                 if e["surprise_pct"] is not None and session_date(e["ts"].astimezone(_ET), earnings=True) == today:
                     surprises[(today, t)] = {"z": e["surprise_pct"] / EARNINGS_RMS[tk],
-                                             "text": f"{tk} EPS {e['reported']} vs {e['estimate']}"}
+                                             "text": f"{tk} EPS {e['reported']} vs {e['estimate']}",
+                                             "series": [series_entry("EPS", _num_text(e["reported"]),
+                                                                     _num_text(e["estimate"]), event_type=t)]}
         except Exception as e:  # loud-ok: the label reads 'unknown' and the reason is in the audit row
             label_errors[t] = _err_text(e)
+    # A non-US release (Australian CPI, a central bank): no surprise is scored, but its figures are printed. Its country
+    # page is read once per run (the news watch reuses the read, so no extra request).
+    page_exp: dict = {}
+    if fx_ok:
+        for country in _pages_for(types):
+            try:
+                page_exp.update(expectations_from_fx(await _cached(cache, _page_key(country, today), io.fxempire,
+                                                                    country, today - timedelta(days=1), today), country))
+            except Exception as e:  # loud-ok: the line prints without figures; the reason is in the audit row
+                label_errors[f"fxempire {country}"] = _err_text(e)
+                if isinstance(e, CalendarRefused):
+                    break
     for a in alerts:
         m = a["market"]
         minutes: list[tuple] = []
@@ -2224,14 +2469,9 @@ async def _label(io: Io, today: date, alerts: list[dict], res: dict, week_events
         for r in a["event_rows"]:
             fm = first_minute(minutes, r.get("release_et"), a["atr"], a["direction"])
             nc = news_class(r["event_type"], m, a["direction"], today, surprises)
-            read = news_read(nc["cls"], a["direction"])
-            fact = "" if nc["cls"] == "INLINE" else news_fact(r["event_type"], nc["z"])
-            detail.append({"event": r["event_type"], "first_minute": fm, "class": nc["cls"], "z": nc["z"],
-                           "fact": fact, "read": read})
-            if nc["text"]:
-                tail = news_read_words(nc["cls"], a["direction"], m)
-                ev = r["event_type"].replace("_", " ")
-                texts.append(f"{ev}: {fact} ({nc['text']}) = {tail}" if fact else f"{ev}: {nc['text']} = {tail}")
+            item = news_item(r["event_type"], m, a["direction"], nc, fm, _page_series(page_exp, today, r["event_type"]))
+            detail.append(item)
+            texts.append(item["text"])
             if fm.get("status") == "ok" and (best is None or fm["move"] > best["move"]):
                 best = fm
         a["first_minute"] = best or (detail[0]["first_minute"] if detail else {"status": "not read"})
@@ -2307,11 +2547,11 @@ async def _watch_judge(io: Io, today: date, now: datetime, nw: dict, ctx: dict, 
         surprises = dict(surprises_from_fx(week_events or []))
         exp = expectations_from_fx(week_events or [])
         types = {r["event_type"] for v in evs.values() for r in v}
-        for country, names in FX_COUNTRY_EVENTS.items():           # a non-US event today: that page, for its actual
-            if fx_ok and types & (set(names.values()) - NO_FORECAST_TYPES):
+        for country in _pages_for(types):           # a non-US event today: that page, for its actual (one read per run)
+            if fx_ok:
                 try:
-                    exp.update(expectations_from_fx(await asyncio.to_thread(
-                        io.fxempire, country, today - timedelta(days=1), today), country))
+                    exp.update(expectations_from_fx(await _cached(
+                        cache, _page_key(country, today), io.fxempire, country, today - timedelta(days=1), today), country))
                 except Exception as e:  # loud-ok: recorded; the card keeps the forecast it holds
                     nw["errors"][f"fxempire {country}"] = _err_text(e)
                     fx_ok = fx_ok and not isinstance(e, CalendarRefused)

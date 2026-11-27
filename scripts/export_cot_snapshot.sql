@@ -96,6 +96,104 @@ peerdef(market, peer_list) AS (
         ('unleaded_gas', 'crude_oil,heating_oil'),
         ('wheat', 'soybeans,soybean_meal,corn')
 ),
+newsdef(event_type, country, release, family, cause_up, cause_down) AS (
+    VALUES
+        ('AU_CPI', 'Australia', 'CPI inflation', NULL, NULL, NULL),
+        ('AU_JOBS', 'Australia', 'jobs report', NULL, NULL, NULL),
+        ('AU_WAGES', 'Australia', 'wage price index', NULL, NULL, NULL),
+        ('BOC', 'Canada', 'Bank of Canada rate decision', NULL, NULL, NULL),
+        ('BOE', 'UK', 'Bank of England rate decision', NULL, NULL, NULL),
+        ('BOJ', 'Japan', 'Bank of Japan rate decision', NULL, NULL, NULL),
+        ('CPI', 'US', 'CPI inflation', 'inflation', 'hotter US inflation', 'cooler US inflation'),
+        ('EARN', 'US', '{tk} earnings', 'earnings', '{tk} earnings beating forecast', '{tk} earnings missing forecast'),
+        ('ECB', 'Euro area', 'ECB rate decision', NULL, NULL, NULL),
+        ('EIA_NATGAS', 'US', 'EIA weekly gas storage', 'gas_stocks', 'a bigger US gas storage build (or smaller draw) than expected', 'a smaller US gas storage build (or bigger draw) than expected'),
+        ('EIA_PETRO', 'US', 'EIA weekly oil stocks', 'oil_stocks', 'a bigger US stock build (or smaller draw) than expected', 'a smaller US stock build (or bigger draw) than expected'),
+        ('FED_MINUTES', 'US', 'Fed meeting minutes', NULL, NULL, NULL),
+        ('FOMC', 'US', 'Fed rate decision', 'fed', 'a higher Fed rate than expected', 'a lower Fed rate than expected'),
+        ('GDP', 'US', 'GDP', 'growth', 'stronger US growth', 'weaker US growth'),
+        ('NFP', 'US', 'jobs report', 'growth', 'a stronger US jobs market', 'a weaker US jobs market'),
+        ('OPEC', 'OPEC+', 'meeting', NULL, NULL, NULL),
+        ('PCE', 'US', 'PCE inflation', 'inflation', 'hotter US inflation', 'cooler US inflation'),
+        ('PPI', 'US', 'PPI producer prices', 'inflation', 'hotter US producer prices', 'cooler US producer prices'),
+        ('RBA', 'Australia', 'RBA rate decision', NULL, NULL, NULL),
+        ('RBA_MINUTES', 'Australia', 'RBA meeting minutes', NULL, NULL, NULL),
+        ('RETAIL', 'US', 'retail sales', 'growth', 'stronger US consumer spending', 'weaker US consumer spending'),
+        ('SNB', 'Switzerland', 'SNB rate decision', NULL, NULL, NULL),
+        ('USDA_EXPORTS', 'US', 'USDA weekly export sales', NULL, NULL, NULL),
+        ('WASDE', 'US', 'USDA WASDE crop report', NULL, NULL, NULL)
+),
+whygrp(market, grp) AS (
+    VALUES
+        ('australian_dollar', 'usd_fx'),
+        ('bitcoin', 'crypto'),
+        ('bonds_30y', 'bonds'),
+        ('british_pound', 'usd_fx'),
+        ('canadian_dollar', 'usd_fx'),
+        ('copper', 'copper'),
+        ('crude_oil', 'oil'),
+        ('dollar_index', 'dollar'),
+        ('dow', 'equities'),
+        ('ethereum', 'crypto'),
+        ('euro', 'usd_fx'),
+        ('gold', 'precious'),
+        ('heating_oil', 'oil'),
+        ('japanese_yen', 'usd_fx'),
+        ('nasdaq', 'equities'),
+        ('natural_gas', 'natgas'),
+        ('new_zealand_dollar', 'usd_fx'),
+        ('notes_10y', 'bonds'),
+        ('notes_2y', 'bonds'),
+        ('notes_5y', 'bonds'),
+        ('russell', 'small_caps'),
+        ('silver', 'precious'),
+        ('sp500', 'equities'),
+        ('swiss_franc', 'usd_fx'),
+        ('unleaded_gas', 'oil')
+),
+whydef(family, grp, sign, effect_up, effect_down) AS (
+    VALUES
+        ('earnings', 'equities', 1, 'lifts a big member of the {mk}', 'weighs on a big member of the {mk}'),
+        ('fed', 'bonds', -1, 'lifts US interest rates, and bond prices fall as yields rise', 'lowers US interest rates, and bond prices rise as yields fall'),
+        ('fed', 'crypto', -1, 'lifts US interest rates and the dollar, which weighs on risky assets', 'lowers US interest rates and the dollar, which supports risky assets'),
+        ('fed', 'dollar', 1, 'lifts US interest rates and the US dollar', 'lowers US interest rates and the US dollar'),
+        ('fed', 'equities', -1, 'lifts US interest rates, which weighs on stock prices', 'lowers US interest rates, which supports stock prices'),
+        ('fed', 'precious', -1, 'lifts US interest rates and the dollar; {mk} pays no interest and is priced in dollars', 'lowers US interest rates and the dollar; {mk} pays no interest and is priced in dollars'),
+        ('fed', 'small_caps', -1, 'lifts US interest rates, which weighs on stock prices', 'lowers US interest rates, which supports stock prices'),
+        ('fed', 'usd_fx', -1, 'lifts US interest rates and the US dollar against the {mk}', 'lowers US interest rates and the US dollar against the {mk}'),
+        ('gas_stocks', 'natgas', -1, 'means more gas supply on hand', 'means less gas supply on hand'),
+        ('growth', 'bonds', -1, 'lifts US interest rates, and bond prices fall as yields rise', 'lowers US interest rates, and bond prices rise as yields fall'),
+        ('growth', 'copper', 1, 'means more demand for industrial metals', 'means less demand for industrial metals'),
+        ('growth', 'dollar', 1, 'lifts US interest rates and the US dollar', 'lowers US interest rates and the US dollar'),
+        ('growth', 'precious', -1, 'lifts US interest rates and the dollar; {mk} pays no interest and is priced in dollars', 'lowers US interest rates and the dollar; {mk} pays no interest and is priced in dollars'),
+        ('growth', 'usd_fx', -1, 'lifts US interest rates and the US dollar against the {mk}', 'lowers US interest rates and the US dollar against the {mk}'),
+        ('inflation', 'bonds', -1, 'lifts US interest rates, and bond prices fall as yields rise', 'lowers US interest rates, and bond prices rise as yields fall'),
+        ('inflation', 'crypto', -1, 'lifts US interest rates and the dollar, which weighs on risky assets', 'lowers US interest rates and the dollar, which supports risky assets'),
+        ('inflation', 'dollar', 1, 'lifts US interest rates and the US dollar', 'lowers US interest rates and the US dollar'),
+        ('inflation', 'equities', -1, 'lifts US interest rates, which weighs on stock prices', 'lowers US interest rates, which supports stock prices'),
+        ('inflation', 'precious', -1, 'lifts US interest rates and the dollar; {mk} pays no interest and is priced in dollars', 'lowers US interest rates and the dollar; {mk} pays no interest and is priced in dollars'),
+        ('inflation', 'small_caps', -1, 'lifts US interest rates, which weighs on stock prices', 'lowers US interest rates, which supports stock prices'),
+        ('inflation', 'usd_fx', -1, 'lifts US interest rates and the US dollar against the {mk}', 'lowers US interest rates and the US dollar against the {mk}'),
+        ('oil_stocks', 'oil', -1, 'means more {mk} supply on hand', 'means less {mk} supply on hand')
+),
+-- News in plain words (2026-11-27). newsdef / whygrp / whydef mirror cot_family.RELEASE_NAMES + WHY_FAMILY + WHY_CAUSE,
+-- WHY_GROUP and WHY (a test keeps them equal). They give an alert news item / a news-watch entry that the job stored
+-- BEFORE these words existed its country, release and why chain ({mk} = the market's name, {tk} = the company ticker).
+-- A stored key always wins; nothing here invents a figure.
+words AS (
+    SELECT nd.event_type AS ekey, m.market, nd.country,
+           CASE WHEN nd.event_type = 'EARN' THEN nd.release ELSE nd.country || ' ' || nd.release END AS head,
+           CASE WHEN wd.sign IS NULL THEN NULL ELSE
+               nd.cause_up || ' ' || replace(wd.effect_up, '{mk}', initcap(m.name)) || ' → '
+               || CASE WHEN wd.sign > 0 THEN 'bullish' ELSE 'bearish' END || ' ' || initcap(m.name) END AS why_up,
+           CASE WHEN wd.sign IS NULL THEN NULL ELSE
+               nd.cause_down || ' ' || replace(wd.effect_down, '{mk}', initcap(m.name)) || ' → '
+               || CASE WHEN wd.sign > 0 THEN 'bearish' ELSE 'bullish' END || ' ' || initcap(m.name) END AS why_down
+      FROM newsdef nd
+     CROSS JOIN meta m
+      LEFT JOIN whygrp wg ON wg.market = m.market
+      LEFT JOIN whydef wd ON wd.family = nd.family AND wd.grp = wg.grp
+),
 ix AS (
     SELECT i.market, w.rk, i.report_date, i.comm, i.lspec, i.sspec, i.setup, i.close_setup
       FROM mi_cot_index_weekly i
@@ -123,9 +221,25 @@ per_market AS (
                                 'forecast_seen_at', to_char(nw.forecast_seen_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD HH24:MI') || ' ET',
                                 'news_class', nw.news_class, 'surprise_z', nw.surprise_z, 'first_minute', nw.first_minute,
                                 'close_z', nw.close_z, 'close_against', nw.close_against, 'verdict', nw.verdict,
-                                'strict', nw.strict, 'alerted', nw.alerted)
+                                'strict', nw.strict, 'alerted', nw.alerted,
+                                -- 2026-11-27: whose release and which (with the period a stored figure carries), and
+                                -- the why chain of a judged bullish / bearish row (NULL when there is none)
+                                'country', wds.country,
+                                'release', replace(wds.head, '{tk}', substr(nw.event_type, 6))
+                                           || COALESCE(' (' || (SELECT x.s ->> 'period'
+                                                                  FROM jsonb_array_elements(CASE WHEN jsonb_typeof(nw.series) = 'array'
+                                                                                                 THEN nw.series ELSE '[]'::jsonb END)
+                                                                       WITH ORDINALITY AS x(s, ord)
+                                                                 WHERE COALESCE(x.s ->> 'period', '') <> ''
+                                                                 ORDER BY x.ord LIMIT 1) || ')', ''),
+                                'why', CASE WHEN nw.news_class IN ('WITH', 'AGAINST') AND nw.surprise_z <> 0
+                                            THEN replace(CASE WHEN nw.surprise_z > 0 THEN wds.why_up ELSE wds.why_down END,
+                                                         '{tk}', substr(nw.event_type, 6)) END)
                                 ORDER BY nw.event_date, nw.release_et, nw.event_type)
                               FROM mi_cot_news_watch nw
+                              LEFT JOIN words wds
+                                ON wds.ekey = CASE WHEN left(nw.event_type, 5) = 'EARN_' THEN 'EARN' ELSE nw.event_type END
+                               AND wds.market = nw.market
                              WHERE nw.market = m.market
                                AND nw.event_date BETWEEN (SELECT d FROM today_et) - 7 AND (SELECT d FROM today_et) + 7), '[]'::json)
            ) AS j
@@ -151,6 +265,42 @@ al AS (
                     CASE WHEN left(a.detail #>> '{}', 1) = '{' THEN (a.detail #>> '{}')::jsonb END
                 ELSE a.detail END AS det
       FROM mi_cot_alerts a ORDER BY a.alert_date DESC, a.id DESC LIMIT 60
+),
+-- Each alert's news[] with the 2026-11-27 words filled where the stored item lacks them (alerts stored before then):
+-- country, release, why (from `words`), and the released figures from that day's news-watch row of the same market and
+-- event when one exists (forecast = the figure listed on the release-day read, which the alert was scored on). The
+-- stored keys always win. Old alerts whose day has no news-watch row get NO figures: the job never stored them.
+al_news AS (
+    SELECT a.id,
+           jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+                   'country', wds.country,
+                   'release', replace(wds.head, '{tk}', substr(n.item ->> 'event', 6)) || COALESCE(' (' || ws.per || ')', ''),
+                   'series', ws.series,
+                   'why', CASE WHEN n.item ->> 'class' IN ('WITH', 'AGAINST') AND jsonb_typeof(n.item -> 'z') = 'number'
+                                    AND (n.item ->> 'z')::float8 <> 0
+                               THEN replace(CASE WHEN (n.item ->> 'z')::float8 > 0 THEN wds.why_up ELSE wds.why_down END,
+                                            '{tk}', substr(n.item ->> 'event', 6)) END))
+                     || n.item ORDER BY n.ord) AS news
+      FROM al a
+     CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(a.det -> 'news') = 'array' THEN a.det -> 'news'
+                                                  ELSE '[]'::jsonb END) WITH ORDINALITY AS n(item, ord)
+      LEFT JOIN words wds
+        ON wds.ekey = CASE WHEN left(n.item ->> 'event', 5) = 'EARN_' THEN 'EARN' ELSE n.item ->> 'event' END
+       AND wds.market = a.market
+      LEFT JOIN LATERAL (
+          SELECT jsonb_agg(jsonb_build_object('name', x.s ->> 'name', 'label', COALESCE(x.s ->> 'label', x.s ->> 'name'),
+                                              'period', x.s ->> 'period', 'actual', x.s ->> 'actual',
+                                              'forecast', COALESCE(x.s ->> 'forecast_after', x.s ->> 'forecast'),
+                                              'previous', x.s ->> 'previous') ORDER BY x.ord) AS series,
+                 (array_agg(x.s ->> 'period' ORDER BY x.ord) FILTER (WHERE COALESCE(x.s ->> 'period', '') <> ''))[1] AS per
+            FROM mi_cot_news_watch nw
+           CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(nw.series) = 'array' THEN nw.series
+                                                        ELSE '[]'::jsonb END) WITH ORDINALITY AS x(s, ord)
+           WHERE nw.event_date = a.alert_date AND nw.event_type = n.item ->> 'event' AND nw.market = a.market
+             AND x.s ->> 'actual' IS NOT NULL
+      ) ws ON true
+     WHERE jsonb_typeof(n.item) = 'object'
+     GROUP BY a.id
 )
 SELECT json_build_object(
     'version', 1,
@@ -166,7 +316,7 @@ SELECT json_build_object(
                   'news_class', a.news_class,
                   'z', a.z, 'peer_z', a.peer_z, 'comm', a.comm, 'lspec', a.lspec, 'sspec', a.sspec,
                   'entry_note', a.entry_note, 'stop_rule', a.stop_rule, 'failure_day', a.failure_day,
-                  'atr', a.det -> 'atr', 'news', a.det -> 'news',
+                  'atr', a.det -> 'atr', 'news', COALESCE((SELECT an.news FROM al_news an WHERE an.id = a.id), a.det -> 'news'),
                   'peers', (SELECT po.peers FROM peers_of po WHERE po.market = a.market)) ORDER BY a.alert_date DESC, a.id DESC) FROM al a), '[]'::json),
     'news_watch_asof', (SELECT to_char(max(updated_at) AT TIME ZONE 'America/New_York', 'YYYY-MM-DD"T"HH24:MI:SS') || ' ET'
                           FROM mi_cot_news_watch),
@@ -174,8 +324,8 @@ SELECT json_build_object(
         'index', 'Each group''s net position as a 0 to 100 index of its own lookback window: 0 is its most short, 100 its most long. comm = commercials, lspec = large speculators, sspec = small speculators.',
         'setup', 'The main rule: the crowd is at an extreme, the direction shown is the way to fade into. close_setup is the looser close list.',
         'exit_watch', 'A market that was in a set up the week before and is not now; the distance to 50 is how far each group still is from neutral.',
-        'alerts', 'The newest 60 alerts: news = a failure on a scheduled release, correlation = the peers closed the opposite way to the market, friday = the weekly confirmation. Labels only; nothing here places an order. Each alert also carries the readings behind it: z (the market''s own day move in 20-day ranges, up = positive), peer_z (the peers'' median move, stored positive = the way the set up''s crowd was leaning: UP for a short set up, DOWN for a long one; multiply by +1 for a short set up and -1 for a long one to get the peers'' move in price terms), the index at alert, entry_note, stop_rule, failure_day, atr, news[] and peers[]. Each news[] item also carries fact (the plain words for that release, e.g. inflation hotter than forecast; empty if none) and read (bullish, bearish, in line or no clear read, for THIS market), ready to print; first_minute.move in it is stored the same crowd-signed way as peer_z.',
-        'news_watch', 'Per market, the scheduled events of the last 7 and next 7 days. Before a release: the forecast as last read, and the news to watch for (crowd_outcome, already in plain bullish / bearish words for the market). After: the news against forecast (news_class WITH / AGAINST is the stored crowd-relative class; read it as bullish / bearish for the market with the set up direction: a short set up WITH = bullish, AGAINST = bearish; a long set up the reverse), the first minute, the close, and a verdict. verdict: failure_full = the news pointed one way, the first minute went that way, the close went the other; failure = the news pointed one way, the close went the other; followed_news / shrugged / no_failure = no failure; against_unread = closed against the set up on a news day with no clear news read; pending = no close yet. strict = the three-step rule; alerted = a news alert was sent that day (the looser live rule). Labels only.',
+        'alerts', 'The newest 60 alerts: news = a failure on a scheduled release, correlation = the peers closed the opposite way to the market, friday = the weekly confirmation. Labels only; nothing here places an order. Each alert also carries the readings behind it: z (the market''s own day move in 20-day ranges, up = positive), peer_z (the peers'' median move, stored positive = the way the set up''s crowd was leaning: UP for a short set up, DOWN for a long one; multiply by +1 for a short set up and -1 for a long one to get the peers'' move in price terms), the index at alert, entry_note, stop_rule, failure_day, atr, news[] and peers[]. Each news[] item also carries fact (the plain words for that release, e.g. inflation hotter than forecast; empty if none) and read (bullish, bearish, in line or no clear read, for THIS market), ready to print; first_minute.move in it is stored the same crowd-signed way as peer_z. Since 2026-11-27 each news[] item also carries country (whose release: US, Australia ...), release (which one, with its period when the source gave it, e.g. US GDP (Q3, second estimate)), series[] (the released figures: label, period, actual, forecast, previous, vs = which way it came out, e.g. stronger / hotter / as forecast), surprise and why (the one-line reason the news is bullish / bearish for THIS market, ending in that same word; empty when there is no read) and text (the whole line). Alerts stored before then get country, release and why filled here, and figures only when that day''s news-watch row holds them.',
+        'news_watch', 'Per market, the scheduled events of the last 7 and next 7 days. Before a release: the forecast as last read, and the news to watch for (crowd_outcome, already in plain bullish / bearish words for the market). After: the news against forecast (news_class WITH / AGAINST is the stored crowd-relative class; read it as bullish / bearish for the market with the set up direction: a short set up WITH = bullish, AGAINST = bearish; a long set up the reverse), the first minute, the close, and a verdict. verdict: failure_full = the news pointed one way, the first minute went that way, the close went the other; failure = the news pointed one way, the close went the other; followed_news / shrugged / no_failure = no failure; against_unread = closed against the set up on a news day with no clear news read; pending = no close yet. strict = the three-step rule; alerted = a news alert was sent that day (the looser live rule). Since 2026-11-27 each entry also carries country, release (with its period) and, for a judged bullish / bearish row, why; series[] items carry label and period. Labels only.',
         'not_claimed', 'Display only. Nothing here feeds a trade, a grade, an alert or any sizing.'
     )
 )

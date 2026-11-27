@@ -97,6 +97,15 @@ index values and whether the set up is main or close-list, and two LABELS on new
 - *News vs consensus:* stated for the market (bullish / bearish Silver, in line with forecast, no clear read), from actual vs forecast; the stored class stays WITH / AGAINST the crowd (since 2026-11-25 the alert text, `news[].fact` / `news[].read` and the news-watch sentence carry the price-terms reading, and the crowd is named once, in the set-up line)
   (surprise ÷ the series' 2023–2026 typical surprise, in line under 0.25; the research's mapping of which way a
   surprise pushes each market). Central-bank decisions other than the Fed, and WASDE, have no consensus: unknown.
+  *In plain words (2026-11-27):* every news line says WHOSE release and WHICH one with its period ("US GDP (Q3, second
+  estimate)", "Australia CPI inflation (October)"), the FIGURES (actual vs forecast, previous; each series' own way:
+  stronger / hotter / as forecast, unemployment above forecast = weaker), and WHY it is bullish / bearish for this market
+  in one chain ("stronger US growth lifts US interest rates and the US dollar against the New Zealand Dollar → bearish New
+  Zealand Dollar"). The chain comes from `cot_family.WHY`, keyed (event family, market group); each entry declares the sign
+  it explains and must equal `news_sign` (a test walks every pair the calendar can attach). A pair with no read (news_sign 0
+  or no mapping) and an in-line surprise state the fact and give no reason. Stored per item in `detail.news[]`: `country`,
+  `release`, `series`, `surprise`, `why`, `text`. A non-US release (Australian CPI, a central bank) prints its figures off
+  its own country page with no read. The Friday confirmation names the releases (no figures: it reads none).
   Fed minutes, RBA minutes, Australian jobs (Employment Change) and Australian wages (Wage Price Index QoQ) are
   watched news days too (2026-11-17) with no consensus read: unknown.
   Added 2026-11-22: **PCE** carries a consensus read (the four PCE price series, mapped like CPI); **Australian CPI**
@@ -254,6 +263,26 @@ serves a market 1-20 bars instead of its ~65 is skipped for that market without 
 - A federal-holiday week moves the CFTC release; the daily job picks it up the day it lands.
 
 ## Change log
+
+### 2026-11-27 — news lines say whose release, the figures and why (operator: "what GDP, US GDP or Australia GDP, why is it bearish ... compare to what")
+
+**Trigger**: his 11-27 screenshot of the 11-25 SILVER and NEW ZEALAND DOLLAR tiles reading "GDP bearish Silver" with no
+country, figure or reason. His 11-25 ruling stands: state the fact, read it bullish / bearish for the asset, the crowd named once.
+
+**Evidence**: none needed — words only. `news_sign`, `SURPRISE_COMPONENTS`, `news_class`, `detect()`, the alert rule and
+every threshold are unchanged; the chain is derived from the same sign. Checked on the 11-25 FXEmpire rows
+(`scripts/probes/_cot_newswatch_design_1125/nw_fx_1123_1206.json`): GDP 4.3% vs 3.5% gives z 2.954, the stored value; PCE
+z 0.312 comes from core PCE y/y 3.3% vs 3.2% alone (the other three on forecast), which the line now shows.
+
+**Anticipated effect** (BASELINE: "GDP: growth stronger than forecast (GDP Growth Rate QoQ 2nd Est 4.3% vs 3.5%) = bearish
+Silver" in Telegram; "GDP bearish Silver" on the page): Telegram, `detail.news[]`, the news-watch sentence and the page
+print the release with its period, the figures and the chain. Old alerts (the 14 in the 11-26 snapshot) get country,
+release and why from the nightly export, and NO figures: the job never stored them (`detail.news[]` held only event / z /
+class / first minute and no news-watch row exists for 11-25). One more FXEmpire read per run only on a day a set-up market
+alerts on a non-US release, and the news watch reuses it (no new request on those days in total).
+
+**Reversion-flag**: NEW (additive words). **Status**: built, not deployed; scope `market-agent` only (`cot_family.py` is
+not in `scripts/exec_loaded_modules.txt`; `db.py` untouched) plus a server `git pull` for the SQL, then a portfolio-app2 push.
 
 ### 2026-11-25 — news watch: each set-up card lists the news to watch for and its verdict (operator "Ok", display only)
 
