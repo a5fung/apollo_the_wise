@@ -83,5 +83,6 @@ def load_flags(path):
     return out, n0 - len(f)
 
 
-FIX = os.environ.get("R4_FIX", "") == "1"      # post-trace variant: the two traced readings applied (see readings.md "POST-TRACE")
+from shared.env_flags import env_is_true  # noqa: E402  (test_681: one reader per env flag)
+FIX = env_is_true("R4_FIX")      # post-trace variant: the two traced readings applied (see readings.md "POST-TRACE")
 SUF = "_fix" if FIX else ""
