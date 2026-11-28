@@ -1,0 +1,12 @@
+SET
+trade_date|gappers|unscanned|gap_3x|gap_3x_unscanned
+2026-11-24|29|21|6|1
+2026-11-25|60|59|3|2
+2026-11-27|93|76|5|3
+(3 rows)
+== 11-27 unscanned 3x-volume gappers (the candidates for a real miss)
+ticker|gap|vol_x|pc
+UBR|25.4|3.9|19.75
+BRZX|21.4|3.5|15.46
+TERG|10.4|5.1|10.20
+(3 rows)

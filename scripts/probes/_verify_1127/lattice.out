@@ -1,0 +1,8 @@
+SET
+string_agg
+id,scan_date,ticker,first_seen_et,last_seen_et,live_quality_first,live_quality_last,shadow_tier_first,shadow_tier_last,rule_first,rule_last,regrade_count,expct_sched,expct_sched_src,expct_looking,expct_combined,expct_beat,expct_growth_yoy,demotion_marker,concrete_event,sector,sector_n,board_n,sector_share,sector_confirm,gap_pct_first,gap_pct_last,adv_dollar,rel_volume,projected_vol_multiple,live_ep_score,live_tier,grounded_len,live_side,created_at,claude_analysis,news_summary,grounded_head,deal_role,deal_status,deal_consideration,deal_counterparty
+(1 row)
+== 11-25 scan-log outcome per ticker (latest row) for names that opened 10%+
+ticker|filter_reason|reject_stage|score_tier|ep_score|catalyst_quality|llm_catalyst_quality
+BNAI|already up 159% in prior 5 days (extended)|extension||||
+(1 row)
