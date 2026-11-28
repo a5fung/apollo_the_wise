@@ -1,0 +1,9 @@
+SET
+trade_date|count
+2026-11-24|12496
+2026-11-25|12483
+2026-11-27|12327
+(3 rows)
+security_type|count
+CS|40
+(1 row)

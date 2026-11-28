@@ -655,9 +655,19 @@ the exit rule live that day (the `depth` rule since 10-12), at 20 sessions.
 | 2026-08-13 | CRMD | same | same | −6.7% (best +7.0%) | not replayed — no big winner |
 | 2026-08-13 | HLIT | same | same | −17.1% (best +4.0%) | not replayed — no big winner |
 | 2026-08-20 | RARE | the 20-second wait ran out (the 10-29 fix, #712) | same | blank in the table (best +0.4%) | not replayed — no big winner |
-| 2026-10-29 | GKOS | its own opening bar reached the stream ~1 s after the 20-second wait ran out; the skip row then blocked the stream's retry (#712, deploys 10-29 21:15 ET) | stop-limit buy at the ORB high **$214.92** (limit $215.99; the #500 chase applied if the price was already above), stop **$199.90** (= 2 × $207.41 − $214.92; R = $7.51), exit rule `depth` | filled by the nightly refresh | **read at 20 sessions (#712's DoD)** |
+| 2026-10-29 | GKOS | its own opening bar reached the stream ~1 s after the 20-second wait ran out; the skip row then blocked the stream's retry (#712, deploys 10-29 21:15 ET) | stop-limit buy at the ORB high **$214.92** (limit $215.99; the #500 chase applied if the price was already above), stop **$199.90** (= 2 × $207.41 − $214.92; R = $7.51), exit rule `depth` | filled by the nightly refresh | **closed 2026-11-19: +$19.88 a share, +9.2%, +2.65 R (+1.32 of the risk to the stop) — see the 2026-11-28 entry below** |
 
 Source rows: `scripts/probes/_gkos_1029/q5_missed_ledger.out` (the four earlier misses), `q4_bar.out` (GKOS's 09:30 bar).
+
+### 2026-11-28 — #712 defect-miss ledger: GKOS 10-29
+
+- **The trade the defect cost:** buy at the 1-minute opening-range high $214.92, stop $199.90 (R = $7.51 per share; the risk to the stop is $15.02, twice R), depth exit. The missed-outcomes table's +25.1% over 20 sessions counts from the gap-day open ($211), not from our entry.
+- **Outcome (replayed on stored daily bars, 20 sessions to 2026-11-27, through the live walker and the live depth-stop function):** the trade closed — it did not run the full 20. GKOS closed at $233.08 on 11-18, below the trailing line ($237.94), so the depth rule sold at the next open, 2026-11-19 at $234.80: **+$19.88 a share = +9.2% = +2.65 R (+1.32 of the risk to the stop).**
+- **What it missed afterwards:** GKOS then went on to $264.06 by 11-27 (+22.9% from our entry) — the exit rule, not the miss, left that on the table. The +8R partial ($275.00) was never reached (best high $265.18), so no partial applies.
+- **Assumption (daily bars only):** the 10-29 minute path is not stored, so day 0 is assumed to run from the fill up to its $243.71 high without trading back to the entry; that arms the breakeven (+3R = $237.45). Replayed without it (hard stop only), the result is identical — no session after day 0 traded near the stop (lowest low after entry $218.76, 11-05).
+- **For the record, MAGNA53 as traded vs with the miss:** add this one winner (+2.65 R) to the "with defect misses added" side; the other four ledger rows were not replayed (no big winner).
+- **Fix:** the 10-30 change (the opening bar is waited for ~50 s and the stream's copy is re-read each second, not 20 s) is live — deployed 2026-10-30 12:08 ET and proven on a real morning on 11-03 (AEHR's bar served at +21.8 s after 3 misses, entry placed).
+- Script and output: `scripts/probes/_gkos_1029/replay_20d.py`, `replay_20d.out`.
 
 ## Known limitations / open questions
 

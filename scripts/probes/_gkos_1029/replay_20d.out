@@ -1,0 +1,51 @@
+GKOS 2026-10-29 missed MAGNA53 EP -- 20-session replay, DAILY bars, depth exit (stack depth, era era_e)
+entry 214.92 (1-min ORB high) | ORB low 207.41 | R_orb = 7.51 | hard stop 199.9 | risk to stop = 15.02 (= 2 R_orb)
++8R partial target 275.00 (max high over the 20 sessions 265.18) | breakeven arm +3.0R = 237.45
+ADR20 (fraction, live fn) 0.04358 | prior closes used 28 | trail_arm_from 2026-10-29
+day 0: O 211.0 H 243.7124 L 207.41 C 242.48  (high >= breakeven arm: True)
+
+====================================================================================================
+VARIANT A (main): breakeven armed on day 0 -- day-0 high 243.71 >= +3R arm
+sess date          open    high     low   close line/eff rest.stop  event
+   0 2026-10-29  211.00  243.71  207.41  242.48        -    214.92  entry 214.92; breakeven armed (high >= 237.45)
+   1 2026-10-30  242.42  248.75  236.68  237.60   214.92    214.92  held
+   2 2026-11-02  235.00  243.74  232.29  238.61   214.92    214.92  held
+   3 2026-11-03  240.94  240.94  230.00  233.04   214.92    214.92  held
+   4 2026-11-04  237.18  255.19  235.27  246.70   214.92    214.92  held
+   5 2026-11-05  250.00  250.40  218.76  219.98   214.92    214.92  held
+   6 2026-11-06  221.51  229.05  219.06  224.41   214.92    214.92  held
+   7 2026-11-09  228.75  239.18  226.17  238.74   217.99    214.92  held
+   8 2026-11-10  237.94  241.35  235.09  236.19   223.79    214.92  held
+   9 2026-11-11  237.54  248.27  237.54  247.16   230.39    220.35  held
+  10 2026-11-12  248.03  249.97  242.66  246.03   236.85    226.53  held
+  11 2026-11-13  246.20  249.07  242.34  245.72   237.66    227.30  held
+  12 2026-11-16  245.43  250.61  242.01  244.88   238.28    227.90  held
+  13 2026-11-17  242.60  247.12  239.65  243.25   239.31    228.88  held
+  14 2026-11-18  245.67  246.90  232.16  233.08   237.94    228.88  CLOSE BELOW LINE (sma_trail_stop) -> sale at next open 2026-11-19 234.8
+walk_arm (live #482 walker): status=settled reason=None final=sma_trail_stop exit_session=15 sessions_walked=15 partial=False
+   exit leg: {'time': '2026-11-19', 'price': 234.8, 'reason': 'sma_trail_stop', 'shares': 1.0, 'pnl': 19.880000000000024, 'fill': 'next_open'}
+   per-share P&L +19.88 | +9.2% on entry | +2.65 R_orb | +1.32 R of risk-to-stop (15.02)
+
+====================================================================================================
+VARIANT B (bound): breakeven NOT armed on day 0 -- hard stop 199.90 + depth stop only
+sess date          open    high     low   close line/eff rest.stop  event
+   0 2026-10-29  211.00  243.71  207.41  242.48        -    199.90  entry 214.92; breakeven NOT armed (variant)
+   1 2026-10-30  242.42  248.75  236.68  237.60   199.90    199.90  held
+   2 2026-11-02  235.00  243.74  232.29  238.61   199.90    199.90  held
+   3 2026-11-03  240.94  240.94  230.00  233.04   199.90    199.90  held
+   4 2026-11-04  237.18  255.19  235.27  246.70   202.92    199.90  held
+   5 2026-11-05  250.00  250.40  218.76  219.98   207.24    199.90  held
+   6 2026-11-06  221.51  229.05  219.06  224.41   212.01    202.77  held
+   7 2026-11-09  228.75  239.18  226.17  238.74   217.99    208.49  held
+   8 2026-11-10  237.94  241.35  235.09  236.19   223.79    214.04  held
+   9 2026-11-11  237.54  248.27  237.54  247.16   230.39    220.35  held
+  10 2026-11-12  248.03  249.97  242.66  246.03   236.85    226.53  held
+  11 2026-11-13  246.20  249.07  242.34  245.72   237.66    227.30  held
+  12 2026-11-16  245.43  250.61  242.01  244.88   238.28    227.90  held
+  13 2026-11-17  242.60  247.12  239.65  243.25   239.31    228.88  held
+  14 2026-11-18  245.67  246.90  232.16  233.08   237.94    228.88  CLOSE BELOW LINE (sma_trail_stop) -> sale at next open 2026-11-19 234.8
+walk_arm (live #482 walker): status=settled reason=None final=sma_trail_stop exit_session=15 sessions_walked=15 partial=False
+   exit leg: {'time': '2026-11-19', 'price': 234.8, 'reason': 'sma_trail_stop', 'shares': 1.0, 'pnl': 19.880000000000024, 'fill': 'next_open'}
+   per-share P&L +19.88 | +9.2% on entry | +2.65 R_orb | +1.32 R of risk-to-stop (15.02)
+
+Reference: mi_ep_missed_outcomes (from the gap-day OPEN 211, not our entry): ret_20d +25.1%, max_high_20d +25.7%

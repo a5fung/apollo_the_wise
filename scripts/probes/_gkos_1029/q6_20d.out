@@ -1,0 +1,8 @@
+SET
+alert_date|ticker|source|skip_category|ret_5d|ret_20d|max_high_20d
+2026-10-29|GKOS|high_unentered|infra_skip|0.042559241706161086|0.25146919431279624|0.2567535545023697
+2026-10-29|GKOS|scan_filter|duplicate_scan|0.042559241706161086|0.25146919431279624|0.2567535545023697
+(2 rows)
+ERROR:  column "high" does not exist
+LINE 1: SELECT trade_date, open_price, high, low, close, volume FROM...
+                                       ^

@@ -1,0 +1,5 @@
+SET
+d|n|left
+2026-10-07|38|139 of 13263 snapshot rows dropped in the EP candidate build (0 raised, 139 with prev_close 0/missing; first error: None); sample ['PTAC', '
+2026-11-27|37|2414 of 13267 snapshot rows dropped in the EP candidate build (0 raised, 2414 with prev_close 0/missing; first error: None); sample ['BDN', 
+(2 rows)

@@ -1,0 +1,174 @@
+SET
+=== per-day history 2026-08-01..2026-11-27 ===
+trade_date|rows_with_open|supply_all|supply_stock|supply_untyped|spy_gap|qqq_gap
+2026-08-03|12391|11|10|0|0.32|0.05
+2026-08-04|12436|85|30|2|0.39|1.16
+2026-08-05|12393|41|29|0|0.59|0.33
+2026-08-06|12381|47|36|0|0.05|-0.90
+2026-08-07|12411|62|37|1|0.32|0.77
+2026-08-10|12427|12|11|0|-0.09|-0.09
+2026-08-11|12408|17|13|0|0.19|0.34
+2026-08-12|12422|87|19|2|0.54|1.20
+2026-08-13|12499|20|15|0|0.31|0.20
+2026-08-14|12436|29|16|0|0.08|0.18
+2026-08-17|12537|14|8|1|-0.02|0.26
+2026-08-18|12478|25|12|1|-0.51|-1.32
+2026-08-19|12526|22|13|0|0.38|0.40
+2026-08-20|12422|38|4|0|-0.40|-0.56
+2026-08-21|12545|27|3|0|0.45|0.60
+2026-08-24|12521|21|6|0|-0.12|-0.53
+2026-08-25|12533|11|8|1|0.35|0.69
+2026-08-26|12487|11|11|0|-0.15|-0.33
+2026-08-27|12497|27|10|0|0.32|0.78
+2026-08-28|12448|7|5|0|0.09|-0.19
+2026-08-31|12580|4|4|0|-0.26|-0.18
+2026-09-01|12524|4|3|0|-0.66|-1.31
+2026-09-02|12534|9|8|0|0.09|-0.08
+2026-09-03|12488|11|6|0|0.36|0.23
+2026-09-04|12502|10|7|0|-0.15|0.23
+2026-09-08|12527|20|6|0|-0.15|0.27
+2026-09-09|12464|10|6|0|-0.25|-0.27
+2026-09-10|12562|1|1|0|-0.57|-1.22
+2026-09-11|12485|10|6|0|0.91|0.99
+2026-09-14|12529|27|6|0|-0.69|-1.62
+2026-09-15|12575|5|5|0|-0.10|-0.05
+2026-09-16|12549|6|5|0|0.28|0.49
+2026-09-17|12544|39|12|0|1.21|1.59
+2026-09-18|12575|11|8|0|-0.17|0.27
+2026-09-21|12603|45|15|0|0.60|0.89
+2026-09-22|12593|10|8|0|0.07|-0.07
+2026-09-23|12595|14|6|0|-0.08|-0.07
+2026-09-24|12565|9|6|0|-0.49|-0.80
+2026-09-25|12457|12|9|1|0.21|0.23
+2026-09-28|12447|7|3|0|-0.39|-0.54
+2026-09-29|12455|12|9|0|0.16|0.49
+2026-09-30|12477|10|4|0|0.29|0.31
+2026-10-01|12466|6|5|0|0.23|0.37
+2026-10-02|12474|2|2|0|0.86|1.25
+2026-10-05|12503|27|19|0|0.01|-0.03
+2026-10-06|12418|8|5|0|0.43|0.57
+2026-10-07|12476|6|3|0|-0.43|-0.77
+2026-10-08|12451|8|7|0|-0.30|-0.50
+2026-10-09|12405|12|4|0|0.30|0.66
+2026-10-12|12471|6|3|0|0.03|-0.21
+2026-10-13|12472|6|1|0|-0.10|-0.87
+2026-10-14|12542|6|5|0|-0.40|-0.75
+2026-10-15|12520|13|1|0|-0.44|-1.43
+2026-10-16|12505|3|3|0|0.19|-0.34
+2026-10-19|12507|32|5|0|0.52|1.38
+2026-10-20|12459|3|3|0|-0.08|-0.43
+2026-10-21|12480|25|4|0|0.28|0.64
+2026-10-22|12485|10|3|0|-0.87|-1.60
+2026-10-23|12421|7|6|0|-0.53|-0.32
+2026-10-26|12458|8|8|0|0.30|0.38
+2026-10-27|12505|15|11|0|0.26|0.41
+2026-10-28|12470|16|8|0|0.23|0.40
+2026-10-29|12464|24|18|0|-0.46|-1.25
+2026-10-30|12475|37|10|0|-1.04|-2.53
+2026-11-02|12494|6|4|0|0.49|0.70
+2026-11-03|12458|19|15|0|0.08|0.48
+2026-11-04|12465|45|25|0|1.15|0.46
+2026-11-05|12575|50|36|0|-0.17|-1.28
+2026-11-06|12437|113|39|0|0.25|1.75
+2026-11-09|12459|19|9|0|0.91|1.00
+2026-11-10|12477|15|10|0|-0.63|-1.00
+2026-11-11|12449|79|15|0|0.92|1.86
+2026-11-12|12448|25|4|0|-0.77|-1.46
+2026-11-13|12434|12|12|0|0.39|0.05
+2026-11-16|12492|22|4|0|-0.62|-1.30
+2026-11-17|12467|5|4|0|-0.21|0.20
+2026-11-18|12477|8|5|0|0.13|0.62
+2026-11-19|12470|15|1|0|0.99|1.76
+2026-11-20|12532|4|1|0|-0.32|-0.96
+2026-11-23|12694|524|244|0|5.00|7.81
+2026-11-24|12496|13|5|5|-0.99|-1.69
+2026-11-25|12483|45|1|6|-2.17|-3.29
+2026-11-27|12327|43|12|0|1.28|1.86
+(83 rows)
+=== live alerts per day ===
+alert_date|n|high_n
+2026-08-03|2|2
+2026-08-04|11|10
+2026-08-05|10|8
+2026-08-06|11|8
+2026-08-07|17|10
+2026-08-10|5|4
+2026-08-11|5|4
+2026-08-12|10|6
+2026-08-13|6|5
+2026-08-14|7|4
+2026-08-17|2|1
+2026-08-18|1|1
+2026-08-19|4|3
+2026-08-20|3|2
+2026-08-21|1|1
+2026-08-27|5|5
+2026-08-28|1|1
+2026-09-03|3|3
+2026-09-04|1|0
+2026-09-08|6|5
+2026-09-14|2|2
+2026-09-16|1|0
+2026-09-17|2|2
+2026-09-21|2|0
+2026-09-22|1|1
+2026-09-25|1|1
+2026-09-28|1|1
+2026-10-01|2|2
+2026-10-05|3|0
+2026-10-06|3|3
+2026-10-07|1|1
+2026-10-08|1|1
+2026-10-09|2|1
+2026-10-14|1|0
+2026-10-19|2|2
+2026-10-21|2|2
+2026-10-23|1|0
+2026-10-26|1|0
+2026-10-27|3|3
+2026-10-28|2|2
+2026-10-29|1|1
+2026-10-30|1|1
+2026-11-03|4|4
+2026-11-04|4|3
+2026-11-05|3|3
+2026-11-06|11|1
+2026-11-09|1|1
+2026-11-11|6|4
+2026-11-12|1|1
+2026-11-13|1|0
+2026-11-16|1|1
+2026-11-17|1|1
+2026-11-19|5|2
+2026-11-23|9|2
+2026-11-24|2|2
+(55 rows)
+=== past lattice trigger-b pages ===
+et|event_type|left
+2026-08-24 17:30:10.890181|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_volume_drop
+2026-08-25 17:30:08.627171|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: zero_alert_days
+2026-08-26 17:30:10.219464|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: zero_alert_days
+2026-09-01 17:30:34.524689|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: zero_alert_days
+2026-09-02 17:30:34.903245|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: zero_alert_days
+2026-09-10 17:30:44.97545|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: zero_alert_days
+2026-09-11 17:30:52.579452|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: zero_alert_days
+2026-09-15 17:30:47.792037|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-09-16 17:30:44.930281|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-09-19 11:34:33.244169|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-09-21 17:30:43.243662|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-09-22 17:30:43.276569|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-09-23 17:30:48.121644|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-09-24 17:30:45.363504|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop, zero_alert_days
+2026-09-30 17:30:48.590408|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: zero_alert_days
+2026-10-13 17:30:54.649087|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: zero_alert_days
+2026-10-15 17:31:00.441584|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-10-16 17:31:01.25188|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop, zero_alert_days
+2026-11-10 17:30:44.444525|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-11-11 17:30:42.452114|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-11-12 17:30:42.077223|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-11-23 17:30:48.511175|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-11-24 17:30:48.653448|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-11-25 17:30:49.711451|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-11-26 17:30:49.743042|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop
+2026-11-27 17:30:49.429945|catalyst_lattice_monitor_alert|catalyst lattice revert trigger: high_conversion_drop, zero_alert_days
+(26 rows)

@@ -1,0 +1,2 @@
+{"today": "2026-11-28", "fill_date": "2026-11-27", "snapshot_rows": 13262, "targets": 199, "filled": {"alpaca": 0, "stored": 0}, "not_filled": 199, "cold_s": 0.29, "warm_s": 0.0, "clear_floors_n": 0, "clear_floors": [], "target_sample": ["AACP", "ACAA", "ACGC", "AEAQ", "AESP", "AKA", "ALF", "ALOV", "ALUB", "ANGH", "APAC", "APMC", "APUR", "ARCL", "BCCQ", "BEBE", "BHAV", "BPAC", "BREZ", "BRRK", "BSAA", "CAII", "CAPN", "CAQ", "CATL", "CCII", "CEPS", "CHAR", "CHEC", "CHPG", "COPL", "CRAN", "CTAA", "DAAQ", "DGAC", "DRDB", "DSAC", "DTSQ", "DYOR", "EGHA"]}
+rc=0
