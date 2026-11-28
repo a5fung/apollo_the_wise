@@ -1,0 +1,1879 @@
+[
+ {
+  "canonical_id": "K0734",
+  "week_rank": 2,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "APPN",
+   "PCOR",
+   "U"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0809",
+  "week_rank": 3,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CRAI",
+   "EXPO",
+   "FCN"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0638",
+  "week_rank": 4,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ADSK",
+   "VERX",
+   "VYX"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0626",
+  "week_rank": 5,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "GCT",
+   "IBTA",
+   "VYX"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0818",
+  "week_rank": 7,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BBIO",
+   "BMRN",
+   "CGON",
+   "INSM",
+   "RYTM"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0585",
+  "week_rank": 8,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "KNSL",
+   "PLMR",
+   "RLI",
+   "SKWD"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0198",
+  "week_rank": 9,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ARHS",
+   "BOBS",
+   "HNI",
+   "MHK",
+   "MLKN",
+   "W",
+   "WSM"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0596",
+  "week_rank": 10,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BRBR",
+   "CHWY",
+   "FRPT",
+   "LTH",
+   "PLNT"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0819",
+  "week_rank": 11,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CCC",
+   "DFIN",
+   "UPBD"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0284",
+  "week_rank": 12,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "APPF",
+   "DUOL",
+   "PCOR"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0737",
+  "week_rank": 13,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "APP",
+   "LFTO",
+   "MGNI",
+   "PUBM",
+   "STGW"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0552",
+  "week_rank": 14,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CBOE",
+   "CME",
+   "ICE",
+   "NDAQ",
+   "TW"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0589",
+  "week_rank": 15,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "LYFT",
+   "VIA",
+   "YMM"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0684",
+  "week_rank": 16,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ALLE",
+   "ALRM",
+   "CDRE",
+   "MSI"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0821",
+  "week_rank": 18,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "PFGC",
+   "PSMT",
+   "TBBB",
+   "UNFI",
+   "USFD"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0544",
+  "week_rank": 19,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ATAT",
+   "CHH",
+   "H",
+   "HLT",
+   "HTHT",
+   "IHG",
+   "MAR",
+   "WH"
+  ],
+  "n_tickers": 8
+ },
+ {
+  "canonical_id": "K0348",
+  "week_rank": 20,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AMPL",
+   "FRSH",
+   "KVYO",
+   "SPT",
+   "ZETA"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0686",
+  "week_rank": 20,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BJ",
+   "COST",
+   "DG",
+   "DLTR",
+   "FIVE",
+   "OLLI",
+   "TGT",
+   "WMT"
+  ],
+  "n_tickers": 8
+ },
+ {
+  "canonical_id": "K0743",
+  "week_rank": 22,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "COLM",
+   "GIII",
+   "LEVI",
+   "PVH",
+   "VFC"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0746",
+  "week_rank": 22,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ACM",
+   "FER",
+   "GVA",
+   "J",
+   "STN",
+   "TPC",
+   "TTEK"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0513",
+  "week_rank": 24,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ACN",
+   "CRAI",
+   "EXLS",
+   "FCN",
+   "HURN",
+   "IT"
+  ],
+  "n_tickers": 6
+ },
+ {
+  "canonical_id": "K0042",
+  "week_rank": 25,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AJG",
+   "AON",
+   "BRO",
+   "BWIN",
+   "MRSH",
+   "RYAN",
+   "WTW"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0142",
+  "week_rank": 25,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ABT",
+   "ALC",
+   "ALGN",
+   "BAX",
+   "BDX",
+   "ENOV",
+   "GEHC",
+   "GKOS",
+   "HAE",
+   "ICUI",
+   "ISRG",
+   "MMSI",
+   "PHG",
+   "PODD",
+   "RMD",
+   "STE",
+   "TFX",
+   "TNDM",
+   "UFPT"
+  ],
+  "n_tickers": 19
+ },
+ {
+  "canonical_id": "K0557",
+  "week_rank": 25,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AGYS",
+   "PAR",
+   "ROP",
+   "TOST",
+   "TTAN",
+   "TYL"
+  ],
+  "n_tickers": 6
+ },
+ {
+  "canonical_id": "K0558",
+  "week_rank": 28,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AOS",
+   "APOG",
+   "MAS",
+   "TGLS"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0741",
+  "week_rank": 29,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CMG",
+   "DPZ",
+   "EAT",
+   "FWRG",
+   "JMKE",
+   "KRUS",
+   "MCD",
+   "MMYT",
+   "QSR",
+   "SBUX",
+   "SG",
+   "SHAK",
+   "TCOM",
+   "WEN",
+   "WING",
+   "YUM",
+   "YUMC"
+  ],
+  "n_tickers": 17
+ },
+ {
+  "canonical_id": "K0355",
+  "week_rank": 30,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CNMD",
+   "SIBN",
+   "SNN",
+   "SYK",
+   "ZBH"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0586",
+  "week_rank": 30,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "JKHY",
+   "NCNO",
+   "QTWO"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0646",
+  "week_rank": 32,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CWST",
+   "GFL",
+   "ONT",
+   "RSG",
+   "WCN",
+   "WM"
+  ],
+  "n_tickers": 6
+ },
+ {
+  "canonical_id": "K0172",
+  "week_rank": 33,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ACHC",
+   "HCA",
+   "THC",
+   "UHS"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0810",
+  "week_rank": 35,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "HGV",
+   "TNL",
+   "VAC"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0606",
+  "week_rank": 36,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CAG",
+   "CPB",
+   "GIS",
+   "JJSF",
+   "KHC",
+   "LW",
+   "NOMD",
+   "SJM",
+   "SMPL"
+  ],
+  "n_tickers": 9
+ },
+ {
+  "canonical_id": "K0668",
+  "week_rank": 37,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ACI",
+   "GO",
+   "KR",
+   "WMK"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0575",
+  "week_rank": 38,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ACGL",
+   "EG",
+   "HG",
+   "PLGO",
+   "RNR",
+   "SPNT"
+  ],
+  "n_tickers": 6
+ },
+ {
+  "canonical_id": "K0815",
+  "week_rank": 39,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BLMN",
+   "CAKE",
+   "CBRL",
+   "DIN",
+   "DRI",
+   "TXRH"
+  ],
+  "n_tickers": 6
+ },
+ {
+  "canonical_id": "K0133",
+  "week_rank": 40,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "DSGX",
+   "MANH",
+   "SPSC"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0569",
+  "week_rank": 40,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BUD",
+   "DEO",
+   "SAM",
+   "STZ",
+   "TAP"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0733",
+  "week_rank": 42,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CUBE",
+   "EXR",
+   "PSA"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0337",
+  "week_rank": 43,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CCEP",
+   "CELH",
+   "COCO",
+   "COKE",
+   "FIZZ",
+   "KDP",
+   "KO",
+   "KOF",
+   "PEP",
+   "PRMB"
+  ],
+  "n_tickers": 10
+ },
+ {
+  "canonical_id": "K0573",
+  "week_rank": 44,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CART",
+   "CPNG",
+   "EBAY",
+   "ETSY",
+   "EVER",
+   "JD",
+   "MAX",
+   "PDD",
+   "QNST"
+  ],
+  "n_tickers": 9
+ },
+ {
+  "canonical_id": "K0801",
+  "week_rank": 44,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "HRL",
+   "PPC",
+   "SENEA",
+   "TSN"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0236",
+  "week_rank": 46,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ACN",
+   "CNXC",
+   "CTSH",
+   "DXC",
+   "EPAM",
+   "EXLS",
+   "G",
+   "GDYN",
+   "GIB",
+   "GLOB",
+   "INFY",
+   "KD"
+  ],
+  "n_tickers": 12
+ },
+ {
+  "canonical_id": "K0629",
+  "week_rank": 46,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ALL",
+   "ERIE",
+   "HCI",
+   "HIPO",
+   "HMN",
+   "KMPR",
+   "PGR",
+   "SLDE",
+   "UVE"
+  ],
+  "n_tickers": 9
+ },
+ {
+  "canonical_id": "K0143",
+  "week_rank": 48,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AI",
+   "APPN",
+   "BSY",
+   "DOCU",
+   "INTA",
+   "INTU",
+   "IOT",
+   "MSFT",
+   "OTEX",
+   "PD",
+   "SAP",
+   "TDC",
+   "WK"
+  ],
+  "n_tickers": 13
+ },
+ {
+  "canonical_id": "K0651",
+  "week_rank": 48,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "HAYW",
+   "POOL",
+   "SITE"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0735",
+  "week_rank": 48,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ALGT",
+   "CPA",
+   "DAL",
+   "LUV",
+   "RYAAY",
+   "UAL",
+   "ULCC"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0657",
+  "week_rank": 51,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ATRC",
+   "EW",
+   "KMTS",
+   "LIVN",
+   "MDT"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0235",
+  "week_rank": 52,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "APLE",
+   "DRH",
+   "HST",
+   "PEB",
+   "PK",
+   "RHP",
+   "RLJ",
+   "SHO",
+   "XHR"
+  ],
+  "n_tickers": 9
+ },
+ {
+  "canonical_id": "K0714",
+  "week_rank": 53,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BC",
+   "DOO",
+   "HOG",
+   "PII",
+   "THO"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0598",
+  "week_rank": 54,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AZO",
+   "DORM",
+   "ORLY",
+   "PHIN",
+   "VVV"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0588",
+  "week_rank": 55,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BLKB",
+   "BOX",
+   "DBX"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0798",
+  "week_rank": 56,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ARGX",
+   "AZN",
+   "GMAB",
+   "REPL",
+   "SNY"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0488",
+  "week_rank": 57,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CCL",
+   "NCLH",
+   "OSW",
+   "RCL",
+   "VIK"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0835",
+  "week_rank": 58,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ENR",
+   "MSA",
+   "RGR"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0434",
+  "week_rank": 59,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ADUS",
+   "CHE",
+   "EHC",
+   "ENSG",
+   "HCSG",
+   "PACS",
+   "USPH"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0768",
+  "week_rank": 59,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CHTR",
+   "CMCSA",
+   "GLIBK",
+   "LBTYA",
+   "LBTYK"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0717",
+  "week_rank": 61,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CMCO",
+   "ESAB",
+   "ITW",
+   "JBTM",
+   "LECO",
+   "MFP",
+   "MIDD",
+   "RRX"
+  ],
+  "n_tickers": 8
+ },
+ {
+  "canonical_id": "K0385",
+  "week_rank": 62,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AFG",
+   "AIG",
+   "AIZ",
+   "AXS",
+   "CB",
+   "CINF",
+   "CNA",
+   "HIG",
+   "L",
+   "MKL",
+   "ORI",
+   "SIGI",
+   "THG",
+   "TRV",
+   "WRB",
+   "WTM"
+  ],
+  "n_tickers": 16
+ },
+ {
+  "canonical_id": "K0464",
+  "week_rank": 63,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AWI",
+   "CSL",
+   "FBIN",
+   "FND",
+   "GFF",
+   "HD",
+   "IBP",
+   "JHX",
+   "LOW",
+   "LPX",
+   "MAS",
+   "SSD",
+   "TREX"
+  ],
+  "n_tickers": 13
+ },
+ {
+  "canonical_id": "K0424",
+  "week_rank": 64,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CVCO",
+   "DHI",
+   "KBH",
+   "LEN",
+   "MTH",
+   "PHM",
+   "SKY",
+   "TOL"
+  ],
+  "n_tickers": 8
+ },
+ {
+  "canonical_id": "K0795",
+  "week_rank": 64,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AMX",
+   "BCE",
+   "KT",
+   "RCI",
+   "T",
+   "TIMB",
+   "TU",
+   "VZ"
+  ],
+  "n_tickers": 8
+ },
+ {
+  "canonical_id": "K0296",
+  "week_rank": 66,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ADPT",
+   "CDNA",
+   "CSTL",
+   "DGX",
+   "GRAL",
+   "HTFL",
+   "LH"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0752",
+  "week_rank": 67,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "FBIN",
+   "LEN",
+   "LOW",
+   "MTH",
+   "PHM",
+   "QXO",
+   "RKT"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0578",
+  "week_rank": 68,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CDNA",
+   "HNGE",
+   "LFST"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0812",
+  "week_rank": 69,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "MSGE",
+   "MSGK",
+   "MSGR"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0806",
+  "week_rank": 70,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ACIW",
+   "BILL",
+   "CHYM",
+   "CPAY",
+   "EVTC",
+   "FISV",
+   "FLYW",
+   "FOUR",
+   "GPN",
+   "MA",
+   "MQ",
+   "PYPL",
+   "SEZL",
+   "V",
+   "WEX",
+   "WSE",
+   "XYZ"
+  ],
+  "n_tickers": 17
+ },
+ {
+  "canonical_id": "K0750",
+  "week_rank": 71,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ATMU",
+   "CALY",
+   "FOXF"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0720",
+  "week_rank": 72,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CHDN",
+   "HGV",
+   "PENN",
+   "PRKS",
+   "WYNN"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0130",
+  "week_rank": 73,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ADP",
+   "ALIT",
+   "NSP",
+   "PAYC",
+   "PAYX",
+   "PCTY",
+   "TNET",
+   "WDAY"
+  ],
+  "n_tickers": 8
+ },
+ {
+  "canonical_id": "K0745",
+  "week_rank": 73,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "FROG",
+   "OSPN",
+   "RPD"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0696",
+  "week_rank": 75,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AER",
+   "GATX",
+   "TRN"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0825",
+  "week_rank": 75,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AEO",
+   "ANF",
+   "ASO",
+   "BBW",
+   "BBWI",
+   "BIRK",
+   "BKE",
+   "BOOT",
+   "CRI",
+   "CROX",
+   "FIGS",
+   "KSS",
+   "KTB",
+   "LULU",
+   "M",
+   "ONON",
+   "RL",
+   "SHOE",
+   "SVV",
+   "URBN",
+   "WWW"
+  ],
+  "n_tickers": 21
+ },
+ {
+  "canonical_id": "K0695",
+  "week_rank": 78,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "LCII",
+   "PATK",
+   "THO",
+   "WGO"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0833",
+  "week_rank": 79,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AEO",
+   "BOBS",
+   "BURL",
+   "GAP"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0109",
+  "week_rank": 80,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "A",
+   "AZTA",
+   "BIO",
+   "BRKR",
+   "CRL",
+   "DHR",
+   "MLAB",
+   "MTD",
+   "RGEN",
+   "RVTY",
+   "TMO",
+   "WAT"
+  ],
+  "n_tickers": 12
+ },
+ {
+  "canonical_id": "K0495",
+  "week_rank": 80,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AEE",
+   "AEP",
+   "AVA",
+   "BKH",
+   "CMS",
+   "CNP",
+   "D",
+   "DTE",
+   "DUK",
+   "ED",
+   "EMA",
+   "ES",
+   "ETR",
+   "EVRG",
+   "EXC",
+   "FE",
+   "FTS",
+   "IDA",
+   "LNT",
+   "MGEE",
+   "NGG",
+   "NI",
+   "NWE",
+   "OGE",
+   "PEG",
+   "PNW",
+   "PPL",
+   "SO",
+   "TXNM",
+   "WEC",
+   "XEL"
+  ],
+  "n_tickers": 31
+ },
+ {
+  "canonical_id": "K0620",
+  "week_rank": 82,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AHR",
+   "HR",
+   "LTC",
+   "OHI",
+   "SBRA",
+   "VTR",
+   "WELL"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0671",
+  "week_rank": 83,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "APD",
+   "ASH",
+   "AVNT",
+   "AXTA",
+   "CE",
+   "DD",
+   "DOW",
+   "ECL",
+   "HWKN",
+   "LIN",
+   "LXU",
+   "LYB",
+   "MEOH",
+   "PPG",
+   "RPM",
+   "SCL",
+   "SHW"
+  ],
+  "n_tickers": 17
+ },
+ {
+  "canonical_id": "K0603",
+  "week_rank": 84,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "DFIN",
+   "EFX",
+   "FDS",
+   "MCO",
+   "MORN",
+   "MSCI",
+   "RELX",
+   "SPGI",
+   "TRI",
+   "TRU",
+   "VRSK"
+  ],
+  "n_tickers": 11
+ },
+ {
+  "canonical_id": "K0618",
+  "week_rank": 85,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "IMVT",
+   "ORKA",
+   "SYRE",
+   "TRAX",
+   "VRDN"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0834",
+  "week_rank": 86,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "DMRA",
+   "ELVN",
+   "SLS"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0551",
+  "week_rank": 87,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CDW",
+   "CNXN",
+   "NSIT",
+   "PLUS"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0577",
+  "week_rank": 88,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CSR",
+   "UDR",
+   "VMRK"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0601",
+  "week_rank": 89,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CPRI",
+   "REAL",
+   "SIG",
+   "TPR",
+   "ZGN"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0005",
+  "week_rank": 90,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ATEN",
+   "CHKP",
+   "CRWD",
+   "NET",
+   "NTSK",
+   "OKTA",
+   "PANW",
+   "QLYS",
+   "RBRK",
+   "RDWR",
+   "RPD",
+   "S",
+   "SAIL",
+   "TENB",
+   "VRNS",
+   "ZS"
+  ],
+  "n_tickers": 16
+ },
+ {
+  "canonical_id": "K0040",
+  "week_rank": 91,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AFL",
+   "LNC",
+   "MET",
+   "MFC",
+   "PFG",
+   "PRI",
+   "PRU",
+   "RGA",
+   "VOYA"
+  ],
+  "n_tickers": 9
+ },
+ {
+  "canonical_id": "K0792",
+  "week_rank": 92,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ATI",
+   "HEI",
+   "HWM",
+   "LOAR",
+   "SARO",
+   "TDG",
+   "VSEC",
+   "WWD"
+  ],
+  "n_tickers": 8
+ },
+ {
+  "canonical_id": "K0098",
+  "week_rank": 93,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AAMI",
+   "AMG",
+   "APAM",
+   "BEN",
+   "BLK",
+   "FHI",
+   "SEIC",
+   "VCTR"
+  ],
+  "n_tickers": 8
+ },
+ {
+  "canonical_id": "K0576",
+  "week_rank": 93,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "COLD",
+   "EGP",
+   "LXP",
+   "REXR",
+   "STAG",
+   "TRNO"
+  ],
+  "n_tickers": 6
+ },
+ {
+  "canonical_id": "K0590",
+  "week_rank": 95,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BALL",
+   "CCK",
+   "SLGN"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0836",
+  "week_rank": 96,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "DMRA",
+   "MIRM",
+   "SRRK"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0693",
+  "week_rank": 97,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "EPAC",
+   "FLS",
+   "IEX",
+   "IR",
+   "MWA"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0675",
+  "week_rank": 98,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CUZ",
+   "HIW",
+   "PDM"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0257",
+  "week_rank": 99,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "DOCS",
+   "VEEV",
+   "WAY"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0710",
+  "week_rank": 100,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BSP",
+   "OSPN",
+   "PAY"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0479",
+  "week_rank": 101,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ABG",
+   "AN",
+   "GPI",
+   "PAG"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0607",
+  "week_rank": 102,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AMTM",
+   "BAH",
+   "CACI",
+   "LDOS",
+   "MMS",
+   "PSN",
+   "SAIC",
+   "VVX"
+  ],
+  "n_tickers": 8
+ },
+ {
+  "canonical_id": "K0478",
+  "week_rank": 103,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AR",
+   "CNX",
+   "RRC"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0480",
+  "week_rank": 104,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CNI",
+   "CP",
+   "CSX",
+   "NSC",
+   "UNP"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0322",
+  "week_rank": 105,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ARCC",
+   "FSK",
+   "MAIN",
+   "OBDC"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0724",
+  "week_rank": 106,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "FNV",
+   "OR",
+   "RGLD",
+   "WPM"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0816",
+  "week_rank": 107,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "GNRC",
+   "MSA",
+   "REZI",
+   "WTS"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0412",
+  "week_rank": 108,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AMAL",
+   "AMTB",
+   "BANF",
+   "BANR",
+   "CATY",
+   "CBC",
+   "CBSH",
+   "CHCO",
+   "CLBK",
+   "CNOB",
+   "CUBI",
+   "CVBF",
+   "DCOM",
+   "EBC",
+   "EGBN",
+   "ESQ",
+   "EWBC",
+   "FBNC",
+   "FCF",
+   "FIBK",
+   "FSUN",
+   "HBNC",
+   "HIFS",
+   "HOMB",
+   "INDB",
+   "KEY",
+   "MCB",
+   "NBTB",
+   "NIC",
+   "NWBI",
+   "OFG",
+   "OSBC",
+   "OZK",
+   "PB",
+   "PFBC",
+   "PNFP",
+   "QCRH",
+   "RBCAA",
+   "SFNC",
+   "STBA",
+   "TCBI",
+   "TRMK",
+   "UBSI",
+   "UCB",
+   "WABC"
+  ],
+  "n_tickers": 45
+ },
+ {
+  "canonical_id": "K0699",
+  "week_rank": 108,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ARES",
+   "BAM",
+   "BN",
+   "BX",
+   "HLNE",
+   "KKR",
+   "OWL",
+   "STEP",
+   "TPG"
+  ],
+  "n_tickers": 9
+ },
+ {
+  "canonical_id": "K0383",
+  "week_rank": 110,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "APA",
+   "CHRD",
+   "COP",
+   "EOG",
+   "NOG",
+   "OVV",
+   "PNRG",
+   "REPX"
+  ],
+  "n_tickers": 8
+ },
+ {
+  "canonical_id": "K0799",
+  "week_rank": 111,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CNC",
+   "ELV",
+   "MOH"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0386",
+  "week_rank": 112,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CNO",
+   "CRBG",
+   "EQH",
+   "FG",
+   "JXN"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0832",
+  "week_rank": 113,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ESNT",
+   "NMIH",
+   "RYN"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0140",
+  "week_rank": 114,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BMO",
+   "CM",
+   "RY"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0731",
+  "week_rank": 115,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ARIS",
+   "AU",
+   "AUGO",
+   "B",
+   "EGO",
+   "EQX",
+   "SSRM"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0723",
+  "week_rank": 116,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AG",
+   "BVN",
+   "CDE",
+   "EXK",
+   "FSM",
+   "HL",
+   "PAAS"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0817",
+  "week_rank": 117,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "FCX",
+   "HBM",
+   "SCCO",
+   "TGB"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0822",
+  "week_rank": 118,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AAOI",
+   "AXTI",
+   "MU",
+   "SNDK"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0468",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ITUB",
+   "NU",
+   "STNE",
+   "VIV"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0472",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ASC",
+   "DHT",
+   "ECO",
+   "HAFN",
+   "INSW",
+   "STNG",
+   "TNK"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0563",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CLF",
+   "NUE",
+   "RS",
+   "RYZ",
+   "WS"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0564",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AMT",
+   "CCI",
+   "SBAC"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0628",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BP",
+   "CVX",
+   "E",
+   "EQNR",
+   "SHEL",
+   "TTE",
+   "XOM"
+  ],
+  "n_tickers": 7
+ },
+ {
+  "canonical_id": "K0659",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BBT",
+   "FCNCA",
+   "GBCI",
+   "VLY"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0666",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "MPC",
+   "PSX",
+   "VLO"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0674",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CTS",
+   "ITRI",
+   "TEL"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0676",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "BTI",
+   "MO",
+   "PM"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0677",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "HRI",
+   "MGRC",
+   "R",
+   "URI"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0709",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AMRZ",
+   "CRH",
+   "EXP",
+   "MLM",
+   "USLM",
+   "VMC"
+  ],
+  "n_tickers": 6
+ },
+ {
+  "canonical_id": "K0722",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AEM",
+   "GFI",
+   "IAG",
+   "NEM"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0761",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "ADI",
+   "MPWR",
+   "NXPI",
+   "TXN"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0763",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "FLY",
+   "HAWK",
+   "SPCX",
+   "TSAT"
+  ],
+  "n_tickers": 4
+ },
+ {
+  "canonical_id": "K0780",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AAON",
+   "GHM",
+   "REZI"
+  ],
+  "n_tickers": 3
+ },
+ {
+  "canonical_id": "K0791",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "CHRW",
+   "FDXF",
+   "JBHT",
+   "LSTR",
+   "ODFL"
+  ],
+  "n_tickers": 5
+ },
+ {
+  "canonical_id": "K0814",
+  "week_rank": null,
+  "as_of_date": "2026-11-20",
+  "tickers": [
+   "AGI",
+   "CGAU",
+   "KGC"
+  ],
+  "n_tickers": 3
+ }
+]
